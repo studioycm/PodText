@@ -2,10 +2,12 @@
 
 namespace App\Providers\Filament;
 
+use App\Filament\Public\Pages\BrowseContentGroups;
+use App\Filament\Public\Pages\ShowContentGroup;
+use App\Filament\Public\Pages\ShowContentItem;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
 use Filament\Http\Middleware\DispatchServingFilamentEvent;
-use Filament\Pages\Dashboard;
 use Filament\Panel;
 use Filament\PanelProvider;
 use Filament\Support\Colors\Color;
@@ -29,12 +31,11 @@ class PublicPanelProvider extends PanelProvider
             ->colors([
                 'primary' => Color::Amber,
             ])
-            ->discoverResources(in: app_path('Filament/Public/Resources'), for: 'App\Filament\Public\Resources')
-            ->discoverPages(in: app_path('Filament/Public/Pages'), for: 'App\Filament\Public\Pages')
             ->pages([
-                Dashboard::class,
+                BrowseContentGroups::class,
+                ShowContentGroup::class,
+                ShowContentItem::class,
             ])
-            ->discoverWidgets(in: app_path('Filament/Public/Widgets'), for: 'App\Filament\Public\Widgets')
             ->widgets([])
             ->navigation(false)
             ->userMenu(false)
