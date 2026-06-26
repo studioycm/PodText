@@ -118,6 +118,27 @@ For local development with imports/exports:
 php artisan queue:work
 ```
 
+After Phase 0, the Laravel 13 skeleton already contains the `jobs`, `job_batches`, and `failed_jobs` tables in
+`0001_01_01_000002_create_jobs_table.php`. The additional Phase 0 import/export foundation is:
+
+```bash
+php artisan make:notifications-table
+php artisan vendor:publish --tag=filament-actions-migrations
+php artisan migrate
+```
+
+Create a local Filament administrator with a development-only password:
+
+```bash
+php artisan make:filament-user --panel=admin
+```
+
+For queued imports and exports, run a local worker in a separate terminal:
+
+```bash
+php artisan queue:work database
+```
+
 ## Phase completion commands
 
 Codex must use the commands available in the generated repository. The expected quality gate is equivalent to:

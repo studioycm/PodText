@@ -1,6 +1,7 @@
 /.phpunit.cache
 /node_modules
 /public/build
+/public/fonts-manifest.dev.json
 /public/hot
 /public/storage
 /storage/*.key
@@ -14,11 +15,14 @@ Thumbs.db
 .env
 .env.backup
 .env.production
+.phpactor.json
 .phpunit.result.cache
 
+/.ai/mcp
 /.codex
 /.cursor
 /.idea
+/.junie/mcp
 /.nova
 /.vscode
 /.zed
@@ -29,3 +33,6 @@ Thumbs.db
 _ide_helper.php
 Homestead.json
 Homestead.yaml
+
+/.mcp.json
+/mcp.json
