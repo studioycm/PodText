@@ -2,11 +2,17 @@
 
 namespace App\Filament\Resources\Authors\Tables;
 
+use App\Filament\Exports\AuthorExporter;
+use App\Filament\Imports\AuthorImporter;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
+use Filament\Actions\ExportAction;
+use Filament\Actions\ExportBulkAction;
+use Filament\Actions\ImportAction;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
+use Illuminate\Validation\Rules\File;
 
 class AuthorsTable
 {
@@ -40,11 +46,23 @@ class AuthorsTable
             ->filters([
                 //
             ])
+            ->headerActions([
+                ImportAction::make()
+                    ->importer(AuthorImporter::class)
+                    ->maxRows(1000)
+                    ->chunkSize(50)
+                    ->fileRules([File::types(['csv', 'txt'])->max(10240)]),
+                ExportAction::make()
+                    ->exporter(AuthorExporter::class)
+                    ->maxRows(10000),
+            ])
             ->recordActions([
                 EditAction::make(),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
+                    ExportBulkAction::make()
+                        ->exporter(AuthorExporter::class),
                     DeleteBulkAction::make(),
                 ]),
             ]);

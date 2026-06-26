@@ -71,6 +71,33 @@ return [
         'draft' => 'טיוטה',
         'published' => 'פורסם',
     ],
+    'import' => [
+        'columns' => [
+            'author_reference_keys' => 'Author reference keys',
+            'content_group_reference_key' => 'Content group reference key',
+        ],
+        'failures' => [
+            'create_found_existing_reference_key' => 'Create-only import found an existing record with reference key :reference_key.',
+            'duplicate_reference_key' => 'The reference key :reference_key appears more than once in this import chunk.',
+            'unresolved_authors' => 'Could not resolve author reference keys: :reference_keys.',
+            'unresolved_content_group' => 'Could not resolve content group reference key :reference_key.',
+            'update_missing_reference_key' => 'Update-only import could not find a record with reference key :reference_key.',
+            'update_requires_reference_key' => 'Update-only import rows must include a reference key.',
+        ],
+        'options' => [
+            'blank_update_behavior' => 'Blank mapped fields on update',
+            'blank_update_behaviors' => [
+                'overwrite' => 'Overwrite with blank values where allowed',
+                'preserve' => 'Preserve existing values',
+            ],
+            'mode' => 'Import mode',
+            'modes' => [
+                'create' => 'Create only',
+                'update' => 'Update only',
+                'upsert' => 'Create and update',
+            ],
+        ],
+    ],
     'validation' => [
         'embed_url_host' => 'מארח כתובת ההטמעה אינו מאושר.',
         'embed_url_https' => 'כתובת ההטמעה חייבת להשתמש ב-HTTPS.',

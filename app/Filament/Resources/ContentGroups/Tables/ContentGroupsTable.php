@@ -3,13 +3,19 @@
 namespace App\Filament\Resources\ContentGroups\Tables;
 
 use App\Enums\PublicationStatus;
+use App\Filament\Exports\ContentGroupExporter;
+use App\Filament\Imports\ContentGroupImporter;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
+use Filament\Actions\ExportAction;
+use Filament\Actions\ExportBulkAction;
+use Filament\Actions\ImportAction;
 use Filament\Tables\Columns\ImageColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
+use Illuminate\Validation\Rules\File;
 
 class ContentGroupsTable
 {
@@ -66,11 +72,23 @@ class ContentGroupsTable
                         ->mapWithKeys(fn (string $locale): array => [$locale => __("admin.locales.{$locale}")])
                         ->all()),
             ])
+            ->headerActions([
+                ImportAction::make()
+                    ->importer(ContentGroupImporter::class)
+                    ->maxRows(1000)
+                    ->chunkSize(25)
+                    ->fileRules([File::types(['csv', 'txt'])->max(10240)]),
+                ExportAction::make()
+                    ->exporter(ContentGroupExporter::class)
+                    ->maxRows(10000),
+            ])
             ->recordActions([
                 EditAction::make(),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
+                    ExportBulkAction::make()
+                        ->exporter(ContentGroupExporter::class),
                     DeleteBulkAction::make(),
                 ]),
             ]);

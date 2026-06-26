@@ -3,13 +3,19 @@
 namespace App\Filament\Resources\ContentItems\Tables;
 
 use App\Enums\PublicationStatus;
+use App\Filament\Exports\ContentItemExporter;
+use App\Filament\Imports\ContentItemImporter;
 use App\Models\ContentItem;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
+use Filament\Actions\ExportAction;
+use Filament\Actions\ExportBulkAction;
+use Filament\Actions\ImportAction;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
+use Illuminate\Validation\Rules\File;
 
 class ContentItemsTable
 {
@@ -79,11 +85,23 @@ class ContentItemsTable
                     ->searchable()
                     ->preload(),
             ])
+            ->headerActions([
+                ImportAction::make()
+                    ->importer(ContentItemImporter::class)
+                    ->maxRows(1000)
+                    ->chunkSize(10)
+                    ->fileRules([File::types(['csv', 'txt'])->max(10240)]),
+                ExportAction::make()
+                    ->exporter(ContentItemExporter::class)
+                    ->maxRows(10000),
+            ])
             ->recordActions([
                 EditAction::make(),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
+                    ExportBulkAction::make()
+                        ->exporter(ContentItemExporter::class),
                     DeleteBulkAction::make(),
                 ]),
             ]);
