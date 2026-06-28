@@ -274,6 +274,13 @@ it('fails content item rows with unresolved relationships or invalid embed urls'
     expect(fn () => importRecord(ContentItemImporter::class, [
         'reference_key' => (string) Str::ulid(),
         'content_group_reference_key' => $group->reference_key,
+        'title' => 'Bad Media',
+        'media_url' => 'http://example.com/media/bad-media',
+    ]))->toThrow(ValidationException::class);
+
+    expect(fn () => importRecord(ContentItemImporter::class, [
+        'reference_key' => (string) Str::ulid(),
+        'content_group_reference_key' => $group->reference_key,
         'title' => 'Bad Embed',
         'media_url' => 'https://example.com/media/bad-embed',
         'embed_url' => 'https://unapproved.example/embed',

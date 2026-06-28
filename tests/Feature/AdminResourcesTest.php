@@ -383,6 +383,17 @@ it('validates content item required fields, scoped slugs, and embed URLs', funct
         ->call('create')
         ->assertHasNoFormErrors();
 
+    Livewire::test(CreateContentItem::class)
+        ->fillForm([
+            'content_group_id' => $group->id,
+            'title' => 'Invalid Media',
+            'slug' => 'invalid-media',
+            'media_url' => 'http://example.com/audio.mp3',
+            'status' => PublicationStatus::Draft,
+        ])
+        ->call('create')
+        ->assertHasFormErrors(['media_url']);
+
     foreach ([
         'http://www.youtube.com/embed/demo',
         'https://unapproved.example/embed/demo',

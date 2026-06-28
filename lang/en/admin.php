@@ -103,5 +103,6 @@ return [
         'embed_url_https' => 'The embed URL must use HTTPS.',
         'embed_url_no_html' => 'Paste an embed URL, not HTML.',
         'embed_url_url' => 'The embed URL must be a valid URL.',
+        'media_url_https' => 'The media URL must use HTTPS.',
     ],
 ];

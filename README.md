@@ -115,7 +115,7 @@ php artisan migrate
 For local development with imports/exports:
 
 ```bash
-php artisan queue:work
+php artisan queue:work database --queue=imports-exports,default --tries=3 --timeout=120
 ```
 
 After Phase 0, the Laravel 13 skeleton already contains the `jobs`, `job_batches`, and `failed_jobs` tables in

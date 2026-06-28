@@ -63,7 +63,11 @@ class ContentItemForm
                             ->label(__('admin.fields.media_url'))
                             ->url()
                             ->required()
-                            ->maxLength(2048),
+                            ->maxLength(2048)
+                            ->rules(['starts_with:https://'])
+                            ->validationMessages([
+                                'media_url.starts_with' => __('admin.validation.media_url_https'),
+                            ]),
                         TextInput::make('embed_url')
                             ->label(__('admin.fields.embed_url'))
                             ->helperText(__('admin.helpers.embed_url'))

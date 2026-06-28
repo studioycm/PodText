@@ -5,145 +5,145 @@ Use this checklist after all automated tests pass.
 ## Environment
 
 - [ ] The application starts from documented commands.
-- [ ] A fresh database migrates successfully.
-- [ ] The demo seeder completes successfully.
-- [ ] The frontend production build completes successfully.
-- [ ] The database queue worker starts successfully.
-- [ ] No worktree or parallel-checkout setup is required.
+- [x] A fresh database migrates successfully.
+- [x] The demo seeder completes successfully.
+- [x] The frontend production build completes successfully.
+- [x] The database queue worker starts successfully.
+- [x] No worktree or parallel-checkout setup is required.
 
 ## Admin authentication
 
-- [ ] A guest visiting `/admin` is redirected or denied.
+- [x] A guest visiting `/admin` is redirected or denied.
 - [ ] An administrator can sign in.
 - [ ] An administrator can sign out.
-- [ ] The Public panel remains available to logged-out visitors.
+- [x] The Public panel remains available to logged-out visitors.
 
 ## Authors
 
-- [ ] An administrator can create an author.
-- [ ] An administrator can edit an author.
-- [ ] The author receives a stable reference key.
-- [ ] The author biography accepts Hebrew Markdown.
-- [ ] Author list search works.
+- [x] An administrator can create an author.
+- [x] An administrator can edit an author.
+- [x] The author receives a stable reference key.
+- [x] The author biography accepts Hebrew Markdown.
+- [x] Author list search works.
 
 ## Content groups
 
-- [ ] An administrator can create a content group.
-- [ ] The default group labels are Podcast/Podcasts.
-- [ ] The default item labels are Episode/Episodes.
-- [ ] An administrator can replace those labels.
-- [ ] An administrator can upload a cover.
-- [ ] The description accepts Hebrew Markdown.
-- [ ] The original language defaults to Hebrew.
-- [ ] Draft/published status can be set.
-- [ ] Publication timestamp can be set.
-- [ ] Group list search and status filter work.
+- [x] An administrator can create a content group.
+- [x] The default group labels are Podcast/Podcasts.
+- [x] The default item labels are Episode/Episodes.
+- [x] An administrator can replace those labels.
+- [x] An administrator can upload a cover.
+- [x] The description accepts Hebrew Markdown.
+- [x] The original language defaults to Hebrew.
+- [x] Draft/published status can be set.
+- [x] Publication timestamp can be set.
+- [x] Group list search and status filter work.
 
 ## Content items
 
-- [ ] An administrator can create a content item under a group.
-- [ ] An item inherits the group's item label.
-- [ ] An administrator can override the item singular label.
-- [ ] An administrator can attach multiple authors.
-- [ ] An administrator can add the original media URL.
-- [ ] An administrator can add an approved HTTPS embed URL.
-- [ ] An unapproved or non-HTTPS embed URL is rejected.
-- [ ] An administrator can set duration.
-- [ ] An administrator can paste a long multiline Hebrew Markdown transcript.
-- [ ] The transcript editor does not upload attachments unless that behavior was explicitly added and tested.
-- [ ] Draft/published status can be set.
-- [ ] Item list search and filters work.
+- [x] An administrator can create a content item under a group.
+- [x] An item inherits the group's item label.
+- [x] An administrator can override the item singular label.
+- [x] An administrator can attach multiple authors.
+- [x] An administrator can add the original media URL.
+- [x] An administrator can add an approved HTTPS embed URL.
+- [x] An unapproved or non-HTTPS embed URL is rejected.
+- [x] An administrator can set duration.
+- [x] An administrator can paste a long multiline Hebrew Markdown transcript.
+- [x] The transcript editor does not upload attachments unless that behavior was explicitly added and tested.
+- [x] Draft/published status can be set.
+- [x] Item list search and filters work.
 
 ## Public browse page
 
-- [ ] A logged-out visitor can open `/`.
-- [ ] Published groups appear in a responsive grid.
-- [ ] Draft groups do not appear.
-- [ ] Search by title works.
-- [ ] Sorting works.
-- [ ] Pagination works.
-- [ ] Search/sort query parameters survive refresh.
-- [ ] Empty state is understandable.
-- [ ] Long titles remain readable.
+- [x] A logged-out visitor can open `/`.
+- [x] Published groups appear in a responsive grid.
+- [x] Draft groups do not appear.
+- [x] Search by title works.
+- [x] Sorting works.
+- [x] Pagination works.
+- [x] Search/sort query parameters survive refresh.
+- [x] Empty state is understandable.
+- [x] Long titles remain readable.
 
 ## Public group page
 
-- [ ] A visitor can open a published group by slug.
-- [ ] A draft group URL returns not found.
-- [ ] The cover, title, type label, and description appear.
-- [ ] Only published items appear.
-- [ ] Item sorting works.
-- [ ] Author names and duration appear where available.
+- [x] A visitor can open a published group by slug.
+- [x] A draft group URL returns not found.
+- [x] The cover, title, type label, and description appear.
+- [x] Only published items appear.
+- [x] Item sorting works.
+- [x] Author names and duration appear where available.
 
 ## Public item page
 
-- [ ] A visitor can open a published item by slug.
-- [ ] A draft item URL returns not found.
-- [ ] An item under a draft group returns not found.
-- [ ] Parent group information appears.
-- [ ] The effective item label appears.
-- [ ] Authors appear.
-- [ ] Description appears safely.
-- [ ] Approved media embed renders in an application-owned iframe.
-- [ ] Unapproved embed does not render.
-- [ ] Original media link remains available.
-- [ ] Transcript appears as formatted HTML.
-- [ ] Malicious scripts, event attributes, and unsafe links do not execute or appear as executable markup.
+- [x] A visitor can open a published item by slug.
+- [x] A draft item URL returns not found.
+- [x] An item under a draft group returns not found.
+- [x] Parent group information appears.
+- [x] The effective item label appears.
+- [x] Authors appear.
+- [x] Description appears safely.
+- [x] Approved media embed renders in an application-owned iframe.
+- [x] Unapproved embed does not render.
+- [x] Original media link remains available.
+- [x] Transcript appears as formatted HTML.
+- [x] Malicious scripts, event attributes, and unsafe links do not execute or appear as executable markup.
 
 ## Localization, RTL, and typography
 
-- [ ] Hebrew is the default locale.
-- [ ] Hebrew pages use RTL direction.
-- [ ] English pages use LTR direction.
-- [ ] Interface labels are translated through language files.
-- [ ] Hebrew titles and transcript text render correctly.
-- [ ] Hebrew diacritics render correctly in the chosen font.
-- [ ] Forms remain usable in RTL.
-- [ ] Mobile layout remains usable in RTL.
+- [x] Hebrew is the default locale.
+- [x] Hebrew pages use RTL direction.
+- [x] English pages use LTR direction.
+- [x] Interface labels are translated through language files.
+- [x] Hebrew titles and transcript text render correctly.
+- [x] Hebrew diacritics render correctly in the chosen font.
+- [x] Forms remain usable in RTL.
+- [x] Mobile layout remains usable in RTL.
 
 ## Author import/export
 
 - [ ] The administrator can download an author example CSV.
-- [ ] A UTF-8 author CSV imports successfully.
-- [ ] An existing author updates by reference key.
-- [ ] A missing reference key is generated for a new row.
-- [ ] Invalid rows appear in a failed-row file.
-- [ ] Author CSV export works.
+- [x] A UTF-8 author CSV imports successfully.
+- [x] An existing author updates by reference key.
+- [x] A missing reference key is generated for a new row.
+- [x] Invalid rows appear in a failed-row file.
+- [x] Author CSV export works.
 - [ ] Author XLSX export works where supported.
 
 ## Content group import/export
 
 - [ ] The administrator can download a group example CSV.
-- [ ] A group imports with default type labels when those fields are blank.
-- [ ] Hebrew Markdown survives import.
-- [ ] An existing group updates by reference key.
-- [ ] Invalid publication status fails the row.
-- [ ] Import does not attempt to fetch remote covers.
-- [ ] Group CSV export works.
+- [x] A group imports with default type labels when those fields are blank.
+- [x] Hebrew Markdown survives import.
+- [x] An existing group updates by reference key.
+- [x] Invalid publication status fails the row.
+- [x] Import does not attempt to fetch remote covers.
+- [x] Group CSV export works.
 - [ ] Group XLSX export works where supported.
 
 ## Content item import/export
 
 - [ ] The administrator can download an item example CSV.
-- [ ] An item resolves its group by group reference key.
-- [ ] An item resolves multiple authors separated by `|`.
-- [ ] An unresolved group fails the row.
-- [ ] An unresolved author fails the row.
-- [ ] Multiline transcript Markdown survives import.
-- [ ] Existing item updates by reference key.
-- [ ] Invalid embed URL fails the row.
-- [ ] Valid rows import when another row fails.
+- [x] An item resolves its group by group reference key.
+- [x] An item resolves multiple authors separated by `|`.
+- [x] An unresolved group fails the row.
+- [x] An unresolved author fails the row.
+- [x] Multiline transcript Markdown survives import.
+- [x] Existing item updates by reference key.
+- [x] Invalid embed URL fails the row.
+- [x] Valid rows import when another row fails.
 - [ ] Failed-row CSV is downloadable.
-- [ ] Item CSV export works.
+- [x] Item CSV export works.
 - [ ] Item XLSX export works where supported.
-- [ ] Transcript is disabled in the default export column selection.
+- [x] Transcript is disabled in the default export column selection.
 - [ ] Transcript can be explicitly selected for export.
-- [ ] Exported relationship keys can be re-imported.
+- [x] Exported relationship keys can be re-imported.
 
 ## Queue and notifications
 
-- [ ] Imports do not remain pending when the queue worker is running.
-- [ ] Exports do not remain pending when the queue worker is running.
+- [x] Imports do not remain pending when the queue worker is running.
+- [x] Exports do not remain pending when the queue worker is running.
 - [ ] Import completion notification appears in the Admin panel.
 - [ ] Export completion notification appears in the Admin panel.
 - [ ] Failed-row download link is accessible only to the authorized administrator.
@@ -151,16 +151,16 @@ Use this checklist after all automated tests pass.
 
 ## Quality and scope
 
-- [ ] `php artisan migrate:fresh --seed` passes.
-- [ ] `php artisan test` passes.
-- [ ] `vendor/bin/pint --test` passes.
-- [ ] `npm run build` passes.
-- [ ] No `Podcast` model exists.
-- [ ] No `Episode` model exists.
-- [ ] No Filament Shield or role matrix was added.
-- [ ] No approval workflow was added.
-- [ ] No provider-driver engine was added.
-- [ ] No custom transcription studio was added.
-- [ ] No activity/audit/operations subsystem was added.
-- [ ] No broad speculative service/repository layer was added.
-- [ ] Documentation reflects the final implementation accurately.
+- [x] `php artisan migrate:fresh --seed` passes.
+- [x] `php artisan test` passes.
+- [x] `vendor/bin/pint --test` passes.
+- [x] `npm run build` passes.
+- [x] No `Podcast` model exists.
+- [x] No `Episode` model exists.
+- [x] No Filament Shield or role matrix was added.
+- [x] No approval workflow was added.
+- [x] No provider-driver engine was added.
+- [x] No custom transcription studio was added.
+- [x] No activity/audit/operations subsystem was added.
+- [x] No broad speculative service/repository layer was added.
+- [x] Documentation reflects the final implementation accurately.

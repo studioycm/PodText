@@ -99,6 +99,7 @@ return [
         ],
     ],
     'validation' => [
+        'media_url_https' => 'כתובת המדיה חייבת להשתמש ב-HTTPS.',
         'embed_url_host' => 'מארח כתובת ההטמעה אינו מאושר.',
         'embed_url_https' => 'כתובת ההטמעה חייבת להשתמש ב-HTTPS.',
         'embed_url_no_html' => 'יש להדביק כתובת הטמעה, לא HTML.',

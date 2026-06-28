@@ -88,6 +88,7 @@ class ContentItemImporter extends Importer
                 ->rules(fn (?ContentItem $record, array $options): array => [
                     Rule::requiredIf(static::shouldRequireValue($record, $options)),
                     'url',
+                    'starts_with:https://',
                     'max:2048',
                 ])
                 ->ignoreBlankState(fn (?ContentItem $record, array $options): bool => static::shouldIgnoreBlankForUpdate($record, $options)),
