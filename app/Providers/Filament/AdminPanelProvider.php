@@ -27,11 +27,19 @@ class AdminPanelProvider extends PanelProvider
             ->default()
             ->id('admin')
             ->path('admin')
+            ->viteTheme('resources/css/filament/admin/theme.css')
             ->login()
+            ->profile()
+            ->passwordReset()
             ->brandName(fn (): string => __('app.name'))
             ->font('Varela Round')
             ->colors([
                 'primary' => Color::Amber,
+                'danger' => Color::Rose,
+                'success' => Color::Emerald,
+                'warning' => Color::Orange,
+                'info' => Color::Blue,
+                'gray' => Color::Slate,
             ])
             ->databaseNotifications()
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\Filament\Resources')
