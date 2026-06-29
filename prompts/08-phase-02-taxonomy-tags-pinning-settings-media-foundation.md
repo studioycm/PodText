@@ -37,6 +37,43 @@ If Prompt 07 is incomplete, its migrations are missing, or its tests fail, stop 
 - `.ai/guidelines/media-embeds.md`
 - `.ai/guidelines/tooling-quality.md`
 
+## Blueprint contract
+
+The blueprint file named above is the detailed implementation contract for this prompt.
+
+Before changing code:
+
+1. Read the entire blueprint.
+2. Summarize the blueprint sections that apply to this prompt.
+3. Compare the blueprint against the current repository state.
+4. If the blueprint conflicts with the active prompt, Phase 02 specs, `AGENTS.md`, or current code, stop and report the conflict before implementing.
+5. If the prompt body is shorter than the blueprint, follow the blueprint details.
+6. Do not omit blueprint fields, relationships, constraints, Filament components, tests, or quality checks unless the blueprint marks them optional or the current code makes them impossible.
+7. In the final report, include a "Blueprint completion checklist" with:
+   - implemented;
+   - already existed;
+   - deferred by blueprint;
+   - not applicable;
+   - blocked.
+
+Implement all required schema, relationships, casts, helper scopes, settings, tests, and validation described in `docs/phase-02/blueprints/08-taxonomy-tags-pinning-settings-media-foundation-blueprint.md`.
+
+This includes:
+
+- `Category` fields and hierarchy;
+- category pivots;
+- `ContentItem` pinning fields;
+- `ContentItem` media foundation fields;
+- optional `ContentGroup.homepage_order` if chosen by the blueprint/current spec;
+- Spatie `content` tags and enabled/public fields;
+- Spatie Settings foundation;
+- `HomepageSection`;
+- date/time handling;
+- slug and technical-field helper-text requirements;
+- required tests from the blueprint.
+
+If the blueprint lists a field but implementation chooses not to add it, the final report must explain why.
+
 ## Scope
 
 - Custom hierarchical categories.

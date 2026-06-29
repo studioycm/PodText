@@ -20,6 +20,16 @@ Audit completed Phase 02 implementation for Filament, public visibility, media, 
 - `docs/phase-02/blueprints/15-filament-security-audit-blueprint.md`
 - all relevant active `.ai/guidelines/*.md`
 
+## Blueprint contract
+
+Treat the security audit blueprint as the audit checklist.
+
+- Read the entire blueprint before reviewing code.
+- Compare the completed implementation against the blueprint, Phase 02 specs, `AGENTS.md`, and current code.
+- Do not add broad refactors or new product features.
+- If a finding requires code changes, either fix only low-risk obvious issues if the prompt allows it or report the finding for approval.
+- If the audit blueprint conflicts with the active prompt, Phase 02 specs, `AGENTS.md`, or current code, report the conflict before changing code.
+
 ## Scope
 
 - Review Filament Resources, Pages, Widgets, Imports, Exports, public Livewire components, Blade components, tests, and quality output.

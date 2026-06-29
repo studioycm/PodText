@@ -22,6 +22,38 @@ Extend Filament-native import/export to the finalized Phase 02 schema.
 - `.ai/guidelines/import-export.md`
 - `.ai/guidelines/tooling-quality.md`
 
+## Blueprint contract
+
+The blueprint file named above is the detailed implementation contract for this prompt.
+
+Before changing code:
+
+1. Read the entire blueprint.
+2. Summarize the blueprint sections that apply to this prompt.
+3. Compare the blueprint against the current repository state.
+4. If the blueprint conflicts with the active prompt, Phase 02 specs, `AGENTS.md`, or current code, stop and report the conflict before implementing.
+5. If the prompt body is shorter than the blueprint, follow the blueprint details.
+6. Do not omit blueprint fields, relationships, constraints, Filament components, tests, or quality checks unless the blueprint marks them optional or the current code makes them impossible.
+7. In the final report, include a "Blueprint completion checklist" with:
+   - implemented;
+   - already existed;
+   - deferred by blueprint;
+   - not applicable;
+   - blocked.
+
+The import/export blueprint is the authority for import/export class names, columns, relationship resolution, failed-row behavior, native Filament actions, and tests.
+
+- If `transcript_file` support is implemented:
+  - CSV may include `transcript_file`;
+  - allowed extensions are `.md` and `.txt`;
+  - missing referenced files fail the row;
+  - transcript file content creates/updates `Transcription` records;
+  - transcript file content must never write to legacy `ContentItem` transcript fields.
+- Missing categories fail the row by default.
+- Missing tags fail the row by default unless a future option explicitly creates disabled content tags.
+- Imported date fields should accept day-first `dd/mm/yyyy` and `dd/mm/yyyy HH:mm` where appropriate.
+- Exported date fields should use day-first format.
+
 ## Scope
 
 - Transcription importer/exporter.

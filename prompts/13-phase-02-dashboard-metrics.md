@@ -20,6 +20,30 @@ Implement lightweight editorial dashboard metrics.
 - `.ai/guidelines/settings-dashboard.md`
 - `.ai/guidelines/tooling-quality.md`
 
+## Blueprint contract
+
+The blueprint file named above is the detailed implementation contract for this prompt.
+
+Before changing code:
+
+1. Read the entire blueprint.
+2. Summarize the blueprint sections that apply to this prompt.
+3. Compare the blueprint against the current repository state.
+4. If the blueprint conflicts with the active prompt, Phase 02 specs, `AGENTS.md`, or current code, stop and report the conflict before implementing.
+5. If the prompt body is shorter than the blueprint, follow the blueprint details.
+6. Do not omit blueprint fields, relationships, constraints, Filament components, tests, or quality checks unless the blueprint marks them optional or the current code makes them impossible.
+7. In the final report, include a "Blueprint completion checklist" with:
+   - implemented;
+   - already existed;
+   - deferred by blueprint;
+   - not applicable;
+   - blocked.
+
+The dashboard metrics blueprint is the authority for widget class names, metrics, availability staging, table columns, warning modes, date formatting, tests, and Resource URL links.
+
+- Dashboard metrics that are already available from the current schema should be shown.
+- Metrics that depend on Prompt 08 or later schema should be implemented only when the schema exists and otherwise documented in the final report.
+
 ## Scope
 
 Stats and table widgets for editorial counts and warning lists.

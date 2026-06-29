@@ -25,6 +25,35 @@ Implement admin management for Phase 02 models and fields created by Prompts 07 
 - `.ai/guidelines/media-embeds.md`
 - `.ai/guidelines/tooling-quality.md`
 
+## Blueprint contract
+
+The blueprint file named above is the detailed implementation contract for this prompt.
+
+Before changing code:
+
+1. Read the entire blueprint.
+2. Summarize the blueprint sections that apply to this prompt.
+3. Compare the blueprint against the current repository state.
+4. If the blueprint conflicts with the active prompt, Phase 02 specs, `AGENTS.md`, or current code, stop and report the conflict before implementing.
+5. If the prompt body is shorter than the blueprint, follow the blueprint details.
+6. Do not omit blueprint fields, relationships, constraints, Filament components, tests, or quality checks unless the blueprint marks them optional or the current code makes them impossible.
+7. In the final report, include a "Blueprint completion checklist" with:
+   - implemented;
+   - already existed;
+   - deferred by blueprint;
+   - not applicable;
+   - blocked.
+
+Implement the admin form/table/action details from `docs/phase-02/blueprints/09-admin-content-management-blueprint.md`.
+
+- The shared admin form rules in the blueprint are required, not optional.
+- All slug fields must auto-generate from the relevant name/title field while allowing manual override.
+- Slug fields must use Hebrew-friendly labels/helper text, for example `מזהה כתובת`.
+- Technical fields such as `reference_key`, `slug`, `provider`, `external_id`, metadata JSON, pin fields, parser JSON, language codes, and `featured_transcription_id` must have hints/help text/descriptions.
+- Date and date-time fields and table columns must use day-first Israeli/Hebrew display/input.
+- Use `Asia/Jerusalem` for UI timezone presentation while storing dates normally.
+- Use translation keys for labels, helpers, hints, section headings, validation messages, date labels, and sort labels.
+
 ## Scope
 
 - Transcription Resource/management.

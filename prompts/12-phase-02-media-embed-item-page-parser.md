@@ -24,6 +24,27 @@ Implement the public item page, safe media rendering, transcription tabs, and pa
 - `.ai/guidelines/viewer-studio.md`
 - `.ai/guidelines/tooling-quality.md`
 
+## Blueprint contract
+
+The blueprint file named above is the detailed implementation contract for this prompt.
+
+Before changing code:
+
+1. Read the entire blueprint.
+2. Summarize the blueprint sections that apply to this prompt.
+3. Compare the blueprint against the current repository state.
+4. If the blueprint conflicts with the active prompt, Phase 02 specs, `AGENTS.md`, or current code, stop and report the conflict before implementing.
+5. If the prompt body is shorter than the blueprint, follow the blueprint details.
+6. Do not omit blueprint fields, relationships, constraints, Filament components, tests, or quality checks unless the blueprint marks them optional or the current code makes them impossible.
+7. In the final report, include a "Blueprint completion checklist" with:
+   - implemented;
+   - already existed;
+   - deferred by blueprint;
+   - not applicable;
+   - blocked.
+
+The Prompt 12 blueprint is the authority for the parser class, public item page resolution rules, media component, viewer controls, and tests.
+
 ## Scope
 
 - One-item public page.

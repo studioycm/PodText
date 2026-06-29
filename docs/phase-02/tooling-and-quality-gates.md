@@ -17,6 +17,13 @@ This file is active Phase 02 planning context. Root repository instructions are 
 - Implementation prompts must read the relevant blueprint file under `docs/phase-02/blueprints/`.
 - Blueprints must specify models, attributes, casts, relationships, indexes, Resources, fields, columns, filters, actions, widgets, tests, and exact quality gates.
 
+## Blueprint contract for implementation prompts
+
+- Blueprints are not optional background reading.
+- The active implementation prompt must use the referenced blueprint as the detailed implementation contract.
+- Each final report must include a Blueprint completion checklist.
+- If code differs from the blueprint, document whether the difference already existed, was intentionally deferred, was impossible, was blocked, or is a conflict needing human decision.
+
 ### FilamentExamples MCP
 
 - Use `mcp__filament_examples.search_examples` before writing Filament forms, tables, Resources, Pages, widgets, actions, imports, or exports.

@@ -13,3 +13,14 @@ Run prompts sequentially. The current active sequence is:
 9. `15-phase-02-filament-blueprint-security-audit.md`
 
 Historical prompts are under `prompts/archive/` and are not active instructions.
+
+## Blueprint usage rule
+
+Every implementation prompt must treat its referenced blueprint as the detailed implementation contract.
+
+- The prompt defines scope, sequencing, out-of-scope boundaries, and final quality gate.
+- The blueprint defines concrete fields, migrations, relationships, casts, validation, Filament Resources/Pages/Actions/Widgets/Importers/Exporters, form schemas, table columns, filters, tests, edge cases, and security rules.
+- If the prompt body is shorter than the blueprint, follow the blueprint.
+- If the blueprint conflicts with the active prompt, Phase 02 specs, `AGENTS.md`, or current code, stop and report the conflict before implementing.
+- Do not omit blueprint requirements unless they are explicitly marked optional, already implemented, impossible with the current code, or superseded by a newer active spec.
+- Every implementation final report must include a Blueprint completion checklist.

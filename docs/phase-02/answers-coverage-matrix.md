@@ -43,9 +43,19 @@
 | Dashboard metrics | editorial widgets | dashboard | 13 | Dashboard | No analytics/search logging |
 | Boost usage | use when available; record failures | tooling | 06, all | Tooling | MCP available in Prompt 06S; fallback documented for transport failures |
 | Blueprint usage | blueprint files per prompt | blueprints | 06-15 | Planning/Implementation | Exact primitives required |
+| Blueprint contract section in prompts 08-13 | prompts must treat blueprint as implementation contract | tooling/prompts | 08-13 | Tooling | Added to each active implementation prompt |
+| Blueprint completion checklist in final reports | final report must classify blueprint requirements | tooling/prompts | 08-13 | Tooling | Use implemented/already existed/deferred/not applicable/blocked |
+| Prompt 08 blueprint contract | schema, relationships, casts, settings, tests, validation | blueprint 08 | 08 | Domain foundation | Blueprint governs fields and package-owned foundations |
+| Prompt 09 blueprint contract | admin Resources, forms, tables, actions, shared form rules | blueprint 09 | 09 | Admin UX | Shared admin form rules are required |
+| Prompt 10 blueprint contract | import/export classes, columns, resolution, failed rows, tests | blueprint 10 | 10 | Import/export | Native Filament import/export remains authoritative |
+| Prompt 11 blueprint contract | public Livewire/Table architecture and result cards | blueprint 11 | 11 | Public UI | Cards are `ContentItem` records and reuse item-card component |
+| Prompt 12 blueprint contract | parser class, item page rules, media component, viewer tests | blueprint 12 | 12 | Public UI | Parse-only viewer; no player sync |
+| Prompt 13 blueprint contract | widget names, metrics, staging, columns, warning modes, links | blueprint 13 | 13 | Dashboard | Implement available metrics and document unavailable schema-dependent metrics |
+| Prompt 14 planning-only blueprint contract | future viewer/studio plan only | blueprint 14 | 14 | Planning | No migrations, Resources, Livewire, Blade, or sync/studio implementation |
+| Prompt 15 security-audit blueprint contract | audit checklist, findings, low-risk fixes only if allowed | blueprint 15 | 15 | Security audit | No broad refactors or new product features |
 | FilaCheck usage | final gate in implementation prompts | tooling | 07-15 | Quality | Full `vendor/bin/filacheck` final |
 | FilamentExamples proof | source snippets through MCP search | research | 06 | Research | No separate fetch tool exposed |
 
 ## Omission Check
 
-All required subjects are represented: Prompt 07 post-run state, homepage UX, filters, categories, Spatie tags, media foundation, media embeds, item page, Prompt 12 parser/viewer, Prompt 14 studio planning, import/export, dashboards, settings, slug auto-generation, Hebrew/Israel date formatting, technical field helper text, Boost, Blueprint, FilaCheck, and FilamentExamples source-snippet access proof through `search_examples`.
+All required subjects are represented: Prompt 07 post-run state, homepage UX, filters, categories, Spatie tags, media foundation, media embeds, item page, Prompt 12 parser/viewer, Prompt 14 studio planning, import/export, dashboards, settings, slug auto-generation, Hebrew/Israel date formatting, technical field helper text, Boost, Blueprint contract usage, Blueprint completion checklists, FilaCheck, and FilamentExamples source-snippet access proof through `search_examples`.

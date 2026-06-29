@@ -20,6 +20,20 @@ Plan future synced viewer and transcription studio work after parse-only viewer 
 - `.ai/guidelines/viewer-studio.md`
 - `.ai/guidelines/tooling-quality.md`
 
+## Blueprint contract
+
+The blueprint file named above is the planning contract for this prompt.
+
+Before changing docs:
+
+1. Read the entire blueprint.
+2. Summarize the blueprint sections that apply to this prompt.
+3. Compare the blueprint against the current repository state and Prompt 12 implementation.
+4. If the blueprint conflicts with the active prompt, Phase 02 specs, `AGENTS.md`, or current code, stop and report the conflict before changing docs.
+5. If Prompt 12's parser/viewer implementation differs from the future plan assumptions, document the difference.
+
+Do not implement studio/sync features. Do not create migrations, Resources, Livewire components, or Blade files unless this prompt is explicitly changed later.
+
 ## Scope
 
 Documentation/planning only for future synced viewer and transcription studio.
