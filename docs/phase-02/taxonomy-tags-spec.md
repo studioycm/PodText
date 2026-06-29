@@ -2,47 +2,56 @@
 
 ## Categories
 
-Categories are custom hierarchical records, not Spatie tags.
+Categories are custom hierarchical records.
 
-Recommended fields:
+Suggested table: `categories`.
+
+Fields:
 
 - `id`
-- `parent_id`
+- `parent_id`, nullable self-reference
 - `name`
 - `slug`
-- `description_markdown`
-- `is_visible`
-- `sort_order`
+- `description_markdown`, nullable
+- `is_visible`, boolean
+- `sort_order`, integer
 - timestamps
 
-Relationships:
+Pivots:
 
 - `category_content_group`
 - `category_content_item`
 
-Group categories are inherited by child items for public display/filtering. Item categories can add narrower classification. Filtering by a parent category includes descendants.
+Rules:
+
+- `ContentGroup` has categories.
+- `ContentItem` can have categories.
+- Public item category set is item categories plus inherited group categories.
+- Parent category filters include descendants.
 
 ## Tags
 
-Use Spatie Laravel Tags later, with the Filament Spatie Tags plugin. Do not install packages in this planning task.
+Use `spatie/laravel-tags` with the Filament Spatie Tags plugin in Prompt 08. This package choice is approved for Phase 02 implementation; do not ask for package approval again when Prompt 08 reaches this work. If the packages are absent at implementation time, Prompt 08 owns adding them as part of that implementation task.
 
 Rules:
 
 - Tags are flat.
-- Public content tags use the `content` type/scope.
-- Public pages show only enabled public tags.
-- Admin forms must not use unscoped free-form tags.
-- If a custom tag model is needed, add fields such as `is_enabled`, `enabled_at`, `enabled_by_id`, and `created_by_id`.
+- Use Spatie's `taggables`; do not create a duplicate custom tag pivot.
+- Content tags are scoped to type `content`.
+- Public pages show enabled tags only.
+- Plan a custom Spatie Tag model/extra fields:
+  - `is_enabled`
+  - `enabled_at`
+  - `enabled_by_id`
+  - `created_by_id`
+  - future moderation state
 
-## Public Pages
+## Admin/Public Behavior
 
-Provide category and tag landing pages that list `ContentItem` records. They must follow the same publication and effective/main transcription visibility rules as search.
+- Admins manage categories and tags.
+- Public category/tag landing pages list `ContentItem` records only.
+- Disabled tags never create public pages or public filters.
 
-## Tests Required Later
+## Blueprint
 
-- Category hierarchy relationships.
-- Group category inheritance.
-- Parent category descendant filtering.
-- Spatie tag type scoping.
-- Disabled tags hidden publicly.
-- Public category/tag pages return only visible published items.
+See `docs/phase-02/blueprints/08-taxonomy-tags-pinning-settings-media-foundation-blueprint.md` and `docs/phase-02/blueprints/09-admin-content-management-blueprint.md`.

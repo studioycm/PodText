@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "e798335ab6843b862554a01da4623353",
+    "content-hash": "3b163b2eecb427656ad2e79324dff955",
     "packages": [
         {
             "name": "blade-ui-kit/blade-heroicons",
@@ -3172,16 +3172,16 @@
         },
         {
             "name": "livewire/livewire",
-            "version": "v4.3.1",
+            "version": "v4.3.3",
             "source": {
                 "type": "git",
                 "url": "https://github.com/livewire/livewire.git",
-                "reference": "6a9dd03f45a4b200abfd0ff644745b23fa7baaaa"
+                "reference": "8021f2561865c4c297a3bfca37212a99034377e7"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/livewire/livewire/zipball/6a9dd03f45a4b200abfd0ff644745b23fa7baaaa",
-                "reference": "6a9dd03f45a4b200abfd0ff644745b23fa7baaaa",
+                "url": "https://api.github.com/repos/livewire/livewire/zipball/8021f2561865c4c297a3bfca37212a99034377e7",
+                "reference": "8021f2561865c4c297a3bfca37212a99034377e7",
                 "shasum": ""
             },
             "require": {
@@ -3236,7 +3236,7 @@
             "description": "A front-end framework for Laravel.",
             "support": {
                 "issues": "https://github.com/livewire/livewire/issues",
-                "source": "https://github.com/livewire/livewire/tree/v4.3.1"
+                "source": "https://github.com/livewire/livewire/tree/v4.3.3"
             },
             "funding": [
                 {
@@ -3244,7 +3244,7 @@
                     "type": "github"
                 }
             ],
-            "time": "2026-06-02T08:58:52+00:00"
+            "time": "2026-06-27T03:16:11+00:00"
         },
         {
             "name": "monolog/monolog",
@@ -9735,6 +9735,28 @@
             "time": "2025-08-14T07:29:31+00:00"
         },
         {
+            "name": "filament/blueprint",
+            "version": "v2.2.0",
+            "dist": {
+                "type": "zip",
+                "url": "https://packages.filamentphp.com/composer/10/869/download"
+            },
+            "require": {
+                "filament/support": "^5.0",
+                "laravel/boost": "^1.8|^2.0"
+            },
+            "type": "library",
+            "license": [
+                "proprietary"
+            ],
+            "description": "Guidelines for AI agents to produce detailed Filament implementation plans.",
+            "homepage": "https://github.com/filamentphp/filament",
+            "support": {
+                "issues": "https://github.com/filamentphp/filament/issues",
+                "source": "https://github.com/filamentphp/filament"
+            }
+        },
+        {
             "name": "filp/whoops",
             "version": "2.18.4",
             "source": {
@@ -10469,6 +10491,138 @@
                 "source": "https://github.com/laravel/roster"
             },
             "time": "2026-03-05T07:58:43+00:00"
+        },
+        {
+            "name": "laraveldaily/filacheck",
+            "version": "v1.2.3",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/LaravelDaily/FilaCheck.git",
+                "reference": "b2e48bac039f194baadb67cd04f6591edd593346"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/LaravelDaily/FilaCheck/zipball/b2e48bac039f194baadb67cd04f6591edd593346",
+                "reference": "b2e48bac039f194baadb67cd04f6591edd593346",
+                "shasum": ""
+            },
+            "require": {
+                "filament/filament": "^4.0|^5.0",
+                "nikic/php-parser": "^5.0",
+                "php": "^8.2",
+                "symfony/console": "^6.0|^7.0|^8.0",
+                "symfony/process": "^6.0|^7.0|^8.0"
+            },
+            "require-dev": {
+                "laravel/boost": "^2.0",
+                "orchestra/testbench": "^9.0|^10.0",
+                "pestphp/pest": "^3.0|^4.0"
+            },
+            "suggest": {
+                "laraveldaily/filacheck-pro": "Unlock performance rules, best practices checks, and more advanced static analysis"
+            },
+            "bin": [
+                "bin/filacheck"
+            ],
+            "type": "library",
+            "extra": {
+                "laravel": {
+                    "providers": [
+                        "Filacheck\\FilacheckServiceProvider"
+                    ]
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "Filacheck\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Povilas Korop",
+                    "email": "povilas@laraveldaily.com"
+                }
+            ],
+            "description": "Static analysis for Filament projects - detect deprecated patterns and code issues",
+            "homepage": "https://github.com/LaravelDaily/filacheck",
+            "keywords": [
+                "code-quality",
+                "filament",
+                "laravel",
+                "lint",
+                "livewire",
+                "static-analysis"
+            ],
+            "support": {
+                "issues": "https://github.com/LaravelDaily/FilaCheck/issues",
+                "source": "https://github.com/LaravelDaily/FilaCheck/tree/v1.2.3"
+            },
+            "time": "2026-06-15T20:17:05+00:00"
+        },
+        {
+            "name": "laraveldaily/filacheck-pro",
+            "version": "v1.2.7",
+            "dist": {
+                "type": "zip",
+                "url": "https://satis.filamentexamples.com/dist/laraveldaily/filacheck-pro/laraveldaily-filacheck-pro-1aef0c4b55a09b055fa8a38f99be44efea9d7d2c-zip-cdee39.zip",
+                "reference": "1aef0c4b55a09b055fa8a38f99be44efea9d7d2c",
+                "shasum": "ef3d819a99bb9cb4851d2c62b8b87ec275053561"
+            },
+            "require": {
+                "laravel/agent-detector": "^2.0",
+                "laraveldaily/filacheck": "^1.0|dev-main",
+                "php": "^8.2"
+            },
+            "require-dev": {
+                "orchestra/testbench": "^9.0|^10.0",
+                "pestphp/pest": "^3.0|^4.0"
+            },
+            "type": "library",
+            "extra": {
+                "laravel": {
+                    "providers": [
+                        "FilacheckPro\\FilacheckProServiceProvider"
+                    ]
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "FilacheckPro\\": "src/"
+                }
+            },
+            "autoload-dev": {
+                "psr-4": {
+                    "FilacheckPro\\Tests\\": "tests/"
+                }
+            },
+            "license": [
+                "proprietary"
+            ],
+            "authors": [
+                {
+                    "name": "Povilas Korop",
+                    "email": "povilas@laraveldaily.com"
+                }
+            ],
+            "description": "Premium FilaCheck rules - performance optimization, best practices, and advanced static analysis",
+            "keywords": [
+                "code-quality",
+                "filament",
+                "laravel",
+                "lint",
+                "livewire",
+                "performance",
+                "static-analysis"
+            ],
+            "support": {
+                "source": "https://github.com/LaravelDaily/FilaCheck-Pro/tree/v1.2.7",
+                "issues": "https://github.com/LaravelDaily/FilaCheck-Pro/issues"
+            },
+            "time": "2026-06-16T06:01:42+00:00"
         },
         {
             "name": "mockery/mockery",

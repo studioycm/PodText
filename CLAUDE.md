@@ -1,80 +1,464 @@
 <laravel-boost-guidelines>
-=== .ai/bootstrap-slice-0 rules ===
+=== .ai/import-export rules ===
 
-# Bootstrap Slice 0 Project Guideline
+# Import Export Guideline
 
-Apply this guideline only while implementing Bootstrap Slice 0.
+## Purpose
 
-## Goal
+Keep data portability on Filament-native import/export classes and already-created schema fields.
 
-Deliver one usable content loop:
+## Preferred architecture
 
-```text
-Admin creates or imports an author, content group, and content item
-→ Admin publishes the group and item
-→ Guest visitor browses and reads the transcript
+Native Filament Importer/Exporter classes with portable reference keys and failed-row behavior.
+
+## Do
+
+- Extend existing import/export classes.
+- Import transcripts into `Transcription`.
+- Use category slugs/paths and typed tag slugs.
+- Import/export only fields created by Prompts 07-09.
+- Export large Markdown fields disabled by default.
+- Preserve formula-injection protection.
+
+## Do not
+
+- Do not build custom CSV controllers.
+- Do not export numeric database IDs as portable identifiers.
+- Do not fetch remote media during imports.
+- Do not write transcript imports to the legacy item transcript field.
+
+## Testing rules
+
+- Create/update imports.
+- Relationship resolution.
+- Failed rows.
+- Export columns.
+- Authorization.
+
+## Security rules
+
+- Validate all imported values.
+- Keep failed-row download authorization.
+- Escape spreadsheet formula values.
+
+## FilaCheck / FilaCheck Pro notes
+
+- Use `Filament\Actions\ImportAction`, `ExportAction`, and `ExportBulkAction`.
+- Bulk export should deselect records after completion where supported.
+
+## Related active docs
+
+- `docs/phase-02/import-export-revision-spec.md`
+- `docs/phase-02/blueprints/10-import-export-blueprint.md`
+- `docs/research/filament-examples-phase-02.md`
+
+=== .ai/media-embeds rules ===
+
+# Media Embeds Guideline
+
+## Purpose
+
+Keep media storage URL-only, safe to render, and available before import/export revisions.
+
+## Preferred architecture
+
+Store URLs/metadata on `ContentItem`; render through the app-owned Blade media component.
+
+## Do
+
+- Add media metadata foundation before import/export revision.
+- Accept HTTPS URLs only.
+- Use provider/host allowlists.
+- Render original source link fallback.
+- Keep metadata extraction explicit and admin-triggered.
+
+## Do not
+
+- Do not store raw iframe HTML.
+- Do not fetch remote media during import.
+- Do not render unapproved embed URLs.
+
+## Testing rules
+
+- Approved embed accepted/rendered.
+- Unknown host rejected/fallback.
+- HTTP rejected.
+- Raw iframe HTML rejected.
+
+## Security rules
+
+- URL-only storage.
+- Owned component controls iframe attributes.
+- Sanitize displayed metadata.
+
+## FilaCheck / FilaCheck Pro notes
+
+- FileUpload fields, if later added, require accepted file types and max size.
+- Avoid Blade Tailwind classes outside theme coverage.
+
+## Related active docs
+
+- `docs/phase-02/media-embed-spec.md`
+- `docs/phase-02/blueprints/08-taxonomy-tags-pinning-settings-media-foundation-blueprint.md`
+- `docs/phase-02/blueprints/12-public-item-page-media-parser-blueprint.md`
+- `docs/research/filament-examples-phase-02.md`
+
+=== .ai/public-panel rules ===
+
+# Public Panel Guideline
+
+## Purpose
+
+Define public browsing/search behavior for guest-facing Filament panel pages.
+
+## Preferred architecture
+
+Guest Filament Public panel with custom Pages, class-based Livewire for server-driven state, and Blade components for reusable content presentation.
+
+## Do
+
+- Return `ContentItem` records for homepage/search/category/tag listings.
+- Require published group, published item, and effective/main published transcription.
+- Use Blade for cards, group badges, type labels, media embeds, and transcript output.
+- Use Alpine only for local UI behavior.
+- Keep search/sort/filter state in URL where practical.
+
+## Do not
+
+- Do not render public result cards as `Transcription` records.
+- Do not expose admin Resource routes publicly.
+- Do not duplicate persisted state in Alpine.
+
+## Testing rules
+
+- Guest access tests.
+- Draft/no-effective-transcription exclusion tests.
+- RTL marker tests where feasible.
+- Livewire search/sort/filter tests.
+
+## Security rules
+
+- Public queries must include publication/effective transcription constraints.
+- Public Markdown must use safe renderer.
+- Media embeds must use the owned component.
+
+## FilaCheck / FilaCheck Pro notes
+
+- Avoid table/card closures that query relationships.
+- Ensure searchable text columns exist.
+- Avoid deprecated Filament methods/namespaces.
+
+## Related active docs
+
+- `docs/phase-02/public-panel-ux-spec.md`
+- `docs/phase-02/search-and-filters-spec.md`
+- `docs/phase-02/blueprints/11-public-homepage-search-blueprint.md`
+- `docs/research/filament-examples-phase-02.md`
+
+=== .ai/search-filters rules ===
+
+# Search and Filters Guideline
+
+## Purpose
+
+Keep public search/filter/sort behavior explicit, URL-aware, and scoped to public `ContentItem` records.
+
+## Preferred architecture
+
+Filament Table inside a public Livewire component, rendered as item cards or rows.
+
+## Do
+
+- Default search: item title, group title, enabled tags, categories.
+- Use explicit filters for category, tag, group, author, date ranges, duration, and provider.
+- Add active indicators for custom filters.
+- Persist important state in URL.
+- Implement all required sort modes.
+
+## Do not
+
+- Do not make transcript body search the default live search.
+- Do not let disabled tags appear publicly.
+- Do not lock search pages to pinned-first order when the user selected another sort.
+
+## Testing rules
+
+- Search field coverage.
+- Filter and sort order tests.
+- URL state tests.
+- Disabled tag exclusion.
+
+## Security rules
+
+- Search query must use public item scope.
+- Avoid raw SQL with user input.
+
+## FilaCheck / FilaCheck Pro notes
+
+- Tables need searchable columns.
+- Custom filters need indicators.
+- Relationship filters should be searchable/preloaded where record count can grow.
+
+## Related active docs
+
+- `docs/phase-02/search-and-filters-spec.md`
+- `docs/phase-02/blueprints/11-public-homepage-search-blueprint.md`
+- `docs/research/filament-examples-phase-02.md`
+
+=== .ai/settings-dashboard rules ===
+
+# Settings and Dashboard Guideline
+
+## Purpose
+
+Define durable rules for global public settings, homepage sections, and editorial dashboard widgets.
+
+## Preferred architecture
+
+Spatie Settings for global options, normal database records for ordered homepage sections, simple editorial Filament widgets. Spatie Settings package usage is approved for Phase 02 implementation; do not ask for package approval again when Prompt 08 reaches this work.
+
+## Do
+
+- Use typed settings classes.
+- Use homepage section records for visible ordered sections.
+- Keep dashboard widgets editorial.
+- Link widgets to Filament Resources through Resource URL helpers.
+
+## Do not
+
+- Do not add analytics/search logging.
+- Do not add observability dashboards or retry managers.
+- Do not use item pinning as settings storage.
+
+## Testing rules
+
+- Settings defaults and save behavior.
+- Homepage section visibility/order.
+- Widget render/count tests.
+- Admin-only access.
+
+## Security rules
+
+- Settings/admin widgets require authenticated admin panel access.
+- Public section queries must use public item visibility rules.
+
+## FilaCheck / FilaCheck Pro notes
+
+- Avoid default polling in widgets unless needed.
+- Use searchable table columns and useful warning filters.
+- Use enum icons instead of string icons.
+
+## Related active docs
+
+- `docs/phase-02/homepage-settings-spec.md`
+- `docs/phase-02/dashboard-metrics-spec.md`
+- `docs/phase-02/blueprints/08-taxonomy-tags-pinning-settings-media-foundation-blueprint.md`
+- `docs/phase-02/blueprints/13-dashboard-metrics-blueprint.md`
+- `docs/research/filament-examples-phase-02.md`
+
+=== .ai/taxonomy-tags rules ===
+
+# Taxonomy and Tags Guideline
+
+## Purpose
+
+Separate custom hierarchical categories from Spatie flat content tags.
+
+## Preferred architecture
+
+Custom hierarchical `Category` model plus Spatie Laravel Tags with the Filament Spatie Tags plugin, scoped to type `content`. Spatie tag package usage is approved for Phase 02 implementation; do not ask for package approval again when Prompt 08 reaches this work.
+
+## Do
+
+- Use categories for hierarchy.
+- Use Spatie taggables for tags.
+- Enable tags before public display.
+- Include group category inheritance in public item filters.
+- Include descendant categories when filtering by a parent.
+
+## Do not
+
+- Do not create a duplicate custom tag pivot when using Spatie tags.
+- Do not use unscoped free-form tag inputs.
+- Do not make tags hierarchical.
+
+## Testing rules
+
+- Category hierarchy.
+- Group-to-item inheritance.
+- Descendant filtering.
+- Tag type scoping.
+- Disabled tag hiding.
+
+## Security rules
+
+- Disabled tags are admin-only.
+- Public category/tag pages return public `ContentItem` records only.
+
+## FilaCheck / FilaCheck Pro notes
+
+- Relationship selects should be searchable/preloaded.
+- Category/tag tables need searchable name/slug columns and useful filters.
+
+## Related active docs
+
+- `docs/phase-02/taxonomy-tags-spec.md`
+- `docs/phase-02/blueprints/08-taxonomy-tags-pinning-settings-media-foundation-blueprint.md`
+- `docs/research/filament-examples-phase-02.md`
+
+=== .ai/tooling-quality rules ===
+
+# Tooling Quality Guideline
+
+## Purpose
+
+Keep AI/tooling quality gates consistent across planning and implementation tasks.
+
+## Preferred architecture
+
+Every implementation prompt uses Boost where available, reads its blueprint, checks FilamentExamples for relevant code patterns, and runs the full quality gate.
+
+## Do
+
+- Retry Laravel Boost MCP tools before implementation.
+- Read the relevant blueprint first.
+- Use FilamentExamples MCP before Filament code.
+- Run full final quality gate.
+- Record FilaCheck/FilaCheck Pro output.
+
+## Do not
+
+- Do not claim Boost was used if MCP calls fail.
+- Do not run `filacheck --fix` without explicit approval.
+- Do not write secrets, tokens, licenses, Composer auth, MCP headers, or machine paths to tracked files.
+
+## Testing rules
+
+- Each implementation prompt must add/update Pest tests.
+- Final implementation gate:
+
+```bash
+php artisan test
+vendor/bin/pint --test
+vendor/bin/filacheck
+npm run build
 ```
 
-## Stable internal terminology
+## Security rules
 
-- Model and table naming must use `ContentGroup` / `content_groups`.
-- Model and table naming must use `ContentItem` / `content_items`.
-- Use `Author` / `authors` for credited contributors.
-- Do not introduce `Podcast` or `Episode` classes or tables.
-- Default display labels are Podcast/Podcasts and Episode/Episodes.
-- Administrators may override display labels without altering internal names.
+- Review diffs for secrets before final report.
+- Keep `.env`, MCP config, Composer auth, and license files untouched.
 
-## UI architecture
+## FilaCheck / FilaCheck Pro notes
 
-- Admin CRUD: Filament 5 Resources.
-- Temporary public frontend: a guest Filament 5 panel with custom Pages.
-- Reusable presentation: Blade components.
-- Server-driven search, sort, and pagination: Livewire 4.
-- Immediate browser-local interactions: Alpine.js.
-- Do not use Alpine for authoritative or persistent data.
+- Treat remaining violations as blockers in implementation prompts.
+- Local iteration may use `vendor/bin/filacheck --dirty`.
+- Final verification uses full `vendor/bin/filacheck`.
 
-## Backend architecture
+## Related active docs
 
-- Prefer Eloquent relationships, casts, and explicit published scopes.
-- Use a focused `SafeMarkdownRenderer` for public rendering.
-- Do not create broad generic services such as `ContentService`.
-- Do not add speculative actions, DTOs, repositories, event buses, or provider abstractions.
-- Use a PHP backed Enum for publication status.
+- `docs/phase-02/tooling-and-quality-gates.md`
+- `docs/research/filament-examples-phase-02.md`
 
-## Import/export
+=== .ai/transcriptions rules ===
 
-- Use Filament-native Import and Export Actions.
-- Use stable ULID-style `reference_key` values for identity across exports and later imports.
-- Support create and update imports.
-- Resolve item-to-group and item-to-author relationships by reference key.
-- Keep cover and media files outside CSV import for this slice.
-- Use the minimum queue/batch/notification infrastructure required by Filament.
+# Transcriptions Guideline
 
-## Security
+## Purpose
 
-- Admin panel requires authentication.
-- Public panel is guest-accessible and read-only.
-- Public queries must include publication state and publication date checks.
-- A public item is visible only when both the item and its group are published.
-- Store Markdown; render only sanitized HTML.
-- Store URLs, never arbitrary embed HTML.
-- Accept HTTPS embed URLs only and validate permitted hosts.
-- Draft records must return a not-found response publicly.
+Keep transcript content in `Transcription` child records while public listings remain `ContentItem` based.
 
-## Localization
+## Preferred architecture
 
-- All interface text uses translation keys.
-- Hebrew is the default locale and must render RTL.
-- English is available from the start.
-- Content type labels are database content and may be written in any language.
+`Transcription` child model with canonical Markdown transcript content. Public listings remain `ContentItem` based.
 
-## Scope exclusions
+## Do
 
-Do not implement Shield, volunteer/auditor roles, approval workflows, categories, tags, requests, provider APIs, transcript synchronization, activity logging, analytics, comments, or the transcription studio.
+- Add `ContentItem::transcriptions()`.
+- Add `Transcription::author()`.
+- Implement effective/main transcription resolution.
+- Hide items without an effective/main published transcription.
+- Keep parser output derived.
 
-## Completion
+## Do not
 
-Every task requires Pest tests, successful formatting, and a successful frontend build. Never skip or fabricate command results.
+- Do not keep writing new transcript content to legacy `content_items.transcript_markdown`.
+- Do not expose draft transcriptions publicly.
+- Do not pin transcriptions.
+
+## Testing rules
+
+- Relationships and casts.
+- Backfill.
+- Effective/main resolution.
+- Same-item featured validation.
+- Draft hiding.
+- XSS regression.
+
+## Security rules
+
+- Render Markdown through `SafeMarkdownRenderer`.
+- Validate featured transcription ownership and publication state.
+
+## FilaCheck / FilaCheck Pro notes
+
+- Enum columns shown in Filament should use label/color contracts.
+- Avoid N+1 when listing effective transcription metadata.
+
+## Related active docs
+
+- `docs/phase-02/transcriptions-model-spec.md`
+- `docs/phase-02/blueprints/07-transcriptions-model-revision-blueprint.md`
+- `docs/research/filament-examples-phase-02.md`
+
+=== .ai/viewer-studio rules ===
+
+# Viewer and Studio Guideline
+
+## Purpose
+
+Separate Prompt 12 parse-only public viewer work from Prompt 14 future sync/studio planning.
+
+## Preferred architecture
+
+Prompt 12 implements parse-only public viewer behavior. Prompt 14 plans future sync/studio only.
+
+## Do
+
+- Parse timestamps/speakers from `Transcription::transcript_markdown`.
+- Keep Markdown canonical.
+- Use Alpine/localStorage for show/hide preferences.
+- Plan future studio prerequisites before implementation.
+
+## Do not
+
+- Do not implement player sync in Prompt 12.
+- Do not implement studio UI in Prompt 14.
+- Do not add autosave without failure/recovery design.
+
+## Testing rules
+
+- Parser single-line and multi-line formats.
+- Fallback safe Markdown.
+- Draft transcription hidden.
+- Viewer controls do not persist server state.
+
+## Security rules
+
+- Parser output must be escaped/sanitized.
+- Timestamp anchors must not expose unpublished transcripts.
+
+## FilaCheck / FilaCheck Pro notes
+
+- Avoid Blade query work.
+- Keep Livewire component state explicit and tested.
+
+## Related active docs
+
+- `docs/phase-02/transcript-viewer-and-studio-future-plan.md`
+- `docs/phase-02/blueprints/12-public-item-page-media-parser-blueprint.md`
+- `docs/phase-02/blueprints/14-viewer-studio-future-plan-blueprint.md`
+- `docs/research/filament-examples-phase-02.md`
 
 === foundation rules ===
 
@@ -185,6 +569,13 @@ This project has domain-specific skills available in `**/skills/**`. You MUST ac
 
 - Laravel can be deployed using [Laravel Cloud](https://cloud.laravel.com/), which is the fastest way to deploy and scale production Laravel applications.
 
+=== herd rules ===
+
+# Laravel Herd
+
+- The application is served by Laravel Herd at `https?://[kebab-case-project-dir].test`. Use the `get-absolute-url` tool to generate valid URLs. Never run commands to serve the site. It is always available.
+- Use the `herd` CLI to manage services, PHP versions, and sites (e.g. `herd sites`, `herd services:start <service>`, `herd php:list`). Run `herd list` to discover all available commands.
+
 === tests rules ===
 
 # Test Enforcement
@@ -222,6 +613,14 @@ This project has domain-specific skills available in `**/skills/**`. You MUST ac
 
 - If you receive an "Illuminate\Foundation\ViteException: Unable to locate file in Vite manifest" error, you can run `npm run build` or ask the user to run `npm run dev` or `composer run dev`.
 
+=== livewire/core rules ===
+
+# Livewire
+
+- Livewire allow to build dynamic, reactive interfaces in PHP without writing JavaScript.
+- You can use Alpine.js for client-side interactions instead of JavaScript frameworks.
+- Keep state server-side so the UI reflects it. Validate and authorize in actions as you would in HTTP requests.
+
 === pint/core rules ===
 
 # Laravel Pint Code Formatter
@@ -237,5 +636,265 @@ This project has domain-specific skills available in `**/skills/**`. You MUST ac
 - The `{name}` argument should not include the test suite directory. Use `php artisan make:test --pest SomeFeatureTest` instead of `php artisan make:test --pest Feature/SomeFeatureTest`.
 - Run tests: `php artisan test --compact` or filter: `php artisan test --compact --filter=testName`.
 - Do NOT delete tests without approval.
+
+=== filament/filament rules ===
+
+## Filament
+
+- Filament is a Laravel UI framework built on Livewire, Alpine.js, and Tailwind CSS. UIs are defined in PHP via fluent, chainable components. Follow existing conventions in this app.
+- Use the `search-docs` tool for official documentation on Artisan commands, code examples, testing, relationships, and idiomatic practices. If `search-docs` is unavailable, refer to https://filamentphp.com/docs.
+
+### Artisan
+
+- Always use Filament-specific Artisan commands to create files. Find available commands with the `list-artisan-commands` tool, or run `php artisan --help`.
+- Inspect required options before running, and always pass `--no-interaction`.
+
+### Patterns
+
+Always use static `make()` methods to initialize components. Most configuration methods accept a `Closure` for dynamic values.
+
+Use `Get $get` to read other form field values for conditional logic:
+
+<code-snippet name="Conditional form field visibility" lang="php">
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\TextInput;
+use Filament\Schemas\Components\Utilities\Get;
+
+Select::make('type')
+    ->options(CompanyType::class)
+    ->required()
+    ->live(),
+
+TextInput::make('company_name')
+    ->required()
+    ->visible(fn (Get $get): bool => $get('type') === 'business'),
+
+</code-snippet>
+
+Use `Set $set` inside `->afterStateUpdated()` on a `->live()` field to mutate another field reactively. Prefer `->live(onBlur: true)` on text inputs to avoid per-keystroke updates:
+
+<code-snippet name="Reactive field update" lang="php">
+use Filament\Schemas\Components\Utilities\Set;
+use Illuminate\Support\Str;
+
+TextInput::make('title')
+    ->required()
+    ->live(onBlur: true)
+    ->afterStateUpdated(fn (Set $set, ?string $state) => $set(
+        'slug',
+        Str::slug($state ?? ''),
+    )),
+
+TextInput::make('slug')
+    ->required(),
+
+</code-snippet>
+
+Compose layout by nesting `Section` and `Grid`. Children need explicit `->columnSpan()` or `->columnSpanFull()`:
+
+<code-snippet name="Section and Grid layout" lang="php">
+use Filament\Schemas\Components\Grid;
+use Filament\Schemas\Components\Section;
+
+Section::make('Details')
+    ->schema([
+        Grid::make(2)->schema([
+            TextInput::make('first_name')
+                ->columnSpan(1),
+            TextInput::make('last_name')
+                ->columnSpan(1),
+            TextInput::make('bio')
+                ->columnSpanFull(),
+        ]),
+    ]),
+
+</code-snippet>
+
+Use `Repeater` for inline `HasMany` management. `->relationship()` with no args binds to the relationship matching the field name:
+
+<code-snippet name="Repeater for HasMany" lang="php">
+use Filament\Forms\Components\Repeater;
+
+Repeater::make('qualifications')
+    ->relationship()
+    ->schema([
+        TextInput::make('institution')
+            ->required(),
+        TextInput::make('qualification')
+            ->required(),
+    ])
+    ->columns(2),
+
+</code-snippet>
+
+Use `state()` with a `Closure` to compute derived column values:
+
+<code-snippet name="Computed table column value" lang="php">
+use Filament\Tables\Columns\TextColumn;
+
+TextColumn::make('full_name')
+    ->state(fn (User $record): string => "{$record->first_name} {$record->last_name}"),
+
+</code-snippet>
+
+Use `SelectFilter` for enum or relationship filters, and `Filter` with a `->query()` closure for custom logic:
+
+<code-snippet name="Table filters" lang="php">
+use Filament\Tables\Filters\Filter;
+use Filament\Tables\Filters\SelectFilter;
+use Illuminate\Database\Eloquent\Builder;
+
+SelectFilter::make('status')
+    ->options(UserStatus::class),
+
+SelectFilter::make('author')
+    ->relationship('author', 'name'),
+
+Filter::make('verified')
+    ->query(fn (Builder $query) => $query->whereNotNull('email_verified_at')),
+
+</code-snippet>
+
+Actions are buttons that encapsulate optional modal forms and behavior:
+
+<code-snippet name="Action with modal form" lang="php">
+use Filament\Actions\Action;
+
+Action::make('updateEmail')
+    ->schema([
+        TextInput::make('email')
+            ->email()
+            ->required(),
+    ])
+    ->action(fn (array $data, User $record) => $record->update($data)),
+
+</code-snippet>
+
+### Testing
+
+Testing setup (requires `pestphp/pest-plugin-livewire` in `composer.json`):
+
+- Always call `$this->actingAs(User::factory()->create())` before testing panel functionality.
+- For edit pages, pass `['record' => $user->id]`, use `->call('save')` (not `->call('create')`), and do not assert `->assertRedirect()` (edit pages do not redirect after save).
+
+<code-snippet name="Table test" lang="php">
+use function Pest\Livewire\livewire;
+
+livewire(ListUsers::class)
+    ->assertCanSeeTableRecords($users)
+    ->searchTable($users->first()->name)
+    ->assertCanSeeTableRecords($users->take(1))
+    ->assertCanNotSeeTableRecords($users->skip(1));
+
+</code-snippet>
+
+<code-snippet name="Create resource test" lang="php">
+use function Pest\Laravel\assertDatabaseHas;
+
+livewire(CreateUser::class)
+    ->fillForm([
+        'name' => 'Test',
+        'email' => 'test@example.com',
+    ])
+    ->call('create')
+    ->assertNotified()
+    ->assertHasNoFormErrors()
+    ->assertRedirect();
+
+assertDatabaseHas(User::class, [
+    'name' => 'Test',
+    'email' => 'test@example.com',
+]);
+
+</code-snippet>
+
+<code-snippet name="Edit resource test" lang="php">
+livewire(EditUser::class, ['record' => $user->id])
+    ->fillForm(['name' => 'Updated'])
+    ->call('save')
+    ->assertNotified()
+    ->assertHasNoFormErrors();
+
+assertDatabaseHas(User::class, [
+    'id' => $user->id,
+    'name' => 'Updated',
+]);
+
+</code-snippet>
+
+<code-snippet name="Testing validation" lang="php">
+livewire(CreateUser::class)
+    ->fillForm([
+        'name' => null,
+        'email' => 'invalid-email',
+    ])
+    ->call('create')
+    ->assertHasFormErrors([
+        'name' => 'required',
+        'email' => 'email',
+    ])
+    ->assertNotNotified();
+
+</code-snippet>
+
+Use `->callAction(DeleteAction::class)` for page actions, or `->callAction(TestAction::make('name')->table($record))` for table actions:
+
+<code-snippet name="Calling actions" lang="php">
+use Filament\Actions\Testing\TestAction;
+
+livewire(ListUsers::class)
+    ->callAction(TestAction::make('promote')->table($user), [
+        'role' => 'admin',
+    ])
+    ->assertNotified();
+
+</code-snippet>
+
+### Correct Namespaces
+
+- Form fields (`TextInput`, `Select`, `Repeater`, etc.): `Filament\Forms\Components\`
+- Infolist entries (`TextEntry`, `IconEntry`, etc.): `Filament\Infolists\Components\`
+- Layout components (`Grid`, `Section`, `Fieldset`, `Tabs`, `Wizard`, etc.): `Filament\Schemas\Components\`
+- Schema utilities (`Get`, `Set`, etc.): `Filament\Schemas\Components\Utilities\`
+- Table columns (`TextColumn`, `IconColumn`, etc.): `Filament\Tables\Columns\`
+- Table filters (`SelectFilter`, `Filter`, etc.): `Filament\Tables\Filters\`
+- Actions (`DeleteAction`, `CreateAction`, etc.): `Filament\Actions\`. Never use `Filament\Tables\Actions\`, `Filament\Forms\Actions\`, or any other sub-namespace for actions.
+- Icons: `Filament\Support\Icons\Heroicon` enum (e.g., `Heroicon::PencilSquare`)
+
+### Common Mistakes
+
+- **Never assume public file visibility.** File visibility is `private` by default. Always use `->visibility('public')` when public access is needed.
+- **Never assume full-width layout.** `Grid`, `Section`, `Fieldset`, and `Repeater` do not span all columns by default.
+- **Use `Select::make('author_id')->relationship('author', 'name')` for BelongsTo fields.** `BelongsToSelect` does not exist in v4.
+- **`Repeater` uses `->schema()`, not `->fields()`.**
+- **Never add `->dehydrated(false)` to fields that need to be saved.** It strips the value from form state before `->action()` or the save handler runs. Only use it for helper/UI-only fields.
+- **Use correct property types when overriding `Page`, `Resource`, and `Widget` properties.** These properties have union types or changed modifiers that must be preserved:
+  - `$navigationIcon`: `protected static string | BackedEnum | null` (not `?string`)
+  - `$navigationGroup`: `protected static string | UnitEnum | null` (not `?string`)
+  - `$view`: `protected string` (not `protected static string`) on `Page` and `Widget` classes
+
+=== filament/blueprint rules ===
+
+## Filament Blueprint
+
+You are writing Filament v5 implementation plans. Plans must be specific enough
+that an implementing agent can write code without making decisions.
+
+**Start here**: Read
+`/vendor/filament/blueprint/resources/markdown/planning/overview.md` for plan format,
+required sections, and what to clarify with the user before planning.
+
+=== laraveldaily/filacheck rules ===
+
+## laraveldaily/filacheck
+
+- After you have created/modified any files in `app/Filament` folder, you must run `vendor/bin/filacheck --fix`, to ensure there is no deprecated Filament code. Reported not fixed issues MUST be fixed before continuing.
+
+=== laraveldaily/filacheck-pro rules ===
+
+## laraveldaily/filacheck-pro
+
+- After creating or modifying any files under `app/Filament/`, run `vendor/bin/filacheck --fix --dirty` to auto-fix deprecated Filament code and flag performance, security, UX, and best-practice issues from FilaCheck-Pro. `--dirty` limits the scan to files with uncommitted git changes — fastest after a targeted edit.
+- Exit code 0 means no remaining issues; exit code 1 means violations remain after `--fix`. Any reported violation that `--fix` could not resolve MUST be addressed (consult the rule's suggestion message) before continuing the task.
 
 </laravel-boost-guidelines>

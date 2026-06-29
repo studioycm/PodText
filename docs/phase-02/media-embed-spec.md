@@ -1,10 +1,10 @@
 # Phase 02 Media Embed Spec
 
-## Storage
+## Field Foundation
 
-Continue storing URLs and metadata, never arbitrary embed HTML.
+Prompt 08 owns media field foundation before import/export.
 
-Recommended `ContentItem` fields:
+Fields on `content_items`:
 
 - `media_url`
 - `embed_url`
@@ -15,32 +15,33 @@ Recommended `ContentItem` fields:
 - `external_description`
 - `external_thumbnail_url`
 - `external_published_at`
-- optional metadata JSON for provider-specific values
+- `media_metadata`
+- `direct_media_url`, nullable
+
+## Security
+
+- Store URLs and metadata only.
+- Never store or render raw iframe HTML.
+- HTTPS only for public media/embed URLs.
+- Embed host/provider allowlist.
+- Generic iframe/oEmbed is admin-only and strictly validated.
+- Public rendering goes through the existing application-owned media Blade component.
+- Fallback to original source link when no embed is allowed.
 
 ## Providers
 
-Plan for:
+Plan allowlisted provider handling for:
 
 - Spotify
 - YouTube
 - Apple Podcasts
 - SoundCloud
-- strict admin-only generic iframe/oEmbed URLs
-
-All embedded URLs must be HTTPS and host-allowlisted. When no permitted embed exists, render the original media link.
-
-## Rendering
-
-Render through an application-owned Blade component. The component controls iframe attributes, sandbox/referrer policy decisions, fallback links, and loading states.
+- strict generic admin-only iframe/oEmbed URL
 
 ## Metadata Extraction
 
-Metadata extraction is future work. When implemented, it should be an explicit admin action/service with validation and no automatic remote fetching during import.
+Metadata extraction is not automatic. It should be an explicit admin action after field foundation exists. Imports must not fetch remote covers/media.
 
-## Tests Required Later
+## Blueprint
 
-- Approved HTTPS embed accepted.
-- Non-HTTPS embed rejected.
-- Unknown host rejected.
-- Raw iframe HTML rejected.
-- Fallback source link shown when no embed is available.
+See `docs/phase-02/blueprints/08-taxonomy-tags-pinning-settings-media-foundation-blueprint.md` and `docs/phase-02/blueprints/12-public-item-page-media-parser-blueprint.md`.

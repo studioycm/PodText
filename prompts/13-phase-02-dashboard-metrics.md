@@ -1,27 +1,66 @@
 # Prompt 13: Phase 02 Dashboard Metrics
 
-Work sequentially after Prompt 12 is complete and committed.
+## Goal
 
-Implement only lightweight editorial dashboard widgets.
+Implement lightweight editorial dashboard metrics.
 
-Required widgets:
+## Current state assumptions
 
-- published items;
-- draft items;
-- pinned items;
-- items with multiple transcriptions;
-- items missing effective/main transcription;
-- content groups;
-- authors;
-- categories;
-- enabled/disabled tags;
-- recently published items;
-- items missing media/embed URL;
-- items without category;
-- transcriptions by author.
+- Prompts 07 through 12 are complete and committed.
 
-Do not add analytics, search logging, observability infrastructure, custom activity logs, or retry dashboards.
+## Docs to read
 
-Tests must cover widget rendering, count accuracy, warning lists, admin-only access, and resource links.
+- `AGENTS.md`
+- `docs/phase-02/dashboard-metrics-spec.md`
+- `docs/phase-02/tooling-and-quality-gates.md`
 
-Run the project quality gate required by `AGENTS.md` before committing.
+## Blueprint and guidelines
+
+- `docs/phase-02/blueprints/13-dashboard-metrics-blueprint.md`
+- `.ai/guidelines/settings-dashboard.md`
+- `.ai/guidelines/tooling-quality.md`
+
+## Scope
+
+Stats and table widgets for editorial counts and warning lists.
+
+## Out of scope
+
+No analytics, search logging, observability, retry dashboards, custom activity logs, or public UI changes.
+
+## Package/tool assumptions
+
+Use Boost docs when available and FilamentExamples dashboard/widget examples.
+
+## Implementation plan
+
+1. Write widget render/count tests.
+2. Scaffold widgets.
+3. Implement StatsOverview counts.
+4. Implement recent items and warning table widgets.
+5. Register widgets on admin dashboard.
+
+## Acceptance criteria
+
+Authenticated admins see accurate editorial metrics and warning lists with Resource links.
+
+## Required tests
+
+Widget rendering, count accuracy, warning lists, admin-only access, Resource links.
+
+## Required quality gate
+
+```bash
+php artisan test
+vendor/bin/pint --test
+vendor/bin/filacheck
+npm run build
+```
+
+## Final report format
+
+Report files changed, tests added, commands/results, assumptions, deferred issues, and FilaCheck output.
+
+## Commit behavior
+
+Commit only after the full quality gate passes.

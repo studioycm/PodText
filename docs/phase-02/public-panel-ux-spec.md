@@ -2,55 +2,51 @@
 
 ## Architecture
 
-Keep the guest Public panel as the public shell. Use custom Filament Pages and class-based Livewire components where server-driven interaction is needed.
-
-Use Blade components for:
-
-- content item cards/rows
-- group badges
-- type labels
-- category/tag chips
-- media embed/source links
-- sanitized transcript output
-
-Use Alpine only for browser-local behavior such as copy-link feedback, filter drawer toggles, and viewer display preferences.
+- Keep the guest Filament Public panel.
+- Use custom Filament Pages for homepage/search/category/tag/item pages.
+- Use class-based Livewire components for search, filters, sorting, pagination, and transcription tab selection.
+- Use Blade components for content cards, group badges, media embeds, type labels, tags/categories, and safe transcript output.
+- Use Alpine only for local behavior such as filter drawer, copy feedback, and viewer show/hide preferences.
 
 ## Homepage
 
-The homepage should show `ContentItem` records. It may include:
+Homepage result cards are `ContentItem` records.
 
-- featured/pinned-first item list
-- latest items by effective/main transcription date
-- category/tag/group slices configured by admins
-- empty states and suggestions
+Default combined list order:
 
-Pinned items are not a separate model or transcript feature. They are `ContentItem` records ordered ahead of normal results when the selected view allows pinned-first ordering.
+1. valid pinned items first;
+2. `pin_order` ascending;
+3. `pinned_at` descending;
+4. effective/main transcription `published_at` descending;
+5. item `published_at` fallback.
+
+No separate pinned result model exists.
+
+## Group Badge
+
+Show content group cover image where available. Fallback to initials/title badge.
 
 ## Item Page
 
-The item page represents one `ContentItem`.
+Prompt 12 implements:
 
-Required content:
+- one `ContentItem`;
+- media player/source component;
+- effective/main transcription default tab;
+- other published transcriptions as tabs/selector;
+- safe Markdown rendering;
+- timestamp/speaker parser when present;
+- show/hide timestamps and speakers;
+- timestamp anchors;
+- no player sync;
+- reading time;
+- audio duration;
+- transcript length;
+- categories/tags;
+- author links;
+- copy/share actions;
+- desktop and mobile layout defaults.
 
-- title, group, display type labels, author links
-- media player or original source link
-- effective/main transcription by default
-- other published transcriptions as tabs/selector
-- categories and enabled tags
-- reading time, audio duration, transcript length
-- copy link and basic share actions
-- accessible empty states
+## Blueprint
 
-Draft groups, draft items, and draft transcriptions must return not found or be absent publicly.
-
-## RTL and Localization
-
-All UI text must use translation keys. Hebrew remains the primary locale and public layouts must render RTL correctly.
-
-## Tests Required Later
-
-- Guest access to homepage/search/item pages.
-- Draft records inaccessible.
-- Public results are items, not transcriptions.
-- RTL markers/classes where feasible.
-- Copy/share controls render without breaking layout.
+See `docs/phase-02/blueprints/11-public-homepage-search-blueprint.md` and `docs/phase-02/blueprints/12-public-item-page-media-parser-blueprint.md`.

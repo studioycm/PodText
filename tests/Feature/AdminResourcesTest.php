@@ -53,7 +53,7 @@ it('renders author resource pages', function (): void {
 
     Livewire::test(EditAuthor::class, ['record' => $author->getRouteKey()])
         ->assertOk()
-        ->assertFormSet([
+        ->assertSchemaStateSet([
             'reference_key' => $author->reference_key,
             'name' => $author->name,
             'slug' => $author->slug,
@@ -133,7 +133,7 @@ it('renders content group resource pages', function (): void {
 
     Livewire::test(EditContentGroup::class, ['record' => $group->getRouteKey()])
         ->assertOk()
-        ->assertFormSet([
+        ->assertSchemaStateSet([
             'reference_key' => $group->reference_key,
             'title' => $group->title,
             'slug' => $group->slug,
@@ -269,7 +269,7 @@ it('renders content item resource pages', function (): void {
 
     Livewire::test(EditContentItem::class, ['record' => $item->getRouteKey()])
         ->assertOk()
-        ->assertFormSet([
+        ->assertSchemaStateSet([
             'reference_key' => $item->reference_key,
             'title' => $item->title,
             'slug' => $item->slug,

@@ -2,43 +2,41 @@
 
 ## Principle
 
-Keep native Filament Importer/Exporter classes and extend the current reference-key strategy. Do not build custom CSV controllers.
+Keep native Filament Importer/Exporter classes. Do not build custom CSV controllers.
+
+## Dependency
+
+Prompt 10 must run after:
+
+- transcriptions model revision;
+- category/tag schema;
+- pinning fields;
+- settings/media field foundation;
+- admin management fields.
 
 ## Matching Rules
 
 - `ContentGroup`: `reference_key`, then slug.
 - `ContentItem`: `reference_key`, then provider/external ID, then group plus slug.
 - `Author`: `reference_key`, then slug/name.
-- `Category`: slug/path.
+- `Transcription`: `reference_key`, then item key plus author key plus published date, with content hash fallback only if required.
+- Category: slug/path.
 - Tag: Spatie tag slug plus `content` type.
-- `Transcription`: `reference_key`, then item plus author plus published date, with content hash fallback only if required.
 
-## Transcripts
+Missing category or tag references must create failed rows by default. Do not silently create categories, create tags, or attach unknown tag types during item imports unless a later prompt explicitly adds an admin-only create-if-missing option with tests.
 
-CSV may include inline transcript Markdown or references to `.md`/`.txt` files in an approved import package. Imports must create/update `Transcription` records, not write transcript text directly onto `ContentItem`.
+## Transcript Files
 
-## Export
-
-Exports should use portable identifiers and avoid numeric database IDs. Include selectable columns for:
-
-- groups
-- items
-- authors
-- transcriptions
-- categories
-- tags
-- media metadata
-- publication state
-- pinning fields
+Imports may support approved `.md`/`.txt` transcript file references. Imported transcript content creates or updates `Transcription` records. It must not write to legacy `ContentItem::transcript_markdown`.
 
 ## Security
 
-Preserve formula-injection protection and validation. Do not fetch remote covers/media during imports.
+- Continue formula-injection protection.
+- Continue failed-row output.
+- Treat missing categories, missing tags, disabled public tags, and wrong tag types as validation failures with failed-row output.
+- Do not fetch remote covers/media.
+- Use portable identifiers, not numeric IDs.
 
-## Tests Required Later
+## Blueprint
 
-- Create/update import for transcriptions.
-- Relationship resolution by reference keys.
-- Category/tag import behavior.
-- Failed row behavior.
-- Export column coverage and authorization.
+See `docs/phase-02/blueprints/10-import-export-blueprint.md`.

@@ -1,57 +1,49 @@
 # Phase 02 Transcript Viewer and Studio Future Plan
 
-## Parser
+## Parser Now
 
-Parse timestamps and speakers from `Transcription::transcript_markdown` when present. Markdown remains canonical.
+Prompt 12 implements parse-only transcript viewer behavior.
 
-Supported first-pass pattern:
+Support:
 
 ```text
 [00:01:23] Speaker: Transcript text
 ```
 
-Derived parser output may include segment start time, speaker label, and text. Parser failures should fall back to sanitized Markdown rendering.
+and:
 
-## Public Viewer
+```text
+[00:01:23] Speaker:
+Transcript text...
+```
 
-Public viewer options:
+Parser output is derived from `Transcription::transcript_markdown`. Markdown remains canonical. Parser failure falls back to safe Markdown rendering.
 
-- show/hide timestamps
-- show/hide speakers
-- timestamp anchors
-- copy timestamp link later
+## Viewer Now
 
-Viewer preferences can use local browser storage through Alpine because they are not authoritative server state.
+Prompt 12 may add:
 
-## Future Sync Viewer
+- show/hide timestamps;
+- show/hide speakers;
+- timestamp anchors;
+- local preference storage;
+- no player sync.
 
-Defer:
+## Future Plan Only
 
-- current-line highlighting
-- auto-scroll
-- auto-advance
-- player-time synchronization
+Prompt 14 plans but does not implement:
 
-These depend on reliable timing data and player-control support.
+- synced public viewer;
+- transcription studio;
+- embedded external player limitations;
+- direct audio URL benefits;
+- speed control;
+- shortcuts;
+- speaker quick insert;
+- timestamp injection;
+- autosave/failure prerequisites;
+- future permissions.
 
-## Future Studio
+## Blueprint
 
-Studio implementation is not part of the Phase 02 docs task. Plan it after the transcription model and public item page are stable.
-
-Future studio subjects:
-
-- direct audio player where available
-- external player fallback
-- speed control
-- keyboard shortcuts
-- speaker quick insert
-- timestamp insert
-- draft/autosave failure handling
-- permission gates
-
-## Tests Required Later
-
-- Parser recognizes supported timestamp/speaker lines.
-- Parser preserves safe Markdown fallback.
-- Viewer hides draft transcriptions.
-- Local display toggles do not change server state.
+See `docs/phase-02/blueprints/12-public-item-page-media-parser-blueprint.md` and `docs/phase-02/blueprints/14-viewer-studio-future-plan-blueprint.md`.

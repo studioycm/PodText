@@ -9,14 +9,18 @@
         "php": "^8.4",
         "filament/filament": "~5.0",
         "laravel/framework": "^13.8",
-        "laravel/tinker": "^3.0"
+        "laravel/tinker": "^3.0",
+        "livewire/livewire": "^4.3"
     },
     "require-dev": {
         "fakerphp/faker": "^1.23",
+        "filament/blueprint": "^2.2",
         "laravel/boost": "^2.4",
         "laravel/pail": "^1.2.5",
         "laravel/pao": "^1.0.6",
         "laravel/pint": "^1.27",
+        "laraveldaily/filacheck": "^1.2",
+        "laraveldaily/filacheck-pro": "^1.2",
         "mockery/mockery": "^1.6",
         "nunomaduro/collision": "^8.6",
         "pestphp/pest": "^4.7",
@@ -88,5 +92,14 @@
         }
     },
     "minimum-stability": "stable",
-    "prefer-stable": true
+    "prefer-stable": true,
+    "repositories": [{
+        "name": "filament",
+        "type": "composer",
+        "url": "https://packages.filamentphp.com/composer"
+    },{
+        "name": "filacheck",
+        "type": "composer",
+        "url": "https://satis.filamentexamples.com"
+    }]
 }

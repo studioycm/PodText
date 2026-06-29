@@ -2,32 +2,35 @@
 
 ## Scope
 
-Dashboard work is editorial and lightweight. Do not add analytics, search logging, observability dashboards, or retry managers.
+Editorial widgets only. Do not add analytics, search logging, observability infrastructure, activity logs, retry dashboards, or custom operation logs.
 
 ## Widgets
 
-Use simple Filament widgets:
+Prompt 13 should add:
 
-- total published items
-- draft items
-- pinned items
-- items with multiple transcriptions
-- items missing an effective/main transcription
-- content groups
-- authors
-- categories
-- enabled/disabled tags
-- recently published items
-- items missing media/embed URL
-- items without category
-- transcriptions by author
+- published items count;
+- draft items count;
+- pinned items count;
+- items with multiple transcriptions;
+- items missing effective/main transcription;
+- content group count;
+- author count;
+- category count;
+- enabled/disabled tag counts;
+- recently published items list;
+- items missing media/embed URL warning list;
+- items without category warning list;
+- transcriptions by author.
 
-## Patterns
+## Filament Patterns
 
-Follow simple `StatsOverviewWidget` and `TableWidget` patterns. Avoid polling unless a clear editorial need exists.
+- `Filament\Widgets\StatsOverviewWidget`
+- `Filament\Widgets\TableWidget`
+- `Filament\Tables\Columns\TextColumn`
+- `Filament\Actions\Action` for resource links where needed
 
-## Tests Required Later
+Avoid widget polling unless a clear editorial need exists.
 
-- Widgets render for authenticated admins.
-- Counts honor publication/effective transcription rules.
-- Warning lists link to the relevant admin resources.
+## Blueprint
+
+See `docs/phase-02/blueprints/13-dashboard-metrics-blueprint.md`.

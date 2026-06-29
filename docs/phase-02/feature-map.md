@@ -1,31 +1,36 @@
 # Phase 02 Feature Map
 
-Phase 02 expands the Slice 0 content loop into a stronger public content experience while preserving sequential implementation. This document is a map, not implementation.
+## Corrected Build Order
 
-## Build Order
+1. Prompt 06R: reset research, specs, guidelines, prompts, and blueprints only.
+2. Prompt 07: transcriptions model revision.
+3. Prompt 08: categories, Spatie tags, item pinning, settings, and media field foundation.
+4. Prompt 09: admin management for transcriptions/categories/tags/pinning/settings/media fields.
+5. Prompt 10: import/export for finalized Phase 02 schema.
+6. Prompt 11: public homepage/search/category/tag landing pages.
+7. Prompt 12: public item page, safe media player rendering, transcription tabs, timestamp parser, and viewer hide/show preferences.
+8. Prompt 13: editorial dashboard metrics.
+9. Prompt 14: future sync viewer and transcription studio plan only.
+10. Prompt 15: Filament Blueprint security audit after implementation.
 
-1. Transcription domain revision.
-2. Taxonomy, tags, pinning, and settings foundation.
-3. Admin content management updates.
-4. Import/export revision.
-5. Public homepage and search.
-6. Media embed and item page refinement.
-7. Dashboard metrics.
-8. Viewer/studio future planning.
+## Non-Negotiable Semantics
 
-## Core Invariants
-
-- Public browse, homepage, and search results are `ContentItem` records.
-- A `Transcription` is a child record of a `ContentItem`.
+- Public homepage/search/category/tag listings return `ContentItem` records.
+- Public result cards are never `Transcription` records.
+- `Transcription` is a child model of `ContentItem`.
+- `ContentItem` has many transcriptions.
+- Effective/main transcription is featured published transcription, then latest published transcription, then `null`.
+- Latest transcriptions means `ContentItem` records ordered by effective/main transcription `published_at`.
+- Items without an effective/main published transcription are hidden from public listings.
 - Pinning belongs only to `ContentItem`.
-- "Latest transcriptions" means `ContentItem` records ordered by the effective/main published transcription `published_at`.
-- A public item is visible only when the item, its group, and its effective/main transcription are published.
-- No feature should introduce `Podcast` or `Episode` classes or tables.
-- No Shield, roles, volunteer workflows, analytics, comments, request flows, or studio implementation belong in the Phase 02 implementation prompts unless explicitly moved from future planning.
+- Categories are custom hierarchical records.
+- Tags use Spatie tags, scoped to type `content`, with enabled-only public visibility.
+- Media fields are founded before import/export is revised.
+- Prompt 14 is future planning only.
 
 ## Future Ability Names
 
-Document these names for future Shield work without installing Shield now:
+Do not install Shield in Phase 02 planning. Use these names for future authorization planning:
 
 - `manage content groups`
 - `manage content items`
@@ -37,14 +42,16 @@ Document these names for future Shield work without installing Shield now:
 - `manage media metadata`
 - `manage homepage settings`
 - `view editorial dashboard`
+- `run filament security audit`
 
-## Prompt Ownership
+## Main Blueprint Map
 
-- Prompt 07 owns the data model move from `content_items.transcript_markdown` to child `transcriptions`.
-- Prompt 08 owns categories, tags, pinning fields, and settings.
-- Prompt 09 owns admin Resources and management screens for the new fields/models.
-- Prompt 10 owns import/export updates.
-- Prompt 11 owns public homepage/search.
-- Prompt 12 owns item page/media embed refinement.
-- Prompt 13 owns dashboard widgets.
-- Prompt 14 remains planning-only for viewer/studio future work.
+- Prompt 07: `blueprints/07-transcriptions-model-revision-blueprint.md`
+- Prompt 08: `blueprints/08-taxonomy-tags-pinning-settings-media-foundation-blueprint.md`
+- Prompt 09: `blueprints/09-admin-content-management-blueprint.md`
+- Prompt 10: `blueprints/10-import-export-blueprint.md`
+- Prompt 11: `blueprints/11-public-homepage-search-blueprint.md`
+- Prompt 12: `blueprints/12-public-item-page-media-parser-blueprint.md`
+- Prompt 13: `blueprints/13-dashboard-metrics-blueprint.md`
+- Prompt 14: `blueprints/14-viewer-studio-future-plan-blueprint.md`
+- Prompt 15: `blueprints/15-filament-security-audit-blueprint.md`

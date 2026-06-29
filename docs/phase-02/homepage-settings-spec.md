@@ -1,44 +1,41 @@
-# Phase 02 Homepage and Settings Spec
+# Phase 02 Homepage Settings Spec
 
-## Global Settings
+## Settings
 
-Use Spatie Settings later for typed global settings. Do not install packages in this planning task.
+Use Spatie Settings in Prompt 08. This package choice is approved for Phase 02 implementation; do not ask for package approval again when Prompt 08 reaches this work. If the packages are absent at implementation time, Prompt 08 owns adding them as part of that implementation task.
 
-Likely settings:
+Suggested settings:
 
-- homepage item limit
-- pinned item limit
-- default public sort
-- public result layout
-- item page layout options
-- homepage introduction copy keys or content references
-- media embed default behavior
+- homepage item limit;
+- pinned item limit;
+- default public sort;
+- default result layout;
+- item page layout option;
+- show/hide latest section;
+- media embed display behavior.
 
 ## Homepage Sections
 
-If editors need ordered dynamic homepage areas, use a normal database model/resource such as `HomepageSection`.
+Use normal database records for ordered visible homepage sections when dynamic sections are required.
 
-Likely fields:
+Suggested `homepage_sections` fields:
 
 - `name`
 - `slug`
 - `type`
-- `category_id`
-- `tag_id`
-- `content_group_id`
+- `category_id`, nullable
+- `tag_id`, nullable
+- `content_group_id`, nullable
 - `limit`
 - `sort_order`
 - `is_visible`
 
-This follows the FilamentExamples homepage-section pattern. It does not replace item pinning.
+Supported section types should be explicit finite values, such as latest, category, tag, group, and curated query.
 
-## Content Group Ordering
+## Group Homepage Order
 
-Add explicit ordering fields only where the public UI actually needs them. Group ordering belongs to group display contexts, not item pinning.
+Add a group ordering field only where public group ordering needs it. It does not replace item pinning.
 
-## Tests Required Later
+## Blueprint
 
-- Settings can be edited by admins.
-- Defaults are applied when settings rows do not exist.
-- Homepage sections render only visible sections.
-- Section queries return public `ContentItem` records only.
+See `docs/phase-02/blueprints/08-taxonomy-tags-pinning-settings-media-foundation-blueprint.md`.

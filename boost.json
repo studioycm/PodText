@@ -1,12 +1,25 @@
 {
+    "agents": [
+        "junie",
+        "claude_code",
+        "codex"
+    ],
     "cloud": false,
     "guidelines": true,
     "mcp": true,
     "nightwatch": false,
+    "packages": [
+        "filament/filament",
+        "filament/blueprint",
+        "laraveldaily/filacheck",
+        "laraveldaily/filacheck-pro"
+    ],
     "sail": false,
     "skills": [
         "laravel-best-practices",
+        "livewire-development",
         "pest-testing",
-        "tailwindcss-development"
+        "tailwindcss-development",
+        "filament-security-audit"
     ]
 }

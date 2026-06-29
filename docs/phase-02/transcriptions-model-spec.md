@@ -1,65 +1,71 @@
 # Phase 02 Transcriptions Model Spec
 
-## Intent
+## Goal
 
-Move transcript content out of `ContentItem` and into child `Transcription` records while keeping public listings item-based.
+Move canonical transcript Markdown from `ContentItem` to child `Transcription` records while preserving item-based public listings.
 
-## Model
+## Tables and Fields
 
-Create `App\Models\Transcription` with:
+Create `transcriptions`:
 
 - `id`
-- `reference_key`
-- `content_item_id`
-- `author_id`
-- `title` or `label`
-- `language_code`, default `he`
-- `transcript_markdown`
-- `status`, cast to `PublicationStatus`
-- `published_at`
-- optional derived fields: `word_count`, `duration_seconds`, `speakers_json`, `segments_json`
+- `reference_key`, unique ULID string
+- `content_item_id`, foreign key cascade delete
+- `author_id`, foreign key restrict or null-on-delete decision in blueprint
+- `title`, nullable string
+- `language_code`, string default `he`
+- `transcript_markdown`, long text
+- `status`, string cast to `PublicationStatus`
+- `published_at`, nullable datetime
+- `word_count`, nullable integer
+- `speakers`, nullable JSON
+- `parsed_segments`, nullable JSON
 - timestamps
 
-`ContentItem` has many `Transcription` records and may have a nullable `featured_transcription_id`.
+Add to `content_items` after `transcriptions` exists:
+
+- `featured_transcription_id`, nullable foreign key to `transcriptions.id`
+
+## Relationships
+
+- `ContentItem::transcriptions()` has many `Transcription`.
+- `ContentItem::featuredTranscription()` belongs to `Transcription`.
+- `ContentItem::effectiveTranscription()` must be queryable enough for listing/sorting.
+- `Transcription::contentItem()` belongs to `ContentItem`.
+- `Transcription::author()` belongs to `Author`.
+- `Author::transcriptions()` has many `Transcription`.
 
 ## Effective/Main Transcription
 
-Resolve an item's effective/main transcription in this order:
+Resolve in this order:
 
-1. The item's `featured_transcription_id`, if it points to a published transcription.
-2. The latest published transcription for the item by `published_at`.
+1. Featured transcription if it belongs to the item and is published.
+2. Latest published transcription by `published_at` and `id`.
 3. `null`.
 
-Public latest ordering uses this effective/main transcription date. Items without an effective/main published transcription are excluded from public latest/search results.
+Validation/tests:
 
-## Migration Path
+- featured transcription must belong to the same item;
+- unpublished featured transcription is not effective;
+- delete/unpublish behavior safely clears the featured field or rejects the operation as defined in Prompt 07;
+- public sorting by effective transcription date is tested.
 
-1. Create `transcriptions` with foreign keys to `content_items` and `authors`.
-2. Backfill one transcription for each item that currently has `transcript_markdown`.
-3. Use the first item author as the initial transcription author where available; otherwise require remediation in tests/seed data.
-4. Add nullable `content_items.featured_transcription_id` after the `transcriptions` table exists.
-5. Mark `content_items.transcript_markdown` deprecated during the migration phase.
-6. Drop the legacy column in a later cleanup only after imports, exports, public pages, and tests no longer read it.
+## Migration Strategy
 
-## Public Rules
+1. Create transcriptions table.
+2. Backfill one transcription from each nonblank `content_items.transcript_markdown`.
+3. Use first item author as transcription author when available.
+4. Add `content_items.featured_transcription_id`.
+5. Mark `content_items.transcript_markdown` as legacy and stop writing to it.
+6. Drop the legacy column only in a later cleanup after import/export/public tests are updated.
 
-- Draft transcriptions are never publicly visible.
-- Public item pages default to the effective/main transcription.
-- Other published transcriptions may be shown as tabs or a selector.
-- Markdown remains canonical. Parsed speakers/timestamps are derived.
-- Public rendering must continue through the centralized safe Markdown renderer.
+## Security
 
-## Admin Rules
+- Markdown remains canonical.
+- Public rendering continues through `SafeMarkdownRenderer`.
+- Draft transcriptions are never public.
+- Public listings require item, group, and effective transcription to be published.
 
-- Admins can create, edit, publish, draft, and feature transcriptions.
-- A transcription belongs to one author in Phase 02.
-- Future multi-contributor transcription credits are deferred.
+## Blueprint
 
-## Tests Required Later
-
-- Relationships and casts.
-- Backfill migration behavior.
-- Effective/main transcription resolution.
-- Public exclusion when no published transcription exists.
-- Draft transcription hidden from item page tabs.
-- Markdown XSS regression after moving content to `Transcription`.
+See `docs/phase-02/blueprints/07-transcriptions-model-revision-blueprint.md`.
