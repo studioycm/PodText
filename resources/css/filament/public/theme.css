@@ -4,4 +4,9 @@
 @source '../../../../app/Livewire/Public/**/*';
 @source '../../../../resources/views/components/public/**/*';
 @source '../../../../resources/views/filament/public/**/*';
+@source '../../../../resources/views/filament/tables/**/*';
 @source '../../../../resources/views/livewire/public/**/*';
+
+@theme {
+    --font-sans: 'Varela Round', ui-sans-serif, system-ui, sans-serif;
+}
