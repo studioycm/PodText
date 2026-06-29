@@ -1,188 +1,72 @@
-# Bootstrap Slice 0 — Codex Implementation Pack
+# PodText
 
-This pack defines the fastest useful first version of the application without locking the full project into premature architecture.
+PodText is a Hebrew-first transcription platform built with Laravel, Filament, and Livewire.
 
-The first complete loop is:
+## Stack
 
-1. An administrator creates or imports an author.
-2. An administrator creates or imports a content group, displayed by default as a podcast.
-3. An administrator creates or imports a content item, displayed by default as an episode.
-4. The administrator publishes the group and item.
-5. A logged-out visitor browses the group and reads the item's Markdown transcript.
+- Laravel 13
+- Filament 5
+- Livewire 4
+- Tailwind CSS 4
+- Pest
+- Laravel Boost
+- Filament Blueprint
+- FilaCheck and FilaCheck Pro
 
-The internal domain names are deliberately generic:
+Installed package versions are the source of truth.
 
-- `ContentGroup` — default display type: **Podcast**
-- `ContentItem` — default display type: **Episode**
-- `Author`
+## Domain Terms
 
-Display type labels may be changed by administrators without renaming PHP classes or database tables.
+Internal names stay generic:
 
-## Workflow philosophy
+- `ContentGroup`: container of content items; default public concept is podcast.
+- `ContentItem`: content item inside a group; default public concept is episode.
+- `Author`: credited contributor.
+- `Transcription`: transcript record belonging to a content item.
 
-This pack follows the staged AI-development approach used by Povilas Korop/Laravel Daily:
+Public labels may say podcast/episode, but PHP classes, database tables, Resources, and namespaces should keep the generic internal names unless the architecture is explicitly changed.
 
-- Give the agent a narrow project description.
-- Add repository-level AI instructions.
-- Separate implementation into reviewable phases.
-- Define acceptance criteria and automated tests for every phase.
-- Commit after each phase before starting the next.
-- Use Laravel Boost and installed-package documentation instead of relying on remembered APIs.
+## Active AI Workflow
 
-This is a **bootstrap-specific planning pack**, not the final full-project specification. Full user stories, the final database design, the complete authorization matrix, auditing, workflow/versioning, provider drivers, and the transcription studio remain deferred until the wider product discovery is complete.
+- `AGENTS.md` contains evergreen repository rules.
+- Active specs are under `docs/phase-02/`.
+- Active research is under `docs/research/`.
+- Active implementation prompts are under `prompts/`.
+- Historical docs and prompts are archived and are not active instructions unless a current prompt explicitly references them.
 
-## No worktrees for Slice 0
+Start here:
 
-Implement this slice sequentially in the main project checkout.
+- [Documentation index](docs/README.md)
+- [Prompt index](prompts/README.md)
+- [Phase 02 feature map](docs/phase-02/feature-map.md)
+- [Tooling and quality gates](docs/phase-02/tooling-and-quality-gates.md)
 
-Do not:
+## Current Implementation Status
 
-- create Codex worktrees;
-- run multiple implementation agents against the repository in parallel;
-- start the next phase before the current phase has passed its tests and been committed.
+Prompt 07 was run and committed. Prompt 08 is next only after human review and local Prompt 07 migration/test verification.
 
-Recommended commit sequence:
+Current state details live in [docs/phase-02/current-project-state.md](docs/phase-02/current-project-state.md).
 
-```text
-chore: bootstrap Laravel Filament application
-feat: add content group item and author domain
-feat: add admin content management
-feat: add public content panel
-feat: add content import and export
-test: harden bootstrap slice zero
-```
+## Quality Gates
 
-## Files in this pack
-
-```text
-AGENTS.md
-.ai/guidelines/bootstrap-slice-0.md
-docs/project-description.md
-docs/architecture-decisions.md
-docs/import-export-spec.md
-docs/project-phases.md
-docs/acceptance-checklist.md
-prompts/00-bootstrap-project.md
-prompts/01-foundation-domain.md
-prompts/02-admin-panel.md
-prompts/03-public-panel.md
-prompts/04-import-export.md
-prompts/05-final-review.md
-```
-
-## How to use this pack with Codex App
-
-1. Create the new Laravel repository.
-2. Copy this pack's `AGENTS.md`, `.ai`, `docs`, and `prompts` directories into the repository root.
-3. Open the repository in Codex App.
-4. Run the prompt files in numerical order, one at a time.
-5. Review the diff after each prompt.
-6. Require Codex to run all phase completion commands.
-7. Manually verify the phase.
-8. Commit the phase before continuing.
-
-Do not give Codex the whole application request as one implementation prompt. Keep each run bounded to the current prompt file.
-
-## Baseline installation direction
-
-The exact installer output should be inspected rather than assumed, but the intended stack is:
-
-```text
-Laravel 13
-PHP version supported by Laravel 13 and Filament 5
-Filament 5 panel builder
-Livewire 4
-Alpine.js bundled through Livewire/Filament
-Tailwind CSS 4
-Pest
-Laravel Boost
-```
-
-Install Filament before running the final Boost installation so Boost can include the installed Filament guidance.
-
-The native Filament importer/exporter uses queued job batches and database notifications. Slice 0 therefore includes a minimal database queue foundation solely for imports and exports. It does not include the later operations dashboard, custom retry management, activity logging, or full observability system.
-
-Typical supporting migrations include:
-
-```bash
-php artisan make:queue-table          # only when the project does not already contain one
-php artisan make:queue-batches-table
-php artisan make:notifications-table
-php artisan vendor:publish --tag=filament-actions-migrations
-php artisan migrate
-```
-
-For local development with imports/exports:
-
-```bash
-php artisan queue:work database --queue=imports-exports,default --tries=3 --timeout=120
-```
-
-After Phase 0, the Laravel 13 skeleton already contains the `jobs`, `job_batches`, and `failed_jobs` tables in
-`0001_01_01_000002_create_jobs_table.php`. The additional Phase 0 import/export foundation is:
-
-```bash
-php artisan make:notifications-table
-php artisan vendor:publish --tag=filament-actions-migrations
-php artisan migrate
-```
-
-Create a local Filament administrator with a development-only password:
-
-```bash
-php artisan make:filament-user --panel=admin
-```
-
-For queued imports and exports, run a local worker in a separate terminal:
-
-```bash
-php artisan queue:work database
-```
-
-## Phase completion commands
-
-Codex must use the commands available in the generated repository. The expected quality gate is equivalent to:
+Implementation prompts normally finish with:
 
 ```bash
 php artisan test
 vendor/bin/pint --test
+vendor/bin/filacheck
 npm run build
 ```
 
-Before the final review, also verify a clean rebuild:
+Documentation-only tasks should run the checks required by their prompt.
 
-```bash
-php artisan migrate:fresh --seed
-php artisan test
-vendor/bin/pint --test
-npm run build
-```
+## Secrets and Local Config
 
-## Deliberately deferred
+Do not commit or print secrets or machine-local configuration, including:
 
-Do not let Codex add these during Slice 0:
-
-- Filament Shield and the full role/permission matrix
-- volunteer registration or author self-service
-- auditor panel or approval workflow
-- transcription requests
-- hierarchical categories or tags
-- tag moderation
-- transcript speakers or timestamp syntax
-- synchronized media playback
-- custom transcription studio
-- provider URL analysis or metadata APIs
-- file-based media upload
-- transcript revision history
-- model activity logging
-- process/action/error logging
-- custom retry or replay management
-- notifications beyond Filament import/export completion notifications
-- analytics
-- comments
-- CMS pages
-- full-text search engine
-- legacy image download/import
-- Filament Blueprint for the complete project
-
-Any useful idea discovered during implementation should be recorded as a deferred note instead of being implemented opportunistically.
+- `.env`;
+- MCP tokens;
+- `.codex` configuration;
+- Composer auth;
+- FilaCheck license data;
+- IDE-local configuration.
