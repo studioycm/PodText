@@ -20,6 +20,8 @@
         "livewire-development",
         "pest-testing",
         "tailwindcss-development",
-        "filament-security-audit"
+        "filament-security-audit",
+        "spatie-laravel-php",
+        "technical-debt-manager-php-laravel"
     ]
 }

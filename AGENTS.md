@@ -325,6 +325,17 @@ Native Filament Importer/Exporter classes with portable reference keys and faile
 
 - Use `Filament\Actions\ImportAction`, `ExportAction`, and `ExportBulkAction`.
 - Bulk export should deselect records after completion where supported.
+- FilaCheck/FilaCheck Pro must pass; do not run `filacheck --fix` unless explicitly approved.
+
+## Cross-cutting UI rules
+
+- Slug fields should auto-generate from title/name fields in admin forms but allow manual override.
+- Technical import/export fields such as reference keys, provider IDs, external IDs, metadata, and file references must have helper text, hints, or descriptions.
+- Date/date-time UI and import/export presentation should use Hebrew/Israel locale behavior: `dd/mm/yyyy` for dates and `dd/mm/yyyy HH:mm` for date-times.
+- Store dates normally with Laravel, but display/input date-times in the `Asia/Jerusalem` UI timezone.
+- Public and admin table date columns must use day-first format.
+- Use translation keys for labels, hints, helper text, and date labels.
+- Admin dashboard widgets should include available import/export editorial metrics when useful and avoid polling unless needed.
 
 ## Related active docs
 
@@ -375,6 +386,17 @@ Store URLs/metadata on `ContentItem`; render through the app-owned Blade media c
 
 - FileUpload fields, if later added, require accepted file types and max size.
 - Avoid Blade Tailwind classes outside theme coverage.
+- FilaCheck/FilaCheck Pro must pass; do not run `filacheck --fix` unless explicitly approved.
+
+## Cross-cutting UI rules
+
+- Slug fields, where present, should auto-generate from title/name fields but allow manual override.
+- Technical fields such as provider, external ID, external metadata, thumbnail URL, source URL, and direct media URL must have helper text, hints, or descriptions.
+- Date/date-time UI should use Hebrew/Israel locale behavior: `dd/mm/yyyy` for dates and `dd/mm/yyyy HH:mm` for date-times.
+- Store dates normally with Laravel, but display/input date-times in the `Asia/Jerusalem` UI timezone.
+- Public and admin table date columns must use day-first format.
+- Use translation keys for labels, hints, helper text, and date labels.
+- Admin dashboard widgets should include available media warning metrics and avoid polling unless needed.
 
 ## Related active docs
 
@@ -427,6 +449,17 @@ Guest Filament Public panel with custom Pages, class-based Livewire for server-d
 - Avoid table/card closures that query relationships.
 - Ensure searchable text columns exist.
 - Avoid deprecated Filament methods/namespaces.
+- FilaCheck/FilaCheck Pro must pass; do not run `filacheck --fix` unless explicitly approved.
+
+## Cross-cutting UI rules
+
+- Slug fields, where present in admin surfaces feeding public pages, should auto-generate from title/name fields but allow manual override.
+- Technical fields must have helper text, hints, or descriptions in admin forms.
+- Date/date-time UI should use Hebrew/Israel locale behavior: `dd/mm/yyyy` for dates and `dd/mm/yyyy HH:mm` for date-times.
+- Store dates normally with Laravel, but display/input date-times in the `Asia/Jerusalem` UI timezone.
+- Public and admin table date columns must use day-first format.
+- Use translation keys for labels, hints, helper text, and date labels.
+- Admin dashboard widgets should include available public-content editorial metrics and avoid polling unless needed.
 
 ## Related active docs
 
@@ -478,6 +511,17 @@ Filament Table inside a public Livewire component, rendered as item cards or row
 - Tables need searchable columns.
 - Custom filters need indicators.
 - Relationship filters should be searchable/preloaded where record count can grow.
+- FilaCheck/FilaCheck Pro must pass; do not run `filacheck --fix` unless explicitly approved.
+
+## Cross-cutting UI rules
+
+- Slug fields, where present in admin surfaces feeding public filters, should auto-generate from title/name fields but allow manual override.
+- Technical fields must have helper text, hints, or descriptions in admin forms.
+- Date/date-time UI should use Hebrew/Israel locale behavior: `dd/mm/yyyy` for dates and `dd/mm/yyyy HH:mm` for date-times.
+- Store dates normally with Laravel, but display/input date-times in the `Asia/Jerusalem` UI timezone.
+- Public and admin table date columns must use day-first format.
+- Use translation keys for labels, hints, helper text, sort labels, and date labels.
+- Admin dashboard widgets should include available search/filter editorial metrics and avoid polling unless needed.
 
 ## Related active docs
 
@@ -503,6 +547,7 @@ Spatie Settings for global options, normal database records for ordered homepage
 - Use homepage section records for visible ordered sections.
 - Keep dashboard widgets editorial.
 - Link widgets to Filament Resources through Resource URL helpers.
+- Include available editorial metrics as dashboard widgets and extend them as later schema becomes available.
 
 ## Do not
 
@@ -527,6 +572,17 @@ Spatie Settings for global options, normal database records for ordered homepage
 - Avoid default polling in widgets unless needed.
 - Use searchable table columns and useful warning filters.
 - Use enum icons instead of string icons.
+- FilaCheck/FilaCheck Pro must pass; do not run `filacheck --fix` unless explicitly approved.
+
+## Cross-cutting UI rules
+
+- Slug fields should auto-generate from title/name fields but allow manual override.
+- Technical settings, homepage section targets, pin fields, and metric filters must have helper text, hints, or descriptions.
+- Date/date-time UI should use Hebrew/Israel locale behavior: `dd/mm/yyyy` for dates and `dd/mm/yyyy HH:mm` for date-times.
+- Store dates normally with Laravel, but display/input date-times in the `Asia/Jerusalem` UI timezone.
+- Public and admin table date columns must use day-first format.
+- Use translation keys for labels, hints, helper text, and date labels.
+- Dashboard widgets should include available editorial metrics and avoid polling unless needed.
 
 ## Related active docs
 
@@ -579,6 +635,17 @@ Custom hierarchical `Category` model plus Spatie Laravel Tags with the Filament 
 
 - Relationship selects should be searchable/preloaded.
 - Category/tag tables need searchable name/slug columns and useful filters.
+- FilaCheck/FilaCheck Pro must pass; do not run `filacheck --fix` unless explicitly approved.
+
+## Cross-cutting UI rules
+
+- Slug fields should auto-generate from category/tag title/name fields but allow manual override.
+- Technical fields must have helper text, hints, or descriptions.
+- Date/date-time UI should use Hebrew/Israel locale behavior: `dd/mm/yyyy` for dates and `dd/mm/yyyy HH:mm` for date-times.
+- Store dates normally with Laravel, but display/input date-times in the `Asia/Jerusalem` UI timezone.
+- Public and admin table date columns must use day-first format.
+- Use translation keys for labels, hints, helper text, and date labels.
+- Admin dashboard widgets should include available category/tag metrics and avoid polling unless needed.
 
 ## Related active docs
 
@@ -605,6 +672,8 @@ Every implementation prompt uses Boost where available, reads its blueprint, che
 - Use FilamentExamples MCP before Filament code.
 - Run full final quality gate.
 - Record FilaCheck/FilaCheck Pro output.
+- Preserve cross-cutting form, locale, and dashboard requirements from active specs/guidelines.
+- Use current Filament 5 relation-manager APIs for relation manager work.
 
 ## Do not
 
@@ -634,6 +703,19 @@ npm run build
 - Treat remaining violations as blockers in implementation prompts.
 - Local iteration may use `vendor/bin/filacheck --dirty`.
 - Final verification uses full `vendor/bin/filacheck`.
+- FilaCheck/FilaCheck Pro must pass; do not run `filacheck --fix` unless explicitly approved.
+- If a prompt uses combined relation tabs with content, use the official Filament method names for the installed version.
+- Prompt 09 final reports must state whether combined tabs, relation manager badges, redirect behavior, and create-another behavior were implemented.
+
+## Cross-cutting UI rules
+
+- Slug fields should auto-generate from title/name fields but allow manual override.
+- Technical fields must have helper text, hints, or descriptions.
+- Date/date-time UI should use Hebrew/Israel locale behavior: `dd/mm/yyyy` for dates and `dd/mm/yyyy HH:mm` for date-times.
+- Store dates normally with Laravel, but display/input date-times in the `Asia/Jerusalem` UI timezone.
+- Public and admin table date columns must use day-first format.
+- Use translation keys for labels, hints, helper text, and date labels.
+- Admin dashboard widgets should include available editorial metrics and avoid polling unless needed.
 
 ## Related active docs
 
@@ -659,12 +741,23 @@ Keep transcript content in `Transcription` child records while public listings r
 - Implement effective/main transcription resolution.
 - Hide items without an effective/main published transcription.
 - Keep parser output derived.
+- When admin management is implemented, make transcript body management available from the owning item admin page through a relation manager.
+- Keep standalone `TranscriptionResource` useful for global transcript search, filtering, and maintenance.
 
 ## Do not
 
 - Do not keep writing new transcript content to legacy `content_items.transcript_markdown`.
+- Do not reintroduce the legacy item transcript field in item admin forms.
 - Do not expose draft transcriptions publicly.
 - Do not pin transcriptions.
+- Do not use a Repeater for full transcript Markdown editing.
+
+## Admin management rules
+
+- Item-scoped transcript editing should prefer `ContentItemResource`'s transcriptions relation manager.
+- The relation manager should create/edit `Transcription` records in the owning item context and should not expose `content_item_id` as a normal form field.
+- Standalone `TranscriptionResource` is for global discovery and maintenance, not the only transcript editing path.
+- If transcript management later needs a larger workspace, a dedicated relation page is a future option, not the default Prompt 09 approach.
 
 ## Testing rules
 
@@ -684,6 +777,17 @@ Keep transcript content in `Transcription` child records while public listings r
 
 - Enum columns shown in Filament should use label/color contracts.
 - Avoid N+1 when listing effective transcription metadata.
+- FilaCheck/FilaCheck Pro must pass; do not run `filacheck --fix` unless explicitly approved.
+
+## Cross-cutting UI rules
+
+- Slug fields, where present, should auto-generate from title/name fields but allow manual override.
+- Technical fields such as reference keys, featured transcription selectors, language codes, parser JSON, and derived counts must have helper text, hints, or descriptions.
+- Date/date-time UI should use Hebrew/Israel locale behavior: `dd/mm/yyyy` for dates and `dd/mm/yyyy HH:mm` for date-times.
+- Store dates normally with Laravel, but display/input date-times in the `Asia/Jerusalem` UI timezone.
+- Public and admin table date columns must use day-first format.
+- Use translation keys for labels, hints, helper text, and date labels.
+- Admin dashboard widgets should include available editorial transcription metrics and avoid polling unless needed.
 
 ## Related active docs
 
@@ -732,6 +836,17 @@ Prompt 12 implements parse-only public viewer behavior. Prompt 14 plans future s
 
 - Avoid Blade query work.
 - Keep Livewire component state explicit and tested.
+- FilaCheck/FilaCheck Pro must pass; do not run `filacheck --fix` unless explicitly approved.
+
+## Cross-cutting UI rules
+
+- Slug fields, where present in related admin forms, should auto-generate from title/name fields but allow manual override.
+- Technical fields must have helper text, hints, or descriptions in admin forms.
+- Date/date-time and timestamp UI should use Hebrew/Israel locale behavior where dates are shown: `dd/mm/yyyy` for dates and `dd/mm/yyyy HH:mm` for date-times.
+- Store dates normally with Laravel, but display/input date-times in the `Asia/Jerusalem` UI timezone.
+- Public and admin table date columns must use day-first format.
+- Use translation keys for labels, hints, helper text, and date labels.
+- Admin dashboard widgets should include available viewer/transcription editorial metrics and avoid polling unless needed.
 
 ## Related active docs
 
@@ -1168,13 +1283,13 @@ required sections, and what to clarify with the user before planning.
 
 ## laraveldaily/filacheck
 
-- After creating or modifying files under `app/Filament`, run `vendor/bin/filacheck` for final verification. Local iteration may use `vendor/bin/filacheck --dirty`. Do not run `vendor/bin/filacheck --fix` unless the active prompt explicitly allows auto-fixes, the repository has a clean commit, and the diff will be reviewed afterward.
+- After you have created/modified any files in `app/Filament` folder, you must run `vendor/bin/filacheck --fix`, to ensure there is no deprecated Filament code. Reported not fixed issues MUST be fixed before continuing.
 
 === laraveldaily/filacheck-pro rules ===
 
 ## laraveldaily/filacheck-pro
 
-- After creating or modifying files under `app/Filament/`, use FilaCheck Pro through `vendor/bin/filacheck` to flag performance, security, UX, and best-practice issues. `--dirty` is allowed for faster local iteration on uncommitted changes.
-- Exit code 0 means no remaining issues; exit code 1 means violations remain. Any reported violation MUST be addressed or documented as a false positive before continuing the task.
+- After creating or modifying any files under `app/Filament/`, run `vendor/bin/filacheck --fix --dirty` to auto-fix deprecated Filament code and flag performance, security, UX, and best-practice issues from FilaCheck-Pro. `--dirty` limits the scan to files with uncommitted git changes — fastest after a targeted edit.
+- Exit code 0 means no remaining issues; exit code 1 means violations remain after `--fix`. Any reported violation that `--fix` could not resolve MUST be addressed (consult the rule's suggestion message) before continuing the task.
 
 </laravel-boost-guidelines>
