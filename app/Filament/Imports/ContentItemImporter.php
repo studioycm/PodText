@@ -103,14 +103,6 @@ class ContentItemImporter extends Importer
                 ->example('125')
                 ->rules(['nullable', 'integer', 'min:0'])
                 ->ignoreBlankState(fn (?ContentItem $record, array $options): bool => static::shouldIgnoreBlankForUpdate($record, $options)),
-            ImportColumn::make('transcript_markdown')
-                ->label(__('admin.fields.transcript_markdown'))
-                ->examples([
-                    "## תמלול\n\nשורה ראשונה עם ניקוד: שָׁלוֹם.",
-                    "שורה ראשונה\nשורה שנייה\n\n**סיום**",
-                ])
-                ->rules(['nullable', 'max:100000'])
-                ->ignoreBlankState(fn (?ContentItem $record, array $options): bool => static::shouldIgnoreBlankForUpdate($record, $options)),
             ImportColumn::make('original_published_at')
                 ->label(__('admin.fields.original_published_at'))
                 ->example('2026-01-01 09:00:00')

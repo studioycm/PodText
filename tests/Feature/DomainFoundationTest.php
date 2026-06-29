@@ -113,10 +113,10 @@ it('scopes published items by item state and parent group visibility', function 
     $publishedGroup = ContentGroup::factory()->published()->create();
     $draftGroup = ContentGroup::factory()->create(['status' => PublicationStatus::Draft]);
 
-    $publishedItem = ContentItem::factory()->for($publishedGroup)->published()->create();
-    ContentItem::factory()->for($publishedGroup)->create(['status' => PublicationStatus::Draft]);
-    ContentItem::factory()->for($publishedGroup)->published(now()->addDay())->create();
-    ContentItem::factory()->for($draftGroup)->published()->create();
+    $publishedItem = ContentItem::factory()->for($publishedGroup)->published()->withTranscription()->create();
+    ContentItem::factory()->for($publishedGroup)->withTranscription()->create(['status' => PublicationStatus::Draft]);
+    ContentItem::factory()->for($publishedGroup)->published(now()->addDay())->withTranscription()->create();
+    ContentItem::factory()->for($draftGroup)->published()->withTranscription()->create();
 
     expect(ContentItem::published()->pluck('id')->all())->toBe([$publishedItem->id]);
 });

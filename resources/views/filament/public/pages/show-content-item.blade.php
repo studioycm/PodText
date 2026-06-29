@@ -63,12 +63,14 @@
             </section>
         @endif
 
+        @php($effectiveTranscription = $contentItem->effectiveTranscription())
+
         <section class="space-y-3" aria-labelledby="item-transcript-heading">
             <h2 id="item-transcript-heading" class="text-xl font-semibold text-gray-950 dark:text-white">
                 {{ __('public.pages.item.transcript_heading') }}
             </h2>
 
-            <x-public.markdown-content :markdown="$contentItem->transcript_markdown" />
+            <x-public.markdown-content :markdown="$effectiveTranscription?->transcript_markdown" />
         </section>
     </article>
 </x-filament-panels::page>

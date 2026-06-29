@@ -51,15 +51,15 @@ it('opens a published group and sorts its visible item rows in the browser', fun
         'slug' => 'browser-group',
         'description_markdown' => 'Visible **group** description.',
     ]);
-    $alpha = ContentItem::factory()->for($group)->published(now()->subDays(2))->create([
+    $alpha = ContentItem::factory()->for($group)->published(now()->subDays(2))->withTranscription()->create([
         'title' => 'Alpha Browser Item',
         'slug' => 'alpha-browser-item',
     ]);
-    $beta = ContentItem::factory()->for($group)->published(now()->subDay())->create([
+    $beta = ContentItem::factory()->for($group)->published(now()->subDay())->withTranscription()->create([
         'title' => 'Beta Browser Item',
         'slug' => 'beta-browser-item',
     ]);
-    $draft = ContentItem::factory()->for($group)->create([
+    $draft = ContentItem::factory()->for($group)->withTranscription()->create([
         'title' => 'Draft Browser Item',
         'slug' => 'draft-browser-item',
     ]);
@@ -87,11 +87,12 @@ it('opens a published item with authors approved embed and Hebrew transcript in 
     $authors = Author::factory()->count(2)->create([
         'name' => 'מחבר בדיקה',
     ]);
-    $item = ContentItem::factory()->for($group)->published()->create([
+    $item = ContentItem::factory()->for($group)->published()->withTranscription([
+        'transcript_markdown' => "## תמלול\n\nשָׁלוֹם עולם",
+    ])->create([
         'title' => 'Browser Published Item',
         'slug' => 'browser-published-item',
         'description_markdown' => 'Item **description**.',
-        'transcript_markdown' => "## תמלול\n\nשָׁלוֹם עולם",
         'media_url' => 'https://example.com/media/browser-item',
         'embed_url' => 'https://www.youtube.com/embed/browser-demo',
         'duration_seconds' => 125,
@@ -115,11 +116,12 @@ it('keeps malicious markdown and unapproved embed markup out of browser source',
     $group = ContentGroup::factory()->published()->create([
         'slug' => 'browser-security-group',
     ]);
-    $item = ContentItem::factory()->for($group)->published()->create([
+    $item = ContentItem::factory()->for($group)->published()->withTranscription([
+        'transcript_markdown' => "Transcript <script>alert('x')</script>",
+    ])->create([
         'title' => 'Browser Security Item',
         'slug' => 'browser-security-item',
         'description_markdown' => 'Safe text <img src=x onerror=alert(1)>',
-        'transcript_markdown' => "Transcript <script>alert('x')</script>",
         'media_url' => 'https://example.com/media/browser-security-item',
         'embed_url' => 'https://unapproved.example/embed',
     ]);
@@ -139,9 +141,9 @@ it('blocks direct browser URLs for draft and future public records', function ()
     $publishedGroup = ContentGroup::factory()->published()->create(['slug' => 'browser-published-parent']);
     $draftGroup = ContentGroup::factory()->create(['slug' => 'browser-draft-group']);
     $futureGroup = ContentGroup::factory()->published(now()->addDay())->create(['slug' => 'browser-future-group']);
-    $draftItem = ContentItem::factory()->for($publishedGroup)->create(['slug' => 'browser-draft-item']);
-    $futureItem = ContentItem::factory()->for($publishedGroup)->published(now()->addDay())->create(['slug' => 'browser-future-item']);
-    $underDraftGroup = ContentItem::factory()->for($draftGroup)->published()->create(['slug' => 'browser-under-draft']);
+    $draftItem = ContentItem::factory()->for($publishedGroup)->withTranscription()->create(['slug' => 'browser-draft-item']);
+    $futureItem = ContentItem::factory()->for($publishedGroup)->published(now()->addDay())->withTranscription()->create(['slug' => 'browser-future-item']);
+    $underDraftGroup = ContentItem::factory()->for($draftGroup)->published()->withTranscription()->create(['slug' => 'browser-under-draft']);
 
     visit("/groups/{$draftGroup->slug}")
         ->assertPathIs("/groups/{$draftGroup->slug}")

@@ -56,10 +56,6 @@ class ContentItemExporter extends Exporter
                 ->state(fn (ContentItem $record): string => $record->authors
                     ->pluck('reference_key')
                     ->implode('|')),
-            ExportColumn::make('transcript_markdown')
-                ->label(__('admin.fields.transcript_markdown'))
-                ->enabledByDefault(false)
-                ->formatStateUsing(fn (mixed $state): ?string => self::safeSpreadsheetText($state)),
             ExportColumn::make('created_at')
                 ->label(__('admin.fields.created_at'))
                 ->enabledByDefault(false),

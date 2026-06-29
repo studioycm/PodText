@@ -95,11 +95,11 @@ it('renders a published group page with sanitized description and published item
         'description_markdown' => "Safe **description**\n\n<script>alert('x')</script>",
     ]);
     $author = Author::factory()->create(['name' => 'Visible Author']);
-    $publishedItem = ContentItem::factory()->for($group)->published()->create([
+    $publishedItem = ContentItem::factory()->for($group)->published()->withTranscription()->create([
         'title' => 'Published Item',
         'slug' => 'published-item',
     ]);
-    $draftItem = ContentItem::factory()->for($group)->create([
+    $draftItem = ContentItem::factory()->for($group)->withTranscription()->create([
         'title' => 'Draft Item',
         'slug' => 'draft-item',
     ]);
@@ -126,8 +126,8 @@ it('returns not found for draft and future group pages', function (): void {
 
 it('sorts items on a group page', function (): void {
     $group = ContentGroup::factory()->published()->create();
-    $alpha = ContentItem::factory()->for($group)->published(now()->subDays(2))->create(['title' => 'Alpha Item']);
-    $beta = ContentItem::factory()->for($group)->published(now()->subDay())->create(['title' => 'Beta Item']);
+    $alpha = ContentItem::factory()->for($group)->published(now()->subDays(2))->withTranscription()->create(['title' => 'Alpha Item']);
+    $beta = ContentItem::factory()->for($group)->published(now()->subDay())->withTranscription()->create(['title' => 'Beta Item']);
 
     Livewire::test(ContentItemBrowser::class, ['contentGroup' => $group])
         ->set('sort', 'newest')
@@ -144,11 +144,12 @@ it('renders a published item page with authors sanitized markdown and approved e
         'slug' => 'parent-group',
     ]);
     $authors = Author::factory()->count(2)->create();
-    $item = ContentItem::factory()->for($group)->published()->create([
+    $item = ContentItem::factory()->for($group)->published()->withTranscription([
+        'transcript_markdown' => "## Transcript\n\nשלום <script>alert('x')</script>",
+    ])->create([
         'title' => 'Published Item',
         'slug' => 'published-item',
         'description_markdown' => 'Item **description** <img src=x onerror=alert(1)>',
-        'transcript_markdown' => "## Transcript\n\nשלום <script>alert('x')</script>",
         'media_url' => 'https://example.com/media/item',
         'embed_url' => 'https://www.youtube.com/embed/demo',
         'duration_seconds' => 125,
@@ -174,9 +175,9 @@ it('renders a published item page with authors sanitized markdown and approved e
 it('returns not found for draft future and draft-parent item pages', function (): void {
     $publishedGroup = ContentGroup::factory()->published()->create(['slug' => 'published-parent']);
     $draftGroup = ContentGroup::factory()->create(['slug' => 'draft-parent']);
-    $draft = ContentItem::factory()->for($publishedGroup)->create(['slug' => 'draft-item']);
-    $future = ContentItem::factory()->for($publishedGroup)->published(now()->addDay())->create(['slug' => 'future-item']);
-    $underDraftGroup = ContentItem::factory()->for($draftGroup)->published()->create(['slug' => 'under-draft-group']);
+    $draft = ContentItem::factory()->for($publishedGroup)->withTranscription()->create(['slug' => 'draft-item']);
+    $future = ContentItem::factory()->for($publishedGroup)->published(now()->addDay())->withTranscription()->create(['slug' => 'future-item']);
+    $underDraftGroup = ContentItem::factory()->for($draftGroup)->published()->withTranscription()->create(['slug' => 'under-draft-group']);
 
     $this->get("/items/{$publishedGroup->slug}/{$draft->slug}")->assertNotFound();
     $this->get("/items/{$publishedGroup->slug}/{$future->slug}")->assertNotFound();
@@ -185,12 +186,12 @@ it('returns not found for draft future and draft-parent item pages', function ()
 
 it('falls back to the source media link when embed is missing or unapproved', function (): void {
     $group = ContentGroup::factory()->published()->create(['slug' => 'media-group']);
-    $withoutEmbed = ContentItem::factory()->for($group)->published()->create([
+    $withoutEmbed = ContentItem::factory()->for($group)->published()->withTranscription()->create([
         'slug' => 'without-embed',
         'media_url' => 'https://example.com/media/without-embed',
         'embed_url' => null,
     ]);
-    $unapprovedEmbed = ContentItem::factory()->for($group)->published()->create([
+    $unapprovedEmbed = ContentItem::factory()->for($group)->published()->withTranscription()->create([
         'slug' => 'unapproved-embed',
         'media_url' => 'https://example.com/media/unapproved-embed',
         'embed_url' => 'https://unapproved.example/embed',

@@ -30,11 +30,11 @@ class ContentItemBrowser extends Component
         return $this->contentGroup
             ->contentItems()
             ->published()
-            ->with(['authors', 'contentGroup'])
+            ->with(['authors', 'contentGroup', 'featuredTranscription', 'latestPublishedTranscription'])
             ->when(
                 $this->normalizedSort() === 'title',
                 fn (Builder $query): Builder => $query->orderBy('title')->orderBy('id'),
-                fn (Builder $query): Builder => $query->orderByDesc('published_at')->orderByDesc('id'),
+                fn (Builder $query): Builder => $query->orderByEffectiveTranscriptionPublishedAt(),
             )
             ->get();
     }

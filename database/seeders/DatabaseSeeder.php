@@ -5,6 +5,7 @@ namespace Database\Seeders;
 use App\Models\Author;
 use App\Models\ContentGroup;
 use App\Models\ContentItem;
+use App\Models\Transcription;
 use Illuminate\Database\Seeder;
 
 class DatabaseSeeder extends Seeder
@@ -44,26 +45,47 @@ class DatabaseSeeder extends Seeder
             'description_markdown' => 'מבוא קצר לתהליך העבודה.',
             'media_url' => 'https://example.com/media/hebrew-transcription-start',
             'duration_seconds' => 1840,
-            'transcript_markdown' => "## פתיחה\n\nשָׁלוֹם וברוכים הבאים.\n\nזהו תמלול לדוגמה עם **Markdown**.",
             'original_published_at' => now()->subDays(12),
         ]);
 
         $publishedItem->authors()->attach([$host->id, $guest->id]);
+        $publishedTranscription = Transcription::factory()
+            ->for($publishedItem)
+            ->forAuthor($host)
+            ->published($publishedItem->published_at)
+            ->create([
+                'title' => $publishedItem->title,
+                'transcript_markdown' => "## פתיחה\n\nשָׁלוֹם וברוכים הבאים.\n\nזהו תמלול לדוגמה עם **Markdown**.",
+            ]);
+        $publishedItem->update(['featured_transcription_id' => $publishedTranscription->id]);
 
-        ContentItem::factory()->for($publishedGroup)->create([
+        $draftItem = ContentItem::factory()->for($publishedGroup)->create([
             'title' => 'פרק בטיוטה',
             'slug' => 'draft-item',
             'description_markdown' => 'פרק שאינו גלוי עדיין.',
             'media_url' => 'https://example.com/media/draft-item',
-            'transcript_markdown' => 'תוכן בטיוטה.',
         ]);
+        Transcription::factory()
+            ->for($draftItem)
+            ->forAuthor($host)
+            ->create([
+                'title' => $draftItem->title,
+                'transcript_markdown' => 'תוכן בטיוטה.',
+            ]);
 
-        ContentItem::factory()->for($publishedGroup)->published(now()->addWeek())->create([
+        $futureItem = ContentItem::factory()->for($publishedGroup)->published(now()->addWeek())->create([
             'title' => 'פרק עתידי',
             'slug' => 'future-item',
             'description_markdown' => 'פרק מתוזמן לעתיד.',
             'media_url' => 'https://example.com/media/future-item',
-            'transcript_markdown' => 'תוכן שיתפרסם בעתיד.',
         ]);
+        Transcription::factory()
+            ->for($futureItem)
+            ->forAuthor($guest)
+            ->published($futureItem->published_at)
+            ->create([
+                'title' => $futureItem->title,
+                'transcript_markdown' => 'תוכן שיתפרסם בעתיד.',
+            ]);
     }
 }

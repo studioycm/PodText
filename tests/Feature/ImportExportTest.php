@@ -187,7 +187,6 @@ it('imports content items with group and author relationships', function (): voi
         'media_url' => 'https://example.com/media/imported-item',
         'embed_url' => 'https://www.youtube.com/embed/imported-item',
         'duration_seconds' => '125',
-        'transcript_markdown' => "## תמלול\n\nשורה ראשונה\nשורה שנייה",
         'original_published_at' => '2026-01-01 09:00:00',
         'status' => PublicationStatus::Published->value,
         'published_at' => '2026-01-01 10:00:00',
@@ -201,7 +200,6 @@ it('imports content items with group and author relationships', function (): voi
         ->title->toBe('Imported Item')
         ->duration_seconds->toBe(125)
         ->status->toBe(PublicationStatus::Published)
-        ->transcript_markdown->toBe("## תמלול\n\nשורה ראשונה\nשורה שנייה")
         ->and($item->authors()->pluck('authors.reference_key')->all())
         ->toEqualCanonicalizing($authors->pluck('reference_key')->all());
 });
@@ -345,8 +343,8 @@ it('defines expected export columns and disables large optional content by defau
     ])
         ->and($groupColumns->map->getName()->all())->toContain('description_markdown', 'cover_path')
         ->and($groupColumns->first(fn ($column): bool => $column->getName() === 'description_markdown')->isEnabledByDefault())->toBeFalse()
-        ->and($itemColumns->map->getName()->all())->toContain('content_group_reference_key', 'author_reference_keys', 'transcript_markdown')
-        ->and($itemColumns->first(fn ($column): bool => $column->getName() === 'transcript_markdown')->isEnabledByDefault())->toBeFalse();
+        ->and($itemColumns->map->getName()->all())->toContain('content_group_reference_key', 'author_reference_keys')
+        ->and($itemColumns->map->getName()->all())->not->toContain('transcript_markdown');
 });
 
 it('exports relationship reference keys and escapes spreadsheet formula text', function (): void {

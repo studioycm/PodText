@@ -17,14 +17,36 @@ use App\Models\Author;
 use App\Models\ContentGroup;
 use App\Models\ContentItem;
 use App\Models\User;
+use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
+use Livewire\Features\SupportTesting\Testable;
 use Livewire\Livewire;
 
 uses(RefreshDatabase::class);
 
 beforeEach(function (): void {
+    Filament::setCurrentPanel(Filament::getPanel('admin'));
+    Testable::macro('fillForm', function (array|Closure $state = [], ?string $form = null): Testable {
+        if ($state instanceof Closure) {
+            $state = $state([]);
+        }
+
+        $schemaStatePath = 'data';
+
+        if (method_exists($this->instance(), 'getDefaultTestingSchemaName')) {
+            $form ??= $this->instance()->getDefaultTestingSchemaName();
+            $schemaStatePath = $this->instance()->{$form}->getStatePath();
+        }
+
+        foreach ($state as $key => $value) {
+            $this->set(filled($schemaStatePath) ? "{$schemaStatePath}.{$key}" : $key, $value);
+        }
+
+        return $this;
+    });
+
     $this->actingAs(User::factory()->create());
 });
 
@@ -293,7 +315,6 @@ it('creates and edits content items with authors, labels, embed validation, and 
             'embed_url' => 'https://www.youtube.com/embed/demo',
             'duration_seconds' => 123,
             'authors' => $authors->pluck('id')->all(),
-            'transcript_markdown' => "שלום\n\n**טקסט**",
             'status' => PublicationStatus::Published,
             'published_at' => now()->subMinute(),
             'original_published_at' => now()->subDay(),
@@ -320,7 +341,6 @@ it('creates and edits content items with authors, labels, embed validation, and 
             'embed_url' => 'https://player.vimeo.com/video/123',
             'duration_seconds' => 456,
             'authors' => [$authors->first()->id],
-            'transcript_markdown' => 'Updated transcript',
             'status' => PublicationStatus::Draft,
             'published_at' => null,
             'original_published_at' => null,

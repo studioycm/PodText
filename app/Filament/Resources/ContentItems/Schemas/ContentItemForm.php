@@ -90,14 +90,6 @@ class ContentItemForm
                             ->preload(),
                     ])
                     ->columns(2),
-                Section::make(__('admin.sections.transcript'))
-                    ->schema([
-                        MarkdownEditor::make('transcript_markdown')
-                            ->label(__('admin.fields.transcript_markdown'))
-                            ->disableToolbarButtons(['attachFiles'])
-                            ->fileAttachments(false)
-                            ->columnSpanFull(),
-                    ]),
                 Section::make(__('admin.sections.publication'))
                     ->schema([
                         Select::make('status')
