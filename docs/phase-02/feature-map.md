@@ -17,6 +17,7 @@
 - Prompt 07 already ran and was committed as `7edb82d feat: add transcription model revision`.
 - The inspected local database has not applied the new Prompt 07 migrations yet.
 - Prompt 08 is the next implementation prompt only after this post-Prompt-07 documentation sync is reviewed and Prompt 07 quality status is understood.
+- Admin Resource/Relation Manager research was added as a pre-Prompt-08 docs-only refinement for Prompt 09.
 - Do not run Prompt 08 from this documentation sync task.
 
 ## Non-Negotiable Semantics
@@ -64,6 +65,10 @@ Do not install Shield in Phase 02 planning. Use these names for future authoriza
 - Prompt 07: `blueprints/07-transcriptions-model-revision-blueprint.md`
 - Prompt 08: `blueprints/08-taxonomy-tags-pinning-settings-media-foundation-blueprint.md`
 - Prompt 09: `blueprints/09-admin-content-management-blueprint.md`
+  - Admin Resource UX includes researched relation manager patterns from `docs/research/filament-examples-admin-resource-relation-managers.md`.
+  - `ContentItemResource` should add `TranscriptionsRelationManager` as the primary item-scoped transcript editing surface.
+  - `EditContentItem` should use combined item details/relation manager tabs when Prompt 09 implements the admin UX.
+  - Standalone Resource create/edit pages should use the researched redirect behavior, while relation manager create/edit actions stay on the owner item edit page.
 - Prompt 10: `blueprints/10-import-export-blueprint.md`
 - Prompt 11: `blueprints/11-public-homepage-search-blueprint.md`
 - Prompt 12: `blueprints/12-public-item-page-media-parser-blueprint.md`

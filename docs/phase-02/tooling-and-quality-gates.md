@@ -70,12 +70,16 @@ Final verification must use full `vendor/bin/filacheck`.
 - Deprecated Filament APIs.
 - Wrong namespaces such as action classes outside `Filament\Actions`.
 - Deprecated Filament test methods.
+- Deprecated or incorrect Filament relation manager APIs.
 - Confusing record actions and bulk actions.
 - Relationship selects missing `->searchable()`.
 - Tables without searchable text columns.
 - Missing table filters for status/category/tag/content group.
 - Custom filters without active indicators.
 - Query work inside table/card closures causing N+1 behavior.
+- Relation manager table closures that query owner or child relationships repeatedly instead of eager-loading or using `modifyQueryUsing()`.
+- Relation manager tab badges that run expensive counts synchronously without a documented reason.
+- Relation manager actions that use hard-coded admin route names instead of Resource URL helpers.
 - Widget polling enabled without a need.
 - File uploads without accepted file types and max size.
 - String icons instead of `Filament\Support\Icons\Heroicon` enum icons.

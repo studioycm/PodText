@@ -19,6 +19,7 @@ Implement admin management for Phase 02 models and fields created by Prompts 07 
 ## Blueprint and guidelines
 
 - `docs/phase-02/blueprints/09-admin-content-management-blueprint.md`
+- `docs/research/filament-examples-admin-resource-relation-managers.md`
 - `.ai/guidelines/transcriptions.md`
 - `.ai/guidelines/taxonomy-tags.md`
 - `.ai/guidelines/settings-dashboard.md`
@@ -83,6 +84,26 @@ No public homepage/search, item page rebuild, import/export, dashboards, or stud
 
 Use Boost docs, Filament Blueprint, FilamentExamples MCP, FilaCheck, and FilaCheck Pro. Do not install new packages unless already approved by Prompt 08.
 
+## Relation manager and Resource UX research contract
+
+Before implementing admin Resources, read:
+
+- `docs/research/filament-examples-admin-resource-relation-managers.md`
+- `docs/phase-02/blueprints/09-admin-content-management-blueprint.md`
+
+Required:
+
+- Implement the researched `ContentItemResource\RelationManagers\TranscriptionsRelationManager` plan unless the blueprint marks it deferred.
+- Keep standalone `TranscriptionResource` for global search/filtering and use the item relation manager as the primary item-scoped transcript editing surface.
+- Use the researched decision for combined content/relation tabs on `EditContentItem`.
+- Use the researched tab label, icon, badge, and badge-deferral guidance.
+- Use the researched redirect behavior for standalone Create/Edit pages.
+- Keep relation manager create/edit actions on the owner item edit page.
+- Use Resource URLs, not hard-coded route names.
+- Do not use a Repeater for full transcript Markdown.
+- Treat a dedicated `ManageRelatedRecords` page as future optional unless implementation proves the relation manager is insufficient.
+- Include a Blueprint completion checklist section for relation managers, combined tabs, redirects, create-another behavior, and relation-page/repeater decisions.
+
 ## Implementation plan
 
 1. Write Resource smoke and validation tests.
@@ -97,7 +118,7 @@ Admins can manage transcriptions, categories, tags, homepage sections/settings, 
 
 ## Required tests
 
-Resource smoke, create/edit validation, feature transcription action, pin controls, category/tag assignment, settings management, and admin access protection.
+Resource smoke, create/edit validation, feature transcription action, `ContentItemResource` transcriptions relation manager rendering/create/edit/filtering/owner scoping, combined content/relation tabs, standalone create/edit redirects, disabled create-another behavior where specified, relation manager create/edit staying on the owner item edit page, pin controls, category/tag assignment, settings management, and admin access protection.
 
 ## Required quality gate
 

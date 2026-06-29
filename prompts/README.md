@@ -14,6 +14,10 @@ Run prompts sequentially. The current active sequence is:
 
 Historical prompts are under `prompts/archive/` and are not active instructions.
 
+## Pre-Prompt-08 research note
+
+`prompts/admin-relation-manager-research/00-overview.md` is a docs-only refinement task for Prompt 09 admin Resource and Relation Manager UX. It does not change the active prompt order. Prompt 08 remains the next implementation prompt after review.
+
 ## Blueprint usage rule
 
 Every implementation prompt must treat its referenced blueprint as the detailed implementation contract.

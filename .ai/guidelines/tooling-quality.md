@@ -16,6 +16,7 @@ Every implementation prompt uses Boost where available, reads its blueprint, che
 - Run full final quality gate.
 - Record FilaCheck/FilaCheck Pro output.
 - Preserve cross-cutting form, locale, and dashboard requirements from active specs/guidelines.
+- Use current Filament 5 relation-manager APIs for relation manager work.
 
 ## Do not
 
@@ -46,6 +47,8 @@ npm run build
 - Local iteration may use `vendor/bin/filacheck --dirty`.
 - Final verification uses full `vendor/bin/filacheck`.
 - FilaCheck/FilaCheck Pro must pass; do not run `filacheck --fix` unless explicitly approved.
+- If a prompt uses combined relation tabs with content, use the official Filament method names for the installed version.
+- Prompt 09 final reports must state whether combined tabs, relation manager badges, redirect behavior, and create-another behavior were implemented.
 
 ## Cross-cutting UI rules
 
