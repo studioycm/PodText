@@ -40,6 +40,17 @@ Guest Filament Public panel with custom Pages, class-based Livewire for server-d
 - Avoid table/card closures that query relationships.
 - Ensure searchable text columns exist.
 - Avoid deprecated Filament methods/namespaces.
+- FilaCheck/FilaCheck Pro must pass; do not run `filacheck --fix` unless explicitly approved.
+
+## Cross-cutting UI rules
+
+- Slug fields, where present in admin surfaces feeding public pages, should auto-generate from title/name fields but allow manual override.
+- Technical fields must have helper text, hints, or descriptions in admin forms.
+- Date/date-time UI should use Hebrew/Israel locale behavior: `dd/mm/yyyy` for dates and `dd/mm/yyyy HH:mm` for date-times.
+- Store dates normally with Laravel, but display/input date-times in the `Asia/Jerusalem` UI timezone.
+- Public and admin table date columns must use day-first format.
+- Use translation keys for labels, hints, helper text, and date labels.
+- Admin dashboard widgets should include available public-content editorial metrics and avoid polling unless needed.
 
 ## Related active docs
 

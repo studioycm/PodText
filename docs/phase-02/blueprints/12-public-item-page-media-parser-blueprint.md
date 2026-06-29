@@ -17,6 +17,12 @@ Rules:
 - load other published transcriptions;
 - draft transcriptions hidden.
 
+Layout defaults:
+
+- Desktop: header/meta at the top, sticky player in a side/top area, transcript in a readable main column.
+- Mobile: sticky player at the top, transcript below.
+- Public date/date-time displays use Hebrew/Israel day-first formatting and `Asia/Jerusalem` UI timezone.
+
 ## Media Component
 
 Update existing Blade component `resources/views/components/public/media-embed.blade.php`.
@@ -63,6 +69,8 @@ Use Blade and Alpine for local-only controls:
 
 No player sync.
 
+Copy link to timestamp, request this episode, and report correction are later work unless explicitly added by a future prompt.
+
 ## Tests
 
 - Approved embed rendered.
@@ -71,6 +79,14 @@ No player sync.
 - Effective transcription default.
 - Other published transcription tabs/selector.
 - Parser single-line and multi-line patterns.
+- Parse `[00:01:23] Speaker: Transcript text`.
+- Parse `[00:01:23] Speaker:\nTranscript text...`.
+- Fallback to safe Markdown if parsing fails.
+- Render timestamp anchors.
+- Show/hide timestamp preference.
+- Show/hide speaker preference.
+- Confirm no player sync is implemented.
+- Timestamp displays are direction-safe in Hebrew RTL layout.
 - XSS safe transcript rendering.
 - Viewer controls render with RTL-safe markup.
 

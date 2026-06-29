@@ -9,6 +9,18 @@ Implement categories, Spatie content tags, item pinning, settings, homepage sect
 - Prompt 07 is complete and committed.
 - Spatie Tags, the Filament Spatie Tags plugin, Spatie Settings, and the Filament Spatie Settings plugin are approved for this implementation prompt. If absent, this prompt owns adding them; do not ask for package approval again.
 
+## Required preflight before implementation
+
+Before installing packages or adding schema, verify and report:
+
+- `App\Models\Transcription` exists and the `transcriptions` table migration exists.
+- `ContentItem` effective/main transcription API exists.
+- `content_items.featured_transcription_id` behavior is implemented or documented as missing.
+- Public visibility now requires an effective/main published transcription.
+- Prompt 07 tests pass in the current checkout.
+
+If Prompt 07 is incomplete, its migrations are missing, or its tests fail, stop and report instead of implementing Prompt 08.
+
 ## Docs to read
 
 - `AGENTS.md`
@@ -33,6 +45,16 @@ Implement categories, Spatie content tags, item pinning, settings, homepage sect
 - Spatie Settings foundation.
 - Homepage section model.
 - Media metadata fields on `ContentItem`.
+
+## Form and locale requirements
+
+- Category slug fields must auto-generate from category name while allowing manual override.
+- Homepage section slug fields must auto-generate from section name/title while allowing manual override.
+- Any new model with slug/reference key fields must provide helper text.
+- All date/date-time fields introduced in Prompt 08 must be displayed and edited with Israel/Hebrew locale expectations and day-first formatting.
+- Use `dd/mm/yyyy` for dates and `dd/mm/yyyy HH:mm` for date-times unless the docs/blueprint define another day-first Israeli format.
+- Pin fields such as `pinned_at` and `pinned_until` should use `Asia/Jerusalem` for UI display/input while storing dates normally through Laravel.
+- Technical/system fields should be grouped under an "Advanced" or "Technical details" section where practical, with helper text.
 
 ## Out of scope
 

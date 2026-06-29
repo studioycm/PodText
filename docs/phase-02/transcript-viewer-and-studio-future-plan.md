@@ -19,6 +19,17 @@ Transcript text...
 
 Parser output is derived from `Transcription::transcript_markdown`. Markdown remains canonical. Parser failure falls back to safe Markdown rendering.
 
+Required parser/viewer tests:
+
+- parse `[00:01:23] Speaker: Transcript text`;
+- parse `[00:01:23] Speaker:\nTranscript text...`;
+- fallback to safe Markdown if parsing fails;
+- render timestamp anchors;
+- show/hide timestamp preference;
+- show/hide speaker preference;
+- confirm no player sync is implemented.
+- ensure timestamp displays are direction-safe in Hebrew RTL layout.
+
 ## Viewer Now
 
 Prompt 12 may add:

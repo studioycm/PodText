@@ -1,14 +1,16 @@
 # Prompt 07: Phase 02 Transcriptions Model Revision
 
+Status: already run and committed as `7edb82d feat: add transcription model revision`. Keep for historical/reference. Do not run again unless explicitly asked.
+
 ## Goal
 
 Implement the child `Transcription` domain model and effective/main transcription rules.
 
-## Current state assumptions
+## State assumptions when this prompt ran
 
 - Prompt 06R planning pack has been reviewed.
-- Current transcripts still live on `content_items.transcript_markdown`.
-- No taxonomy, tags, pinning, homepage search, dashboards, or studio work is implemented in this prompt.
+- At the time this prompt ran, current transcripts still lived on `content_items.transcript_markdown`.
+- This prompt did not implement taxonomy, tags, pinning, homepage search, dashboards, or studio work.
 
 ## Docs to read
 

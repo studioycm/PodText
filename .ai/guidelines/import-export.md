@@ -42,6 +42,17 @@ Native Filament Importer/Exporter classes with portable reference keys and faile
 
 - Use `Filament\Actions\ImportAction`, `ExportAction`, and `ExportBulkAction`.
 - Bulk export should deselect records after completion where supported.
+- FilaCheck/FilaCheck Pro must pass; do not run `filacheck --fix` unless explicitly approved.
+
+## Cross-cutting UI rules
+
+- Slug fields should auto-generate from title/name fields in admin forms but allow manual override.
+- Technical import/export fields such as reference keys, provider IDs, external IDs, metadata, and file references must have helper text, hints, or descriptions.
+- Date/date-time UI and import/export presentation should use Hebrew/Israel locale behavior: `dd/mm/yyyy` for dates and `dd/mm/yyyy HH:mm` for date-times.
+- Store dates normally with Laravel, but display/input date-times in the `Asia/Jerusalem` UI timezone.
+- Public and admin table date columns must use day-first format.
+- Use translation keys for labels, hints, helper text, and date labels.
+- Admin dashboard widgets should include available import/export editorial metrics when useful and avoid polling unless needed.
 
 ## Related active docs
 

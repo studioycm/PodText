@@ -24,6 +24,18 @@ Implement lightweight editorial dashboard metrics.
 
 Stats and table widgets for editorial counts and warning lists.
 
+Metrics that are already available from the current schema should be shown as admin dashboard widgets as early as this prompt. If some metrics require schema from Prompt 08 or later, mark them as "available after Prompt X" in implementation notes and tests.
+
+Initial dashboard widgets should include all currently available editorial counts. Extend widgets for Prompt 08+ schema where the schema exists.
+
+Dashboard date displays should use Israel/Hebrew day-first formatting:
+
+- dates: `dd/mm/yyyy`;
+- date-times: `dd/mm/yyyy HH:mm`;
+- UI timezone: `Asia/Jerusalem`.
+
+Dashboard widgets should not poll unless needed. Dashboard links should use Filament Resource URLs.
+
 ## Out of scope
 
 No analytics, search logging, observability, retry dashboards, custom activity logs, or public UI changes.

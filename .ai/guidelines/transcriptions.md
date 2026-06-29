@@ -40,6 +40,17 @@ Keep transcript content in `Transcription` child records while public listings r
 
 - Enum columns shown in Filament should use label/color contracts.
 - Avoid N+1 when listing effective transcription metadata.
+- FilaCheck/FilaCheck Pro must pass; do not run `filacheck --fix` unless explicitly approved.
+
+## Cross-cutting UI rules
+
+- Slug fields, where present, should auto-generate from title/name fields but allow manual override.
+- Technical fields such as reference keys, featured transcription selectors, language codes, parser JSON, and derived counts must have helper text, hints, or descriptions.
+- Date/date-time UI should use Hebrew/Israel locale behavior: `dd/mm/yyyy` for dates and `dd/mm/yyyy HH:mm` for date-times.
+- Store dates normally with Laravel, but display/input date-times in the `Asia/Jerusalem` UI timezone.
+- Public and admin table date columns must use day-first format.
+- Use translation keys for labels, hints, helper text, and date labels.
+- Admin dashboard widgets should include available editorial transcription metrics and avoid polling unless needed.
 
 ## Related active docs
 

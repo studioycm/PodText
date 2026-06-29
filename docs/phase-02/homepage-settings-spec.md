@@ -14,6 +14,13 @@ Suggested settings:
 - show/hide latest section;
 - media embed display behavior.
 
+Homepage settings may include date/date-time presentation defaults only if needed. The app-wide UI default remains Hebrew/Israel day-first formatting: `dd/mm/yyyy` for dates and `dd/mm/yyyy HH:mm` for date-times, presented in `Asia/Jerusalem` while storing dates normally through Laravel.
+
+The item page layout setting should support the default public UX layouts:
+
+- desktop: header/meta at top, sticky player in side/top area, transcript in a readable main column;
+- mobile: sticky player at top, transcript below.
+
 ## Homepage Sections
 
 Use normal database records for ordered visible homepage sections when dynamic sections are required.
@@ -31,6 +38,8 @@ Suggested `homepage_sections` fields:
 - `is_visible`
 
 Supported section types should be explicit finite values, such as latest, category, tag, group, and curated query.
+
+Admin-managed homepage section slug fields must auto-generate from the section name/title, allow manual override, and include helper text explaining URL/public use.
 
 ## Group Homepage Order
 

@@ -2,16 +2,22 @@
 
 ## Corrected Build Order
 
-1. Prompt 06R: reset research, specs, guidelines, prompts, and blueprints only.
-2. Prompt 07: transcriptions model revision.
-3. Prompt 08: categories, Spatie tags, item pinning, settings, and media field foundation.
-4. Prompt 09: admin management for transcriptions/categories/tags/pinning/settings/media fields.
-5. Prompt 10: import/export for finalized Phase 02 schema.
-6. Prompt 11: public homepage/search/category/tag landing pages.
-7. Prompt 12: public item page, safe media player rendering, transcription tabs, timestamp parser, and viewer hide/show preferences.
-8. Prompt 13: editorial dashboard metrics.
-9. Prompt 14: future sync viewer and transcription studio plan only.
-10. Prompt 15: Filament Blueprint security audit after implementation.
+1. Prompt 07: transcriptions model revision.
+2. Prompt 08: taxonomy, tags, pinning, settings, and media foundation.
+3. Prompt 09: admin content management.
+4. Prompt 10: import/export.
+5. Prompt 11: public homepage/search.
+6. Prompt 12: item page, media, and parser.
+7. Prompt 13: dashboard metrics.
+8. Prompt 14: future viewer/studio plan.
+9. Prompt 15: security audit.
+
+## Current Progress
+
+- Prompt 07 already ran and was committed as `7edb82d feat: add transcription model revision`.
+- The inspected local database has not applied the new Prompt 07 migrations yet.
+- Prompt 08 is the next implementation prompt only after this post-Prompt-07 documentation sync is reviewed and Prompt 07 quality status is understood.
+- Do not run Prompt 08 from this documentation sync task.
 
 ## Non-Negotiable Semantics
 
@@ -27,6 +33,15 @@
 - Tags use Spatie tags, scoped to type `content`, with enabled-only public visibility.
 - Media fields are founded before import/export is revised.
 - Prompt 14 is future planning only.
+
+## Cross-Cutting Admin Form Rules
+
+- Slug fields should auto-generate from the relevant title/name field using current Filament v5 patterns, while allowing manual override.
+- Date and date-time form fields, table columns, and public displays should use Hebrew/Israel day-first formatting: `dd/mm/yyyy` for dates and `dd/mm/yyyy HH:mm` for date-times.
+- UI date/time presentation should use `Asia/Jerusalem`; store dates using Laravel's normal date storage conventions.
+- Technical/system fields such as slugs, reference keys, provider IDs, external IDs, metadata JSON, pin fields, and featured transcription selectors must include helper text, hints, or descriptions.
+- Labels, helper text, hints, section headings, validation messages, and sort/date labels should use translation keys.
+- Admin dashboard widgets should show editorial metrics already available from the current schema, and later prompts should extend the widgets as more schema becomes available.
 
 ## Future Ability Names
 

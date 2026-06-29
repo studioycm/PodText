@@ -27,13 +27,28 @@ Missing category or tag references must create failed rows by default. Do not si
 
 ## Transcript Files
 
-Imports may support approved `.md`/`.txt` transcript file references. Imported transcript content creates or updates `Transcription` records. It must not write to legacy `ContentItem::transcript_markdown`.
+- CSV may include a `transcript_file` column only if the blueprint defines the approved import package structure for locating those files.
+- Allowed transcript file extensions are `.md` and `.txt`.
+- Missing referenced transcript files fail the row.
+- Imported transcript file content creates or updates `Transcription` records.
+- Imported transcript file content must never write to legacy `ContentItem::transcript_markdown`.
+- `transcript_markdown` CSV content, if supported, also creates or updates `Transcription` records and never writes to the legacy item field.
+
+## Date Handling
+
+- Imported date fields should accept day-first `dd/mm/yyyy` where appropriate and normalize to Laravel date storage.
+- Imported date-time fields should accept day-first `dd/mm/yyyy HH:mm` where appropriate.
+- Exported date fields should use `dd/mm/yyyy`.
+- Exported date-time fields should use `dd/mm/yyyy HH:mm`.
+- UI/import/export timezone presentation should use `Asia/Jerusalem` unless a field is explicitly documented as timezone-neutral.
 
 ## Security
 
 - Continue formula-injection protection.
 - Continue failed-row output.
 - Treat missing categories, missing tags, disabled public tags, and wrong tag types as validation failures with failed-row output.
+- Missing categories fail the row by default.
+- Missing tags fail the row by default unless a future import option explicitly creates disabled content tags with tests.
 - Do not fetch remote covers/media.
 - Use portable identifiers, not numeric IDs.
 

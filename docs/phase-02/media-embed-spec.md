@@ -18,6 +18,10 @@ Fields on `content_items`:
 - `media_metadata`
 - `direct_media_url`, nullable
 
+Media provider, external ID, external published date, and metadata fields are technical fields. Admin forms must provide helper text/hints for these fields and should group `embed_provider`, `external_id`, `media_metadata`, and similar provider metadata in an Advanced or Technical details section where practical.
+
+`external_published_at` should display and accept Israel/Hebrew day-first date-time format in UI (`dd/mm/yyyy HH:mm`, `Asia/Jerusalem`) even though it is stored normally through Laravel.
+
 ## Security
 
 - Store URLs and metadata only.

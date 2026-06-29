@@ -27,9 +27,9 @@ Transcription importer:
 - `title`: nullable max 255.
 - `language_code`: required max 10 default he.
 - `transcript_markdown`: nullable unless transcript file path is blank.
-- `transcript_file`: nullable `.md` or `.txt` approved import package reference.
+- `transcript_file`: nullable `.md` or `.txt` approved import package reference; allowed only when the approved import package structure defines how referenced files are located.
 - `status`: nullable enum.
-- `published_at`: nullable date.
+- `published_at`: nullable date; accept day-first `dd/mm/yyyy` or `dd/mm/yyyy HH:mm` where appropriate.
 
 Category importer:
 
@@ -43,6 +43,11 @@ Content item importer additions:
 - content tag slugs.
 - featured transcription reference key after transcription rows exist.
 - missing category or content tag references fail the row by default; do not silently create them.
+- missing transcript files fail the row.
+- transcript file content creates/updates `Transcription` records and never writes to legacy `ContentItem` transcript fields.
+- missing categories fail the row by default.
+- missing tags fail the row by default unless a future import option explicitly creates disabled content tags.
+- imported date fields accept day-first `dd/mm/yyyy` and date-time fields accept `dd/mm/yyyy HH:mm` where appropriate, then normalize to Laravel date storage.
 
 ## Export Columns
 
@@ -54,6 +59,14 @@ Portable identifiers only:
 - reference keys;
 - slugs/path for categories;
 - typed tag slugs.
+
+Export date presentation:
+
+- dates: `dd/mm/yyyy`;
+- date-times: `dd/mm/yyyy HH:mm`;
+- presentation timezone: `Asia/Jerusalem` unless a field is documented as timezone-neutral.
+
+Technical fields such as reference keys, file references, provider IDs, external IDs, and metadata columns must have clear column descriptions/help text where Filament supports it.
 
 ## Actions
 

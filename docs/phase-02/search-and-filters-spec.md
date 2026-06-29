@@ -16,20 +16,22 @@ Default immediate search:
 
 - item title;
 - content group title;
-- enabled content tags;
-- direct and inherited categories.
+- enabled content tag names;
+- direct and inherited category names.
 
 Deferred/advanced search:
 
-- transcript body;
-- item description;
 - author name;
+- item description;
+- transcript body;
 - speaker names;
-- media metadata;
-- provider;
-- source URL.
+- metadata;
+- external provider;
+- original source URL.
 
 Transcript full-text search is an explicit action/filter mode, not default live search.
+
+Author and provider may remain initial dropdown filters when they are cheap metadata filters. They are not part of the default full-text search surface.
 
 ## Filters
 
@@ -59,6 +61,15 @@ Required sort options:
 - original oldest.
 
 Homepage may apply pinned-first order. Explicit search sort may override pinned-first.
+
+Sort labels must be translation keys and Hebrew-first.
+
+Date range filter inputs and result date displays should use Hebrew/Israel behavior:
+
+- date format: `dd/mm/yyyy`;
+- date-time format: `dd/mm/yyyy HH:mm` where a time is shown;
+- UI timezone: `Asia/Jerusalem`;
+- storage remains Laravel's normal date storage convention.
 
 ## UX
 

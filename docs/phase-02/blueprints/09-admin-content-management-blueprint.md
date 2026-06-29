@@ -9,6 +9,19 @@
 
 ## Resources
 
+## Shared Admin Form Rules
+
+- Slug fields auto-generate from the relevant name/title field using current Filament v5 patterns, preferably live-on-blur / `afterStateUpdated`, and must not overwrite a manually edited slug.
+- Slug labels should be Hebrew-friendly, for example `מזהה כתובת`, with helper text explaining URL use.
+- Technical fields such as `reference_key`, `slug`, provider, `external_id`, metadata JSON, pin fields, language codes, parser JSON, and `featured_transcription_id` need hints, helper text, or descriptions.
+- Group technical/system fields under Advanced or Technical details sections where practical.
+- Date fields use `dd/mm/yyyy`.
+- Date-time fields use `dd/mm/yyyy HH:mm` unless a field-specific doc defines another day-first Israeli format.
+- UI timezone is `Asia/Jerusalem`; dates are stored using Laravel's normal conventions.
+- Admin table date columns also use day-first Israeli/Hebrew format.
+- Use translation keys for labels, helpers, hints, section headings, validation messages, date labels, and sort labels.
+- Check FilamentExamples/Povilas-style slug auto-generation examples through MCP or Boost docs before implementation.
+
 ### `App\Filament\Resources\Transcriptions\TranscriptionResource`
 
 Form fields:
@@ -45,9 +58,13 @@ Use split `Schemas\CategoryForm` and `Tables\CategoriesTable` like existing reso
 
 Fields: parent select, name, slug, description Markdown, visible toggle, sort order.
 
+Slug behavior: auto-generate from `name`, allow manual override, and include helper text.
+
 ### `HomepageSectionResource`
 
 Fields: name, slug, type select, optional relationship selects, limit, sort order, visible toggle.
+
+Slug behavior: auto-generate from `name`, allow manual override, and include helper text.
 
 ## Existing Resources To Modify
 

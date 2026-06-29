@@ -33,6 +33,19 @@ Implement admin management for Phase 02 models and fields created by Prompts 07 
 - Settings page.
 - ContentItem/ContentGroup admin field updates for categories, tags, pinning, featured transcription, and media metadata.
 
+## Admin form requirements
+
+- All slug fields should auto-generate from the relevant name/title field using current Filament v5 patterns, preferably live-on-blur / `afterStateUpdated` behavior, and should not overwrite a manually edited slug.
+- Slug labels should be Hebrew-friendly, for example `מזהה כתובת`, with helper text explaining the value is used in the URL.
+- Technical fields such as `reference_key`, `slug`, `provider`, `external_id`, metadata JSON, pin fields, and `featured_transcription_id` need hints, helper text, or descriptions.
+- Date fields must display and accept `dd/mm/yyyy`.
+- Date-time fields must display and accept `dd/mm/yyyy HH:mm` unless the docs/blueprint define another day-first Israeli format.
+- UI timezone for date/time fields is `Asia/Jerusalem`; store dates using Laravel's normal storage convention.
+- Admin table date columns must also display day-first Israeli/Hebrew format.
+- Use translation keys for all labels, helpers, hints, section headings, and validation messages.
+- Check FilamentExamples/Povilas-style slug auto-generation examples through MCP or Boost docs before implementing slug behavior.
+- Ensure FilaCheck passes on form schemas.
+
 ## Out of scope
 
 No public homepage/search, item page rebuild, import/export, dashboards, or studio.

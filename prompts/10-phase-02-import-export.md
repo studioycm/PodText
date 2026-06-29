@@ -31,6 +31,19 @@ Extend Filament-native import/export to the finalized Phase 02 schema.
 - Prompt 08 media fields on `ContentItem`: `embed_provider`, `media_duration_seconds`, `external_id`, `external_title`, `external_description`, `external_thumbnail_url`, `external_published_at`, `media_metadata`, and `direct_media_url`.
 - Optional approved `.md`/`.txt` transcript file references.
 
+## Transcript file and date behavior
+
+- CSV may include `transcript_file` only if the blueprint defines the approved import package structure.
+- Allowed transcript file extensions are `.md` and `.txt`.
+- Missing referenced transcript files fail the row.
+- Transcript file content creates or updates `Transcription` records.
+- Transcript file content must never write to legacy `ContentItem` transcript fields.
+- Missing categories fail the row by default.
+- Missing tags fail the row by default unless a future import option explicitly creates disabled content tags.
+- Do not use numeric IDs for portable import/export.
+- Imported date fields should accept day-first `dd/mm/yyyy` where appropriate and normalize to Laravel date storage.
+- Exported date fields should use `dd/mm/yyyy`; exported date-time fields should use `dd/mm/yyyy HH:mm`.
+
 ## Out of scope
 
 No custom CSV controllers, retry dashboards, remote media fetching, public UI, dashboards, studio, parser/viewer-only fields, or fields that are not created by Prompts 07-09.

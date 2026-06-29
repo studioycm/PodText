@@ -25,6 +25,8 @@ Base query:
 
 Sort `latest_transcription` by effective/main transcription `published_at`.
 
+Homepage order is one combined pinned-first/latest `ContentItem` list. Default layout may mix pinned cards and latest rows, but all records remain `ContentItem` records.
+
 ## Filament Table Plan
 
 Component:
@@ -36,6 +38,8 @@ Columns:
 
 - `Filament\Tables\Columns\ViewColumn` for item card; Config `->view('filament.tables.columns.public-content-item-card')`.
 - Searchable backing columns: item title, group title, enabled tags, categories.
+- Search result cards use a consistent card grid.
+- Content group badge shows cover image when available and initials/title fallback otherwise.
 
 Filters:
 
@@ -45,6 +49,20 @@ Filters:
 - `Filament\Tables\Filters\SelectFilter` author; searchable/preload.
 - `Filament\Tables\Filters\Filter` date ranges with `Filament\Forms\Components\DatePicker`.
 - `Filament\Tables\Filters\Filter` duration range with `Filament\Forms\Components\TextInput`.
+
+Default text search fields are item title, content group title, enabled tag names, and category names.
+
+Author and provider are cheap metadata dropdown filters, not default full-text search fields.
+
+Transcript body search is explicit/deferred and not default live table search.
+
+Date filters and result date displays use:
+
+- `dd/mm/yyyy` for dates;
+- `dd/mm/yyyy HH:mm` for date-times;
+- `Asia/Jerusalem` UI timezone.
+
+Sort labels must use translation keys and be Hebrew-first.
 
 Filter layout:
 
@@ -58,6 +76,15 @@ Filter layout:
 - `/search` optional alias if needed.
 - `/categories/{categorySlug}`.
 - `/tags/{tagSlug}`.
+
+Category and tag landing pages reuse the same public item-card component as search results.
+
+Required UX:
+
+- search result count;
+- sort dropdown;
+- clear filters;
+- URL-backed search/sort/filter state where practical.
 
 ## Tests
 

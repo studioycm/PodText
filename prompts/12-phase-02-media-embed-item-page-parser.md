@@ -57,7 +57,18 @@ Public item pages render only public items with effective/main transcripts and s
 
 ## Required tests
 
-Embed allow/reject/fallback, draft hiding, effective transcript default, published tabs, parser formats, XSS safety, metadata display, RTL markers.
+Embed allow/reject/fallback, draft hiding, effective transcript default, published tabs, XSS safety, metadata display, RTL markers, and these explicit parser/viewer cases:
+
+- parse `[00:01:23] Speaker: Transcript text`;
+- parse `[00:01:23] Speaker:\nTranscript text...`;
+- fallback to safe Markdown if parsing fails;
+- render timestamp anchors;
+- show/hide timestamp preference;
+- show/hide speaker preference;
+- confirm no player sync is implemented;
+- timestamp displays are direction-safe in Hebrew RTL layout.
+
+Prompt 14 remains only future sync/studio planning.
 
 ## Required quality gate
 

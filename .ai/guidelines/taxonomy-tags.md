@@ -39,6 +39,17 @@ Custom hierarchical `Category` model plus Spatie Laravel Tags with the Filament 
 
 - Relationship selects should be searchable/preloaded.
 - Category/tag tables need searchable name/slug columns and useful filters.
+- FilaCheck/FilaCheck Pro must pass; do not run `filacheck --fix` unless explicitly approved.
+
+## Cross-cutting UI rules
+
+- Slug fields should auto-generate from category/tag title/name fields but allow manual override.
+- Technical fields must have helper text, hints, or descriptions.
+- Date/date-time UI should use Hebrew/Israel locale behavior: `dd/mm/yyyy` for dates and `dd/mm/yyyy HH:mm` for date-times.
+- Store dates normally with Laravel, but display/input date-times in the `Asia/Jerusalem` UI timezone.
+- Public and admin table date columns must use day-first format.
+- Use translation keys for labels, hints, helper text, and date labels.
+- Admin dashboard widgets should include available category/tag metrics and avoid polling unless needed.
 
 ## Related active docs
 

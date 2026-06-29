@@ -8,6 +8,18 @@
 
 Spatie Tags, the Filament Spatie Tags plugin, Spatie Settings, and the Filament Spatie Settings plugin are approved for Phase 02 implementation. If they are absent when Prompt 08 runs, Prompt 08 owns adding them as part of that implementation task. Do not ask for package approval again.
 
+## Prompt 07 Preflight
+
+Before package installation or schema work, verify:
+
+- `App\Models\Transcription` exists and the `transcriptions` table migration exists.
+- `ContentItem` has effective/main transcription APIs.
+- `content_items.featured_transcription_id` behavior is implemented or documented as missing.
+- Public visibility requires an effective/main published transcription.
+- Prompt 07 tests pass in the current checkout.
+
+Stop and report instead of implementing Prompt 08 if this preflight fails.
+
 ## Models
 
 ### `App\Models\Category`
@@ -16,7 +28,7 @@ Fields:
 
 - `parent_id`: nullable FK to categories, null on delete.
 - `name`: string, required.
-- `slug`: string, unique within parent or globally as implementation chooses in tests.
+- `slug`: string, unique within parent or globally as implementation chooses in tests; admin form auto-generates from `name`, allows manual override, and includes helper text.
 - `description_markdown`: nullable text.
 - `is_visible`: boolean default true, index.
 - `sort_order`: integer default 0, index.
@@ -43,6 +55,8 @@ Pinning fields:
 - `pinned_until`: nullable datetime.
 - `pin_order`: unsigned integer nullable.
 
+Pin date/time UI uses `Asia/Jerusalem` and day-first `dd/mm/yyyy HH:mm` display/input while storing dates normally.
+
 Media foundation fields:
 
 - `embed_provider`: nullable string, max 50, index.
@@ -54,6 +68,10 @@ Media foundation fields:
 - `external_published_at`: nullable datetime.
 - `media_metadata`: nullable JSON.
 - `direct_media_url`: nullable string max 2048.
+
+Media provider, external ID, external published date, and metadata fields are technical fields and should be grouped under Advanced/Technical details in Prompt 09 forms with helper text.
+
+`external_published_at` UI uses `Asia/Jerusalem` and `dd/mm/yyyy HH:mm`.
 
 Relationships:
 
@@ -97,7 +115,7 @@ Use typed settings class, for example `App\Settings\PublicContentSettings`:
 Fields:
 
 - `name`: string.
-- `slug`: unique string.
+- `slug`: unique string; admin form auto-generates from `name`, allows manual override, and includes helper text.
 - `type`: string enum-like value.
 - `category_id`, `tag_id`, `content_group_id`: nullable FKs.
 - `limit`: unsigned integer default 6.
@@ -113,6 +131,20 @@ Field examples for Prompt 09:
 - Field: `Filament\Forms\Components\Toggle`, Docs `https://filamentphp.com/docs/5.x/forms/toggle`, Validation `boolean`, Config `->default(false)`.
 - Column: `Filament\Tables\Columns\TextColumn`, Docs `https://filamentphp.com/docs/5.x/tables/columns/text`, Config `->searchable()->sortable()`.
 - Filter: `Filament\Tables\Filters\SelectFilter`, Docs `https://filamentphp.com/docs/5.x/tables/filters/select`, Config `->relationship(...)->searchable()->preload()`.
+
+Form/date requirements for Prompt 09:
+
+- Slug auto-generation should use current Filament v5 live-on-blur / `afterStateUpdated` style patterns and must not overwrite a manually edited slug.
+- Technical fields need helper text, hints, or descriptions.
+- Date format: `dd/mm/yyyy`.
+- Date-time format: `dd/mm/yyyy HH:mm`.
+- UI timezone: `Asia/Jerusalem`.
+- Labels, helpers, hints, section headings, and validation messages use translation keys.
+
+Dashboard metric staging:
+
+- Prompt 13 can show Prompt 07 metrics immediately.
+- Prompt 08 schema enables pinned item, category, tag, media warning, and uncategorized item widgets.
 
 ## Tests
 

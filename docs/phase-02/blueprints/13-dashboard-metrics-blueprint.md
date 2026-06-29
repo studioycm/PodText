@@ -9,6 +9,14 @@
 
 ## Widgets
 
+Dashboard widgets should show all editorial metrics available from the current schema when Prompt 13 runs. If a metric depends on schema from Prompt 08 or later, mark it as "available after Prompt X" in implementation notes and tests.
+
+Availability staging:
+
+- Available after Prompt 07: published items, draft items, content groups, authors, transcription counts, items with multiple transcriptions, missing effective/main transcription, recent items ordered by effective/main transcription date.
+- Available after Prompt 08: pinned items, category count, enabled/disabled tag counts, missing media/embed URL warnings, without category warnings.
+- Available after Prompt 09: Resource URL links for newly created admin Resources.
+
 ### `App\Filament\Widgets\EditorialStats`
 
 Base: `Filament\Widgets\StatsOverviewWidget`.
@@ -24,6 +32,8 @@ Stats:
 - categories;
 - enabled tags.
 
+Also include disabled tags where the tag schema exists.
+
 ### `RecentPublishedItems`
 
 Base: `Filament\Widgets\TableWidget`.
@@ -38,6 +48,12 @@ Columns:
 - status;
 - admin edit link/action.
 
+Date/date-time columns use Hebrew/Israel day-first display:
+
+- dates: `dd/mm/yyyy`;
+- date-times: `dd/mm/yyyy HH:mm`;
+- UI timezone: `Asia/Jerusalem`.
+
 ### `EditorialWarnings`
 
 Base: `Filament\Widgets\TableWidget`.
@@ -49,6 +65,8 @@ Warning modes:
 - without category.
 
 No polling unless explicitly justified.
+
+Dashboard links use Filament Resource URLs. Do not add analytics, search logging, observability, retry dashboards, custom activity logs, or polling unless needed.
 
 ## Tests
 

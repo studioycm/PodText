@@ -12,6 +12,10 @@
 
 Homepage result cards are `ContentItem` records.
 
+The homepage is one combined pinned-first/latest `ContentItem` list. It should not split public results into separate competing record types.
+
+Default layout should use mixed pinned cards and latest rows where appropriate. Search results should use a consistent card grid so filtered and landing-page results feel predictable.
+
 Default combined list order:
 
 1. valid pinned items first;
@@ -25,6 +29,15 @@ No separate pinned result model exists.
 ## Group Badge
 
 Show content group cover image where available. Fallback to initials/title badge.
+
+## Search and Landing Pages
+
+- Show a search result count.
+- Provide a sort dropdown with translation-key labels.
+- Provide clear filters behavior.
+- Category and tag landing pages reuse the same public item-card component as search results.
+- Date/date-time displays on public pages use Hebrew/Israel locale behavior with day-first `dd/mm/yyyy` dates and `dd/mm/yyyy HH:mm` date-times where shown.
+- Public UI date/time presentation uses `Asia/Jerusalem`.
 
 ## Item Page
 
@@ -46,6 +59,18 @@ Prompt 12 implements:
 - author links;
 - copy/share actions;
 - desktop and mobile layout defaults.
+
+Default item page layout:
+
+- Desktop: header/meta at the top, sticky player in a side/top area, and transcript in a readable main column.
+- Mobile: sticky player at the top and transcript below.
+- Timestamp displays should be direction-safe in Hebrew RTL layouts.
+
+Later, not Prompt 12:
+
+- copy link to timestamp;
+- request this episode;
+- report correction.
 
 ## Blueprint
 

@@ -28,6 +28,7 @@ Rules:
 - `ContentItem` can have categories.
 - Public item category set is item categories plus inherited group categories.
 - Parent category filters include descendants.
+- Category slug fields auto-generate from `name` in admin forms, allow manual override, and include helper text explaining public URL use.
 
 ## Tags
 
@@ -45,6 +46,7 @@ Rules:
   - `enabled_by_id`
   - `created_by_id`
   - future moderation state
+- Tag slug/reference fields shown in admin must include helper text and use translation-key labels.
 
 ## Admin/Public Behavior
 

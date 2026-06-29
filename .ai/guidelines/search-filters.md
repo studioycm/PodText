@@ -39,6 +39,17 @@ Filament Table inside a public Livewire component, rendered as item cards or row
 - Tables need searchable columns.
 - Custom filters need indicators.
 - Relationship filters should be searchable/preloaded where record count can grow.
+- FilaCheck/FilaCheck Pro must pass; do not run `filacheck --fix` unless explicitly approved.
+
+## Cross-cutting UI rules
+
+- Slug fields, where present in admin surfaces feeding public filters, should auto-generate from title/name fields but allow manual override.
+- Technical fields must have helper text, hints, or descriptions in admin forms.
+- Date/date-time UI should use Hebrew/Israel locale behavior: `dd/mm/yyyy` for dates and `dd/mm/yyyy HH:mm` for date-times.
+- Store dates normally with Laravel, but display/input date-times in the `Asia/Jerusalem` UI timezone.
+- Public and admin table date columns must use day-first format.
+- Use translation keys for labels, hints, helper text, sort labels, and date labels.
+- Admin dashboard widgets should include available search/filter editorial metrics and avoid polling unless needed.
 
 ## Related active docs
 

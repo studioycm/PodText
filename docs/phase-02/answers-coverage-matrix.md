@@ -3,9 +3,13 @@
 | Topic | Decision | Covered in spec | Covered in prompt | Implementation phase | Notes |
 |---|---|---|---|---|---|
 | Public listings | `ContentItem` records | public-panel/search | 11 | Public UI | No public `Transcription` cards |
-| Effective transcription | featured published, latest published, null | transcriptions | 07, 12 | Domain/Public | Same-item validation required |
-| Featured unpublish/delete | clear or reject safely | transcriptions | 07 | Domain | Must be tested |
+| Effective transcription | featured published, latest published, null | transcriptions | 07, 12 | Domain/Public | Prompt 07 committed; later prompts must preserve behavior |
+| Same-item `featured_transcription_id` validation | featured transcription must belong to same item | transcriptions | 07, 09 | Domain/Admin | Implemented in Prompt 07 model logic; admin action tests still needed in Prompt 09 |
+| Featured unpublish/delete | clear or reject safely | transcriptions | 07, 09 | Domain/Admin | Prompt 07 ignores unpublished featured records publicly and uses FK null-on-delete; admin unpublish/delete UX remains follow-up |
+| Queryable effective transcription sorting | order items by effective transcription `published_at` | transcriptions/search | 07, 11 | Domain/Public UI | Prompt 07 implemented/tested a query scope; Prompt 11 must preserve in new UI |
 | Latest transcriptions | items ordered by effective transcription `published_at` | search | 11 | Public UI | User-facing label only |
+| Legacy `transcript_markdown` deprecation | no new canonical writes to item field | transcriptions/import-export | 07, 10 | Domain/Import | Prompt 07 removed normal writes; Prompt 10 must never import transcript content to legacy field |
+| Prompt 07 post-run verification | Prompt 07 committed, migrations pending locally | current-state | docs-sync | Planning | Latest commit `7edb82d`; local DB has not run Prompt 07 migrations |
 | Item-only pinning | `ContentItem` fields only | feature-map/homepage | 08, 11 | Domain/Public | No group/category/tag/transcription pins |
 | Manual pin order | `pin_order`, `pinned_at`, `pinned_until` | homepage | 08 | Domain | Expired pins ignored |
 | Homepage order | pinned then latest combined list | public-panel | 11 | Public UI | No separate pin model |
@@ -13,6 +17,10 @@
 | Group homepage order | explicit field only if needed | homepage | 08 | Settings | Separate from item pinning |
 | Homepage settings | Spatie Settings | homepage | 08 | Settings | Approved for Phase 02; Prompt 08 owns package addition if absent |
 | Homepage sections | ordered visible DB records | homepage | 08, 11 | Settings/Public | Section queries return public items |
+| Slug auto-generation in admin forms | live-on-blur/title-name derived, manual override allowed | feature-map/taxonomy/homepage | 08, 09 | Admin UX | Check FilamentExamples/Povilas-style patterns before implementation |
+| Israel/Hebrew date-time UI | `dd/mm/yyyy`, `dd/mm/yyyy HH:mm`, `Asia/Jerusalem` display/input | feature-map/public/search/import/dashboard | 08-13 | Admin/Public UX | Store dates normally with Laravel |
+| Technical field helper text | slug/reference/provider/external/metadata/pin/featured fields need hints | feature-map/media/admin | 08, 09 | Admin UX | Use translation keys |
+| Admin dashboard available metrics | show metrics available from current schema; stage later metrics | dashboard | 13 | Dashboard | No analytics/search logging |
 | Immediate results | search shows initial items | search | 11 | Public UI | No empty-until-filtered default |
 | Transcript search | deferred explicit action | search | 11 | Public UI | Not live default |
 | Default search fields | item title, group title, categories, enabled tags | search | 11 | Public UI | Enabled tags only |
@@ -40,4 +48,4 @@
 
 ## Omission Check
 
-All required subjects are represented: homepage UX, filters, categories, Spatie tags, media embeds, item page, parser/viewer, studio planning, import/export, dashboards, settings, Boost, Blueprint, FilaCheck, and FilamentExamples source-snippet access proof through `search_examples`.
+All required subjects are represented: Prompt 07 post-run state, homepage UX, filters, categories, Spatie tags, media foundation, media embeds, item page, Prompt 12 parser/viewer, Prompt 14 studio planning, import/export, dashboards, settings, slug auto-generation, Hebrew/Israel date formatting, technical field helper text, Boost, Blueprint, FilaCheck, and FilamentExamples source-snippet access proof through `search_examples`.
