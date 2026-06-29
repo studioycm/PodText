@@ -28,7 +28,7 @@ class AuthorForm
                             ->label(__('admin.fields.slug'))
                             ->required()
                             ->maxLength(255)
-                            ->unique(ignoreRecord: true),
+                            ->unique(),
                     ])
                     ->columns(2),
                 Section::make(__('admin.sections.content'))

@@ -32,7 +32,7 @@ class ContentGroupForm
                             ->label(__('admin.fields.slug'))
                             ->required()
                             ->maxLength(255)
-                            ->unique(ignoreRecord: true),
+                            ->unique(),
                         Select::make('original_language_code')
                             ->label(__('admin.fields.original_language_code'))
                             ->options(fn (): array => collect(config('localization.available_locales', ['he', 'en']))

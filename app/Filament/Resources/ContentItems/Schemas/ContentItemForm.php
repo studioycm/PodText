@@ -40,12 +40,7 @@ class ContentItemForm
                             ->label(__('admin.fields.slug'))
                             ->required()
                             ->maxLength(255)
-                            ->unique(
-                                table: 'content_items',
-                                column: 'slug',
-                                ignoreRecord: true,
-                                modifyRuleUsing: fn (Unique $rule, Get $get): Unique => $rule->where('content_group_id', $get('content_group_id')),
-                            ),
+                            ->unique(table: 'content_items', column: 'slug', modifyRuleUsing: fn (Unique $rule, Get $get): Unique => $rule->where('content_group_id', $get('content_group_id'))),
                         TextInput::make('type_label_singular_override')
                             ->label(__('admin.fields.type_label_singular_override'))
                             ->helperText(__('admin.helpers.type_label_singular_override'))
