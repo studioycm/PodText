@@ -71,6 +71,13 @@ return [
         'draft' => 'טיוטה',
         'published' => 'פורסם',
     ],
+    'homepage_section_type' => [
+        'latest' => 'האחרונים',
+        'category' => 'קטגוריה',
+        'tag' => 'תגית',
+        'content_group' => 'קבוצת תוכן',
+        'curated_query' => 'שאילתה אצורה',
+    ],
     'import' => [
         'columns' => [
             'author_reference_keys' => 'Author reference keys',

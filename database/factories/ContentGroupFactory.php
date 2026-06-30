@@ -35,6 +35,7 @@ class ContentGroupFactory extends Factory
             'original_language_code' => 'he',
             'status' => PublicationStatus::Draft,
             'published_at' => null,
+            'homepage_order' => null,
         ];
     }
 

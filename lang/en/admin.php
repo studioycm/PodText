@@ -71,6 +71,13 @@ return [
         'draft' => 'Draft',
         'published' => 'Published',
     ],
+    'homepage_section_type' => [
+        'latest' => 'Latest',
+        'category' => 'Category',
+        'tag' => 'Tag',
+        'content_group' => 'Content group',
+        'curated_query' => 'Curated query',
+    ],
     'import' => [
         'columns' => [
             'author_reference_keys' => 'Author reference keys',

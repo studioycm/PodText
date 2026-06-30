@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Str;
 
@@ -24,6 +25,7 @@ use Illuminate\Support\Str;
     'original_language_code',
     'status',
     'published_at',
+    'homepage_order',
 ])]
 class ContentGroup extends Model
 {
@@ -44,6 +46,11 @@ class ContentGroup extends Model
         return $this->hasMany(ContentItem::class);
     }
 
+    public function categories(): BelongsToMany
+    {
+        return $this->belongsToMany(Category::class);
+    }
+
     public function scopePublished(Builder $query): Builder
     {
         return $query
@@ -53,6 +60,15 @@ class ContentGroup extends Model
                     ->whereNull('published_at')
                     ->orWhere('published_at', '<=', now());
             });
+    }
+
+    public function scopeOrderedForHomepage(Builder $query): Builder
+    {
+        return $query
+            ->orderByRaw('homepage_order is null')
+            ->orderBy('homepage_order')
+            ->orderByDesc('published_at')
+            ->orderByDesc('id');
     }
 
     protected static function booted(): void
@@ -81,6 +97,7 @@ class ContentGroup extends Model
     protected function casts(): array
     {
         return [
+            'homepage_order' => 'integer',
             'published_at' => 'datetime',
             'status' => PublicationStatus::class,
         ];

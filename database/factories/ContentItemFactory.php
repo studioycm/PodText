@@ -33,9 +33,22 @@ class ContentItemFactory extends Factory
             'description_markdown' => fake()->paragraph(),
             'media_url' => 'https://example.com/media/'.fake()->uuid(),
             'embed_url' => null,
+            'embed_provider' => null,
             'duration_seconds' => fake()->numberBetween(60, 7200),
+            'media_duration_seconds' => null,
+            'external_id' => null,
+            'external_title' => null,
+            'external_description' => null,
+            'external_thumbnail_url' => null,
+            'external_published_at' => null,
+            'media_metadata' => null,
+            'direct_media_url' => null,
             'transcript_markdown' => null,
             'featured_transcription_id' => null,
+            'is_pinned' => false,
+            'pinned_at' => null,
+            'pinned_until' => null,
+            'pin_order' => null,
             'status' => PublicationStatus::Draft,
             'published_at' => null,
             'original_published_at' => null,
@@ -71,5 +84,14 @@ class ContentItemFactory extends Factory
                 $contentItem->update(['featured_transcription_id' => $transcription->id]);
             }
         });
+    }
+
+    public function pinned(int $order = 0, DateTimeInterface|string|null $pinnedAt = null): static
+    {
+        return $this->state(fn (array $attributes): array => [
+            'is_pinned' => true,
+            'pinned_at' => $pinnedAt ?? now()->subMinute(),
+            'pin_order' => $order,
+        ]);
     }
 }
