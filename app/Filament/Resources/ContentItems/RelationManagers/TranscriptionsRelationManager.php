@@ -20,6 +20,7 @@ use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Tabs\Tab;
 use Filament\Schemas\Schema;
+use Filament\Support\Enums\Width;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
@@ -56,15 +57,6 @@ class TranscriptionsRelationManager extends RelationManager
                             ->maxLength(10),
                     ])
                     ->columns(3),
-                Section::make(__('admin.sections.transcript'))
-                    ->schema([
-                        MarkdownEditor::make('transcript_markdown')
-                            ->label(__('admin.fields.transcript_markdown'))
-                            ->disableToolbarButtons(['attachFiles'])
-                            ->fileAttachments(false)
-                            ->required()
-                            ->columnSpanFull(),
-                    ]),
                 Section::make(__('admin.sections.publication'))
                     ->schema([
                         Select::make('status')
@@ -78,6 +70,15 @@ class TranscriptionsRelationManager extends RelationManager
                             ->timezone('Asia/Jerusalem'),
                     ])
                     ->columns(2),
+                Section::make(__('admin.sections.transcript'))
+                    ->schema([
+                        MarkdownEditor::make('transcript_markdown')
+                            ->label(__('admin.fields.transcript_markdown'))
+                            ->disableToolbarButtons(['attachFiles'])
+                            ->fileAttachments(false)
+                            ->required()
+                            ->columnSpanFull(),
+                    ]),
             ]);
     }
 
@@ -166,7 +167,8 @@ class TranscriptionsRelationManager extends RelationManager
                     ->createAnother(false),
             ])
             ->recordActions([
-                EditAction::make(),
+                EditAction::make()
+                ->modalWidth(Width::FiveExtraLarge),
                 Action::make('setFeatured')
                     ->label(__('admin.actions.set_featured_transcription'))
                     ->icon(Heroicon::OutlinedStar)
