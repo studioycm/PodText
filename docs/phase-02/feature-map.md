@@ -19,9 +19,9 @@
 - Prompt 08 is complete and committed as `b15f5c1 feat: add taxonomy tags pinning settings and media foundation`.
 - Prompt 09 is complete and committed as `22e11d0 feat: add phase two admin content management`.
 - The post-Prompt-09 admin management UX repair is complete and committed as `16ab33a fix: repair admin management ux after phase two resources`.
-- The latest local `HEAD` inspected during the post-admin-repair state sync is `e671d7b feat: configure sidebar width, collapsibility, and content max width in AdminPanelProvider`.
-- Prompt 10 is the next implementation prompt after this state sync is reviewed and the full baseline or required implementation quality gate is acceptable.
-- Do not run Prompt 10 from this documentation sync task.
+- Prompt 10 import/export is complete in the commit containing this state update.
+- Prompt 11 public homepage/search is next.
+- Prompt 11 has not started.
 
 ## Non-Negotiable Semantics
 
@@ -36,6 +36,9 @@
 - Categories are custom hierarchical records.
 - Tags use Spatie tags, scoped to type `content`, with enabled-only public visibility.
 - Media fields are founded before import/export is revised.
+- Import/export uses native Filament importers/exporters with portable reference keys, category paths, and typed content tag slugs.
+- Transcript imports write to `Transcription` records, not legacy `content_items.transcript_markdown`.
+- `transcript_file` imports are deferred until an approved import package structure is specified; inline `transcript_markdown` import is supported.
 - Prompt 14 is future planning only.
 
 ## Cross-Cutting Admin Form Rules
@@ -72,7 +75,7 @@ Do not install Shield in Phase 02 planning. Use these names for future authoriza
   - `ContentItemResource` should add `TranscriptionsRelationManager` as the primary item-scoped transcript editing surface.
   - `EditContentItem` should use combined item details/relation manager tabs when Prompt 09 implements the admin UX.
   - Standalone Resource create/edit pages should use the researched redirect behavior, while relation manager create/edit actions stay on the owner item edit page.
-- Prompt 10: `blueprints/10-import-export-blueprint.md`
+- Prompt 10: `blueprints/10-import-export-blueprint.md` - complete.
 - Prompt 11: `blueprints/11-public-homepage-search-blueprint.md`
   - Prompt 11 must consume `PublicContentSettings` and visible ordered `HomepageSection` records when implementing the public homepage/search UI.
 - Prompt 12: `blueprints/12-public-item-page-media-parser-blueprint.md`

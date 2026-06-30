@@ -3,18 +3,24 @@
 namespace App\Filament\Resources\Transcriptions\Tables;
 
 use App\Enums\PublicationStatus;
+use App\Filament\Exports\TranscriptionExporter;
+use App\Filament\Imports\TranscriptionImporter;
 use App\Models\ContentGroup;
 use App\Models\Transcription;
 use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
+use Filament\Actions\ExportAction;
+use Filament\Actions\ExportBulkAction;
+use Filament\Actions\ImportAction;
 use Filament\Notifications\Notification;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Validation\Rules\File;
 
 class TranscriptionsTable
 {
@@ -80,6 +86,16 @@ class TranscriptionsTable
                         ? $query->whereHas('contentItem', fn (Builder $query): Builder => $query->where('content_group_id', $data['value']))
                         : $query),
             ])
+            ->headerActions([
+                ImportAction::make()
+                    ->importer(TranscriptionImporter::class)
+                    ->maxRows(1000)
+                    ->chunkSize(10)
+                    ->fileRules([File::types(['csv', 'txt'])->max(10240)]),
+                ExportAction::make()
+                    ->exporter(TranscriptionExporter::class)
+                    ->maxRows(10000),
+            ])
             ->recordActions([
                 EditAction::make(),
                 Action::make('setFeatured')
@@ -100,6 +116,9 @@ class TranscriptionsTable
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
+                    ExportBulkAction::make()
+                        ->exporter(TranscriptionExporter::class)
+                        ->deselectRecordsAfterCompletion(),
                     DeleteBulkAction::make(),
                 ]),
             ]);

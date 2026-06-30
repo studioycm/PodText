@@ -4,7 +4,9 @@ namespace App\Filament\Imports;
 
 use App\Enums\PublicationStatus;
 use App\Filament\Imports\Concerns\ConfiguresContentImports;
+use App\Models\Category;
 use App\Models\ContentGroup;
+use Filament\Actions\Imports\Exceptions\RowImportFailedException;
 use Filament\Actions\Imports\ImportColumn;
 use Filament\Actions\Imports\Importer;
 use Filament\Actions\Imports\Models\Import;
@@ -81,9 +83,52 @@ class ContentGroupImporter extends Importer
                 ->ignoreBlankState(fn (?ContentGroup $record, array $options): bool => static::shouldIgnoreBlankForUpdate($record, $options)),
             ImportColumn::make('published_at')
                 ->label(__('admin.fields.published_at'))
-                ->example('2026-01-01 10:00:00')
-                ->rules(['nullable', 'date'])
+                ->example('30/06/2026 13:45')
+                ->castStateUsing(fn (mixed $state): mixed => static::castImportedDateTime($state))
+                ->rules(['nullable'])
                 ->ignoreBlankState(fn (?ContentGroup $record, array $options): bool => static::shouldIgnoreBlankForUpdate($record, $options)),
+            ImportColumn::make('homepage_order')
+                ->label(__('admin.fields.homepage_order'))
+                ->integer()
+                ->example('10')
+                ->rules(['nullable', 'integer'])
+                ->ignoreBlankState(fn (?ContentGroup $record, array $options): bool => static::shouldIgnoreBlankForUpdate($record, $options)),
+            ImportColumn::make('category_paths')
+                ->label(__('admin.import.columns.category_paths'))
+                ->multiple('|')
+                ->example('torah|torah/interviews')
+                ->nestedRecursiveRules(['string', 'max:255'])
+                ->rules([
+                    function (string $attribute, mixed $state, \Closure $fail): void {
+                        if (blank($state)) {
+                            return;
+                        }
+
+                        $categories = static::resolveCategoryPaths($state);
+
+                        if ($categories->count() !== count($state)) {
+                            $missing = collect($state)
+                                ->reject(fn (string $path): bool => $categories->contains(fn (Category $category): bool => static::categoryPath($category) === $path))
+                                ->implode('|');
+
+                            $fail(__('admin.import.failures.unresolved_categories', [
+                                'paths' => $missing,
+                            ]));
+                        }
+                    },
+                ])
+                ->fillRecordUsing(fn (): null => null)
+                ->saveRelationshipsUsing(function (ContentGroup $record, array $state): void {
+                    $categories = static::resolveCategoryPaths($state);
+
+                    if ($categories->count() !== count($state)) {
+                        throw new RowImportFailedException(__('admin.import.failures.unresolved_categories', [
+                            'paths' => collect($state)->implode('|'),
+                        ]));
+                    }
+
+                    $record->categories()->sync($categories->pluck('id')->all());
+                }),
         ];
     }
 

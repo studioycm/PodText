@@ -104,7 +104,8 @@ class ContentGroupsTable
             ->toolbarActions([
                 BulkActionGroup::make([
                     ExportBulkAction::make()
-                        ->exporter(ContentGroupExporter::class),
+                        ->exporter(ContentGroupExporter::class)
+                        ->deselectRecordsAfterCompletion(),
                     DeleteBulkAction::make(),
                 ]),
             ]);

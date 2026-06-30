@@ -224,7 +224,8 @@ class ContentItemsTable
             ->toolbarActions([
                 BulkActionGroup::make([
                     ExportBulkAction::make()
-                        ->exporter(ContentItemExporter::class),
+                        ->exporter(ContentItemExporter::class)
+                        ->deselectRecordsAfterCompletion(),
                     DeleteBulkAction::make(),
                 ]),
             ]);

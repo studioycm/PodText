@@ -8,7 +8,7 @@
 | Featured unpublish/delete | clear or reject safely | transcriptions | 07, 09 | Domain/Admin | Prompt 07 ignores unpublished featured records publicly and uses FK null-on-delete; admin unpublish/delete UX remains follow-up |
 | Queryable effective transcription sorting | order items by effective transcription `published_at` | transcriptions/search | 07, 11 | Domain/Public UI | Prompt 07 implemented/tested a query scope; Prompt 11 must preserve in new UI |
 | Latest transcriptions | items ordered by effective transcription `published_at` | search | 11 | Public UI | User-facing label only |
-| Legacy `transcript_markdown` deprecation | no new canonical writes to item field | transcriptions/import-export | 07, 10 | Domain/Import | Prompt 07 removed normal writes; Prompt 10 must never import transcript content to legacy field |
+| Legacy `transcript_markdown` deprecation | no new canonical writes to item field | transcriptions/import-export | 07, 10 | Domain/Import | Prompt 07 removed normal writes; Prompt 10 imports transcript content into `Transcription` records only |
 | Admin Resource relation manager research | use official Filament 5 docs plus FilamentExamples source snippets | research/admin UX | pre-08 docs refinement, 09 | Planning/Admin UX | New research file: `docs/research/filament-examples-admin-resource-relation-managers.md` |
 | `ContentItemResource` transcriptions relation manager | add `TranscriptionsRelationManager` for item-scoped transcript management | admin/transcriptions | 09 | Admin UX | Primary admin UX for adding/editing transcript bodies for one item |
 | Standalone `TranscriptionResource` | keep for global search/filtering/maintenance | admin/transcriptions | 09 | Admin UX | Does not replace item-scoped relation manager |
@@ -38,7 +38,8 @@
 | PublicContentSettings stored, public consumption deferred | settings persist in admin/settings table but public pages do not consume them yet | settings/current-state | 08, 11 | Settings/Public UI | Prompt 11 must read `PublicContentSettings` and `HomepageSection` |
 | Spatie ContentTag decision accepted | keep `ContentTag` as configured custom Spatie tag model for enabled/moderation metadata | decision/taxonomy | 08, repair, 10 | Domain/Admin/Public | Use `tags` and `taggables`; do not create a custom content item tag pivot |
 | Browser-visible admin regression test added | browser test asserts ContentItem edit tabs and core fields are visible | current-state/testing | repair | Testing | `tests/Browser/AdminContentItemBrowserTest.php` protects the content-tab repair |
-| Prompt 10 next | import/export is next after state sync and clean quality baseline | feature-map/prompts | 10 | Planning/Quality | Prompt 10 has not started |
+| Prompt 10 completed | native import/export extended to Phase 02 schema | feature-map/prompts | 10 | Import/export | Implemented in the commit containing this matrix update |
+| Prompt 11 next | public homepage/search is next after Prompt 10 | feature-map/prompts | 11 | Public UI | Prompt 11 has not started |
 | Local data reset caveat | local data may have been reset if `migrate:fresh --seed` or equivalent was used | current-state | docs-sync | Planning | All migrations are batch 1; exact manual command was not observed |
 | Item-only pinning | `ContentItem` fields only | feature-map/homepage | 08, 11 | Domain/Public | No group/category/tag/transcription pins |
 | Manual pin order | `pin_order`, `pinned_at`, `pinned_until` | homepage | 08 | Domain | Expired pins ignored |
@@ -69,7 +70,12 @@
 | No player sync now | deferred | viewer | 12, 14 | Future | Prompt 14 plans sync |
 | Viewer show/hide | timestamps and speakers | viewer | 12 | Public UI | Local preference only |
 | Future studio | planning only | viewer | 14 | Future | No implementation |
-| Import/export transcript files | `.md`/`.txt` to `Transcription` records | import-export | 10 | Import/export | Never legacy field |
+| Import/export transcript inline Markdown | inline transcript Markdown creates/updates `Transcription` records | import-export | 10 | Import/export | Never writes legacy item transcript field |
+| Import/export transcript files | `.md`/`.txt` package references deferred | import-export | 10 | Import/export | Deferred because no approved import package structure is specified |
+| Category import/export | category paths preserve hierarchy | import-export/taxonomy | 10 | Import/export | Missing parent/category paths fail rows |
+| Typed tag import/export | Spatie `content` tag slugs/names only | import-export/taxonomy | 10 | Import/export | Missing, wrong-type, and disabled content tags fail rows |
+| Pin/media import/export | Prompt 08 item pin and media metadata fields included | import-export/media | 10 | Import/export | No remote fetch or metadata derivation |
+| Day-first import/export dates | `dd/mm/yyyy`, `dd/mm/yyyy HH:mm`, `Asia/Jerusalem` presentation | import-export | 10 | Import/export | Imported values normalize to Laravel storage |
 | Dashboard metrics | editorial widgets | dashboard | 13 | Dashboard | No analytics/search logging |
 | Boost usage | use when available; record failures | tooling | 06, all | Tooling | MCP available in Prompt 06S; fallback documented for transport failures |
 | Blueprint usage | blueprint files per prompt | blueprints | 06-15 | Planning/Implementation | Exact primitives required |

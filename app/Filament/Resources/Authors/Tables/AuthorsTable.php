@@ -62,7 +62,8 @@ class AuthorsTable
             ->toolbarActions([
                 BulkActionGroup::make([
                     ExportBulkAction::make()
-                        ->exporter(AuthorExporter::class),
+                        ->exporter(AuthorExporter::class)
+                        ->deselectRecordsAfterCompletion(),
                     DeleteBulkAction::make(),
                 ]),
             ]);

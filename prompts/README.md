@@ -5,8 +5,8 @@ Run prompts sequentially. The current active sequence is:
 1. `07-phase-02-transcriptions-model-revision.md` - already run, committed, and locally migrated; keep for historical/reference unless explicitly asked to rerun.
 2. `08-phase-02-taxonomy-tags-pinning-settings-media-foundation.md` - complete and committed.
 3. `09-phase-02-admin-content-management.md` - complete and committed.
-4. `10-phase-02-import-export.md` - next implementation prompt after human review of the post-admin-repair state sync and a clean quality baseline.
-5. `11-phase-02-public-homepage-search.md`
+4. `10-phase-02-import-export.md` - complete and committed with the Prompt 10 implementation commit.
+5. `11-phase-02-public-homepage-search.md` - next implementation prompt.
 6. `12-phase-02-media-embed-item-page-parser.md`
 7. `13-phase-02-dashboard-metrics.md`
 8. `14-phase-02-viewer-studio-future-plan.md`
@@ -20,7 +20,11 @@ Historical prompts are under `prompts/archive/` and are not active instructions.
 
 ## Post-Prompt-09 repair note
 
-The admin management UX repair is complete and committed as `16ab33a fix: repair admin management ux after phase two resources`. Prompt 10 remains blocked until this state sync is reviewed and the project has an acceptable clean quality baseline.
+The admin management UX repair is complete and committed as `16ab33a fix: repair admin management ux after phase two resources`.
+
+## Post-Prompt-10 import/export note
+
+Prompt 10 is complete in the implementation commit containing this README update. It added native Filament category and transcription importers/exporters, extended content item/group import/export for category paths, enabled content tag slugs, pin fields, media metadata, featured transcription references, and day-first date handling, and kept transcript-file package imports deferred. Prompt 11 public homepage/search is next and has not started.
 
 ## Blueprint usage rule
 

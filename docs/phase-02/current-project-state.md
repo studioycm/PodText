@@ -1,18 +1,18 @@
 # Phase 02 Current Project State
 
-Recorded after Prompt 08, Prompt 09, the post-Prompt-09 admin management UX repair, and the later admin panel layout commit. This document intentionally avoids local secrets and should be updated when later prompts change the active baseline.
+Recorded after Prompt 10 import/export implementation. This document intentionally avoids local secrets and should be updated when later prompts change the active baseline.
 
 ## Git State
 
 - Current branch: `main` tracking `origin/main`.
-- Latest local `HEAD` inspected during this state sync: `e671d7b feat: configure sidebar width, collapsibility, and content max width in AdminPanelProvider`.
+- Latest local `HEAD` before Prompt 10 implementation: `014c6b0 docs: update phase two prompt state, completion details for Prompts 08 and 09, and readiness notes for Prompt 10`.
 - Admin management UX repair commit is present in history: `16ab33a fix: repair admin management ux after phase two resources`.
 - Prompt 09 implementation commit is present in history: `22e11d0 feat: add phase two admin content management`.
 - Prompt 08 implementation commit is present in history: `b15f5c1 feat: add taxonomy tags pinning settings and media foundation`.
 - Prompt 07 implementation commit remains in history: `7edb82d feat: add transcription model revision`.
-- Starting docs-sync working tree: clean (`git status --short --branch` reported `## main...origin/main`).
-- Prompt 10 has not started. It is the next implementation prompt only after this state sync is reviewed and a clean quality baseline is accepted.
-- This post-admin-repair Phase 02 documentation sync is intentionally uncommitted for human review.
+- Prompt 10 is implemented in the commit containing this state update.
+- Prompt 11 is the next implementation prompt.
+- Prompt 11 public homepage/search was not started by Prompt 10.
 
 ## Tooling State
 
@@ -33,12 +33,13 @@ Recorded after Prompt 08, Prompt 09, the post-Prompt-09 admin management UX repa
 
 ## Boost MCP Status
 
-Laravel Boost MCP tools were exposed and usable during this state sync.
+Laravel Boost MCP tools were exposed and usable during Prompt 10.
 
-- Boost tools used: `application_info` and `database_schema`.
+- Boost tools used: `application_info`, `database_schema`, and `search_docs`.
 - Boost confirmed Laravel 13.17.0, Filament 5.6.7, Livewire 4.3.3, Pest 4.7.4, and SQLite.
 - Boost schema inspection confirmed the post-Prompt-08/09 tables and fields listed below.
-- Fallback shell and Artisan inspection was still run because the prompt explicitly requested it.
+- Boost `search_docs` was used for current Filament import/export APIs before code changes.
+- FilamentExamples MCP `search_examples` returned snippet-level examples for `ImportAction`, `ExportAction`, `ExportBulkAction`, `Importer`, and `Exporter` patterns.
 
 ## Application Shape
 
@@ -134,6 +135,34 @@ Current physical schema verified through Boost `database_schema`:
 - Draft transcriptions remain publicly ineffective even if selected as featured.
 - `content_items.transcript_markdown` remains out of item forms and relation-manager writes.
 
+## Prompt 10 Import/Export Notes
+
+- Prompt 10 is implemented.
+- Native Filament importers/exporters now include:
+  - `App\Filament\Imports\TranscriptionImporter`
+  - `App\Filament\Exports\TranscriptionExporter`
+  - `App\Filament\Imports\CategoryImporter`
+  - `App\Filament\Exports\CategoryExporter`
+- Existing importers/exporters were extended:
+  - `ContentItemImporter` and `ContentItemExporter`
+  - `ContentGroupImporter` and `ContentGroupExporter`
+  - existing `AuthorExporter` date output was aligned to day-first date-time formatting.
+- Transcription imports create/update `Transcription` child records and never write to legacy `content_items.transcript_markdown`.
+- First imported transcription auto-feature behavior remains the existing model behavior and is covered by tests.
+- `transcript_file` import support is deferred because the active blueprint/spec does not define an approved import package structure for locating referenced `.md`/`.txt` files. Inline `transcript_markdown` import is supported.
+- Category import/export uses portable category paths such as `parent/child` and preserves hierarchy, visibility, sort order, and Markdown description.
+- Content item and content group imports attach existing categories by path; missing category paths fail the row.
+- Content item imports attach existing enabled Spatie content tags by slug/name using type `content`; missing tags, wrong-type tags, and disabled content tags fail the row.
+- Prompt 10 preserves the Spatie tag decision: normal `tags` table, normal `taggables` pivot, `type = content`, and no custom `content_item_tag` pivot.
+- Content item import/export now covers pin fields, media metadata fields, category paths, content tag slugs, and `featured_transcription_reference_key`.
+- Content group import/export now covers category paths and `homepage_order`.
+- Exporters use portable identifiers only: reference keys, category paths, and typed tag slugs. Numeric database IDs are not exported as portable identifiers.
+- Exported date-times use `dd/mm/yyyy HH:mm` in `Asia/Jerusalem`; imported day-first date-times are normalized to Laravel storage.
+- Exported user/content text is formula-escaped where exporter APIs expose formatting. Failed import rows continue through native Filament failed-row behavior.
+- Native `ImportAction`, `ExportAction`, and `ExportBulkAction` are registered for content groups, content items, categories, and transcriptions. Existing author import/export compatibility remains.
+- Prompt 10 did not implement public homepage/search, public item page/parser work, dashboard widgets, or studio/sync work.
+- Prompt 11 is next and must consume `PublicContentSettings` and visible ordered `HomepageSection` records when building the public homepage/search UI.
+
 ## Homepage and Settings Notes
 
 - `HomepageSectionResource` is treated as homepage content configuration: records define which content slices appear on the homepage.
@@ -156,14 +185,13 @@ Current physical schema verified through Boost `database_schema`:
 - The browser test asserts the item details tab label, title field, slug field, content group field, status field, media URL field, and transcriptions tab are visible.
 - This test protects the `getContentTabLabel()` repair from regressing into an empty details tab.
 
-## Prompt 10 Readiness Notes
+## Prompt 11 Readiness Notes
 
-- Prompt 10 has not started.
-- Prompt 10 must preserve the Spatie tags decision: use `tags`/`taggables`, keep tag inputs scoped to type `content`, and do not create a custom `content_item_tag` pivot.
-- Prompt 10 must preserve `ContentTag` only as the configured Spatie custom tag model for enabled/moderation fields.
-- Prompt 10 must not reintroduce writes to legacy `content_items.transcript_markdown`.
-- Prompt 10 import tests must account for first-transcription auto-feature behavior.
-- Prompt 10 must not implement public consumption of `PublicContentSettings` or `HomepageSection`; Prompt 11 owns that work.
+- Prompt 10 is complete.
+- Prompt 11 is next.
+- Prompt 11 must preserve the Prompt 10 import/export behavior and must not reintroduce writes to legacy `content_items.transcript_markdown`.
+- Prompt 11 must consume `PublicContentSettings` and visible ordered `HomepageSection` records when building the public homepage/search UI.
+- Prompt 11 must keep public listings based on `ContentItem` records and must not expose draft/unpublished items or draft transcriptions.
 
 ## Baseline Issue To Record
 

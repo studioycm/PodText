@@ -2,10 +2,16 @@
 
 namespace App\Filament\Imports\Concerns;
 
+use App\Models\Category;
+use App\Models\ContentTag;
+use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
+use Carbon\Exceptions\InvalidFormatException;
 use Filament\Actions\Imports\Exceptions\RowImportFailedException;
 use Filament\Forms\Components\Select;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Collection;
+use JsonException;
 
 trait ConfiguresContentImports
 {
@@ -122,5 +128,136 @@ trait ConfiguresContentImports
     protected function importMode(): string
     {
         return $this->options['mode'] ?? 'upsert';
+    }
+
+    protected static function castImportedDateTime(mixed $state): ?CarbonInterface
+    {
+        if ($state instanceof CarbonInterface) {
+            return $state->copy()->setTimezone(config('app.timezone', 'UTC'));
+        }
+
+        if (blank($state)) {
+            return null;
+        }
+
+        $state = trim((string) $state);
+        $timezone = 'Asia/Jerusalem';
+
+        foreach (['d/m/Y H:i', 'd/m/Y', 'Y-m-d H:i:s', 'Y-m-d H:i', 'Y-m-d'] as $format) {
+            try {
+                $date = CarbonImmutable::createFromFormat($format, $state, $timezone);
+            } catch (InvalidFormatException) {
+                continue;
+            }
+
+            if ($date instanceof CarbonImmutable && $date->format($format) === $state) {
+                return $date->setTimezone(config('app.timezone', 'UTC'));
+            }
+        }
+
+        throw new RowImportFailedException(__('admin.import.failures.invalid_day_first_date', [
+            'value' => $state,
+        ]));
+    }
+
+    protected static function castImportedJson(mixed $state): ?array
+    {
+        if (blank($state)) {
+            return null;
+        }
+
+        if (is_array($state)) {
+            return $state;
+        }
+
+        try {
+            $decoded = json_decode((string) $state, true, flags: JSON_THROW_ON_ERROR);
+        } catch (JsonException) {
+            throw new RowImportFailedException(__('admin.import.failures.invalid_json'));
+        }
+
+        if (! is_array($decoded)) {
+            throw new RowImportFailedException(__('admin.import.failures.invalid_json'));
+        }
+
+        return $decoded;
+    }
+
+    protected static function resolveCategoryPath(string $path): ?Category
+    {
+        $segments = collect(explode('/', $path))
+            ->map(fn (string $segment): string => trim($segment))
+            ->filter()
+            ->values();
+
+        if ($segments->isEmpty()) {
+            return null;
+        }
+
+        $parentId = null;
+        $category = null;
+
+        foreach ($segments as $segment) {
+            $category = Category::query()
+                ->where('slug', $segment)
+                ->where('parent_id', $parentId)
+                ->first();
+
+            if (! $category) {
+                return null;
+            }
+
+            $parentId = $category->getKey();
+        }
+
+        return $category;
+    }
+
+    /**
+     * @param  array<int, string>  $paths
+     * @return Collection<int, Category>
+     */
+    protected static function resolveCategoryPaths(array $paths): Collection
+    {
+        return collect($paths)
+            ->map(fn (string $path): ?Category => static::resolveCategoryPath($path))
+            ->filter()
+            ->values();
+    }
+
+    protected static function categoryPath(Category $category): string
+    {
+        $segments = collect([$category->slug]);
+        $parent = $category->parent;
+
+        while ($parent) {
+            $segments->prepend($parent->slug);
+            $parent = $parent->parent;
+        }
+
+        return $segments->implode('/');
+    }
+
+    protected static function resolveEnabledContentTag(string $slugOrName): ?ContentTag
+    {
+        $tag = ContentTag::findFromString($slugOrName, 'content');
+
+        if (! $tag instanceof ContentTag || ! $tag->is_enabled) {
+            return null;
+        }
+
+        return $tag;
+    }
+
+    /**
+     * @param  array<int, string>  $slugsOrNames
+     * @return Collection<int, ContentTag>
+     */
+    protected static function resolveEnabledContentTags(array $slugsOrNames): Collection
+    {
+        return collect($slugsOrNames)
+            ->map(fn (string $slugOrName): ?ContentTag => static::resolveEnabledContentTag($slugOrName))
+            ->filter()
+            ->values();
     }
 }
