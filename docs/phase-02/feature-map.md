@@ -15,8 +15,8 @@
 ## Current Progress
 
 - Prompt 07 already ran and was committed as `7edb82d feat: add transcription model revision`.
-- The inspected local database has not applied the new Prompt 07 migrations yet.
-- Prompt 08 is the next implementation prompt only after this post-Prompt-07 documentation sync is reviewed and Prompt 07 quality status is understood.
+- Prompt 07 migrations are now applied locally: `transcriptions`, `content_items.featured_transcription_id`, and the backfill migration all show `Ran`.
+- Prompt 08 is the next implementation prompt only after this post-migration documentation sync is reviewed, Prompt 07 focused tests pass, and the full baseline or required implementation quality gate is acceptable.
 - Admin Resource/Relation Manager research was added as a pre-Prompt-08 docs-only refinement for Prompt 09.
 - Do not run Prompt 08 from this documentation sync task.
 

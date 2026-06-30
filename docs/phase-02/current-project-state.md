@@ -1,14 +1,15 @@
 # Phase 02 Current Project State
 
-Recorded after Prompt 07 was run and committed. This document intentionally avoids local secrets and should be updated when later prompts change the active baseline.
+Recorded after Prompt 07 was run, committed, and the local Prompt 07 migrations were applied manually. This document intentionally avoids local secrets and should be updated when later prompts change the active baseline.
 
 ## Git State
 
-- Current branch: `master`.
-- Latest commit inspected after Prompt 07: `7edb82d feat: add transcription model revision`.
-- Starting docs-sync working tree: clean (`git status --short --branch` reported `## master`).
-- Prompt 07 state: committed. Prompt 08 has not been run.
-- This post-Prompt-07 documentation sync is intentionally uncommitted for human review.
+- Current branch: `main` tracking `origin/main`.
+- Latest commit inspected during this post-migration sync: `dd60315 docs: add Spatie Laravel and Technical Debt Manager skill guidelines for PHP/Laravel-focused workflows`.
+- Prompt 07 implementation commit remains in history: `7edb82d feat: add transcription model revision`.
+- Starting docs-sync working tree: clean (`git status --short --branch` reported `## main...origin/main`).
+- Prompt 07 state: committed and locally migrated. Prompt 08 has not been run.
+- This post-migration Phase 02 documentation sync is intentionally uncommitted for human review.
 
 ## Tooling State
 
@@ -25,7 +26,11 @@ Recorded after Prompt 07 was run and committed. This document intentionally avoi
 
 ## Boost MCP Status
 
-Laravel Boost MCP tools were exposed and usable during Prompt 06S verification and this post-Prompt-07 sync. `application_info`, `database_schema`, and `search_docs` succeeded during this sync. Shell and Artisan inspection were also run because the prompt explicitly requested them.
+Laravel Boost MCP tools were exposed and usable during this post-migration sync.
+
+- Boost tools used: `application_info`, `database_schema`, and `database_query`.
+- Boost `search_docs` was not needed because no syntax or package-behavior uncertainty came up.
+- Fallback shell and Artisan inspection was still run because the prompt explicitly requested it.
 
 ## Application Shape
 
@@ -42,36 +47,48 @@ Laravel Boost MCP tools were exposed and usable during Prompt 06S verification a
 
 ## Current Domain Schema
 
-Current tables relevant to content before running the new local migrations:
+Current tables relevant to content after the local Prompt 07 migrations were applied:
 
 - `authors`
 - `content_groups`
 - `content_items`
 - `author_content_item`
+- `transcriptions`
 
-Prompt 07 added committed migrations that are pending in the inspected local database:
+Prompt 07 migration status from `php artisan migrate:status` and Boost database inspection:
 
-- `2026_06_29_134855_create_transcriptions_table`
-- `2026_06_29_134914_add_featured_transcription_id_to_content_items_table`
-- `2026_06_29_134914_backfill_transcriptions_from_content_items_table`
+- `2026_06_29_134855_create_transcriptions_table`: ran.
+- `2026_06_29_134914_add_featured_transcription_id_to_content_items_table`: ran.
+- `2026_06_29_134914_backfill_transcriptions_from_content_items_table`: ran.
+
+Current physical schema verified through Boost `database_schema`:
+
+- `transcriptions` table exists.
+- `content_items.featured_transcription_id` exists and references `transcriptions.id` with `onDelete set null`.
+- Legacy `content_items.transcript_markdown` still exists as a legacy/backfill source and later cleanup target.
 
 Prompt 07 code/migration state:
 
 - `App\Models\Transcription` exists.
-- A `transcriptions` table migration exists with `reference_key`, `content_item_id`, nullable `author_id`, title/language/status/published fields, canonical `transcript_markdown`, parser output JSON fields, and indexes.
-- A `content_items.featured_transcription_id` migration exists with a nullable FK to `transcriptions.id` and `nullOnDelete`.
-- The inspected local SQLite database has not applied those three Prompt 07 migrations yet, so the physical `transcriptions` table and `featured_transcription_id` column are pending locally.
-- Legacy `content_items.transcript_markdown` still exists in the original schema as the backfill source and cleanup target for a later prompt.
+- `ContentItem::transcriptions()` exists.
+- `ContentItem::featuredTranscription()` exists.
+- `ContentItem::latestPublishedTranscription()` exists.
+- `ContentItem::effectiveTranscription()` exists.
+- `Author::transcriptions()` exists.
+- `Transcription::contentItem()` and `Transcription::author()` exist.
 - New writes to legacy `content_items.transcript_markdown` are deprecated/blocked in application code: the field was removed from `ContentItem::$fillable`, admin item form transcript editing, item import columns, item export columns, and normal factory defaults.
 
-Not currently present until later prompts:
+Prompt 08 state:
 
-- categories
-- Spatie `tags` / `taggables`
-- homepage section/settings tables
-- item pinning fields
-- provider metadata fields
-- dashboard widgets
+- Prompt 08 has not run yet.
+- Categories, Spatie tags/taggables, homepage sections/settings, item pinning fields, media metadata foundation fields, and dashboard widgets are still absent from the application schema/code unless they appear only in planning/spec documentation.
+- Schema/search inspection found no implemented `Category` or `HomepageSection` model, category pivots, pin fields, Spatie tag tables, settings tables/classes, or Prompt 08 media metadata columns.
+
+Local database reset note:
+
+- `migrate:status` shows all migrations, including Prompt 07 migrations, in batch 1. That strongly suggests the local database was rebuilt with `migrate:fresh --seed` or an equivalent reset path, but this documentation sync did not observe the exact manual command.
+- Current local counts from Boost `database_query`: 1 user, 3 content groups, 4 content items, and 3 transcriptions.
+- If older local admin users or manually entered rows existed before the reset, they may need to be recreated or re-entered. The current database now reflects the resulting migrated/seeded state.
 
 ## Prompt 07 Implementation Notes
 
@@ -91,6 +108,8 @@ Not currently present until later prompts:
 - `tests/Feature/TranscriptionsModelTest.php` covers relationships/casts, immutable reference keys, backfill, effective ordering, and same-item featured validation.
 - `tests/Feature/PublicTranscriptionVisibilityTest.php` covers public hiding without effective transcription, public item 404 behavior, safe Markdown rendering from `Transcription`, effective sorting, and unpublished featured fallback behavior.
 - Existing public/admin/import/domain tests were updated to use child transcriptions and stop expecting legacy transcript import/export behavior.
+- Focused test result during this sync: `php artisan test --filter=TranscriptionsModelTest` passed, 5 tests and 19 assertions.
+- Focused test result during this sync: `php artisan test --filter=PublicTranscriptionVisibilityTest` passed, 6 tests and 14 assertions.
 
 ## Form and Locale Issues Discovered by User
 

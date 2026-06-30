@@ -4,7 +4,14 @@
 
 Prompt 07 was run and committed as `7edb82d feat: add transcription model revision`. This file is now a post-Prompt-07 baseline plus remaining requirements document.
 
-The inspected local database has not applied the three Prompt 07 migrations yet, so implementation prompts must still run their normal migration/test setup before relying on the physical schema.
+Post-migration sync verification found the local database has now applied all three Prompt 07 migrations:
+
+- `2026_06_29_134855_create_transcriptions_table` ran and the physical `transcriptions` table exists.
+- `2026_06_29_134914_add_featured_transcription_id_to_content_items_table` ran and `content_items.featured_transcription_id` exists.
+- `2026_06_29_134914_backfill_transcriptions_from_content_items_table` ran.
+- Legacy `content_items.transcript_markdown` still exists only as a legacy/backfill source and later cleanup target.
+
+`migrate:status` shows all migrations in batch 1, which strongly suggests the local database was rebuilt with `migrate:fresh --seed` or an equivalent reset path. The exact manual command was not observed. If that reset path was used, the backfill migration ran during the fresh migration sequence but may not have backfilled older local user-entered rows because the previous local database contents were reset first.
 
 ## Implemented Baseline From Prompt 07
 

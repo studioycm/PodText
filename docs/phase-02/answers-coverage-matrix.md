@@ -21,7 +21,12 @@
 | Relation page vs relation manager decision | relation manager now; `ManageRelatedRecords` future optional | admin/transcriptions/viewer | 09, 14 | Admin UX/Future | Dedicated relation page only for larger workspace, sub-navigation, bulk workflows, or studio-style tooling |
 | No Repeater for full transcript Markdown | avoid nested Repeater for transcript bodies | admin/transcriptions | 09 | Admin UX | Full Markdown transcript forms are too large for inline nested rows |
 | Prompt 09 relation manager tests | cover render/create/edit/filter/featured/owner-scope/tab/redirect behavior | admin/testing | 09 | Testing | Relation manager tests pass owner record and page class to Livewire |
-| Prompt 07 post-run verification | Prompt 07 committed, migrations pending locally | current-state | docs-sync | Planning | Latest commit `7edb82d`; local DB has not run Prompt 07 migrations |
+| Prompt 07 post-run verification | Prompt 07 committed and locally migrated | current-state | docs-sync | Planning | Latest inspected commit `dd60315`; Prompt 07 implementation commit `7edb82d` remains in history |
+| Prompt 07 migrations applied locally | all three Prompt 07 migrations are `Ran` | current-state/transcriptions | docs-sync, 08 preflight | Planning | Verified by Boost schema/query and `php artisan migrate:status` |
+| Prompt 07 focused tests | focused Prompt 07 tests passed | current-state/transcriptions | docs-sync, 08 preflight | Testing | `TranscriptionsModelTest` and `PublicTranscriptionVisibilityTest` passed during post-migration sync |
+| Prompt 07 database state verified with Boost | `transcriptions` exists, `featured_transcription_id` exists, legacy item transcript field still exists | current-state/transcriptions | docs-sync, 08 preflight | Planning | Boost `application_info`, `database_schema`, and `database_query` were available and used |
+| Prompt 08 readiness gate | Prompt 08 depends on reviewed docs sync plus acceptable migration/test baseline | feature-map/tooling | 08 | Planning/Quality | Full implementation quality gate is still required when Prompt 08 runs |
+| Local data reset caveat | local data may have been reset if `migrate:fresh --seed` or equivalent was used | current-state | docs-sync | Planning | All migrations are batch 1; exact manual command was not observed |
 | Item-only pinning | `ContentItem` fields only | feature-map/homepage | 08, 11 | Domain/Public | No group/category/tag/transcription pins |
 | Manual pin order | `pin_order`, `pinned_at`, `pinned_until` | homepage | 08 | Domain | Expired pins ignored |
 | Homepage order | pinned then latest combined list | public-panel | 11 | Public UI | No separate pin model |

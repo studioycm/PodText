@@ -2,8 +2,8 @@
 
 Run prompts sequentially. The current active sequence is:
 
-1. `07-phase-02-transcriptions-model-revision.md` - already run and committed; keep for historical/reference unless explicitly asked to rerun.
-2. `08-phase-02-taxonomy-tags-pinning-settings-media-foundation.md` - next implementation prompt only after the post-Prompt-07 documentation sync is reviewed.
+1. `07-phase-02-transcriptions-model-revision.md` - already run, committed, and locally migrated; keep for historical/reference unless explicitly asked to rerun.
+2. `08-phase-02-taxonomy-tags-pinning-settings-media-foundation.md` - next implementation prompt after human review of the post-migration state sync.
 3. `09-phase-02-admin-content-management.md`
 4. `10-phase-02-import-export.md`
 5. `11-phase-02-public-homepage-search.md`
