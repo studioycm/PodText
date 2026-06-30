@@ -146,7 +146,7 @@ Do not change the active prompt order.
 Add a note:
 
 - This research prompt is a pre-Prompt-08 docs-only refinement.
-- Prompt 08 remains the next implementation prompt after review.
+- Historical state: this was true when the research task ran. Current state is Prompts 08 and 09 complete, admin UX repair complete, and Prompt 10 next after review and a clean quality baseline.
 
 ## 8. Optional if useful: `docs/phase-02/tooling-and-quality-gates.md`
 

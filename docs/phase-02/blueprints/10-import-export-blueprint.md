@@ -4,6 +4,13 @@
 
 - `php artisan make:test --pest Phase02ImportExportTest --no-interaction`
 
+## Preflight
+
+- Confirm Prompts 08 and 09 are committed.
+- Confirm the admin UX repair commit `16ab33a fix: repair admin management ux after phase two resources` is present.
+- Confirm `docs/phase-02/spatie-tags-and-settings-decision.md` exists.
+- Confirm Prompt 10 has not started.
+
 ## Native Filament Classes
 
 Create or modify:
@@ -45,8 +52,14 @@ Content item importer additions:
 - missing category or content tag references fail the row by default; do not silently create them.
 - missing transcript files fail the row.
 - transcript file content creates/updates `Transcription` records and never writes to legacy `ContentItem` transcript fields.
+- do not reintroduce writes to legacy `content_items.transcript_markdown`.
+- the first imported transcription for an item may auto-set `featured_transcription_id` through existing model behavior; tests must account for this.
+- if importing multiple transcriptions for one item, import a featured transcription reference only when provided, otherwise existing first-transcription default behavior applies.
 - missing categories fail the row by default.
 - missing tags fail the row by default unless a future import option explicitly creates disabled content tags.
+- preserve Spatie tags through the `tags` table and `taggables` pivot with type `content`; do not create a custom `content_item_tag` pivot.
+- preserve `App\Models\ContentTag` only as the configured Spatie custom tag model for enabled/moderation fields.
+- do not implement public consumption of `PublicContentSettings` or `HomepageSection` in Prompt 10.
 - imported date fields accept day-first `dd/mm/yyyy` and date-time fields accept `dd/mm/yyyy HH:mm` where appropriate, then normalize to Laravel date storage.
 
 ## Export Columns

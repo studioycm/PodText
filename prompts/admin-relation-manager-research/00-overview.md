@@ -2,13 +2,13 @@
 
 You are working inside the current PhpStorm project repository for PodText.
 
-This is a **docs/research/blueprint/prompt refinement task** before Prompt 08.
+This is a historical **docs/research/blueprint/prompt refinement task** that ran before Prompt 08.
 
 The goal is to research rich Filament admin Resource and Relation Manager UX patterns, then update the Phase 02 planning docs so Prompt 09 can implement better admin management for `ContentItem` → `Transcriptions`.
 
 ## Why this runs before Prompt 08
 
-Prompt 08 remains the next implementation prompt. Do not run Prompt 08 now.
+Current state note: Prompts 08 and 09 are now complete, and Prompt 10 is the next implementation prompt after human review and a clean quality baseline. Do not rerun this research task unless explicitly asked.
 
 Prompt 08 is schema/foundation only. Prompt 09 is responsible for admin Resource UX, including transcriptions, categories, homepage sections, settings, item/category/tag/media fields, and related admin-management screens.
 

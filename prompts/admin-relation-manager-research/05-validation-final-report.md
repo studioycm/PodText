@@ -53,7 +53,7 @@ Return:
 8. Decision on create/edit redirects.
 9. Relation manager vs relation page vs repeater decision.
 10. Files patched.
-11. Whether Prompt 08 remains next.
+11. Historical next-prompt status at the time of the research task.
 12. Whether Prompt 09 has been updated for relation-manager/resource UX.
 13. Command results.
 14. Current git status.

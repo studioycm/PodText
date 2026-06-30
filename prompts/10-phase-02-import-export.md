@@ -7,6 +7,9 @@ Extend Filament-native import/export to the finalized Phase 02 schema.
 ## Current state assumptions
 
 - Prompts 07, 08, and 09 are complete and committed.
+- The admin management UX repair commit `16ab33a fix: repair admin management ux after phase two resources` is present.
+- `docs/phase-02/spatie-tags-and-settings-decision.md` exists and is accepted as the current Spatie tags/settings decision.
+- Prompt 10 has not started.
 - Transcriptions, categories, typed tags, pinning, and media metadata fields exist.
 - Prompt 10 may only import/export fields created by Prompts 07-09. Do not add or depend on fields planned for Prompt 11, 12, 13, or 14.
 
@@ -51,6 +54,12 @@ The import/export blueprint is the authority for import/export class names, colu
   - transcript file content must never write to legacy `ContentItem` transcript fields.
 - Missing categories fail the row by default.
 - Missing tags fail the row by default unless a future option explicitly creates disabled content tags.
+- Do not reintroduce writes to legacy `content_items.transcript_markdown`.
+- The first imported transcription for an item may automatically set `featured_transcription_id` through existing model behavior; tests must account for this.
+- If importing multiple transcriptions for one item, import a featured transcription reference only when provided. Otherwise the existing first-transcription default behavior applies.
+- Preserve the Spatie tags decision: use Spatie's `tags` table, `taggables` pivot, and type `content`; do not create a custom `content_item_tag` pivot.
+- Preserve `App\Models\ContentTag` only as the configured Spatie custom tag model for enabled/moderation fields.
+- Do not implement public consumption of `PublicContentSettings` or `HomepageSection` in Prompt 10; Prompt 11 owns that work.
 - Imported date fields should accept day-first `dd/mm/yyyy` and `dd/mm/yyyy HH:mm` where appropriate.
 - Exported date fields should use day-first format.
 
@@ -72,6 +81,8 @@ The import/export blueprint is the authority for import/export class names, colu
 - Transcript file content must never write to legacy `ContentItem` transcript fields.
 - Missing categories fail the row by default.
 - Missing tags fail the row by default unless a future import option explicitly creates disabled content tags.
+- Existing first-transcription auto-feature behavior may set `featured_transcription_id` when creating the first imported transcription for an item.
+- Import explicit featured transcription state only when the import data provides it.
 - Do not use numeric IDs for portable import/export.
 - Imported date fields should accept day-first `dd/mm/yyyy` where appropriate and normalize to Laravel date storage.
 - Exported date fields should use `dd/mm/yyyy`; exported date-time fields should use `dd/mm/yyyy HH:mm`.

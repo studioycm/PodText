@@ -16,9 +16,12 @@
 
 - Prompt 07 already ran and was committed as `7edb82d feat: add transcription model revision`.
 - Prompt 07 migrations are now applied locally: `transcriptions`, `content_items.featured_transcription_id`, and the backfill migration all show `Ran`.
-- Prompt 08 is the next implementation prompt only after this post-migration documentation sync is reviewed, Prompt 07 focused tests pass, and the full baseline or required implementation quality gate is acceptable.
-- Admin Resource/Relation Manager research was added as a pre-Prompt-08 docs-only refinement for Prompt 09.
-- Do not run Prompt 08 from this documentation sync task.
+- Prompt 08 is complete and committed as `b15f5c1 feat: add taxonomy tags pinning settings and media foundation`.
+- Prompt 09 is complete and committed as `22e11d0 feat: add phase two admin content management`.
+- The post-Prompt-09 admin management UX repair is complete and committed as `16ab33a fix: repair admin management ux after phase two resources`.
+- The latest local `HEAD` inspected during the post-admin-repair state sync is `e671d7b feat: configure sidebar width, collapsibility, and content max width in AdminPanelProvider`.
+- Prompt 10 is the next implementation prompt after this state sync is reviewed and the full baseline or required implementation quality gate is acceptable.
+- Do not run Prompt 10 from this documentation sync task.
 
 ## Non-Negotiable Semantics
 
@@ -71,6 +74,7 @@ Do not install Shield in Phase 02 planning. Use these names for future authoriza
   - Standalone Resource create/edit pages should use the researched redirect behavior, while relation manager create/edit actions stay on the owner item edit page.
 - Prompt 10: `blueprints/10-import-export-blueprint.md`
 - Prompt 11: `blueprints/11-public-homepage-search-blueprint.md`
+  - Prompt 11 must consume `PublicContentSettings` and visible ordered `HomepageSection` records when implementing the public homepage/search UI.
 - Prompt 12: `blueprints/12-public-item-page-media-parser-blueprint.md`
 - Prompt 13: `blueprints/13-dashboard-metrics-blueprint.md`
 - Prompt 14: `blueprints/14-viewer-studio-future-plan-blueprint.md`

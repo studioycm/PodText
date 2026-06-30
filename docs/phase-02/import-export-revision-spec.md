@@ -14,6 +14,8 @@ Prompt 10 must run after:
 - settings/media field foundation;
 - admin management fields.
 
+Prompt 10 preflight must confirm Prompts 08 and 09 are committed, the admin UX repair commit `16ab33a` is present, `docs/phase-02/spatie-tags-and-settings-decision.md` exists, and Prompt 10 has not already started.
+
 ## Matching Rules
 
 - `ContentGroup`: `reference_key`, then slug.
@@ -33,6 +35,15 @@ Missing category or tag references must create failed rows by default. Do not si
 - Imported transcript file content creates or updates `Transcription` records.
 - Imported transcript file content must never write to legacy `ContentItem::transcript_markdown`.
 - `transcript_markdown` CSV content, if supported, also creates or updates `Transcription` records and never writes to the legacy item field.
+- The first imported transcription for an item may automatically set `content_items.featured_transcription_id` through existing model behavior; tests must account for this.
+- When importing multiple transcriptions for one item, import `featured_transcription_id` or a featured transcription reference only when explicitly provided. Otherwise the existing first-transcription default behavior applies.
+
+## Tags and Settings Boundaries
+
+- Preserve the Spatie tags decision: use Spatie's `tags` table, `taggables` pivot, and type `content`.
+- Do not create a custom `content_item_tag` pivot.
+- Preserve `App\Models\ContentTag` only as the configured Spatie custom tag model for enabled/moderation fields on the normal Spatie `tags` table.
+- Do not implement public consumption of `PublicContentSettings` or `HomepageSection` in Prompt 10; Prompt 11 owns that work.
 
 ## Date Handling
 

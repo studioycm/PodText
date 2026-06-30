@@ -3,9 +3,9 @@
 Run prompts sequentially. The current active sequence is:
 
 1. `07-phase-02-transcriptions-model-revision.md` - already run, committed, and locally migrated; keep for historical/reference unless explicitly asked to rerun.
-2. `08-phase-02-taxonomy-tags-pinning-settings-media-foundation.md` - next implementation prompt after human review of the post-migration state sync.
-3. `09-phase-02-admin-content-management.md`
-4. `10-phase-02-import-export.md`
+2. `08-phase-02-taxonomy-tags-pinning-settings-media-foundation.md` - complete and committed.
+3. `09-phase-02-admin-content-management.md` - complete and committed.
+4. `10-phase-02-import-export.md` - next implementation prompt after human review of the post-admin-repair state sync and a clean quality baseline.
 5. `11-phase-02-public-homepage-search.md`
 6. `12-phase-02-media-embed-item-page-parser.md`
 7. `13-phase-02-dashboard-metrics.md`
@@ -16,7 +16,11 @@ Historical prompts are under `prompts/archive/` and are not active instructions.
 
 ## Pre-Prompt-08 research note
 
-`prompts/admin-relation-manager-research/00-overview.md` is a docs-only refinement task for Prompt 09 admin Resource and Relation Manager UX. It does not change the active prompt order. Prompt 08 remains the next implementation prompt after review.
+`prompts/admin-relation-manager-research/00-overview.md` was a docs-only refinement task for Prompt 09 admin Resource and Relation Manager UX. It did not change the active prompt order.
+
+## Post-Prompt-09 repair note
+
+The admin management UX repair is complete and committed as `16ab33a fix: repair admin management ux after phase two resources`. Prompt 10 remains blocked until this state sync is reviewed and the project has an acceptable clean quality baseline.
 
 ## Blueprint usage rule
 

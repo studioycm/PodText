@@ -149,5 +149,5 @@ Patch these active docs/prompts/guidelines:
 - `.ai/guidelines/transcriptions.md`: add durable admin-scoped transcript management guidance.
 - `.ai/guidelines/tooling-quality.md`: add durable relation-manager API/reporting guidance.
 - `docs/phase-02/feature-map.md`: record Prompt 09 admin Resource UX and relation-manager decisions.
-- `prompts/README.md`: note that this is a pre-Prompt-08 docs-only refinement and Prompt 08 remains next.
+- `prompts/README.md`: historically noted that this was a pre-Prompt-08 docs-only refinement. Current state is Prompts 08 and 09 complete, admin UX repair complete, and Prompt 10 next after review and a clean quality baseline.
 - `docs/phase-02/tooling-and-quality-gates.md`: add relation-manager FilaCheck/FilaCheck Pro pitfalls.
