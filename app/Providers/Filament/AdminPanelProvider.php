@@ -10,6 +10,7 @@ use Filament\Pages\Dashboard;
 use Filament\Panel;
 use Filament\PanelProvider;
 use Filament\Support\Colors\Color;
+use Filament\Support\Enums\Width;
 use Filament\Widgets\AccountWidget;
 use Filament\Widgets\FilamentInfoWidget;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
@@ -31,6 +32,10 @@ class AdminPanelProvider extends PanelProvider
             ->login()
             ->profile()
             ->passwordReset()
+            ->sidebarWidth('15rem')
+            ->sidebarCollapsibleOnDesktop()
+//            ->sidebarFullyCollapsibleOnDesktop()
+            ->maxContentWidth(Width::Full)
             ->brandName(fn (): string => __('app.name'))
             ->font('Varela Round')
             ->colors([
