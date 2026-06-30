@@ -45,7 +45,7 @@ Supported section types should be explicit finite values. Prompt 09 supports lat
 
 Admin-managed homepage section slug fields must auto-generate from the section name/title, allow manual override, and include helper text explaining URL/public use.
 
-Prompt 11 must consume both `PublicContentSettings` and visible ordered `HomepageSection` records when replacing the public homepage/search UI.
+Prompt 11 must consume both `PublicContentSettings` and visible ordered `HomepageSection` records when replacing the public homepage/search UI. Prompt 10 import/export already supports portable homepage-section-adjacent ordering fields where implemented; Prompt 11 should not change import/export or settings storage unless a documented conflict requires it.
 
 ## Group Homepage Order
 

@@ -11,6 +11,8 @@
 
 Dashboard widgets should show all editorial metrics available from the current schema when Prompt 13 runs. If a metric depends on schema from Prompt 08 or later, mark it as "available after Prompt X" in implementation notes and tests.
 
+Prompt 13 starts after Prompt 12 is complete. Preserve Prompt 10 import/export behavior and Prompt 11/12 public visibility rules while adding admin dashboard metrics only.
+
 Availability staging:
 
 - Available after Prompt 07: published items, draft items, content groups, authors, transcription counts, items with multiple transcriptions, missing effective/main transcription, recent items ordered by effective/main transcription date.

@@ -23,6 +23,15 @@ This file is active Phase 02 planning context. Root repository instructions are 
 - The active implementation prompt must use the referenced blueprint as the detailed implementation contract.
 - Each final report must include a Blueprint completion checklist.
 - If code differs from the blueprint, document whether the difference already existed, was intentionally deferred, was impossible, was blocked, or is a conflict needing human decision.
+- Do not start implementation when preflight finds unexpected app-code dirt or a baseline quality gate fails outside the active prompt scope.
+
+## Prompt success state sync
+
+- Successful implementation prompts are incomplete until active Markdown state is aligned with the code that just passed the quality gate.
+- At minimum, update `docs/phase-02/current-project-state.md`, `docs/phase-02/feature-map.md`, `docs/phase-02/answers-coverage-matrix.md`, and `prompts/README.md` when project state changes.
+- Also update relevant active specs, guidelines, and future prompts when the successful prompt reveals durable lessons or changes the starting assumptions for the next prompt.
+- Commit implementation code, tests, and state docs together only after the final quality gate passes.
+- Documentation-only sync prompts should patch Markdown only and verify with `git diff --check` plus `git status --short` unless the prompt explicitly requests additional checks.
 
 ### FilamentExamples MCP
 

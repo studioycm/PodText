@@ -8,6 +8,14 @@ Implement the public item page, safe media rendering, transcription tabs, and pa
 
 - Prompts 07 through 11 are complete and committed.
 
+## Preflight and carry-forward rules
+
+- Run git status/log preflight before implementation and stop on unexpected app-code dirt.
+- Confirm Prompt 11 is complete before starting; do not backfill Prompt 11 scope in this prompt.
+- Preserve Prompt 10 native import/export behavior, Prompt 11 public listing behavior, and the `ContentItem` public result unit.
+- Do not implement player sync, studio, dashboards, analytics, metadata extraction automation, or Prompt 13+ behavior.
+- After successful implementation and passing gates, update active state Markdown before the final commit.
+
 ## Docs to read
 
 - `AGENTS.md`
@@ -102,7 +110,7 @@ npm run build
 
 ## Final report format
 
-Report files changed, tests added, commands/results, assumptions, deferred issues, and FilaCheck output.
+Report files changed, tests added, commands/results, assumptions, deferred issues, FilaCheck output, and the Blueprint completion checklist.
 
 ## Commit behavior
 

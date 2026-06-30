@@ -9,6 +9,14 @@ Audit completed Phase 02 implementation for Filament, public visibility, media, 
 - Prompts 07 through 14 are complete.
 - This is audit-only unless specific fixes are approved.
 
+## Preflight and carry-forward rules
+
+- Run git status/log preflight and stop on unexpected app-code dirt unless the user explicitly directs otherwise.
+- Confirm Prompts 07 through 14 are complete before auditing.
+- Include Prompt 10 import/export security, formula protection, failed-row behavior, typed content tag scoping, and legacy transcript non-write behavior in the audit scope.
+- Preserve audit-only posture: do not add product features or broad refactors.
+- If approved fixes are made and committed, update active state Markdown before the final commit.
+
 ## Docs to read
 
 - `AGENTS.md`

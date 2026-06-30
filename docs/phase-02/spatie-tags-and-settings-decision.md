@@ -3,6 +3,7 @@
 ## Status
 
 Accepted for the post-Prompt-09 admin UX repair.
+Still active after Prompt 10 import/export implementation.
 
 ## Spatie Tags
 
@@ -23,6 +24,8 @@ PodText should continue using standard Spatie Tags behavior for content tags:
 - `moderation_state`
 
 Those fields are needed so disabled tags remain admin-only while enabled content tags can be used by public queries in later prompts. The model extends `Spatie\Tags\Tag`, uses the existing `tags` table, and does not replace Spatie's pivot behavior.
+
+Prompt 10 import/export uses the same decision: content item imports attach existing Spatie tags scoped to `type = content`; missing tags, wrong tag types, and disabled-public content tags fail by default instead of creating unknown or unscoped tags.
 
 Do not remove `ContentTag` blindly. A future refactor would need a migration/data-impact plan, public visibility replacement, admin Resource changes, and regression tests for enabled/disabled content tags.
 

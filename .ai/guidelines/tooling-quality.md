@@ -17,6 +17,9 @@ Every implementation prompt uses Boost where available, reads its blueprint, che
 - Record FilaCheck/FilaCheck Pro output.
 - Preserve cross-cutting form, locale, and dashboard requirements from active specs/guidelines.
 - Use current Filament 5 relation-manager APIs for relation manager work.
+- Start implementation prompts with git status/log preflight and stop on unexpected app-code dirt unless the user explicitly resolves it.
+- Update active state Markdown before the final commit for every successful implementation prompt.
+- Classify blueprint requirements in the final report instead of silently skipping ambiguous or difficult items.
 
 ## Do not
 
@@ -27,6 +30,7 @@ Every implementation prompt uses Boost where available, reads its blueprint, che
 ## Testing rules
 
 - Each implementation prompt must add/update Pest tests.
+- Prefer behavior tests over class-existence checks, especially for admin UI registration, import/export rows, public visibility, filters, and failed-row behavior.
 - Final implementation gate:
 
 ```bash
@@ -49,6 +53,7 @@ npm run build
 - FilaCheck/FilaCheck Pro must pass; do not run `filacheck --fix` unless explicitly approved.
 - If a prompt uses combined relation tabs with content, use the official Filament method names for the installed version.
 - Prompt 09 final reports must state whether combined tabs, relation manager badges, redirect behavior, and create-another behavior were implemented.
+- Prompt 10 established that successful prompts must leave active docs aligned with code before committing; future prompts should treat missing state-doc updates as incomplete work.
 
 ## Cross-cutting UI rules
 

@@ -16,6 +16,19 @@ Prompt 10 must run after:
 
 Prompt 10 preflight must confirm Prompts 08 and 09 are committed, the admin UX repair commit `16ab33a` is present, `docs/phase-02/spatie-tags-and-settings-decision.md` exists, and Prompt 10 has not already started.
 
+## Current Baseline After Prompt 10
+
+Prompt 10 is complete and committed as `fad6721 feat: extend phase two import export`.
+
+- Native Filament importers/exporters are the authoritative import/export path.
+- `TranscriptionImporter` and `TranscriptionExporter` exist; inline `transcript_markdown` import writes to `Transcription`, never to legacy `content_items.transcript_markdown`.
+- `transcript_file` package support remains deferred because no approved import package structure is specified.
+- Category import/export uses slug/path hierarchy.
+- Content tag import/export uses Spatie `type = content` tags and fails missing, disabled-public, or wrong-type references by default.
+- Content item import/export covers category paths, typed tag slugs, pin fields, media metadata, and featured transcription reference keys.
+- Content group import/export covers category paths and homepage ordering where implemented.
+- Later prompts should preserve this baseline unless their active blueprint explicitly requires a compatible change.
+
 ## Matching Rules
 
 - `ContentGroup`: `reference_key`, then slug.

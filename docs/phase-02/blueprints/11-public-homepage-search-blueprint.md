@@ -13,6 +13,10 @@ Create/update:
 - `App\Livewire\Public\ContentItemSearch`.
 - Blade card view for public item result.
 
+## Prompt 10 Baseline
+
+Prompt 11 starts after Prompt 10 import/export is complete. Preserve native import/export classes and behavior while building public homepage/search. Public queries should consume category paths, enabled typed content tags, pin fields, media metadata, settings, sections, and transcription state already present in the models; do not revise import/export behavior unless a conflict is found and reported.
+
 ## Query Rules
 
 Base query:

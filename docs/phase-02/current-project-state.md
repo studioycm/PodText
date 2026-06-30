@@ -193,6 +193,13 @@ Current physical schema verified through Boost `database_schema`:
 - Prompt 11 must consume `PublicContentSettings` and visible ordered `HomepageSection` records when building the public homepage/search UI.
 - Prompt 11 must keep public listings based on `ContentItem` records and must not expose draft/unpublished items or draft transcriptions.
 
+## Post-Prompt-10 Guidance Sync Notes
+
+- Active prompt workflow guidance now records the requirement to run preflight, read the blueprint/spec stack, stop on conflicts, and classify blueprint completion in final reports.
+- Successful implementation prompts must update relevant active Markdown state files before the final commit, not only code and tests.
+- Prompt 11 should start from the Prompt 10 import/export baseline and should not modify import/export behavior unless a Prompt 11 requirement makes that necessary.
+- This guidance sync changed Markdown only and did not start Prompt 11.
+
 ## Baseline Issue To Record
 
 `php artisan model:show App\Models\ContentItem` and `php artisan model:show App\Models\ContentGroup` previously failed with a class redeclare fatal. This documentation sync did not retest or fix that application issue. Future implementation prompts should avoid relying on `model:show` until the cause is investigated.

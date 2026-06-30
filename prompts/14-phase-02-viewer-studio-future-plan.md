@@ -8,6 +8,14 @@ Plan future synced viewer and transcription studio work after parse-only viewer 
 
 - Prompt 12 already implemented parse-only timestamp/speaker viewer behavior.
 
+## Preflight and carry-forward rules
+
+- Run git status/log preflight before changing docs and stop on unexpected app-code dirt.
+- Confirm Prompt 12 is complete before starting; this prompt remains planning-only.
+- Preserve Prompt 10 native import/export behavior and Prompt 12 parse-only viewer behavior in the future plan assumptions.
+- Do not implement player sync, studio UI, autosave, migrations, Resources, Livewire components, or Blade files.
+- If this planning prompt is committed, keep changes Markdown-only unless the user explicitly changes the prompt.
+
 ## Docs to read
 
 - `AGENTS.md`

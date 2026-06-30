@@ -15,12 +15,15 @@ Spatie Settings for global options, normal database records for ordered homepage
 - Keep dashboard widgets editorial.
 - Link widgets to Filament Resources through Resource URL helpers.
 - Include available editorial metrics as dashboard widgets and extend them as later schema becomes available.
+- In Prompt 11, public homepage/search must consume both global public settings and visible ordered homepage sections.
+- In Prompt 13, dashboard widgets should reflect currently available Prompt 07-12 schema, including import/export-adjacent warning states only when they are real editorial metrics.
 
 ## Do not
 
 - Do not add analytics/search logging.
 - Do not add observability dashboards or retry managers.
 - Do not use item pinning as settings storage.
+- Do not make homepage sections a replacement for item pinning; sections choose slices, while pin fields affect item ordering.
 
 ## Testing rules
 
@@ -28,6 +31,7 @@ Spatie Settings for global options, normal database records for ordered homepage
 - Homepage section visibility/order.
 - Widget render/count tests.
 - Admin-only access.
+- Public homepage tests for settings/section limits where they affect visible content.
 
 ## Security rules
 

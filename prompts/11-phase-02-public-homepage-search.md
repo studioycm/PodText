@@ -7,7 +7,17 @@ Implement item-based public homepage/search/category/tag landing pages.
 ## Current state assumptions
 
 - Prompts 07 through 10 are complete and committed.
+- Prompt 10 is committed as `fad6721 feat: extend phase two import export`.
 - Effective/main transcription, categories, tags, pinning, settings, media fields, and import/export are ready.
+- Prompt 11 has not already started.
+
+## Preflight and carry-forward rules
+
+- Run git status/log preflight before implementation and stop on unexpected app-code dirt.
+- Confirm Prompt 10's import/export baseline is present before changing public UI code.
+- Preserve native import/export behavior, typed content tag semantics, category path semantics, and the rule that transcript imports never write to legacy `content_items.transcript_markdown`.
+- Do not implement public item page/parser work, dashboard widgets, studio/sync work, or Prompt 12+ behavior.
+- After successful implementation and passing gates, update active state Markdown before the final commit: `docs/phase-02/current-project-state.md`, `docs/phase-02/feature-map.md`, `docs/phase-02/answers-coverage-matrix.md`, `prompts/README.md`, and any directly affected specs/guidelines.
 
 ## Docs to read
 
@@ -101,7 +111,7 @@ Check FilaCheck Pro table/filter/card concerns.
 
 ## Final report format
 
-Report files changed, tests added, commands/results, assumptions, deferred issues, and FilaCheck output.
+Report files changed, tests added, commands/results, assumptions, deferred issues, FilaCheck output, and the Blueprint completion checklist.
 
 ## Commit behavior
 

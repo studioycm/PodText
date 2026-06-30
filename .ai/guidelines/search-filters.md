@@ -15,6 +15,9 @@ Filament Table inside a public Livewire component, rendered as item cards or row
 - Add active indicators for custom filters.
 - Persist important state in URL.
 - Implement all required sort modes.
+- Reuse the same `ContentItem` public visibility query across homepage, search, category, and tag landing pages.
+- Include category hierarchy/descendants and enabled `content` tags according to the active taxonomy specs.
+- Let explicit user-selected sorts override default pinned-first homepage ordering where the search spec requires it.
 
 ## Do not
 
@@ -28,6 +31,8 @@ Filament Table inside a public Livewire component, rendered as item cards or row
 - Filter and sort order tests.
 - URL state tests.
 - Disabled tag exclusion.
+- Effective/main transcription visibility tests.
+- Category descendant and typed-tag scoping tests.
 
 ## Security rules
 

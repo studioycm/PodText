@@ -57,6 +57,21 @@ Keep active context clean.
 - Do not keep old “do not implement X” exclusions active after X becomes part of the project roadmap.
 - If a file is archived, add a short archive note explaining why it is no longer active.
 
+## Prompt-driven implementation workflow
+
+Implementation prompts are sequential contracts, not loose task lists.
+
+- Start every prompt with local preflight: check `git status --short --branch`, inspect recent commits, confirm the expected prior prompt commits are present, and confirm the next prompt has not already started.
+- If unexpected PHP, Blade, migration, test, config, or app-code changes exist before implementation starts, stop and report unless the active user request explicitly tells you how to handle them.
+- Read the active prompt, named blueprint, active state docs, relevant specs, and durable `.ai/guidelines/` files before changing code.
+- Treat the named blueprint as the detailed implementation contract. If the prompt, blueprint, specs, `AGENTS.md`, installed package docs, or current code conflict, stop and report before changing code.
+- Use Laravel Boost and FilamentExamples when the prompt calls for them or when package behavior is uncertain. Record whether tools returned installed-version guidance, source snippets, summaries, or were unavailable.
+- Run any required baseline quality gate before implementation. If a baseline command fails, stop before coding unless the failure is explicitly in scope to fix.
+- Verify behavior with tests that exercise the real workflow, not only class existence or static registration.
+- Do not silently skip blueprint requirements. Classify each meaningful requirement as implemented, already existed, deferred by blueprint, not applicable, or blocked in the final report.
+- A successful implementation prompt must update relevant active Markdown state before the final commit. At minimum, keep `docs/phase-02/current-project-state.md`, `docs/phase-02/feature-map.md`, `docs/phase-02/answers-coverage-matrix.md`, and `prompts/README.md` aligned when the prompt changes project state.
+- Documentation-only synchronization prompts must patch Markdown only and use documentation checks such as `git diff --check` and `git status --short` unless the prompt explicitly asks for more.
+
 ## Read before changing code
 
 Before modifying application code, read:

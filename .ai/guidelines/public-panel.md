@@ -15,12 +15,15 @@ Guest Filament Public panel with custom Pages, class-based Livewire for server-d
 - Use Blade for cards, group badges, type labels, media embeds, and transcript output.
 - Use Alpine only for local UI behavior.
 - Keep search/sort/filter state in URL where practical.
+- Read `PublicContentSettings` and visible ordered `HomepageSection` records where homepage/search specs require public defaults and slices.
+- Use the Prompt 10 category, tag, pinning, media metadata, and transcription model state as the public listing source of truth.
 
 ## Do not
 
 - Do not render public result cards as `Transcription` records.
 - Do not expose admin Resource routes publicly.
 - Do not duplicate persisted state in Alpine.
+- Do not implement public item page/parser, dashboard widgets, or studio behavior in the homepage/search prompt.
 
 ## Testing rules
 
@@ -28,6 +31,8 @@ Guest Filament Public panel with custom Pages, class-based Livewire for server-d
 - Draft/no-effective-transcription exclusion tests.
 - RTL marker tests where feasible.
 - Livewire search/sort/filter tests.
+- Settings/section consumption tests where public homepage behavior depends on them.
+- Regression tests that public cards still represent `ContentItem` records when multiple transcriptions exist.
 
 ## Security rules
 

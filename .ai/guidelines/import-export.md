@@ -16,6 +16,9 @@ Native Filament Importer/Exporter classes with portable reference keys and faile
 - Import/export only fields created by Prompts 07-09.
 - Export large Markdown fields disabled by default.
 - Preserve formula-injection protection.
+- Preserve Prompt 10's completed native Filament importer/exporter baseline when later prompts touch related models.
+- Keep `transcript_file` support deferred unless a safe, documented import package structure is approved and tested.
+- Keep day-first import/export presentation for dates and date-times, using `Asia/Jerusalem` for UI/export date-time presentation.
 
 ## Do not
 
@@ -23,6 +26,8 @@ Native Filament Importer/Exporter classes with portable reference keys and faile
 - Do not export numeric database IDs as portable identifiers.
 - Do not fetch remote media during imports.
 - Do not write transcript imports to the legacy item transcript field.
+- Do not silently create missing categories or tags during content imports.
+- Do not attach unscoped, disabled-public, or wrong-type tags unless an active spec explicitly allows it and tests cover the behavior.
 
 ## Testing rules
 
@@ -31,12 +36,16 @@ Native Filament Importer/Exporter classes with portable reference keys and faile
 - Failed rows.
 - Export columns.
 - Authorization.
+- Date parsing/export formatting.
+- Legacy transcript field non-regression.
 
 ## Security rules
 
 - Validate all imported values.
 - Keep failed-row download authorization.
 - Escape spreadsheet formula values.
+- Treat missing relationship references as row failures by default.
+- Use portable identifiers only: reference keys, slugs/paths, and typed tag slugs.
 
 ## FilaCheck / FilaCheck Pro notes
 

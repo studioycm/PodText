@@ -22,6 +22,7 @@
 - Prompt 10 import/export is complete in the commit containing this state update.
 - Prompt 11 public homepage/search is next.
 - Prompt 11 has not started.
+- Post-Prompt-10 guidance sync is Markdown-only and carries forward the rule that successful implementation prompts must update active state docs before the final commit.
 
 ## Non-Negotiable Semantics
 
@@ -78,6 +79,7 @@ Do not install Shield in Phase 02 planning. Use these names for future authoriza
 - Prompt 10: `blueprints/10-import-export-blueprint.md` - complete.
 - Prompt 11: `blueprints/11-public-homepage-search-blueprint.md`
   - Prompt 11 must consume `PublicContentSettings` and visible ordered `HomepageSection` records when implementing the public homepage/search UI.
+  - Prompt 11 must preserve Prompt 10 native import/export behavior unless the Prompt 11 blueprint explicitly requires a related change.
 - Prompt 12: `blueprints/12-public-item-page-media-parser-blueprint.md`
 - Prompt 13: `blueprints/13-dashboard-metrics-blueprint.md`
 - Prompt 14: `blueprints/14-viewer-studio-future-plan-blueprint.md`

@@ -19,6 +19,8 @@ Default immediate search:
 - enabled content tag names;
 - direct and inherited category names.
 
+Content tags are Spatie tags scoped to `type = content`; public filters/search must not use unscoped tags, disabled public tags, or wrong-type tags.
+
 Deferred/advanced search:
 
 - author name;
@@ -63,6 +65,8 @@ Required sort options:
 Homepage may apply pinned-first order. Explicit search sort may override pinned-first.
 
 Sort labels must be translation keys and Hebrew-first.
+
+Prompt 11 should preserve Prompt 10's portable category path and typed content tag semantics when building filters and landing pages. It should not create tags or categories as a side effect of public search.
 
 Date range filter inputs and result date displays should use Hebrew/Israel behavior:
 

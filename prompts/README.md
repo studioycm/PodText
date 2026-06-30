@@ -26,6 +26,10 @@ The admin management UX repair is complete and committed as `16ab33a fix: repair
 
 Prompt 10 is complete in the implementation commit containing this README update. It added native Filament category and transcription importers/exporters, extended content item/group import/export for category paths, enabled content tag slugs, pin fields, media metadata, featured transcription references, and day-first date handling, and kept transcript-file package imports deferred. Prompt 11 public homepage/search is next and has not started.
 
+## Post-Prompt-10 guidance sync note
+
+The active guidance now records Prompt 07-10 lessons: run prompt preflight before implementation, treat blueprints as binding contracts, verify real behavior with tests, update active state Markdown before every successful implementation commit, and preserve Prompt 10 import/export behavior while Prompt 11 implements public homepage/search.
+
 ## Blueprint usage rule
 
 Every implementation prompt must treat its referenced blueprint as the detailed implementation contract.
