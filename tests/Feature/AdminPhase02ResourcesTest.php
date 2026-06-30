@@ -7,8 +7,10 @@ use App\Filament\Resources\Categories\CategoryResource;
 use App\Filament\Resources\Categories\Pages\CreateCategory;
 use App\Filament\Resources\Categories\Pages\EditCategory;
 use App\Filament\Resources\Categories\Pages\ListCategories;
+use App\Filament\Resources\ContentItems\ContentItemResource;
 use App\Filament\Resources\ContentItems\Pages\CreateContentItem;
 use App\Filament\Resources\ContentItems\Pages\EditContentItem;
+use App\Filament\Resources\ContentItems\Pages\ListContentItems;
 use App\Filament\Resources\ContentItems\RelationManagers\TranscriptionsRelationManager;
 use App\Filament\Resources\ContentTags\ContentTagResource;
 use App\Filament\Resources\ContentTags\Pages\CreateContentTag;
@@ -33,6 +35,7 @@ use App\Models\User;
 use App\Settings\PublicContentSettings;
 use Filament\Actions\Testing\TestAction;
 use Filament\Facades\Filament;
+use Filament\Notifications\Notification;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Validation\ValidationException;
 use Livewire\Features\SupportTesting\Testable;
@@ -150,9 +153,8 @@ it('auto-generates slugs and manages categories, tags, and homepage sections', f
         ->fillForm([
             'name' => 'Latest Editorial',
             'slug' => 'latest-editorial',
-            'type' => HomepageSectionType::Category,
+            'type' => HomepageSectionType::Category->value,
             'category_id' => $category->id,
-            'tag_id' => $tag->id,
             'limit' => 8,
             'sort_order' => 1,
             'is_visible' => true,
@@ -164,7 +166,83 @@ it('auto-generates slugs and manages categories, tags, and homepage sections', f
     $section = HomepageSection::query()->where('slug', 'latest-editorial')->firstOrFail();
 
     expect($section->category_id)->toBe($category->id)
-        ->and($section->tag_id)->toBe($tag->id);
+        ->and($section->tag_id)->toBeNull();
+});
+
+it('drives homepage section target fields and validation from section type', function (): void {
+    $category = Category::factory()->create();
+    $tag = ContentTag::findOrCreateFromString('Homepage Typed Tag', 'content')->enable();
+    $group = ContentGroup::factory()->create();
+
+    Livewire::test(CreateHomepageSection::class)
+        ->set('data.type', HomepageSectionType::Latest->value)
+        ->assertSchemaComponentHidden('category_id', 'form')
+        ->assertSchemaComponentHidden('tag_id', 'form')
+        ->assertSchemaComponentHidden('content_group_id', 'form')
+        ->fillForm([
+            'name' => 'Latest Section',
+            'slug' => 'latest-section',
+            'type' => HomepageSectionType::Latest->value,
+            'limit' => 6,
+            'sort_order' => 1,
+            'is_visible' => true,
+        ])
+        ->call('create')
+        ->assertHasNoFormErrors();
+
+    Livewire::test(CreateHomepageSection::class)
+        ->set('data.type', HomepageSectionType::Category->value)
+        ->assertSchemaComponentVisible('category_id', 'form')
+        ->assertSchemaComponentHidden('tag_id', 'form')
+        ->assertSchemaComponentHidden('content_group_id', 'form')
+        ->fillForm([
+            'name' => 'Missing Category Section',
+            'slug' => 'missing-category-section',
+            'type' => HomepageSectionType::Category->value,
+            'limit' => 6,
+            'sort_order' => 2,
+            'is_visible' => true,
+        ])
+        ->call('create')
+        ->assertHasFormErrors(['category_id' => 'required']);
+
+    Livewire::test(CreateHomepageSection::class)
+        ->set('data.type', HomepageSectionType::Tag->value)
+        ->assertSchemaComponentHidden('category_id', 'form')
+        ->assertSchemaComponentVisible('tag_id', 'form')
+        ->assertSchemaComponentHidden('content_group_id', 'form')
+        ->fillForm([
+            'name' => 'Tag Section',
+            'slug' => 'tag-section',
+            'type' => HomepageSectionType::Tag->value,
+            'tag_id' => $tag->id,
+            'limit' => 6,
+            'sort_order' => 3,
+            'is_visible' => true,
+        ])
+        ->call('create')
+        ->assertHasNoFormErrors();
+
+    Livewire::test(CreateHomepageSection::class)
+        ->set('data.type', HomepageSectionType::ContentGroup->value)
+        ->assertSchemaComponentHidden('category_id', 'form')
+        ->assertSchemaComponentHidden('tag_id', 'form')
+        ->assertSchemaComponentVisible('content_group_id', 'form')
+        ->fillForm([
+            'name' => 'Group Section',
+            'slug' => 'group-section',
+            'type' => HomepageSectionType::ContentGroup->value,
+            'content_group_id' => $group->id,
+            'limit' => 6,
+            'sort_order' => 4,
+            'is_visible' => true,
+        ])
+        ->call('create')
+        ->assertHasNoFormErrors();
+
+    expect(HomepageSection::query()->where('slug', 'latest-section')->firstOrFail()->category_id)->toBeNull()
+        ->and(HomepageSection::query()->where('slug', 'tag-section')->firstOrFail()->tag_id)->toBe($tag->id)
+        ->and(HomepageSection::query()->where('slug', 'group-section')->firstOrFail()->content_group_id)->toBe($group->id);
 });
 
 it('assigns prompt eight taxonomy, tags, pinning, media metadata, and featured transcription on content items', function (): void {
@@ -173,7 +251,7 @@ it('assigns prompt eight taxonomy, tags, pinning, media metadata, and featured t
     $category = Category::factory()->create();
     $tag = ContentTag::findOrCreateFromString('Assigned Tag', 'content')->enable();
 
-    Livewire::test(CreateContentItem::class)
+    $component = Livewire::test(CreateContentItem::class)
         ->fillForm([
             'content_group_id' => $group->id,
             'title' => 'Prompt Nine Item',
@@ -200,9 +278,16 @@ it('assigns prompt eight taxonomy, tags, pinning, media metadata, and featured t
             'status' => PublicationStatus::Draft,
         ])
         ->call('create')
-        ->assertHasNoFormErrors();
+        ->assertHasNoFormErrors()
+        ->assertNotified(Notification::make()
+            ->success()
+            ->title(__('admin.notifications.content_item_created'))
+            ->body(__('admin.notifications.content_item_created_add_transcription')));
 
     $item = ContentItem::query()->where('slug', 'prompt-nine-item')->firstOrFail();
+
+    $component->assertRedirect(ContentItemResource::getUrl('edit', ['record' => $item]));
+
     $transcription = Transcription::factory()
         ->for($item)
         ->forAuthor($author)
@@ -236,6 +321,36 @@ it('assigns prompt eight taxonomy, tags, pinning, media metadata, and featured t
         ->and($item->media_metadata)->toBe(['source' => 'manual'])
         ->and($item->featured_transcription_id)->toBe($transcription->id)
         ->and($item->transcript_markdown)->toBeNull();
+});
+
+it('renders content item edit details and transcription tabs with real form fields', function (): void {
+    $item = ContentItem::factory()->create([
+        'title' => 'Details Tab Item',
+        'slug' => 'details-tab-item',
+        'media_url' => 'https://example.com/details-tab.mp3',
+    ]);
+
+    $component = Livewire::test(EditContentItem::class, ['record' => $item->getRouteKey()])
+        ->assertOk()
+        ->assertSee(__('admin.tabs.item_details'))
+        ->assertSee(__('admin.tabs.transcriptions'))
+        ->assertSee(__('admin.fields.title'))
+        ->assertSee(__('admin.fields.slug'))
+        ->assertSee(__('admin.fields.content_group'))
+        ->assertSee(__('admin.fields.status'))
+        ->assertSee(__('admin.fields.media_url'))
+        ->assertSchemaComponentVisible('title', 'form')
+        ->assertSchemaComponentVisible('slug', 'form')
+        ->assertSchemaComponentVisible('content_group_id', 'form')
+        ->assertSchemaComponentVisible('status', 'form')
+        ->assertSchemaComponentVisible('media_url', 'form');
+
+    expect((new ReflectionMethod(EditContentItem::class, 'getContentTabLabel'))->getDeclaringClass()->getName())
+        ->toBe(EditContentItem::class)
+        ->and((new ReflectionMethod(EditContentItem::class, 'getContentTabComponent'))->getDeclaringClass()->getName())
+        ->not->toBe(EditContentItem::class);
+
+    expect($component->instance()->form->getComponents())->not->toBeEmpty();
 });
 
 it('saves public content settings through the settings page', function (): void {
@@ -327,6 +442,92 @@ it('manages item transcriptions through the content item relation manager', func
 
     expect($created->refresh()->title)->toBe('Edited relation transcript')
         ->and($item->featured_transcription_id)->toBe($ownerTranscription->id);
+});
+
+it('auto-features the first relation-manager transcription and only offers manual featured changes when useful', function (): void {
+    $item = ContentItem::factory()->create();
+    $author = Author::factory()->create();
+
+    Livewire::test(TranscriptionsRelationManager::class, [
+        'ownerRecord' => $item,
+        'pageClass' => EditContentItem::class,
+    ])
+        ->assertActionVisible(TestAction::make('create')->table())
+        ->mountAction(TestAction::make('create')->table())
+        ->set('mountedActions.0.data.author_id', $author->id)
+        ->set('mountedActions.0.data.title', 'First item transcript')
+        ->set('mountedActions.0.data.language_code', 'he')
+        ->set('mountedActions.0.data.transcript_markdown', 'First body')
+        ->set('mountedActions.0.data.status', PublicationStatus::Published->value)
+        ->set('mountedActions.0.data.published_at', now()->subMinutes(5))
+        ->callMountedAction()
+        ->assertHasNoFormErrors();
+
+    $first = Transcription::query()->where('title', 'First item transcript')->firstOrFail();
+
+    expect($first->content_item_id)->toBe($item->id)
+        ->and($item->refresh()->featured_transcription_id)->toBe($first->id);
+
+    Livewire::test(TranscriptionsRelationManager::class, [
+        'ownerRecord' => $item->refresh(),
+        'pageClass' => EditContentItem::class,
+    ])
+        ->assertActionHidden(TestAction::make('setFeatured')->table($first));
+
+    $second = Transcription::factory()
+        ->for($item)
+        ->forAuthor($author)
+        ->published()
+        ->create(['title' => 'Second item transcript']);
+
+    Livewire::test(TranscriptionsRelationManager::class, [
+        'ownerRecord' => $item->refresh(),
+        'pageClass' => EditContentItem::class,
+    ])
+        ->assertActionVisible(TestAction::make('setFeatured')->table($second))
+        ->callAction(TestAction::make('setFeatured')->table($second))
+        ->assertHasNoFormErrors();
+
+    expect($item->refresh()->featured_transcription_id)->toBe($second->id);
+});
+
+it('keeps draft featured transcriptions from becoming publicly effective', function (): void {
+    $group = ContentGroup::factory()->published()->create();
+    $item = ContentItem::factory()->for($group)->published()->create();
+    $draft = Transcription::factory()->for($item)->forAuthor()->create([
+        'title' => 'Draft featured transcript',
+        'status' => PublicationStatus::Draft,
+    ]);
+    $published = Transcription::factory()->for($item)->forAuthor()->published()->create([
+        'title' => 'Published fallback transcript',
+    ]);
+
+    $item->update(['featured_transcription_id' => $draft->id]);
+
+    expect($item->refresh()->effectiveTranscription()?->is($published))->toBeTrue()
+        ->and(ContentItem::query()->published()->whereKey($item)->exists())->toBeTrue();
+});
+
+it('creates transcriptions from the content item table row action and defers moving existing records', function (): void {
+    $item = ContentItem::factory()->create();
+    $author = Author::factory()->create();
+
+    Livewire::test(ListContentItems::class)
+        ->assertActionVisible(TestAction::make('addTranscription')->table($item))
+        ->assertActionDoesNotExist(TestAction::make('associateTranscription')->table($item))
+        ->mountAction(TestAction::make('addTranscription')->table($item))
+        ->set('mountedActions.0.data.author_id', $author->id)
+        ->set('mountedActions.0.data.title', 'Table action transcript')
+        ->set('mountedActions.0.data.language_code', 'he')
+        ->set('mountedActions.0.data.status', PublicationStatus::Draft->value)
+        ->set('mountedActions.0.data.transcript_markdown', 'Created from table action')
+        ->callMountedAction()
+        ->assertHasNoFormErrors();
+
+    $transcription = Transcription::query()->where('title', 'Table action transcript')->firstOrFail();
+
+    expect($transcription->content_item_id)->toBe($item->id)
+        ->and($item->refresh()->featured_transcription_id)->toBe($transcription->id);
 });
 
 it('creates standalone transcriptions and validates same item featured selection', function (): void {

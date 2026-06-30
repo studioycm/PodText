@@ -72,6 +72,22 @@ class Transcription extends Model
             $transcription->status ??= PublicationStatus::Draft;
         });
 
+        static::created(function (Transcription $transcription): void {
+            $contentItem = $transcription->contentItem;
+
+            if (! $contentItem || filled($contentItem->featured_transcription_id)) {
+                return;
+            }
+
+            if ($contentItem->transcriptions()->whereKeyNot($transcription->getKey())->exists()) {
+                return;
+            }
+
+            $contentItem->forceFill([
+                'featured_transcription_id' => $transcription->getKey(),
+            ])->save();
+        });
+
         static::updating(function (Transcription $transcription): void {
             if ($transcription->isDirty('reference_key')) {
                 $transcription->reference_key = $transcription->getOriginal('reference_key');

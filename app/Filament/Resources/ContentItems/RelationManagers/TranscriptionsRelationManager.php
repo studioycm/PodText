@@ -39,15 +39,18 @@ class TranscriptionsRelationManager extends RelationManager
         return $schema
             ->components([
                 Section::make(__('admin.sections.identity'))
+                    ->description(__('admin.descriptions.transcription_identity'))
                     ->schema([
                         Select::make('author_id')
                             ->label(__('admin.fields.author'))
+                            ->helperText(__('admin.helpers.transcription_author'))
                             ->relationship('author', 'name')
                             ->searchable()
                             ->preload()
                             ->required(),
                         TextInput::make('title')
                             ->label(__('admin.fields.title'))
+                            ->helperText(__('admin.helpers.transcription_title'))
                             ->maxLength(255),
                         TextInput::make('language_code')
                             ->label(__('admin.fields.language_code'))
@@ -58,22 +61,27 @@ class TranscriptionsRelationManager extends RelationManager
                     ])
                     ->columns(3),
                 Section::make(__('admin.sections.publication'))
+                    ->description(__('admin.descriptions.transcription_publication'))
                     ->schema([
                         Select::make('status')
                             ->label(__('admin.fields.status'))
+                            ->helperText(__('admin.helpers.transcription_status'))
                             ->options(PublicationStatus::class)
                             ->default(PublicationStatus::Draft->value)
                             ->required(),
                         DateTimePicker::make('published_at')
                             ->label(__('admin.fields.published_at'))
+                            ->helperText(__('admin.helpers.transcription_published_at'))
                             ->displayFormat('d/m/Y H:i')
                             ->timezone('Asia/Jerusalem'),
                     ])
                     ->columns(2),
                 Section::make(__('admin.sections.transcript'))
+                    ->description(__('admin.descriptions.transcript_markdown'))
                     ->schema([
                         MarkdownEditor::make('transcript_markdown')
                             ->label(__('admin.fields.transcript_markdown'))
+                            ->helperText(__('admin.helpers.transcript_markdown'))
                             ->disableToolbarButtons(['attachFiles'])
                             ->fileAttachments(false)
                             ->required()
@@ -168,12 +176,15 @@ class TranscriptionsRelationManager extends RelationManager
             ])
             ->recordActions([
                 EditAction::make()
-                ->modalWidth(Width::FiveExtraLarge),
+                    ->modalWidth(Width::FiveExtraLarge),
                 Action::make('setFeatured')
                     ->label(__('admin.actions.set_featured_transcription'))
                     ->icon(Heroicon::OutlinedStar)
                     ->color('warning')
-                    ->visible(fn (Transcription $record): bool => $record->isPublished())
+                    ->modalDescription(__('admin.helpers.set_featured_transcription_action'))
+                    ->visible(fn (Transcription $record): bool => $record->isPublished()
+                        && $this->getOwnerRecord()->transcriptions()->count() > 1
+                        && $record->getKey() !== $this->getOwnerRecord()->featured_transcription_id)
                     ->action(function (Transcription $record): void {
                         abort_unless($record->content_item_id === $this->getOwnerRecord()->getKey(), 403);
 

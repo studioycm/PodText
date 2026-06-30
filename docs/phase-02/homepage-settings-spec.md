@@ -4,6 +4,8 @@
 
 Use Spatie Settings in Prompt 08. This package choice is approved for Phase 02 implementation; do not ask for package approval again when Prompt 08 reaches this work. If the packages are absent at implementation time, Prompt 08 owns adding them as part of that implementation task.
 
+Settings are global public defaults and limits. They do not define individual homepage content slices.
+
 Suggested settings:
 
 - homepage item limit;
@@ -25,6 +27,8 @@ The item page layout setting should support the default public UX layouts:
 
 Use normal database records for ordered visible homepage sections when dynamic sections are required.
 
+Homepage sections configure what content slices appear on the homepage. Item pinning is separate and affects item ordering inside public lists where pinned-first behavior is supported.
+
 Suggested `homepage_sections` fields:
 
 - `name`
@@ -37,9 +41,11 @@ Suggested `homepage_sections` fields:
 - `sort_order`
 - `is_visible`
 
-Supported section types should be explicit finite values, such as latest, category, tag, group, and curated query.
+Supported section types should be explicit finite values. Prompt 09 supports latest, category, tag, and content group management. Curated query is deferred until a concrete query-builder spec exists.
 
 Admin-managed homepage section slug fields must auto-generate from the section name/title, allow manual override, and include helper text explaining URL/public use.
+
+Prompt 11 must consume both `PublicContentSettings` and visible ordered `HomepageSection` records when replacing the public homepage/search UI.
 
 ## Group Homepage Order
 

@@ -27,6 +27,7 @@ class ContentItemForm
         return $schema
             ->components([
                 Section::make(__('admin.sections.identity'))
+                    ->description(__('admin.descriptions.content_item_identity'))
                     ->schema([
                         TextInput::make('reference_key')
                             ->label(__('admin.fields.reference_key'))
@@ -36,12 +37,14 @@ class ContentItemForm
                             ->visibleOn('edit'),
                         Select::make('content_group_id')
                             ->label(__('admin.fields.content_group'))
+                            ->helperText(__('admin.helpers.content_item_content_group'))
                             ->relationship('contentGroup', 'title')
                             ->searchable()
                             ->preload()
                             ->required(),
                         TextInput::make('title')
                             ->label(__('admin.fields.title'))
+                            ->helperText(__('admin.helpers.content_item_title'))
                             ->live(onBlur: true)
                             ->afterStateUpdated(function (Set $set, Get $get, ?string $old, ?string $state): void {
                                 if (filled($get('slug')) && $get('slug') !== Str::slug((string) $old)) {
@@ -65,14 +68,17 @@ class ContentItemForm
                     ])
                     ->columns(2),
                 Section::make(__('admin.sections.content'))
+                    ->description(__('admin.descriptions.content_item_content'))
                     ->schema([
                         MarkdownEditor::make('description_markdown')
                             ->label(__('admin.fields.description_markdown'))
+                            ->helperText(__('admin.helpers.content_item_description'))
                             ->disableToolbarButtons(['attachFiles'])
                             ->fileAttachments(false)
                             ->columnSpanFull(),
                         TextInput::make('media_url')
                             ->label(__('admin.fields.media_url'))
+                            ->helperText(__('admin.helpers.media_url'))
                             ->url()
                             ->required()
                             ->maxLength(2048)
@@ -114,6 +120,7 @@ class ContentItemForm
                     ])
                     ->columns(2),
                 Section::make(__('admin.sections.featured_transcription'))
+                    ->description(__('admin.descriptions.featured_transcription'))
                     ->schema([
                         Select::make('featured_transcription_id')
                             ->label(__('admin.fields.featured_transcription'))
@@ -129,8 +136,11 @@ class ContentItemForm
                                     ->all()
                                 : [])
                             ->searchable(),
-                    ]),
+                    ])
+                    ->visible(fn (?ContentItem $record): bool => $record
+                        && $record->transcriptions()->count() > 1),
                 Section::make(__('admin.sections.pinning'))
+                    ->description(__('admin.descriptions.pinning'))
                     ->schema([
                         Toggle::make('is_pinned')
                             ->label(__('admin.fields.is_pinned'))
@@ -154,6 +164,7 @@ class ContentItemForm
                     ])
                     ->columns(4),
                 Section::make(__('admin.sections.media_metadata'))
+                    ->description(__('admin.descriptions.media_metadata'))
                     ->schema([
                         TextInput::make('embed_provider')
                             ->label(__('admin.fields.embed_provider'))
@@ -201,9 +212,11 @@ class ContentItemForm
                     ->collapsible()
                     ->collapsed(),
                 Section::make(__('admin.sections.publication'))
+                    ->description(__('admin.descriptions.content_item_publication'))
                     ->schema([
                         Select::make('status')
                             ->label(__('admin.fields.status'))
+                            ->helperText(__('admin.helpers.content_item_status'))
                             ->options(PublicationStatus::class)
                             ->default(PublicationStatus::Draft->value)
                             ->required(),

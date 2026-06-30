@@ -79,6 +79,8 @@ it('resolves the effective transcription by featured published record then lates
     $newer = Transcription::factory()->for($item)->published(now()->subDay())->create(['title' => 'Newer']);
     $draft = Transcription::factory()->for($item)->create(['title' => 'Draft']);
 
+    $item->refresh()->update(['featured_transcription_id' => null]);
+
     expect($item->refresh()->effectiveTranscription()->is($newer))->toBeTrue();
 
     $item->update(['featured_transcription_id' => $older->id]);

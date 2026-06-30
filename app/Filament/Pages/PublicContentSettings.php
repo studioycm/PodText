@@ -38,6 +38,7 @@ class PublicContentSettings extends SettingsPage
         return $schema
             ->components([
                 Section::make(__('admin.sections.homepage_settings'))
+                    ->description(__('admin.descriptions.public_content_settings_homepage'))
                     ->schema([
                         TextInput::make('homepage_item_limit')
                             ->label(__('admin.fields.homepage_item_limit'))
@@ -59,6 +60,7 @@ class PublicContentSettings extends SettingsPage
                     ])
                     ->columns(3),
                 Section::make(__('admin.sections.public_display'))
+                    ->description(__('admin.descriptions.public_content_settings_display'))
                     ->schema([
                         Select::make('default_public_sort')
                             ->label(__('admin.fields.default_public_sort'))

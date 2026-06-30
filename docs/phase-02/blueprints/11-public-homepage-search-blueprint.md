@@ -27,6 +27,8 @@ Sort `latest_transcription` by effective/main transcription `published_at`.
 
 Homepage order is one combined pinned-first/latest `ContentItem` list. Default layout may mix pinned cards and latest rows, but all records remain `ContentItem` records.
 
+Prompt 11 must read `App\Settings\PublicContentSettings` for global defaults and limits, and must read visible ordered `HomepageSection` records for homepage content slices. Homepage sections decide which latest/category/tag/content-group slices appear; settings provide defaults such as limits, layout, and sort. Item pinning remains separate ordering behavior.
+
 ## Filament Table Plan
 
 Component:
@@ -78,6 +80,8 @@ Filter layout:
 - `/tags/{tagSlug}`.
 
 Category and tag landing pages reuse the same public item-card component as search results.
+
+The homepage should use enabled content tags only and should ignore deferred `curated_query` sections until a concrete query-builder spec is implemented.
 
 Required UX:
 

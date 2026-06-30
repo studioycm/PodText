@@ -14,6 +14,8 @@ Implement item-based public homepage/search/category/tag landing pages.
 - `AGENTS.md`
 - `docs/phase-02/public-panel-ux-spec.md`
 - `docs/phase-02/search-and-filters-spec.md`
+- `docs/phase-02/homepage-settings-spec.md`
+- `docs/phase-02/spatie-tags-and-settings-decision.md`
 - `docs/phase-02/tooling-and-quality-gates.md`
 
 ## Blueprint and guidelines
@@ -48,6 +50,8 @@ The public homepage/search blueprint is the authority for the public Livewire/Fi
 - Search result cards must use a consistent card grid.
 - Public cards must represent `ContentItem` records.
 - Each card should include a `ContentGroup` badge with cover image or initials/title fallback.
+- Read `PublicContentSettings` for global public defaults and limits.
+- Read visible ordered `HomepageSection` records for homepage content slices.
 - Homepage is one combined pinned-first/latest list of `ContentItem` records.
 - Include search result count, sort dropdown, Clear filters behavior, empty states, and URL-backed state where practical.
 - Category and tag landing pages reuse the same item-card component.
