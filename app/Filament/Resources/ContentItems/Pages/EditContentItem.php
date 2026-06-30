@@ -24,9 +24,8 @@ class EditContentItem extends EditRecord
         return true;
     }
 
-    public function getContentTabComponent(): Tab
+    public function getContentTabLabel(): ?string
     {
-        return Tab::make(__('admin.tabs.item_details'))
-            ->icon(Heroicon::OutlinedDocumentText);
+        return __('admin.tabs.item_details');
     }
 }
