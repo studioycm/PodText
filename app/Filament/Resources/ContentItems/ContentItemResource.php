@@ -5,6 +5,7 @@ namespace App\Filament\Resources\ContentItems;
 use App\Filament\Resources\ContentItems\Pages\CreateContentItem;
 use App\Filament\Resources\ContentItems\Pages\EditContentItem;
 use App\Filament\Resources\ContentItems\Pages\ListContentItems;
+use App\Filament\Resources\ContentItems\RelationManagers\TranscriptionsRelationManager;
 use App\Filament\Resources\ContentItems\Schemas\ContentItemForm;
 use App\Filament\Resources\ContentItems\Tables\ContentItemsTable;
 use App\Models\ContentItem;
@@ -55,7 +56,7 @@ class ContentItemResource extends Resource
     public static function getRelations(): array
     {
         return [
-            //
+            TranscriptionsRelationManager::class,
         ];
     }
 

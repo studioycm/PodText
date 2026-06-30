@@ -20,6 +20,26 @@ return [
             'plural' => 'פריטי תוכן',
             'navigation' => 'פריטי תוכן',
         ],
+        'category' => [
+            'singular' => 'Category',
+            'plural' => 'Categories',
+            'navigation' => 'Categories',
+        ],
+        'content_tag' => [
+            'singular' => 'Content Tag',
+            'plural' => 'Content Tags',
+            'navigation' => 'Content Tags',
+        ],
+        'homepage_section' => [
+            'singular' => 'Homepage Section',
+            'plural' => 'Homepage Sections',
+            'navigation' => 'Homepage Sections',
+        ],
+        'transcription' => [
+            'singular' => 'Transcription',
+            'plural' => 'Transcriptions',
+            'navigation' => 'Transcriptions',
+        ],
     ],
     'sections' => [
         'identity' => 'זהות',

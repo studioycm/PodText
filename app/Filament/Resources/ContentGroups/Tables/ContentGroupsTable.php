@@ -45,13 +45,23 @@ class ContentGroupsTable
                     ->formatStateUsing(fn (string $state): string => __("admin.locales.{$state}"))
                     ->badge()
                     ->searchable(),
+                TextColumn::make('categories.name')
+                    ->label(__('admin.fields.categories'))
+                    ->badge()
+                    ->separator(', ')
+                    ->toggleable(),
+                TextColumn::make('homepage_order')
+                    ->label(__('admin.fields.homepage_order'))
+                    ->numeric()
+                    ->sortable()
+                    ->toggleable(),
                 TextColumn::make('status')
                     ->label(__('admin.fields.status'))
                     ->badge()
                     ->sortable(),
                 TextColumn::make('published_at')
                     ->label(__('admin.fields.published_at'))
-                    ->dateTime()
+                    ->dateTime('d/m/Y H:i', 'Asia/Jerusalem')
                     ->sortable(),
                 TextColumn::make('slug')
                     ->label(__('admin.fields.slug'))
@@ -71,6 +81,12 @@ class ContentGroupsTable
                     ->options(fn (): array => collect(config('localization.available_locales', ['he', 'en']))
                         ->mapWithKeys(fn (string $locale): array => [$locale => __("admin.locales.{$locale}")])
                         ->all()),
+                SelectFilter::make('categories')
+                    ->label(__('admin.fields.categories'))
+                    ->relationship('categories', 'name')
+                    ->multiple()
+                    ->searchable()
+                    ->preload(),
             ])
             ->headerActions([
                 ImportAction::make()

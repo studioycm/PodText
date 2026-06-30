@@ -9,7 +9,10 @@ use Filament\Forms\Components\MarkdownEditor;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Utilities\Get;
+use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
+use Illuminate\Support\Str;
 
 class ContentGroupForm
 {
@@ -21,15 +24,25 @@ class ContentGroupForm
                     ->schema([
                         TextInput::make('reference_key')
                             ->label(__('admin.fields.reference_key'))
+                            ->helperText(__('admin.helpers.reference_key'))
                             ->disabled()
                             ->dehydrated(false)
                             ->visibleOn('edit'),
                         TextInput::make('title')
                             ->label(__('admin.fields.title'))
+                            ->live(onBlur: true)
+                            ->afterStateUpdated(function (Set $set, Get $get, ?string $old, ?string $state): void {
+                                if (filled($get('slug')) && $get('slug') !== Str::slug((string) $old)) {
+                                    return;
+                                }
+
+                                $set('slug', Str::slug((string) $state));
+                            })
                             ->required()
                             ->maxLength(255),
                         TextInput::make('slug')
                             ->label(__('admin.fields.slug'))
+                            ->helperText(__('admin.helpers.slug'))
                             ->required()
                             ->maxLength(255)
                             ->unique(),
@@ -84,6 +97,22 @@ class ContentGroupForm
                             ->visibility('public')
                             ->image()
                             ->maxSize(2048),
+                        Select::make('categories')
+                            ->label(__('admin.fields.categories'))
+                            ->relationship('categories', 'name')
+                            ->multiple()
+                            ->searchable()
+                            ->preload()
+                            ->helperText(__('admin.helpers.group_categories')),
+                    ]),
+                Section::make(__('admin.sections.homepage'))
+                    ->schema([
+                        TextInput::make('homepage_order')
+                            ->label(__('admin.fields.homepage_order'))
+                            ->helperText(__('admin.helpers.homepage_order'))
+                            ->numeric()
+                            ->integer()
+                            ->minValue(0),
                     ]),
                 Section::make(__('admin.sections.publication'))
                     ->schema([
@@ -93,7 +122,9 @@ class ContentGroupForm
                             ->default(PublicationStatus::Draft->value)
                             ->required(),
                         DateTimePicker::make('published_at')
-                            ->label(__('admin.fields.published_at')),
+                            ->label(__('admin.fields.published_at'))
+                            ->displayFormat('d/m/Y H:i')
+                            ->timezone('Asia/Jerusalem'),
                     ])
                     ->columns(2),
             ]);

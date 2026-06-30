@@ -6,6 +6,7 @@ use App\Enums\PublicationStatus;
 use App\Filament\Exports\ContentItemExporter;
 use App\Filament\Imports\ContentItemImporter;
 use App\Models\ContentItem;
+use App\Models\ContentTag;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
@@ -14,7 +15,9 @@ use Filament\Actions\ExportBulkAction;
 use Filament\Actions\ImportAction;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
+use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Validation\Rules\File;
 
 class ContentItemsTable
@@ -39,6 +42,16 @@ class ContentItemsTable
                     ->label(__('admin.fields.authors'))
                     ->badge()
                     ->separator(', '),
+                TextColumn::make('categories.name')
+                    ->label(__('admin.fields.categories'))
+                    ->badge()
+                    ->separator(', ')
+                    ->toggleable(isToggledHiddenByDefault: true),
+                TextColumn::make('tags.name')
+                    ->label(__('admin.fields.tags'))
+                    ->badge()
+                    ->separator(', ')
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('duration_seconds')
                     ->label(__('admin.fields.duration_seconds'))
                     ->numeric()
@@ -50,8 +63,28 @@ class ContentItemsTable
                     ->sortable(),
                 TextColumn::make('published_at')
                     ->label(__('admin.fields.published_at'))
-                    ->dateTime()
+                    ->dateTime('d/m/Y H:i', 'Asia/Jerusalem')
                     ->sortable(),
+                TextColumn::make('featuredTranscription.title')
+                    ->label(__('admin.fields.featured_transcription'))
+                    ->placeholder(__('admin.labels.none'))
+                    ->toggleable(isToggledHiddenByDefault: true),
+                TextColumn::make('embed_provider')
+                    ->label(__('admin.fields.embed_provider'))
+                    ->badge()
+                    ->searchable()
+                    ->toggleable(isToggledHiddenByDefault: true),
+                TextColumn::make('is_pinned')
+                    ->label(__('admin.fields.is_pinned'))
+                    ->state(fn (ContentItem $record): string => $record->isCurrentlyPinned() ? __('admin.labels.active') : __('admin.labels.inactive'))
+                    ->badge()
+                    ->color(fn (ContentItem $record): string => $record->isCurrentlyPinned() ? 'warning' : 'gray')
+                    ->toggleable(),
+                TextColumn::make('pin_order')
+                    ->label(__('admin.fields.pin_order'))
+                    ->numeric()
+                    ->sortable()
+                    ->toggleable(),
                 TextColumn::make('slug')
                     ->label(__('admin.fields.slug'))
                     ->searchable()
@@ -84,6 +117,34 @@ class ContentItemsTable
                     ->multiple()
                     ->searchable()
                     ->preload(),
+                SelectFilter::make('categories')
+                    ->label(__('admin.fields.categories'))
+                    ->relationship('categories', 'name')
+                    ->multiple()
+                    ->searchable()
+                    ->preload(),
+                SelectFilter::make('content_tags')
+                    ->label(__('admin.fields.tags'))
+                    ->multiple()
+                    ->options(fn (): array => ContentTag::query()
+                        ->content()
+                        ->orderBy('name')
+                        ->get()
+                        ->mapWithKeys(fn (ContentTag $tag): array => [$tag->getKey() => $tag->name])
+                        ->all())
+                    ->query(fn (Builder $query, array $data): Builder => filled($data['values'] ?? [])
+                        ? $query->whereHas('tags', fn (Builder $query): Builder => $query->whereIn('tags.id', $data['values']))
+                        : $query),
+                SelectFilter::make('embed_provider')
+                    ->label(__('admin.fields.embed_provider'))
+                    ->options(fn (): array => ContentItem::query()
+                        ->whereNotNull('embed_provider')
+                        ->distinct()
+                        ->orderBy('embed_provider')
+                        ->pluck('embed_provider', 'embed_provider')
+                        ->all()),
+                TernaryFilter::make('is_pinned')
+                    ->label(__('admin.fields.is_pinned')),
             ])
             ->headerActions([
                 ImportAction::make()
