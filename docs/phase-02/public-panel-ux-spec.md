@@ -12,7 +12,7 @@
 
 Homepage result cards are `ContentItem` records.
 
-Prompt 11 starts after Prompt 10 import/export is complete. Public homepage/search should consume the existing `ContentItem`, `ContentGroup`, `Transcription`, category, typed content tag, pinning, settings, and media metadata fields; it should not revise import/export behavior unless a conflict is discovered and reported.
+Prompt 11 depends on the prior content, transcription, taxonomy, tag, pinning, settings, media metadata, and import/export baseline. Verify current completion status in `docs/phase-02/current-project-state.md` before implementation. Public homepage/search should consume those existing fields and should not revise import/export behavior unless a conflict is discovered and reported.
 
 The homepage is one combined pinned-first/latest `ContentItem` list. It should not split public results into separate competing record types.
 

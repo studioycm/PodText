@@ -12,17 +12,9 @@
 8. Prompt 14: future viewer/studio plan.
 9. Prompt 15: security audit.
 
-## Current Progress
+## Progress Pointer
 
-- Prompt 07 already ran and was committed as `7edb82d feat: add transcription model revision`.
-- Prompt 07 migrations are now applied locally: `transcriptions`, `content_items.featured_transcription_id`, and the backfill migration all show `Ran`.
-- Prompt 08 is complete and committed as `b15f5c1 feat: add taxonomy tags pinning settings and media foundation`.
-- Prompt 09 is complete and committed as `22e11d0 feat: add phase two admin content management`.
-- The post-Prompt-09 admin management UX repair is complete and committed as `16ab33a fix: repair admin management ux after phase two resources`.
-- Prompt 10 import/export is complete in the commit containing this state update.
-- Prompt 11 public homepage/search is next.
-- Prompt 11 has not started.
-- Post-Prompt-10 guidance sync is Markdown-only and carries forward the rule that successful implementation prompts must update active state docs before the final commit.
+For current prompt completion/progress state, see `docs/phase-02/current-project-state.md`.
 
 ## Non-Negotiable Semantics
 
@@ -76,7 +68,7 @@ Do not install Shield in Phase 02 planning. Use these names for future authoriza
   - `ContentItemResource` should add `TranscriptionsRelationManager` as the primary item-scoped transcript editing surface.
   - `EditContentItem` should use combined item details/relation manager tabs when Prompt 09 implements the admin UX.
   - Standalone Resource create/edit pages should use the researched redirect behavior, while relation manager create/edit actions stay on the owner item edit page.
-- Prompt 10: `blueprints/10-import-export-blueprint.md` - complete.
+- Prompt 10: `blueprints/10-import-export-blueprint.md`
 - Prompt 11: `blueprints/11-public-homepage-search-blueprint.md`
   - Prompt 11 must consume `PublicContentSettings` and visible ordered `HomepageSection` records when implementing the public homepage/search UI.
   - Prompt 11 must preserve Prompt 10 native import/export behavior unless the Prompt 11 blueprint explicitly requires a related change.

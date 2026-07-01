@@ -2,6 +2,8 @@
 
 This file is active Phase 02 planning context. Root repository instructions are evergreen in `AGENTS.md`; historical Bootstrap Slice 0 and superseded Phase 02 context lives under `docs/archive/` and `prompts/archive/`.
 
+See also `docs/phase-02/ai-development-lessons.md` for durable lessons from Phase 02 prompt execution.
+
 ## Required Planning Tools
 
 ### Laravel Boost
@@ -25,13 +27,15 @@ This file is active Phase 02 planning context. Root repository instructions are 
 - If code differs from the blueprint, document whether the difference already existed, was intentionally deferred, was impossible, was blocked, or is a conflict needing human decision.
 - Do not start implementation when preflight finds unexpected app-code dirt or a baseline quality gate fails outside the active prompt scope.
 
-## Prompt success state sync
+## State documentation policy
 
-- Successful implementation prompts are incomplete until active Markdown state is aligned with the code that just passed the quality gate.
-- At minimum, update `docs/phase-02/current-project-state.md`, `docs/phase-02/feature-map.md`, `docs/phase-02/answers-coverage-matrix.md`, and `prompts/README.md` when project state changes.
-- Also update relevant active specs, guidelines, and future prompts when the successful prompt reveals durable lessons or changes the starting assumptions for the next prompt.
-- Commit implementation code, tests, and state docs together only after the final quality gate passes.
-- Documentation-only sync prompts should patch Markdown only and verify with `git diff --check` plus `git status --short` unless the prompt explicitly requests additional checks.
+- Rolling prompt progress lives only in `docs/phase-02/current-project-state.md`.
+- Feature, spec, blueprint, prompt, guideline, and index docs should link to `current-project-state.md` for current completion/progress status.
+- Stale progress duplication is a blocker before starting a subsequent implementation prompt.
+- Successful implementation prompts are incomplete until `docs/phase-02/current-project-state.md` is updated before commit.
+- Patch other active docs only for stable scope, ownership, requirement, or durable-lesson changes.
+- Commit implementation code, tests, and required state docs together only after the final quality gate passes.
+- Documentation-only state-sync prompts must not edit app code and should verify with `git diff --check` plus `git status --short` unless the prompt explicitly requests additional checks.
 
 ### FilamentExamples MCP
 
@@ -44,26 +48,9 @@ This file is active Phase 02 planning context. Root repository instructions are 
 - Installed packages:
   - `laraveldaily/filacheck` 1.2.3
   - `laraveldaily/filacheck-pro` 1.2.7
-- Baseline command run in this reset task:
-
-```bash
-vendor/bin/filacheck --detailed
-```
-
-- Baseline result: pass, 0 issues.
 - During docs-only prompts, `vendor/bin/filacheck --detailed` may still rewrite Filament app/test files. If that happens, record it, revert app/test diffs immediately, and keep only documentation/guideline/prompt changes.
 - Prompt 06S observed this side effect: `vendor/bin/filacheck --detailed` rewrote three Filament form schema files and one admin Resource test. Those app/test diffs were reverted immediately.
 - Do not run `vendor/bin/filacheck --fix` in planning tasks.
-
-## Prompt 07 Post-Migration Verification
-
-- Boost MCP was available during the post-migration documentation sync.
-- Boost tools used: `application_info`, `database_schema`, and `database_query`.
-- Migration state checked with Boost and `php artisan migrate:status`; all three Prompt 07 migrations were `Ran`.
-- Physical schema checked: `transcriptions` exists, `content_items.featured_transcription_id` exists, and legacy `content_items.transcript_markdown` still exists.
-- Focused tests run and passed: `php artisan test --filter=TranscriptionsModelTest` and `php artisan test --filter=PublicTranscriptionVisibilityTest`.
-- The exact multi-package `composer show laravel/boost filament/filament filament/blueprint livewire/livewire laraveldaily/filacheck laraveldaily/filacheck-pro` command failed because this Composer version accepts one package argument; individual `composer show` checks succeeded.
-- No migrations, npm build, FilaCheck run, or application code changes were part of this docs-only sync.
 
 ## Final Quality Gate Per Implementation Prompt
 
@@ -106,14 +93,13 @@ Final verification must use full `vendor/bin/filacheck`.
 - Tailwind classes in Blade not covered by the theme.
 - Bulk actions that do not deselect records after completion.
 
-## Reset Task Verification
+## Documentation-Only Verification
 
-For this documentation/planning task run:
+For documentation/planning tasks, run the commands specified by the active prompt. The default minimum is:
 
 ```bash
 git diff --check
 git status --short
-vendor/bin/filacheck --detailed
 ```
 
-Do not run migrations. Do not fix app code found by FilaCheck in this prompt.
+Do not run migrations or implementation gates unless the active prompt explicitly requires them.

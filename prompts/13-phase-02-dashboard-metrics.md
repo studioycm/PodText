@@ -6,15 +6,16 @@ Implement lightweight editorial dashboard metrics.
 
 ## Current state assumptions
 
-- Prompts 07 through 12 are complete and committed.
+- This prompt depends on the prior prompts listed in the active sequence. Verify current completion status in `docs/phase-02/current-project-state.md` before implementation.
+- For current prompt progress, read `docs/phase-02/current-project-state.md`.
 
 ## Preflight and carry-forward rules
 
 - Run git status/log preflight before implementation and stop on unexpected app-code dirt.
-- Confirm Prompt 12 is complete before starting; do not backfill public homepage/search or item page scope in this prompt.
+- Confirm the prerequisite item page/media/parser capabilities are present before starting; do not backfill public homepage/search or item page scope in this prompt.
 - Preserve Prompt 10 native import/export behavior and Prompt 11/12 public visibility rules while adding dashboard-only admin metrics.
 - Do not add analytics, search logging, observability dashboards, retry dashboards, custom activity logs, or public UI changes.
-- After successful implementation and passing gates, update active state Markdown before the final commit.
+- After success, update `docs/phase-02/current-project-state.md` before final commit. Patch other docs only when stable requirements changed.
 
 ## Docs to read
 

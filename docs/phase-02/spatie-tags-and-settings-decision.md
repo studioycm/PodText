@@ -2,8 +2,7 @@
 
 ## Status
 
-Accepted for the post-Prompt-09 admin UX repair.
-Still active after Prompt 10 import/export implementation.
+Accepted and active as the Phase 02 Spatie tags/settings decision.
 
 ## Spatie Tags
 
@@ -42,7 +41,7 @@ Do not remove `ContentTag` blindly. A future refactor would need a migration/dat
 
 `HomepageSection` records configure homepage content slices: latest, category, tag, and content-group sections. They are not the same responsibility as settings. Item pinning is also separate and affects ordering where public list queries support pinned-first behavior.
 
-Public pages do not consume `PublicContentSettings` or `HomepageSection` yet because Prompt 11 has not run. Prompt 11 must read both when building the homepage/search UI.
+Prompt 11 owns public consumption of both `PublicContentSettings` and `HomepageSection` when building the homepage/search UI.
 
 ## Deferred
 

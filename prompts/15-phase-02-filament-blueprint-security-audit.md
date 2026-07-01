@@ -6,16 +6,17 @@ Audit completed Phase 02 implementation for Filament, public visibility, media, 
 
 ## Current state assumptions
 
-- Prompts 07 through 14 are complete.
+- This prompt depends on the prior prompts listed in the active sequence. Verify current completion status in `docs/phase-02/current-project-state.md` before auditing.
+- For current prompt progress, read `docs/phase-02/current-project-state.md`.
 - This is audit-only unless specific fixes are approved.
 
 ## Preflight and carry-forward rules
 
 - Run git status/log preflight and stop on unexpected app-code dirt unless the user explicitly directs otherwise.
-- Confirm Prompts 07 through 14 are complete before auditing.
+- Confirm the prior Phase 02 prompt capabilities are present before auditing.
 - Include Prompt 10 import/export security, formula protection, failed-row behavior, typed content tag scoping, and legacy transcript non-write behavior in the audit scope.
 - Preserve audit-only posture: do not add product features or broad refactors.
-- If approved fixes are made and committed, update active state Markdown before the final commit.
+- If approved fixes are made and committed, update `docs/phase-02/current-project-state.md` before final commit. Patch other docs only when stable requirements changed.
 
 ## Docs to read
 

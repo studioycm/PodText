@@ -6,10 +6,10 @@ Extend Filament-native import/export to the finalized Phase 02 schema.
 
 ## Current state assumptions
 
-- Prompts 07, 08, and 09 are complete and committed.
-- The admin management UX repair commit `16ab33a fix: repair admin management ux after phase two resources` is present.
+- This prompt depends on the transcriptions, taxonomy, tags, pinning, settings, media foundation, and admin management baseline from the prior prompts in the active sequence.
+- Verify the admin management UX repair baseline is present before implementation.
+- For current prompt progress, read `docs/phase-02/current-project-state.md`.
 - `docs/phase-02/spatie-tags-and-settings-decision.md` exists and is accepted as the current Spatie tags/settings decision.
-- Prompt 10 has not started.
 - Transcriptions, categories, typed tags, pinning, and media metadata fields exist.
 - Prompt 10 may only import/export fields created by Prompts 07-09. Do not add or depend on fields planned for Prompt 11, 12, 13, or 14.
 
@@ -126,4 +126,4 @@ Report files changed, tests added, commands/results, assumptions, deferred issue
 
 ## Commit behavior
 
-Commit only after the full quality gate passes.
+Commit only after the full quality gate passes. After success, update `docs/phase-02/current-project-state.md` before final commit. Patch other docs only when stable requirements changed.

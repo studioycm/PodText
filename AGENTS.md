@@ -69,7 +69,10 @@ Implementation prompts are sequential contracts, not loose task lists.
 - Run any required baseline quality gate before implementation. If a baseline command fails, stop before coding unless the failure is explicitly in scope to fix.
 - Verify behavior with tests that exercise the real workflow, not only class existence or static registration.
 - Do not silently skip blueprint requirements. Classify each meaningful requirement as implemented, already existed, deferred by blueprint, not applicable, or blocked in the final report.
-- A successful implementation prompt must update relevant active Markdown state before the final commit. At minimum, keep `docs/phase-02/current-project-state.md`, `docs/phase-02/feature-map.md`, `docs/phase-02/answers-coverage-matrix.md`, and `prompts/README.md` aligned when the prompt changes project state.
+- Rolling prompt progress belongs only in `docs/phase-02/current-project-state.md`.
+- A successful implementation prompt must update `docs/phase-02/current-project-state.md` before the final commit.
+- Update `docs/phase-02/feature-map.md`, `docs/phase-02/answers-coverage-matrix.md`, `prompts/README.md`, specs, blueprints, and guidelines only when stable scope, ownership, or requirements changed.
+- Do not duplicate “Prompt X complete/next/not started” status across active docs.
 - Documentation-only synchronization prompts must patch Markdown only and use documentation checks such as `git diff --check` and `git status --short` unless the prompt explicitly asks for more.
 
 ## Read before changing code

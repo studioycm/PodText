@@ -43,9 +43,7 @@ Start here:
 
 ## Current Implementation Status
 
-Prompt 07 was run and committed. Prompt 08 is next only after human review and local Prompt 07 migration/test verification.
-
-Current state details live in [docs/phase-02/current-project-state.md](docs/phase-02/current-project-state.md).
+Current prompt completion/progress state lives in [docs/phase-02/current-project-state.md](docs/phase-02/current-project-state.md).
 
 ## Quality Gates
 

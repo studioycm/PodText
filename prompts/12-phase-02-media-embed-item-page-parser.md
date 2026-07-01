@@ -6,15 +6,16 @@ Implement the public item page, safe media rendering, transcription tabs, and pa
 
 ## Current state assumptions
 
-- Prompts 07 through 11 are complete and committed.
+- This prompt depends on the prior prompts listed in the active sequence. Verify current completion status in `docs/phase-02/current-project-state.md` before implementation.
+- For current prompt progress, read `docs/phase-02/current-project-state.md`.
 
 ## Preflight and carry-forward rules
 
 - Run git status/log preflight before implementation and stop on unexpected app-code dirt.
-- Confirm Prompt 11 is complete before starting; do not backfill Prompt 11 scope in this prompt.
+- Confirm the prerequisite public homepage/search capabilities are present before starting; do not backfill Prompt 11 scope in this prompt.
 - Preserve Prompt 10 native import/export behavior, Prompt 11 public listing behavior, and the `ContentItem` public result unit.
 - Do not implement player sync, studio, dashboards, analytics, metadata extraction automation, or Prompt 13+ behavior.
-- After successful implementation and passing gates, update active state Markdown before the final commit.
+- After success, update `docs/phase-02/current-project-state.md` before final commit. Patch other docs only when stable requirements changed.
 
 ## Docs to read
 

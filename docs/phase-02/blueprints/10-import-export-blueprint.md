@@ -9,7 +9,7 @@
 - Confirm Prompts 08 and 09 are committed.
 - Confirm the admin UX repair commit `16ab33a fix: repair admin management ux after phase two resources` is present.
 - Confirm `docs/phase-02/spatie-tags-and-settings-decision.md` exists.
-- Confirm Prompt 10 has not started.
+- Verify current prompt progress in `docs/phase-02/current-project-state.md`.
 
 ## Native Filament Classes
 

@@ -6,14 +6,16 @@ Plan future synced viewer and transcription studio work after parse-only viewer 
 
 ## Current state assumptions
 
-- Prompt 12 already implemented parse-only timestamp/speaker viewer behavior.
+- This prompt depends on the parse-only timestamp/speaker viewer behavior owned by Prompt 12. Verify current completion status in `docs/phase-02/current-project-state.md` before planning.
+- For current prompt progress, read `docs/phase-02/current-project-state.md`.
 
 ## Preflight and carry-forward rules
 
 - Run git status/log preflight before changing docs and stop on unexpected app-code dirt.
-- Confirm Prompt 12 is complete before starting; this prompt remains planning-only.
+- Confirm the prerequisite parse-only viewer/parser capabilities are present before starting; this prompt remains planning-only.
 - Preserve Prompt 10 native import/export behavior and Prompt 12 parse-only viewer behavior in the future plan assumptions.
 - Do not implement player sync, studio UI, autosave, migrations, Resources, Livewire components, or Blade files.
+- After success, update `docs/phase-02/current-project-state.md` before final commit. Patch other docs only when stable requirements changed.
 - If this planning prompt is committed, keep changes Markdown-only unless the user explicitly changes the prompt.
 
 ## Docs to read

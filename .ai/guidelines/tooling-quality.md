@@ -40,6 +40,15 @@ vendor/bin/filacheck
 npm run build
 ```
 
+## Prompt completion protocol
+
+- `docs/phase-02/current-project-state.md` is the single source for rolling prompt progress.
+- Successful implementation prompts must update `docs/phase-02/current-project-state.md` before commit.
+- Patch other docs only when stable scope, ownership, requirements, or durable lessons changed.
+- Avoid copy-pasting completion status into prompts, specs, blueprints, guidelines, or index files.
+- Prompt final reports are not a substitute for updating current state.
+- Tests must prove real behavior, not only class existence or static registration.
+
 ## Security rules
 
 - Review diffs for secrets before final report.

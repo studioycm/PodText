@@ -2,7 +2,7 @@
 
 ## Scope
 
-Future audit-only prompt after Phase 02 implementation is complete. Do not run this audit during Prompt 06R.
+Future audit-only prompt after Phase 02 implementation. Verify prompt state in `docs/phase-02/current-project-state.md` before starting.
 
 ## Audit Inputs
 

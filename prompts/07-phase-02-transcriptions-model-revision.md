@@ -1,6 +1,6 @@
 # Prompt 07: Phase 02 Transcriptions Model Revision
 
-Status: already run and committed as `7edb82d feat: add transcription model revision`. Keep for historical/reference. Do not run again unless explicitly asked.
+For current prompt progress, read `docs/phase-02/current-project-state.md`. Do not rerun this prompt unless explicitly asked.
 
 ## Goal
 
@@ -75,4 +75,4 @@ Report files changed, tests added, commands/results, assumptions, deferred issue
 
 ## Commit behavior
 
-Commit only after the full quality gate passes.
+Commit only after the full quality gate passes. After success, update `docs/phase-02/current-project-state.md` before final commit. Patch other docs only when stable requirements changed.

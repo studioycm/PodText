@@ -8,7 +8,7 @@ The goal is to research rich Filament admin Resource and Relation Manager UX pat
 
 ## Why this runs before Prompt 08
 
-Current state note: Prompts 08 and 09 are now complete, and Prompt 10 is the next implementation prompt after human review and a clean quality baseline. Do not rerun this research task unless explicitly asked.
+Current state note: this is a historical research task. For current prompt progress, read `docs/phase-02/current-project-state.md`. Do not rerun this research task unless explicitly asked.
 
 Prompt 08 is schema/foundation only. Prompt 09 is responsible for admin Resource UX, including transcriptions, categories, homepage sections, settings, item/category/tag/media fields, and related admin-management screens.
 

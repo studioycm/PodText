@@ -16,9 +16,7 @@ Prompt 10 must run after:
 
 Prompt 10 preflight must confirm Prompts 08 and 09 are committed, the admin UX repair commit `16ab33a` is present, `docs/phase-02/spatie-tags-and-settings-decision.md` exists, and Prompt 10 has not already started.
 
-## Current Baseline After Prompt 10
-
-Prompt 10 is complete and committed as `fad6721 feat: extend phase two import export`.
+## Import/Export Baseline
 
 - Native Filament importers/exporters are the authoritative import/export path.
 - `TranscriptionImporter` and `TranscriptionExporter` exist; inline `transcript_markdown` import writes to `Transcription`, never to legacy `content_items.transcript_markdown`.

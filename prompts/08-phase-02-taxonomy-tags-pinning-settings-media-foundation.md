@@ -6,7 +6,8 @@ Implement categories, Spatie content tags, item pinning, settings, homepage sect
 
 ## Current state assumptions
 
-- Prompt 07 is complete and committed.
+- This prompt depends on the transcriptions model revision from the prior prompt in the active sequence.
+- For current prompt progress, read `docs/phase-02/current-project-state.md`.
 - Spatie Tags, the Filament Spatie Tags plugin, Spatie Settings, and the Filament Spatie Settings plugin are approved for this implementation prompt. If absent, this prompt owns adding them; do not ask for package approval again.
 
 ## Required preflight before implementation
@@ -132,4 +133,4 @@ Report files changed, tests added, commands/results, assumptions, deferred issue
 
 ## Commit behavior
 
-Commit only after the full quality gate passes.
+Commit only after the full quality gate passes. After success, update `docs/phase-02/current-project-state.md` before final commit. Patch other docs only when stable requirements changed.

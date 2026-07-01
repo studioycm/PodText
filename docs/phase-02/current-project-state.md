@@ -1,18 +1,54 @@
 # Phase 02 Current Project State
 
-Recorded after Prompt 10 import/export implementation. This document intentionally avoids local secrets and should be updated when later prompts change the active baseline.
+This is the single source of truth for rolling Phase 02 prompt progress. Other active docs may describe stable dependencies and ownership, but should link here for current completion/progress status.
+
+Recorded after the post-Prompt-10 guidance sync and before the Markdown-only prompt-progress cleanup. This document intentionally avoids local secrets and should be updated when later prompts change the active baseline.
 
 ## Git State
 
-- Current branch: `main` tracking `origin/main`.
+- Current branch at cleanup preflight: `main` tracking `origin/main`.
+- Branch tracking state at cleanup preflight: no ahead/behind marker reported by `git status --short --branch`.
+- Working tree at cleanup preflight: clean.
+- Latest `HEAD` at cleanup preflight: `773f1c0 docs: sync prompt workflow lessons after prompt ten`.
 - Latest local `HEAD` before Prompt 10 implementation: `014c6b0 docs: update phase two prompt state, completion details for Prompts 08 and 09, and readiness notes for Prompt 10`.
 - Admin management UX repair commit is present in history: `16ab33a fix: repair admin management ux after phase two resources`.
 - Prompt 09 implementation commit is present in history: `22e11d0 feat: add phase two admin content management`.
 - Prompt 08 implementation commit is present in history: `b15f5c1 feat: add taxonomy tags pinning settings and media foundation`.
 - Prompt 07 implementation commit remains in history: `7edb82d feat: add transcription model revision`.
-- Prompt 10 is implemented in the commit containing this state update.
+- Prompt 10 implementation commit is present in history: `fad6721 feat: extend phase two import export`.
 - Prompt 11 is the next implementation prompt.
 - Prompt 11 public homepage/search was not started by Prompt 10.
+
+## Prompt Progress
+
+| Prompt | Status | Commit / evidence | Notes |
+|---|---|---|---|
+| Prompt 07 transcriptions model revision | Complete | `7edb82d feat: add transcription model revision` | Prompt 07 migrations are applied locally. |
+| Prompt 08 taxonomy/settings/media foundation | Complete | `b15f5c1 feat: add taxonomy tags pinning settings and media foundation` | Spatie tags/settings foundation and media metadata fields exist. |
+| Prompt 09 admin content management | Complete | `22e11d0 feat: add phase two admin content management` | Admin Resources and relation-manager baseline exist. |
+| Admin UX repair | Complete | `16ab33a fix: repair admin management ux after phase two resources` | Repaired ContentItem edit tab behavior and related admin workflows. |
+| Prompt 10 import/export | Complete | `fad6721 feat: extend phase two import export` | Native Filament import/export baseline exists and should be preserved by later prompts. |
+| Post-Prompt-10 guidance sync | Complete | `773f1c0 docs: sync prompt workflow lessons after prompt ten` | Markdown-only guidance sync; did not start Prompt 11. |
+| Prompt 11 public homepage/search | Next, not started | Confirmed by cleanup preflight and absence of Prompt 11 implementation commit | Must consume `PublicContentSettings` and visible ordered `HomepageSection` records. |
+| Prompt 12 media embed/item page/parser | Pending after Prompt 11 | Active prompt/blueprint | Owns public item page, media component, and parse-only parser/viewer. |
+| Prompt 13 dashboard metrics | Pending after Prompt 12 | Active prompt/blueprint | Owns editorial dashboard widgets. |
+| Prompt 14 viewer/studio future plan | Future planning after Prompt 13 | Active prompt/blueprint | Documentation/planning only. |
+| Prompt 15 Filament Blueprint security audit | Audit after Prompt 14 | Active prompt/blueprint | Audit-only unless fixes are explicitly approved. |
+
+## Active Known Blockers
+
+- No active blocker is recorded for starting Prompt 11 after this Markdown-only cleanup, assuming preflight remains clean.
+- The `model:show` baseline issue below remains unresolved and should be avoided until investigated.
+
+## Deferred Items
+
+- `transcript_file` import support is deferred until an approved import package structure for referenced `.md`/`.txt` files exists.
+- Curated homepage query sections are deferred until a concrete query-builder spec exists.
+- Homepage result previews in admin forms are deferred until the public query service/component exists.
+- Associate-existing transcription remains deferred because `Transcription` belongs to one `ContentItem`.
+- Public item page/media/parser work belongs to Prompt 12.
+- Editorial dashboard widgets belong to Prompt 13.
+- Viewer/studio sync planning belongs to Prompt 14; no sync/studio implementation is active yet.
 
 ## Tooling State
 
@@ -87,6 +123,11 @@ Prompt 08 migration status from `php artisan migrate:status` and Boost database 
 - `2026_06_30_012932_add_prompt08_fields_to_content_items_table`: ran.
 - `2026_06_30_012933_add_homepage_order_to_content_groups_table`: ran.
 - `2026_06_30_012934_create_public_content_settings`: ran.
+
+Local data reset note:
+
+- Previous `migrate:status` output showed all migrations in batch 1, which strongly suggests the local database was rebuilt with `migrate:fresh --seed` or an equivalent reset path.
+- The exact manual reset command was not observed.
 
 Current physical schema verified through Boost `database_schema`:
 

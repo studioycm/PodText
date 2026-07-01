@@ -11,7 +11,7 @@ Update `App\Filament\Public\Pages\ShowContentItem`.
 
 ## Prior Prompt Baseline
 
-Prompt 12 starts after Prompt 11 public homepage/search is complete. Preserve Prompt 10 import/export behavior and Prompt 11 public listing behavior while implementing the item page, media component, and parse-only viewer.
+Prompt 12 requires the Prompt 11 public homepage/search baseline; verify prompt state in `docs/phase-02/current-project-state.md`. Preserve Prompt 10 import/export behavior and Prompt 11 public listing behavior while implementing the item page, media component, and parse-only viewer.
 
 Rules:
 

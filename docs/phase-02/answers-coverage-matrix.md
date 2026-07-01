@@ -1,10 +1,12 @@
 # Phase 02 Answers Coverage Matrix
 
+For current implementation/progress status, see `docs/phase-02/current-project-state.md`.
+
 | Topic | Decision | Covered in spec | Covered in prompt | Implementation phase | Notes |
 |---|---|---|---|---|---|
 | Public listings | `ContentItem` records | public-panel/search | 11 | Public UI | No public `Transcription` cards |
-| Effective transcription | featured published, latest published, null | transcriptions | 07, 12 | Domain/Public | Prompt 07 committed; later prompts must preserve behavior |
-| Same-item `featured_transcription_id` validation | featured transcription must belong to same item | transcriptions | 07, 09 | Domain/Admin | Implemented in Prompt 07 model logic; admin action tests still needed in Prompt 09 |
+| Effective transcription | featured published, latest published, null | transcriptions | 07, 12 | Domain/Public | Later prompts must preserve behavior |
+| Same-item `featured_transcription_id` validation | featured transcription must belong to same item | transcriptions | 07, 09 | Domain/Admin | Model logic owns the invariant; admin actions must respect it |
 | Featured unpublish/delete | clear or reject safely | transcriptions | 07, 09 | Domain/Admin | Prompt 07 ignores unpublished featured records publicly and uses FK null-on-delete; admin unpublish/delete UX remains follow-up |
 | Queryable effective transcription sorting | order items by effective transcription `published_at` | transcriptions/search | 07, 11 | Domain/Public UI | Prompt 07 implemented/tested a query scope; Prompt 11 must preserve in new UI |
 | Latest transcriptions | items ordered by effective transcription `published_at` | search | 11 | Public UI | User-facing label only |
@@ -21,13 +23,6 @@
 | Relation page vs relation manager decision | relation manager now; `ManageRelatedRecords` future optional | admin/transcriptions/viewer | 09, 14 | Admin UX/Future | Dedicated relation page only for larger workspace, sub-navigation, bulk workflows, or studio-style tooling |
 | No Repeater for full transcript Markdown | avoid nested Repeater for transcript bodies | admin/transcriptions | 09 | Admin UX | Full Markdown transcript forms are too large for inline nested rows |
 | Prompt 09 relation manager tests | cover render/create/edit/filter/featured/owner-scope/tab/redirect behavior | admin/testing | 09 | Testing | Relation manager tests pass owner record and page class to Livewire |
-| Prompt 07 post-run verification | Prompt 07 committed and locally migrated | current-state | docs-sync | Planning | Latest inspected commit `dd60315`; Prompt 07 implementation commit `7edb82d` remains in history |
-| Prompt 07 migrations applied locally | all three Prompt 07 migrations are `Ran` | current-state/transcriptions | docs-sync, 08 preflight | Planning | Verified by Boost schema/query and `php artisan migrate:status` |
-| Prompt 07 focused tests | focused Prompt 07 tests passed | current-state/transcriptions | docs-sync, 08 preflight | Testing | `TranscriptionsModelTest` and `PublicTranscriptionVisibilityTest` passed during post-migration sync |
-| Prompt 07 database state verified with Boost | `transcriptions` exists, `featured_transcription_id` exists, legacy item transcript field still exists | current-state/transcriptions | docs-sync, 08 preflight | Planning | Boost `application_info`, `database_schema`, and `database_query` were available and used |
-| Prompt 08 completed | taxonomy, tags, pinning, settings, and media foundation implemented | current-state/feature-map | 08 | Domain/Admin foundation | Committed as `b15f5c1 feat: add taxonomy tags pinning settings and media foundation` |
-| Prompt 09 completed | admin content management implemented | current-state/feature-map | 09 | Admin UX | Committed as `22e11d0 feat: add phase two admin content management` |
-| Admin UX repair completed | post-Prompt-09 admin management UX hardening implemented | current-state/feature-map | repair | Admin UX/Testing | Committed as `16ab33a fix: repair admin management ux after phase two resources` |
 | ContentItem edit tab fixed | use `getContentTabLabel(): ?string` for the item details tab label | current-state/admin | repair | Admin UX | Prevents replacing the content tab component and preserves real form fields |
 | First transcription auto-featured | first child transcription sets `featured_transcription_id` automatically | current-state/transcriptions | repair, 10 | Domain/Admin | Prompt 10 import tests must account for this model behavior |
 | Set-featured action visibility | set-featured action is visible only when useful | current-state/admin | repair | Admin UX | Action is exposed when an item has more than one transcription |
@@ -35,13 +30,9 @@
 | ContentItemsTable add transcription action | row action creates a child transcription for the selected item | current-state/admin | repair | Admin UX | Keeps transcript creation in item context |
 | Associate-existing transcription deferred | belongs-to association would move the transcription from another item | decision/current-state | repair | Admin UX | Deferred unless a future prompt designs an explicit move workflow |
 | HomepageSection type-driven configuration | latest/category/tag/content-group sections expose the relevant target fields | homepage/current-state | repair, 11 | Admin/Public | Curated query remains deferred |
-| PublicContentSettings stored, public consumption deferred | settings persist in admin/settings table but public pages do not consume them yet | settings/current-state | 08, 11 | Settings/Public UI | Prompt 11 must read `PublicContentSettings` and `HomepageSection` |
+| PublicContentSettings public consumption | Prompt 11 reads settings and visible homepage sections for public defaults and slices | settings/current-state | 08, 11 | Settings/Public UI | `PublicContentSettings` and `HomepageSection` have separate responsibilities |
 | Spatie ContentTag decision accepted | keep `ContentTag` as configured custom Spatie tag model for enabled/moderation metadata | decision/taxonomy | 08, repair, 10 | Domain/Admin/Public | Use `tags` and `taggables`; do not create a custom content item tag pivot |
-| Browser-visible admin regression test added | browser test asserts ContentItem edit tabs and core fields are visible | current-state/testing | repair | Testing | `tests/Browser/AdminContentItemBrowserTest.php` protects the content-tab repair |
-| Prompt 10 completed | native import/export extended to Phase 02 schema | feature-map/prompts | 10 | Import/export | Implemented in the commit containing this matrix update |
-| Prompt 11 next | public homepage/search is next after Prompt 10 | feature-map/prompts | 11 | Public UI | Prompt 11 has not started |
-| Post-Prompt-10 guidance sync | carry Prompt 07-10 lessons into active instructions | AGENTS/guidelines/prompts | docs-sync | Planning/Tooling | Markdown-only sync; Prompt 11 remains next and not started |
-| Local data reset caveat | local data may have been reset if `migrate:fresh --seed` or equivalent was used | current-state | docs-sync | Planning | All migrations are batch 1; exact manual command was not observed |
+| Browser-visible admin regression test | browser test asserts ContentItem edit tabs and core fields are visible | current-state/testing | repair | Testing | Protects the content-tab repair |
 | Item-only pinning | `ContentItem` fields only | feature-map/homepage | 08, 11 | Domain/Public | No group/category/tag/transcription pins |
 | Manual pin order | `pin_order`, `pinned_at`, `pinned_until` | homepage | 08 | Domain | Expired pins ignored |
 | Homepage order | pinned then latest combined list | public-panel | 11 | Public UI | No separate pin model |
@@ -82,7 +73,7 @@
 | Blueprint usage | blueprint files per prompt | blueprints | 06-15 | Planning/Implementation | Exact primitives required |
 | Blueprint contract section in prompts 08-13 | prompts must treat blueprint as implementation contract | tooling/prompts | 08-13 | Tooling | Added to each active implementation prompt |
 | Blueprint completion checklist in final reports | final report must classify blueprint requirements | tooling/prompts | 08-13 | Tooling | Use implemented/already existed/deferred/not applicable/blocked |
-| Successful prompt state sync | update active Markdown state before final implementation commit | AGENTS/tooling/prompts | all implementation prompts | Tooling | At minimum update current state, feature map, coverage matrix, and prompt README when project state changes |
+| Successful prompt state sync | update current project state before final implementation commit | AGENTS/tooling/prompts | all implementation prompts | Tooling | `current-project-state.md` is the single rolling progress source; patch other docs only for stable changes |
 | Prompt 08 blueprint contract | schema, relationships, casts, settings, tests, validation | blueprint 08 | 08 | Domain foundation | Blueprint governs fields and package-owned foundations |
 | Prompt 09 blueprint contract | admin Resources, forms, tables, actions, shared form rules | blueprint 09 | 09 | Admin UX | Shared admin form rules are required |
 | Prompt 10 blueprint contract | import/export classes, columns, resolution, failed rows, tests | blueprint 10 | 10 | Import/export | Native Filament import/export remains authoritative |

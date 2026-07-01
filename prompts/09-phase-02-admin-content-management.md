@@ -6,7 +6,8 @@ Implement admin management for Phase 02 models and fields created by Prompts 07 
 
 ## Current state assumptions
 
-- Prompts 07 and 08 are complete and committed.
+- This prompt depends on the transcriptions, taxonomy, tags, pinning, settings, and media foundation from the prior prompts in the active sequence.
+- For current prompt progress, read `docs/phase-02/current-project-state.md`.
 - Packages approved in Prompt 08 are installed and configured.
 
 ## Docs to read
@@ -137,4 +138,4 @@ Report files changed, tests added, commands/results, assumptions, deferred issue
 
 ## Commit behavior
 
-Commit only after the full quality gate passes.
+Commit only after the full quality gate passes. After success, update `docs/phase-02/current-project-state.md` before final commit. Patch other docs only when stable requirements changed.
