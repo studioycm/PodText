@@ -16,8 +16,8 @@ Recorded after the Markdown-only post-Prompt-10 prompt-progress centralization c
 - Prompt 08 implementation commit is present in history: `b15f5c1 feat: add taxonomy tags pinning settings and media foundation`.
 - Prompt 07 implementation commit remains in history: `7edb82d feat: add transcription model revision`.
 - Prompt 10 implementation commit is present in history: `fad6721 feat: extend phase two import export`.
-- Prompt 11 is the next implementation prompt.
-- Prompt 11 public homepage/search was not started by Prompt 10.
+- Prompt 11 public homepage/search is implemented in the current working tree and will be committed as `feat: add public content item homepage search` after the final quality gate passes.
+- Prompt 12 media embed/item page/parser is next and has not started.
 
 ## Prompt Progress
 
@@ -30,24 +30,24 @@ Recorded after the Markdown-only post-Prompt-10 prompt-progress centralization c
 | Prompt 10 import/export | Complete | `fad6721 feat: extend phase two import export` | Native Filament import/export baseline exists and should be preserved by later prompts. |
 | Post-Prompt-10 guidance sync | Complete | `773f1c0 docs: sync prompt workflow lessons after prompt ten` | Markdown-only guidance sync; did not start Prompt 11. |
 | Post-Prompt-10 prompt-progress centralization cleanup | Complete | `1cb158a docs: centralize prompt progress and ai development lessons` | Markdown-only cleanup; centralized rolling progress in this file; did not start Prompt 11. |
-| Prompt 11 public homepage/search | Next, not started | Confirmed by cleanup preflight and absence of Prompt 11 implementation commit | Must consume `PublicContentSettings` and visible ordered `HomepageSection` records. |
-| Prompt 12 media embed/item page/parser | Pending after Prompt 11 | Active prompt/blueprint | Owns public item page, media component, and parse-only parser/viewer. |
+| Prompt 11 public homepage/search | Complete | `feat: add public content item homepage search` | Public homepage/search now lists `ContentItem` cards using public visibility rules, settings, filters, routes, and homepage section foundations. |
+| Prompt 12 media embed/item page/parser | Next, not started | Active prompt/blueprint | Owns public item page, media component, and parse-only parser/viewer. |
 | Prompt 13 dashboard metrics | Pending after Prompt 12 | Active prompt/blueprint | Owns editorial dashboard widgets. |
 | Prompt 14 viewer/studio future plan | Future planning after Prompt 13 | Active prompt/blueprint | Documentation/planning only. |
 | Prompt 15 Filament Blueprint security audit | Audit after Prompt 14 | Active prompt/blueprint | Audit-only unless fixes are explicitly approved. |
 
 ## Active Known Blockers
 
-- No active blocker is recorded for starting Prompt 11 after this Markdown-only cleanup, assuming preflight remains clean.
+- No active blocker is recorded for starting Prompt 12 after Prompt 11, assuming preflight remains clean.
 - The `model:show` baseline issue below remains unresolved and should be avoided until investigated.
 
 ## Deferred Items
 
 - `transcript_file` import support is deferred until an approved import package structure for referenced `.md`/`.txt` files exists.
 - Curated homepage query sections are deferred until a concrete query-builder spec exists.
-- Homepage result previews in admin forms are deferred until the public query service/component exists.
+- Homepage result previews in admin forms remain deferred.
 - Associate-existing transcription remains deferred because `Transcription` belongs to one `ContentItem`.
-- Public item page/media/parser work belongs to Prompt 12.
+- Public item page/media/parser work belongs to Prompt 12 and was not started by Prompt 11.
 - Editorial dashboard widgets belong to Prompt 13.
 - Viewer/studio sync planning belongs to Prompt 14; no sync/studio implementation is active yet.
 
@@ -77,6 +77,8 @@ Laravel Boost MCP tools were exposed and usable during Prompt 10.
 - Boost schema inspection confirmed the post-Prompt-08/09 tables and fields listed below.
 - Boost `search_docs` was used for current Filament import/export APIs before code changes.
 - FilamentExamples MCP `search_examples` returned snippet-level examples for `ImportAction`, `ExportAction`, `ExportBulkAction`, `Importer`, and `Exporter` patterns.
+- Prompt 11 also used Boost `application_info`, `database_schema`, and `search_docs` before changing Livewire, Filament table/filter, URL-state, Spatie Settings, and settings-page behavior.
+- Prompt 11 FilamentExamples research returned snippet/source examples for public Filament table, card, and filter patterns.
 
 ## Application Shape
 
@@ -86,11 +88,18 @@ Laravel Boost MCP tools were exposed and usable during Prompt 10.
 - `php artisan route:list` reported 47 routes, including admin Resources for authors, categories, content groups, content items, content tags, homepage sections, transcriptions, and `admin/public-content-settings`.
 - Existing public pages remain:
   - `App\Filament\Public\Pages\BrowseContentGroups`
+  - `App\Filament\Public\Pages\SearchContentItems`
+  - `App\Filament\Public\Pages\BrowseCategoryContentItems`
+  - `App\Filament\Public\Pages\BrowseTagContentItems`
   - `App\Filament\Public\Pages\ShowContentGroup`
   - `App\Filament\Public\Pages\ShowContentItem`
 - Existing public Livewire components remain:
   - `App\Livewire\Public\ContentGroupBrowser`
   - `App\Livewire\Public\ContentItemBrowser`
+- Prompt 11 public homepage/search component:
+  - `App\Livewire\Public\ContentItemSearch`
+- Prompt 11 public card option mapper:
+  - `App\Support\PublicContent\PublicContentCardOptions`
 
 ## Current Domain Schema
 
@@ -124,6 +133,7 @@ Prompt 08 migration status from `php artisan migrate:status` and Boost database 
 - `2026_06_30_012932_add_prompt08_fields_to_content_items_table`: ran.
 - `2026_06_30_012933_add_homepage_order_to_content_groups_table`: ran.
 - `2026_06_30_012934_create_public_content_settings`: ran.
+- `2026_07_02_000000_add_public_content_card_settings`: added by Prompt 11.
 
 Local data reset note:
 
@@ -160,7 +170,25 @@ Current physical schema verified through Boost `database_schema`:
 - Item pinning fields and content group homepage ordering fields exist.
 - Prompt 08 media metadata foundation fields exist on `content_items`.
 - `App\Settings\PublicContentSettings` works in the admin settings page and persists rows in the `settings` table.
-- Public pages do not consume `PublicContentSettings` yet; Prompt 11 owns that public homepage/search consumption.
+- Public homepage/search pages now consume `PublicContentSettings`.
+
+## Prompt 11 Public Homepage/Search Notes
+
+- Prompt 11 is implemented.
+- The public root `/` keeps the existing `BrowseContentGroups` root page class as a compatibility shell but renders `ContentItemSearch`; the homepage result unit is now `ContentItem`/episode cards, not `ContentGroup`/podcast cards.
+- New public routes/pages exist for `/search`, `/categories/{categorySlug}`, and `/tags/{tagSlug}`.
+- Public item listing visibility requires a published parent group, a published item, and at least one effective/main published transcription.
+- The reusable public item card view is `resources/views/filament/tables/columns/public-content-item-card.blade.php`.
+- Card display is controlled by safe semantic Spatie settings, not raw CSS or Tailwind classes from the database.
+- Prompt 11 card settings cover image size, density, title size, group badge visibility, authors/categories/tags/date/duration/description visibility, description line count, and cards per page.
+- Semantic values are mapped in PHP through `PublicContentCardOptions`; Tailwind source scanning includes that support namespace.
+- Public filters include search, category with descendant and inherited group matching, enabled content tag, content group, author, provider, date, duration, and media-presence controls.
+- Sort options include latest/oldest transcription, title A-Z/Z-A, duration shortest/longest, and original newest/oldest.
+- Homepage default ordering keeps valid pinned items first unless an explicit sort is selected.
+- Visible ordered `HomepageSection` records are consumed for `latest`, `category`, `tag`, and `content_group` sections as a content-item feed foundation.
+- Curated homepage query sections remain deferred by the blueprint/spec.
+- Transcript body search remains deferred and is not part of default live search.
+- Public item page media/parser overhaul remains deferred to Prompt 12.
 
 ## Prompt 09 and Admin Repair Notes
 
@@ -203,7 +231,7 @@ Current physical schema verified through Boost `database_schema`:
 - Exported user/content text is formula-escaped where exporter APIs expose formatting. Failed import rows continue through native Filament failed-row behavior.
 - Native `ImportAction`, `ExportAction`, and `ExportBulkAction` are registered for content groups, content items, categories, and transcriptions. Existing author import/export compatibility remains.
 - Prompt 10 did not implement public homepage/search, public item page/parser work, dashboard widgets, or studio/sync work.
-- Prompt 11 is next and must consume `PublicContentSettings` and visible ordered `HomepageSection` records when building the public homepage/search UI.
+- Prompt 11 later implemented public homepage/search while preserving Prompt 10 import/export behavior.
 
 ## Homepage and Settings Notes
 
@@ -218,7 +246,7 @@ Current physical schema verified through Boost `database_schema`:
   - `PublicContentSettings` stores global defaults, limits, and layout choices.
   - `HomepageSection` records configure ordered content slices.
   - Item pinning is separate and affects item ordering where public queries support it.
-- Prompt 11 must read `PublicContentSettings` and visible ordered `HomepageSection` records when building the public homepage/search UI.
+- Prompt 11 reads `PublicContentSettings` and visible ordered `HomepageSection` records when building the public homepage/search UI.
 
 ## Browser Regression Tests
 
@@ -227,20 +255,20 @@ Current physical schema verified through Boost `database_schema`:
 - The browser test asserts the item details tab label, title field, slug field, content group field, status field, media URL field, and transcriptions tab are visible.
 - This test protects the `getContentTabLabel()` repair from regressing into an empty details tab.
 
-## Prompt 11 Readiness Notes
+## Prompt 12 Readiness Notes
 
 - Prompt 10 is complete.
-- Prompt 11 is next.
-- Prompt 11 must preserve the Prompt 10 import/export behavior and must not reintroduce writes to legacy `content_items.transcript_markdown`.
-- Prompt 11 must consume `PublicContentSettings` and visible ordered `HomepageSection` records when building the public homepage/search UI.
-- Prompt 11 must keep public listings based on `ContentItem` records and must not expose draft/unpublished items or draft transcriptions.
+- Prompt 11 is complete.
+- Prompt 12 is next and has not started.
+- Prompt 12 must preserve the Prompt 10 import/export behavior and Prompt 11 content-item homepage/search behavior.
+- Prompt 12 owns public item page media/parser work and must not add dashboard widgets or studio/sync behavior.
 
 ## Post-Prompt-10 Guidance Sync Notes
 
 - Active prompt workflow guidance now records the requirement to run preflight, read the blueprint/spec stack, stop on conflicts, and classify blueprint completion in final reports.
 - Successful implementation prompts must update relevant active Markdown state files before the final commit, not only code and tests.
-- Prompt 11 should start from the Prompt 10 import/export baseline and should not modify import/export behavior unless a Prompt 11 requirement makes that necessary.
-- This guidance sync changed Markdown only and did not start Prompt 11.
+- Prompt 11 started from the Prompt 10 import/export baseline and did not modify import/export behavior.
+- This guidance sync changed Markdown only and did not start Prompt 11; Prompt 11 was implemented later.
 
 ## Baseline Issue To Record
 

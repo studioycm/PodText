@@ -67,10 +67,13 @@ class PublicContentSettings extends SettingsPage
                             ->helperText(__('admin.helpers.default_public_sort'))
                             ->options([
                                 'latest_transcription' => __('admin.sort.latest_transcription'),
-                                'latest' => __('admin.sort.latest'),
-                                'oldest' => __('admin.sort.oldest'),
-                                'title' => __('admin.sort.title'),
-                                'pinned' => __('admin.sort.pinned'),
+                                'oldest_transcription' => __('admin.sort.oldest_transcription'),
+                                'title_asc' => __('admin.sort.title_asc'),
+                                'title_desc' => __('admin.sort.title_desc'),
+                                'duration_shortest' => __('admin.sort.duration_shortest'),
+                                'duration_longest' => __('admin.sort.duration_longest'),
+                                'original_newest' => __('admin.sort.original_newest'),
+                                'original_oldest' => __('admin.sort.original_oldest'),
                             ])
                             ->required(),
                         Select::make('default_result_layout')
@@ -91,6 +94,69 @@ class PublicContentSettings extends SettingsPage
                                 'transcript_first' => __('admin.layouts.transcript_first'),
                             ])
                             ->required(),
+                    ])
+                    ->columns(3),
+                Section::make(__('admin.sections.public_card_display'))
+                    ->description(__('admin.descriptions.public_content_settings_cards'))
+                    ->schema([
+                        Select::make('homepage_card_image_size')
+                            ->label(__('admin.fields.homepage_card_image_size'))
+                            ->helperText(__('admin.helpers.homepage_card_image_size'))
+                            ->options([
+                                'hidden' => __('admin.card_image_size.hidden'),
+                                'small' => __('admin.card_image_size.small'),
+                                'medium' => __('admin.card_image_size.medium'),
+                                'large' => __('admin.card_image_size.large'),
+                            ])
+                            ->required(),
+                        Select::make('homepage_card_density')
+                            ->label(__('admin.fields.homepage_card_density'))
+                            ->helperText(__('admin.helpers.homepage_card_density'))
+                            ->options([
+                                'compact' => __('admin.card_density.compact'),
+                                'comfortable' => __('admin.card_density.comfortable'),
+                            ])
+                            ->required(),
+                        Select::make('homepage_card_title_size')
+                            ->label(__('admin.fields.homepage_card_title_size'))
+                            ->helperText(__('admin.helpers.homepage_card_title_size'))
+                            ->options([
+                                'sm' => __('admin.card_title_size.sm'),
+                                'base' => __('admin.card_title_size.base'),
+                                'lg' => __('admin.card_title_size.lg'),
+                            ])
+                            ->required(),
+                        TextInput::make('homepage_cards_per_page')
+                            ->label(__('admin.fields.homepage_cards_per_page'))
+                            ->helperText(__('admin.helpers.homepage_cards_per_page'))
+                            ->required()
+                            ->numeric()
+                            ->integer()
+                            ->minValue(1)
+                            ->maxValue(48),
+                        TextInput::make('homepage_description_lines')
+                            ->label(__('admin.fields.homepage_description_lines'))
+                            ->helperText(__('admin.helpers.homepage_description_lines'))
+                            ->required()
+                            ->numeric()
+                            ->integer()
+                            ->minValue(0)
+                            ->maxValue(4),
+                        Toggle::make('homepage_show_group_badge')
+                            ->label(__('admin.fields.homepage_show_group_badge'))
+                            ->helperText(__('admin.helpers.homepage_show_group_badge')),
+                        Toggle::make('homepage_show_authors')
+                            ->label(__('admin.fields.homepage_show_authors')),
+                        Toggle::make('homepage_show_categories')
+                            ->label(__('admin.fields.homepage_show_categories')),
+                        Toggle::make('homepage_show_tags')
+                            ->label(__('admin.fields.homepage_show_tags')),
+                        Toggle::make('homepage_show_duration')
+                            ->label(__('admin.fields.homepage_show_duration')),
+                        Toggle::make('homepage_show_effective_date')
+                            ->label(__('admin.fields.homepage_show_effective_date')),
+                        Toggle::make('homepage_show_description')
+                            ->label(__('admin.fields.homepage_show_description')),
                     ])
                     ->columns(3),
             ]);

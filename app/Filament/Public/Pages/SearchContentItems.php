@@ -4,26 +4,25 @@ namespace App\Filament\Public\Pages;
 
 use Filament\Pages\Page;
 use Filament\Panel;
-use Illuminate\Contracts\Support\Htmlable;
 
-class BrowseContentGroups extends Page
+class SearchContentItems extends Page
 {
-    protected string $view = 'filament.public.pages.browse-content-items';
+    protected string $view = 'filament.public.pages.search-content-items';
 
     protected static bool $shouldRegisterNavigation = false;
 
     public static function getSlug(?Panel $panel = null): string
     {
-        return '';
+        return 'search';
     }
 
     public static function getRelativeRouteName(Panel $panel): string
     {
-        return 'home';
+        return 'search';
     }
 
-    public function getTitle(): string|Htmlable
+    public function getTitle(): string
     {
-        return __('public.pages.browse.title');
+        return __('public.pages.search.title');
     }
 }

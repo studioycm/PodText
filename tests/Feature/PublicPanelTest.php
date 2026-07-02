@@ -1,11 +1,10 @@
 <?php
 
-use App\Livewire\Public\ContentGroupBrowser;
 use App\Livewire\Public\ContentItemBrowser;
+use App\Livewire\Public\ContentItemSearch;
 use App\Models\Author;
 use App\Models\ContentGroup;
 use App\Models\ContentItem;
-use Illuminate\Database\Eloquent\Factories\Sequence;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 
@@ -16,76 +15,107 @@ it('allows guests to browse the public panel root with rtl layout markers', func
         'title' => 'שיחות עם ניקוד',
         'slug' => 'published-hebrew-group',
     ]);
+    $item = ContentItem::factory()->for($group)->published()->withTranscription()->create([
+        'title' => 'פרק ציבורי',
+        'slug' => 'public-item',
+    ]);
 
     $this->get('/')
         ->assertSuccessful()
         ->assertSee('dir="rtl"', false)
         ->assertSee(__('public.pages.browse.title'))
-        ->assertSee($group->title);
+        ->assertSee($item->title)
+        ->assertSee('data-test="content-item-card"', false);
 });
 
-it('shows only published groups on the browse page', function (): void {
-    $published = ContentGroup::factory()->published()->create(['title' => 'Published Group']);
-    $draft = ContentGroup::factory()->create(['title' => 'Draft Group']);
-    $future = ContentGroup::factory()->published(now()->addDay())->create(['title' => 'Future Group']);
+it('shows only public content items on the browse page', function (): void {
+    $published = ContentItem::factory()
+        ->for(ContentGroup::factory()->published())
+        ->published()
+        ->withTranscription()
+        ->create(['title' => 'Published Item']);
+    $draft = ContentItem::factory()
+        ->for(ContentGroup::factory()->published())
+        ->withTranscription()
+        ->create(['title' => 'Draft Item']);
+    $future = ContentItem::factory()
+        ->for(ContentGroup::factory()->published())
+        ->published(now()->addDay())
+        ->withTranscription()
+        ->create(['title' => 'Future Item']);
 
-    Livewire::test(ContentGroupBrowser::class)
+    Livewire::test(ContentItemSearch::class)
         ->assertSee($published->title)
         ->assertDontSee($draft->title)
         ->assertDontSee($future->title);
 });
 
-it('searches published groups by title and stores search in url state', function (): void {
-    $matching = ContentGroup::factory()->published()->create(['title' => 'Alpha Podcast']);
-    $other = ContentGroup::factory()->published()->create(['title' => 'Beta Podcast']);
+it('searches public items by title and stores search in url state', function (): void {
+    $matching = ContentItem::factory()
+        ->for(ContentGroup::factory()->published())
+        ->published()
+        ->withTranscription()
+        ->create(['title' => 'Alpha Episode']);
+    $other = ContentItem::factory()
+        ->for(ContentGroup::factory()->published())
+        ->published()
+        ->withTranscription()
+        ->create(['title' => 'Beta Episode']);
 
-    Livewire::test(ContentGroupBrowser::class)
-        ->set('search', 'Alpha')
+    Livewire::test(ContentItemSearch::class)
+        ->set('tableSearch', 'Alpha')
         ->assertSee($matching->title)
         ->assertDontSee($other->title);
 
     Livewire::withQueryParams(['q' => 'Alpha'])
-        ->test(ContentGroupBrowser::class)
-        ->assertSet('search', 'Alpha')
+        ->test(ContentItemSearch::class)
+        ->assertSet('tableSearch', 'Alpha')
         ->assertSee($matching->title)
         ->assertDontSee($other->title);
 });
 
-it('sorts published groups by newest and title', function (): void {
-    $alpha = ContentGroup::factory()->published(now()->subDays(2))->create(['title' => 'Alpha Group']);
-    $beta = ContentGroup::factory()->published(now()->subDay())->create(['title' => 'Beta Group']);
+it('sorts public items by latest transcription and title', function (): void {
+    $alpha = ContentItem::factory()
+        ->for(ContentGroup::factory()->published())
+        ->published()
+        ->withTranscription(['published_at' => now()->subDays(2)])
+        ->create(['title' => 'Alpha Item']);
+    $beta = ContentItem::factory()
+        ->for(ContentGroup::factory()->published())
+        ->published()
+        ->withTranscription(['published_at' => now()->subDay()])
+        ->create(['title' => 'Beta Item']);
 
-    Livewire::test(ContentGroupBrowser::class)
-        ->set('sort', 'newest')
+    Livewire::test(ContentItemSearch::class)
+        ->set('sort', 'latest_transcription')
         ->assertSeeInOrder([$beta->title, $alpha->title]);
 
-    Livewire::test(ContentGroupBrowser::class)
-        ->set('sort', 'title')
+    Livewire::test(ContentItemSearch::class)
+        ->set('sort', 'title_asc')
         ->assertSeeInOrder([$alpha->title, $beta->title]);
 
-    Livewire::withQueryParams(['sort' => 'title'])
-        ->test(ContentGroupBrowser::class)
-        ->assertSet('sort', 'title')
+    Livewire::withQueryParams(['sort' => 'title_asc'])
+        ->test(ContentItemSearch::class)
+        ->assertSet('sort', 'title_asc')
         ->assertSeeInOrder([$alpha->title, $beta->title]);
 });
 
-it('paginates published groups', function (): void {
-    $groups = ContentGroup::factory()
-        ->count(7)
-        ->published()
-        ->sequence(fn (Sequence $sequence): array => [
-            'title' => 'Paged Group '.($sequence->index + 1),
-            'slug' => 'paged-group-'.($sequence->index + 1),
-            'published_at' => now()->subMinutes($sequence->index + 1),
-        ])
-        ->create();
+it('paginates public content items', function (): void {
+    $items = collect(range(1, 13))
+        ->map(fn (int $index): ContentItem => ContentItem::factory()
+            ->for(ContentGroup::factory()->published())
+            ->published()
+            ->withTranscription(['published_at' => now()->subMinutes($index)])
+            ->create([
+                'title' => "Paged Item {$index}",
+                'slug' => "paged-item-{$index}",
+            ]));
 
-    Livewire::test(ContentGroupBrowser::class)
-        ->assertSee($groups[0]->title)
-        ->assertDontSee($groups[6]->title)
+    Livewire::test(ContentItemSearch::class)
+        ->assertSee($items[0]->title)
+        ->assertDontSee($items[12]->title)
         ->call('setPage', 2)
-        ->assertSee($groups[6]->title)
-        ->assertDontSee($groups[0]->title);
+        ->assertSee($items[12]->title);
 });
 
 it('renders a published group page with sanitized description and published items only', function (): void {

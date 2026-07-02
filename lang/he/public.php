@@ -3,26 +3,48 @@
 return [
     'actions' => [
         'back_to_groups' => 'חזרה לכל התוכן',
+        'clear_filters' => 'ניקוי מסננים',
         'collapse' => 'הצג פחות',
         'expand' => 'קרא עוד',
     ],
     'empty' => [
         'groups' => 'עדיין אין תוכן שפורסם.',
         'items' => 'עדיין אין פריטים שפורסמו.',
+        'items_description' => 'אפשר לנסות חיפוש אחר או לנקות את המסננים הפעילים.',
     ],
     'filters' => [
+        'author' => 'מחבר',
+        'category' => 'קטגוריה',
+        'duration' => 'משך',
+        'duration_max' => 'משך מרבי',
+        'duration_min' => 'משך מינימלי',
+        'effective_date' => 'תאריך תמלול',
+        'from_date' => 'מתאריך',
+        'group' => 'קבוצת תוכן',
+        'has_media' => 'כולל מדיה',
+        'original_date' => 'תאריך מקורי',
+        'provider' => 'ספק',
         'search_groups' => 'חיפוש',
+        'search_items_placeholder' => 'חיפוש פרקים לפי כותרת, פודקאסט, קטגוריה או תגית',
         'search_placeholder' => 'חיפוש לפי כותרת',
         'sort' => 'מיון',
         'sort_items' => 'מיון פריטים',
+        'tag' => 'תגית',
+        'until_date' => 'עד תאריך',
     ],
     'labels' => [
         'authors' => 'יוצרים',
         'breadcrumbs' => 'פירורי לחם',
+        'content_item' => 'פריט תוכן',
         'duration' => 'משך',
         'duration_value' => 'משך: :duration',
+        'no' => 'לא',
         'published_at' => 'פורסם',
         'published_items_count' => '{0} אין פריטים שפורסמו|{1} פריט אחד שפורסם|[2,*] :count פריטים שפורסמו',
+        'yes' => 'כן',
+    ],
+    'meta' => [
+        'dir' => 'rtl',
     ],
     'media' => [
         'embed_title' => 'נגן מדיה מוטמע',
@@ -32,9 +54,12 @@ return [
     ],
     'pages' => [
         'browse' => [
-            'description' => 'עיון בקבוצות תוכן שפורסמו ופתיחת תמלולים שמוכנים לקריאה ציבורית.',
+            'description' => 'עיון בפרקים האחרונים שפורסמו עם תמלולים שמוכנים לקריאה ציבורית.',
             'kicker' => 'ספרייה ציבורית',
             'title' => 'עיון בתוכן',
+        ],
+        'category' => [
+            'kicker' => 'קטגוריה',
         ],
         'group' => [
             'items_heading' => 'פריטים שפורסמו',
@@ -43,9 +68,29 @@ return [
             'description_heading' => 'תיאור',
             'transcript_heading' => 'תמלול',
         ],
+        'search' => [
+            'description' => 'חיפוש בכל פריטי התוכן הציבוריים עם תמלולים שפורסמו.',
+            'kicker' => 'חיפוש',
+            'title' => 'חיפוש בתוכן',
+        ],
+        'tag' => [
+            'kicker' => 'תגית',
+        ],
+    ],
+    'results' => [
+        'count' => '{0} אין פריטים ציבוריים|{1} פריט ציבורי אחד|[2,*] :count פריטים ציבוריים',
+        'public_items_only' => 'מוצגים פריטים שפורסמו עם תמלולים שפורסמו.',
     ],
     'sort' => [
+        'duration_longest' => 'משך: הארוכים ביותר',
+        'duration_shortest' => 'משך: הקצרים ביותר',
+        'latest_transcription' => 'התמלול החדש ביותר',
         'newest' => 'החדשים ביותר',
+        'oldest_transcription' => 'התמלול הישן ביותר',
+        'original_newest' => 'המקוריים החדשים ביותר',
+        'original_oldest' => 'המקוריים הישנים ביותר',
         'title' => 'כותרת',
+        'title_asc' => 'כותרת א-ת',
+        'title_desc' => 'כותרת ת-א',
     ],
 ];

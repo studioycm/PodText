@@ -358,10 +358,22 @@ it('saves public content settings through the settings page', function (): void 
         ->fillForm([
             'homepage_item_limit' => 9,
             'pinned_item_limit' => 4,
-            'default_public_sort' => 'pinned',
+            'default_public_sort' => 'title_desc',
             'default_result_layout' => 'rows',
             'show_latest_section' => false,
             'item_page_layout' => 'media_first',
+            'homepage_card_image_size' => 'large',
+            'homepage_card_density' => 'compact',
+            'homepage_card_title_size' => 'lg',
+            'homepage_show_group_badge' => false,
+            'homepage_show_authors' => false,
+            'homepage_show_categories' => false,
+            'homepage_show_tags' => false,
+            'homepage_show_duration' => false,
+            'homepage_show_effective_date' => false,
+            'homepage_show_description' => false,
+            'homepage_description_lines' => 1,
+            'homepage_cards_per_page' => 7,
         ])
         ->call('save')
         ->assertHasNoFormErrors();
@@ -372,10 +384,22 @@ it('saves public content settings through the settings page', function (): void 
 
     expect($settings->homepage_item_limit)->toBe(9)
         ->and($settings->pinned_item_limit)->toBe(4)
-        ->and($settings->default_public_sort)->toBe('pinned')
+        ->and($settings->default_public_sort)->toBe('title_desc')
         ->and($settings->default_result_layout)->toBe('rows')
         ->and($settings->show_latest_section)->toBeFalse()
-        ->and($settings->item_page_layout)->toBe('media_first');
+        ->and($settings->item_page_layout)->toBe('media_first')
+        ->and($settings->homepage_card_image_size)->toBe('large')
+        ->and($settings->homepage_card_density)->toBe('compact')
+        ->and($settings->homepage_card_title_size)->toBe('lg')
+        ->and($settings->homepage_show_group_badge)->toBeFalse()
+        ->and($settings->homepage_show_authors)->toBeFalse()
+        ->and($settings->homepage_show_categories)->toBeFalse()
+        ->and($settings->homepage_show_tags)->toBeFalse()
+        ->and($settings->homepage_show_duration)->toBeFalse()
+        ->and($settings->homepage_show_effective_date)->toBeFalse()
+        ->and($settings->homepage_show_description)->toBeFalse()
+        ->and($settings->homepage_description_lines)->toBe(1)
+        ->and($settings->homepage_cards_per_page)->toBe(7);
 });
 
 it('manages item transcriptions through the content item relation manager', function (): void {

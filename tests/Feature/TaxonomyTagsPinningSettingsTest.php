@@ -108,7 +108,19 @@ it('loads public content settings defaults', function (): void {
         ->and($settings->default_public_sort)->toBe('latest_transcription')
         ->and($settings->default_result_layout)->toBe('cards')
         ->and($settings->show_latest_section)->toBeTrue()
-        ->and($settings->item_page_layout)->toBe('standard');
+        ->and($settings->item_page_layout)->toBe('standard')
+        ->and($settings->homepage_card_image_size)->toBe('medium')
+        ->and($settings->homepage_card_density)->toBe('comfortable')
+        ->and($settings->homepage_card_title_size)->toBe('base')
+        ->and($settings->homepage_show_group_badge)->toBeTrue()
+        ->and($settings->homepage_show_authors)->toBeTrue()
+        ->and($settings->homepage_show_categories)->toBeTrue()
+        ->and($settings->homepage_show_tags)->toBeTrue()
+        ->and($settings->homepage_show_duration)->toBeTrue()
+        ->and($settings->homepage_show_effective_date)->toBeTrue()
+        ->and($settings->homepage_show_description)->toBeTrue()
+        ->and($settings->homepage_description_lines)->toBe(3)
+        ->and($settings->homepage_cards_per_page)->toBe(12);
 });
 
 it('stores homepage sections with finite type casts and visible ordering', function (): void {

@@ -2,7 +2,10 @@
 
 namespace App\Providers\Filament;
 
+use App\Filament\Public\Pages\BrowseCategoryContentItems;
 use App\Filament\Public\Pages\BrowseContentGroups;
+use App\Filament\Public\Pages\BrowseTagContentItems;
+use App\Filament\Public\Pages\SearchContentItems;
 use App\Filament\Public\Pages\ShowContentGroup;
 use App\Filament\Public\Pages\ShowContentItem;
 use Filament\Http\Middleware\AuthenticateSession;
@@ -33,6 +36,9 @@ class PublicPanelProvider extends PanelProvider
             ])
             ->pages([
                 BrowseContentGroups::class,
+                SearchContentItems::class,
+                BrowseCategoryContentItems::class,
+                BrowseTagContentItems::class,
                 ShowContentGroup::class,
                 ShowContentItem::class,
             ])

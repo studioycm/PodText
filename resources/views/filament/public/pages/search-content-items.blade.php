@@ -1,0 +1,15 @@
+<x-filament-panels::page>
+    <div class="space-y-8" dir="{{ __('public.meta.dir') }}">
+        <div class="space-y-3">
+            <p class="text-sm font-medium text-primary-600 dark:text-primary-400">{{ __('public.pages.search.kicker') }}</p>
+            <h1 class="text-3xl font-semibold tracking-normal text-gray-950 dark:text-white">
+                {{ __('public.pages.search.title') }}
+            </h1>
+            <p class="max-w-3xl text-base leading-7 text-gray-600 dark:text-gray-300">
+                {{ __('public.pages.search.description') }}
+            </p>
+        </div>
+
+        <livewire:public.content-item-search context="search" />
+    </div>
+</x-filament-panels::page>

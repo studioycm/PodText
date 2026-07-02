@@ -18,6 +18,30 @@ class PublicContentSettings extends Settings
 
     public string $item_page_layout;
 
+    public string $homepage_card_image_size;
+
+    public string $homepage_card_density;
+
+    public string $homepage_card_title_size;
+
+    public bool $homepage_show_group_badge;
+
+    public bool $homepage_show_authors;
+
+    public bool $homepage_show_categories;
+
+    public bool $homepage_show_tags;
+
+    public bool $homepage_show_duration;
+
+    public bool $homepage_show_effective_date;
+
+    public bool $homepage_show_description;
+
+    public int $homepage_description_lines;
+
+    public int $homepage_cards_per_page;
+
     public static function group(): string
     {
         return 'public_content';

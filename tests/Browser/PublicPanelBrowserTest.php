@@ -13,35 +13,44 @@ it('browses the public root in a real browser without smoke errors', function ()
         'slug' => 'browser-root-group',
         'description_markdown' => 'תיאור ציבורי קצר.',
     ]);
+    $item = ContentItem::factory()->for($group)->published()->withTranscription()->create([
+        'title' => 'פרק ציבורי בדפדפן',
+        'slug' => 'browser-root-item',
+    ]);
 
     visit('/')
         ->assertNoSmoke()
         ->assertScript('document.documentElement.dir', 'rtl')
         ->assertSee(__('public.pages.browse.title'))
-        ->assertSee($group->title);
+        ->assertSee($item->title)
+        ->assertSourceHas('data-test="content-item-card"')
+        ->assertSourceMissing('data-test="group-search"');
 });
 
-it('searches and sorts published groups in the browser', function (): void {
-    $alpha = ContentGroup::factory()->published(now()->subDays(2))->create([
-        'title' => 'Alpha Browser Podcast',
-        'slug' => 'alpha-browser-podcast',
-    ]);
-    $beta = ContentGroup::factory()->published(now()->subDay())->create([
-        'title' => 'Beta Browser Podcast',
-        'slug' => 'beta-browser-podcast',
-    ]);
+it('searches and sorts published content items in the browser', function (): void {
+    $alpha = ContentItem::factory()
+        ->for(ContentGroup::factory()->published())
+        ->published(now()->subDays(2))
+        ->withTranscription()
+        ->create([
+            'title' => 'Alpha Browser Episode',
+            'slug' => 'alpha-browser-episode',
+        ]);
+    $beta = ContentItem::factory()
+        ->for(ContentGroup::factory()->published())
+        ->published(now()->subDay())
+        ->withTranscription()
+        ->create([
+            'title' => 'Beta Browser Episode',
+            'slug' => 'beta-browser-episode',
+        ]);
 
-    $page = visit('/');
-
-    $page
-        ->select('@group-sort', 'title')
-        ->assertSelected('@group-sort', 'title')
-        ->fill('@group-search', 'Alpha')
-        ->assertValue('@group-search', 'Alpha')
-        ->assertQueryStringHas('sort', 'title')
+    visit('/search?q=Alpha&sort=title_asc')
         ->assertQueryStringHas('q', 'Alpha')
+        ->assertQueryStringHas('sort', 'title_asc')
         ->assertSee($alpha->title)
         ->assertDontSee($beta->title)
+        ->assertSourceHas(__('public.filters.search_items_placeholder'))
         ->assertNoJavaScriptErrors();
 });
 
@@ -167,10 +176,14 @@ it('blocks direct browser URLs for draft and future public records', function ()
 });
 
 it('renders the public browse page on mobile without smoke errors', function (): void {
-    ContentGroup::factory()->published()->create([
-        'title' => 'כותרת עברית ארוכה במיוחד לבדיקת תצוגה במובייל עם ניקוד',
-        'slug' => 'browser-mobile-hebrew-group',
-    ]);
+    ContentItem::factory()
+        ->for(ContentGroup::factory()->published())
+        ->published()
+        ->withTranscription()
+        ->create([
+            'title' => 'כותרת עברית ארוכה במיוחד לבדיקת תצוגה במובייל עם ניקוד',
+            'slug' => 'browser-mobile-hebrew-item',
+        ]);
 
     visit('/')
         ->on()->mobile()
