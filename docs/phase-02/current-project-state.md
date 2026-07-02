@@ -2,14 +2,14 @@
 
 This is the single source of truth for rolling Phase 02 prompt progress. Other active docs may describe stable dependencies and ownership, but should link here for current completion/progress status.
 
-Recorded after the post-Prompt-10 guidance sync and before the Markdown-only prompt-progress cleanup. This document intentionally avoids local secrets and should be updated when later prompts change the active baseline.
+Recorded after the Markdown-only post-Prompt-10 prompt-progress centralization cleanup. This document intentionally avoids local secrets and should be updated when later prompts change the active baseline.
 
 ## Git State
 
 - Current branch at cleanup preflight: `main` tracking `origin/main`.
 - Branch tracking state at cleanup preflight: no ahead/behind marker reported by `git status --short --branch`.
 - Working tree at cleanup preflight: clean.
-- Latest `HEAD` at cleanup preflight: `773f1c0 docs: sync prompt workflow lessons after prompt ten`.
+- Latest docs cleanup commit recorded here: `1cb158a docs: centralize prompt progress and ai development lessons`.
 - Latest local `HEAD` before Prompt 10 implementation: `014c6b0 docs: update phase two prompt state, completion details for Prompts 08 and 09, and readiness notes for Prompt 10`.
 - Admin management UX repair commit is present in history: `16ab33a fix: repair admin management ux after phase two resources`.
 - Prompt 09 implementation commit is present in history: `22e11d0 feat: add phase two admin content management`.
@@ -29,6 +29,7 @@ Recorded after the post-Prompt-10 guidance sync and before the Markdown-only pro
 | Admin UX repair | Complete | `16ab33a fix: repair admin management ux after phase two resources` | Repaired ContentItem edit tab behavior and related admin workflows. |
 | Prompt 10 import/export | Complete | `fad6721 feat: extend phase two import export` | Native Filament import/export baseline exists and should be preserved by later prompts. |
 | Post-Prompt-10 guidance sync | Complete | `773f1c0 docs: sync prompt workflow lessons after prompt ten` | Markdown-only guidance sync; did not start Prompt 11. |
+| Post-Prompt-10 prompt-progress centralization cleanup | Complete | `1cb158a docs: centralize prompt progress and ai development lessons` | Markdown-only cleanup; centralized rolling progress in this file; did not start Prompt 11. |
 | Prompt 11 public homepage/search | Next, not started | Confirmed by cleanup preflight and absence of Prompt 11 implementation commit | Must consume `PublicContentSettings` and visible ordered `HomepageSection` records. |
 | Prompt 12 media embed/item page/parser | Pending after Prompt 11 | Active prompt/blueprint | Owns public item page, media component, and parse-only parser/viewer. |
 | Prompt 13 dashboard metrics | Pending after Prompt 12 | Active prompt/blueprint | Owns editorial dashboard widgets. |
