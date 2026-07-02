@@ -19,6 +19,9 @@ Native Filament Importer/Exporter classes with portable reference keys and faile
 - Import/export only fields created by Prompts 07-09.
 - Export large Markdown fields disabled by default.
 - Preserve formula-injection protection.
+- Preserve Prompt 10's completed native Filament importer/exporter baseline when later prompts touch related models.
+- Keep `transcript_file` support deferred unless a safe, documented import package structure is approved and tested.
+- Keep day-first import/export presentation for dates and date-times, using `Asia/Jerusalem` for UI/export date-time presentation.
 
 ## Do not
 
@@ -26,6 +29,8 @@ Native Filament Importer/Exporter classes with portable reference keys and faile
 - Do not export numeric database IDs as portable identifiers.
 - Do not fetch remote media during imports.
 - Do not write transcript imports to the legacy item transcript field.
+- Do not silently create missing categories or tags during content imports.
+- Do not attach unscoped, disabled-public, or wrong-type tags unless an active spec explicitly allows it and tests cover the behavior.
 
 ## Testing rules
 
@@ -34,12 +39,16 @@ Native Filament Importer/Exporter classes with portable reference keys and faile
 - Failed rows.
 - Export columns.
 - Authorization.
+- Date parsing/export formatting.
+- Legacy transcript field non-regression.
 
 ## Security rules
 
 - Validate all imported values.
 - Keep failed-row download authorization.
 - Escape spreadsheet formula values.
+- Treat missing relationship references as row failures by default.
+- Use portable identifiers only: reference keys, slugs/paths, and typed tag slugs.
 
 ## FilaCheck / FilaCheck Pro notes
 
@@ -144,12 +153,15 @@ Guest Filament Public panel with custom Pages, class-based Livewire for server-d
 - Use Blade for cards, group badges, type labels, media embeds, and transcript output.
 - Use Alpine only for local UI behavior.
 - Keep search/sort/filter state in URL where practical.
+- Read `PublicContentSettings` and visible ordered `HomepageSection` records where homepage/search specs require public defaults and slices.
+- Use the Prompt 10 category, tag, pinning, media metadata, and transcription model state as the public listing source of truth.
 
 ## Do not
 
 - Do not render public result cards as `Transcription` records.
 - Do not expose admin Resource routes publicly.
 - Do not duplicate persisted state in Alpine.
+- Do not implement public item page/parser, dashboard widgets, or studio behavior in the homepage/search prompt.
 
 ## Testing rules
 
@@ -157,6 +169,8 @@ Guest Filament Public panel with custom Pages, class-based Livewire for server-d
 - Draft/no-effective-transcription exclusion tests.
 - RTL marker tests where feasible.
 - Livewire search/sort/filter tests.
+- Settings/section consumption tests where public homepage behavior depends on them.
+- Regression tests that public cards still represent `ContentItem` records when multiple transcriptions exist.
 
 ## Security rules
 
@@ -207,6 +221,9 @@ Filament Table inside a public Livewire component, rendered as item cards or row
 - Add active indicators for custom filters.
 - Persist important state in URL.
 - Implement all required sort modes.
+- Reuse the same `ContentItem` public visibility query across homepage, search, category, and tag landing pages.
+- Include category hierarchy/descendants and enabled `content` tags according to the active taxonomy specs.
+- Let explicit user-selected sorts override default pinned-first homepage ordering where the search spec requires it.
 
 ## Do not
 
@@ -220,6 +237,8 @@ Filament Table inside a public Livewire component, rendered as item cards or row
 - Filter and sort order tests.
 - URL state tests.
 - Disabled tag exclusion.
+- Effective/main transcription visibility tests.
+- Category descendant and typed-tag scoping tests.
 
 ## Security rules
 
@@ -268,12 +287,15 @@ Spatie Settings for global options, normal database records for ordered homepage
 - Keep dashboard widgets editorial.
 - Link widgets to Filament Resources through Resource URL helpers.
 - Include available editorial metrics as dashboard widgets and extend them as later schema becomes available.
+- In Prompt 11, public homepage/search must consume both global public settings and visible ordered homepage sections.
+- In Prompt 13, dashboard widgets should reflect currently available Prompt 07-12 schema, including import/export-adjacent warning states only when they are real editorial metrics.
 
 ## Do not
 
 - Do not add analytics/search logging.
 - Do not add observability dashboards or retry managers.
 - Do not use item pinning as settings storage.
+- Do not make homepage sections a replacement for item pinning; sections choose slices, while pin fields affect item ordering.
 
 ## Testing rules
 
@@ -281,6 +303,7 @@ Spatie Settings for global options, normal database records for ordered homepage
 - Homepage section visibility/order.
 - Widget render/count tests.
 - Admin-only access.
+- Public homepage tests for settings/section limits where they affect visible content.
 
 ## Security rules
 
@@ -394,6 +417,9 @@ Every implementation prompt uses Boost where available, reads its blueprint, che
 - Record FilaCheck/FilaCheck Pro output.
 - Preserve cross-cutting form, locale, and dashboard requirements from active specs/guidelines.
 - Use current Filament 5 relation-manager APIs for relation manager work.
+- Start implementation prompts with git status/log preflight and stop on unexpected app-code dirt unless the user explicitly resolves it.
+- Update active state Markdown before the final commit for every successful implementation prompt.
+- Classify blueprint requirements in the final report instead of silently skipping ambiguous or difficult items.
 
 ## Do not
 
@@ -404,6 +430,7 @@ Every implementation prompt uses Boost where available, reads its blueprint, che
 ## Testing rules
 
 - Each implementation prompt must add/update Pest tests.
+- Prefer behavior tests over class-existence checks, especially for admin UI registration, import/export rows, public visibility, filters, and failed-row behavior.
 - Final implementation gate:
 
 ```bash
@@ -412,6 +439,15 @@ vendor/bin/pint --test
 vendor/bin/filacheck
 npm run build
 ```
+
+## Prompt completion protocol
+
+- `docs/phase-02/current-project-state.md` is the single source for rolling prompt progress.
+- Successful implementation prompts must update `docs/phase-02/current-project-state.md` before commit.
+- Patch other docs only when stable scope, ownership, requirements, or durable lessons changed.
+- Avoid copy-pasting completion status into prompts, specs, blueprints, guidelines, or index files.
+- Prompt final reports are not a substitute for updating current state.
+- Tests must prove real behavior, not only class existence or static registration.
 
 ## Security rules
 
@@ -426,6 +462,7 @@ npm run build
 - FilaCheck/FilaCheck Pro must pass; do not run `filacheck --fix` unless explicitly approved.
 - If a prompt uses combined relation tabs with content, use the official Filament method names for the installed version.
 - Prompt 09 final reports must state whether combined tabs, relation manager badges, redirect behavior, and create-another behavior were implemented.
+- Prompt 10 established that successful prompts must leave active docs aligned with code before committing; future prompts should treat missing state-doc updates as incomplete work.
 
 ## Cross-cutting UI rules
 
