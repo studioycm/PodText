@@ -6,15 +6,18 @@ Implement the public item page, safe media rendering, transcription tabs, and pa
 
 ## Current state assumptions
 
-- This prompt depends on the prior prompts listed in the active sequence. Verify current completion status in `docs/phase-02/current-project-state.md` before implementation.
+- This prompt depends on the post-Prompt-11 public frontend state recorded in `docs/phase-02/current-project-state.md`, including Prompt 11R custom Livewire + Blade public listing UI and any completed Prompt 11B contributor discovery work.
 - For current prompt progress, read `docs/phase-02/current-project-state.md`.
+- Preserve custom public content-item cards, search/filter state, homepage sections, category/tag routes, content group routes, contributor links, and public card/link conventions that already exist before Prompt 12 starts.
+- Prompt 12 may link to existing contributor/author pages where needed, but must not implement contributor discovery if it is not already present in the current state.
 
 ## Preflight and carry-forward rules
 
 - Run git status/log preflight before implementation and stop on unexpected app-code dirt.
 - Confirm the prerequisite public homepage/search capabilities are present before starting; do not backfill Prompt 11 scope in this prompt.
-- Preserve Prompt 10 native import/export behavior, Prompt 11 public listing behavior, and the `ContentItem` public result unit.
-- Do not implement player sync, studio, dashboards, analytics, metadata extraction automation, or Prompt 13+ behavior.
+- Preserve Prompt 10 native import/export behavior, Prompt 11 public listing behavior, Prompt 11R custom public card/search/homepage-section rendering, Prompt 11B contributor routes/sections if present, and the `ContentItem` public result unit.
+- Prompt 12 owns the public item page, media rendering, transcript tabs/selector, parser, and viewer controls.
+- Do not implement admin relationship UX, homepage/search rewrites, contributor directory/discovery work, player sync, studio, dashboards, analytics, metadata extraction automation, or Prompt 13+ behavior.
 - After success, update `docs/phase-02/current-project-state.md` before final commit. Patch other docs only when stable requirements changed.
 
 ## Docs to read

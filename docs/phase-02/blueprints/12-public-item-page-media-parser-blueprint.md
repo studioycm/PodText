@@ -11,7 +11,14 @@ Update `App\Filament\Public\Pages\ShowContentItem`.
 
 ## Prior Prompt Baseline
 
-Prompt 12 requires the Prompt 11 public homepage/search baseline; verify prompt state in `docs/phase-02/current-project-state.md`. Preserve Prompt 10 import/export behavior and Prompt 11 public listing behavior while implementing the item page, media component, and parse-only viewer.
+Prompt 12 requires the post-Prompt-11 public homepage/search baseline; verify prompt state in `docs/phase-02/current-project-state.md`. Preserve Prompt 10 import/export behavior, Prompt 11 public listing behavior, Prompt 11R custom Livewire + Blade public listing UI, and Prompt 11B contributor discovery routes/sections if present while implementing the item page, media component, and parse-only viewer.
+
+Guardrails:
+
+- reuse existing public card and link conventions where the item page surfaces related content;
+- preserve existing author/contributor links where they are available;
+- do not modify the public homepage/search implementation except for shared components required by the item page;
+- do not implement admin relationship UX, contributor directory/discovery, dashboard widgets, studio, or sync behavior.
 
 Rules:
 

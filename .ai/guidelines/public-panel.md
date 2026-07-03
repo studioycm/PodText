@@ -13,6 +13,7 @@ Guest Filament Public panel with custom Pages, class-based Livewire for server-d
 - Return `ContentItem` records for homepage/search/category/tag listings.
 - Require published group, published item, and effective/main published transcription.
 - Use Blade for cards, group badges, type labels, media embeds, and transcript output.
+- Reuse existing public card, group-badge, and contributor-card Blade components where item pages or landing pages surface related content.
 - Use Alpine only for local UI behavior.
 - Keep search/sort/filter state in URL where practical.
 - Read `PublicContentSettings` and visible ordered `HomepageSection` records where homepage/search specs require public defaults and slices.
@@ -24,6 +25,7 @@ Guest Filament Public panel with custom Pages, class-based Livewire for server-d
 - Do not expose admin Resource routes publicly.
 - Do not duplicate persisted state in Alpine.
 - Do not implement public item page/parser, dashboard widgets, or studio behavior in the homepage/search prompt.
+- Do not rewrite homepage/search or contributor discovery while implementing the Prompt 12 item page unless a shared component change is required.
 
 ## Testing rules
 
@@ -62,4 +64,5 @@ Guest Filament Public panel with custom Pages, class-based Livewire for server-d
 - `docs/phase-02/public-panel-ux-spec.md`
 - `docs/phase-02/search-and-filters-spec.md`
 - `docs/phase-02/blueprints/11-public-homepage-search-blueprint.md`
+- `docs/phase-02/blueprints/12-public-item-page-media-parser-blueprint.md`
 - `docs/research/filament-examples-phase-02.md`

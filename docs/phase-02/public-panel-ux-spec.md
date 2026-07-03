@@ -3,9 +3,9 @@
 ## Architecture
 
 - Keep the guest Filament Public panel.
-- Use custom Filament Pages for homepage/search/category/tag/item pages.
+- Use custom Filament Pages for homepage/search/category/tag/contributor/item pages.
 - Use class-based Livewire components for search, filters, sorting, pagination, and transcription tab selection.
-- Use Blade components for content cards, group badges, media embeds, type labels, tags/categories, and safe transcript output.
+- Use Blade components for content cards, contributor cards, group badges, media embeds, type labels, tags/categories, and safe transcript output.
 - Use Alpine only for local behavior such as filter drawer, copy feedback, and viewer show/hide preferences.
 
 ## Homepage
@@ -38,6 +38,7 @@ Show content group cover image where available. Fallback to initials/title badge
 - Provide a sort dropdown with translation-key labels.
 - Provide clear filters behavior.
 - Category and tag landing pages reuse the same public item-card component as search results.
+- Contributor pages reuse the same public item-card component for related public content items, and author links should point to contributor pages where those routes exist.
 - Read `PublicContentSettings` for public defaults and visible ordered `HomepageSection` records for homepage slices.
 - Date/date-time displays on public pages use Hebrew/Israel locale behavior with day-first `dd/mm/yyyy` dates and `dd/mm/yyyy HH:mm` date-times where shown.
 - Public UI date/time presentation uses `Asia/Jerusalem`.
@@ -62,6 +63,8 @@ Prompt 12 implements:
 - author links;
 - copy/share actions;
 - desktop and mobile layout defaults.
+
+Prompt 12 should preserve existing public card/link conventions and may link authors to existing contributor pages. It does not own homepage/search rewrites or contributor directory/discovery work.
 
 Default item page layout:
 

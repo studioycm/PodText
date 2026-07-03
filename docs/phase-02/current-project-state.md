@@ -19,8 +19,8 @@ Recorded after the Markdown-only post-Prompt-10 prompt-progress centralization c
 - Prompt 11 public homepage/search is implemented and committed as `7ef2fa7 feat: add public content item homepage search`.
 - Pre-Prompt-12 documentation pack is present in history; latest pushed pre-Prompt-12 docs state is `c1237eb docs: add pre-prompt 12 documentation and guidelines for public admin contributors`.
 - Prompt 11R public frontend custom Livewire/Blade refactor is implemented and committed as `bb4b97c refactor: customize public content item discovery`.
-- Prompt 11A admin relationship UX is implemented and committed locally as `1d81ec0 feat: improve admin relationship management ux`.
-- Prompt 11B public contributors/transcribers discovery is implemented in this change set and ready for final quality gate/commit.
+- Prompt 11A admin relationship UX is implemented and committed as `1d81ec0 feat: improve admin relationship management ux`.
+- Prompt 11B public contributors/transcribers discovery is implemented and committed as `8998f7e feat: add public contributor discovery`.
 - Prompt 12 media embed/item page/parser has not started.
 
 ## Prompt Progress
@@ -37,9 +37,9 @@ Recorded after the Markdown-only post-Prompt-10 prompt-progress centralization c
 | Prompt 11 public homepage/search | Complete | `7ef2fa7 feat: add public content item homepage search` | Public homepage/search lists `ContentItem` cards using public visibility rules, settings, filters, routes, and homepage section foundations. |
 | Pre-Prompt-12 documentation pack | Complete | `c1237eb docs: add pre-prompt 12 documentation and guidelines for public admin contributors` | Adds Prompt 11R/11A/11B sequencing before Prompt 12 and ignores local Herd remote-site config. |
 | Prompt 11R public frontend custom Livewire/Blade refactor | Complete | `bb4b97c refactor: customize public content item discovery` | Public homepage/search/category/tag listing no longer uses Filament Table as the public UI; custom Livewire state and Blade components render cards, filters, pagination, and homepage sections. |
-| Prompt 11A admin relationship UX | Complete | `1d81ec0 feat: improve admin relationship management ux` | Adds safe admin create/edit option modals and `ContentGroupResource` → `ContentItemsRelationManager`; Prompt 12 not started. |
-| Prompt 11B public contributors/transcribers discovery | Complete in this change set | Pending final commit `feat: add public contributor discovery` | Adds `top_transcribers`, public contributor directory, previews, full contributor page, and demo seeder state; Prompt 12 not started. |
-| Prompt 12 readiness sync | Pending after Prompt 11B | Pre-Prompt-12 prompt pack | Docs-only sync before Prompt 12 activation. |
+| Prompt 11A admin relationship UX | Complete | `1d81ec0 feat: improve admin relationship management ux` | Adds safe admin create/edit option modals and `ContentGroupResource` -> `ContentItemsRelationManager`; Prompt 12 not started. |
+| Prompt 11B public contributors/transcribers discovery | Complete | `8998f7e feat: add public contributor discovery` | Adds `top_transcribers`, public contributor directory, previews, full contributor page, and demo seeder state; Prompt 12 not started. |
+| Prompt 12 readiness sync | Complete in this change set | This Markdown-only sync commit | Prepares Prompt 12 activation without starting implementation. |
 | Prompt 12 media embed/item page/parser | Pending after readiness sync, not started | Active prompt/blueprint | Owns public item page, media component, and parse-only parser/viewer. |
 | Prompt 13 dashboard metrics | Pending after Prompt 12 | Active prompt/blueprint | Owns editorial dashboard widgets. |
 | Prompt 14 viewer/studio future plan | Future planning after Prompt 13 | Active prompt/blueprint | Documentation/planning only. |
@@ -47,7 +47,7 @@ Recorded after the Markdown-only post-Prompt-10 prompt-progress centralization c
 
 ## Active Known Blockers
 
-- No active blocker is recorded for completing Prompt 11B, assuming the final quality gate remains clean.
+- No active blocker is recorded for starting Prompt 12 after this readiness sync is committed.
 - The `model:show` baseline issue below remains unresolved and should be avoided until investigated.
 
 ## Deferred Items
@@ -234,7 +234,7 @@ Current physical schema verified through Boost `database_schema`:
 
 ## Prompt 11B Public Contributor Discovery Notes
 
-- Prompt 11B is implemented in this change set.
+- Prompt 11B is implemented and committed as `8998f7e feat: add public contributor discovery`.
 - Contributor/transcriber discovery uses `Author` as the public-safe contributor model. No `User` records are exposed publicly.
 - New public routes exist:
   - `/contributors`
@@ -351,11 +351,13 @@ Current physical schema verified through Boost `database_schema`:
 - Prompt 11 is complete.
 - Prompt 11R is complete and committed as `bb4b97c refactor: customize public content item discovery`.
 - Prompt 11A is complete and committed as `1d81ec0 feat: improve admin relationship management ux`.
-- Prompt 11B is complete in this change set and ready for final commit.
-- Prompt 12 readiness sync and Prompt 12 activation remain pending after Prompt 11B.
+- Prompt 11B is complete and committed as `8998f7e feat: add public contributor discovery`.
+- Prompt 12 readiness sync is complete in this change set.
+- Prompt 12 activation remains pending after this readiness sync.
 - Prompt 12 has not started.
-- Prompt 12 must preserve the Prompt 10 import/export behavior and Prompt 11/11R content-item homepage/search behavior plus Prompt 11B contributor discovery routes and `top_transcribers` sections.
-- Prompt 12 owns public item page media/parser work and must not add dashboard widgets or studio/sync behavior.
+- Prompt 12 must preserve the Prompt 10 import/export behavior, Prompt 11/11R custom Livewire + Blade content-item homepage/search behavior, Prompt 11R public card components/routes, and Prompt 11B contributor discovery routes, author/contributor links, and `top_transcribers` sections.
+- Prompt 12 may link item-page authors to existing contributor pages where available.
+- Prompt 12 owns public item page media/parser work and must not add admin relationship UX, homepage/search rewrites, contributor directory/discovery work, dashboard widgets, or studio/sync behavior.
 
 ## Post-Prompt-10 Guidance Sync Notes
 
