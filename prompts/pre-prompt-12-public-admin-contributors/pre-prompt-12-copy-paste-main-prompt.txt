@@ -1,0 +1,17 @@
+Work in the current PhpStorm project repository only.
+
+Read:
+
+prompts/pre-prompt-12-public-admin-contributors/00-run-order-and-common-rules.md
+
+Then execute only the prompt file I specify below.
+
+Prompt file to execute now:
+
+prompts/pre-prompt-12-public-admin-contributors/01-prompt-11R-public-frontend-custom-livewire-blade.md
+
+Important:
+- Execute one prompt file only.
+- Do not continue to the next file unless I explicitly ask.
+- Do not push to GitHub unless explicitly asked.
+- Stop at the first blocker, failed preflight, failed quality gate, unexpected dirty app-code state, or scope conflict.
