@@ -243,9 +243,26 @@ it('drives homepage section target fields and validation from section type', fun
         ->call('create')
         ->assertHasNoFormErrors();
 
+    Livewire::test(CreateHomepageSection::class)
+        ->set('data.type', HomepageSectionType::TopTranscribers->value)
+        ->assertSchemaComponentHidden('category_id', 'form')
+        ->assertSchemaComponentHidden('tag_id', 'form')
+        ->assertSchemaComponentHidden('content_group_id', 'form')
+        ->fillForm([
+            'name' => 'Top Transcribers Section',
+            'slug' => 'top-transcribers-section',
+            'type' => HomepageSectionType::TopTranscribers->value,
+            'limit' => 6,
+            'sort_order' => 5,
+            'is_visible' => true,
+        ])
+        ->call('create')
+        ->assertHasNoFormErrors();
+
     expect(HomepageSection::query()->where('slug', 'latest-section')->firstOrFail()->category_id)->toBeNull()
         ->and(HomepageSection::query()->where('slug', 'tag-section')->firstOrFail()->tag_id)->toBe($tag->id)
-        ->and(HomepageSection::query()->where('slug', 'group-section')->firstOrFail()->content_group_id)->toBe($group->id);
+        ->and(HomepageSection::query()->where('slug', 'group-section')->firstOrFail()->content_group_id)->toBe($group->id)
+        ->and(HomepageSection::query()->where('slug', 'top-transcribers-section')->firstOrFail()->category_id)->toBeNull();
 });
 
 it('assigns prompt eight taxonomy, tags, pinning, media metadata, and featured transcription on content items', function (): void {

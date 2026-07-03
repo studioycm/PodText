@@ -2,12 +2,14 @@
 
 namespace Database\Seeders;
 
+use App\Enums\HomepageSectionType;
 use App\Enums\PublicationStatus;
 use App\Models\Author;
 use App\Models\Category;
 use App\Models\ContentGroup;
 use App\Models\ContentItem;
 use App\Models\ContentTag;
+use App\Models\HomepageSection;
 use App\Models\Transcription;
 use Carbon\CarbonInterface;
 use Illuminate\Database\Seeder;
@@ -26,6 +28,7 @@ class DemoHebrewContentSeeder extends Seeder
         $groups = $this->seedContentGroups($categories, $publishedAt);
 
         $this->seedContentItems($authors, $categories, $tags, $groups, $publishedAt);
+        $this->seedHomepageSections();
     }
 
     /**
@@ -432,6 +435,23 @@ class DemoHebrewContentSeeder extends Seeder
             ->update(['slug' => json_encode(['he' => $slug])]);
 
         return $tag->refresh();
+    }
+
+    private function seedHomepageSections(): void
+    {
+        HomepageSection::query()->updateOrCreate(
+            ['slug' => 'top-transcribers'],
+            [
+                'name' => 'המתמללים המובילים',
+                'type' => HomepageSectionType::TopTranscribers,
+                'category_id' => null,
+                'tag_id' => null,
+                'content_group_id' => null,
+                'limit' => 3,
+                'sort_order' => 5,
+                'is_visible' => true,
+            ],
+        );
     }
 
     private function transcriptFor(string $title, string $description): string

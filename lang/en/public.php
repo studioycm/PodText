@@ -6,9 +6,16 @@ return [
         'clear_filters' => 'Clear filters',
         'collapse' => 'Show less',
         'expand' => 'Read more',
+        'preview_contributor' => 'Preview',
         'view_more' => 'View more',
+        'view_all_contributor_items' => 'View all items',
+        'view_contributor' => 'View contributor',
     ],
     'empty' => [
+        'contributor_items' => 'No public items are available for this contributor yet.',
+        'contributor_preview' => 'Select a contributor to preview related public items.',
+        'contributors' => 'No public contributors are available yet.',
+        'contributors_description' => 'Try a different search or clear the active filters.',
         'groups' => 'No published content is available yet.',
         'items' => 'No published items are available yet.',
         'items_description' => 'Try a different search or clear the active filters.',
@@ -32,6 +39,7 @@ return [
         'original_until' => 'Original until',
         'provider' => 'Provider',
         'search' => 'Search',
+        'search_contributors_placeholder' => 'Search contributors by name',
         'search_groups' => 'Search',
         'search_items_placeholder' => 'Search episodes by title, podcast, category, or tag',
         'search_placeholder' => 'Search by title',
@@ -48,6 +56,8 @@ return [
         'duration_value' => 'Duration: :duration',
         'no' => 'No',
         'published_at' => 'Published',
+        'public_content_items_count' => '{0} No public items|{1} 1 public item|[2,*] :count public items',
+        'public_transcriptions_count' => '{0} No public transcriptions|{1} 1 public transcription|[2,*] :count public transcriptions',
         'published_items_count' => '{0} No published items|{1} 1 published item|[2,*] :count published items',
         'yes' => 'Yes',
     ],
@@ -69,6 +79,17 @@ return [
         'category' => [
             'kicker' => 'Category',
         ],
+        'contributor' => [
+            'items_heading' => 'Public items by this contributor',
+            'kicker' => 'Contributor',
+        ],
+        'contributors' => [
+            'description' => 'Find public contributors and preview the episodes connected to their published transcriptions.',
+            'kicker' => 'Contributors',
+            'preview_description' => 'A quick preview of public items connected through published transcriptions.',
+            'preview_kicker' => 'Selected contributor',
+            'title' => 'Contributors',
+        ],
         'group' => [
             'items_heading' => 'Published items',
         ],
@@ -86,11 +107,15 @@ return [
         ],
     ],
     'results' => [
+        'contributors_count' => '{0} No public contributors|{1} 1 public contributor|[2,*] :count public contributors',
         'count' => '{0} No public items|{1} 1 public item|[2,*] :count public items',
+        'public_contributors_only' => 'Showing contributors with published transcriptions on public items.',
         'public_items_only' => 'Showing published items with published transcriptions.',
     ],
     'sections' => [
         'latest' => 'Latest episodes',
+        'top_transcribers' => 'Top transcribers',
+        'top_transcribers_target' => 'Contributors',
     ],
     'sort' => [
         'duration_longest' => 'Duration: longest',

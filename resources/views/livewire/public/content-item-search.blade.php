@@ -91,7 +91,23 @@
                         @endif
                     </div>
 
-                    @if($section['items']->isNotEmpty())
+                    @if($section['type'] === \App\Enums\HomepageSectionType::TopTranscribers->value)
+                        @if($section['contributors']->isNotEmpty())
+                            <div class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3" data-test="top-transcribers-grid">
+                                @foreach($section['contributors'] as $author)
+                                    <x-public.contributor-card
+                                        :author="$author"
+                                        :full-page-url="\App\Filament\Public\Pages\ShowContributor::getUrl(['authorSlug' => $author->slug], panel: 'public')"
+                                        wire:key="top-transcriber-card-{{ $author->id }}"
+                                    />
+                                @endforeach
+                            </div>
+                        @else
+                            <div class="rounded-lg border border-dashed border-gray-300 bg-white p-6 text-sm text-gray-600 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300" data-test="homepage-section-empty">
+                                {{ __('public.empty.contributors') }}
+                            </div>
+                        @endif
+                    @elseif($section['items']->isNotEmpty())
                         <x-public.content-item-grid
                             :items="$section['items']"
                             :card-options="$cardOptions"

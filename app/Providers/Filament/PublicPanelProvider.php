@@ -4,10 +4,12 @@ namespace App\Providers\Filament;
 
 use App\Filament\Public\Pages\BrowseCategoryContentItems;
 use App\Filament\Public\Pages\BrowseContentGroups;
+use App\Filament\Public\Pages\BrowseContributors;
 use App\Filament\Public\Pages\BrowseTagContentItems;
 use App\Filament\Public\Pages\SearchContentItems;
 use App\Filament\Public\Pages\ShowContentGroup;
 use App\Filament\Public\Pages\ShowContentItem;
+use App\Filament\Public\Pages\ShowContributor;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
 use Filament\Http\Middleware\DispatchServingFilamentEvent;
@@ -39,6 +41,8 @@ class PublicPanelProvider extends PanelProvider
                 SearchContentItems::class,
                 BrowseCategoryContentItems::class,
                 BrowseTagContentItems::class,
+                BrowseContributors::class,
+                ShowContributor::class,
                 ShowContentGroup::class,
                 ShowContentItem::class,
             ])

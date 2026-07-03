@@ -297,6 +297,7 @@ return [
         'category' => 'Category',
         'tag' => 'Tag',
         'content_group' => 'Content group',
+        'top_transcribers' => 'Top transcribers',
         'curated_query' => 'Curated query',
     ],
     'sort' => [
@@ -319,6 +320,7 @@ return [
         'homepage_section_content_group' => 'Content group section: choose one group. Prompt 11 will include public items from that group.',
         'homepage_section_latest' => 'Latest section: no target is required. Prompt 11 will use public latest-item rules.',
         'homepage_section_tag' => 'Tag section: choose one enabled content tag. Disabled tags stay private.',
+        'homepage_section_top_transcribers' => 'Top transcribers section: no target is required. Public contributors are ranked by published transcriptions on public items.',
     ],
     'tabs' => [
         'content_items' => 'Content items',

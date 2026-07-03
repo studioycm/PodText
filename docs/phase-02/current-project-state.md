@@ -19,8 +19,8 @@ Recorded after the Markdown-only post-Prompt-10 prompt-progress centralization c
 - Prompt 11 public homepage/search is implemented and committed as `7ef2fa7 feat: add public content item homepage search`.
 - Pre-Prompt-12 documentation pack is present in history; latest pushed pre-Prompt-12 docs state is `c1237eb docs: add pre-prompt 12 documentation and guidelines for public admin contributors`.
 - Prompt 11R public frontend custom Livewire/Blade refactor is implemented and committed as `bb4b97c refactor: customize public content item discovery`.
-- Prompt 11A admin relationship UX is implemented in this change set and ready for final quality gate/commit.
-- Prompt 11B public contributors/transcribers discovery is next and has not started.
+- Prompt 11A admin relationship UX is implemented and committed locally as `1d81ec0 feat: improve admin relationship management ux`.
+- Prompt 11B public contributors/transcribers discovery is implemented in this change set and ready for final quality gate/commit.
 - Prompt 12 media embed/item page/parser has not started.
 
 ## Prompt Progress
@@ -37,8 +37,8 @@ Recorded after the Markdown-only post-Prompt-10 prompt-progress centralization c
 | Prompt 11 public homepage/search | Complete | `7ef2fa7 feat: add public content item homepage search` | Public homepage/search lists `ContentItem` cards using public visibility rules, settings, filters, routes, and homepage section foundations. |
 | Pre-Prompt-12 documentation pack | Complete | `c1237eb docs: add pre-prompt 12 documentation and guidelines for public admin contributors` | Adds Prompt 11R/11A/11B sequencing before Prompt 12 and ignores local Herd remote-site config. |
 | Prompt 11R public frontend custom Livewire/Blade refactor | Complete | `bb4b97c refactor: customize public content item discovery` | Public homepage/search/category/tag listing no longer uses Filament Table as the public UI; custom Livewire state and Blade components render cards, filters, pagination, and homepage sections. |
-| Prompt 11A admin relationship UX | Complete in this change set | Pending final commit `feat: improve admin relationship management ux` | Adds safe admin create/edit option modals and `ContentGroupResource` → `ContentItemsRelationManager`; Prompt 12 not started. |
-| Prompt 11B public contributors/transcribers discovery | Next, not started | Pre-Prompt-12 prompt pack | Owns top transcribers, contributor directory, previews, full contributor page, and seeders. |
+| Prompt 11A admin relationship UX | Complete | `1d81ec0 feat: improve admin relationship management ux` | Adds safe admin create/edit option modals and `ContentGroupResource` → `ContentItemsRelationManager`; Prompt 12 not started. |
+| Prompt 11B public contributors/transcribers discovery | Complete in this change set | Pending final commit `feat: add public contributor discovery` | Adds `top_transcribers`, public contributor directory, previews, full contributor page, and demo seeder state; Prompt 12 not started. |
 | Prompt 12 readiness sync | Pending after Prompt 11B | Pre-Prompt-12 prompt pack | Docs-only sync before Prompt 12 activation. |
 | Prompt 12 media embed/item page/parser | Pending after readiness sync, not started | Active prompt/blueprint | Owns public item page, media component, and parse-only parser/viewer. |
 | Prompt 13 dashboard metrics | Pending after Prompt 12 | Active prompt/blueprint | Owns editorial dashboard widgets. |
@@ -47,7 +47,7 @@ Recorded after the Markdown-only post-Prompt-10 prompt-progress centralization c
 
 ## Active Known Blockers
 
-- No active blocker is recorded for starting Prompt 11B after Prompt 11A, assuming preflight remains clean.
+- No active blocker is recorded for completing Prompt 11B, assuming the final quality gate remains clean.
 - The `model:show` baseline issue below remains unresolved and should be avoided until investigated.
 
 ## Deferred Items
@@ -56,8 +56,8 @@ Recorded after the Markdown-only post-Prompt-10 prompt-progress centralization c
 - Curated homepage query sections are deferred until a concrete query-builder spec exists.
 - Homepage result previews in admin forms remain deferred.
 - Associate-existing transcription remains deferred because `Transcription` belongs to one `ContentItem`.
-- Public contributor/transcriber discovery belongs to Prompt 11B and was not started by Prompt 11A.
-- Public item page/media/parser work belongs to Prompt 12 and was not started by Prompt 11A.
+- A separate public volunteer/contributor profile table remains deferred; Prompt 11B uses `Author` as the public-safe contributor/transcriber entity.
+- Public item page/media/parser work belongs to Prompt 12 and was not started by Prompt 11B.
 - `ContentItemForm::featured_transcription_id` remains create-disabled; transcriptions are created through item-scoped relation manager/full Resource workflows.
 - `TranscriptionForm::content_item_id` remains create-disabled; creating a content item inline from a transcript form is too large for a safe selector modal.
 - `SpatieTagsInput` remains plugin-managed and was not replaced with custom pivot or modal behavior.
@@ -97,18 +97,22 @@ Laravel Boost MCP tools were exposed and usable during Prompt 10.
 - Prompt 11R FilamentExamples research returned source snippets for public Filament table/filter examples; those snippets were used only to identify the prior table pattern to remove from the public listing.
 - Prompt 11A used Boost `application_info`, detailed `database_schema`, and `search_docs` for Filament 5 `Select::relationship()`, option actions, relation managers, stable relation keys, shared forms, and `hiddenOn()` before changing code.
 - Prompt 11A FilamentExamples research returned source snippets for relation-manager and selector/action patterns; access level was snippet/source through `search_examples`, not a full repository fetch.
+- Prompt 11B used Boost `application_info`, `database_schema`, and `search_docs` for Livewire 4 URL attributes, `wire:model.live.debounce`, pagination, Laravel seeding, and public Filament page patterns before changing code.
+- Prompt 11B FilamentExamples research returned snippet/source examples for custom multi-panel Filament Pages and Livewire-rendered page content; snippets were used as page-shell design reference, not copied wholesale.
 
 ## Application Shape
 
 - Database driver: SQLite.
 - Public panel root: `/`.
 - Admin panel root: `/admin`.
-- `php artisan route:list` reported 47 routes, including admin Resources for authors, categories, content groups, content items, content tags, homepage sections, transcriptions, and `admin/public-content-settings`.
+- `php artisan route:list --path=contributors` reports the public contributor directory and contributor detail routes.
 - Existing public pages remain:
   - `App\Filament\Public\Pages\BrowseContentGroups`
   - `App\Filament\Public\Pages\SearchContentItems`
   - `App\Filament\Public\Pages\BrowseCategoryContentItems`
   - `App\Filament\Public\Pages\BrowseTagContentItems`
+  - `App\Filament\Public\Pages\BrowseContributors`
+  - `App\Filament\Public\Pages\ShowContributor`
   - `App\Filament\Public\Pages\ShowContentGroup`
   - `App\Filament\Public\Pages\ShowContentItem`
 - Existing public Livewire components remain:
@@ -116,13 +120,20 @@ Laravel Boost MCP tools were exposed and usable during Prompt 10.
   - `App\Livewire\Public\ContentItemBrowser`
 - Prompt 11 public homepage/search component:
   - `App\Livewire\Public\ContentItemSearch`
+- Prompt 11B public contributor components:
+  - `App\Livewire\Public\ContributorDirectory`
+  - `App\Livewire\Public\ContributorContentItems`
 - Prompt 11R public Blade components:
+  - `resources/views/components/public/contributor-card.blade.php`
   - `resources/views/components/public/content-item-card.blade.php`
   - `resources/views/components/public/content-group-badge.blade.php`
   - `resources/views/components/public/content-item-grid.blade.php`
   - `resources/views/components/public/public-filter-panel.blade.php`
 - Prompt 11 public card option mapper:
   - `App\Support\PublicContent\PublicContentCardOptions`
+- Prompt 11B public query helpers:
+  - `App\Support\PublicContent\PublicContentItemQueries`
+  - `App\Support\PublicContent\PublicContributorDiscovery`
 - Prompt 11A admin helper:
   - `App\Filament\Resources\Support\RelationshipOptionForms`
 - Prompt 11A admin relation manager:
@@ -216,10 +227,26 @@ Current physical schema verified through Boost `database_schema`:
 - Sort options include latest/oldest transcription, title A-Z/Z-A, duration shortest/longest, and original newest/oldest.
 - Homepage default ordering keeps valid pinned items first unless an explicit sort is selected.
 - Visible ordered `HomepageSection` records now render as separate homepage sections for `latest`, `category`, `tag`, and `content_group`, each using `ContentItem` records and the shared card component.
+- Prompt 11B adds `top_transcribers` homepage sections, rendered as public `Author` contributor cards ranked by published transcriptions on public content items.
 - Curated homepage query sections remain deferred by the blueprint/spec.
-- `top_transcribers` homepage sections remain deferred to Prompt 11B.
 - Transcript body search remains deferred and is not part of default live search.
 - Public item page media/parser overhaul remains deferred to Prompt 12.
+
+## Prompt 11B Public Contributor Discovery Notes
+
+- Prompt 11B is implemented in this change set.
+- Contributor/transcriber discovery uses `Author` as the public-safe contributor model. No `User` records are exposed publicly.
+- New public routes exist:
+  - `/contributors`
+  - `/contributors/{authorSlug}`
+- `ContributorDirectory` provides URL-backed live search with `#[Url(as: 'q', except: '')]`, paginates contributors, and stores selected preview contributor state in the URL as `contributor`.
+- Contributor directory cards show public transcription counts and distinct public content item counts.
+- Selecting a contributor card loads a live preview of related public `ContentItem` records through published transcriptions.
+- Full contributor pages show the contributor name, safe-rendered public bio Markdown, counts, and paginated public `ContentItem` cards.
+- Public contributor visibility/counting requires a published transcription by the author whose content item is public under existing public item rules: published group, published item, and effective/main published transcription.
+- Contributor-related content item cards are still `ContentItem` records, never public `Transcription` cards.
+- `DemoHebrewContentSeeder` remains idempotent and now creates a visible `top-transcribers` homepage section with stable slug `top-transcribers`.
+- Public contributor profile records beyond `Author` remain deferred to a future contributor-profile prompt if needed.
 
 ## Prompt 09 and Admin Repair Notes
 
@@ -238,7 +265,7 @@ Current physical schema verified through Boost `database_schema`:
 
 ## Prompt 11A Admin Relationship UX Notes
 
-- Prompt 11A is implemented in this change set.
+- Prompt 11A is implemented and committed locally as `1d81ec0 feat: improve admin relationship management ux`.
 - Relationship selector policy:
   - Simple singular selectors get create and edit option modals.
   - Many-to-many selectors get create option modals only because installed Filament 5 does not expose edit-option actions for multiple selects.
@@ -265,6 +292,7 @@ Current physical schema verified through Boost `database_schema`:
 - `ContentItemsRelationManager` manages the owner group's `contentItems` relation, lists only current-group items, creates items through the owner context without submitting `content_group_id`, edits items in a modal, exposes delete actions consistently with existing admin conventions, links to the full `ContentItemResource` edit page, and reuses the existing Add transcription action.
 - `ContentItemForm::content_group_id` is hidden on `ContentItemsRelationManager`; the owner relationship supplies the group.
 - Prompt 11A did not start public contributors/transcribers discovery, public item pages, media embeds, parser work, import/export changes, or permissions work.
+- Prompt 11B later implemented public contributors/transcribers discovery while leaving public item pages, media embeds, parser work, import/export changes, and permissions work untouched.
 
 ## Prompt 10 Import/Export Notes
 
@@ -302,6 +330,7 @@ Current physical schema verified through Boost `database_schema`:
   - `category` requires `category_id`.
   - `tag` requires `tag_id`.
   - `content_group` requires `content_group_id`.
+  - `top_transcribers` does not require a category, tag, or content group target.
   - `curated_query` remains deferred.
 - Homepage settings and homepage sections have separate responsibilities:
   - `PublicContentSettings` stores global defaults, limits, and layout choices.
@@ -321,11 +350,11 @@ Current physical schema verified through Boost `database_schema`:
 - Prompt 10 is complete.
 - Prompt 11 is complete.
 - Prompt 11R is complete and committed as `bb4b97c refactor: customize public content item discovery`.
-- Prompt 11A is complete in this change set.
-- Prompt 11B is next and has not started.
+- Prompt 11A is complete and committed as `1d81ec0 feat: improve admin relationship management ux`.
+- Prompt 11B is complete in this change set and ready for final commit.
 - Prompt 12 readiness sync and Prompt 12 activation remain pending after Prompt 11B.
 - Prompt 12 has not started.
-- Prompt 12 must preserve the Prompt 10 import/export behavior and Prompt 11/11R content-item homepage/search behavior.
+- Prompt 12 must preserve the Prompt 10 import/export behavior and Prompt 11/11R content-item homepage/search behavior plus Prompt 11B contributor discovery routes and `top_transcribers` sections.
 - Prompt 12 owns public item page media/parser work and must not add dashboard widgets or studio/sync behavior.
 
 ## Post-Prompt-10 Guidance Sync Notes

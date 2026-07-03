@@ -50,6 +50,7 @@ class HomepageSectionForm
                                 HomepageSectionType::Category->value => HomepageSectionType::Category->getLabel(),
                                 HomepageSectionType::Tag->value => HomepageSectionType::Tag->getLabel(),
                                 HomepageSectionType::ContentGroup->value => HomepageSectionType::ContentGroup->getLabel(),
+                                HomepageSectionType::TopTranscribers->value => HomepageSectionType::TopTranscribers->getLabel(),
                             ])
                             ->live()
                             ->afterStateUpdated(function (Set $set): void {
@@ -145,6 +146,7 @@ class HomepageSectionForm
             HomepageSectionType::Category->value => __('admin.summaries.homepage_section_category'),
             HomepageSectionType::Tag->value => __('admin.summaries.homepage_section_tag'),
             HomepageSectionType::ContentGroup->value => __('admin.summaries.homepage_section_content_group'),
+            HomepageSectionType::TopTranscribers->value => __('admin.summaries.homepage_section_top_transcribers'),
             HomepageSectionType::Latest->value => __('admin.summaries.homepage_section_latest'),
             default => __('admin.summaries.homepage_section_choose_type'),
         };

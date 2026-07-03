@@ -3,8 +3,8 @@
 namespace App\Livewire\Public;
 
 use App\Enums\HomepageSectionType;
-use App\Enums\PublicationStatus;
 use App\Filament\Public\Pages\BrowseCategoryContentItems;
+use App\Filament\Public\Pages\BrowseContributors;
 use App\Filament\Public\Pages\BrowseTagContentItems;
 use App\Filament\Public\Pages\SearchContentItems;
 use App\Filament\Public\Pages\ShowContentGroup;
@@ -15,9 +15,10 @@ use App\Models\ContentGroup;
 use App\Models\ContentItem;
 use App\Models\ContentTag;
 use App\Models\HomepageSection;
-use App\Models\Transcription;
 use App\Settings\PublicContentSettings;
 use App\Support\PublicContent\PublicContentCardOptions;
+use App\Support\PublicContent\PublicContentItemQueries;
+use App\Support\PublicContent\PublicContributorDiscovery;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Pagination\LengthAwarePaginator;
@@ -282,17 +283,7 @@ class ContentItemSearch extends Component
 
     protected function basePublicQuery(): Builder
     {
-        return ContentItem::query()
-            ->published()
-            ->with([
-                'authors',
-                'categories',
-                'contentGroup.categories',
-                'enabledContentTags',
-                'featuredTranscription',
-                'latestPublishedTranscription',
-            ])
-            ->withEffectiveTranscriptionPublishedAt();
+        return PublicContentItemQueries::base();
     }
 
     protected function applyContext(Builder $query): void
@@ -386,11 +377,11 @@ class ContentItemSearch extends Component
         $originalUntil = $this->normalizedDate($this->filterOriginalUntil);
 
         if ($effectiveFrom) {
-            $query->whereRaw("date({$this->effectiveTranscriptionPublishedAtSql()}) >= ?", [$effectiveFrom]);
+            $query->whereRaw('date('.PublicContentItemQueries::effectiveTranscriptionPublishedAtSql().') >= ?', [$effectiveFrom]);
         }
 
         if ($effectiveUntil) {
-            $query->whereRaw("date({$this->effectiveTranscriptionPublishedAtSql()}) <= ?", [$effectiveUntil]);
+            $query->whereRaw('date('.PublicContentItemQueries::effectiveTranscriptionPublishedAtSql().') <= ?', [$effectiveUntil]);
         }
 
         if ($originalFrom) {
@@ -452,17 +443,7 @@ class ContentItemSearch extends Component
 
     protected function applyPinnedFirstSort(Builder $query): Builder
     {
-        $now = now();
-
-        return $query
-            ->orderByRaw(
-                'case when is_pinned = 1 and (pinned_at is null or pinned_at <= ?) and (pinned_until is null or pinned_until > ?) then 0 else 1 end',
-                [$now, $now],
-            )
-            ->orderByRaw('pin_order is null')
-            ->orderBy('pin_order')
-            ->orderByDesc('pinned_at')
-            ->orderByEffectiveTranscriptionPublishedAt();
+        return PublicContentItemQueries::pinnedFirst($query);
     }
 
     protected function shouldUseHomepagePinnedFirst(): bool
@@ -547,6 +528,10 @@ class ContentItemSearch extends Component
             return $section->contentGroup !== null;
         }
 
+        if ($section->type === HomepageSectionType::TopTranscribers) {
+            return true;
+        }
+
         return false;
     }
 
@@ -557,6 +542,7 @@ class ContentItemSearch extends Component
     {
         return [
             'description' => null,
+            'contributors' => $this->homepageSectionContributors($section),
             'heading' => $section->name,
             'items' => $this->homepageSectionItems($section),
             'key' => "section-{$section->getKey()}",
@@ -573,6 +559,7 @@ class ContentItemSearch extends Component
     {
         return [
             'description' => null,
+            'contributors' => collect(),
             'heading' => __('public.sections.latest'),
             'items' => $this->applyPinnedFirstSort($this->basePublicQuery())
                 ->limit($this->homepageItemLimit())
@@ -586,6 +573,10 @@ class ContentItemSearch extends Component
 
     protected function homepageSectionItems(HomepageSection $section): Collection
     {
+        if ($section->type === HomepageSectionType::TopTranscribers) {
+            return collect();
+        }
+
         $query = $this->basePublicQuery();
 
         if ($section->type === HomepageSectionType::Category) {
@@ -605,12 +596,22 @@ class ContentItemSearch extends Component
             ->get();
     }
 
+    protected function homepageSectionContributors(HomepageSection $section): Collection
+    {
+        if ($section->type !== HomepageSectionType::TopTranscribers) {
+            return collect();
+        }
+
+        return PublicContributorDiscovery::topContributors($section->limit);
+    }
+
     protected function homepageSectionTargetLabel(HomepageSection $section): ?string
     {
         return match ($section->type) {
             HomepageSectionType::Category => $section->category?->name,
             HomepageSectionType::Tag => $section->tag?->name,
             HomepageSectionType::ContentGroup => $section->contentGroup?->title,
+            HomepageSectionType::TopTranscribers => __('public.sections.top_transcribers_target'),
             default => null,
         };
     }
@@ -628,6 +629,7 @@ class ContentItemSearch extends Component
             HomepageSectionType::ContentGroup => $section->contentGroup
                 ? ShowContentGroup::getUrl(['contentGroupSlug' => $section->contentGroup->slug], panel: 'public')
                 : null,
+            HomepageSectionType::TopTranscribers => BrowseContributors::getUrl(panel: 'public'),
             default => null,
         };
     }
@@ -635,7 +637,11 @@ class ContentItemSearch extends Component
     protected function sectionResultCount(Collection $sections): int
     {
         return $sections
-            ->flatMap(fn (array $section): Collection => $section['items']->pluck('id'))
+            ->flatMap(function (array $section): Collection {
+                return $section['items']
+                    ->pluck('id')
+                    ->merge($section['contributors']->map(fn (Author $author): string => "author-{$author->id}"));
+            })
             ->unique()
             ->count();
     }
@@ -676,19 +682,6 @@ class ContentItemSearch extends Component
         } catch (\Throwable) {
             return null;
         }
-    }
-
-    protected function effectiveTranscriptionPublishedAtSql(): string
-    {
-        $contentItemsTable = (new ContentItem)->getTable();
-        $transcriptionsTable = (new Transcription)->getTable();
-        $published = str_replace("'", "''", PublicationStatus::Published->value);
-        $publishedWhere = "status = '{$published}' and transcript_markdown is not null and transcript_markdown != '' and (published_at is null or published_at <= CURRENT_TIMESTAMP)";
-
-        return "coalesce(
-            (select published_at from {$transcriptionsTable} where id = {$contentItemsTable}.featured_transcription_id and content_item_id = {$contentItemsTable}.id and {$publishedWhere} limit 1),
-            (select published_at from {$transcriptionsTable} where content_item_id = {$contentItemsTable}.id and {$publishedWhere} order by published_at desc, id desc limit 1)
-        )";
     }
 
     protected function resultLayout(): string

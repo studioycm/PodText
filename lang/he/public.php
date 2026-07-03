@@ -6,9 +6,16 @@ return [
         'clear_filters' => 'ניקוי מסננים',
         'collapse' => 'הצג פחות',
         'expand' => 'קרא עוד',
+        'preview_contributor' => 'תצוגה מקדימה',
         'view_more' => 'הצג עוד',
+        'view_all_contributor_items' => 'הצגת כל הפריטים',
+        'view_contributor' => 'דף תורם',
     ],
     'empty' => [
+        'contributor_items' => 'עדיין אין פריטים ציבוריים לתורם הזה.',
+        'contributor_preview' => 'בחרו תורם כדי לראות תצוגה מקדימה של פריטים ציבוריים קשורים.',
+        'contributors' => 'עדיין אין תורמים ציבוריים.',
+        'contributors_description' => 'אפשר לנסות חיפוש אחר או לנקות את המסננים הפעילים.',
         'groups' => 'עדיין אין תוכן שפורסם.',
         'items' => 'עדיין אין פריטים שפורסמו.',
         'items_description' => 'אפשר לנסות חיפוש אחר או לנקות את המסננים הפעילים.',
@@ -32,6 +39,7 @@ return [
         'original_until' => 'מקור עד תאריך',
         'provider' => 'ספק',
         'search' => 'חיפוש',
+        'search_contributors_placeholder' => 'חיפוש תורמים לפי שם',
         'search_groups' => 'חיפוש',
         'search_items_placeholder' => 'חיפוש פרקים לפי כותרת, פודקאסט, קטגוריה או תגית',
         'search_placeholder' => 'חיפוש לפי כותרת',
@@ -48,6 +56,8 @@ return [
         'duration_value' => 'משך: :duration',
         'no' => 'לא',
         'published_at' => 'פורסם',
+        'public_content_items_count' => '{0} אין פריטים ציבוריים|{1} פריט ציבורי אחד|[2,*] :count פריטים ציבוריים',
+        'public_transcriptions_count' => '{0} אין תמלולים ציבוריים|{1} תמלול ציבורי אחד|[2,*] :count תמלולים ציבוריים',
         'published_items_count' => '{0} אין פריטים שפורסמו|{1} פריט אחד שפורסם|[2,*] :count פריטים שפורסמו',
         'yes' => 'כן',
     ],
@@ -69,6 +79,17 @@ return [
         'category' => [
             'kicker' => 'קטגוריה',
         ],
+        'contributor' => [
+            'items_heading' => 'פריטים ציבוריים של התורם',
+            'kicker' => 'תורם',
+        ],
+        'contributors' => [
+            'description' => 'איתור תורמים ציבוריים ותצוגה מקדימה של פרקים שמחוברים לתמלולים שפורסמו.',
+            'kicker' => 'תורמים',
+            'preview_description' => 'תצוגה מהירה של פריטים ציבוריים שמחוברים דרך תמלולים שפורסמו.',
+            'preview_kicker' => 'תורם נבחר',
+            'title' => 'תורמים',
+        ],
         'group' => [
             'items_heading' => 'פריטים שפורסמו',
         ],
@@ -86,11 +107,15 @@ return [
         ],
     ],
     'results' => [
+        'contributors_count' => '{0} אין תורמים ציבוריים|{1} תורם ציבורי אחד|[2,*] :count תורמים ציבוריים',
         'count' => '{0} אין פריטים ציבוריים|{1} פריט ציבורי אחד|[2,*] :count פריטים ציבוריים',
+        'public_contributors_only' => 'מוצגים תורמים עם תמלולים שפורסמו בפריטים ציבוריים.',
         'public_items_only' => 'מוצגים פריטים שפורסמו עם תמלולים שפורסמו.',
     ],
     'sections' => [
         'latest' => 'פרקים אחרונים',
+        'top_transcribers' => 'המתמללים המובילים',
+        'top_transcribers_target' => 'תורמים',
     ],
     'sort' => [
         'duration_longest' => 'משך: הארוכים ביותר',
