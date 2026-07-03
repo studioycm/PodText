@@ -21,7 +21,8 @@ Recorded after the Markdown-only post-Prompt-10 prompt-progress centralization c
 - Prompt 11R public frontend custom Livewire/Blade refactor is implemented and committed as `bb4b97c refactor: customize public content item discovery`.
 - Prompt 11A admin relationship UX is implemented and committed as `1d81ec0 feat: improve admin relationship management ux`.
 - Prompt 11B public contributors/transcribers discovery is implemented and committed as `8998f7e feat: add public contributor discovery`.
-- Prompt 12 media embed/item page/parser has not started.
+- Prompt 12 readiness sync is implemented and committed locally as `23242a1 docs: prepare prompt twelve after public discovery work`.
+- Prompt 12 public item page/media/parser is implemented in this change set.
 
 ## Prompt Progress
 
@@ -39,15 +40,15 @@ Recorded after the Markdown-only post-Prompt-10 prompt-progress centralization c
 | Prompt 11R public frontend custom Livewire/Blade refactor | Complete | `bb4b97c refactor: customize public content item discovery` | Public homepage/search/category/tag listing no longer uses Filament Table as the public UI; custom Livewire state and Blade components render cards, filters, pagination, and homepage sections. |
 | Prompt 11A admin relationship UX | Complete | `1d81ec0 feat: improve admin relationship management ux` | Adds safe admin create/edit option modals and `ContentGroupResource` -> `ContentItemsRelationManager`; Prompt 12 not started. |
 | Prompt 11B public contributors/transcribers discovery | Complete | `8998f7e feat: add public contributor discovery` | Adds `top_transcribers`, public contributor directory, previews, full contributor page, and demo seeder state; Prompt 12 not started. |
-| Prompt 12 readiness sync | Complete in this change set | This Markdown-only sync commit | Prepares Prompt 12 activation without starting implementation. |
-| Prompt 12 media embed/item page/parser | Pending after readiness sync, not started | Active prompt/blueprint | Owns public item page, media component, and parse-only parser/viewer. |
-| Prompt 13 dashboard metrics | Pending after Prompt 12 | Active prompt/blueprint | Owns editorial dashboard widgets. |
+| Prompt 12 readiness sync | Complete | `23242a1 docs: prepare prompt twelve after public discovery work` | Prepared Prompt 12 activation without starting implementation. |
+| Prompt 12 media embed/item page/parser | Complete in this change set | `feat: add public item page media and transcript parser` | Adds the public item page, safe media component behavior, and parse-only transcript viewer. |
+| Prompt 13 dashboard metrics | Pending after Prompt 12, not started | Active prompt/blueprint | Owns editorial dashboard widgets. |
 | Prompt 14 viewer/studio future plan | Future planning after Prompt 13 | Active prompt/blueprint | Documentation/planning only. |
 | Prompt 15 Filament Blueprint security audit | Audit after Prompt 14 | Active prompt/blueprint | Audit-only unless fixes are explicitly approved. |
 
 ## Active Known Blockers
 
-- No active blocker is recorded for starting Prompt 12 after this readiness sync is committed.
+- No active blocker is recorded for starting Prompt 13 after Prompt 12 is committed.
 - The `model:show` baseline issue below remains unresolved and should be avoided until investigated.
 
 ## Deferred Items
@@ -57,7 +58,6 @@ Recorded after the Markdown-only post-Prompt-10 prompt-progress centralization c
 - Homepage result previews in admin forms remain deferred.
 - Associate-existing transcription remains deferred because `Transcription` belongs to one `ContentItem`.
 - A separate public volunteer/contributor profile table remains deferred; Prompt 11B uses `Author` as the public-safe contributor/transcriber entity.
-- Public item page/media/parser work belongs to Prompt 12 and was not started by Prompt 11B.
 - `ContentItemForm::featured_transcription_id` remains create-disabled; transcriptions are created through item-scoped relation manager/full Resource workflows.
 - `TranscriptionForm::content_item_id` remains create-disabled; creating a content item inline from a transcript form is too large for a safe selector modal.
 - `SpatieTagsInput` remains plugin-managed and was not replaced with custom pivot or modal behavior.
@@ -99,6 +99,8 @@ Laravel Boost MCP tools were exposed and usable during Prompt 10.
 - Prompt 11A FilamentExamples research returned source snippets for relation-manager and selector/action patterns; access level was snippet/source through `search_examples`, not a full repository fetch.
 - Prompt 11B used Boost `application_info`, `database_schema`, and `search_docs` for Livewire 4 URL attributes, `wire:model.live.debounce`, pagination, Laravel seeding, and public Filament page patterns before changing code.
 - Prompt 11B FilamentExamples research returned snippet/source examples for custom multi-panel Filament Pages and Livewire-rendered page content; snippets were used as page-shell design reference, not copied wholesale.
+- Prompt 12 used Boost `application_info`, `database_schema`, and `search_docs` for the installed Laravel 13.18.0, Filament 5.6.7, Livewire 4.3.3, Pest 4.7.4, public page, Livewire URL state, Alpine, media rendering, and test behavior before changing code.
+- Prompt 12 FilamentExamples research returned snippet/source examples for custom public page and Livewire-rendered page content; snippets were used as reference only.
 
 ## Application Shape
 
@@ -123,6 +125,8 @@ Laravel Boost MCP tools were exposed and usable during Prompt 10.
 - Prompt 11B public contributor components:
   - `App\Livewire\Public\ContributorDirectory`
   - `App\Livewire\Public\ContributorContentItems`
+- Prompt 12 public item transcript viewer component:
+  - `App\Livewire\Public\ContentItemTranscriptViewer`
 - Prompt 11R public Blade components:
   - `resources/views/components/public/contributor-card.blade.php`
   - `resources/views/components/public/content-item-card.blade.php`
@@ -138,6 +142,8 @@ Laravel Boost MCP tools were exposed and usable during Prompt 10.
   - `App\Filament\Resources\Support\RelationshipOptionForms`
 - Prompt 11A admin relation manager:
   - `App\Filament\Resources\ContentGroups\RelationManagers\ContentItemsRelationManager`
+- Prompt 12 parser:
+  - `App\Support\Transcripts\TranscriptSegmentParser`
 
 ## Current Domain Schema
 
@@ -230,7 +236,7 @@ Current physical schema verified through Boost `database_schema`:
 - Prompt 11B adds `top_transcribers` homepage sections, rendered as public `Author` contributor cards ranked by published transcriptions on public content items.
 - Curated homepage query sections remain deferred by the blueprint/spec.
 - Transcript body search remains deferred and is not part of default live search.
-- Public item page media/parser overhaul remains deferred to Prompt 12.
+- Prompt 12 later implemented the public item page media/parser overhaul while preserving the Prompt 11R custom Livewire + Blade homepage/search renderer.
 
 ## Prompt 11B Public Contributor Discovery Notes
 
@@ -345,19 +351,24 @@ Current physical schema verified through Boost `database_schema`:
 - The browser test asserts the item details tab label, title field, slug field, content group field, status field, media URL field, and transcriptions tab are visible.
 - This test protects the `getContentTabLabel()` repair from regressing into an empty details tab.
 
-## Prompt 12 Readiness Notes
+## Prompt 12 Public Item Page/Media/Parser Notes
 
 - Prompt 10 is complete.
 - Prompt 11 is complete.
 - Prompt 11R is complete and committed as `bb4b97c refactor: customize public content item discovery`.
 - Prompt 11A is complete and committed as `1d81ec0 feat: improve admin relationship management ux`.
 - Prompt 11B is complete and committed as `8998f7e feat: add public contributor discovery`.
-- Prompt 12 readiness sync is complete in this change set.
-- Prompt 12 activation remains pending after this readiness sync.
-- Prompt 12 has not started.
-- Prompt 12 must preserve the Prompt 10 import/export behavior, Prompt 11/11R custom Livewire + Blade content-item homepage/search behavior, Prompt 11R public card components/routes, and Prompt 11B contributor discovery routes, author/contributor links, and `top_transcribers` sections.
-- Prompt 12 may link item-page authors to existing contributor pages where available.
-- Prompt 12 owns public item page media/parser work and must not add admin relationship UX, homepage/search rewrites, contributor directory/discovery work, dashboard widgets, or studio/sync behavior.
+- Prompt 12 readiness sync is complete and committed as `23242a1 docs: prepare prompt twelve after public discovery work`.
+- Prompt 12 is implemented in this change set.
+- The public item page resolves only published groups, published items, and items with at least one published effective/main transcription.
+- The item page preserves Prompt 11R custom Livewire + Blade homepage/search behavior and Prompt 11B contributor discovery routes, author/contributor links, and `top_transcribers` sections.
+- The item page shows day-first dates, duration, categories, enabled content tags, author/contributor links, copy/share actions, safe description Markdown, and the transcript viewer in an RTL public layout.
+- `resources/views/components/public/media-embed.blade.php` renders an iframe only for allowlisted HTTPS embed URLs, falls back to a valid HTTPS source link, never renders raw embed HTML, and shows provider/source metadata where available.
+- `TranscriptSegmentParser` supports `[HH:MM:SS] Speaker: Transcript text` and `[HH:MM:SS] Speaker:\nTranscript text...`, returning seconds, timestamp, speaker, Markdown, and `t-{seconds}` anchors.
+- `ContentItemTranscriptViewer` defaults to the effective transcription, exposes only published transcription tabs/selector choices, keeps selection URL-backed by transcription reference key, and falls back to safe Markdown when parsing finds no segments.
+- Viewer controls are local Alpine preferences for show/hide timestamps and speakers; timestamp anchors are direction-safe with `dir="ltr"`.
+- Prompt 12 did not add player sync, transcription studio, autosave, dashboard widgets, analytics, metadata extraction automation, import/export behavior changes, admin relationship UX changes, homepage/search rewrites, or contributor discovery changes.
+- Prompt 13 dashboard metrics is next and has not started.
 
 ## Post-Prompt-10 Guidance Sync Notes
 
