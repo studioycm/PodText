@@ -166,59 +166,7 @@ class ContentItemsTable
                     ->maxRows(10000),
             ])
             ->recordActions([
-                Action::make('addTranscription')
-                    ->label(__('admin.actions.add_transcription'))
-                    ->icon(Heroicon::OutlinedDocumentPlus)
-                    ->modalWidth(Width::FiveExtraLarge)
-                    ->schema([
-                        Select::make('author_id')
-                            ->label(__('admin.fields.author'))
-                            ->helperText(__('admin.helpers.transcription_author'))
-                            ->options(fn (): array => Author::query()
-                                ->orderBy('name')
-                                ->pluck('name', 'id')
-                                ->all())
-                            ->searchable()
-                            ->preload()
-                            ->required(),
-                        TextInput::make('title')
-                            ->label(__('admin.fields.title'))
-                            ->helperText(__('admin.helpers.transcription_title'))
-                            ->maxLength(255),
-                        TextInput::make('language_code')
-                            ->label(__('admin.fields.language_code'))
-                            ->helperText(__('admin.helpers.language_code'))
-                            ->default('he')
-                            ->required()
-                            ->maxLength(10),
-                        Select::make('status')
-                            ->label(__('admin.fields.status'))
-                            ->helperText(__('admin.helpers.transcription_status'))
-                            ->options(PublicationStatus::class)
-                            ->default(PublicationStatus::Draft->value)
-                            ->required(),
-                        DateTimePicker::make('published_at')
-                            ->label(__('admin.fields.published_at'))
-                            ->helperText(__('admin.helpers.transcription_published_at'))
-                            ->displayFormat('d/m/Y H:i')
-                            ->timezone('Asia/Jerusalem'),
-                        MarkdownEditor::make('transcript_markdown')
-                            ->label(__('admin.fields.transcript_markdown'))
-                            ->helperText(__('admin.helpers.transcript_markdown'))
-                            ->disableToolbarButtons(['attachFiles'])
-                            ->fileAttachments(false)
-                            ->required()
-                            ->columnSpanFull(),
-                    ])
-                    ->action(function (ContentItem $record, array $data): void {
-                        $record->transcriptions()->create($data);
-
-                        Notification::make()
-                            ->success()
-                            ->title(__('admin.notifications.transcription_created'))
-                            ->body(__('admin.notifications.first_transcription_featured'))
-                            ->send();
-                    }),
+                self::addTranscriptionAction(),
                 EditAction::make(),
             ])
             ->toolbarActions([
@@ -229,5 +177,62 @@ class ContentItemsTable
                     DeleteBulkAction::make(),
                 ]),
             ]);
+    }
+
+    public static function addTranscriptionAction(): Action
+    {
+        return Action::make('addTranscription')
+            ->label(__('admin.actions.add_transcription'))
+            ->icon(Heroicon::OutlinedDocumentPlus)
+            ->modalWidth(Width::FiveExtraLarge)
+            ->schema([
+                Select::make('author_id')
+                    ->label(__('admin.fields.author'))
+                    ->helperText(__('admin.helpers.transcription_author'))
+                    ->options(fn (): array => Author::query()
+                        ->orderBy('name')
+                        ->pluck('name', 'id')
+                        ->all())
+                    ->searchable()
+                    ->preload()
+                    ->required(),
+                TextInput::make('title')
+                    ->label(__('admin.fields.title'))
+                    ->helperText(__('admin.helpers.transcription_title'))
+                    ->maxLength(255),
+                TextInput::make('language_code')
+                    ->label(__('admin.fields.language_code'))
+                    ->helperText(__('admin.helpers.language_code'))
+                    ->default('he')
+                    ->required()
+                    ->maxLength(10),
+                Select::make('status')
+                    ->label(__('admin.fields.status'))
+                    ->helperText(__('admin.helpers.transcription_status'))
+                    ->options(PublicationStatus::class)
+                    ->default(PublicationStatus::Draft->value)
+                    ->required(),
+                DateTimePicker::make('published_at')
+                    ->label(__('admin.fields.published_at'))
+                    ->helperText(__('admin.helpers.transcription_published_at'))
+                    ->displayFormat('d/m/Y H:i')
+                    ->timezone('Asia/Jerusalem'),
+                MarkdownEditor::make('transcript_markdown')
+                    ->label(__('admin.fields.transcript_markdown'))
+                    ->helperText(__('admin.helpers.transcript_markdown'))
+                    ->disableToolbarButtons(['attachFiles'])
+                    ->fileAttachments(false)
+                    ->required()
+                    ->columnSpanFull(),
+            ])
+            ->action(function (ContentItem $record, array $data): void {
+                $record->transcriptions()->create($data);
+
+                Notification::make()
+                    ->success()
+                    ->title(__('admin.notifications.transcription_created'))
+                    ->body(__('admin.notifications.first_transcription_featured'))
+                    ->send();
+            });
     }
 }

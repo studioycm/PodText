@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\HomepageSections\Schemas;
 
 use App\Enums\HomepageSectionType;
+use App\Filament\Resources\Support\RelationshipOptionForms;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
@@ -66,30 +67,36 @@ class HomepageSectionForm
                             ->label(__('admin.fields.section_summary'))
                             ->state(fn (Get $get): string => self::sectionSummary($get))
                             ->columnSpanFull(),
-                        Select::make('category_id')
-                            ->label(__('admin.fields.category'))
-                            ->helperText(__('admin.helpers.homepage_category'))
-                            ->relationship('category', 'name')
-                            ->searchable()
-                            ->preload()
-                            ->required(fn (Get $get): bool => self::isSectionType($get, HomepageSectionType::Category))
-                            ->visible(fn (Get $get): bool => self::isSectionType($get, HomepageSectionType::Category)),
-                        Select::make('tag_id')
-                            ->label(__('admin.fields.tag'))
-                            ->helperText(__('admin.helpers.homepage_tag'))
-                            ->relationship('tag', 'name')
-                            ->searchable()
-                            ->preload()
-                            ->required(fn (Get $get): bool => self::isSectionType($get, HomepageSectionType::Tag))
-                            ->visible(fn (Get $get): bool => self::isSectionType($get, HomepageSectionType::Tag)),
-                        Select::make('content_group_id')
-                            ->label(__('admin.fields.content_group'))
-                            ->helperText(__('admin.helpers.homepage_content_group'))
-                            ->relationship('contentGroup', 'title')
-                            ->searchable()
-                            ->preload()
-                            ->required(fn (Get $get): bool => self::isSectionType($get, HomepageSectionType::ContentGroup))
-                            ->visible(fn (Get $get): bool => self::isSectionType($get, HomepageSectionType::ContentGroup)),
+                        RelationshipOptionForms::configureCategorySelect(
+                            Select::make('category_id')
+                                ->label(__('admin.fields.category'))
+                                ->helperText(__('admin.helpers.homepage_category'))
+                                ->relationship('category', 'name')
+                                ->searchable()
+                                ->preload()
+                                ->required(fn (Get $get): bool => self::isSectionType($get, HomepageSectionType::Category))
+                                ->visible(fn (Get $get): bool => self::isSectionType($get, HomepageSectionType::Category))
+                        ),
+                        RelationshipOptionForms::configureContentTagSelect(
+                            Select::make('tag_id')
+                                ->label(__('admin.fields.tag'))
+                                ->helperText(__('admin.helpers.homepage_tag'))
+                                ->relationship('tag', 'name')
+                                ->searchable()
+                                ->preload()
+                                ->required(fn (Get $get): bool => self::isSectionType($get, HomepageSectionType::Tag))
+                                ->visible(fn (Get $get): bool => self::isSectionType($get, HomepageSectionType::Tag))
+                        ),
+                        RelationshipOptionForms::configureContentGroupSelect(
+                            Select::make('content_group_id')
+                                ->label(__('admin.fields.content_group'))
+                                ->helperText(__('admin.helpers.homepage_content_group'))
+                                ->relationship('contentGroup', 'title')
+                                ->searchable()
+                                ->preload()
+                                ->required(fn (Get $get): bool => self::isSectionType($get, HomepageSectionType::ContentGroup))
+                                ->visible(fn (Get $get): bool => self::isSectionType($get, HomepageSectionType::ContentGroup))
+                        ),
                     ])
                     ->columns(3),
                 Section::make(__('admin.sections.visibility_order'))

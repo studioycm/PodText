@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Transcriptions\Schemas;
 
 use App\Enums\PublicationStatus;
+use App\Filament\Resources\Support\RelationshipOptionForms;
 use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\MarkdownEditor;
 use Filament\Forms\Components\Select;
@@ -30,12 +31,14 @@ class TranscriptionForm
                             ->searchable()
                             ->preload()
                             ->required(),
-                        Select::make('author_id')
-                            ->label(__('admin.fields.author'))
-                            ->relationship('author', 'name')
-                            ->searchable()
-                            ->preload()
-                            ->required(),
+                        RelationshipOptionForms::configureAuthorSelect(
+                            Select::make('author_id')
+                                ->label(__('admin.fields.author'))
+                                ->relationship('author', 'name')
+                                ->searchable()
+                                ->preload()
+                                ->required()
+                        ),
                         TextInput::make('title')
                             ->label(__('admin.fields.title'))
                             ->maxLength(255),

@@ -7,6 +7,9 @@ use App\Filament\Resources\Categories\CategoryResource;
 use App\Filament\Resources\Categories\Pages\CreateCategory;
 use App\Filament\Resources\Categories\Pages\EditCategory;
 use App\Filament\Resources\Categories\Pages\ListCategories;
+use App\Filament\Resources\ContentGroups\ContentGroupResource;
+use App\Filament\Resources\ContentGroups\Pages\EditContentGroup;
+use App\Filament\Resources\ContentGroups\RelationManagers\ContentItemsRelationManager;
 use App\Filament\Resources\ContentItems\ContentItemResource;
 use App\Filament\Resources\ContentItems\Pages\CreateContentItem;
 use App\Filament\Resources\ContentItems\Pages\EditContentItem;
@@ -323,6 +326,89 @@ it('assigns prompt eight taxonomy, tags, pinning, media metadata, and featured t
         ->and($item->transcript_markdown)->toBeNull();
 });
 
+it('creates and selects simple related records from content item relationship selectors', function (): void {
+    $component = Livewire::test(CreateContentItem::class)
+        ->assertActionExists(TestAction::make('createOption')->schemaComponent('content_group_id', 'form'))
+        ->assertActionExists(TestAction::make('editOption')->schemaComponent('content_group_id', 'form'))
+        ->assertActionExists(TestAction::make('createOption')->schemaComponent('authors', 'form'))
+        ->assertActionDoesNotExist(TestAction::make('editOption')->schemaComponent('authors', 'form'))
+        ->assertActionExists(TestAction::make('createOption')->schemaComponent('categories', 'form'))
+        ->assertActionDoesNotExist(TestAction::make('editOption')->schemaComponent('categories', 'form'))
+        ->mountAction(TestAction::make('createOption')->schemaComponent('content_group_id', 'form'))
+        ->set('mountedActions.0.data.title', 'Inline Group')
+        ->set('mountedActions.0.data.slug', 'inline-group')
+        ->set('mountedActions.0.data.original_language_code', 'he')
+        ->set('mountedActions.0.data.status', PublicationStatus::Draft->value)
+        ->callMountedAction()
+        ->assertHasNoFormErrors()
+        ->mountAction(TestAction::make('createOption')->schemaComponent('authors', 'form'))
+        ->set('mountedActions.0.data.name', 'Inline Author')
+        ->set('mountedActions.0.data.slug', 'inline-author')
+        ->callMountedAction()
+        ->assertHasNoFormErrors()
+        ->mountAction(TestAction::make('createOption')->schemaComponent('categories', 'form'))
+        ->set('mountedActions.0.data.name', 'Inline Category')
+        ->set('mountedActions.0.data.slug', 'inline-category')
+        ->set('mountedActions.0.data.is_visible', true)
+        ->set('mountedActions.0.data.sort_order', 0)
+        ->callMountedAction()
+        ->assertHasNoFormErrors();
+
+    $group = ContentGroup::query()->where('slug', 'inline-group')->firstOrFail();
+    $author = Author::query()->where('slug', 'inline-author')->firstOrFail();
+    $category = Category::query()->where('slug', 'inline-category')->firstOrFail();
+
+    $component
+        ->assertSet('data.content_group_id', $group->id)
+        ->assertSet('data.authors', [$author->id])
+        ->assertSet('data.categories', [$category->id])
+        ->fillForm([
+            'title' => 'Inline Selector Item',
+            'slug' => 'inline-selector-item',
+            'media_url' => 'https://example.com/inline-selector.mp3',
+            'status' => PublicationStatus::Draft,
+        ])
+        ->call('create')
+        ->assertHasNoFormErrors();
+
+    $item = ContentItem::query()->where('slug', 'inline-selector-item')->firstOrFail();
+
+    expect($item->content_group_id)->toBe($group->id)
+        ->and($item->authors()->whereKey($author)->exists())->toBeTrue()
+        ->and($item->categories()->whereKey($category)->exists())->toBeTrue();
+});
+
+it('edits selected simple related records and leaves complex selectors create-disabled', function (): void {
+    $author = Author::factory()->create([
+        'name' => 'Original Modal Author',
+        'slug' => 'original-modal-author',
+    ]);
+    $item = ContentItem::factory()->create();
+    Transcription::factory()->for($item)->forAuthor($author)->published()->create();
+    Transcription::factory()->for($item)->forAuthor($author)->published()->create();
+
+    Livewire::test(CreateTranscription::class)
+        ->set('data.author_id', $author->id)
+        ->assertActionExists(TestAction::make('createOption')->schemaComponent('author_id', 'form'))
+        ->assertActionExists(TestAction::make('editOption')->schemaComponent('author_id', 'form'))
+        ->mountAction(TestAction::make('editOption')->schemaComponent('author_id', 'form'))
+        ->set('mountedActions.0.data.name', 'Edited Modal Author')
+        ->set('mountedActions.0.data.slug', 'edited-modal-author')
+        ->set('mountedActions.0.data.bio_markdown', 'Edited through a selector modal.')
+        ->callMountedAction()
+        ->assertHasNoFormErrors();
+
+    Livewire::test(EditContentItem::class, ['record' => $item->getRouteKey()])
+        ->assertActionDoesNotExist(TestAction::make('createOption')->schemaComponent('featured_transcription_id', 'form'));
+
+    Livewire::test(CreateTranscription::class)
+        ->assertActionDoesNotExist(TestAction::make('createOption')->schemaComponent('content_item_id', 'form'));
+
+    expect($author->refresh()->name)->toBe('Edited Modal Author')
+        ->and($author->slug)->toBe('edited-modal-author')
+        ->and($author->bio_markdown)->toBe('Edited through a selector modal.');
+});
+
 it('renders content item edit details and transcription tabs with real form fields', function (): void {
     $item = ContentItem::factory()->create([
         'title' => 'Details Tab Item',
@@ -351,6 +437,62 @@ it('renders content item edit details and transcription tabs with real form fiel
         ->not->toBe(EditContentItem::class);
 
     expect($component->instance()->form->getComponents())->not->toBeEmpty();
+});
+
+it('manages content items from the content group relation manager', function (): void {
+    $group = ContentGroup::factory()->create();
+    $otherGroup = ContentGroup::factory()->create();
+    $ownerItem = ContentItem::factory()->for($group)->create(['title' => 'Owner item']);
+    $otherItem = ContentItem::factory()->for($otherGroup)->create(['title' => 'Other item']);
+    $author = Author::factory()->create();
+
+    Livewire::test(EditContentGroup::class, ['record' => $group->getRouteKey()])
+        ->assertOk();
+
+    expect(ContentGroupResource::getRelations())->toHaveKey('contentItems');
+
+    Livewire::test(ContentItemsRelationManager::class, [
+        'ownerRecord' => $group,
+        'pageClass' => EditContentGroup::class,
+    ])
+        ->assertOk()
+        ->assertCanSeeTableRecords([$ownerItem])
+        ->assertCanNotSeeTableRecords([$otherItem])
+        ->assertActionVisible(TestAction::make('create')->table())
+        ->assertActionVisible(TestAction::make('addTranscription')->table($ownerItem))
+        ->mountAction(TestAction::make('create')->table())
+        ->set('mountedActions.0.data.title', 'Relation manager item')
+        ->set('mountedActions.0.data.slug', 'relation-manager-item')
+        ->set('mountedActions.0.data.media_url', 'https://example.com/relation-manager.mp3')
+        ->set('mountedActions.0.data.status', PublicationStatus::Draft->value)
+        ->callMountedAction()
+        ->assertHasNoFormErrors();
+
+    $created = ContentItem::query()->where('slug', 'relation-manager-item')->firstOrFail();
+
+    expect($created->content_group_id)->toBe($group->id);
+
+    Livewire::test(ContentItemsRelationManager::class, [
+        'ownerRecord' => $group,
+        'pageClass' => EditContentGroup::class,
+    ])
+        ->assertCanSeeTableRecords([$created])
+        ->mountAction(TestAction::make('edit')->table($created))
+        ->set('mountedActions.0.data.title', 'Edited relation manager item')
+        ->callMountedAction()
+        ->assertHasNoFormErrors()
+        ->mountAction(TestAction::make('addTranscription')->table($created))
+        ->set('mountedActions.0.data.author_id', $author->id)
+        ->set('mountedActions.0.data.title', 'Group relation transcript')
+        ->set('mountedActions.0.data.language_code', 'he')
+        ->set('mountedActions.0.data.status', PublicationStatus::Draft->value)
+        ->set('mountedActions.0.data.transcript_markdown', 'Created from group relation manager')
+        ->callMountedAction()
+        ->assertHasNoFormErrors();
+
+    expect($created->refresh()->title)->toBe('Edited relation manager item')
+        ->and($created->content_group_id)->toBe($group->id)
+        ->and($created->transcriptions()->where('title', 'Group relation transcript')->exists())->toBeTrue();
 });
 
 it('saves public content settings through the settings page', function (): void {

@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Categories\Schemas;
 
+use App\Filament\Resources\Support\RelationshipOptionForms;
 use Filament\Forms\Components\MarkdownEditor;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
@@ -20,11 +21,13 @@ class CategoryForm
             ->components([
                 Section::make(__('admin.sections.identity'))
                     ->schema([
-                        Select::make('parent_id')
-                            ->label(__('admin.fields.parent_category'))
-                            ->relationship('parent', 'name')
-                            ->searchable()
-                            ->preload(),
+                        RelationshipOptionForms::configureCategorySelect(
+                            Select::make('parent_id')
+                                ->label(__('admin.fields.parent_category'))
+                                ->relationship('parent', 'name')
+                                ->searchable()
+                                ->preload()
+                        ),
                         TextInput::make('name')
                             ->label(__('admin.fields.name'))
                             ->live(onBlur: true)

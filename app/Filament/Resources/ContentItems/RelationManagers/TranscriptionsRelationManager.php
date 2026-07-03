@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\ContentItems\RelationManagers;
 
 use App\Enums\PublicationStatus;
+use App\Filament\Resources\Support\RelationshipOptionForms;
 use App\Filament\Resources\Transcriptions\TranscriptionResource;
 use App\Models\Transcription;
 use Filament\Actions\Action;
@@ -41,13 +42,15 @@ class TranscriptionsRelationManager extends RelationManager
                 Section::make(__('admin.sections.identity'))
                     ->description(__('admin.descriptions.transcription_identity'))
                     ->schema([
-                        Select::make('author_id')
-                            ->label(__('admin.fields.author'))
-                            ->helperText(__('admin.helpers.transcription_author'))
-                            ->relationship('author', 'name')
-                            ->searchable()
-                            ->preload()
-                            ->required(),
+                        RelationshipOptionForms::configureAuthorSelect(
+                            Select::make('author_id')
+                                ->label(__('admin.fields.author'))
+                                ->helperText(__('admin.helpers.transcription_author'))
+                                ->relationship('author', 'name')
+                                ->searchable()
+                                ->preload()
+                                ->required()
+                        ),
                         TextInput::make('title')
                             ->label(__('admin.fields.title'))
                             ->helperText(__('admin.helpers.transcription_title'))

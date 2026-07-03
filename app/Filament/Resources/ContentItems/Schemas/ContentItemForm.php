@@ -3,6 +3,8 @@
 namespace App\Filament\Resources\ContentItems\Schemas;
 
 use App\Enums\PublicationStatus;
+use App\Filament\Resources\ContentGroups\RelationManagers\ContentItemsRelationManager;
+use App\Filament\Resources\Support\RelationshipOptionForms;
 use App\Models\ContentItem;
 use App\Rules\ApprovedEmbedUrl;
 use App\Support\Media\ContentItemMediaRules;
@@ -35,13 +37,16 @@ class ContentItemForm
                             ->disabled()
                             ->dehydrated(false)
                             ->visibleOn('edit'),
-                        Select::make('content_group_id')
-                            ->label(__('admin.fields.content_group'))
-                            ->helperText(__('admin.helpers.content_item_content_group'))
-                            ->relationship('contentGroup', 'title')
-                            ->searchable()
-                            ->preload()
-                            ->required(),
+                        RelationshipOptionForms::configureContentGroupSelect(
+                            Select::make('content_group_id')
+                                ->label(__('admin.fields.content_group'))
+                                ->helperText(__('admin.helpers.content_item_content_group'))
+                                ->relationship('contentGroup', 'title')
+                                ->searchable()
+                                ->preload()
+                                ->hiddenOn(ContentItemsRelationManager::class)
+                                ->required()
+                        ),
                         TextInput::make('title')
                             ->label(__('admin.fields.title'))
                             ->helperText(__('admin.helpers.content_item_title'))
@@ -100,19 +105,25 @@ class ContentItemForm
                             ->numeric()
                             ->integer()
                             ->minValue(0),
-                        Select::make('authors')
-                            ->label(__('admin.fields.authors'))
-                            ->relationship('authors', 'name')
-                            ->multiple()
-                            ->searchable()
-                            ->preload(),
-                        Select::make('categories')
-                            ->label(__('admin.fields.categories'))
-                            ->relationship('categories', 'name')
-                            ->multiple()
-                            ->searchable()
-                            ->preload()
-                            ->helperText(__('admin.helpers.item_categories')),
+                        RelationshipOptionForms::configureAuthorSelect(
+                            Select::make('authors')
+                                ->label(__('admin.fields.authors'))
+                                ->relationship('authors', 'name')
+                                ->multiple()
+                                ->searchable()
+                                ->preload(),
+                            allowEdit: false,
+                        ),
+                        RelationshipOptionForms::configureCategorySelect(
+                            Select::make('categories')
+                                ->label(__('admin.fields.categories'))
+                                ->relationship('categories', 'name')
+                                ->multiple()
+                                ->searchable()
+                                ->preload()
+                                ->helperText(__('admin.helpers.item_categories')),
+                            allowEdit: false,
+                        ),
                         SpatieTagsInput::make('tags')
                             ->label(__('admin.fields.tags'))
                             ->type('content')

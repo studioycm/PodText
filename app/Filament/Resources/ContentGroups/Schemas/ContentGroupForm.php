@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\ContentGroups\Schemas;
 
 use App\Enums\PublicationStatus;
+use App\Filament\Resources\Support\RelationshipOptionForms;
 use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\MarkdownEditor;
@@ -97,13 +98,16 @@ class ContentGroupForm
                             ->visibility('public')
                             ->image()
                             ->maxSize(2048),
-                        Select::make('categories')
-                            ->label(__('admin.fields.categories'))
-                            ->relationship('categories', 'name')
-                            ->multiple()
-                            ->searchable()
-                            ->preload()
-                            ->helperText(__('admin.helpers.group_categories')),
+                        RelationshipOptionForms::configureCategorySelect(
+                            Select::make('categories')
+                                ->label(__('admin.fields.categories'))
+                                ->relationship('categories', 'name')
+                                ->multiple()
+                                ->searchable()
+                                ->preload()
+                                ->helperText(__('admin.helpers.group_categories')),
+                            allowEdit: false,
+                        ),
                     ]),
                 Section::make(__('admin.sections.homepage'))
                     ->schema([

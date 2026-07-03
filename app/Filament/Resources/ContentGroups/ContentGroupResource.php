@@ -55,7 +55,7 @@ class ContentGroupResource extends Resource
     public static function getRelations(): array
     {
         return [
-            //
+            'contentItems' => RelationManagers\ContentItemsRelationManager::class,
         ];
     }
 
