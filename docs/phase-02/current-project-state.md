@@ -16,8 +16,11 @@ Recorded after the Markdown-only post-Prompt-10 prompt-progress centralization c
 - Prompt 08 implementation commit is present in history: `b15f5c1 feat: add taxonomy tags pinning settings and media foundation`.
 - Prompt 07 implementation commit remains in history: `7edb82d feat: add transcription model revision`.
 - Prompt 10 implementation commit is present in history: `fad6721 feat: extend phase two import export`.
-- Prompt 11 public homepage/search is implemented in the current working tree and will be committed as `feat: add public content item homepage search` after the final quality gate passes.
-- Prompt 12 media embed/item page/parser is next and has not started.
+- Prompt 11 public homepage/search is implemented and committed as `7ef2fa7 feat: add public content item homepage search`.
+- Pre-Prompt-12 documentation pack is present as `503a096 docs: add pre-prompt 12 documentation and guidelines for public admin contributors`.
+- Prompt 11R public frontend custom Livewire/Blade refactor is implemented and committed as `refactor: customize public content item discovery`.
+- Prompt 11A admin relationship UX is next and has not started.
+- Prompt 12 media embed/item page/parser has not started.
 
 ## Prompt Progress
 
@@ -30,15 +33,20 @@ Recorded after the Markdown-only post-Prompt-10 prompt-progress centralization c
 | Prompt 10 import/export | Complete | `fad6721 feat: extend phase two import export` | Native Filament import/export baseline exists and should be preserved by later prompts. |
 | Post-Prompt-10 guidance sync | Complete | `773f1c0 docs: sync prompt workflow lessons after prompt ten` | Markdown-only guidance sync; did not start Prompt 11. |
 | Post-Prompt-10 prompt-progress centralization cleanup | Complete | `1cb158a docs: centralize prompt progress and ai development lessons` | Markdown-only cleanup; centralized rolling progress in this file; did not start Prompt 11. |
-| Prompt 11 public homepage/search | Complete | `feat: add public content item homepage search` | Public homepage/search now lists `ContentItem` cards using public visibility rules, settings, filters, routes, and homepage section foundations. |
-| Prompt 12 media embed/item page/parser | Next, not started | Active prompt/blueprint | Owns public item page, media component, and parse-only parser/viewer. |
+| Prompt 11 public homepage/search | Complete | `7ef2fa7 feat: add public content item homepage search` | Public homepage/search lists `ContentItem` cards using public visibility rules, settings, filters, routes, and homepage section foundations. |
+| Pre-Prompt-12 documentation pack | Complete | `503a096 docs: add pre-prompt 12 documentation and guidelines for public admin contributors` | Adds Prompt 11R/11A/11B sequencing before Prompt 12. |
+| Prompt 11R public frontend custom Livewire/Blade refactor | Complete | `refactor: customize public content item discovery` | Public homepage/search/category/tag listing no longer uses Filament Table as the public UI; custom Livewire state and Blade components render cards, filters, pagination, and homepage sections. |
+| Prompt 11A admin relationship UX | Next, not started | Pre-Prompt-12 prompt pack | Owns admin create/edit option modals and ContentGroup → ContentItems relation manager. |
+| Prompt 11B public contributors/transcribers discovery | Pending after Prompt 11A | Pre-Prompt-12 prompt pack | Owns top transcribers, contributor directory, previews, full contributor page, and seeders. |
+| Prompt 12 readiness sync | Pending after Prompt 11B | Pre-Prompt-12 prompt pack | Docs-only sync before Prompt 12 activation. |
+| Prompt 12 media embed/item page/parser | Pending after readiness sync, not started | Active prompt/blueprint | Owns public item page, media component, and parse-only parser/viewer. |
 | Prompt 13 dashboard metrics | Pending after Prompt 12 | Active prompt/blueprint | Owns editorial dashboard widgets. |
 | Prompt 14 viewer/studio future plan | Future planning after Prompt 13 | Active prompt/blueprint | Documentation/planning only. |
 | Prompt 15 Filament Blueprint security audit | Audit after Prompt 14 | Active prompt/blueprint | Audit-only unless fixes are explicitly approved. |
 
 ## Active Known Blockers
 
-- No active blocker is recorded for starting Prompt 12 after Prompt 11, assuming preflight remains clean.
+- No active blocker is recorded for starting Prompt 11A after Prompt 11R, assuming preflight remains clean.
 - The `model:show` baseline issue below remains unresolved and should be avoided until investigated.
 
 ## Deferred Items
@@ -47,7 +55,8 @@ Recorded after the Markdown-only post-Prompt-10 prompt-progress centralization c
 - Curated homepage query sections are deferred until a concrete query-builder spec exists.
 - Homepage result previews in admin forms remain deferred.
 - Associate-existing transcription remains deferred because `Transcription` belongs to one `ContentItem`.
-- Public item page/media/parser work belongs to Prompt 12 and was not started by Prompt 11.
+- Public contributor/transcriber discovery belongs to Prompt 11B and was not started by Prompt 11R.
+- Public item page/media/parser work belongs to Prompt 12 and was not started by Prompt 11R.
 - Editorial dashboard widgets belong to Prompt 13.
 - Viewer/studio sync planning belongs to Prompt 14; no sync/studio implementation is active yet.
 
@@ -79,6 +88,8 @@ Laravel Boost MCP tools were exposed and usable during Prompt 10.
 - FilamentExamples MCP `search_examples` returned snippet-level examples for `ImportAction`, `ExportAction`, `ExportBulkAction`, `Importer`, and `Exporter` patterns.
 - Prompt 11 also used Boost `application_info`, `database_schema`, and `search_docs` before changing Livewire, Filament table/filter, URL-state, Spatie Settings, and settings-page behavior.
 - Prompt 11 FilamentExamples research returned snippet/source examples for public Filament table, card, and filter patterns.
+- Prompt 11R used Boost `application_info`, `database_schema`, and `search_docs` for Livewire URL state, pagination, Eloquent queries, settings, and Filament page context before changing code.
+- Prompt 11R FilamentExamples research returned source snippets for public Filament table/filter examples; those snippets were used only to identify the prior table pattern to remove from the public listing.
 
 ## Application Shape
 
@@ -98,6 +109,11 @@ Laravel Boost MCP tools were exposed and usable during Prompt 10.
   - `App\Livewire\Public\ContentItemBrowser`
 - Prompt 11 public homepage/search component:
   - `App\Livewire\Public\ContentItemSearch`
+- Prompt 11R public Blade components:
+  - `resources/views/components/public/content-item-card.blade.php`
+  - `resources/views/components/public/content-group-badge.blade.php`
+  - `resources/views/components/public/content-item-grid.blade.php`
+  - `resources/views/components/public/public-filter-panel.blade.php`
 - Prompt 11 public card option mapper:
   - `App\Support\PublicContent\PublicContentCardOptions`
 
@@ -178,15 +194,19 @@ Current physical schema verified through Boost `database_schema`:
 - The public root `/` keeps the existing `BrowseContentGroups` root page class as a compatibility shell but renders `ContentItemSearch`; the homepage result unit is now `ContentItem`/episode cards, not `ContentGroup`/podcast cards.
 - New public routes/pages exist for `/search`, `/categories/{categorySlug}`, and `/tags/{tagSlug}`.
 - Public item listing visibility requires a published parent group, a published item, and at least one effective/main published transcription.
-- The reusable public item card view is `resources/views/filament/tables/columns/public-content-item-card.blade.php`.
+- Prompt 11R replaced the public Filament Table listing with custom Livewire state, `WithPagination`, URL-backed properties, and Blade-rendered card grids/rows.
+- The reusable public item card view is now `resources/views/components/public/content-item-card.blade.php`; `resources/views/filament/tables/columns/public-content-item-card.blade.php` remains only as a compatibility wrapper.
+- Public listing output no longer renders `{{ $this->table }}` or public Filament table markup as the primary UI.
+- Public group badges are rendered through `resources/views/components/public/content-group-badge.blade.php`, including cover-image and title/initial fallback behavior.
 - Card display is controlled by safe semantic Spatie settings, not raw CSS or Tailwind classes from the database.
 - Prompt 11 card settings cover image size, density, title size, group badge visibility, authors/categories/tags/date/duration/description visibility, description line count, and cards per page.
 - Semantic values are mapped in PHP through `PublicContentCardOptions`; Tailwind source scanning includes that support namespace.
-- Public filters include search, category with descendant and inherited group matching, enabled content tag, content group, author, provider, date, duration, and media-presence controls.
+- Public filters include custom Blade search, category with descendant and inherited group matching, enabled content tag, content group, author, provider, effective/original date ranges, duration, and media-presence controls.
 - Sort options include latest/oldest transcription, title A-Z/Z-A, duration shortest/longest, and original newest/oldest.
 - Homepage default ordering keeps valid pinned items first unless an explicit sort is selected.
-- Visible ordered `HomepageSection` records are consumed for `latest`, `category`, `tag`, and `content_group` sections as a content-item feed foundation.
+- Visible ordered `HomepageSection` records now render as separate homepage sections for `latest`, `category`, `tag`, and `content_group`, each using `ContentItem` records and the shared card component.
 - Curated homepage query sections remain deferred by the blueprint/spec.
+- `top_transcribers` homepage sections remain deferred to Prompt 11B.
 - Transcript body search remains deferred and is not part of default live search.
 - Public item page media/parser overhaul remains deferred to Prompt 12.
 
@@ -259,8 +279,11 @@ Current physical schema verified through Boost `database_schema`:
 
 - Prompt 10 is complete.
 - Prompt 11 is complete.
-- Prompt 12 is next and has not started.
-- Prompt 12 must preserve the Prompt 10 import/export behavior and Prompt 11 content-item homepage/search behavior.
+- Prompt 11R is complete and committed as `refactor: customize public content item discovery`.
+- Prompt 11A is next and has not started.
+- Prompt 11B, Prompt 12 readiness sync, and Prompt 12 activation remain pending after Prompt 11A.
+- Prompt 12 has not started.
+- Prompt 12 must preserve the Prompt 10 import/export behavior and Prompt 11/11R content-item homepage/search behavior.
 - Prompt 12 owns public item page media/parser work and must not add dashboard widgets or studio/sync behavior.
 
 ## Post-Prompt-10 Guidance Sync Notes

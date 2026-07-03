@@ -6,6 +6,7 @@ return [
         'clear_filters' => 'ניקוי מסננים',
         'collapse' => 'הצג פחות',
         'expand' => 'קרא עוד',
+        'view_more' => 'הצג עוד',
     ],
     'empty' => [
         'groups' => 'עדיין אין תוכן שפורסם.',
@@ -14,16 +15,23 @@ return [
     ],
     'filters' => [
         'author' => 'מחבר',
+        'advanced' => 'מסננים מתקדמים',
+        'any' => 'הכול',
         'category' => 'קטגוריה',
         'duration' => 'משך',
         'duration_max' => 'משך מרבי',
         'duration_min' => 'משך מינימלי',
         'effective_date' => 'תאריך תמלול',
+        'effective_from' => 'תמלול מתאריך',
+        'effective_until' => 'תמלול עד תאריך',
         'from_date' => 'מתאריך',
         'group' => 'קבוצת תוכן',
         'has_media' => 'כולל מדיה',
         'original_date' => 'תאריך מקורי',
+        'original_from' => 'מקור מתאריך',
+        'original_until' => 'מקור עד תאריך',
         'provider' => 'ספק',
+        'search' => 'חיפוש',
         'search_groups' => 'חיפוש',
         'search_items_placeholder' => 'חיפוש פרקים לפי כותרת, פודקאסט, קטגוריה או תגית',
         'search_placeholder' => 'חיפוש לפי כותרת',
@@ -80,6 +88,9 @@ return [
     'results' => [
         'count' => '{0} אין פריטים ציבוריים|{1} פריט ציבורי אחד|[2,*] :count פריטים ציבוריים',
         'public_items_only' => 'מוצגים פריטים שפורסמו עם תמלולים שפורסמו.',
+    ],
+    'sections' => [
+        'latest' => 'פרקים אחרונים',
     ],
     'sort' => [
         'duration_longest' => 'משך: הארוכים ביותר',

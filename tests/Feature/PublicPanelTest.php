@@ -63,13 +63,13 @@ it('searches public items by title and stores search in url state', function ():
         ->create(['title' => 'Beta Episode']);
 
     Livewire::test(ContentItemSearch::class)
-        ->set('tableSearch', 'Alpha')
+        ->set('search', 'Alpha')
         ->assertSee($matching->title)
         ->assertDontSee($other->title);
 
     Livewire::withQueryParams(['q' => 'Alpha'])
         ->test(ContentItemSearch::class)
-        ->assertSet('tableSearch', 'Alpha')
+        ->assertSet('search', 'Alpha')
         ->assertSee($matching->title)
         ->assertDontSee($other->title);
 });
@@ -111,7 +111,7 @@ it('paginates public content items', function (): void {
                 'slug' => "paged-item-{$index}",
             ]));
 
-    Livewire::test(ContentItemSearch::class)
+    Livewire::test(ContentItemSearch::class, ['context' => 'search'])
         ->assertSee($items[0]->title)
         ->assertDontSee($items[12]->title)
         ->call('setPage', 2)

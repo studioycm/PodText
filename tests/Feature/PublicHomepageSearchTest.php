@@ -87,14 +87,15 @@ it('allows guests to access the homepage and renders content item cards with rtl
 
     $response = $this->get('/');
 
-    file_put_contents('/tmp/podtext-public-homepage.html', $response->getContent());
-
     $response
         ->assertSuccessful()
         ->assertSee('dir="rtl"', false)
         ->assertSee(__('public.pages.browse.title'))
         ->assertSee('data-test="content-item-card"', false)
+        ->assertSee('data-test="homepage-section"', false)
+        ->assertSee('data-section-type="latest"', false)
         ->assertSee($item->title)
+        ->assertDontSee('fi-ta-table', false)
         ->assertDontSee('data-test="group-search"', false);
 });
 
@@ -136,6 +137,7 @@ it('consumes card field visibility and semantic display settings', function (): 
         'homepage_card_image_size' => 'large',
         'homepage_card_density' => 'compact',
         'homepage_card_title_size' => 'lg',
+        'default_result_layout' => 'rows',
         'homepage_description_lines' => 2,
         'homepage_show_authors' => true,
         'homepage_show_categories' => true,
@@ -150,6 +152,7 @@ it('consumes card field visibility and semantic display settings', function (): 
         ->assertSee('data-card-image-size="large"', false)
         ->assertSee('data-card-density="compact"', false)
         ->assertSee('data-card-title-size="lg"', false)
+        ->assertSee('data-result-layout="rows"', false)
         ->assertSee($author->name)
         ->assertSee($category->name)
         ->assertSee($tag->name)
@@ -240,27 +243,27 @@ it('searches item title group title category and enabled content tag names only'
     $disabledTagItem->attachTag($disabledTag);
 
     Livewire::test(ContentItemSearch::class)
-        ->set('tableSearch', 'Needle')
+        ->set('search', 'Needle')
         ->assertSee($titleItem->title)
         ->assertDontSee($groupItem->title);
 
     Livewire::test(ContentItemSearch::class)
-        ->set('tableSearch', 'Signal')
+        ->set('search', 'Signal')
         ->assertSee($groupItem->title)
         ->assertDontSee($titleItem->title);
 
     Livewire::test(ContentItemSearch::class)
-        ->set('tableSearch', 'Research')
+        ->set('search', 'Research')
         ->assertSee($categoryItem->title)
         ->assertDontSee($titleItem->title);
 
     Livewire::test(ContentItemSearch::class)
-        ->set('tableSearch', 'Visible Topic')
+        ->set('search', 'Visible Topic')
         ->assertSee($tagItem->title)
         ->assertDontSee($disabledTagItem->title);
 
     Livewire::test(ContentItemSearch::class)
-        ->set('tableSearch', 'Hidden Topic')
+        ->set('search', 'Hidden Topic')
         ->assertDontSee($disabledTagItem->title);
 });
 
@@ -285,27 +288,27 @@ it('filters by descendant categories inherited group categories enabled tags gro
     ]);
 
     Livewire::test(ContentItemSearch::class)
-        ->set('tableFilters.category.value', $parent->id)
+        ->set('filterCategoryId', $parent->id)
         ->assertSee($inherited->title)
         ->assertDontSee($tagged->title);
 
     Livewire::test(ContentItemSearch::class)
-        ->set('tableFilters.tag.value', $tag->id)
+        ->set('filterTagId', $tag->id)
         ->assertSee($tagged->title)
         ->assertDontSee($inherited->title);
 
     Livewire::test(ContentItemSearch::class)
-        ->set('tableFilters.content_group_id.value', $group->id)
+        ->set('filterContentGroupId', $group->id)
         ->assertSee($inherited->title)
         ->assertDontSee($tagged->title);
 
     Livewire::test(ContentItemSearch::class)
-        ->set('tableFilters.author.value', $author->id)
+        ->set('filterAuthorId', $author->id)
         ->assertSee($authored->title)
         ->assertDontSee($tagged->title);
 
     Livewire::test(ContentItemSearch::class)
-        ->set('tableFilters.embed_provider.value', 'youtube')
+        ->set('filterProvider', 'youtube')
         ->assertSee($provider->title)
         ->assertDontSee($tagged->title);
 });
@@ -338,17 +341,17 @@ it('shows result count supports url backed state clear filters and empty state',
 
     Livewire::withQueryParams(['q' => 'Url', 'sort' => 'title_asc'])
         ->test(ContentItemSearch::class)
-        ->assertSet('tableSearch', 'Url')
+        ->assertSet('search', 'Url')
         ->assertSet('sort', 'title_asc')
         ->assertSee($matching->title)
         ->assertSee(trans_choice('public.results.count', 1, ['count' => 1]))
         ->call('clearFilters')
-        ->assertSet('tableSearch', '')
+        ->assertSet('search', '')
         ->assertSet('sort', 'latest_transcription')
         ->assertSee(trans_choice('public.results.count', 2, ['count' => 2]));
 
     Livewire::test(ContentItemSearch::class)
-        ->set('tableSearch', 'Nothing Matches')
+        ->set('search', 'Nothing Matches')
         ->assertSee(__('public.empty.items'));
 });
 
@@ -383,13 +386,38 @@ it('uses visible ordered homepage sections for latest category tag and content g
         'type' => HomepageSectionType::Latest,
         'is_visible' => false,
         'sort_order' => 0,
+        'name' => 'Hidden Latest Section',
+    ]);
+    HomepageSection::factory()->create([
+        'type' => HomepageSectionType::CuratedQuery,
+        'sort_order' => 4,
+        'name' => 'Deferred Curated Section',
     ]);
 
     Livewire::test(ContentItemSearch::class)
+        ->assertSee('data-test="homepage-section"', false)
+        ->assertSee('data-section-type="category"', false)
+        ->assertSee('data-section-type="tag"', false)
+        ->assertSee('data-section-type="content_group"', false)
         ->assertSee($categoryItem->title)
         ->assertSee($tagItem->title)
         ->assertSee($groupItem->title)
+        ->assertDontSee('Hidden Latest Section')
+        ->assertDontSee('Deferred Curated Section')
         ->assertDontSee($outside->title);
+});
+
+it('uses the cards per page setting for paginated search results', function (): void {
+    $first = createPrompt11PublicItem(['title' => 'First Paged Search'], ['published_at' => now()->subMinute()]);
+    $second = createPrompt11PublicItem(['title' => 'Second Paged Search'], ['published_at' => now()->subMinutes(2)]);
+
+    savePrompt11PublicSettings(['homepage_cards_per_page' => 1]);
+
+    Livewire::test(ContentItemSearch::class, ['context' => 'search'])
+        ->assertSee($first->title)
+        ->assertDontSee($second->title)
+        ->call('setPage', 2)
+        ->assertSee($second->title);
 });
 
 it('uses safe defaults when old settings rows are missing', function (): void {

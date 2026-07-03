@@ -6,6 +6,7 @@ return [
         'clear_filters' => 'Clear filters',
         'collapse' => 'Show less',
         'expand' => 'Read more',
+        'view_more' => 'View more',
     ],
     'empty' => [
         'groups' => 'No published content is available yet.',
@@ -14,16 +15,23 @@ return [
     ],
     'filters' => [
         'author' => 'Author',
+        'advanced' => 'Advanced filters',
+        'any' => 'Any',
         'category' => 'Category',
         'duration' => 'Duration',
         'duration_max' => 'Maximum duration',
         'duration_min' => 'Minimum duration',
         'effective_date' => 'Transcription date',
+        'effective_from' => 'Transcription from',
+        'effective_until' => 'Transcription until',
         'from_date' => 'From',
         'group' => 'Content group',
         'has_media' => 'Has media',
         'original_date' => 'Original date',
+        'original_from' => 'Original from',
+        'original_until' => 'Original until',
         'provider' => 'Provider',
+        'search' => 'Search',
         'search_groups' => 'Search',
         'search_items_placeholder' => 'Search episodes by title, podcast, category, or tag',
         'search_placeholder' => 'Search by title',
@@ -80,6 +88,9 @@ return [
     'results' => [
         'count' => '{0} No public items|{1} 1 public item|[2,*] :count public items',
         'public_items_only' => 'Showing published items with published transcriptions.',
+    ],
+    'sections' => [
+        'latest' => 'Latest episodes',
     ],
     'sort' => [
         'duration_longest' => 'Duration: longest',
