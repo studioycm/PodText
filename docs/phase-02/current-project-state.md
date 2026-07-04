@@ -26,6 +26,7 @@ Recorded after the Markdown-only post-Prompt-10 prompt-progress centralization c
 - Public Front v2 research and blueprint planning commits are present: `f9a1f80 docs: research public front v2 json settings blueprint plan`, `adbed99 docs: add blueprint results for public front v2 plans`, and `40aeafc docs: add execution plan for Public Front v2 implementation`.
 - PodText brand-logo customization is implemented and committed as `6962c82 feat: add customizable brand logo and height for admin and public panels`; the logo exists at `public/images/podtext-logo.jpg`.
 - Public Front v2 correction/Step 1 prompt pack is present as `716ee5a docs: add corrections to Public Front v2 execution plan and initial Step 1 prompt files`.
+- Public Front v2 docs correction before Step 1 is implemented and committed as `5586ec8 docs: correct public front v2 execution plan`.
 
 ## Prompt Progress
 
@@ -46,8 +47,9 @@ Recorded after the Markdown-only post-Prompt-10 prompt-progress centralization c
 | Prompt 12 readiness sync | Complete | `23242a1 docs: prepare prompt twelve after public discovery work` | Prepared Prompt 12 activation without starting implementation. |
 | Prompt 12 media embed/item page/parser | Complete | `ffba2b3 feat: add public item page media and transcript parser` | Adds the public item page, safe media component behavior, and parse-only transcript viewer. |
 | Public Front v2 planning/research | Complete | `40aeafc docs: add execution plan for Public Front v2 implementation` plus prior research/blueprint commits | Public Front v2 should run before Prompt 13 unless the user explicitly chooses dashboard metrics first. |
-| Public Front v2 docs correction before Step 1 | Complete in the current docs-correction commit | `docs: correct public front v2 execution plan` | Corrects execution order, reserves transcription publication policy, and requires Step 1 handoff. |
-| Public Front v2 Step 1 JSON Settings Architecture | Next | Active prompt `02-public-front-v2-step1-json-settings-architecture-v2.md` | Must create `docs/phase-02/public-front-v2-step1-json-settings-handoff.md`. |
+| Public Front v2 docs correction before Step 1 | Complete | `5586ec8 docs: correct public front v2 execution plan` | Corrects execution order, reserves transcription publication policy, and requires Step 1 handoff. |
+| Public Front v2 Step 1 JSON Settings Architecture | Complete in the current Step 1 implementation commit | `feat: add public front json settings architecture` | Adds the JSON settings architecture foundation and creates `docs/phase-02/public-front-v2-step1-json-settings-handoff.md` for ChatGPT/Yoni review. |
+| Public Front v2 Step 3 Card Template Builder | Next after ChatGPT/Yoni handoff review | Future prompt to be generated after Step 1 review | Step 2 transcription publication policy remains deferred/reserved. Do not generate or run Step 3 until the handoff is reviewed. |
 | Prompt 13 dashboard metrics | Blocked unless explicitly chosen by user | Active prompt/blueprint | Owns editorial dashboard widgets after Public Front v2 or an explicit dashboard-first decision. |
 | Prompt 14 viewer/studio future plan | Future planning after Prompt 13 | Active prompt/blueprint | Documentation/planning only. |
 | Prompt 15 Filament Blueprint security audit | Audit after Prompt 14 | Active prompt/blueprint | Audit-only unless fixes are explicitly approved. |
@@ -108,6 +110,8 @@ Laravel Boost MCP tools were exposed and usable during Prompt 10.
 - Prompt 11B FilamentExamples research returned snippet/source examples for custom multi-panel Filament Pages and Livewire-rendered page content; snippets were used as page-shell design reference, not copied wholesale.
 - Prompt 12 used Boost `application_info`, `database_schema`, and `search_docs` for the installed Laravel 13.18.0, Filament 5.6.7, Livewire 4.3.3, Pest 4.7.4, public page, Livewire URL state, Alpine, media rendering, and test behavior before changing code.
 - Prompt 12 FilamentExamples research returned snippet/source examples for custom public page and Livewire-rendered page content; snippets were used as reference only.
+- Public Front v2 Step 1 used Boost `application_info`, `database_schema`, and `search_docs` for installed Laravel 13.18.0, Filament 5.6.7, Pest 4.7.4, Spatie Settings storage, settings-page save/fill hooks, and array validation behavior before code changes.
+- Public Front v2 Step 1 FilamentExamples research returned snippet-level settings/form examples only; no full source/detail fetch tool was exposed.
 
 ## Application Shape
 
@@ -153,6 +157,15 @@ Laravel Boost MCP tools were exposed and usable during Prompt 10.
   - `App\Filament\Resources\ContentGroups\RelationManagers\ContentItemsRelationManager`
 - Prompt 12 parser:
   - `App\Support\Transcripts\TranscriptSegmentParser`
+- Public Front v2 Step 1 support classes:
+  - `App\Support\PublicFront\PublicFrontConfigRegistry`
+  - `App\Support\PublicFront\PublicFrontConfigReader`
+  - `App\Support\PublicFront\PublicFrontConfigValidator`
+  - `App\Support\PublicFront\PublicFrontConfigResult`
+  - `App\Support\PublicFront\PublicFrontInvalidConfig`
+- Public Front v2 Step 1 enums:
+  - `App\Enums\PublicFrontConfigBlockType`
+  - `App\Enums\PublicFrontLayoutVariant`
 
 ## Current Domain Schema
 
@@ -398,7 +411,28 @@ Current physical schema verified through Boost `database_schema`:
   - Step 11: Seeders, Demo Data, Assets, and Cleanup.
   - Step 12: Prompt 13 Dashboard Metrics readiness / next decision.
 - Step 1 must create `docs/phase-02/public-front-v2-step1-json-settings-handoff.md` for ChatGPT/Yoni before Step 3+ prompts are generated.
+- Step 1 JSON Settings Architecture is implemented in the current Step 1 commit. The handoff file exists at `docs/phase-02/public-front-v2-step1-json-settings-handoff.md` and must be reviewed before Step 3+ prompts are generated.
 - The PodText logo already exists at `public/images/podtext-logo.jpg` and must be preserved by future public-front work.
+
+## Public Front v2 Step 1 JSON Settings Architecture Notes
+
+- Step 1 adds public-front array settings to `App\Settings\PublicContentSettings`:
+  - `card_templates`
+  - `menu_config`
+  - `about_page`
+  - `public_forms`
+  - `route_labels`
+  - `display_defaults`
+- Step 1 adds a Spatie settings migration: `database/settings/2026_07_04_000000_add_public_front_json_settings.php`.
+- Step 1 intentionally does not add `transcription_policy`; Step 2 remains deferred/reserved.
+- Step 1 intentionally does not add `homepage_sections` JSON columns; those remain deferred until Step 4 / Public Display Sections and Loopers.
+- `PublicFrontConfigReader` is the runtime entry point for normalized config. Future public rendering should call `read()`, `all()`, or `group()` rather than reading raw settings arrays.
+- `PublicFrontConfigValidator` normalizes arrays, merges defaults, reports invalid config, and rejects unknown keys plus unsafe HTML, iframe/script strings, JavaScript URLs, non-HTTPS external URLs, raw CSS/Tailwind-looking values, SQL-looking values, PHP class names, and Blade path-looking strings.
+- `PublicFrontConfigResult` returns normalized config and safe invalid-config report objects.
+- The existing `PublicContentSettings` admin page now fills missing public-front defaults and sanitizes public-front arrays before save.
+- Existing `PublicContentCardOptions` behavior is unchanged and remains compatible with the older scalar card settings.
+- No settings-only models were introduced.
+- No Prompt 13 work started.
 
 ## Post-Prompt-10 Guidance Sync Notes
 

@@ -3,7 +3,11 @@
 namespace App\Filament\Pages;
 
 use App\Settings\PublicContentSettings as PublicContentSettingsData;
+use App\Support\PublicFront\PublicFrontConfigReader;
+use App\Support\PublicFront\PublicFrontConfigRegistry;
+use App\Support\PublicFront\PublicFrontConfigValidator;
 use BackedEnum;
+use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
@@ -159,6 +163,108 @@ class PublicContentSettings extends SettingsPage
                             ->label(__('admin.fields.homepage_show_description')),
                     ])
                     ->columns(3),
+                Section::make(__('admin.sections.public_front_configuration'))
+                    ->description(__('admin.descriptions.public_front_configuration'))
+                    ->schema([
+                        Toggle::make('menu_config.enabled')
+                            ->label(__('admin.fields.public_front_menu_enabled'))
+                            ->helperText(__('admin.helpers.public_front_menu_enabled')),
+                        Select::make('display_defaults.layout')
+                            ->label(__('admin.fields.public_front_display_layout'))
+                            ->helperText(__('admin.helpers.public_front_display_layout'))
+                            ->options([
+                                'cards' => __('admin.layouts.cards'),
+                                'rows' => __('admin.layouts.rows'),
+                            ])
+                            ->required(),
+                        Select::make('display_defaults.density')
+                            ->label(__('admin.fields.public_front_card_density'))
+                            ->helperText(__('admin.helpers.public_front_card_density'))
+                            ->options([
+                                'compact' => __('admin.card_density.compact'),
+                                'comfortable' => __('admin.card_density.comfortable'),
+                            ])
+                            ->required(),
+                        Select::make('display_defaults.image_size')
+                            ->label(__('admin.fields.public_front_card_image_size'))
+                            ->helperText(__('admin.helpers.public_front_card_image_size'))
+                            ->options([
+                                'hidden' => __('admin.card_image_size.hidden'),
+                                'small' => __('admin.card_image_size.small'),
+                                'medium' => __('admin.card_image_size.medium'),
+                                'large' => __('admin.card_image_size.large'),
+                            ])
+                            ->required(),
+                        Select::make('display_defaults.title_size')
+                            ->label(__('admin.fields.public_front_card_title_size'))
+                            ->helperText(__('admin.helpers.public_front_card_title_size'))
+                            ->options([
+                                'sm' => __('admin.card_title_size.sm'),
+                                'base' => __('admin.card_title_size.base'),
+                                'lg' => __('admin.card_title_size.lg'),
+                            ])
+                            ->required(),
+                        TextInput::make('display_defaults.page_size')
+                            ->label(__('admin.fields.public_front_page_size'))
+                            ->helperText(__('admin.helpers.public_front_page_size'))
+                            ->required()
+                            ->numeric()
+                            ->integer()
+                            ->minValue(1)
+                            ->maxValue(48),
+                        Repeater::make('route_labels')
+                            ->label(__('admin.fields.public_front_route_labels'))
+                            ->helperText(__('admin.helpers.public_front_route_labels'))
+                            ->schema([
+                                Select::make('route_key')
+                                    ->label(__('admin.fields.public_front_route_key'))
+                                    ->options(fn (): array => PublicFrontConfigRegistry::routeOptions())
+                                    ->native(false)
+                                    ->required(),
+                                TextInput::make('label')
+                                    ->label(__('admin.fields.public_front_route_label'))
+                                    ->maxLength(80)
+                                    ->required(),
+                            ])
+                            ->columns(2)
+                            ->defaultItems(0)
+                            ->reorderable()
+                            ->cloneable()
+                            ->columnSpanFull(),
+                    ])
+                    ->columns(3),
             ]);
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    protected function mutateFormDataBeforeFill(array $data): array
+    {
+        $publicFrontConfig = app(PublicFrontConfigReader::class)
+            ->fromArray($data)
+            ->config();
+
+        return [
+            ...$data,
+            ...$publicFrontConfig,
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    protected function mutateFormDataBeforeSave(array $data): array
+    {
+        $publicFrontConfig = app(PublicFrontConfigValidator::class)
+            ->validate($data)
+            ->config();
+
+        return [
+            ...$data,
+            ...$publicFrontConfig,
+        ];
     }
 }

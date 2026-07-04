@@ -42,6 +42,18 @@ class PublicContentSettings extends Settings
 
     public int $homepage_cards_per_page;
 
+    public array $card_templates;
+
+    public array $menu_config;
+
+    public array $about_page;
+
+    public array $public_forms;
+
+    public array $route_labels;
+
+    public array $display_defaults;
+
     public static function group(): string
     {
         return 'public_content';

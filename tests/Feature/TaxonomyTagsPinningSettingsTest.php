@@ -7,6 +7,7 @@ use App\Models\ContentItem;
 use App\Models\ContentTag;
 use App\Models\HomepageSection;
 use App\Settings\PublicContentSettings;
+use App\Support\PublicFront\PublicFrontConfigRegistry;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Schema;
@@ -120,7 +121,15 @@ it('loads public content settings defaults', function (): void {
         ->and($settings->homepage_show_effective_date)->toBeTrue()
         ->and($settings->homepage_show_description)->toBeTrue()
         ->and($settings->homepage_description_lines)->toBe(3)
-        ->and($settings->homepage_cards_per_page)->toBe(12);
+        ->and($settings->homepage_cards_per_page)->toBe(12)
+        ->and([
+            'card_templates' => $settings->card_templates,
+            'menu_config' => $settings->menu_config,
+            'about_page' => $settings->about_page,
+            'public_forms' => $settings->public_forms,
+            'route_labels' => $settings->route_labels,
+            'display_defaults' => $settings->display_defaults,
+        ])->toBe(PublicFrontConfigRegistry::defaults());
 });
 
 it('stores homepage sections with finite type casts and visible ordering', function (): void {
