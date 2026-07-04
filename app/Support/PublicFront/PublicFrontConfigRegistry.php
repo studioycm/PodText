@@ -4,6 +4,7 @@ namespace App\Support\PublicFront;
 
 use App\Enums\PublicFrontConfigBlockType;
 use App\Enums\PublicFrontLayoutVariant;
+use App\Support\PublicFront\Cards\PublicFrontCardTemplateRegistry;
 
 class PublicFrontConfigRegistry
 {
@@ -147,5 +148,77 @@ class PublicFrontConfigRegistry
         return collect(self::routeKeys())
             ->mapWithKeys(fn (string $key): array => [$key => __("admin.public_front_routes.{$key}")])
             ->all();
+    }
+
+    /**
+     * @return array<string>
+     */
+    public static function cardFamilies(): array
+    {
+        return PublicFrontCardTemplateRegistry::families();
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public static function cardFamilyOptions(): array
+    {
+        return PublicFrontCardTemplateRegistry::familyOptions();
+    }
+
+    /**
+     * @return array<string>
+     */
+    public static function cardPartTypes(): array
+    {
+        return PublicFrontCardTemplateRegistry::partTypes();
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public static function cardPartTypeOptions(): array
+    {
+        return PublicFrontCardTemplateRegistry::partTypeOptions();
+    }
+
+    /**
+     * @return array<string>
+     */
+    public static function cardSources(): array
+    {
+        return PublicFrontCardTemplateRegistry::sources();
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public static function cardSourceOptions(): array
+    {
+        return PublicFrontCardTemplateRegistry::sourceOptions();
+    }
+
+    /**
+     * @return array<string, array<string>>
+     */
+    public static function cardAttributes(): array
+    {
+        return PublicFrontCardTemplateRegistry::attributes();
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public static function cardAttributeOptions(?string $source): array
+    {
+        return PublicFrontCardTemplateRegistry::attributeOptions($source);
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    public static function defaultCardTemplates(): array
+    {
+        return PublicFrontCardTemplateRegistry::defaultTemplates();
     }
 }

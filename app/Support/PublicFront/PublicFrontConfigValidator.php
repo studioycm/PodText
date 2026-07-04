@@ -2,6 +2,8 @@
 
 namespace App\Support\PublicFront;
 
+use App\Support\PublicFront\Cards\PublicFrontCardTemplateRegistry;
+
 class PublicFrontConfigValidator
 {
     public function validate(array $config): PublicFrontConfigResult
@@ -44,22 +46,223 @@ class PublicFrontConfigValidator
     private function normalizeCardTemplates(array $items, array &$invalidConfig): array
     {
         return $this->normalizeList($items, 'card_templates', $invalidConfig, function (array $item, string $path, array &$invalidConfig): ?array {
-            $this->reportUnknownKeys($item, ['key', 'family', 'label'], $path, $invalidConfig);
+            $this->reportUnknownKeys($item, ['key', 'slug', 'family', 'label', 'layout', 'layout_variant', 'density', 'image_size', 'title_size', 'parts'], $path, $invalidConfig);
 
-            $key = $this->semanticKey($item['key'] ?? null, "{$path}.key", $invalidConfig);
-            $family = $this->finiteString($item['family'] ?? null, ['content_item', 'content_group', 'contributor'], "{$path}.family", $invalidConfig);
+            $key = $this->semanticKey($item['key'] ?? $item['slug'] ?? null, "{$path}.key", $invalidConfig);
+            $family = $this->finiteString($item['family'] ?? null, PublicFrontCardTemplateRegistry::families(), "{$path}.family", $invalidConfig);
             $label = $this->plainString($item['label'] ?? null, "{$path}.label", $invalidConfig, nullable: true);
+            $layout = $this->finiteString($item['layout'] ?? $item['layout_variant'] ?? null, PublicFrontConfigRegistry::layouts(), "{$path}.layout", $invalidConfig, 'cards');
+            $density = $this->finiteString($item['density'] ?? null, PublicFrontConfigRegistry::densities(), "{$path}.density", $invalidConfig, 'comfortable');
+            $imageSize = $this->finiteString($item['image_size'] ?? null, PublicFrontConfigRegistry::imageSizes(), "{$path}.image_size", $invalidConfig, 'medium');
+            $titleSize = $this->finiteString($item['title_size'] ?? null, PublicFrontConfigRegistry::titleSizes(), "{$path}.title_size", $invalidConfig, 'base');
+            $parts = $this->normalizeCardTemplateParts($item['parts'] ?? [], "{$path}.parts", $invalidConfig);
 
             if ($key === null || $family === null) {
                 return null;
             }
 
-            return array_filter([
+            return [
                 'key' => $key,
                 'family' => $family,
-                'label' => $label,
-            ], fn (mixed $value): bool => $value !== null);
+                'label' => $label ?? $key,
+                'layout' => $layout,
+                'density' => $density,
+                'image_size' => $imageSize,
+                'title_size' => $titleSize,
+                'parts' => $parts,
+            ];
         });
+    }
+
+    /**
+     * @param  array<mixed>  $items
+     * @param  array<PublicFrontInvalidConfig>  $invalidConfig
+     * @return array<int, array<string, mixed>>
+     */
+    private function normalizeCardTemplateParts(mixed $items, string $path, array &$invalidConfig): array
+    {
+        if (! is_array($items)) {
+            $invalidConfig[] = PublicFrontInvalidConfig::make($path, 'expected_list', $items);
+
+            return [];
+        }
+
+        if (! array_is_list($items)) {
+            $invalidConfig[] = PublicFrontInvalidConfig::make($path, 'expected_list', $items);
+
+            return [];
+        }
+
+        $normalized = [];
+
+        foreach ($items as $index => $item) {
+            if (! is_array($item)) {
+                $invalidConfig[] = PublicFrontInvalidConfig::make("{$path}.{$index}", 'expected_array', $item);
+
+                continue;
+            }
+
+            $part = $this->normalizeCardTemplatePart($item, "{$path}.{$index}", $invalidConfig, $index);
+
+            if ($part !== null) {
+                $normalized[] = $part;
+            }
+        }
+
+        return collect($normalized)
+            ->sortBy('order')
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @param  array<string, mixed>  $item
+     * @param  array<PublicFrontInvalidConfig>  $invalidConfig
+     * @return array<string, mixed>|null
+     */
+    private function normalizeCardTemplatePart(array $item, string $path, array &$invalidConfig, int $index): ?array
+    {
+        [$part, $fieldPath] = $this->unwrapBuilderPart($item, $path, $invalidConfig);
+
+        $allowedFields = [
+            'type',
+            'source',
+            'attribute',
+            'label',
+            'label_position',
+            'icon',
+            'icon_position',
+            'layout',
+            'visible',
+            'order',
+            'line_clamp',
+            'font_size',
+            'url_target',
+            'text',
+        ];
+
+        $this->reportUnknownKeys($part, $allowedFields, $fieldPath, $invalidConfig);
+
+        $type = $this->finiteString($part['type'] ?? null, PublicFrontCardTemplateRegistry::partTypes(), "{$fieldPath}.type", $invalidConfig);
+
+        if ($type === null) {
+            return null;
+        }
+
+        $source = $this->normalizePartSource($part, $type, $fieldPath, $invalidConfig);
+
+        if (($part['source'] ?? null) !== null && $source === null) {
+            return null;
+        }
+
+        $attribute = $this->normalizePartAttribute($part, $type, $source, $fieldPath, $invalidConfig);
+
+        if (($part['attribute'] ?? null) !== null && $attribute === null) {
+            return null;
+        }
+
+        if (! PublicFrontCardTemplateRegistry::isValidAttributeForSource($source, $attribute)) {
+            $invalidConfig[] = PublicFrontInvalidConfig::make("{$fieldPath}.attribute", 'invalid_source_attribute', $attribute);
+
+            return null;
+        }
+
+        $text = array_key_exists('text', $part)
+            ? $this->plainString($part['text'], "{$fieldPath}.text", $invalidConfig, maxLength: 500, nullable: true)
+            : null;
+
+        if ($type === 'custom_text' && $text === null) {
+            return null;
+        }
+
+        return array_filter([
+            'type' => $type,
+            'source' => $source,
+            'attribute' => $attribute,
+            'label' => $this->plainString($part['label'] ?? null, "{$fieldPath}.label", $invalidConfig, maxLength: 80, nullable: true),
+            'label_position' => array_key_exists('label_position', $part)
+                ? $this->finiteString($part['label_position'], PublicFrontCardTemplateRegistry::labelPositions(), "{$fieldPath}.label_position", $invalidConfig, nullable: true)
+                : null,
+            'icon' => array_key_exists('icon', $part)
+                ? $this->finiteString($part['icon'], PublicFrontCardTemplateRegistry::icons(), "{$fieldPath}.icon", $invalidConfig, nullable: true)
+                : null,
+            'icon_position' => array_key_exists('icon_position', $part)
+                ? $this->finiteString($part['icon_position'], PublicFrontCardTemplateRegistry::iconPositions(), "{$fieldPath}.icon_position", $invalidConfig, nullable: true)
+                : null,
+            'layout' => $this->finiteString($part['layout'] ?? null, PublicFrontCardTemplateRegistry::partLayouts(), "{$fieldPath}.layout", $invalidConfig, 'inline'),
+            'visible' => $this->boolean($part['visible'] ?? null, "{$fieldPath}.visible", true, $invalidConfig),
+            'order' => array_key_exists('order', $part)
+                ? $this->integerRange($part['order'], "{$fieldPath}.order", 0, 1000, ($index + 1) * 10, $invalidConfig)
+                : ($index + 1) * 10,
+            'line_clamp' => array_key_exists('line_clamp', $part)
+                ? $this->integerRange($part['line_clamp'], "{$fieldPath}.line_clamp", 0, 4, 3, $invalidConfig)
+                : null,
+            'font_size' => array_key_exists('font_size', $part)
+                ? $this->finiteString($part['font_size'], PublicFrontCardTemplateRegistry::fontSizes(), "{$fieldPath}.font_size", $invalidConfig, nullable: true)
+                : null,
+            'url_target' => array_key_exists('url_target', $part)
+                ? $this->finiteString($part['url_target'], PublicFrontCardTemplateRegistry::urlTargets(), "{$fieldPath}.url_target", $invalidConfig, nullable: true)
+                : null,
+            'text' => $text,
+        ], fn (mixed $value): bool => $value !== null);
+    }
+
+    /**
+     * @param  array<string, mixed>  $item
+     * @param  array<PublicFrontInvalidConfig>  $invalidConfig
+     * @return array{0: array<string, mixed>, 1: string}
+     */
+    private function unwrapBuilderPart(array $item, string $path, array &$invalidConfig): array
+    {
+        if (! array_key_exists('data', $item)) {
+            return [$item, $path];
+        }
+
+        $this->reportUnknownKeys($item, ['type', 'data'], $path, $invalidConfig);
+
+        if (! is_array($item['data'])) {
+            $invalidConfig[] = PublicFrontInvalidConfig::make("{$path}.data", 'expected_array', $item['data']);
+
+            return [['type' => $item['type'] ?? null], $path];
+        }
+
+        return [
+            [
+                'type' => $item['type'] ?? null,
+                ...$item['data'],
+            ],
+            "{$path}.data",
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $part
+     * @param  array<PublicFrontInvalidConfig>  $invalidConfig
+     */
+    private function normalizePartSource(array $part, string $type, string $path, array &$invalidConfig): ?string
+    {
+        if (! array_key_exists('source', $part)) {
+            return PublicFrontCardTemplateRegistry::defaultSourceForPart($type);
+        }
+
+        return $this->finiteString($part['source'], PublicFrontCardTemplateRegistry::sources(), "{$path}.source", $invalidConfig, nullable: true);
+    }
+
+    /**
+     * @param  array<string, mixed>  $part
+     * @param  array<PublicFrontInvalidConfig>  $invalidConfig
+     */
+    private function normalizePartAttribute(array $part, string $type, ?string $source, string $path, array &$invalidConfig): ?string
+    {
+        if (! array_key_exists('attribute', $part)) {
+            return PublicFrontCardTemplateRegistry::defaultAttributeForPart($type);
+        }
+
+        if ($source === null) {
+            return $this->semanticKey($part['attribute'], "{$path}.attribute", $invalidConfig, nullable: true);
+        }
+
+        return $this->finiteString($part['attribute'], PublicFrontCardTemplateRegistry::attributesForSource($source), "{$path}.attribute", $invalidConfig, nullable: true);
     }
 
     /**

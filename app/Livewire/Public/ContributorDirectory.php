@@ -7,6 +7,7 @@ use App\Models\Author;
 use App\Settings\PublicContentSettings;
 use App\Support\PublicContent\PublicContentCardOptions;
 use App\Support\PublicContent\PublicContributorDiscovery;
+use App\Support\PublicFront\Cards\PublicFrontCardTemplateResolver;
 use Illuminate\Contracts\View\View;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Livewire\Attributes\Url;
@@ -52,9 +53,12 @@ class ContributorDirectory extends Component
     {
         $contributors = $this->contributors();
         $selectedContributor = $this->selectedContributor();
+        $templateResolver = app(PublicFrontCardTemplateResolver::class);
 
         return view('livewire.public.contributor-directory', [
             'cardOptions' => $this->cardOptions(),
+            'cardTemplate' => $templateResolver->resolve('contributor'),
+            'contentItemCardTemplate' => $templateResolver->resolve('content_item'),
             'contributors' => $contributors,
             'previewItems' => $selectedContributor
                 ? PublicContributorDiscovery::previewItemsForContributor($selectedContributor)

@@ -3,9 +3,13 @@
     'fullPageUrl',
     'selected' => false,
     'selectable' => false,
+    'cardTemplate' => null,
 ])
 
 @php
+    $templateRenderer = app(\App\Support\PublicFront\Cards\PublicFrontCardTemplateRenderer::class);
+    $cardTemplate ??= $templateRenderer->resolve('contributor');
+    $templateAttributes = $templateRenderer->compatibilityAttributes($cardTemplate);
     $initial = \Illuminate\Support\Str::of($author->name)->substr(0, 1);
     $transcriptionsCount = (int) ($author->public_transcriptions_count ?? 0);
     $contentItemsCount = (int) ($author->public_content_items_count ?? 0);
@@ -21,6 +25,10 @@
     {{ $attributes->merge(['class' => "flex h-full flex-col gap-4 rounded-lg border bg-white p-4 shadow-sm transition dark:bg-gray-900 {$cardClasses}"]) }}
     data-test="contributor-card"
     data-contributor-id="{{ $author->id }}"
+    data-card-template-family="{{ $templateAttributes['data-card-template-family'] }}"
+    data-card-template-key="{{ $templateAttributes['data-card-template-key'] }}"
+    data-card-template-layout="{{ $templateAttributes['data-card-template-layout'] }}"
+    data-card-template-parts="{{ $templateAttributes['data-card-template-parts'] }}"
 >
     <div class="flex items-start gap-3">
         <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary-100 text-lg font-semibold text-primary-800 dark:bg-primary-900 dark:text-primary-100">

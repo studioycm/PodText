@@ -6,6 +6,7 @@ use App\Models\Author;
 use App\Settings\PublicContentSettings;
 use App\Support\PublicContent\PublicContentCardOptions;
 use App\Support\PublicContent\PublicContributorDiscovery;
+use App\Support\PublicFront\Cards\PublicFrontCardTemplateResolver;
 use Illuminate\Contracts\View\View;
 use Livewire\Component;
 use Livewire\WithPagination;
@@ -20,6 +21,7 @@ class ContributorContentItems extends Component
     {
         return view('livewire.public.contributor-content-items', [
             'cardOptions' => $this->cardOptions(),
+            'cardTemplate' => app(PublicFrontCardTemplateResolver::class)->resolve('content_item'),
             'items' => PublicContributorDiscovery::contentItemsForContributor($this->author)
                 ->paginate($this->cardOptions()->cardsPerPage)
                 ->withQueryString(),

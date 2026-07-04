@@ -41,6 +41,7 @@
                             :author="$author"
                             :full-page-url="$this->contributorUrl($author)"
                             :selected="$selectedContributor?->is($author) ?? false"
+                            :card-template="$cardTemplate"
                             selectable
                             wire:key="contributor-card-{{ $author->id }}"
                         />
@@ -85,6 +86,7 @@
                     <x-public.content-item-grid
                         :items="$previewItems"
                         :card-options="$cardOptions"
+                        :card-template="$contentItemCardTemplate"
                         layout="rows"
                     />
                 @else

@@ -27,6 +27,8 @@ Recorded after the Markdown-only post-Prompt-10 prompt-progress centralization c
 - PodText brand-logo customization is implemented and committed as `6962c82 feat: add customizable brand logo and height for admin and public panels`; the logo exists at `public/images/podtext-logo.jpg`.
 - Public Front v2 correction/Step 1 prompt pack is present as `716ee5a docs: add corrections to Public Front v2 execution plan and initial Step 1 prompt files`.
 - Public Front v2 docs correction before Step 1 is implemented and committed as `5586ec8 docs: correct public front v2 execution plan`.
+- Public Front v2 Step 1 JSON Settings Architecture is implemented and committed as `fb759b5 feat: add public front json settings architecture`.
+- Public Front v2 Step 3 Card Template Builder is implemented in the current working tree and will be committed as `feat: add public front card template builder foundation` after the final quality gate passes.
 
 ## Prompt Progress
 
@@ -48,8 +50,9 @@ Recorded after the Markdown-only post-Prompt-10 prompt-progress centralization c
 | Prompt 12 media embed/item page/parser | Complete | `ffba2b3 feat: add public item page media and transcript parser` | Adds the public item page, safe media component behavior, and parse-only transcript viewer. |
 | Public Front v2 planning/research | Complete | `40aeafc docs: add execution plan for Public Front v2 implementation` plus prior research/blueprint commits | Public Front v2 should run before Prompt 13 unless the user explicitly chooses dashboard metrics first. |
 | Public Front v2 docs correction before Step 1 | Complete | `5586ec8 docs: correct public front v2 execution plan` | Corrects execution order, reserves transcription publication policy, and requires Step 1 handoff. |
-| Public Front v2 Step 1 JSON Settings Architecture | Complete in the current Step 1 implementation commit | `feat: add public front json settings architecture` | Adds the JSON settings architecture foundation and creates `docs/phase-02/public-front-v2-step1-json-settings-handoff.md` for ChatGPT/Yoni review. |
-| Public Front v2 Step 3 Card Template Builder | Next after ChatGPT/Yoni handoff review | Future prompt to be generated after Step 1 review | Step 2 transcription publication policy remains deferred/reserved. Do not generate or run Step 3 until the handoff is reviewed. |
+| Public Front v2 Step 1 JSON Settings Architecture | Complete | `fb759b5 feat: add public front json settings architecture` | Adds the JSON settings architecture foundation and creates `docs/phase-02/public-front-v2-step1-json-settings-handoff.md` for ChatGPT/Yoni review. |
+| Public Front v2 Step 3 Card Template Builder | Complete in current implementation commit | Pending final commit: `feat: add public front card template builder foundation` | Adds JSON-first card template registry/validator support, support classes, admin settings UI, compatibility rendering attributes, tests, and Step 3 handoff. |
+| Public Front v2 Step 4 Public Display Sections and Loopers | Next after ChatGPT/Yoni review | Future prompt | Step 2 transcription publication policy remains deferred/reserved. Do not start Step 4 until Step 3 is committed and reviewed. |
 | Prompt 13 dashboard metrics | Blocked unless explicitly chosen by user | Active prompt/blueprint | Owns editorial dashboard widgets after Public Front v2 or an explicit dashboard-first decision. |
 | Prompt 14 viewer/studio future plan | Future planning after Prompt 13 | Active prompt/blueprint | Documentation/planning only. |
 | Prompt 15 Filament Blueprint security audit | Audit after Prompt 14 | Active prompt/blueprint | Audit-only unless fixes are explicitly approved. |
@@ -163,6 +166,12 @@ Laravel Boost MCP tools were exposed and usable during Prompt 10.
   - `App\Support\PublicFront\PublicFrontConfigValidator`
   - `App\Support\PublicFront\PublicFrontConfigResult`
   - `App\Support\PublicFront\PublicFrontInvalidConfig`
+- Public Front v2 Step 3 card template support classes:
+  - `App\Support\PublicFront\Cards\PublicFrontCardTemplateRegistry`
+  - `App\Support\PublicFront\Cards\PublicFrontCardTemplateResolver`
+  - `App\Support\PublicFront\Cards\PublicFrontCardTemplateRenderer`
+  - `App\Support\PublicFront\Cards\PublicFrontCardTemplate`
+  - `App\Support\PublicFront\Cards\PublicFrontCardPart`
 - Public Front v2 Step 1 enums:
   - `App\Enums\PublicFrontConfigBlockType`
   - `App\Enums\PublicFrontLayoutVariant`
@@ -410,8 +419,8 @@ Current physical schema verified through Boost `database_schema`:
   - Step 10: Contributors and Top Transcribers UX.
   - Step 11: Seeders, Demo Data, Assets, and Cleanup.
   - Step 12: Prompt 13 Dashboard Metrics readiness / next decision.
-- Step 1 must create `docs/phase-02/public-front-v2-step1-json-settings-handoff.md` for ChatGPT/Yoni before Step 3+ prompts are generated.
-- Step 1 JSON Settings Architecture is implemented in the current Step 1 commit. The handoff file exists at `docs/phase-02/public-front-v2-step1-json-settings-handoff.md` and must be reviewed before Step 3+ prompts are generated.
+- Step 1 created `docs/phase-02/public-front-v2-step1-json-settings-handoff.md` for ChatGPT/Yoni and established the final JSON settings API used by Step 3.
+- Step 3 Card Template Builder is implemented in the current working tree. Step 4 Public Display Sections and Loopers is the next implementation step after Step 3 is committed and reviewed.
 - The PodText logo already exists at `public/images/podtext-logo.jpg` and must be preserved by future public-front work.
 
 ## Public Front v2 Step 1 JSON Settings Architecture Notes
@@ -433,6 +442,19 @@ Current physical schema verified through Boost `database_schema`:
 - Existing `PublicContentCardOptions` behavior is unchanged and remains compatible with the older scalar card settings.
 - No settings-only models were introduced.
 - No Prompt 13 work started.
+
+## Public Front v2 Step 3 Card Template Builder Notes
+
+- Step 3 stores card templates in the existing `public_content.card_templates` array setting as a flat JSON-first list. It does not create `CardTemplate`, `CardTemplatePart`, `CardFamily`, `PublicDisplaySection`, or `PublicLooper` models.
+- Card template runtime reads continue through Step 1 APIs: `PublicFrontConfigReader::read()`, `PublicFrontConfigResult::config()`, `PublicFrontConfigResult::group('card_templates')`, and `PublicFrontConfigResult::invalidConfigArray()`.
+- `PublicFrontConfigRegistry` now defines safe families, part types, sources, attributes, and default templates for `content_item`, `content_group`, and `contributor`.
+- Supported families are `content_item`, `content_group`, and `contributor`; supported layout variants remain semantic (`cards`, `rows`), with semantic density, image size, title size, part layout, icon, URL target, line clamp, and font-size options.
+- Supported part types include `image`, `title`, `description`, `metadata_row`, `entity_attribute`, `group_identity`, `transcriber_line`, `date_read_time`, `taxonomy`, `custom_text`, `action_link`, `divider`, and `spacer`.
+- The validator accepts normalized JSON and Filament Builder-shaped part payloads, then normalizes parts to plain JSON arrays. Unknown or unsafe families, part types, sources, attributes, icons, layout values, CSS/Tailwind-looking values, Blade/PHP-looking strings, JavaScript URLs, and HTML/script/iframe strings are reported through invalid config and skipped or defaulted safely.
+- `App\Filament\Pages\PublicContentSettings` now includes a card template editing section with a Repeater and Builder-backed parts editor. Live side-by-side preview remains deferred to later public UX work.
+- Public item, group, and contributor cards preserve existing Blade output and expose compatibility metadata through `data-card-template-*` attributes resolved from the card template support layer.
+- Step 3 does not implement display-section/looper queries, latest/search redesign, public forms, about/team builder, podcasts/group UX changes, menu/header management, contributor UX refinements, seeders, dashboard metrics, or the deferred transcription publication policy.
+- Step 4 Public Display Sections and Loopers is next after ChatGPT/Yoni review. Step 2 transcription policy remains deferred/reserved. Prompt 13 has not started.
 
 ## Post-Prompt-10 Guidance Sync Notes
 

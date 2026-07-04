@@ -33,7 +33,7 @@
     @else
         <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
             @foreach ($groups as $group)
-                <x-public.content-group-card :group="$group" wire:key="public-group-{{ $group->id }}" />
+                <x-public.content-group-card :group="$group" :card-template="$cardTemplate" wire:key="public-group-{{ $group->id }}" />
             @endforeach
         </div>
 

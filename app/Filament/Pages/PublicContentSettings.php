@@ -3,18 +3,24 @@
 namespace App\Filament\Pages;
 
 use App\Settings\PublicContentSettings as PublicContentSettingsData;
+use App\Support\PublicFront\Cards\PublicFrontCardTemplateRegistry;
 use App\Support\PublicFront\PublicFrontConfigReader;
 use App\Support\PublicFront\PublicFrontConfigRegistry;
 use App\Support\PublicFront\PublicFrontConfigValidator;
 use BackedEnum;
+use Filament\Forms\Components\Builder;
+use Filament\Forms\Components\Builder\Block;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Pages\SettingsPage;
 use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Utilities\Get;
+use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
+use Illuminate\Support\Arr;
 
 class PublicContentSettings extends SettingsPage
 {
@@ -233,6 +239,93 @@ class PublicContentSettings extends SettingsPage
                             ->columnSpanFull(),
                     ])
                     ->columns(3),
+                Section::make(__('admin.sections.public_front_card_templates'))
+                    ->description(__('admin.descriptions.public_front_card_templates'))
+                    ->schema([
+                        Repeater::make('card_templates')
+                            ->label(__('admin.fields.public_front_card_templates'))
+                            ->helperText(__('admin.helpers.public_front_card_templates'))
+                            ->schema([
+                                TextInput::make('key')
+                                    ->label(__('admin.fields.card_template_key'))
+                                    ->helperText(__('admin.helpers.card_template_key'))
+                                    ->required()
+                                    ->maxLength(80)
+                                    ->rules(['regex:/^[a-z][a-z0-9_-]*$/']),
+                                TextInput::make('label')
+                                    ->label(__('admin.fields.card_template_label'))
+                                    ->helperText(__('admin.helpers.card_template_label'))
+                                    ->required()
+                                    ->maxLength(120),
+                                Select::make('family')
+                                    ->label(__('admin.fields.card_template_family'))
+                                    ->helperText(__('admin.helpers.card_template_family'))
+                                    ->options(fn (): array => PublicFrontConfigRegistry::cardFamilyOptions())
+                                    ->native(false)
+                                    ->required(),
+                                Select::make('layout')
+                                    ->label(__('admin.fields.card_template_layout'))
+                                    ->helperText(__('admin.helpers.card_template_layout'))
+                                    ->options([
+                                        'cards' => __('admin.layouts.cards'),
+                                        'rows' => __('admin.layouts.rows'),
+                                    ])
+                                    ->native(false)
+                                    ->default('cards')
+                                    ->required(),
+                                Select::make('density')
+                                    ->label(__('admin.fields.card_template_density'))
+                                    ->helperText(__('admin.helpers.card_template_density'))
+                                    ->options([
+                                        'compact' => __('admin.card_density.compact'),
+                                        'comfortable' => __('admin.card_density.comfortable'),
+                                    ])
+                                    ->native(false)
+                                    ->default('comfortable')
+                                    ->required(),
+                                Select::make('image_size')
+                                    ->label(__('admin.fields.card_template_image_size'))
+                                    ->helperText(__('admin.helpers.card_template_image_size'))
+                                    ->options([
+                                        'hidden' => __('admin.card_image_size.hidden'),
+                                        'small' => __('admin.card_image_size.small'),
+                                        'medium' => __('admin.card_image_size.medium'),
+                                        'large' => __('admin.card_image_size.large'),
+                                    ])
+                                    ->native(false)
+                                    ->default('medium')
+                                    ->required(),
+                                Select::make('title_size')
+                                    ->label(__('admin.fields.card_template_title_size'))
+                                    ->helperText(__('admin.helpers.card_template_title_size'))
+                                    ->options([
+                                        'sm' => __('admin.card_title_size.sm'),
+                                        'base' => __('admin.card_title_size.base'),
+                                        'lg' => __('admin.card_title_size.lg'),
+                                    ])
+                                    ->native(false)
+                                    ->default('base')
+                                    ->required(),
+                                Builder::make('parts')
+                                    ->label(__('admin.fields.card_template_parts'))
+                                    ->helperText(__('admin.helpers.card_template_parts'))
+                                    ->blocks($this->cardTemplatePartBlocks())
+                                    ->blockPickerColumns(2)
+                                    ->collapsible()
+                                    ->collapsed()
+                                    ->cloneable()
+                                    ->default([])
+                                    ->addActionLabel(__('admin.actions.add_card_template_part'))
+                                    ->columnSpanFull(),
+                            ])
+                            ->itemLabel(fn (array $state): ?string => $state['label'] ?? $state['key'] ?? __('admin.labels.untitled'))
+                            ->defaultItems(0)
+                            ->reorderable()
+                            ->cloneable()
+                            ->collapsed()
+                            ->columns(3)
+                            ->columnSpanFull(),
+                    ]),
             ]);
     }
 
@@ -245,6 +338,8 @@ class PublicContentSettings extends SettingsPage
         $publicFrontConfig = app(PublicFrontConfigReader::class)
             ->fromArray($data)
             ->config();
+
+        $publicFrontConfig['card_templates'] = $this->cardTemplatesForBuilder($publicFrontConfig['card_templates'] ?? []);
 
         return [
             ...$data,
@@ -266,5 +361,120 @@ class PublicContentSettings extends SettingsPage
             ...$data,
             ...$publicFrontConfig,
         ];
+    }
+
+    /**
+     * @return array<Block>
+     */
+    private function cardTemplatePartBlocks(): array
+    {
+        return collect(PublicFrontConfigRegistry::cardPartTypes())
+            ->map(fn (string $type): Block => Block::make($type)
+                ->label(__("admin.card_template_part_types.{$type}"))
+                ->schema($this->cardTemplatePartSchema($type))
+                ->columns(3))
+            ->all();
+    }
+
+    /**
+     * @return array<int, mixed>
+     */
+    private function cardTemplatePartSchema(string $type): array
+    {
+        $requiresSource = ! in_array($type, ['divider', 'spacer'], true);
+
+        return [
+            Toggle::make('visible')
+                ->label(__('admin.fields.card_template_part_visible'))
+                ->helperText(__('admin.helpers.card_template_part_visible'))
+                ->default(true),
+            Select::make('source')
+                ->label(__('admin.fields.card_template_part_source'))
+                ->helperText(__('admin.helpers.card_template_part_source'))
+                ->options(fn (): array => PublicFrontConfigRegistry::cardSourceOptions())
+                ->default(PublicFrontCardTemplateRegistry::defaultSourceForPart($type))
+                ->native(false)
+                ->live()
+                ->required($requiresSource)
+                ->afterStateUpdated(fn (Set $set): mixed => $set('attribute', null)),
+            Select::make('attribute')
+                ->label(__('admin.fields.card_template_part_attribute'))
+                ->helperText(__('admin.helpers.card_template_part_attribute'))
+                ->options(fn (Get $get): array => PublicFrontConfigRegistry::cardAttributeOptions($get('source')))
+                ->default(PublicFrontCardTemplateRegistry::defaultAttributeForPart($type))
+                ->native(false)
+                ->required($requiresSource),
+            TextInput::make('label')
+                ->label(__('admin.fields.card_template_part_label'))
+                ->helperText(__('admin.helpers.card_template_part_label'))
+                ->maxLength(80),
+            Select::make('label_position')
+                ->label(__('admin.fields.card_template_part_label_position'))
+                ->options(fn (): array => PublicFrontCardTemplateRegistry::labelPositionOptions())
+                ->native(false),
+            Select::make('icon')
+                ->label(__('admin.fields.card_template_part_icon'))
+                ->helperText(__('admin.helpers.card_template_part_icon'))
+                ->options(fn (): array => PublicFrontCardTemplateRegistry::iconOptions())
+                ->native(false),
+            Select::make('icon_position')
+                ->label(__('admin.fields.card_template_part_icon_position'))
+                ->options(fn (): array => PublicFrontCardTemplateRegistry::iconPositionOptions())
+                ->native(false),
+            Select::make('layout')
+                ->label(__('admin.fields.card_template_part_layout'))
+                ->helperText(__('admin.helpers.card_template_part_layout'))
+                ->options(fn (): array => PublicFrontCardTemplateRegistry::partLayoutOptions())
+                ->default('inline')
+                ->native(false),
+            TextInput::make('order')
+                ->label(__('admin.fields.card_template_part_order'))
+                ->helperText(__('admin.helpers.card_template_part_order'))
+                ->numeric()
+                ->integer()
+                ->minValue(0)
+                ->maxValue(1000),
+            Select::make('line_clamp')
+                ->label(__('admin.fields.card_template_part_line_clamp'))
+                ->helperText(__('admin.helpers.card_template_part_line_clamp'))
+                ->options(fn (): array => PublicFrontCardTemplateRegistry::lineClampOptions())
+                ->native(false),
+            Select::make('font_size')
+                ->label(__('admin.fields.card_template_part_font_size'))
+                ->options(fn (): array => PublicFrontCardTemplateRegistry::fontSizeOptions())
+                ->native(false),
+            Select::make('url_target')
+                ->label(__('admin.fields.card_template_part_url_target'))
+                ->options(fn (): array => PublicFrontCardTemplateRegistry::urlTargetOptions())
+                ->native(false),
+            TextInput::make('text')
+                ->label(__('admin.fields.card_template_part_text'))
+                ->helperText(__('admin.helpers.card_template_part_text'))
+                ->maxLength(500)
+                ->visible($type === 'custom_text'),
+        ];
+    }
+
+    /**
+     * @param  array<int, array<string, mixed>>  $templates
+     * @return array<int, array<string, mixed>>
+     */
+    private function cardTemplatesForBuilder(array $templates): array
+    {
+        return collect($templates)
+            ->map(function (array $template): array {
+                $template['parts'] = collect($template['parts'] ?? [])
+                    ->filter(fn (mixed $part): bool => is_array($part))
+                    ->map(fn (array $part): array => [
+                        'type' => $part['type'] ?? 'custom_text',
+                        'data' => Arr::except($part, ['type']),
+                    ])
+                    ->values()
+                    ->all();
+
+                return $template;
+            })
+            ->values()
+            ->all();
     }
 }

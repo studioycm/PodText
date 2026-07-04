@@ -19,6 +19,7 @@ use App\Settings\PublicContentSettings;
 use App\Support\PublicContent\PublicContentCardOptions;
 use App\Support\PublicContent\PublicContentItemQueries;
 use App\Support\PublicContent\PublicContributorDiscovery;
+use App\Support\PublicFront\Cards\PublicFrontCardTemplateResolver;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Pagination\LengthAwarePaginator;
@@ -245,6 +246,7 @@ class ContentItemSearch extends Component
     public function render(): View
     {
         $cardOptions = $this->cardOptions();
+        $templateResolver = app(PublicFrontCardTemplateResolver::class);
         $layout = $this->resultLayout();
         $sections = $this->shouldRenderHomepageSections()
             ? $this->homepageSections()
@@ -259,7 +261,9 @@ class ContentItemSearch extends Component
         return view('livewire.public.content-item-search', [
             'authorOptions' => $this->authorOptions(),
             'cardOptions' => $cardOptions,
+            'cardTemplate' => $templateResolver->resolve('content_item'),
             'categoryOptions' => $this->categoryOptions(),
+            'contributorCardTemplate' => $templateResolver->resolve('contributor'),
             'contentGroupOptions' => $this->contentGroupOptions(),
             'layout' => $layout,
             'providerOptions' => $this->providerOptions(),

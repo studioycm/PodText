@@ -14,6 +14,7 @@
         <x-public.content-item-grid
             :items="$items"
             :card-options="$cardOptions"
+            :card-template="$cardTemplate"
             layout="cards"
         />
 

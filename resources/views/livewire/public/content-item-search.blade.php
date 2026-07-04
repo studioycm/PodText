@@ -98,6 +98,7 @@
                                     <x-public.contributor-card
                                         :author="$author"
                                         :full-page-url="\App\Filament\Public\Pages\ShowContributor::getUrl(['authorSlug' => $author->slug], panel: 'public')"
+                                        :card-template="$contributorCardTemplate"
                                         wire:key="top-transcriber-card-{{ $author->id }}"
                                     />
                                 @endforeach
@@ -112,6 +113,7 @@
                             :items="$section['items']"
                             :card-options="$cardOptions"
                             :layout="$layout"
+                            :card-template="$cardTemplate"
                             wire:key="{{ $section['key'] }}"
                         />
                     @else
@@ -128,6 +130,7 @@
                 :items="$results"
                 :card-options="$cardOptions"
                 :layout="$layout"
+                :card-template="$cardTemplate"
             />
 
             @if($results->hasPages())

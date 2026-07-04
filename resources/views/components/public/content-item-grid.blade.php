@@ -2,6 +2,7 @@
     'items',
     'cardOptions',
     'layout' => 'cards',
+    'cardTemplate' => null,
 ])
 
 @php
@@ -20,6 +21,7 @@
             :item="$item"
             :options="$cardOptions"
             :layout="$layout"
+            :card-template="$cardTemplate"
             wire:key="content-item-card-{{ $item->id }}"
         />
     @endforeach

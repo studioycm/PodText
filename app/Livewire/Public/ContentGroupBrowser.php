@@ -3,6 +3,7 @@
 namespace App\Livewire\Public;
 
 use App\Models\ContentGroup;
+use App\Support\PublicFront\Cards\PublicFrontCardTemplateResolver;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Pagination\LengthAwarePaginator;
@@ -53,7 +54,9 @@ class ContentGroupBrowser extends Component
 
     public function render(): View
     {
-        return view('livewire.public.content-group-browser');
+        return view('livewire.public.content-group-browser', [
+            'cardTemplate' => app(PublicFrontCardTemplateResolver::class)->resolve('content_group'),
+        ]);
     }
 
     private function normalizedSort(): string

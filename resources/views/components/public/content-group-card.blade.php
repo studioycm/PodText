@@ -1,12 +1,24 @@
-@props(['group'])
+@props([
+    'group',
+    'cardTemplate' => null,
+])
 
 @php
+    $templateRenderer = app(\App\Support\PublicFront\Cards\PublicFrontCardTemplateRenderer::class);
+    $cardTemplate ??= $templateRenderer->resolve('content_group');
+    $templateAttributes = $templateRenderer->compatibilityAttributes($cardTemplate);
     $groupUrl = \App\Filament\Public\Pages\ShowContentGroup::getUrl(['contentGroupSlug' => $group->slug], panel: 'public');
     $coverUrl = $group->cover_path ? \Illuminate\Support\Facades\Storage::disk('public')->url($group->cover_path) : null;
     $excerpt = str($group->description_markdown ?? '')->stripTags()->squish()->limit(150);
 @endphp
 
-<article {{ $attributes->merge(['class' => 'group overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm transition hover:border-primary-300 hover:shadow-md dark:border-gray-800 dark:bg-gray-900 dark:hover:border-primary-500']) }}>
+<article
+    {{ $attributes->merge(['class' => 'group overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm transition hover:border-primary-300 hover:shadow-md dark:border-gray-800 dark:bg-gray-900 dark:hover:border-primary-500']) }}
+    data-card-template-family="{{ $templateAttributes['data-card-template-family'] }}"
+    data-card-template-key="{{ $templateAttributes['data-card-template-key'] }}"
+    data-card-template-layout="{{ $templateAttributes['data-card-template-layout'] }}"
+    data-card-template-parts="{{ $templateAttributes['data-card-template-parts'] }}"
+>
     <a href="{{ $groupUrl }}" class="block focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-600">
         @if ($coverUrl)
             <img src="{{ $coverUrl }}" alt="" class="aspect-[16/10] w-full object-cover">

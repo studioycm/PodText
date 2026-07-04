@@ -2,9 +2,13 @@
     'item',
     'options' => \App\Support\PublicContent\PublicContentCardOptions::fromSettings(),
     'layout' => 'cards',
+    'cardTemplate' => null,
 ])
 
 @php
+    $templateRenderer = app(\App\Support\PublicFront\Cards\PublicFrontCardTemplateRenderer::class);
+    $cardTemplate ??= $templateRenderer->resolve('content_item');
+    $templateAttributes = $templateRenderer->compatibilityAttributes($cardTemplate);
     $itemUrl = \App\Filament\Public\Pages\ShowContentItem::getUrl([
         'contentGroupSlug' => $item->contentGroup->slug,
         'contentItemSlug' => $item->slug,
@@ -34,6 +38,10 @@
     data-card-image-size="{{ $options->imageSize }}"
     data-card-title-size="{{ $options->titleSize }}"
     data-result-layout="{{ $layout }}"
+    data-card-template-family="{{ $templateAttributes['data-card-template-family'] }}"
+    data-card-template-key="{{ $templateAttributes['data-card-template-key'] }}"
+    data-card-template-layout="{{ $templateAttributes['data-card-template-layout'] }}"
+    data-card-template-parts="{{ $templateAttributes['data-card-template-parts'] }}"
 >
     @if($options->imageSize !== 'hidden')
         <a
