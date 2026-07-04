@@ -32,6 +32,8 @@ class PublicPanelProvider extends PanelProvider
             ->path('')
             ->viteTheme('resources/css/filament/public/theme.css')
             ->brandName(fn (): string => __('app.name'))
+            ->brandLogo(fn (): string => asset('images/podtext-logo.jpg'))
+            ->brandLogoHeight('60px')
             ->font('Varela Round')
             ->colors([
                 'primary' => Color::Amber,

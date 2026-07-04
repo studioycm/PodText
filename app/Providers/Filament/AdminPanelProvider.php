@@ -32,6 +32,8 @@ class AdminPanelProvider extends PanelProvider
             ->login()
             ->profile()
             ->passwordReset()
+            ->brandLogo(fn (): string => asset('images/podtext-logo.jpg'))
+            ->brandLogoHeight('60px')
             ->sidebarWidth('15rem')
             ->sidebarCollapsibleOnDesktop()
 //            ->sidebarFullyCollapsibleOnDesktop()
