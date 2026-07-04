@@ -1,5 +1,26 @@
 # Public Front v2 Open Questions
 
+## Resolved User Decisions
+
+These answers were provided after the research pack was created. Implementation agents should follow `docs/phase-02/public-front-v2-execution-plan.md` as the active decision source.
+
+- Public form submissions are stored in v1 with admin review/status/history.
+- Public forms require honeypot and rate limiting before live public use.
+- Email notifications are deferred.
+- Public form file uploads are deferred.
+- Multiple public transcriptions are disabled by default; a content item has one public featured/effective transcription.
+- Publishing a second public transcription requires an explicit publish-and-replace style action.
+- Public content group URLs move to canonical `/podcasts`; internal architecture remains `ContentGroup`/`ContentItem`.
+- About content supports both Markdown and RichEditor JSON through safe/sanitized renderers.
+- Homepage JSON columns are decided during implementation planning; current execution plan adds them in the looper step.
+- First card families are content item, group, and contributor.
+- Card templates are global reusable templates with section-selected template keys and validated semantic section overrides.
+- Public menu v1 is flat and includes public form actions.
+- Latest/search uses top next/previous controls, bottom load-more, and a custom Livewire filter drawer.
+- Demo data includes a cleanup Artisan command.
+- Demo podcast cover assets are imported from an operator-provided local source during demo seeding with normalized names.
+- `public/images/podtext-logo.jpg` is the normalized public logo asset.
+
 ## Blocking Before Implementation
 
 1. Should public form submissions be stored in v1?

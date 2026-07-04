@@ -7,10 +7,11 @@ Use this index when turning the Public Front v2 research into future implementat
 ## Start Here
 
 1. Read `docs/phase-02/public-front-v2-final-report.md`.
-2. Resolve relevant questions in `docs/phase-02/public-front-v2-open-questions.md`.
-3. Read the matching research file under `docs/research/public-front-v2/`.
-4. Read the matching blueprint under `docs/phase-02/blueprints/public-front-v2/`.
-5. Re-run preflight from `AGENTS.md` and the active implementation prompt.
+2. Read `docs/phase-02/public-front-v2-execution-plan.md` for the approved user decisions and execution order.
+3. Use `docs/phase-02/public-front-v2-open-questions.md` only for historical context and unresolved/deferred follow-ups.
+4. Read the matching research file under `docs/research/public-front-v2/`.
+5. Read the matching blueprint under `docs/phase-02/blueprints/public-front-v2/`.
+6. Re-run preflight from `AGENTS.md` and the active implementation prompt.
 
 ## Topic To Blueprint Map
 
