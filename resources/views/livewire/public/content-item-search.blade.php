@@ -60,29 +60,30 @@
     @if($sections->isNotEmpty())
         <div class="space-y-8" data-test="homepage-sections">
             @foreach($sections as $section)
-                <section class="space-y-4" data-test="homepage-section" data-section-type="{{ $section['type'] }}">
+                @php
+                    $sectionType = $section->section?->type?->value ?? ($section->sourceType === 'latest_content_items' ? 'latest' : $section->sourceType);
+                @endphp
+
+                <section class="space-y-4" data-test="homepage-section" data-section-type="{{ $sectionType }}">
                     <div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
                         <div class="space-y-1">
-                            @if($section['targetLabel'])
+                            @if($section->targetLabel)
                                 <p class="text-sm font-medium text-primary-600 dark:text-primary-400" data-test="homepage-section-target">
-                                    {{ $section['targetLabel'] }}
+                                    {{ $section->targetLabel }}
                                 </p>
                             @endif
 
-                            <h2 class="text-xl font-semibold tracking-normal text-gray-950 dark:text-white" data-test="homepage-section-heading">
-                                {{ $section['heading'] }}
-                            </h2>
-
-                            @if($section['description'])
-                                <p class="max-w-3xl text-sm leading-6 text-gray-600 dark:text-gray-300">
-                                    {{ $section['description'] }}
-                                </p>
+                            @if($section->heading)
+                                <h2 class="text-xl font-semibold tracking-normal text-gray-950 dark:text-white" data-test="homepage-section-heading">
+                                    {{ $section->heading }}
+                                </h2>
                             @endif
+
                         </div>
 
-                        @if($section['viewMoreUrl'])
+                        @if($section->viewMoreUrl)
                             <a
-                                href="{{ $section['viewMoreUrl'] }}"
+                                href="{{ $section->viewMoreUrl }}"
                                 class="text-sm font-medium text-primary-700 hover:text-primary-900 dark:text-primary-300 dark:hover:text-primary-100"
                                 data-test="homepage-section-view-more"
                             >
@@ -91,14 +92,14 @@
                         @endif
                     </div>
 
-                    @if($section['type'] === \App\Enums\HomepageSectionType::TopTranscribers->value)
-                        @if($section['contributors']->isNotEmpty())
+                    @if(in_array($section->sourceType, ['contributors', 'top_transcribers'], true))
+                        @if($section->contributors->isNotEmpty())
                             <div class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3" data-test="top-transcribers-grid">
-                                @foreach($section['contributors'] as $author)
+                                @foreach($section->contributors as $author)
                                     <x-public.contributor-card
                                         :author="$author"
                                         :full-page-url="\App\Filament\Public\Pages\ShowContributor::getUrl(['authorSlug' => $author->slug], panel: 'public')"
-                                        :card-template="$contributorCardTemplate"
+                                        :card-template="$section->cardTemplate"
                                         wire:key="top-transcriber-card-{{ $author->id }}"
                                     />
                                 @endforeach
@@ -108,13 +109,44 @@
                                 {{ __('public.empty.contributors') }}
                             </div>
                         @endif
-                    @elseif($section['items']->isNotEmpty())
+                    @elseif($section->contentGroups->isNotEmpty())
+                        <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3" data-test="content-groups-grid">
+                            @foreach($section->contentGroups as $group)
+                                <x-public.content-group-card
+                                    :group="$group"
+                                    :card-template="$section->cardTemplate"
+                                    wire:key="homepage-content-group-{{ $group->id }}"
+                                />
+                            @endforeach
+                        </div>
+                    @elseif($section->categories->isNotEmpty())
+                        <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3" data-test="categories-grid">
+                            @foreach($section->categories as $category)
+                                <a
+                                    href="{{ \App\Filament\Public\Pages\BrowseCategoryContentItems::getUrl(['categorySlug' => $category->slug], panel: 'public') }}"
+                                    class="block rounded-lg border border-gray-200 bg-white p-4 shadow-sm transition hover:border-primary-300 hover:shadow-md dark:border-gray-800 dark:bg-gray-900 dark:hover:border-primary-700"
+                                    data-test="category-card"
+                                    wire:key="homepage-category-{{ $category->id }}"
+                                >
+                                    <h3 class="text-base font-semibold text-gray-950 dark:text-white">
+                                        {{ $category->name }}
+                                    </h3>
+
+                                    @if(filled($category->description_markdown))
+                                        <p class="mt-2 line-clamp-3 text-sm leading-6 text-gray-600 dark:text-gray-300">
+                                            {{ str($category->description_markdown)->stripTags()->squish() }}
+                                        </p>
+                                    @endif
+                                </a>
+                            @endforeach
+                        </div>
+                    @elseif($section->items->isNotEmpty())
                         <x-public.content-item-grid
-                            :items="$section['items']"
+                            :items="$section->items"
                             :card-options="$cardOptions"
-                            :layout="$layout"
-                            :card-template="$cardTemplate"
-                            wire:key="{{ $section['key'] }}"
+                            :layout="$section->layout($layout)"
+                            :card-template="$section->cardTemplate ?? $cardTemplate"
+                            wire:key="{{ $section->key }}"
                         />
                     @else
                         <div class="rounded-lg border border-dashed border-gray-300 bg-white p-6 text-sm text-gray-600 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300" data-test="homepage-section-empty">

@@ -157,7 +157,7 @@ it('consumes card field visibility and semantic display settings', function (): 
         ->assertSee($category->name)
         ->assertSee($tag->name)
         ->assertSee('Visible description text')
-        ->assertSee(now()->subDay()->format('d/m/Y'));
+        ->assertSee($item->effectiveTranscription()?->published_at?->timezone('Asia/Jerusalem')->format('d/m/Y'));
 
     savePrompt11PublicSettings([
         'homepage_show_authors' => false,

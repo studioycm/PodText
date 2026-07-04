@@ -2,11 +2,6 @@
 
 namespace App\Livewire\Public;
 
-use App\Enums\HomepageSectionType;
-use App\Filament\Public\Pages\BrowseCategoryContentItems;
-use App\Filament\Public\Pages\BrowseContributors;
-use App\Filament\Public\Pages\BrowseTagContentItems;
-use App\Filament\Public\Pages\SearchContentItems;
 use App\Filament\Public\Pages\ShowContentGroup;
 use App\Filament\Public\Pages\ShowContentItem;
 use App\Models\Author;
@@ -18,8 +13,9 @@ use App\Models\HomepageSection;
 use App\Settings\PublicContentSettings;
 use App\Support\PublicContent\PublicContentCardOptions;
 use App\Support\PublicContent\PublicContentItemQueries;
-use App\Support\PublicContent\PublicContributorDiscovery;
 use App\Support\PublicFront\Cards\PublicFrontCardTemplateResolver;
+use App\Support\PublicFront\Sections\PublicDisplaySectionResolver;
+use App\Support\PublicFront\Sections\PublicDisplaySectionResult;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Pagination\LengthAwarePaginator;
@@ -263,7 +259,6 @@ class ContentItemSearch extends Component
             'cardOptions' => $cardOptions,
             'cardTemplate' => $templateResolver->resolve('content_item'),
             'categoryOptions' => $this->categoryOptions(),
-            'contributorCardTemplate' => $templateResolver->resolve('contributor'),
             'contentGroupOptions' => $this->contentGroupOptions(),
             'layout' => $layout,
             'providerOptions' => $this->providerOptions(),
@@ -487,164 +482,36 @@ class ContentItemSearch extends Component
             ->withQueryString();
     }
 
-    /**
-     * @return Collection<int, array<string, mixed>>
-     */
+    /** @return Collection<int, PublicDisplaySectionResult> */
     protected function homepageSections(): Collection
     {
         $sections = HomepageSection::query()
             ->visible()
             ->ordered()
             ->with(['category', 'tag', 'contentGroup'])
-            ->get()
-            ->filter(fn (HomepageSection $section): bool => $this->isRenderableHomepageSection($section));
+            ->get();
 
         if ($sections->isEmpty()) {
             return $this->settings()->show_latest_section
-                ? collect([$this->defaultLatestSectionData()])
+                ? collect([$this->sectionResolver()->defaultLatestSection($this->homepageItemLimit())])
                 : collect();
         }
 
         return $sections
-            ->map(fn (HomepageSection $section): array => $this->homepageSectionData($section))
+            ->reject(fn (HomepageSection $section): bool => $section->type?->value === 'latest' && ! $this->settings()->show_latest_section)
+            ->pipe(fn (Collection $sections): Collection => $this->sectionResolver()->resolveMany($sections))
             ->values();
-    }
-
-    protected function isRenderableHomepageSection(HomepageSection $section): bool
-    {
-        if ($section->type === HomepageSectionType::CuratedQuery) {
-            return false;
-        }
-
-        if ($section->type === HomepageSectionType::Latest) {
-            return $this->settings()->show_latest_section;
-        }
-
-        if ($section->type === HomepageSectionType::Category) {
-            return (bool) $section->category?->is_visible;
-        }
-
-        if ($section->type === HomepageSectionType::Tag) {
-            return (bool) $section->tag?->is_enabled;
-        }
-
-        if ($section->type === HomepageSectionType::ContentGroup) {
-            return $section->contentGroup !== null;
-        }
-
-        if ($section->type === HomepageSectionType::TopTranscribers) {
-            return true;
-        }
-
-        return false;
-    }
-
-    /**
-     * @return array<string, mixed>
-     */
-    protected function homepageSectionData(HomepageSection $section): array
-    {
-        return [
-            'description' => null,
-            'contributors' => $this->homepageSectionContributors($section),
-            'heading' => $section->name,
-            'items' => $this->homepageSectionItems($section),
-            'key' => "section-{$section->getKey()}",
-            'targetLabel' => $this->homepageSectionTargetLabel($section),
-            'type' => $section->type->value,
-            'viewMoreUrl' => $this->homepageSectionViewMoreUrl($section),
-        ];
-    }
-
-    /**
-     * @return array<string, mixed>
-     */
-    protected function defaultLatestSectionData(): array
-    {
-        return [
-            'description' => null,
-            'contributors' => collect(),
-            'heading' => __('public.sections.latest'),
-            'items' => $this->applyPinnedFirstSort($this->basePublicQuery())
-                ->limit($this->homepageItemLimit())
-                ->get(),
-            'key' => 'section-latest-default',
-            'targetLabel' => null,
-            'type' => HomepageSectionType::Latest->value,
-            'viewMoreUrl' => SearchContentItems::getUrl(panel: 'public'),
-        ];
-    }
-
-    protected function homepageSectionItems(HomepageSection $section): Collection
-    {
-        if ($section->type === HomepageSectionType::TopTranscribers) {
-            return collect();
-        }
-
-        $query = $this->basePublicQuery();
-
-        if ($section->type === HomepageSectionType::Category) {
-            $query->inCategoryTree($section->category);
-        }
-
-        if ($section->type === HomepageSectionType::Tag) {
-            $query->withEnabledContentTag($section->tag);
-        }
-
-        if ($section->type === HomepageSectionType::ContentGroup) {
-            $query->where('content_group_id', $section->contentGroup->getKey());
-        }
-
-        return $this->applyPinnedFirstSort($query)
-            ->limit(max(1, $section->limit))
-            ->get();
-    }
-
-    protected function homepageSectionContributors(HomepageSection $section): Collection
-    {
-        if ($section->type !== HomepageSectionType::TopTranscribers) {
-            return collect();
-        }
-
-        return PublicContributorDiscovery::topContributors($section->limit);
-    }
-
-    protected function homepageSectionTargetLabel(HomepageSection $section): ?string
-    {
-        return match ($section->type) {
-            HomepageSectionType::Category => $section->category?->name,
-            HomepageSectionType::Tag => $section->tag?->name,
-            HomepageSectionType::ContentGroup => $section->contentGroup?->title,
-            HomepageSectionType::TopTranscribers => __('public.sections.top_transcribers_target'),
-            default => null,
-        };
-    }
-
-    protected function homepageSectionViewMoreUrl(HomepageSection $section): ?string
-    {
-        return match ($section->type) {
-            HomepageSectionType::Latest => SearchContentItems::getUrl(panel: 'public'),
-            HomepageSectionType::Category => $section->category
-                ? BrowseCategoryContentItems::getUrl(['categorySlug' => $section->category->slug], panel: 'public')
-                : null,
-            HomepageSectionType::Tag => $section->tag
-                ? BrowseTagContentItems::getUrl(['tagSlug' => $section->tag->slug], panel: 'public')
-                : null,
-            HomepageSectionType::ContentGroup => $section->contentGroup
-                ? ShowContentGroup::getUrl(['contentGroupSlug' => $section->contentGroup->slug], panel: 'public')
-                : null,
-            HomepageSectionType::TopTranscribers => BrowseContributors::getUrl(panel: 'public'),
-            default => null,
-        };
     }
 
     protected function sectionResultCount(Collection $sections): int
     {
         return $sections
-            ->flatMap(function (array $section): Collection {
-                return $section['items']
+            ->flatMap(function (PublicDisplaySectionResult $section): Collection {
+                return $section->items
                     ->pluck('id')
-                    ->merge($section['contributors']->map(fn (Author $author): string => "author-{$author->id}"));
+                    ->merge($section->contentGroups->map(fn (ContentGroup $group): string => "group-{$group->id}"))
+                    ->merge($section->categories->map(fn (Category $category): string => "category-{$category->id}"))
+                    ->merge($section->contributors->map(fn (mixed $author): string => "author-{$author->id}"));
             })
             ->unique()
             ->count();
@@ -701,5 +568,10 @@ class ContentItemSearch extends Component
     protected function cardOptions(): PublicContentCardOptions
     {
         return PublicContentCardOptions::fromSettings($this->settings());
+    }
+
+    protected function sectionResolver(): PublicDisplaySectionResolver
+    {
+        return app(PublicDisplaySectionResolver::class);
     }
 }

@@ -21,6 +21,10 @@ use Illuminate\Support\Str;
     'limit',
     'sort_order',
     'is_visible',
+    'source_config',
+    'selection_config',
+    'display_config',
+    'pagination_config',
 ])]
 class HomepageSection extends Model
 {
@@ -31,6 +35,10 @@ class HomepageSection extends Model
         'limit' => 6,
         'sort_order' => 0,
         'is_visible' => true,
+        'source_config' => '[]',
+        'selection_config' => '[]',
+        'display_config' => '[]',
+        'pagination_config' => '[]',
     ];
 
     public function category(): BelongsTo
@@ -60,6 +68,38 @@ class HomepageSection extends Model
             ->orderBy('id');
     }
 
+    /**
+     * @return array<string, mixed>
+     */
+    public function sourceConfig(): array
+    {
+        return $this->configArray('source_config');
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function selectionConfig(): array
+    {
+        return $this->configArray('selection_config');
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function displayConfig(): array
+    {
+        return $this->configArray('display_config');
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function paginationConfig(): array
+    {
+        return $this->configArray('pagination_config');
+    }
+
     protected static function booted(): void
     {
         static::creating(function (HomepageSection $homepageSection): void {
@@ -78,12 +118,26 @@ class HomepageSection extends Model
         return [
             'category_id' => 'integer',
             'content_group_id' => 'integer',
+            'display_config' => 'array',
             'is_visible' => 'boolean',
             'limit' => 'integer',
+            'pagination_config' => 'array',
+            'selection_config' => 'array',
+            'source_config' => 'array',
             'sort_order' => 'integer',
             'tag_id' => 'integer',
             'type' => HomepageSectionType::class,
         ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function configArray(string $key): array
+    {
+        $value = $this->getAttribute($key);
+
+        return is_array($value) ? $value : [];
     }
 
     private static function uniqueSlug(string $source): string
