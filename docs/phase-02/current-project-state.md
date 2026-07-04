@@ -22,7 +22,10 @@ Recorded after the Markdown-only post-Prompt-10 prompt-progress centralization c
 - Prompt 11A admin relationship UX is implemented and committed as `1d81ec0 feat: improve admin relationship management ux`.
 - Prompt 11B public contributors/transcribers discovery is implemented and committed as `8998f7e feat: add public contributor discovery`.
 - Prompt 12 readiness sync is implemented and committed locally as `23242a1 docs: prepare prompt twelve after public discovery work`.
-- Prompt 12 public item page/media/parser is implemented in this change set.
+- Prompt 12 public item page/media/parser is implemented and committed as `ffba2b3 feat: add public item page media and transcript parser`.
+- Public Front v2 research and blueprint planning commits are present: `f9a1f80 docs: research public front v2 json settings blueprint plan`, `adbed99 docs: add blueprint results for public front v2 plans`, and `40aeafc docs: add execution plan for Public Front v2 implementation`.
+- PodText brand-logo customization is implemented and committed as `6962c82 feat: add customizable brand logo and height for admin and public panels`; the logo exists at `public/images/podtext-logo.jpg`.
+- Public Front v2 correction/Step 1 prompt pack is present as `716ee5a docs: add corrections to Public Front v2 execution plan and initial Step 1 prompt files`.
 
 ## Prompt Progress
 
@@ -41,14 +44,17 @@ Recorded after the Markdown-only post-Prompt-10 prompt-progress centralization c
 | Prompt 11A admin relationship UX | Complete | `1d81ec0 feat: improve admin relationship management ux` | Adds safe admin create/edit option modals and `ContentGroupResource` -> `ContentItemsRelationManager`; Prompt 12 not started. |
 | Prompt 11B public contributors/transcribers discovery | Complete | `8998f7e feat: add public contributor discovery` | Adds `top_transcribers`, public contributor directory, previews, full contributor page, and demo seeder state; Prompt 12 not started. |
 | Prompt 12 readiness sync | Complete | `23242a1 docs: prepare prompt twelve after public discovery work` | Prepared Prompt 12 activation without starting implementation. |
-| Prompt 12 media embed/item page/parser | Complete in this change set | `feat: add public item page media and transcript parser` | Adds the public item page, safe media component behavior, and parse-only transcript viewer. |
-| Prompt 13 dashboard metrics | Pending after Prompt 12, not started | Active prompt/blueprint | Owns editorial dashboard widgets. |
+| Prompt 12 media embed/item page/parser | Complete | `ffba2b3 feat: add public item page media and transcript parser` | Adds the public item page, safe media component behavior, and parse-only transcript viewer. |
+| Public Front v2 planning/research | Complete | `40aeafc docs: add execution plan for Public Front v2 implementation` plus prior research/blueprint commits | Public Front v2 should run before Prompt 13 unless the user explicitly chooses dashboard metrics first. |
+| Public Front v2 docs correction before Step 1 | Complete in the current docs-correction commit | `docs: correct public front v2 execution plan` | Corrects execution order, reserves transcription publication policy, and requires Step 1 handoff. |
+| Public Front v2 Step 1 JSON Settings Architecture | Next | Active prompt `02-public-front-v2-step1-json-settings-architecture-v2.md` | Must create `docs/phase-02/public-front-v2-step1-json-settings-handoff.md`. |
+| Prompt 13 dashboard metrics | Blocked unless explicitly chosen by user | Active prompt/blueprint | Owns editorial dashboard widgets after Public Front v2 or an explicit dashboard-first decision. |
 | Prompt 14 viewer/studio future plan | Future planning after Prompt 13 | Active prompt/blueprint | Documentation/planning only. |
 | Prompt 15 Filament Blueprint security audit | Audit after Prompt 14 | Active prompt/blueprint | Audit-only unless fixes are explicitly approved. |
 
 ## Active Known Blockers
 
-- No active blocker is recorded for starting Prompt 13 after Prompt 12 is committed.
+- Prompt 13 dashboard metrics is intentionally blocked until Public Front v2 is implemented or the user explicitly chooses dashboard metrics first.
 - The `model:show` baseline issue below remains unresolved and should be avoided until investigated.
 
 ## Deferred Items
@@ -64,6 +70,7 @@ Recorded after the Markdown-only post-Prompt-10 prompt-progress centralization c
 - The Add transcription table/relation-manager row action reuses the existing author selector and remains options-only because it is not a relationship-bound Resource form selector.
 - Editorial dashboard widgets belong to Prompt 13.
 - Viewer/studio sync planning belongs to Prompt 14; no sync/studio implementation is active yet.
+- Public Front v2 Step 2 / Reserved transcription publication policy is deferred. Keep the current featured/effective transcription behavior unless a later isolated prompt explicitly promotes the policy work.
 
 ## Tooling State
 
@@ -127,6 +134,8 @@ Laravel Boost MCP tools were exposed and usable during Prompt 10.
   - `App\Livewire\Public\ContributorContentItems`
 - Prompt 12 public item transcript viewer component:
   - `App\Livewire\Public\ContentItemTranscriptViewer`
+- PodText logo baseline:
+  - `public/images/podtext-logo.jpg`
 - Prompt 11R public Blade components:
   - `resources/views/components/public/contributor-card.blade.php`
   - `resources/views/components/public/content-item-card.blade.php`
@@ -359,7 +368,7 @@ Current physical schema verified through Boost `database_schema`:
 - Prompt 11A is complete and committed as `1d81ec0 feat: improve admin relationship management ux`.
 - Prompt 11B is complete and committed as `8998f7e feat: add public contributor discovery`.
 - Prompt 12 readiness sync is complete and committed as `23242a1 docs: prepare prompt twelve after public discovery work`.
-- Prompt 12 is implemented in this change set.
+- Prompt 12 is implemented and committed as `ffba2b3 feat: add public item page media and transcript parser`.
 - The public item page resolves only published groups, published items, and items with at least one published effective/main transcription.
 - The item page preserves Prompt 11R custom Livewire + Blade homepage/search behavior and Prompt 11B contributor discovery routes, author/contributor links, and `top_transcribers` sections.
 - The item page shows day-first dates, duration, categories, enabled content tags, author/contributor links, copy/share actions, safe description Markdown, and the transcript viewer in an RTL public layout.
@@ -368,7 +377,28 @@ Current physical schema verified through Boost `database_schema`:
 - `ContentItemTranscriptViewer` defaults to the effective transcription, exposes only published transcription tabs/selector choices, keeps selection URL-backed by transcription reference key, and falls back to safe Markdown when parsing finds no segments.
 - Viewer controls are local Alpine preferences for show/hide timestamps and speakers; timestamp anchors are direction-safe with `dir="ltr"`.
 - Prompt 12 did not add player sync, transcription studio, autosave, dashboard widgets, analytics, metadata extraction automation, import/export behavior changes, admin relationship UX changes, homepage/search rewrites, or contributor discovery changes.
-- Prompt 13 dashboard metrics is next and has not started.
+- Prompt 13 dashboard metrics is blocked until Public Front v2 is implemented or the user explicitly chooses dashboard metrics first.
+
+## Public Front v2 Planning Notes
+
+- Public Front v2 research, blueprint, blueprint-result, and execution-plan docs exist.
+- Public Front v2 runs before Prompt 13 unless the user explicitly chooses dashboard metrics first.
+- The execution plan is an implementation guide, not a single prompt. Run one implementation prompt per step.
+- Corrected step order:
+  - Step 1: JSON Settings Architecture.
+  - Step 2 / Reserved: Transcription Publication Policy, deferred unless explicitly promoted as an isolated prompt.
+  - Step 3: Card Template Builder.
+  - Step 4: Public Display Sections and Loopers.
+  - Step 5: Latest and Search UX.
+  - Step 6: Public Forms and Submissions.
+  - Step 7: About Page Content and Team Builder.
+  - Step 8: Podcasts and Groups UX.
+  - Step 9: Public Menu and Header.
+  - Step 10: Contributors and Top Transcribers UX.
+  - Step 11: Seeders, Demo Data, Assets, and Cleanup.
+  - Step 12: Prompt 13 Dashboard Metrics readiness / next decision.
+- Step 1 must create `docs/phase-02/public-front-v2-step1-json-settings-handoff.md` for ChatGPT/Yoni before Step 3+ prompts are generated.
+- The PodText logo already exists at `public/images/podtext-logo.jpg` and must be preserved by future public-front work.
 
 ## Post-Prompt-10 Guidance Sync Notes
 

@@ -10,14 +10,17 @@ This is the approved execution plan for implementing Public Front v2 after Promp
 
 This file is an implementation guide, not completed implementation.
 
+The execution plan must not be pasted into Codex as one giant implementation task. Convert it into one implementation prompt per step. Each step must complete, run its quality gate, update current state, and commit before the next step starts.
+
 ## Approved Decisions
 
 - Public form submissions are in scope for v1 with stored `PublicFormSubmission` records and admin review/status/history.
 - Public forms must include honeypot and rate limiting before they are enabled for live public use.
 - Email notifications are deferred until the storage and review flow is stable.
 - Public form file uploads remain deferred.
-- Public transcription policy defaults to one public transcription per content item.
-- Publishing a second public transcription must use an explicit "publish and replace" style action, not automatic replacement.
+- Public transcription publication policy is deferred/reserved, not an immediate implementation decision.
+- Current production-safe transcription behavior remains: use the existing featured/effective transcription flow, feature the first transcription by current model behavior, keep public output simple around the effective/final transcription, and do not add a complex multiple-published-transcription policy until a later dedicated prompt.
+- If transcription publication policy must be implemented earlier because an implementation conflict appears, it must run as a dedicated isolated prompt with full regression tests.
 - The canonical public path for content groups becomes `/podcasts`; internal code remains `ContentGroup` and `ContentItem`.
 - About page content supports both Markdown and RichEditor JSON, but both must render only through safe/sanitized renderers.
 - Homepage section JSON columns should be decided in implementation planning; the default execution decision is to add them in the looper step, not the foundation step.
@@ -27,7 +30,7 @@ This file is an implementation guide, not completed implementation.
 - Latest/search UX uses next/previous controls at the top, load-more at the bottom, and a custom Livewire filter drawer.
 - Demo data includes production-safe settings seeding, optional demo seeders, and a demo cleanup Artisan command.
 - Podcast cover images are imported from an operator-provided local asset source during demo seeding, with normalized public-storage names.
-- The PodText logo has been copied to `public/images/podtext-logo.jpg` for Filament/admin and public branding.
+- The PodText logo already exists at `public/images/podtext-logo.jpg` from the latest branding commit. Future steps must preserve its admin/public panel use and may reuse it in public header/menu defaults where appropriate.
 
 ## Global Guardrails
 
@@ -40,6 +43,39 @@ This file is an implementation guide, not completed implementation.
 - Keep Prompt 11B `Author` contributor discovery.
 - Keep Prompt 12 safe media and parse-only transcript rendering.
 - Every public query must preserve published group, published item, and public/effective transcription constraints.
+
+## Implementation Prompt Rules
+
+The execution plan must not be pasted into Codex as one giant implementation task. Convert it into one implementation prompt per step. Each step must complete, run its quality gate, update current state, and commit before the next step starts.
+
+After every successful implementation step:
+
+- update `docs/phase-02/current-project-state.md`;
+- mark the completed step and commit hash;
+- mark the next step;
+- patch other docs only when stable requirements, ownership, or durable lessons changed;
+- commit implementation + tests + required state docs together only after the full quality gate passes.
+
+After Step 1 completes, Codex must create a handoff report for the external reviewer agent, ChatGPT/Yoni, before future implementation prompts are generated.
+
+Required handoff file:
+`docs/phase-02/public-front-v2-step1-json-settings-handoff.md`
+
+The handoff must explain:
+
+- what JSON Settings Architecture was actually implemented;
+- final namespaces/classes/value objects/registries/readers/validators;
+- final public API/method names future prompts should call;
+- settings keys/config groups added or changed;
+- fallback/default behavior;
+- validation and sanitization behavior;
+- how invalid config is reported or ignored;
+- whether existing `PublicContentSettings` and `PublicContentCardOptions` were changed;
+- sample JSON config payloads;
+- sample PHP usage for future steps;
+- any deviations from the blueprint;
+- any small implementation details that may affect card templates, loopers, public forms, menu/header, about/team, podcasts/groups, contributors, seeders, or Prompt 13;
+- exact recommendations for how the next prompts should adapt to the final implementation.
 
 ## Step 0: Required Agent Preflight
 
@@ -76,7 +112,7 @@ Implement:
 
 Defer:
 
-- `homepage_sections` JSON columns until Step 3 unless a narrower implementation prompt explicitly needs them earlier.
+- `homepage_sections` JSON columns until Step 4 / Public Display Sections and Loopers, unless a narrower implementation prompt explicitly needs them earlier.
 
 Tests:
 
@@ -84,28 +120,29 @@ Tests:
 - Invalid keys fall back safely.
 - Raw class/CSS/SQL/PHP/Blade-looking values are rejected or ignored.
 
-## Step 2: Transcription Publication Policy
+Required Step 1 handoff:
 
-Use:
+- Create `docs/phase-02/public-front-v2-step1-json-settings-handoff.md` for ChatGPT/Yoni before future implementation prompts are generated.
+- Explain final implemented JSON settings classes, public APIs, settings keys, defaults, validation behavior, invalid-config reporting, sample payloads, sample PHP usage, deviations, and prompt-by-prompt adaptation notes.
 
-- `docs/research/public-front-v2/07-transcription-publication-policy.md`
-- `docs/phase-02/blueprints/public-front-v2/07-transcription-publication-policy-blueprint.md`
-- `docs/phase-02/blueprints/public-front-v2/blueprint-results/07-transcription-publication-policy-plan.md`
+## Step 2: Deferred / Reserved — Transcription Publication Policy
 
-Implement:
+Do not implement this step in the normal Public Front v2 run.
 
-- Default `allow_multiple_published_transcriptions_per_item = false`.
-- Public selection policy: featured/effective transcription only.
-- Validation in Transcription Resource, ContentItem transcriptions relation manager, and imports.
-- Explicit admin action to publish-and-replace/unpublish siblings.
-- Public transcript viewer renders one public transcription when the setting is false.
+Current production-safe behavior remains:
 
-Tests:
+- use the existing featured/effective transcription flow;
+- the first transcription is featured by current behavior;
+- keep public output simple around the effective/final transcription;
+- do not add a complex multiple-published-transcription policy until a later dedicated prompt.
 
-- Second published transcription is blocked without explicit replace action.
-- Replace action updates siblings intentionally.
-- Import row fails safely on policy violation.
-- Public item page does not expose extra published transcription tabs when policy is false.
+If this policy must be implemented earlier because an implementation conflict appears, it must run as a dedicated isolated prompt with full regression tests across:
+
+- TranscriptionResource;
+- ContentItem transcriptions relation manager;
+- importers;
+- public item page/transcript viewer;
+- effective transcription resolution.
 
 ## Step 3: Card Template Builder
 
@@ -201,31 +238,7 @@ Tests:
 - Required/email/url/select validation is generated from the registry.
 - Admin resource escapes payload and supports status changes.
 
-## Step 7: Public Menu And Header
-
-Use:
-
-- `docs/research/public-front-v2/04-public-menu-header-manager.md`
-- `docs/phase-02/blueprints/public-front-v2/04-public-menu-header-manager-blueprint.md`
-- `docs/phase-02/blueprints/public-front-v2/blueprint-results/04-public-menu-header-manager-plan.md`
-
-Implement:
-
-- Flat public header from settings JSON.
-- Default items: home, podcasts, about, request transcription form, volunteer transcriber form, theme selector.
-- Internal routes through a route registry.
-- External URLs as HTTPS-only.
-- Public form action links using enabled form definitions.
-- Filament/admin and public branding should use `public/images/podtext-logo.jpg` where Filament panel APIs support it.
-
-Tests:
-
-- Default menu renders.
-- Missing/disabled form items are skipped or disabled server-side.
-- Non-HTTPS and `javascript:` URLs are rejected.
-- Public panel navigation remains disabled.
-
-## Step 8: About Page Content And Team Builder
+## Step 7: About Page Content And Team Builder
 
 Use:
 
@@ -249,7 +262,7 @@ Tests:
 - Markdown and RichEditor XSS payloads are sanitized.
 - FileUpload schema has disk, directory, visibility, MIME, and max-size rules.
 
-## Step 9: Podcasts And Groups UX
+## Step 8: Podcasts And Groups UX
 
 Use:
 
@@ -276,6 +289,31 @@ Tests:
 - Category filters include descendants and inherited group categories.
 - Search matches group name/topic safely.
 - No `Podcast` or `Episode` model is introduced.
+
+## Step 9: Public Menu And Header
+
+Use:
+
+- `docs/research/public-front-v2/04-public-menu-header-manager.md`
+- `docs/phase-02/blueprints/public-front-v2/04-public-menu-header-manager-blueprint.md`
+- `docs/phase-02/blueprints/public-front-v2/blueprint-results/04-public-menu-header-manager-plan.md`
+
+Implement:
+
+- Flat public header from settings JSON.
+- Default items: home, podcasts, about, request transcription form, volunteer transcriber form, theme selector.
+- Internal routes through a route registry.
+- External URLs as HTTPS-only.
+- Public form action links using enabled form definitions.
+- Missing route/form targets are skipped or disabled server-side.
+- Preserve existing Filament/admin and public branding that already uses `public/images/podtext-logo.jpg`, and reuse it in public header/menu defaults where appropriate.
+
+Tests:
+
+- Default menu renders.
+- Missing/disabled form items are skipped or disabled server-side.
+- Non-HTTPS and `javascript:` URLs are rejected.
+- Public panel navigation remains disabled.
 
 ## Step 10: Contributors And Top Transcribers UX
 
@@ -318,7 +356,7 @@ Implement:
 
 Logo:
 
-- Use `public/images/podtext-logo.jpg` for admin and public brand/logo settings.
+- Preserve the existing `public/images/podtext-logo.jpg` admin/public panel branding baseline and reuse it for public-front defaults where appropriate.
 
 Podcast cover image import:
 
@@ -341,7 +379,25 @@ Tests:
 
 Prompt 13 remains blocked until Public Front v2 is implemented or the user explicitly chooses to resume dashboard metrics first.
 
-When resumed, Prompt 13 should account for the new public-form submission status counts, demo/default warnings, one-public-transcription conflicts, and public-front editorial metrics only where those metrics are real schema-backed states.
+When resumed, Prompt 13 should account for the new public-form submission status counts, demo/default warnings, and public-front editorial metrics only where those metrics are real schema-backed states. Transcription-policy conflict metrics should wait unless Step 2 / Reserved is explicitly promoted and implemented.
+
+## Planned prompts after Step 1
+
+The execution plan should require one implementation prompt per step. After Step 1 is finished and reviewed, future prompts should be generated in this order, with exact wording adapted to the final JSON Settings Architecture implementation:
+
+1. Public Front v2 Step 3: Card Template Builder Foundation.
+2. Public Front v2 Step 4: Public Display Sections and Loopers.
+3. Public Front v2 Step 5: Latest and Search UX.
+4. Public Front v2 Step 6: Public Forms and Submissions.
+5. Public Front v2 Step 7: About Page Content and Team Builder.
+6. Public Front v2 Step 8: Podcasts and Groups UX.
+7. Public Front v2 Step 9: Public Menu and Header.
+8. Public Front v2 Step 10: Contributors and Top Transcribers UX.
+9. Public Front v2 Step 11: Seeders, Demo Data, Assets, and Cleanup.
+10. Public Front v2 Step 2 / Reserved: Transcription Publication Policy, only if explicitly promoted from deferred status and always as an isolated prompt.
+11. Public Front v2 Step 12: Prompt 13 Dashboard Metrics readiness / next decision.
+
+Do not pre-generate all implementation prompts before Step 1 is reviewed. The final public JSON settings API may affect all following prompts.
 
 ## Required Final Gate For Each Implementation Prompt
 

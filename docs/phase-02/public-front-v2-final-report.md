@@ -10,6 +10,7 @@ Latest local HEAD before this docs task: `aac9db9`.
 
 - Prompt 12 is complete.
 - Prompt 13 dashboard metrics is formally next but has not started.
+- Prompt 13 remains blocked until Public Front v2 is implemented or the user explicitly chooses dashboard metrics first.
 - `docs/phase-02/current-project-state.md` remains the single source of truth for rolling prompt progress.
 - Prompt 11R replaced public Filament Table listing with custom Livewire state and Blade card grids/rows.
 - Prompt 11B added contributor discovery using `Author`.
@@ -76,7 +77,7 @@ The LaravelDaily menu demo is useful UI inspiration, but it is model/table backe
 4. Public menu/header manager.
 5. About page content builder and team profiles.
 6. Configurable public forms and form submissions.
-7. Main transcription publication policy setting.
+7. Reserved transcription publication policy research.
 8. Public contributor/transcriber UX refinements.
 9. Latest/search UX refinements.
 10. Podcasts/groups page and group-page refinements.
@@ -128,37 +129,41 @@ Summary:
 - Card template builder foundation.
 - Public display sections/loopers foundation.
 - Latest/search UX repair, after the card/looper foundation.
-- Public menu/header manager.
 - About page content/team builder, after choosing Markdown vs RichEditor JSON.
+- Podcasts/groups UX.
+- Public menu/header manager, after public forms, About, and podcasts routes exist.
+- Contributors/top-transcribers UX refinements.
 - Seeders/default settings cleanup.
 
 ## Topics Requiring User Answers
 
-- Whether `PublicFormSubmission` persistence is in scope for v1.
-- Whether public form notifications/rate limiting/honeypot are required in v1.
-- Default value for multiple published transcriptions per item.
-- Whether `/groups` remains the permanent path while labels may say podcasts.
-- Whether About content supports Markdown only or RichEditor JSON plus safe renderer.
-- Whether homepage section JSON columns start in the architecture step or wait for loopers.
+- Public form submissions are now in scope for v1; email notifications and file uploads remain deferred.
+- Public transcription publication policy is deferred/reserved. Do not implement multiple-published-transcription policy until a later dedicated prompt explicitly promotes it.
+- The canonical public path for content groups is `/podcasts`; internal code remains `ContentGroup`.
+- About content supports both Markdown and RichEditor JSON through safe/sanitized renderers.
+- `homepage_sections` JSON columns are deferred until Step 4 / Public Display Sections and Loopers, unless a narrower implementation prompt explicitly needs them earlier.
 
 ## Recommended Implementation Order
 
-1. JSON settings architecture and renderer/validator conventions.
-2. Card template builder foundation.
-3. Public display sections / loopers.
-4. Latest/search UX repair.
-5. Public menu/header manager.
-6. Configurable public forms/submissions.
-7. About page content/team builder.
-8. Podcasts/group page refinements.
-9. Transcriber/top-transcriber refinements.
-10. Seeder cleanup.
-11. Transcription publication policy setting.
-12. Prompt 13 dashboard metrics only after user approves.
+0. Required agent preflight.
+1. JSON Settings Architecture.
+2. Deferred / Reserved — Transcription Publication Policy.
+3. Card Template Builder.
+4. Public Display Sections and Loopers.
+5. Latest and Search UX.
+6. Public Forms and Submissions.
+7. About Page Content and Team Builder.
+8. Podcasts and Groups UX.
+9. Public Menu and Header.
+10. Contributors and Top Transcribers UX.
+11. Seeders, Demo Data, Assets, and Cleanup.
+12. Prompt 13 Dashboard Metrics readiness / next decision.
+
+The execution plan must be converted into one implementation prompt per step, not run as one giant implementation task. After Step 1 is finished and reviewed, future prompts should be generated from the final JSON Settings Architecture implementation and its handoff report.
 
 ## Prompt 13 Recommendation
 
-Do not start Prompt 13 until Yoni reviews and approves this public-front v2 plan or explicitly chooses to proceed with Prompt 13 first.
+Do not start Prompt 13 until Public Front v2 is implemented or the user explicitly chooses to proceed with dashboard metrics first.
 
 ## Validation
 
