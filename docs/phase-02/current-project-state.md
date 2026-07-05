@@ -30,7 +30,8 @@ Recorded after the Markdown-only post-Prompt-10 prompt-progress centralization c
 - Public Front v2 Step 1 JSON Settings Architecture is implemented and committed as `fb759b5 feat: add public front json settings architecture`.
 - Public Front v2 Step 3 Card Template Builder is implemented and committed as `a0146ce feat: add public front card template builder foundation`.
 - Public Front v2 Step 4 Public Display Sections and Loopers is implemented and committed as `c0ce7d7 feat: add public display section loopers`.
-- Public Front v2 Step 5 Latest and Search UX is implemented in the current working tree and will be committed as `feat: refine public latest and search ux` after the final quality gate passes.
+- Public Front v2 Step 5 Latest and Search UX is implemented and committed as `eea9164 feat: refine public latest and search ux`.
+- Public Front v2 Step 6 Public Forms and Submissions is implemented in this change set and will be committed as `feat: add public forms and submissions` after the final quality gate passes.
 
 ## Prompt Progress
 
@@ -55,8 +56,9 @@ Recorded after the Markdown-only post-Prompt-10 prompt-progress centralization c
 | Public Front v2 Step 1 JSON Settings Architecture | Complete | `fb759b5 feat: add public front json settings architecture` | Adds the JSON settings architecture foundation and creates `docs/phase-02/public-front-v2-step1-json-settings-handoff.md` for ChatGPT/Yoni review. |
 | Public Front v2 Step 3 Card Template Builder | Complete | `a0146ce feat: add public front card template builder foundation` | Adds JSON-first card template registry/validator support, support classes, admin settings UI, compatibility rendering attributes, tests, and Step 3 handoff. |
 | Public Front v2 Step 4 Public Display Sections and Loopers | Complete | `c0ce7d7 feat: add public display section loopers` | Adds homepage section JSON config columns, section/looper validation and query support, admin config fields, Step 3 template integration, tests, and Step 4 handoff. |
-| Public Front v2 Step 5 Latest and Search UX | Complete in current implementation commit | Pending final commit: `feat: refine public latest and search ux` | Adds looper-driven Latest UX, search filter drawer, multi-select category/tag filters, card layout repair, controlled content-item renderer, tests, and Step 5 handoff. |
-| Public Front v2 Step 6 Public Forms and Submissions | Next after ChatGPT/Yoni review | Future prompt | Step 6 is the next implementation step after Step 5 review. |
+| Public Front v2 Step 5 Latest and Search UX | Complete | `eea9164 feat: refine public latest and search ux` | Adds looper-driven Latest UX, search filter drawer, multi-select category/tag filters, card layout repair, controlled content-item renderer, tests, and Step 5 handoff. |
+| Public Front v2 Step 6 Public Forms and Submissions | Complete in current implementation commit | Pending final commit: `feat: add public forms and submissions` | Adds JSON-first public form definitions, `PublicFormSubmission` schema/model/resource, Livewire public form modal/slide-over, honeypot/rate limiting, admin settings UI, tests, and Step 6 handoff. |
+| Public Front v2 Step 7 About Page Content and Team Builder | Next after ChatGPT/Yoni review | Future prompt | Step 7 is the next implementation step after Step 6 review. |
 | Prompt 13 dashboard metrics | Not started / blocked unless explicitly chosen by user | Active prompt/blueprint | Owns editorial dashboard widgets after Public Front v2 Step 12 readiness or an explicit dashboard-first decision. |
 | Prompt 14 viewer/studio future plan | Future planning after Prompt 13 | Active prompt/blueprint | Documentation/planning only. |
 | Prompt 15 Filament Blueprint security audit | Audit after Prompt 14 | Active prompt/blueprint | Audit-only unless fixes are explicitly approved. |
@@ -72,6 +74,9 @@ Recorded after the Markdown-only post-Prompt-10 prompt-progress centralization c
 - Curated homepage query sections are deferred until a concrete query-builder spec exists.
 - Homepage result previews in admin forms remain deferred.
 - Step 5B Card Template Admin Preview UX remains deferred.
+- Public Front v2 public menu/header integration for form actions remains deferred to Step 9.
+- Public form email notifications remain deferred.
+- Public form file uploads remain deferred.
 - Advanced homepage section manual-selection controls such as "select all filtered results" and "deselect all filtered results" are deferred; Step 4 ships explicit include/exclude ID selection with public visibility rechecks.
 - Associate-existing transcription remains deferred because `Transcription` belongs to one `ContentItem`.
 - A separate public volunteer/contributor profile table remains deferred; Prompt 11B uses `Author` as the public-safe contributor/transcriber entity.
@@ -125,6 +130,8 @@ Laravel Boost MCP tools were exposed and usable during Prompt 10.
 - Public Front v2 Step 4 FilamentExamples research returned snippet/source-level examples for dynamic homepage sections, section manager patterns, looper/query display concepts, and admin selection/table-selection patterns; no parallel agents or worktrees were used.
 - Public Front v2 Step 5 used Boost `application_info`, `database_schema`, and `search_docs` before changing Livewire URL state, pagination, Alpine drawer behavior, Blade rendering, card template rendering, and tests.
 - Public Front v2 Step 5 FilamentExamples `search_examples` research returned snippet-level examples for public Livewire tables/cards/filters and grid/card patterns; no full source/detail fetch was exposed for the requested latest drawer/looper renderer patterns.
+- Public Front v2 Step 6 used Boost `application_info`, `database_schema`, and `search_docs` before changing migrations, Eloquent models/enums/casts, validation, rate limiting, Livewire forms, Filament Resources, Filament form components, and Pest tests.
+- Public Front v2 Step 6 FilamentExamples `search_examples` research returned snippet/source-level examples for dynamic forms, public/custom pages, Resource tables, and actions; no full source/detail fetch tool was exposed.
 
 ## Application Shape
 
@@ -193,6 +200,18 @@ Laravel Boost MCP tools were exposed and usable during Prompt 10.
   - `App\Livewire\Public\ContentItemSearch` now owns latest section controls and multi-select search filter state.
   - `App\Support\PublicFront\Cards\PublicFrontCardTemplateRenderer::contentItemPresentation()` returns controlled content-item card presentation metadata.
   - `resources/views/components/public/public-filter-panel.blade.php` renders the public search filter drawer.
+- Public Front v2 Step 6 Public Forms and Submissions surfaces:
+  - `App\Livewire\Public\PublicFormModal`
+  - `App\Models\PublicFormSubmission`
+  - `App\Enums\PublicFormFieldType`
+  - `App\Enums\PublicFormSubmissionStatus`
+  - `App\Support\PublicFront\Forms\PublicFormDefinitionRegistry`
+  - `App\Support\PublicFront\Forms\PublicFormPayloadValidator`
+  - `App\Support\PublicFront\Forms\PublicFormSchemaFactory`
+  - `App\Support\PublicFront\Forms\PublicFormSubmissionPresenter`
+  - `App\Filament\Resources\PublicFormSubmissions\PublicFormSubmissionResource`
+  - `resources/views/livewire/public/public-form-modal.blade.php`
+  - `docs/phase-02/public-front-v2-step6-public-forms-submissions-handoff.md`
 - Public Front v2 Step 1 enums:
   - `App\Enums\PublicFrontConfigBlockType`
   - `App\Enums\PublicFrontLayoutVariant`
@@ -213,6 +232,7 @@ Current tables relevant to Phase 02 content after Prompt 08 and Prompt 09:
 - `taggables`
 - `settings`
 - `homepage_sections`
+- `public_form_submissions`
 
 Prompt 07 migration status from `php artisan migrate:status` and Boost database inspection:
 
@@ -231,6 +251,11 @@ Prompt 08 migration status from `php artisan migrate:status` and Boost database 
 - `2026_06_30_012934_create_public_content_settings`: ran.
 - `2026_07_02_000000_add_public_content_card_settings`: added by Prompt 11.
 
+Public Front v2 Step 6 migration status from `php artisan migrate:status` and local migration run:
+
+- `2026_07_05_000000_create_public_form_submissions_table`: ran.
+- `2026_07_05_000001_normalize_public_forms_setting`: ran.
+
 Local data reset note:
 
 - Previous `migrate:status` output showed all migrations in batch 1, which strongly suggests the local database was rebuilt with `migrate:fresh --seed` or an equivalent reset path.
@@ -245,6 +270,7 @@ Current physical schema verified through Boost `database_schema`:
 - `tags` includes Phase 02 editorial metadata columns: `is_enabled`, `enabled_at`, `enabled_by_id`, `created_by_id`, and `moderation_state`.
 - `settings` exists for Spatie Settings.
 - `homepage_sections` exists with section target fields for category, tag, and content group plus Step 4 JSON config columns: `source_config`, `selection_config`, `display_config`, and `pagination_config`.
+- `public_form_submissions` exists with Step 6 submission review fields: `form_key`, `form_name_snapshot`, `payload`, `status`, `submitted_at`, `source_url`, hashed submitter fingerprints, and `metadata`.
 
 ## Prompt 07 Implementation Notes
 
@@ -420,12 +446,12 @@ Current physical schema verified through Boost `database_schema`:
 - `ContentItemTranscriptViewer` defaults to the effective transcription, exposes only published transcription tabs/selector choices, keeps selection URL-backed by transcription reference key, and falls back to safe Markdown when parsing finds no segments.
 - Viewer controls are local Alpine preferences for show/hide timestamps and speakers; timestamp anchors are direction-safe with `dir="ltr"`.
 - Prompt 12 did not add player sync, transcription studio, autosave, dashboard widgets, analytics, metadata extraction automation, import/export behavior changes, admin relationship UX changes, homepage/search rewrites, or contributor discovery changes.
-- Prompt 13 dashboard metrics remains not started. Public Front v2 continues with Step 6 next unless the user explicitly chooses dashboard metrics first.
+- Prompt 13 dashboard metrics remains not started. Public Front v2 continues with Step 7 next after Step 6 review unless the user explicitly chooses dashboard metrics first.
 
 ## Public Front v2 Planning Notes
 
 - Public Front v2 research, blueprint, blueprint-result, and execution-plan docs exist.
-- Public Front v2 continues with Step 6 before Prompt 13 unless the user explicitly chooses dashboard metrics first.
+- Public Front v2 continues with Step 7 before Prompt 13 unless the user explicitly chooses dashboard metrics first.
 - The execution plan is an implementation guide, not a single prompt. Run one implementation prompt per step.
 - Corrected step order:
   - Step 1: JSON Settings Architecture.
@@ -443,8 +469,9 @@ Current physical schema verified through Boost `database_schema`:
 - Step 1 created `docs/phase-02/public-front-v2-step1-json-settings-handoff.md` for ChatGPT/Yoni and established the final JSON settings API used by Step 3.
 - Step 3 Card Template Builder is committed as `a0146ce`.
 - Step 4 Public Display Sections and Loopers is committed as `c0ce7d7`.
-- Step 5 Latest and Search UX is implemented in the current working tree.
-- Step 6 Public Forms and Submissions is the next implementation step after ChatGPT/Yoni review.
+- Step 5 Latest and Search UX is committed as `eea9164`.
+- Step 6 Public Forms and Submissions is implemented in this change set.
+- Step 7 About Page Content and Team Builder is the next implementation step after ChatGPT/Yoni review.
 - The PodText logo already exists at `public/images/podtext-logo.jpg` and must be preserved by future public-front work.
 
 ## Public Front v2 Step 1 JSON Settings Architecture Notes
@@ -478,7 +505,7 @@ Current physical schema verified through Boost `database_schema`:
 - `App\Filament\Pages\PublicContentSettings` now includes a card template editing section with a Repeater and Builder-backed parts editor. Live side-by-side preview remains deferred to later public UX work.
 - Public item, group, and contributor cards preserve existing Blade output and expose compatibility metadata through `data-card-template-*` attributes resolved from the card template support layer.
 - Step 3 does not implement display-section/looper queries, latest/search redesign, public forms, about/team builder, podcasts/group UX changes, menu/header management, contributor UX refinements, seeders, dashboard metrics, or the deferred transcription publication policy.
-- Step 4 Public Display Sections and Loopers is committed as `c0ce7d7`. Step 5 Latest and Search UX is implemented in the current working tree. Step 2 transcription policy remains deferred/reserved. Prompt 13 has not started.
+- Step 4 Public Display Sections and Loopers is committed as `c0ce7d7`. Step 5 Latest and Search UX is committed as `eea9164`. Step 6 Public Forms and Submissions is implemented in this change set. Step 2 transcription policy remains deferred/reserved. Prompt 13 has not started.
 
 ## Public Front v2 Step 4 Display Sections and Loopers Notes
 
@@ -496,7 +523,7 @@ Current physical schema verified through Boost `database_schema`:
 - `HomepageSectionForm` keeps legacy type-driven fields and adds semantic fields for source, selection, display/template, and pagination config. It does not expose raw JSON, raw CSS/classes, arbitrary Blade paths, raw SQL, or arbitrary PHP classes.
 - Pagination config stores and normalizes `none`, `simple`, `load_more`, and `next_previous`; infinite scroll remains deferred.
 - The handoff file for review is `docs/phase-02/public-front-v2-step4-display-sections-loopers-handoff.md`.
-- Step 5 Latest and Search UX is implemented in the current working tree. Step 6 Public Forms and Submissions is the next implementation step. Step 2 transcription policy remains deferred/reserved. Prompt 13 has not started.
+- Step 5 Latest and Search UX is committed as `eea9164`. Step 6 Public Forms and Submissions is implemented in this change set. Step 7 About Page Content and Team Builder is the next implementation step. Step 2 transcription policy remains deferred/reserved. Prompt 13 has not started.
 
 ## Public Front v2 Step 5 Latest and Search UX Notes
 
@@ -509,6 +536,23 @@ Current physical schema verified through Boost `database_schema`:
 - Public content item cards now use the practical controlled renderer `PublicFrontCardTemplateRenderer::contentItemPresentation()` for deterministic card classes, safe line clamps, square image handling, large-image stacking, and `min-w-0` text columns.
 - Step 5 does not implement full admin card-template live preview. That work remains deferred as Step 5B Card Template Admin Preview UX.
 - The Step 5 handoff file for review is `docs/phase-02/public-front-v2-step5-latest-search-ux-handoff.md`.
+
+## Public Front v2 Step 6 Public Forms and Submissions Notes
+
+- Step 6 stores public form definitions in the existing `public_content.public_forms` JSON setting under the canonical `public_forms.definitions` shape.
+- The Step 1 reader/validator remains the runtime API. Public code should use `PublicFrontConfigReader::read()->group('public_forms')`, not raw settings arrays.
+- `PublicFrontConfigValidator` validates and normalizes form keys, names, headings, descriptions, submit/success labels, display modes, fields, options, validation semantics, and rate-limit settings.
+- Supported v1 field types are `text`, `email`, `phone`, `textarea`, `select`, `checkbox`, `toggle`, and `url`.
+- The transactional submission table/model/resource is `PublicFormSubmission`; no settings-only `PublicFormDefinition` model/table exists.
+- `PublicFormSubmissionStatus` values are `new`, `reviewed`, and `archived`.
+- `App\Livewire\Public\PublicFormModal` renders enabled forms and owns form state, validation, honeypot, rate limiting, submission, and success/error messages.
+- Alpine owns only modal/slide-over open and close state. Public forms remain separate from Step 5 search/filter drawer state.
+- The admin `PublicContentSettings` page now includes a safe JSON-first public form definition builder.
+- The admin `PublicFormSubmissionResource` lists submissions, filters by status, searches form key/name snapshot, safely renders payload summaries, and supports mark reviewed/archive/reopen actions.
+- V1 public forms include honeypot protection and Laravel-native rate limiting before live enablement.
+- Email notifications, file uploads, CAPTCHA package integration, and public menu/header integration remain deferred.
+- Step 7 About Page Content and Team Builder is the next implementation step after ChatGPT/Yoni review. Step 2 transcription policy remains deferred/reserved. Prompt 13 has not started.
+- The Step 6 handoff file for review is `docs/phase-02/public-front-v2-step6-public-forms-submissions-handoff.md`.
 
 ## Post-Prompt-10 Guidance Sync Notes
 

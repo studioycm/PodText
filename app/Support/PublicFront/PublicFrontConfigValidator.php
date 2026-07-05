@@ -3,6 +3,7 @@
 namespace App\Support\PublicFront;
 
 use App\Support\PublicFront\Cards\PublicFrontCardTemplateRegistry;
+use App\Support\PublicFront\Forms\PublicFormDefinitionRegistry;
 
 class PublicFrontConfigValidator
 {
@@ -319,29 +320,341 @@ class PublicFrontConfigValidator
     }
 
     /**
-     * @param  array<mixed>  $items
+     * @param  array<mixed>  $config
+     * @param  array<PublicFrontInvalidConfig>  $invalidConfig
+     * @return array{definitions: array<int, array<string, mixed>>}
+     */
+    private function normalizePublicForms(array $config, array &$invalidConfig): array
+    {
+        if (array_is_list($config)) {
+            return [
+                'definitions' => $this->normalizePublicFormDefinitions($config, 'public_forms.definitions', $invalidConfig),
+            ];
+        }
+
+        $this->reportUnknownKeys($config, ['definitions'], 'public_forms', $invalidConfig);
+
+        return [
+            'definitions' => $this->normalizePublicFormDefinitions($config['definitions'] ?? [], 'public_forms.definitions', $invalidConfig),
+        ];
+    }
+
+    /**
+     * @param  array<mixed>|mixed  $items
      * @param  array<PublicFrontInvalidConfig>  $invalidConfig
      * @return array<int, array<string, mixed>>
      */
-    private function normalizePublicForms(array $items, array &$invalidConfig): array
+    private function normalizePublicFormDefinitions(mixed $items, string $path, array &$invalidConfig): array
     {
-        return $this->normalizeList($items, 'public_forms', $invalidConfig, function (array $item, string $path, array &$invalidConfig): ?array {
-            $this->reportUnknownKeys($item, ['key', 'label', 'enabled'], $path, $invalidConfig);
+        if (! is_array($items) || ! array_is_list($items)) {
+            $invalidConfig[] = PublicFrontInvalidConfig::make($path, 'expected_list', $items);
 
-            $key = $this->semanticKey($item['key'] ?? null, "{$path}.key", $invalidConfig);
-            $label = $this->plainString($item['label'] ?? null, "{$path}.label", $invalidConfig, nullable: true);
-            $enabled = $this->boolean($item['enabled'] ?? null, "{$path}.enabled", false, $invalidConfig, nullable: true);
+            return [];
+        }
 
-            if ($key === null) {
-                return null;
+        $normalized = [];
+        $seenKeys = [];
+
+        foreach ($items as $index => $item) {
+            $definitionPath = "{$path}.{$index}";
+
+            if (! is_array($item)) {
+                $invalidConfig[] = PublicFrontInvalidConfig::make($definitionPath, 'expected_array', $item);
+
+                continue;
             }
 
-            return array_filter([
-                'key' => $key,
+            $definition = $this->normalizePublicFormDefinition($item, $definitionPath, $invalidConfig);
+
+            if ($definition === null) {
+                continue;
+            }
+
+            if (in_array($definition['key'], $seenKeys, true)) {
+                $invalidConfig[] = PublicFrontInvalidConfig::make("{$definitionPath}.key", 'duplicate_key', $definition['key']);
+
+                continue;
+            }
+
+            $seenKeys[] = $definition['key'];
+            $normalized[] = $definition;
+        }
+
+        return $normalized;
+    }
+
+    /**
+     * @param  array<string, mixed>  $item
+     * @param  array<PublicFrontInvalidConfig>  $invalidConfig
+     * @return array<string, mixed>|null
+     */
+    private function normalizePublicFormDefinition(array $item, string $path, array &$invalidConfig): ?array
+    {
+        $this->reportUnknownKeys($item, [
+            'key',
+            'label',
+            'name',
+            'heading',
+            'description',
+            'submit_label',
+            'success_message',
+            'enabled',
+            'display_mode_default',
+            'fields',
+            'settings',
+        ], $path, $invalidConfig);
+
+        $key = $this->semanticKey($item['key'] ?? null, "{$path}.key", $invalidConfig);
+        $name = $this->plainString($item['name'] ?? $item['label'] ?? null, "{$path}.name", $invalidConfig, maxLength: 120);
+
+        if ($key === null || $name === null) {
+            return null;
+        }
+
+        $fields = $this->normalizePublicFormFields($item['fields'] ?? [], "{$path}.fields", $invalidConfig);
+        $enabled = $this->boolean($item['enabled'] ?? null, "{$path}.enabled", false, $invalidConfig);
+
+        if ($enabled && $fields === []) {
+            $invalidConfig[] = PublicFrontInvalidConfig::make("{$path}.fields", 'enabled_form_requires_fields', $fields);
+            $enabled = false;
+        }
+
+        return [
+            'key' => $key,
+            'name' => $name,
+            'heading' => $this->plainString($item['heading'] ?? null, "{$path}.heading", $invalidConfig, maxLength: 160, nullable: true) ?? $name,
+            'description' => $this->plainString($item['description'] ?? null, "{$path}.description", $invalidConfig, maxLength: 1000, nullable: true),
+            'submit_label' => $this->plainString($item['submit_label'] ?? null, "{$path}.submit_label", $invalidConfig, maxLength: 80, nullable: true)
+                ?? PublicFormDefinitionRegistry::defaultSubmitLabel(),
+            'success_message' => $this->plainString($item['success_message'] ?? null, "{$path}.success_message", $invalidConfig, maxLength: 240, nullable: true)
+                ?? PublicFormDefinitionRegistry::defaultSuccessMessage(),
+            'enabled' => $enabled,
+            'display_mode_default' => $this->finiteString($item['display_mode_default'] ?? null, PublicFormDefinitionRegistry::displayModes(), "{$path}.display_mode_default", $invalidConfig, 'modal'),
+            'fields' => $fields,
+            'settings' => $this->normalizePublicFormSettings($item['settings'] ?? [], "{$path}.settings", $invalidConfig),
+        ];
+    }
+
+    /**
+     * @param  array<mixed>|mixed  $items
+     * @param  array<PublicFrontInvalidConfig>  $invalidConfig
+     * @return array<int, array<string, mixed>>
+     */
+    private function normalizePublicFormFields(mixed $items, string $path, array &$invalidConfig): array
+    {
+        if (! is_array($items) || ! array_is_list($items)) {
+            $invalidConfig[] = PublicFrontInvalidConfig::make($path, 'expected_list', $items);
+
+            return [];
+        }
+
+        $normalized = [];
+        $seenKeys = [];
+
+        foreach ($items as $index => $item) {
+            $fieldPath = "{$path}.{$index}";
+
+            if (! is_array($item)) {
+                $invalidConfig[] = PublicFrontInvalidConfig::make($fieldPath, 'expected_array', $item);
+
+                continue;
+            }
+
+            $field = $this->normalizePublicFormField($item, $fieldPath, $invalidConfig);
+
+            if ($field === null) {
+                continue;
+            }
+
+            if (in_array($field['key'], $seenKeys, true)) {
+                $invalidConfig[] = PublicFrontInvalidConfig::make("{$fieldPath}.key", 'duplicate_key', $field['key']);
+
+                continue;
+            }
+
+            $seenKeys[] = $field['key'];
+            $normalized[] = $field;
+        }
+
+        return $normalized;
+    }
+
+    /**
+     * @param  array<string, mixed>  $item
+     * @param  array<PublicFrontInvalidConfig>  $invalidConfig
+     * @return array<string, mixed>|null
+     */
+    private function normalizePublicFormField(array $item, string $path, array &$invalidConfig): ?array
+    {
+        [$fieldItem, $fieldPath] = $this->unwrapPublicFormField($item, $path, $invalidConfig);
+
+        $this->reportUnknownKeys($fieldItem, [
+            'key',
+            'type',
+            'label',
+            'placeholder',
+            'help_text',
+            'required',
+            'options',
+            'min_length',
+            'max_length',
+            'validation_semantics',
+        ], $fieldPath, $invalidConfig);
+
+        $key = $this->semanticKey($fieldItem['key'] ?? null, "{$fieldPath}.key", $invalidConfig);
+        $type = $this->finiteString($fieldItem['type'] ?? null, PublicFormDefinitionRegistry::fieldTypes(), "{$fieldPath}.type", $invalidConfig);
+        $label = $this->plainString($fieldItem['label'] ?? null, "{$fieldPath}.label", $invalidConfig, maxLength: 120);
+
+        if ($key === null || $type === null || $label === null) {
+            return null;
+        }
+
+        $options = $this->normalizePublicFormFieldOptions($fieldItem['options'] ?? [], "{$fieldPath}.options", $invalidConfig);
+
+        if ($type === 'select' && $options === []) {
+            $invalidConfig[] = PublicFrontInvalidConfig::make("{$fieldPath}.options", 'options_required', $fieldItem['options'] ?? []);
+
+            return null;
+        }
+
+        $field = [
+            'key' => $key,
+            'type' => $type,
+            'label' => $label,
+            'placeholder' => $this->plainString($fieldItem['placeholder'] ?? null, "{$fieldPath}.placeholder", $invalidConfig, maxLength: 160, nullable: true),
+            'help_text' => $this->plainString($fieldItem['help_text'] ?? null, "{$fieldPath}.help_text", $invalidConfig, maxLength: 240, nullable: true),
+            'required' => $this->boolean($fieldItem['required'] ?? null, "{$fieldPath}.required", false, $invalidConfig),
+            'options' => in_array($type, ['select', 'checkbox'], true) ? $options : [],
+            'validation_semantics' => $this->finiteString($fieldItem['validation_semantics'] ?? null, PublicFormDefinitionRegistry::validationSemantics(), "{$fieldPath}.validation_semantics", $invalidConfig, 'none'),
+        ];
+
+        if (array_key_exists('min_length', $fieldItem)) {
+            $field['min_length'] = $this->integerRange($fieldItem['min_length'], "{$fieldPath}.min_length", 0, 5000, 0, $invalidConfig);
+        }
+
+        if (array_key_exists('max_length', $fieldItem)) {
+            $field['max_length'] = $this->integerRange($fieldItem['max_length'], "{$fieldPath}.max_length", 1, 5000, $type === 'textarea' ? 5000 : 255, $invalidConfig);
+        }
+
+        if (($field['min_length'] ?? 0) > ($field['max_length'] ?? 5000)) {
+            $invalidConfig[] = PublicFrontInvalidConfig::make("{$fieldPath}.max_length", 'max_length_before_min_length', $field['max_length']);
+            unset($field['min_length'], $field['max_length']);
+        }
+
+        return $field;
+    }
+
+    /**
+     * @param  array<string, mixed>  $item
+     * @param  array<PublicFrontInvalidConfig>  $invalidConfig
+     * @return array{0: array<string, mixed>, 1: string}
+     */
+    private function unwrapPublicFormField(array $item, string $path, array &$invalidConfig): array
+    {
+        if (! array_key_exists('data', $item)) {
+            return [$item, $path];
+        }
+
+        $this->reportUnknownKeys($item, ['type', 'data'], $path, $invalidConfig);
+
+        if (! is_array($item['data'])) {
+            $invalidConfig[] = PublicFrontInvalidConfig::make("{$path}.data", 'expected_array', $item['data']);
+
+            return [['type' => $item['type'] ?? null], $path];
+        }
+
+        return [
+            [
+                'type' => $item['type'] ?? null,
+                ...$item['data'],
+            ],
+            "{$path}.data",
+        ];
+    }
+
+    /**
+     * @param  array<mixed>|mixed  $items
+     * @param  array<PublicFrontInvalidConfig>  $invalidConfig
+     * @return array<int, array{value: string, label: string}>
+     */
+    private function normalizePublicFormFieldOptions(mixed $items, string $path, array &$invalidConfig): array
+    {
+        if ($items === null || $items === []) {
+            return [];
+        }
+
+        if (! is_array($items) || ! array_is_list($items)) {
+            $invalidConfig[] = PublicFrontInvalidConfig::make($path, 'expected_list', $items);
+
+            return [];
+        }
+
+        $normalized = [];
+        $seenValues = [];
+
+        foreach ($items as $index => $item) {
+            $optionPath = "{$path}.{$index}";
+
+            if (! is_array($item)) {
+                $invalidConfig[] = PublicFrontInvalidConfig::make($optionPath, 'expected_array', $item);
+
+                continue;
+            }
+
+            $this->reportUnknownKeys($item, ['value', 'label'], $optionPath, $invalidConfig);
+
+            $value = $this->semanticKey($item['value'] ?? null, "{$optionPath}.value", $invalidConfig);
+            $label = $this->plainString($item['label'] ?? null, "{$optionPath}.label", $invalidConfig, maxLength: 120);
+
+            if ($value === null || $label === null) {
+                continue;
+            }
+
+            if (in_array($value, $seenValues, true)) {
+                $invalidConfig[] = PublicFrontInvalidConfig::make("{$optionPath}.value", 'duplicate_key', $value);
+
+                continue;
+            }
+
+            $seenValues[] = $value;
+            $normalized[] = [
+                'value' => $value,
                 'label' => $label,
-                'enabled' => $enabled,
-            ], fn (mixed $value): bool => $value !== null);
-        });
+            ];
+        }
+
+        return $normalized;
+    }
+
+    /**
+     * @param  array<string, mixed>|mixed  $settings
+     * @param  array<PublicFrontInvalidConfig>  $invalidConfig
+     * @return array{rate_limit_attempts: int, rate_limit_decay_seconds: int}
+     */
+    private function normalizePublicFormSettings(mixed $settings, string $path, array &$invalidConfig): array
+    {
+        $defaults = PublicFormDefinitionRegistry::rateLimitDefaults();
+
+        if ($settings === null || $settings === []) {
+            return $defaults;
+        }
+
+        if (! is_array($settings)) {
+            $invalidConfig[] = PublicFrontInvalidConfig::make($path, 'expected_array', $settings);
+
+            return $defaults;
+        }
+
+        $this->reportUnknownKeys($settings, ['rate_limit_attempts', 'rate_limit_decay_seconds'], $path, $invalidConfig);
+
+        return [
+            'rate_limit_attempts' => array_key_exists('rate_limit_attempts', $settings)
+                ? $this->integerRange($settings['rate_limit_attempts'], "{$path}.rate_limit_attempts", 1, 30, $defaults['rate_limit_attempts'], $invalidConfig)
+                : $defaults['rate_limit_attempts'],
+            'rate_limit_decay_seconds' => array_key_exists('rate_limit_decay_seconds', $settings)
+                ? $this->integerRange($settings['rate_limit_decay_seconds'], "{$path}.rate_limit_decay_seconds", 60, 86400, $defaults['rate_limit_decay_seconds'], $invalidConfig)
+                : $defaults['rate_limit_decay_seconds'],
+        ];
     }
 
     /**

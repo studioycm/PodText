@@ -16,7 +16,9 @@ return new class extends SettingsMigration
             'blocks' => [],
             'team_profiles' => [],
         ]);
-        $this->migrator->add('public_content.public_forms', []);
+        $this->migrator->add('public_content.public_forms', [
+            'definitions' => [],
+        ]);
         $this->migrator->add('public_content.route_labels', []);
         $this->migrator->add('public_content.display_defaults', [
             'layout' => 'cards',

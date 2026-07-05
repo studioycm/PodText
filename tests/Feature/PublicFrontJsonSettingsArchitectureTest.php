@@ -136,7 +136,7 @@ it('rejects unsafe class css sql blade html and javascript values', function ():
         ->and($paths)->toContain('menu_config.items.1.external_url')
         ->and($paths)->toContain('menu_config.items.2.view')
         ->and($paths)->toContain('about_page.blocks.0.label')
-        ->and($paths)->toContain('public_forms.0.label');
+        ->and($paths)->toContain('public_forms.definitions.0.name');
 });
 
 it('saves sanitized public front config through the settings page while preserving card settings', function (): void {

@@ -61,6 +61,14 @@ return [
         'tag' => 'תגית',
         'until_date' => 'עד תאריך',
     ],
+    'forms' => [
+        'choose_option' => 'בחרו אפשרות',
+        'honeypot' => 'השאירו שדה זה ריק',
+        'rate_limited' => 'יש להמתין :seconds שניות לפני שליחה נוספת.',
+        'submit' => 'שליחה',
+        'success' => 'תודה. השליחה התקבלה.',
+        'unavailable' => 'הטופס אינו זמין.',
+    ],
     'labels' => [
         'authors' => 'יוצרים',
         'breadcrumbs' => 'פירורי לחם',

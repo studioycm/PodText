@@ -61,6 +61,14 @@ return [
         'tag' => 'Tag',
         'until_date' => 'Until',
     ],
+    'forms' => [
+        'choose_option' => 'Choose an option',
+        'honeypot' => 'Leave this field empty',
+        'rate_limited' => 'Please wait :seconds seconds before submitting again.',
+        'submit' => 'Submit',
+        'success' => 'Thank you. Your submission was received.',
+        'unavailable' => 'This form is not available.',
+    ],
     'labels' => [
         'authors' => 'Authors',
         'breadcrumbs' => 'Breadcrumbs',

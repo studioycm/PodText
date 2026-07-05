@@ -5,6 +5,7 @@ namespace App\Support\PublicFront;
 use App\Enums\PublicFrontConfigBlockType;
 use App\Enums\PublicFrontLayoutVariant;
 use App\Support\PublicFront\Cards\PublicFrontCardTemplateRegistry;
+use App\Support\PublicFront\Forms\PublicFormDefinitionRegistry;
 
 class PublicFrontConfigRegistry
 {
@@ -39,7 +40,9 @@ class PublicFrontConfigRegistry
                 'blocks' => [],
                 'team_profiles' => [],
             ],
-            'public_forms' => [],
+            'public_forms' => [
+                'definitions' => [],
+            ],
             'route_labels' => [],
             'display_defaults' => [
                 'layout' => PublicFrontLayoutVariant::Cards->value,
@@ -220,5 +223,53 @@ class PublicFrontConfigRegistry
     public static function defaultCardTemplates(): array
     {
         return PublicFrontCardTemplateRegistry::defaultTemplates();
+    }
+
+    /**
+     * @return array<string>
+     */
+    public static function publicFormFieldTypes(): array
+    {
+        return PublicFormDefinitionRegistry::fieldTypes();
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public static function publicFormFieldTypeOptions(): array
+    {
+        return PublicFormDefinitionRegistry::fieldTypeOptions();
+    }
+
+    /**
+     * @return array<string>
+     */
+    public static function publicFormDisplayModes(): array
+    {
+        return PublicFormDefinitionRegistry::displayModes();
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public static function publicFormDisplayModeOptions(): array
+    {
+        return PublicFormDefinitionRegistry::displayModeOptions();
+    }
+
+    /**
+     * @return array<string>
+     */
+    public static function publicFormValidationSemantics(): array
+    {
+        return PublicFormDefinitionRegistry::validationSemantics();
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public static function publicFormValidationSemanticOptions(): array
+    {
+        return PublicFormDefinitionRegistry::validationSemanticOptions();
     }
 }
