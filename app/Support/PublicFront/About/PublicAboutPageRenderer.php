@@ -21,6 +21,11 @@ class PublicAboutPageRenderer
         return $this->markdownRenderer->toHtml($markdown);
     }
 
+    public function publicContentClasses(): string
+    {
+        return $this->markdownRenderer->publicContentClasses();
+    }
+
     /**
      * @param  array<string, mixed>|null  $content
      */

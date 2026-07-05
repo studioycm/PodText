@@ -52,6 +52,7 @@ return [
         'original_from' => 'Original from',
         'original_until' => 'Original until',
         'provider' => 'Provider',
+        'per_page' => 'Per page',
         'search' => 'Search',
         'search_contributors_placeholder' => 'Search contributors by name',
         'search_group_items' => 'Search this podcast',
@@ -60,6 +61,8 @@ return [
         'search_items_placeholder' => 'Search episodes by title, podcast, category, or tag',
         'search_podcasts_placeholder' => 'Search podcasts by name, topic, category, or episode',
         'search_placeholder' => 'Search by title',
+        'search_related_items' => 'Search related items',
+        'search_related_items_placeholder' => 'Filter this contributor preview',
         'sort' => 'Sort',
         'sort_items' => 'Sort items',
         'tag' => 'Tag',
@@ -110,6 +113,22 @@ return [
         'source_description' => 'Source description',
         'source_host' => 'Source host',
         'source_title' => 'Source title',
+    ],
+    'menu' => [
+        'forms' => [
+            'request_transcription' => 'Request transcription',
+            'volunteer_transcriber' => 'Register as transcriber',
+        ],
+        'primary_navigation' => 'Primary navigation',
+        'routes' => [
+            'about' => 'About',
+            'contributors' => 'Contributors',
+            'home' => 'Home',
+            'podcasts' => 'Podcasts',
+            'search' => 'Search',
+        ],
+        'theme' => 'Theme',
+        'toggle_navigation' => 'Toggle navigation',
     ],
     'pages' => [
         'about' => [
@@ -169,6 +188,10 @@ return [
         'top_transcribers_target' => 'Contributors',
     ],
     'sort' => [
+        'contributors_count_asc' => 'Count up',
+        'contributors_count_desc' => 'Count down',
+        'contributors_name_asc' => 'A-Z',
+        'contributors_name_desc' => 'Z-A',
         'duration_longest' => 'Duration: longest',
         'duration_shortest' => 'Duration: shortest',
         'latest_transcription' => 'Latest transcription',
@@ -179,6 +202,11 @@ return [
         'title' => 'Title',
         'title_asc' => 'Title A-Z',
         'title_desc' => 'Title Z-A',
+    ],
+    'theme' => [
+        'dark' => 'Dark',
+        'light' => 'Light',
+        'system' => 'System',
     ],
     'viewer' => [
         'hide_speakers' => 'Hide speakers',

@@ -23,6 +23,8 @@ use Filament\Forms\Components\Toggle;
 use Filament\Pages\SettingsPage;
 use Filament\Schemas\Components\Fieldset;
 use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Tabs;
+use Filament\Schemas\Components\Tabs\Tab;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
@@ -54,584 +56,790 @@ class PublicContentSettings extends SettingsPage
     {
         return $schema
             ->components([
-                Section::make(__('admin.sections.homepage_settings'))
-                    ->description(__('admin.descriptions.public_content_settings_homepage'))
-                    ->schema([
-                        TextInput::make('homepage_item_limit')
-                            ->label(__('admin.fields.homepage_item_limit'))
-                            ->helperText(__('admin.helpers.homepage_item_limit'))
-                            ->required()
-                            ->numeric()
-                            ->integer()
-                            ->minValue(1),
-                        TextInput::make('pinned_item_limit')
-                            ->label(__('admin.fields.pinned_item_limit'))
-                            ->helperText(__('admin.helpers.pinned_item_limit'))
-                            ->required()
-                            ->numeric()
-                            ->integer()
-                            ->minValue(1),
-                        Toggle::make('show_latest_section')
-                            ->label(__('admin.fields.show_latest_section'))
-                            ->helperText(__('admin.helpers.show_latest_section')),
-                    ])
-                    ->columns(3),
-                Section::make(__('admin.sections.public_display'))
-                    ->description(__('admin.descriptions.public_content_settings_display'))
-                    ->schema([
-                        Select::make('default_public_sort')
-                            ->label(__('admin.fields.default_public_sort'))
-                            ->helperText(__('admin.helpers.default_public_sort'))
-                            ->options([
-                                'latest_transcription' => __('admin.sort.latest_transcription'),
-                                'oldest_transcription' => __('admin.sort.oldest_transcription'),
-                                'title_asc' => __('admin.sort.title_asc'),
-                                'title_desc' => __('admin.sort.title_desc'),
-                                'duration_shortest' => __('admin.sort.duration_shortest'),
-                                'duration_longest' => __('admin.sort.duration_longest'),
-                                'original_newest' => __('admin.sort.original_newest'),
-                                'original_oldest' => __('admin.sort.original_oldest'),
-                            ])
-                            ->required(),
-                        Select::make('default_result_layout')
-                            ->label(__('admin.fields.default_result_layout'))
-                            ->helperText(__('admin.helpers.default_result_layout'))
-                            ->options([
-                                'cards' => __('admin.layouts.cards'),
-                                'rows' => __('admin.layouts.rows'),
-                            ])
-                            ->required(),
-                        Select::make('item_page_layout')
-                            ->label(__('admin.fields.item_page_layout'))
-                            ->helperText(__('admin.helpers.item_page_layout'))
-                            ->options([
-                                'standard' => __('admin.layouts.standard'),
-                                'default' => __('admin.layouts.default'),
-                                'media_first' => __('admin.layouts.media_first'),
-                                'transcript_first' => __('admin.layouts.transcript_first'),
-                            ])
-                            ->required(),
-                    ])
-                    ->columns(3),
-                Section::make(__('admin.sections.public_card_display'))
-                    ->description(__('admin.descriptions.public_content_settings_cards'))
-                    ->schema([
-                        Select::make('homepage_card_image_size')
-                            ->label(__('admin.fields.homepage_card_image_size'))
-                            ->helperText(__('admin.helpers.homepage_card_image_size'))
-                            ->options([
-                                'hidden' => __('admin.card_image_size.hidden'),
-                                'small' => __('admin.card_image_size.small'),
-                                'medium' => __('admin.card_image_size.medium'),
-                                'large' => __('admin.card_image_size.large'),
-                            ])
-                            ->required(),
-                        Select::make('homepage_card_density')
-                            ->label(__('admin.fields.homepage_card_density'))
-                            ->helperText(__('admin.helpers.homepage_card_density'))
-                            ->options([
-                                'compact' => __('admin.card_density.compact'),
-                                'comfortable' => __('admin.card_density.comfortable'),
-                            ])
-                            ->required(),
-                        Select::make('homepage_card_title_size')
-                            ->label(__('admin.fields.homepage_card_title_size'))
-                            ->helperText(__('admin.helpers.homepage_card_title_size'))
-                            ->options([
-                                'sm' => __('admin.card_title_size.sm'),
-                                'base' => __('admin.card_title_size.base'),
-                                'lg' => __('admin.card_title_size.lg'),
-                            ])
-                            ->required(),
-                        TextInput::make('homepage_cards_per_page')
-                            ->label(__('admin.fields.homepage_cards_per_page'))
-                            ->helperText(__('admin.helpers.homepage_cards_per_page'))
-                            ->required()
-                            ->numeric()
-                            ->integer()
-                            ->minValue(1)
-                            ->maxValue(48),
-                        TextInput::make('homepage_description_lines')
-                            ->label(__('admin.fields.homepage_description_lines'))
-                            ->helperText(__('admin.helpers.homepage_description_lines'))
-                            ->required()
-                            ->numeric()
-                            ->integer()
-                            ->minValue(0)
-                            ->maxValue(4),
-                        Toggle::make('homepage_show_group_badge')
-                            ->label(__('admin.fields.homepage_show_group_badge'))
-                            ->helperText(__('admin.helpers.homepage_show_group_badge')),
-                        Toggle::make('homepage_show_authors')
-                            ->label(__('admin.fields.homepage_show_authors')),
-                        Toggle::make('homepage_show_categories')
-                            ->label(__('admin.fields.homepage_show_categories')),
-                        Toggle::make('homepage_show_tags')
-                            ->label(__('admin.fields.homepage_show_tags')),
-                        Toggle::make('homepage_show_duration')
-                            ->label(__('admin.fields.homepage_show_duration')),
-                        Toggle::make('homepage_show_effective_date')
-                            ->label(__('admin.fields.homepage_show_effective_date')),
-                        Toggle::make('homepage_show_description')
-                            ->label(__('admin.fields.homepage_show_description')),
-                    ])
-                    ->columns(3),
-                Section::make(__('admin.sections.public_front_configuration'))
-                    ->description(__('admin.descriptions.public_front_configuration'))
-                    ->schema([
-                        Toggle::make('menu_config.enabled')
-                            ->label(__('admin.fields.public_front_menu_enabled'))
-                            ->helperText(__('admin.helpers.public_front_menu_enabled')),
-                        Select::make('display_defaults.layout')
-                            ->label(__('admin.fields.public_front_display_layout'))
-                            ->helperText(__('admin.helpers.public_front_display_layout'))
-                            ->options([
-                                'cards' => __('admin.layouts.cards'),
-                                'rows' => __('admin.layouts.rows'),
-                            ])
-                            ->required(),
-                        Select::make('display_defaults.density')
-                            ->label(__('admin.fields.public_front_card_density'))
-                            ->helperText(__('admin.helpers.public_front_card_density'))
-                            ->options([
-                                'compact' => __('admin.card_density.compact'),
-                                'comfortable' => __('admin.card_density.comfortable'),
-                            ])
-                            ->required(),
-                        Select::make('display_defaults.image_size')
-                            ->label(__('admin.fields.public_front_card_image_size'))
-                            ->helperText(__('admin.helpers.public_front_card_image_size'))
-                            ->options([
-                                'hidden' => __('admin.card_image_size.hidden'),
-                                'small' => __('admin.card_image_size.small'),
-                                'medium' => __('admin.card_image_size.medium'),
-                                'large' => __('admin.card_image_size.large'),
-                            ])
-                            ->required(),
-                        Select::make('display_defaults.title_size')
-                            ->label(__('admin.fields.public_front_card_title_size'))
-                            ->helperText(__('admin.helpers.public_front_card_title_size'))
-                            ->options([
-                                'sm' => __('admin.card_title_size.sm'),
-                                'base' => __('admin.card_title_size.base'),
-                                'lg' => __('admin.card_title_size.lg'),
-                            ])
-                            ->required(),
-                        TextInput::make('display_defaults.page_size')
-                            ->label(__('admin.fields.public_front_page_size'))
-                            ->helperText(__('admin.helpers.public_front_page_size'))
-                            ->required()
-                            ->numeric()
-                            ->integer()
-                            ->minValue(1)
-                            ->maxValue(48),
-                        Repeater::make('route_labels')
-                            ->label(__('admin.fields.public_front_route_labels'))
-                            ->helperText(__('admin.helpers.public_front_route_labels'))
+                Tabs::make(__('admin.sections.public_content_settings_tabs'))
+                    ->key('public-content-settings-tabs')
+                    ->persistTabInQueryString('public-content-tab')
+                    ->tabs([
+                        Tab::make(__('admin.tabs.public_content_settings.homepage'))
+                            ->id('homepage')
+                            ->key('public-settings-tab-homepage')
                             ->schema([
-                                Select::make('route_key')
-                                    ->label(__('admin.fields.public_front_route_key'))
-                                    ->options(fn (): array => PublicFrontConfigRegistry::routeOptions())
-                                    ->native(false)
-                                    ->required(),
-                                TextInput::make('label')
-                                    ->label(__('admin.fields.public_front_route_label'))
-                                    ->maxLength(80)
-                                    ->required(),
-                            ])
-                            ->columns(2)
-                            ->defaultItems(0)
-                            ->reorderable()
-                            ->cloneable()
-                            ->columnSpanFull(),
-                    ])
-                    ->columns(3),
-                Section::make(__('admin.sections.public_front_podcasts_page'))
-                    ->description(__('admin.descriptions.public_front_podcasts_page'))
-                    ->schema([
-                        Toggle::make('podcasts_page.enabled')
-                            ->label(__('admin.fields.podcasts_page_enabled'))
-                            ->helperText(__('admin.helpers.podcasts_page_enabled')),
-                        TextInput::make('podcasts_page.title')
-                            ->label(__('admin.fields.podcasts_page_title'))
-                            ->helperText(__('admin.helpers.podcasts_page_title'))
-                            ->required()
-                            ->maxLength(160),
-                        Textarea::make('podcasts_page.description')
-                            ->label(__('admin.fields.podcasts_page_description'))
-                            ->helperText(__('admin.helpers.podcasts_page_description'))
-                            ->rows(3)
-                            ->maxLength(1000)
-                            ->columnSpanFull(),
-                        TextInput::make('podcasts_page.group_label_singular')
-                            ->label(__('admin.fields.podcasts_page_group_label_singular'))
-                            ->helperText(__('admin.helpers.podcasts_page_group_label_singular'))
-                            ->required()
-                            ->maxLength(80),
-                        TextInput::make('podcasts_page.group_label_plural')
-                            ->label(__('admin.fields.podcasts_page_group_label_plural'))
-                            ->helperText(__('admin.helpers.podcasts_page_group_label_plural'))
-                            ->required()
-                            ->maxLength(80),
-                        TextInput::make('podcasts_page.cards_per_page')
-                            ->label(__('admin.fields.podcasts_page_cards_per_page'))
-                            ->helperText(__('admin.helpers.podcasts_page_cards_per_page'))
-                            ->required()
-                            ->numeric()
-                            ->integer()
-                            ->minValue(1)
-                            ->maxValue(48),
-                        Toggle::make('podcasts_page.category_filter_enabled')
-                            ->label(__('admin.fields.podcasts_page_category_filter_enabled'))
-                            ->helperText(__('admin.helpers.podcasts_page_category_filter_enabled')),
-                        Toggle::make('podcasts_page.search_enabled')
-                            ->label(__('admin.fields.podcasts_page_search_enabled'))
-                            ->helperText(__('admin.helpers.podcasts_page_search_enabled')),
-                        Select::make('podcasts_page.template_key')
-                            ->label(__('admin.fields.podcasts_page_template_key'))
-                            ->helperText(__('admin.helpers.podcasts_page_template_key'))
-                            ->options(fn (): array => $this->cardTemplateOptions('content_group'))
-                            ->placeholder(__('admin.labels.none'))
-                            ->native(false),
-                        Select::make('podcasts_page.item_template_key')
-                            ->label(__('admin.fields.podcasts_page_item_template_key'))
-                            ->helperText(__('admin.helpers.podcasts_page_item_template_key'))
-                            ->options(fn (): array => $this->cardTemplateOptions('content_item'))
-                            ->placeholder(__('admin.labels.none'))
-                            ->native(false),
-                        Toggle::make('podcasts_page.show_description')
-                            ->label(__('admin.fields.podcasts_page_show_description'))
-                            ->helperText(__('admin.helpers.podcasts_page_show_description')),
-                        Toggle::make('podcasts_page.show_categories')
-                            ->label(__('admin.fields.podcasts_page_show_categories'))
-                            ->helperText(__('admin.helpers.podcasts_page_show_categories')),
-                        Toggle::make('podcasts_page.show_episode_count')
-                            ->label(__('admin.fields.podcasts_page_show_episode_count'))
-                            ->helperText(__('admin.helpers.podcasts_page_show_episode_count')),
-                        Fieldset::make(__('admin.sections.public_front_podcasts_group_page'))
-                            ->schema([
-                                Toggle::make('podcasts_page.group_page.show_description')
-                                    ->label(__('admin.fields.podcasts_group_page_show_description'))
-                                    ->helperText(__('admin.helpers.podcasts_group_page_show_description')),
-                                Toggle::make('podcasts_page.group_page.show_categories')
-                                    ->label(__('admin.fields.podcasts_group_page_show_categories'))
-                                    ->helperText(__('admin.helpers.podcasts_group_page_show_categories')),
-                                Toggle::make('podcasts_page.group_page.show_episode_descriptions')
-                                    ->label(__('admin.fields.podcasts_group_page_show_episode_descriptions'))
-                                    ->helperText(__('admin.helpers.podcasts_group_page_show_episode_descriptions')),
-                                TextInput::make('podcasts_page.group_page.items_per_page')
-                                    ->label(__('admin.fields.podcasts_group_page_items_per_page'))
-                                    ->helperText(__('admin.helpers.podcasts_group_page_items_per_page'))
-                                    ->required()
-                                    ->numeric()
-                                    ->integer()
-                                    ->minValue(1)
-                                    ->maxValue(48),
-                            ])
-                            ->columns(2)
-                            ->columnSpanFull(),
-                    ])
-                    ->columns(3),
-                Section::make(__('admin.sections.public_front_about_page'))
-                    ->description(__('admin.descriptions.public_front_about_page'))
-                    ->schema([
-                        Fieldset::make(__('admin.sections.about_page_identity'))
-                            ->schema([
-                                Toggle::make('about_page.enabled')
-                                    ->label(__('admin.fields.about_page_enabled'))
-                                    ->helperText(__('admin.helpers.about_page_enabled'))
-                                    ->default(false),
-                                TextInput::make('about_page.title')
-                                    ->label(__('admin.fields.about_page_title'))
-                                    ->helperText(__('admin.helpers.about_page_title'))
-                                    ->required()
-                                    ->maxLength(160),
-                                TextInput::make('about_page.kicker')
-                                    ->label(__('admin.fields.about_page_kicker'))
-                                    ->helperText(__('admin.helpers.about_page_kicker'))
-                                    ->maxLength(120),
-                                Textarea::make('about_page.description')
-                                    ->label(__('admin.fields.about_page_description'))
-                                    ->helperText(__('admin.helpers.about_page_description'))
-                                    ->rows(3)
-                                    ->maxLength(1000)
-                                    ->columnSpanFull(),
-                            ])
-                            ->columns(3)
-                            ->columnSpanFull(),
-                        Fieldset::make(__('admin.sections.about_page_team_defaults'))
-                            ->schema([
-                                TextInput::make('about_page.settings.team_heading')
-                                    ->label(__('admin.fields.about_page_team_heading'))
-                                    ->helperText(__('admin.helpers.about_page_team_heading'))
-                                    ->maxLength(160),
-                                Select::make('about_page.settings.team_layout')
-                                    ->label(__('admin.fields.about_page_team_layout'))
-                                    ->helperText(__('admin.helpers.about_page_team_layout'))
-                                    ->options(fn (): array => PublicFrontConfigRegistry::aboutTeamLayoutOptions())
-                                    ->default('grid')
-                                    ->native(false)
-                                    ->required(),
-                                Textarea::make('about_page.settings.team_description')
-                                    ->label(__('admin.fields.about_page_team_description'))
-                                    ->helperText(__('admin.helpers.about_page_team_description'))
-                                    ->rows(3)
-                                    ->maxLength(1000)
-                                    ->columnSpanFull(),
-                            ])
-                            ->columns(2)
-                            ->columnSpanFull(),
-                        Builder::make('about_page.blocks')
-                            ->label(__('admin.fields.about_page_blocks'))
-                            ->helperText(__('admin.helpers.about_page_blocks'))
-                            ->blocks($this->aboutPageBlockBlocks())
-                            ->blockPickerColumns(2)
-                            ->collapsible()
-                            ->collapsed()
-                            ->cloneable()
-                            ->default([])
-                            ->addActionLabel(__('admin.actions.add_about_page_block'))
-                            ->columnSpanFull(),
-                        Repeater::make('about_page.team_profiles')
-                            ->label(__('admin.fields.about_page_team_profiles'))
-                            ->helperText(__('admin.helpers.about_page_team_profiles'))
-                            ->schema([
-                                TextInput::make('key')
-                                    ->label(__('admin.fields.about_team_profile_key'))
-                                    ->helperText(__('admin.helpers.about_team_profile_key'))
-                                    ->required()
-                                    ->maxLength(80)
-                                    ->rules(['regex:/^[a-z][a-z0-9_-]*$/']),
-                                Toggle::make('visible')
-                                    ->label(__('admin.fields.about_team_profile_visible'))
-                                    ->helperText(__('admin.helpers.about_team_profile_visible'))
-                                    ->default(true),
-                                TextInput::make('sort')
-                                    ->label(__('admin.fields.about_team_profile_sort'))
-                                    ->helperText(__('admin.helpers.about_team_profile_sort'))
-                                    ->numeric()
-                                    ->integer()
-                                    ->minValue(0)
-                                    ->maxValue(1000),
-                                FileUpload::make('image_path')
-                                    ->label(__('admin.fields.about_team_profile_image'))
-                                    ->helperText(__('admin.helpers.about_team_profile_image'))
-                                    ->disk('public')
-                                    ->directory('team')
-                                    ->visibility('public')
-                                    ->avatar()
-                                    ->acceptedFileTypes(PublicAboutPageRegistry::acceptedImageTypes())
-                                    ->maxSize(PublicAboutPageRegistry::maxImageSize()),
-                                TextInput::make('name')
-                                    ->label(__('admin.fields.about_team_profile_name'))
-                                    ->helperText(__('admin.helpers.about_team_profile_name'))
-                                    ->required()
-                                    ->maxLength(120),
-                                TextInput::make('title')
-                                    ->label(__('admin.fields.about_team_profile_title'))
-                                    ->helperText(__('admin.helpers.about_team_profile_title'))
-                                    ->maxLength(120),
-                                Textarea::make('description')
-                                    ->label(__('admin.fields.about_team_profile_description'))
-                                    ->helperText(__('admin.helpers.about_team_profile_description'))
-                                    ->rows(3)
-                                    ->maxLength(1000)
-                                    ->columnSpanFull(),
-                            ])
-                            ->itemLabel(fn (array $state): ?string => $state['name'] ?? $state['key'] ?? __('admin.labels.untitled'))
-                            ->defaultItems(0)
-                            ->reorderable()
-                            ->cloneable()
-                            ->collapsed()
-                            ->grid(['md' => 2])
-                            ->columns(3)
-                            ->columnSpanFull(),
-                    ]),
-                Section::make(__('admin.sections.public_front_card_templates'))
-                    ->description(__('admin.descriptions.public_front_card_templates'))
-                    ->schema([
-                        Repeater::make('card_templates')
-                            ->label(__('admin.fields.public_front_card_templates'))
-                            ->helperText(__('admin.helpers.public_front_card_templates'))
-                            ->schema([
-                                TextInput::make('key')
-                                    ->label(__('admin.fields.card_template_key'))
-                                    ->helperText(__('admin.helpers.card_template_key'))
-                                    ->required()
-                                    ->maxLength(80)
-                                    ->rules(['regex:/^[a-z][a-z0-9_-]*$/']),
-                                TextInput::make('label')
-                                    ->label(__('admin.fields.card_template_label'))
-                                    ->helperText(__('admin.helpers.card_template_label'))
-                                    ->required()
-                                    ->maxLength(120),
-                                Select::make('family')
-                                    ->label(__('admin.fields.card_template_family'))
-                                    ->helperText(__('admin.helpers.card_template_family'))
-                                    ->options(fn (): array => PublicFrontConfigRegistry::cardFamilyOptions())
-                                    ->native(false)
-                                    ->required(),
-                                Select::make('layout')
-                                    ->label(__('admin.fields.card_template_layout'))
-                                    ->helperText(__('admin.helpers.card_template_layout'))
-                                    ->options([
-                                        'cards' => __('admin.layouts.cards'),
-                                        'rows' => __('admin.layouts.rows'),
-                                    ])
-                                    ->native(false)
-                                    ->default('cards')
-                                    ->required(),
-                                Select::make('density')
-                                    ->label(__('admin.fields.card_template_density'))
-                                    ->helperText(__('admin.helpers.card_template_density'))
-                                    ->options([
-                                        'compact' => __('admin.card_density.compact'),
-                                        'comfortable' => __('admin.card_density.comfortable'),
-                                    ])
-                                    ->native(false)
-                                    ->default('comfortable')
-                                    ->required(),
-                                Select::make('image_size')
-                                    ->label(__('admin.fields.card_template_image_size'))
-                                    ->helperText(__('admin.helpers.card_template_image_size'))
-                                    ->options([
-                                        'hidden' => __('admin.card_image_size.hidden'),
-                                        'small' => __('admin.card_image_size.small'),
-                                        'medium' => __('admin.card_image_size.medium'),
-                                        'large' => __('admin.card_image_size.large'),
-                                    ])
-                                    ->native(false)
-                                    ->default('medium')
-                                    ->required(),
-                                Select::make('title_size')
-                                    ->label(__('admin.fields.card_template_title_size'))
-                                    ->helperText(__('admin.helpers.card_template_title_size'))
-                                    ->options([
-                                        'sm' => __('admin.card_title_size.sm'),
-                                        'base' => __('admin.card_title_size.base'),
-                                        'lg' => __('admin.card_title_size.lg'),
-                                    ])
-                                    ->native(false)
-                                    ->default('base')
-                                    ->required(),
-                                Builder::make('parts')
-                                    ->label(__('admin.fields.card_template_parts'))
-                                    ->helperText(__('admin.helpers.card_template_parts'))
-                                    ->blocks($this->cardTemplatePartBlocks())
-                                    ->blockPickerColumns(2)
-                                    ->collapsible()
-                                    ->collapsed()
-                                    ->cloneable()
-                                    ->default([])
-                                    ->addActionLabel(__('admin.actions.add_card_template_part'))
-                                    ->columnSpanFull(),
-                            ])
-                            ->itemLabel(fn (array $state): ?string => $state['label'] ?? $state['key'] ?? __('admin.labels.untitled'))
-                            ->defaultItems(0)
-                            ->reorderable()
-                            ->cloneable()
-                            ->collapsed()
-                            ->columns(3)
-                            ->columnSpanFull(),
-                    ]),
-                Section::make(__('admin.sections.public_front_forms'))
-                    ->description(__('admin.descriptions.public_front_forms'))
-                    ->schema([
-                        Repeater::make('public_forms.definitions')
-                            ->label(__('admin.fields.public_forms'))
-                            ->helperText(__('admin.helpers.public_forms'))
-                            ->schema([
-                                Fieldset::make(__('admin.sections.public_form_identity'))
+                                Section::make(__('admin.sections.homepage_settings'))
+                                    ->description(__('admin.descriptions.public_content_settings_homepage'))
                                     ->schema([
-                                        TextInput::make('key')
-                                            ->label(__('admin.fields.public_form_key'))
-                                            ->helperText(__('admin.helpers.public_form_key'))
+                                        TextInput::make('homepage_item_limit')
+                                            ->label(__('admin.fields.homepage_item_limit'))
+                                            ->helperText(__('admin.helpers.homepage_item_limit'))
                                             ->required()
-                                            ->maxLength(80)
-                                            ->rules(['regex:/^[a-z][a-z0-9_-]*$/']),
-                                        TextInput::make('name')
-                                            ->label(__('admin.fields.public_form_name'))
-                                            ->helperText(__('admin.helpers.public_form_name'))
+                                            ->numeric()
+                                            ->integer()
+                                            ->minValue(1),
+                                        TextInput::make('pinned_item_limit')
+                                            ->label(__('admin.fields.pinned_item_limit'))
+                                            ->helperText(__('admin.helpers.pinned_item_limit'))
                                             ->required()
-                                            ->maxLength(120),
-                                        TextInput::make('heading')
-                                            ->label(__('admin.fields.public_form_heading'))
-                                            ->helperText(__('admin.helpers.public_form_heading'))
-                                            ->maxLength(160),
-                                        Select::make('display_mode_default')
-                                            ->label(__('admin.fields.public_form_display_mode'))
-                                            ->helperText(__('admin.helpers.public_form_display_mode'))
-                                            ->options(fn (): array => PublicFrontConfigRegistry::publicFormDisplayModeOptions())
-                                            ->default('modal')
-                                            ->native(false)
-                                            ->required(),
-                                        Toggle::make('enabled')
-                                            ->label(__('admin.fields.public_form_enabled'))
-                                            ->helperText(__('admin.helpers.public_form_enabled'))
-                                            ->default(false),
+                                            ->numeric()
+                                            ->integer()
+                                            ->minValue(1),
+                                        Toggle::make('show_latest_section')
+                                            ->label(__('admin.fields.show_latest_section'))
+                                            ->helperText(__('admin.helpers.show_latest_section')),
                                     ])
                                     ->columns(3)
+                                    ->collapsible()
                                     ->columnSpanFull(),
-                                Fieldset::make(__('admin.sections.public_form_behavior'))
+                            ]),
+                        Tab::make(__('admin.tabs.public_content_settings.display'))
+                            ->id('display')
+                            ->key('public-settings-tab-display')
+                            ->schema([
+                                Section::make(__('admin.sections.public_display'))
+                                    ->description(__('admin.descriptions.public_content_settings_display'))
                                     ->schema([
-                                        TextInput::make('submit_label')
-                                            ->label(__('admin.fields.public_form_submit_label'))
-                                            ->helperText(__('admin.helpers.public_form_submit_label'))
-                                            ->maxLength(80),
-                                        TextInput::make('success_message')
-                                            ->label(__('admin.fields.public_form_success_message'))
-                                            ->helperText(__('admin.helpers.public_form_success_message'))
-                                            ->maxLength(240)
-                                            ->columnSpanFull(),
-                                        Textarea::make('description')
-                                            ->label(__('admin.fields.public_form_description'))
-                                            ->helperText(__('admin.helpers.public_form_description'))
-                                            ->rows(3)
-                                            ->maxLength(1000)
-                                            ->columnSpanFull(),
-                                        TextInput::make('settings.rate_limit_attempts')
-                                            ->label(__('admin.fields.public_form_rate_limit_attempts'))
-                                            ->helperText(__('admin.helpers.public_form_rate_limit_attempts'))
+                                        Select::make('default_public_sort')
+                                            ->label(__('admin.fields.default_public_sort'))
+                                            ->helperText(__('admin.helpers.default_public_sort'))
+                                            ->options([
+                                                'latest_transcription' => __('admin.sort.latest_transcription'),
+                                                'oldest_transcription' => __('admin.sort.oldest_transcription'),
+                                                'title_asc' => __('admin.sort.title_asc'),
+                                                'title_desc' => __('admin.sort.title_desc'),
+                                                'duration_shortest' => __('admin.sort.duration_shortest'),
+                                                'duration_longest' => __('admin.sort.duration_longest'),
+                                                'original_newest' => __('admin.sort.original_newest'),
+                                                'original_oldest' => __('admin.sort.original_oldest'),
+                                            ])
+                                            ->required(),
+                                        Select::make('default_result_layout')
+                                            ->label(__('admin.fields.default_result_layout'))
+                                            ->helperText(__('admin.helpers.default_result_layout'))
+                                            ->options([
+                                                'cards' => __('admin.layouts.cards'),
+                                                'rows' => __('admin.layouts.rows'),
+                                            ])
+                                            ->required(),
+                                        Select::make('item_page_layout')
+                                            ->label(__('admin.fields.item_page_layout'))
+                                            ->helperText(__('admin.helpers.item_page_layout'))
+                                            ->options([
+                                                'standard' => __('admin.layouts.standard'),
+                                                'default' => __('admin.layouts.default'),
+                                                'media_first' => __('admin.layouts.media_first'),
+                                                'transcript_first' => __('admin.layouts.transcript_first'),
+                                            ])
+                                            ->required(),
+                                    ])
+                                    ->columns(3)
+                                    ->collapsible()
+                                    ->columnSpanFull(),
+                                Section::make(__('admin.sections.public_card_display'))
+                                    ->description(__('admin.descriptions.public_content_settings_cards'))
+                                    ->schema([
+                                        Select::make('homepage_card_image_size')
+                                            ->label(__('admin.fields.homepage_card_image_size'))
+                                            ->helperText(__('admin.helpers.homepage_card_image_size'))
+                                            ->options([
+                                                'hidden' => __('admin.card_image_size.hidden'),
+                                                'small' => __('admin.card_image_size.small'),
+                                                'medium' => __('admin.card_image_size.medium'),
+                                                'large' => __('admin.card_image_size.large'),
+                                            ])
+                                            ->required(),
+                                        Select::make('homepage_card_density')
+                                            ->label(__('admin.fields.homepage_card_density'))
+                                            ->helperText(__('admin.helpers.homepage_card_density'))
+                                            ->options([
+                                                'compact' => __('admin.card_density.compact'),
+                                                'comfortable' => __('admin.card_density.comfortable'),
+                                            ])
+                                            ->required(),
+                                        Select::make('homepage_card_title_size')
+                                            ->label(__('admin.fields.homepage_card_title_size'))
+                                            ->helperText(__('admin.helpers.homepage_card_title_size'))
+                                            ->options([
+                                                'sm' => __('admin.card_title_size.sm'),
+                                                'base' => __('admin.card_title_size.base'),
+                                                'lg' => __('admin.card_title_size.lg'),
+                                            ])
+                                            ->required(),
+                                        TextInput::make('homepage_cards_per_page')
+                                            ->label(__('admin.fields.homepage_cards_per_page'))
+                                            ->helperText(__('admin.helpers.homepage_cards_per_page'))
+                                            ->required()
                                             ->numeric()
                                             ->integer()
                                             ->minValue(1)
-                                            ->maxValue(30)
-                                            ->default(5),
-                                        TextInput::make('settings.rate_limit_decay_seconds')
-                                            ->label(__('admin.fields.public_form_rate_limit_decay_seconds'))
-                                            ->helperText(__('admin.helpers.public_form_rate_limit_decay_seconds'))
+                                            ->maxValue(48),
+                                        TextInput::make('homepage_description_lines')
+                                            ->label(__('admin.fields.homepage_description_lines'))
+                                            ->helperText(__('admin.helpers.homepage_description_lines'))
+                                            ->required()
                                             ->numeric()
                                             ->integer()
-                                            ->minValue(60)
-                                            ->maxValue(86400)
-                                            ->default(600),
+                                            ->minValue(0)
+                                            ->maxValue(4),
+                                        Toggle::make('homepage_show_group_badge')
+                                            ->label(__('admin.fields.homepage_show_group_badge'))
+                                            ->helperText(__('admin.helpers.homepage_show_group_badge')),
+                                        Toggle::make('homepage_show_authors')
+                                            ->label(__('admin.fields.homepage_show_authors')),
+                                        Toggle::make('homepage_show_categories')
+                                            ->label(__('admin.fields.homepage_show_categories')),
+                                        Toggle::make('homepage_show_tags')
+                                            ->label(__('admin.fields.homepage_show_tags')),
+                                        Toggle::make('homepage_show_duration')
+                                            ->label(__('admin.fields.homepage_show_duration')),
+                                        Toggle::make('homepage_show_effective_date')
+                                            ->label(__('admin.fields.homepage_show_effective_date')),
+                                        Toggle::make('homepage_show_description')
+                                            ->label(__('admin.fields.homepage_show_description')),
                                     ])
-                                    ->columns(2)
+                                    ->columns(3)
+                                    ->collapsible()
                                     ->columnSpanFull(),
-                                Fieldset::make(__('admin.sections.public_form_fields_config'))
+                                Section::make(__('admin.sections.public_front_configuration'))
+                                    ->description(__('admin.descriptions.public_front_configuration'))
                                     ->schema([
-                                        Builder::make('fields')
-                                            ->label(__('admin.fields.public_form_fields'))
-                                            ->helperText(__('admin.helpers.public_form_fields'))
-                                            ->blocks($this->publicFormFieldBlocks())
+                                        Select::make('display_defaults.layout')
+                                            ->label(__('admin.fields.public_front_display_layout'))
+                                            ->helperText(__('admin.helpers.public_front_display_layout'))
+                                            ->options([
+                                                'cards' => __('admin.layouts.cards'),
+                                                'rows' => __('admin.layouts.rows'),
+                                            ])
+                                            ->required(),
+                                        Select::make('display_defaults.density')
+                                            ->label(__('admin.fields.public_front_card_density'))
+                                            ->helperText(__('admin.helpers.public_front_card_density'))
+                                            ->options([
+                                                'compact' => __('admin.card_density.compact'),
+                                                'comfortable' => __('admin.card_density.comfortable'),
+                                            ])
+                                            ->required(),
+                                        Select::make('display_defaults.image_size')
+                                            ->label(__('admin.fields.public_front_card_image_size'))
+                                            ->helperText(__('admin.helpers.public_front_card_image_size'))
+                                            ->options([
+                                                'hidden' => __('admin.card_image_size.hidden'),
+                                                'small' => __('admin.card_image_size.small'),
+                                                'medium' => __('admin.card_image_size.medium'),
+                                                'large' => __('admin.card_image_size.large'),
+                                            ])
+                                            ->required(),
+                                        Select::make('display_defaults.title_size')
+                                            ->label(__('admin.fields.public_front_card_title_size'))
+                                            ->helperText(__('admin.helpers.public_front_card_title_size'))
+                                            ->options([
+                                                'sm' => __('admin.card_title_size.sm'),
+                                                'base' => __('admin.card_title_size.base'),
+                                                'lg' => __('admin.card_title_size.lg'),
+                                            ])
+                                            ->required(),
+                                        TextInput::make('display_defaults.page_size')
+                                            ->label(__('admin.fields.public_front_page_size'))
+                                            ->helperText(__('admin.helpers.public_front_page_size'))
+                                            ->required()
+                                            ->numeric()
+                                            ->integer()
+                                            ->minValue(1)
+                                            ->maxValue(48),
+                                    ])
+                                    ->columns(3)
+                                    ->collapsible()
+                                    ->columnSpanFull(),
+                            ]),
+                        Tab::make(__('admin.tabs.public_content_settings.menu_header'))
+                            ->id('menu-header')
+                            ->key('public-settings-tab-menu-header')
+                            ->schema([
+                                Section::make(__('admin.sections.public_front_menu_header'))
+                                    ->description(__('admin.descriptions.public_front_menu_header'))
+                                    ->schema([
+                                        Toggle::make('menu_config.enabled')
+                                            ->label(__('admin.fields.public_front_menu_enabled'))
+                                            ->helperText(__('admin.helpers.public_front_menu_enabled')),
+                                        Repeater::make('menu_config.items')
+                                            ->label(__('admin.fields.public_menu_items'))
+                                            ->helperText(__('admin.helpers.public_menu_items'))
+                                            ->schema([
+                                                Fieldset::make(__('admin.sections.public_menu_item_identity'))
+                                                    ->schema([
+                                                        TextInput::make('key')
+                                                            ->label(__('admin.fields.public_menu_item_key'))
+                                                            ->helperText(__('admin.helpers.public_menu_item_key'))
+                                                            ->required()
+                                                            ->maxLength(80)
+                                                            ->rules(['regex:/^[a-z][a-z0-9_-]*$/']),
+                                                        Select::make('type')
+                                                            ->label(__('admin.fields.public_menu_item_type'))
+                                                            ->helperText(__('admin.helpers.public_menu_item_type'))
+                                                            ->options(fn (): array => PublicFrontConfigRegistry::publicMenuItemTypeOptions())
+                                                            ->default('route')
+                                                            ->native(false)
+                                                            ->live()
+                                                            ->required(),
+                                                        TextInput::make('label')
+                                                            ->label(__('admin.fields.public_menu_item_label'))
+                                                            ->helperText(__('admin.helpers.public_menu_item_label'))
+                                                            ->maxLength(80),
+                                                        Toggle::make('visible')
+                                                            ->label(__('admin.fields.public_menu_item_visible'))
+                                                            ->helperText(__('admin.helpers.public_menu_item_visible'))
+                                                            ->default(true),
+                                                        TextInput::make('sort')
+                                                            ->label(__('admin.fields.public_menu_item_sort'))
+                                                            ->helperText(__('admin.helpers.public_menu_item_sort'))
+                                                            ->numeric()
+                                                            ->integer()
+                                                            ->minValue(0)
+                                                            ->maxValue(1000),
+                                                    ])
+                                                    ->columns(3)
+                                                    ->columnSpanFull(),
+                                                Fieldset::make(__('admin.sections.public_menu_item_target'))
+                                                    ->schema([
+                                                        Select::make('route_key')
+                                                            ->label(__('admin.fields.public_menu_item_route_key'))
+                                                            ->helperText(__('admin.helpers.public_menu_item_route_key'))
+                                                            ->options(fn (): array => PublicFrontConfigRegistry::routeOptions())
+                                                            ->searchable()
+                                                            ->native(false)
+                                                            ->required(fn (Get $get): bool => $get('type') === 'route')
+                                                            ->visible(fn (Get $get): bool => $get('type') === 'route'),
+                                                        TextInput::make('external_url')
+                                                            ->label(__('admin.fields.public_menu_item_external_url'))
+                                                            ->helperText(__('admin.helpers.public_menu_item_external_url'))
+                                                            ->url()
+                                                            ->maxLength(2048)
+                                                            ->required(fn (Get $get): bool => $get('type') === 'external_url')
+                                                            ->visible(fn (Get $get): bool => $get('type') === 'external_url'),
+                                                        Toggle::make('open_in_new_tab')
+                                                            ->label(__('admin.fields.public_menu_item_open_in_new_tab'))
+                                                            ->helperText(__('admin.helpers.public_menu_item_open_in_new_tab'))
+                                                            ->default(false)
+                                                            ->visible(fn (Get $get): bool => $get('type') === 'external_url'),
+                                                        Select::make('form_key')
+                                                            ->label(__('admin.fields.public_menu_item_form_key'))
+                                                            ->helperText(__('admin.helpers.public_menu_item_form_key'))
+                                                            ->options(fn (): array => $this->publicFormOptions())
+                                                            ->searchable()
+                                                            ->native(false)
+                                                            ->required(fn (Get $get): bool => $get('type') === 'public_form')
+                                                            ->visible(fn (Get $get): bool => $get('type') === 'public_form'),
+                                                        Select::make('display_mode')
+                                                            ->label(__('admin.fields.public_menu_item_display_mode'))
+                                                            ->helperText(__('admin.helpers.public_menu_item_display_mode'))
+                                                            ->options(fn (): array => PublicFrontConfigRegistry::publicFormDisplayModeOptions())
+                                                            ->default('modal')
+                                                            ->native(false)
+                                                            ->visible(fn (Get $get): bool => $get('type') === 'public_form'),
+                                                    ])
+                                                    ->columns(3)
+                                                    ->columnSpanFull(),
+                                            ])
+                                            ->itemLabel(fn (array $state): ?string => $state['label'] ?? $state['key'] ?? __('admin.labels.untitled'))
+                                            ->defaultItems(0)
+                                            ->reorderable()
+                                            ->cloneable()
+                                            ->collapsed()
+                                            ->columns(3)
+                                            ->columnSpanFull(),
+                                        Fieldset::make(__('admin.sections.public_menu_theme_selector'))
+                                            ->schema([
+                                                Toggle::make('menu_config.theme_selector.enabled')
+                                                    ->label(__('admin.fields.public_menu_theme_selector_enabled'))
+                                                    ->helperText(__('admin.helpers.public_menu_theme_selector_enabled')),
+                                                Select::make('menu_config.theme_selector.mode')
+                                                    ->label(__('admin.fields.public_menu_theme_selector_mode'))
+                                                    ->helperText(__('admin.helpers.public_menu_theme_selector_mode'))
+                                                    ->options([
+                                                        'light_dark_system' => __('admin.public_menu_theme_selector_modes.light_dark_system'),
+                                                        'light_dark' => __('admin.public_menu_theme_selector_modes.light_dark'),
+                                                    ])
+                                                    ->default('light_dark_system')
+                                                    ->native(false),
+                                            ])
+                                            ->columns(2)
+                                            ->columnSpanFull(),
+                                        Repeater::make('route_labels')
+                                            ->label(__('admin.fields.public_front_route_labels'))
+                                            ->helperText(__('admin.helpers.public_front_route_labels'))
+                                            ->schema([
+                                                Select::make('route_key')
+                                                    ->label(__('admin.fields.public_front_route_key'))
+                                                    ->options(fn (): array => PublicFrontConfigRegistry::routeOptions())
+                                                    ->native(false)
+                                                    ->required(),
+                                                TextInput::make('label')
+                                                    ->label(__('admin.fields.public_front_route_label'))
+                                                    ->maxLength(80)
+                                                    ->required(),
+                                            ])
+                                            ->columns(2)
+                                            ->defaultItems(0)
+                                            ->reorderable()
+                                            ->cloneable()
+                                            ->columnSpanFull(),
+                                    ])
+                                    ->columns(1)
+                                    ->collapsible()
+                                    ->columnSpanFull(),
+                            ]),
+                        Tab::make(__('admin.tabs.public_content_settings.podcasts'))
+                            ->id('podcasts')
+                            ->key('public-settings-tab-podcasts')
+                            ->schema([
+                                Section::make(__('admin.sections.public_front_podcasts_page'))
+                                    ->description(__('admin.descriptions.public_front_podcasts_page'))
+                                    ->schema([
+                                        Toggle::make('podcasts_page.enabled')
+                                            ->label(__('admin.fields.podcasts_page_enabled'))
+                                            ->helperText(__('admin.helpers.podcasts_page_enabled')),
+                                        TextInput::make('podcasts_page.title')
+                                            ->label(__('admin.fields.podcasts_page_title'))
+                                            ->helperText(__('admin.helpers.podcasts_page_title'))
+                                            ->required()
+                                            ->maxLength(160),
+                                        Textarea::make('podcasts_page.description')
+                                            ->label(__('admin.fields.podcasts_page_description'))
+                                            ->helperText(__('admin.helpers.podcasts_page_description'))
+                                            ->rows(3)
+                                            ->maxLength(1000)
+                                            ->columnSpanFull(),
+                                        TextInput::make('podcasts_page.group_label_singular')
+                                            ->label(__('admin.fields.podcasts_page_group_label_singular'))
+                                            ->helperText(__('admin.helpers.podcasts_page_group_label_singular'))
+                                            ->required()
+                                            ->maxLength(80),
+                                        TextInput::make('podcasts_page.group_label_plural')
+                                            ->label(__('admin.fields.podcasts_page_group_label_plural'))
+                                            ->helperText(__('admin.helpers.podcasts_page_group_label_plural'))
+                                            ->required()
+                                            ->maxLength(80),
+                                        TextInput::make('podcasts_page.cards_per_page')
+                                            ->label(__('admin.fields.podcasts_page_cards_per_page'))
+                                            ->helperText(__('admin.helpers.podcasts_page_cards_per_page'))
+                                            ->required()
+                                            ->numeric()
+                                            ->integer()
+                                            ->minValue(1)
+                                            ->maxValue(48),
+                                        Toggle::make('podcasts_page.category_filter_enabled')
+                                            ->label(__('admin.fields.podcasts_page_category_filter_enabled'))
+                                            ->helperText(__('admin.helpers.podcasts_page_category_filter_enabled')),
+                                        Toggle::make('podcasts_page.search_enabled')
+                                            ->label(__('admin.fields.podcasts_page_search_enabled'))
+                                            ->helperText(__('admin.helpers.podcasts_page_search_enabled')),
+                                        Select::make('podcasts_page.template_key')
+                                            ->label(__('admin.fields.podcasts_page_template_key'))
+                                            ->helperText(__('admin.helpers.podcasts_page_template_key'))
+                                            ->options(fn (): array => $this->cardTemplateOptions('content_group'))
+                                            ->placeholder(__('admin.labels.none'))
+                                            ->native(false),
+                                        Select::make('podcasts_page.item_template_key')
+                                            ->label(__('admin.fields.podcasts_page_item_template_key'))
+                                            ->helperText(__('admin.helpers.podcasts_page_item_template_key'))
+                                            ->options(fn (): array => $this->cardTemplateOptions('content_item'))
+                                            ->placeholder(__('admin.labels.none'))
+                                            ->native(false),
+                                        Toggle::make('podcasts_page.show_description')
+                                            ->label(__('admin.fields.podcasts_page_show_description'))
+                                            ->helperText(__('admin.helpers.podcasts_page_show_description')),
+                                        Toggle::make('podcasts_page.show_categories')
+                                            ->label(__('admin.fields.podcasts_page_show_categories'))
+                                            ->helperText(__('admin.helpers.podcasts_page_show_categories')),
+                                        Toggle::make('podcasts_page.show_episode_count')
+                                            ->label(__('admin.fields.podcasts_page_show_episode_count'))
+                                            ->helperText(__('admin.helpers.podcasts_page_show_episode_count')),
+                                        Fieldset::make(__('admin.sections.public_front_podcasts_group_page'))
+                                            ->schema([
+                                                Toggle::make('podcasts_page.group_page.show_description')
+                                                    ->label(__('admin.fields.podcasts_group_page_show_description'))
+                                                    ->helperText(__('admin.helpers.podcasts_group_page_show_description')),
+                                                Toggle::make('podcasts_page.group_page.show_categories')
+                                                    ->label(__('admin.fields.podcasts_group_page_show_categories'))
+                                                    ->helperText(__('admin.helpers.podcasts_group_page_show_categories')),
+                                                Toggle::make('podcasts_page.group_page.show_episode_descriptions')
+                                                    ->label(__('admin.fields.podcasts_group_page_show_episode_descriptions'))
+                                                    ->helperText(__('admin.helpers.podcasts_group_page_show_episode_descriptions')),
+                                                TextInput::make('podcasts_page.group_page.items_per_page')
+                                                    ->label(__('admin.fields.podcasts_group_page_items_per_page'))
+                                                    ->helperText(__('admin.helpers.podcasts_group_page_items_per_page'))
+                                                    ->required()
+                                                    ->numeric()
+                                                    ->integer()
+                                                    ->minValue(1)
+                                                    ->maxValue(48),
+                                            ])
+                                            ->columns(2)
+                                            ->columnSpanFull(),
+                                    ])
+                                    ->columns(3)
+                                    ->collapsible()
+                                    ->columnSpanFull(),
+                            ]),
+                        Tab::make(__('admin.tabs.public_content_settings.about'))
+                            ->id('about')
+                            ->key('public-settings-tab-about')
+                            ->schema([
+                                Section::make(__('admin.sections.public_front_about_page'))
+                                    ->description(__('admin.descriptions.public_front_about_page'))
+                                    ->schema([
+                                        Fieldset::make(__('admin.sections.about_page_identity'))
+                                            ->schema([
+                                                Toggle::make('about_page.enabled')
+                                                    ->label(__('admin.fields.about_page_enabled'))
+                                                    ->helperText(__('admin.helpers.about_page_enabled'))
+                                                    ->default(false),
+                                                TextInput::make('about_page.title')
+                                                    ->label(__('admin.fields.about_page_title'))
+                                                    ->helperText(__('admin.helpers.about_page_title'))
+                                                    ->required()
+                                                    ->maxLength(160),
+                                                TextInput::make('about_page.kicker')
+                                                    ->label(__('admin.fields.about_page_kicker'))
+                                                    ->helperText(__('admin.helpers.about_page_kicker'))
+                                                    ->maxLength(120),
+                                                Textarea::make('about_page.description')
+                                                    ->label(__('admin.fields.about_page_description'))
+                                                    ->helperText(__('admin.helpers.about_page_description'))
+                                                    ->rows(3)
+                                                    ->maxLength(1000)
+                                                    ->columnSpanFull(),
+                                            ])
+                                            ->columns(3)
+                                            ->columnSpanFull(),
+                                        Fieldset::make(__('admin.sections.about_page_team_defaults'))
+                                            ->schema([
+                                                TextInput::make('about_page.settings.team_heading')
+                                                    ->label(__('admin.fields.about_page_team_heading'))
+                                                    ->helperText(__('admin.helpers.about_page_team_heading'))
+                                                    ->maxLength(160),
+                                                Select::make('about_page.settings.team_layout')
+                                                    ->label(__('admin.fields.about_page_team_layout'))
+                                                    ->helperText(__('admin.helpers.about_page_team_layout'))
+                                                    ->options(fn (): array => PublicFrontConfigRegistry::aboutTeamLayoutOptions())
+                                                    ->default('grid')
+                                                    ->native(false)
+                                                    ->required(),
+                                                Textarea::make('about_page.settings.team_description')
+                                                    ->label(__('admin.fields.about_page_team_description'))
+                                                    ->helperText(__('admin.helpers.about_page_team_description'))
+                                                    ->rows(3)
+                                                    ->maxLength(1000)
+                                                    ->columnSpanFull(),
+                                            ])
+                                            ->columns(2)
+                                            ->columnSpanFull(),
+                                        Fieldset::make(__('admin.sections.about_page_team_card'))
+                                            ->schema([
+                                                Toggle::make('about_page.settings.team_card.show_image')
+                                                    ->label(__('admin.fields.about_team_card_show_image'))
+                                                    ->helperText(__('admin.helpers.about_team_card_show_image')),
+                                                Select::make('about_page.settings.team_card.image_size')
+                                                    ->label(__('admin.fields.about_team_card_image_size'))
+                                                    ->helperText(__('admin.helpers.about_team_card_image_size'))
+                                                    ->options(fn (): array => PublicFrontConfigRegistry::aboutTeamCardImageSizeOptions())
+                                                    ->default('medium')
+                                                    ->native(false),
+                                                Select::make('about_page.settings.team_card.layout')
+                                                    ->label(__('admin.fields.about_team_card_layout'))
+                                                    ->helperText(__('admin.helpers.about_team_card_layout'))
+                                                    ->options(fn (): array => PublicFrontConfigRegistry::aboutTeamLayoutOptions())
+                                                    ->default('grid')
+                                                    ->native(false),
+                                                Select::make('about_page.settings.team_card.density')
+                                                    ->label(__('admin.fields.about_team_card_density'))
+                                                    ->helperText(__('admin.helpers.about_team_card_density'))
+                                                    ->options(fn (): array => PublicFrontConfigRegistry::aboutTeamCardDensityOptions())
+                                                    ->default('comfortable')
+                                                    ->native(false),
+                                                Toggle::make('about_page.settings.team_card.show_title')
+                                                    ->label(__('admin.fields.about_team_card_show_title'))
+                                                    ->helperText(__('admin.helpers.about_team_card_show_title')),
+                                                Toggle::make('about_page.settings.team_card.show_description')
+                                                    ->label(__('admin.fields.about_team_card_show_description'))
+                                                    ->helperText(__('admin.helpers.about_team_card_show_description')),
+                                                TextInput::make('about_page.settings.team_card.description_lines')
+                                                    ->label(__('admin.fields.about_team_card_description_lines'))
+                                                    ->helperText(__('admin.helpers.about_team_card_description_lines'))
+                                                    ->numeric()
+                                                    ->integer()
+                                                    ->minValue(0)
+                                                    ->maxValue(6),
+                                            ])
+                                            ->columns(3)
+                                            ->columnSpanFull(),
+                                        Builder::make('about_page.blocks')
+                                            ->label(__('admin.fields.about_page_blocks'))
+                                            ->helperText(__('admin.helpers.about_page_blocks'))
+                                            ->blocks($this->aboutPageBlockBlocks())
                                             ->blockPickerColumns(2)
                                             ->collapsible()
                                             ->collapsed()
                                             ->cloneable()
                                             ->default([])
-                                            ->addActionLabel(__('admin.actions.add_public_form_field'))
+                                            ->addActionLabel(__('admin.actions.add_about_page_block'))
+                                            ->columnSpanFull(),
+                                        Repeater::make('about_page.team_profiles')
+                                            ->label(__('admin.fields.about_page_team_profiles'))
+                                            ->helperText(__('admin.helpers.about_page_team_profiles'))
+                                            ->schema([
+                                                TextInput::make('key')
+                                                    ->label(__('admin.fields.about_team_profile_key'))
+                                                    ->helperText(__('admin.helpers.about_team_profile_key'))
+                                                    ->required()
+                                                    ->maxLength(80)
+                                                    ->rules(['regex:/^[a-z][a-z0-9_-]*$/']),
+                                                Toggle::make('visible')
+                                                    ->label(__('admin.fields.about_team_profile_visible'))
+                                                    ->helperText(__('admin.helpers.about_team_profile_visible'))
+                                                    ->default(true),
+                                                TextInput::make('sort')
+                                                    ->label(__('admin.fields.about_team_profile_sort'))
+                                                    ->helperText(__('admin.helpers.about_team_profile_sort'))
+                                                    ->numeric()
+                                                    ->integer()
+                                                    ->minValue(0)
+                                                    ->maxValue(1000),
+                                                FileUpload::make('image_path')
+                                                    ->label(__('admin.fields.about_team_profile_image'))
+                                                    ->helperText(__('admin.helpers.about_team_profile_image'))
+                                                    ->disk('public')
+                                                    ->directory('team')
+                                                    ->visibility('public')
+                                                    ->avatar()
+                                                    ->acceptedFileTypes(PublicAboutPageRegistry::acceptedImageTypes())
+                                                    ->maxSize(PublicAboutPageRegistry::maxImageSize()),
+                                                TextInput::make('name')
+                                                    ->label(__('admin.fields.about_team_profile_name'))
+                                                    ->helperText(__('admin.helpers.about_team_profile_name'))
+                                                    ->required()
+                                                    ->maxLength(120),
+                                                TextInput::make('title')
+                                                    ->label(__('admin.fields.about_team_profile_title'))
+                                                    ->helperText(__('admin.helpers.about_team_profile_title'))
+                                                    ->maxLength(120),
+                                                Textarea::make('description')
+                                                    ->label(__('admin.fields.about_team_profile_description'))
+                                                    ->helperText(__('admin.helpers.about_team_profile_description'))
+                                                    ->rows(3)
+                                                    ->maxLength(1000)
+                                                    ->columnSpanFull(),
+                                            ])
+                                            ->itemLabel(fn (array $state): ?string => $state['name'] ?? $state['key'] ?? __('admin.labels.untitled'))
+                                            ->defaultItems(0)
+                                            ->reorderable()
+                                            ->cloneable()
+                                            ->collapsed()
+                                            ->grid(['md' => 2])
+                                            ->columns(3)
                                             ->columnSpanFull(),
                                     ])
+                                    ->collapsible()
                                     ->columnSpanFull(),
-                            ])
-                            ->itemLabel(fn (array $state): ?string => $state['name'] ?? $state['key'] ?? __('admin.labels.untitled'))
-                            ->defaultItems(0)
-                            ->reorderable()
-                            ->cloneable()
-                            ->collapsed()
-                            ->columns(3)
-                            ->columnSpanFull(),
-                    ]),
+                            ]),
+                        Tab::make(__('admin.tabs.public_content_settings.forms'))
+                            ->id('forms')
+                            ->key('public-settings-tab-forms')
+                            ->schema([
+                                Section::make(__('admin.sections.public_front_forms'))
+                                    ->description(__('admin.descriptions.public_front_forms'))
+                                    ->schema([
+                                        Repeater::make('public_forms.definitions')
+                                            ->label(__('admin.fields.public_forms'))
+                                            ->helperText(__('admin.helpers.public_forms'))
+                                            ->schema([
+                                                Fieldset::make(__('admin.sections.public_form_identity'))
+                                                    ->schema([
+                                                        TextInput::make('key')
+                                                            ->label(__('admin.fields.public_form_key'))
+                                                            ->helperText(__('admin.helpers.public_form_key'))
+                                                            ->required()
+                                                            ->maxLength(80)
+                                                            ->rules(['regex:/^[a-z][a-z0-9_-]*$/']),
+                                                        TextInput::make('name')
+                                                            ->label(__('admin.fields.public_form_name'))
+                                                            ->helperText(__('admin.helpers.public_form_name'))
+                                                            ->required()
+                                                            ->maxLength(120),
+                                                        TextInput::make('heading')
+                                                            ->label(__('admin.fields.public_form_heading'))
+                                                            ->helperText(__('admin.helpers.public_form_heading'))
+                                                            ->maxLength(160),
+                                                        Select::make('display_mode_default')
+                                                            ->label(__('admin.fields.public_form_display_mode'))
+                                                            ->helperText(__('admin.helpers.public_form_display_mode'))
+                                                            ->options(fn (): array => PublicFrontConfigRegistry::publicFormDisplayModeOptions())
+                                                            ->default('modal')
+                                                            ->native(false)
+                                                            ->required(),
+                                                        Toggle::make('enabled')
+                                                            ->label(__('admin.fields.public_form_enabled'))
+                                                            ->helperText(__('admin.helpers.public_form_enabled'))
+                                                            ->default(false),
+                                                    ])
+                                                    ->columns(3)
+                                                    ->columnSpanFull(),
+                                                Fieldset::make(__('admin.sections.public_form_behavior'))
+                                                    ->schema([
+                                                        TextInput::make('submit_label')
+                                                            ->label(__('admin.fields.public_form_submit_label'))
+                                                            ->helperText(__('admin.helpers.public_form_submit_label'))
+                                                            ->maxLength(80),
+                                                        TextInput::make('success_message')
+                                                            ->label(__('admin.fields.public_form_success_message'))
+                                                            ->helperText(__('admin.helpers.public_form_success_message'))
+                                                            ->maxLength(240)
+                                                            ->columnSpanFull(),
+                                                        Textarea::make('description')
+                                                            ->label(__('admin.fields.public_form_description'))
+                                                            ->helperText(__('admin.helpers.public_form_description'))
+                                                            ->rows(3)
+                                                            ->maxLength(1000)
+                                                            ->columnSpanFull(),
+                                                        TextInput::make('settings.rate_limit_attempts')
+                                                            ->label(__('admin.fields.public_form_rate_limit_attempts'))
+                                                            ->helperText(__('admin.helpers.public_form_rate_limit_attempts'))
+                                                            ->numeric()
+                                                            ->integer()
+                                                            ->minValue(1)
+                                                            ->maxValue(30)
+                                                            ->default(5),
+                                                        TextInput::make('settings.rate_limit_decay_seconds')
+                                                            ->label(__('admin.fields.public_form_rate_limit_decay_seconds'))
+                                                            ->helperText(__('admin.helpers.public_form_rate_limit_decay_seconds'))
+                                                            ->numeric()
+                                                            ->integer()
+                                                            ->minValue(60)
+                                                            ->maxValue(86400)
+                                                            ->default(600),
+                                                    ])
+                                                    ->columns(2)
+                                                    ->columnSpanFull(),
+                                                Fieldset::make(__('admin.sections.public_form_fields_config'))
+                                                    ->schema([
+                                                        Builder::make('fields')
+                                                            ->label(__('admin.fields.public_form_fields'))
+                                                            ->helperText(__('admin.helpers.public_form_fields'))
+                                                            ->blocks($this->publicFormFieldBlocks())
+                                                            ->blockPickerColumns(2)
+                                                            ->collapsible()
+                                                            ->collapsed()
+                                                            ->cloneable()
+                                                            ->default([])
+                                                            ->addActionLabel(__('admin.actions.add_public_form_field'))
+                                                            ->columnSpanFull(),
+                                                    ])
+                                                    ->columnSpanFull(),
+                                            ])
+                                            ->itemLabel(fn (array $state): ?string => $state['name'] ?? $state['key'] ?? __('admin.labels.untitled'))
+                                            ->defaultItems(0)
+                                            ->reorderable()
+                                            ->cloneable()
+                                            ->collapsed()
+                                            ->columns(3)
+                                            ->columnSpanFull(),
+                                    ])
+                                    ->collapsible()
+                                    ->columnSpanFull(),
+                            ]),
+                        Tab::make(__('admin.tabs.public_content_settings.advanced'))
+                            ->id('advanced')
+                            ->key('public-settings-tab-advanced')
+                            ->schema([
+                                Section::make(__('admin.sections.public_front_card_templates'))
+                                    ->description(__('admin.descriptions.public_front_card_templates'))
+                                    ->schema([
+                                        Repeater::make('card_templates')
+                                            ->label(__('admin.fields.public_front_card_templates'))
+                                            ->helperText(__('admin.helpers.public_front_card_templates'))
+                                            ->schema([
+                                                TextInput::make('key')
+                                                    ->label(__('admin.fields.card_template_key'))
+                                                    ->helperText(__('admin.helpers.card_template_key'))
+                                                    ->required()
+                                                    ->maxLength(80)
+                                                    ->rules(['regex:/^[a-z][a-z0-9_-]*$/']),
+                                                TextInput::make('label')
+                                                    ->label(__('admin.fields.card_template_label'))
+                                                    ->helperText(__('admin.helpers.card_template_label'))
+                                                    ->required()
+                                                    ->maxLength(120),
+                                                Select::make('family')
+                                                    ->label(__('admin.fields.card_template_family'))
+                                                    ->helperText(__('admin.helpers.card_template_family'))
+                                                    ->options(fn (): array => PublicFrontConfigRegistry::cardFamilyOptions())
+                                                    ->native(false)
+                                                    ->required(),
+                                                Select::make('layout')
+                                                    ->label(__('admin.fields.card_template_layout'))
+                                                    ->helperText(__('admin.helpers.card_template_layout'))
+                                                    ->options([
+                                                        'cards' => __('admin.layouts.cards'),
+                                                        'rows' => __('admin.layouts.rows'),
+                                                    ])
+                                                    ->native(false)
+                                                    ->default('cards')
+                                                    ->required(),
+                                                Select::make('density')
+                                                    ->label(__('admin.fields.card_template_density'))
+                                                    ->helperText(__('admin.helpers.card_template_density'))
+                                                    ->options([
+                                                        'compact' => __('admin.card_density.compact'),
+                                                        'comfortable' => __('admin.card_density.comfortable'),
+                                                    ])
+                                                    ->native(false)
+                                                    ->default('comfortable')
+                                                    ->required(),
+                                                Select::make('image_size')
+                                                    ->label(__('admin.fields.card_template_image_size'))
+                                                    ->helperText(__('admin.helpers.card_template_image_size'))
+                                                    ->options([
+                                                        'hidden' => __('admin.card_image_size.hidden'),
+                                                        'small' => __('admin.card_image_size.small'),
+                                                        'medium' => __('admin.card_image_size.medium'),
+                                                        'large' => __('admin.card_image_size.large'),
+                                                    ])
+                                                    ->native(false)
+                                                    ->default('medium')
+                                                    ->required(),
+                                                Select::make('title_size')
+                                                    ->label(__('admin.fields.card_template_title_size'))
+                                                    ->helperText(__('admin.helpers.card_template_title_size'))
+                                                    ->options([
+                                                        'sm' => __('admin.card_title_size.sm'),
+                                                        'base' => __('admin.card_title_size.base'),
+                                                        'lg' => __('admin.card_title_size.lg'),
+                                                    ])
+                                                    ->native(false)
+                                                    ->default('base')
+                                                    ->required(),
+                                                Builder::make('parts')
+                                                    ->label(__('admin.fields.card_template_parts'))
+                                                    ->helperText(__('admin.helpers.card_template_parts'))
+                                                    ->blocks($this->cardTemplatePartBlocks())
+                                                    ->blockPickerColumns(2)
+                                                    ->collapsible()
+                                                    ->collapsed()
+                                                    ->cloneable()
+                                                    ->default([])
+                                                    ->addActionLabel(__('admin.actions.add_card_template_part'))
+                                                    ->columnSpanFull(),
+                                            ])
+                                            ->itemLabel(fn (array $state): ?string => $state['label'] ?? $state['key'] ?? __('admin.labels.untitled'))
+                                            ->defaultItems(0)
+                                            ->reorderable()
+                                            ->cloneable()
+                                            ->collapsed()
+                                            ->columns(3)
+                                            ->columnSpanFull(),
+                                    ])
+                                    ->collapsible()
+                                    ->columnSpanFull(),
+                            ]),
+                    ])
+                    ->columnSpanFull(),
             ]);
     }
 
@@ -843,7 +1051,7 @@ class PublicContentSettings extends SettingsPage
             Select::make('form_key')
                 ->label(__('admin.fields.about_block_form_key'))
                 ->helperText(__('admin.helpers.about_block_form_key'))
-                ->options(fn (): array => $this->enabledPublicFormOptions())
+                ->options(fn (): array => $this->publicFormOptions())
                 ->searchable()
                 ->native(false)
                 ->required($type === 'form_cta')
@@ -1069,18 +1277,27 @@ class PublicContentSettings extends SettingsPage
     /**
      * @return array<string, string>
      */
-    private function enabledPublicFormOptions(): array
+    private function publicFormOptions(): array
     {
         $publicForms = app(PublicFrontConfigReader::class)
             ->read()
             ->group('public_forms');
 
-        return collect($publicForms['definitions'] ?? [])
-            ->filter(fn (mixed $definition): bool => is_array($definition) && ($definition['enabled'] ?? false) === true)
+        $configuredOptions = collect($publicForms['definitions'] ?? [])
+            ->filter(fn (mixed $definition): bool => is_array($definition) && filled($definition['key'] ?? null))
             ->mapWithKeys(fn (array $definition): array => [
                 $definition['key'] => $definition['name'] ?? $definition['key'],
             ])
             ->all();
+
+        $defaultOptions = collect(PublicFrontConfigRegistry::defaultMenuItems())
+            ->filter(fn (array $item): bool => ($item['type'] ?? null) === 'public_form' && filled($item['form_key'] ?? null))
+            ->mapWithKeys(fn (array $item): array => [
+                $item['form_key'] => $item['label'] ?? $item['form_key'],
+            ])
+            ->all();
+
+        return [...$defaultOptions, ...$configuredOptions];
     }
 
     /**

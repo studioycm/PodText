@@ -614,6 +614,11 @@ class ContentItemSearch extends Component
             && ! $this->hasActiveDiscoveryState();
     }
 
+    public function shouldRenderDiscoveryChrome(): bool
+    {
+        return ! $this->shouldRenderHomepageSections();
+    }
+
     protected function hasActiveDiscoveryState(): bool
     {
         return filled($this->search)

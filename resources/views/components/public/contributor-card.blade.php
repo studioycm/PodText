@@ -4,6 +4,7 @@
     'selected' => false,
     'selectable' => false,
     'cardTemplate' => null,
+    'compact' => false,
 ])
 
 @php
@@ -21,6 +22,32 @@
         : 'border-gray-200 hover:border-primary-300 dark:border-gray-800 dark:hover:border-primary-700';
 @endphp
 
+@if($compact)
+    <button
+        type="button"
+        wire:click="selectContributor({{ $author->id }})"
+        {{ $attributes->merge(['class' => "flex h-full w-full min-w-0 items-center justify-between gap-3 rounded-lg border bg-white p-4 text-start shadow-sm transition hover:border-primary-300 focus:outline-none focus:ring-2 focus:ring-primary-500 dark:bg-gray-900 dark:hover:border-primary-700 {$cardClasses}"]) }}
+        data-test="contributor-card"
+        data-contributor-id="{{ $author->id }}"
+        data-card-template-family="{{ $templateAttributes['data-card-template-family'] }}"
+        data-card-template-key="{{ $templateAttributes['data-card-template-key'] }}"
+        data-card-template-layout="{{ $templateAttributes['data-card-template-layout'] }}"
+        data-card-template-parts="{{ $templateAttributes['data-card-template-parts'] }}"
+    >
+        <span class="min-w-0 truncate text-base font-semibold text-gray-950 dark:text-white" data-test="contributor-name">
+            {{ $author->name }}
+        </span>
+
+        <span
+            class="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-primary-50 px-2.5 py-1 text-xs font-medium text-primary-800 dark:bg-primary-950 dark:text-primary-100"
+            title="{{ trans_choice('public.labels.public_transcriptions_count', $transcriptionsCount, ['count' => $transcriptionsCount]) }}"
+            data-test="public-transcriptions-count"
+        >
+            <x-heroicon-o-document-text class="size-4" />
+            <span>{{ $transcriptionsCount }}</span>
+        </span>
+    </button>
+@else
 <article
     {{ $attributes->merge(['class' => "flex h-full flex-col gap-4 rounded-lg border bg-white p-4 shadow-sm transition dark:bg-gray-900 {$cardClasses}"]) }}
     data-test="contributor-card"
@@ -77,3 +104,4 @@
         </a>
     </div>
 </article>
+@endif

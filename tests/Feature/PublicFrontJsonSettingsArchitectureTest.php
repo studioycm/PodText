@@ -31,8 +31,11 @@ it('loads public front defaults when settings rows are missing', function (): vo
     clearPublicFrontSettingsCache();
 
     $result = app(PublicFrontConfigReader::class)->read();
+    $defaults = app(PublicFrontConfigValidator::class)
+        ->validate(PublicFrontConfigRegistry::defaults())
+        ->config();
 
-    expect($result->config())->toBe(PublicFrontConfigRegistry::defaults());
+    expect($result->config())->toBe($defaults);
 });
 
 it('merges nested stored config arrays with defaults', function (): void {
@@ -45,16 +48,20 @@ it('merges nested stored config arrays with defaults', function (): void {
         ],
     ]);
 
+    $menuConfig = $result->group('menu_config');
+
     expect($result->group('display_defaults'))->toMatchArray([
         'layout' => 'rows',
         'density' => 'comfortable',
         'image_size' => 'medium',
         'title_size' => 'base',
         'page_size' => 12,
-    ])->and($result->group('menu_config'))->toBe([
-        'enabled' => true,
-        'items' => [],
-    ]);
+    ])->and($menuConfig['enabled'])->toBeTrue()
+        ->and($menuConfig['items'])->not->toBeEmpty()
+        ->and($menuConfig['theme_selector'])->toMatchArray([
+            'enabled' => true,
+            'mode' => 'light_dark_system',
+        ]);
 });
 
 it('reports unknown top level and nested keys safely', function (): void {
@@ -122,15 +129,7 @@ it('rejects unsafe class css sql blade html and javascript values', function ():
         ->all();
 
     expect($result->group('display_defaults')['layout'])->toBe('cards')
-        ->and($result->group('menu_config')['items'])->toBe([
-            [
-                'route_key' => 'home',
-            ],
-            [
-                'label' => 'Search',
-                'route_key' => 'search',
-            ],
-        ])
+        ->and(collect($result->group('menu_config')['items'])->pluck('route_key')->filter()->values()->all())->toBe(['home', 'search'])
         ->and($paths)->toContain('display_defaults.layout')
         ->and($paths)->toContain('menu_config.items.0.label')
         ->and($paths)->toContain('menu_config.items.1.external_url')
@@ -197,10 +196,9 @@ it('saves sanitized public front config through the settings page while preservi
             'route_key' => 'podcasts',
             'label' => 'Podcasts',
         ],
-    ])->and($config->group('menu_config'))->toBe([
-        'enabled' => true,
-        'items' => [],
-    ])->and($cardOptions->imageSize)->toBe('large')
+    ])->and($config->group('menu_config')['enabled'])->toBeTrue()
+        ->and($config->group('menu_config')['items'])->not->toBeEmpty()
+        ->and($cardOptions->imageSize)->toBe('large')
         ->and($cardOptions->density)->toBe('compact')
         ->and($cardOptions->titleSize)->toBe('lg')
         ->and($cardOptions->cardsPerPage)->toBe(7);

@@ -8,6 +8,7 @@ use App\Models\ContentTag;
 use App\Models\HomepageSection;
 use App\Settings\PublicContentSettings;
 use App\Support\PublicFront\PublicFrontConfigRegistry;
+use App\Support\PublicFront\PublicFrontConfigValidator;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Schema;
@@ -104,6 +105,10 @@ it('orders only currently valid pinned items', function (): void {
 it('loads public content settings defaults', function (): void {
     $settings = app(PublicContentSettings::class);
 
+    $publicFrontDefaults = app(PublicFrontConfigValidator::class)
+        ->validate(PublicFrontConfigRegistry::defaults())
+        ->config();
+
     expect($settings->homepage_item_limit)->toBe(12)
         ->and($settings->pinned_item_limit)->toBe(6)
         ->and($settings->default_public_sort)->toBe('latest_transcription')
@@ -130,7 +135,7 @@ it('loads public content settings defaults', function (): void {
             'route_labels' => $settings->route_labels,
             'display_defaults' => $settings->display_defaults,
             'podcasts_page' => $settings->podcasts_page,
-        ])->toBe(PublicFrontConfigRegistry::defaults());
+        ])->toMatchArray($publicFrontDefaults);
 });
 
 it('stores homepage sections with finite type casts and visible ordering', function (): void {

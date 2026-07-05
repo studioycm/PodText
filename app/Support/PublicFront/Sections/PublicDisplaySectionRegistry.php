@@ -24,6 +24,8 @@ class PublicDisplaySectionRegistry
 
     public const TOP_TRANSCRIBERS = 'top_transcribers';
 
+    public const CONTENT_BLOCK = 'content_block';
+
     /**
      * @return array<string>
      */
@@ -39,6 +41,7 @@ class PublicDisplaySectionRegistry
             self::CATEGORIES,
             self::CONTRIBUTORS,
             self::TOP_TRANSCRIBERS,
+            self::CONTENT_BLOCK,
         ];
     }
 
@@ -104,6 +107,26 @@ class PublicDisplaySectionRegistry
     public static function paginationModeOptions(): array
     {
         return self::translatedOptions(self::paginationModes(), 'admin.public_display_section_pagination_modes');
+    }
+
+    /**
+     * @return array<string>
+     */
+    public static function contentBlockStyles(): array
+    {
+        return [
+            'plain',
+            'callout',
+            'accent',
+        ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public static function contentBlockStyleOptions(): array
+    {
+        return self::translatedOptions(self::contentBlockStyles(), 'admin.public_display_content_styles');
     }
 
     public static function defaultSourceTypeForLegacyType(?string $legacyType): ?string

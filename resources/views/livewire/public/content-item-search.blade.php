@@ -1,5 +1,6 @@
 <div class="space-y-6" data-test="content-item-search">
-    <div class="space-y-4">
+    @if($this->shouldRenderDiscoveryChrome())
+    <div class="space-y-4" data-test="discovery-chrome">
         <div class="rounded-lg border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-gray-900">
             <div class="grid gap-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
                 <label class="grid gap-1 text-sm text-gray-700 dark:text-gray-200">
@@ -74,16 +75,29 @@
             :active-tag-ids="$filterTagIds"
         />
     </div>
+    @endif
 
     @if($sections->isNotEmpty())
         <div class="space-y-8" data-test="homepage-sections">
             @foreach($sections as $section)
                 @php
                     $sectionType = $section->section?->type?->value ?? ($section->sourceType === 'latest_content_items' ? 'latest' : $section->sourceType);
+                    $isLatestSection = $this->isLatestSection($section);
+                    $latestItems = collect();
+                    $latestTotalPages = 1;
+                    $latestMode = 'none';
+                    $latestPage = 1;
+
+                    if ($isLatestSection) {
+                        $latestItems = $this->visibleLatestItems($section);
+                        $latestTotalPages = $this->latestTotalPages($section);
+                        $latestMode = $this->latestMode($section);
+                        $latestPage = $this->latestPage($section->key);
+                    }
                 @endphp
 
                 <section class="space-y-4" data-test="homepage-section" data-section-type="{{ $sectionType }}">
-                    <div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+                    <div class="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between" data-test="homepage-section-header">
                         <div class="space-y-1">
                             @if($section->targetLabel)
                                 <p class="text-sm font-medium text-primary-600 dark:text-primary-400" data-test="homepage-section-target">
@@ -99,68 +113,114 @@
 
                         </div>
 
+                        <div class="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-end" data-test="homepage-section-actions">
+                        @if($isLatestSection)
+                            <label class="grid gap-1 text-sm text-gray-700 dark:text-gray-200" data-test="latest-controls">
+                                <span>{{ __('public.filters.latest_search') }}</span>
+                                <input
+                                    type="search"
+                                    wire:model.live.debounce.300ms="latestSearch.{{ $section->key }}"
+                                    data-test="latest-search"
+                                    placeholder="{{ __('public.filters.latest_search_placeholder') }}"
+                                    class="w-full rounded-md border-gray-300 text-sm shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:border-gray-700 dark:bg-gray-950 sm:w-64"
+                                >
+                            </label>
+
+                            @if(in_array($latestMode, ['simple', 'next_previous'], true))
+                                <div class="flex items-center gap-2" data-test="latest-next-previous">
+                                    <button
+                                        type="button"
+                                        wire:click="previousLatestPage('{{ $section->key }}')"
+                                        @disabled($latestPage <= 1)
+                                        class="inline-flex items-center justify-center rounded-md border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800"
+                                        data-test="latest-previous"
+                                    >
+                                        {{ __('public.actions.previous') }}
+                                    </button>
+
+                                    <span class="text-xs text-gray-500 dark:text-gray-400" data-test="latest-page-indicator">
+                                        {{ $latestPage }} / {{ $latestTotalPages }}
+                                    </span>
+
+                                    <button
+                                        type="button"
+                                        wire:click="nextLatestPage('{{ $section->key }}', {{ $latestTotalPages }})"
+                                        @disabled($latestPage >= $latestTotalPages)
+                                        class="inline-flex items-center justify-center rounded-md border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800"
+                                        data-test="latest-next"
+                                    >
+                                        {{ __('public.actions.next') }}
+                                    </button>
+                                </div>
+                            @endif
+                        @endif
+
                         @if($section->viewMoreUrl)
                             <a
                                 href="{{ $section->viewMoreUrl }}"
-                                class="text-sm font-medium text-primary-700 hover:text-primary-900 dark:text-primary-300 dark:hover:text-primary-100"
+                                class="inline-flex items-center justify-center rounded-md border border-primary-200 bg-primary-50 px-3 py-2 text-sm font-medium text-primary-800 transition hover:bg-primary-100 focus:outline-none focus:ring-2 focus:ring-primary-500 dark:border-primary-800 dark:bg-primary-950 dark:text-primary-100 dark:hover:bg-primary-900"
                                 data-test="homepage-section-view-more"
                             >
                                 {{ __('public.actions.view_more') }}
                             </a>
                         @endif
+                        </div>
                     </div>
 
-                    @if($this->isLatestSection($section))
+                    @if($section->sourceType === \App\Support\PublicFront\Sections\PublicDisplaySectionRegistry::CONTENT_BLOCK)
                         @php
-                            $latestItems = $this->visibleLatestItems($section);
-                            $latestTotalPages = $this->latestTotalPages($section);
-                            $latestMode = $this->latestMode($section);
-                            $latestPage = $this->latestPage($section->key);
+                            $contentStyle = $section->displayConfig['content_style'] ?? 'plain';
+                            $buttonLabel = $section->displayConfig['button_label'] ?? null;
+                            $buttonRouteKey = $section->displayConfig['button_route_key'] ?? null;
+                            $buttonFormKey = $section->displayConfig['button_form_key'] ?? null;
+                            $buttonDisplayMode = $section->displayConfig['button_display_mode'] ?? 'modal';
+                            $buttonUrl = is_string($buttonRouteKey)
+                                ? app(\App\Support\PublicFront\Menu\PublicRouteRegistry::class)->url($buttonRouteKey)
+                                : null;
                         @endphp
 
-                        <div class="rounded-lg border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-gray-900" data-test="latest-controls">
-                            <div class="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
-                                <label class="grid gap-1 text-sm text-gray-700 dark:text-gray-200">
-                                    <span>{{ __('public.filters.latest_search') }}</span>
-                                    <input
-                                        type="search"
-                                        wire:model.live.debounce.300ms="latestSearch.{{ $section->key }}"
-                                        data-test="latest-search"
-                                        placeholder="{{ __('public.filters.latest_search_placeholder') }}"
-                                        class="w-full rounded-md border-gray-300 text-sm shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:border-gray-700 dark:bg-gray-950"
-                                    >
-                                </label>
+                        <div
+                            @class([
+                                'space-y-4 rounded-lg',
+                                'border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-gray-900' => $contentStyle === 'callout',
+                                'border border-primary-200 bg-primary-50 p-5 shadow-sm dark:border-primary-900 dark:bg-primary-950' => $contentStyle === 'accent',
+                            ])
+                            data-test="homepage-content-block"
+                            data-content-style="{{ $contentStyle }}"
+                        >
+                            @if(filled($section->displayConfig['body'] ?? null))
+                                <x-public.markdown-content :markdown="$section->displayConfig['body']" />
+                            @endif
 
-                                @if(in_array($latestMode, ['simple', 'next_previous'], true))
-                                    <div class="flex items-center gap-2" data-test="latest-next-previous">
-                                        <button
-                                            type="button"
-                                            wire:click="previousLatestPage('{{ $section->key }}')"
-                                            @disabled($latestPage <= 1)
-                                            class="inline-flex items-center justify-center rounded-md border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800"
-                                            data-test="latest-previous"
-                                        >
-                                            {{ __('public.actions.previous') }}
-                                        </button>
+                            @if($buttonLabel && $buttonUrl)
+                                <a
+                                    href="{{ $buttonUrl }}"
+                                    class="inline-flex items-center justify-center rounded-md border border-primary-700 bg-primary-700 px-4 py-2 text-sm font-medium text-white transition hover:bg-primary-800 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                                    data-test="homepage-content-block-button"
+                                >
+                                    {{ $buttonLabel }}
+                                </a>
+                            @elseif($buttonLabel && $buttonFormKey)
+                                <button
+                                    type="button"
+                                    x-data="{}"
+                                    x-on:click="window.dispatchEvent(new CustomEvent('open-public-form', { detail: { formKey: @js($buttonFormKey) } }))"
+                                    class="inline-flex items-center justify-center rounded-md border border-primary-700 bg-primary-700 px-4 py-2 text-sm font-medium text-white transition hover:bg-primary-800 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                                    data-test="homepage-content-block-form-button"
+                                    data-form-key="{{ $buttonFormKey }}"
+                                >
+                                    {{ $buttonLabel }}
+                                </button>
 
-                                        <span class="text-xs text-gray-500 dark:text-gray-400" data-test="latest-page-indicator">
-                                            {{ $latestPage }} / {{ $latestTotalPages }}
-                                        </span>
-
-                                        <button
-                                            type="button"
-                                            wire:click="nextLatestPage('{{ $section->key }}', {{ $latestTotalPages }})"
-                                            @disabled($latestPage >= $latestTotalPages)
-                                            class="inline-flex items-center justify-center rounded-md border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800"
-                                            data-test="latest-next"
-                                        >
-                                            {{ __('public.actions.next') }}
-                                        </button>
-                                    </div>
-                                @endif
-                            </div>
+                                <livewire:public.public-form-modal
+                                    :form-key="$buttonFormKey"
+                                    :display-mode="$buttonDisplayMode"
+                                    :show-trigger="false"
+                                    :key="'homepage-content-block-form-'.$section->key.'-'.$buttonFormKey"
+                                />
+                            @endif
                         </div>
-
+                    @elseif($isLatestSection)
                         @if($latestItems->isNotEmpty())
                             <x-public.content-item-grid
                                 :items="$latestItems"

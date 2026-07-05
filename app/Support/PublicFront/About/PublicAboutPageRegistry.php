@@ -76,6 +76,49 @@ class PublicAboutPageRegistry
     /**
      * @return array<string>
      */
+    public static function teamCardImageSizes(): array
+    {
+        return [
+            'small',
+            'medium',
+            'large',
+        ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public static function teamCardImageSizeOptions(): array
+    {
+        return collect(self::teamCardImageSizes())
+            ->mapWithKeys(fn (string $size): array => [$size => __("admin.about_team_card_image_sizes.{$size}")])
+            ->all();
+    }
+
+    /**
+     * @return array<string>
+     */
+    public static function teamCardDensities(): array
+    {
+        return [
+            'compact',
+            'comfortable',
+        ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public static function teamCardDensityOptions(): array
+    {
+        return collect(self::teamCardDensities())
+            ->mapWithKeys(fn (string $density): array => [$density => __("admin.about_team_card_densities.{$density}")])
+            ->all();
+    }
+
+    /**
+     * @return array<string>
+     */
     public static function imageDirectories(): array
     {
         return [

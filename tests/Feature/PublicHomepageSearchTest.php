@@ -340,7 +340,7 @@ it('shows result count supports url backed state clear filters and empty state',
     createPrompt11PublicItem(['title' => 'Other Episode']);
 
     Livewire::withQueryParams(['q' => 'Url', 'sort' => 'title_asc'])
-        ->test(ContentItemSearch::class)
+        ->test(ContentItemSearch::class, ['context' => 'search'])
         ->assertSet('search', 'Url')
         ->assertSet('sort', 'title_asc')
         ->assertSee($matching->title)
@@ -350,7 +350,7 @@ it('shows result count supports url backed state clear filters and empty state',
         ->assertSet('sort', 'latest_transcription')
         ->assertSee(trans_choice('public.results.count', 2, ['count' => 2]));
 
-    Livewire::test(ContentItemSearch::class)
+    Livewire::test(ContentItemSearch::class, ['context' => 'search'])
         ->set('search', 'Nothing Matches')
         ->assertSee(__('public.empty.items'));
 });

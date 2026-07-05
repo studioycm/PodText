@@ -33,7 +33,8 @@ Recorded after the Markdown-only post-Prompt-10 prompt-progress centralization c
 - Public Front v2 Step 5 Latest and Search UX is implemented and committed as `eea9164 feat: refine public latest and search ux`.
 - Public Front v2 Step 6 Public Forms and Submissions is implemented and committed as `49f6ab0 feat: add public forms and submissions`.
 - Public Front v2 Step 7 About Page Content and Team Builder is implemented and committed as `b4fe4d5 feat: add public about page content and team builder`.
-- Public Front v2 Step 8 Podcasts and Groups UX is implemented in this change set and will be committed as `feat: add public podcasts and groups ux`.
+- Public Front v2 Step 8 Podcasts and Groups UX is implemented and committed as `f3d137e feat: add public podcasts and groups ux`.
+- Public Front v2 Step 9 Public Menu/Header and UX Fixes is implemented in this change set and will be committed as `feat: add public menu header and ux fixes`.
 
 ## Prompt Progress
 
@@ -61,8 +62,9 @@ Recorded after the Markdown-only post-Prompt-10 prompt-progress centralization c
 | Public Front v2 Step 5 Latest and Search UX | Complete | `eea9164 feat: refine public latest and search ux` | Adds looper-driven Latest UX, search filter drawer, multi-select category/tag filters, card layout repair, controlled content-item renderer, tests, and Step 5 handoff. |
 | Public Front v2 Step 6 Public Forms and Submissions | Complete | `49f6ab0 feat: add public forms and submissions` | Adds JSON-first public form definitions, `PublicFormSubmission` schema/model/resource, Livewire public form modal/slide-over, honeypot/rate limiting, admin settings UI, tests, and Step 6 handoff. |
 | Public Front v2 Step 7 About Page Content and Team Builder | Complete | `b4fe4d5 feat: add public about page content and team builder` | Adds JSON-first About page content, public `/about`, safe Markdown/RichEditor rendering, team profiles in JSON settings, team/about image upload constraints, optional Step 6 form CTA integration, tests, and Step 7 handoff. |
-| Public Front v2 Step 8 Podcasts and Groups UX | Complete in current implementation commit | Pending final commit: `feat: add public podcasts and groups ux` | Adds canonical `/podcasts`, public group detail pages at `/podcasts/{contentGroupSlug}`, JSON-first podcast settings, public group query support, group cards, category/search UX, tests, and Step 8 handoff. |
-| Public Front v2 Step 9 Public Menu and Header | Next after ChatGPT/Yoni review | Future prompt | Step 9 is the next implementation step after Step 8 review. |
+| Public Front v2 Step 8 Podcasts and Groups UX | Complete | `f3d137e feat: add public podcasts and groups ux` | Adds canonical `/podcasts`, public group detail pages at `/podcasts/{contentGroupSlug}`, JSON-first podcast settings, public group query support, group cards, category/search UX, tests, and Step 8 handoff. |
+| Public Front v2 Step 9 Public Menu/Header and UX Fixes | Complete in current implementation commit | Pending final commit: `feat: add public menu header and ux fixes` | Adds tabbed public settings organization, About/team card fixes, contributor list/preview repairs, homepage chrome/header fixes, JSON-powered public menu/header, theme selector, content-block sections, tests, and Step 9 handoff. |
+| Public Front v2 Step 10 Contributors and Top Transcribers UX | Next after ChatGPT/Yoni review | Future prompt | Step 10 is the next implementation step after Step 9 review. |
 | Prompt 13 dashboard metrics | Not started / blocked unless explicitly chosen by user | Active prompt/blueprint | Owns editorial dashboard widgets after Public Front v2 Step 12 readiness or an explicit dashboard-first decision. |
 | Prompt 14 viewer/studio future plan | Future planning after Prompt 13 | Active prompt/blueprint | Documentation/planning only. |
 | Prompt 15 Filament Blueprint security audit | Audit after Prompt 14 | Active prompt/blueprint | Audit-only unless fixes are explicitly approved. |
@@ -78,7 +80,7 @@ Recorded after the Markdown-only post-Prompt-10 prompt-progress centralization c
 - Curated homepage query sections are deferred until a concrete query-builder spec exists.
 - Homepage result previews in admin forms remain deferred.
 - Step 5B Card Template Admin Preview UX remains deferred.
-- Public Front v2 public menu/header integration for form actions remains deferred to Step 9.
+- Footer-builder v2 and nested/dropdown public menu editing remain deferred beyond Step 9.
 - Public form email notifications remain deferred.
 - Public form file uploads remain deferred.
 - Advanced homepage section manual-selection controls such as "select all filtered results" and "deselect all filtered results" are deferred; Step 4 ships explicit include/exclude ID selection with public visibility rechecks.
@@ -140,6 +142,8 @@ Laravel Boost MCP tools were exposed and usable during Prompt 10.
 - Public Front v2 Step 7 FilamentExamples `search_examples` research returned snippet/source-level examples for custom settings pages, repeaters, FileUpload image handling, and custom public pages; no full source/detail fetch tool was exposed.
 - Public Front v2 Step 8 used Boost `application_info`, `database_schema`, and `search_docs` before changing public routes, Filament public Pages, Livewire URL state and pagination, Eloquent query scopes/counts, Spatie Settings JSON normalization, Filament settings fields, and Pest tests.
 - Public Front v2 Step 8 FilamentExamples `search_examples` research returned snippet/search-level examples for public cards/pages, dynamic sections, content group/list pages, and search/filter patterns; no full source/detail fetch tool was exposed.
+- Public Front v2 Step 9 used Boost `application_info`, `database_schema`, and `search_docs` before changing Filament settings tabs/sections, Livewire URL state and pagination, public panel render hooks/layout behavior, Alpine interactions, Filament Builder/Repeater behavior, and Pest tests.
+- Public Front v2 Step 9 FilamentExamples `search_examples` research returned snippet/search-level examples for settings tabs/page layouts/menu builder patterns; no full source/detail fetch tool was exposed.
 
 ## Application Shape
 
@@ -238,6 +242,21 @@ Laravel Boost MCP tools were exposed and usable during Prompt 10.
   - `App\Support\PublicFront\Groups\PublicContentGroupQueries`
 - Public Front v2 Step 8 handoff:
   - `docs/phase-02/public-front-v2-step8-podcasts-groups-ux-handoff.md`
+- Public Front v2 Step 9 Public Menu/Header and UX Fixes surfaces:
+  - `App\Enums\PublicMenuItemType`
+  - `App\Livewire\Public\PublicHeader`
+  - `App\Support\PublicFront\Menu\PublicMenuConfigReader`
+  - `App\Support\PublicFront\Menu\PublicMenuRenderer`
+  - `App\Support\PublicFront\Menu\PublicRouteRegistry`
+  - `App\Support\PublicFront\Menu\PublicUrlSanitizer`
+  - `resources/views/livewire/public/public-header.blade.php`
+  - `docs/phase-02/public-front-v2-step9-public-menu-header-ux-fixes-handoff.md`
+- Public Front v2 Step 9 public settings admin organization uses tabs for Homepage/Sections, General/Display, Menu/Header, Podcasts, About, Forms, and Advanced/Diagnostics.
+- Public Front v2 Step 9 menu/header JSON schema lives under `public_content.menu_config` with `enabled`, `items`, and `theme_selector`. No `PublicMenu` or `PublicMenuItem` model/table exists.
+- Public Front v2 Step 9 About/team card settings live under `public_content.about_page.settings.team_card`; Step 7 About/team JSON remains compatible and no `TeamProfile` model/table exists.
+- Public Front v2 Step 9 contributor directory keeps `Author` as the public contributor/transcriber model and changes only the compact-card/preview UX.
+- Public Front v2 Step 9 homepage chrome is suppressed for default homepage sections while `/search` keeps the discovery search/filter UI.
+- Public Front v2 Step 9 adds a minimal JSON-only `content_block` homepage section source; this is not a CMS/page-management system.
 - Public Front v2 Step 1 enums:
   - `App\Enums\PublicFrontConfigBlockType`
   - `App\Enums\PublicFrontLayoutVariant`
@@ -289,6 +308,11 @@ Public Front v2 Step 7 settings migration status from local migration run:
 Public Front v2 Step 8 settings migration status from local migration run:
 
 - `2026_07_05_000003_add_public_podcasts_page_setting`: ran.
+
+Public Front v2 Step 9 settings migration status from local migration run:
+
+- `2026_07_06_000000_normalize_public_menu_header_and_about_cards`: ran.
+- `2026_07_06_000001_ensure_public_about_team_legacy_settings`: ran.
 
 Local data reset note:
 
@@ -480,12 +504,12 @@ Current physical schema verified through Boost `database_schema`:
 - `ContentItemTranscriptViewer` defaults to the effective transcription, exposes only published transcription tabs/selector choices, keeps selection URL-backed by transcription reference key, and falls back to safe Markdown when parsing finds no segments.
 - Viewer controls are local Alpine preferences for show/hide timestamps and speakers; timestamp anchors are direction-safe with `dir="ltr"`.
 - Prompt 12 did not add player sync, transcription studio, autosave, dashboard widgets, analytics, metadata extraction automation, import/export behavior changes, admin relationship UX changes, homepage/search rewrites, or contributor discovery changes.
-- Prompt 13 dashboard metrics remains not started. Public Front v2 continues with Step 7 next after Step 6 review unless the user explicitly chooses dashboard metrics first.
+- Prompt 13 dashboard metrics remains not started. Public Front v2 continues with Step 10 next after Step 9 ChatGPT/Yoni review unless the user explicitly chooses dashboard metrics first.
 
 ## Public Front v2 Planning Notes
 
 - Public Front v2 research, blueprint, blueprint-result, and execution-plan docs exist.
-- Public Front v2 continues with Step 9 before Prompt 13 unless the user explicitly chooses dashboard metrics first.
+- Public Front v2 continues with Step 10 before Prompt 13 unless the user explicitly chooses dashboard metrics first.
 - The execution plan is an implementation guide, not a single prompt. Run one implementation prompt per step.
 - Corrected step order:
   - Step 1: JSON Settings Architecture.
@@ -506,9 +530,27 @@ Current physical schema verified through Boost `database_schema`:
 - Step 5 Latest and Search UX is committed as `eea9164`.
 - Step 6 Public Forms and Submissions is committed as `49f6ab0`.
 - Step 7 About Page Content and Team Builder is committed as `b4fe4d5`.
-- Step 8 Podcasts and Groups UX is implemented in this change set.
-- Step 9 Public Menu and Header is the next implementation step after ChatGPT/Yoni review.
+- Step 8 Podcasts and Groups UX is committed as `f3d137e`.
+- Step 9 Public Menu/Header and UX Fixes is implemented in this change set.
+- Step 10 Contributors and Top Transcribers UX is the next implementation step after ChatGPT/Yoni review.
 - The PodText logo already exists at `public/images/podtext-logo.jpg` and must be preserved by future public-front work.
+
+## Public Front v2 Step 9 Public Menu/Header and UX Fixes Notes
+
+- Step 9 reorganizes the `PublicContentSettings` admin page into major tabs with full-width collapsible sections for homepage/sections, general/display, menu/header, podcasts, about, forms, and advanced/diagnostics.
+- Step 9 extends `menu_config` as a JSON-settings-powered public header/menu source and renders it through `App\Livewire\Public\PublicHeader` in the public panel. Default items include Home, Podcasts, About, request-transcription form, volunteer/register-transcriber form, and a theme selector.
+- Public form action menu items use Step 6 `PublicFormModal` and the `open-public-form` browser event. Disabled/missing form targets are skipped server-side.
+- The header uses the existing `public/images/podtext-logo.jpg` baseline and does not create `PublicMenu`, `PublicMenuItem`, or settings-only menu models.
+- About/team profile cards now render uploaded images reliably and support safe semantic settings under `about_page.settings.team_card` for image visibility/size, grid/list layout, density, title/description visibility, and description line clamp.
+- About Markdown/RichEditor/content-block output now has explicit H1-H6 public typography classes and keeps the existing safe renderer path.
+- Contributor directory compact cards now show only contributor name plus public count badge; they select a Livewire-owned preview row. The preview contains the contributor page link and searchable related public items. Page sizes are 10, 15, and 20, with A-Z/Z-A/count-down/count-up sort toggles.
+- Homepage default section mode suppresses top discovery chrome, page intro clutter, and the global search/filter panel while preserving `/search` behavior.
+- Latest section headers now place section title, lightweight search, next/previous controls, and show-all action in one responsive header row.
+- Step 9 adds a minimal safe `content_block` homepage section source using safe Markdown body, semantic style, and optional route/form action fields. This is not a CMS conversion.
+- Step 9 handoff:
+  - `docs/phase-02/public-front-v2-step9-public-menu-header-ux-fixes-handoff.md`
+- Step 2 transcription policy remains deferred/reserved.
+- Prompt 13 has not started.
 
 ## Public Front v2 Step 1 JSON Settings Architecture Notes
 
@@ -541,7 +583,7 @@ Current physical schema verified through Boost `database_schema`:
 - `App\Filament\Pages\PublicContentSettings` now includes a card template editing section with a Repeater and Builder-backed parts editor. Live side-by-side preview remains deferred to later public UX work.
 - Public item, group, and contributor cards preserve existing Blade output and expose compatibility metadata through `data-card-template-*` attributes resolved from the card template support layer.
 - Step 3 does not implement display-section/looper queries, latest/search redesign, public forms, about/team builder, podcasts/group UX changes, menu/header management, contributor UX refinements, seeders, dashboard metrics, or the deferred transcription publication policy.
-- Step 4 Public Display Sections and Loopers is committed as `c0ce7d7`. Step 5 Latest and Search UX is committed as `eea9164`. Step 6 Public Forms and Submissions is implemented in this change set. Step 2 transcription policy remains deferred/reserved. Prompt 13 has not started.
+- Step 4 Public Display Sections and Loopers is committed as `c0ce7d7`. Step 5 Latest and Search UX is committed as `eea9164`. Step 6 Public Forms and Submissions is committed as `49f6ab0`. Step 2 transcription policy remains deferred/reserved. Prompt 13 has not started.
 
 ## Public Front v2 Step 4 Display Sections and Loopers Notes
 
@@ -559,7 +601,7 @@ Current physical schema verified through Boost `database_schema`:
 - `HomepageSectionForm` keeps legacy type-driven fields and adds semantic fields for source, selection, display/template, and pagination config. It does not expose raw JSON, raw CSS/classes, arbitrary Blade paths, raw SQL, or arbitrary PHP classes.
 - Pagination config stores and normalizes `none`, `simple`, `load_more`, and `next_previous`; infinite scroll remains deferred.
 - The handoff file for review is `docs/phase-02/public-front-v2-step4-display-sections-loopers-handoff.md`.
-- Step 5 Latest and Search UX is committed as `eea9164`. Step 6 Public Forms and Submissions is implemented in this change set. Step 7 About Page Content and Team Builder is the next implementation step. Step 2 transcription policy remains deferred/reserved. Prompt 13 has not started.
+- Step 5 Latest and Search UX is committed as `eea9164`. Step 6 Public Forms and Submissions is committed as `49f6ab0`. Step 7 About Page Content and Team Builder is committed as `b4fe4d5`. Step 2 transcription policy remains deferred/reserved. Prompt 13 has not started.
 
 ## Public Front v2 Step 5 Latest and Search UX Notes
 
@@ -586,8 +628,8 @@ Current physical schema verified through Boost `database_schema`:
 - The admin `PublicContentSettings` page now includes a safe JSON-first public form definition builder.
 - The admin `PublicFormSubmissionResource` lists submissions, filters by status, searches form key/name snapshot, safely renders payload summaries, and supports mark reviewed/archive/reopen actions.
 - V1 public forms include honeypot protection and Laravel-native rate limiting before live enablement.
-- Email notifications, file uploads, CAPTCHA package integration, and public menu/header integration remain deferred.
-- Step 7 About Page Content and Team Builder is the next implementation step after ChatGPT/Yoni review. Step 2 transcription policy remains deferred/reserved. Prompt 13 has not started.
+- Email notifications, file uploads, and CAPTCHA package integration remain deferred. Public menu/header integration is implemented in Step 9.
+- Step 7 About Page Content and Team Builder is committed as `b4fe4d5`; Step 8 is committed as `f3d137e`; Step 9 is implemented in this change set. Step 2 transcription policy remains deferred/reserved. Prompt 13 has not started.
 - The Step 6 handoff file for review is `docs/phase-02/public-front-v2-step6-public-forms-submissions-handoff.md`.
 
 ## Post-Prompt-10 Guidance Sync Notes

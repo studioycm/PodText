@@ -111,7 +111,7 @@ it('allows guests to browse contributors and search with url state', function ()
         ->assertSee($matching->name)
         ->assertSee($other->name)
         ->assertDontSee($hidden->name)
-        ->assertSee(ShowContributor::getUrl(['authorSlug' => $matching->slug], panel: 'public'), false);
+        ->assertDontSee(ShowContributor::getUrl(['authorSlug' => $matching->slug], panel: 'public'), false);
 
     Livewire::withQueryParams(['q' => 'Searchable'])
         ->test(ContributorDirectory::class)
@@ -134,6 +134,7 @@ it('selects a contributor and previews only public related content items by tran
         ->call('selectContributor', $selected->id)
         ->assertSet('selectedContributorId', $selected->id)
         ->assertSee($selected->name)
+        ->assertSee(ShowContributor::getUrl(['authorSlug' => $selected->slug], panel: 'public'), false)
         ->assertSee($previewItem->title)
         ->assertDontSee($authoredOnly->title)
         ->assertDontSee('Other Public Item');

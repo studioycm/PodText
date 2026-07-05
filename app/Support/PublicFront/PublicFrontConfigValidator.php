@@ -2,6 +2,7 @@
 
 namespace App\Support\PublicFront;
 
+use App\Enums\PublicMenuItemType;
 use App\Support\PublicFront\About\PublicAboutPageRegistry;
 use App\Support\PublicFront\Cards\PublicFrontCardTemplateRegistry;
 use App\Support\PublicFront\Forms\PublicFormDefinitionRegistry;
@@ -276,31 +277,144 @@ class PublicFrontConfigValidator
      */
     private function normalizeMenuConfig(array $menuConfig, array $defaults, array &$invalidConfig): array
     {
-        $this->reportUnknownKeys($menuConfig, ['enabled', 'items'], 'menu_config', $invalidConfig);
+        $this->reportUnknownKeys($menuConfig, ['enabled', 'items', 'theme_selector'], 'menu_config', $invalidConfig);
 
         return [
             'enabled' => $this->boolean($menuConfig['enabled'] ?? null, 'menu_config.enabled', $defaults['enabled'], $invalidConfig),
-            'items' => $this->normalizeListValue($menuConfig['items'] ?? [], 'menu_config.items', $invalidConfig, function (array $item, string $path, array &$invalidConfig): ?array {
-                $this->reportUnknownKeys($item, ['label', 'route_key', 'external_url', 'form_key', 'theme_selector'], $path, $invalidConfig);
+            'items' => $this->normalizeMenuItems($menuConfig['items'] ?? $defaults['items'], $invalidConfig),
+            'theme_selector' => $this->normalizeThemeSelector($menuConfig['theme_selector'] ?? $defaults['theme_selector'] ?? [], $defaults['theme_selector'] ?? [], $invalidConfig),
+        ];
+    }
 
-                $label = $this->plainString($item['label'] ?? null, "{$path}.label", $invalidConfig, nullable: true);
-                $routeKey = $this->finiteString($item['route_key'] ?? null, PublicFrontConfigRegistry::routeKeys(), "{$path}.route_key", $invalidConfig, nullable: true);
-                $externalUrl = $this->httpsUrl($item['external_url'] ?? null, "{$path}.external_url", $invalidConfig, nullable: true);
-                $formKey = $this->semanticKey($item['form_key'] ?? null, "{$path}.form_key", $invalidConfig, nullable: true);
-                $themeSelector = $this->boolean($item['theme_selector'] ?? null, "{$path}.theme_selector", false, $invalidConfig, nullable: true);
+    /**
+     * @param  array<mixed>|mixed  $items
+     * @param  array<PublicFrontInvalidConfig>  $invalidConfig
+     * @return array<int, array<string, mixed>>
+     */
+    private function normalizeMenuItems(mixed $items, array &$invalidConfig): array
+    {
+        $normalized = $this->normalizeListValue($items, 'menu_config.items', $invalidConfig, function (array $item, string $path, array &$invalidConfig): ?array {
+            $this->reportUnknownKeys($item, [
+                'key',
+                'type',
+                'label',
+                'route_key',
+                'external_url',
+                'form_key',
+                'display_mode',
+                'visible',
+                'sort',
+                'open_in_new_tab',
+                'theme_selector',
+            ], $path, $invalidConfig);
 
-                if ($routeKey === null && $externalUrl === null && $formKey === null && $themeSelector !== true) {
-                    return null;
-                }
+            $inferredType = $this->inferMenuItemType($item);
+            $type = $this->finiteString($item['type'] ?? $inferredType, PublicMenuItemType::values(), "{$path}.type", $invalidConfig, nullable: true);
 
-                return array_filter([
-                    'label' => $label,
+            if ($type === null) {
+                return null;
+            }
+
+            $normalized = [
+                'key' => $this->semanticKey($item['key'] ?? $this->defaultMenuItemKey($item, $type), "{$path}.key", $invalidConfig, nullable: true)
+                    ?? "{$type}_".str_replace('menu_config.items.', '', $path),
+                'type' => $type,
+                'label' => $this->plainString($item['label'] ?? null, "{$path}.label", $invalidConfig, maxLength: 80, nullable: true),
+                'visible' => $this->boolean($item['visible'] ?? null, "{$path}.visible", true, $invalidConfig),
+                'sort' => $this->integerRange($item['sort'] ?? 0, "{$path}.sort", 0, 1000, 0, $invalidConfig),
+            ];
+
+            if ($type === PublicMenuItemType::Route->value) {
+                $routeKey = $this->finiteString($item['route_key'] ?? null, PublicFrontConfigRegistry::routeKeys(), "{$path}.route_key", $invalidConfig);
+
+                return $routeKey === null ? null : $normalized + [
                     'route_key' => $routeKey,
+                ];
+            }
+
+            if ($type === PublicMenuItemType::ExternalUrl->value) {
+                $externalUrl = $this->httpsUrl($item['external_url'] ?? null, "{$path}.external_url", $invalidConfig);
+
+                return $externalUrl === null ? null : $normalized + [
                     'external_url' => $externalUrl,
+                    'open_in_new_tab' => $this->boolean($item['open_in_new_tab'] ?? null, "{$path}.open_in_new_tab", false, $invalidConfig),
+                ];
+            }
+
+            if ($type === PublicMenuItemType::PublicForm->value) {
+                $formKey = $this->semanticKey($item['form_key'] ?? null, "{$path}.form_key", $invalidConfig);
+
+                return $formKey === null ? null : $normalized + [
                     'form_key' => $formKey,
-                    'theme_selector' => $themeSelector === true ? true : null,
-                ], fn (mixed $value): bool => $value !== null);
-            }),
+                    'display_mode' => $this->finiteString($item['display_mode'] ?? null, PublicFormDefinitionRegistry::displayModes(), "{$path}.display_mode", $invalidConfig, 'modal'),
+                ];
+            }
+
+            return $normalized;
+        });
+
+        return collect($normalized)
+            ->sortBy('sort')
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @param  array<string, mixed>  $item
+     */
+    private function inferMenuItemType(array $item): ?string
+    {
+        if (($item['theme_selector'] ?? false) === true) {
+            return PublicMenuItemType::ThemeSelector->value;
+        }
+
+        if (filled($item['route_key'] ?? null)) {
+            return PublicMenuItemType::Route->value;
+        }
+
+        if (filled($item['external_url'] ?? null)) {
+            return PublicMenuItemType::ExternalUrl->value;
+        }
+
+        if (filled($item['form_key'] ?? null)) {
+            return PublicMenuItemType::PublicForm->value;
+        }
+
+        return null;
+    }
+
+    /**
+     * @param  array<string, mixed>  $item
+     */
+    private function defaultMenuItemKey(array $item, string $type): ?string
+    {
+        return match ($type) {
+            PublicMenuItemType::Route->value => is_string($item['route_key'] ?? null) ? $item['route_key'] : null,
+            PublicMenuItemType::PublicForm->value => is_string($item['form_key'] ?? null) ? $item['form_key'] : null,
+            PublicMenuItemType::ThemeSelector->value => 'theme_selector',
+            default => null,
+        };
+    }
+
+    /**
+     * @param  array<string, mixed>|mixed  $themeSelector
+     * @param  array<string, mixed>  $defaults
+     * @param  array<PublicFrontInvalidConfig>  $invalidConfig
+     * @return array<string, mixed>
+     */
+    private function normalizeThemeSelector(mixed $themeSelector, array $defaults, array &$invalidConfig): array
+    {
+        if (! is_array($themeSelector)) {
+            $invalidConfig[] = PublicFrontInvalidConfig::make('menu_config.theme_selector', 'expected_array', $themeSelector);
+
+            return $defaults;
+        }
+
+        $this->reportUnknownKeys($themeSelector, ['enabled', 'mode'], 'menu_config.theme_selector', $invalidConfig);
+
+        return [
+            'enabled' => $this->boolean($themeSelector['enabled'] ?? null, 'menu_config.theme_selector.enabled', (bool) ($defaults['enabled'] ?? true), $invalidConfig),
+            'mode' => $this->finiteString($themeSelector['mode'] ?? null, ['light_dark_system', 'light_dark'], 'menu_config.theme_selector.mode', $invalidConfig, (string) ($defaults['mode'] ?? 'light_dark_system')),
         ];
     }
 
@@ -617,7 +731,7 @@ class PublicFrontConfigValidator
             return $defaults;
         }
 
-        $this->reportUnknownKeys($settings, ['team_heading', 'team_description', 'team_layout'], $path, $invalidConfig);
+        $this->reportUnknownKeys($settings, ['team_heading', 'team_description', 'team_layout', 'team_card'], $path, $invalidConfig);
 
         return [
             'team_heading' => $this->plainString($settings['team_heading'] ?? null, "{$path}.team_heading", $invalidConfig, maxLength: 160, nullable: true)
@@ -625,6 +739,48 @@ class PublicFrontConfigValidator
             'team_description' => $this->plainString($settings['team_description'] ?? null, "{$path}.team_description", $invalidConfig, maxLength: 1000, nullable: true)
                 ?? $defaults['team_description'],
             'team_layout' => $this->finiteString($settings['team_layout'] ?? null, PublicAboutPageRegistry::teamLayouts(), "{$path}.team_layout", $invalidConfig, $defaults['team_layout']),
+            'team_card' => $this->normalizeTeamCardSettings($settings['team_card'] ?? [], $defaults['team_card'] ?? [], "{$path}.team_card", $invalidConfig),
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>|mixed  $settings
+     * @param  array<string, mixed>  $defaults
+     * @param  array<PublicFrontInvalidConfig>  $invalidConfig
+     * @return array<string, mixed>
+     */
+    private function normalizeTeamCardSettings(mixed $settings, array $defaults, string $path, array &$invalidConfig): array
+    {
+        if ($settings === null || $settings === []) {
+            return $defaults;
+        }
+
+        if (! is_array($settings)) {
+            $invalidConfig[] = PublicFrontInvalidConfig::make($path, 'expected_array', $settings);
+
+            return $defaults;
+        }
+
+        $this->reportUnknownKeys($settings, [
+            'show_image',
+            'image_size',
+            'layout',
+            'density',
+            'show_title',
+            'show_description',
+            'description_lines',
+        ], $path, $invalidConfig);
+
+        return [
+            'show_image' => $this->boolean($settings['show_image'] ?? null, "{$path}.show_image", (bool) ($defaults['show_image'] ?? true), $invalidConfig),
+            'image_size' => $this->finiteString($settings['image_size'] ?? null, PublicAboutPageRegistry::teamCardImageSizes(), "{$path}.image_size", $invalidConfig, (string) ($defaults['image_size'] ?? 'medium')),
+            'layout' => $this->finiteString($settings['layout'] ?? null, PublicAboutPageRegistry::teamLayouts(), "{$path}.layout", $invalidConfig, (string) ($defaults['layout'] ?? 'grid')),
+            'density' => $this->finiteString($settings['density'] ?? null, PublicAboutPageRegistry::teamCardDensities(), "{$path}.density", $invalidConfig, (string) ($defaults['density'] ?? 'comfortable')),
+            'show_title' => $this->boolean($settings['show_title'] ?? null, "{$path}.show_title", (bool) ($defaults['show_title'] ?? true), $invalidConfig),
+            'show_description' => $this->boolean($settings['show_description'] ?? null, "{$path}.show_description", (bool) ($defaults['show_description'] ?? true), $invalidConfig),
+            'description_lines' => array_key_exists('description_lines', $settings)
+                ? $this->integerRange($settings['description_lines'], "{$path}.description_lines", 0, 6, (int) ($defaults['description_lines'] ?? 3), $invalidConfig)
+                : (int) ($defaults['description_lines'] ?? 3),
         ];
     }
 
@@ -1266,6 +1422,12 @@ class PublicFrontConfigValidator
      */
     private function publicImagePath(mixed $value, string $path, array &$invalidConfig, array $directories = []): ?string
     {
+        if (is_array($value)) {
+            $value = collect($value)
+                ->filter(fn (mixed $path): bool => is_string($path) && filled($path))
+                ->first();
+        }
+
         $value = $this->plainString($value, $path, $invalidConfig, maxLength: 255, nullable: true);
 
         if ($value === null) {

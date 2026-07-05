@@ -181,7 +181,7 @@ it('renders the search filter drawer with category toggles tag chips and active 
     $disabledTaggedItem = createStep5PublicItem(['title' => 'Hidden Topic Item']);
     $disabledTaggedItem->attachTag($disabledTag);
 
-    Livewire::test(ContentItemSearch::class)
+    Livewire::test(ContentItemSearch::class, ['context' => 'search'])
         ->assertSee('data-test="open-filter-drawer"', false)
         ->assertSee('data-test="filter-drawer"', false)
         ->assertSee('x-on:open-public-filter-drawer.window', false)

@@ -22,83 +22,124 @@
             </button>
         </div>
 
-        <div class="mt-4 flex flex-col gap-1 text-sm text-gray-600 dark:text-gray-300 sm:flex-row sm:items-center sm:justify-between">
+        <div class="mt-4 flex flex-col gap-3 text-sm text-gray-600 dark:text-gray-300 lg:flex-row lg:items-center lg:justify-between">
             <p class="font-medium text-gray-900 dark:text-gray-100" data-test="contributor-result-count">
                 {{ trans_choice('public.results.contributors_count', $contributors->total(), ['count' => $contributors->total()]) }}
             </p>
-            <p class="text-xs text-gray-500 dark:text-gray-400">
-                {{ __('public.results.public_contributors_only') }}
-            </p>
-        </div>
-    </div>
 
-    <div class="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(19rem,24rem)]">
-        <div class="space-y-4">
-            @if($contributors->isNotEmpty())
-                <div class="grid grid-cols-1 gap-4 md:grid-cols-2" data-test="contributor-grid">
-                    @foreach($contributors as $author)
-                        <x-public.contributor-card
-                            :author="$author"
-                            :full-page-url="$this->contributorUrl($author)"
-                            :selected="$selectedContributor?->is($author) ?? false"
-                            :card-template="$cardTemplate"
-                            selectable
-                            wire:key="contributor-card-{{ $author->id }}"
-                        />
+            <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
+                <div class="inline-flex rounded-md border border-gray-200 bg-gray-50 p-1 dark:border-gray-800 dark:bg-gray-950" data-test="contributor-sort-options">
+                    @foreach($sortOptions as $value => $label)
+                        <button
+                            type="button"
+                            wire:click="$set('sort', '{{ $value }}')"
+                            @class([
+                                'rounded px-2.5 py-1.5 text-xs font-medium transition focus:outline-none focus:ring-2 focus:ring-primary-500',
+                                'bg-white text-gray-950 shadow-sm dark:bg-gray-800 dark:text-white' => $sort === $value,
+                                'text-gray-600 hover:text-gray-950 dark:text-gray-300 dark:hover:text-white' => $sort !== $value,
+                            ])
+                            data-test="contributor-sort-option"
+                            data-sort="{{ $value }}"
+                        >
+                            {{ $label }}
+                        </button>
                     @endforeach
                 </div>
 
-                @if($contributors->hasPages())
-                    <div data-test="contributor-pagination">
-                        {{ $contributors->links() }}
-                    </div>
-                @endif
-            @else
-                <div class="rounded-lg border border-dashed border-gray-300 bg-white p-6 text-sm text-gray-600 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300" data-test="empty-contributors">
-                    <p class="font-medium text-gray-900 dark:text-gray-100">{{ __('public.empty.contributors') }}</p>
-                    <p class="mt-1">{{ __('public.empty.contributors_description') }}</p>
-                </div>
-            @endif
+                <label class="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
+                    <span>{{ __('public.filters.per_page') }}</span>
+                    <select
+                        wire:model.live="perPage"
+                        data-test="contributor-page-size"
+                        class="rounded-md border-gray-300 text-sm shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:border-gray-700 dark:bg-gray-950"
+                    >
+                        @foreach($pageSizeOptions as $value => $label)
+                            <option value="{{ $value }}">{{ $label }}</option>
+                        @endforeach
+                    </select>
+                </label>
+            </div>
+        </div>
+    </div>
+
+    @if($contributors->isNotEmpty())
+        <div class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3" data-test="contributor-grid">
+            @foreach($contributors as $author)
+                <x-public.contributor-card
+                    :author="$author"
+                    :full-page-url="$this->contributorUrl($author)"
+                    :selected="$selectedContributor?->is($author) ?? false"
+                    :card-template="$cardTemplate"
+                    compact
+                    selectable
+                    wire:key="contributor-card-{{ $author->id }}"
+                />
+            @endforeach
         </div>
 
-        <aside class="space-y-4 lg:sticky lg:top-6 lg:self-start" data-test="contributor-preview">
-            @if($selectedContributor)
-                <div class="rounded-lg border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-gray-900">
+        @if($contributors->hasPages())
+            <div data-test="contributor-pagination">
+                {{ $contributors->links() }}
+            </div>
+        @endif
+    @else
+        <div class="rounded-lg border border-dashed border-gray-300 bg-white p-6 text-sm text-gray-600 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300" data-test="empty-contributors">
+            <p class="font-medium text-gray-900 dark:text-gray-100">{{ __('public.empty.contributors') }}</p>
+            <p class="mt-1">{{ __('public.empty.contributors_description') }}</p>
+        </div>
+    @endif
+
+    <section class="space-y-4 rounded-lg border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-gray-900" data-test="contributor-preview">
+        @if($selectedContributor)
+            <div class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+                <div class="space-y-2">
                     <p class="text-sm font-medium text-primary-600 dark:text-primary-400">
                         {{ __('public.pages.contributors.preview_kicker') }}
                     </p>
-                    <h2 class="mt-1 text-lg font-semibold tracking-normal text-gray-950 dark:text-white" data-test="selected-contributor-name">
+                    <h2 class="text-xl font-semibold tracking-normal text-gray-950 dark:text-white" data-test="selected-contributor-name">
                         {{ $selectedContributor->name }}
                     </h2>
-                    <p class="mt-2 text-sm text-gray-600 dark:text-gray-300">
+                    <p class="max-w-3xl text-sm text-gray-600 dark:text-gray-300">
                         {{ __('public.pages.contributors.preview_description') }}
                     </p>
-                    <a
-                        href="{{ $this->contributorUrl($selectedContributor) }}"
-                        class="mt-4 inline-flex items-center justify-center rounded-md bg-gray-950 px-3 py-2 text-sm font-medium text-white transition hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 dark:bg-gray-100 dark:text-gray-950 dark:hover:bg-primary-200"
-                        data-test="selected-contributor-link"
-                    >
-                        {{ __('public.actions.view_all_contributor_items') }}
-                    </a>
                 </div>
 
-                @if($previewItems->isNotEmpty())
-                    <x-public.content-item-grid
-                        :items="$previewItems"
-                        :card-options="$cardOptions"
-                        :card-template="$contentItemCardTemplate"
-                        layout="rows"
-                    />
-                @else
-                    <div class="rounded-lg border border-dashed border-gray-300 bg-white p-6 text-sm text-gray-600 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300" data-test="empty-contributor-preview">
-                        {{ __('public.empty.contributor_preview') }}
-                    </div>
-                @endif
+                <a
+                    href="{{ $this->contributorUrl($selectedContributor) }}"
+                    class="inline-flex items-center justify-center rounded-md bg-gray-950 px-3 py-2 text-sm font-medium text-white transition hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 dark:bg-gray-100 dark:text-gray-950 dark:hover:bg-primary-200"
+                    data-test="selected-contributor-link"
+                >
+                    {{ __('public.actions.view_all_contributor_items') }}
+                </a>
+            </div>
+
+            <label class="grid gap-1 text-sm text-gray-700 dark:text-gray-200">
+                <span>{{ __('public.filters.search_related_items') }}</span>
+                <input
+                    type="search"
+                    wire:model.live.debounce.300ms="previewSearch"
+                    data-test="contributor-preview-search"
+                    placeholder="{{ __('public.filters.search_related_items_placeholder') }}"
+                    class="w-full rounded-md border-gray-300 text-sm shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:border-gray-700 dark:bg-gray-950"
+                >
+            </label>
+
+            @if($previewItems->isNotEmpty())
+                <x-public.content-item-grid
+                    :items="$previewItems"
+                    :card-options="$cardOptions"
+                    :card-template="$contentItemCardTemplate"
+                    layout="rows"
+                />
             @else
-                <div class="rounded-lg border border-dashed border-gray-300 bg-white p-6 text-sm text-gray-600 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300" data-test="empty-contributor-preview">
+                <div class="rounded-lg border border-dashed border-gray-300 bg-white p-6 text-sm text-gray-600 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-300" data-test="empty-contributor-preview">
                     {{ __('public.empty.contributor_preview') }}
                 </div>
             @endif
-        </aside>
-    </div>
+        @else
+            <div class="rounded-lg border border-dashed border-gray-300 bg-white p-6 text-sm text-gray-600 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-300" data-test="empty-contributor-preview">
+                {{ __('public.empty.contributor_preview') }}
+            </div>
+        @endif
+    </section>
 </div>

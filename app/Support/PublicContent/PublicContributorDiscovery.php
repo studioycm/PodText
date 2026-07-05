@@ -11,7 +11,7 @@ use Illuminate\Support\Collection;
 
 class PublicContributorDiscovery
 {
-    public static function contributors(?string $search = null): Builder
+    public static function contributors(?string $search = null, string $sort = 'count_desc'): Builder
     {
         $query = Author::query()
             ->select('authors.*')
@@ -36,11 +36,20 @@ class PublicContributorDiscovery
             });
         }
 
-        return $query
-            ->orderByDesc('public_transcriptions_count')
-            ->orderByDesc('public_content_items_count')
-            ->orderBy('name')
-            ->orderBy('id');
+        return match ($sort) {
+            'name_asc' => $query->orderBy('name')->orderBy('id'),
+            'name_desc' => $query->orderByDesc('name')->orderByDesc('id'),
+            'count_asc' => $query
+                ->orderBy('public_transcriptions_count')
+                ->orderBy('public_content_items_count')
+                ->orderBy('name')
+                ->orderBy('id'),
+            default => $query
+                ->orderByDesc('public_transcriptions_count')
+                ->orderByDesc('public_content_items_count')
+                ->orderBy('name')
+                ->orderBy('id'),
+        };
     }
 
     public static function findContributor(int $authorId): ?Author
@@ -86,9 +95,22 @@ class PublicContributorDiscovery
     /**
      * @return Collection<int, ContentItem>
      */
-    public static function previewItemsForContributor(Author|int $author, int $limit = 3): Collection
+    public static function previewItemsForContributor(Author|int $author, int $limit = 3, ?string $search = null): Collection
     {
-        return self::contentItemsForContributor($author)
+        $query = self::contentItemsForContributor($author);
+        $search = trim((string) $search);
+
+        if ($search !== '') {
+            $like = "%{$search}%";
+
+            $query->where(function (Builder $query) use ($like): void {
+                $query
+                    ->where('title', 'like', $like)
+                    ->orWhereHas('contentGroup', fn (Builder $query): Builder => $query->where('title', 'like', $like));
+            });
+        }
+
+        return $query
             ->limit(max(1, $limit))
             ->get();
     }

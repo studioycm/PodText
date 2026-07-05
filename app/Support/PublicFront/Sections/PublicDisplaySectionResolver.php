@@ -4,7 +4,6 @@ namespace App\Support\PublicFront\Sections;
 
 use App\Filament\Public\Pages\BrowseCategoryContentItems;
 use App\Filament\Public\Pages\BrowseContributors;
-use App\Filament\Public\Pages\BrowsePublicContentGroups;
 use App\Filament\Public\Pages\BrowseTagContentItems;
 use App\Filament\Public\Pages\SearchContentItems;
 use App\Filament\Public\Pages\ShowContentGroup;
@@ -13,6 +12,7 @@ use App\Models\ContentGroup;
 use App\Models\ContentTag;
 use App\Models\HomepageSection;
 use App\Support\PublicFront\Cards\PublicFrontCardTemplateResolver;
+use App\Support\PublicFront\Menu\PublicRouteRegistry;
 use Illuminate\Support\Collection;
 
 class PublicDisplaySectionResolver
@@ -153,13 +153,7 @@ class PublicDisplaySectionResolver
 
     private function routeKeyUrl(string $routeKey): ?string
     {
-        return match ($routeKey) {
-            'podcasts' => BrowsePublicContentGroups::getUrl(panel: 'public'),
-            'home' => '/',
-            'search' => SearchContentItems::getUrl(panel: 'public'),
-            'contributors' => BrowseContributors::getUrl(panel: 'public'),
-            default => null,
-        };
+        return app(PublicRouteRegistry::class)->url($routeKey);
     }
 
     private function category(PublicDisplaySectionConfigResult $config, HomepageSection $section): ?Category

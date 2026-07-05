@@ -7,9 +7,11 @@ use App\Filament\Resources\Support\RelationshipOptionForms;
 use App\Models\ContentItem;
 use App\Support\PublicFront\Cards\PublicFrontCardTemplate;
 use App\Support\PublicFront\Cards\PublicFrontCardTemplateResolver;
+use App\Support\PublicFront\PublicFrontConfigReader;
 use App\Support\PublicFront\PublicFrontConfigRegistry;
 use App\Support\PublicFront\Sections\PublicDisplaySectionRegistry;
 use Filament\Forms\Components\Select;
+use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Infolists\Components\TextEntry;
@@ -193,6 +195,19 @@ class HomepageSectionForm
                             ->label(__('admin.fields.public_display_heading'))
                             ->helperText(__('admin.helpers.public_display_heading'))
                             ->maxLength(160),
+                        Textarea::make('display_config.body')
+                            ->label(__('admin.fields.public_display_content_body'))
+                            ->helperText(__('admin.helpers.public_display_content_body'))
+                            ->rows(5)
+                            ->maxLength(20000)
+                            ->visible(fn (Get $get): bool => self::isSourceType($get, PublicDisplaySectionRegistry::CONTENT_BLOCK))
+                            ->columnSpanFull(),
+                        Select::make('display_config.content_style')
+                            ->label(__('admin.fields.public_display_content_style'))
+                            ->helperText(__('admin.helpers.public_display_content_style'))
+                            ->options(PublicDisplaySectionRegistry::contentBlockStyleOptions())
+                            ->default('plain')
+                            ->visible(fn (Get $get): bool => self::isSourceType($get, PublicDisplaySectionRegistry::CONTENT_BLOCK)),
                         Toggle::make('display_config.show_heading')
                             ->label(__('admin.fields.public_display_show_heading'))
                             ->helperText(__('admin.helpers.public_display_show_heading'))
@@ -206,6 +221,29 @@ class HomepageSectionForm
                             ->helperText(__('admin.helpers.public_display_view_all_route_key'))
                             ->options(PublicFrontConfigRegistry::routeOptions())
                             ->searchable(),
+                        TextInput::make('display_config.button_label')
+                            ->label(__('admin.fields.public_display_button_label'))
+                            ->helperText(__('admin.helpers.public_display_button_label'))
+                            ->maxLength(80)
+                            ->visible(fn (Get $get): bool => self::isSourceType($get, PublicDisplaySectionRegistry::CONTENT_BLOCK)),
+                        Select::make('display_config.button_route_key')
+                            ->label(__('admin.fields.public_display_button_route_key'))
+                            ->helperText(__('admin.helpers.public_display_button_route_key'))
+                            ->options(PublicFrontConfigRegistry::routeOptions())
+                            ->searchable()
+                            ->visible(fn (Get $get): bool => self::isSourceType($get, PublicDisplaySectionRegistry::CONTENT_BLOCK)),
+                        Select::make('display_config.button_form_key')
+                            ->label(__('admin.fields.public_display_button_form_key'))
+                            ->helperText(__('admin.helpers.public_display_button_form_key'))
+                            ->options(fn (): array => self::publicFormOptions())
+                            ->searchable()
+                            ->visible(fn (Get $get): bool => self::isSourceType($get, PublicDisplaySectionRegistry::CONTENT_BLOCK)),
+                        Select::make('display_config.button_display_mode')
+                            ->label(__('admin.fields.public_display_button_display_mode'))
+                            ->helperText(__('admin.helpers.public_display_button_display_mode'))
+                            ->options(PublicFrontConfigRegistry::publicFormDisplayModeOptions())
+                            ->default('modal')
+                            ->visible(fn (Get $get): bool => self::isSourceType($get, PublicDisplaySectionRegistry::CONTENT_BLOCK)),
                         Select::make('display_config.template_family')
                             ->label(__('admin.fields.card_template_family'))
                             ->helperText(__('admin.helpers.card_template_family'))
@@ -297,6 +335,11 @@ class HomepageSectionForm
             : $state === $type->value;
     }
 
+    private static function isSourceType(Get $get, string $sourceType): bool
+    {
+        return $get('source_config.source_type') === $sourceType;
+    }
+
     private static function sectionSummary(Get $get): string
     {
         $state = $get('type');
@@ -322,6 +365,32 @@ class HomepageSectionForm
             ->limit(100)
             ->pluck('title', 'id')
             ->all();
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private static function publicFormOptions(): array
+    {
+        $publicForms = app(PublicFrontConfigReader::class)
+            ->read()
+            ->group('public_forms');
+
+        $configuredOptions = collect($publicForms['definitions'] ?? [])
+            ->filter(fn (mixed $definition): bool => is_array($definition) && filled($definition['key'] ?? null))
+            ->mapWithKeys(fn (array $definition): array => [
+                $definition['key'] => $definition['name'] ?? $definition['key'],
+            ])
+            ->all();
+
+        $defaultOptions = collect(PublicFrontConfigRegistry::defaultMenuItems())
+            ->filter(fn (array $item): bool => ($item['type'] ?? null) === 'public_form' && filled($item['form_key'] ?? null))
+            ->mapWithKeys(fn (array $item): array => [
+                $item['form_key'] => $item['label'] ?? $item['form_key'],
+            ])
+            ->all();
+
+        return [...$defaultOptions, ...$configuredOptions];
     }
 
     /**

@@ -1,28 +1,52 @@
-@props(['profile'])
+@props(['profile', 'settings' => [], 'layout' => 'grid'])
 
 @inject('renderer', 'App\Support\PublicFront\About\PublicAboutPageRenderer')
 
 @php
     $imageUrl = $renderer->imageUrl($profile['image_path'] ?? null);
+    $showImage = ($settings['show_image'] ?? true) === true;
+    $showTitle = ($settings['show_title'] ?? true) === true;
+    $showDescription = ($settings['show_description'] ?? true) === true;
+    $imageSize = match ($settings['image_size'] ?? 'medium') {
+        'small' => 'size-14',
+        'large' => 'size-28',
+        default => 'size-20',
+    };
+    $densityClasses = ($settings['density'] ?? 'comfortable') === 'compact'
+        ? 'gap-3 p-3'
+        : 'gap-4 p-4';
+    $descriptionLines = max(0, min(6, (int) ($settings['description_lines'] ?? 3)));
+    $descriptionClamp = match ($descriptionLines) {
+        0 => '',
+        1 => 'line-clamp-1',
+        2 => 'line-clamp-2',
+        4 => 'line-clamp-4',
+        5 => 'line-clamp-5',
+        6 => 'line-clamp-6',
+        default => 'line-clamp-3',
+    };
 @endphp
 
 <article
-    {{ $attributes->merge(['class' => 'flex h-full min-w-0 gap-4 rounded-lg border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-gray-900']) }}
+    {{ $attributes->merge(['class' => "flex h-full min-w-0 rounded-lg border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900 {$densityClasses}"]) }}
     data-test="about-team-profile"
     data-profile-key="{{ $profile['key'] }}"
+    data-team-card-layout="{{ $layout }}"
+    data-team-card-density="{{ $settings['density'] ?? 'comfortable' }}"
+    data-team-card-image-size="{{ $settings['image_size'] ?? 'medium' }}"
 >
-    @if($imageUrl)
+    @if($showImage && $imageUrl)
         <img
             src="{{ $imageUrl }}"
             alt="{{ $profile['name'] }}"
-            class="size-20 shrink-0 rounded-full object-cover"
+            class="{{ $imageSize }} shrink-0 rounded-full object-cover"
             loading="lazy"
             data-test="about-team-profile-image"
         >
     @endif
 
     <div class="min-w-0 space-y-2">
-        @if(filled($profile['title'] ?? null))
+        @if($showTitle && filled($profile['title'] ?? null))
             <p class="text-xs font-medium uppercase tracking-normal text-primary-700 dark:text-primary-300">
                 {{ $profile['title'] }}
             </p>
@@ -32,8 +56,8 @@
             {{ $profile['name'] }}
         </h3>
 
-        @if(filled($profile['description'] ?? null))
-            <p class="text-sm leading-6 text-gray-600 dark:text-gray-300">
+        @if($showDescription && filled($profile['description'] ?? null))
+            <p class="text-sm leading-6 text-gray-600 dark:text-gray-300 {{ $descriptionClamp }}" data-test="about-team-profile-description">
                 {{ $profile['description'] }}
             </p>
         @endif

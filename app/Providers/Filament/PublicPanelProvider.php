@@ -18,11 +18,13 @@ use Filament\Http\Middleware\DispatchServingFilamentEvent;
 use Filament\Panel;
 use Filament\PanelProvider;
 use Filament\Support\Colors\Color;
+use Filament\View\PanelsRenderHook;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Cookie\Middleware\EncryptCookies;
 use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
 use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Session\Middleware\StartSession;
+use Illuminate\Support\Facades\Blade;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
 
 class PublicPanelProvider extends PanelProvider
@@ -57,6 +59,10 @@ class PublicPanelProvider extends PanelProvider
             ->widgets([])
             ->navigation(false)
             ->userMenu(false)
+            ->renderHook(
+                PanelsRenderHook::CONTENT_BEFORE,
+                fn (): string => Blade::render('<livewire:public.public-header />'),
+            )
             ->middleware([
                 EncryptCookies::class,
                 AddQueuedCookiesToResponse::class,

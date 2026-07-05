@@ -52,6 +52,7 @@ return [
         'original_from' => 'מקור מתאריך',
         'original_until' => 'מקור עד תאריך',
         'provider' => 'ספק',
+        'per_page' => 'בעמוד',
         'search' => 'חיפוש',
         'search_contributors_placeholder' => 'חיפוש תורמים לפי שם',
         'search_group_items' => 'חיפוש בפודקאסט הזה',
@@ -60,6 +61,8 @@ return [
         'search_items_placeholder' => 'חיפוש פרקים לפי כותרת, פודקאסט, קטגוריה או תגית',
         'search_podcasts_placeholder' => 'חיפוש פודקאסטים לפי שם, נושא, קטגוריה או פרק',
         'search_placeholder' => 'חיפוש לפי כותרת',
+        'search_related_items' => 'חיפוש בפריטים קשורים',
+        'search_related_items_placeholder' => 'סינון תצוגת התורם',
         'sort' => 'מיון',
         'sort_items' => 'מיון פריטים',
         'tag' => 'תגית',
@@ -110,6 +113,22 @@ return [
         'source_description' => 'תיאור מקור',
         'source_host' => 'אתר מקור',
         'source_title' => 'כותרת מקור',
+    ],
+    'menu' => [
+        'forms' => [
+            'request_transcription' => 'בקשת תמלול',
+            'volunteer_transcriber' => 'הרשמה כמתמלל',
+        ],
+        'primary_navigation' => 'ניווט ראשי',
+        'routes' => [
+            'about' => 'מי אנחנו',
+            'contributors' => 'תורמים',
+            'home' => 'בית',
+            'podcasts' => 'פודקאסטים',
+            'search' => 'חיפוש',
+        ],
+        'theme' => 'ערכת נושא',
+        'toggle_navigation' => 'פתיחת ניווט',
     ],
     'pages' => [
         'about' => [
@@ -169,6 +188,10 @@ return [
         'top_transcribers_target' => 'תורמים',
     ],
     'sort' => [
+        'contributors_count_asc' => 'כמות עולה',
+        'contributors_count_desc' => 'כמות יורדת',
+        'contributors_name_asc' => 'א-ת',
+        'contributors_name_desc' => 'ת-א',
         'duration_longest' => 'משך: הארוכים ביותר',
         'duration_shortest' => 'משך: הקצרים ביותר',
         'latest_transcription' => 'התמלול החדש ביותר',
@@ -179,6 +202,11 @@ return [
         'title' => 'כותרת',
         'title_asc' => 'כותרת א-ת',
         'title_desc' => 'כותרת ת-א',
+    ],
+    'theme' => [
+        'dark' => 'כהה',
+        'light' => 'בהיר',
+        'system' => 'מערכת',
     ],
     'viewer' => [
         'hide_speakers' => 'הסתרת דוברים',

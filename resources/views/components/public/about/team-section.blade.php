@@ -3,7 +3,8 @@
 @php
     $heading = $block['heading'] ?? $settings['team_heading'] ?? __('public.pages.about.team_heading');
     $description = $block['body'] ?? $settings['team_description'] ?? null;
-    $layout = $settings['team_layout'] ?? 'grid';
+    $teamCard = $settings['team_card'] ?? [];
+    $layout = $teamCard['layout'] ?? $settings['team_layout'] ?? 'grid';
 @endphp
 
 <section class="space-y-5" data-test="about-team-section">
@@ -29,6 +30,8 @@
         @foreach($profiles as $profile)
             <x-public.about.profile-card
                 :profile="$profile"
+                :settings="$teamCard"
+                :layout="$layout"
                 wire:key="about-team-profile-{{ $profile['key'] }}"
             />
         @endforeach

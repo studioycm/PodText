@@ -5,6 +5,7 @@ namespace App\Filament\Public\Pages;
 use Filament\Pages\Page;
 use Filament\Panel;
 use Illuminate\Contracts\Support\Htmlable;
+use Illuminate\Contracts\View\View;
 
 class BrowseContentGroups extends Page
 {
@@ -25,5 +26,10 @@ class BrowseContentGroups extends Page
     public function getTitle(): string|Htmlable
     {
         return __('public.pages.browse.title');
+    }
+
+    public function getHeader(): ?View
+    {
+        return view('filament.public.pages.empty-page-header');
     }
 }
