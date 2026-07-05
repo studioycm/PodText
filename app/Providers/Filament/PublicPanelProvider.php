@@ -35,7 +35,7 @@ class PublicPanelProvider extends PanelProvider
             ->id('public')
             ->path('')
             ->viteTheme('resources/css/filament/public/theme.css')
-            ->darkMode(false)
+            ->topbar(false)
             ->brandName(fn (): string => __('app.name'))
             ->brandLogo(fn (): string => asset('images/podtext-logo.svg'))
             ->darkModeBrandLogo(fn (): string => asset('images/podtext-logo-dark.svg'))
