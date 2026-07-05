@@ -4,6 +4,7 @@ namespace App\Support\PublicFront;
 
 use App\Enums\PublicFrontConfigBlockType;
 use App\Enums\PublicFrontLayoutVariant;
+use App\Support\PublicFront\About\PublicAboutPageRegistry;
 use App\Support\PublicFront\Cards\PublicFrontCardTemplateRegistry;
 use App\Support\PublicFront\Forms\PublicFormDefinitionRegistry;
 
@@ -37,8 +38,16 @@ class PublicFrontConfigRegistry
             ],
             'about_page' => [
                 'enabled' => false,
+                'title' => 'מי אנחנו',
+                'kicker' => null,
+                'description' => null,
                 'blocks' => [],
                 'team_profiles' => [],
+                'settings' => [
+                    'team_heading' => null,
+                    'team_description' => null,
+                    'team_layout' => 'grid',
+                ],
             ],
             'public_forms' => [
                 'definitions' => [],
@@ -223,6 +232,54 @@ class PublicFrontConfigRegistry
     public static function defaultCardTemplates(): array
     {
         return PublicFrontCardTemplateRegistry::defaultTemplates();
+    }
+
+    /**
+     * @return array<string>
+     */
+    public static function aboutBlockTypes(): array
+    {
+        return PublicAboutPageRegistry::blockTypes();
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public static function aboutBlockTypeOptions(): array
+    {
+        return PublicAboutPageRegistry::blockTypeOptions();
+    }
+
+    /**
+     * @return array<string>
+     */
+    public static function aboutBlockStyles(): array
+    {
+        return PublicAboutPageRegistry::styles();
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public static function aboutBlockStyleOptions(): array
+    {
+        return PublicAboutPageRegistry::styleOptions();
+    }
+
+    /**
+     * @return array<string>
+     */
+    public static function aboutTeamLayouts(): array
+    {
+        return PublicAboutPageRegistry::teamLayouts();
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public static function aboutTeamLayoutOptions(): array
+    {
+        return PublicAboutPageRegistry::teamLayoutOptions();
     }
 
     /**

@@ -31,7 +31,8 @@ Recorded after the Markdown-only post-Prompt-10 prompt-progress centralization c
 - Public Front v2 Step 3 Card Template Builder is implemented and committed as `a0146ce feat: add public front card template builder foundation`.
 - Public Front v2 Step 4 Public Display Sections and Loopers is implemented and committed as `c0ce7d7 feat: add public display section loopers`.
 - Public Front v2 Step 5 Latest and Search UX is implemented and committed as `eea9164 feat: refine public latest and search ux`.
-- Public Front v2 Step 6 Public Forms and Submissions is implemented in this change set and will be committed as `feat: add public forms and submissions` after the final quality gate passes.
+- Public Front v2 Step 6 Public Forms and Submissions is implemented and committed as `49f6ab0 feat: add public forms and submissions`.
+- Public Front v2 Step 7 About Page Content and Team Builder is implemented in this change set and will be committed as `feat: add public about page content and team builder` after the final quality gate passes.
 
 ## Prompt Progress
 
@@ -57,8 +58,9 @@ Recorded after the Markdown-only post-Prompt-10 prompt-progress centralization c
 | Public Front v2 Step 3 Card Template Builder | Complete | `a0146ce feat: add public front card template builder foundation` | Adds JSON-first card template registry/validator support, support classes, admin settings UI, compatibility rendering attributes, tests, and Step 3 handoff. |
 | Public Front v2 Step 4 Public Display Sections and Loopers | Complete | `c0ce7d7 feat: add public display section loopers` | Adds homepage section JSON config columns, section/looper validation and query support, admin config fields, Step 3 template integration, tests, and Step 4 handoff. |
 | Public Front v2 Step 5 Latest and Search UX | Complete | `eea9164 feat: refine public latest and search ux` | Adds looper-driven Latest UX, search filter drawer, multi-select category/tag filters, card layout repair, controlled content-item renderer, tests, and Step 5 handoff. |
-| Public Front v2 Step 6 Public Forms and Submissions | Complete in current implementation commit | Pending final commit: `feat: add public forms and submissions` | Adds JSON-first public form definitions, `PublicFormSubmission` schema/model/resource, Livewire public form modal/slide-over, honeypot/rate limiting, admin settings UI, tests, and Step 6 handoff. |
-| Public Front v2 Step 7 About Page Content and Team Builder | Next after ChatGPT/Yoni review | Future prompt | Step 7 is the next implementation step after Step 6 review. |
+| Public Front v2 Step 6 Public Forms and Submissions | Complete | `49f6ab0 feat: add public forms and submissions` | Adds JSON-first public form definitions, `PublicFormSubmission` schema/model/resource, Livewire public form modal/slide-over, honeypot/rate limiting, admin settings UI, tests, and Step 6 handoff. |
+| Public Front v2 Step 7 About Page Content and Team Builder | Complete in current implementation commit | Pending final commit: `feat: add public about page content and team builder` | Adds JSON-first About page content, public `/about`, safe Markdown/RichEditor rendering, team profiles in JSON settings, team/about image upload constraints, optional Step 6 form CTA integration, tests, and Step 7 handoff. |
+| Public Front v2 Step 8 Podcasts and Groups UX | Next after ChatGPT/Yoni review | Future prompt | Step 8 is the next implementation step after Step 7 review. |
 | Prompt 13 dashboard metrics | Not started / blocked unless explicitly chosen by user | Active prompt/blueprint | Owns editorial dashboard widgets after Public Front v2 Step 12 readiness or an explicit dashboard-first decision. |
 | Prompt 14 viewer/studio future plan | Future planning after Prompt 13 | Active prompt/blueprint | Documentation/planning only. |
 | Prompt 15 Filament Blueprint security audit | Audit after Prompt 14 | Active prompt/blueprint | Audit-only unless fixes are explicitly approved. |
@@ -132,6 +134,8 @@ Laravel Boost MCP tools were exposed and usable during Prompt 10.
 - Public Front v2 Step 5 FilamentExamples `search_examples` research returned snippet-level examples for public Livewire tables/cards/filters and grid/card patterns; no full source/detail fetch was exposed for the requested latest drawer/looper renderer patterns.
 - Public Front v2 Step 6 used Boost `application_info`, `database_schema`, and `search_docs` before changing migrations, Eloquent models/enums/casts, validation, rate limiting, Livewire forms, Filament Resources, Filament form components, and Pest tests.
 - Public Front v2 Step 6 FilamentExamples `search_examples` research returned snippet/source-level examples for dynamic forms, public/custom pages, Resource tables, and actions; no full source/detail fetch tool was exposed.
+- Public Front v2 Step 7 used Boost `application_info`, `database_schema`, and `search_docs` before changing Spatie Settings JSON normalization, Filament Builder/Repeater/RichEditor/MarkdownEditor/FileUpload usage, public pages, Livewire-safe rendering, and Pest tests.
+- Public Front v2 Step 7 FilamentExamples `search_examples` research returned snippet/source-level examples for custom settings pages, repeaters, FileUpload image handling, and custom public pages; no full source/detail fetch tool was exposed.
 
 ## Application Shape
 
@@ -140,6 +144,7 @@ Laravel Boost MCP tools were exposed and usable during Prompt 10.
 - Admin panel root: `/admin`.
 - `php artisan route:list --path=contributors` reports the public contributor directory and contributor detail routes.
 - Existing public pages remain:
+  - `App\Filament\Public\Pages\AboutPage`
   - `App\Filament\Public\Pages\BrowseContentGroups`
   - `App\Filament\Public\Pages\SearchContentItems`
   - `App\Filament\Public\Pages\BrowseCategoryContentItems`
@@ -212,6 +217,16 @@ Laravel Boost MCP tools were exposed and usable during Prompt 10.
   - `App\Filament\Resources\PublicFormSubmissions\PublicFormSubmissionResource`
   - `resources/views/livewire/public/public-form-modal.blade.php`
   - `docs/phase-02/public-front-v2-step6-public-forms-submissions-handoff.md`
+- Public Front v2 Step 7 About Page Content and Team Builder surfaces:
+  - `App\Filament\Public\Pages\AboutPage`
+  - `App\Support\PublicFront\About\PublicAboutPageRegistry`
+  - `App\Support\PublicFront\About\PublicAboutPageRenderer`
+  - `resources/views/filament/public/pages/about-page.blade.php`
+  - `resources/views/components/public/about/team-section.blade.php`
+  - `resources/views/components/public/about/profile-card.blade.php`
+  - `docs/phase-02/public-front-v2-step7-about-page-content-team-builder-handoff.md`
+- Public Front v2 Step 7 About page JSON schema lives under `public_content.about_page` with `enabled`, `title`, `kicker`, `description`, `blocks`, `team_profiles`, and `settings`.
+- Public Front v2 Step 7 team profile JSON schema lives under `public_content.about_page.team_profiles`; no `AboutPage`, `AboutPageBlock`, or `TeamProfile` model/table exists.
 - Public Front v2 Step 1 enums:
   - `App\Enums\PublicFrontConfigBlockType`
   - `App\Enums\PublicFrontLayoutVariant`
@@ -255,6 +270,10 @@ Public Front v2 Step 6 migration status from `php artisan migrate:status` and lo
 
 - `2026_07_05_000000_create_public_form_submissions_table`: ran.
 - `2026_07_05_000001_normalize_public_forms_setting`: ran.
+
+Public Front v2 Step 7 settings migration status from local migration run:
+
+- `2026_07_05_000002_normalize_about_page_setting`: ran.
 
 Local data reset note:
 

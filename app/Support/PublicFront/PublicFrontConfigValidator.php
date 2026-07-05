@@ -2,6 +2,7 @@
 
 namespace App\Support\PublicFront;
 
+use App\Support\PublicFront\About\PublicAboutPageRegistry;
 use App\Support\PublicFront\Cards\PublicFrontCardTemplateRegistry;
 use App\Support\PublicFront\Forms\PublicFormDefinitionRegistry;
 
@@ -310,12 +311,319 @@ class PublicFrontConfigValidator
      */
     private function normalizeAboutPage(array $aboutPage, array $defaults, array &$invalidConfig): array
     {
-        $this->reportUnknownKeys($aboutPage, ['enabled', 'blocks', 'team_profiles'], 'about_page', $invalidConfig);
+        $this->reportUnknownKeys($aboutPage, [
+            'enabled',
+            'title',
+            'kicker',
+            'description',
+            'blocks',
+            'team_profiles',
+            'settings',
+        ], 'about_page', $invalidConfig);
 
         return [
             'enabled' => $this->boolean($aboutPage['enabled'] ?? null, 'about_page.enabled', $defaults['enabled'], $invalidConfig),
-            'blocks' => $this->normalizeSimpleConfigList($aboutPage['blocks'] ?? [], 'about_page.blocks', $invalidConfig),
-            'team_profiles' => $this->normalizeSimpleConfigList($aboutPage['team_profiles'] ?? [], 'about_page.team_profiles', $invalidConfig),
+            'title' => $this->plainString($aboutPage['title'] ?? null, 'about_page.title', $invalidConfig, maxLength: 160, nullable: true)
+                ?? $defaults['title'],
+            'kicker' => $this->plainString($aboutPage['kicker'] ?? null, 'about_page.kicker', $invalidConfig, maxLength: 120, nullable: true)
+                ?? $defaults['kicker'],
+            'description' => $this->plainString($aboutPage['description'] ?? null, 'about_page.description', $invalidConfig, maxLength: 1000, nullable: true)
+                ?? $defaults['description'],
+            'blocks' => $this->normalizeAboutBlocks($aboutPage['blocks'] ?? [], 'about_page.blocks', $invalidConfig),
+            'team_profiles' => $this->normalizeTeamProfiles($aboutPage['team_profiles'] ?? [], 'about_page.team_profiles', $invalidConfig),
+            'settings' => $this->normalizeAboutPageSettings($aboutPage['settings'] ?? [], $defaults['settings'], 'about_page.settings', $invalidConfig),
+        ];
+    }
+
+    /**
+     * @param  array<mixed>|mixed  $items
+     * @param  array<PublicFrontInvalidConfig>  $invalidConfig
+     * @return array<int, array<string, mixed>>
+     */
+    private function normalizeAboutBlocks(mixed $items, string $path, array &$invalidConfig): array
+    {
+        if (! is_array($items) || ! array_is_list($items)) {
+            $invalidConfig[] = PublicFrontInvalidConfig::make($path, 'expected_list', $items);
+
+            return [];
+        }
+
+        $normalized = [];
+
+        foreach ($items as $index => $item) {
+            $blockPath = "{$path}.{$index}";
+
+            if (! is_array($item)) {
+                $invalidConfig[] = PublicFrontInvalidConfig::make($blockPath, 'expected_array', $item);
+
+                continue;
+            }
+
+            $block = $this->normalizeAboutBlock($item, $blockPath, $invalidConfig, $index);
+
+            if ($block !== null) {
+                $normalized[] = $block;
+            }
+        }
+
+        return collect($normalized)
+            ->sortBy('sort')
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @param  array<string, mixed>  $item
+     * @param  array<PublicFrontInvalidConfig>  $invalidConfig
+     * @return array<string, mixed>|null
+     */
+    private function normalizeAboutBlock(array $item, string $path, array &$invalidConfig, int $index): ?array
+    {
+        [$block, $blockPath] = $this->unwrapBuilderBlock($item, $path, $invalidConfig);
+
+        $this->reportUnknownKeys($block, [
+            'key',
+            'type',
+            'visible',
+            'sort',
+            'heading',
+            'body',
+            'content',
+            'rich_content',
+            'image_path',
+            'image_alt',
+            'style',
+            'form_key',
+            'display_mode',
+            'button_label',
+        ], $blockPath, $invalidConfig);
+
+        $type = $this->finiteString($block['type'] ?? null, PublicAboutPageRegistry::blockTypes(), "{$blockPath}.type", $invalidConfig);
+
+        if ($type === null) {
+            return null;
+        }
+
+        $normalized = [
+            'key' => $this->semanticKey($block['key'] ?? null, "{$blockPath}.key", $invalidConfig, nullable: true)
+                ?? "{$type}_".($index + 1),
+            'type' => $type,
+            'visible' => $this->boolean($block['visible'] ?? null, "{$blockPath}.visible", true, $invalidConfig),
+            'sort' => array_key_exists('sort', $block)
+                ? $this->integerRange($block['sort'], "{$blockPath}.sort", 0, 1000, ($index + 1) * 10, $invalidConfig)
+                : ($index + 1) * 10,
+            'style' => $this->finiteString($block['style'] ?? null, PublicAboutPageRegistry::styles(), "{$blockPath}.style", $invalidConfig, 'default'),
+        ];
+
+        $heading = $this->plainString($block['heading'] ?? null, "{$blockPath}.heading", $invalidConfig, maxLength: 160, nullable: true);
+        $bodySource = $type === 'rich_content'
+            ? ($block['body'] ?? null)
+            : ($block['body'] ?? $block['content'] ?? null);
+        $body = $this->markdownString($bodySource, "{$blockPath}.body", $invalidConfig, maxLength: 20000, nullable: true);
+
+        if ($heading !== null) {
+            $normalized['heading'] = $heading;
+        }
+
+        if ($body !== null) {
+            $normalized['body'] = $body;
+        }
+
+        if ($type === 'heading') {
+            return $heading === null ? null : $normalized;
+        }
+
+        if ($type === 'markdown') {
+            return $body === null ? null : $normalized + ['content' => $body];
+        }
+
+        if ($type === 'rich_content') {
+            $richContent = $this->normalizeRichContent($block['rich_content'] ?? $block['content'] ?? null, "{$blockPath}.rich_content", $invalidConfig);
+
+            return $richContent === null ? null : $normalized + ['rich_content' => $richContent];
+        }
+
+        if ($type === 'image') {
+            $imagePath = $this->publicImagePath($block['image_path'] ?? null, "{$blockPath}.image_path", $invalidConfig);
+
+            if ($imagePath === null) {
+                return null;
+            }
+
+            return $normalized + [
+                'image_path' => $imagePath,
+                'image_alt' => $this->plainString($block['image_alt'] ?? null, "{$blockPath}.image_alt", $invalidConfig, maxLength: 160, nullable: true),
+            ];
+        }
+
+        if ($type === 'callout') {
+            return ($heading === null && $body === null) ? null : $normalized;
+        }
+
+        if ($type === 'form_cta') {
+            $formKey = $this->semanticKey($block['form_key'] ?? null, "{$blockPath}.form_key", $invalidConfig);
+
+            if ($formKey === null) {
+                return null;
+            }
+
+            return $normalized + [
+                'form_key' => $formKey,
+                'display_mode' => $this->finiteString($block['display_mode'] ?? null, PublicFormDefinitionRegistry::displayModes(), "{$blockPath}.display_mode", $invalidConfig, 'modal'),
+                'button_label' => $this->plainString($block['button_label'] ?? null, "{$blockPath}.button_label", $invalidConfig, maxLength: 80, nullable: true)
+                    ?? __('public.forms.submit'),
+            ];
+        }
+
+        return $normalized;
+    }
+
+    /**
+     * @param  array<string, mixed>  $item
+     * @param  array<PublicFrontInvalidConfig>  $invalidConfig
+     * @return array{0: array<string, mixed>, 1: string}
+     */
+    private function unwrapBuilderBlock(array $item, string $path, array &$invalidConfig): array
+    {
+        if (! array_key_exists('data', $item)) {
+            return [$item, $path];
+        }
+
+        $this->reportUnknownKeys($item, ['type', 'data'], $path, $invalidConfig);
+
+        if (! is_array($item['data'])) {
+            $invalidConfig[] = PublicFrontInvalidConfig::make("{$path}.data", 'expected_array', $item['data']);
+
+            return [['type' => $item['type'] ?? null], $path];
+        }
+
+        return [
+            [
+                'type' => $item['type'] ?? null,
+                ...$item['data'],
+            ],
+            "{$path}.data",
+        ];
+    }
+
+    /**
+     * @param  array<mixed>|mixed  $items
+     * @param  array<PublicFrontInvalidConfig>  $invalidConfig
+     * @return array<int, array<string, mixed>>
+     */
+    private function normalizeTeamProfiles(mixed $items, string $path, array &$invalidConfig): array
+    {
+        if (! is_array($items) || ! array_is_list($items)) {
+            $invalidConfig[] = PublicFrontInvalidConfig::make($path, 'expected_list', $items);
+
+            return [];
+        }
+
+        $normalized = [];
+        $seenKeys = [];
+
+        foreach ($items as $index => $item) {
+            $profilePath = "{$path}.{$index}";
+
+            if (! is_array($item)) {
+                $invalidConfig[] = PublicFrontInvalidConfig::make($profilePath, 'expected_array', $item);
+
+                continue;
+            }
+
+            $profile = $this->normalizeTeamProfile($item, $profilePath, $invalidConfig, $index);
+
+            if ($profile === null) {
+                continue;
+            }
+
+            if (in_array($profile['key'], $seenKeys, true)) {
+                $invalidConfig[] = PublicFrontInvalidConfig::make("{$profilePath}.key", 'duplicate_key', $profile['key']);
+
+                continue;
+            }
+
+            $seenKeys[] = $profile['key'];
+            $normalized[] = $profile;
+        }
+
+        return collect($normalized)
+            ->sortBy('sort')
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @param  array<string, mixed>  $item
+     * @param  array<PublicFrontInvalidConfig>  $invalidConfig
+     * @return array<string, mixed>|null
+     */
+    private function normalizeTeamProfile(array $item, string $path, array &$invalidConfig, int $index): ?array
+    {
+        $this->reportUnknownKeys($item, [
+            'key',
+            'visible',
+            'sort',
+            'image_path',
+            'title',
+            'name',
+            'description',
+        ], $path, $invalidConfig);
+
+        $key = $this->semanticKey($item['key'] ?? null, "{$path}.key", $invalidConfig);
+        $name = $this->plainString($item['name'] ?? null, "{$path}.name", $invalidConfig, maxLength: 120);
+
+        if ($name === '') {
+            $invalidConfig[] = PublicFrontInvalidConfig::make("{$path}.name", 'required_string', $item['name'] ?? null);
+
+            return null;
+        }
+
+        if ($key === null || $name === null) {
+            return null;
+        }
+
+        return array_filter([
+            'key' => $key,
+            'visible' => $this->boolean($item['visible'] ?? null, "{$path}.visible", true, $invalidConfig),
+            'sort' => array_key_exists('sort', $item)
+                ? $this->integerRange($item['sort'], "{$path}.sort", 0, 1000, ($index + 1) * 10, $invalidConfig)
+                : ($index + 1) * 10,
+            'image_path' => array_key_exists('image_path', $item)
+                ? $this->publicImagePath($item['image_path'], "{$path}.image_path", $invalidConfig, ['team'])
+                : null,
+            'title' => $this->plainString($item['title'] ?? null, "{$path}.title", $invalidConfig, maxLength: 120, nullable: true),
+            'name' => $name,
+            'description' => $this->plainString($item['description'] ?? null, "{$path}.description", $invalidConfig, maxLength: 1000, nullable: true),
+        ], fn (mixed $value): bool => $value !== null);
+    }
+
+    /**
+     * @param  array<string, mixed>|mixed  $settings
+     * @param  array<string, mixed>  $defaults
+     * @param  array<PublicFrontInvalidConfig>  $invalidConfig
+     * @return array<string, mixed>
+     */
+    private function normalizeAboutPageSettings(mixed $settings, array $defaults, string $path, array &$invalidConfig): array
+    {
+        if ($settings === null || $settings === []) {
+            return $defaults;
+        }
+
+        if (! is_array($settings)) {
+            $invalidConfig[] = PublicFrontInvalidConfig::make($path, 'expected_array', $settings);
+
+            return $defaults;
+        }
+
+        $this->reportUnknownKeys($settings, ['team_heading', 'team_description', 'team_layout'], $path, $invalidConfig);
+
+        return [
+            'team_heading' => $this->plainString($settings['team_heading'] ?? null, "{$path}.team_heading", $invalidConfig, maxLength: 160, nullable: true)
+                ?? $defaults['team_heading'],
+            'team_description' => $this->plainString($settings['team_description'] ?? null, "{$path}.team_description", $invalidConfig, maxLength: 1000, nullable: true)
+                ?? $defaults['team_description'],
+            'team_layout' => $this->finiteString($settings['team_layout'] ?? null, PublicAboutPageRegistry::teamLayouts(), "{$path}.team_layout", $invalidConfig, $defaults['team_layout']),
         ];
     }
 
@@ -872,6 +1180,36 @@ class PublicFrontConfigValidator
     }
 
     /**
+     * @param  array<string>  $directories
+     * @param  array<PublicFrontInvalidConfig>  $invalidConfig
+     */
+    private function publicImagePath(mixed $value, string $path, array &$invalidConfig, array $directories = []): ?string
+    {
+        $value = $this->plainString($value, $path, $invalidConfig, maxLength: 255, nullable: true);
+
+        if ($value === null) {
+            return null;
+        }
+
+        $directories = $directories === [] ? PublicAboutPageRegistry::imageDirectories() : $directories;
+        $directoryPattern = implode('|', array_map(fn (string $directory): string => preg_quote($directory, '/'), $directories));
+
+        if (! preg_match("/^(?:{$directoryPattern})\/[A-Za-z0-9][A-Za-z0-9._\/-]*\.(?:jpe?g|png|webp)$/i", $value)) {
+            $invalidConfig[] = PublicFrontInvalidConfig::make($path, 'invalid_public_image_path', $value);
+
+            return null;
+        }
+
+        if (str_contains($value, '../') || str_contains($value, '//') || str_starts_with($value, '/')) {
+            $invalidConfig[] = PublicFrontInvalidConfig::make($path, 'invalid_public_image_path', $value);
+
+            return null;
+        }
+
+        return $value;
+    }
+
+    /**
      * @param  array<PublicFrontInvalidConfig>  $invalidConfig
      */
     private function integerRange(mixed $value, string $path, int $min, int $max, int $default, array &$invalidConfig): int
@@ -891,6 +1229,143 @@ class PublicFrontConfigValidator
         }
 
         return $value;
+    }
+
+    /**
+     * @param  array<PublicFrontInvalidConfig>  $invalidConfig
+     */
+    private function markdownString(mixed $value, string $path, array &$invalidConfig, int $maxLength = 20000, bool $nullable = false): ?string
+    {
+        if ($value === null || $value === '') {
+            return $nullable ? null : '';
+        }
+
+        if (! is_string($value)) {
+            $invalidConfig[] = PublicFrontInvalidConfig::make($path, 'expected_string', $value);
+
+            return null;
+        }
+
+        $value = trim($value);
+
+        if (mb_strlen($value) > $maxLength) {
+            $invalidConfig[] = PublicFrontInvalidConfig::make($path, 'string_too_long', $value);
+
+            return null;
+        }
+
+        return $value;
+    }
+
+    /**
+     * @param  array<PublicFrontInvalidConfig>  $invalidConfig
+     * @return array<string, mixed>|null
+     */
+    private function normalizeRichContent(mixed $value, string $path, array &$invalidConfig): ?array
+    {
+        if (! is_array($value)) {
+            $invalidConfig[] = PublicFrontInvalidConfig::make($path, 'expected_array', $value);
+
+            return null;
+        }
+
+        if ($this->containsUnsafeRichContent($value, $path, $invalidConfig)) {
+            return null;
+        }
+
+        return $value;
+    }
+
+    /**
+     * @param  array<mixed>  $value
+     * @param  array<PublicFrontInvalidConfig>  $invalidConfig
+     */
+    private function containsUnsafeRichContent(array $value, string $path, array &$invalidConfig): bool
+    {
+        $unsafe = false;
+
+        foreach ($value as $key => $item) {
+            $itemPath = "{$path}.{$key}";
+
+            if (is_array($item)) {
+                $unsafe = $this->containsUnsafeRichContent($item, $itemPath, $invalidConfig) || $unsafe;
+
+                continue;
+            }
+
+            if (! is_string($item)) {
+                continue;
+            }
+
+            if ($key === 'type' && ! in_array($item, $this->allowedRichContentTypes(), true)) {
+                $invalidConfig[] = PublicFrontInvalidConfig::make($itemPath, 'unknown_semantic_value', $item);
+                $unsafe = true;
+
+                continue;
+            }
+
+            if (in_array($key, ['class', 'style', 'html'], true)) {
+                $invalidConfig[] = PublicFrontInvalidConfig::make($itemPath, 'unsafe_string_value', $item);
+                $unsafe = true;
+
+                continue;
+            }
+
+            if (in_array($key, ['href', 'src'], true) && $this->richContentUrlIsUnsafe($item)) {
+                $invalidConfig[] = PublicFrontInvalidConfig::make($itemPath, 'unsafe_string_value', $item);
+                $unsafe = true;
+
+                continue;
+            }
+
+            if ($key !== 'text' && $this->containsUnsafeString($item)) {
+                $invalidConfig[] = PublicFrontInvalidConfig::make($itemPath, 'unsafe_string_value', $item);
+                $unsafe = true;
+            }
+        }
+
+        return $unsafe;
+    }
+
+    /**
+     * @return array<string>
+     */
+    private function allowedRichContentTypes(): array
+    {
+        return [
+            'blockquote',
+            'bold',
+            'bulletList',
+            'code',
+            'doc',
+            'hardBreak',
+            'heading',
+            'horizontalRule',
+            'italic',
+            'link',
+            'listItem',
+            'orderedList',
+            'paragraph',
+            'strike',
+            'text',
+            'underline',
+        ];
+    }
+
+    private function richContentUrlIsUnsafe(string $value): bool
+    {
+        $lowerValue = strtolower($value);
+
+        if (str_starts_with($lowerValue, 'javascript:')) {
+            return true;
+        }
+
+        if (str_starts_with($lowerValue, 'mailto:')) {
+            return false;
+        }
+
+        return filter_var($value, FILTER_VALIDATE_URL) === false
+            || ! in_array(parse_url($value, PHP_URL_SCHEME), ['http', 'https'], true);
     }
 
     /**

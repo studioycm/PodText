@@ -105,6 +105,10 @@ return [
         'source_title' => 'Source title',
     ],
     'pages' => [
+        'about' => [
+            'team_heading' => 'Team',
+            'title' => 'About',
+        ],
         'browse' => [
             'description' => 'Browse the latest published episodes with transcripts that are ready for public reading.',
             'kicker' => 'Public library',

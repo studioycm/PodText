@@ -3,6 +3,7 @@
 namespace App\Filament\Pages;
 
 use App\Settings\PublicContentSettings as PublicContentSettingsData;
+use App\Support\PublicFront\About\PublicAboutPageRegistry;
 use App\Support\PublicFront\Cards\PublicFrontCardTemplateRegistry;
 use App\Support\PublicFront\PublicFrontConfigReader;
 use App\Support\PublicFront\PublicFrontConfigRegistry;
@@ -10,7 +11,10 @@ use App\Support\PublicFront\PublicFrontConfigValidator;
 use BackedEnum;
 use Filament\Forms\Components\Builder;
 use Filament\Forms\Components\Builder\Block;
+use Filament\Forms\Components\FileUpload;
+use Filament\Forms\Components\MarkdownEditor;
 use Filament\Forms\Components\Repeater;
+use Filament\Forms\Components\RichEditor;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -241,6 +245,121 @@ class PublicContentSettings extends SettingsPage
                             ->columnSpanFull(),
                     ])
                     ->columns(3),
+                Section::make(__('admin.sections.public_front_about_page'))
+                    ->description(__('admin.descriptions.public_front_about_page'))
+                    ->schema([
+                        Fieldset::make(__('admin.sections.about_page_identity'))
+                            ->schema([
+                                Toggle::make('about_page.enabled')
+                                    ->label(__('admin.fields.about_page_enabled'))
+                                    ->helperText(__('admin.helpers.about_page_enabled'))
+                                    ->default(false),
+                                TextInput::make('about_page.title')
+                                    ->label(__('admin.fields.about_page_title'))
+                                    ->helperText(__('admin.helpers.about_page_title'))
+                                    ->required()
+                                    ->maxLength(160),
+                                TextInput::make('about_page.kicker')
+                                    ->label(__('admin.fields.about_page_kicker'))
+                                    ->helperText(__('admin.helpers.about_page_kicker'))
+                                    ->maxLength(120),
+                                Textarea::make('about_page.description')
+                                    ->label(__('admin.fields.about_page_description'))
+                                    ->helperText(__('admin.helpers.about_page_description'))
+                                    ->rows(3)
+                                    ->maxLength(1000)
+                                    ->columnSpanFull(),
+                            ])
+                            ->columns(3)
+                            ->columnSpanFull(),
+                        Fieldset::make(__('admin.sections.about_page_team_defaults'))
+                            ->schema([
+                                TextInput::make('about_page.settings.team_heading')
+                                    ->label(__('admin.fields.about_page_team_heading'))
+                                    ->helperText(__('admin.helpers.about_page_team_heading'))
+                                    ->maxLength(160),
+                                Select::make('about_page.settings.team_layout')
+                                    ->label(__('admin.fields.about_page_team_layout'))
+                                    ->helperText(__('admin.helpers.about_page_team_layout'))
+                                    ->options(fn (): array => PublicFrontConfigRegistry::aboutTeamLayoutOptions())
+                                    ->default('grid')
+                                    ->native(false)
+                                    ->required(),
+                                Textarea::make('about_page.settings.team_description')
+                                    ->label(__('admin.fields.about_page_team_description'))
+                                    ->helperText(__('admin.helpers.about_page_team_description'))
+                                    ->rows(3)
+                                    ->maxLength(1000)
+                                    ->columnSpanFull(),
+                            ])
+                            ->columns(2)
+                            ->columnSpanFull(),
+                        Builder::make('about_page.blocks')
+                            ->label(__('admin.fields.about_page_blocks'))
+                            ->helperText(__('admin.helpers.about_page_blocks'))
+                            ->blocks($this->aboutPageBlockBlocks())
+                            ->blockPickerColumns(2)
+                            ->collapsible()
+                            ->collapsed()
+                            ->cloneable()
+                            ->default([])
+                            ->addActionLabel(__('admin.actions.add_about_page_block'))
+                            ->columnSpanFull(),
+                        Repeater::make('about_page.team_profiles')
+                            ->label(__('admin.fields.about_page_team_profiles'))
+                            ->helperText(__('admin.helpers.about_page_team_profiles'))
+                            ->schema([
+                                TextInput::make('key')
+                                    ->label(__('admin.fields.about_team_profile_key'))
+                                    ->helperText(__('admin.helpers.about_team_profile_key'))
+                                    ->required()
+                                    ->maxLength(80)
+                                    ->rules(['regex:/^[a-z][a-z0-9_-]*$/']),
+                                Toggle::make('visible')
+                                    ->label(__('admin.fields.about_team_profile_visible'))
+                                    ->helperText(__('admin.helpers.about_team_profile_visible'))
+                                    ->default(true),
+                                TextInput::make('sort')
+                                    ->label(__('admin.fields.about_team_profile_sort'))
+                                    ->helperText(__('admin.helpers.about_team_profile_sort'))
+                                    ->numeric()
+                                    ->integer()
+                                    ->minValue(0)
+                                    ->maxValue(1000),
+                                FileUpload::make('image_path')
+                                    ->label(__('admin.fields.about_team_profile_image'))
+                                    ->helperText(__('admin.helpers.about_team_profile_image'))
+                                    ->disk('public')
+                                    ->directory('team')
+                                    ->visibility('public')
+                                    ->avatar()
+                                    ->acceptedFileTypes(PublicAboutPageRegistry::acceptedImageTypes())
+                                    ->maxSize(PublicAboutPageRegistry::maxImageSize()),
+                                TextInput::make('name')
+                                    ->label(__('admin.fields.about_team_profile_name'))
+                                    ->helperText(__('admin.helpers.about_team_profile_name'))
+                                    ->required()
+                                    ->maxLength(120),
+                                TextInput::make('title')
+                                    ->label(__('admin.fields.about_team_profile_title'))
+                                    ->helperText(__('admin.helpers.about_team_profile_title'))
+                                    ->maxLength(120),
+                                Textarea::make('description')
+                                    ->label(__('admin.fields.about_team_profile_description'))
+                                    ->helperText(__('admin.helpers.about_team_profile_description'))
+                                    ->rows(3)
+                                    ->maxLength(1000)
+                                    ->columnSpanFull(),
+                            ])
+                            ->itemLabel(fn (array $state): ?string => $state['name'] ?? $state['key'] ?? __('admin.labels.untitled'))
+                            ->defaultItems(0)
+                            ->reorderable()
+                            ->cloneable()
+                            ->collapsed()
+                            ->grid(['md' => 2])
+                            ->columns(3)
+                            ->columnSpanFull(),
+                    ]),
                 Section::make(__('admin.sections.public_front_card_templates'))
                     ->description(__('admin.descriptions.public_front_card_templates'))
                     ->schema([
@@ -439,6 +558,7 @@ class PublicContentSettings extends SettingsPage
             ->fromArray($data)
             ->config();
 
+        $publicFrontConfig['about_page'] = $this->aboutPageForBuilder($publicFrontConfig['about_page'] ?? []);
         $publicFrontConfig['card_templates'] = $this->cardTemplatesForBuilder($publicFrontConfig['card_templates'] ?? []);
         $publicFrontConfig['public_forms'] = $this->publicFormsForBuilder($publicFrontConfig['public_forms'] ?? []);
 
@@ -454,6 +574,8 @@ class PublicContentSettings extends SettingsPage
      */
     protected function mutateFormDataBeforeSave(array $data): array
     {
+        $data['about_page'] = $this->normalizeAboutPageUploadState($data['about_page'] ?? []);
+
         $publicFrontConfig = app(PublicFrontConfigValidator::class)
             ->validate($data)
             ->config();
@@ -462,6 +584,60 @@ class PublicContentSettings extends SettingsPage
             ...$data,
             ...$publicFrontConfig,
         ];
+    }
+
+    /**
+     * @param  array<string, mixed>|mixed  $aboutPage
+     * @return array<string, mixed>
+     */
+    private function normalizeAboutPageUploadState(mixed $aboutPage): array
+    {
+        if (! is_array($aboutPage)) {
+            return [];
+        }
+
+        $aboutPage['blocks'] = collect($aboutPage['blocks'] ?? [])
+            ->filter(fn (mixed $block): bool => is_array($block))
+            ->map(function (array $block): array {
+                if (array_key_exists('data', $block) && is_array($block['data'])) {
+                    $block['data']['image_path'] = $this->singleFileUploadPath($block['data']['image_path'] ?? null);
+
+                    return $block;
+                }
+
+                $block['image_path'] = $this->singleFileUploadPath($block['image_path'] ?? null);
+
+                return $block;
+            })
+            ->values()
+            ->all();
+
+        $aboutPage['team_profiles'] = collect($aboutPage['team_profiles'] ?? [])
+            ->filter(fn (mixed $profile): bool => is_array($profile))
+            ->map(function (array $profile): array {
+                $profile['image_path'] = $this->singleFileUploadPath($profile['image_path'] ?? null);
+
+                return $profile;
+            })
+            ->values()
+            ->all();
+
+        return $aboutPage;
+    }
+
+    private function singleFileUploadPath(mixed $value): ?string
+    {
+        if (is_string($value)) {
+            return $value;
+        }
+
+        if (! is_array($value)) {
+            return null;
+        }
+
+        return collect($value)
+            ->filter(fn (mixed $path): bool => is_string($path) && filled($path))
+            ->first();
     }
 
     /**
@@ -488,6 +664,116 @@ class PublicContentSettings extends SettingsPage
                 ->schema($this->publicFormFieldSchema($type))
                 ->columns(3))
             ->all();
+    }
+
+    /**
+     * @return array<Block>
+     */
+    private function aboutPageBlockBlocks(): array
+    {
+        return collect(PublicFrontConfigRegistry::aboutBlockTypes())
+            ->map(fn (string $type): Block => Block::make($type)
+                ->label(__("admin.about_block_types.{$type}"))
+                ->schema($this->aboutPageBlockSchema($type))
+                ->columns(3))
+            ->all();
+    }
+
+    /**
+     * @return array<int, mixed>
+     */
+    private function aboutPageBlockSchema(string $type): array
+    {
+        return [
+            TextInput::make('key')
+                ->label(__('admin.fields.about_block_key'))
+                ->helperText(__('admin.helpers.about_block_key'))
+                ->maxLength(80)
+                ->rules(['regex:/^[a-z][a-z0-9_-]*$/']),
+            Toggle::make('visible')
+                ->label(__('admin.fields.about_block_visible'))
+                ->helperText(__('admin.helpers.about_block_visible'))
+                ->default(true),
+            TextInput::make('sort')
+                ->label(__('admin.fields.about_block_sort'))
+                ->helperText(__('admin.helpers.about_block_sort'))
+                ->numeric()
+                ->integer()
+                ->minValue(0)
+                ->maxValue(1000),
+            Select::make('style')
+                ->label(__('admin.fields.about_block_style'))
+                ->helperText(__('admin.helpers.about_block_style'))
+                ->options(fn (): array => PublicFrontConfigRegistry::aboutBlockStyleOptions())
+                ->default('default')
+                ->native(false),
+            TextInput::make('heading')
+                ->label(__('admin.fields.about_block_heading'))
+                ->helperText(__('admin.helpers.about_block_heading'))
+                ->required($type === 'heading')
+                ->maxLength(160)
+                ->visible(in_array($type, ['heading', 'markdown', 'rich_content', 'callout', 'form_cta', 'team_section'], true)),
+            Textarea::make('body')
+                ->label(__('admin.fields.about_block_body'))
+                ->helperText(__('admin.helpers.about_block_body'))
+                ->rows(3)
+                ->maxLength(20000)
+                ->visible(in_array($type, ['heading', 'image', 'form_cta', 'team_section'], true))
+                ->columnSpanFull(),
+            MarkdownEditor::make('content')
+                ->label(__('admin.fields.about_block_content'))
+                ->helperText(__('admin.helpers.about_block_content'))
+                ->disableToolbarButtons(['attachFiles'])
+                ->fileAttachments(false)
+                ->required(in_array($type, ['markdown', 'callout'], true))
+                ->maxLength(20000)
+                ->visible(in_array($type, ['markdown', 'callout'], true))
+                ->columnSpanFull(),
+            RichEditor::make('rich_content')
+                ->label(__('admin.fields.about_block_rich_content'))
+                ->helperText(__('admin.helpers.about_block_rich_content'))
+                ->json()
+                ->fileAttachments(false)
+                ->required($type === 'rich_content')
+                ->visible($type === 'rich_content')
+                ->columnSpanFull(),
+            FileUpload::make('image_path')
+                ->label(__('admin.fields.about_block_image'))
+                ->helperText(__('admin.helpers.about_block_image'))
+                ->disk('public')
+                ->directory('about')
+                ->visibility('public')
+                ->image()
+                ->acceptedFileTypes(PublicAboutPageRegistry::acceptedImageTypes())
+                ->maxSize(PublicAboutPageRegistry::maxImageSize())
+                ->required($type === 'image')
+                ->visible($type === 'image'),
+            TextInput::make('image_alt')
+                ->label(__('admin.fields.about_block_image_alt'))
+                ->helperText(__('admin.helpers.about_block_image_alt'))
+                ->maxLength(160)
+                ->visible($type === 'image'),
+            Select::make('form_key')
+                ->label(__('admin.fields.about_block_form_key'))
+                ->helperText(__('admin.helpers.about_block_form_key'))
+                ->options(fn (): array => $this->enabledPublicFormOptions())
+                ->searchable()
+                ->native(false)
+                ->required($type === 'form_cta')
+                ->visible($type === 'form_cta'),
+            Select::make('display_mode')
+                ->label(__('admin.fields.public_form_display_mode'))
+                ->helperText(__('admin.helpers.public_form_display_mode'))
+                ->options(fn (): array => PublicFrontConfigRegistry::publicFormDisplayModeOptions())
+                ->default('modal')
+                ->native(false)
+                ->visible($type === 'form_cta'),
+            TextInput::make('button_label')
+                ->label(__('admin.fields.about_block_button_label'))
+                ->helperText(__('admin.helpers.about_block_button_label'))
+                ->maxLength(80)
+                ->visible($type === 'form_cta'),
+        ];
     }
 
     /**
@@ -666,6 +952,47 @@ class PublicContentSettings extends SettingsPage
                 return $template;
             })
             ->values()
+            ->all();
+    }
+
+    /**
+     * @param  array<string, mixed>  $aboutPage
+     * @return array<string, mixed>
+     */
+    private function aboutPageForBuilder(array $aboutPage): array
+    {
+        $aboutPage['blocks'] = collect($aboutPage['blocks'] ?? [])
+            ->filter(fn (mixed $block): bool => is_array($block))
+            ->map(function (array $block): array {
+                if (in_array($block['type'] ?? null, ['markdown', 'callout'], true) && filled($block['body'] ?? null)) {
+                    $block['content'] ??= $block['body'];
+                }
+
+                return [
+                    'type' => $block['type'] ?? 'markdown',
+                    'data' => Arr::except($block, ['type']),
+                ];
+            })
+            ->values()
+            ->all();
+
+        return $aboutPage;
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private function enabledPublicFormOptions(): array
+    {
+        $publicForms = app(PublicFrontConfigReader::class)
+            ->read()
+            ->group('public_forms');
+
+        return collect($publicForms['definitions'] ?? [])
+            ->filter(fn (mixed $definition): bool => is_array($definition) && ($definition['enabled'] ?? false) === true)
+            ->mapWithKeys(fn (array $definition): array => [
+                $definition['key'] => $definition['name'] ?? $definition['key'],
+            ])
             ->all();
     }
 

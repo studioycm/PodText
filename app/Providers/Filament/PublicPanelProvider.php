@@ -2,6 +2,7 @@
 
 namespace App\Providers\Filament;
 
+use App\Filament\Public\Pages\AboutPage;
 use App\Filament\Public\Pages\BrowseCategoryContentItems;
 use App\Filament\Public\Pages\BrowseContentGroups;
 use App\Filament\Public\Pages\BrowseContributors;
@@ -41,6 +42,7 @@ class PublicPanelProvider extends PanelProvider
                 'primary' => Color::Amber,
             ])
             ->pages([
+                AboutPage::class,
                 BrowseContentGroups::class,
                 SearchContentItems::class,
                 BrowseCategoryContentItems::class,
