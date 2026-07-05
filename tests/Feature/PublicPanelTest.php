@@ -136,7 +136,7 @@ it('renders a published group page with sanitized description and published item
     $publishedItem->authors()->attach($author);
     $draftItem->authors()->attach($author);
 
-    $this->get("/groups/{$group->slug}")
+    $this->get("/podcasts/{$group->slug}")
         ->assertSuccessful()
         ->assertSee($group->title)
         ->assertSee('<strong>description</strong>', false)
@@ -150,8 +150,8 @@ it('returns not found for draft and future group pages', function (): void {
     $draft = ContentGroup::factory()->create(['slug' => 'draft-group']);
     $future = ContentGroup::factory()->published(now()->addDay())->create(['slug' => 'future-group']);
 
-    $this->get("/groups/{$draft->slug}")->assertNotFound();
-    $this->get("/groups/{$future->slug}")->assertNotFound();
+    $this->get("/podcasts/{$draft->slug}")->assertNotFound();
+    $this->get("/podcasts/{$future->slug}")->assertNotFound();
 });
 
 it('sorts items on a group page', function (): void {

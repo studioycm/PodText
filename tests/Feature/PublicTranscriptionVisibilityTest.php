@@ -39,7 +39,7 @@ it('hides items without effective published transcriptions from public group pag
         'slug' => 'hidden-without-transcript',
     ]);
 
-    $this->get("/groups/{$group->slug}")
+    $this->get("/podcasts/{$group->slug}")
         ->assertSuccessful()
         ->assertSee($visible->title)
         ->assertDontSee($hidden->title);

@@ -73,7 +73,7 @@ it('opens a published group and sorts its visible item rows in the browser', fun
         'slug' => 'draft-browser-item',
     ]);
 
-    $page = visit("/groups/{$group->slug}");
+    $page = visit("/podcasts/{$group->slug}");
 
     $page
         ->assertNoSmoke()
@@ -154,12 +154,12 @@ it('blocks direct browser URLs for draft and future public records', function ()
     $futureItem = ContentItem::factory()->for($publishedGroup)->published(now()->addDay())->withTranscription()->create(['slug' => 'browser-future-item']);
     $underDraftGroup = ContentItem::factory()->for($draftGroup)->published()->withTranscription()->create(['slug' => 'browser-under-draft']);
 
-    visit("/groups/{$draftGroup->slug}")
-        ->assertPathIs("/groups/{$draftGroup->slug}")
+    visit("/podcasts/{$draftGroup->slug}")
+        ->assertPathIs("/podcasts/{$draftGroup->slug}")
         ->assertSee('404');
 
-    visit("/groups/{$futureGroup->slug}")
-        ->assertPathIs("/groups/{$futureGroup->slug}")
+    visit("/podcasts/{$futureGroup->slug}")
+        ->assertPathIs("/podcasts/{$futureGroup->slug}")
         ->assertSee('404');
 
     visit("/items/{$publishedGroup->slug}/{$draftItem->slug}")

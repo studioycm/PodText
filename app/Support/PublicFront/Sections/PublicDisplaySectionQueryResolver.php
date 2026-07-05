@@ -8,6 +8,7 @@ use App\Models\ContentItem;
 use App\Models\ContentTag;
 use App\Support\PublicContent\PublicContentItemQueries;
 use App\Support\PublicContent\PublicContributorDiscovery;
+use App\Support\PublicFront\Groups\PublicContentGroupQueries;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 
@@ -141,12 +142,7 @@ class PublicDisplaySectionQueryResolver
      */
     private function contentGroups(PublicDisplaySectionConfigResult $config): Collection
     {
-        $query = ContentGroup::query()
-            ->published()
-            ->whereHas('contentItems', fn (Builder $query): Builder => $query->published())
-            ->withCount([
-                'contentItems as published_content_items_count' => fn (Builder $query): Builder => $query->published(),
-            ]);
+        $query = PublicContentGroupQueries::base();
 
         $this->applyIdSelection($query, $config);
         $this->sortContentGroups($query, $config);

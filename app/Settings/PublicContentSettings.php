@@ -54,6 +54,8 @@ class PublicContentSettings extends Settings
 
     public array $display_defaults;
 
+    public array $podcasts_page;
+
     public static function group(): string
     {
         return 'public_content';

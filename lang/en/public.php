@@ -4,6 +4,7 @@ return [
     'actions' => [
         'apply_filters' => 'Apply filters',
         'back_to_groups' => 'Back to all content',
+        'back_to_podcasts' => 'Back to :label',
         'clear_filters' => 'Clear filters',
         'close' => 'Close',
         'collapse' => 'Show less',
@@ -53,8 +54,11 @@ return [
         'provider' => 'Provider',
         'search' => 'Search',
         'search_contributors_placeholder' => 'Search contributors by name',
+        'search_group_items' => 'Search this podcast',
+        'search_group_items_placeholder' => 'Search episodes in this podcast',
         'search_groups' => 'Search',
         'search_items_placeholder' => 'Search episodes by title, podcast, category, or tag',
+        'search_podcasts_placeholder' => 'Search podcasts by name, topic, category, or episode',
         'search_placeholder' => 'Search by title',
         'sort' => 'Sort',
         'sort_items' => 'Sort items',
@@ -76,6 +80,8 @@ return [
         'duration' => 'Duration',
         'duration_value' => 'Duration: :duration',
         'no' => 'No',
+        'podcast' => 'Podcast',
+        'podcasts' => 'Podcasts',
         'published_at' => 'Published',
         'reading_time' => 'Reading time',
         'reading_minutes_count' => '{1} 1 minute read|[2,*] :count minute read',
@@ -87,6 +93,7 @@ return [
         'transcript_length' => 'Transcript length',
         'transcript_words_count' => '{0} No transcript words|{1} 1 transcript word|[2,*] :count transcript words',
         'public_content_items_count' => '{0} No public items|{1} 1 public item|[2,*] :count public items',
+        'public_group_items_count' => ':count :label',
         'public_transcriptions_count' => '{0} No public transcriptions|{1} 1 public transcription|[2,*] :count public transcriptions',
         'published_items_count' => '{0} No published items|{1} 1 published item|[2,*] :count published items',
         'yes' => 'Yes',
@@ -129,11 +136,15 @@ return [
             'title' => 'Contributors',
         ],
         'group' => [
-            'items_heading' => 'Published items',
+            'items_heading' => 'Published :label',
         ],
         'item' => [
             'description_heading' => 'Description',
             'transcript_heading' => 'Transcript',
+        ],
+        'podcasts' => [
+            'description' => 'Browse podcasts with public episodes and published transcriptions.',
+            'title' => 'Podcasts',
         ],
         'search' => [
             'description' => 'Search all public content items with published transcriptions.',
@@ -148,7 +159,9 @@ return [
         'contributors_count' => '{0} No public contributors|{1} 1 public contributor|[2,*] :count public contributors',
         'count' => '{0} No public items|{1} 1 public item|[2,*] :count public items',
         'public_contributors_only' => 'Showing contributors with published transcriptions on public items.',
+        'podcasts_count' => '{0} No public podcasts|{1} 1 public podcast|[2,*] :count public podcasts',
         'public_items_only' => 'Showing published items with published transcriptions.',
+        'public_podcasts_only' => 'Showing podcasts with published episodes and published transcriptions.',
     ],
     'sections' => [
         'latest' => 'Latest episodes',

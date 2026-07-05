@@ -2,40 +2,35 @@
 
 namespace App\Filament\Public\Pages;
 
-use App\Models\ContentGroup;
-use App\Support\PublicFront\Groups\PublicContentGroupQueries;
 use App\Support\PublicFront\PublicFrontConfigReader;
 use Filament\Pages\Page;
 use Filament\Panel;
 use Illuminate\Contracts\Support\Htmlable;
 
-class ShowContentGroup extends Page
+class BrowsePublicContentGroups extends Page
 {
-    public ContentGroup $contentGroup;
-
-    protected static ?string $slug = 'podcasts/{contentGroupSlug}';
-
-    protected string $view = 'filament.public.pages.show-content-group';
+    protected string $view = 'filament.public.pages.browse-content-groups';
 
     protected static bool $shouldRegisterNavigation = false;
 
-    public static function getRelativeRouteName(Panel $panel): string
+    public static function getSlug(?Panel $panel = null): string
     {
-        return 'podcasts.show';
+        return 'podcasts';
     }
 
-    public function mount(string $contentGroupSlug): void
+    public static function getRelativeRouteName(Panel $panel): string
+    {
+        return 'podcasts.index';
+    }
+
+    public function mount(): void
     {
         abort_unless((bool) ($this->pageConfig()['enabled'] ?? true), 404);
-
-        $this->contentGroup = PublicContentGroupQueries::base()
-            ->where('slug', $contentGroupSlug)
-            ->firstOrFail();
     }
 
     public function getTitle(): string|Htmlable
     {
-        return $this->contentGroup->title;
+        return $this->pageConfig()['title'] ?? __('public.pages.podcasts.title');
     }
 
     /**

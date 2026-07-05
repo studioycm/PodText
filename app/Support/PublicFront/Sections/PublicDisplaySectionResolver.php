@@ -3,8 +3,8 @@
 namespace App\Support\PublicFront\Sections;
 
 use App\Filament\Public\Pages\BrowseCategoryContentItems;
-use App\Filament\Public\Pages\BrowseContentGroups;
 use App\Filament\Public\Pages\BrowseContributors;
+use App\Filament\Public\Pages\BrowsePublicContentGroups;
 use App\Filament\Public\Pages\BrowseTagContentItems;
 use App\Filament\Public\Pages\SearchContentItems;
 use App\Filament\Public\Pages\ShowContentGroup;
@@ -154,7 +154,8 @@ class PublicDisplaySectionResolver
     private function routeKeyUrl(string $routeKey): ?string
     {
         return match ($routeKey) {
-            'home', 'podcasts' => BrowseContentGroups::getUrl(panel: 'public'),
+            'podcasts' => BrowsePublicContentGroups::getUrl(panel: 'public'),
+            'home' => '/',
             'search' => SearchContentItems::getUrl(panel: 'public'),
             'contributors' => BrowseContributors::getUrl(panel: 'public'),
             default => null,

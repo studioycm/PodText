@@ -129,6 +129,7 @@ it('loads public content settings defaults', function (): void {
             'public_forms' => $settings->public_forms,
             'route_labels' => $settings->route_labels,
             'display_defaults' => $settings->display_defaults,
+            'podcasts_page' => $settings->podcasts_page,
         ])->toBe(PublicFrontConfigRegistry::defaults());
 });
 

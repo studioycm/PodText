@@ -6,6 +6,7 @@ use App\Filament\Public\Pages\AboutPage;
 use App\Filament\Public\Pages\BrowseCategoryContentItems;
 use App\Filament\Public\Pages\BrowseContentGroups;
 use App\Filament\Public\Pages\BrowseContributors;
+use App\Filament\Public\Pages\BrowsePublicContentGroups;
 use App\Filament\Public\Pages\BrowseTagContentItems;
 use App\Filament\Public\Pages\SearchContentItems;
 use App\Filament\Public\Pages\ShowContentGroup;
@@ -44,6 +45,7 @@ class PublicPanelProvider extends PanelProvider
             ->pages([
                 AboutPage::class,
                 BrowseContentGroups::class,
+                BrowsePublicContentGroups::class,
                 SearchContentItems::class,
                 BrowseCategoryContentItems::class,
                 BrowseTagContentItems::class,

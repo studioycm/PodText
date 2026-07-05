@@ -5,6 +5,7 @@ namespace App\Filament\Pages;
 use App\Settings\PublicContentSettings as PublicContentSettingsData;
 use App\Support\PublicFront\About\PublicAboutPageRegistry;
 use App\Support\PublicFront\Cards\PublicFrontCardTemplateRegistry;
+use App\Support\PublicFront\Cards\PublicFrontCardTemplateResolver;
 use App\Support\PublicFront\PublicFrontConfigReader;
 use App\Support\PublicFront\PublicFrontConfigRegistry;
 use App\Support\PublicFront\PublicFrontConfigValidator;
@@ -242,6 +243,92 @@ class PublicContentSettings extends SettingsPage
                             ->defaultItems(0)
                             ->reorderable()
                             ->cloneable()
+                            ->columnSpanFull(),
+                    ])
+                    ->columns(3),
+                Section::make(__('admin.sections.public_front_podcasts_page'))
+                    ->description(__('admin.descriptions.public_front_podcasts_page'))
+                    ->schema([
+                        Toggle::make('podcasts_page.enabled')
+                            ->label(__('admin.fields.podcasts_page_enabled'))
+                            ->helperText(__('admin.helpers.podcasts_page_enabled')),
+                        TextInput::make('podcasts_page.title')
+                            ->label(__('admin.fields.podcasts_page_title'))
+                            ->helperText(__('admin.helpers.podcasts_page_title'))
+                            ->required()
+                            ->maxLength(160),
+                        Textarea::make('podcasts_page.description')
+                            ->label(__('admin.fields.podcasts_page_description'))
+                            ->helperText(__('admin.helpers.podcasts_page_description'))
+                            ->rows(3)
+                            ->maxLength(1000)
+                            ->columnSpanFull(),
+                        TextInput::make('podcasts_page.group_label_singular')
+                            ->label(__('admin.fields.podcasts_page_group_label_singular'))
+                            ->helperText(__('admin.helpers.podcasts_page_group_label_singular'))
+                            ->required()
+                            ->maxLength(80),
+                        TextInput::make('podcasts_page.group_label_plural')
+                            ->label(__('admin.fields.podcasts_page_group_label_plural'))
+                            ->helperText(__('admin.helpers.podcasts_page_group_label_plural'))
+                            ->required()
+                            ->maxLength(80),
+                        TextInput::make('podcasts_page.cards_per_page')
+                            ->label(__('admin.fields.podcasts_page_cards_per_page'))
+                            ->helperText(__('admin.helpers.podcasts_page_cards_per_page'))
+                            ->required()
+                            ->numeric()
+                            ->integer()
+                            ->minValue(1)
+                            ->maxValue(48),
+                        Toggle::make('podcasts_page.category_filter_enabled')
+                            ->label(__('admin.fields.podcasts_page_category_filter_enabled'))
+                            ->helperText(__('admin.helpers.podcasts_page_category_filter_enabled')),
+                        Toggle::make('podcasts_page.search_enabled')
+                            ->label(__('admin.fields.podcasts_page_search_enabled'))
+                            ->helperText(__('admin.helpers.podcasts_page_search_enabled')),
+                        Select::make('podcasts_page.template_key')
+                            ->label(__('admin.fields.podcasts_page_template_key'))
+                            ->helperText(__('admin.helpers.podcasts_page_template_key'))
+                            ->options(fn (): array => $this->cardTemplateOptions('content_group'))
+                            ->placeholder(__('admin.labels.none'))
+                            ->native(false),
+                        Select::make('podcasts_page.item_template_key')
+                            ->label(__('admin.fields.podcasts_page_item_template_key'))
+                            ->helperText(__('admin.helpers.podcasts_page_item_template_key'))
+                            ->options(fn (): array => $this->cardTemplateOptions('content_item'))
+                            ->placeholder(__('admin.labels.none'))
+                            ->native(false),
+                        Toggle::make('podcasts_page.show_description')
+                            ->label(__('admin.fields.podcasts_page_show_description'))
+                            ->helperText(__('admin.helpers.podcasts_page_show_description')),
+                        Toggle::make('podcasts_page.show_categories')
+                            ->label(__('admin.fields.podcasts_page_show_categories'))
+                            ->helperText(__('admin.helpers.podcasts_page_show_categories')),
+                        Toggle::make('podcasts_page.show_episode_count')
+                            ->label(__('admin.fields.podcasts_page_show_episode_count'))
+                            ->helperText(__('admin.helpers.podcasts_page_show_episode_count')),
+                        Fieldset::make(__('admin.sections.public_front_podcasts_group_page'))
+                            ->schema([
+                                Toggle::make('podcasts_page.group_page.show_description')
+                                    ->label(__('admin.fields.podcasts_group_page_show_description'))
+                                    ->helperText(__('admin.helpers.podcasts_group_page_show_description')),
+                                Toggle::make('podcasts_page.group_page.show_categories')
+                                    ->label(__('admin.fields.podcasts_group_page_show_categories'))
+                                    ->helperText(__('admin.helpers.podcasts_group_page_show_categories')),
+                                Toggle::make('podcasts_page.group_page.show_episode_descriptions')
+                                    ->label(__('admin.fields.podcasts_group_page_show_episode_descriptions'))
+                                    ->helperText(__('admin.helpers.podcasts_group_page_show_episode_descriptions')),
+                                TextInput::make('podcasts_page.group_page.items_per_page')
+                                    ->label(__('admin.fields.podcasts_group_page_items_per_page'))
+                                    ->helperText(__('admin.helpers.podcasts_group_page_items_per_page'))
+                                    ->required()
+                                    ->numeric()
+                                    ->integer()
+                                    ->minValue(1)
+                                    ->maxValue(48),
+                            ])
+                            ->columns(2)
                             ->columnSpanFull(),
                     ])
                     ->columns(3),
@@ -993,6 +1080,16 @@ class PublicContentSettings extends SettingsPage
             ->mapWithKeys(fn (array $definition): array => [
                 $definition['key'] => $definition['name'] ?? $definition['key'],
             ])
+            ->all();
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private function cardTemplateOptions(string $family): array
+    {
+        return collect(app(PublicFrontCardTemplateResolver::class)->all($family))
+            ->mapWithKeys(fn ($template): array => [$template->key => $template->label ?: $template->key])
             ->all();
     }
 

@@ -34,6 +34,7 @@ class PublicFrontConfigValidator
                 'public_forms' => $this->normalizePublicForms($value, $invalidConfig),
                 'route_labels' => $this->normalizeRouteLabels($value, $invalidConfig),
                 'display_defaults' => $this->normalizeDisplayDefaults($value, $defaults['display_defaults'], $invalidConfig),
+                'podcasts_page' => $this->normalizePodcastsPage($value, $defaults['podcasts_page'], $invalidConfig),
             };
         }
 
@@ -1005,6 +1006,86 @@ class PublicFrontConfigValidator
             'image_size' => $this->finiteString($displayDefaults['image_size'] ?? null, PublicFrontConfigRegistry::imageSizes(), 'display_defaults.image_size', $invalidConfig, $defaults['image_size']),
             'title_size' => $this->finiteString($displayDefaults['title_size'] ?? null, PublicFrontConfigRegistry::titleSizes(), 'display_defaults.title_size', $invalidConfig, $defaults['title_size']),
             'page_size' => $this->integerRange($displayDefaults['page_size'] ?? null, 'display_defaults.page_size', 1, 48, $defaults['page_size'], $invalidConfig),
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $podcastsPage
+     * @param  array<string, mixed>  $defaults
+     * @param  array<PublicFrontInvalidConfig>  $invalidConfig
+     * @return array<string, mixed>
+     */
+    private function normalizePodcastsPage(array $podcastsPage, array $defaults, array &$invalidConfig): array
+    {
+        $this->reportUnknownKeys($podcastsPage, [
+            'enabled',
+            'title',
+            'description',
+            'group_label_singular',
+            'group_label_plural',
+            'cards_per_page',
+            'category_filter_enabled',
+            'search_enabled',
+            'template_key',
+            'item_template_key',
+            'show_description',
+            'show_categories',
+            'show_episode_count',
+            'group_page',
+        ], 'podcasts_page', $invalidConfig);
+
+        return [
+            'enabled' => $this->boolean($podcastsPage['enabled'] ?? null, 'podcasts_page.enabled', $defaults['enabled'], $invalidConfig),
+            'title' => $this->plainString($podcastsPage['title'] ?? null, 'podcasts_page.title', $invalidConfig, maxLength: 160, nullable: true)
+                ?? $defaults['title'],
+            'description' => $this->plainString($podcastsPage['description'] ?? null, 'podcasts_page.description', $invalidConfig, maxLength: 1000, nullable: true)
+                ?? $defaults['description'],
+            'group_label_singular' => $this->plainString($podcastsPage['group_label_singular'] ?? null, 'podcasts_page.group_label_singular', $invalidConfig, maxLength: 80, nullable: true)
+                ?? $defaults['group_label_singular'],
+            'group_label_plural' => $this->plainString($podcastsPage['group_label_plural'] ?? null, 'podcasts_page.group_label_plural', $invalidConfig, maxLength: 80, nullable: true)
+                ?? $defaults['group_label_plural'],
+            'cards_per_page' => $this->integerRange($podcastsPage['cards_per_page'] ?? null, 'podcasts_page.cards_per_page', 1, 48, $defaults['cards_per_page'], $invalidConfig),
+            'category_filter_enabled' => $this->boolean($podcastsPage['category_filter_enabled'] ?? null, 'podcasts_page.category_filter_enabled', $defaults['category_filter_enabled'], $invalidConfig),
+            'search_enabled' => $this->boolean($podcastsPage['search_enabled'] ?? null, 'podcasts_page.search_enabled', $defaults['search_enabled'], $invalidConfig),
+            'template_key' => $this->semanticKey($podcastsPage['template_key'] ?? null, 'podcasts_page.template_key', $invalidConfig, nullable: true),
+            'item_template_key' => $this->semanticKey($podcastsPage['item_template_key'] ?? null, 'podcasts_page.item_template_key', $invalidConfig, nullable: true),
+            'show_description' => $this->boolean($podcastsPage['show_description'] ?? null, 'podcasts_page.show_description', $defaults['show_description'], $invalidConfig),
+            'show_categories' => $this->boolean($podcastsPage['show_categories'] ?? null, 'podcasts_page.show_categories', $defaults['show_categories'], $invalidConfig),
+            'show_episode_count' => $this->boolean($podcastsPage['show_episode_count'] ?? null, 'podcasts_page.show_episode_count', $defaults['show_episode_count'], $invalidConfig),
+            'group_page' => $this->normalizePodcastGroupPage($podcastsPage['group_page'] ?? [], $defaults['group_page'], $invalidConfig),
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>|mixed  $groupPage
+     * @param  array<string, mixed>  $defaults
+     * @param  array<PublicFrontInvalidConfig>  $invalidConfig
+     * @return array<string, mixed>
+     */
+    private function normalizePodcastGroupPage(mixed $groupPage, array $defaults, array &$invalidConfig): array
+    {
+        if ($groupPage === null || $groupPage === []) {
+            return $defaults;
+        }
+
+        if (! is_array($groupPage)) {
+            $invalidConfig[] = PublicFrontInvalidConfig::make('podcasts_page.group_page', 'expected_array', $groupPage);
+
+            return $defaults;
+        }
+
+        $this->reportUnknownKeys($groupPage, [
+            'show_description',
+            'show_categories',
+            'show_episode_descriptions',
+            'items_per_page',
+        ], 'podcasts_page.group_page', $invalidConfig);
+
+        return [
+            'show_description' => $this->boolean($groupPage['show_description'] ?? null, 'podcasts_page.group_page.show_description', $defaults['show_description'], $invalidConfig),
+            'show_categories' => $this->boolean($groupPage['show_categories'] ?? null, 'podcasts_page.group_page.show_categories', $defaults['show_categories'], $invalidConfig),
+            'show_episode_descriptions' => $this->boolean($groupPage['show_episode_descriptions'] ?? null, 'podcasts_page.group_page.show_episode_descriptions', $defaults['show_episode_descriptions'], $invalidConfig),
+            'items_per_page' => $this->integerRange($groupPage['items_per_page'] ?? null, 'podcasts_page.group_page.items_per_page', 1, 48, $defaults['items_per_page'], $invalidConfig),
         ];
     }
 

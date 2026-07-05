@@ -4,6 +4,7 @@ return [
     'actions' => [
         'apply_filters' => 'החלת מסננים',
         'back_to_groups' => 'חזרה לכל התוכן',
+        'back_to_podcasts' => 'חזרה אל :label',
         'clear_filters' => 'ניקוי מסננים',
         'close' => 'סגירה',
         'collapse' => 'הצג פחות',
@@ -53,8 +54,11 @@ return [
         'provider' => 'ספק',
         'search' => 'חיפוש',
         'search_contributors_placeholder' => 'חיפוש תורמים לפי שם',
+        'search_group_items' => 'חיפוש בפודקאסט הזה',
+        'search_group_items_placeholder' => 'חיפוש פרקים בפודקאסט הזה',
         'search_groups' => 'חיפוש',
         'search_items_placeholder' => 'חיפוש פרקים לפי כותרת, פודקאסט, קטגוריה או תגית',
+        'search_podcasts_placeholder' => 'חיפוש פודקאסטים לפי שם, נושא, קטגוריה או פרק',
         'search_placeholder' => 'חיפוש לפי כותרת',
         'sort' => 'מיון',
         'sort_items' => 'מיון פריטים',
@@ -76,6 +80,8 @@ return [
         'duration' => 'משך',
         'duration_value' => 'משך: :duration',
         'no' => 'לא',
+        'podcast' => 'פודקאסט',
+        'podcasts' => 'פודקאסטים',
         'published_at' => 'פורסם',
         'reading_time' => 'זמן קריאה',
         'reading_minutes_count' => '{1} דקת קריאה אחת|[2,*] :count דקות קריאה',
@@ -87,6 +93,7 @@ return [
         'transcript_length' => 'אורך התמלול',
         'transcript_words_count' => '{0} אין מילים בתמלול|{1} מילה אחת בתמלול|[2,*] :count מילים בתמלול',
         'public_content_items_count' => '{0} אין פריטים ציבוריים|{1} פריט ציבורי אחד|[2,*] :count פריטים ציבוריים',
+        'public_group_items_count' => ':count :label',
         'public_transcriptions_count' => '{0} אין תמלולים ציבוריים|{1} תמלול ציבורי אחד|[2,*] :count תמלולים ציבוריים',
         'published_items_count' => '{0} אין פריטים שפורסמו|{1} פריט אחד שפורסם|[2,*] :count פריטים שפורסמו',
         'yes' => 'כן',
@@ -129,11 +136,15 @@ return [
             'title' => 'תורמים',
         ],
         'group' => [
-            'items_heading' => 'פריטים שפורסמו',
+            'items_heading' => ':label שפורסמו',
         ],
         'item' => [
             'description_heading' => 'תיאור',
             'transcript_heading' => 'תמלול',
+        ],
+        'podcasts' => [
+            'description' => 'עיון בפודקאסטים עם פרקים ציבוריים ותמלולים שפורסמו.',
+            'title' => 'פודקאסטים',
         ],
         'search' => [
             'description' => 'חיפוש בכל פריטי התוכן הציבוריים עם תמלולים שפורסמו.',
@@ -148,7 +159,9 @@ return [
         'contributors_count' => '{0} אין תורמים ציבוריים|{1} תורם ציבורי אחד|[2,*] :count תורמים ציבוריים',
         'count' => '{0} אין פריטים ציבוריים|{1} פריט ציבורי אחד|[2,*] :count פריטים ציבוריים',
         'public_contributors_only' => 'מוצגים תורמים עם תמלולים שפורסמו בפריטים ציבוריים.',
+        'podcasts_count' => '{0} אין פודקאסטים ציבוריים|{1} פודקאסט ציבורי אחד|[2,*] :count פודקאסטים ציבוריים',
         'public_items_only' => 'מוצגים פריטים שפורסמו עם תמלולים שפורסמו.',
+        'public_podcasts_only' => 'מוצגים פודקאסטים עם פרקים ותמלולים שפורסמו.',
     ],
     'sections' => [
         'latest' => 'פרקים אחרונים',

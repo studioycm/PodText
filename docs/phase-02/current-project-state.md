@@ -32,7 +32,8 @@ Recorded after the Markdown-only post-Prompt-10 prompt-progress centralization c
 - Public Front v2 Step 4 Public Display Sections and Loopers is implemented and committed as `c0ce7d7 feat: add public display section loopers`.
 - Public Front v2 Step 5 Latest and Search UX is implemented and committed as `eea9164 feat: refine public latest and search ux`.
 - Public Front v2 Step 6 Public Forms and Submissions is implemented and committed as `49f6ab0 feat: add public forms and submissions`.
-- Public Front v2 Step 7 About Page Content and Team Builder is implemented in this change set and will be committed as `feat: add public about page content and team builder` after the final quality gate passes.
+- Public Front v2 Step 7 About Page Content and Team Builder is implemented and committed as `b4fe4d5 feat: add public about page content and team builder`.
+- Public Front v2 Step 8 Podcasts and Groups UX is implemented in this change set and will be committed as `feat: add public podcasts and groups ux`.
 
 ## Prompt Progress
 
@@ -59,8 +60,9 @@ Recorded after the Markdown-only post-Prompt-10 prompt-progress centralization c
 | Public Front v2 Step 4 Public Display Sections and Loopers | Complete | `c0ce7d7 feat: add public display section loopers` | Adds homepage section JSON config columns, section/looper validation and query support, admin config fields, Step 3 template integration, tests, and Step 4 handoff. |
 | Public Front v2 Step 5 Latest and Search UX | Complete | `eea9164 feat: refine public latest and search ux` | Adds looper-driven Latest UX, search filter drawer, multi-select category/tag filters, card layout repair, controlled content-item renderer, tests, and Step 5 handoff. |
 | Public Front v2 Step 6 Public Forms and Submissions | Complete | `49f6ab0 feat: add public forms and submissions` | Adds JSON-first public form definitions, `PublicFormSubmission` schema/model/resource, Livewire public form modal/slide-over, honeypot/rate limiting, admin settings UI, tests, and Step 6 handoff. |
-| Public Front v2 Step 7 About Page Content and Team Builder | Complete in current implementation commit | Pending final commit: `feat: add public about page content and team builder` | Adds JSON-first About page content, public `/about`, safe Markdown/RichEditor rendering, team profiles in JSON settings, team/about image upload constraints, optional Step 6 form CTA integration, tests, and Step 7 handoff. |
-| Public Front v2 Step 8 Podcasts and Groups UX | Next after ChatGPT/Yoni review | Future prompt | Step 8 is the next implementation step after Step 7 review. |
+| Public Front v2 Step 7 About Page Content and Team Builder | Complete | `b4fe4d5 feat: add public about page content and team builder` | Adds JSON-first About page content, public `/about`, safe Markdown/RichEditor rendering, team profiles in JSON settings, team/about image upload constraints, optional Step 6 form CTA integration, tests, and Step 7 handoff. |
+| Public Front v2 Step 8 Podcasts and Groups UX | Complete in current implementation commit | Pending final commit: `feat: add public podcasts and groups ux` | Adds canonical `/podcasts`, public group detail pages at `/podcasts/{contentGroupSlug}`, JSON-first podcast settings, public group query support, group cards, category/search UX, tests, and Step 8 handoff. |
+| Public Front v2 Step 9 Public Menu and Header | Next after ChatGPT/Yoni review | Future prompt | Step 9 is the next implementation step after Step 8 review. |
 | Prompt 13 dashboard metrics | Not started / blocked unless explicitly chosen by user | Active prompt/blueprint | Owns editorial dashboard widgets after Public Front v2 Step 12 readiness or an explicit dashboard-first decision. |
 | Prompt 14 viewer/studio future plan | Future planning after Prompt 13 | Active prompt/blueprint | Documentation/planning only. |
 | Prompt 15 Filament Blueprint security audit | Audit after Prompt 14 | Active prompt/blueprint | Audit-only unless fixes are explicitly approved. |
@@ -136,6 +138,8 @@ Laravel Boost MCP tools were exposed and usable during Prompt 10.
 - Public Front v2 Step 6 FilamentExamples `search_examples` research returned snippet/source-level examples for dynamic forms, public/custom pages, Resource tables, and actions; no full source/detail fetch tool was exposed.
 - Public Front v2 Step 7 used Boost `application_info`, `database_schema`, and `search_docs` before changing Spatie Settings JSON normalization, Filament Builder/Repeater/RichEditor/MarkdownEditor/FileUpload usage, public pages, Livewire-safe rendering, and Pest tests.
 - Public Front v2 Step 7 FilamentExamples `search_examples` research returned snippet/source-level examples for custom settings pages, repeaters, FileUpload image handling, and custom public pages; no full source/detail fetch tool was exposed.
+- Public Front v2 Step 8 used Boost `application_info`, `database_schema`, and `search_docs` before changing public routes, Filament public Pages, Livewire URL state and pagination, Eloquent query scopes/counts, Spatie Settings JSON normalization, Filament settings fields, and Pest tests.
+- Public Front v2 Step 8 FilamentExamples `search_examples` research returned snippet/search-level examples for public cards/pages, dynamic sections, content group/list pages, and search/filter patterns; no full source/detail fetch tool was exposed.
 
 ## Application Shape
 
@@ -146,6 +150,7 @@ Laravel Boost MCP tools were exposed and usable during Prompt 10.
 - Existing public pages remain:
   - `App\Filament\Public\Pages\AboutPage`
   - `App\Filament\Public\Pages\BrowseContentGroups`
+  - `App\Filament\Public\Pages\BrowsePublicContentGroups`
   - `App\Filament\Public\Pages\SearchContentItems`
   - `App\Filament\Public\Pages\BrowseCategoryContentItems`
   - `App\Filament\Public\Pages\BrowseTagContentItems`
@@ -227,6 +232,12 @@ Laravel Boost MCP tools were exposed and usable during Prompt 10.
   - `docs/phase-02/public-front-v2-step7-about-page-content-team-builder-handoff.md`
 - Public Front v2 Step 7 About page JSON schema lives under `public_content.about_page` with `enabled`, `title`, `kicker`, `description`, `blocks`, `team_profiles`, and `settings`.
 - Public Front v2 Step 7 team profile JSON schema lives under `public_content.about_page.team_profiles`; no `AboutPage`, `AboutPageBlock`, or `TeamProfile` model/table exists.
+- Public Front v2 Step 8 podcast/group JSON schema lives under `public_content.podcasts_page` with page labels, title/description, pagination, search/category toggles, template keys, card visibility toggles, and nested group-page display options.
+- Public Front v2 Step 8 canonical public routes are `/podcasts` and `/podcasts/{contentGroupSlug}`. The old public `/groups/{contentGroupSlug}` route is absent; admin `admin/content-groups` routes remain unchanged.
+- Public Front v2 Step 8 public group query helper:
+  - `App\Support\PublicFront\Groups\PublicContentGroupQueries`
+- Public Front v2 Step 8 handoff:
+  - `docs/phase-02/public-front-v2-step8-podcasts-groups-ux-handoff.md`
 - Public Front v2 Step 1 enums:
   - `App\Enums\PublicFrontConfigBlockType`
   - `App\Enums\PublicFrontLayoutVariant`
@@ -274,6 +285,10 @@ Public Front v2 Step 6 migration status from `php artisan migrate:status` and lo
 Public Front v2 Step 7 settings migration status from local migration run:
 
 - `2026_07_05_000002_normalize_about_page_setting`: ran.
+
+Public Front v2 Step 8 settings migration status from local migration run:
+
+- `2026_07_05_000003_add_public_podcasts_page_setting`: ran.
 
 Local data reset note:
 
@@ -470,7 +485,7 @@ Current physical schema verified through Boost `database_schema`:
 ## Public Front v2 Planning Notes
 
 - Public Front v2 research, blueprint, blueprint-result, and execution-plan docs exist.
-- Public Front v2 continues with Step 7 before Prompt 13 unless the user explicitly chooses dashboard metrics first.
+- Public Front v2 continues with Step 9 before Prompt 13 unless the user explicitly chooses dashboard metrics first.
 - The execution plan is an implementation guide, not a single prompt. Run one implementation prompt per step.
 - Corrected step order:
   - Step 1: JSON Settings Architecture.
@@ -489,8 +504,10 @@ Current physical schema verified through Boost `database_schema`:
 - Step 3 Card Template Builder is committed as `a0146ce`.
 - Step 4 Public Display Sections and Loopers is committed as `c0ce7d7`.
 - Step 5 Latest and Search UX is committed as `eea9164`.
-- Step 6 Public Forms and Submissions is implemented in this change set.
-- Step 7 About Page Content and Team Builder is the next implementation step after ChatGPT/Yoni review.
+- Step 6 Public Forms and Submissions is committed as `49f6ab0`.
+- Step 7 About Page Content and Team Builder is committed as `b4fe4d5`.
+- Step 8 Podcasts and Groups UX is implemented in this change set.
+- Step 9 Public Menu and Header is the next implementation step after ChatGPT/Yoni review.
 - The PodText logo already exists at `public/images/podtext-logo.jpg` and must be preserved by future public-front work.
 
 ## Public Front v2 Step 1 JSON Settings Architecture Notes
