@@ -13,7 +13,7 @@
                     >
                 </label>
 
-                <div class="grid gap-3 sm:grid-cols-[auto_auto] sm:items-end">
+                <div class="grid gap-3 sm:grid-cols-[auto_auto_auto] sm:items-end">
                     <label class="grid gap-1 text-sm text-gray-700 dark:text-gray-200">
                         <span>{{ __('public.filters.sort') }}</span>
                         <select
@@ -26,6 +26,21 @@
                             @endforeach
                         </select>
                     </label>
+
+                    <button
+                        type="button"
+                        x-data
+                        x-on:click="$dispatch('open-public-filter-drawer')"
+                        data-test="open-filter-drawer"
+                        class="inline-flex items-center justify-center gap-2 rounded-md border border-primary-200 bg-primary-50 px-3 py-2 text-sm font-medium text-primary-800 transition hover:bg-primary-100 focus:outline-none focus:ring-2 focus:ring-primary-500 dark:border-primary-800 dark:bg-primary-950 dark:text-primary-100 dark:hover:bg-primary-900"
+                    >
+                        <span>{{ __('public.filters.open_filters') }}</span>
+                        @if($this->activeFilterCount() > 0)
+                            <span class="rounded-full bg-primary-700 px-2 py-0.5 text-xs text-white dark:bg-primary-300 dark:text-primary-950" data-test="active-filter-count">
+                                {{ $this->activeFilterCount() }}
+                            </span>
+                        @endif
+                    </button>
 
                     <button
                         type="button"
@@ -54,6 +69,9 @@
             :content-group-options="$contentGroupOptions"
             :provider-options="$providerOptions"
             :tag-options="$tagOptions"
+            :active-filter-count="$this->activeFilterCount()"
+            :active-category-ids="$filterCategoryIds"
+            :active-tag-ids="$filterTagIds"
         />
     </div>
 
@@ -92,7 +110,83 @@
                         @endif
                     </div>
 
-                    @if(in_array($section->sourceType, ['contributors', 'top_transcribers'], true))
+                    @if($this->isLatestSection($section))
+                        @php
+                            $latestItems = $this->visibleLatestItems($section);
+                            $latestTotalPages = $this->latestTotalPages($section);
+                            $latestMode = $this->latestMode($section);
+                            $latestPage = $this->latestPage($section->key);
+                        @endphp
+
+                        <div class="rounded-lg border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-gray-900" data-test="latest-controls">
+                            <div class="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
+                                <label class="grid gap-1 text-sm text-gray-700 dark:text-gray-200">
+                                    <span>{{ __('public.filters.latest_search') }}</span>
+                                    <input
+                                        type="search"
+                                        wire:model.live.debounce.300ms="latestSearch.{{ $section->key }}"
+                                        data-test="latest-search"
+                                        placeholder="{{ __('public.filters.latest_search_placeholder') }}"
+                                        class="w-full rounded-md border-gray-300 text-sm shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:border-gray-700 dark:bg-gray-950"
+                                    >
+                                </label>
+
+                                @if(in_array($latestMode, ['simple', 'next_previous'], true))
+                                    <div class="flex items-center gap-2" data-test="latest-next-previous">
+                                        <button
+                                            type="button"
+                                            wire:click="previousLatestPage('{{ $section->key }}')"
+                                            @disabled($latestPage <= 1)
+                                            class="inline-flex items-center justify-center rounded-md border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800"
+                                            data-test="latest-previous"
+                                        >
+                                            {{ __('public.actions.previous') }}
+                                        </button>
+
+                                        <span class="text-xs text-gray-500 dark:text-gray-400" data-test="latest-page-indicator">
+                                            {{ $latestPage }} / {{ $latestTotalPages }}
+                                        </span>
+
+                                        <button
+                                            type="button"
+                                            wire:click="nextLatestPage('{{ $section->key }}', {{ $latestTotalPages }})"
+                                            @disabled($latestPage >= $latestTotalPages)
+                                            class="inline-flex items-center justify-center rounded-md border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800"
+                                            data-test="latest-next"
+                                        >
+                                            {{ __('public.actions.next') }}
+                                        </button>
+                                    </div>
+                                @endif
+                            </div>
+                        </div>
+
+                        @if($latestItems->isNotEmpty())
+                            <x-public.content-item-grid
+                                :items="$latestItems"
+                                :card-options="$cardOptions"
+                                :layout="$section->layout($layout)"
+                                :card-template="$this->sectionContentItemCardTemplate($section, $cardTemplate)"
+                                wire:key="{{ $section->key }}-latest-grid"
+                            />
+
+                            @if($latestMode === 'load_more' && $this->latestHasMore($section))
+                                <div class="flex justify-center" data-test="latest-load-more">
+                                    <button
+                                        type="button"
+                                        wire:click="loadMoreLatest('{{ $section->key }}', {{ $latestTotalPages }})"
+                                        class="inline-flex items-center justify-center rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary-500 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800"
+                                    >
+                                        {{ __('public.actions.load_more') }}
+                                    </button>
+                                </div>
+                            @endif
+                        @else
+                            <div class="rounded-lg border border-dashed border-gray-300 bg-white p-6 text-sm text-gray-600 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300" data-test="homepage-section-empty">
+                                {{ __('public.empty.items') }}
+                            </div>
+                        @endif
+                    @elseif(in_array($section->sourceType, ['contributors', 'top_transcribers'], true))
                         @if($section->contributors->isNotEmpty())
                             <div class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3" data-test="top-transcribers-grid">
                                 @foreach($section->contributors as $author)
@@ -145,7 +239,7 @@
                             :items="$section->items"
                             :card-options="$cardOptions"
                             :layout="$section->layout($layout)"
-                            :card-template="$section->cardTemplate ?? $cardTemplate"
+                            :card-template="$this->sectionContentItemCardTemplate($section, $cardTemplate)"
                             wire:key="{{ $section->key }}"
                         />
                     @else

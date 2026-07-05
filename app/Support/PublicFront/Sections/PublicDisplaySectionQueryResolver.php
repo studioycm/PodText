@@ -270,6 +270,10 @@ class PublicDisplaySectionQueryResolver
         $perPage = (int) ($config->paginationConfig['per_page'] ?? 6);
         $totalLimit = (int) ($config->paginationConfig['total_limit'] ?? $perPage);
 
+        if ($config->sourceType() === PublicDisplaySectionRegistry::LATEST_CONTENT_ITEMS) {
+            return max(50, min(100, $totalLimit));
+        }
+
         return max(1, min($perPage, $totalLimit));
     }
 }

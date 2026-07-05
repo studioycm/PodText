@@ -13,6 +13,7 @@ use App\Models\HomepageSection;
 use App\Settings\PublicContentSettings;
 use App\Support\PublicContent\PublicContentCardOptions;
 use App\Support\PublicContent\PublicContentItemQueries;
+use App\Support\PublicFront\Cards\PublicFrontCardTemplate;
 use App\Support\PublicFront\Cards\PublicFrontCardTemplateResolver;
 use App\Support\PublicFront\Sections\PublicDisplaySectionResolver;
 use App\Support\PublicFront\Sections\PublicDisplaySectionResult;
@@ -21,6 +22,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Str;
 use Livewire\Attributes\Url;
 use Livewire\Component;
 use Livewire\WithPagination;
@@ -48,6 +50,18 @@ class ContentItemSearch extends Component
 
     #[Url(as: 'tag', except: null)]
     public ?int $filterTagId = null;
+
+    #[Url(as: 'categories', except: '')]
+    public string $filterCategories = '';
+
+    #[Url(as: 'tags', except: '')]
+    public string $filterTags = '';
+
+    /** @var array<int, int> */
+    public array $filterCategoryIds = [];
+
+    /** @var array<int, int> */
+    public array $filterTagIds = [];
 
     #[Url(as: 'group', except: null)]
     public ?int $filterContentGroupId = null;
@@ -81,6 +95,15 @@ class ContentItemSearch extends Component
 
     public bool $sortWasSelected = false;
 
+    /** @var array<string, string> */
+    public array $latestSearch = [];
+
+    /** @var array<string, int> */
+    public array $latestPage = [];
+
+    /** @var array<string, int> */
+    public array $latestVisiblePages = [];
+
     public function mount(
         string $context = 'home',
         ?int $categoryId = null,
@@ -94,6 +117,26 @@ class ContentItemSearch extends Component
         $this->sortWasSelected = request()->query->has('sort');
         $this->sort = $this->normalizeSort($this->sort ?: $this->defaultSort());
         $this->filterHasMedia = $this->normalizeMediaFilter($this->filterHasMedia);
+        $this->filterCategoryIds = $this->normalizeIdList($this->filterCategories);
+        $this->filterTagIds = $this->normalizeIdList($this->filterTags);
+
+        if ($this->filterCategoryId === null && $this->filterCategoryIds !== []) {
+            $this->filterCategoryId = $this->filterCategoryIds[0];
+        }
+
+        if ($this->filterTagId === null && $this->filterTagIds !== []) {
+            $this->filterTagId = $this->filterTagIds[0];
+        }
+
+        if ($this->filterCategoryId !== null && ! in_array($this->filterCategoryId, $this->filterCategoryIds, true)) {
+            $this->filterCategoryIds[] = $this->filterCategoryId;
+            $this->filterCategories = $this->idListToString($this->filterCategoryIds);
+        }
+
+        if ($this->filterTagId !== null && ! in_array($this->filterTagId, $this->filterTagIds, true)) {
+            $this->filterTagIds[] = $this->filterTagId;
+            $this->filterTags = $this->idListToString($this->filterTagIds);
+        }
     }
 
     public function updated(string $property, mixed $value = null): void
@@ -107,6 +150,32 @@ class ContentItemSearch extends Component
             $this->filterHasMedia = $this->normalizeMediaFilter($this->filterHasMedia);
         }
 
+        if ($property === 'filterCategoryId') {
+            $this->filterCategoryIds = $this->filterCategoryId ? [$this->filterCategoryId] : [];
+            $this->filterCategories = $this->idListToString($this->filterCategoryIds);
+        }
+
+        if ($property === 'filterTagId') {
+            $this->filterTagIds = $this->filterTagId ? [$this->filterTagId] : [];
+            $this->filterTags = $this->idListToString($this->filterTagIds);
+        }
+
+        if ($property === 'filterCategories') {
+            $this->filterCategoryIds = $this->normalizeIdList($this->filterCategories);
+            $this->filterCategoryId = $this->filterCategoryIds[0] ?? null;
+        }
+
+        if ($property === 'filterTags') {
+            $this->filterTagIds = $this->normalizeIdList($this->filterTags);
+            $this->filterTagId = $this->filterTagIds[0] ?? null;
+        }
+
+        if (Str::startsWith($property, 'latestSearch.')) {
+            $sectionKey = Str::after($property, 'latestSearch.');
+            $this->latestPage[$sectionKey] = 1;
+            $this->latestVisiblePages[$sectionKey] = 1;
+        }
+
         $this->resetPage();
     }
 
@@ -115,6 +184,10 @@ class ContentItemSearch extends Component
         $this->search = '';
         $this->filterCategoryId = null;
         $this->filterTagId = null;
+        $this->filterCategories = '';
+        $this->filterTags = '';
+        $this->filterCategoryIds = [];
+        $this->filterTagIds = [];
         $this->filterContentGroupId = null;
         $this->filterAuthorId = null;
         $this->filterProvider = '';
@@ -129,6 +202,57 @@ class ContentItemSearch extends Component
         $this->sort = $this->defaultSort();
 
         $this->resetPage();
+    }
+
+    public function toggleCategoryFilter(int $categoryId): void
+    {
+        $this->filterCategoryIds = $this->toggleId($this->filterCategoryIds, $categoryId);
+        $this->filterCategoryId = $this->filterCategoryIds[0] ?? null;
+        $this->filterCategories = $this->idListToString($this->filterCategoryIds);
+
+        $this->resetPage();
+    }
+
+    public function toggleTagFilter(int $tagId): void
+    {
+        $this->filterTagIds = $this->toggleId($this->filterTagIds, $tagId);
+        $this->filterTagId = $this->filterTagIds[0] ?? null;
+        $this->filterTags = $this->idListToString($this->filterTagIds);
+
+        $this->resetPage();
+    }
+
+    public function previousLatestPage(string $sectionKey): void
+    {
+        $this->latestPage[$sectionKey] = max(1, $this->latestPage($sectionKey) - 1);
+        $this->latestVisiblePages[$sectionKey] = 1;
+    }
+
+    public function nextLatestPage(string $sectionKey, int $totalPages): void
+    {
+        $this->latestPage[$sectionKey] = min(max(1, $totalPages), $this->latestPage($sectionKey) + 1);
+        $this->latestVisiblePages[$sectionKey] = 1;
+    }
+
+    public function loadMoreLatest(string $sectionKey, int $totalPages): void
+    {
+        $this->latestVisiblePages[$sectionKey] = min(max(1, $totalPages), $this->latestVisiblePages($sectionKey) + 1);
+    }
+
+    public function activeFilterCount(): int
+    {
+        return count($this->filterCategoryIds)
+            + count($this->filterTagIds)
+            + (filled($this->filterContentGroupId) ? 1 : 0)
+            + (filled($this->filterAuthorId) ? 1 : 0)
+            + (filled($this->filterProvider) ? 1 : 0)
+            + (filled($this->filterEffectiveFrom) ? 1 : 0)
+            + (filled($this->filterEffectiveUntil) ? 1 : 0)
+            + (filled($this->filterOriginalFrom) ? 1 : 0)
+            + (filled($this->filterOriginalUntil) ? 1 : 0)
+            + (filled($this->filterDurationMin) ? 1 : 0)
+            + (filled($this->filterDurationMax) ? 1 : 0)
+            + (filled($this->filterHasMedia) ? 1 : 0);
     }
 
     public function resultCount(): int
@@ -244,6 +368,12 @@ class ContentItemSearch extends Component
         $cardOptions = $this->cardOptions();
         $templateResolver = app(PublicFrontCardTemplateResolver::class);
         $layout = $this->resultLayout();
+        $cardTemplate = $templateResolver->resolve('content_item', null, [
+            'layout' => $layout,
+            'density' => $cardOptions->density,
+            'image_size' => $cardOptions->imageSize,
+            'title_size' => $cardOptions->titleSize,
+        ]);
         $sections = $this->shouldRenderHomepageSections()
             ? $this->homepageSections()
             : collect();
@@ -257,7 +387,7 @@ class ContentItemSearch extends Component
         return view('livewire.public.content-item-search', [
             'authorOptions' => $this->authorOptions(),
             'cardOptions' => $cardOptions,
-            'cardTemplate' => $templateResolver->resolve('content_item'),
+            'cardTemplate' => $cardTemplate,
             'categoryOptions' => $this->categoryOptions(),
             'contentGroupOptions' => $this->contentGroupOptions(),
             'layout' => $layout,
@@ -335,19 +465,46 @@ class ContentItemSearch extends Component
 
     protected function applyFilters(Builder $query): void
     {
-        if (filled($this->filterCategoryId)) {
-            $category = Category::query()->visible()->find($this->filterCategoryId);
+        $categoryIds = $this->filterCategoryIds;
 
-            $category
-                ? $query->inCategoryTree($category)
-                : $query->whereRaw('0 = 1');
+        if ($categoryIds === [] && filled($this->filterCategoryId)) {
+            $categoryIds = [$this->filterCategoryId];
         }
 
-        if (filled($this->filterTagId)) {
-            $tag = ContentTag::query()->content()->enabled()->find($this->filterTagId);
+        if ($categoryIds !== []) {
+            $categories = Category::query()
+                ->visible()
+                ->whereKey($categoryIds)
+                ->get();
 
-            $tag
-                ? $query->withEnabledContentTag($tag)
+            if ($categories->isEmpty()) {
+                $query->whereRaw('0 = 1');
+            } else {
+                $query->where(function (Builder $query) use ($categories): void {
+                    $categories->each(
+                        fn (Category $category): Builder => $query->orWhere(
+                            fn (Builder $query): Builder => $query->inCategoryTree($category),
+                        ),
+                    );
+                });
+            }
+        }
+
+        $tagIds = $this->filterTagIds;
+
+        if ($tagIds === [] && filled($this->filterTagId)) {
+            $tagIds = [$this->filterTagId];
+        }
+
+        if ($tagIds !== []) {
+            $enabledTagIds = ContentTag::query()
+                ->content()
+                ->enabled()
+                ->whereKey($tagIds)
+                ->pluck('id');
+
+            $enabledTagIds->isNotEmpty()
+                ? $query->whereHas('tags', fn (Builder $query): Builder => $query->whereIn('tags.id', $enabledTagIds))
                 : $query->whereRaw('0 = 1');
         }
 
@@ -461,6 +618,8 @@ class ContentItemSearch extends Component
     {
         return filled($this->search)
             || $this->sortWasSelected
+            || $this->filterCategoryIds !== []
+            || $this->filterTagIds !== []
             || filled($this->filterCategoryId)
             || filled($this->filterTagId)
             || filled($this->filterContentGroupId)
@@ -573,5 +732,176 @@ class ContentItemSearch extends Component
     protected function sectionResolver(): PublicDisplaySectionResolver
     {
         return app(PublicDisplaySectionResolver::class);
+    }
+
+    public function isLatestSection(PublicDisplaySectionResult $section): bool
+    {
+        return $section->sourceType === 'latest_content_items';
+    }
+
+    public function sectionContentItemCardTemplate(
+        PublicDisplaySectionResult $section,
+        PublicFrontCardTemplate $fallback,
+    ): PublicFrontCardTemplate {
+        if (! $section->cardTemplate instanceof PublicFrontCardTemplate) {
+            return $fallback;
+        }
+
+        if (($section->displayConfig['template_key'] ?? null) !== null) {
+            return $section->cardTemplate;
+        }
+
+        if (($section->displayConfig['template_overrides'] ?? []) !== []) {
+            return $section->cardTemplate;
+        }
+
+        return $fallback;
+    }
+
+    public function latestSearchValue(string $sectionKey): string
+    {
+        return trim((string) ($this->latestSearch[$sectionKey] ?? ''));
+    }
+
+    public function latestPageSize(PublicDisplaySectionResult $section): int
+    {
+        return max(4, min(25, (int) ($section->paginationConfig['per_page'] ?? 6)));
+    }
+
+    public function latestTotalLimit(PublicDisplaySectionResult $section): int
+    {
+        return max(50, min(100, (int) ($section->paginationConfig['total_limit'] ?? 50)));
+    }
+
+    public function latestMode(PublicDisplaySectionResult $section): string
+    {
+        $mode = (string) ($section->paginationConfig['mode'] ?? 'none');
+
+        return in_array($mode, ['none', 'simple', 'load_more', 'next_previous'], true) ? $mode : 'none';
+    }
+
+    public function latestPage(string $sectionKey): int
+    {
+        return max(1, (int) ($this->latestPage[$sectionKey] ?? 1));
+    }
+
+    public function latestVisiblePages(string $sectionKey): int
+    {
+        return max(1, (int) ($this->latestVisiblePages[$sectionKey] ?? 1));
+    }
+
+    /**
+     * @return Collection<int, ContentItem>
+     */
+    public function latestFilteredItems(PublicDisplaySectionResult $section): Collection
+    {
+        $search = Str::of($this->latestSearchValue($section->key))->lower();
+
+        if ($search->isEmpty()) {
+            return $section->items
+                ->take($this->latestTotalLimit($section))
+                ->values();
+        }
+
+        return $section->items
+            ->filter(function (ContentItem $item) use ($search): bool {
+                $haystack = collect([
+                    $item->title,
+                    $item->contentGroup?->title,
+                    $item->description_markdown,
+                ])
+                    ->merge($item->effectiveCategories()->pluck('name'))
+                    ->merge(($item->relationLoaded('enabledContentTags') ? $item->enabledContentTags : $item->publicTags())->pluck('name'))
+                    ->filter()
+                    ->implode(' ');
+
+                return Str::of($haystack)->lower()->contains((string) $search);
+            })
+            ->take($this->latestTotalLimit($section))
+            ->values();
+    }
+
+    /**
+     * @return Collection<int, ContentItem>
+     */
+    public function visibleLatestItems(PublicDisplaySectionResult $section): Collection
+    {
+        $items = $this->latestFilteredItems($section);
+        $perPage = $this->latestPageSize($section);
+        $mode = $this->latestMode($section);
+
+        if ($mode === 'load_more') {
+            return $items
+                ->take($perPage * $this->latestVisiblePages($section->key))
+                ->values();
+        }
+
+        if (in_array($mode, ['simple', 'next_previous'], true)) {
+            return $items
+                ->forPage($this->latestPage($section->key), $perPage)
+                ->values();
+        }
+
+        return $items
+            ->take($perPage)
+            ->values();
+    }
+
+    public function latestTotalPages(PublicDisplaySectionResult $section): int
+    {
+        return max(1, (int) ceil($this->latestFilteredItems($section)->count() / $this->latestPageSize($section)));
+    }
+
+    public function latestHasMore(PublicDisplaySectionResult $section): bool
+    {
+        return $this->visibleLatestItems($section)->count() < $this->latestFilteredItems($section)->count();
+    }
+
+    /**
+     * @return array<int, int>
+     */
+    private function normalizeIdList(string $ids): array
+    {
+        if (blank($ids)) {
+            return [];
+        }
+
+        return str($ids)
+            ->explode(',')
+            ->filter(fn (string $id): bool => is_numeric($id) && (int) $id > 0)
+            ->map(fn (string $id): int => (int) $id)
+            ->unique()
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @param  array<int, int>  $ids
+     */
+    private function idListToString(array $ids): string
+    {
+        return collect($ids)
+            ->filter(fn (int $id): bool => $id > 0)
+            ->unique()
+            ->values()
+            ->implode(',');
+    }
+
+    /**
+     * @param  array<int, int>  $ids
+     * @return array<int, int>
+     */
+    private function toggleId(array $ids, int $id): array
+    {
+        if (in_array($id, $ids, true)) {
+            return array_values(array_diff($ids, [$id]));
+        }
+
+        $ids[] = $id;
+
+        return collect($ids)
+            ->unique()
+            ->values()
+            ->all();
     }
 }

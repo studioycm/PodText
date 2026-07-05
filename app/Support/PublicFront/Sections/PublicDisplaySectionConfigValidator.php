@@ -62,8 +62,9 @@ class PublicDisplaySectionConfigValidator
             $this->defaultSortForSourceType($sourceType),
         );
 
+        $isLatest = $sourceType === PublicDisplaySectionRegistry::LATEST_CONTENT_ITEMS;
         $totalLimit = array_key_exists('total_limit', $config)
-            ? $this->integerRange($config['total_limit'], 'source_config.total_limit', $sourceType === PublicDisplaySectionRegistry::LATEST_CONTENT_ITEMS ? 50 : 1, 100, max(1, (int) $section->limit), $invalidConfig)
+            ? $this->integerRange($config['total_limit'], 'source_config.total_limit', $isLatest ? 50 : 1, 100, max($isLatest ? 50 : 1, (int) $section->limit), $invalidConfig)
             : null;
 
         return array_filter([
@@ -143,14 +144,19 @@ class PublicDisplaySectionConfigValidator
             'total_limit',
         ], 'pagination_config', $invalidConfig);
 
-        $perPage = $this->integerRange($config['per_page'] ?? $section->limit, 'pagination_config.per_page', 1, 48, max(1, (int) $section->limit), $invalidConfig);
-        $totalLimitDefault = $sourceConfig['total_limit'] ?? max($perPage, (int) $section->limit);
+        $isLatest = ($sourceConfig['source_type'] ?? null) === PublicDisplaySectionRegistry::LATEST_CONTENT_ITEMS;
+        $perPageMin = $isLatest ? 4 : 1;
+        $perPageMax = $isLatest ? 25 : 48;
+        $perPageDefault = max($perPageMin, min($perPageMax, max(1, (int) $section->limit)));
+        $perPage = $this->integerRange($config['per_page'] ?? $section->limit, 'pagination_config.per_page', $perPageMin, $perPageMax, $perPageDefault, $invalidConfig);
+        $totalLimitDefault = $sourceConfig['total_limit'] ?? max($perPage, (int) $section->limit, $isLatest ? 50 : 1);
+        $totalLimitMin = $isLatest ? 50 : 1;
 
         return [
             'mode' => $this->finiteString($config['mode'] ?? 'none', PublicDisplaySectionRegistry::paginationModes(), 'pagination_config.mode', $invalidConfig, 'none'),
             'per_page' => $perPage,
-            'page_size_options' => $this->integerList($config['page_size_options'] ?? [], 'pagination_config.page_size_options', $invalidConfig, min: 1, max: 48),
-            'total_limit' => $this->integerRange($config['total_limit'] ?? $totalLimitDefault, 'pagination_config.total_limit', 1, 100, (int) $totalLimitDefault, $invalidConfig),
+            'page_size_options' => $this->integerList($config['page_size_options'] ?? [], 'pagination_config.page_size_options', $invalidConfig, min: $perPageMin, max: $perPageMax),
+            'total_limit' => $this->integerRange($config['total_limit'] ?? $totalLimitDefault, 'pagination_config.total_limit', $totalLimitMin, 100, (int) $totalLimitDefault, $invalidConfig),
         ];
     }
 

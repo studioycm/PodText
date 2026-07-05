@@ -9,6 +9,7 @@
     $templateRenderer = app(\App\Support\PublicFront\Cards\PublicFrontCardTemplateRenderer::class);
     $cardTemplate ??= $templateRenderer->resolve('content_item');
     $templateAttributes = $templateRenderer->compatibilityAttributes($cardTemplate);
+    $presentation = $templateRenderer->contentItemPresentation($cardTemplate, $layout);
     $itemUrl = \App\Filament\Public\Pages\ShowContentItem::getUrl([
         'contentGroupSlug' => $item->contentGroup->slug,
         'contentItemSlug' => $item->slug,
@@ -22,32 +23,30 @@
     $duration = $item->duration_seconds
         ? gmdate($item->duration_seconds >= 3600 ? 'H:i:s' : 'i:s', $item->duration_seconds)
         : null;
-    $isRow = $layout === 'rows';
-    $articleClasses = $isRow
-        ? 'grid gap-4 rounded-lg border border-gray-200 bg-white p-4 shadow-sm transition hover:border-primary-300 hover:shadow-md dark:border-gray-800 dark:bg-gray-900 dark:hover:border-primary-700 md:grid-cols-[minmax(12rem,16rem)_1fr]'
-        : 'flex h-full flex-col overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm transition hover:border-primary-300 hover:shadow-md dark:border-gray-800 dark:bg-gray-900 dark:hover:border-primary-700 '.$options->cardPaddingClass();
-    $imageClasses = $isRow
-        ? 'aspect-[16/10] md:h-full'
-        : $options->imageClass();
+    $imageSize = $cardTemplate->imageSize;
 @endphp
 
 <article
-    {{ $attributes->merge(['class' => $articleClasses]) }}
+    {{ $attributes->merge(['class' => $presentation['article']]) }}
     data-test="content-item-card"
-    data-card-density="{{ $options->density }}"
-    data-card-image-size="{{ $options->imageSize }}"
-    data-card-title-size="{{ $options->titleSize }}"
-    data-result-layout="{{ $layout }}"
+    data-card-density="{{ $presentation['density'] }}"
+    data-card-image-size="{{ $imageSize }}"
+    data-card-title-size="{{ $presentation['title_size'] }}"
+    data-result-layout="{{ $presentation['layout'] }}"
     data-card-template-family="{{ $templateAttributes['data-card-template-family'] }}"
     data-card-template-key="{{ $templateAttributes['data-card-template-key'] }}"
     data-card-template-layout="{{ $templateAttributes['data-card-template-layout'] }}"
     data-card-template-parts="{{ $templateAttributes['data-card-template-parts'] }}"
+    data-card-renderer-parts="{{ implode(',', $presentation['controlled_parts']) }}"
+    data-card-title-clamp="{{ $presentation['title_clamp'] }}"
+    data-card-description-clamp="{{ $presentation['description_clamp'] }}"
 >
-    @if($options->imageSize !== 'hidden')
+    @if($imageSize !== 'hidden')
         <a
             href="{{ $itemUrl }}"
-            class="block overflow-hidden rounded-md bg-gray-100 dark:bg-gray-800 {{ $imageClasses }}"
+            class="block min-w-0 overflow-hidden rounded-md bg-gray-100 dark:bg-gray-800 {{ $presentation['image'] }}"
             aria-label="{{ $item->title }}"
+            data-test="content-item-image"
         >
             @if($item->external_thumbnail_url)
                 <img
@@ -64,13 +63,13 @@
         </a>
     @endif
 
-    <div class="flex flex-1 flex-col gap-3">
-        <div class="space-y-2">
+    <div class="{{ $presentation['body'] }}">
+        <div class="min-w-0 space-y-2">
             @if($options->showGroupBadge)
                 <x-public.content-group-badge :group="$item->contentGroup" />
             @endif
 
-            <h3 class="font-semibold leading-7 text-gray-950 dark:text-white {{ $options->titleClass() }}">
+            <h3 class="{{ $presentation['title'] }}">
                 <a href="{{ $itemUrl }}" data-test="content-item-title">
                     {{ $item->title }}
                 </a>
@@ -78,7 +77,7 @@
         </div>
 
         @if($options->showDescription && $options->descriptionLines > 0 && filled($item->description_markdown))
-            <p class="text-sm leading-6 text-gray-600 dark:text-gray-300 {{ $options->descriptionClass() }}" data-test="item-description">
+            <p class="{{ $presentation['description'] }}" data-test="item-description">
                 {{ str($item->description_markdown)->stripTags()->squish() }}
             </p>
         @endif

@@ -152,7 +152,7 @@ it('consumes card field visibility and semantic display settings', function (): 
         ->assertSee('data-card-image-size="large"', false)
         ->assertSee('data-card-density="compact"', false)
         ->assertSee('data-card-title-size="lg"', false)
-        ->assertSee('data-result-layout="rows"', false)
+        ->assertSee('data-result-layout="cards"', false)
         ->assertSee($author->name)
         ->assertSee($category->name)
         ->assertSee($tag->name)

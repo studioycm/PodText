@@ -29,7 +29,8 @@ Recorded after the Markdown-only post-Prompt-10 prompt-progress centralization c
 - Public Front v2 docs correction before Step 1 is implemented and committed as `5586ec8 docs: correct public front v2 execution plan`.
 - Public Front v2 Step 1 JSON Settings Architecture is implemented and committed as `fb759b5 feat: add public front json settings architecture`.
 - Public Front v2 Step 3 Card Template Builder is implemented and committed as `a0146ce feat: add public front card template builder foundation`.
-- Public Front v2 Step 4 Public Display Sections and Loopers is implemented in the current working tree and will be committed as `feat: add public display section loopers` after the final quality gate passes.
+- Public Front v2 Step 4 Public Display Sections and Loopers is implemented and committed as `c0ce7d7 feat: add public display section loopers`.
+- Public Front v2 Step 5 Latest and Search UX is implemented in the current working tree and will be committed as `feat: refine public latest and search ux` after the final quality gate passes.
 
 ## Prompt Progress
 
@@ -53,8 +54,9 @@ Recorded after the Markdown-only post-Prompt-10 prompt-progress centralization c
 | Public Front v2 docs correction before Step 1 | Complete | `5586ec8 docs: correct public front v2 execution plan` | Corrects execution order, reserves transcription publication policy, and requires Step 1 handoff. |
 | Public Front v2 Step 1 JSON Settings Architecture | Complete | `fb759b5 feat: add public front json settings architecture` | Adds the JSON settings architecture foundation and creates `docs/phase-02/public-front-v2-step1-json-settings-handoff.md` for ChatGPT/Yoni review. |
 | Public Front v2 Step 3 Card Template Builder | Complete | `a0146ce feat: add public front card template builder foundation` | Adds JSON-first card template registry/validator support, support classes, admin settings UI, compatibility rendering attributes, tests, and Step 3 handoff. |
-| Public Front v2 Step 4 Public Display Sections and Loopers | Complete in current implementation commit | Pending final commit: `feat: add public display section loopers` | Adds homepage section JSON config columns, section/looper validation and query support, admin config fields, Step 3 template integration, tests, and Step 4 handoff. |
-| Public Front v2 Step 5 Latest and Search UX | Next after ChatGPT/Yoni review | Future prompt | Step 5 owns latest/search UX and must build on the Step 4 section/looper foundation. |
+| Public Front v2 Step 4 Public Display Sections and Loopers | Complete | `c0ce7d7 feat: add public display section loopers` | Adds homepage section JSON config columns, section/looper validation and query support, admin config fields, Step 3 template integration, tests, and Step 4 handoff. |
+| Public Front v2 Step 5 Latest and Search UX | Complete in current implementation commit | Pending final commit: `feat: refine public latest and search ux` | Adds looper-driven Latest UX, search filter drawer, multi-select category/tag filters, card layout repair, controlled content-item renderer, tests, and Step 5 handoff. |
+| Public Front v2 Step 6 Public Forms and Submissions | Next after ChatGPT/Yoni review | Future prompt | Step 6 is the next implementation step after Step 5 review. |
 | Prompt 13 dashboard metrics | Not started / blocked unless explicitly chosen by user | Active prompt/blueprint | Owns editorial dashboard widgets after Public Front v2 Step 12 readiness or an explicit dashboard-first decision. |
 | Prompt 14 viewer/studio future plan | Future planning after Prompt 13 | Active prompt/blueprint | Documentation/planning only. |
 | Prompt 15 Filament Blueprint security audit | Audit after Prompt 14 | Active prompt/blueprint | Audit-only unless fixes are explicitly approved. |
@@ -69,6 +71,7 @@ Recorded after the Markdown-only post-Prompt-10 prompt-progress centralization c
 - `transcript_file` import support is deferred until an approved import package structure for referenced `.md`/`.txt` files exists.
 - Curated homepage query sections are deferred until a concrete query-builder spec exists.
 - Homepage result previews in admin forms remain deferred.
+- Step 5B Card Template Admin Preview UX remains deferred.
 - Advanced homepage section manual-selection controls such as "select all filtered results" and "deselect all filtered results" are deferred; Step 4 ships explicit include/exclude ID selection with public visibility rechecks.
 - Associate-existing transcription remains deferred because `Transcription` belongs to one `ContentItem`.
 - A separate public volunteer/contributor profile table remains deferred; Prompt 11B uses `Author` as the public-safe contributor/transcriber entity.
@@ -120,6 +123,8 @@ Laravel Boost MCP tools were exposed and usable during Prompt 10.
 - Public Front v2 Step 1 FilamentExamples research returned snippet-level settings/form examples only; no full source/detail fetch tool was exposed.
 - Public Front v2 Step 4 used Boost `application_info`, `database_schema`, and `search_docs` before changing migrations, casts, Filament form fields, Livewire rendering, and tests.
 - Public Front v2 Step 4 FilamentExamples research returned snippet/source-level examples for dynamic homepage sections, section manager patterns, looper/query display concepts, and admin selection/table-selection patterns; no parallel agents or worktrees were used.
+- Public Front v2 Step 5 used Boost `application_info`, `database_schema`, and `search_docs` before changing Livewire URL state, pagination, Alpine drawer behavior, Blade rendering, card template rendering, and tests.
+- Public Front v2 Step 5 FilamentExamples `search_examples` research returned snippet-level examples for public Livewire tables/cards/filters and grid/card patterns; no full source/detail fetch was exposed for the requested latest drawer/looper renderer patterns.
 
 ## Application Shape
 
@@ -184,6 +189,10 @@ Laravel Boost MCP tools were exposed and usable during Prompt 10.
   - `App\Support\PublicFront\Sections\PublicDisplaySectionResolver`
   - `App\Support\PublicFront\Sections\PublicDisplaySectionQueryResolver`
   - `App\Support\PublicFront\Sections\PublicDisplaySectionResult`
+- Public Front v2 Step 5 Latest/Search UX surfaces:
+  - `App\Livewire\Public\ContentItemSearch` now owns latest section controls and multi-select search filter state.
+  - `App\Support\PublicFront\Cards\PublicFrontCardTemplateRenderer::contentItemPresentation()` returns controlled content-item card presentation metadata.
+  - `resources/views/components/public/public-filter-panel.blade.php` renders the public search filter drawer.
 - Public Front v2 Step 1 enums:
   - `App\Enums\PublicFrontConfigBlockType`
   - `App\Enums\PublicFrontLayoutVariant`
@@ -411,12 +420,12 @@ Current physical schema verified through Boost `database_schema`:
 - `ContentItemTranscriptViewer` defaults to the effective transcription, exposes only published transcription tabs/selector choices, keeps selection URL-backed by transcription reference key, and falls back to safe Markdown when parsing finds no segments.
 - Viewer controls are local Alpine preferences for show/hide timestamps and speakers; timestamp anchors are direction-safe with `dir="ltr"`.
 - Prompt 12 did not add player sync, transcription studio, autosave, dashboard widgets, analytics, metadata extraction automation, import/export behavior changes, admin relationship UX changes, homepage/search rewrites, or contributor discovery changes.
-- Prompt 13 dashboard metrics is blocked until Public Front v2 is implemented or the user explicitly chooses dashboard metrics first.
+- Prompt 13 dashboard metrics remains not started. Public Front v2 continues with Step 6 next unless the user explicitly chooses dashboard metrics first.
 
 ## Public Front v2 Planning Notes
 
 - Public Front v2 research, blueprint, blueprint-result, and execution-plan docs exist.
-- Public Front v2 continues before Prompt 13 unless the user explicitly chooses dashboard metrics first.
+- Public Front v2 continues with Step 6 before Prompt 13 unless the user explicitly chooses dashboard metrics first.
 - The execution plan is an implementation guide, not a single prompt. Run one implementation prompt per step.
 - Corrected step order:
   - Step 1: JSON Settings Architecture.
@@ -433,7 +442,9 @@ Current physical schema verified through Boost `database_schema`:
   - Step 12: Prompt 13 Dashboard Metrics readiness / next decision.
 - Step 1 created `docs/phase-02/public-front-v2-step1-json-settings-handoff.md` for ChatGPT/Yoni and established the final JSON settings API used by Step 3.
 - Step 3 Card Template Builder is committed as `a0146ce`.
-- Step 4 Public Display Sections and Loopers is implemented in the current working tree. Step 5 Latest and Search UX is the next implementation step after ChatGPT/Yoni review.
+- Step 4 Public Display Sections and Loopers is committed as `c0ce7d7`.
+- Step 5 Latest and Search UX is implemented in the current working tree.
+- Step 6 Public Forms and Submissions is the next implementation step after ChatGPT/Yoni review.
 - The PodText logo already exists at `public/images/podtext-logo.jpg` and must be preserved by future public-front work.
 
 ## Public Front v2 Step 1 JSON Settings Architecture Notes
@@ -467,7 +478,7 @@ Current physical schema verified through Boost `database_schema`:
 - `App\Filament\Pages\PublicContentSettings` now includes a card template editing section with a Repeater and Builder-backed parts editor. Live side-by-side preview remains deferred to later public UX work.
 - Public item, group, and contributor cards preserve existing Blade output and expose compatibility metadata through `data-card-template-*` attributes resolved from the card template support layer.
 - Step 3 does not implement display-section/looper queries, latest/search redesign, public forms, about/team builder, podcasts/group UX changes, menu/header management, contributor UX refinements, seeders, dashboard metrics, or the deferred transcription publication policy.
-- Step 4 Public Display Sections and Loopers is now implemented in the current working tree. Step 5 Latest and Search UX is next after ChatGPT/Yoni review. Step 2 transcription policy remains deferred/reserved. Prompt 13 has not started.
+- Step 4 Public Display Sections and Loopers is committed as `c0ce7d7`. Step 5 Latest and Search UX is implemented in the current working tree. Step 2 transcription policy remains deferred/reserved. Prompt 13 has not started.
 
 ## Public Front v2 Step 4 Display Sections and Loopers Notes
 
@@ -481,11 +492,23 @@ Current physical schema verified through Boost `database_schema`:
 - Public content item sources continue to enforce published group, published item, and published effective/main transcription constraints through the shared public query path.
 - Tag sources require enabled `content` tags. Category sources can include descendants and inherited group categories. Manual source include/exclude IDs are database IDs and still recheck public visibility before rendering.
 - Content group/category/contributor sources render through existing public Blade components or simple safe category cards; top-transcribers counting behavior remains the existing public contributor discovery behavior.
-- Display config composes with the Step 3 `PublicFrontCardTemplateResolver` and compatibility renderer attributes. Step 4 only resolves templates and safe semantic overrides; it does not implement the full visual card part renderer or live card-template preview.
+- Display config composes with the Step 3 `PublicFrontCardTemplateResolver` and compatibility renderer attributes. Step 4 resolves templates and safe semantic overrides; Step 5 adds the practical controlled content-item renderer.
 - `HomepageSectionForm` keeps legacy type-driven fields and adds semantic fields for source, selection, display/template, and pagination config. It does not expose raw JSON, raw CSS/classes, arbitrary Blade paths, raw SQL, or arbitrary PHP classes.
 - Pagination config stores and normalizes `none`, `simple`, `load_more`, and `next_previous`; infinite scroll remains deferred.
 - The handoff file for review is `docs/phase-02/public-front-v2-step4-display-sections-loopers-handoff.md`.
-- Step 5 Latest and Search UX is the next implementation step. Step 2 transcription policy remains deferred/reserved. Prompt 13 has not started.
+- Step 5 Latest and Search UX is implemented in the current working tree. Step 6 Public Forms and Submissions is the next implementation step. Step 2 transcription policy remains deferred/reserved. Prompt 13 has not started.
+
+## Public Front v2 Step 5 Latest and Search UX Notes
+
+- Step 5 makes Latest a looper-driven public section using `PublicDisplaySectionResolver` output and normalized `source_config`, `display_config`, and `pagination_config`.
+- Latest sections now support lightweight search, top previous/next controls for `simple` and `next_previous`, and bottom load-more for `load_more`.
+- Latest page size normalizes to 4 through 25, and Latest total query size normalizes to at least 50.
+- The public search page keeps search and sort visible while moving filters into a custom Blade/Alpine drawer controlled by `resources/views/components/public/public-filter-panel.blade.php`.
+- Livewire owns search/filter/sort state; Alpine owns only drawer open/close behavior.
+- Category and tag filters now support multi-select toggle buttons/chips with URL-backed CSV state. Disabled tags remain hidden publicly.
+- Public content item cards now use the practical controlled renderer `PublicFrontCardTemplateRenderer::contentItemPresentation()` for deterministic card classes, safe line clamps, square image handling, large-image stacking, and `min-w-0` text columns.
+- Step 5 does not implement full admin card-template live preview. That work remains deferred as Step 5B Card Template Admin Preview UX.
+- The Step 5 handoff file for review is `docs/phase-02/public-front-v2-step5-latest-search-ux-handoff.md`.
 
 ## Post-Prompt-10 Guidance Sync Notes
 
