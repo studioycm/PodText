@@ -258,6 +258,27 @@ if ($contributors['top_transcribers']['enabled'] ?? true) {
 - Prompt 13 dashboard metrics has not started.
 - Step 2 transcription publication policy remains deferred/reserved.
 
+## Post-handoff follow-up commits
+
+Changes after the Step 10 handoff commit `37ce738 feat: refine contributors and top transcribers ux` through `cea4f60 fix: refine theme selector and search UX in public header`:
+
+- `e8077ea` simplified public-facing Hebrew labels and adjusted public UI test fixture copy.
+- `20970a3` aligned Hebrew admin/public terminology around podcast/episode/content concepts and updated demo/test text accordingly.
+- `802cf4a` temporarily enabled public panel SPA mode.
+- `2b1c6b3` removed public panel SPA mode, so the current public panel is not SPA, and externalized `ContentGroupForm` type-label defaults to translation keys.
+- `cea4f60` refined desktop public header search/theme behavior: search renders before an independent theme selector, desktop theme selector rendering no longer depends on a looped menu item, and RTL-safe logical inset utilities are used for search icon and theme menu positioning.
+
+Net areas touched after the handoff:
+
+- `app/Filament/Resources/ContentGroups/Schemas/ContentGroupForm.php`
+- `database/seeders/DatabaseSeeder.php`
+- `lang/he/admin.php`
+- `lang/he/public.php`
+- `resources/views/livewire/public/public-header.blade.php`
+- public panel/browser and feature test fixture copy
+
+These follow-ups did not change the Step 10 contributor settings schema, did not start Prompt 13, did not create `Podcast`, `Episode`, `PublicMenu`, or `PublicMenuItem` models, and did not reintroduce public Filament Tables.
+
 ## Tests and quality gate summary
 
 - Added `tests/Feature/PublicContributorsTopTranscribersUxTest.php`.
