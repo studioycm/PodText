@@ -128,76 +128,7 @@
                             >
                                 {{ $item['label'] }}
                             </button>
-                        @elseif(($item['type'] ?? null) === 'theme_selector' && ($themeSelector['enabled'] ?? true) === true)
-                            @if($themeDisplayMode === 'trigger_icon_menu')
-                                <div class="relative" x-data="{ themeMenuOpen: false }" data-test="public-theme-selector" data-theme-display-mode="trigger_icon_menu">
-                                    <button
-                                        type="button"
-                                        x-on:click="themeMenuOpen = ! themeMenuOpen"
-                                        class="inline-flex size-10 items-center justify-center rounded-full border border-gray-200 bg-gray-50 text-gray-700 transition hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-primary-500 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-200 dark:hover:bg-gray-800"
-                                        aria-label="{{ __('public.menu.theme') }}"
-                                        data-test="public-theme-trigger"
-                                    >
-                                        <x-heroicon-o-swatch class="size-5" />
-                                    </button>
 
-                                    <div
-                                        x-show="themeMenuOpen"
-                                        x-on:click.outside="themeMenuOpen = false"
-                                        class="absolute end-0 z-20 mt-2 grid min-w-36 gap-1 rounded-lg border border-gray-200 bg-white p-1 shadow-lg dark:border-gray-800 dark:bg-gray-950"
-                                        data-test="public-theme-menu"
-                                    >
-                                        @foreach($themeOptions as $themeOption)
-                                            <button
-                                                type="button"
-                                                x-on:click="setTheme(@js($themeOption)); themeMenuOpen = false"
-                                                x-bind:class="theme === @js($themeOption) ? 'bg-gray-100 text-gray-950 dark:bg-gray-800 dark:text-white' : 'text-gray-600 hover:text-gray-950 dark:text-gray-300 dark:hover:text-white'"
-                                                class="inline-flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition"
-                                                data-test="public-theme-option"
-                                                data-theme-option="{{ $themeOption }}"
-                                            >
-                                                @if($themeOption === 'system')
-                                                    <x-heroicon-o-computer-desktop class="size-4" />
-                                                @elseif($themeOption === 'light')
-                                                    <x-heroicon-o-sun class="size-4" />
-                                                @else
-                                                    <x-heroicon-o-moon class="size-4" />
-                                                @endif
-                                                <span>{{ __("public.theme.{$themeOption}") }}</span>
-                                            </button>
-                                        @endforeach
-                                    </div>
-                                </div>
-                            @else
-                                <div class="flex items-center rounded-full border border-gray-200 bg-gray-50 p-1 dark:border-gray-800 dark:bg-gray-900" data-test="public-theme-selector" data-theme-display-mode="{{ $themeDisplayMode }}">
-                                    @foreach($themeOptions as $themeOption)
-                                        <button
-                                            type="button"
-                                            x-on:click="setTheme(@js($themeOption))"
-                                            x-bind:class="theme === @js($themeOption) ? 'bg-white text-gray-950 shadow-sm dark:bg-gray-800 dark:text-white' : 'text-gray-600 hover:text-gray-950 dark:text-gray-300 dark:hover:text-white'"
-                                            class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-xs font-medium transition"
-                                            data-test="public-theme-option"
-                                            data-theme-option="{{ $themeOption }}"
-                                        >
-                                            @if(in_array($themeDisplayMode, ['text_icon', 'icon'], true))
-                                                @if($themeOption === 'system')
-                                                    <x-heroicon-o-computer-desktop class="size-4" />
-                                                @elseif($themeOption === 'light')
-                                                    <x-heroicon-o-sun class="size-4" />
-                                                @else
-                                                    <x-heroicon-o-moon class="size-4" />
-                                                @endif
-                                            @endif
-
-                                            @if(in_array($themeDisplayMode, ['text', 'text_icon'], true))
-                                                <span>{{ __("public.theme.{$themeOption}") }}</span>
-                                            @else
-                                                <span class="sr-only">{{ __("public.theme.{$themeOption}") }}</span>
-                                            @endif
-                                        </button>
-                                    @endforeach
-                                </div>
-                            @endif
                         @endif
                     @endforeach
                 </nav>
@@ -209,7 +140,7 @@
                         class="relative min-w-48 max-w-xs"
                         data-test="public-header-search"
                     >
-                        <x-heroicon-o-magnifying-glass class="pointer-events-none absolute start-3 top-1/2 size-4 -translate-y-1/2 text-gray-400" />
+                        <x-heroicon-o-magnifying-glass class="pointer-events-none absolute inset-s-3 top-1/2 size-4 -translate-y-1/2 text-gray-400" />
                         <input
                             type="search"
                             name="{{ $search['query_param'] ?? 'q' }}"
@@ -219,6 +150,78 @@
                             data-test="public-header-search-input"
                         >
                     </form>
+                @endif
+
+                @if(($themeSelector['enabled'] ?? true) === true)
+                    @if($themeDisplayMode === 'trigger_icon_menu')
+                        <div class="relative" x-data="{ themeMenuOpen: false }" data-test="public-theme-selector" data-theme-display-mode="trigger_icon_menu">
+                            <button
+                                type="button"
+                                x-on:click="themeMenuOpen = ! themeMenuOpen"
+                                class="inline-flex size-10 items-center justify-center rounded-full border border-gray-200 bg-gray-50 text-gray-700 transition hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-primary-500 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-200 dark:hover:bg-gray-800"
+                                aria-label="{{ __('public.menu.theme') }}"
+                                data-test="public-theme-trigger"
+                            >
+                                <x-heroicon-o-swatch class="size-5" />
+                            </button>
+
+                            <div
+                                x-show="themeMenuOpen"
+                                x-on:click.outside="themeMenuOpen = false"
+                                class="absolute inset-e-0 z-20 mt-2 grid min-w-36 gap-1 rounded-lg border border-gray-200 bg-white p-1 shadow-lg dark:border-gray-800 dark:bg-gray-950"
+                                data-test="public-theme-menu"
+                            >
+                                @foreach($themeOptions as $themeOption)
+                                    <button
+                                        type="button"
+                                        x-on:click="setTheme(@js($themeOption)); themeMenuOpen = false"
+                                        x-bind:class="theme === @js($themeOption) ? 'bg-gray-100 text-gray-950 dark:bg-gray-800 dark:text-white' : 'text-gray-600 hover:text-gray-950 dark:text-gray-300 dark:hover:text-white'"
+                                        class="inline-flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition"
+                                        data-test="public-theme-option"
+                                        data-theme-option="{{ $themeOption }}"
+                                    >
+                                        @if($themeOption === 'system')
+                                            <x-heroicon-o-computer-desktop class="size-4" />
+                                        @elseif($themeOption === 'light')
+                                            <x-heroicon-o-sun class="size-4" />
+                                        @else
+                                            <x-heroicon-o-moon class="size-4" />
+                                        @endif
+                                        <span>{{ __("public.theme.{$themeOption}") }}</span>
+                                    </button>
+                                @endforeach
+                            </div>
+                        </div>
+                    @else
+                        <div class="flex items-center rounded-full border border-gray-200 bg-gray-50 p-1 dark:border-gray-800 dark:bg-gray-900" data-test="public-theme-selector" data-theme-display-mode="{{ $themeDisplayMode }}">
+                            @foreach($themeOptions as $themeOption)
+                                <button
+                                    type="button"
+                                    x-on:click="setTheme(@js($themeOption))"
+                                    x-bind:class="theme === @js($themeOption) ? 'bg-white text-gray-950 shadow-sm dark:bg-gray-800 dark:text-white' : 'text-gray-600 hover:text-gray-950 dark:text-gray-300 dark:hover:text-white'"
+                                    class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-xs font-medium transition"
+                                    data-test="public-theme-option"
+                                    data-theme-option="{{ $themeOption }}"
+                                >
+                                    @if(in_array($themeDisplayMode, ['text_icon', 'icon'], true))
+                                        @if($themeOption === 'system')
+                                            <x-heroicon-o-computer-desktop class="size-4" />
+                                        @elseif($themeOption === 'light')
+                                            <x-heroicon-o-sun class="size-4" />
+                                        @else
+                                            <x-heroicon-o-moon class="size-4" />
+                                        @endif
+                                    @endif
+
+                                    @if(in_array($themeDisplayMode, ['text', 'text_icon'], true))
+                                        <span>{{ __("public.theme.{$themeOption}") }}</span>
+                                    @else
+                                        <span class="sr-only">{{ __("public.theme.{$themeOption}") }}</span>
+                                    @endif
+                                </button>
+                            @endforeach
+                        </div>
+                    @endif
                 @endif
             </div>
 
