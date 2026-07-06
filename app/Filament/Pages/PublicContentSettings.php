@@ -584,25 +584,167 @@ class PublicContentSettings extends SettingsPage
                                             ->helperText(__('admin.helpers.podcasts_page_show_episode_count')),
                                         Fieldset::make(__('admin.sections.public_front_podcasts_group_page'))
                                             ->schema([
-                                                Toggle::make('podcasts_page.group_page.show_description')
-                                                    ->label(__('admin.fields.podcasts_group_page_show_description'))
-                                                    ->helperText(__('admin.helpers.podcasts_group_page_show_description')),
-                                                Toggle::make('podcasts_page.group_page.show_categories')
-                                                    ->label(__('admin.fields.podcasts_group_page_show_categories'))
-                                                    ->helperText(__('admin.helpers.podcasts_group_page_show_categories')),
-                                                Toggle::make('podcasts_page.group_page.show_episode_descriptions')
-                                                    ->label(__('admin.fields.podcasts_group_page_show_episode_descriptions'))
-                                                    ->helperText(__('admin.helpers.podcasts_group_page_show_episode_descriptions')),
-                                                TextInput::make('podcasts_page.group_page.items_per_page')
-                                                    ->label(__('admin.fields.podcasts_group_page_items_per_page'))
-                                                    ->helperText(__('admin.helpers.podcasts_group_page_items_per_page'))
-                                                    ->required()
-                                                    ->numeric()
-                                                    ->integer()
-                                                    ->minValue(1)
-                                                    ->maxValue(48),
+                                                Fieldset::make(__('admin.sections.public_front_podcasts_group_page_header'))
+                                                    ->schema([
+                                                        Toggle::make('podcasts_page.group_page.show_description')
+                                                            ->label(__('admin.fields.podcasts_group_page_show_description'))
+                                                            ->helperText(__('admin.helpers.podcasts_group_page_show_description')),
+                                                        Toggle::make('podcasts_page.group_page.show_categories')
+                                                            ->label(__('admin.fields.podcasts_group_page_show_categories'))
+                                                            ->helperText(__('admin.helpers.podcasts_group_page_show_categories')),
+                                                        Toggle::make('podcasts_page.group_page.show_episode_descriptions')
+                                                            ->label(__('admin.fields.podcasts_group_page_show_episode_descriptions'))
+                                                            ->helperText(__('admin.helpers.podcasts_group_page_show_episode_descriptions')),
+                                                    ])
+                                                    ->columns(2)
+                                                    ->columnSpanFull(),
+                                                Fieldset::make(__('admin.sections.public_front_podcasts_group_items_grid'))
+                                                    ->schema([
+                                                        Select::make('podcasts_page.group_page.items_layout')
+                                                            ->label(__('admin.fields.podcasts_group_page_items_layout'))
+                                                            ->helperText(__('admin.helpers.podcasts_group_page_items_layout'))
+                                                            ->options(fn (): array => PublicFrontConfigRegistry::podcastGroupItemLayoutOptions())
+                                                            ->default('cards')
+                                                            ->native(false)
+                                                            ->required(),
+                                                        Select::make('podcasts_page.group_page.items_grid_columns')
+                                                            ->label(__('admin.fields.podcasts_group_page_items_grid_columns'))
+                                                            ->helperText(__('admin.helpers.podcasts_group_page_items_grid_columns'))
+                                                            ->options(fn (): array => PublicFrontConfigRegistry::podcastGroupItemGridColumnOptions())
+                                                            ->default(3)
+                                                            ->native(false)
+                                                            ->required(),
+                                                        Select::make('podcasts_page.group_page.items_grid_gap')
+                                                            ->label(__('admin.fields.podcasts_group_page_items_grid_gap'))
+                                                            ->helperText(__('admin.helpers.podcasts_group_page_items_grid_gap'))
+                                                            ->options(fn (): array => PublicFrontConfigRegistry::podcastGroupItemGridGapOptions())
+                                                            ->default('comfortable')
+                                                            ->native(false)
+                                                            ->required(),
+                                                    ])
+                                                    ->columns(3)
+                                                    ->columnSpanFull(),
+                                                Fieldset::make(__('admin.sections.public_front_podcasts_group_items_controls'))
+                                                    ->schema([
+                                                        Toggle::make('podcasts_page.group_page.search_enabled')
+                                                            ->label(__('admin.fields.podcasts_group_page_search_enabled'))
+                                                            ->helperText(__('admin.helpers.podcasts_group_page_search_enabled')),
+                                                        Toggle::make('podcasts_page.group_page.category_filter_enabled')
+                                                            ->label(__('admin.fields.podcasts_group_page_category_filter_enabled'))
+                                                            ->helperText(__('admin.helpers.podcasts_group_page_category_filter_enabled')),
+                                                        Toggle::make('podcasts_page.group_page.sort_enabled')
+                                                            ->label(__('admin.fields.podcasts_group_page_sort_enabled'))
+                                                            ->helperText(__('admin.helpers.podcasts_group_page_sort_enabled')),
+                                                        Select::make('podcasts_page.group_page.default_sort')
+                                                            ->label(__('admin.fields.podcasts_group_page_default_sort'))
+                                                            ->helperText(__('admin.helpers.podcasts_group_page_default_sort'))
+                                                            ->options(fn (): array => PublicFrontConfigRegistry::podcastGroupItemSortOptions())
+                                                            ->default('latest_transcription')
+                                                            ->native(false)
+                                                            ->required(),
+                                                        Select::make('podcasts_page.group_page.sort_options')
+                                                            ->label(__('admin.fields.podcasts_group_page_sort_options'))
+                                                            ->helperText(__('admin.helpers.podcasts_group_page_sort_options'))
+                                                            ->options(fn (): array => PublicFrontConfigRegistry::podcastGroupItemSortOptions())
+                                                            ->multiple()
+                                                            ->native(false)
+                                                            ->required(),
+                                                        TextInput::make('podcasts_page.group_page.items_per_page')
+                                                            ->label(__('admin.fields.podcasts_group_page_items_per_page'))
+                                                            ->helperText(__('admin.helpers.podcasts_group_page_items_per_page'))
+                                                            ->required()
+                                                            ->numeric()
+                                                            ->integer()
+                                                            ->minValue(1)
+                                                            ->maxValue(48),
+                                                        Select::make('podcasts_page.group_page.page_size_options')
+                                                            ->label(__('admin.fields.podcasts_group_page_page_size_options'))
+                                                            ->helperText(__('admin.helpers.podcasts_group_page_page_size_options'))
+                                                            ->options([
+                                                                6 => '6',
+                                                                9 => '9',
+                                                                12 => '12',
+                                                                15 => '15',
+                                                                18 => '18',
+                                                                24 => '24',
+                                                                36 => '36',
+                                                                48 => '48',
+                                                            ])
+                                                            ->multiple()
+                                                            ->native(false)
+                                                            ->required(),
+                                                        Toggle::make('podcasts_page.group_page.per_page_selector_enabled')
+                                                            ->label(__('admin.fields.podcasts_group_page_per_page_selector_enabled'))
+                                                            ->helperText(__('admin.helpers.podcasts_group_page_per_page_selector_enabled')),
+                                                    ])
+                                                    ->columns(3)
+                                                    ->columnSpanFull(),
+                                                Fieldset::make(__('admin.sections.public_front_podcasts_group_item_cards'))
+                                                    ->schema([
+                                                        Select::make('podcasts_page.group_page.item_density')
+                                                            ->label(__('admin.fields.podcasts_group_page_item_density'))
+                                                            ->helperText(__('admin.helpers.podcasts_group_page_item_density'))
+                                                            ->options([
+                                                                'compact' => __('admin.card_density.compact'),
+                                                                'comfortable' => __('admin.card_density.comfortable'),
+                                                            ])
+                                                            ->default('comfortable')
+                                                            ->native(false)
+                                                            ->required(),
+                                                        Select::make('podcasts_page.group_page.item_image_size')
+                                                            ->label(__('admin.fields.podcasts_group_page_item_image_size'))
+                                                            ->helperText(__('admin.helpers.podcasts_group_page_item_image_size'))
+                                                            ->options([
+                                                                'hidden' => __('admin.card_image_size.hidden'),
+                                                                'small' => __('admin.card_image_size.small'),
+                                                                'medium' => __('admin.card_image_size.medium'),
+                                                                'large' => __('admin.card_image_size.large'),
+                                                            ])
+                                                            ->default('medium')
+                                                            ->native(false)
+                                                            ->required(),
+                                                        Select::make('podcasts_page.group_page.item_image_fit')
+                                                            ->label(__('admin.fields.podcasts_group_page_item_image_fit'))
+                                                            ->helperText(__('admin.helpers.podcasts_group_page_item_image_fit'))
+                                                            ->options(fn (): array => PublicFrontConfigRegistry::imageFitOptions())
+                                                            ->default('cover')
+                                                            ->native(false)
+                                                            ->required(),
+                                                        Select::make('podcasts_page.group_page.item_image_radius')
+                                                            ->label(__('admin.fields.podcasts_group_page_item_image_radius'))
+                                                            ->helperText(__('admin.helpers.podcasts_group_page_item_image_radius'))
+                                                            ->options(fn (): array => PublicFrontConfigRegistry::imageRadiusOptions())
+                                                            ->default('mid_rounded')
+                                                            ->native(false)
+                                                            ->required(),
+                                                        Select::make('podcasts_page.group_page.item_title_size')
+                                                            ->label(__('admin.fields.podcasts_group_page_item_title_size'))
+                                                            ->helperText(__('admin.helpers.podcasts_group_page_item_title_size'))
+                                                            ->options([
+                                                                'sm' => __('admin.card_title_size.sm'),
+                                                                'base' => __('admin.card_title_size.base'),
+                                                                'lg' => __('admin.card_title_size.lg'),
+                                                            ])
+                                                            ->default('base')
+                                                            ->native(false)
+                                                            ->required(),
+                                                        Toggle::make('podcasts_page.group_page.show_episode_authors')
+                                                            ->label(__('admin.fields.podcasts_group_page_show_episode_authors'))
+                                                            ->helperText(__('admin.helpers.podcasts_group_page_show_episode_authors')),
+                                                        Toggle::make('podcasts_page.group_page.show_episode_tags')
+                                                            ->label(__('admin.fields.podcasts_group_page_show_episode_tags'))
+                                                            ->helperText(__('admin.helpers.podcasts_group_page_show_episode_tags')),
+                                                        Toggle::make('podcasts_page.group_page.show_episode_duration')
+                                                            ->label(__('admin.fields.podcasts_group_page_show_episode_duration'))
+                                                            ->helperText(__('admin.helpers.podcasts_group_page_show_episode_duration')),
+                                                        Toggle::make('podcasts_page.group_page.show_episode_effective_date')
+                                                            ->label(__('admin.fields.podcasts_group_page_show_episode_effective_date'))
+                                                            ->helperText(__('admin.helpers.podcasts_group_page_show_episode_effective_date')),
+                                                    ])
+                                                    ->columns(3)
+                                                    ->columnSpanFull(),
                                             ])
-                                            ->columns(2)
+                                            ->columns(1)
                                             ->columnSpanFull(),
                                     ])
                                     ->columns(3)

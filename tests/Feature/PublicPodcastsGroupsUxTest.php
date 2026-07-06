@@ -2,12 +2,14 @@
 
 use App\Enums\PublicationStatus;
 use App\Livewire\Public\ContentGroupBrowser;
+use App\Livewire\Public\ContentItemBrowser;
 use App\Models\Category;
 use App\Models\ContentGroup;
 use App\Models\ContentItem;
 use App\Models\Episode;
 use App\Models\Podcast;
 use App\Settings\PublicContentSettings;
+use App\Support\PublicFront\PublicFrontConfigValidator;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Livewire\Livewire;
@@ -327,6 +329,152 @@ it('uses configured podcast and episode card template metadata', function (): vo
         ->assertSee('data-card-template-family="content_item"', false)
         ->assertSee('data-card-template-key="step8_item_template"', false)
         ->assertSee('Templated episode description.');
+});
+
+it('normalizes podcast detail episode grid settings safely', function (): void {
+    $result = app(PublicFrontConfigValidator::class)->validate([
+        'podcasts_page' => [
+            'group_page' => [
+                'items_layout' => 'grid grid-cols-4',
+                'items_grid_columns' => 12,
+                'items_grid_gap' => 'spacious',
+                'items_per_page' => 5,
+                'page_size_options' => [5, 12, 'bad'],
+                'sort_options' => ['title_desc', 'unknown_sort'],
+                'default_sort' => 'duration_shortest',
+                'item_density' => 'compact',
+                'item_image_size' => 'large',
+                'item_image_fit' => 'contain',
+                'item_image_radius' => 'round',
+                'item_title_size' => 'lg',
+            ],
+        ],
+    ]);
+
+    $groupPage = $result->group('podcasts_page')['group_page'];
+    $invalidPaths = collect($result->invalidConfigArray())->pluck('path')->all();
+
+    expect($groupPage['items_layout'])->toBe('cards')
+        ->and($groupPage['items_grid_columns'])->toBe(3)
+        ->and($groupPage['items_grid_gap'])->toBe('spacious')
+        ->and($groupPage['items_per_page'])->toBe(5)
+        ->and($groupPage['page_size_options'])->toBe([5, 12])
+        ->and($groupPage['sort_options'])->toBe(['title_desc'])
+        ->and($groupPage['default_sort'])->toBe('title_desc')
+        ->and($groupPage['item_density'])->toBe('compact')
+        ->and($groupPage['item_image_size'])->toBe('large')
+        ->and($groupPage['item_image_fit'])->toBe('contain')
+        ->and($groupPage['item_image_radius'])->toBe('round')
+        ->and($groupPage['item_title_size'])->toBe('lg')
+        ->and($invalidPaths)->toContain(
+            'podcasts_page.group_page.items_layout',
+            'podcasts_page.group_page.items_grid_columns',
+            'podcasts_page.group_page.page_size_options.2',
+            'podcasts_page.group_page.sort_options.1',
+            'podcasts_page.group_page.default_sort',
+        );
+});
+
+it('renders configured podcast detail episode grid controls and card display settings', function (): void {
+    saveStep8PublicFrontConfig([
+        'podcasts_page' => [
+            'group_page' => [
+                'items_layout' => 'cards',
+                'items_grid_columns' => 4,
+                'items_grid_gap' => 'spacious',
+                'items_per_page' => 6,
+                'page_size_options' => [6, 12],
+                'per_page_selector_enabled' => true,
+                'search_enabled' => true,
+                'sort_enabled' => true,
+                'category_filter_enabled' => true,
+                'default_sort' => 'title_desc',
+                'sort_options' => ['title_desc', 'title_asc'],
+                'item_density' => 'compact',
+                'item_image_size' => 'small',
+                'item_image_fit' => 'contain',
+                'item_image_radius' => 'round',
+                'item_title_size' => 'lg',
+                'show_episode_descriptions' => true,
+                'show_episode_authors' => false,
+                'show_episode_tags' => false,
+                'show_episode_duration' => false,
+                'show_episode_effective_date' => false,
+            ],
+        ],
+    ]);
+
+    $category = Category::factory()->create(['name' => 'Episode Category']);
+    $group = ContentGroup::factory()->published()->create([
+        'title' => 'Grid Podcast',
+        'slug' => 'grid-podcast',
+    ]);
+    $item = createStep8PublicItem($group, [
+        'title' => 'Grid Episode',
+        'description_markdown' => 'Grid episode description.',
+    ]);
+    $item->categories()->attach($category);
+
+    $this->get("/podcasts/{$group->slug}")
+        ->assertSuccessful()
+        ->assertSee('data-test="group-item-controls"', false)
+        ->assertSee('data-test="group-item-search"', false)
+        ->assertSee('data-test="item-sort"', false)
+        ->assertSee('value="title_desc"', false)
+        ->assertSee('data-test="group-item-per-page"', false)
+        ->assertSee('data-test="group-item-category-toggle"', false)
+        ->assertSee('data-result-layout="cards"', false)
+        ->assertSee('data-grid-columns="4"', false)
+        ->assertSee('data-grid-gap="spacious"', false)
+        ->assertSee('data-card-density="compact"', false)
+        ->assertSee('data-card-image-size="small"', false)
+        ->assertSee('data-card-image-fit="contain"', false)
+        ->assertSee('data-card-image-radius="round"', false)
+        ->assertSee('data-card-title-size="lg"', false)
+        ->assertSee('Grid episode description.');
+});
+
+it('filters sorts and paginates podcast detail episodes through Livewire state', function (): void {
+    saveStep8PublicFrontConfig([
+        'podcasts_page' => [
+            'group_page' => [
+                'items_layout' => 'cards',
+                'items_grid_columns' => 2,
+                'items_per_page' => 6,
+                'page_size_options' => [6, 12],
+                'category_filter_enabled' => true,
+                'default_sort' => 'title_asc',
+                'sort_options' => ['title_asc', 'title_desc'],
+            ],
+        ],
+    ]);
+
+    $category = Category::factory()->create(['name' => 'Selected Category']);
+    $otherCategory = Category::factory()->create(['name' => 'Other Category']);
+    $group = ContentGroup::factory()->published()->create(['title' => 'Filter Podcast']);
+
+    $alpha = createStep8PublicItem($group, ['title' => 'Alpha Episode']);
+    $zulu = createStep8PublicItem($group, ['title' => 'Zulu Episode']);
+    $other = createStep8PublicItem($group, ['title' => 'Other Episode']);
+
+    $alpha->categories()->attach($category);
+    $zulu->categories()->attach($category);
+    $other->categories()->attach($otherCategory);
+
+    Livewire::withQueryParams([
+        'itemCategories' => (string) $category->id,
+        'sort' => 'title_desc',
+        'perPage' => '6',
+    ])
+        ->test(ContentItemBrowser::class, ['contentGroup' => $group])
+        ->assertSet('categoryIds', [$category->id])
+        ->assertSet('sort', 'title_desc')
+        ->assertSet('perPage', '6')
+        ->assertSeeInOrder(['Zulu Episode', 'Alpha Episode'])
+        ->assertDontSee('Other Episode')
+        ->set('sort', 'title_asc')
+        ->assertSeeInOrder(['Alpha Episode', 'Zulu Episode'])
+        ->assertDontSee('Other Episode');
 });
 
 it('does not expose the old groups route or introduce podcast episode models', function (): void {

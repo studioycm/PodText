@@ -91,6 +91,24 @@ Item cards resolve image sources in this order:
 
 Group badges support `name_only`, `thumbnail_name`, and `combined_title`. Thumbnail mode suppresses duplicate group thumbnails when the same group cover is already the main card image unless explicitly allowed.
 
+## Podcast detail episode grid settings follow-up
+
+The Step 9R follow-up adds focused podcast detail episode/item grid settings under `public_content.podcasts_page.group_page`.
+
+The public group detail item list remains `App\Livewire\Public\ContentItemBrowser` plus Blade components. No public Filament Table was introduced.
+
+New behavior:
+
+- episode layout can be `cards` or `rows`;
+- card grid can use 1-4 desktop columns and semantic gap tokens;
+- search, category filter, sort, and page-size controls can be enabled/disabled independently;
+- sort options are constrained to known public item sorts;
+- default sort is normalized against allowed sort options;
+- public page-size selector uses configured page-size options;
+- episode cards can override density, image size/fit/radius, title size, and metadata visibility.
+
+Category filters are scoped to visible categories connected to public items inside the selected podcast or to the current group.
+
 ## Header global search
 
 `menu_config.search` controls a lightweight header search form:
@@ -173,6 +191,25 @@ JSON display settings added:
 - `display_defaults.image_radius`
 - `podcasts_page.image_fit`
 - `podcasts_page.image_radius`
+- `podcasts_page.group_page.items_layout`
+- `podcasts_page.group_page.items_grid_columns`
+- `podcasts_page.group_page.items_grid_gap`
+- `podcasts_page.group_page.page_size_options`
+- `podcasts_page.group_page.per_page_selector_enabled`
+- `podcasts_page.group_page.search_enabled`
+- `podcasts_page.group_page.sort_enabled`
+- `podcasts_page.group_page.category_filter_enabled`
+- `podcasts_page.group_page.default_sort`
+- `podcasts_page.group_page.sort_options`
+- `podcasts_page.group_page.item_density`
+- `podcasts_page.group_page.item_image_size`
+- `podcasts_page.group_page.item_image_fit`
+- `podcasts_page.group_page.item_image_radius`
+- `podcasts_page.group_page.item_title_size`
+- `podcasts_page.group_page.show_episode_authors`
+- `podcasts_page.group_page.show_episode_tags`
+- `podcasts_page.group_page.show_episode_duration`
+- `podcasts_page.group_page.show_episode_effective_date`
 - `about_page.settings.team_card.image_fit`
 - `about_page.settings.team_card.image_radius`
 - About image block `image_fit` and `image_radius`
@@ -231,9 +268,9 @@ JSON display settings added:
 
 ## Impact on later prompts
 
-Step 10 Contributors and Top Transcribers UX should build on the repaired contributor directory and keep full top-transcriber redesign in its own prompt.
+Step 10 Contributors and Top Transcribers UX should build on the repaired contributor directory and keep full top-transcriber redesign in its own prompt. It can reuse the `ContentItemBrowser` grid/control patterns if contributor-specific item grids need similar semantic controls, but should not merge full top-transcriber work into this follow-up.
 
-Step 11 Seeders/Demo Data/Assets/Cleanup should seed only stable Step 9R schema plus any later Step 10/Step 9F schema that has landed.
+Step 11 Seeders/Demo Data/Assets/Cleanup should seed only stable Step 9R schema, including the podcast episode grid settings, plus any later Step 10/Step 9F schema that has landed.
 
 Step 2 / Reserved Transcription Publication Policy remains deferred/reserved and was not implemented.
 
@@ -249,11 +286,14 @@ Prompt 13 Dashboard Metrics has not started and should wait for the explicit das
 
 Focused tests passed:
 
+- `php artisan test --filter=PublicPodcastsGroupsUxTest`
 - `php artisan test --filter=PublicStep9RMenuHeaderUxFixesTest`
 - `php artisan test --filter=PublicMenuHeaderUxFixesTest`
 
 Final gate results:
 
+- Step 9R podcast episode grid follow-up baseline: `php artisan test --filter=PublicPodcastsGroupsUxTest` passed, 10 tests / 59 assertions.
+- Step 9R podcast episode grid follow-up focused result: `php artisan test --filter=PublicPodcastsGroupsUxTest` passed, 13 tests / 99 assertions.
 - `php artisan test --filter=PublicStep9RMenuHeaderUxFixesTest`: passed, 8 tests / 85 assertions.
 - `php artisan test --filter=PublicMenuHeaderUxFixesTest`: passed, 7 tests / 70 assertions.
 - Public regression filters for podcasts/groups, About, forms, latest/search, homepage search, display sections, card templates, contributors, and item page/media/parser passed.

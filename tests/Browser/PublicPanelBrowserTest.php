@@ -56,7 +56,7 @@ it('searches and sorts published content items in the browser', function (): voi
         ->assertNoJavaScriptErrors();
 });
 
-it('opens a published group and sorts its visible item rows in the browser', function (): void {
+it('opens a published group and sorts its visible items in the browser', function (): void {
     $group = ContentGroup::factory()->published()->create([
         'title' => 'Browser Group',
         'slug' => 'browser-group',
@@ -84,9 +84,9 @@ it('opens a published group and sorts its visible item rows in the browser', fun
         ->assertSee($alpha->title)
         ->assertSee($beta->title)
         ->assertDontSee($draft->title)
-        ->select('@item-sort', 'title')
-        ->assertSelected('@item-sort', 'title')
-        ->assertQueryStringHas('sort', 'title')
+        ->select('@item-sort', 'title_asc')
+        ->assertSelected('@item-sort', 'title_asc')
+        ->assertQueryStringHas('sort', 'title_asc')
         ->assertNoJavaScriptErrors();
 });
 

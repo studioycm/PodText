@@ -115,7 +115,35 @@ class PublicFrontConfigRegistry
                     'show_description' => true,
                     'show_categories' => true,
                     'show_episode_descriptions' => true,
+                    'items_layout' => 'cards',
+                    'items_grid_columns' => 3,
+                    'items_grid_gap' => 'comfortable',
                     'items_per_page' => 12,
+                    'page_size_options' => [6, 12, 24, 48],
+                    'per_page_selector_enabled' => true,
+                    'search_enabled' => true,
+                    'sort_enabled' => true,
+                    'category_filter_enabled' => true,
+                    'default_sort' => 'latest_transcription',
+                    'sort_options' => [
+                        'latest_transcription',
+                        'oldest_transcription',
+                        'title_asc',
+                        'title_desc',
+                        'original_newest',
+                        'original_oldest',
+                        'duration_longest',
+                        'duration_shortest',
+                    ],
+                    'item_density' => 'comfortable',
+                    'item_image_size' => 'medium',
+                    'item_image_fit' => 'cover',
+                    'item_image_radius' => 'mid_rounded',
+                    'item_title_size' => 'base',
+                    'show_episode_authors' => true,
+                    'show_episode_tags' => true,
+                    'show_episode_duration' => true,
+                    'show_episode_effective_date' => true,
                 ],
             ],
         ];
@@ -378,6 +406,84 @@ class PublicFrontConfigRegistry
             'icon' => __('admin.public_menu_theme_display_modes.icon'),
             'trigger_icon_menu' => __('admin.public_menu_theme_display_modes.trigger_icon_menu'),
         ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public static function podcastGroupItemLayoutOptions(): array
+    {
+        return [
+            'cards' => __('admin.layouts.cards'),
+            'rows' => __('admin.layouts.rows'),
+        ];
+    }
+
+    /**
+     * @return array<int>
+     */
+    public static function podcastGroupItemGridColumns(): array
+    {
+        return [1, 2, 3, 4];
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    public static function podcastGroupItemGridColumnOptions(): array
+    {
+        return collect(self::podcastGroupItemGridColumns())
+            ->mapWithKeys(fn (int $columns): array => [$columns => (string) $columns])
+            ->all();
+    }
+
+    /**
+     * @return array<string>
+     */
+    public static function podcastGroupItemGridGaps(): array
+    {
+        return [
+            'compact',
+            'comfortable',
+            'spacious',
+        ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public static function podcastGroupItemGridGapOptions(): array
+    {
+        return collect(self::podcastGroupItemGridGaps())
+            ->mapWithKeys(fn (string $gap): array => [$gap => __("admin.grid_gaps.{$gap}")])
+            ->all();
+    }
+
+    /**
+     * @return array<string>
+     */
+    public static function podcastGroupItemSorts(): array
+    {
+        return [
+            'latest_transcription',
+            'oldest_transcription',
+            'title_asc',
+            'title_desc',
+            'original_newest',
+            'original_oldest',
+            'duration_longest',
+            'duration_shortest',
+        ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public static function podcastGroupItemSortOptions(): array
+    {
+        return collect(self::podcastGroupItemSorts())
+            ->mapWithKeys(fn (string $sort): array => [$sort => __("public.sort.{$sort}")])
+            ->all();
     }
 
     /**

@@ -35,7 +35,8 @@ Recorded after the Markdown-only post-Prompt-10 prompt-progress centralization c
 - Public Front v2 Step 7 About Page Content and Team Builder is implemented and committed as `b4fe4d5 feat: add public about page content and team builder`.
 - Public Front v2 Step 8 Podcasts and Groups UX is implemented and committed as `f3d137e feat: add public podcasts and groups ux`.
 - Public Front v2 Step 9 Public Menu/Header and UX Fixes is implemented and committed as `5cf3363 feat: add public menu header and ux fixes`.
-- Public Front v2 Step 9R Menu/Header UX Fixes is implemented in this change set and will be committed as `fix: refine public menu header and homepage ux`.
+- Public Front v2 Step 9R Menu/Header UX Fixes is implemented and committed as `bfcda46 fix: refine public menu header and homepage ux`.
+- Public Front v2 Step 9R Podcast Episode Grid Settings follow-up is implemented and committed as `feat: add podcast episode grid settings`.
 
 ## Prompt Progress
 
@@ -65,7 +66,8 @@ Recorded after the Markdown-only post-Prompt-10 prompt-progress centralization c
 | Public Front v2 Step 7 About Page Content and Team Builder | Complete | `b4fe4d5 feat: add public about page content and team builder` | Adds JSON-first About page content, public `/about`, safe Markdown/RichEditor rendering, team profiles in JSON settings, team/about image upload constraints, optional Step 6 form CTA integration, tests, and Step 7 handoff. |
 | Public Front v2 Step 8 Podcasts and Groups UX | Complete | `f3d137e feat: add public podcasts and groups ux` | Adds canonical `/podcasts`, public group detail pages at `/podcasts/{contentGroupSlug}`, JSON-first podcast settings, public group query support, group cards, category/search UX, tests, and Step 8 handoff. |
 | Public Front v2 Step 9 Public Menu/Header and UX Fixes | Complete | `5cf3363 feat: add public menu header and ux fixes` | Adds tabbed public settings organization, About/team card fixes, contributor list/preview repairs, homepage chrome/header fixes, JSON-powered public menu/header, theme selector, content-block sections, tests, and Step 9 handoff. |
-| Public Front v2 Step 9R Menu/Header UX Fixes | Complete in current implementation commit | Pending final commit: `fix: refine public menu header and homepage ux` | Verifies Step 8/9 plans, improves FilamentExamples MCP discipline, repairs root-query homepage chrome, extends header logo/search/alignment/theme behavior, adds image styling settings, repairs contributor preview grid, and documents future footer/section-builder scope. |
+| Public Front v2 Step 9R Menu/Header UX Fixes | Complete | `bfcda46 fix: refine public menu header and homepage ux` | Verifies Step 8/9 plans, improves FilamentExamples MCP discipline, repairs root-query homepage chrome, extends header logo/search/alignment/theme behavior, adds image styling settings, repairs contributor preview grid, and documents future footer/section-builder scope. |
+| Public Front v2 Step 9R Podcast Episode Grid Settings follow-up | Complete | `feat: add podcast episode grid settings` | Adds JSON-first podcast detail episode grid/settings controls under `podcasts_page.group_page`, keeps `ContentItemBrowser` as Livewire owner, and preserves Step 10 as the next major implementation step. |
 | Public Front v2 Step 10 Contributors and Top Transcribers UX | Next after ChatGPT/Yoni review | Future prompt | Step 10 is the next major implementation step after Step 9R review. |
 | Prompt 13 dashboard metrics | Not started / blocked unless explicitly chosen by user | Active prompt/blueprint | Owns editorial dashboard widgets after Public Front v2 Step 12 readiness or an explicit dashboard-first decision. |
 | Prompt 14 viewer/studio future plan | Future planning after Prompt 13 | Active prompt/blueprint | Documentation/planning only. |
@@ -536,7 +538,8 @@ Current physical schema verified through Boost `database_schema`:
 - Step 7 About Page Content and Team Builder is committed as `b4fe4d5`.
 - Step 8 Podcasts and Groups UX is committed as `f3d137e`.
 - Step 9 Public Menu/Header and UX Fixes is committed as `5cf3363`.
-- Step 9R Menu/Header UX Fixes is implemented in this change set.
+- Step 9R Menu/Header UX Fixes is committed as `bfcda46`.
+- Step 9R Podcast Episode Grid Settings follow-up is implemented and committed as `feat: add podcast episode grid settings`.
 - Step 10 Contributors and Top Transcribers UX is the next major implementation step after ChatGPT/Yoni review.
 - Future Step 9F/10F Footer + Rich Section Builder foundation is planned after Step 10 and before Step 11 if approved.
 - The PodText logo already exists at `public/images/podtext-logo.jpg` and must be preserved by future public-front work.
@@ -568,8 +571,10 @@ Current physical schema verified through Boost `database_schema`:
 - Public item cards now support safe image fit/radius settings, fall back from item thumbnail to group cover image, and keep group badge/title composition semantic. The JPG logo baseline at `public/images/podtext-logo.jpg` remains the default header fallback.
 - About cards and image blocks now support safe image fit/radius markers, and H1-H6 public Markdown heading classes are covered by tests.
 - Contributor directory follow-up work remains limited to Step 9 repairs: preview related items render as cards/grid and preview state remains Livewire-owned. Full contributor/top-transcriber redesign remains Step 10.
+- Podcast detail pages now have JSON-first episode grid settings under `public_content.podcasts_page.group_page`, including card/list layout, desktop columns, gap, page-size options, search/sort/category/per-page control toggles, allowed/default sorts, and episode card display tokens. `ContentItemBrowser` owns the URL-backed state and public rendering remains custom Livewire + Blade.
 - The future footer/rich-section-builder scope split is documented in `docs/phase-02/public-front-v2-step9f-section-footer-builder-plan.md`; no `FooterSection`, `PublicFooter`, CMS page, `Podcast`, or `Episode` model was created.
 - Step 9R settings migrations `2026_07_06_000002_add_public_step9r_card_settings`, `2026_07_06_000003_normalize_public_step9r_json_defaults`, and `2026_07_06_000004_ensure_public_step9r_about_team_card_defaults` were run locally.
+- Step 9R follow-up settings migration `2026_07_06_000005_add_podcast_episode_grid_settings` was run locally.
 - Step 2 transcription policy remains deferred/reserved.
 - Prompt 13 has not started.
 
@@ -650,7 +655,7 @@ Current physical schema verified through Boost `database_schema`:
 - The admin `PublicFormSubmissionResource` lists submissions, filters by status, searches form key/name snapshot, safely renders payload summaries, and supports mark reviewed/archive/reopen actions.
 - V1 public forms include honeypot protection and Laravel-native rate limiting before live enablement.
 - Email notifications, file uploads, and CAPTCHA package integration remain deferred. Public menu/header integration is implemented in Step 9.
-- Step 7 About Page Content and Team Builder is committed as `b4fe4d5`; Step 8 is committed as `f3d137e`; Step 9 is committed as `5cf3363`; Step 9R is implemented in this change set. Step 2 transcription policy remains deferred/reserved. Prompt 13 has not started.
+- Step 7 About Page Content and Team Builder is committed as `b4fe4d5`; Step 8 is committed as `f3d137e`; Step 9 is committed as `5cf3363`; Step 9R is committed as `bfcda46`; the Step 9R Podcast Episode Grid Settings follow-up is implemented and committed as `feat: add podcast episode grid settings`. Step 2 transcription policy remains deferred/reserved. Prompt 13 has not started.
 - The Step 6 handoff file for review is `docs/phase-02/public-front-v2-step6-public-forms-submissions-handoff.md`.
 
 ## Post-Prompt-10 Guidance Sync Notes

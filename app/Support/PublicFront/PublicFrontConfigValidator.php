@@ -1326,15 +1326,156 @@ class PublicFrontConfigValidator
             'show_description',
             'show_categories',
             'show_episode_descriptions',
+            'items_layout',
+            'items_grid_columns',
+            'items_grid_gap',
             'items_per_page',
+            'page_size_options',
+            'per_page_selector_enabled',
+            'search_enabled',
+            'sort_enabled',
+            'category_filter_enabled',
+            'default_sort',
+            'sort_options',
+            'item_density',
+            'item_image_size',
+            'item_image_fit',
+            'item_image_radius',
+            'item_title_size',
+            'show_episode_authors',
+            'show_episode_tags',
+            'show_episode_duration',
+            'show_episode_effective_date',
         ], 'podcasts_page.group_page', $invalidConfig);
+
+        $itemsPerPage = $this->integerRange($groupPage['items_per_page'] ?? null, 'podcasts_page.group_page.items_per_page', 1, 48, $defaults['items_per_page'], $invalidConfig);
+        $pageSizeOptions = $this->integerOptionsList(
+            $groupPage['page_size_options'] ?? null,
+            'podcasts_page.group_page.page_size_options',
+            1,
+            48,
+            $defaults['page_size_options'] ?? [6, 12, 24, 48],
+            $invalidConfig,
+        );
+        $pageSizeOptions = collect([...$pageSizeOptions, $itemsPerPage])
+            ->unique()
+            ->sort()
+            ->values()
+            ->all();
+
+        $sortOptions = $this->finiteStringList(
+            $groupPage['sort_options'] ?? null,
+            PublicFrontConfigRegistry::podcastGroupItemSorts(),
+            'podcasts_page.group_page.sort_options',
+            $defaults['sort_options'] ?? ['latest_transcription', 'title_asc'],
+            $invalidConfig,
+        );
+        $defaultSort = $this->finiteString(
+            $groupPage['default_sort'] ?? null,
+            $sortOptions,
+            'podcasts_page.group_page.default_sort',
+            $invalidConfig,
+            $defaults['default_sort'] ?? 'latest_transcription',
+        );
+
+        if (! in_array($defaultSort, $sortOptions, true)) {
+            $defaultSort = $sortOptions[0] ?? 'latest_transcription';
+        }
 
         return [
             'show_description' => $this->boolean($groupPage['show_description'] ?? null, 'podcasts_page.group_page.show_description', $defaults['show_description'], $invalidConfig),
             'show_categories' => $this->boolean($groupPage['show_categories'] ?? null, 'podcasts_page.group_page.show_categories', $defaults['show_categories'], $invalidConfig),
             'show_episode_descriptions' => $this->boolean($groupPage['show_episode_descriptions'] ?? null, 'podcasts_page.group_page.show_episode_descriptions', $defaults['show_episode_descriptions'], $invalidConfig),
-            'items_per_page' => $this->integerRange($groupPage['items_per_page'] ?? null, 'podcasts_page.group_page.items_per_page', 1, 48, $defaults['items_per_page'], $invalidConfig),
+            'items_layout' => $this->finiteString($groupPage['items_layout'] ?? null, PublicFrontConfigRegistry::layouts(), 'podcasts_page.group_page.items_layout', $invalidConfig, $defaults['items_layout'] ?? 'cards'),
+            'items_grid_columns' => $this->integerRange($groupPage['items_grid_columns'] ?? null, 'podcasts_page.group_page.items_grid_columns', 1, 4, $defaults['items_grid_columns'] ?? 3, $invalidConfig),
+            'items_grid_gap' => $this->finiteString($groupPage['items_grid_gap'] ?? null, PublicFrontConfigRegistry::podcastGroupItemGridGaps(), 'podcasts_page.group_page.items_grid_gap', $invalidConfig, $defaults['items_grid_gap'] ?? 'comfortable'),
+            'items_per_page' => $itemsPerPage,
+            'page_size_options' => $pageSizeOptions,
+            'per_page_selector_enabled' => $this->boolean($groupPage['per_page_selector_enabled'] ?? null, 'podcasts_page.group_page.per_page_selector_enabled', $defaults['per_page_selector_enabled'] ?? true, $invalidConfig),
+            'search_enabled' => $this->boolean($groupPage['search_enabled'] ?? null, 'podcasts_page.group_page.search_enabled', $defaults['search_enabled'] ?? true, $invalidConfig),
+            'sort_enabled' => $this->boolean($groupPage['sort_enabled'] ?? null, 'podcasts_page.group_page.sort_enabled', $defaults['sort_enabled'] ?? true, $invalidConfig),
+            'category_filter_enabled' => $this->boolean($groupPage['category_filter_enabled'] ?? null, 'podcasts_page.group_page.category_filter_enabled', $defaults['category_filter_enabled'] ?? true, $invalidConfig),
+            'default_sort' => $defaultSort,
+            'sort_options' => $sortOptions,
+            'item_density' => $this->finiteString($groupPage['item_density'] ?? null, PublicFrontConfigRegistry::densities(), 'podcasts_page.group_page.item_density', $invalidConfig, $defaults['item_density'] ?? 'comfortable'),
+            'item_image_size' => $this->finiteString($groupPage['item_image_size'] ?? null, PublicFrontConfigRegistry::imageSizes(), 'podcasts_page.group_page.item_image_size', $invalidConfig, $defaults['item_image_size'] ?? 'medium'),
+            'item_image_fit' => $this->finiteString($groupPage['item_image_fit'] ?? null, PublicFrontConfigRegistry::imageFits(), 'podcasts_page.group_page.item_image_fit', $invalidConfig, $defaults['item_image_fit'] ?? 'cover'),
+            'item_image_radius' => $this->finiteString($groupPage['item_image_radius'] ?? null, PublicFrontConfigRegistry::imageRadii(), 'podcasts_page.group_page.item_image_radius', $invalidConfig, $defaults['item_image_radius'] ?? 'mid_rounded'),
+            'item_title_size' => $this->finiteString($groupPage['item_title_size'] ?? null, PublicFrontConfigRegistry::titleSizes(), 'podcasts_page.group_page.item_title_size', $invalidConfig, $defaults['item_title_size'] ?? 'base'),
+            'show_episode_authors' => $this->boolean($groupPage['show_episode_authors'] ?? null, 'podcasts_page.group_page.show_episode_authors', $defaults['show_episode_authors'] ?? true, $invalidConfig),
+            'show_episode_tags' => $this->boolean($groupPage['show_episode_tags'] ?? null, 'podcasts_page.group_page.show_episode_tags', $defaults['show_episode_tags'] ?? true, $invalidConfig),
+            'show_episode_duration' => $this->boolean($groupPage['show_episode_duration'] ?? null, 'podcasts_page.group_page.show_episode_duration', $defaults['show_episode_duration'] ?? true, $invalidConfig),
+            'show_episode_effective_date' => $this->boolean($groupPage['show_episode_effective_date'] ?? null, 'podcasts_page.group_page.show_episode_effective_date', $defaults['show_episode_effective_date'] ?? true, $invalidConfig),
         ];
+    }
+
+    /**
+     * @param  array<string>  $allowed
+     * @param  array<string>  $defaults
+     * @param  array<PublicFrontInvalidConfig>  $invalidConfig
+     * @return array<int, string>
+     */
+    private function finiteStringList(mixed $items, array $allowed, string $path, array $defaults, array &$invalidConfig): array
+    {
+        if ($items === null) {
+            return $defaults;
+        }
+
+        if (! is_array($items) || ! array_is_list($items)) {
+            $invalidConfig[] = PublicFrontInvalidConfig::make($path, 'expected_list', $items);
+
+            return $defaults;
+        }
+
+        $normalized = [];
+
+        foreach ($items as $index => $item) {
+            $value = $this->finiteString($item, $allowed, "{$path}.{$index}", $invalidConfig, nullable: true);
+
+            if ($value !== null) {
+                $normalized[] = $value;
+            }
+        }
+
+        $normalized = collect($normalized)
+            ->unique()
+            ->values()
+            ->all();
+
+        return $normalized === [] ? $defaults : $normalized;
+    }
+
+    /**
+     * @param  array<int>  $defaults
+     * @param  array<PublicFrontInvalidConfig>  $invalidConfig
+     * @return array<int>
+     */
+    private function integerOptionsList(mixed $items, string $path, int $min, int $max, array $defaults, array &$invalidConfig): array
+    {
+        if ($items === null) {
+            return $defaults;
+        }
+
+        if (! is_array($items) || ! array_is_list($items)) {
+            $invalidConfig[] = PublicFrontInvalidConfig::make($path, 'expected_list', $items);
+
+            return $defaults;
+        }
+
+        $normalized = [];
+
+        foreach ($items as $index => $item) {
+            $normalized[] = $this->integerRange($item, "{$path}.{$index}", $min, $max, 0, $invalidConfig);
+        }
+
+        $normalized = collect($normalized)
+            ->filter(fn (int $value): bool => $value >= $min && $value <= $max)
+            ->unique()
+            ->sort()
+            ->values()
+            ->all();
+
+        return $normalized === [] ? $defaults : $normalized;
     }
 
     /**
