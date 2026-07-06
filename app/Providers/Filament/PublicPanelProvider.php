@@ -34,6 +34,7 @@ class PublicPanelProvider extends PanelProvider
         return $panel
             ->id('public')
             ->path('')
+            ->spa()
             ->viteTheme('resources/css/filament/public/theme.css')
             ->topbar(false)
             ->brandName(fn (): string => __('app.name'))
