@@ -79,6 +79,8 @@ For current prompt completion/progress state, see `docs/phase-02/current-project
 - Use Boost `application_info` early when available.
 - Use Boost docs before code changes when Laravel, Filament, Livewire, or Pest behavior is uncertain.
 - Use FilamentExamples before writing or revising Filament Resources, tables, filters, actions, widgets, imports, or exports when the prompt calls for it.
+- Do not use one broad FilamentExamples query as the whole research pass. Split work into short topic batches, use higher limits such as 8 to 10 when accepted, inspect result names/snippets/paths, run a refined second pass, and record which examples influenced the implementation.
+- When FilamentExamples exposes only `search_examples`, describe the access as search/snippet access and do not imply a separate source fetch occurred.
 - Documentation-only validation should normally be `git diff --check` and `git status --short` unless the active prompt asks for more.
 
 ## How future prompts should use this file

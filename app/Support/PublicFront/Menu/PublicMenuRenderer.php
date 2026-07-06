@@ -13,6 +13,9 @@ class PublicMenuRenderer
      *     enabled: bool,
      *     items: array<int, array<string, mixed>>,
      *     form_mounts: array<int, array{form_key: string, display_mode: string}>,
+     *     items_alignment: string,
+     *     logo: array<string, mixed>,
+     *     search: array<string, mixed>,
      *     theme_selector: array<string, mixed>,
      * }
      */

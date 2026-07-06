@@ -77,6 +77,12 @@
                     @case('image')
                         @php
                             $imageUrl = $renderer->imageUrl($block['image_path'] ?? null);
+                            $imageFit = in_array($block['image_fit'] ?? null, ['cover', 'contain'], true) ? $block['image_fit'] : 'cover';
+                            $imageFitClass = $imageFit === 'contain' ? 'object-contain' : 'object-cover';
+                            $imageRadius = in_array($block['image_radius'] ?? null, ['sharp', 'low_rounded', 'mid_rounded', 'high_rounded', 'round', 'circle'], true)
+                                ? $block['image_radius']
+                                : 'mid_rounded';
+                            $imageRadiusClass = \App\Support\PublicContent\PublicContentCardOptions::radiusClass($imageRadius);
                         @endphp
 
                         @if($imageUrl)
@@ -84,9 +90,11 @@
                                 <img
                                     src="{{ $imageUrl }}"
                                     alt="{{ $block['image_alt'] ?? '' }}"
-                                    class="w-full rounded-lg object-cover"
+                                    class="w-full {{ $imageRadiusClass }} {{ $imageFitClass }}"
                                     loading="lazy"
                                     data-test="about-image"
+                                    data-image-fit="{{ $imageFit }}"
+                                    data-image-radius="{{ $imageRadius }}"
                                 >
 
                                 @if(filled($block['body'] ?? null))

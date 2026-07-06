@@ -12,6 +12,12 @@
         'large' => 'size-28',
         default => 'size-20',
     };
+    $imageFit = in_array($settings['image_fit'] ?? null, ['cover', 'contain'], true) ? $settings['image_fit'] : 'cover';
+    $imageFitClass = $imageFit === 'contain' ? 'object-contain' : 'object-cover';
+    $imageRadius = in_array($settings['image_radius'] ?? null, ['sharp', 'low_rounded', 'mid_rounded', 'high_rounded', 'round', 'circle'], true)
+        ? $settings['image_radius']
+        : 'circle';
+    $imageRadiusClass = \App\Support\PublicContent\PublicContentCardOptions::radiusClass($imageRadius);
     $densityClasses = ($settings['density'] ?? 'comfortable') === 'compact'
         ? 'gap-3 p-3'
         : 'gap-4 p-4';
@@ -34,12 +40,14 @@
     data-team-card-layout="{{ $layout }}"
     data-team-card-density="{{ $settings['density'] ?? 'comfortable' }}"
     data-team-card-image-size="{{ $settings['image_size'] ?? 'medium' }}"
+    data-team-card-image-fit="{{ $imageFit }}"
+    data-team-card-image-radius="{{ $imageRadius }}"
 >
     @if($showImage && $imageUrl)
         <img
             src="{{ $imageUrl }}"
             alt="{{ $profile['name'] }}"
-            class="{{ $imageSize }} shrink-0 rounded-full object-cover"
+            class="{{ $imageSize }} {{ $imageRadiusClass }} {{ $imageFitClass }} shrink-0 bg-gray-100 dark:bg-gray-800"
             loading="lazy"
             data-test="about-team-profile-image"
         >

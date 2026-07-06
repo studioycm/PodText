@@ -22,6 +22,14 @@
         ->squish()
         ->substr(0, 2)
         ->upper();
+    $imageFit = in_array($displayConfig['image_fit'] ?? null, ['cover', 'contain'], true)
+        ? $displayConfig['image_fit']
+        : 'cover';
+    $imageFitClass = $imageFit === 'contain' ? 'object-contain' : 'object-cover';
+    $imageRadius = in_array($displayConfig['image_radius'] ?? null, ['sharp', 'low_rounded', 'mid_rounded', 'high_rounded', 'round', 'circle'], true)
+        ? $displayConfig['image_radius']
+        : 'mid_rounded';
+    $imageRadiusClass = \App\Support\PublicContent\PublicContentCardOptions::radiusClass($imageRadius);
 @endphp
 
 <article
@@ -30,14 +38,16 @@
     data-card-template-key="{{ $templateAttributes['data-card-template-key'] }}"
     data-card-template-layout="{{ $templateAttributes['data-card-template-layout'] }}"
     data-card-template-parts="{{ $templateAttributes['data-card-template-parts'] }}"
+    data-card-image-fit="{{ $imageFit }}"
+    data-card-image-radius="{{ $imageRadius }}"
 >
     <a href="{{ $groupUrl }}" class="block focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-600">
         @if ($coverUrl)
-            <span class="block aspect-square w-full overflow-hidden bg-gray-100 dark:bg-gray-800">
-                <img src="{{ $coverUrl }}" alt="" class="h-full w-full object-cover" loading="lazy">
+            <span class="block aspect-square w-full overflow-hidden bg-gray-100 dark:bg-gray-800 {{ $imageRadiusClass }}" data-test="content-group-image">
+                <img src="{{ $coverUrl }}" alt="" class="h-full w-full {{ $imageFitClass }}" loading="lazy">
             </span>
         @else
-            <div class="flex aspect-square w-full items-center justify-center bg-gray-100 text-2xl font-semibold text-gray-500 dark:bg-gray-800 dark:text-gray-300" data-test="content-group-fallback">
+            <div class="flex aspect-square w-full items-center justify-center bg-gray-100 text-2xl font-semibold text-gray-500 dark:bg-gray-800 dark:text-gray-300 {{ $imageRadiusClass }}" data-test="content-group-fallback">
                 {{ $initials }}
             </div>
         @endif

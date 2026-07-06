@@ -129,7 +129,8 @@
                     :items="$previewItems"
                     :card-options="$cardOptions"
                     :card-template="$contentItemCardTemplate"
-                    layout="rows"
+                    layout="cards"
+                    data-test="contributor-preview-items-grid"
                 />
             @else
                 <div class="rounded-lg border border-dashed border-gray-300 bg-white p-6 text-sm text-gray-600 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-300" data-test="empty-contributor-preview">

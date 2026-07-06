@@ -2,6 +2,7 @@
 
 namespace App\Filament\Public\Pages;
 
+use App\Filament\Public\Pages\Concerns\HidesPublicPageHeader;
 use App\Models\ContentGroup;
 use App\Support\PublicFront\Groups\PublicContentGroupQueries;
 use App\Support\PublicFront\PublicFrontConfigReader;
@@ -11,6 +12,8 @@ use Illuminate\Contracts\Support\Htmlable;
 
 class ShowContentGroup extends Page
 {
+    use HidesPublicPageHeader;
+
     public ContentGroup $contentGroup;
 
     protected static ?string $slug = 'podcasts/{contentGroupSlug}';

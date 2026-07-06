@@ -146,6 +146,20 @@ class PublicContentSettings extends SettingsPage
                                                 'large' => __('admin.card_image_size.large'),
                                             ])
                                             ->required(),
+                                        Select::make('homepage_card_image_fit')
+                                            ->label(__('admin.fields.homepage_card_image_fit'))
+                                            ->helperText(__('admin.helpers.homepage_card_image_fit'))
+                                            ->options(fn (): array => PublicFrontConfigRegistry::imageFitOptions())
+                                            ->default('cover')
+                                            ->native(false)
+                                            ->required(),
+                                        Select::make('homepage_card_image_radius')
+                                            ->label(__('admin.fields.homepage_card_image_radius'))
+                                            ->helperText(__('admin.helpers.homepage_card_image_radius'))
+                                            ->options(fn (): array => PublicFrontConfigRegistry::imageRadiusOptions())
+                                            ->default('mid_rounded')
+                                            ->native(false)
+                                            ->required(),
                                         Select::make('homepage_card_density')
                                             ->label(__('admin.fields.homepage_card_density'))
                                             ->helperText(__('admin.helpers.homepage_card_density'))
@@ -182,6 +196,20 @@ class PublicContentSettings extends SettingsPage
                                         Toggle::make('homepage_show_group_badge')
                                             ->label(__('admin.fields.homepage_show_group_badge'))
                                             ->helperText(__('admin.helpers.homepage_show_group_badge')),
+                                        Select::make('homepage_group_badge_mode')
+                                            ->label(__('admin.fields.homepage_group_badge_mode'))
+                                            ->helperText(__('admin.helpers.homepage_group_badge_mode'))
+                                            ->options(fn (): array => PublicFrontConfigRegistry::groupBadgeModeOptions())
+                                            ->default('name_only')
+                                            ->native(false)
+                                            ->required(),
+                                        TextInput::make('homepage_group_title_separator')
+                                            ->label(__('admin.fields.homepage_group_title_separator'))
+                                            ->helperText(__('admin.helpers.homepage_group_title_separator'))
+                                            ->maxLength(12),
+                                        Toggle::make('homepage_group_badge_duplicate_thumbnail')
+                                            ->label(__('admin.fields.homepage_group_badge_duplicate_thumbnail'))
+                                            ->helperText(__('admin.helpers.homepage_group_badge_duplicate_thumbnail')),
                                         Toggle::make('homepage_show_authors')
                                             ->label(__('admin.fields.homepage_show_authors')),
                                         Toggle::make('homepage_show_categories')
@@ -227,6 +255,20 @@ class PublicContentSettings extends SettingsPage
                                                 'large' => __('admin.card_image_size.large'),
                                             ])
                                             ->required(),
+                                        Select::make('display_defaults.image_fit')
+                                            ->label(__('admin.fields.public_front_card_image_fit'))
+                                            ->helperText(__('admin.helpers.public_front_card_image_fit'))
+                                            ->options(fn (): array => PublicFrontConfigRegistry::imageFitOptions())
+                                            ->default('cover')
+                                            ->native(false)
+                                            ->required(),
+                                        Select::make('display_defaults.image_radius')
+                                            ->label(__('admin.fields.public_front_card_image_radius'))
+                                            ->helperText(__('admin.helpers.public_front_card_image_radius'))
+                                            ->options(fn (): array => PublicFrontConfigRegistry::imageRadiusOptions())
+                                            ->default('mid_rounded')
+                                            ->native(false)
+                                            ->required(),
                                         Select::make('display_defaults.title_size')
                                             ->label(__('admin.fields.public_front_card_title_size'))
                                             ->helperText(__('admin.helpers.public_front_card_title_size'))
@@ -259,6 +301,74 @@ class PublicContentSettings extends SettingsPage
                                         Toggle::make('menu_config.enabled')
                                             ->label(__('admin.fields.public_front_menu_enabled'))
                                             ->helperText(__('admin.helpers.public_front_menu_enabled')),
+                                        Select::make('menu_config.items_alignment')
+                                            ->label(__('admin.fields.public_menu_items_alignment'))
+                                            ->helperText(__('admin.helpers.public_menu_items_alignment'))
+                                            ->options(fn (): array => PublicFrontConfigRegistry::publicMenuAlignmentOptions())
+                                            ->default('center')
+                                            ->native(false)
+                                            ->required(),
+                                        Fieldset::make(__('admin.sections.public_menu_logo'))
+                                            ->schema([
+                                                FileUpload::make('menu_config.logo.light_path')
+                                                    ->label(__('admin.fields.public_menu_logo_light_path'))
+                                                    ->helperText(__('admin.helpers.public_menu_logo_light_path'))
+                                                    ->disk('public')
+                                                    ->directory('header')
+                                                    ->visibility('public')
+                                                    ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/webp', 'image/svg+xml'])
+                                                    ->maxSize(2048),
+                                                FileUpload::make('menu_config.logo.dark_path')
+                                                    ->label(__('admin.fields.public_menu_logo_dark_path'))
+                                                    ->helperText(__('admin.helpers.public_menu_logo_dark_path'))
+                                                    ->disk('public')
+                                                    ->directory('header')
+                                                    ->visibility('public')
+                                                    ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/webp', 'image/svg+xml'])
+                                                    ->maxSize(2048),
+                                                TextInput::make('menu_config.logo.alt_text')
+                                                    ->label(__('admin.fields.public_menu_logo_alt_text'))
+                                                    ->helperText(__('admin.helpers.public_menu_logo_alt_text'))
+                                                    ->maxLength(120),
+                                                Select::make('menu_config.logo.display_mode')
+                                                    ->label(__('admin.fields.public_menu_logo_display_mode'))
+                                                    ->helperText(__('admin.helpers.public_menu_logo_display_mode'))
+                                                    ->options(fn (): array => PublicFrontConfigRegistry::publicMenuLogoDisplayModeOptions())
+                                                    ->default('image')
+                                                    ->native(false),
+                                                Select::make('menu_config.logo.size')
+                                                    ->label(__('admin.fields.public_menu_logo_size'))
+                                                    ->helperText(__('admin.helpers.public_menu_logo_size'))
+                                                    ->options(fn (): array => PublicFrontConfigRegistry::publicMenuLogoSizeOptions())
+                                                    ->default('medium')
+                                                    ->native(false),
+                                            ])
+                                            ->columns(2)
+                                            ->columnSpanFull(),
+                                        Fieldset::make(__('admin.sections.public_menu_search'))
+                                            ->schema([
+                                                Toggle::make('menu_config.search.enabled')
+                                                    ->label(__('admin.fields.public_menu_search_enabled'))
+                                                    ->helperText(__('admin.helpers.public_menu_search_enabled')),
+                                                TextInput::make('menu_config.search.placeholder')
+                                                    ->label(__('admin.fields.public_menu_search_placeholder'))
+                                                    ->helperText(__('admin.helpers.public_menu_search_placeholder'))
+                                                    ->maxLength(120),
+                                                Select::make('menu_config.search.route_key')
+                                                    ->label(__('admin.fields.public_menu_search_route_key'))
+                                                    ->helperText(__('admin.helpers.public_menu_search_route_key'))
+                                                    ->options(fn (): array => PublicFrontConfigRegistry::routeOptions())
+                                                    ->default('search')
+                                                    ->native(false)
+                                                    ->required(),
+                                                TextInput::make('menu_config.search.query_param')
+                                                    ->label(__('admin.fields.public_menu_search_query_param'))
+                                                    ->helperText(__('admin.helpers.public_menu_search_query_param'))
+                                                    ->maxLength(40)
+                                                    ->rules(['regex:/^[a-z][a-z0-9_-]*$/']),
+                                            ])
+                                            ->columns(2)
+                                            ->columnSpanFull(),
                                         Repeater::make('menu_config.items')
                                             ->label(__('admin.fields.public_menu_items'))
                                             ->helperText(__('admin.helpers.public_menu_items'))
@@ -359,6 +469,12 @@ class PublicContentSettings extends SettingsPage
                                                     ])
                                                     ->default('light_dark_system')
                                                     ->native(false),
+                                                Select::make('menu_config.theme_selector.display_mode')
+                                                    ->label(__('admin.fields.public_menu_theme_selector_display_mode'))
+                                                    ->helperText(__('admin.helpers.public_menu_theme_selector_display_mode'))
+                                                    ->options(fn (): array => PublicFrontConfigRegistry::publicMenuThemeDisplayModeOptions())
+                                                    ->default('text_icon')
+                                                    ->native(false),
                                             ])
                                             ->columns(2)
                                             ->columnSpanFull(),
@@ -443,6 +559,20 @@ class PublicContentSettings extends SettingsPage
                                             ->options(fn (): array => $this->cardTemplateOptions('content_item'))
                                             ->placeholder(__('admin.labels.none'))
                                             ->native(false),
+                                        Select::make('podcasts_page.image_fit')
+                                            ->label(__('admin.fields.podcasts_page_image_fit'))
+                                            ->helperText(__('admin.helpers.podcasts_page_image_fit'))
+                                            ->options(fn (): array => PublicFrontConfigRegistry::imageFitOptions())
+                                            ->default('cover')
+                                            ->native(false)
+                                            ->required(),
+                                        Select::make('podcasts_page.image_radius')
+                                            ->label(__('admin.fields.podcasts_page_image_radius'))
+                                            ->helperText(__('admin.helpers.podcasts_page_image_radius'))
+                                            ->options(fn (): array => PublicFrontConfigRegistry::imageRadiusOptions())
+                                            ->default('mid_rounded')
+                                            ->native(false)
+                                            ->required(),
                                         Toggle::make('podcasts_page.show_description')
                                             ->label(__('admin.fields.podcasts_page_show_description'))
                                             ->helperText(__('admin.helpers.podcasts_page_show_description')),
@@ -542,6 +672,18 @@ class PublicContentSettings extends SettingsPage
                                                     ->helperText(__('admin.helpers.about_team_card_image_size'))
                                                     ->options(fn (): array => PublicFrontConfigRegistry::aboutTeamCardImageSizeOptions())
                                                     ->default('medium')
+                                                    ->native(false),
+                                                Select::make('about_page.settings.team_card.image_fit')
+                                                    ->label(__('admin.fields.about_team_card_image_fit'))
+                                                    ->helperText(__('admin.helpers.about_team_card_image_fit'))
+                                                    ->options(fn (): array => PublicFrontConfigRegistry::imageFitOptions())
+                                                    ->default('cover')
+                                                    ->native(false),
+                                                Select::make('about_page.settings.team_card.image_radius')
+                                                    ->label(__('admin.fields.about_team_card_image_radius'))
+                                                    ->helperText(__('admin.helpers.about_team_card_image_radius'))
+                                                    ->options(fn (): array => PublicFrontConfigRegistry::imageRadiusOptions())
+                                                    ->default('circle')
                                                     ->native(false),
                                                 Select::make('about_page.settings.team_card.layout')
                                                     ->label(__('admin.fields.about_team_card_layout'))
@@ -871,6 +1013,7 @@ class PublicContentSettings extends SettingsPage
     protected function mutateFormDataBeforeSave(array $data): array
     {
         $data['about_page'] = $this->normalizeAboutPageUploadState($data['about_page'] ?? []);
+        $data['menu_config'] = $this->normalizeMenuUploadState($data['menu_config'] ?? []);
 
         $publicFrontConfig = app(PublicFrontConfigValidator::class)
             ->validate($data)
@@ -919,6 +1062,24 @@ class PublicContentSettings extends SettingsPage
             ->all();
 
         return $aboutPage;
+    }
+
+    /**
+     * @param  array<string, mixed>|mixed  $menuConfig
+     * @return array<string, mixed>
+     */
+    private function normalizeMenuUploadState(mixed $menuConfig): array
+    {
+        if (! is_array($menuConfig)) {
+            return [];
+        }
+
+        if (is_array($menuConfig['logo'] ?? null)) {
+            $menuConfig['logo']['light_path'] = $this->singleFileUploadPath($menuConfig['logo']['light_path'] ?? null);
+            $menuConfig['logo']['dark_path'] = $this->singleFileUploadPath($menuConfig['logo']['dark_path'] ?? null);
+        }
+
+        return $menuConfig;
     }
 
     private function singleFileUploadPath(mixed $value): ?string
@@ -1052,6 +1213,20 @@ class PublicContentSettings extends SettingsPage
                 ->label(__('admin.fields.about_block_image_alt'))
                 ->helperText(__('admin.helpers.about_block_image_alt'))
                 ->maxLength(160)
+                ->visible($type === 'image'),
+            Select::make('image_fit')
+                ->label(__('admin.fields.about_block_image_fit'))
+                ->helperText(__('admin.helpers.about_block_image_fit'))
+                ->options(fn (): array => PublicFrontConfigRegistry::imageFitOptions())
+                ->default('cover')
+                ->native(false)
+                ->visible($type === 'image'),
+            Select::make('image_radius')
+                ->label(__('admin.fields.about_block_image_radius'))
+                ->helperText(__('admin.helpers.about_block_image_radius'))
+                ->options(fn (): array => PublicFrontConfigRegistry::imageRadiusOptions())
+                ->default('mid_rounded')
+                ->native(false)
                 ->visible($type === 'image'),
             Select::make('form_key')
                 ->label(__('admin.fields.about_block_form_key'))

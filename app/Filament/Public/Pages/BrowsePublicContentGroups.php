@@ -2,6 +2,7 @@
 
 namespace App\Filament\Public\Pages;
 
+use App\Filament\Public\Pages\Concerns\HidesPublicPageHeader;
 use App\Support\PublicFront\PublicFrontConfigReader;
 use Filament\Pages\Page;
 use Filament\Panel;
@@ -9,6 +10,8 @@ use Illuminate\Contracts\Support\Htmlable;
 
 class BrowsePublicContentGroups extends Page
 {
+    use HidesPublicPageHeader;
+
     protected string $view = 'filament.public.pages.browse-content-groups';
 
     protected static bool $shouldRegisterNavigation = false;

@@ -2,6 +2,7 @@
 
 namespace App\Filament\Public\Pages;
 
+use App\Filament\Public\Pages\Concerns\HidesPublicPageHeader;
 use App\Models\ContentGroup;
 use App\Models\ContentItem;
 use Filament\Pages\Page;
@@ -10,6 +11,8 @@ use Illuminate\Contracts\Support\Htmlable;
 
 class ShowContentItem extends Page
 {
+    use HidesPublicPageHeader;
+
     public ContentGroup $contentGroup;
 
     public ContentItem $contentItem;

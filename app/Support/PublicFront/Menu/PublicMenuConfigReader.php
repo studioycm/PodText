@@ -4,6 +4,7 @@ namespace App\Support\PublicFront\Menu;
 
 use App\Enums\PublicMenuItemType;
 use App\Support\PublicFront\PublicFrontConfigReader;
+use Illuminate\Support\Facades\Storage;
 
 class PublicMenuConfigReader
 {
@@ -18,6 +19,9 @@ class PublicMenuConfigReader
      *     enabled: bool,
      *     items: array<int, array<string, mixed>>,
      *     form_mounts: array<int, array{form_key: string, display_mode: string}>,
+     *     items_alignment: string,
+     *     logo: array<string, mixed>,
+     *     search: array<string, mixed>,
      *     theme_selector: array<string, mixed>,
      * }
      */
@@ -34,9 +38,18 @@ class PublicMenuConfigReader
                 'enabled' => false,
                 'items' => [],
                 'form_mounts' => [],
+                'items_alignment' => 'center',
+                'logo' => $this->resolveLogo([]),
+                'search' => [
+                    'enabled' => false,
+                    'url' => null,
+                    'query_param' => 'q',
+                    'placeholder' => __('public.menu.search_placeholder'),
+                ],
                 'theme_selector' => [
                     'enabled' => false,
                     'mode' => 'light_dark_system',
+                    'display_mode' => 'text_icon',
                 ],
             ];
         }
@@ -62,9 +75,13 @@ class PublicMenuConfigReader
             'enabled' => true,
             'items' => $items,
             'form_mounts' => $formMounts,
+            'items_alignment' => $menuConfig['items_alignment'] ?? 'center',
+            'logo' => $this->resolveLogo($menuConfig['logo'] ?? []),
+            'search' => $this->resolveSearch($menuConfig['search'] ?? []),
             'theme_selector' => $menuConfig['theme_selector'] ?? [
                 'enabled' => true,
                 'mode' => 'light_dark_system',
+                'display_mode' => 'text_icon',
             ],
         ];
     }
@@ -150,5 +167,55 @@ class PublicMenuConfigReader
             ->filter(fn (array $definition): bool => ($definition['enabled'] ?? false) === true && filled($definition['key'] ?? null))
             ->mapWithKeys(fn (array $definition): array => [(string) $definition['key'] => $definition])
             ->all();
+    }
+
+    /**
+     * @param  array<string, mixed>  $logo
+     * @return array<string, mixed>
+     */
+    private function resolveLogo(array $logo): array
+    {
+        $lightPath = is_string($logo['light_path'] ?? null) ? $logo['light_path'] : null;
+        $darkPath = is_string($logo['dark_path'] ?? null) ? $logo['dark_path'] : null;
+
+        $lightUrl = $lightPath
+            ? Storage::disk('public')->url($lightPath)
+            : asset('images/podtext-logo.jpg');
+        $darkUrl = $darkPath
+            ? Storage::disk('public')->url($darkPath)
+            : asset('images/podtext-logo.jpg');
+
+        return [
+            'light_path' => $lightPath,
+            'dark_path' => $darkPath,
+            'light_url' => $lightUrl,
+            'dark_url' => $darkUrl,
+            'alt_text' => (string) ($logo['alt_text'] ?? __('app.name')),
+            'display_mode' => in_array($logo['display_mode'] ?? null, ['image', 'image_text', 'text'], true)
+                ? $logo['display_mode']
+                : 'image',
+            'size' => in_array($logo['size'] ?? null, ['small', 'medium', 'large'], true)
+                ? $logo['size']
+                : 'medium',
+            'fallback' => $lightPath === null,
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $search
+     * @return array<string, mixed>
+     */
+    private function resolveSearch(array $search): array
+    {
+        $routeKey = is_string($search['route_key'] ?? null) ? $search['route_key'] : 'search';
+        $url = $this->routeRegistry->url($routeKey);
+
+        return [
+            'enabled' => ($search['enabled'] ?? true) === true && $url !== null,
+            'url' => $url,
+            'route_key' => $routeKey,
+            'query_param' => is_string($search['query_param'] ?? null) ? $search['query_param'] : 'q',
+            'placeholder' => is_string($search['placeholder'] ?? null) ? $search['placeholder'] : __('public.menu.search_placeholder'),
+        ];
     }
 }

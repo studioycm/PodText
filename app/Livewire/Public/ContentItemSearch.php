@@ -95,6 +95,8 @@ class ContentItemSearch extends Component
 
     public bool $sortWasSelected = false;
 
+    public bool $forceHomepageSections = false;
+
     /** @var array<string, string> */
     public array $latestSearch = [];
 
@@ -109,11 +111,13 @@ class ContentItemSearch extends Component
         ?int $categoryId = null,
         ?int $tagId = null,
         ?int $contentGroupId = null,
+        bool $forceHomepageSections = false,
     ): void {
         $this->context = $context;
         $this->categoryId = $categoryId;
         $this->tagId = $tagId;
         $this->contentGroupId = $contentGroupId;
+        $this->forceHomepageSections = $forceHomepageSections;
         $this->sortWasSelected = request()->query->has('sort');
         $this->sort = $this->normalizeSort($this->sort ?: $this->defaultSort());
         $this->filterHasMedia = $this->normalizeMediaFilter($this->filterHasMedia);
@@ -611,11 +615,15 @@ class ContentItemSearch extends Component
     protected function shouldRenderHomepageSections(): bool
     {
         return $this->context === 'home'
-            && ! $this->hasActiveDiscoveryState();
+            && ($this->forceHomepageSections || ! $this->hasActiveDiscoveryState());
     }
 
     public function shouldRenderDiscoveryChrome(): bool
     {
+        if ($this->context === 'home') {
+            return false;
+        }
+
         return ! $this->shouldRenderHomepageSections();
     }
 

@@ -82,6 +82,7 @@ Public Menu/Header runs after Public Forms, About, and Podcasts so it can safely
 - Confirm the previous step was committed before starting the next step.
 - Use Laravel Boost `application_info`, `database_schema`, and `search_docs`.
 - Use FilamentExamples MCP before Filament code and record access level.
+- For FilamentExamples MCP, prepare short search-topic batches before implementation, run multiple searches with a higher limit such as 8 to 10 when supported, inspect result names/snippets/paths, run a refined second pass, and record example names, file/class paths, copied patterns, rejected patterns, and PodText adaptation notes. If only `search_examples` exists, say so explicitly.
 
 ## Non-Negotiable Boundaries
 

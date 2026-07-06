@@ -2,11 +2,14 @@
 
 namespace App\Filament\Public\Pages;
 
+use App\Filament\Public\Pages\Concerns\HidesPublicPageHeader;
 use Filament\Pages\Page;
 use Filament\Panel;
 
 class SearchContentItems extends Page
 {
+    use HidesPublicPageHeader;
+
     protected string $view = 'filament.public.pages.search-content-items';
 
     protected static bool $shouldRegisterNavigation = false;

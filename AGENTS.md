@@ -146,6 +146,17 @@ Use the configured `filament-examples` MCP server when the active prompt request
 - Distinguish search-only results from source/detail access.
 - Do not claim “deep MCP research” unless a fetch/read/detail/source tool was actually used and documented.
 
+#### FilamentExamples MCP research protocol
+
+- Use `filament-examples` MCP before changing Filament Resources, Pages, Settings pages, forms, tables, actions, widgets, Livewire public page patterns, or panel layout/header behavior.
+- Do not run one broad query only. First decompose the feature into short topic phrases, then scatter those terms across multiple query batches.
+- Prefer multiple short queries over one long query. Use `limit` 8 to 10 when supported; if the MCP rejects the limit, retry with the maximum accepted limit or with `limit: 3`.
+- After first results, inspect names, snippets, paths, and class names. Run a second pass with refined terms based on the returned patterns.
+- Search direct goals and neighboring implementation patterns, for example tabbed settings, render hooks, page shells, FileUpload safety, card grids, Livewire state, and public Blade rendering.
+- For each relevant example, record the example name, file/class/snippet found, pattern to copy, pattern to avoid, and PodText adaptation notes.
+- If the MCP exposes a source/read/fetch/details tool, use it. If only `search_examples` exists, record that limitation honestly.
+- Never write MCP token/header values to tracked docs.
+
 ### FilaCheck and FilaCheck Pro
 
 FilaCheck is part of the quality gate for Filament work.

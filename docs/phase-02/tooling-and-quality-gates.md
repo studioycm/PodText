@@ -39,9 +39,15 @@ See also `docs/phase-02/ai-development-lessons.md` for durable lessons from Phas
 
 ### FilamentExamples MCP
 
-- Use `mcp__filament_examples.search_examples` before writing Filament forms, tables, Resources, Pages, widgets, actions, imports, or exports.
+- Use `mcp__filament_examples.search_examples` before writing Filament forms, tables, Resources, Pages, Settings pages, widgets, actions, imports, exports, Livewire public page patterns, or panel layout/header behavior.
+- Do not run one broad query only. Decompose the feature into short topic phrases and scatter them across multiple query batches.
+- Prefer multiple short queries over one long query. Use `limit` 8 to 10 when supported. If the tool rejects the limit, retry with the maximum accepted limit or with `limit: 3`.
+- After first results, inspect result names, snippets, source paths, and class names. Run a second pass with refined terms based on the returned patterns.
+- Search direct goals and surrounding implementation patterns, for example tabbed settings, render hooks, page shells, FileUpload safety, card grids, Livewire state, and public Blade rendering.
 - Record source/example access level. The exposed tool returns source snippets directly; no separate fetch tool is exposed.
 - Record this precisely as source snippets through `search_examples`, not a full repository/source fetch.
+- For relevant examples, record the example name, file/class/snippet found, pattern to copy, pattern to avoid, and PodText adaptation notes.
+- Never write MCP token/header values to tracked docs.
 
 ### FilaCheck and FilaCheck Pro
 

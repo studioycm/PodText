@@ -13,6 +13,7 @@ Every implementation prompt uses Boost where available, reads its blueprint, che
 - Retry Laravel Boost MCP tools before implementation.
 - Read the relevant blueprint first.
 - Use FilamentExamples MCP before Filament code.
+- For FilamentExamples MCP, decompose the feature into short search topics, run multiple query batches with a higher limit such as 8 to 10 when supported, inspect returned names/snippets/paths, then run a refined second pass. Record example names, paths/classes, copied patterns, rejected patterns, PodText adaptation notes, and whether only `search_examples` was available.
 - Run full final quality gate.
 - Record FilaCheck/FilaCheck Pro output.
 - Preserve cross-cutting form, locale, and dashboard requirements from active specs/guidelines.
@@ -53,6 +54,17 @@ npm run build
 
 - Review diffs for secrets before final report.
 - Keep `.env`, MCP config, Composer auth, and license files untouched.
+
+## FilamentExamples MCP Research Protocol
+
+- Use `filament-examples` MCP before changing Filament Resources, Pages, Settings pages, forms, tables, actions, widgets, Livewire public page patterns, or panel layout/header behavior.
+- Do not run one broad query only. First decompose the feature into short topic phrases and scatter them across multiple query batches.
+- Prefer multiple short queries over one long query. Use `limit` 8 to 10 when supported; if the MCP rejects the limit, retry with the maximum accepted limit or with `limit: 3`.
+- After first results, inspect result names, snippets, source paths, and class names. Run a second pass with refined terms based on those results.
+- Search direct goals and surrounding implementation patterns, such as tabbed settings, render hooks, page shells, FileUpload safety, card grids, Livewire state, and public Blade rendering.
+- For each relevant example, record the example name, file/class/snippet found, pattern to copy, pattern to avoid, and PodText adaptation notes.
+- If the MCP exposes a source/read/fetch/details tool, use it. If only `search_examples` exists, record that limitation honestly.
+- Never write MCP token/header values to tracked docs.
 
 ## FilaCheck / FilaCheck Pro notes
 

@@ -277,11 +277,21 @@ class PublicFrontConfigValidator
      */
     private function normalizeMenuConfig(array $menuConfig, array $defaults, array &$invalidConfig): array
     {
-        $this->reportUnknownKeys($menuConfig, ['enabled', 'items', 'theme_selector'], 'menu_config', $invalidConfig);
+        $this->reportUnknownKeys($menuConfig, [
+            'enabled',
+            'items_alignment',
+            'items',
+            'logo',
+            'search',
+            'theme_selector',
+        ], 'menu_config', $invalidConfig);
 
         return [
             'enabled' => $this->boolean($menuConfig['enabled'] ?? null, 'menu_config.enabled', $defaults['enabled'], $invalidConfig),
+            'items_alignment' => $this->finiteString($menuConfig['items_alignment'] ?? null, ['start', 'center', 'end'], 'menu_config.items_alignment', $invalidConfig, $defaults['items_alignment'] ?? 'center'),
             'items' => $this->normalizeMenuItems($menuConfig['items'] ?? $defaults['items'], $invalidConfig),
+            'logo' => $this->normalizeMenuLogo($menuConfig['logo'] ?? $defaults['logo'] ?? [], $defaults['logo'] ?? [], $invalidConfig),
+            'search' => $this->normalizeMenuSearch($menuConfig['search'] ?? $defaults['search'] ?? [], $defaults['search'] ?? [], $invalidConfig),
             'theme_selector' => $this->normalizeThemeSelector($menuConfig['theme_selector'] ?? $defaults['theme_selector'] ?? [], $defaults['theme_selector'] ?? [], $invalidConfig),
         ];
     }
@@ -410,11 +420,79 @@ class PublicFrontConfigValidator
             return $defaults;
         }
 
-        $this->reportUnknownKeys($themeSelector, ['enabled', 'mode'], 'menu_config.theme_selector', $invalidConfig);
+        $this->reportUnknownKeys($themeSelector, ['enabled', 'mode', 'display_mode'], 'menu_config.theme_selector', $invalidConfig);
 
         return [
             'enabled' => $this->boolean($themeSelector['enabled'] ?? null, 'menu_config.theme_selector.enabled', (bool) ($defaults['enabled'] ?? true), $invalidConfig),
             'mode' => $this->finiteString($themeSelector['mode'] ?? null, ['light_dark_system', 'light_dark'], 'menu_config.theme_selector.mode', $invalidConfig, (string) ($defaults['mode'] ?? 'light_dark_system')),
+            'display_mode' => $this->finiteString($themeSelector['display_mode'] ?? null, ['text', 'text_icon', 'icon', 'trigger_icon_menu'], 'menu_config.theme_selector.display_mode', $invalidConfig, (string) ($defaults['display_mode'] ?? 'text_icon')),
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>|mixed  $logo
+     * @param  array<string, mixed>  $defaults
+     * @param  array<PublicFrontInvalidConfig>  $invalidConfig
+     * @return array<string, mixed>
+     */
+    private function normalizeMenuLogo(mixed $logo, array $defaults, array &$invalidConfig): array
+    {
+        if (! is_array($logo)) {
+            $invalidConfig[] = PublicFrontInvalidConfig::make('menu_config.logo', 'expected_array', $logo);
+
+            return $defaults;
+        }
+
+        $this->reportUnknownKeys($logo, [
+            'light_path',
+            'dark_path',
+            'alt_text',
+            'display_mode',
+            'size',
+        ], 'menu_config.logo', $invalidConfig);
+
+        return [
+            'light_path' => array_key_exists('light_path', $logo)
+                ? $this->publicLogoPath($logo['light_path'], 'menu_config.logo.light_path', $invalidConfig)
+                : ($defaults['light_path'] ?? null),
+            'dark_path' => array_key_exists('dark_path', $logo)
+                ? $this->publicLogoPath($logo['dark_path'], 'menu_config.logo.dark_path', $invalidConfig)
+                : ($defaults['dark_path'] ?? null),
+            'alt_text' => $this->plainString($logo['alt_text'] ?? null, 'menu_config.logo.alt_text', $invalidConfig, maxLength: 120, nullable: true)
+                ?? (string) ($defaults['alt_text'] ?? __('app.name')),
+            'display_mode' => $this->finiteString($logo['display_mode'] ?? null, ['image', 'image_text', 'text'], 'menu_config.logo.display_mode', $invalidConfig, (string) ($defaults['display_mode'] ?? 'image')),
+            'size' => $this->finiteString($logo['size'] ?? null, ['small', 'medium', 'large'], 'menu_config.logo.size', $invalidConfig, (string) ($defaults['size'] ?? 'medium')),
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>|mixed  $search
+     * @param  array<string, mixed>  $defaults
+     * @param  array<PublicFrontInvalidConfig>  $invalidConfig
+     * @return array<string, mixed>
+     */
+    private function normalizeMenuSearch(mixed $search, array $defaults, array &$invalidConfig): array
+    {
+        if (! is_array($search)) {
+            $invalidConfig[] = PublicFrontInvalidConfig::make('menu_config.search', 'expected_array', $search);
+
+            return $defaults;
+        }
+
+        $this->reportUnknownKeys($search, [
+            'enabled',
+            'placeholder',
+            'route_key',
+            'query_param',
+        ], 'menu_config.search', $invalidConfig);
+
+        return [
+            'enabled' => $this->boolean($search['enabled'] ?? null, 'menu_config.search.enabled', (bool) ($defaults['enabled'] ?? true), $invalidConfig),
+            'placeholder' => $this->plainString($search['placeholder'] ?? null, 'menu_config.search.placeholder', $invalidConfig, maxLength: 120, nullable: true)
+                ?? (string) ($defaults['placeholder'] ?? __('public.menu.search_placeholder')),
+            'route_key' => $this->finiteString($search['route_key'] ?? null, PublicFrontConfigRegistry::routeKeys(), 'menu_config.search.route_key', $invalidConfig, (string) ($defaults['route_key'] ?? 'search')),
+            'query_param' => $this->semanticKey($search['query_param'] ?? null, 'menu_config.search.query_param', $invalidConfig, nullable: true)
+                ?? (string) ($defaults['query_param'] ?? 'q'),
         ];
     }
 
@@ -507,6 +585,8 @@ class PublicFrontConfigValidator
             'rich_content',
             'image_path',
             'image_alt',
+            'image_fit',
+            'image_radius',
             'style',
             'form_key',
             'display_mode',
@@ -568,6 +648,8 @@ class PublicFrontConfigValidator
             return $normalized + [
                 'image_path' => $imagePath,
                 'image_alt' => $this->plainString($block['image_alt'] ?? null, "{$blockPath}.image_alt", $invalidConfig, maxLength: 160, nullable: true),
+                'image_fit' => $this->finiteString($block['image_fit'] ?? null, PublicFrontConfigRegistry::imageFits(), "{$blockPath}.image_fit", $invalidConfig, 'cover'),
+                'image_radius' => $this->finiteString($block['image_radius'] ?? null, PublicFrontConfigRegistry::imageRadii(), "{$blockPath}.image_radius", $invalidConfig, 'mid_rounded'),
             ];
         }
 
@@ -764,6 +846,8 @@ class PublicFrontConfigValidator
         $this->reportUnknownKeys($settings, [
             'show_image',
             'image_size',
+            'image_fit',
+            'image_radius',
             'layout',
             'density',
             'show_title',
@@ -774,6 +858,8 @@ class PublicFrontConfigValidator
         return [
             'show_image' => $this->boolean($settings['show_image'] ?? null, "{$path}.show_image", (bool) ($defaults['show_image'] ?? true), $invalidConfig),
             'image_size' => $this->finiteString($settings['image_size'] ?? null, PublicAboutPageRegistry::teamCardImageSizes(), "{$path}.image_size", $invalidConfig, (string) ($defaults['image_size'] ?? 'medium')),
+            'image_fit' => $this->finiteString($settings['image_fit'] ?? null, PublicFrontConfigRegistry::imageFits(), "{$path}.image_fit", $invalidConfig, (string) ($defaults['image_fit'] ?? 'cover')),
+            'image_radius' => $this->finiteString($settings['image_radius'] ?? null, PublicFrontConfigRegistry::imageRadii(), "{$path}.image_radius", $invalidConfig, (string) ($defaults['image_radius'] ?? 'circle')),
             'layout' => $this->finiteString($settings['layout'] ?? null, PublicAboutPageRegistry::teamLayouts(), "{$path}.layout", $invalidConfig, (string) ($defaults['layout'] ?? 'grid')),
             'density' => $this->finiteString($settings['density'] ?? null, PublicAboutPageRegistry::teamCardDensities(), "{$path}.density", $invalidConfig, (string) ($defaults['density'] ?? 'comfortable')),
             'show_title' => $this->boolean($settings['show_title'] ?? null, "{$path}.show_title", (bool) ($defaults['show_title'] ?? true), $invalidConfig),
@@ -1154,12 +1240,14 @@ class PublicFrontConfigValidator
      */
     private function normalizeDisplayDefaults(array $displayDefaults, array $defaults, array &$invalidConfig): array
     {
-        $this->reportUnknownKeys($displayDefaults, ['layout', 'density', 'image_size', 'title_size', 'page_size'], 'display_defaults', $invalidConfig);
+        $this->reportUnknownKeys($displayDefaults, ['layout', 'density', 'image_size', 'image_fit', 'image_radius', 'title_size', 'page_size'], 'display_defaults', $invalidConfig);
 
         return [
             'layout' => $this->finiteString($displayDefaults['layout'] ?? null, PublicFrontConfigRegistry::layouts(), 'display_defaults.layout', $invalidConfig, $defaults['layout']),
             'density' => $this->finiteString($displayDefaults['density'] ?? null, PublicFrontConfigRegistry::densities(), 'display_defaults.density', $invalidConfig, $defaults['density']),
             'image_size' => $this->finiteString($displayDefaults['image_size'] ?? null, PublicFrontConfigRegistry::imageSizes(), 'display_defaults.image_size', $invalidConfig, $defaults['image_size']),
+            'image_fit' => $this->finiteString($displayDefaults['image_fit'] ?? null, PublicFrontConfigRegistry::imageFits(), 'display_defaults.image_fit', $invalidConfig, $defaults['image_fit'] ?? 'cover'),
+            'image_radius' => $this->finiteString($displayDefaults['image_radius'] ?? null, PublicFrontConfigRegistry::imageRadii(), 'display_defaults.image_radius', $invalidConfig, $defaults['image_radius'] ?? 'mid_rounded'),
             'title_size' => $this->finiteString($displayDefaults['title_size'] ?? null, PublicFrontConfigRegistry::titleSizes(), 'display_defaults.title_size', $invalidConfig, $defaults['title_size']),
             'page_size' => $this->integerRange($displayDefaults['page_size'] ?? null, 'display_defaults.page_size', 1, 48, $defaults['page_size'], $invalidConfig),
         ];
@@ -1184,6 +1272,8 @@ class PublicFrontConfigValidator
             'search_enabled',
             'template_key',
             'item_template_key',
+            'image_fit',
+            'image_radius',
             'show_description',
             'show_categories',
             'show_episode_count',
@@ -1205,6 +1295,8 @@ class PublicFrontConfigValidator
             'search_enabled' => $this->boolean($podcastsPage['search_enabled'] ?? null, 'podcasts_page.search_enabled', $defaults['search_enabled'], $invalidConfig),
             'template_key' => $this->semanticKey($podcastsPage['template_key'] ?? null, 'podcasts_page.template_key', $invalidConfig, nullable: true),
             'item_template_key' => $this->semanticKey($podcastsPage['item_template_key'] ?? null, 'podcasts_page.item_template_key', $invalidConfig, nullable: true),
+            'image_fit' => $this->finiteString($podcastsPage['image_fit'] ?? null, PublicFrontConfigRegistry::imageFits(), 'podcasts_page.image_fit', $invalidConfig, $defaults['image_fit'] ?? 'cover'),
+            'image_radius' => $this->finiteString($podcastsPage['image_radius'] ?? null, PublicFrontConfigRegistry::imageRadii(), 'podcasts_page.image_radius', $invalidConfig, $defaults['image_radius'] ?? 'mid_rounded'),
             'show_description' => $this->boolean($podcastsPage['show_description'] ?? null, 'podcasts_page.show_description', $defaults['show_description'], $invalidConfig),
             'show_categories' => $this->boolean($podcastsPage['show_categories'] ?? null, 'podcasts_page.show_categories', $defaults['show_categories'], $invalidConfig),
             'show_episode_count' => $this->boolean($podcastsPage['show_episode_count'] ?? null, 'podcasts_page.show_episode_count', $defaults['show_episode_count'], $invalidConfig),
@@ -1445,6 +1537,38 @@ class PublicFrontConfigValidator
 
         if (str_contains($value, '../') || str_contains($value, '//') || str_starts_with($value, '/')) {
             $invalidConfig[] = PublicFrontInvalidConfig::make($path, 'invalid_public_image_path', $value);
+
+            return null;
+        }
+
+        return $value;
+    }
+
+    /**
+     * @param  array<PublicFrontInvalidConfig>  $invalidConfig
+     */
+    private function publicLogoPath(mixed $value, string $path, array &$invalidConfig): ?string
+    {
+        if (is_array($value)) {
+            $value = collect($value)
+                ->filter(fn (mixed $path): bool => is_string($path) && filled($path))
+                ->first();
+        }
+
+        $value = $this->plainString($value, $path, $invalidConfig, maxLength: 255, nullable: true);
+
+        if ($value === null) {
+            return null;
+        }
+
+        if (! preg_match('/^header\/[A-Za-z0-9][A-Za-z0-9._\/-]*\.(?:jpe?g|png|webp|svg)$/i', $value)) {
+            $invalidConfig[] = PublicFrontInvalidConfig::make($path, 'invalid_public_logo_path', $value);
+
+            return null;
+        }
+
+        if (str_contains($value, '../') || str_contains($value, '//') || str_starts_with($value, '/')) {
+            $invalidConfig[] = PublicFrontInvalidConfig::make($path, 'invalid_public_logo_path', $value);
 
             return null;
         }

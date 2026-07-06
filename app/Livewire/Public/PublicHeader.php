@@ -15,7 +15,10 @@ class PublicHeader extends Component
         return view('livewire.public.public-header', [
             'enabled' => $config['enabled'],
             'formMounts' => $config['form_mounts'],
+            'itemsAlignment' => $config['items_alignment'],
             'items' => $config['items'],
+            'logo' => $config['logo'],
+            'search' => $config['search'],
             'themeSelector' => $config['theme_selector'],
         ]);
     }

@@ -9,15 +9,26 @@ class PublicContentCardOptions
 {
     private const IMAGE_SIZES = ['hidden', 'small', 'medium', 'large'];
 
+    private const IMAGE_FITS = ['cover', 'contain'];
+
+    private const IMAGE_RADII = ['sharp', 'low_rounded', 'mid_rounded', 'high_rounded', 'round', 'circle'];
+
     private const DENSITIES = ['compact', 'comfortable'];
 
     private const TITLE_SIZES = ['sm', 'base', 'lg'];
 
+    private const GROUP_BADGE_MODES = ['name_only', 'thumbnail_name', 'combined_title'];
+
     public function __construct(
         public readonly string $imageSize = 'medium',
+        public readonly string $imageFit = 'cover',
+        public readonly string $imageRadius = 'mid_rounded',
         public readonly string $density = 'comfortable',
         public readonly string $titleSize = 'base',
         public readonly bool $showGroupBadge = true,
+        public readonly string $groupBadgeMode = 'name_only',
+        public readonly string $groupTitleSeparator = ' - ',
+        public readonly bool $groupBadgeDuplicateThumbnail = false,
         public readonly bool $showAuthors = true,
         public readonly bool $showCategories = true,
         public readonly bool $showTags = true,
@@ -36,9 +47,14 @@ class PublicContentCardOptions
 
             return new self(
                 imageSize: self::finite($values['homepage_card_image_size'] ?? null, self::IMAGE_SIZES, 'medium'),
+                imageFit: self::finite($values['homepage_card_image_fit'] ?? null, self::IMAGE_FITS, 'cover'),
+                imageRadius: self::finite($values['homepage_card_image_radius'] ?? null, self::IMAGE_RADII, 'mid_rounded'),
                 density: self::finite($values['homepage_card_density'] ?? null, self::DENSITIES, 'comfortable'),
                 titleSize: self::finite($values['homepage_card_title_size'] ?? null, self::TITLE_SIZES, 'base'),
                 showGroupBadge: self::boolean($values['homepage_show_group_badge'] ?? null, true),
+                groupBadgeMode: self::finite($values['homepage_group_badge_mode'] ?? null, self::GROUP_BADGE_MODES, 'name_only'),
+                groupTitleSeparator: self::plainSeparator($values['homepage_group_title_separator'] ?? null),
+                groupBadgeDuplicateThumbnail: self::boolean($values['homepage_group_badge_duplicate_thumbnail'] ?? null, false),
                 showAuthors: self::boolean($values['homepage_show_authors'] ?? null, true),
                 showCategories: self::boolean($values['homepage_show_categories'] ?? null, true),
                 showTags: self::boolean($values['homepage_show_tags'] ?? null, true),
@@ -70,6 +86,28 @@ class PublicContentCardOptions
         };
     }
 
+    public function imageFitClass(): string
+    {
+        return $this->imageFit === 'contain' ? 'object-contain' : 'object-cover';
+    }
+
+    public function imageRadiusClass(): string
+    {
+        return self::radiusClass($this->imageRadius);
+    }
+
+    public static function radiusClass(string $radius): string
+    {
+        return match ($radius) {
+            'sharp' => 'rounded-none',
+            'low_rounded' => 'rounded-sm',
+            'high_rounded' => 'rounded-xl',
+            'round' => 'rounded-2xl',
+            'circle' => 'rounded-full',
+            default => 'rounded-md',
+        };
+    }
+
     public function titleClass(): string
     {
         return match ($this->titleSize) {
@@ -97,6 +135,17 @@ class PublicContentCardOptions
         }
 
         return $value;
+    }
+
+    private static function plainSeparator(mixed $value): string
+    {
+        if (! is_string($value)) {
+            return ' - ';
+        }
+
+        $value = preg_replace('/\s+/', ' ', strip_tags($value)) ?? '';
+
+        return trim($value) === '' || strlen($value) > 12 ? ' - ' : $value;
     }
 
     private static function boolean(mixed $value, bool $default): bool

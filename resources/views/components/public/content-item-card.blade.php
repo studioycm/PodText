@@ -24,6 +24,16 @@
         ? gmdate($item->duration_seconds >= 3600 ? 'H:i:s' : 'i:s', $item->duration_seconds)
         : null;
     $imageSize = $cardTemplate->imageSize;
+    $groupCoverUrl = $item->contentGroup->cover_path
+        ? \Illuminate\Support\Facades\Storage::disk('public')->url($item->contentGroup->cover_path)
+        : null;
+    $imageUrl = $item->external_thumbnail_url ?: $groupCoverUrl;
+    $imageSource = $item->external_thumbnail_url ? 'item' : ($groupCoverUrl ? 'group' : 'fallback');
+    $imageFitClass = $options->imageFitClass();
+    $imageRadiusClass = $options->imageRadiusClass();
+    $titleText = $options->groupBadgeMode === 'combined_title'
+        ? $item->contentGroup->title.$options->groupTitleSeparator.$item->title
+        : $item->title;
 @endphp
 
 <article
@@ -31,6 +41,8 @@
     data-test="content-item-card"
     data-card-density="{{ $presentation['density'] }}"
     data-card-image-size="{{ $imageSize }}"
+    data-card-image-fit="{{ $options->imageFit }}"
+    data-card-image-radius="{{ $options->imageRadius }}"
     data-card-title-size="{{ $presentation['title_size'] }}"
     data-result-layout="{{ $presentation['layout'] }}"
     data-card-template-family="{{ $templateAttributes['data-card-template-family'] }}"
@@ -44,15 +56,16 @@
     @if($imageSize !== 'hidden')
         <a
             href="{{ $itemUrl }}"
-            class="block min-w-0 overflow-hidden rounded-md bg-gray-100 dark:bg-gray-800 {{ $presentation['image'] }}"
-            aria-label="{{ $item->title }}"
+            class="block min-w-0 overflow-hidden bg-gray-100 dark:bg-gray-800 {{ $presentation['image'] }} {{ $imageRadiusClass }}"
+            aria-label="{{ $titleText }}"
             data-test="content-item-image"
+            data-card-image-source="{{ $imageSource }}"
         >
-            @if($item->external_thumbnail_url)
+            @if($imageUrl)
                 <img
-                    src="{{ $item->external_thumbnail_url }}"
+                    src="{{ $imageUrl }}"
                     alt=""
-                    class="h-full w-full object-cover"
+                    class="h-full w-full {{ $imageFitClass }}"
                     loading="lazy"
                 >
             @else
@@ -65,13 +78,18 @@
 
     <div class="{{ $presentation['body'] }}">
         <div class="min-w-0 space-y-2">
-            @if($options->showGroupBadge)
-                <x-public.content-group-badge :group="$item->contentGroup" />
+            @if($options->showGroupBadge && $options->groupBadgeMode !== 'combined_title')
+                <x-public.content-group-badge
+                    :group="$item->contentGroup"
+                    :mode="$options->groupBadgeMode"
+                    :main-image-source="$imageSource"
+                    :allow-duplicate-thumbnail="$options->groupBadgeDuplicateThumbnail"
+                />
             @endif
 
             <h3 class="{{ $presentation['title'] }}">
                 <a href="{{ $itemUrl }}" data-test="content-item-title">
-                    {{ $item->title }}
+                    {{ $titleText }}
                 </a>
             </h3>
         </div>

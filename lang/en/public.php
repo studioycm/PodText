@@ -127,6 +127,7 @@ return [
             'podcasts' => 'Podcasts',
             'search' => 'Search',
         ],
+        'search_placeholder' => 'Search episodes',
         'theme' => 'Theme',
         'toggle_navigation' => 'Toggle navigation',
     ],

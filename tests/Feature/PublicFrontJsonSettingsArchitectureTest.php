@@ -54,6 +54,8 @@ it('merges nested stored config arrays with defaults', function (): void {
         'layout' => 'rows',
         'density' => 'comfortable',
         'image_size' => 'medium',
+        'image_fit' => 'cover',
+        'image_radius' => 'mid_rounded',
         'title_size' => 'base',
         'page_size' => 12,
     ])->and($menuConfig['enabled'])->toBeTrue()
@@ -189,6 +191,8 @@ it('saves sanitized public front config through the settings page while preservi
         'layout' => 'rows',
         'density' => 'compact',
         'image_size' => 'large',
+        'image_fit' => 'cover',
+        'image_radius' => 'mid_rounded',
         'title_size' => 'lg',
         'page_size' => 16,
     ])->and($config->group('route_labels'))->toBe([

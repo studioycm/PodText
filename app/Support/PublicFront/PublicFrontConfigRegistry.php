@@ -37,10 +37,25 @@ class PublicFrontConfigRegistry
             'card_templates' => [],
             'menu_config' => [
                 'enabled' => true,
+                'items_alignment' => 'center',
                 'items' => self::defaultMenuItems(),
+                'logo' => [
+                    'light_path' => null,
+                    'dark_path' => null,
+                    'alt_text' => __('app.name'),
+                    'display_mode' => 'image',
+                    'size' => 'medium',
+                ],
+                'search' => [
+                    'enabled' => true,
+                    'placeholder' => __('public.menu.search_placeholder'),
+                    'route_key' => 'search',
+                    'query_param' => 'q',
+                ],
                 'theme_selector' => [
                     'enabled' => true,
                     'mode' => 'light_dark_system',
+                    'display_mode' => 'text_icon',
                 ],
             ],
             'about_page' => [
@@ -57,6 +72,8 @@ class PublicFrontConfigRegistry
                     'team_card' => [
                         'show_image' => true,
                         'image_size' => 'medium',
+                        'image_fit' => 'cover',
+                        'image_radius' => 'circle',
                         'layout' => 'grid',
                         'density' => 'comfortable',
                         'show_title' => true,
@@ -73,6 +90,8 @@ class PublicFrontConfigRegistry
                 'layout' => PublicFrontLayoutVariant::Cards->value,
                 'density' => PublicFrontLayoutVariant::Comfortable->value,
                 'image_size' => PublicFrontLayoutVariant::Medium->value,
+                'image_fit' => 'cover',
+                'image_radius' => 'mid_rounded',
                 'title_size' => PublicFrontLayoutVariant::Base->value,
                 'page_size' => 12,
             ],
@@ -87,6 +106,8 @@ class PublicFrontConfigRegistry
                 'search_enabled' => true,
                 'template_key' => null,
                 'item_template_key' => null,
+                'image_fit' => 'cover',
+                'image_radius' => 'mid_rounded',
                 'show_description' => true,
                 'show_categories' => true,
                 'show_episode_count' => true,
@@ -160,6 +181,52 @@ class PublicFrontConfigRegistry
             PublicFrontLayoutVariant::Medium->value,
             PublicFrontLayoutVariant::Large->value,
         ];
+    }
+
+    /**
+     * @return array<string>
+     */
+    public static function imageFits(): array
+    {
+        return [
+            'cover',
+            'contain',
+        ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public static function imageFitOptions(): array
+    {
+        return collect(self::imageFits())
+            ->mapWithKeys(fn (string $fit): array => [$fit => __("admin.image_fit.{$fit}")])
+            ->all();
+    }
+
+    /**
+     * @return array<string>
+     */
+    public static function imageRadii(): array
+    {
+        return [
+            'sharp',
+            'low_rounded',
+            'mid_rounded',
+            'high_rounded',
+            'round',
+            'circle',
+        ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public static function imageRadiusOptions(): array
+    {
+        return collect(self::imageRadii())
+            ->mapWithKeys(fn (string $radius): array => [$radius => __("admin.image_radius.{$radius}")])
+            ->all();
     }
 
     /**
@@ -262,6 +329,67 @@ class PublicFrontConfigRegistry
     public static function publicMenuItemTypeOptions(): array
     {
         return PublicMenuItemType::options();
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public static function publicMenuAlignmentOptions(): array
+    {
+        return [
+            'start' => __('admin.public_menu_alignments.start'),
+            'center' => __('admin.public_menu_alignments.center'),
+            'end' => __('admin.public_menu_alignments.end'),
+        ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public static function publicMenuLogoDisplayModeOptions(): array
+    {
+        return [
+            'image' => __('admin.public_menu_logo_display_modes.image'),
+            'image_text' => __('admin.public_menu_logo_display_modes.image_text'),
+            'text' => __('admin.public_menu_logo_display_modes.text'),
+        ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public static function publicMenuLogoSizeOptions(): array
+    {
+        return [
+            'small' => __('admin.public_menu_logo_sizes.small'),
+            'medium' => __('admin.public_menu_logo_sizes.medium'),
+            'large' => __('admin.public_menu_logo_sizes.large'),
+        ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public static function publicMenuThemeDisplayModeOptions(): array
+    {
+        return [
+            'text' => __('admin.public_menu_theme_display_modes.text'),
+            'text_icon' => __('admin.public_menu_theme_display_modes.text_icon'),
+            'icon' => __('admin.public_menu_theme_display_modes.icon'),
+            'trigger_icon_menu' => __('admin.public_menu_theme_display_modes.trigger_icon_menu'),
+        ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public static function groupBadgeModeOptions(): array
+    {
+        return [
+            'name_only' => __('admin.group_badge_modes.name_only'),
+            'thumbnail_name' => __('admin.group_badge_modes.thumbnail_name'),
+            'combined_title' => __('admin.group_badge_modes.combined_title'),
+        ];
     }
 
     /**

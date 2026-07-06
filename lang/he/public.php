@@ -120,6 +120,7 @@ return [
             'volunteer_transcriber' => 'הרשמה כמתמלל',
         ],
         'primary_navigation' => 'ניווט ראשי',
+        'search_placeholder' => 'חיפוש פרקים',
         'routes' => [
             'about' => 'מי אנחנו',
             'contributors' => 'תורמים',

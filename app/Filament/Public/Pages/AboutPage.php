@@ -2,6 +2,7 @@
 
 namespace App\Filament\Public\Pages;
 
+use App\Filament\Public\Pages\Concerns\HidesPublicPageHeader;
 use App\Support\PublicFront\About\PublicAboutPageRenderer;
 use App\Support\PublicFront\PublicFrontConfigReader;
 use Filament\Pages\Page;
@@ -10,6 +11,8 @@ use Illuminate\Contracts\Support\Htmlable;
 
 class AboutPage extends Page
 {
+    use HidesPublicPageHeader;
+
     protected string $view = 'filament.public.pages.about-page';
 
     protected static bool $shouldRegisterNavigation = false;

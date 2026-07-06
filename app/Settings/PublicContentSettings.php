@@ -24,7 +24,17 @@ class PublicContentSettings extends Settings
 
     public string $homepage_card_title_size;
 
+    public string $homepage_card_image_fit;
+
+    public string $homepage_card_image_radius;
+
     public bool $homepage_show_group_badge;
+
+    public string $homepage_group_badge_mode;
+
+    public string $homepage_group_title_separator;
+
+    public bool $homepage_group_badge_duplicate_thumbnail;
 
     public bool $homepage_show_authors;
 
