@@ -86,17 +86,6 @@ return [
         'public_front_configuration' => 'הגדרות החזית הציבורית',
         'visibility_order' => 'נראות וסדר',
     ],
-    'tabs' => [
-        'public_content_settings' => [
-            'about' => 'מי אנחנו',
-            'advanced' => 'מתקדם / אבחון',
-            'display' => 'כללי / תצוגה',
-            'forms' => 'טפסים',
-            'homepage' => 'דף הבית / מקטעים',
-            'menu_header' => 'תפריט / כותרת',
-            'podcasts' => 'פודקאסטים',
-        ],
-    ],
     'fields' => [
         'author_name' => 'שם',
         'authors' => 'מחברים',
@@ -872,6 +861,15 @@ return [
         'item_details' => 'פרטי פריט',
         'transcriptions' => 'תמלולים',
         'transcriptions_badge_tooltip' => 'מספר התמלולים של פריט זה.',
+        'public_content_settings' => [
+            'about' => 'מי אנחנו',
+            'advanced' => 'מתקדם / אבחון',
+            'display' => 'כללי / תצוגה',
+            'forms' => 'טפסים',
+            'homepage' => 'דף הבית / מקטעים',
+            'menu_header' => 'תפריט / כותרת',
+            'podcasts' => 'פודקאסטים',
+        ],
     ],
     'import' => [
         'columns' => [

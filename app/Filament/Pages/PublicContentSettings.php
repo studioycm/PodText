@@ -59,6 +59,7 @@ class PublicContentSettings extends SettingsPage
                 Tabs::make(__('admin.sections.public_content_settings_tabs'))
                     ->key('public-content-settings-tabs')
                     ->persistTabInQueryString('public-content-tab')
+                    ->vertical()
                     ->tabs([
                         Tab::make(__('admin.tabs.public_content_settings.homepage'))
                             ->id('homepage')
@@ -930,9 +931,13 @@ class PublicContentSettings extends SettingsPage
             return null;
         }
 
-        return collect($value)
-            ->filter(fn (mixed $path): bool => is_string($path) && filled($path))
-            ->first();
+        foreach ($value as $path) {
+            if (is_string($path) && filled($path)) {
+                return $path;
+            }
+        }
+
+        return null;
     }
 
     /**
