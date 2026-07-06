@@ -11,10 +11,10 @@ it('browses the public root in a real browser without smoke errors', function ()
     $group = ContentGroup::factory()->published()->create([
         'title' => 'שיחות עומק עם ניקוד',
         'slug' => 'browser-root-group',
-        'description_markdown' => 'תיאור ציבורי קצר.',
+        'description_markdown' => 'תיאור קצר.',
     ]);
     $item = ContentItem::factory()->for($group)->published()->withTranscription()->create([
-        'title' => 'פרק ציבורי בדפדפן',
+        'title' => 'פרק בדפדפן',
         'slug' => 'browser-root-item',
     ]);
 

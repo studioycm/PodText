@@ -109,7 +109,7 @@ function step7AboutConfig(array $overrides = []): array
         'enabled' => true,
         'title' => 'מי אנחנו',
         'kicker' => 'על PodText',
-        'description' => 'תיאור ציבורי בטוח.',
+        'description' => 'תיאור בטוח.',
         'settings' => [
             'team_heading' => 'הצוות',
             'team_description' => 'אנשים שמחזיקים את הפרויקט.',
@@ -391,7 +391,7 @@ it('renders enabled about page content team profiles safe images and enabled for
         ->assertSee('dir="rtl"', false)
         ->assertSee('מי אנחנו')
         ->assertSee('על PodText')
-        ->assertSee('תיאור ציבורי בטוח.')
+        ->assertSee('תיאור בטוח.')
         ->assertSee('<strong>bold</strong>', false)
         ->assertSee('Rich safe text')
         ->assertSee('/storage/about/hero.webp')
