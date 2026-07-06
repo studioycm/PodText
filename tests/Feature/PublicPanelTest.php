@@ -16,7 +16,7 @@ it('allows guests to browse the public panel root with rtl layout markers', func
         'slug' => 'published-hebrew-group',
     ]);
     $item = ContentItem::factory()->for($group)->published()->withTranscription()->create([
-        'title' => 'פרק ציבורי',
+        'title' => 'פרק',
         'slug' => 'public-item',
     ]);
 

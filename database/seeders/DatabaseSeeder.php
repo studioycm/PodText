@@ -34,9 +34,9 @@ class DatabaseSeeder extends Seeder
         ]);
 
         ContentGroup::factory()->create([
-            'title' => 'קבוצה בטיוטה',
+            'title' => 'פודקאסט בטיוטה',
             'slug' => 'draft-group',
-            'description_markdown' => 'קבוצה זו אינה גלויה לציבור.',
+            'description_markdown' => 'פודקאסט זה איננו גלוי לציבור.',
         ]);
 
         $publishedItem = ContentItem::factory()->for($publishedGroup)->published(now()->subDays(9))->create([
