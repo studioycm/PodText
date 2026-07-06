@@ -3,6 +3,7 @@
 namespace App\Filament\Public\Pages;
 
 use App\Filament\Public\Pages\Concerns\HidesPublicPageHeader;
+use App\Support\PublicFront\PublicFrontConfigReader;
 use Filament\Pages\Page;
 use Filament\Panel;
 
@@ -22,6 +23,14 @@ class BrowseContributors extends Page
     public static function getRelativeRouteName(Panel $panel): string
     {
         return 'contributors.index';
+    }
+
+    public function mount(): void
+    {
+        abort_unless(
+            app(PublicFrontConfigReader::class)->read()->group('contributors_page')['enabled'] ?? true,
+            404,
+        );
     }
 
     public function getTitle(): string

@@ -246,9 +246,17 @@
                                 {{ __('public.empty.items') }}
                             </div>
                         @endif
-                    @elseif(in_array($section->sourceType, ['contributors', 'top_transcribers'], true))
+                    @elseif($section->sourceType === \App\Support\PublicFront\Sections\PublicDisplaySectionRegistry::TOP_TRANSCRIBERS)
+                        <livewire:public.top-transcribers-section
+                            :section-key="$section->key"
+                            :heading="$section->heading"
+                            :view-more-url="$section->viewMoreUrl"
+                            :contributor-ids="$section->contributors->pluck('id')->all()"
+                            :key="'top-transcribers-'.$section->key"
+                        />
+                    @elseif($section->sourceType === \App\Support\PublicFront\Sections\PublicDisplaySectionRegistry::CONTRIBUTORS)
                         @if($section->contributors->isNotEmpty())
-                            <div class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3" data-test="top-transcribers-grid">
+                            <div class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3" data-test="contributors-grid">
                                 @foreach($section->contributors as $author)
                                     <x-public.contributor-card
                                         :author="$author"

@@ -751,6 +751,237 @@ class PublicContentSettings extends SettingsPage
                                     ->collapsible()
                                     ->columnSpanFull(),
                             ]),
+                        Tab::make(__('admin.tabs.public_content_settings.contributors'))
+                            ->id('contributors')
+                            ->key('public-settings-tab-contributors')
+                            ->schema([
+                                Section::make(__('admin.sections.public_front_contributors_page'))
+                                    ->description(__('admin.descriptions.public_front_contributors_page'))
+                                    ->schema([
+                                        Fieldset::make(__('admin.sections.public_front_contributors_identity'))
+                                            ->schema([
+                                                Toggle::make('contributors_page.enabled')
+                                                    ->label(__('admin.fields.contributors_page_enabled'))
+                                                    ->helperText(__('admin.helpers.contributors_page_enabled')),
+                                                TextInput::make('contributors_page.title')
+                                                    ->label(__('admin.fields.contributors_page_title'))
+                                                    ->helperText(__('admin.helpers.contributors_page_title'))
+                                                    ->required()
+                                                    ->maxLength(160),
+                                                Textarea::make('contributors_page.description')
+                                                    ->label(__('admin.fields.contributors_page_description'))
+                                                    ->helperText(__('admin.helpers.contributors_page_description'))
+                                                    ->rows(3)
+                                                    ->maxLength(1000)
+                                                    ->columnSpanFull(),
+                                                TextInput::make('contributors_page.label_singular')
+                                                    ->label(__('admin.fields.contributors_page_label_singular'))
+                                                    ->helperText(__('admin.helpers.contributors_page_label_singular'))
+                                                    ->required()
+                                                    ->maxLength(80),
+                                                TextInput::make('contributors_page.label_plural')
+                                                    ->label(__('admin.fields.contributors_page_label_plural'))
+                                                    ->helperText(__('admin.helpers.contributors_page_label_plural'))
+                                                    ->required()
+                                                    ->maxLength(80),
+                                                TextInput::make('contributors_page.item_label_singular')
+                                                    ->label(__('admin.fields.contributors_page_item_label_singular'))
+                                                    ->helperText(__('admin.helpers.contributors_page_item_label_singular'))
+                                                    ->required()
+                                                    ->maxLength(80),
+                                                TextInput::make('contributors_page.item_label_plural')
+                                                    ->label(__('admin.fields.contributors_page_item_label_plural'))
+                                                    ->helperText(__('admin.helpers.contributors_page_item_label_plural'))
+                                                    ->required()
+                                                    ->maxLength(80),
+                                            ])
+                                            ->columns(3)
+                                            ->columnSpanFull(),
+                                        Fieldset::make(__('admin.sections.public_front_contributors_directory'))
+                                            ->schema([
+                                                Select::make('contributors_page.directory.default_sort')
+                                                    ->label(__('admin.fields.contributors_directory_default_sort'))
+                                                    ->helperText(__('admin.helpers.contributors_directory_default_sort'))
+                                                    ->options(fn (): array => PublicFrontConfigRegistry::contributorDirectorySortOptions())
+                                                    ->default('count_desc')
+                                                    ->native(false)
+                                                    ->required(),
+                                                Select::make('contributors_page.directory.sort_options')
+                                                    ->label(__('admin.fields.contributors_directory_sort_options'))
+                                                    ->helperText(__('admin.helpers.contributors_directory_sort_options'))
+                                                    ->options(fn (): array => PublicFrontConfigRegistry::contributorDirectorySortOptions())
+                                                    ->multiple()
+                                                    ->native(false)
+                                                    ->required(),
+                                                Select::make('contributors_page.directory.default_per_page')
+                                                    ->label(__('admin.fields.contributors_directory_default_per_page'))
+                                                    ->helperText(__('admin.helpers.contributors_directory_default_per_page'))
+                                                    ->options(fn (): array => PublicFrontConfigRegistry::contributorDirectoryPageSizeOptions())
+                                                    ->default(10)
+                                                    ->native(false)
+                                                    ->required(),
+                                                Select::make('contributors_page.directory.per_page_options')
+                                                    ->label(__('admin.fields.contributors_directory_per_page_options'))
+                                                    ->helperText(__('admin.helpers.contributors_directory_per_page_options'))
+                                                    ->options(fn (): array => PublicFrontConfigRegistry::contributorDirectoryPageSizeOptions())
+                                                    ->multiple()
+                                                    ->native(false)
+                                                    ->required(),
+                                                TextInput::make('contributors_page.directory.preview_items_per_page')
+                                                    ->label(__('admin.fields.contributors_directory_preview_items_per_page'))
+                                                    ->helperText(__('admin.helpers.contributors_directory_preview_items_per_page'))
+                                                    ->required()
+                                                    ->numeric()
+                                                    ->integer()
+                                                    ->minValue(1)
+                                                    ->maxValue(24),
+                                                Select::make('contributors_page.directory.preview_grid_columns')
+                                                    ->label(__('admin.fields.contributors_directory_preview_grid_columns'))
+                                                    ->helperText(__('admin.helpers.contributors_directory_preview_grid_columns'))
+                                                    ->options(fn (): array => PublicFrontConfigRegistry::contributorGridColumnOptions())
+                                                    ->default(3)
+                                                    ->native(false)
+                                                    ->required(),
+                                                Toggle::make('contributors_page.directory.preview_search_enabled')
+                                                    ->label(__('admin.fields.contributors_directory_preview_search_enabled'))
+                                                    ->helperText(__('admin.helpers.contributors_directory_preview_search_enabled')),
+                                            ])
+                                            ->columns(3)
+                                            ->columnSpanFull(),
+                                        Fieldset::make(__('admin.sections.public_front_top_transcribers'))
+                                            ->schema([
+                                                Toggle::make('contributors_page.top_transcribers.enabled')
+                                                    ->label(__('admin.fields.top_transcribers_enabled'))
+                                                    ->helperText(__('admin.helpers.top_transcribers_enabled')),
+                                                TextInput::make('contributors_page.top_transcribers.limit')
+                                                    ->label(__('admin.fields.top_transcribers_limit'))
+                                                    ->helperText(__('admin.helpers.top_transcribers_limit'))
+                                                    ->required()
+                                                    ->numeric()
+                                                    ->integer()
+                                                    ->minValue(1)
+                                                    ->maxValue(24),
+                                                Select::make('contributors_page.top_transcribers.layout')
+                                                    ->label(__('admin.fields.top_transcribers_layout'))
+                                                    ->helperText(__('admin.helpers.top_transcribers_layout'))
+                                                    ->options(fn (): array => PublicFrontConfigRegistry::topTranscriberLayoutOptions())
+                                                    ->default('horizontal')
+                                                    ->native(false)
+                                                    ->required(),
+                                                Select::make('contributors_page.top_transcribers.preview_default_page_size')
+                                                    ->label(__('admin.fields.top_transcribers_preview_default_page_size'))
+                                                    ->helperText(__('admin.helpers.top_transcribers_preview_default_page_size'))
+                                                    ->options(fn (): array => PublicFrontConfigRegistry::topTranscriberPreviewPageSizeOptions())
+                                                    ->default(5)
+                                                    ->native(false)
+                                                    ->required(),
+                                                Select::make('contributors_page.top_transcribers.preview_page_size_options')
+                                                    ->label(__('admin.fields.top_transcribers_preview_page_size_options'))
+                                                    ->helperText(__('admin.helpers.top_transcribers_preview_page_size_options'))
+                                                    ->options(fn (): array => PublicFrontConfigRegistry::topTranscriberPreviewPageSizeOptions())
+                                                    ->multiple()
+                                                    ->native(false)
+                                                    ->required(),
+                                                Select::make('contributors_page.top_transcribers.preview_grid_columns')
+                                                    ->label(__('admin.fields.top_transcribers_preview_grid_columns'))
+                                                    ->helperText(__('admin.helpers.top_transcribers_preview_grid_columns'))
+                                                    ->options(fn (): array => PublicFrontConfigRegistry::contributorGridColumnOptions())
+                                                    ->default(3)
+                                                    ->native(false)
+                                                    ->required(),
+                                                Toggle::make('contributors_page.top_transcribers.show_full_page_link')
+                                                    ->label(__('admin.fields.top_transcribers_show_full_page_link'))
+                                                    ->helperText(__('admin.helpers.top_transcribers_show_full_page_link')),
+                                                Toggle::make('contributors_page.top_transcribers.show_count_badge')
+                                                    ->label(__('admin.fields.top_transcribers_show_count_badge'))
+                                                    ->helperText(__('admin.helpers.top_transcribers_show_count_badge')),
+                                            ])
+                                            ->columns(3)
+                                            ->columnSpanFull(),
+                                        Fieldset::make(__('admin.sections.public_front_contributor_cards'))
+                                            ->schema([
+                                                Toggle::make('contributors_page.cards.compact_show_count')
+                                                    ->label(__('admin.fields.contributor_cards_compact_show_count'))
+                                                    ->helperText(__('admin.helpers.contributor_cards_compact_show_count')),
+                                                Select::make('contributors_page.cards.compact_count_icon')
+                                                    ->label(__('admin.fields.contributor_cards_compact_count_icon'))
+                                                    ->helperText(__('admin.helpers.contributor_cards_compact_count_icon'))
+                                                    ->options(fn (): array => PublicFrontConfigRegistry::contributorCardIconOptions())
+                                                    ->default('document-text')
+                                                    ->native(false)
+                                                    ->required(),
+                                                Toggle::make('contributors_page.cards.preview_show_bio')
+                                                    ->label(__('admin.fields.contributor_cards_preview_show_bio'))
+                                                    ->helperText(__('admin.helpers.contributor_cards_preview_show_bio')),
+                                                Toggle::make('contributors_page.cards.preview_show_counts')
+                                                    ->label(__('admin.fields.contributor_cards_preview_show_counts'))
+                                                    ->helperText(__('admin.helpers.contributor_cards_preview_show_counts')),
+                                            ])
+                                            ->columns(2)
+                                            ->columnSpanFull(),
+                                        Fieldset::make(__('admin.sections.public_front_contributor_page_items'))
+                                            ->schema([
+                                                TextInput::make('contributors_page.page.items_per_page')
+                                                    ->label(__('admin.fields.contributor_page_items_per_page'))
+                                                    ->helperText(__('admin.helpers.contributor_page_items_per_page'))
+                                                    ->required()
+                                                    ->numeric()
+                                                    ->integer()
+                                                    ->minValue(1)
+                                                    ->maxValue(48),
+                                                Select::make('contributors_page.page.page_size_options')
+                                                    ->label(__('admin.fields.contributor_page_page_size_options'))
+                                                    ->helperText(__('admin.helpers.contributor_page_page_size_options'))
+                                                    ->options([
+                                                        6 => '6',
+                                                        12 => '12',
+                                                        18 => '18',
+                                                        24 => '24',
+                                                        36 => '36',
+                                                        48 => '48',
+                                                    ])
+                                                    ->multiple()
+                                                    ->native(false)
+                                                    ->required(),
+                                                Select::make('contributors_page.page.default_sort')
+                                                    ->label(__('admin.fields.contributor_page_default_sort'))
+                                                    ->helperText(__('admin.helpers.contributor_page_default_sort'))
+                                                    ->options(fn (): array => PublicFrontConfigRegistry::contributorItemSortOptions())
+                                                    ->default('latest_transcription')
+                                                    ->native(false)
+                                                    ->required(),
+                                                Select::make('contributors_page.page.sort_options')
+                                                    ->label(__('admin.fields.contributor_page_sort_options'))
+                                                    ->helperText(__('admin.helpers.contributor_page_sort_options'))
+                                                    ->options(fn (): array => PublicFrontConfigRegistry::contributorItemSortOptions())
+                                                    ->multiple()
+                                                    ->native(false)
+                                                    ->required(),
+                                                Toggle::make('contributors_page.page.search_enabled')
+                                                    ->label(__('admin.fields.contributor_page_search_enabled'))
+                                                    ->helperText(__('admin.helpers.contributor_page_search_enabled')),
+                                                Select::make('contributors_page.page.grid_columns')
+                                                    ->label(__('admin.fields.contributor_page_grid_columns'))
+                                                    ->helperText(__('admin.helpers.contributor_page_grid_columns'))
+                                                    ->options(fn (): array => PublicFrontConfigRegistry::contributorGridColumnOptions())
+                                                    ->default(3)
+                                                    ->native(false)
+                                                    ->required(),
+                                                Select::make('contributors_page.page.grid_gap')
+                                                    ->label(__('admin.fields.contributor_page_grid_gap'))
+                                                    ->helperText(__('admin.helpers.contributor_page_grid_gap'))
+                                                    ->options(fn (): array => PublicFrontConfigRegistry::podcastGroupItemGridGapOptions())
+                                                    ->default('comfortable')
+                                                    ->native(false)
+                                                    ->required(),
+                                            ])
+                                            ->columns(3)
+                                            ->columnSpanFull(),
+                                    ])
+                                    ->columns(1)
+                                    ->collapsible()
+                                    ->columnSpanFull(),
+                            ]),
                         Tab::make(__('admin.tabs.public_content_settings.about'))
                             ->id('about')
                             ->key('public-settings-tab-about')

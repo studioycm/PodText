@@ -79,6 +79,9 @@ return [
     'labels' => [
         'authors' => 'Authors',
         'breadcrumbs' => 'Breadcrumbs',
+        'contributor' => 'Contributor',
+        'contributors' => 'Contributors',
+        'contributor_transcriptions' => 'Contributor transcriptions',
         'content_item' => 'Content item',
         'duration' => 'Duration',
         'duration_value' => 'Duration: :duration',
@@ -99,6 +102,9 @@ return [
         'public_group_items_count' => ':count :label',
         'public_transcriptions_count' => '{0} No public transcriptions|{1} 1 public transcription|[2,*] :count public transcriptions',
         'published_items_count' => '{0} No published items|{1} 1 published item|[2,*] :count published items',
+        'item' => 'item',
+        'items' => 'items',
+        'untitled_transcription' => 'Untitled transcription',
         'yes' => 'Yes',
     ],
     'meta' => [
@@ -153,6 +159,7 @@ return [
             'kicker' => 'Contributors',
             'preview_description' => 'A quick preview of public items connected through published transcriptions.',
             'preview_kicker' => 'Selected contributor',
+            'top_preview_kicker' => 'Top transcriber preview',
             'title' => 'Contributors',
         ],
         'group' => [

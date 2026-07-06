@@ -79,6 +79,9 @@ return [
     'labels' => [
         'authors' => 'יוצרים',
         'breadcrumbs' => 'פירורי לחם',
+        'contributor' => 'תורם',
+        'contributors' => 'תורמים',
+        'contributor_transcriptions' => 'תמלולים של התורם',
         'content_item' => 'פריט תוכן',
         'duration' => 'משך',
         'duration_value' => 'משך: :duration',
@@ -99,6 +102,9 @@ return [
         'public_group_items_count' => ':count :label',
         'public_transcriptions_count' => '{0} אין תמלולים ציבוריים|{1} תמלול ציבורי אחד|[2,*] :count תמלולים ציבוריים',
         'published_items_count' => '{0} אין פריטים שפורסמו|{1} פריט אחד שפורסם|[2,*] :count פריטים שפורסמו',
+        'item' => 'פריט',
+        'items' => 'פריטים',
+        'untitled_transcription' => 'תמלול ללא כותרת',
         'yes' => 'כן',
     ],
     'meta' => [
@@ -153,6 +159,7 @@ return [
             'kicker' => 'תורמים',
             'preview_description' => 'תצוגה מהירה של פריטים ציבוריים שמחוברים דרך תמלולים שפורסמו.',
             'preview_kicker' => 'תורם נבחר',
+            'top_preview_kicker' => 'תצוגת מתמלל מוביל',
             'title' => 'תורמים',
         ],
         'group' => [

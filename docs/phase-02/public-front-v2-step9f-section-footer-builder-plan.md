@@ -26,6 +26,18 @@ Build a foundation prompt rather than a full CMS:
 - Render through app-owned Blade components and existing safe Markdown/RichEditor renderers.
 - Do not add public page routing, generic page models, or footer settings-only models.
 
+## Step 10 Update
+
+Public Front v2 Step 10 implemented contributor/top-transcriber UX without adding footer or rich-section builder code. The actual Step 10 needs that should inform Step 9F/10F are:
+
+- top-transcriber homepage sections use a selector plus preview pattern, owned by a focused Livewire component;
+- preview grids and contributor item grids use semantic column and gap settings rather than raw classes;
+- grouped related content can render one `ContentItem` card with supporting nested metadata below it;
+- future rich sections should support semantic grid controls and optional preview-like regions, but should avoid turning every section into a generic CMS surface until there is a second concrete use case;
+- the footer/rich section builder should still run after Step 10 and before Step 11 seeders if approved, so Step 11 can seed stable footer/rich-section demo content.
+
+Recommended next decision after Step 10: run Step 9F/10F before Step 11 if footer/rich sections are needed for the demo baseline; otherwise proceed directly to Step 11 and keep this plan as the future foundation contract.
+
 ## Homepage Rich Section Requirements
 
 Requested capabilities:
@@ -187,6 +199,8 @@ Future prompt should cover:
 - Settings normalization accepts allowed section/footer tokens and rejects raw classes/unsafe values.
 - Admin settings page renders full-width tabs/sections and repeaters/builders.
 - Public homepage renders rich columns in responsive semantic layouts.
+- Selector/preview regions, if generalized, use explicit semantic layout tokens and do not expose arbitrary Livewire classes or Blade paths.
+- Related-card grids reuse the Step 10 pattern of semantic columns/gaps and app-owned supporting metadata components.
 - Markdown/RichEditor blocks are sanitized and keep H1-H6 hierarchy.
 - Link/form CTA blocks resolve only known routes and enabled public forms.
 - Footer renders sections and bottom bar when enabled.

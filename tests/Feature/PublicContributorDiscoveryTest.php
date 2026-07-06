@@ -79,7 +79,7 @@ it('renders top transcribers homepage section with public counts and section lim
 
     Livewire::test(ContentItemSearch::class)
         ->assertSee('data-section-type="top_transcribers"', false)
-        ->assertSee('data-test="top-transcribers-grid"', false)
+        ->assertSee('data-test="top-transcribers-section"', false)
         ->assertSee($top->name)
         ->assertSee(trans_choice('public.labels.public_transcriptions_count', 2, ['count' => 2]))
         ->assertSee(trans_choice('public.labels.public_content_items_count', 1, ['count' => 1]))

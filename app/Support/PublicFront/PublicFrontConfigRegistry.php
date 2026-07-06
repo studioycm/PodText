@@ -25,6 +25,7 @@ class PublicFrontConfigRegistry
             'route_labels',
             'display_defaults',
             'podcasts_page',
+            'contributors_page',
         ];
     }
 
@@ -146,6 +147,49 @@ class PublicFrontConfigRegistry
                     'show_episode_effective_date' => true,
                 ],
             ],
+            'contributors_page' => [
+                'enabled' => true,
+                'title' => __('public.pages.contributors.title'),
+                'description' => __('public.pages.contributors.description'),
+                'label_singular' => __('public.labels.contributor'),
+                'label_plural' => __('public.labels.contributors'),
+                'item_label_singular' => __('public.labels.item'),
+                'item_label_plural' => __('public.labels.items'),
+                'directory' => [
+                    'per_page_options' => [10, 15, 20],
+                    'default_per_page' => 10,
+                    'default_sort' => 'count_desc',
+                    'sort_options' => ['name_asc', 'name_desc', 'count_desc', 'count_asc'],
+                    'preview_items_per_page' => 6,
+                    'preview_grid_columns' => 3,
+                    'preview_search_enabled' => true,
+                ],
+                'top_transcribers' => [
+                    'enabled' => true,
+                    'limit' => 8,
+                    'layout' => 'horizontal',
+                    'preview_default_page_size' => 5,
+                    'preview_page_size_options' => [5, 10, 15],
+                    'preview_grid_columns' => 3,
+                    'show_full_page_link' => true,
+                    'show_count_badge' => true,
+                ],
+                'cards' => [
+                    'compact_show_count' => true,
+                    'compact_count_icon' => 'document-text',
+                    'preview_show_bio' => true,
+                    'preview_show_counts' => true,
+                ],
+                'page' => [
+                    'items_per_page' => 12,
+                    'page_size_options' => [6, 12, 24],
+                    'default_sort' => 'latest_transcription',
+                    'sort_options' => ['latest_transcription', 'oldest_transcription', 'title_asc', 'title_desc'],
+                    'search_enabled' => true,
+                    'grid_columns' => 3,
+                    'grid_gap' => 'comfortable',
+                ],
+            ],
         ];
     }
 
@@ -162,6 +206,7 @@ class PublicFrontConfigRegistry
             'route_labels' => 'routeLabels',
             'display_defaults' => 'displayDefaults',
             'podcasts_page' => 'podcastsPage',
+            'contributors_page' => 'contributorsPage',
         ];
     }
 
@@ -483,6 +528,146 @@ class PublicFrontConfigRegistry
     {
         return collect(self::podcastGroupItemSorts())
             ->mapWithKeys(fn (string $sort): array => [$sort => __("public.sort.{$sort}")])
+            ->all();
+    }
+
+    /**
+     * @return array<string>
+     */
+    public static function contributorDirectorySorts(): array
+    {
+        return [
+            'name_asc',
+            'name_desc',
+            'count_desc',
+            'count_asc',
+        ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public static function contributorDirectorySortOptions(): array
+    {
+        return collect(self::contributorDirectorySorts())
+            ->mapWithKeys(fn (string $sort): array => [$sort => __("public.sort.contributors_{$sort}")])
+            ->all();
+    }
+
+    /**
+     * @return array<int>
+     */
+    public static function contributorDirectoryPageSizes(): array
+    {
+        return [10, 15, 20];
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    public static function contributorDirectoryPageSizeOptions(): array
+    {
+        return collect(self::contributorDirectoryPageSizes())
+            ->mapWithKeys(fn (int $size): array => [$size => (string) $size])
+            ->all();
+    }
+
+    /**
+     * @return array<int>
+     */
+    public static function topTranscriberPreviewPageSizes(): array
+    {
+        return [5, 10, 15];
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    public static function topTranscriberPreviewPageSizeOptions(): array
+    {
+        return collect(self::topTranscriberPreviewPageSizes())
+            ->mapWithKeys(fn (int $size): array => [$size => (string) $size])
+            ->all();
+    }
+
+    /**
+     * @return array<string>
+     */
+    public static function topTranscriberLayouts(): array
+    {
+        return [
+            'horizontal',
+        ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public static function topTranscriberLayoutOptions(): array
+    {
+        return [
+            'horizontal' => __('admin.layouts.horizontal'),
+        ];
+    }
+
+    /**
+     * @return array<string>
+     */
+    public static function contributorCardIcons(): array
+    {
+        return [
+            'document-text',
+        ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public static function contributorCardIconOptions(): array
+    {
+        return [
+            'document-text' => __('admin.icons.document_text'),
+        ];
+    }
+
+    /**
+     * @return array<string>
+     */
+    public static function contributorItemSorts(): array
+    {
+        return [
+            'latest_transcription',
+            'oldest_transcription',
+            'title_asc',
+            'title_desc',
+        ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public static function contributorItemSortOptions(): array
+    {
+        return collect(self::contributorItemSorts())
+            ->mapWithKeys(fn (string $sort): array => [$sort => __("public.sort.{$sort}")])
+            ->all();
+    }
+
+    /**
+     * @return array<int>
+     */
+    public static function contributorGridColumns(): array
+    {
+        return [1, 2, 3, 4];
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    public static function contributorGridColumnOptions(): array
+    {
+        return collect(self::contributorGridColumns())
+            ->mapWithKeys(fn (int $columns): array => [$columns => (string) $columns])
             ->all();
     }
 

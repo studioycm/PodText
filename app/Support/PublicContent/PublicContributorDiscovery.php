@@ -7,6 +7,7 @@ use App\Models\ContentItem;
 use App\Models\Transcription;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
 
 class PublicContributorDiscovery
@@ -72,24 +73,58 @@ class PublicContributorDiscovery
     /**
      * @return Collection<int, Author>
      */
-    public static function topContributors(int $limit): Collection
+    public static function topContributors(int $limit, ?array $authorIds = null): Collection
     {
-        return self::contributors()
+        $query = self::contributors();
+
+        if (is_array($authorIds) && $authorIds !== []) {
+            $query->whereKey($authorIds);
+        }
+
+        return $query
             ->limit(max(1, $limit))
             ->get();
     }
 
-    public static function contentItemsForContributor(Author|int $author): Builder
+    public static function contentItemsForContributor(Author|int $author, ?string $search = null, string $sort = 'latest_transcription'): Builder
     {
         $authorId = $author instanceof Author ? $author->getKey() : $author;
+        $search = trim((string) $search);
 
-        return PublicContentItemQueries::base()
+        $query = PublicContentItemQueries::base()
             ->whereHas('transcriptions', function (Builder $query) use ($authorId): Builder {
                 return $query
                     ->published()
                     ->where('author_id', $authorId);
             })
-            ->orderByEffectiveTranscriptionPublishedAt();
+            ->with([
+                'transcriptions' => fn ($query) => $query
+                    ->published()
+                    ->where('author_id', $authorId)
+                    ->orderByDesc('published_at')
+                    ->orderByDesc('id'),
+            ]);
+
+        if ($search !== '') {
+            $like = "%{$search}%";
+
+            $query->where(function (Builder $query) use ($authorId, $like): void {
+                $query
+                    ->where('title', 'like', $like)
+                    ->orWhereHas('contentGroup', fn (Builder $query): Builder => $query->where('title', 'like', $like))
+                    ->orWhereHas('transcriptions', fn (Builder $query): Builder => $query
+                        ->published()
+                        ->where('author_id', $authorId)
+                        ->where('title', 'like', $like));
+            });
+        }
+
+        return match ($sort) {
+            'oldest_transcription' => $query->orderByEffectiveTranscriptionPublishedAt('asc'),
+            'title_asc' => $query->orderBy('title')->orderBy('id'),
+            'title_desc' => $query->orderByDesc('title')->orderByDesc('id'),
+            default => $query->orderByEffectiveTranscriptionPublishedAt(),
+        };
     }
 
     /**
@@ -97,22 +132,29 @@ class PublicContributorDiscovery
      */
     public static function previewItemsForContributor(Author|int $author, int $limit = 3, ?string $search = null): Collection
     {
-        $query = self::contentItemsForContributor($author);
-        $search = trim((string) $search);
-
-        if ($search !== '') {
-            $like = "%{$search}%";
-
-            $query->where(function (Builder $query) use ($like): void {
-                $query
-                    ->where('title', 'like', $like)
-                    ->orWhereHas('contentGroup', fn (Builder $query): Builder => $query->where('title', 'like', $like));
-            });
-        }
-
-        return $query
+        return self::contentItemsForContributor($author, $search)
             ->limit(max(1, $limit))
             ->get();
+    }
+
+    public static function paginatedPreviewItemsForContributor(Author|int $author, int $perPage, int $page = 1): LengthAwarePaginator
+    {
+        $perPage = max(1, min(24, $perPage));
+        $page = max(1, $page);
+        $query = self::contentItemsForContributor($author);
+        $total = (clone $query)->count();
+        $lastPage = max(1, (int) ceil($total / $perPage));
+        $page = min($page, $lastPage);
+        $items = $query
+            ->forPage($page, $perPage)
+            ->get();
+
+        return new LengthAwarePaginator(
+            items: $items,
+            total: $total,
+            perPage: $perPage,
+            currentPage: $page,
+        );
     }
 
     private static function publicTranscriptionConstraint(Builder $query): Builder

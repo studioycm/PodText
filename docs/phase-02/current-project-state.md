@@ -37,6 +37,7 @@ Recorded after the Markdown-only post-Prompt-10 prompt-progress centralization c
 - Public Front v2 Step 9 Public Menu/Header and UX Fixes is implemented and committed as `5cf3363 feat: add public menu header and ux fixes`.
 - Public Front v2 Step 9R Menu/Header UX Fixes is implemented and committed as `bfcda46 fix: refine public menu header and homepage ux`.
 - Public Front v2 Step 9R Podcast Episode Grid Settings follow-up is implemented and committed as `feat: add podcast episode grid settings`.
+- Public Front v2 Step 10 Contributors and Top Transcribers UX is implemented and committed as `feat: refine contributors and top transcribers ux`.
 
 ## Prompt Progress
 
@@ -68,7 +69,7 @@ Recorded after the Markdown-only post-Prompt-10 prompt-progress centralization c
 | Public Front v2 Step 9 Public Menu/Header and UX Fixes | Complete | `5cf3363 feat: add public menu header and ux fixes` | Adds tabbed public settings organization, About/team card fixes, contributor list/preview repairs, homepage chrome/header fixes, JSON-powered public menu/header, theme selector, content-block sections, tests, and Step 9 handoff. |
 | Public Front v2 Step 9R Menu/Header UX Fixes | Complete | `bfcda46 fix: refine public menu header and homepage ux` | Verifies Step 8/9 plans, improves FilamentExamples MCP discipline, repairs root-query homepage chrome, extends header logo/search/alignment/theme behavior, adds image styling settings, repairs contributor preview grid, and documents future footer/section-builder scope. |
 | Public Front v2 Step 9R Podcast Episode Grid Settings follow-up | Complete | `feat: add podcast episode grid settings` | Adds JSON-first podcast detail episode grid/settings controls under `podcasts_page.group_page`, keeps `ContentItemBrowser` as Livewire owner, and preserves Step 10 as the next major implementation step. |
-| Public Front v2 Step 10 Contributors and Top Transcribers UX | Next after ChatGPT/Yoni review | Future prompt | Step 10 is the next major implementation step after Step 9R review. |
+| Public Front v2 Step 10 Contributors and Top Transcribers UX | Complete | `feat: refine contributors and top transcribers ux` | Adds `contributors_page` settings, settings UI, horizontal top-transcriber selector/preview, contributor directory/page controls, grouped contributor transcription titles, tests, and Step 10 handoff. |
 | Prompt 13 dashboard metrics | Not started / blocked unless explicitly chosen by user | Active prompt/blueprint | Owns editorial dashboard widgets after Public Front v2 Step 12 readiness or an explicit dashboard-first decision. |
 | Prompt 14 viewer/studio future plan | Future planning after Prompt 13 | Active prompt/blueprint | Documentation/planning only. |
 | Prompt 15 Filament Blueprint security audit | Audit after Prompt 14 | Active prompt/blueprint | Audit-only unless fixes are explicitly approved. |
@@ -77,6 +78,7 @@ Recorded after the Markdown-only post-Prompt-10 prompt-progress centralization c
 
 - Prompt 13 dashboard metrics has not started and is intentionally blocked until Public Front v2 reaches Step 12 readiness or the user explicitly chooses dashboard metrics first.
 - The `model:show` baseline issue below remains unresolved and should be avoided until investigated.
+- After Public Front v2 Step 10, the next recommended implementation step is Step 9F/10F Footer + Rich Section Builder if approved; otherwise continue to Step 11 Seeders, Demo Data, Assets, and Cleanup. Step 2 transcription publication policy remains deferred/reserved.
 
 ## Deferred Items
 
@@ -84,7 +86,7 @@ Recorded after the Markdown-only post-Prompt-10 prompt-progress centralization c
 - Curated homepage query sections are deferred until a concrete query-builder spec exists.
 - Homepage result previews in admin forms remain deferred.
 - Step 5B Card Template Admin Preview UX remains deferred.
-- Footer-builder v2 and nested/dropdown public menu editing remain deferred beyond Step 9R. A future Step 9F/10F foundation should run after Step 10 and before Step 11 seeders if approved.
+- Footer-builder v2 and nested/dropdown public menu editing remain deferred beyond Step 10. A future Step 9F/10F foundation should run after Step 10 and before Step 11 seeders if approved; otherwise Step 11 is the next implementation step.
 - Public form email notifications remain deferred.
 - Public form file uploads remain deferred.
 - Advanced homepage section manual-selection controls such as "select all filtered results" and "deselect all filtered results" are deferred; Step 4 ships explicit include/exclude ID selection with public visibility rechecks.
@@ -150,6 +152,8 @@ Laravel Boost MCP tools were exposed and usable during Prompt 10.
 - Public Front v2 Step 9 FilamentExamples `search_examples` research returned snippet/search-level examples for settings tabs/page layouts/menu builder patterns; no full source/detail fetch tool was exposed.
 - Public Front v2 Step 9R used Boost `application_info`, `database_schema`, and `search_docs` before changing Filament settings tabs/sections, public panel header rendering, Livewire URL state, Blade rendering, and Pest tests.
 - Public Front v2 Step 9R FilamentExamples `search_examples` research was run in focused batches plus a refined second pass for settings tabs, public header/menu, card grids, file/logo upload patterns, and Markdown/RichEditor rendering. No source/read/fetch details tool was exposed beyond search snippets.
+- Public Front v2 Step 10 used Boost `application_info`, `database_schema`, and `search_docs` before changing Livewire URL state, pagination, Filament settings fields, Eloquent aggregate/public visibility queries, card rendering, and Pest/Livewire tests.
+- Public Front v2 Step 10 FilamentExamples `search_examples` research was run in focused batches plus a refined second pass for directory cards, selector/preview state, top/ranked sections, pagination/grid controls, settings field organization, and public Livewire pages. No source/read/fetch details tool was exposed beyond search snippets.
 
 ## Application Shape
 
@@ -176,6 +180,8 @@ Laravel Boost MCP tools were exposed and usable during Prompt 10.
 - Prompt 11B public contributor components:
   - `App\Livewire\Public\ContributorDirectory`
   - `App\Livewire\Public\ContributorContentItems`
+- Public Front v2 Step 10 public contributor/top-transcriber component:
+  - `App\Livewire\Public\TopTranscribersSection`
 - Prompt 12 public item transcript viewer component:
   - `App\Livewire\Public\ContentItemTranscriptViewer`
 - PodText logo baseline:
@@ -186,6 +192,9 @@ Laravel Boost MCP tools were exposed and usable during Prompt 10.
   - `resources/views/components/public/content-group-badge.blade.php`
   - `resources/views/components/public/content-item-grid.blade.php`
   - `resources/views/components/public/public-filter-panel.blade.php`
+- Public Front v2 Step 10 public Blade components:
+  - `resources/views/components/public/contributor-item-grid.blade.php`
+  - `resources/views/components/public/contributor-transcription-list.blade.php`
 - Prompt 11 public card option mapper:
   - `App\Support\PublicContent\PublicContentCardOptions`
 - Prompt 11B public query helpers:
@@ -246,6 +255,12 @@ Laravel Boost MCP tools were exposed and usable during Prompt 10.
 - Public Front v2 Step 8 canonical public routes are `/podcasts` and `/podcasts/{contentGroupSlug}`. The old public `/groups/{contentGroupSlug}` route is absent; admin `admin/content-groups` routes remain unchanged.
 - Public Front v2 Step 8 public group query helper:
   - `App\Support\PublicFront\Groups\PublicContentGroupQueries`
+- Public Front v2 Step 10 contributor JSON schema lives under `public_content.contributors_page` with contributor labels, directory page-size/sort options, preview grid/search options, top-transcriber selector/preview options, compact-card tokens, and full contributor item-list controls.
+- Public Front v2 Step 10 contributor directory/page behavior:
+  - `/contributors` uses compact contributor selector cards with URL-backed search/sort/page-size/selected state.
+  - `/contributors/{authorSlug}` uses URL-backed related-item search/sort/page-size state.
+  - Top-transcriber homepage sections render a horizontal selector and selected preview through `App\Livewire\Public\TopTranscribersSection`.
+  - Same-author multiple transcriptions on one item count separately but render one related `ContentItem` card with grouped transcription titles.
 - Public Front v2 Step 8 handoff:
   - `docs/phase-02/public-front-v2-step8-podcasts-groups-ux-handoff.md`
 - Public Front v2 Step 9 Public Menu/Header and UX Fixes surfaces:

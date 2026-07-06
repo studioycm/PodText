@@ -8,6 +8,7 @@ use App\Settings\PublicContentSettings;
 use App\Support\PublicContent\PublicContentCardOptions;
 use App\Support\PublicContent\PublicContributorDiscovery;
 use App\Support\PublicFront\Cards\PublicFrontCardTemplateResolver;
+use App\Support\PublicFront\PublicFrontConfigReader;
 use Illuminate\Contracts\View\View;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Livewire\Attributes\Url;
@@ -24,11 +25,11 @@ class ContributorDirectory extends Component
     #[Url(as: 'contributor', except: null)]
     public ?int $selectedContributorId = null;
 
-    #[Url(as: 'per_page', except: 10)]
-    public int $perPage = 10;
+    #[Url(as: 'per_page', except: null)]
+    public ?int $perPage = null;
 
-    #[Url(as: 'sort', except: 'count_desc')]
-    public string $sort = 'count_desc';
+    #[Url(as: 'sort', except: '')]
+    public string $sort = '';
 
     #[Url(as: 'preview_q', except: '')]
     public string $previewSearch = '';
@@ -36,7 +37,7 @@ class ContributorDirectory extends Component
     public function mount(): void
     {
         $this->perPage = $this->normalizePerPage($this->perPage);
-        $this->sort = $this->normalizeSort($this->sort);
+        $this->sort = $this->normalizeSort($this->sort ?: $this->defaultSort());
     }
 
     public function updatedSearch(): void
@@ -91,10 +92,15 @@ class ContributorDirectory extends Component
         return view('livewire.public.contributor-directory', [
             'cardOptions' => $this->cardOptions(),
             'cardTemplate' => $templateResolver->resolve('contributor'),
+            'config' => $this->contributorsConfig(),
             'contentItemCardTemplate' => $templateResolver->resolve('content_item'),
             'contributors' => $contributors,
             'previewItems' => $selectedContributor
-                ? PublicContributorDiscovery::previewItemsForContributor($selectedContributor, 6, $this->previewSearch)
+                ? PublicContributorDiscovery::previewItemsForContributor(
+                    $selectedContributor,
+                    (int) ($this->contributorsConfig()['directory']['preview_items_per_page'] ?? 6),
+                    $this->previewSearch,
+                )
                 : collect(),
             'pageSizeOptions' => $this->pageSizeOptions(),
             'selectedContributor' => $selectedContributor,
@@ -105,7 +111,7 @@ class ContributorDirectory extends Component
     protected function contributors(): LengthAwarePaginator
     {
         return PublicContributorDiscovery::contributors($this->search, $this->sort)
-            ->paginate($this->perPage)
+            ->paginate((int) $this->perPage)
             ->withQueryString();
     }
 
@@ -128,11 +134,9 @@ class ContributorDirectory extends Component
      */
     protected function pageSizeOptions(): array
     {
-        return [
-            10 => '10',
-            15 => '15',
-            20 => '20',
-        ];
+        return collect($this->contributorsConfig()['directory']['per_page_options'] ?? [10, 15, 20])
+            ->mapWithKeys(fn (int|string $value): array => [(int) $value => (string) $value])
+            ->all();
     }
 
     /**
@@ -140,21 +144,49 @@ class ContributorDirectory extends Component
      */
     protected function sortOptions(): array
     {
-        return [
+        $labels = [
             'name_asc' => __('public.sort.contributors_name_asc'),
             'name_desc' => __('public.sort.contributors_name_desc'),
             'count_desc' => __('public.sort.contributors_count_desc'),
             'count_asc' => __('public.sort.contributors_count_asc'),
         ];
+
+        return collect($this->contributorsConfig()['directory']['sort_options'] ?? array_keys($labels))
+            ->filter(fn (string $sort): bool => array_key_exists($sort, $labels))
+            ->mapWithKeys(fn (string $sort): array => [$sort => $labels[$sort]])
+            ->all();
     }
 
-    protected function normalizePerPage(int $perPage): int
+    protected function normalizePerPage(?int $perPage): int
     {
-        return in_array($perPage, [10, 15, 20], true) ? $perPage : 10;
+        $options = array_keys($this->pageSizeOptions());
+
+        return in_array($perPage, $options, true)
+            ? $perPage
+            : (int) ($this->contributorsConfig()['directory']['default_per_page'] ?? 10);
     }
 
     protected function normalizeSort(string $sort): string
     {
-        return in_array($sort, ['name_asc', 'name_desc', 'count_desc', 'count_asc'], true) ? $sort : 'count_desc';
+        $options = array_keys($this->sortOptions());
+
+        return in_array($sort, $options, true)
+            ? $sort
+            : $this->defaultSort();
+    }
+
+    protected function defaultSort(): string
+    {
+        return (string) ($this->contributorsConfig()['directory']['default_sort'] ?? 'count_desc');
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    protected function contributorsConfig(): array
+    {
+        return app(PublicFrontConfigReader::class)
+            ->read()
+            ->group('contributors_page');
     }
 }

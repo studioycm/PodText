@@ -102,6 +102,22 @@
                     <p class="max-w-3xl text-sm text-gray-600 dark:text-gray-300">
                         {{ __('public.pages.contributors.preview_description') }}
                     </p>
+                    @if($config['cards']['preview_show_counts'] ?? true)
+                        <div class="flex flex-wrap gap-2 text-xs text-gray-600 dark:text-gray-300" data-test="contributor-preview-counts">
+                            <span class="rounded-md bg-gray-100 px-2 py-1 dark:bg-gray-800" data-test="public-transcriptions-count">
+                                {{ trans_choice('public.labels.public_transcriptions_count', (int) $selectedContributor->public_transcriptions_count, ['count' => (int) $selectedContributor->public_transcriptions_count]) }}
+                            </span>
+                            <span class="rounded-md bg-gray-100 px-2 py-1 dark:bg-gray-800" data-test="public-content-items-count">
+                                {{ trans_choice('public.labels.public_content_items_count', (int) $selectedContributor->public_content_items_count, ['count' => (int) $selectedContributor->public_content_items_count]) }}
+                            </span>
+                        </div>
+                    @endif
+
+                    @if(($config['cards']['preview_show_bio'] ?? true) && filled($selectedContributor->bio_markdown))
+                        <p class="max-w-3xl text-sm leading-6 text-gray-600 dark:text-gray-300" data-test="contributor-preview-bio">
+                            {{ str($selectedContributor->bio_markdown)->stripTags()->squish()->limit(180) }}
+                        </p>
+                    @endif
                 </div>
 
                 <a
@@ -113,25 +129,29 @@
                 </a>
             </div>
 
-            <label class="grid gap-1 text-sm text-gray-700 dark:text-gray-200">
-                <span>{{ __('public.filters.search_related_items') }}</span>
-                <input
-                    type="search"
-                    wire:model.live.debounce.300ms="previewSearch"
-                    data-test="contributor-preview-search"
-                    placeholder="{{ __('public.filters.search_related_items_placeholder') }}"
-                    class="w-full rounded-md border-gray-300 text-sm shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:border-gray-700 dark:bg-gray-950"
-                >
-            </label>
+            @if($config['directory']['preview_search_enabled'] ?? true)
+                <label class="grid gap-1 text-sm text-gray-700 dark:text-gray-200">
+                    <span>{{ __('public.filters.search_related_items') }}</span>
+                    <input
+                        type="search"
+                        wire:model.live.debounce.300ms="previewSearch"
+                        data-test="contributor-preview-search"
+                        placeholder="{{ __('public.filters.search_related_items_placeholder') }}"
+                        class="w-full rounded-md border-gray-300 text-sm shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:border-gray-700 dark:bg-gray-950"
+                    >
+                </label>
+            @endif
 
             @if($previewItems->isNotEmpty())
-                <x-public.content-item-grid
-                    :items="$previewItems"
-                    :card-options="$cardOptions"
-                    :card-template="$contentItemCardTemplate"
-                    layout="cards"
-                    data-test="contributor-preview-items-grid"
-                />
+                <div data-test="contributor-preview-items-grid">
+                    <x-public.contributor-item-grid
+                        :items="$previewItems"
+                        :card-options="$cardOptions"
+                        :card-template="$contentItemCardTemplate"
+                        :columns="$config['directory']['preview_grid_columns'] ?? 3"
+                        layout="cards"
+                    />
+                </div>
             @else
                 <div class="rounded-lg border border-dashed border-gray-300 bg-white p-6 text-sm text-gray-600 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-300" data-test="empty-contributor-preview">
                     {{ __('public.empty.contributor_preview') }}

@@ -36,6 +36,7 @@ class PublicFrontConfigValidator
                 'route_labels' => $this->normalizeRouteLabels($value, $invalidConfig),
                 'display_defaults' => $this->normalizeDisplayDefaults($value, $defaults['display_defaults'], $invalidConfig),
                 'podcasts_page' => $this->normalizePodcastsPage($value, $defaults['podcasts_page'], $invalidConfig),
+                'contributors_page' => $this->normalizeContributorsPage($value, $defaults['contributors_page'], $invalidConfig),
             };
         }
 
@@ -1406,6 +1407,292 @@ class PublicFrontConfigValidator
             'show_episode_tags' => $this->boolean($groupPage['show_episode_tags'] ?? null, 'podcasts_page.group_page.show_episode_tags', $defaults['show_episode_tags'] ?? true, $invalidConfig),
             'show_episode_duration' => $this->boolean($groupPage['show_episode_duration'] ?? null, 'podcasts_page.group_page.show_episode_duration', $defaults['show_episode_duration'] ?? true, $invalidConfig),
             'show_episode_effective_date' => $this->boolean($groupPage['show_episode_effective_date'] ?? null, 'podcasts_page.group_page.show_episode_effective_date', $defaults['show_episode_effective_date'] ?? true, $invalidConfig),
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $contributorsPage
+     * @param  array<string, mixed>  $defaults
+     * @param  array<PublicFrontInvalidConfig>  $invalidConfig
+     * @return array<string, mixed>
+     */
+    private function normalizeContributorsPage(array $contributorsPage, array $defaults, array &$invalidConfig): array
+    {
+        $this->reportUnknownKeys($contributorsPage, [
+            'enabled',
+            'title',
+            'description',
+            'label_singular',
+            'label_plural',
+            'item_label_singular',
+            'item_label_plural',
+            'directory',
+            'top_transcribers',
+            'cards',
+            'page',
+        ], 'contributors_page', $invalidConfig);
+
+        return [
+            'enabled' => $this->boolean($contributorsPage['enabled'] ?? null, 'contributors_page.enabled', $defaults['enabled'], $invalidConfig),
+            'title' => $this->plainString($contributorsPage['title'] ?? null, 'contributors_page.title', $invalidConfig, maxLength: 160, nullable: true)
+                ?? $defaults['title'],
+            'description' => $this->plainString($contributorsPage['description'] ?? null, 'contributors_page.description', $invalidConfig, maxLength: 1000, nullable: true)
+                ?? $defaults['description'],
+            'label_singular' => $this->plainString($contributorsPage['label_singular'] ?? null, 'contributors_page.label_singular', $invalidConfig, maxLength: 80, nullable: true)
+                ?? $defaults['label_singular'],
+            'label_plural' => $this->plainString($contributorsPage['label_plural'] ?? null, 'contributors_page.label_plural', $invalidConfig, maxLength: 80, nullable: true)
+                ?? $defaults['label_plural'],
+            'item_label_singular' => $this->plainString($contributorsPage['item_label_singular'] ?? null, 'contributors_page.item_label_singular', $invalidConfig, maxLength: 80, nullable: true)
+                ?? $defaults['item_label_singular'],
+            'item_label_plural' => $this->plainString($contributorsPage['item_label_plural'] ?? null, 'contributors_page.item_label_plural', $invalidConfig, maxLength: 80, nullable: true)
+                ?? $defaults['item_label_plural'],
+            'directory' => $this->normalizeContributorsDirectory($contributorsPage['directory'] ?? [], $defaults['directory'], $invalidConfig),
+            'top_transcribers' => $this->normalizeTopTranscribers($contributorsPage['top_transcribers'] ?? [], $defaults['top_transcribers'], $invalidConfig),
+            'cards' => $this->normalizeContributorCards($contributorsPage['cards'] ?? [], $defaults['cards'], $invalidConfig),
+            'page' => $this->normalizeContributorPage($contributorsPage['page'] ?? [], $defaults['page'], $invalidConfig),
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>|mixed  $directory
+     * @param  array<string, mixed>  $defaults
+     * @param  array<PublicFrontInvalidConfig>  $invalidConfig
+     * @return array<string, mixed>
+     */
+    private function normalizeContributorsDirectory(mixed $directory, array $defaults, array &$invalidConfig): array
+    {
+        if ($directory === null || $directory === []) {
+            return $defaults;
+        }
+
+        if (! is_array($directory)) {
+            $invalidConfig[] = PublicFrontInvalidConfig::make('contributors_page.directory', 'expected_array', $directory);
+
+            return $defaults;
+        }
+
+        $this->reportUnknownKeys($directory, [
+            'per_page_options',
+            'default_per_page',
+            'default_sort',
+            'sort_options',
+            'preview_items_per_page',
+            'preview_grid_columns',
+            'preview_search_enabled',
+        ], 'contributors_page.directory', $invalidConfig);
+
+        $pageSizeOptions = $this->integerOptionsList(
+            $directory['per_page_options'] ?? null,
+            'contributors_page.directory.per_page_options',
+            10,
+            20,
+            $defaults['per_page_options'] ?? [10, 15, 20],
+            $invalidConfig,
+        );
+        $pageSizeOptions = collect($pageSizeOptions)
+            ->filter(fn (int $value): bool => in_array($value, PublicFrontConfigRegistry::contributorDirectoryPageSizes(), true))
+            ->values()
+            ->all();
+        $pageSizeOptions = $pageSizeOptions === [] ? ($defaults['per_page_options'] ?? [10, 15, 20]) : $pageSizeOptions;
+        $defaultPerPage = $this->integerRange($directory['default_per_page'] ?? null, 'contributors_page.directory.default_per_page', 10, 20, $defaults['default_per_page'] ?? 10, $invalidConfig);
+
+        if (! in_array($defaultPerPage, $pageSizeOptions, true)) {
+            $defaultPerPage = $pageSizeOptions[0] ?? 10;
+        }
+
+        $sortOptions = $this->finiteStringList(
+            $directory['sort_options'] ?? null,
+            PublicFrontConfigRegistry::contributorDirectorySorts(),
+            'contributors_page.directory.sort_options',
+            $defaults['sort_options'] ?? ['name_asc', 'name_desc', 'count_desc', 'count_asc'],
+            $invalidConfig,
+        );
+        $defaultSort = $this->finiteString(
+            $directory['default_sort'] ?? null,
+            $sortOptions,
+            'contributors_page.directory.default_sort',
+            $invalidConfig,
+            $defaults['default_sort'] ?? 'count_desc',
+        );
+
+        if (! in_array($defaultSort, $sortOptions, true)) {
+            $defaultSort = $sortOptions[0] ?? 'count_desc';
+        }
+
+        return [
+            'per_page_options' => $pageSizeOptions,
+            'default_per_page' => $defaultPerPage,
+            'default_sort' => $defaultSort,
+            'sort_options' => $sortOptions,
+            'preview_items_per_page' => $this->integerRange($directory['preview_items_per_page'] ?? null, 'contributors_page.directory.preview_items_per_page', 1, 24, $defaults['preview_items_per_page'] ?? 6, $invalidConfig),
+            'preview_grid_columns' => $this->integerRange($directory['preview_grid_columns'] ?? null, 'contributors_page.directory.preview_grid_columns', 1, 4, $defaults['preview_grid_columns'] ?? 3, $invalidConfig),
+            'preview_search_enabled' => $this->boolean($directory['preview_search_enabled'] ?? null, 'contributors_page.directory.preview_search_enabled', $defaults['preview_search_enabled'] ?? true, $invalidConfig),
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>|mixed  $topTranscribers
+     * @param  array<string, mixed>  $defaults
+     * @param  array<PublicFrontInvalidConfig>  $invalidConfig
+     * @return array<string, mixed>
+     */
+    private function normalizeTopTranscribers(mixed $topTranscribers, array $defaults, array &$invalidConfig): array
+    {
+        if ($topTranscribers === null || $topTranscribers === []) {
+            return $defaults;
+        }
+
+        if (! is_array($topTranscribers)) {
+            $invalidConfig[] = PublicFrontInvalidConfig::make('contributors_page.top_transcribers', 'expected_array', $topTranscribers);
+
+            return $defaults;
+        }
+
+        $this->reportUnknownKeys($topTranscribers, [
+            'enabled',
+            'limit',
+            'layout',
+            'preview_default_page_size',
+            'preview_page_size_options',
+            'preview_grid_columns',
+            'show_full_page_link',
+            'show_count_badge',
+        ], 'contributors_page.top_transcribers', $invalidConfig);
+
+        $pageSizeOptions = $this->integerOptionsList(
+            $topTranscribers['preview_page_size_options'] ?? null,
+            'contributors_page.top_transcribers.preview_page_size_options',
+            5,
+            15,
+            $defaults['preview_page_size_options'] ?? [5, 10, 15],
+            $invalidConfig,
+        );
+        $pageSizeOptions = collect($pageSizeOptions)
+            ->filter(fn (int $value): bool => in_array($value, PublicFrontConfigRegistry::topTranscriberPreviewPageSizes(), true))
+            ->values()
+            ->all();
+        $pageSizeOptions = $pageSizeOptions === [] ? ($defaults['preview_page_size_options'] ?? [5, 10, 15]) : $pageSizeOptions;
+        $defaultPageSize = $this->integerRange($topTranscribers['preview_default_page_size'] ?? null, 'contributors_page.top_transcribers.preview_default_page_size', 5, 15, $defaults['preview_default_page_size'] ?? 5, $invalidConfig);
+
+        if (! in_array($defaultPageSize, $pageSizeOptions, true)) {
+            $defaultPageSize = $pageSizeOptions[0] ?? 5;
+        }
+
+        return [
+            'enabled' => $this->boolean($topTranscribers['enabled'] ?? null, 'contributors_page.top_transcribers.enabled', $defaults['enabled'] ?? true, $invalidConfig),
+            'limit' => $this->integerRange($topTranscribers['limit'] ?? null, 'contributors_page.top_transcribers.limit', 1, 24, $defaults['limit'] ?? 8, $invalidConfig),
+            'layout' => $this->finiteString($topTranscribers['layout'] ?? null, PublicFrontConfigRegistry::topTranscriberLayouts(), 'contributors_page.top_transcribers.layout', $invalidConfig, $defaults['layout'] ?? 'horizontal'),
+            'preview_default_page_size' => $defaultPageSize,
+            'preview_page_size_options' => $pageSizeOptions,
+            'preview_grid_columns' => $this->integerRange($topTranscribers['preview_grid_columns'] ?? null, 'contributors_page.top_transcribers.preview_grid_columns', 1, 4, $defaults['preview_grid_columns'] ?? 3, $invalidConfig),
+            'show_full_page_link' => $this->boolean($topTranscribers['show_full_page_link'] ?? null, 'contributors_page.top_transcribers.show_full_page_link', $defaults['show_full_page_link'] ?? true, $invalidConfig),
+            'show_count_badge' => $this->boolean($topTranscribers['show_count_badge'] ?? null, 'contributors_page.top_transcribers.show_count_badge', $defaults['show_count_badge'] ?? true, $invalidConfig),
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>|mixed  $cards
+     * @param  array<string, mixed>  $defaults
+     * @param  array<PublicFrontInvalidConfig>  $invalidConfig
+     * @return array<string, mixed>
+     */
+    private function normalizeContributorCards(mixed $cards, array $defaults, array &$invalidConfig): array
+    {
+        if ($cards === null || $cards === []) {
+            return $defaults;
+        }
+
+        if (! is_array($cards)) {
+            $invalidConfig[] = PublicFrontInvalidConfig::make('contributors_page.cards', 'expected_array', $cards);
+
+            return $defaults;
+        }
+
+        $this->reportUnknownKeys($cards, [
+            'compact_show_count',
+            'compact_count_icon',
+            'preview_show_bio',
+            'preview_show_counts',
+        ], 'contributors_page.cards', $invalidConfig);
+
+        return [
+            'compact_show_count' => $this->boolean($cards['compact_show_count'] ?? null, 'contributors_page.cards.compact_show_count', $defaults['compact_show_count'] ?? true, $invalidConfig),
+            'compact_count_icon' => $this->finiteString($cards['compact_count_icon'] ?? null, PublicFrontConfigRegistry::contributorCardIcons(), 'contributors_page.cards.compact_count_icon', $invalidConfig, $defaults['compact_count_icon'] ?? 'document-text'),
+            'preview_show_bio' => $this->boolean($cards['preview_show_bio'] ?? null, 'contributors_page.cards.preview_show_bio', $defaults['preview_show_bio'] ?? true, $invalidConfig),
+            'preview_show_counts' => $this->boolean($cards['preview_show_counts'] ?? null, 'contributors_page.cards.preview_show_counts', $defaults['preview_show_counts'] ?? true, $invalidConfig),
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>|mixed  $page
+     * @param  array<string, mixed>  $defaults
+     * @param  array<PublicFrontInvalidConfig>  $invalidConfig
+     * @return array<string, mixed>
+     */
+    private function normalizeContributorPage(mixed $page, array $defaults, array &$invalidConfig): array
+    {
+        if ($page === null || $page === []) {
+            return $defaults;
+        }
+
+        if (! is_array($page)) {
+            $invalidConfig[] = PublicFrontInvalidConfig::make('contributors_page.page', 'expected_array', $page);
+
+            return $defaults;
+        }
+
+        $this->reportUnknownKeys($page, [
+            'items_per_page',
+            'page_size_options',
+            'default_sort',
+            'sort_options',
+            'search_enabled',
+            'grid_columns',
+            'grid_gap',
+        ], 'contributors_page.page', $invalidConfig);
+
+        $itemsPerPage = $this->integerRange($page['items_per_page'] ?? null, 'contributors_page.page.items_per_page', 1, 48, $defaults['items_per_page'] ?? 12, $invalidConfig);
+        $pageSizeOptions = $this->integerOptionsList(
+            $page['page_size_options'] ?? null,
+            'contributors_page.page.page_size_options',
+            1,
+            48,
+            $defaults['page_size_options'] ?? [6, 12, 24],
+            $invalidConfig,
+        );
+        $pageSizeOptions = collect([...$pageSizeOptions, $itemsPerPage])
+            ->unique()
+            ->sort()
+            ->values()
+            ->all();
+
+        $sortOptions = $this->finiteStringList(
+            $page['sort_options'] ?? null,
+            PublicFrontConfigRegistry::contributorItemSorts(),
+            'contributors_page.page.sort_options',
+            $defaults['sort_options'] ?? ['latest_transcription', 'oldest_transcription', 'title_asc', 'title_desc'],
+            $invalidConfig,
+        );
+        $defaultSort = $this->finiteString(
+            $page['default_sort'] ?? null,
+            $sortOptions,
+            'contributors_page.page.default_sort',
+            $invalidConfig,
+            $defaults['default_sort'] ?? 'latest_transcription',
+        );
+
+        if (! in_array($defaultSort, $sortOptions, true)) {
+            $defaultSort = $sortOptions[0] ?? 'latest_transcription';
+        }
+
+        return [
+            'items_per_page' => $itemsPerPage,
+            'page_size_options' => $pageSizeOptions,
+            'default_sort' => $defaultSort,
+            'sort_options' => $sortOptions,
+            'search_enabled' => $this->boolean($page['search_enabled'] ?? null, 'contributors_page.page.search_enabled', $defaults['search_enabled'] ?? true, $invalidConfig),
+            'grid_columns' => $this->integerRange($page['grid_columns'] ?? null, 'contributors_page.page.grid_columns', 1, 4, $defaults['grid_columns'] ?? 3, $invalidConfig),
+            'grid_gap' => $this->finiteString($page['grid_gap'] ?? null, PublicFrontConfigRegistry::podcastGroupItemGridGaps(), 'contributors_page.page.grid_gap', $invalidConfig, $defaults['grid_gap'] ?? 'comfortable'),
         ];
     }
 

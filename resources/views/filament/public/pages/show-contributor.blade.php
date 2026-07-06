@@ -1,7 +1,15 @@
 <x-filament-panels::page>
+    @php
+        $contributorsConfig = app(\App\Support\PublicFront\PublicFrontConfigReader::class)
+            ->read()
+            ->group('contributors_page');
+    @endphp
+
     <div class="space-y-8" dir="{{ __('public.meta.dir') }}">
         <div class="space-y-4">
-            <p class="text-sm font-medium text-primary-600 dark:text-primary-400">{{ __('public.pages.contributor.kicker') }}</p>
+            <p class="text-sm font-medium text-primary-600 dark:text-primary-400">
+                {{ $contributorsConfig['label_singular'] ?? __('public.pages.contributor.kicker') }}
+            </p>
             <div class="space-y-2">
                 <h1 class="text-3xl font-semibold tracking-normal text-gray-950 dark:text-white" data-test="contributor-page-name">
                     {{ $author->name }}
