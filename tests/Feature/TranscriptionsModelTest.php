@@ -2,7 +2,6 @@
 
 use App\Enums\PublicationStatus;
 use App\Models\Author;
-use App\Models\ContentGroup;
 use App\Models\ContentItem;
 use App\Models\Transcription;
 use Illuminate\Database\QueryException;
@@ -169,28 +168,11 @@ it('generates immutable transcription reference keys', function (): void {
         ->and($transcription->refresh()->reference_key)->toBe($originalReferenceKey);
 });
 
-it('backfills legacy item transcript markdown into canonical transcriptions', function (): void {
-    $group = ContentGroup::factory()->published()->create();
-    $author = Author::factory()->create();
-    $item = ContentItem::factory()->for($group)->published(now()->subDay())->create([
-        'title' => 'Legacy Transcript Item',
-    ]);
-    $item->authors()->attach($author);
-
-    DB::table('content_items')
-        ->where('id', $item->id)
-        ->update(['transcript_markdown' => "## Legacy\n\nשלום"]);
-
-    $migration = include collect(glob(database_path('migrations/*_backfill_transcriptions_from_content_items_table.php')))->first();
-    $migration->up();
-
-    $transcription = Transcription::query()->whereBelongsTo($item)->firstOrFail();
-
-    expect($transcription->transcript_markdown)->toBe("## Legacy\n\nשלום")
-        ->and($transcription->author_id)->toBe($author->id)
-        ->and($transcription->status)->toBe(PublicationStatus::Published)
-        ->and($transcription->published_at?->toDateTimeString())->toBe($item->published_at?->toDateTimeString())
-        ->and($item->refresh()->featured_transcription_id)->toBe($transcription->id);
+it('drops legacy item author pivot after multi transcriber migration', function (): void {
+    expect(Schema::hasTable('author_content_item'))->toBeFalse()
+        ->and(Schema::hasTable('author_transcription'))->toBeTrue()
+        ->and(method_exists(ContentItem::class, 'authors'))->toBeFalse()
+        ->and(method_exists(Author::class, 'contentItems'))->toBeFalse();
 });
 
 it('resolves the effective transcription by featured published record then latest published record', function (): void {

@@ -48,7 +48,6 @@ class DatabaseSeeder extends Seeder
             'original_published_at' => now()->subDays(12),
         ]);
 
-        $publishedItem->authors()->attach([$host->id, $guest->id]);
         $publishedTranscription = Transcription::factory()
             ->for($publishedItem)
             ->forAuthor($host)
@@ -57,6 +56,7 @@ class DatabaseSeeder extends Seeder
                 'title' => $publishedItem->title,
                 'transcript_markdown' => "## פתיחה\n\nשָׁלוֹם וברוכים הבאים.\n\nזהו תמלול לדוגמה עם **Markdown**.",
             ]);
+        $publishedTranscription->syncTranscribers([$host, $guest]);
         $publishedItem->update(['featured_transcription_id' => $publishedTranscription->id]);
 
         $draftItem = ContentItem::factory()->for($publishedGroup)->create([

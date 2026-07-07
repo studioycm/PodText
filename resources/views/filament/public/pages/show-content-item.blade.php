@@ -8,6 +8,10 @@
         ->where('is_visible', true)
         ->values();
     $tags = $contentItem->relationLoaded('enabledContentTags') ? $contentItem->enabledContentTags : $contentItem->publicTags();
+    $effectiveTranscription = $contentItem->effectiveTranscription();
+    $transcribers = $effectiveTranscription?->relationLoaded('authors')
+        ? $effectiveTranscription->authors
+        : ($effectiveTranscription?->authors()->get() ?? collect());
 @endphp
 
 <x-filament-panels::page>
@@ -36,15 +40,15 @@
             </h1>
 
             <dl class="flex flex-wrap gap-x-6 gap-y-2 text-sm text-gray-600 dark:text-gray-300">
-                @if ($contentItem->authors->isNotEmpty())
+                @if ($transcribers->isNotEmpty())
                     <div>
-                        <dt class="sr-only">{{ __('public.labels.authors') }}</dt>
+                        <dt class="sr-only">{{ __('public.labels.transcribers') }}</dt>
                         <dd class="flex flex-wrap gap-2">
-                            @foreach($contentItem->authors as $author)
+                            @foreach($transcribers as $author)
                                 <a
                                     href="{{ \App\Filament\Public\Pages\ShowContributor::getUrl(['authorSlug' => $author->slug], panel: 'public') }}"
                                     class="font-medium text-primary-700 hover:text-primary-900 dark:text-primary-300 dark:hover:text-primary-100"
-                                    data-test="item-author-link"
+                                    data-test="item-transcriber-link"
                                 >
                                     {{ $author->name }}
                                 </a>

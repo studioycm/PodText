@@ -5,6 +5,7 @@ namespace App\Filament\Resources\Transcriptions\Tables;
 use App\Enums\PublicationStatus;
 use App\Filament\Exports\TranscriptionExporter;
 use App\Filament\Imports\TranscriptionImporter;
+use App\Models\Author;
 use App\Models\ContentGroup;
 use App\Models\Transcription;
 use Filament\Actions\Action;
@@ -27,15 +28,17 @@ class TranscriptionsTable
     public static function configure(Table $table): Table
     {
         return $table
+            ->modifyQueryUsing(fn (Builder $query): Builder => $query->with('authors'))
             ->columns([
                 TextColumn::make('contentItem.title')
                     ->label(__('admin.fields.content_item'))
                     ->searchable()
                     ->sortable(),
-                TextColumn::make('author.name')
-                    ->label(__('admin.fields.author'))
-                    ->searchable()
-                    ->sortable(),
+                TextColumn::make('transcriber_names')
+                    ->label(__('admin.fields.transcribers'))
+                    ->state(fn (Transcription $record): string => implode(', ', $record->transcriberNames()))
+                    ->searchable(query: fn (Builder $query, string $search): Builder => $query
+                        ->whereHas('authors', fn (Builder $query): Builder => $query->where('name', 'like', "%{$search}%"))),
                 TextColumn::make('title')
                     ->label(__('admin.fields.title'))
                     ->searchable()
@@ -71,11 +74,17 @@ class TranscriptionsTable
                 SelectFilter::make('status')
                     ->label(__('admin.fields.status'))
                     ->options(PublicationStatus::class),
-                SelectFilter::make('author_id')
-                    ->label(__('admin.fields.author'))
-                    ->relationship('author', 'name')
+                SelectFilter::make('transcriber_id')
+                    ->label(__('admin.fields.transcribers'))
+                    ->options(fn (): array => Author::query()
+                        ->orderBy('name')
+                        ->pluck('name', 'id')
+                        ->all())
                     ->searchable()
-                    ->preload(),
+                    ->preload()
+                    ->query(fn (Builder $query, array $data): Builder => filled($data['value'] ?? null)
+                        ? $query->whereHas('authors', fn (Builder $query): Builder => $query->whereKey($data['value']))
+                        : $query),
                 SelectFilter::make('content_group_id')
                     ->label(__('admin.fields.content_group'))
                     ->options(fn (): array => ContentGroup::query()

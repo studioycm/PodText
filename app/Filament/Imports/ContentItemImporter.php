@@ -4,7 +4,6 @@ namespace App\Filament\Imports;
 
 use App\Enums\PublicationStatus;
 use App\Filament\Imports\Concerns\ConfiguresContentImports;
-use App\Models\Author;
 use App\Models\Category;
 use App\Models\ContentGroup;
 use App\Models\ContentItem;
@@ -193,48 +192,6 @@ class ContentItemImporter extends Importer
                 ->example('5')
                 ->rules(['nullable', 'integer'])
                 ->ignoreBlankState(fn (?ContentItem $record, array $options): bool => static::shouldIgnoreBlankForUpdate($record, $options)),
-            ImportColumn::make('author_reference_keys')
-                ->label(__('admin.import.columns.author_reference_keys'))
-                ->multiple('|')
-                ->example('01JAUTHOR00000000000000001|01JAUTHOR00000000000000002')
-                ->nestedRecursiveRules(['ulid'])
-                ->rules([
-                    function (string $attribute, mixed $state, \Closure $fail): void {
-                        if (blank($state)) {
-                            return;
-                        }
-
-                        $authorReferenceKeys = collect($state);
-                        $resolvedReferenceKeys = Author::query()
-                            ->whereIn('reference_key', $authorReferenceKeys)
-                            ->pluck('reference_key');
-
-                        $missingReferenceKeys = $authorReferenceKeys->diff($resolvedReferenceKeys);
-
-                        if ($missingReferenceKeys->isNotEmpty()) {
-                            $fail(__('admin.import.failures.unresolved_authors', [
-                                'reference_keys' => $missingReferenceKeys->implode('|'),
-                            ]));
-                        }
-                    },
-                ])
-                ->fillRecordUsing(fn (): null => null)
-                ->saveRelationshipsUsing(function (ContentItem $record, array $state): void {
-                    $authorIds = Author::query()
-                        ->whereIn('reference_key', $state)
-                        ->pluck('id', 'reference_key');
-
-                    $missingReferenceKeys = collect($state)
-                        ->diff($authorIds->keys());
-
-                    if ($missingReferenceKeys->isNotEmpty()) {
-                        throw new RowImportFailedException(__('admin.import.failures.unresolved_authors', [
-                            'reference_keys' => $missingReferenceKeys->implode('|'),
-                        ]));
-                    }
-
-                    $record->authors()->sync($authorIds->values()->all());
-                }),
             ImportColumn::make('category_paths')
                 ->label(__('admin.import.columns.category_paths'))
                 ->multiple('|')

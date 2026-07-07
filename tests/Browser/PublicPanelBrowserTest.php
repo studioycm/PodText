@@ -108,7 +108,7 @@ it('opens a published item with authors approved embed and Hebrew transcript in 
         'embed_url' => 'https://www.youtube.com/embed/browser-demo',
         'duration_seconds' => 125,
     ]);
-    $item->authors()->attach($authors);
+    $item->effectiveTranscription()?->syncTranscribers($authors);
 
     visit("/items/{$group->slug}/{$item->slug}")
         ->assertNoSmoke()

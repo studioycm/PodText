@@ -102,6 +102,7 @@ it('imports transcriptions by reference key and never writes the legacy item tra
         ->title->toBe('Imported transcript')
         ->status->toBe(PublicationStatus::Published)
         ->and($transcription->published_at->timezone('Asia/Jerusalem')->format('d/m/Y H:i'))->toBe('30/06/2026 13:45')
+        ->and($transcription->authors()->pluck('authors.id')->all())->toBe([$author->id])
         ->and($item->refresh()->transcript_markdown)->toBeNull()
         ->and($item->featured_transcription_id)->toBe($transcription->id);
 
@@ -122,6 +123,34 @@ it('imports transcriptions by reference key and never writes the legacy item tra
         ->transcript_markdown->toBe('Updated body')
         ->status->toBe(PublicationStatus::Draft)
         ->and($item->refresh()->transcript_markdown)->toBeNull();
+});
+
+it('imports transcriptions with multiple transcriber reference keys and names', function (): void {
+    $item = ContentItem::factory()->create();
+    $primary = Author::factory()->create(['name' => 'Primary Import Transcriber']);
+    $secondary = Author::factory()->create(['name' => 'Secondary Import Transcriber']);
+    $named = Author::factory()->create(['name' => 'Named Import Transcriber']);
+
+    phase02ImportRecord(TranscriptionImporter::class, [
+        'reference_key' => (string) Str::ulid(),
+        'content_item_reference_key' => $item->reference_key,
+        'primary_transcriber_reference_key' => $primary->reference_key,
+        'transcriber_reference_keys' => $secondary->reference_key,
+        'transcriber_names' => $named->name,
+        'title' => 'Multi transcriber transcript',
+        'language_code' => 'he',
+        'transcript_markdown' => 'Multi body',
+        'status' => PublicationStatus::Draft->value,
+    ]);
+
+    $transcription = Transcription::query()->where('title', 'Multi transcriber transcript')->firstOrFail();
+
+    expect($transcription->author_id)->toBe($primary->id)
+        ->and($transcription->authors()->pluck('authors.id')->all())->toBe([
+            $primary->id,
+            $secondary->id,
+            $named->id,
+        ]);
 });
 
 it('resolves transcription fallback matching and fails missing item or author references', function (): void {
@@ -222,7 +251,6 @@ it('imports category hierarchy and fails missing parents', function (): void {
 
 it('imports content item taxonomy tags pinning media metadata and day first dates', function (): void {
     $group = ContentGroup::factory()->create();
-    $author = Author::factory()->create();
     $category = Category::factory()->create(['slug' => 'media']);
     $tag = ContentTag::findOrCreateFromString('Enabled Tag', 'content')->enable();
     $wrongTypeTag = ContentTag::findOrCreateFromString('Wrong Type Tag', 'internal');
@@ -234,7 +262,6 @@ it('imports content item taxonomy tags pinning media metadata and day first date
         'title' => 'Imported Item',
         'slug' => 'imported-item',
         'media_url' => 'https://example.com/media/item',
-        'author_reference_keys' => $author->reference_key,
         'category_paths' => 'media',
         'content_tag_slugs' => $tag->getTranslation('slug', app()->getLocale(), false),
         'is_pinned' => 'true',
@@ -369,6 +396,7 @@ it('exports portable prompt ten columns without numeric identifiers', function (
     $category = Category::factory()->create(['slug' => 'portable']);
     $tag = ContentTag::findOrCreateFromString('Portable Tag', 'content')->enable();
     $author = Author::factory()->create();
+    $secondAuthor = Author::factory()->create(['name' => 'Second Portable Transcriber']);
     $item = ContentItem::factory()->for($group)->create([
         'published_at' => Carbon::parse('2026-06-30 10:45:00', 'UTC'),
         'is_pinned' => true,
@@ -376,7 +404,6 @@ it('exports portable prompt ten columns without numeric identifiers', function (
         'media_metadata' => ['source' => 'manual'],
     ]);
     $item->categories()->attach($category);
-    $item->authors()->attach($author);
     $item->tags()->sync([$tag->id]);
 
     $transcription = Transcription::factory()
@@ -384,6 +411,7 @@ it('exports portable prompt ten columns without numeric identifiers', function (
         ->forAuthor($author)
         ->published(Carbon::parse('2026-06-30 10:45:00', 'UTC'))
         ->create();
+    $transcription->syncTranscribers([$author, $secondAuthor]);
 
     $item->update(['featured_transcription_id' => $transcription->id]);
 
@@ -395,11 +423,17 @@ it('exports portable prompt ten columns without numeric identifiers', function (
         'media_metadata',
         'featured_transcription_reference_key',
     )
-        ->and(collect(TranscriptionExporter::getColumns())->map->getName()->all())->toContain('content_item_reference_key', 'author_reference_key')
+        ->and(collect(TranscriptionExporter::getColumns())->map->getName()->all())->toContain(
+            'content_item_reference_key',
+            'author_reference_key',
+            'primary_transcriber_reference_key',
+            'transcriber_reference_keys',
+            'transcriber_names',
+        )
         ->and(collect(CategoryExporter::getColumns())->map->getName()->all())->toContain('path', 'parent_slug')
         ->and(collect(ContentGroupExporter::getColumns())->map->getName()->all())->toContain('category_paths', 'homepage_order');
 
-    $exportedItem = phase02ExportRecord(ContentItemExporter::class, $item->load(['authors', 'categories.parent', 'contentTags', 'featuredTranscription']), [
+    $exportedItem = phase02ExportRecord(ContentItemExporter::class, $item->load(['categories.parent', 'contentTags', 'featuredTranscription']), [
         'content_group_reference_key' => 'content_group_reference_key',
         'category_paths' => 'category_paths',
         'content_tag_slugs' => 'content_tag_slugs',
@@ -418,13 +452,19 @@ it('exports portable prompt ten columns without numeric identifiers', function (
     ])
         ->and($exportedItem)->not->toContain((string) $group->id, (string) $category->id, (string) $tag->id);
 
-    expect(phase02ExportRecord(TranscriptionExporter::class, $transcription->load(['contentItem', 'author']), [
+    expect(phase02ExportRecord(TranscriptionExporter::class, $transcription->load(['contentItem', 'authors']), [
         'content_item_reference_key' => 'content_item_reference_key',
         'author_reference_key' => 'author_reference_key',
+        'primary_transcriber_reference_key' => 'primary_transcriber_reference_key',
+        'transcriber_reference_keys' => 'transcriber_reference_keys',
+        'transcriber_names' => 'transcriber_names',
         'published_at' => 'published_at',
     ]))->toBe([
         $item->reference_key,
         $author->reference_key,
+        $author->reference_key,
+        $author->reference_key.'|'.$secondAuthor->reference_key,
+        $author->name.'|'.$secondAuthor->name,
         '30/06/2026 13:45',
     ]);
 });

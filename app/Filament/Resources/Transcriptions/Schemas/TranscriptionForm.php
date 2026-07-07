@@ -31,13 +31,8 @@ class TranscriptionForm
                             ->searchable()
                             ->preload()
                             ->required(),
-                        RelationshipOptionForms::configureAuthorSelect(
-                            Select::make('author_id')
-                                ->label(__('admin.fields.author'))
-                                ->relationship('author', 'name')
-                                ->searchable()
-                                ->preload()
-                                ->required()
+                        RelationshipOptionForms::configureTranscriberRelationshipSelect(
+                            Select::make('transcriber_ids'),
                         ),
                         TextInput::make('title')
                             ->label(__('admin.fields.title'))

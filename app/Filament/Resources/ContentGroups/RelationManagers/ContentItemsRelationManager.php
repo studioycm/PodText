@@ -41,7 +41,12 @@ class ContentItemsRelationManager extends RelationManager
         return $table
             ->recordTitleAttribute('title')
             ->modifyQueryUsing(fn (Builder $query): Builder => $query
-                ->with(['authors', 'categories', 'tags', 'featuredTranscription'])
+                ->with([
+                    'categories',
+                    'tags',
+                    'featuredTranscription.authors',
+                    'latestPublishedTranscription.authors',
+                ])
                 ->latest('published_at')
                 ->latest('id'))
             ->columns([
@@ -53,8 +58,9 @@ class ContentItemsRelationManager extends RelationManager
                     ->label(__('admin.fields.effective_type_label'))
                     ->state(fn (ContentItem $record): string => $record->effectiveTypeLabelSingular())
                     ->badge(),
-                TextColumn::make('authors.name')
-                    ->label(__('admin.fields.authors'))
+                TextColumn::make('effective_transcribers')
+                    ->label(__('admin.fields.transcribers'))
+                    ->state(fn (ContentItem $record): string => implode(', ', $record->effectiveTranscription()?->transcriberNames() ?? []))
                     ->badge()
                     ->separator(', '),
                 TextColumn::make('categories.name')
@@ -101,12 +107,6 @@ class ContentItemsRelationManager extends RelationManager
                 SelectFilter::make('status')
                     ->label(__('admin.fields.status'))
                     ->options(PublicationStatus::class),
-                SelectFilter::make('authors')
-                    ->label(__('admin.fields.authors'))
-                    ->relationship('authors', 'name')
-                    ->multiple()
-                    ->searchable()
-                    ->preload(),
                 SelectFilter::make('categories')
                     ->label(__('admin.fields.categories'))
                     ->relationship('categories', 'name')

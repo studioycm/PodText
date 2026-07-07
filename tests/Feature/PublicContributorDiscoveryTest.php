@@ -127,7 +127,6 @@ it('selects a contributor and previews only public related content items by tran
 
     $previewItem = createPrompt11BPublicItem($selected, 'Preview Public Item');
     $authoredOnly = createPrompt11BPublicItem($other, 'Authored But Not Transcribed');
-    $authoredOnly->authors()->attach($selected);
     createPrompt11BPublicItem($other, 'Other Public Item');
 
     Livewire::test(ContributorDirectory::class)

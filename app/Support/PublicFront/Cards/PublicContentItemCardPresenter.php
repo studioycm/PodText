@@ -64,7 +64,7 @@ class PublicContentItemCardPresenter
                 'fit_class' => $options->imageFitClass(),
                 'radius_class' => $options->imageRadiusClass(),
             ],
-            'authors' => $this->authors($item),
+            'authors' => $this->transcribers($item),
             'categories' => $categories,
             'tags' => $tags,
             'duration' => $duration,
@@ -454,10 +454,16 @@ class PublicContentItemCardPresenter
     /**
      * @return array<int, array{label: string}>
      */
-    private function authors(ContentItem $item): array
+    private function transcribers(ContentItem $item): array
     {
-        return $item->authors
-            ->map(fn (mixed $author): array => ['label' => (string) $author->name])
+        $transcription = $item->effectiveTranscription();
+
+        if (! $transcription) {
+            return [];
+        }
+
+        return collect($transcription->transcriberNames())
+            ->map(fn (string $name): array => ['label' => $name])
             ->values()
             ->all();
     }

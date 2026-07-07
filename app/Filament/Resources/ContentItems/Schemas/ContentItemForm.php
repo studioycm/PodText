@@ -105,15 +105,6 @@ class ContentItemForm
                             ->numeric()
                             ->integer()
                             ->minValue(0),
-                        RelationshipOptionForms::configureAuthorSelect(
-                            Select::make('authors')
-                                ->label(__('admin.fields.authors'))
-                                ->relationship('authors', 'name')
-                                ->multiple()
-                                ->searchable()
-                                ->preload(),
-                            allowEdit: false,
-                        ),
                         RelationshipOptionForms::configureCategorySelect(
                             Select::make('categories')
                                 ->label(__('admin.fields.categories'))

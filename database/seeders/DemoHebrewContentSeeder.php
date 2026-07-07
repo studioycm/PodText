@@ -371,12 +371,6 @@ class DemoHebrewContentSeeder extends Seeder
             ],
         );
 
-        $contentItem->authors()->syncWithoutDetaching(
-            collect($itemData['authors'])
-                ->map(fn (string $key): int => $authors[$key]->getKey())
-                ->all(),
-        );
-
         $contentItem->categories()->syncWithoutDetaching(
             collect($itemData['categories'])
                 ->map(fn (string $key): int => $categories[$key]->getKey())
@@ -406,6 +400,11 @@ class DemoHebrewContentSeeder extends Seeder
                 ],
                 'parsed_segments' => null,
             ],
+        );
+        $transcription->syncTranscribers(
+            collect($itemData['authors'])
+                ->map(fn (string $key): int => $authors[$key]->getKey())
+                ->all(),
         );
 
         $contentItem->forceFill([

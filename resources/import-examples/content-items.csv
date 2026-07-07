@@ -1,2 +1,2 @@
-reference_key,content_group_reference_key,title,slug,type_label_singular_override,description_markdown,media_url,embed_url,duration_seconds,original_published_at,status,published_at,author_reference_keys
-01ARZ3NDEKTSV4RRFFQ69G5FA4,01ARZ3NDEKTSV4RRFFQ69G5FA3,"Example Episode",example-episode,,"Episode **description**.",https://example.com/media/example-episode,https://www.youtube.com/embed/example,125,2026-01-01 09:00:00,published,2026-01-01 10:00:00,01ARZ3NDEKTSV4RRFFQ69G5FA1|01ARZ3NDEKTSV4RRFFQ69G5FA2
+reference_key,content_group_reference_key,title,slug,type_label_singular_override,description_markdown,media_url,embed_url,duration_seconds,original_published_at,status,published_at
+01ARZ3NDEKTSV4RRFFQ69G5FA4,01ARZ3NDEKTSV4RRFFQ69G5FA3,"Example Episode",example-episode,,"Episode **description**.",https://example.com/media/example-episode,https://www.youtube.com/embed/example,125,2026-01-01 09:00:00,published,2026-01-01 10:00:00

@@ -46,16 +46,18 @@
                             <dd>{{ $activeTranscription->published_at->timezone('Asia/Jerusalem')->format('d/m/Y') }}</dd>
                         </div>
                     @endif
-                    @if($activeTranscription->author)
+                    @if($activeTranscription->authors->isNotEmpty())
                         <div class="rounded-md bg-gray-100 px-2 py-1 dark:bg-gray-800" data-test="transcriber-link">
-                            <dt class="sr-only">{{ __('public.labels.transcriber') }}</dt>
-                            <dd>
-                                <a
-                                    href="{{ \App\Filament\Public\Pages\ShowContributor::getUrl(['authorSlug' => $activeTranscription->author->slug], panel: 'public') }}"
-                                    class="font-medium text-primary-700 hover:text-primary-900 dark:text-primary-300 dark:hover:text-primary-100"
-                                >
-                                    {{ $activeTranscription->author->name }}
-                                </a>
+                            <dt class="sr-only">{{ __('public.labels.transcribers') }}</dt>
+                            <dd class="flex flex-wrap gap-1">
+                                @foreach($activeTranscription->authors as $author)
+                                    <a
+                                        href="{{ \App\Filament\Public\Pages\ShowContributor::getUrl(['authorSlug' => $author->slug], panel: 'public') }}"
+                                        class="font-medium text-primary-700 hover:text-primary-900 dark:text-primary-300 dark:hover:text-primary-100"
+                                    >
+                                        {{ $author->name }}
+                                    </a>@if(! $loop->last)<span aria-hidden="true">,</span>@endif
+                                @endforeach
                             </dd>
                         </div>
                     @endif

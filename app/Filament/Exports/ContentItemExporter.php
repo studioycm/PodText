@@ -91,11 +91,6 @@ class ContentItemExporter extends Exporter
                 ->formatStateUsing(fn (mixed $state): ?string => self::safeSpreadsheetDateTime($state)),
             ExportColumn::make('pin_order')
                 ->label(__('admin.fields.pin_order')),
-            ExportColumn::make('author_reference_keys')
-                ->label(__('admin.import.columns.author_reference_keys'))
-                ->state(fn (ContentItem $record): string => $record->authors
-                    ->pluck('reference_key')
-                    ->implode('|')),
             ExportColumn::make('category_paths')
                 ->label(__('admin.import.columns.category_paths'))
                 ->state(fn (ContentItem $record): string => self::categoryPaths($record->categories)),

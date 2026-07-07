@@ -40,12 +40,11 @@ class ShowContentItem extends Page
             ->whereBelongsTo($this->contentGroup)
             ->where('slug', $contentItemSlug)
             ->with([
-                'authors',
                 'categories',
                 'contentGroup.categories',
                 'enabledContentTags',
-                'featuredTranscription.author',
-                'latestPublishedTranscription.author',
+                'featuredTranscription.authors',
+                'latestPublishedTranscription.authors',
             ])
             ->firstOrFail();
     }

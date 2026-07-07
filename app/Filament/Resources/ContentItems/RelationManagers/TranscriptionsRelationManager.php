@@ -42,14 +42,8 @@ class TranscriptionsRelationManager extends RelationManager
                 Section::make(__('admin.sections.identity'))
                     ->description(__('admin.descriptions.transcription_identity'))
                     ->schema([
-                        RelationshipOptionForms::configureAuthorSelect(
-                            Select::make('author_id')
-                                ->label(__('admin.fields.author'))
-                                ->helperText(__('admin.helpers.transcription_author'))
-                                ->relationship('author', 'name')
-                                ->searchable()
-                                ->preload()
-                                ->required()
+                        RelationshipOptionForms::configureTranscriberRelationshipSelect(
+                            Select::make('transcriber_ids'),
                         ),
                         TextInput::make('title')
                             ->label(__('admin.fields.title'))
@@ -98,7 +92,7 @@ class TranscriptionsRelationManager extends RelationManager
         return $table
             ->recordTitleAttribute('title')
             ->modifyQueryUsing(fn (Builder $query): Builder => $query
-                ->with('author')
+                ->with('authors')
                 ->latest('published_at')
                 ->latest('id'))
             ->columns([
@@ -106,9 +100,11 @@ class TranscriptionsRelationManager extends RelationManager
                     ->label(__('admin.fields.title'))
                     ->placeholder(__('admin.labels.untitled'))
                     ->searchable(),
-                TextColumn::make('author.name')
-                    ->label(__('admin.fields.author'))
-                    ->searchable(),
+                TextColumn::make('transcriber_names')
+                    ->label(__('admin.fields.transcribers'))
+                    ->state(fn (Transcription $record): string => implode(', ', $record->transcriberNames()))
+                    ->searchable(query: fn (Builder $query, string $search): Builder => $query
+                        ->whereHas('authors', fn (Builder $query): Builder => $query->where('name', 'like', "%{$search}%"))),
                 TextColumn::make('status')
                     ->label(__('admin.fields.status'))
                     ->badge()
@@ -142,9 +138,9 @@ class TranscriptionsRelationManager extends RelationManager
                 SelectFilter::make('status')
                     ->label(__('admin.fields.status'))
                     ->options(PublicationStatus::class),
-                SelectFilter::make('author_id')
-                    ->label(__('admin.fields.author'))
-                    ->relationship('author', 'name')
+                SelectFilter::make('transcriber_id')
+                    ->label(__('admin.fields.transcribers'))
+                    ->relationship('authors', 'name')
                     ->searchable()
                     ->preload(),
                 SelectFilter::make('language_code')

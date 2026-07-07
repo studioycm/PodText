@@ -26,7 +26,18 @@ class TranscriptionExporter extends Exporter
                 ->state(fn (Transcription $record): ?string => $record->contentItem?->reference_key),
             ExportColumn::make('author_reference_key')
                 ->label(__('admin.import.columns.author_reference_key'))
-                ->state(fn (Transcription $record): ?string => $record->author?->reference_key),
+                ->state(fn (Transcription $record): ?string => $record->primaryTranscriber()?->reference_key),
+            ExportColumn::make('primary_transcriber_reference_key')
+                ->label(__('admin.import.columns.primary_transcriber_reference_key'))
+                ->state(fn (Transcription $record): ?string => $record->primaryTranscriber()?->reference_key),
+            ExportColumn::make('transcriber_reference_keys')
+                ->label(__('admin.import.columns.transcriber_reference_keys'))
+                ->state(fn (Transcription $record): string => $record->authors()
+                    ->pluck('reference_key')
+                    ->implode('|')),
+            ExportColumn::make('transcriber_names')
+                ->label(__('admin.import.columns.transcriber_names'))
+                ->state(fn (Transcription $record): string => self::safeSpreadsheetText(implode('|', $record->transcriberNames()))),
             ExportColumn::make('title')
                 ->label(__('admin.fields.title'))
                 ->formatStateUsing(fn (mixed $state): ?string => self::safeSpreadsheetText($state)),

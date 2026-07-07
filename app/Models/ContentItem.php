@@ -65,11 +65,6 @@ class ContentItem extends Model
         return $this->belongsTo(ContentGroup::class);
     }
 
-    public function authors(): BelongsToMany
-    {
-        return $this->belongsToMany(Author::class);
-    }
-
     public function categories(): BelongsToMany
     {
         return $this->belongsToMany(Category::class);

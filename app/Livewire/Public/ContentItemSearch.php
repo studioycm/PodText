@@ -67,7 +67,7 @@ class ContentItemSearch extends Component
     public ?int $filterContentGroupId = null;
 
     #[Url(as: 'author', except: null)]
-    public ?int $filterAuthorId = null;
+    public ?int $filterTranscriberId = null;
 
     #[Url(as: 'provider', except: '')]
     public string $filterProvider = '';
@@ -193,7 +193,7 @@ class ContentItemSearch extends Component
         $this->filterCategoryIds = [];
         $this->filterTagIds = [];
         $this->filterContentGroupId = null;
-        $this->filterAuthorId = null;
+        $this->filterTranscriberId = null;
         $this->filterProvider = '';
         $this->filterEffectiveFrom = '';
         $this->filterEffectiveUntil = '';
@@ -248,7 +248,7 @@ class ContentItemSearch extends Component
         return count($this->filterCategoryIds)
             + count($this->filterTagIds)
             + (filled($this->filterContentGroupId) ? 1 : 0)
-            + (filled($this->filterAuthorId) ? 1 : 0)
+            + (filled($this->filterTranscriberId) ? 1 : 0)
             + (filled($this->filterProvider) ? 1 : 0)
             + (filled($this->filterEffectiveFrom) ? 1 : 0)
             + (filled($this->filterEffectiveUntil) ? 1 : 0)
@@ -324,9 +324,10 @@ class ContentItemSearch extends Component
     /**
      * @return array<int, string>
      */
-    public function authorOptions(): array
+    public function transcriberOptions(): array
     {
         return Author::query()
+            ->whereHas('authoredTranscriptions')
             ->orderBy('name')
             ->pluck('name', 'id')
             ->all();
@@ -389,7 +390,6 @@ class ContentItemSearch extends Component
             : $this->sectionResultCount($sections);
 
         return view('livewire.public.content-item-search', [
-            'authorOptions' => $this->authorOptions(),
             'cardOptions' => $cardOptions,
             'cardTemplate' => $cardTemplate,
             'categoryOptions' => $this->categoryOptions(),
@@ -400,6 +400,7 @@ class ContentItemSearch extends Component
             'results' => $results,
             'sections' => $sections,
             'tagOptions' => $this->tagOptions(),
+            'transcriberOptions' => $this->transcriberOptions(),
         ]);
     }
 
@@ -516,8 +517,10 @@ class ContentItemSearch extends Component
             $query->where('content_group_id', $this->filterContentGroupId);
         }
 
-        if (filled($this->filterAuthorId)) {
-            $query->whereHas('authors', fn (Builder $query): Builder => $query->whereKey($this->filterAuthorId));
+        if (filled($this->filterTranscriberId)) {
+            $query->whereHas('transcriptions', fn (Builder $query): Builder => $query
+                ->published()
+                ->whereHas('authors', fn (Builder $query): Builder => $query->whereKey($this->filterTranscriberId)));
         }
 
         if (filled($this->filterProvider)) {
@@ -636,7 +639,7 @@ class ContentItemSearch extends Component
             || filled($this->filterCategoryId)
             || filled($this->filterTagId)
             || filled($this->filterContentGroupId)
-            || filled($this->filterAuthorId)
+            || filled($this->filterTranscriberId)
             || filled($this->filterProvider)
             || filled($this->filterEffectiveFrom)
             || filled($this->filterEffectiveUntil)

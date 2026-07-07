@@ -65,11 +65,11 @@
         </div>
 
         <x-public.public-filter-panel
-            :author-options="$authorOptions"
             :category-options="$categoryOptions"
             :content-group-options="$contentGroupOptions"
             :provider-options="$providerOptions"
             :tag-options="$tagOptions"
+            :transcriber-options="$transcriberOptions"
             :active-filter-count="$this->activeFilterCount()"
             :active-category-ids="$filterCategoryIds"
             :active-tag-ids="$filterTagIds"

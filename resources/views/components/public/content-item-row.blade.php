@@ -5,6 +5,7 @@
         'contentGroupSlug' => $item->contentGroup->slug,
         'contentItemSlug' => $item->slug,
     ], panel: 'public');
+    $transcriberNames = $item->effectiveTranscription()?->transcriberNames() ?? [];
 @endphp
 
 <article {{ $attributes->merge(['class' => 'p-4 transition hover:bg-primary-50/60 dark:hover:bg-primary-400/5']) }}>
@@ -16,9 +17,9 @@
                 {{ $item->title }}
             </h3>
 
-            @if ($item->authors->isNotEmpty())
+            @if ($transcriberNames !== [])
                 <p class="text-sm text-gray-600 dark:text-gray-300">
-                    {{ $item->authors->pluck('name')->join(', ') }}
+                    {{ collect($transcriberNames)->join(', ') }}
                 </p>
             @endif
         </div>

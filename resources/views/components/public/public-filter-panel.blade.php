@@ -2,11 +2,11 @@
     'activeCategoryIds' => [],
     'activeFilterCount' => 0,
     'activeTagIds' => [],
-    'authorOptions' => [],
     'categoryOptions' => [],
     'contentGroupOptions' => [],
     'providerOptions' => [],
     'tagOptions' => [],
+    'transcriberOptions' => [],
 ])
 
 <div
@@ -102,10 +102,10 @@
                 </label>
 
                 <label class="grid gap-1 text-sm text-gray-700 dark:text-gray-200">
-                    <span>{{ __('public.filters.author') }}</span>
-                    <select wire:model.live="filterAuthorId" data-test="filter-author" class="rounded-md border-gray-300 text-sm shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:border-gray-700 dark:bg-gray-950">
+                    <span>{{ __('public.filters.transcriber') }}</span>
+                    <select wire:model.live="filterTranscriberId" data-test="filter-transcriber" class="rounded-md border-gray-300 text-sm shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:border-gray-700 dark:bg-gray-950">
                         <option value="">{{ __('public.filters.any') }}</option>
-                        @foreach($authorOptions as $value => $label)
+                        @foreach($transcriberOptions as $value => $label)
                             <option value="{{ $value }}">{{ $label }}</option>
                         @endforeach
                     </select>

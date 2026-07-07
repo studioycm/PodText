@@ -3,6 +3,8 @@
 namespace App\Filament\Resources\Support;
 
 use App\Enums\PublicationStatus;
+use App\Models\Author;
+use App\Models\Transcription;
 use Filament\Actions\Action;
 use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\MarkdownEditor;
@@ -34,6 +36,69 @@ class RelationshipOptionForms
             schema: self::authorForm(),
             headingKey: 'admin.modals.edit_author',
             labelKey: 'admin.actions.edit_author',
+        );
+    }
+
+    public static function configureTranscriberRelationshipSelect(Select $select): Select
+    {
+        return self::configureAuthorSelect(
+            $select
+                ->label(__('admin.fields.transcribers'))
+                ->helperText(__('admin.helpers.transcription_transcribers'))
+                ->relationship('authors', 'name')
+                ->multiple()
+                ->searchable()
+                ->preload()
+                ->required()
+                ->loadStateFromRelationshipsUsing(static function (Select $component): void {
+                    $record = $component->getRecord();
+
+                    if (! $record instanceof Transcription || ! $record->exists) {
+                        $component->state([]);
+
+                        return;
+                    }
+
+                    $record->loadMissing('authors');
+
+                    $component->state($record->authors
+                        ->pluck('id')
+                        ->map(fn (int $authorId): int => $authorId)
+                        ->values()
+                        ->all());
+                })
+                ->saveRelationshipsUsing(static function (Select $component): void {
+                    $record = $component->getRecord();
+
+                    if (! $record instanceof Transcription) {
+                        return;
+                    }
+
+                    $record->syncTranscribers($component->getState() ?? []);
+                })
+                ->dehydrated(false),
+            allowEdit: false,
+        );
+    }
+
+    public static function configureTranscriberOptionsSelect(Select $select): Select
+    {
+        return self::configureCreateOption(
+            select: $select
+                ->label(__('admin.fields.transcribers'))
+                ->helperText(__('admin.helpers.transcription_transcribers'))
+                ->options(fn (): array => Author::query()
+                    ->orderBy('name')
+                    ->pluck('name', 'id')
+                    ->all())
+                ->multiple()
+                ->searchable()
+                ->preload()
+                ->required()
+                ->createOptionUsing(fn (array $data): int => Author::query()->create($data)->getKey()),
+            schema: self::authorForm(),
+            headingKey: 'admin.modals.create_author',
+            labelKey: 'admin.actions.create_author',
         );
     }
 

@@ -4,8 +4,10 @@ use App\Enums\PublicationStatus;
 use App\Models\Author;
 use App\Models\ContentGroup;
 use App\Models\ContentItem;
+use App\Models\Transcription;
 use App\Support\Markdown\SafeMarkdownRenderer;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 
 uses(RefreshDatabase::class);
@@ -32,15 +34,10 @@ it('defines content group item relationships', function (): void {
         ->and($item->contentGroup->is($group))->toBeTrue();
 });
 
-it('defines content item author relationships', function (): void {
-    $item = ContentItem::factory()->create();
-    $authors = Author::factory()->count(2)->create();
-
-    $item->authors()->attach($authors);
-
-    expect($item->authors)->toHaveCount(2)
-        ->and($authors->first()->contentItems)->toHaveCount(1)
-        ->and($authors->first()->contentItems->first()->is($item))->toBeTrue();
+it('removes legacy content item author relationships', function (): void {
+    expect(Schema::hasTable('author_content_item'))->toBeFalse()
+        ->and(method_exists(ContentItem::class, 'authors'))->toBeFalse()
+        ->and(method_exists(Author::class, 'contentItems'))->toBeFalse();
 });
 
 it('generates unique reference keys and prevents ordinary edits from replacing them', function (): void {
@@ -121,16 +118,19 @@ it('scopes published items by item state and parent group visibility', function 
     expect(ContentItem::published()->pluck('id')->all())->toBe([$publishedItem->id]);
 });
 
-it('deleting an author detaches credits without deleting content items', function (): void {
+it('deleting an author detaches transcription credits without deleting content items', function (): void {
     $author = Author::factory()->create();
     $item = ContentItem::factory()->create();
+    $transcription = Transcription::factory()->for($item)->forAuthor($author)->create();
 
-    $item->authors()->attach($author);
+    $transcription->syncTranscribers([$author]);
 
     $author->delete();
 
     expect(ContentItem::query()->whereKey($item)->exists())->toBeTrue()
-        ->and($item->refresh()->authors)->toHaveCount(0);
+        ->and(Transcription::query()->whereKey($transcription)->exists())->toBeTrue()
+        ->and($transcription->refresh()->author_id)->toBeNull()
+        ->and($transcription->authors()->count())->toBe(0);
 });
 
 it('renders markdown formatting through the safe renderer', function (): void {

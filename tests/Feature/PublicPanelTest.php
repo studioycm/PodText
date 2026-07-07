@@ -133,8 +133,8 @@ it('renders a published group page with sanitized description and published item
         'title' => 'Draft Item',
         'slug' => 'draft-item',
     ]);
-    $publishedItem->authors()->attach($author);
-    $draftItem->authors()->attach($author);
+    $publishedItem->effectiveTranscription()?->syncTranscribers([$author]);
+    $draftItem->effectiveTranscription()?->syncTranscribers([$author]);
 
     $this->get("/podcasts/{$group->slug}")
         ->assertSuccessful()
@@ -184,7 +184,7 @@ it('renders a published item page with authors sanitized markdown and approved e
         'embed_url' => 'https://www.youtube.com/embed/demo',
         'duration_seconds' => 125,
     ]);
-    $item->authors()->attach($authors);
+    $item->effectiveTranscription()?->syncTranscribers($authors);
 
     $response = $this->get("/items/{$group->slug}/{$item->slug}");
 

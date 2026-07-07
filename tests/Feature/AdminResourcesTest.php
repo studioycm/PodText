@@ -16,6 +16,7 @@ use App\Filament\Resources\ContentItems\Pages\ListContentItems;
 use App\Models\Author;
 use App\Models\ContentGroup;
 use App\Models\ContentItem;
+use App\Models\Transcription;
 use App\Models\User;
 use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -298,11 +299,10 @@ it('renders content item resource pages', function (): void {
         ]);
 });
 
-it('creates and edits content items with authors, labels, embed validation, and publication enum', function (): void {
+it('creates and edits content items with labels embed validation and publication enum', function (): void {
     $group = ContentGroup::factory()->create([
         'default_item_type_label_singular' => 'Episode',
     ]);
-    $authors = Author::factory()->count(2)->create();
 
     Livewire::test(CreateContentItem::class)
         ->fillForm([
@@ -314,7 +314,6 @@ it('creates and edits content items with authors, labels, embed validation, and 
             'media_url' => 'https://example.com/audio.mp3',
             'embed_url' => 'https://www.youtube.com/embed/demo',
             'duration_seconds' => 123,
-            'authors' => $authors->pluck('id')->all(),
             'status' => PublicationStatus::Published,
             'published_at' => now()->subMinute(),
             'original_published_at' => now()->subDay(),
@@ -327,8 +326,7 @@ it('creates and edits content items with authors, labels, embed validation, and 
     expect($item->content_group_id)->toBe($group->id)
         ->and($item->effectiveTypeLabelSingular())->toBe('Talk')
         ->and($item->embed_url)->toBe('https://www.youtube.com/embed/demo')
-        ->and($item->status)->toBe(PublicationStatus::Published)
-        ->and($item->authors)->toHaveCount(2);
+        ->and($item->status)->toBe(PublicationStatus::Published);
 
     Livewire::test(EditContentItem::class, ['record' => $item->getRouteKey()])
         ->fillForm([
@@ -340,7 +338,6 @@ it('creates and edits content items with authors, labels, embed validation, and 
             'media_url' => 'https://example.com/updated.mp3',
             'embed_url' => 'https://player.vimeo.com/video/123',
             'duration_seconds' => 456,
-            'authors' => [$authors->first()->id],
             'status' => PublicationStatus::Draft,
             'published_at' => null,
             'original_published_at' => null,
@@ -348,11 +345,10 @@ it('creates and edits content items with authors, labels, embed validation, and 
         ->call('save')
         ->assertHasNoFormErrors();
 
-    $item->refresh()->load('authors', 'contentGroup');
+    $item->refresh()->load('contentGroup');
 
     expect($item->title)->toBe('Updated Transcript')
         ->and($item->effectiveTypeLabelSingular())->toBe('Episode')
-        ->and($item->authors)->toHaveCount(1)
         ->and($item->status)->toBe(PublicationStatus::Draft);
 });
 
@@ -449,9 +445,8 @@ it('searches and filters content item tables', function (): void {
             'title' => 'Hidden Item',
             'status' => PublicationStatus::Draft,
         ]);
-
-    $visible->authors()->attach($author);
-    $hidden->authors()->attach($otherAuthor);
+    Transcription::factory()->for($visible)->forAuthor($author)->create();
+    Transcription::factory()->for($hidden)->forAuthor($otherAuthor)->create();
 
     Livewire::test(ListContentItems::class)
         ->searchTable('Visible')
@@ -469,7 +464,7 @@ it('searches and filters content item tables', function (): void {
         ->assertCanNotSeeTableRecords([$hidden]);
 
     Livewire::test(ListContentItems::class)
-        ->filterTable('authors', [$author->id])
+        ->filterTable('transcriber_id', $author->id)
         ->assertCanSeeTableRecords([$visible])
         ->assertCanNotSeeTableRecords([$hidden]);
 });

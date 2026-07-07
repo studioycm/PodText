@@ -31,6 +31,7 @@ return [
     ],
     'filters' => [
         'author' => 'Author',
+        'transcriber' => 'Transcriber',
         'advanced' => 'Advanced filters',
         'active_count' => '{0} No active filters|{1} 1 active filter|[2,*] :count active filters',
         'any' => 'Any',
@@ -94,6 +95,7 @@ return [
         'share' => 'Share',
         'taxonomy' => 'Categories and tags',
         'transcriber' => 'Transcriber',
+        'transcribers' => 'Transcribers',
         'transcription' => 'Transcription',
         'transcriptions' => 'Transcriptions',
         'transcript_length' => 'Transcript length',

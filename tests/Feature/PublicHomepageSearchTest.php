@@ -131,7 +131,7 @@ it('consumes card field visibility and semantic display settings', function (): 
     ], [
         'published_at' => now()->subDay(),
     ]);
-    $item->authors()->attach($author);
+    $item->effectiveTranscription()?->syncTranscribers([$author]);
     $item->categories()->attach($category);
     $item->attachTag($tag);
 
@@ -269,7 +269,7 @@ it('searches item title group title category and enabled content tag names only'
         ->assertDontSee($disabledTagItem->title);
 });
 
-it('filters by descendant categories inherited group categories enabled tags groups authors and providers', function (): void {
+it('filters by descendant categories inherited group categories enabled tags groups transcribers and providers', function (): void {
     $parent = Category::factory()->create(['name' => 'Parent']);
     $child = Category::factory()->for($parent, 'parent')->create(['name' => 'Child']);
     $group = ContentGroup::factory()->published()->create(['title' => 'Filtered Group']);
@@ -280,9 +280,9 @@ it('filters by descendant categories inherited group categories enabled tags gro
     $tagged = createPrompt11PublicItem(['title' => 'Tagged Episode']);
     $tagged->attachTag($tag);
 
-    $author = Author::factory()->create(['name' => 'Filter Author']);
-    $authored = createPrompt11PublicItem(['title' => 'Authored Episode']);
-    $authored->authors()->attach($author);
+    $author = Author::factory()->create(['name' => 'Filter Transcriber']);
+    $authored = createPrompt11PublicItem(['title' => 'Transcribed Episode']);
+    $authored->effectiveTranscription()?->syncTranscribers([$author]);
 
     $provider = createPrompt11PublicItem([
         'title' => 'Provider Episode',
@@ -305,7 +305,7 @@ it('filters by descendant categories inherited group categories enabled tags gro
         ->assertDontSee($tagged->title);
 
     Livewire::test(ContentItemSearch::class)
-        ->set('filterAuthorId', $author->id)
+        ->set('filterTranscriberId', $author->id)
         ->assertSee($authored->title)
         ->assertDontSee($tagged->title);
 

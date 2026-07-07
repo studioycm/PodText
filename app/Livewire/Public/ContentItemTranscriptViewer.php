@@ -58,7 +58,7 @@ class ContentItemTranscriptViewer extends Component
         return $this->contentItem
             ->transcriptions()
             ->published()
-            ->with('author')
+            ->with('authors')
             ->orderByDesc('published_at')
             ->orderByDesc('id')
             ->get()

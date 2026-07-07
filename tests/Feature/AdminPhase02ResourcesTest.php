@@ -280,7 +280,6 @@ it('assigns prompt eight taxonomy, tags, pinning, media metadata, and featured t
             'media_url' => 'https://example.com/audio.mp3',
             'embed_url' => 'https://www.youtube.com/embed/demo',
             'duration_seconds' => 360,
-            'authors' => [$author->id],
             'categories' => [$category->id],
             'tags' => ['Assigned Tag'],
             'is_pinned' => true,
@@ -320,7 +319,6 @@ it('assigns prompt eight taxonomy, tags, pinning, media metadata, and featured t
             'title' => 'Prompt Nine Item',
             'slug' => 'prompt-nine-item',
             'media_url' => 'https://example.com/audio.mp3',
-            'authors' => [$author->id],
             'categories' => [$category->id],
             'tags' => ['Assigned Tag'],
             'featured_transcription_id' => $transcription->id,
@@ -347,8 +345,6 @@ it('creates and selects simple related records from content item relationship se
     $component = Livewire::test(CreateContentItem::class)
         ->assertActionExists(TestAction::make('createOption')->schemaComponent('content_group_id', 'form'))
         ->assertActionExists(TestAction::make('editOption')->schemaComponent('content_group_id', 'form'))
-        ->assertActionExists(TestAction::make('createOption')->schemaComponent('authors', 'form'))
-        ->assertActionDoesNotExist(TestAction::make('editOption')->schemaComponent('authors', 'form'))
         ->assertActionExists(TestAction::make('createOption')->schemaComponent('categories', 'form'))
         ->assertActionDoesNotExist(TestAction::make('editOption')->schemaComponent('categories', 'form'))
         ->mountAction(TestAction::make('createOption')->schemaComponent('content_group_id', 'form'))
@@ -356,11 +352,6 @@ it('creates and selects simple related records from content item relationship se
         ->set('mountedActions.0.data.slug', 'inline-group')
         ->set('mountedActions.0.data.original_language_code', 'he')
         ->set('mountedActions.0.data.status', PublicationStatus::Draft->value)
-        ->callMountedAction()
-        ->assertHasNoFormErrors()
-        ->mountAction(TestAction::make('createOption')->schemaComponent('authors', 'form'))
-        ->set('mountedActions.0.data.name', 'Inline Author')
-        ->set('mountedActions.0.data.slug', 'inline-author')
         ->callMountedAction()
         ->assertHasNoFormErrors()
         ->mountAction(TestAction::make('createOption')->schemaComponent('categories', 'form'))
@@ -372,12 +363,10 @@ it('creates and selects simple related records from content item relationship se
         ->assertHasNoFormErrors();
 
     $group = ContentGroup::query()->where('slug', 'inline-group')->firstOrFail();
-    $author = Author::query()->where('slug', 'inline-author')->firstOrFail();
     $category = Category::query()->where('slug', 'inline-category')->firstOrFail();
 
     $component
         ->assertSet('data.content_group_id', $group->id)
-        ->assertSet('data.authors', [$author->id])
         ->assertSet('data.categories', [$category->id])
         ->fillForm([
             'title' => 'Inline Selector Item',
@@ -391,7 +380,6 @@ it('creates and selects simple related records from content item relationship se
     $item = ContentItem::query()->where('slug', 'inline-selector-item')->firstOrFail();
 
     expect($item->content_group_id)->toBe($group->id)
-        ->and($item->authors()->whereKey($author)->exists())->toBeTrue()
         ->and($item->categories()->whereKey($category)->exists())->toBeTrue();
 });
 
@@ -405,13 +393,13 @@ it('edits selected simple related records and leaves complex selectors create-di
     Transcription::factory()->for($item)->forAuthor($author)->published()->create();
 
     Livewire::test(CreateTranscription::class)
-        ->set('data.author_id', $author->id)
-        ->assertActionExists(TestAction::make('createOption')->schemaComponent('author_id', 'form'))
-        ->assertActionExists(TestAction::make('editOption')->schemaComponent('author_id', 'form'))
-        ->mountAction(TestAction::make('editOption')->schemaComponent('author_id', 'form'))
-        ->set('mountedActions.0.data.name', 'Edited Modal Author')
-        ->set('mountedActions.0.data.slug', 'edited-modal-author')
-        ->set('mountedActions.0.data.bio_markdown', 'Edited through a selector modal.')
+        ->set('data.transcriber_ids', [$author->id])
+        ->assertActionExists(TestAction::make('createOption')->schemaComponent('transcriber_ids', 'form'))
+        ->assertActionDoesNotExist(TestAction::make('editOption')->schemaComponent('transcriber_ids', 'form'))
+        ->mountAction(TestAction::make('createOption')->schemaComponent('transcriber_ids', 'form'))
+        ->set('mountedActions.0.data.name', 'Created Modal Transcriber')
+        ->set('mountedActions.0.data.slug', 'created-modal-transcriber')
+        ->set('mountedActions.0.data.bio_markdown', 'Created through a selector modal.')
         ->callMountedAction()
         ->assertHasNoFormErrors();
 
@@ -421,9 +409,7 @@ it('edits selected simple related records and leaves complex selectors create-di
     Livewire::test(CreateTranscription::class)
         ->assertActionDoesNotExist(TestAction::make('createOption')->schemaComponent('content_item_id', 'form'));
 
-    expect($author->refresh()->name)->toBe('Edited Modal Author')
-        ->and($author->slug)->toBe('edited-modal-author')
-        ->and($author->bio_markdown)->toBe('Edited through a selector modal.');
+    expect(Author::query()->where('slug', 'created-modal-transcriber')->exists())->toBeTrue();
 });
 
 it('renders content item edit details and transcription tabs with real form fields', function (): void {
@@ -499,7 +485,7 @@ it('manages content items from the content group relation manager', function ():
         ->callMountedAction()
         ->assertHasNoFormErrors()
         ->mountAction(TestAction::make('addTranscription')->table($created))
-        ->set('mountedActions.0.data.author_id', $author->id)
+        ->set('mountedActions.0.data.transcriber_ids', [$author->id])
         ->set('mountedActions.0.data.title', 'Group relation transcript')
         ->set('mountedActions.0.data.language_code', 'he')
         ->set('mountedActions.0.data.status', PublicationStatus::Draft->value)
@@ -588,7 +574,7 @@ it('manages item transcriptions through the content item relation manager', func
         ->assertCanSeeTableRecords([$ownerTranscription])
         ->assertCanNotSeeTableRecords([$otherTranscription])
         ->mountAction(TestAction::make('create')->table())
-        ->set('mountedActions.0.data.author_id', $author->id)
+        ->set('mountedActions.0.data.transcriber_ids', [$author->id])
         ->set('mountedActions.0.data.title', 'Relation transcript')
         ->set('mountedActions.0.data.language_code', 'he')
         ->set('mountedActions.0.data.transcript_markdown', 'Relation body')
@@ -605,7 +591,7 @@ it('manages item transcriptions through the content item relation manager', func
         'pageClass' => EditContentItem::class,
     ])
         ->mountAction(TestAction::make('edit')->table($created))
-        ->set('mountedActions.0.data.author_id', $author->id)
+        ->set('mountedActions.0.data.transcriber_ids', [$author->id])
         ->set('mountedActions.0.data.title', 'Edited relation transcript')
         ->set('mountedActions.0.data.language_code', 'en')
         ->set('mountedActions.0.data.transcript_markdown', 'Edited body')
@@ -637,7 +623,7 @@ it('auto-features the first relation-manager transcription and only offers manua
     ])
         ->assertActionVisible(TestAction::make('create')->table())
         ->mountAction(TestAction::make('create')->table())
-        ->set('mountedActions.0.data.author_id', $author->id)
+        ->set('mountedActions.0.data.transcriber_ids', [$author->id])
         ->set('mountedActions.0.data.title', 'First item transcript')
         ->set('mountedActions.0.data.language_code', 'he')
         ->set('mountedActions.0.data.transcript_markdown', 'First body')
@@ -699,7 +685,7 @@ it('creates transcriptions from the content item table row action and defers mov
         ->assertActionVisible(TestAction::make('addTranscription')->table($item))
         ->assertActionDoesNotExist(TestAction::make('associateTranscription')->table($item))
         ->mountAction(TestAction::make('addTranscription')->table($item))
-        ->set('mountedActions.0.data.author_id', $author->id)
+        ->set('mountedActions.0.data.transcriber_ids', [$author->id])
         ->set('mountedActions.0.data.title', 'Table action transcript')
         ->set('mountedActions.0.data.language_code', 'he')
         ->set('mountedActions.0.data.status', PublicationStatus::Draft->value)
@@ -722,7 +708,7 @@ it('creates standalone transcriptions and validates same item featured selection
     Livewire::test(CreateTranscription::class)
         ->fillForm([
             'content_item_id' => $item->id,
-            'author_id' => $author->id,
+            'transcriber_ids' => [$author->id],
             'title' => 'Standalone transcript',
             'language_code' => 'he',
             'transcript_markdown' => 'Standalone body',

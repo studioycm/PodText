@@ -14,12 +14,11 @@ class PublicContentItemQueries
         return ContentItem::query()
             ->published()
             ->with([
-                'authors',
                 'categories',
                 'contentGroup.categories',
                 'enabledContentTags',
-                'featuredTranscription',
-                'latestPublishedTranscription',
+                'featuredTranscription.authors',
+                'latestPublishedTranscription.authors',
             ])
             ->withEffectiveTranscriptionPublishedAt();
     }

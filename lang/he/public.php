@@ -31,6 +31,7 @@ return [
     ],
     'filters' => [
         'author' => 'מחבר',
+        'transcriber' => 'מתמלל',
         'advanced' => 'מסננים מתקדמים',
         'active_count' => '{0} אין מסננים פעילים|{1} מסנן פעיל אחד|[2,*] :count מסננים פעילים',
         'any' => 'הכול',
@@ -94,6 +95,7 @@ return [
         'share' => 'שיתוף',
         'taxonomy' => 'קטגוריות ותגיות',
         'transcriber' => 'מתמלל',
+        'transcribers' => 'מתמללים',
         'transcription' => 'תמלול',
         'transcriptions' => 'תמלולים',
         'transcript_length' => 'אורך התמלול',

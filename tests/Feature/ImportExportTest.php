@@ -171,9 +171,8 @@ it('imports group defaults updates and rejects invalid statuses', function (): v
     ]))->toThrow(ValidationException::class);
 });
 
-it('imports content items with group and author relationships', function (): void {
+it('imports content items with group relationships', function (): void {
     $group = ContentGroup::factory()->create();
-    $authors = Author::factory()->count(2)->create();
 
     $referenceKey = (string) Str::ulid();
 
@@ -190,7 +189,6 @@ it('imports content items with group and author relationships', function (): voi
         'original_published_at' => '2026-01-01 09:00:00',
         'status' => PublicationStatus::Published->value,
         'published_at' => '2026-01-01 10:00:00',
-        'author_reference_keys' => $authors->pluck('reference_key')->implode('|'),
     ]);
 
     $item = ContentItem::query()->where('reference_key', $referenceKey)->firstOrFail();
@@ -199,20 +197,15 @@ it('imports content items with group and author relationships', function (): voi
         ->content_group_id->toBe($group->id)
         ->title->toBe('Imported Item')
         ->duration_seconds->toBe(125)
-        ->status->toBe(PublicationStatus::Published)
-        ->and($item->authors()->pluck('authors.reference_key')->all())
-        ->toEqualCanonicalizing($authors->pluck('reference_key')->all());
+        ->status->toBe(PublicationStatus::Published);
 });
 
-it('updates content items preserves omitted authors and clears mapped blank authors', function (): void {
+it('updates content items while ignoring removed item author columns', function (): void {
     $group = ContentGroup::factory()->create();
-    $existingAuthor = Author::factory()->create();
-    $replacementAuthor = Author::factory()->create();
     $item = ContentItem::factory()->for($group)->create([
         'title' => 'Original Item',
         'media_url' => 'https://example.com/media/original',
     ]);
-    $item->authors()->attach($existingAuthor);
 
     importRecord(ContentItemImporter::class, [
         'reference_key' => $item->reference_key,
@@ -227,28 +220,17 @@ it('updates content items preserves omitted authors and clears mapped blank auth
     ]);
 
     expect($item->refresh())
-        ->title->toBe('Updated Item')
-        ->and($item->authors()->pluck('authors.id')->all())->toBe([$existingAuthor->id]);
+        ->title->toBe('Updated Item');
 
     importRecord(ContentItemImporter::class, [
         'reference_key' => $item->reference_key,
         'content_group_reference_key' => $group->reference_key,
         'title' => 'Updated Again',
         'media_url' => 'https://example.com/media/updated-again',
-        'author_reference_keys' => $replacementAuthor->reference_key,
-    ]);
-
-    expect($item->refresh()->authors()->pluck('authors.id')->all())->toBe([$replacementAuthor->id]);
-
-    importRecord(ContentItemImporter::class, [
-        'reference_key' => $item->reference_key,
-        'content_group_reference_key' => $group->reference_key,
-        'title' => 'Cleared Authors',
-        'media_url' => 'https://example.com/media/cleared',
         'author_reference_keys' => '',
     ]);
 
-    expect($item->refresh()->authors()->count())->toBe(0);
+    expect($item->refresh()->title)->toBe('Updated Again');
 });
 
 it('fails content item rows with unresolved relationships or invalid embed urls', function (): void {
@@ -260,14 +242,6 @@ it('fails content item rows with unresolved relationships or invalid embed urls'
         'title' => 'Missing Group',
         'media_url' => 'https://example.com/media/missing-group',
     ]))->toThrow(RowImportFailedException::class);
-
-    expect(fn () => importRecord(ContentItemImporter::class, [
-        'reference_key' => (string) Str::ulid(),
-        'content_group_reference_key' => $group->reference_key,
-        'title' => 'Missing Author',
-        'media_url' => 'https://example.com/media/missing-author',
-        'author_reference_keys' => (string) Str::ulid(),
-    ]))->toThrow(ValidationException::class);
 
     expect(fn () => importRecord(ContentItemImporter::class, [
         'reference_key' => (string) Str::ulid(),
@@ -343,28 +317,25 @@ it('defines expected export columns and disables large optional content by defau
     ])
         ->and($groupColumns->map->getName()->all())->toContain('description_markdown', 'cover_path')
         ->and($groupColumns->first(fn ($column): bool => $column->getName() === 'description_markdown')->isEnabledByDefault())->toBeFalse()
-        ->and($itemColumns->map->getName()->all())->toContain('content_group_reference_key', 'author_reference_keys')
+        ->and($itemColumns->map->getName()->all())->toContain('content_group_reference_key')
+        ->and($itemColumns->map->getName()->all())->not->toContain('author_reference_keys')
         ->and($itemColumns->map->getName()->all())->not->toContain('transcript_markdown');
 });
 
 it('exports relationship reference keys and escapes spreadsheet formula text', function (): void {
     $group = ContentGroup::factory()->create();
-    $authors = Author::factory()->count(2)->create();
     $item = ContentItem::factory()->for($group)->create([
         'title' => '=HYPERLINK("https://example.com")',
     ]);
-    $item->authors()->attach($authors);
 
-    $exportedItem = exportRecord(ContentItemExporter::class, $item->load(['authors', 'contentGroup']), [
+    $exportedItem = exportRecord(ContentItemExporter::class, $item->load(['contentGroup']), [
         'content_group_reference_key' => 'content_group_reference_key',
         'title' => 'title',
-        'author_reference_keys' => 'author_reference_keys',
     ]);
 
     expect($exportedItem)->toBe([
         $group->reference_key,
         '\'=HYPERLINK("https://example.com")',
-        $authors->pluck('reference_key')->implode('|'),
     ]);
 
     $author = Author::factory()->create(['name' => '@SUM(1,1)']);

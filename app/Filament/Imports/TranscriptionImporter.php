@@ -11,6 +11,7 @@ use Filament\Actions\Imports\Exceptions\RowImportFailedException;
 use Filament\Actions\Imports\ImportColumn;
 use Filament\Actions\Imports\Importer;
 use Filament\Actions\Imports\Models\Import;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Number;
 use Illuminate\Validation\Rule;
 
@@ -51,22 +52,64 @@ class TranscriptionImporter extends Importer
                 }),
             ImportColumn::make('author_reference_key')
                 ->label(__('admin.import.columns.author_reference_key'))
-                ->requiredMapping()
                 ->example('01JAUTHOR00000000000000001')
-                ->rules(['required', 'ulid'])
-                ->fillRecordUsing(function (Transcription $record, ?string $state): void {
-                    $author = filled($state)
-                        ? Author::query()->where('reference_key', $state)->first()
-                        : null;
+                ->rules(['nullable', 'ulid'])
+                ->fillRecordUsing(fn (): null => null),
+            ImportColumn::make('primary_transcriber_reference_key')
+                ->label(__('admin.import.columns.primary_transcriber_reference_key'))
+                ->example('01JAUTHOR00000000000000001')
+                ->rules(['nullable', 'ulid'])
+                ->fillRecordUsing(fn (): null => null),
+            ImportColumn::make('transcriber_reference_keys')
+                ->label(__('admin.import.columns.transcriber_reference_keys'))
+                ->multiple('|')
+                ->example('01JAUTHOR00000000000000001|01JAUTHOR00000000000000002')
+                ->nestedRecursiveRules(['ulid'])
+                ->rules([
+                    function (string $attribute, mixed $state, \Closure $fail): void {
+                        if (blank($state)) {
+                            return;
+                        }
 
-                    if (! $author) {
-                        throw new RowImportFailedException(__('admin.import.failures.unresolved_author', [
-                            'reference_key' => $state,
-                        ]));
-                    }
+                        $referenceKeys = collect($state)->filter()->values();
+                        $resolvedReferenceKeys = Author::query()
+                            ->whereIn('reference_key', $referenceKeys)
+                            ->pluck('reference_key');
+                        $missingReferenceKeys = $referenceKeys->diff($resolvedReferenceKeys);
 
-                    $record->author()->associate($author);
-                }),
+                        if ($missingReferenceKeys->isNotEmpty()) {
+                            $fail(__('admin.import.failures.unresolved_transcribers', [
+                                'reference_keys' => $missingReferenceKeys->implode('|'),
+                            ]));
+                        }
+                    },
+                ])
+                ->fillRecordUsing(fn (): null => null),
+            ImportColumn::make('transcriber_names')
+                ->label(__('admin.import.columns.transcriber_names'))
+                ->multiple('|')
+                ->example('Dana Cohen|Noam Levi')
+                ->nestedRecursiveRules(['string', 'max:255'])
+                ->rules([
+                    function (string $attribute, mixed $state, \Closure $fail): void {
+                        if (blank($state)) {
+                            return;
+                        }
+
+                        $names = collect($state)->filter()->values();
+                        $resolvedNames = Author::query()
+                            ->whereIn('name', $names)
+                            ->pluck('name');
+                        $missingNames = $names->diff($resolvedNames);
+
+                        if ($missingNames->isNotEmpty()) {
+                            $fail(__('admin.import.failures.unresolved_transcriber_names', [
+                                'names' => $missingNames->implode('|'),
+                            ]));
+                        }
+                    },
+                ])
+                ->fillRecordUsing(fn (): null => null),
             ImportColumn::make('title')
                 ->label(__('admin.fields.title'))
                 ->example('Reviewed transcript')
@@ -109,11 +152,15 @@ class TranscriptionImporter extends Importer
         }
 
         $contentItem = $this->resolveContentItem($this->data['content_item_reference_key'] ?? null);
-        $author = $this->resolveAuthor($this->data['author_reference_key'] ?? null);
+        $primaryTranscriber = $this->resolvePrimaryTranscriber();
 
         $transcription = Transcription::query()
             ->where('content_item_id', $contentItem->getKey())
-            ->where('author_id', $author->getKey())
+            ->where(function ($query) use ($primaryTranscriber): void {
+                $query
+                    ->where('author_id', $primaryTranscriber->getKey())
+                    ->orWhereHas('authors', fn ($query) => $query->whereKey($primaryTranscriber));
+            })
             ->when(
                 filled($this->data['published_at'] ?? null),
                 fn ($query) => $query->where('published_at', $this->data['published_at']),
@@ -144,6 +191,14 @@ class TranscriptionImporter extends Importer
 
     protected function beforeSave(): void
     {
+        $transcriberIds = $this->resolvedTranscriberIds();
+
+        if ($transcriberIds !== []) {
+            $this->record->forceFill(['author_id' => $transcriberIds[0]]);
+        } elseif (! $this->record?->exists) {
+            throw new RowImportFailedException(__('admin.import.failures.missing_transcriber'));
+        }
+
         if (($this->data['status'] ?? null) !== PublicationStatus::Published->value) {
             return;
         }
@@ -153,6 +208,17 @@ class TranscriptionImporter extends Importer
         }
 
         throw new RowImportFailedException(__('admin.import.failures.published_transcription_requires_markdown'));
+    }
+
+    protected function afterSave(): void
+    {
+        $transcriberIds = $this->resolvedTranscriberIds();
+
+        if ($transcriberIds === []) {
+            return;
+        }
+
+        $this->record->syncTranscribers($transcriberIds);
     }
 
     public static function getCompletedNotificationBody(Import $import): string
@@ -194,5 +260,102 @@ class TranscriptionImporter extends Importer
         }
 
         return $author;
+    }
+
+    private function resolvePrimaryTranscriber(): Author
+    {
+        $transcriberIds = $this->resolvedTranscriberIds();
+
+        if ($transcriberIds === []) {
+            throw new RowImportFailedException(__('admin.import.failures.missing_transcriber'));
+        }
+
+        return Author::query()->findOrFail($transcriberIds[0]);
+    }
+
+    /**
+     * @return array<int, int>
+     */
+    private function resolvedTranscriberIds(): array
+    {
+        $ids = collect();
+
+        foreach ($this->transcriberReferenceKeys() as $referenceKey) {
+            $ids->push($this->resolveAuthor($referenceKey)->getKey());
+        }
+
+        foreach ($this->transcriberNames() as $name) {
+            $author = Author::query()->where('name', $name)->first();
+
+            if (! $author) {
+                throw new RowImportFailedException(__('admin.import.failures.unresolved_transcriber_names', [
+                    'names' => $name,
+                ]));
+            }
+
+            $ids->push($author->getKey());
+        }
+
+        return $ids
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function transcriberReferenceKeys(): array
+    {
+        $keys = collect();
+        $primaryReferenceKey = $this->data['primary_transcriber_reference_key'] ?? null;
+        $legacyReferenceKey = $this->data['author_reference_key'] ?? null;
+
+        if (filled($primaryReferenceKey)) {
+            $keys->push($primaryReferenceKey);
+        } elseif (filled($legacyReferenceKey)) {
+            $keys->push($legacyReferenceKey);
+        }
+
+        $keys = $keys->merge($this->normalizedList($this->data['transcriber_reference_keys'] ?? []));
+
+        if (filled($legacyReferenceKey)) {
+            $keys->push($legacyReferenceKey);
+        }
+
+        return $keys
+            ->filter()
+            ->map(fn (mixed $value): string => trim((string) $value))
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function transcriberNames(): array
+    {
+        return $this->normalizedList($this->data['transcriber_names'] ?? [])
+            ->map(fn (mixed $value): string => trim((string) $value))
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
+    }
+
+    private function normalizedList(mixed $value): Collection
+    {
+        if (blank($value)) {
+            return collect();
+        }
+
+        if (is_array($value)) {
+            return collect($value);
+        }
+
+        return collect(explode('|', (string) $value));
     }
 }

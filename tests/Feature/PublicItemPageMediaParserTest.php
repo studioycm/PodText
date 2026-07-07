@@ -108,7 +108,6 @@ it('renders a public item page with safe media metadata contributor links and tr
         'word_count' => 420,
     ], transcriber: $transcriber);
 
-    $item->authors()->attach($creditedAuthor);
     $item->categories()->attach($category);
     $item->attachTag($tag);
 
@@ -122,7 +121,7 @@ it('renders a public item page with safe media metadata contributor links and tr
         ->assertSee('data-test="media-provider"', false)
         ->assertSee('youtube')
         ->assertSee('External media title')
-        ->assertSee(ShowContributor::getUrl(['authorSlug' => $creditedAuthor->slug], panel: 'public'), false)
+        ->assertDontSee(ShowContributor::getUrl(['authorSlug' => $creditedAuthor->slug], panel: 'public'), false)
         ->assertSee(ShowContributor::getUrl(['authorSlug' => $transcriber->slug], panel: 'public'), false)
         ->assertSee(BrowseCategoryContentItems::getUrl(['categorySlug' => $category->slug], panel: 'public'), false)
         ->assertSee(BrowseTagContentItems::getUrl(['tagSlug' => $tag->slug], panel: 'public'), false)

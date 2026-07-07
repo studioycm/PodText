@@ -5,6 +5,7 @@ namespace App\Filament\Resources\ContentItems\Tables;
 use App\Enums\PublicationStatus;
 use App\Filament\Exports\ContentItemExporter;
 use App\Filament\Imports\ContentItemImporter;
+use App\Filament\Resources\Support\RelationshipOptionForms;
 use App\Models\Author;
 use App\Models\ContentItem;
 use App\Models\ContentTag;
@@ -34,6 +35,11 @@ class ContentItemsTable
     public static function configure(Table $table): Table
     {
         return $table
+            ->modifyQueryUsing(fn (Builder $query): Builder => $query
+                ->with([
+                    'featuredTranscription.authors',
+                    'latestPublishedTranscription.authors',
+                ]))
             ->columns([
                 TextColumn::make('title')
                     ->label(__('admin.fields.title'))
@@ -47,8 +53,9 @@ class ContentItemsTable
                     ->label(__('admin.fields.effective_type_label'))
                     ->state(fn (ContentItem $record): string => $record->effectiveTypeLabelSingular())
                     ->badge(),
-                TextColumn::make('authors.name')
-                    ->label(__('admin.fields.authors'))
+                TextColumn::make('effective_transcribers')
+                    ->label(__('admin.fields.transcribers'))
+                    ->state(fn (ContentItem $record): string => self::effectiveTranscriberNames($record))
                     ->badge()
                     ->separator(', '),
                 TextColumn::make('categories.name')
@@ -120,12 +127,17 @@ class ContentItemsTable
                 SelectFilter::make('status')
                     ->label(__('admin.fields.status'))
                     ->options(PublicationStatus::class),
-                SelectFilter::make('authors')
-                    ->label(__('admin.fields.authors'))
-                    ->relationship('authors', 'name')
-                    ->multiple()
+                SelectFilter::make('transcriber_id')
+                    ->label(__('admin.fields.transcribers'))
+                    ->options(fn (): array => Author::query()
+                        ->orderBy('name')
+                        ->pluck('name', 'id')
+                        ->all())
                     ->searchable()
-                    ->preload(),
+                    ->preload()
+                    ->query(fn (Builder $query, array $data): Builder => filled($data['value'] ?? null)
+                        ? $query->whereHas('transcriptions.authors', fn (Builder $query): Builder => $query->whereKey($data['value']))
+                        : $query),
                 SelectFilter::make('categories')
                     ->label(__('admin.fields.categories'))
                     ->relationship('categories', 'name')
@@ -186,16 +198,9 @@ class ContentItemsTable
             ->icon(Heroicon::OutlinedDocumentPlus)
             ->modalWidth(Width::FiveExtraLarge)
             ->schema([
-                Select::make('author_id')
-                    ->label(__('admin.fields.author'))
-                    ->helperText(__('admin.helpers.transcription_author'))
-                    ->options(fn (): array => Author::query()
-                        ->orderBy('name')
-                        ->pluck('name', 'id')
-                        ->all())
-                    ->searchable()
-                    ->preload()
-                    ->required(),
+                RelationshipOptionForms::configureTranscriberOptionsSelect(
+                    Select::make('transcriber_ids'),
+                ),
                 TextInput::make('title')
                     ->label(__('admin.fields.title'))
                     ->helperText(__('admin.helpers.transcription_title'))
@@ -226,7 +231,11 @@ class ContentItemsTable
                     ->columnSpanFull(),
             ])
             ->action(function (ContentItem $record, array $data): void {
-                $record->transcriptions()->create($data);
+                $transcriberIds = $data['transcriber_ids'] ?? [];
+                unset($data['transcriber_ids']);
+
+                $transcription = $record->transcriptions()->create($data);
+                $transcription->syncTranscribers($transcriberIds);
 
                 Notification::make()
                     ->success()
@@ -234,5 +243,10 @@ class ContentItemsTable
                     ->body(__('admin.notifications.first_transcription_featured'))
                     ->send();
             });
+    }
+
+    private static function effectiveTranscriberNames(ContentItem $record): string
+    {
+        return implode(', ', $record->effectiveTranscription()?->transcriberNames() ?? []);
     }
 }

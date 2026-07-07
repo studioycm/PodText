@@ -16,11 +16,6 @@ class Author extends Model
     /** @use HasFactory<AuthorFactory> */
     use HasFactory;
 
-    public function contentItems(): BelongsToMany
-    {
-        return $this->belongsToMany(ContentItem::class);
-    }
-
     public function transcriptions(): HasMany
     {
         return $this->hasMany(Transcription::class);
