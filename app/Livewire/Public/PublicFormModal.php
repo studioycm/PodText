@@ -5,7 +5,7 @@ namespace App\Livewire\Public;
 use App\Models\PublicFormSubmission;
 use App\Support\PublicFront\Forms\PublicFormPayloadValidator;
 use App\Support\PublicFront\Forms\PublicFormSchemaFactory;
-use App\Support\PublicFront\PublicFrontConfigReader;
+use App\Support\PublicFront\PublicFrontRenderContext;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Validation\ValidationException;
@@ -111,9 +111,7 @@ class PublicFormModal extends Component
      */
     public function definition(): ?array
     {
-        $definitions = app(PublicFrontConfigReader::class)
-            ->read()
-            ->group('public_forms')['definitions'] ?? [];
+        $definitions = $this->renderContext()->publicForms()['definitions'] ?? [];
 
         foreach ($definitions as $definition) {
             if (! is_array($definition)) {
@@ -192,5 +190,10 @@ class PublicFormModal extends Component
         }
 
         return $url;
+    }
+
+    private function renderContext(): PublicFrontRenderContext
+    {
+        return app(PublicFrontRenderContext::class);
     }
 }

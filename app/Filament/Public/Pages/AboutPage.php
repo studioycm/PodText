@@ -4,7 +4,7 @@ namespace App\Filament\Public\Pages;
 
 use App\Filament\Public\Pages\Concerns\HidesPublicPageHeader;
 use App\Support\PublicFront\About\PublicAboutPageRenderer;
-use App\Support\PublicFront\PublicFrontConfigReader;
+use App\Support\PublicFront\PublicFrontRenderContext;
 use Filament\Pages\Page;
 use Filament\Panel;
 use Illuminate\Contracts\Support\Htmlable;
@@ -41,9 +41,7 @@ class AboutPage extends Page
 
     public function mount(): void
     {
-        $aboutPage = app(PublicFrontConfigReader::class)
-            ->read()
-            ->group('about_page');
+        $aboutPage = app(PublicFrontRenderContext::class)->aboutPage();
 
         abort_unless(($aboutPage['enabled'] ?? false) === true, 404);
 

@@ -10,6 +10,7 @@ use App\Models\Episode;
 use App\Models\Podcast;
 use App\Settings\PublicContentSettings;
 use App\Support\PublicFront\PublicFrontConfigValidator;
+use App\Support\PublicFront\PublicFrontRenderContext;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Livewire\Livewire;
@@ -35,6 +36,7 @@ function saveStep8PublicFrontConfig(array $config): void
     }
 
     app()->forgetInstance(PublicContentSettings::class);
+    app()->forgetInstance(PublicFrontRenderContext::class);
     app(SettingsContainer::class)->clearCache();
 }
 

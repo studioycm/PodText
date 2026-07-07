@@ -3,6 +3,7 @@
 namespace App\Support\PublicFront;
 
 use App\Settings\PublicContentSettings;
+use Throwable;
 
 class PublicFrontRenderContextFactory
 {
@@ -12,8 +13,29 @@ class PublicFrontRenderContextFactory
 
     public function make(?PublicContentSettings $settings = null): PublicFrontRenderContext
     {
+        try {
+            $settings ??= app(PublicContentSettings::class);
+            $settingsValues = $this->settingsValues($settings);
+        } catch (Throwable) {
+            $settings = null;
+            $settingsValues = [];
+        }
+
         return new PublicFrontRenderContext(
             result: $this->reader->read($settings),
+            settingsValues: $settingsValues,
         );
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function settingsValues(PublicContentSettings $settings): array
+    {
+        try {
+            return $settings->getRepository()->getPropertiesInGroup(PublicContentSettings::group());
+        } catch (Throwable) {
+            return $settings->toArray();
+        }
     }
 }

@@ -4,11 +4,10 @@ namespace App\Livewire\Public;
 
 use App\Filament\Public\Pages\ShowContributor;
 use App\Models\Author;
-use App\Settings\PublicContentSettings;
 use App\Support\PublicContent\PublicContentCardOptions;
 use App\Support\PublicContent\PublicContributorDiscovery;
 use App\Support\PublicFront\Cards\PublicFrontCardTemplateResolver;
-use App\Support\PublicFront\PublicFrontConfigReader;
+use App\Support\PublicFront\PublicFrontRenderContext;
 use Illuminate\Contracts\View\View;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
@@ -167,7 +166,7 @@ class TopTranscribersSection extends Component
 
     protected function cardOptions(): PublicContentCardOptions
     {
-        return PublicContentCardOptions::fromSettings(app(PublicContentSettings::class));
+        return $this->renderContext()->cardOptions();
     }
 
     /**
@@ -175,8 +174,11 @@ class TopTranscribersSection extends Component
      */
     protected function contributorsConfig(): array
     {
-        return app(PublicFrontConfigReader::class)
-            ->read()
-            ->group('contributors_page');
+        return $this->renderContext()->contributorsPage();
+    }
+
+    protected function renderContext(): PublicFrontRenderContext
+    {
+        return app(PublicFrontRenderContext::class);
     }
 }

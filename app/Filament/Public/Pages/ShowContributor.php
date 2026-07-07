@@ -5,7 +5,7 @@ namespace App\Filament\Public\Pages;
 use App\Filament\Public\Pages\Concerns\HidesPublicPageHeader;
 use App\Models\Author;
 use App\Support\PublicContent\PublicContributorDiscovery;
-use App\Support\PublicFront\PublicFrontConfigReader;
+use App\Support\PublicFront\PublicFrontRenderContext;
 use Filament\Pages\Page;
 use Filament\Panel;
 use Illuminate\Contracts\Support\Htmlable;
@@ -15,6 +15,9 @@ class ShowContributor extends Page
     use HidesPublicPageHeader;
 
     public Author $author;
+
+    /** @var array<string, mixed> */
+    public array $contributorsConfig = [];
 
     protected static ?string $slug = 'contributors/{authorSlug}';
 
@@ -29,8 +32,10 @@ class ShowContributor extends Page
 
     public function mount(string $authorSlug): void
     {
+        $this->contributorsConfig = app(PublicFrontRenderContext::class)->contributorsPage();
+
         abort_unless(
-            app(PublicFrontConfigReader::class)->read()->group('contributors_page')['enabled'] ?? true,
+            $this->contributorsConfig['enabled'] ?? true,
             404,
         );
 

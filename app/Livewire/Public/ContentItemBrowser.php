@@ -8,8 +8,8 @@ use App\Support\PublicContent\PublicContentCardOptions;
 use App\Support\PublicContent\PublicContentItemQueries;
 use App\Support\PublicFront\Cards\PublicFrontCardTemplate;
 use App\Support\PublicFront\Cards\PublicFrontCardTemplateResolver;
-use App\Support\PublicFront\PublicFrontConfigReader;
 use App\Support\PublicFront\PublicFrontConfigRegistry;
+use App\Support\PublicFront\PublicFrontRenderContext;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Pagination\LengthAwarePaginator;
@@ -186,9 +186,7 @@ class ContentItemBrowser extends Component
      */
     private function pageConfig(): array
     {
-        return app(PublicFrontConfigReader::class)
-            ->read()
-            ->group('podcasts_page');
+        return $this->renderContext()->podcastsPage();
     }
 
     /**
@@ -221,7 +219,7 @@ class ContentItemBrowser extends Component
 
     private function cardOptions(): PublicContentCardOptions
     {
-        $base = PublicContentCardOptions::fromSettings();
+        $base = $this->renderContext()->cardOptions();
         $groupPageConfig = $this->groupPageConfig();
 
         return new PublicContentCardOptions(
@@ -363,6 +361,11 @@ class ContentItemBrowser extends Component
     private function categoryFilterEnabled(): bool
     {
         return (bool) ($this->groupPageConfig()['category_filter_enabled'] ?? true);
+    }
+
+    private function renderContext(): PublicFrontRenderContext
+    {
+        return app(PublicFrontRenderContext::class);
     }
 
     /**

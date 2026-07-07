@@ -2,10 +2,15 @@
 
 namespace App\Support\PublicFront;
 
+use App\Support\PublicContent\PublicContentCardOptions;
+
 class PublicFrontRenderContext
 {
+    private ?PublicContentCardOptions $cardOptions = null;
+
     public function __construct(
         private readonly PublicFrontConfigResult $result,
+        private readonly array $settingsValues = [],
     ) {}
 
     public function result(): PublicFrontConfigResult
@@ -27,6 +32,24 @@ class PublicFrontRenderContext
     public function group(string $key): array
     {
         return $this->result->group($key);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function settingsValues(): array
+    {
+        return $this->settingsValues;
+    }
+
+    public function setting(string $key, mixed $default = null): mixed
+    {
+        return $this->settingsValues[$key] ?? $default;
+    }
+
+    public function cardOptions(): PublicContentCardOptions
+    {
+        return $this->cardOptions ??= PublicContentCardOptions::fromValues($this->settingsValues);
     }
 
     /**

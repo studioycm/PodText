@@ -18,6 +18,7 @@ use App\Models\VolunteerProfile;
 use App\Settings\PublicContentSettings;
 use App\Support\PublicContent\PublicContributorDiscovery;
 use App\Support\PublicFront\PublicFrontConfigValidator;
+use App\Support\PublicFront\PublicFrontRenderContext;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Livewire\Livewire;
@@ -43,6 +44,7 @@ function saveStep10PublicFrontSettings(array $settings): void
     }
 
     app()->forgetInstance(PublicContentSettings::class);
+    app()->forgetInstance(PublicFrontRenderContext::class);
     app(SettingsContainer::class)->clearCache();
 }
 

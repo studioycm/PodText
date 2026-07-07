@@ -1,6 +1,6 @@
 @props([
     'item',
-    'options' => \App\Support\PublicContent\PublicContentCardOptions::fromSettings(),
+    'options' => app(\App\Support\PublicFront\PublicFrontRenderContext::class)->cardOptions(),
     'layout' => 'cards',
     'cardTemplate' => null,
 ])

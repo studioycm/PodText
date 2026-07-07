@@ -5,7 +5,7 @@ namespace App\Filament\Public\Pages;
 use App\Filament\Public\Pages\Concerns\HidesPublicPageHeader;
 use App\Models\ContentGroup;
 use App\Support\PublicFront\Groups\PublicContentGroupQueries;
-use App\Support\PublicFront\PublicFrontConfigReader;
+use App\Support\PublicFront\PublicFrontRenderContext;
 use Filament\Pages\Page;
 use Filament\Panel;
 use Illuminate\Contracts\Support\Htmlable;
@@ -46,8 +46,6 @@ class ShowContentGroup extends Page
      */
     public function pageConfig(): array
     {
-        return app(PublicFrontConfigReader::class)
-            ->read()
-            ->group('podcasts_page');
+        return app(PublicFrontRenderContext::class)->podcastsPage();
     }
 }

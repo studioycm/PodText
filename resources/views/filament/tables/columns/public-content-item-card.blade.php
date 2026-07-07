@@ -1,7 +1,7 @@
 @php
     /** @var \App\Models\ContentItem $record */
     $record = $getRecord();
-    $cardOptions ??= \App\Support\PublicContent\PublicContentCardOptions::fromSettings();
+    $cardOptions ??= app(\App\Support\PublicFront\PublicFrontRenderContext::class)->cardOptions();
 @endphp
 
 <x-public.content-item-card :item="$record" :options="$cardOptions" />

@@ -11,6 +11,7 @@ use App\Models\ContentTag;
 use App\Models\HomepageSection;
 use App\Settings\PublicContentSettings;
 use App\Support\PublicContent\PublicContentCardOptions;
+use App\Support\PublicFront\PublicFrontRenderContext;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Livewire\Livewire;
@@ -79,6 +80,7 @@ function savePrompt11PublicSettings(array $overrides): void
     }
 
     app()->forgetInstance(PublicContentSettings::class);
+    app()->forgetInstance(PublicFrontRenderContext::class);
     app(SettingsContainer::class)->clearCache();
 }
 
@@ -427,6 +429,7 @@ it('uses safe defaults when old settings rows are missing', function (): void {
         ->delete();
 
     app()->forgetInstance(PublicContentSettings::class);
+    app()->forgetInstance(PublicFrontRenderContext::class);
 
     $options = PublicContentCardOptions::fromSettings();
 

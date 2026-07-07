@@ -43,8 +43,19 @@ class PublicContentCardOptions
     {
         try {
             $settings ??= app(PublicContentSettings::class);
-            $values = self::values($settings);
 
+            return self::fromValues(self::values($settings));
+        } catch (Throwable) {
+            return new self;
+        }
+    }
+
+    /**
+     * @param  array<string, mixed>  $values
+     */
+    public static function fromValues(array $values): self
+    {
+        try {
             return new self(
                 imageSize: self::finite($values['homepage_card_image_size'] ?? null, self::IMAGE_SIZES, 'medium'),
                 imageFit: self::finite($values['homepage_card_image_fit'] ?? null, self::IMAGE_FITS, 'cover'),

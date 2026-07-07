@@ -3,11 +3,10 @@
 namespace App\Livewire\Public;
 
 use App\Models\Author;
-use App\Settings\PublicContentSettings;
 use App\Support\PublicContent\PublicContentCardOptions;
 use App\Support\PublicContent\PublicContributorDiscovery;
 use App\Support\PublicFront\Cards\PublicFrontCardTemplateResolver;
-use App\Support\PublicFront\PublicFrontConfigReader;
+use App\Support\PublicFront\PublicFrontRenderContext;
 use Illuminate\Contracts\View\View;
 use Livewire\Attributes\Url;
 use Livewire\Component;
@@ -79,7 +78,7 @@ class ContributorContentItems extends Component
 
     protected function cardOptions(): PublicContentCardOptions
     {
-        return PublicContentCardOptions::fromSettings(app(PublicContentSettings::class));
+        return $this->renderContext()->cardOptions();
     }
 
     /**
@@ -87,9 +86,7 @@ class ContributorContentItems extends Component
      */
     protected function contributorsConfig(): array
     {
-        return app(PublicFrontConfigReader::class)
-            ->read()
-            ->group('contributors_page');
+        return $this->renderContext()->contributorsPage();
     }
 
     /**
@@ -138,5 +135,10 @@ class ContributorContentItems extends Component
     protected function defaultSort(): string
     {
         return (string) ($this->contributorsConfig()['page']['default_sort'] ?? 'latest_transcription');
+    }
+
+    protected function renderContext(): PublicFrontRenderContext
+    {
+        return app(PublicFrontRenderContext::class);
     }
 }

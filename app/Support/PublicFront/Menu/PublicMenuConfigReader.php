@@ -3,13 +3,13 @@
 namespace App\Support\PublicFront\Menu;
 
 use App\Enums\PublicMenuItemType;
-use App\Support\PublicFront\PublicFrontConfigReader;
+use App\Support\PublicFront\PublicFrontRenderContext;
 use Illuminate\Support\Facades\Storage;
 
 class PublicMenuConfigReader
 {
     public function __construct(
-        private readonly PublicFrontConfigReader $configReader,
+        private readonly PublicFrontRenderContext $context,
         private readonly PublicRouteRegistry $routeRegistry,
         private readonly PublicUrlSanitizer $urlSanitizer,
     ) {}
@@ -27,10 +27,9 @@ class PublicMenuConfigReader
      */
     public function read(): array
     {
-        $result = $this->configReader->read();
-        $menuConfig = $result->group('menu_config');
-        $routeLabels = $result->group('route_labels');
-        $publicForms = $result->group('public_forms');
+        $menuConfig = $this->context->menu();
+        $routeLabels = $this->context->routeLabels();
+        $publicForms = $this->context->publicForms();
         $enabledForms = $this->enabledForms($publicForms['definitions'] ?? []);
 
         if (($menuConfig['enabled'] ?? false) !== true) {

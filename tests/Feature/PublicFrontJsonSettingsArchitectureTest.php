@@ -7,6 +7,7 @@ use App\Support\PublicContent\PublicContentCardOptions;
 use App\Support\PublicFront\PublicFrontConfigReader;
 use App\Support\PublicFront\PublicFrontConfigRegistry;
 use App\Support\PublicFront\PublicFrontConfigValidator;
+use App\Support\PublicFront\PublicFrontRenderContext;
 use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -22,6 +23,7 @@ beforeEach(function (): void {
 function clearPublicFrontSettingsCache(): void
 {
     app()->forgetInstance(PublicContentSettings::class);
+    app()->forgetInstance(PublicFrontRenderContext::class);
     app(SettingsContainer::class)->clearCache();
 }
 

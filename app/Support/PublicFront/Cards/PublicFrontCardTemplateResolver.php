@@ -2,19 +2,19 @@
 
 namespace App\Support\PublicFront\Cards;
 
-use App\Support\PublicFront\PublicFrontConfigReader;
 use App\Support\PublicFront\PublicFrontConfigRegistry;
+use App\Support\PublicFront\PublicFrontRenderContext;
 
 class PublicFrontCardTemplateResolver
 {
     public function __construct(
-        private readonly PublicFrontConfigReader $reader,
+        private readonly PublicFrontRenderContext $context,
     ) {}
 
     public function resolve(string $family, ?string $key = null, array $overrides = []): PublicFrontCardTemplate
     {
         return $this->resolveFromTemplates(
-            templates: $this->reader->read()->group('card_templates'),
+            templates: $this->context->cardTemplates(),
             family: $family,
             key: $key,
             overrides: $overrides,
@@ -45,7 +45,7 @@ class PublicFrontCardTemplateResolver
      */
     public function all(?string $family = null): array
     {
-        $templates = $this->templatesByFamily($this->reader->read()->group('card_templates'));
+        $templates = $this->templatesByFamily($this->context->cardTemplates());
 
         if ($family !== null) {
             return collect($templates[$family] ?? [])

@@ -9,6 +9,7 @@ use App\Models\ContentItem;
 use App\Models\ContentTag;
 use App\Models\HomepageSection;
 use App\Settings\PublicContentSettings;
+use App\Support\PublicFront\PublicFrontRenderContext;
 use App\Support\PublicFront\Sections\PublicDisplaySectionConfigValidator;
 use App\Support\PublicFront\Sections\PublicDisplaySectionResolver;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -75,6 +76,7 @@ function saveStep5PublicFrontConfig(array $config): void
     }
 
     app()->forgetInstance(PublicContentSettings::class);
+    app()->forgetInstance(PublicFrontRenderContext::class);
     app(SettingsContainer::class)->clearCache();
 }
 

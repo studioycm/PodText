@@ -6,7 +6,7 @@ use App\Models\Category;
 use App\Support\PublicFront\Cards\PublicFrontCardTemplate;
 use App\Support\PublicFront\Cards\PublicFrontCardTemplateResolver;
 use App\Support\PublicFront\Groups\PublicContentGroupQueries;
-use App\Support\PublicFront\PublicFrontConfigReader;
+use App\Support\PublicFront\PublicFrontRenderContext;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Pagination\LengthAwarePaginator;
@@ -115,9 +115,7 @@ class ContentGroupBrowser extends Component
      */
     private function pageConfig(): array
     {
-        return app(PublicFrontConfigReader::class)
-            ->read()
-            ->group('podcasts_page');
+        return $this->renderContext()->podcastsPage();
     }
 
     private function cardTemplate(): PublicFrontCardTemplate
@@ -141,6 +139,11 @@ class ContentGroupBrowser extends Component
     private function cardsPerPage(): int
     {
         return max(1, min(48, (int) ($this->pageConfig()['cards_per_page'] ?? 12)));
+    }
+
+    private function renderContext(): PublicFrontRenderContext
+    {
+        return app(PublicFrontRenderContext::class);
     }
 
     /**

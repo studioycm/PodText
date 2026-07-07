@@ -14,6 +14,7 @@ use App\Models\HomepageSection;
 use App\Models\Transcription;
 use App\Models\User;
 use App\Settings\PublicContentSettings;
+use App\Support\PublicFront\PublicFrontRenderContext;
 use App\Support\PublicFront\Sections\PublicDisplaySectionConfigValidator;
 use App\Support\PublicFront\Sections\PublicDisplaySectionResolver;
 use Filament\Facades\Filament;
@@ -97,6 +98,7 @@ function saveStep4PublicFrontConfig(array $config): void
     }
 
     app()->forgetInstance(PublicContentSettings::class);
+    app()->forgetInstance(PublicFrontRenderContext::class);
     app(SettingsContainer::class)->clearCache();
 }
 

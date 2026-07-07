@@ -8,6 +8,7 @@ use App\Models\Transcription;
 use App\Settings\PublicContentSettings;
 use App\Support\PublicFront\Menu\PublicMenuConfigReader;
 use App\Support\PublicFront\PublicFrontConfigValidator;
+use App\Support\PublicFront\PublicFrontRenderContext;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Livewire\Livewire;
@@ -18,6 +19,7 @@ uses(RefreshDatabase::class);
 function clearStep9RPublicFrontSettingsCache(): void
 {
     app()->forgetInstance(PublicContentSettings::class);
+    app()->forgetInstance(PublicFrontRenderContext::class);
     app(SettingsContainer::class)->clearCache();
 }
 

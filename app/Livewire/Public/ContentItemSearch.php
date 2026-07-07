@@ -10,11 +10,11 @@ use App\Models\ContentGroup;
 use App\Models\ContentItem;
 use App\Models\ContentTag;
 use App\Models\HomepageSection;
-use App\Settings\PublicContentSettings;
 use App\Support\PublicContent\PublicContentCardOptions;
 use App\Support\PublicContent\PublicContentItemQueries;
 use App\Support\PublicFront\Cards\PublicFrontCardTemplate;
 use App\Support\PublicFront\Cards\PublicFrontCardTemplateResolver;
+use App\Support\PublicFront\PublicFrontRenderContext;
 use App\Support\PublicFront\Sections\PublicDisplaySectionResolver;
 use App\Support\PublicFront\Sections\PublicDisplaySectionResult;
 use Illuminate\Contracts\View\View;
@@ -364,7 +364,7 @@ class ContentItemSearch extends Component
 
     public function defaultSort(): string
     {
-        return $this->normalizeSort($this->settings()->default_public_sort);
+        return $this->normalizeSort((string) $this->renderContext()->setting('default_public_sort', 'latest_transcription'));
     }
 
     public function render(): View
@@ -664,13 +664,13 @@ class ContentItemSearch extends Component
             ->get();
 
         if ($sections->isEmpty()) {
-            return $this->settings()->show_latest_section
+            return (bool) $this->renderContext()->setting('show_latest_section', true)
                 ? collect([$this->sectionResolver()->defaultLatestSection($this->homepageItemLimit())])
                 : collect();
         }
 
         return $sections
-            ->reject(fn (HomepageSection $section): bool => $section->type?->value === 'latest' && ! $this->settings()->show_latest_section)
+            ->reject(fn (HomepageSection $section): bool => $section->type?->value === 'latest' && ! (bool) $this->renderContext()->setting('show_latest_section', true))
             ->pipe(fn (Collection $sections): Collection => $this->sectionResolver()->resolveMany($sections))
             ->values();
     }
@@ -691,7 +691,7 @@ class ContentItemSearch extends Component
 
     protected function homepageItemLimit(): int
     {
-        return max(1, min(48, $this->settings()->homepage_item_limit));
+        return max(1, min(48, (int) $this->renderContext()->setting('homepage_item_limit', 12)));
     }
 
     protected function normalizeSort(?string $sort): string
@@ -729,17 +729,17 @@ class ContentItemSearch extends Component
 
     protected function resultLayout(): string
     {
-        return $this->settings()->default_result_layout === 'rows' ? 'rows' : 'cards';
+        return $this->renderContext()->setting('default_result_layout') === 'rows' ? 'rows' : 'cards';
     }
 
-    protected function settings(): PublicContentSettings
+    protected function renderContext(): PublicFrontRenderContext
     {
-        return app(PublicContentSettings::class);
+        return app(PublicFrontRenderContext::class);
     }
 
     protected function cardOptions(): PublicContentCardOptions
     {
-        return PublicContentCardOptions::fromSettings($this->settings());
+        return $this->renderContext()->cardOptions();
     }
 
     protected function sectionResolver(): PublicDisplaySectionResolver

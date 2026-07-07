@@ -12,6 +12,7 @@ use App\Models\User;
 use App\Settings\PublicContentSettings;
 use App\Support\PublicFront\Menu\PublicMenuConfigReader;
 use App\Support\PublicFront\PublicFrontConfigValidator;
+use App\Support\PublicFront\PublicFrontRenderContext;
 use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -27,6 +28,7 @@ beforeEach(function (): void {
 function clearStep9PublicFrontSettingsCache(): void
 {
     app()->forgetInstance(PublicContentSettings::class);
+    app()->forgetInstance(PublicFrontRenderContext::class);
     app(SettingsContainer::class)->clearCache();
 }
 

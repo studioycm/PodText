@@ -1,10 +1,4 @@
 <x-filament-panels::page>
-    @php
-        $contributorsConfig = app(\App\Support\PublicFront\PublicFrontConfigReader::class)
-            ->read()
-            ->group('contributors_page');
-    @endphp
-
     <div class="space-y-8" dir="{{ __('public.meta.dir') }}">
         <div class="space-y-4">
             <p class="text-sm font-medium text-primary-600 dark:text-primary-400">

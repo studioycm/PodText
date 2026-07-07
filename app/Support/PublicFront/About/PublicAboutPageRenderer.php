@@ -3,7 +3,7 @@
 namespace App\Support\PublicFront\About;
 
 use App\Support\Markdown\SafeMarkdownRenderer;
-use App\Support\PublicFront\PublicFrontConfigReader;
+use App\Support\PublicFront\PublicFrontRenderContext;
 use Filament\Forms\Components\RichEditor\RichContentRenderer;
 use Illuminate\Support\Facades\Storage;
 use Symfony\Component\HtmlSanitizer\HtmlSanitizer;
@@ -14,6 +14,7 @@ class PublicAboutPageRenderer
 {
     public function __construct(
         private readonly SafeMarkdownRenderer $markdownRenderer,
+        private readonly PublicFrontRenderContext $context,
     ) {}
 
     public function renderMarkdown(?string $markdown): string
@@ -87,9 +88,7 @@ class PublicAboutPageRenderer
      */
     private function enabledForms(): array
     {
-        $definitions = app(PublicFrontConfigReader::class)
-            ->read()
-            ->group('public_forms')['definitions'] ?? [];
+        $definitions = $this->context->publicForms()['definitions'] ?? [];
 
         return collect($definitions)
             ->filter(fn (mixed $definition): bool => is_array($definition))
