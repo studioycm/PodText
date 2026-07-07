@@ -2,6 +2,8 @@
 
 namespace App\Providers;
 
+use App\Support\PublicFront\PublicFrontRenderContext;
+use App\Support\PublicFront\PublicFrontRenderContextFactory;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -11,7 +13,12 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        $this->app->scoped(
+            PublicFrontRenderContext::class,
+            fn (): PublicFrontRenderContext => $this->app
+                ->make(PublicFrontRenderContextFactory::class)
+                ->make(),
+        );
     }
 
     /**

@@ -180,10 +180,10 @@ it('creates and edits content groups with defaults, cover upload, and publicatio
 
     $group = ContentGroup::query()->where('slug', 'hebrew-podcast')->firstOrFail();
 
-    expect($group->group_type_label_singular)->toBe('Podcast')
-        ->and($group->group_type_label_plural)->toBe('Podcasts')
-        ->and($group->default_item_type_label_singular)->toBe('Episode')
-        ->and($group->default_item_type_label_plural)->toBe('Episodes')
+    expect($group->group_type_label_singular)->toBe(__('public.labels.podcast'))
+        ->and($group->group_type_label_plural)->toBe(__('public.labels.podcasts'))
+        ->and($group->default_item_type_label_singular)->toBe(__('public.labels.item'))
+        ->and($group->default_item_type_label_plural)->toBe(__('public.labels.items'))
         ->and($group->status)->toBe(PublicationStatus::Published)
         ->and($group->cover_path)->toStartWith('content-groups/covers/');
 
