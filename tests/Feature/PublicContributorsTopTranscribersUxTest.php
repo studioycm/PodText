@@ -183,7 +183,7 @@ it('renders the contributor directory with configured controls compact cards and
         ->assertDontSee('Other Alpha Item');
 });
 
-it('renders a horizontal top transcribers selector with a selected preview and grouped transcript titles', function (): void {
+it('renders a horizontal top transcribers selector with a selected preview and no overflow transcript title list', function (): void {
     saveStep10PublicFrontSettings([
         'contributors_page' => [
             'top_transcribers' => [
@@ -249,8 +249,8 @@ it('renders a horizontal top transcribers selector with a selected preview and g
         ->assertSee('value="15"', false)
         ->assertSee(ShowContributor::getUrl(['authorSlug' => $top->slug], panel: 'public'), false)
         ->assertSee('Shared Top Item')
-        ->assertSee('First Top Transcript')
-        ->assertSee('Second Top Transcript')
+        ->assertDontSee('First Top Transcript')
+        ->assertDontSee('Second Top Transcript')
         ->call('selectContributor', $second->id)
         ->assertSet('selectedContributorId', $second->id)
         ->assertSee($second->name)
@@ -262,7 +262,7 @@ it('renders a horizontal top transcribers selector with a selected preview and g
     expect(substr_count($component->html(), 'data-test="contributor-item-card-group"'))->toBe(1);
 });
 
-it('adds search sort page-size controls and grouped transcript titles to the full contributor item list', function (): void {
+it('adds search sort page-size controls without an overflow transcript title list on the full contributor item list', function (): void {
     saveStep10PublicFrontSettings([
         'contributors_page' => [
             'page' => [
@@ -318,8 +318,8 @@ it('adds search sort page-size controls and grouped transcript titles to the ful
         ->assertSee('data-test="contributor-page-item-page-size"', false)
         ->assertSee('data-grid-columns="4"', false)
         ->assertSee('data-grid-gap="spacious"', false)
-        ->assertSee('Needle Transcript')
-        ->assertSee('Needle Alternate Transcript')
+        ->assertDontSee('Needle Transcript')
+        ->assertDontSee('Needle Alternate Transcript')
         ->assertDontSee('Hidden Draft Transcript Item')
         ->assertDontSee('fi-ta-table', false);
 

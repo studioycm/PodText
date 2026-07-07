@@ -9,6 +9,8 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 
 #[Fillable([
@@ -42,6 +44,92 @@ class Transcription extends Model
     public function author(): BelongsTo
     {
         return $this->belongsTo(Author::class);
+    }
+
+    public function authors(): BelongsToMany
+    {
+        return $this
+            ->belongsToMany(Author::class, 'author_transcription')
+            ->withPivot('sort_order')
+            ->withTimestamps()
+            ->orderByPivot('sort_order')
+            ->orderBy('authors.name')
+            ->orderBy('authors.id');
+    }
+
+    /**
+     * @param  iterable<int, Author|int|string|null>  $authors
+     */
+    public function syncTranscribers(iterable $authors): void
+    {
+        $authorIds = collect($authors)
+            ->map(fn (Author|int|string|null $author): ?int => $author instanceof Author ? $author->getKey() : (is_numeric($author) ? (int) $author : null))
+            ->filter(fn (?int $authorId): bool => filled($authorId) && $authorId > 0)
+            ->unique()
+            ->values();
+
+        $syncPayload = $authorIds
+            ->mapWithKeys(fn (int $authorId, int $index): array => [
+                $authorId => ['sort_order' => $index],
+            ])
+            ->all();
+
+        $this->authors()->sync($syncPayload);
+
+        $primaryAuthorId = $authorIds->first();
+
+        if ($this->author_id !== $primaryAuthorId) {
+            $this->forceFill(['author_id' => $primaryAuthorId])->saveQuietly();
+        }
+
+        $this->unsetRelation('author');
+        $this->unsetRelation('authors');
+    }
+
+    public function primaryTranscriber(): ?Author
+    {
+        if ($this->relationLoaded('authors') && $this->authors->isNotEmpty()) {
+            return $this->authors->first();
+        }
+
+        $author = $this->authors()->first();
+
+        if ($author instanceof Author) {
+            return $author;
+        }
+
+        return $this->relationLoaded('author')
+            ? $this->author
+            : $this->author()->first();
+    }
+
+    public function primaryAuthor(): ?Author
+    {
+        return $this->primaryTranscriber();
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    public function transcriberNames(): array
+    {
+        $authors = $this->relationLoaded('authors')
+            ? $this->authors
+            : $this->authors()->get();
+
+        if ($authors->isEmpty()) {
+            $primaryAuthor = $this->relationLoaded('author')
+                ? $this->author
+                : $this->author()->first();
+
+            return $primaryAuthor instanceof Author ? [$primaryAuthor->name] : [];
+        }
+
+        return $authors
+            ->pluck('name')
+            ->filter()
+            ->values()
+            ->all();
     }
 
     public function scopePublished(Builder $query): Builder
@@ -93,6 +181,31 @@ class Transcription extends Model
                 $transcription->reference_key = $transcription->getOriginal('reference_key');
             }
         });
+
+        static::saved(function (Transcription $transcription): void {
+            $transcription->syncCompatibilityAuthorToTranscriberPivot();
+        });
+    }
+
+    private function syncCompatibilityAuthorToTranscriberPivot(): void
+    {
+        if (blank($this->author_id) || ! Schema::hasTable('author_transcription')) {
+            return;
+        }
+
+        $authorIds = collect([(int) $this->author_id])
+            ->merge($this->authors()->pluck('authors.id')->map(fn (int $authorId): int => $authorId))
+            ->unique()
+            ->values();
+
+        $syncPayload = $authorIds
+            ->mapWithKeys(fn (int $authorId, int $index): array => [
+                $authorId => ['sort_order' => $index],
+            ])
+            ->all();
+
+        $this->authors()->sync($syncPayload);
+        $this->unsetRelation('authors');
     }
 
     /**

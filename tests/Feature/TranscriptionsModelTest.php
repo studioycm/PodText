@@ -5,8 +5,10 @@ use App\Models\Author;
 use App\Models\ContentGroup;
 use App\Models\ContentItem;
 use App\Models\Transcription;
+use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
@@ -35,8 +37,126 @@ it('defines transcription relationships and casts', function (): void {
         ->and($transcription->parsed_segments)->toBe([
             ['speaker' => 'host', 'text' => 'שלום'],
         ])
+        ->and($transcription->authors()->pluck('authors.id')->all())->toBe([$author->id])
+        ->and($transcription->primaryTranscriber()?->is($author))->toBeTrue()
+        ->and($transcription->transcriberNames())->toBe([$author->name])
         ->and($item->refresh()->transcriptions)->toHaveCount(1)
-        ->and($author->refresh()->transcriptions)->toHaveCount(1);
+        ->and($author->refresh()->transcriptions)->toHaveCount(1)
+        ->and($author->authoredTranscriptions)->toHaveCount(1);
+});
+
+it('creates the ordered transcription transcriber pivot schema', function (): void {
+    expect(Schema::hasTable('author_transcription'))->toBeTrue()
+        ->and(Schema::hasColumns('author_transcription', [
+            'id',
+            'author_id',
+            'transcription_id',
+            'sort_order',
+            'created_at',
+            'updated_at',
+        ]))->toBeTrue();
+});
+
+it('backfills existing transcription author ids into the transcriber pivot migration', function (): void {
+    Schema::dropIfExists('author_transcription');
+
+    $author = Author::factory()->create();
+    $item = ContentItem::factory()->create();
+    $now = now();
+
+    $transcriptionId = DB::table('transcriptions')->insertGetId([
+        'reference_key' => (string) Str::ulid(),
+        'content_item_id' => $item->id,
+        'author_id' => $author->id,
+        'title' => 'Legacy single-author transcription',
+        'language_code' => 'he',
+        'transcript_markdown' => 'Legacy body',
+        'status' => PublicationStatus::Published->value,
+        'published_at' => $now,
+        'word_count' => 2,
+        'speakers' => null,
+        'parsed_segments' => null,
+        'created_at' => $now,
+        'updated_at' => $now,
+    ]);
+
+    $migration = include collect(glob(database_path('migrations/*_create_author_transcription_table.php')))->first();
+    $migration->up();
+
+    expect(DB::table('author_transcription')
+        ->where('author_id', $author->id)
+        ->where('transcription_id', $transcriptionId)
+        ->value('sort_order'))->toBe(0);
+});
+
+it('syncs ordered transcription transcribers and keeps the compatibility author primary', function (): void {
+    $primary = Author::factory()->create(['name' => 'Primary Transcriber']);
+    $secondary = Author::factory()->create(['name' => 'Secondary Transcriber']);
+    $legacy = Author::factory()->create(['name' => 'Legacy Transcriber']);
+    $transcription = Transcription::factory()->forAuthor($legacy)->create();
+
+    $transcription->syncTranscribers([
+        $primary,
+        $secondary->id,
+        $primary->id,
+        null,
+    ]);
+
+    $transcription->refresh();
+
+    expect($transcription->author_id)->toBe($primary->id)
+        ->and($transcription->author->is($primary))->toBeTrue()
+        ->and($transcription->primaryAuthor()?->is($primary))->toBeTrue()
+        ->and($transcription->primaryTranscriber()?->is($primary))->toBeTrue()
+        ->and($transcription->transcriberNames())->toBe([
+            'Primary Transcriber',
+            'Secondary Transcriber',
+        ])
+        ->and($transcription->authors()->pluck('authors.id')->all())->toBe([
+            $primary->id,
+            $secondary->id,
+        ])
+        ->and($primary->refresh()->authoredTranscriptions()->pluck('transcriptions.id')->all())->toBe([
+            $transcription->id,
+        ]);
+
+    expect(DB::table('author_transcription')
+        ->where('transcription_id', $transcription->id)
+        ->orderBy('sort_order')
+        ->pluck('sort_order', 'author_id')
+        ->all())->toBe([
+            $primary->id => 0,
+            $secondary->id => 1,
+        ]);
+});
+
+it('prevents duplicate transcription transcriber pivot pairs', function (): void {
+    $author = Author::factory()->create();
+    $transcription = Transcription::factory()->create();
+
+    $transcription->syncTranscribers([$author]);
+
+    expect(fn () => DB::table('author_transcription')->insert([
+        'author_id' => $author->id,
+        'transcription_id' => $transcription->id,
+        'sort_order' => 1,
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]))->toThrow(QueryException::class);
+});
+
+it('keeps author id backed transcription creation compatible with the new pivot', function (): void {
+    $author = Author::factory()->create();
+    $item = ContentItem::factory()->create(['featured_transcription_id' => null]);
+
+    $transcription = Transcription::factory()
+        ->for($item)
+        ->forAuthor($author)
+        ->create();
+
+    expect($transcription->author->is($author))->toBeTrue()
+        ->and($transcription->authors()->pluck('authors.id')->all())->toBe([$author->id])
+        ->and($item->refresh()->featured_transcription_id)->toBe($transcription->id);
 });
 
 it('generates immutable transcription reference keys', function (): void {

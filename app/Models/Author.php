@@ -26,6 +26,16 @@ class Author extends Model
         return $this->hasMany(Transcription::class);
     }
 
+    public function authoredTranscriptions(): BelongsToMany
+    {
+        return $this
+            ->belongsToMany(Transcription::class, 'author_transcription')
+            ->withPivot('sort_order')
+            ->withTimestamps()
+            ->orderByPivot('sort_order')
+            ->orderBy('transcriptions.id');
+    }
+
     protected static function booted(): void
     {
         static::creating(function (Author $author): void {
