@@ -38,6 +38,45 @@ Public Front v2 Step 10 implemented contributor/top-transcriber UX without addin
 
 Recommended next decision after Step 10: run Step 9F/10F before Step 11 if footer/rich sections are needed for the demo baseline; otherwise proceed directly to Step 11 and keep this plan as the future foundation contract.
 
+## Post-Step-10R Audit Update
+
+The Step 10R rendering/settings/transcriber audit changes the recommended next implementation order. Step 9F / 10F should wait until the Step 10R implementation pass is complete.
+
+Required Step 10R dependencies:
+
+- a request-scoped `PublicFrontRenderContext` so footer, menu, sections, card templates, public forms, and route labels read one normalized settings snapshot;
+- real card-template part rendering for content item, content group, and contributor cards, so rich sections do not inherit compatibility-only card behavior;
+- a safe card/layout token map for equal rows, image ratios, title/description clamps, metadata regions, and duplicate group thumbnail policy;
+- corrected transcription-author attribution, so contributor and rich-section card surfaces do not repeat item-author/transcriber ambiguity;
+- a clear boundary for public renderers to receive prepared data from Livewire/support classes instead of reading settings in Blade.
+
+Updated recommendation:
+
+1. Step 10R-A settings snapshot/render context.
+2. Step 10R-B card-template rendering.
+3. Step 10R-C attribution and layout consistency.
+4. Step 9F / 10F footer plus rich section builder.
+5. Step 11 seeders/demo data/assets/cleanup.
+
+Proposed renderer interfaces after Step 10R:
+
+- `PublicFrontRenderContext` exposes normalized settings groups, route labels, public form definitions, and template maps.
+- `PublicRichSectionRenderer` receives a `HomepageSection` display config plus the render context and returns safe view data for columns and blocks.
+- `PublicFooterRenderer` receives `footer_config` plus the render context and returns safe view data for footer sections, form CTA mounts, and bottom bar.
+- `PublicRichBlockRenderer` renders finite block types only: heading, Markdown, RichEditor JSON, smart rich content, link, link group, form CTA, image, and callout.
+- Renderer outputs should be arrays/DTOs with semantic tokens already mapped or ready for fixed Blade class maps; Blade should not validate arbitrary JSON.
+
+Schema proposal updates:
+
+- Keep `rich_columns` as a constrained `HomepageSection` source/display type; do not add a generic page builder.
+- Keep `footer_config` inside `PublicContentSettings`; do not add `FooterSection` or `PublicFooter` models.
+- Add optional semantic layout tokens only if Step 10R-B/C has established the shared names:
+  - `height_policy`: `content`, `balanced`, `equal_row`
+  - `image_ratio`: `square`, `wide`, `portrait`, `none`
+  - `metadata_policy`: `hide_empty`, `reserve_one_line`, `reserve_two_lines`
+- Continue to reject raw Tailwind, raw CSS, raw Blade, PHP class names, iframes, scripts, and arbitrary HTML in JSON.
+- Footer form sections should mount only enabled Step 6 public forms and should reuse the same form CTA resolver as rich columns.
+
 ## Homepage Rich Section Requirements
 
 Requested capabilities:
