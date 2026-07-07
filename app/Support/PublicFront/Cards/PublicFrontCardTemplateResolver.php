@@ -62,6 +62,30 @@ class PublicFrontCardTemplateResolver
     }
 
     /**
+     * @return array<string, string>
+     */
+    public function optionsForFamily(string $family): array
+    {
+        return $this->optionsFromTemplates($this->context->cardTemplates(), $family);
+    }
+
+    /**
+     * @param  array<int, array<string, mixed>>  $templates
+     * @return array<string, string>
+     */
+    public function optionsFromTemplates(array $templates, string $family): array
+    {
+        if (! in_array($family, PublicFrontCardTemplateRegistry::families(), true)) {
+            return [];
+        }
+
+        return collect($this->templatesByFamily($templates)[$family] ?? [])
+            ->map(fn (array $template): PublicFrontCardTemplate => PublicFrontCardTemplate::fromArray($template))
+            ->mapWithKeys(fn (PublicFrontCardTemplate $template): array => [$template->key => $template->label ?: $template->key])
+            ->all();
+    }
+
+    /**
      * @param  array<int, array<string, mixed>>  $configuredTemplates
      * @return array<string, array<string, array<string, mixed>>>
      */

@@ -5,7 +5,6 @@ namespace App\Filament\Resources\HomepageSections\Schemas;
 use App\Enums\HomepageSectionType;
 use App\Filament\Resources\Support\RelationshipOptionForms;
 use App\Models\ContentItem;
-use App\Support\PublicFront\Cards\PublicFrontCardTemplate;
 use App\Support\PublicFront\Cards\PublicFrontCardTemplateResolver;
 use App\Support\PublicFront\PublicFrontConfigReader;
 use App\Support\PublicFront\PublicFrontConfigRegistry;
@@ -404,9 +403,7 @@ class HomepageSectionForm
             return [];
         }
 
-        return collect(app(PublicFrontCardTemplateResolver::class)->all($family))
-            ->mapWithKeys(fn (PublicFrontCardTemplate $template): array => [$template->key => $template->label ?: $template->key])
-            ->all();
+        return app(PublicFrontCardTemplateResolver::class)->optionsForFamily($family);
     }
 
     private static function selectedTemplateFamily(Get $get): ?string

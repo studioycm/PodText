@@ -4,9 +4,9 @@ This ledger controls the post-Step-10 mini-step sequence. Each run implements ex
 
 ## Current Run
 
-- Selected mini-step: Step 10R-A2
+- Selected mini-step: Step 10R-B1
 - Status: complete
-- Next mini-step after completion: Step 10R-B1
+- Next mini-step after completion: Step 10R-B2
 
 ## Checklist
 
@@ -14,7 +14,7 @@ This ledger controls the post-Step-10 mini-step sequence. Each run implements ex
 |---|---|---|---|---|---|
 | Step 10R-A1 - PublicFrontRenderContext foundation | complete | `a230410` | `app/Providers/AppServiceProvider.php`; `app/Support/PublicFront/PublicFrontRenderContext.php`; `app/Support/PublicFront/PublicFrontRenderContextFactory.php`; `tests/Feature/PublicFrontRenderContextTest.php`; `tests/Feature/AdminResourcesTest.php`; `docs/phase-02/public-front-v2-step10r-a1-implementation-plan.md`; `docs/phase-02/public-front-v2-step10r-a1-handoff.md`; `docs/research/public-front-v2/16-step10r-a1-render-context-foundation-mcp-research.md`; this ledger; `docs/phase-02/current-project-state.md` | `php artisan test tests/Feature/PublicFrontRenderContextTest.php`; `php artisan test tests/Feature/AdminResourcesTest.php --filter="creates and edits content groups"`; `vendor/bin/pint --dirty --format agent`; `php artisan test`; `vendor/bin/pint --test`; `vendor/bin/filacheck`; `npm run build`; `git diff --check` | Added request-scoped context/factory and focused tests. Full gate exposed one stale translated default-label test expectation; fixed the test only, no app behavior change. |
 | Step 10R-A2 - Adopt render context in public consumers | complete | `d6d0bec` | `app/Support/PublicFront/PublicFrontRenderContext.php`; `app/Support/PublicFront/PublicFrontRenderContextFactory.php`; `app/Providers/AppServiceProvider.php`; public Livewire components; public Filament page classes; public menu/about/card-template support services; contributor public views; public card Blade defaults; public-front tests; A2 plan/research/handoff docs; this ledger; `docs/phase-02/current-project-state.md` | `php artisan test tests/Feature/PublicFrontRenderContextTest.php`; focused public-front regression file set; `vendor/bin/pint --dirty --format agent`; `php artisan test`; `vendor/bin/pint --test`; `vendor/bin/filacheck`; `npm run build`; `git diff --check` | Public runtime settings/config reads now route through scoped `PublicFrontRenderContext`. Public output behavior is intended to remain unchanged. Test direct-DB settings helpers now also clear the scoped context. |
-| Step 10R-B1 - Card template select/options and settings UX fixes | pending |  |  |  | Ensure saved custom templates appear in relevant settings selects. |
+| Step 10R-B1 - Card template select/options and settings UX fixes | complete | pending final commit | `app/Support/PublicFront/Cards/PublicFrontCardTemplateResolver.php`; `app/Filament/Pages/PublicContentSettings.php`; `app/Filament/Resources/HomepageSections/Schemas/HomepageSectionForm.php`; `tests/Feature/PublicFrontCardTemplateBuilderTest.php`; B1 plan/research/handoff docs; this ledger; `docs/phase-02/current-project-state.md` | `php artisan test tests/Feature/PublicFrontCardTemplateBuilderTest.php tests/Feature/PublicDisplaySectionsLoopersTest.php`; `vendor/bin/pint --dirty --format agent`; `php artisan test`; `vendor/bin/pint --test`; `vendor/bin/filacheck`; `npm run build`; `git diff --check` | Resolver now exposes family-scoped template option helpers. Podcast settings selects can use current unsaved `card_templates` state safely. Homepage section template options use the same resolver API. Contributor template settings remain deferred because no contributor template key setting exists yet. |
 | Step 10R-B2 - Real content-item card part renderer | pending |  |  |  | Make content-item template parts visibly affect cards. |
 | Step 10R-B3 - Content group and contributor card template renderers | pending |  |  |  | Add equivalent controlled renderers for group/contributor cards. |
 | Step 10R-B4 - Legacy card-options convergence | pending |  |  |  | Converge `PublicContentCardOptions` with card presentation services. |

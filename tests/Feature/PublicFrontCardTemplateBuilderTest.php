@@ -1,6 +1,7 @@
 <?php
 
 use App\Filament\Pages\PublicContentSettings as PublicContentSettingsPage;
+use App\Filament\Resources\HomepageSections\Pages\CreateHomepageSection;
 use App\Models\ContentGroup;
 use App\Models\ContentItem;
 use App\Models\User;
@@ -10,6 +11,7 @@ use App\Support\PublicFront\PublicFrontConfigReader;
 use App\Support\PublicFront\PublicFrontConfigValidator;
 use App\Support\PublicFront\PublicFrontRenderContext;
 use Filament\Facades\Filament;
+use Filament\Forms\Components\Select;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Livewire\Livewire;
@@ -93,6 +95,36 @@ function createStep3PublicItem(array $itemAttributes = [], ?ContentGroup $group 
         ->published()
         ->withTranscription(['published_at' => now()->subMinute()])
         ->create($itemAttributes);
+}
+
+function step10rB1SelectHasOptions(Select $field, array $expected, array $unexpected = []): bool
+{
+    $options = $field->getOptions();
+
+    foreach ($expected as $key => $label) {
+        if (! array_key_exists($key, $options) || $options[$key] !== $label) {
+            return false;
+        }
+    }
+
+    foreach ($unexpected as $key) {
+        if (array_key_exists($key, $options)) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+function step10rB1SelectByStatePath(mixed $component, string $statePath): ?Select
+{
+    $absoluteStatePath = str_starts_with($statePath, 'data.')
+        ? $statePath
+        : "data.{$statePath}";
+
+    return collect($component->instance()->getSchema('form')->getFlatComponents(withActions: false, withHidden: true, withAbsoluteKeys: true))
+        ->first(fn (mixed $schemaComponent): bool => $schemaComponent instanceof Select
+            && $schemaComponent->getStatePath() === $absoluteStatePath);
 }
 
 it('loads default card templates when card templates are empty', function (): void {
@@ -259,6 +291,112 @@ it('falls back to a family default when a requested template key is missing', fu
         ->and($template->family)->toBe('content_item');
 });
 
+it('exposes saved custom templates in family scoped admin selects', function (): void {
+    $this->actingAs(User::factory()->create());
+
+    saveStep3PublicFrontConfig([
+        'card_templates' => [
+            makeStep3CardTemplate('content_item', 'saved_episode_card'),
+            makeStep3CardTemplate('content_group', 'saved_podcast_card'),
+            makeStep3CardTemplate('contributor', 'saved_contributor_card'),
+        ],
+    ]);
+
+    $settingsPage = Livewire::test(PublicContentSettingsPage::class);
+    $podcastItemSelect = step10rB1SelectByStatePath($settingsPage, 'podcasts_page.item_template_key');
+    $podcastGroupSelect = step10rB1SelectByStatePath($settingsPage, 'podcasts_page.template_key');
+
+    expect($podcastItemSelect)->toBeInstanceOf(Select::class)
+        ->and(step10rB1SelectHasOptions($podcastItemSelect, [
+            'default_content_item' => 'Default content item card',
+            'saved_episode_card' => 'Template saved_episode_card',
+        ], [
+            'saved_podcast_card',
+            'saved_contributor_card',
+        ]))->toBeTrue()
+        ->and($podcastGroupSelect)->toBeInstanceOf(Select::class)
+        ->and(step10rB1SelectHasOptions($podcastGroupSelect, [
+            'default_content_group' => 'Default content group card',
+            'saved_podcast_card' => 'Template saved_podcast_card',
+        ], [
+            'saved_episode_card',
+            'saved_contributor_card',
+        ]))->toBeTrue();
+
+    $homepageSection = Livewire::test(CreateHomepageSection::class)
+        ->set('data.display_config.template_family', 'content_item');
+    $homepageTemplateSelect = step10rB1SelectByStatePath($homepageSection, 'display_config.template_key');
+
+    expect($homepageTemplateSelect)->toBeInstanceOf(Select::class)
+        ->and(step10rB1SelectHasOptions($homepageTemplateSelect, [
+            'saved_episode_card' => 'Template saved_episode_card',
+        ], [
+            'saved_podcast_card',
+            'saved_contributor_card',
+        ]))->toBeTrue();
+
+    $homepageSection->set('data.display_config.template_family', 'content_group');
+    $homepageTemplateSelect = step10rB1SelectByStatePath($homepageSection, 'display_config.template_key');
+
+    expect($homepageTemplateSelect)->toBeInstanceOf(Select::class)
+        ->and(step10rB1SelectHasOptions($homepageTemplateSelect, [
+            'saved_podcast_card' => 'Template saved_podcast_card',
+        ], [
+            'saved_episode_card',
+            'saved_contributor_card',
+        ]))->toBeTrue();
+
+    $homepageSection->set('data.display_config.template_family', 'contributor');
+    $homepageTemplateSelect = step10rB1SelectByStatePath($homepageSection, 'display_config.template_key');
+
+    expect($homepageTemplateSelect)->toBeInstanceOf(Select::class)
+        ->and(step10rB1SelectHasOptions($homepageTemplateSelect, [
+            'saved_contributor_card' => 'Template saved_contributor_card',
+        ], [
+            'saved_episode_card',
+            'saved_podcast_card',
+        ]))->toBeTrue();
+});
+
+it('exposes unsaved same session settings page card templates after safe normalization', function (): void {
+    $this->actingAs(User::factory()->create());
+
+    $settingsPage = Livewire::test(PublicContentSettingsPage::class)
+        ->set('data.card_templates', [
+            makeStep3CardTemplate('content_item', 'same_session_episode_card'),
+            makeStep3CardTemplate('content_group', 'same_session_podcast_card'),
+            [
+                ...makeStep3CardTemplate('content_item', 'unsafe_label_card'),
+                'label' => '<script>alert(1)</script>',
+            ],
+            [
+                ...makeStep3CardTemplate('content_item', 'bad_key_card'),
+                'key' => 'bad key',
+            ],
+        ]);
+
+    $podcastItemSelect = step10rB1SelectByStatePath($settingsPage, 'podcasts_page.item_template_key');
+    $podcastGroupSelect = step10rB1SelectByStatePath($settingsPage, 'podcasts_page.template_key');
+
+    expect($podcastItemSelect)->toBeInstanceOf(Select::class)
+        ->and(step10rB1SelectHasOptions($podcastItemSelect, [
+            'same_session_episode_card' => 'Template same_session_episode_card',
+            'unsafe_label_card' => 'unsafe_label_card',
+        ], [
+            'same_session_podcast_card',
+            'bad key',
+        ]))->toBeTrue()
+        ->and($podcastItemSelect->getOptions())->not->toContain('<script>alert(1)</script>')
+        ->and($podcastGroupSelect)->toBeInstanceOf(Select::class)
+        ->and(step10rB1SelectHasOptions($podcastGroupSelect, [
+            'same_session_podcast_card' => 'Template same_session_podcast_card',
+        ], [
+            'same_session_episode_card',
+            'unsafe_label_card',
+            'bad key',
+        ]))->toBeTrue();
+});
+
 it('keeps public card rendering working when templates are empty', function (): void {
     $item = createStep3PublicItem(['title' => 'Empty Template Episode']);
 
@@ -379,6 +517,16 @@ it('saves a simple card template definition through the public content settings 
             'attribute' => 'title',
         ])
         ->and($templates[0]['parts'][0])->not->toHaveKey('data');
+});
+
+it('keeps contributor card template settings deferred until a later renderer step adds a setting', function (): void {
+    $this->actingAs(User::factory()->create());
+
+    $settingsPage = Livewire::test(PublicContentSettingsPage::class);
+
+    expect(step10rB1SelectByStatePath($settingsPage, 'contributors_page.template_key'))->toBeNull()
+        ->and(step10rB1SelectByStatePath($settingsPage, 'contributors_page.card_template_key'))->toBeNull()
+        ->and(step10rB1SelectByStatePath($settingsPage, 'contributors_page.cards.template_key'))->toBeNull();
 });
 
 it('does not introduce card template settings-only models', function (): void {

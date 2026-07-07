@@ -550,13 +550,13 @@ class PublicContentSettings extends SettingsPage
                                         Select::make('podcasts_page.template_key')
                                             ->label(__('admin.fields.podcasts_page_template_key'))
                                             ->helperText(__('admin.helpers.podcasts_page_template_key'))
-                                            ->options(fn (): array => $this->cardTemplateOptions('content_group'))
+                                            ->options(fn (Get $get): array => $this->cardTemplateOptions('content_group', $get('card_templates')))
                                             ->placeholder(__('admin.labels.none'))
                                             ->native(false),
                                         Select::make('podcasts_page.item_template_key')
                                             ->label(__('admin.fields.podcasts_page_item_template_key'))
                                             ->helperText(__('admin.helpers.podcasts_page_item_template_key'))
-                                            ->options(fn (): array => $this->cardTemplateOptions('content_item'))
+                                            ->options(fn (Get $get): array => $this->cardTemplateOptions('content_item', $get('card_templates')))
                                             ->placeholder(__('admin.labels.none'))
                                             ->native(false),
                                         Select::make('podcasts_page.image_fit')
@@ -1287,6 +1287,7 @@ class PublicContentSettings extends SettingsPage
                                                     ->helperText(__('admin.helpers.card_template_family'))
                                                     ->options(fn (): array => PublicFrontConfigRegistry::cardFamilyOptions())
                                                     ->native(false)
+                                                    ->live()
                                                     ->required(),
                                                 Select::make('layout')
                                                     ->label(__('admin.fields.card_template_layout'))
@@ -1345,6 +1346,7 @@ class PublicContentSettings extends SettingsPage
                                             ])
                                             ->itemLabel(fn (array $state): ?string => $state['label'] ?? $state['key'] ?? __('admin.labels.untitled'))
                                             ->defaultItems(0)
+                                            ->live()
                                             ->reorderable()
                                             ->cloneable()
                                             ->collapsed()
@@ -1854,13 +1856,22 @@ class PublicContentSettings extends SettingsPage
     }
 
     /**
+     * @param  array<int, array<string, mixed>>|mixed  $templates
      * @return array<string, string>
      */
-    private function cardTemplateOptions(string $family): array
+    private function cardTemplateOptions(string $family, mixed $templates = null): array
     {
-        return collect(app(PublicFrontCardTemplateResolver::class)->all($family))
-            ->mapWithKeys(fn ($template): array => [$template->key => $template->label ?: $template->key])
-            ->all();
+        $resolver = app(PublicFrontCardTemplateResolver::class);
+
+        if (is_array($templates)) {
+            $normalizedTemplates = app(PublicFrontConfigValidator::class)
+                ->validate(['card_templates' => array_values($templates)])
+                ->group('card_templates');
+
+            return $resolver->optionsFromTemplates($normalizedTemplates, $family);
+        }
+
+        return $resolver->optionsForFamily($family);
     }
 
     /**
