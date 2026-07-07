@@ -77,6 +77,44 @@ Schema proposal updates:
 - Continue to reject raw Tailwind, raw CSS, raw Blade, PHP class names, iframes, scripts, and arbitrary HTML in JSON.
 - Footer form sections should mount only enabled Step 6 public forms and should reuse the same form CTA resolver as rich columns.
 
+## Post-Step-10R Livewire/Blade/Support Audit Update
+
+The Livewire/Blade/support-class audit confirmed that Step 9F should wait for Step 10R-A/B/C implementation. The blocker is not data availability; it is the public rendering boundary. Current public pages still read settings through several independent paths, card templates do not yet part-render across all card families, and some Blade views still prepare config/model presentation data directly.
+
+Required Step 10R dependencies before Step 9F:
+
+- `PublicFrontRenderContext` or equivalent request-scoped settings snapshot must replace direct public Blade/settings-reader calls.
+- Content item, content group, and contributor card templates must use one controlled renderer, not only `data-card-template-*` compatibility attributes.
+- Transcriber attribution must be resolved before rich sections can safely surface item/contributor cards.
+- Shared card/grid layout tokens must exist for equal rows, image ratios, title/description clamps, metadata regions, and duplicate group thumbnail behavior.
+- Public form CTA resolution must be available through the render context so rich columns and footer CTAs do not duplicate the form modal lookup path.
+
+Renderer interfaces Step 9F should reuse:
+
+- `PublicFrontRenderContext`: normalized settings groups, route labels, form definitions, template maps, page configs, and future footer config.
+- `PublicCardPresentationFactory`: card-family view data for item, group, contributor, and any card previews inside rich sections.
+- `PublicCardPartRenderer`: finite part renderer for safe card-template output.
+- `PublicRichSectionRenderer`: receives a `HomepageSection`, its normalized `display_config`, and the render context; returns safe view data.
+- `PublicRichBlockRenderer`: renders only finite block types such as heading, Markdown, RichEditor JSON, smart rich content, link group, form CTA, image, and callout.
+- `PublicFooterRenderer`: receives `footer_config` and the render context; returns safe footer sections, form CTA mounts, and bottom-bar data.
+
+Schema proposal refinements:
+
+- `rich_columns` blocks may reference card layouts, but should reference semantic card/template keys rather than copy card rendering JSON.
+- `footer_config` should use the same route-label and form CTA resolvers as menu/header/about surfaces.
+- Layout tokens should align with Step 10R names where available: `height_policy`, `image_ratio`, `title_lines`, `description_lines`, `metadata_policy`, `grid_columns`, `grid_gap`, and `thumbnail_policy`.
+- Keep `rich_columns` and `footer_config` JSON-safe: no raw classes, raw CSS, Blade view names, PHP class names, iframe HTML, script tags, or arbitrary HTML.
+
+Updated sequence remains:
+
+1. Step 10R-A settings snapshot/render context.
+2. Step 10R-B card-template rendering.
+3. Step 10R-C transcriber attribution and card layout.
+4. Step 9F / 10F footer plus rich section builder.
+5. Step 11 seeders/demo data/assets/cleanup.
+
+Step 9F should still run before Step 11 if footer/rich sections are needed for the demo baseline; otherwise Step 11 should not seed placeholder footer/rich-section content.
+
 ## Homepage Rich Section Requirements
 
 Requested capabilities:
