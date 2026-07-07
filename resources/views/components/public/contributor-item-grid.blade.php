@@ -45,7 +45,6 @@
                 wire:key="contributor-content-item-card-{{ $item->id }}"
             />
 
-            <x-public.contributor-transcription-list :item="$item" />
         </div>
     @endforeach
 </div>
