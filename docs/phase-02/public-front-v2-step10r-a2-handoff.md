@@ -126,8 +126,8 @@ Adopt the request-scoped `PublicFrontRenderContext` in existing public-front con
 - `vendor/bin/pint --test`: passed.
 - `vendor/bin/filacheck`: passed, 0 issues.
 - `npm run build`: passed.
-- `git diff --check`: pending final run after this doc update.
+- `git diff --check`: passed.
 
 ## Commit Hash
 
-Pending final commit in this run: `refactor: route public front settings through render context`.
+Implementation commit: `d6d0bec refactor: route public front settings through render context`.
