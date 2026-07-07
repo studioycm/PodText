@@ -7,79 +7,188 @@
 @php
     $templateRenderer = app(\App\Support\PublicFront\Cards\PublicFrontCardTemplateRenderer::class);
     $cardTemplate ??= $templateRenderer->resolve('content_group');
-    $templateAttributes = $templateRenderer->compatibilityAttributes($cardTemplate);
-    $groupUrl = \App\Filament\Public\Pages\ShowContentGroup::getUrl(['contentGroupSlug' => $group->slug], panel: 'public');
-    $coverUrl = $group->cover_path ? \Illuminate\Support\Facades\Storage::disk('public')->url($group->cover_path) : null;
-    $excerpt = str($group->description_markdown ?? '')->stripTags()->squish()->limit(150);
-    $categories = ($group->relationLoaded('categories') ? $group->categories : collect())
-        ->where('is_visible', true)
-        ->values();
-    $publicItemsCount = (int) ($group->public_content_items_count ?? $group->published_content_items_count ?? 0);
-    $itemLabel = $publicItemsCount === 1
-        ? $group->default_item_type_label_singular
-        : $group->default_item_type_label_plural;
-    $initials = str($group->title)
-        ->squish()
-        ->substr(0, 2)
-        ->upper();
-    $imageFit = in_array($displayConfig['image_fit'] ?? null, ['cover', 'contain'], true)
-        ? $displayConfig['image_fit']
-        : 'cover';
-    $imageFitClass = $imageFit === 'contain' ? 'object-contain' : 'object-cover';
-    $imageRadius = in_array($displayConfig['image_radius'] ?? null, ['sharp', 'low_rounded', 'mid_rounded', 'high_rounded', 'round', 'circle'], true)
-        ? $displayConfig['image_radius']
-        : 'mid_rounded';
-    $imageRadiusClass = \App\Support\PublicContent\PublicContentCardOptions::radiusClass($imageRadius);
+    $card = app(\App\Support\PublicFront\Cards\PublicContentGroupCardPresenter::class)
+        ->present($group, $cardTemplate, $displayConfig);
+    $templateAttributes = $card['template_attributes'];
+    $presentation = $card['presentation'];
 @endphp
 
 <article
-    {{ $attributes->merge(['class' => 'group overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm transition hover:border-primary-300 hover:shadow-md dark:border-gray-800 dark:bg-gray-900 dark:hover:border-primary-500']) }}
+    {{ $attributes->merge(['class' => $presentation['article']]) }}
+    data-test="content-group-card"
+    data-card-density="{{ $presentation['density'] }}"
+    data-card-image-size="{{ $presentation['image_size'] }}"
+    data-card-image-fit="{{ $card['image']['fit'] }}"
+    data-card-image-radius="{{ $card['image']['radius'] }}"
+    data-card-title-size="{{ $presentation['title_size'] }}"
+    data-result-layout="{{ $presentation['layout'] }}"
     data-card-template-family="{{ $templateAttributes['data-card-template-family'] }}"
     data-card-template-key="{{ $templateAttributes['data-card-template-key'] }}"
     data-card-template-layout="{{ $templateAttributes['data-card-template-layout'] }}"
     data-card-template-parts="{{ $templateAttributes['data-card-template-parts'] }}"
-    data-card-image-fit="{{ $imageFit }}"
-    data-card-image-radius="{{ $imageRadius }}"
+    data-card-renderer-parts="{{ implode(',', $presentation['controlled_parts']) }}"
+    data-card-title-clamp="{{ $presentation['title_clamp'] }}"
+    data-card-description-clamp="{{ $presentation['description_clamp'] }}"
 >
-    <a href="{{ $groupUrl }}" class="block focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-600">
-        @if ($coverUrl)
-            <span class="block aspect-square w-full overflow-hidden bg-gray-100 dark:bg-gray-800 {{ $imageRadiusClass }}" data-test="content-group-image">
-                <img src="{{ $coverUrl }}" alt="" class="h-full w-full {{ $imageFitClass }}" loading="lazy">
-            </span>
-        @else
-            <div class="flex aspect-square w-full items-center justify-center bg-gray-100 text-2xl font-semibold text-gray-500 dark:bg-gray-800 dark:text-gray-300 {{ $imageRadiusClass }}" data-test="content-group-fallback">
-                {{ $initials }}
-            </div>
-        @endif
-
-        <div class="space-y-3 p-4">
-            <x-public.type-label :label="$displayConfig['group_label_singular'] ?? $group->group_type_label_singular" />
-
-            <h2 class="text-lg font-semibold leading-snug text-gray-950 group-hover:text-primary-800 dark:text-white dark:group-hover:text-primary-200">
-                {{ $group->title }}
-            </h2>
-
-            @if (($displayConfig['show_description'] ?? true) && $excerpt->isNotEmpty())
-                <p class="line-clamp-3 text-sm leading-6 text-gray-600 dark:text-gray-300">
-                    {{ $excerpt }}
-                </p>
-            @endif
-
-            @if(($displayConfig['show_categories'] ?? true) && $categories->isNotEmpty())
-                <div class="flex flex-wrap gap-2" data-test="content-group-categories">
-                    @foreach($categories as $category)
-                        <span class="rounded-md border border-gray-200 px-2 py-1 text-xs text-gray-600 dark:border-gray-700 dark:text-gray-300">
-                            {{ $category->name }}
-                        </span>
-                    @endforeach
+    @foreach($card['media_parts'] as $part)
+        <a
+            href="{{ $part['url'] }}"
+            class="block min-w-0 overflow-hidden bg-gray-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-600 dark:bg-gray-800 {{ $presentation['image'] }} {{ $part['image']['radius_class'] }}"
+            aria-label="{{ $part['title'] }}"
+            data-card-part="{{ $part['type'] }}"
+            data-card-part-source="{{ $part['source'] }}"
+            data-card-part-attribute="{{ $part['attribute'] }}"
+            data-card-part-order="{{ $part['order'] }}"
+        >
+            @if($part['image']['url'])
+                <img
+                    src="{{ $part['image']['url'] }}"
+                    alt=""
+                    class="h-full w-full {{ $part['image']['fit_class'] }}"
+                    loading="lazy"
+                    data-test="content-group-image"
+                >
+            @else
+                <div class="flex h-full min-h-24 w-full items-center justify-center bg-gray-100 text-2xl font-semibold text-gray-500 dark:bg-gray-800 dark:text-gray-300" data-test="content-group-fallback">
+                    {{ $part['image']['initials'] }}
                 </div>
             @endif
+        </a>
+    @endforeach
 
-            @if($displayConfig['show_episode_count'] ?? true)
-                <p class="text-sm font-medium text-gray-700 dark:text-gray-200" data-test="content-group-public-count">
-                    {{ __('public.labels.public_group_items_count', ['count' => $publicItemsCount, 'label' => $itemLabel]) }}
-                </p>
-            @endif
+    @if($card['body_parts'] !== [])
+        <div class="{{ $presentation['body'] }}">
+            @foreach($card['body_parts'] as $part)
+                @switch($part['type'])
+                    @case('entity_attribute')
+                        <div
+                            class="{{ $part['class'] }}"
+                            data-test="{{ $part['test'] }}"
+                            data-card-part="{{ $part['type'] }}"
+                            data-card-part-source="{{ $part['source'] }}"
+                            data-card-part-attribute="{{ $part['attribute'] }}"
+                            data-card-part-order="{{ $part['order'] }}"
+                        >
+                            @if($part['test'] === 'content-group-type-label')
+                                <x-public.type-label :label="$part['text']" />
+                            @else
+                                <span class="rounded-md bg-gray-100 px-2 py-1 text-xs text-gray-700 dark:bg-gray-800 dark:text-gray-200">
+                                    {{ $part['text'] }}
+                                </span>
+                            @endif
+                        </div>
+                        @break
+
+                    @case('title')
+                        <h2
+                            class="{{ $part['class'] }}"
+                            data-card-part="{{ $part['type'] }}"
+                            data-card-part-source="{{ $part['source'] }}"
+                            data-card-part-attribute="{{ $part['attribute'] }}"
+                            data-card-part-order="{{ $part['order'] }}"
+                        >
+                            <a href="{{ $part['url'] }}" data-test="content-group-title">
+                                {{ $part['text'] }}
+                            </a>
+                        </h2>
+                        @break
+
+                    @case('description')
+                        <p
+                            class="{{ $part['class'] }}"
+                            data-card-part="{{ $part['type'] }}"
+                            data-card-part-source="{{ $part['source'] }}"
+                            data-card-part-attribute="{{ $part['attribute'] }}"
+                            data-card-part-order="{{ $part['order'] }}"
+                        >
+                            {{ $part['text'] }}
+                        </p>
+                        @break
+
+                    @case('metadata_row')
+                        <div
+                            class="{{ $part['class'] }}"
+                            data-card-part="{{ $part['type'] }}"
+                            data-card-part-source="{{ $part['source'] }}"
+                            data-card-part-attribute="{{ $part['attribute'] }}"
+                            data-card-part-order="{{ $part['order'] }}"
+                        >
+                            @foreach($part['badges'] as $badge)
+                                <span data-test="{{ $badge['test'] }}">{{ $badge['label'] }}</span>
+                            @endforeach
+                        </div>
+                        @break
+
+                    @case('taxonomy')
+                        <div
+                            class="{{ $part['class'] }}"
+                            data-test="{{ $part['test'] }}"
+                            data-card-part="{{ $part['type'] }}"
+                            data-card-part-source="{{ $part['source'] }}"
+                            data-card-part-attribute="{{ $part['attribute'] }}"
+                            data-card-part-order="{{ $part['order'] }}"
+                        >
+                            @foreach($part['links'] as $link)
+                                <a href="{{ $link['url'] }}" class="rounded-md border border-gray-200 px-2 py-1 text-xs text-gray-600 hover:border-primary-300 hover:text-primary-700 dark:border-gray-700 dark:text-gray-300">
+                                    {{ $link['label'] }}
+                                </a>
+                            @endforeach
+                        </div>
+                        @break
+
+                    @case('action_link')
+                        <div
+                            class="{{ $part['class'] }}"
+                            data-card-part="{{ $part['type'] }}"
+                            data-card-part-source="{{ $part['source'] }}"
+                            data-card-part-attribute="{{ $part['attribute'] }}"
+                            data-card-part-order="{{ $part['order'] }}"
+                        >
+                            <a
+                                href="{{ $part['url'] }}"
+                                @if($part['target']) target="{{ $part['target'] }}" rel="noopener noreferrer" @endif
+                                class="inline-flex text-sm font-medium text-primary-700 hover:text-primary-900 dark:text-primary-300 dark:hover:text-primary-100"
+                                data-test="content-group-action-link"
+                            >
+                                {{ $part['text'] }}
+                            </a>
+                        </div>
+                        @break
+
+                    @case('custom_text')
+                        <p
+                            class="{{ $part['class'] }}"
+                            data-test="card-custom-text"
+                            data-card-part="{{ $part['type'] }}"
+                            data-card-part-source="{{ $part['source'] }}"
+                            data-card-part-attribute="{{ $part['attribute'] }}"
+                            data-card-part-order="{{ $part['order'] }}"
+                        >
+                            {{ $part['text'] }}
+                        </p>
+                        @break
+
+                    @case('divider')
+                        <div
+                            class="{{ $part['class'] }}"
+                            data-card-part="{{ $part['type'] }}"
+                            data-card-part-source="{{ $part['source'] }}"
+                            data-card-part-attribute="{{ $part['attribute'] }}"
+                            data-card-part-order="{{ $part['order'] }}"
+                        ></div>
+                        @break
+
+                    @case('spacer')
+                        <div
+                            class="{{ $part['class'] }}"
+                            data-card-part="{{ $part['type'] }}"
+                            data-card-part-source="{{ $part['source'] }}"
+                            data-card-part-attribute="{{ $part['attribute'] }}"
+                            data-card-part-order="{{ $part['order'] }}"
+                        ></div>
+                        @break
+                @endswitch
+            @endforeach
         </div>
-    </a>
+    @endif
 </article>

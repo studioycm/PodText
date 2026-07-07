@@ -3,11 +3,14 @@
 use App\Enums\HomepageSectionType;
 use App\Filament\Pages\PublicContentSettings as PublicContentSettingsPage;
 use App\Filament\Resources\HomepageSections\Pages\CreateHomepageSection;
+use App\Livewire\Public\TopTranscribersSection;
+use App\Models\Author;
 use App\Models\Category;
 use App\Models\ContentGroup;
 use App\Models\ContentItem;
 use App\Models\ContentTag;
 use App\Models\HomepageSection;
+use App\Models\Transcription;
 use App\Models\User;
 use App\Settings\PublicContentSettings;
 use App\Support\PublicFront\Cards\PublicFrontCardTemplateResolver;
@@ -105,6 +108,36 @@ function makeStep10rB2ContentItemTemplate(string $key, array $parts, array $over
     ];
 }
 
+function makeStep10rB3ContentGroupTemplate(string $key, array $parts, array $overrides = []): array
+{
+    return [
+        'key' => $key,
+        'label' => "Template {$key}",
+        'family' => 'content_group',
+        'layout' => 'cards',
+        'density' => 'comfortable',
+        'image_size' => 'hidden',
+        'title_size' => 'base',
+        'parts' => $parts,
+        ...$overrides,
+    ];
+}
+
+function makeStep10rB3ContributorTemplate(string $key, array $parts, array $overrides = []): array
+{
+    return [
+        'key' => $key,
+        'label' => "Template {$key}",
+        'family' => 'contributor',
+        'layout' => 'cards',
+        'density' => 'comfortable',
+        'image_size' => 'hidden',
+        'title_size' => 'base',
+        'parts' => $parts,
+        ...$overrides,
+    ];
+}
+
 function createStep3PublicItem(array $itemAttributes = [], ?ContentGroup $group = null): ContentItem
 {
     $group ??= ContentGroup::factory()->published()->create();
@@ -114,6 +147,31 @@ function createStep3PublicItem(array $itemAttributes = [], ?ContentGroup $group 
         ->published()
         ->withTranscription(['published_at' => now()->subMinute()])
         ->create($itemAttributes);
+}
+
+function createStep10rB3PublicContributorItem(Author $author, array $itemAttributes = [], ?ContentGroup $group = null): ContentItem
+{
+    $group ??= ContentGroup::factory()->published()->create();
+
+    $item = ContentItem::factory()
+        ->for($group)
+        ->published()
+        ->create([
+            'title' => 'B3 Contributor Item',
+            ...$itemAttributes,
+        ]);
+
+    $transcription = Transcription::factory()
+        ->for($item)
+        ->forAuthor($author)
+        ->published(now()->subMinute())
+        ->create([
+            'title' => $item->title,
+        ]);
+
+    $item->update(['featured_transcription_id' => $transcription->id]);
+
+    return $item->refresh();
 }
 
 function step10rB1SelectHasOptions(Select $field, array $expected, array $unexpected = []): bool
@@ -638,6 +696,283 @@ it('renders podcast detail item cards with the configured item template parts', 
             'B2 podcast item template marker',
             'B2 Podcast Template Episode',
         ]);
+});
+
+it('renders custom content group templates on podcast index and homepage group sections', function (): void {
+    $group = ContentGroup::factory()->published()->create([
+        'title' => 'B3 Template Podcast',
+        'slug' => 'b3-template-podcast',
+        'description_markdown' => 'B3 hidden group description.',
+    ]);
+    createStep3PublicItem(['title' => 'B3 Template Group Episode'], $group);
+    $groupCountLabel = __('public.labels.public_group_items_count', [
+        'count' => 1,
+        'label' => $group->default_item_type_label_singular,
+    ]);
+
+    saveStep3PublicFrontConfig([
+        'card_templates' => [
+            makeStep10rB3ContentGroupTemplate('b3_podcast_group_template', [
+                [
+                    'type' => 'custom_text',
+                    'source' => 'custom',
+                    'attribute' => 'text',
+                    'text' => '<strong>B3 unsafe group marker</strong>',
+                    'visible' => true,
+                    'order' => 5,
+                ],
+                [
+                    'type' => 'custom_text',
+                    'source' => 'custom',
+                    'attribute' => 'text',
+                    'text' => 'B3 podcast group marker',
+                    'visible' => true,
+                    'order' => 10,
+                ],
+                [
+                    'type' => 'title',
+                    'source' => 'content_group',
+                    'attribute' => 'title',
+                    'visible' => true,
+                    'order' => 20,
+                    'url_target' => 'self',
+                ],
+                [
+                    'type' => 'description',
+                    'source' => 'content_group',
+                    'attribute' => 'description',
+                    'visible' => false,
+                    'order' => 30,
+                ],
+                [
+                    'type' => 'metadata_row',
+                    'source' => 'content_group',
+                    'attribute' => 'item_count',
+                    'visible' => true,
+                    'order' => 40,
+                ],
+                [
+                    'type' => 'action_link',
+                    'source' => 'content_group',
+                    'attribute' => 'url',
+                    'label' => 'Open B3 podcast',
+                    'visible' => true,
+                    'order' => 50,
+                    'url_target' => 'self',
+                ],
+            ]),
+            makeStep10rB3ContentGroupTemplate('b3_home_group_template', [
+                [
+                    'type' => 'custom_text',
+                    'source' => 'custom',
+                    'attribute' => 'text',
+                    'text' => 'B3 homepage group marker',
+                    'visible' => true,
+                    'order' => 10,
+                ],
+                [
+                    'type' => 'title',
+                    'source' => 'content_group',
+                    'attribute' => 'title',
+                    'visible' => true,
+                    'order' => 20,
+                    'url_target' => 'self',
+                ],
+            ]),
+        ],
+        'podcasts_page' => [
+            'template_key' => 'b3_podcast_group_template',
+        ],
+    ]);
+
+    HomepageSection::factory()->create([
+        'name' => 'B3 Homepage Groups',
+        'type' => HomepageSectionType::Latest,
+        'source_config' => ['source_type' => 'content_groups'],
+        'selection_config' => ['include_ids' => [$group->id]],
+        'display_config' => [
+            'template_family' => 'content_group',
+            'template_key' => 'b3_home_group_template',
+        ],
+    ]);
+
+    $this->get('/podcasts')
+        ->assertSuccessful()
+        ->assertSee('data-card-template-key="b3_podcast_group_template"', false)
+        ->assertSee('data-card-renderer-parts="custom_text,title,metadata_row,action_link"', false)
+        ->assertSeeInOrder([
+            'B3 podcast group marker',
+            'B3 Template Podcast',
+            $groupCountLabel,
+            'Open B3 podcast',
+        ])
+        ->assertDontSee('<strong>B3 unsafe group marker</strong>', false)
+        ->assertDontSee('B3 unsafe group marker')
+        ->assertDontSee('B3 hidden group description.')
+        ->assertDontSee('fi-ta-table', false);
+
+    $this->get('/')
+        ->assertSuccessful()
+        ->assertSee('data-card-template-key="b3_home_group_template"', false)
+        ->assertSee('data-card-renderer-parts="custom_text,title"', false)
+        ->assertSeeInOrder([
+            'B3 homepage group marker',
+            'B3 Template Podcast',
+        ])
+        ->assertDontSee('fi-ta-table', false);
+});
+
+it('renders custom contributor templates on contributor cards and top transcriber selectors', function (): void {
+    $author = Author::factory()->create([
+        'name' => 'B3 Template Contributor',
+        'slug' => 'b3-template-contributor',
+        'bio_markdown' => 'B3 contributor hidden bio.',
+    ]);
+    createStep10rB3PublicContributorItem($author, ['title' => 'B3 Contributor Public Item']);
+
+    saveStep3PublicFrontConfig([
+        'card_templates' => [
+            makeStep10rB3ContributorTemplate('default_contributor', [
+                [
+                    'type' => 'custom_text',
+                    'source' => 'custom',
+                    'attribute' => 'text',
+                    'text' => '<strong>B3 unsafe contributor marker</strong>',
+                    'visible' => true,
+                    'order' => 5,
+                ],
+                [
+                    'type' => 'custom_text',
+                    'source' => 'custom',
+                    'attribute' => 'text',
+                    'text' => 'B3 contributor marker',
+                    'visible' => true,
+                    'order' => 10,
+                ],
+                [
+                    'type' => 'title',
+                    'source' => 'author',
+                    'attribute' => 'name',
+                    'visible' => true,
+                    'order' => 20,
+                    'url_target' => 'self',
+                ],
+                [
+                    'type' => 'metadata_row',
+                    'source' => 'author',
+                    'attribute' => 'transcription_count',
+                    'visible' => true,
+                    'order' => 30,
+                ],
+                [
+                    'type' => 'metadata_row',
+                    'source' => 'author',
+                    'attribute' => 'content_item_count',
+                    'visible' => true,
+                    'order' => 40,
+                ],
+                [
+                    'type' => 'description',
+                    'source' => 'author',
+                    'attribute' => 'bio',
+                    'visible' => false,
+                    'order' => 50,
+                ],
+                [
+                    'type' => 'action_link',
+                    'source' => 'author',
+                    'attribute' => 'url',
+                    'label' => 'Open B3 contributor',
+                    'visible' => true,
+                    'order' => 60,
+                    'url_target' => 'self',
+                ],
+            ]),
+            makeStep10rB3ContributorTemplate('b3_home_contributor_template', [
+                [
+                    'type' => 'custom_text',
+                    'source' => 'custom',
+                    'attribute' => 'text',
+                    'text' => 'B3 homepage contributor marker',
+                    'visible' => true,
+                    'order' => 10,
+                ],
+                [
+                    'type' => 'title',
+                    'source' => 'author',
+                    'attribute' => 'name',
+                    'visible' => true,
+                    'order' => 20,
+                    'url_target' => 'self',
+                ],
+                [
+                    'type' => 'action_link',
+                    'source' => 'author',
+                    'attribute' => 'url',
+                    'label' => 'Open B3 homepage contributor',
+                    'visible' => true,
+                    'order' => 30,
+                    'url_target' => 'self',
+                ],
+            ]),
+        ],
+        'contributors_page' => [
+            'cards' => [
+                'preview_show_bio' => false,
+            ],
+        ],
+    ]);
+
+    HomepageSection::factory()->create([
+        'name' => 'B3 Homepage Contributors',
+        'type' => HomepageSectionType::Latest,
+        'source_config' => ['source_type' => 'contributors'],
+        'selection_config' => ['include_ids' => [$author->id]],
+        'display_config' => [
+            'template_family' => 'contributor',
+            'template_key' => 'b3_home_contributor_template',
+        ],
+    ]);
+
+    $this->get('/contributors')
+        ->assertSuccessful()
+        ->assertSee('data-card-template-key="default_contributor"', false)
+        ->assertSee('data-card-renderer-parts="custom_text,title,metadata_row"', false)
+        ->assertSeeInOrder([
+            'B3 contributor marker',
+            'B3 Template Contributor',
+            trans_choice('public.labels.public_transcriptions_count', 1, ['count' => 1]),
+            trans_choice('public.labels.public_content_items_count', 1, ['count' => 1]),
+        ])
+        ->assertDontSee('<strong>B3 unsafe contributor marker</strong>', false)
+        ->assertDontSee('B3 unsafe contributor marker')
+        ->assertDontSee('Open B3 contributor')
+        ->assertDontSee('B3 contributor hidden bio.')
+        ->assertDontSee('fi-ta-table', false);
+
+    $this->get('/')
+        ->assertSuccessful()
+        ->assertSee('data-card-template-key="b3_home_contributor_template"', false)
+        ->assertSee('data-card-renderer-parts="custom_text,title,action_link"', false)
+        ->assertSeeInOrder([
+            'B3 homepage contributor marker',
+            'B3 Template Contributor',
+            'Open B3 homepage contributor',
+        ])
+        ->assertDontSee('fi-ta-table', false);
+
+    Livewire::test(TopTranscribersSection::class, [
+        'contributorIds' => [$author->id],
+    ])
+        ->assertSee('data-test="top-transcribers-selector"', false)
+        ->assertSee('data-card-renderer-parts="custom_text,title,metadata_row"', false)
+        ->assertSee('B3 contributor marker')
+        ->assertSee('B3 Template Contributor')
+        ->assertSee(trans_choice('public.labels.public_transcriptions_count', 1, ['count' => 1]))
+        ->assertSee(trans_choice('public.labels.public_content_items_count', 1, ['count' => 1]))
+        ->assertDontSee('Open B3 contributor')
+        ->assertDontSee('B3 contributor hidden bio.')
+        ->assertDontSee('fi-ta-table', false);
 });
 
 it('saves a simple card template definition through the public content settings page', function (): void {

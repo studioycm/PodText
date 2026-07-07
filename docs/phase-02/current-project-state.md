@@ -43,7 +43,8 @@ Recorded after the Markdown-only post-Prompt-10 prompt-progress centralization c
 - Public Front v2 Step 10R-A1 PublicFrontRenderContext foundation is implemented and committed as `a230410 feat: add public front render context foundation`.
 - Public Front v2 Step 10R-A2 render context adoption is implemented and committed as `d6d0bec refactor: route public front settings through render context`.
 - Public Front v2 Step 10R-B1 card template select/options UX is implemented and committed as `34c6032 fix: expose custom public card templates in settings`.
-- Public Front v2 Step 10R-B2 content item card part rendering is implemented in this run; final commit pending as `feat: render content item card template parts`.
+- Public Front v2 Step 10R-B2 content item card part rendering is implemented and committed as `e3c81de feat: render content item card template parts`.
+- Public Front v2 Step 10R-B3 content group and contributor card part rendering is implemented in this run; final commit pending as `feat: render group and contributor card templates`.
 
 ## Prompt Progress
 
@@ -80,7 +81,8 @@ Recorded after the Markdown-only post-Prompt-10 prompt-progress centralization c
 | Public Front v2 Step 10R-A1 render context foundation | Complete | `a230410 feat: add public front render context foundation` | Adds request-scoped `PublicFrontRenderContext`, `PublicFrontRenderContextFactory`, scoped app binding, group accessors including future-safe `footer()`, and focused tests. |
 | Public Front v2 Step 10R-A2 render context adoption | Complete | `d6d0bec refactor: route public front settings through render context` | Routes public Livewire components, public page classes, menu/about/card-template support services, and Blade compatibility defaults through `PublicFrontRenderContext`; public output behavior is intended to remain unchanged. |
 | Public Front v2 Step 10R-B1 card template select/options UX | Complete | `34c6032 fix: expose custom public card templates in settings` | Adds family-scoped resolver option helpers, makes podcast settings template selects read safely normalized same-session `card_templates` state, routes homepage section template options through the resolver, and documents contributor template setting selection as deferred because no contributor template key setting exists yet. |
-| Public Front v2 Step 10R-B2 content item card part renderer | Complete pending final commit | pending final commit: `feat: render content item card template parts` | Adds a controlled content item card presenter, makes supported content item template parts visibly render on homepage/search/category/tag and podcast detail item cards, and keeps group/contributor renderers deferred to Step 10R-B3. |
+| Public Front v2 Step 10R-B2 content item card part renderer | Complete | `e3c81de feat: render content item card template parts` | Adds a controlled content item card presenter, makes supported content item template parts visibly render on homepage/search/category/tag and podcast detail item cards, and keeps group/contributor renderers deferred to Step 10R-B3. |
+| Public Front v2 Step 10R-B3 content group and contributor card renderers | Complete pending final commit | pending final commit: `feat: render group and contributor card templates` | Adds controlled presenters for `content_group` and `contributor` cards so `/podcasts`, homepage group/contributor sections, contributor directory cards, and top-transcriber selector cards visibly honor safe card template parts. |
 | Prompt 13 dashboard metrics | Not started / blocked unless explicitly chosen by user | Active prompt/blueprint | Owns editorial dashboard widgets after Public Front v2 Step 12 readiness or an explicit dashboard-first decision. |
 | Prompt 14 viewer/studio future plan | Future planning after Prompt 13 | Active prompt/blueprint | Documentation/planning only. |
 | Prompt 15 Filament Blueprint security audit | Audit after Prompt 14 | Active prompt/blueprint | Audit-only unless fixes are explicitly approved. |
@@ -89,7 +91,7 @@ Recorded after the Markdown-only post-Prompt-10 prompt-progress centralization c
 
 - Prompt 13 dashboard metrics has not started and is intentionally blocked until Public Front v2 reaches Step 12 readiness or the user explicitly chooses dashboard metrics first.
 - The `model:show` baseline issue below remains unresolved and should be avoided until investigated.
-- After the Step 10R audits, the active implementation sequence is Step 10R-A/B/C before Step 9F/10F Footer + Rich Section Builder. Step 10R-A1, Step 10R-A2, Step 10R-B1, and Step 10R-B2 are complete or pending final B2 commit in this run; next mini-step is Step 10R-B3. Step 11 Seeders, Demo Data, Assets, and Cleanup must wait for approved Step 10R and Step 9F/10F completion or explicit Yoni approval. Step 2 transcription publication policy remains deferred/reserved.
+- After the Step 10R audits, the active implementation sequence is Step 10R-A/B/C before Step 9F/10F Footer + Rich Section Builder. Step 10R-A1, Step 10R-A2, Step 10R-B1, Step 10R-B2, and Step 10R-B3 are complete or pending final B3 commit in this run; next mini-step is Step 10R-B4. Step 11 Seeders, Demo Data, Assets, and Cleanup must wait for approved Step 10R and Step 9F/10F completion or explicit Yoni approval. Step 2 transcription publication policy remains deferred/reserved.
 
 ## Deferred Items
 
@@ -165,6 +167,7 @@ Laravel Boost MCP tools were exposed and usable during Prompt 10.
 - Public Front v2 Step 9R FilamentExamples `search_examples` research was run in focused batches plus a refined second pass for settings tabs, public header/menu, card grids, file/logo upload patterns, and Markdown/RichEditor rendering. No source/read/fetch details tool was exposed beyond search snippets.
 - Public Front v2 Step 10 used Boost `application_info`, `database_schema`, and `search_docs` before changing Livewire URL state, pagination, Filament settings fields, Eloquent aggregate/public visibility queries, card rendering, and Pest/Livewire tests.
 - Public Front v2 Step 10 FilamentExamples `search_examples` research was run in focused batches plus a refined second pass for directory cards, selector/preview state, top/ranked sections, pagination/grid controls, settings field organization, and public Livewire pages. No source/read/fetch details tool was exposed beyond search snippets.
+- Public Front v2 Step 10R-B3 used Boost `application_info`, `database_schema`, and `search_docs` before changing Blade components, presenters, Livewire-rendered card surfaces, and Pest tests. FilamentExamples `search_examples` was run in focused batches plus a refined second pass for card grids, profile view data, custom view cards, eager-loaded cards, and Livewire card grids; access level was search/snippet only.
 
 ## Application Shape
 
@@ -543,7 +546,7 @@ Current physical schema verified through Boost `database_schema`:
 - `ContentItemTranscriptViewer` defaults to the effective transcription, exposes only published transcription tabs/selector choices, keeps selection URL-backed by transcription reference key, and falls back to safe Markdown when parsing finds no segments.
 - Viewer controls are local Alpine preferences for show/hide timestamps and speakers; timestamp anchors are direction-safe with `dir="ltr"`.
 - Prompt 12 did not add player sync, transcription studio, autosave, dashboard widgets, analytics, metadata extraction automation, import/export behavior changes, admin relationship UX changes, homepage/search rewrites, or contributor discovery changes.
-- Prompt 13 dashboard metrics remains not started. Public Front v2 Step 10 is complete; the next recommended implementation step is Step 9F/10F Footer + Rich Section Builder if approved, otherwise Step 11 Seeders, Demo Data, Assets, and Cleanup.
+- Prompt 13 dashboard metrics remains not started. Public Front v2 post-Step-10 mini-step sequencing is controlled by `docs/phase-02/public-front-v2-step10r-9f-mini-step-ledger.md`; after Step 10R-B3, the next mini-step is Step 10R-B4.
 
 ## Public Front v2 Planning Notes
 
@@ -575,7 +578,7 @@ Current physical schema verified through Boost `database_schema`:
 - Step 9R Podcast Episode Grid Settings follow-up is implemented and committed as `af23555`.
 - Step 10 Contributors and Top Transcribers UX is implemented and committed as `37ce738`.
 - Post-Step-10 public label/header polish is committed through `cea4f60`.
-- Future Step 9F/10F Footer + Rich Section Builder foundation is planned after Step 10 and before Step 11 if approved.
+- Future Step 9F/10F Footer + Rich Section Builder foundation remains planned after the approved Step 10R-A/B/C sequence is complete; the active next mini-step after Step 10R-B3 is Step 10R-B4.
 - The PodText logo already exists at `public/images/podtext-logo.jpg` and must be preserved by future public-front work.
 
 ## Public Front v2 Step 9 Public Menu/Header and UX Fixes Notes
