@@ -8,32 +8,11 @@
 @php
     $templateRenderer = app(\App\Support\PublicFront\Cards\PublicFrontCardTemplateRenderer::class);
     $cardTemplate ??= $templateRenderer->resolve('content_item');
-    $templateAttributes = $templateRenderer->compatibilityAttributes($cardTemplate);
-    $presentation = $templateRenderer->contentItemPresentation($cardTemplate, $layout);
-    $itemUrl = \App\Filament\Public\Pages\ShowContentItem::getUrl([
-        'contentGroupSlug' => $item->contentGroup->slug,
-        'contentItemSlug' => $item->slug,
-    ], panel: 'public');
-    $effectiveTranscription = $item->effectiveTranscription();
-    $effectiveDate = $effectiveTranscription?->published_at?->timezone('Asia/Jerusalem')->format('d/m/Y');
-    $categories = $item->effectiveCategories()
-        ->where('is_visible', true)
-        ->values();
-    $tags = $item->relationLoaded('enabledContentTags') ? $item->enabledContentTags : $item->publicTags();
-    $duration = $item->duration_seconds
-        ? gmdate($item->duration_seconds >= 3600 ? 'H:i:s' : 'i:s', $item->duration_seconds)
-        : null;
+    $card = app(\App\Support\PublicFront\Cards\PublicContentItemCardPresenter::class)
+        ->present($item, $options, $cardTemplate, $layout);
+    $templateAttributes = $card['template_attributes'];
+    $presentation = $card['presentation'];
     $imageSize = $cardTemplate->imageSize;
-    $groupCoverUrl = $item->contentGroup->cover_path
-        ? \Illuminate\Support\Facades\Storage::disk('public')->url($item->contentGroup->cover_path)
-        : null;
-    $imageUrl = $item->external_thumbnail_url ?: $groupCoverUrl;
-    $imageSource = $item->external_thumbnail_url ? 'item' : ($groupCoverUrl ? 'group' : 'fallback');
-    $imageFitClass = $options->imageFitClass();
-    $imageRadiusClass = $options->imageRadiusClass();
-    $titleText = $options->groupBadgeMode === 'combined_title'
-        ? $item->contentGroup->title.$options->groupTitleSeparator.$item->title
-        : $item->title;
 @endphp
 
 <article
@@ -53,93 +32,180 @@
     data-card-title-clamp="{{ $presentation['title_clamp'] }}"
     data-card-description-clamp="{{ $presentation['description_clamp'] }}"
 >
-    @if($imageSize !== 'hidden')
+    @foreach($card['media_parts'] as $part)
         <a
-            href="{{ $itemUrl }}"
-            class="block min-w-0 overflow-hidden bg-gray-100 dark:bg-gray-800 {{ $presentation['image'] }} {{ $imageRadiusClass }}"
-            aria-label="{{ $titleText }}"
+            href="{{ $part['url'] }}"
+            class="block min-w-0 overflow-hidden bg-gray-100 dark:bg-gray-800 {{ $presentation['image'] }} {{ $part['image']['radius_class'] }}"
+            aria-label="{{ $part['title'] }}"
             data-test="content-item-image"
-            data-card-image-source="{{ $imageSource }}"
+            data-card-part="{{ $part['type'] }}"
+            data-card-part-source="{{ $part['source'] }}"
+            data-card-part-attribute="{{ $part['attribute'] }}"
+            data-card-part-order="{{ $part['order'] }}"
+            data-card-image-source="{{ $part['image']['source'] }}"
         >
-            @if($imageUrl)
+            @if($part['image']['url'])
                 <img
-                    src="{{ $imageUrl }}"
+                    src="{{ $part['image']['url'] }}"
                     alt=""
-                    class="h-full w-full {{ $imageFitClass }}"
+                    class="h-full w-full {{ $part['image']['fit_class'] }}"
                     loading="lazy"
                 >
             @else
                 <div class="flex h-full min-h-24 w-full items-center justify-center bg-gray-100 text-sm font-medium text-gray-500 dark:bg-gray-800 dark:text-gray-400">
-                    {{ $item->effectiveTypeLabelSingular() }}
+                    {{ $part['type_label'] }}
                 </div>
             @endif
         </a>
+    @endforeach
+
+    @if($card['body_parts'] !== [])
+        <div class="{{ $presentation['body'] }}">
+            @foreach($card['body_parts'] as $part)
+                @switch($part['type'])
+                    @case('group_identity')
+                        <div
+                            class="{{ $part['class'] }}"
+                            data-card-part="{{ $part['type'] }}"
+                            data-card-part-source="{{ $part['source'] }}"
+                            data-card-part-attribute="{{ $part['attribute'] }}"
+                            data-card-part-order="{{ $part['order'] }}"
+                        >
+                            <x-public.content-group-badge
+                                :group="$part['group']"
+                                :mode="$part['mode']"
+                                :main-image-source="$part['main_image_source']"
+                                :allow-duplicate-thumbnail="$part['allow_duplicate_thumbnail']"
+                            />
+                        </div>
+                        @break
+
+                    @case('title')
+                        <h3
+                            class="{{ $part['class'] }}"
+                            data-card-part="{{ $part['type'] }}"
+                            data-card-part-source="{{ $part['source'] }}"
+                            data-card-part-attribute="{{ $part['attribute'] }}"
+                            data-card-part-order="{{ $part['order'] }}"
+                        >
+                            <a href="{{ $part['url'] }}" data-test="content-item-title">
+                                {{ $part['text'] }}
+                            </a>
+                        </h3>
+                        @break
+
+                    @case('description')
+                        <p
+                            class="{{ $part['class'] }}"
+                            data-test="item-description"
+                            data-card-part="{{ $part['type'] }}"
+                            data-card-part-source="{{ $part['source'] }}"
+                            data-card-part-attribute="{{ $part['attribute'] }}"
+                            data-card-part-order="{{ $part['order'] }}"
+                        >
+                            {{ $part['text'] }}
+                        </p>
+                        @break
+
+                    @case('transcriber_line')
+                        <div
+                            class="{{ $part['class'] }}"
+                            data-card-part="{{ $part['type'] }}"
+                            data-card-part-source="{{ $part['source'] }}"
+                            data-card-part-attribute="{{ $part['attribute'] }}"
+                            data-card-part-order="{{ $part['order'] }}"
+                        >
+                            @foreach($part['badges'] as $badge)
+                                <span class="rounded-md bg-gray-100 px-2 py-1 dark:bg-gray-800" data-test="item-author">{{ $badge['label'] }}</span>
+                            @endforeach
+                        </div>
+                        @break
+
+                    @case('date_read_time')
+                    @case('metadata_row')
+                        <div
+                            class="{{ $part['class'] }}"
+                            data-card-part="{{ $part['type'] }}"
+                            data-card-part-source="{{ $part['source'] }}"
+                            data-card-part-attribute="{{ $part['attribute'] }}"
+                            data-card-part-order="{{ $part['order'] }}"
+                        >
+                            @foreach($part['badges'] as $badge)
+                                <span class="rounded-md bg-gray-100 px-2 py-1 dark:bg-gray-800" data-test="{{ $badge['test'] }}">{{ $badge['label'] }}</span>
+                            @endforeach
+                        </div>
+                        @break
+
+                    @case('taxonomy')
+                        <div
+                            class="{{ $part['class'] }}"
+                            data-test="{{ $part['test'] }}"
+                            data-card-part="{{ $part['type'] }}"
+                            data-card-part-source="{{ $part['source'] }}"
+                            data-card-part-attribute="{{ $part['attribute'] }}"
+                            data-card-part-order="{{ $part['order'] }}"
+                        >
+                            @foreach($part['links'] as $link)
+                                <a href="{{ $link['url'] }}" class="{{ $part['link_class'] }}">
+                                    {{ $link['label'] }}
+                                </a>
+                            @endforeach
+                        </div>
+                        @break
+
+                    @case('action_link')
+                        <div
+                            class="{{ $part['class'] }}"
+                            data-card-part="{{ $part['type'] }}"
+                            data-card-part-source="{{ $part['source'] }}"
+                            data-card-part-attribute="{{ $part['attribute'] }}"
+                            data-card-part-order="{{ $part['order'] }}"
+                        >
+                            <a
+                                href="{{ $part['url'] }}"
+                                @if($part['target']) target="{{ $part['target'] }}" rel="noopener noreferrer" @endif
+                                class="inline-flex text-sm font-medium text-primary-700 hover:text-primary-900 dark:text-primary-300 dark:hover:text-primary-100"
+                                data-test="content-item-action-link"
+                            >
+                                {{ $part['text'] }}
+                            </a>
+                        </div>
+                        @break
+
+                    @case('custom_text')
+                        <p
+                            class="{{ $part['class'] }}"
+                            data-test="card-custom-text"
+                            data-card-part="{{ $part['type'] }}"
+                            data-card-part-source="{{ $part['source'] }}"
+                            data-card-part-attribute="{{ $part['attribute'] }}"
+                            data-card-part-order="{{ $part['order'] }}"
+                        >
+                            {{ $part['text'] }}
+                        </p>
+                        @break
+
+                    @case('divider')
+                        <div
+                            class="{{ $part['class'] }}"
+                            data-card-part="{{ $part['type'] }}"
+                            data-card-part-source="{{ $part['source'] }}"
+                            data-card-part-attribute="{{ $part['attribute'] }}"
+                            data-card-part-order="{{ $part['order'] }}"
+                        ></div>
+                        @break
+
+                    @case('spacer')
+                        <div
+                            class="{{ $part['class'] }}"
+                            data-card-part="{{ $part['type'] }}"
+                            data-card-part-source="{{ $part['source'] }}"
+                            data-card-part-attribute="{{ $part['attribute'] }}"
+                            data-card-part-order="{{ $part['order'] }}"
+                        ></div>
+                        @break
+                @endswitch
+            @endforeach
+        </div>
     @endif
-
-    <div class="{{ $presentation['body'] }}">
-        <div class="min-w-0 space-y-2">
-            @if($options->showGroupBadge && $options->groupBadgeMode !== 'combined_title')
-                <x-public.content-group-badge
-                    :group="$item->contentGroup"
-                    :mode="$options->groupBadgeMode"
-                    :main-image-source="$imageSource"
-                    :allow-duplicate-thumbnail="$options->groupBadgeDuplicateThumbnail"
-                />
-            @endif
-
-            <h3 class="{{ $presentation['title'] }}">
-                <a href="{{ $itemUrl }}" data-test="content-item-title">
-                    {{ $titleText }}
-                </a>
-            </h3>
-        </div>
-
-        @if($options->showDescription && $options->descriptionLines > 0 && filled($item->description_markdown))
-            <p class="{{ $presentation['description'] }}" data-test="item-description">
-                {{ str($item->description_markdown)->stripTags()->squish() }}
-            </p>
-        @endif
-
-        <div class="flex flex-wrap gap-2 text-xs text-gray-600 dark:text-gray-300">
-            @if($options->showAuthors)
-                @foreach($item->authors as $author)
-                    <span class="rounded-md bg-gray-100 px-2 py-1 dark:bg-gray-800" data-test="item-author">{{ $author->name }}</span>
-                @endforeach
-            @endif
-
-            @if($options->showEffectiveDate && $effectiveDate)
-                <span class="rounded-md bg-gray-100 px-2 py-1 dark:bg-gray-800" data-test="effective-date">{{ $effectiveDate }}</span>
-            @endif
-
-            @if($options->showDuration && $duration)
-                <span class="rounded-md bg-gray-100 px-2 py-1 dark:bg-gray-800" data-test="duration">{{ $duration }}</span>
-            @endif
-        </div>
-
-        @if($options->showCategories && $categories->isNotEmpty())
-            <div class="flex flex-wrap gap-2" data-test="item-categories">
-                @foreach($categories as $category)
-                    <a
-                        href="{{ \App\Filament\Public\Pages\BrowseCategoryContentItems::getUrl(['categorySlug' => $category->slug], panel: 'public') }}"
-                        class="rounded-md border border-gray-200 px-2 py-1 text-xs text-gray-600 hover:border-primary-300 hover:text-primary-700 dark:border-gray-700 dark:text-gray-300"
-                    >
-                        {{ $category->name }}
-                    </a>
-                @endforeach
-            </div>
-        @endif
-
-        @if($options->showTags && $tags->isNotEmpty())
-            <div class="flex flex-wrap gap-2" data-test="item-tags">
-                @foreach($tags as $tag)
-                    <a
-                        href="{{ \App\Filament\Public\Pages\BrowseTagContentItems::getUrl(['tagSlug' => $tag->slug], panel: 'public') }}"
-                        class="rounded-md bg-gray-950 px-2 py-1 text-xs text-white hover:bg-primary-700 dark:bg-gray-100 dark:text-gray-950"
-                    >
-                        {{ $tag->name }}
-                    </a>
-                @endforeach
-            </div>
-        @endif
-    </div>
 </article>

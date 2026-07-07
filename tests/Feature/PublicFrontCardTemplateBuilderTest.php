@@ -1,9 +1,13 @@
 <?php
 
+use App\Enums\HomepageSectionType;
 use App\Filament\Pages\PublicContentSettings as PublicContentSettingsPage;
 use App\Filament\Resources\HomepageSections\Pages\CreateHomepageSection;
+use App\Models\Category;
 use App\Models\ContentGroup;
 use App\Models\ContentItem;
+use App\Models\ContentTag;
+use App\Models\HomepageSection;
 use App\Models\User;
 use App\Settings\PublicContentSettings;
 use App\Support\PublicFront\Cards\PublicFrontCardTemplateResolver;
@@ -83,6 +87,21 @@ function makeStep3CardTemplate(string $family, string $key): array
                 'url_target' => 'self',
             ],
         ],
+    ];
+}
+
+function makeStep10rB2ContentItemTemplate(string $key, array $parts, array $overrides = []): array
+{
+    return [
+        'key' => $key,
+        'label' => "Template {$key}",
+        'family' => 'content_item',
+        'layout' => 'cards',
+        'density' => 'comfortable',
+        'image_size' => 'hidden',
+        'title_size' => 'base',
+        'parts' => $parts,
+        ...$overrides,
     ];
 }
 
@@ -439,6 +458,186 @@ it('keeps public card rendering working when configured template parts are inval
         ->assertSee('data-test="content-item-card"', false)
         ->assertSee('data-card-template-key="default_content_item"', false)
         ->assertSee('data-card-template-parts=""', false);
+});
+
+it('renders homepage content item template parts in configured order and hides disabled parts safely', function (): void {
+    $item = createStep3PublicItem([
+        'title' => 'B2 Homepage Template Episode',
+        'description_markdown' => 'B2 hidden description text.',
+        'duration_seconds' => 245,
+    ]);
+
+    saveStep3PublicFrontConfig([
+        'card_templates' => [
+            makeStep10rB2ContentItemTemplate('b2_home_content_item', [
+                [
+                    'type' => 'custom_text',
+                    'source' => 'custom',
+                    'attribute' => 'text',
+                    'text' => '<strong>B2 unsafe marker</strong>',
+                    'visible' => true,
+                    'order' => 5,
+                    'font_size' => 'sm',
+                ],
+                [
+                    'type' => 'custom_text',
+                    'source' => 'custom',
+                    'attribute' => 'text',
+                    'text' => 'B2 custom marker',
+                    'visible' => true,
+                    'order' => 10,
+                    'font_size' => 'sm',
+                ],
+                [
+                    'type' => 'title',
+                    'source' => 'content_item',
+                    'attribute' => 'title',
+                    'visible' => true,
+                    'order' => 20,
+                    'url_target' => 'self',
+                ],
+                [
+                    'type' => 'description',
+                    'source' => 'content_item',
+                    'attribute' => 'description',
+                    'visible' => false,
+                    'order' => 30,
+                ],
+                [
+                    'type' => 'metadata_row',
+                    'source' => 'content_item',
+                    'attribute' => 'duration',
+                    'visible' => true,
+                    'order' => 40,
+                ],
+            ]),
+        ],
+    ]);
+
+    HomepageSection::factory()->create([
+        'name' => 'B2 Homepage Template',
+        'type' => HomepageSectionType::Latest,
+        'source_config' => ['source_type' => 'manual_content_items'],
+        'selection_config' => ['include_ids' => [$item->id]],
+        'display_config' => [
+            'template_family' => 'content_item',
+            'template_key' => 'b2_home_content_item',
+        ],
+    ]);
+
+    $this->get('/')
+        ->assertSuccessful()
+        ->assertSee('data-card-template-key="b2_home_content_item"', false)
+        ->assertSee('data-card-renderer-parts="custom_text,title,metadata_row"', false)
+        ->assertSeeInOrder([
+            'B2 custom marker',
+            'B2 Homepage Template Episode',
+            '04:05',
+        ])
+        ->assertDontSee('<strong>B2 unsafe marker</strong>', false)
+        ->assertDontSee('B2 unsafe marker')
+        ->assertDontSee('B2 hidden description text.');
+});
+
+it('renders custom content item parts on search category and tag pages', function (): void {
+    $category = Category::factory()->create(['name' => 'B2 Template Category']);
+    $tag = ContentTag::findOrCreate('B2 Template Tag', 'content')->enable();
+    $item = createStep3PublicItem(['title' => 'B2 Search Template Episode']);
+
+    $item->categories()->attach($category);
+    $item->attachTag($tag);
+
+    saveStep3PublicFrontConfig([
+        'card_templates' => [
+            makeStep10rB2ContentItemTemplate('default_content_item', [
+                [
+                    'type' => 'custom_text',
+                    'source' => 'custom',
+                    'attribute' => 'text',
+                    'text' => 'B2 search/category/tag marker',
+                    'visible' => true,
+                    'order' => 10,
+                ],
+                [
+                    'type' => 'title',
+                    'source' => 'content_item',
+                    'attribute' => 'title',
+                    'visible' => true,
+                    'order' => 20,
+                    'url_target' => 'self',
+                ],
+                [
+                    'type' => 'taxonomy',
+                    'source' => 'categories',
+                    'attribute' => 'links',
+                    'visible' => true,
+                    'order' => 30,
+                ],
+                [
+                    'type' => 'taxonomy',
+                    'source' => 'tags',
+                    'attribute' => 'links',
+                    'visible' => true,
+                    'order' => 40,
+                ],
+            ]),
+        ],
+    ]);
+
+    foreach (['/search', "/categories/{$category->slug}", "/tags/{$tag->slug}"] as $path) {
+        $this->get($path)
+            ->assertSuccessful()
+            ->assertSee('B2 search/category/tag marker')
+            ->assertSee('B2 Search Template Episode')
+            ->assertSee('data-card-part="custom_text"', false)
+            ->assertSee('data-card-part="taxonomy"', false)
+            ->assertSee('B2 Template Category')
+            ->assertSee('B2 Template Tag');
+    }
+});
+
+it('renders podcast detail item cards with the configured item template parts', function (): void {
+    $group = ContentGroup::factory()->published()->create([
+        'title' => 'B2 Template Podcast',
+        'slug' => 'b2-template-podcast',
+    ]);
+    $item = createStep3PublicItem(['title' => 'B2 Podcast Template Episode'], $group);
+
+    saveStep3PublicFrontConfig([
+        'card_templates' => [
+            makeStep10rB2ContentItemTemplate('b2_podcast_item_template', [
+                [
+                    'type' => 'custom_text',
+                    'source' => 'custom',
+                    'attribute' => 'text',
+                    'text' => 'B2 podcast item template marker',
+                    'visible' => true,
+                    'order' => 10,
+                ],
+                [
+                    'type' => 'title',
+                    'source' => 'content_item',
+                    'attribute' => 'title',
+                    'visible' => true,
+                    'order' => 20,
+                    'url_target' => 'self',
+                ],
+            ]),
+        ],
+        'podcasts_page' => [
+            'item_template_key' => 'b2_podcast_item_template',
+        ],
+    ]);
+
+    $this->get("/podcasts/{$group->slug}")
+        ->assertSuccessful()
+        ->assertSee($item->title)
+        ->assertSee('data-card-template-key="b2_podcast_item_template"', false)
+        ->assertSee('B2 podcast item template marker')
+        ->assertSeeInOrder([
+            'B2 podcast item template marker',
+            'B2 Podcast Template Episode',
+        ]);
 });
 
 it('saves a simple card template definition through the public content settings page', function (): void {

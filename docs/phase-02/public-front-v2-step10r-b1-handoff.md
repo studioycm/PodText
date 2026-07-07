@@ -95,4 +95,4 @@ Step 10R-B1 fixes the admin card-template selection path after the render contex
 
 ## Commit Hash
 
-Pending final commit in this run: `fix: expose custom public card templates in settings`.
+Committed as `34c6032 fix: expose custom public card templates in settings`.

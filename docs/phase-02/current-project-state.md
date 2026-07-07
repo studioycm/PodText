@@ -42,6 +42,8 @@ Recorded after the Markdown-only post-Prompt-10 prompt-progress centralization c
 - Post-Step-10 follow-up sequence after the Step 10 handoff commit: `e8077ea` simplified public-facing Hebrew labels, `20970a3` aligned Hebrew content/podcast terminology, `802cf4a` temporarily enabled public panel SPA mode, `2b1c6b3` removed SPA mode and externalized content-group type label defaults to translation keys, and `cea4f60` refined public header search/theme selector layout.
 - Public Front v2 Step 10R-A1 PublicFrontRenderContext foundation is implemented and committed as `a230410 feat: add public front render context foundation`.
 - Public Front v2 Step 10R-A2 render context adoption is implemented and committed as `d6d0bec refactor: route public front settings through render context`.
+- Public Front v2 Step 10R-B1 card template select/options UX is implemented and committed as `34c6032 fix: expose custom public card templates in settings`.
+- Public Front v2 Step 10R-B2 content item card part rendering is implemented in this run; final commit pending as `feat: render content item card template parts`.
 
 ## Prompt Progress
 
@@ -77,7 +79,8 @@ Recorded after the Markdown-only post-Prompt-10 prompt-progress centralization c
 | Post-Step-10 public label/header polish | Complete | `e8077ea`, `20970a3`, `802cf4a`, `2b1c6b3`, `cea4f60` | Simplifies Hebrew public/admin labels, aligns podcast/episode terminology, records that temporary public panel SPA mode was removed, externalizes content-group type-label defaults to translation keys, and refines public header search/theme selector layout. |
 | Public Front v2 Step 10R-A1 render context foundation | Complete | `a230410 feat: add public front render context foundation` | Adds request-scoped `PublicFrontRenderContext`, `PublicFrontRenderContextFactory`, scoped app binding, group accessors including future-safe `footer()`, and focused tests. |
 | Public Front v2 Step 10R-A2 render context adoption | Complete | `d6d0bec refactor: route public front settings through render context` | Routes public Livewire components, public page classes, menu/about/card-template support services, and Blade compatibility defaults through `PublicFrontRenderContext`; public output behavior is intended to remain unchanged. |
-| Public Front v2 Step 10R-B1 card template select/options UX | Complete | pending final commit: `fix: expose custom public card templates in settings` | Adds family-scoped resolver option helpers, makes podcast settings template selects read safely normalized same-session `card_templates` state, routes homepage section template options through the resolver, and documents contributor template setting selection as deferred because no contributor template key setting exists yet. Next mini-step: Step 10R-B2. |
+| Public Front v2 Step 10R-B1 card template select/options UX | Complete | `34c6032 fix: expose custom public card templates in settings` | Adds family-scoped resolver option helpers, makes podcast settings template selects read safely normalized same-session `card_templates` state, routes homepage section template options through the resolver, and documents contributor template setting selection as deferred because no contributor template key setting exists yet. |
+| Public Front v2 Step 10R-B2 content item card part renderer | Complete pending final commit | pending final commit: `feat: render content item card template parts` | Adds a controlled content item card presenter, makes supported content item template parts visibly render on homepage/search/category/tag and podcast detail item cards, and keeps group/contributor renderers deferred to Step 10R-B3. |
 | Prompt 13 dashboard metrics | Not started / blocked unless explicitly chosen by user | Active prompt/blueprint | Owns editorial dashboard widgets after Public Front v2 Step 12 readiness or an explicit dashboard-first decision. |
 | Prompt 14 viewer/studio future plan | Future planning after Prompt 13 | Active prompt/blueprint | Documentation/planning only. |
 | Prompt 15 Filament Blueprint security audit | Audit after Prompt 14 | Active prompt/blueprint | Audit-only unless fixes are explicitly approved. |
@@ -86,7 +89,7 @@ Recorded after the Markdown-only post-Prompt-10 prompt-progress centralization c
 
 - Prompt 13 dashboard metrics has not started and is intentionally blocked until Public Front v2 reaches Step 12 readiness or the user explicitly chooses dashboard metrics first.
 - The `model:show` baseline issue below remains unresolved and should be avoided until investigated.
-- After the Step 10R audits, the active implementation sequence is Step 10R-A/B/C before Step 9F/10F Footer + Rich Section Builder. Step 10R-A1, Step 10R-A2, and Step 10R-B1 are complete; next mini-step is Step 10R-B2. Step 11 Seeders, Demo Data, Assets, and Cleanup must wait for approved Step 10R and Step 9F/10F completion or explicit Yoni approval. Step 2 transcription publication policy remains deferred/reserved.
+- After the Step 10R audits, the active implementation sequence is Step 10R-A/B/C before Step 9F/10F Footer + Rich Section Builder. Step 10R-A1, Step 10R-A2, Step 10R-B1, and Step 10R-B2 are complete or pending final B2 commit in this run; next mini-step is Step 10R-B3. Step 11 Seeders, Demo Data, Assets, and Cleanup must wait for approved Step 10R and Step 9F/10F completion or explicit Yoni approval. Step 2 transcription publication policy remains deferred/reserved.
 
 ## Deferred Items
 

@@ -14,6 +14,9 @@ class PublicFrontCardTemplateRenderer
         'taxonomy',
         'metadata_row',
         'action_link',
+        'custom_text',
+        'divider',
+        'spacer',
     ];
 
     public function __construct(
@@ -91,6 +94,18 @@ class PublicFrontCardTemplateRenderer
         ];
     }
 
+    /**
+     * @return array<int, PublicFrontCardPart>
+     */
+    public function contentItemParts(PublicFrontCardTemplate $template): array
+    {
+        return collect($template->visibleParts())
+            ->filter(fn (PublicFrontCardPart $part): bool => in_array($part->type, self::CONTROLLED_CONTENT_ITEM_PARTS, true))
+            ->reject(fn (PublicFrontCardPart $part): bool => $part->type === 'image' && $template->imageSize === 'hidden')
+            ->values()
+            ->all();
+    }
+
     private function articleClasses(string $layout, string $padding): string
     {
         if ($layout === 'rows') {
@@ -136,7 +151,8 @@ class PublicFrontCardTemplateRenderer
      */
     private function controlledContentItemParts(PublicFrontCardTemplate $template): array
     {
-        return collect($template->partTypes(visibleOnly: true))
+        return collect($this->contentItemParts($template))
+            ->map(fn (PublicFrontCardPart $part): string => $part->type)
             ->intersect(self::CONTROLLED_CONTENT_ITEM_PARTS)
             ->unique()
             ->values()
