@@ -40,7 +40,7 @@ Recorded after the Markdown-only post-Prompt-10 prompt-progress centralization c
 - Public Front v2 Step 10 Contributors and Top Transcribers UX is implemented and committed as `37ce738 feat: refine contributors and top transcribers ux`.
 - Post-Step-10 public label/header polish is committed through `cea4f60 fix: refine theme selector and search UX in public header`.
 - Post-Step-10 follow-up sequence after the Step 10 handoff commit: `e8077ea` simplified public-facing Hebrew labels, `20970a3` aligned Hebrew content/podcast terminology, `802cf4a` temporarily enabled public panel SPA mode, `2b1c6b3` removed SPA mode and externalized content-group type label defaults to translation keys, and `cea4f60` refined public header search/theme selector layout.
-- Public Front v2 Step 10R-A1 PublicFrontRenderContext foundation is implemented and committed as `b421581 feat: add public front render context foundation`.
+- Public Front v2 Step 10R-A1 PublicFrontRenderContext foundation is implemented and committed as `a230410 feat: add public front render context foundation`.
 
 ## Prompt Progress
 
@@ -74,7 +74,7 @@ Recorded after the Markdown-only post-Prompt-10 prompt-progress centralization c
 | Public Front v2 Step 9R Podcast Episode Grid Settings follow-up | Complete | `af23555 feat: add podcast episode grid settings` | Adds JSON-first podcast detail episode grid/settings controls under `podcasts_page.group_page`, keeps `ContentItemBrowser` as Livewire owner, and was followed by the now-complete Step 10 implementation. |
 | Public Front v2 Step 10 Contributors and Top Transcribers UX | Complete | `37ce738 feat: refine contributors and top transcribers ux` | Adds `contributors_page` settings, settings UI, horizontal top-transcriber selector/preview, contributor directory/page controls, grouped contributor transcription titles, tests, and Step 10 handoff. |
 | Post-Step-10 public label/header polish | Complete | `e8077ea`, `20970a3`, `802cf4a`, `2b1c6b3`, `cea4f60` | Simplifies Hebrew public/admin labels, aligns podcast/episode terminology, records that temporary public panel SPA mode was removed, externalizes content-group type-label defaults to translation keys, and refines public header search/theme selector layout. |
-| Public Front v2 Step 10R-A1 render context foundation | Complete | `b421581 feat: add public front render context foundation` | Adds request-scoped `PublicFrontRenderContext`, `PublicFrontRenderContextFactory`, scoped app binding, group accessors including future-safe `footer()`, and focused tests. No public consumers were moved yet; public output behavior is unchanged. Next mini-step: Step 10R-A2. |
+| Public Front v2 Step 10R-A1 render context foundation | Complete | `a230410 feat: add public front render context foundation` | Adds request-scoped `PublicFrontRenderContext`, `PublicFrontRenderContextFactory`, scoped app binding, group accessors including future-safe `footer()`, and focused tests. No public consumers were moved yet; public output behavior is unchanged. Next mini-step: Step 10R-A2. |
 | Prompt 13 dashboard metrics | Not started / blocked unless explicitly chosen by user | Active prompt/blueprint | Owns editorial dashboard widgets after Public Front v2 Step 12 readiness or an explicit dashboard-first decision. |
 | Prompt 14 viewer/studio future plan | Future planning after Prompt 13 | Active prompt/blueprint | Documentation/planning only. |
 | Prompt 15 Filament Blueprint security audit | Audit after Prompt 14 | Active prompt/blueprint | Audit-only unless fixes are explicitly approved. |
