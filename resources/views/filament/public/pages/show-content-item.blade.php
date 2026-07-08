@@ -34,29 +34,27 @@
         </nav>
 
         <header class="space-y-4">
-            <x-public.type-label :label="$contentItem->effectiveTypeLabelSingular()" />
-
             <h1 class="text-3xl font-semibold leading-tight text-gray-950 dark:text-white">
                 {{ $contentItem->title }}
             </h1>
 
             <dl class="flex flex-wrap gap-x-6 gap-y-2 text-sm text-gray-600 dark:text-gray-300">
-                @if ($transcribers->isNotEmpty())
-                    <div>
-                        <dt class="sr-only">{{ __('public.labels.transcribers') }}</dt>
-                        <dd class="flex flex-wrap gap-2">
-                            @foreach($transcribers as $author)
-                                <a
-                                    href="{{ \App\Filament\Public\Pages\ShowContributor::getUrl(['authorSlug' => $author->slug], panel: 'public') }}"
-                                    class="font-medium text-primary-700 hover:text-primary-900 dark:text-primary-300 dark:hover:text-primary-100"
-                                    data-test="item-transcriber-link"
-                                >
-                                    {{ $author->name }}
-                                </a>
-                            @endforeach
-                        </dd>
-                    </div>
-                @endif
+{{--                @if ($transcribers->isNotEmpty())--}}
+{{--                    <div>--}}
+{{--                        <dt class="sr-only">{{ __('public.labels.transcribers') }}</dt>--}}
+{{--                        <dd class="flex flex-wrap gap-2">--}}
+{{--                            @foreach($transcribers as $author)--}}
+{{--                                <a--}}
+{{--                                    href="{{ \App\Filament\Public\Pages\ShowContributor::getUrl(['authorSlug' => $author->slug], panel: 'public') }}"--}}
+{{--                                    class="font-medium text-primary-700 hover:text-primary-900 dark:text-primary-300 dark:hover:text-primary-100"--}}
+{{--                                    data-test="item-transcriber-link"--}}
+{{--                                >--}}
+{{--                                    {{ $author->name }}--}}
+{{--                                </a>--}}
+{{--                            @endforeach--}}
+{{--                        </dd>--}}
+{{--                    </div>--}}
+{{--                @endif--}}
 
                 @if ($duration)
                     <div>
@@ -142,16 +140,6 @@
             </aside>
 
             <div class="space-y-8 lg:order-1">
-                @if (filled($contentItem->description_markdown))
-                    <section class="space-y-3" aria-labelledby="item-description-heading">
-                        <h2 id="item-description-heading" class="text-xl font-semibold text-gray-950 dark:text-white">
-                            {{ __('public.pages.item.description_heading') }}
-                        </h2>
-
-                        <x-public.markdown-content :markdown="$contentItem->description_markdown" />
-                    </section>
-                @endif
-
                 @if($categories->isNotEmpty() || $tags->isNotEmpty())
                     <section class="space-y-3" aria-label="{{ __('public.labels.taxonomy') }}">
                         @if($categories->isNotEmpty())
@@ -179,6 +167,16 @@
                                 @endforeach
                             </div>
                         @endif
+                    </section>
+                @endif
+
+                @if (filled($contentItem->description_markdown))
+                    <section class="space-y-3" aria-labelledby="item-description-heading">
+{{--                        <h2 id="item-description-heading" class="text-xl font-semibold text-gray-950 dark:text-white">--}}
+{{--                            {{ __('public.pages.item.description_heading') }}--}}
+{{--                        </h2>--}}
+
+                        <x-public.markdown-content :markdown="$contentItem->description_markdown" />
                     </section>
                 @endif
 

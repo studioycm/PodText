@@ -26,9 +26,9 @@
 >
     <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div class="space-y-2">
-            <h2 id="item-transcript-heading" class="text-xl font-semibold text-gray-950 dark:text-white">
-                {{ __('public.pages.item.transcript_heading') }}
-            </h2>
+{{--            <h2 id="item-transcript-heading" class="text-xl font-semibold text-gray-950 dark:text-white">--}}
+{{--                {{ __('public.pages.item.transcript_heading') }}--}}
+{{--            </h2>--}}
 
             @if($activeTranscription)
                 <dl class="flex flex-wrap gap-2 text-xs text-gray-600 dark:text-gray-300">
@@ -66,33 +66,33 @@
         </div>
 
         <div class="flex flex-wrap gap-2 text-sm">
-            <button
-                type="button"
-                x-on:click="setTimestampPreference(! showTimestamps)"
-                class="rounded-md border border-gray-200 px-3 py-1.5 font-medium text-gray-700 hover:border-primary-300 hover:text-primary-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-600 dark:border-gray-700 dark:text-gray-200 dark:hover:border-primary-500 dark:hover:text-primary-200"
-                data-test="toggle-timestamps"
-            >
-                <span x-show="showTimestamps">{{ __('public.viewer.hide_timestamps') }}</span>
-                <span x-show="! showTimestamps">{{ __('public.viewer.show_timestamps') }}</span>
-            </button>
-            <button
-                type="button"
-                x-on:click="setSpeakerPreference(! showSpeakers)"
-                class="rounded-md border border-gray-200 px-3 py-1.5 font-medium text-gray-700 hover:border-primary-300 hover:text-primary-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-600 dark:border-gray-700 dark:text-gray-200 dark:hover:border-primary-500 dark:hover:text-primary-200"
-                data-test="toggle-speakers"
-            >
-                <span x-show="showSpeakers">{{ __('public.viewer.hide_speakers') }}</span>
-                <span x-show="! showSpeakers">{{ __('public.viewer.show_speakers') }}</span>
-            </button>
-            <button
-                type="button"
-                x-on:click="copyTranscriptLink()"
-                class="rounded-md bg-primary-600 px-3 py-1.5 font-medium text-white hover:bg-primary-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-600 dark:bg-primary-500 dark:hover:bg-primary-400"
-                data-test="copy-transcript-link"
-            >
-                <span x-show="! copiedTranscript">{{ __('public.actions.copy_link') }}</span>
-                <span x-show="copiedTranscript">{{ __('public.actions.copied') }}</span>
-            </button>
+{{--            <button--}}
+{{--                type="button"--}}
+{{--                x-on:click="setTimestampPreference(! showTimestamps)"--}}
+{{--                class="rounded-md border border-gray-200 px-3 py-1.5 font-medium text-gray-700 hover:border-primary-300 hover:text-primary-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-600 dark:border-gray-700 dark:text-gray-200 dark:hover:border-primary-500 dark:hover:text-primary-200"--}}
+{{--                data-test="toggle-timestamps"--}}
+{{--            >--}}
+{{--                <span x-show="showTimestamps">{{ __('public.viewer.hide_timestamps') }}</span>--}}
+{{--                <span x-show="! showTimestamps">{{ __('public.viewer.show_timestamps') }}</span>--}}
+{{--            </button>--}}
+{{--            <button--}}
+{{--                type="button"--}}
+{{--                x-on:click="setSpeakerPreference(! showSpeakers)"--}}
+{{--                class="rounded-md border border-gray-200 px-3 py-1.5 font-medium text-gray-700 hover:border-primary-300 hover:text-primary-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-600 dark:border-gray-700 dark:text-gray-200 dark:hover:border-primary-500 dark:hover:text-primary-200"--}}
+{{--                data-test="toggle-speakers"--}}
+{{--            >--}}
+{{--                <span x-show="showSpeakers">{{ __('public.viewer.hide_speakers') }}</span>--}}
+{{--                <span x-show="! showSpeakers">{{ __('public.viewer.show_speakers') }}</span>--}}
+{{--            </button>--}}
+{{--            <button--}}
+{{--                type="button"--}}
+{{--                x-on:click="copyTranscriptLink()"--}}
+{{--                class="rounded-md bg-primary-600 px-3 py-1.5 font-medium text-white hover:bg-primary-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-600 dark:bg-primary-500 dark:hover:bg-primary-400"--}}
+{{--                data-test="copy-transcript-link"--}}
+{{--            >--}}
+{{--                <span x-show="! copiedTranscript">{{ __('public.actions.copy_link') }}</span>--}}
+{{--                <span x-show="copiedTranscript">{{ __('public.actions.copied') }}</span>--}}
+{{--            </button>--}}
         </div>
     </div>
 
