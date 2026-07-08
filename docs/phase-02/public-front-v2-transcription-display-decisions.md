@@ -8,7 +8,7 @@ These decisions are the default product behavior for the multi-transcription pub
 
 Episode/content-item cards do not render full multi-transcription lists.
 
-Cards show the selected/effective transcription's title, transcribers, read time, word count, and date where the active template asks for those parts. Cards may also show an "N transcriptions" metadata badge when `transcription_policy.count_mode` is `all_published`, the item has more than one public transcription, and the surface `transcription_display` setting is `effective_plus_count`.
+Cards show the selected/effective transcription's title, transcribers, read time, word count, and date where the active template asks for those parts. Cards may also show an "N transcriptions" metadata badge when `transcription_policy.count_mode` is `all_published`, the item has more than one public transcription, and the surface `transcription_display` setting is `effective_only`.
 
 ## D2 - Item Page
 
@@ -47,7 +47,7 @@ Surfaces that render item cards get one finite token:
 - `effective_only`
 - `effective_plus_count`
 
-The token is named `transcription_display` and defaults to `effective_plus_count`.
+The token is named `transcription_display` and defaults to `effective_only`.
 
 Item-page grouping remains controlled by `transcription_policy.show_multiple_transcriptions_on_item_page`.
 
