@@ -78,7 +78,11 @@ class ContributorContentItems extends Component
 
     protected function cardOptions(): PublicContentCardOptions
     {
-        return $this->renderContext()->cardOptions();
+        $pageConfig = $this->contributorsConfig()['page'] ?? [];
+
+        return $this->renderContext()
+            ->cardOptions()
+            ->withTranscriptionDisplay((string) ($pageConfig['transcription_display'] ?? 'effective_plus_count'));
     }
 
     /**

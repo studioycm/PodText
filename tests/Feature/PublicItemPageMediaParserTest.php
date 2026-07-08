@@ -163,7 +163,7 @@ it('returns not found for draft items and items without effective published tran
     $this->get("/items/{$group->slug}/{$draftTranscription->slug}")->assertNotFound();
 });
 
-it('defaults to the effective transcription and exposes only published transcription tabs', function (): void {
+it('defaults to the effective transcription and hides alternate transcription tabs until enabled', function (): void {
     [$item, $featured, $group] = createPrompt12PublicItem([
         'slug' => 'tabbed-item',
     ], [
@@ -187,19 +187,19 @@ it('defaults to the effective transcription and exposes only published transcrip
 
     $this->get("/items/{$group->slug}/{$item->slug}")
         ->assertSuccessful()
-        ->assertSee('data-test="transcript-tabs"', false)
-        ->assertSee('Featured transcript')
-        ->assertSee('Alternate transcript')
+        ->assertDontSee('data-test="transcript-tabs"', false)
+        ->assertDontSee('Alternate transcript')
         ->assertSee('data-selected-transcription="'.$featured->reference_key.'"', false)
         ->assertSee('Featured body')
         ->assertDontSee('Draft transcript')
-        ->assertDontSee('Draft body');
+        ->assertDontSee('Draft body')
+        ->assertDontSee('Alternate body');
 
     Livewire::withQueryParams(['transcription' => $alternate->reference_key])
         ->test(ContentItemTranscriptViewer::class, ['contentItem' => $item->refresh()])
-        ->assertSet('selectedTranscription', $alternate->reference_key)
-        ->assertSee('Alternate body')
-        ->assertDontSee('Featured body')
+        ->assertSet('selectedTranscription', $featured->reference_key)
+        ->assertSee('Featured body')
+        ->assertDontSee('Alternate body')
         ->assertDontSee('Draft transcript');
 });
 

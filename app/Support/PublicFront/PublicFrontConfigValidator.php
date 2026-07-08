@@ -1243,7 +1243,7 @@ class PublicFrontConfigValidator
      */
     private function normalizeDisplayDefaults(array $displayDefaults, array $defaults, array &$invalidConfig): array
     {
-        $this->reportUnknownKeys($displayDefaults, ['layout', 'density', 'image_size', 'image_fit', 'image_radius', 'title_size', 'page_size'], 'display_defaults', $invalidConfig);
+        $this->reportUnknownKeys($displayDefaults, ['layout', 'density', 'image_size', 'image_fit', 'image_radius', 'title_size', 'page_size', 'transcription_display'], 'display_defaults', $invalidConfig);
 
         return [
             'layout' => $this->finiteString($displayDefaults['layout'] ?? null, PublicFrontConfigRegistry::layouts(), 'display_defaults.layout', $invalidConfig, $defaults['layout']),
@@ -1253,6 +1253,7 @@ class PublicFrontConfigValidator
             'image_radius' => $this->finiteString($displayDefaults['image_radius'] ?? null, PublicFrontConfigRegistry::imageRadii(), 'display_defaults.image_radius', $invalidConfig, $defaults['image_radius'] ?? 'mid_rounded'),
             'title_size' => $this->finiteString($displayDefaults['title_size'] ?? null, PublicFrontConfigRegistry::titleSizes(), 'display_defaults.title_size', $invalidConfig, $defaults['title_size']),
             'page_size' => $this->integerRange($displayDefaults['page_size'] ?? null, 'display_defaults.page_size', 1, 48, $defaults['page_size'], $invalidConfig),
+            'transcription_display' => $this->finiteString($displayDefaults['transcription_display'] ?? null, PublicFrontConfigRegistry::transcriptionDisplayModes(), 'display_defaults.transcription_display', $invalidConfig, $defaults['transcription_display'] ?? 'effective_plus_count'),
         ];
     }
 
@@ -1383,6 +1384,7 @@ class PublicFrontConfigValidator
             'item_image_fit',
             'item_image_radius',
             'item_title_size',
+            'transcription_display',
             'show_episode_authors',
             'show_episode_tags',
             'show_episode_duration',
@@ -1443,6 +1445,7 @@ class PublicFrontConfigValidator
             'item_image_fit' => $this->finiteString($groupPage['item_image_fit'] ?? null, PublicFrontConfigRegistry::imageFits(), 'podcasts_page.group_page.item_image_fit', $invalidConfig, $defaults['item_image_fit'] ?? 'cover'),
             'item_image_radius' => $this->finiteString($groupPage['item_image_radius'] ?? null, PublicFrontConfigRegistry::imageRadii(), 'podcasts_page.group_page.item_image_radius', $invalidConfig, $defaults['item_image_radius'] ?? 'mid_rounded'),
             'item_title_size' => $this->finiteString($groupPage['item_title_size'] ?? null, PublicFrontConfigRegistry::titleSizes(), 'podcasts_page.group_page.item_title_size', $invalidConfig, $defaults['item_title_size'] ?? 'base'),
+            'transcription_display' => $this->finiteString($groupPage['transcription_display'] ?? null, PublicFrontConfigRegistry::transcriptionDisplayModes(), 'podcasts_page.group_page.transcription_display', $invalidConfig, $defaults['transcription_display'] ?? 'effective_plus_count'),
             'show_episode_authors' => $this->boolean($groupPage['show_episode_authors'] ?? null, 'podcasts_page.group_page.show_episode_authors', $defaults['show_episode_authors'] ?? true, $invalidConfig),
             'show_episode_tags' => $this->boolean($groupPage['show_episode_tags'] ?? null, 'podcasts_page.group_page.show_episode_tags', $defaults['show_episode_tags'] ?? true, $invalidConfig),
             'show_episode_duration' => $this->boolean($groupPage['show_episode_duration'] ?? null, 'podcasts_page.group_page.show_episode_duration', $defaults['show_episode_duration'] ?? true, $invalidConfig),
@@ -1519,6 +1522,7 @@ class PublicFrontConfigValidator
             'preview_items_per_page',
             'preview_grid_columns',
             'preview_search_enabled',
+            'transcription_display',
         ], 'contributors_page.directory', $invalidConfig);
 
         $pageSizeOptions = $this->integerOptionsList(
@@ -1567,6 +1571,7 @@ class PublicFrontConfigValidator
             'preview_items_per_page' => $this->integerRange($directory['preview_items_per_page'] ?? null, 'contributors_page.directory.preview_items_per_page', 1, 24, $defaults['preview_items_per_page'] ?? 6, $invalidConfig),
             'preview_grid_columns' => $this->integerRange($directory['preview_grid_columns'] ?? null, 'contributors_page.directory.preview_grid_columns', 1, 4, $defaults['preview_grid_columns'] ?? 3, $invalidConfig),
             'preview_search_enabled' => $this->boolean($directory['preview_search_enabled'] ?? null, 'contributors_page.directory.preview_search_enabled', $defaults['preview_search_enabled'] ?? true, $invalidConfig),
+            'transcription_display' => $this->finiteString($directory['transcription_display'] ?? null, PublicFrontConfigRegistry::transcriptionDisplayModes(), 'contributors_page.directory.transcription_display', $invalidConfig, $defaults['transcription_display'] ?? 'effective_plus_count'),
         ];
     }
 
@@ -1597,6 +1602,7 @@ class PublicFrontConfigValidator
             'preview_grid_columns',
             'show_full_page_link',
             'show_count_badge',
+            'transcription_display',
         ], 'contributors_page.top_transcribers', $invalidConfig);
 
         $pageSizeOptions = $this->integerOptionsList(
@@ -1627,6 +1633,7 @@ class PublicFrontConfigValidator
             'preview_grid_columns' => $this->integerRange($topTranscribers['preview_grid_columns'] ?? null, 'contributors_page.top_transcribers.preview_grid_columns', 1, 4, $defaults['preview_grid_columns'] ?? 3, $invalidConfig),
             'show_full_page_link' => $this->boolean($topTranscribers['show_full_page_link'] ?? null, 'contributors_page.top_transcribers.show_full_page_link', $defaults['show_full_page_link'] ?? true, $invalidConfig),
             'show_count_badge' => $this->boolean($topTranscribers['show_count_badge'] ?? null, 'contributors_page.top_transcribers.show_count_badge', $defaults['show_count_badge'] ?? true, $invalidConfig),
+            'transcription_display' => $this->finiteString($topTranscribers['transcription_display'] ?? null, PublicFrontConfigRegistry::transcriptionDisplayModes(), 'contributors_page.top_transcribers.transcription_display', $invalidConfig, $defaults['transcription_display'] ?? 'effective_plus_count'),
         ];
     }
 
@@ -1689,6 +1696,7 @@ class PublicFrontConfigValidator
             'search_enabled',
             'grid_columns',
             'grid_gap',
+            'transcription_display',
         ], 'contributors_page.page', $invalidConfig);
 
         $itemsPerPage = $this->integerRange($page['items_per_page'] ?? null, 'contributors_page.page.items_per_page', 1, 48, $defaults['items_per_page'] ?? 12, $invalidConfig);
@@ -1733,6 +1741,7 @@ class PublicFrontConfigValidator
             'search_enabled' => $this->boolean($page['search_enabled'] ?? null, 'contributors_page.page.search_enabled', $defaults['search_enabled'] ?? true, $invalidConfig),
             'grid_columns' => $this->integerRange($page['grid_columns'] ?? null, 'contributors_page.page.grid_columns', 1, 4, $defaults['grid_columns'] ?? 3, $invalidConfig),
             'grid_gap' => $this->finiteString($page['grid_gap'] ?? null, PublicFrontConfigRegistry::podcastGroupItemGridGaps(), 'contributors_page.page.grid_gap', $invalidConfig, $defaults['grid_gap'] ?? 'comfortable'),
+            'transcription_display' => $this->finiteString($page['transcription_display'] ?? null, PublicFrontConfigRegistry::transcriptionDisplayModes(), 'contributors_page.page.transcription_display', $invalidConfig, $defaults['transcription_display'] ?? 'effective_plus_count'),
         ];
     }
 

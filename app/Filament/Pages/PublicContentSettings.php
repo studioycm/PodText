@@ -279,6 +279,13 @@ class PublicContentSettings extends SettingsPage
                                                 'lg' => __('admin.card_title_size.lg'),
                                             ])
                                             ->required(),
+                                        Select::make('display_defaults.transcription_display')
+                                            ->label(__('admin.fields.public_front_transcription_display'))
+                                            ->helperText(__('admin.helpers.public_front_transcription_display'))
+                                            ->options(fn (): array => PublicFrontConfigRegistry::transcriptionDisplayOptions())
+                                            ->default('effective_plus_count')
+                                            ->native(false)
+                                            ->required(),
                                         TextInput::make('display_defaults.page_size')
                                             ->label(__('admin.fields.public_front_page_size'))
                                             ->helperText(__('admin.helpers.public_front_page_size'))
@@ -753,6 +760,13 @@ class PublicContentSettings extends SettingsPage
                                                             ->default('base')
                                                             ->native(false)
                                                             ->required(),
+                                                        Select::make('podcasts_page.group_page.transcription_display')
+                                                            ->label(__('admin.fields.public_front_transcription_display'))
+                                                            ->helperText(__('admin.helpers.public_front_transcription_display'))
+                                                            ->options(fn (): array => PublicFrontConfigRegistry::transcriptionDisplayOptions())
+                                                            ->default('effective_plus_count')
+                                                            ->native(false)
+                                                            ->required(),
                                                         Toggle::make('podcasts_page.group_page.show_episode_authors')
                                                             ->label(__('admin.fields.podcasts_group_page_show_episode_authors'))
                                                             ->helperText(__('admin.helpers.podcasts_group_page_show_episode_authors')),
@@ -870,6 +884,13 @@ class PublicContentSettings extends SettingsPage
                                                 Toggle::make('contributors_page.directory.preview_search_enabled')
                                                     ->label(__('admin.fields.contributors_directory_preview_search_enabled'))
                                                     ->helperText(__('admin.helpers.contributors_directory_preview_search_enabled')),
+                                                Select::make('contributors_page.directory.transcription_display')
+                                                    ->label(__('admin.fields.public_front_transcription_display'))
+                                                    ->helperText(__('admin.helpers.public_front_transcription_display'))
+                                                    ->options(fn (): array => PublicFrontConfigRegistry::transcriptionDisplayOptions())
+                                                    ->default('effective_plus_count')
+                                                    ->native(false)
+                                                    ->required(),
                                             ])
                                             ->columns(3)
                                             ->columnSpanFull(),
@@ -920,6 +941,13 @@ class PublicContentSettings extends SettingsPage
                                                 Toggle::make('contributors_page.top_transcribers.show_count_badge')
                                                     ->label(__('admin.fields.top_transcribers_show_count_badge'))
                                                     ->helperText(__('admin.helpers.top_transcribers_show_count_badge')),
+                                                Select::make('contributors_page.top_transcribers.transcription_display')
+                                                    ->label(__('admin.fields.public_front_transcription_display'))
+                                                    ->helperText(__('admin.helpers.public_front_transcription_display'))
+                                                    ->options(fn (): array => PublicFrontConfigRegistry::transcriptionDisplayOptions())
+                                                    ->default('effective_plus_count')
+                                                    ->native(false)
+                                                    ->required(),
                                             ])
                                             ->columns(3)
                                             ->columnSpanFull(),
@@ -997,6 +1025,13 @@ class PublicContentSettings extends SettingsPage
                                                     ->helperText(__('admin.helpers.contributor_page_grid_gap'))
                                                     ->options(fn (): array => PublicFrontConfigRegistry::podcastGroupItemGridGapOptions())
                                                     ->default('comfortable')
+                                                    ->native(false)
+                                                    ->required(),
+                                                Select::make('contributors_page.page.transcription_display')
+                                                    ->label(__('admin.fields.public_front_transcription_display'))
+                                                    ->helperText(__('admin.helpers.public_front_transcription_display'))
+                                                    ->options(fn (): array => PublicFrontConfigRegistry::transcriptionDisplayOptions())
+                                                    ->default('effective_plus_count')
                                                     ->native(false)
                                                     ->required(),
                                             ])

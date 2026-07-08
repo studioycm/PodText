@@ -1,14 +1,9 @@
 @props([
-    'group',
+    'card',
     'cardTemplate' => null,
-    'displayConfig' => [],
 ])
 
 @php
-    $templateRenderer = app(\App\Support\PublicFront\Cards\PublicFrontCardTemplateRenderer::class);
-    $cardTemplate ??= $templateRenderer->resolve('content_group');
-    $card = app(\App\Support\PublicFront\Cards\PublicContentGroupCardPresenter::class)
-        ->present($group, $cardTemplate, $displayConfig);
     $templateAttributes = $card['template_attributes'];
     $presentation = $card['presentation'];
 @endphp

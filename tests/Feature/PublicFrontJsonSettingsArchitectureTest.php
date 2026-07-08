@@ -197,6 +197,7 @@ it('saves sanitized public front config through the settings page while preservi
         'image_radius' => 'mid_rounded',
         'title_size' => 'lg',
         'page_size' => 16,
+        'transcription_display' => 'effective_plus_count',
     ])->and($config->group('route_labels'))->toBe([
         [
             'route_key' => 'podcasts',

@@ -148,6 +148,7 @@
                         :items="$previewItems"
                         :card-options="$cardOptions"
                         :card-template="$contentItemCardTemplate"
+                        :contributor-context="$selectedContributor"
                         :columns="$config['directory']['preview_grid_columns'] ?? 3"
                         layout="cards"
                     />

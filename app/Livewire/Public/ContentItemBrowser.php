@@ -237,6 +237,7 @@ class ContentItemBrowser extends Component
             showDescription: (bool) ($groupPageConfig['show_episode_descriptions'] ?? true),
             descriptionLines: $base->descriptionLines,
             cardsPerPage: $this->itemsPerPage(),
+            transcriptionDisplay: (string) ($groupPageConfig['transcription_display'] ?? $base->transcriptionDisplay),
         );
     }
 

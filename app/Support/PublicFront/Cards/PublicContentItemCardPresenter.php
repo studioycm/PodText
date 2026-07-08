@@ -6,16 +6,23 @@ use App\Filament\Public\Pages\BrowseCategoryContentItems;
 use App\Filament\Public\Pages\BrowseTagContentItems;
 use App\Filament\Public\Pages\ShowContentGroup;
 use App\Filament\Public\Pages\ShowContentItem;
+use App\Models\Author;
 use App\Models\Category;
 use App\Models\ContentItem;
 use App\Models\ContentTag;
+use App\Models\Transcription;
 use App\Support\PublicContent\PublicContentCardOptions;
+use App\Support\PublicContent\PublicTranscriptionPolicy;
+use App\Support\PublicContent\PublicTranscriptionSelector;
+use Illuminate\Contracts\Pagination\Paginator;
 use Illuminate\Support\Facades\Storage;
 
 class PublicContentItemCardPresenter
 {
     public function __construct(
         private readonly PublicFrontCardTemplateRenderer $renderer,
+        private readonly PublicTranscriptionSelector $selector,
+        private readonly PublicTranscriptionPolicy $policy,
     ) {}
 
     /**
@@ -26,8 +33,51 @@ class PublicContentItemCardPresenter
         PublicContentCardOptions $options,
         PublicFrontCardTemplate $template,
         string $layout = 'cards',
+        ?Author $contributorContext = null,
     ): array {
         $presentation = $this->renderer->contentItemPresentation($template, $layout);
+
+        return $this->presentWithPresentation($item, $options, $template, $presentation, $contributorContext);
+    }
+
+    /**
+     * @param  iterable<int, ContentItem>  $items
+     * @return array<int, array<string, mixed>>
+     */
+    public function presentMany(
+        iterable $items,
+        PublicContentCardOptions $options,
+        PublicFrontCardTemplate $template,
+        string $layout = 'cards',
+        ?Author $contributorContext = null,
+    ): array {
+        $presentation = $this->renderer->contentItemPresentation($template, $layout);
+
+        $items = $items instanceof Paginator ? $items->getCollection() : collect($items);
+
+        return $items
+            ->map(fn (ContentItem $item): array => $this->presentWithPresentation(
+                $item,
+                $options,
+                $template,
+                $presentation,
+                $contributorContext,
+            ))
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @param  array<string, mixed>  $presentation
+     * @return array<string, mixed>
+     */
+    private function presentWithPresentation(
+        ContentItem $item,
+        PublicContentCardOptions $options,
+        PublicFrontCardTemplate $template,
+        array $presentation,
+        ?Author $contributorContext = null,
+    ): array {
         $itemUrl = ShowContentItem::getUrl([
             'contentGroupSlug' => $item->contentGroup->slug,
             'contentItemSlug' => $item->slug,
@@ -35,7 +85,7 @@ class PublicContentItemCardPresenter
         $groupUrl = ShowContentGroup::getUrl([
             'contentGroupSlug' => $item->contentGroup->slug,
         ], panel: 'public');
-        $effectiveTranscription = $item->effectiveTranscription();
+        $effectiveTranscription = $this->selectedTranscription($item, $contributorContext);
         $effectiveDate = $effectiveTranscription?->published_at?->timezone('Asia/Jerusalem')->format('d/m/Y');
         $originalDate = $item->original_published_at?->timezone('Asia/Jerusalem')->format('d/m/Y');
         $duration = $this->duration($item->duration_seconds);
@@ -49,8 +99,14 @@ class PublicContentItemCardPresenter
             : $item->title;
         $categories = $this->categoryLinks($item);
         $tags = $this->tagLinks($item);
+        $transcribers = $this->transcribers($effectiveTranscription);
+        $publicTranscriptionsCount = $this->publicTranscriptionsCount($item);
+        $showTranscriptionCount = $options->transcriptionDisplay === 'effective_plus_count'
+            && $this->policy->countModeCountsAllPublished()
+            && $publicTranscriptionsCount > 1;
 
         $data = [
+            'id' => $item->getKey(),
             'item' => $item,
             'group' => $item->contentGroup,
             'url' => $itemUrl,
@@ -64,17 +120,22 @@ class PublicContentItemCardPresenter
                 'fit_class' => $options->imageFitClass(),
                 'radius_class' => $options->imageRadiusClass(),
             ],
-            'authors' => $this->transcribers($item),
+            'transcribers' => $transcribers,
             'categories' => $categories,
             'tags' => $tags,
             'duration' => $duration,
             'effective_date' => $effectiveDate,
             'original_date' => $originalDate,
+            'public_transcriptions_count' => $publicTranscriptionsCount,
+            'public_transcriptions_count_label' => trans_choice('public.labels.public_transcriptions_count', $publicTranscriptionsCount, ['count' => $publicTranscriptionsCount]),
+            'show_transcription_count' => $showTranscriptionCount,
             'transcription' => [
                 'title' => $effectiveTranscription?->title,
                 'word_count' => $effectiveTranscription?->word_count,
                 'read_time' => $this->readTime($effectiveTranscription?->word_count),
+                'reading_time' => $this->readTime($effectiveTranscription?->word_count),
                 'published_at' => $effectiveDate,
+                'transcribers' => $transcribers,
             ],
             'content_group' => [
                 'title' => $item->contentGroup->title,
@@ -252,14 +313,14 @@ class PublicContentItemCardPresenter
      */
     private function transcriberLinePart(array $base, array $data, PublicContentCardOptions $options): ?array
     {
-        if (! $options->showAuthors || $data['authors'] === []) {
+        if (! $options->showAuthors || $data['transcribers'] === []) {
             return null;
         }
 
         return [
             ...$base,
             'region' => 'body',
-            'badges' => $data['authors'],
+            'badges' => $data['transcribers'],
         ];
     }
 
@@ -392,6 +453,10 @@ class PublicContentItemCardPresenter
             return null;
         }
 
+        if ($key === 'content_item.transcription_count' && ! $data['show_transcription_count']) {
+            return null;
+        }
+
         if (in_array($key, ['content_item.effective_date', 'transcription.published_at'], true)
             && (! $options->showEffectiveDate || ! is_string($data['effective_date']))) {
             return null;
@@ -423,17 +488,20 @@ class PublicContentItemCardPresenter
             'content_item.description' => $data['description'],
             'content_item.duration' => $data['duration'],
             'content_item.effective_date' => $data['effective_date'],
+            'content_item.effective_transcription_title' => $data['transcription']['title'],
             'content_item.original_published_at' => $data['original_date'],
-            'content_item.read_time' => $data['transcription']['read_time'],
+            'content_item.read_time', 'content_item.reading_time' => $data['transcription']['read_time'],
+            'content_item.transcribers' => collect($data['transcribers'])->pluck('label')->join(', '),
+            'content_item.transcription_count' => $data['public_transcriptions_count_label'],
             'content_item.type_label' => $data['type_label'],
             'content_item.media_provider' => $data['item']->embed_provider,
             'content_group.title', 'content_group.identity' => $data['content_group']['title'],
             'content_group.description' => $data['content_group']['description'],
             'content_group.type_label' => $data['content_group']['type_label'],
             'transcription.title' => $data['transcription']['title'],
-            'transcription.author_name' => collect($data['authors'])->pluck('label')->join(', '),
+            'transcription.author_name', 'transcription.transcribers' => collect($data['transcribers'])->pluck('label')->join(', '),
             'transcription.published_at' => $data['transcription']['published_at'],
-            'transcription.read_time' => $data['transcription']['read_time'],
+            'transcription.read_time', 'transcription.reading_time' => $data['transcription']['read_time'],
             'transcription.word_count' => $data['transcription']['word_count'] !== null ? number_format((int) $data['transcription']['word_count']) : null,
             default => null,
         };
@@ -454,18 +522,44 @@ class PublicContentItemCardPresenter
     /**
      * @return array<int, array{label: string}>
      */
-    private function transcribers(ContentItem $item): array
+    private function transcribers(?Transcription $transcription): array
     {
-        $transcription = $item->effectiveTranscription();
-
         if (! $transcription) {
             return [];
         }
+
+        $transcription->loadMissing('authors');
 
         return collect($transcription->transcriberNames())
             ->map(fn (string $name): array => ['label' => $name])
             ->values()
             ->all();
+    }
+
+    private function selectedTranscription(ContentItem $item, ?Author $contributorContext): ?Transcription
+    {
+        if ($contributorContext instanceof Author && $item->relationLoaded('transcriptions')) {
+            $matched = $item->transcriptions
+                ->first(function (Transcription $transcription) use ($contributorContext): bool {
+                    return $transcription->relationLoaded('authors')
+                        && $transcription->authors->contains('id', $contributorContext->getKey());
+                });
+
+            if ($matched instanceof Transcription) {
+                return $matched;
+            }
+        }
+
+        return $this->selector->effectiveTranscriptionForItem($item);
+    }
+
+    private function publicTranscriptionsCount(ContentItem $item): int
+    {
+        if (isset($item->public_transcriptions_count)) {
+            return (int) $item->public_transcriptions_count;
+        }
+
+        return $this->selector->publicTranscriptionsCountForItem($item);
     }
 
     /**

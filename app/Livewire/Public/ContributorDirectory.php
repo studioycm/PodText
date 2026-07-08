@@ -125,7 +125,11 @@ class ContributorDirectory extends Component
 
     protected function cardOptions(): PublicContentCardOptions
     {
-        return $this->renderContext()->cardOptions();
+        $directoryConfig = $this->contributorsConfig()['directory'] ?? [];
+
+        return $this->renderContext()
+            ->cardOptions()
+            ->withTranscriptionDisplay((string) ($directoryConfig['transcription_display'] ?? 'effective_plus_count'));
     }
 
     /**

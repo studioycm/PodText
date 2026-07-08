@@ -37,6 +37,7 @@ class ContentItemsTable
         return $table
             ->modifyQueryUsing(fn (Builder $query): Builder => $query
                 ->with([
+                    'contentGroup',
                     'featuredTranscription.authors',
                     'latestPublishedTranscription.authors',
                 ]))

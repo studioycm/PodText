@@ -7,11 +7,12 @@
     $categories = $contentItem->effectiveCategories()
         ->where('is_visible', true)
         ->values();
-    $tags = $contentItem->relationLoaded('enabledContentTags') ? $contentItem->enabledContentTags : $contentItem->publicTags();
+    $tags = $contentItem->relationLoaded('enabledContentTags') ? $contentItem->enabledContentTags : collect();
     $effectiveTranscription = $contentItem->effectiveTranscription();
-    $transcribers = $effectiveTranscription?->relationLoaded('authors')
-        ? $effectiveTranscription->authors
-        : ($effectiveTranscription?->authors()->get() ?? collect());
+    $transcribers = $effectiveTranscription?->relationLoaded('authors') ? $effectiveTranscription->authors : collect();
+    $publicTranscriptionsCount = (int) ($contentItem->public_transcriptions_count ?? 0);
+    $showTranscriptionCount = app(\App\Support\PublicContent\PublicTranscriptionPolicy::class)->countModeCountsAllPublished()
+        && $publicTranscriptionsCount > 1;
 @endphp
 
 <x-filament-panels::page>
@@ -68,6 +69,15 @@
                     <div>
                         <dt class="sr-only">{{ __('public.labels.published_at') }}</dt>
                         <dd>{{ $publishedDate }}</dd>
+                    </div>
+                @endif
+
+                @if ($showTranscriptionCount)
+                    <div>
+                        <dt class="sr-only">{{ __('public.labels.transcriptions') }}</dt>
+                        <dd data-test="item-transcription-count">
+                            {{ trans_choice('public.labels.public_transcriptions_count', $publicTranscriptionsCount, ['count' => $publicTranscriptionsCount]) }}
+                        </dd>
                     </div>
                 @endif
             </dl>

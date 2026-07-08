@@ -7,6 +7,8 @@ use App\Filament\Public\Pages\ShowContentGroup;
 use App\Models\Category;
 use App\Models\ContentGroup;
 use App\Support\PublicContent\PublicContentCardOptions;
+use Carbon\Carbon;
+use Illuminate\Contracts\Pagination\Paginator;
 use Illuminate\Support\Facades\Storage;
 
 class PublicContentGroupCardPresenter
@@ -22,8 +24,41 @@ class PublicContentGroupCardPresenter
     public function present(ContentGroup $group, PublicFrontCardTemplate $template, array $displayConfig = []): array
     {
         $presentation = $this->renderer->contentGroupPresentation($template);
+
+        return $this->presentWithPresentation($group, $template, $displayConfig, $presentation);
+    }
+
+    /**
+     * @param  iterable<int, ContentGroup>  $groups
+     * @param  array<string, mixed>  $displayConfig
+     * @return array<int, array<string, mixed>>
+     */
+    public function presentMany(iterable $groups, PublicFrontCardTemplate $template, array $displayConfig = []): array
+    {
+        $presentation = $this->renderer->contentGroupPresentation($template);
+
+        $groups = $groups instanceof Paginator ? $groups->getCollection() : collect($groups);
+
+        return $groups
+            ->map(fn (ContentGroup $group): array => $this->presentWithPresentation($group, $template, $displayConfig, $presentation))
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @param  array<string, mixed>  $displayConfig
+     * @param  array<string, mixed>  $presentation
+     * @return array<string, mixed>
+     */
+    private function presentWithPresentation(ContentGroup $group, PublicFrontCardTemplate $template, array $displayConfig, array $presentation): array
+    {
         $groupUrl = ShowContentGroup::getUrl(['contentGroupSlug' => $group->slug], panel: 'public');
         $publicItemsCount = (int) ($group->public_content_items_count ?? $group->published_content_items_count ?? 0);
+        $publicTranscriptionsCount = (int) ($group->public_transcriptions_count ?? 0);
+        $publicTranscriberCount = (int) ($group->public_transcriber_count ?? 0);
+        $totalWordCount = (int) ($group->public_total_word_count ?? 0);
+        $totalReadingMinutes = $this->readingMinutes($totalWordCount);
+        $latestTranscriptionDate = $this->date($group->public_latest_transcription_published_at ?? null);
         $itemLabel = $publicItemsCount === 1
             ? $group->default_item_type_label_singular
             : $group->default_item_type_label_plural;
@@ -38,6 +73,7 @@ class PublicContentGroupCardPresenter
         ], 'mid_rounded');
 
         $data = [
+            'id' => $group->getKey(),
             'group' => $group,
             'url' => $groupUrl,
             'title' => (string) $group->title,
@@ -58,6 +94,16 @@ class PublicContentGroupCardPresenter
                 'count' => $publicItemsCount,
                 'label' => $itemLabel,
             ]),
+            'public_transcriptions_count' => $publicTranscriptionsCount,
+            'public_transcriptions_count_label' => trans_choice('public.labels.public_transcriptions_count', $publicTranscriptionsCount, ['count' => $publicTranscriptionsCount]),
+            'public_transcriber_count' => $publicTranscriberCount,
+            'public_transcriber_count_label' => trans_choice('public.labels.public_transcribers_count', $publicTranscriberCount, ['count' => $publicTranscriberCount]),
+            'total_reading_minutes' => $totalReadingMinutes,
+            'total_reading_minutes_label' => trans_choice('public.labels.public_group_reading_minutes_count', $totalReadingMinutes, ['count' => $totalReadingMinutes]),
+            'latest_transcription_date' => $latestTranscriptionDate,
+            'latest_transcription_date_label' => $latestTranscriptionDate
+                ? __('public.labels.public_group_latest_transcription_date', ['date' => $latestTranscriptionDate])
+                : null,
             'display' => [
                 'show_description' => $this->boolean($displayConfig['show_description'] ?? null, true),
                 'show_categories' => $this->boolean($displayConfig['show_categories'] ?? null, true),
@@ -247,6 +293,21 @@ class PublicContentGroupCardPresenter
             ];
         }
 
+        if ($part->source === 'content_group' && $part->attribute === 'public_episode_count') {
+            if (! $data['display']['show_episode_count']) {
+                return null;
+            }
+
+            return [
+                ...$base,
+                'region' => 'body',
+                'badges' => [[
+                    'label' => $data['public_items_count_label'],
+                    'test' => 'content-group-public-count',
+                ]],
+            ];
+        }
+
         $text = $this->textValue($part, $data);
 
         if (! is_string($text) || blank($text)) {
@@ -333,7 +394,11 @@ class PublicContentGroupCardPresenter
             'content_group.title', 'content_group.identity' => $data['title'],
             'content_group.description' => $data['description'],
             'content_group.type_label' => $data['type_label'],
-            'content_group.item_count' => $data['public_items_count_label'],
+            'content_group.item_count', 'content_group.public_episode_count' => $data['public_items_count_label'],
+            'content_group.transcription_count' => $data['public_transcriptions_count_label'],
+            'content_group.total_reading_time' => $data['total_reading_minutes'] > 0 ? $data['total_reading_minutes_label'] : null,
+            'content_group.latest_transcription_date' => $data['latest_transcription_date_label'],
+            'content_group.transcriber_count' => $data['public_transcriber_count_label'],
             default => null,
         };
     }
@@ -386,6 +451,24 @@ class PublicContentGroupCardPresenter
         $text = str($text ?? '')->stripTags()->squish()->toString();
 
         return $text === '' ? null : $text;
+    }
+
+    private function readingMinutes(int $wordCount): int
+    {
+        if ($wordCount <= 0) {
+            return 0;
+        }
+
+        return max(1, (int) ceil($wordCount / 200));
+    }
+
+    private function date(mixed $date): ?string
+    {
+        if ($date === null || $date === '') {
+            return null;
+        }
+
+        return Carbon::parse($date)->timezone('Asia/Jerusalem')->format('d/m/Y');
     }
 
     private function partClass(PublicFrontCardPart $part): string

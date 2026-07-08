@@ -183,6 +183,10 @@ class Transcription extends Model
         });
 
         static::saved(function (Transcription $transcription): void {
+            if (! $transcription->wasRecentlyCreated && ! $transcription->wasChanged('author_id')) {
+                return;
+            }
+
             $transcription->syncCompatibilityAuthorToTranscriberPivot();
         });
     }

@@ -19,6 +19,8 @@ class PublicContentCardOptions
 
     private const GROUP_BADGE_MODES = ['name_only', 'thumbnail_name', 'combined_title'];
 
+    private const TRANSCRIPTION_DISPLAY_MODES = ['effective_only', 'effective_plus_count'];
+
     public function __construct(
         public readonly string $imageSize = 'medium',
         public readonly string $imageFit = 'cover',
@@ -37,6 +39,7 @@ class PublicContentCardOptions
         public readonly bool $showDescription = true,
         public readonly int $descriptionLines = 3,
         public readonly int $cardsPerPage = 12,
+        public readonly string $transcriptionDisplay = 'effective_plus_count',
     ) {}
 
     public static function fromSettings(?PublicContentSettings $settings = null): self
@@ -74,10 +77,35 @@ class PublicContentCardOptions
                 showDescription: self::boolean($values['homepage_show_description'] ?? null, true),
                 descriptionLines: self::integerRange($values['homepage_description_lines'] ?? null, 0, 4, 3),
                 cardsPerPage: self::integerRange($values['homepage_cards_per_page'] ?? $values['homepage_item_limit'] ?? null, 1, 48, 12),
+                transcriptionDisplay: self::finite(data_get($values, 'display_defaults.transcription_display'), self::TRANSCRIPTION_DISPLAY_MODES, 'effective_plus_count'),
             );
         } catch (Throwable) {
             return new self;
         }
+    }
+
+    public function withTranscriptionDisplay(string $transcriptionDisplay): self
+    {
+        return new self(
+            imageSize: $this->imageSize,
+            imageFit: $this->imageFit,
+            imageRadius: $this->imageRadius,
+            density: $this->density,
+            titleSize: $this->titleSize,
+            showGroupBadge: $this->showGroupBadge,
+            groupBadgeMode: $this->groupBadgeMode,
+            groupTitleSeparator: $this->groupTitleSeparator,
+            groupBadgeDuplicateThumbnail: $this->groupBadgeDuplicateThumbnail,
+            showAuthors: $this->showAuthors,
+            showCategories: $this->showCategories,
+            showTags: $this->showTags,
+            showDuration: $this->showDuration,
+            showEffectiveDate: $this->showEffectiveDate,
+            showDescription: $this->showDescription,
+            descriptionLines: $this->descriptionLines,
+            cardsPerPage: $this->cardsPerPage,
+            transcriptionDisplay: self::finite($transcriptionDisplay, self::TRANSCRIPTION_DISPLAY_MODES, $this->transcriptionDisplay),
+        );
     }
 
     public function cardPaddingClass(): string

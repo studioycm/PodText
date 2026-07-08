@@ -43,6 +43,7 @@ class ContentItemsRelationManager extends RelationManager
             ->modifyQueryUsing(fn (Builder $query): Builder => $query
                 ->with([
                     'categories',
+                    'contentGroup',
                     'tags',
                     'featuredTranscription.authors',
                     'latestPublishedTranscription.authors',

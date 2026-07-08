@@ -6,6 +6,7 @@ use App\Settings\PublicContentSettings;
 use App\Support\PublicContent\PublicTranscriptionPolicy;
 use App\Support\PublicFront\PublicFrontRenderContext;
 use App\Support\PublicFront\PublicFrontRenderContextFactory;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\ServiceProvider;
 use Spatie\LaravelSettings\Events\SettingsSaved;
@@ -37,6 +38,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        Model::preventLazyLoading(! $this->app->isProduction());
+
         Event::listen(SettingsSaved::class, function (SettingsSaved $event): void {
             if (! $event->settings instanceof PublicContentSettings) {
                 return;

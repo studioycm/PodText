@@ -257,12 +257,12 @@ class PublicContributorCardPresenter
     private function metadataBadge(PublicFrontCardPart $part, array $data): ?array
     {
         return match ("{$part->source}.{$part->attribute}") {
-            'author.transcription_count' => [
+            'author.transcription_count', 'contributor.transcription_count' => [
                 'label' => $data['counts']['transcriptions_label'],
                 'test' => 'public-transcriptions-count',
                 'title' => $data['counts']['transcriptions_label'],
             ],
-            'author.content_item_count' => [
+            'author.content_item_count', 'contributor.public_item_count' => [
                 'label' => $data['counts']['content_items_label'],
                 'test' => 'public-content-items-count',
                 'title' => $data['counts']['content_items_label'],
@@ -277,11 +277,11 @@ class PublicContributorCardPresenter
     private function textValue(PublicFrontCardPart $part, array $data): ?string
     {
         return match ("{$part->source}.{$part->attribute}") {
-            'author.name' => $data['name'],
-            'author.bio' => $data['bio'],
-            'author.transcription_count' => $data['counts']['transcriptions_label'],
-            'author.content_item_count' => $data['counts']['content_items_label'],
-            'author.url' => $data['url'],
+            'author.name', 'contributor.name' => $data['name'],
+            'author.bio', 'contributor.bio' => $data['bio'],
+            'author.transcription_count', 'contributor.transcription_count' => $data['counts']['transcriptions_label'],
+            'author.content_item_count', 'contributor.public_item_count' => $data['counts']['content_items_label'],
+            'author.url', 'contributor.url' => $data['url'],
             default => null,
         };
     }
@@ -292,7 +292,7 @@ class PublicContributorCardPresenter
     private function urlValue(PublicFrontCardPart $part, array $data): ?string
     {
         return match ("{$part->source}.{$part->attribute}") {
-            'author.url' => $data['url'],
+            'author.url', 'contributor.url' => $data['url'],
             default => null,
         };
     }

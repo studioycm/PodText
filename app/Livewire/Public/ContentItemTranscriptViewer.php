@@ -4,9 +4,12 @@ namespace App\Livewire\Public;
 
 use App\Models\ContentItem;
 use App\Models\Transcription;
+use App\Support\PublicContent\PublicTranscriptionPolicy;
+use App\Support\PublicContent\PublicTranscriptionSelector;
 use App\Support\Transcripts\TranscriptSegmentParser;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Collection;
+use Livewire\Attributes\Computed;
 use Livewire\Attributes\Url;
 use Livewire\Component;
 
@@ -30,7 +33,7 @@ class ContentItemTranscriptViewer extends Component
 
     public function render(TranscriptSegmentParser $parser): View
     {
-        $transcriptions = $this->publishedTranscriptions();
+        $transcriptions = $this->publishedTranscriptions;
         $selectedTranscription = $this->resolveSelectedTranscription($transcriptions);
         $this->selectedTranscription = $selectedTranscription?->reference_key ?? '';
 
@@ -46,24 +49,16 @@ class ContentItemTranscriptViewer extends Component
     /**
      * @return Collection<int, Transcription>
      */
-    protected function publishedTranscriptions(): Collection
+    #[Computed]
+    public function publishedTranscriptions(): Collection
     {
-        $this->contentItem->loadMissing([
-            'featuredTranscription',
-            'latestPublishedTranscription',
-        ]);
+        $policy = app(PublicTranscriptionPolicy::class);
+        $mode = $policy->showMultipleTranscriptionsOnItemPage
+            ? $policy->modeForPublicDisplay()
+            : PublicTranscriptionPolicy::MODE_FEATURED_ONLY;
 
-        $effectiveTranscription = $this->contentItem->effectiveTranscription();
-
-        return $this->contentItem
-            ->transcriptions()
-            ->published()
-            ->with('authors')
-            ->orderByDesc('published_at')
-            ->orderByDesc('id')
-            ->get()
-            ->sortBy(fn (Transcription $transcription): int => $effectiveTranscription?->is($transcription) ? 0 : 1)
-            ->values();
+        return app(PublicTranscriptionSelector::class)
+            ->publicTranscriptionsForItem($this->contentItem, $mode);
     }
 
     /**
@@ -88,7 +83,7 @@ class ContentItemTranscriptViewer extends Component
 
     protected function normalizeSelectedTranscription(string $referenceKey): string
     {
-        $transcriptions = $this->publishedTranscriptions();
+        $transcriptions = $this->publishedTranscriptions;
 
         if (filled($referenceKey)) {
             $selected = $transcriptions->firstWhere('reference_key', $referenceKey);

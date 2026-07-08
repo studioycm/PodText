@@ -11,6 +11,7 @@ use App\Support\PublicFront\PublicFrontRenderContext;
 use Illuminate\Contracts\View\View;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
+use Livewire\Attributes\Computed;
 use Livewire\Component;
 
 class TopTranscribersSection extends Component
@@ -72,7 +73,7 @@ class TopTranscribersSection extends Component
 
     public function render(): View
     {
-        $contributors = $this->contributors();
+        $contributors = $this->contributors;
         $selectedContributor = $this->selectedContributor($contributors);
         $previewItems = $selectedContributor
             ? PublicContributorDiscovery::paginatedPreviewItemsForContributor(
@@ -99,7 +100,8 @@ class TopTranscribersSection extends Component
     /**
      * @return Collection<int, Author>
      */
-    protected function contributors(): Collection
+    #[Computed]
+    public function contributors(): Collection
     {
         $topConfig = $this->contributorsConfig()['top_transcribers'] ?? [];
 
@@ -132,7 +134,7 @@ class TopTranscribersSection extends Component
 
     protected function normalizeSelectedContributorId(?int $authorId): ?int
     {
-        $contributors = $this->contributors();
+        $contributors = $this->contributors;
 
         if ($contributors->isEmpty()) {
             return null;
@@ -166,7 +168,11 @@ class TopTranscribersSection extends Component
 
     protected function cardOptions(): PublicContentCardOptions
     {
-        return $this->renderContext()->cardOptions();
+        $topConfig = $this->contributorsConfig()['top_transcribers'] ?? [];
+
+        return $this->renderContext()
+            ->cardOptions()
+            ->withTranscriptionDisplay((string) ($topConfig['transcription_display'] ?? 'effective_plus_count'));
     }
 
     /**

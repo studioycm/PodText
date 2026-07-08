@@ -5,6 +5,7 @@
     'columns' => 3,
     'gap' => 'comfortable',
     'cardTemplate' => null,
+    'contributorContext' => null,
 ])
 
 @php
@@ -26,6 +27,8 @@
     $gridClasses = $resolvedLayout === 'rows'
         ? "grid grid-cols-1 {$gapClass}"
         : "{$cardGridClasses} {$gapClass}";
+    $cards = app(\App\Support\PublicFront\Cards\PublicContentItemCardPresenter::class)
+        ->presentMany($items, $cardOptions, $cardTemplate, $resolvedLayout, $contributorContext);
 @endphp
 
 <div
@@ -35,13 +38,12 @@
     data-grid-columns="{{ $resolvedColumns }}"
     data-grid-gap="{{ $gap }}"
 >
-    @foreach($items as $item)
+    @foreach($cards as $card)
         <x-public.content-item-card
-            :item="$item"
+            :card="$card"
             :options="$cardOptions"
-            :layout="$resolvedLayout"
             :card-template="$cardTemplate"
-            wire:key="content-item-card-{{ $item->id }}"
+            wire:key="content-item-card-{{ $card['id'] }}"
         />
     @endforeach
 </div>

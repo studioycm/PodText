@@ -17,6 +17,15 @@ use Illuminate\Support\Collection;
 
 class PublicDisplaySectionResolver
 {
+    /** @var array<string, Category|null> */
+    private array $categories = [];
+
+    /** @var array<string, ContentTag|null> */
+    private array $tags = [];
+
+    /** @var array<string, ContentGroup|null> */
+    private array $contentGroups = [];
+
     public function __construct(
         private readonly PublicDisplaySectionConfigValidator $validator,
         private readonly PublicDisplaySectionQueryResolver $queryResolver,
@@ -160,7 +169,17 @@ class PublicDisplaySectionResolver
     {
         $categoryId = $config->sourceConfig['category_id'] ?? $section->category_id;
 
-        return Category::query()
+        if (! is_numeric($categoryId)) {
+            return null;
+        }
+
+        if ($section->relationLoaded('category') && $section->category instanceof Category) {
+            return $section->category->is_visible ? $section->category : null;
+        }
+
+        $key = (string) $categoryId;
+
+        return $this->categories[$key] ??= Category::query()
             ->visible()
             ->find($categoryId);
     }
@@ -169,7 +188,17 @@ class PublicDisplaySectionResolver
     {
         $tagId = $config->sourceConfig['tag_id'] ?? $section->tag_id;
 
-        return ContentTag::query()
+        if (! is_numeric($tagId)) {
+            return null;
+        }
+
+        if ($section->relationLoaded('tag') && $section->tag instanceof ContentTag) {
+            return $section->tag->type === 'content' && $section->tag->is_enabled ? $section->tag : null;
+        }
+
+        $key = (string) $tagId;
+
+        return $this->tags[$key] ??= ContentTag::query()
             ->content()
             ->enabled()
             ->find($tagId);
@@ -179,7 +208,17 @@ class PublicDisplaySectionResolver
     {
         $contentGroupId = $config->sourceConfig['content_group_id'] ?? $section->content_group_id;
 
-        return ContentGroup::query()
+        if (! is_numeric($contentGroupId)) {
+            return null;
+        }
+
+        if ($section->relationLoaded('contentGroup') && $section->contentGroup instanceof ContentGroup) {
+            return $section->contentGroup->status?->value === 'published' ? $section->contentGroup : null;
+        }
+
+        $key = (string) $contentGroupId;
+
+        return $this->contentGroups[$key] ??= ContentGroup::query()
             ->published()
             ->find($contentGroupId);
     }

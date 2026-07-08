@@ -107,7 +107,12 @@
                     data-test="transcript-tab"
                     @if($activeTranscription?->is($transcription)) aria-current="true" @endif
                 >
-                    {{ $transcription->title ?: __('public.labels.transcription') }}
+                    <span class="block">{{ $transcription->title ?: __('public.labels.transcription') }}</span>
+                    @if($transcription->authors->isNotEmpty())
+                        <span class="mt-0.5 block text-xs font-normal opacity-80" data-test="transcript-tab-transcribers">
+                            {{ $transcription->authors->pluck('name')->join(', ') }}
+                        </span>
+                    @endif
                 </button>
             @endforeach
         </div>

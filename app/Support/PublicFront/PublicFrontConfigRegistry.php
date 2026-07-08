@@ -97,6 +97,7 @@ class PublicFrontConfigRegistry
                 'image_radius' => 'mid_rounded',
                 'title_size' => PublicFrontLayoutVariant::Base->value,
                 'page_size' => 12,
+                'transcription_display' => 'effective_plus_count',
             ],
             'transcription_policy' => PublicTranscriptionPolicy::defaults(),
             'podcasts_page' => [
@@ -144,6 +145,7 @@ class PublicFrontConfigRegistry
                     'item_image_fit' => 'cover',
                     'item_image_radius' => 'mid_rounded',
                     'item_title_size' => 'base',
+                    'transcription_display' => 'effective_plus_count',
                     'show_episode_authors' => true,
                     'show_episode_tags' => true,
                     'show_episode_duration' => true,
@@ -166,6 +168,7 @@ class PublicFrontConfigRegistry
                     'preview_items_per_page' => 6,
                     'preview_grid_columns' => 3,
                     'preview_search_enabled' => true,
+                    'transcription_display' => 'effective_plus_count',
                 ],
                 'top_transcribers' => [
                     'enabled' => true,
@@ -176,6 +179,7 @@ class PublicFrontConfigRegistry
                     'preview_grid_columns' => 3,
                     'show_full_page_link' => true,
                     'show_count_badge' => true,
+                    'transcription_display' => 'effective_plus_count',
                 ],
                 'cards' => [
                     'compact_show_count' => true,
@@ -191,6 +195,7 @@ class PublicFrontConfigRegistry
                     'search_enabled' => true,
                     'grid_columns' => 3,
                     'grid_gap' => 'comfortable',
+                    'transcription_display' => 'effective_plus_count',
                 ],
             ],
         ];
@@ -316,6 +321,27 @@ class PublicFrontConfigRegistry
             PublicFrontLayoutVariant::Base->value,
             PublicFrontLayoutVariant::LargeTitle->value,
         ];
+    }
+
+    /**
+     * @return array<string>
+     */
+    public static function transcriptionDisplayModes(): array
+    {
+        return [
+            'effective_only',
+            'effective_plus_count',
+        ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public static function transcriptionDisplayOptions(): array
+    {
+        return collect(self::transcriptionDisplayModes())
+            ->mapWithKeys(fn (string $mode): array => [$mode => __("admin.transcription_display.{$mode}")])
+            ->all();
     }
 
     /**

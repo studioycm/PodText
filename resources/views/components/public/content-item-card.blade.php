@@ -1,15 +1,10 @@
 @props([
-    'item',
-    'options' => app(\App\Support\PublicFront\PublicFrontRenderContext::class)->cardOptions(),
-    'layout' => 'cards',
+    'card',
+    'options',
     'cardTemplate' => null,
 ])
 
 @php
-    $templateRenderer = app(\App\Support\PublicFront\Cards\PublicFrontCardTemplateRenderer::class);
-    $cardTemplate ??= $templateRenderer->resolve('content_item');
-    $card = app(\App\Support\PublicFront\Cards\PublicContentItemCardPresenter::class)
-        ->present($item, $options, $cardTemplate, $layout);
     $templateAttributes = $card['template_attributes'];
     $presentation = $card['presentation'];
     $imageSize = $cardTemplate->imageSize;
@@ -116,7 +111,7 @@
                             data-card-part-order="{{ $part['order'] }}"
                         >
                             @foreach($part['badges'] as $badge)
-                                <span class="rounded-md bg-gray-100 px-2 py-1 dark:bg-gray-800" data-test="item-author">{{ $badge['label'] }}</span>
+                                <span class="rounded-md bg-gray-100 px-2 py-1 dark:bg-gray-800" data-test="item-transcriber">{{ $badge['label'] }}</span>
                             @endforeach
                         </div>
                         @break

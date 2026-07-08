@@ -65,6 +65,7 @@
             :items="$items"
             :card-options="$cardOptions"
             :card-template="$cardTemplate"
+            :contributor-context="$author"
             :columns="$config['page']['grid_columns'] ?? 3"
             :gap="$config['page']['grid_gap'] ?? 'comfortable'"
             layout="cards"

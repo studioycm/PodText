@@ -80,13 +80,14 @@
             {{ __('public.empty.groups') }}
         </div>
     @else
+        @php($groupCards = app(\App\Support\PublicFront\Cards\PublicContentGroupCardPresenter::class)->presentMany($groups, $cardTemplate, $pageConfig))
+
         <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-            @foreach ($groups as $group)
+            @foreach ($groupCards as $card)
                 <x-public.content-group-card
-                    :group="$group"
+                    :card="$card"
                     :card-template="$cardTemplate"
-                    :display-config="$pageConfig"
-                    wire:key="public-group-{{ $group->id }}"
+                    wire:key="public-group-{{ $card['id'] }}"
                 />
             @endforeach
         </div>

@@ -5,6 +5,7 @@ namespace App\Filament\Public\Pages;
 use App\Filament\Public\Pages\Concerns\HidesPublicPageHeader;
 use App\Models\ContentGroup;
 use App\Models\ContentItem;
+use App\Support\PublicContent\PublicContentItemQueries;
 use Filament\Pages\Page;
 use Filament\Panel;
 use Illuminate\Contracts\Support\Htmlable;
@@ -35,17 +36,9 @@ class ShowContentItem extends Page
             ->where('slug', $contentGroupSlug)
             ->firstOrFail();
 
-        $this->contentItem = ContentItem::query()
-            ->published()
+        $this->contentItem = PublicContentItemQueries::base()
             ->whereBelongsTo($this->contentGroup)
             ->where('slug', $contentItemSlug)
-            ->with([
-                'categories',
-                'contentGroup.categories',
-                'enabledContentTags',
-                'featuredTranscription.authors',
-                'latestPublishedTranscription.authors',
-            ])
             ->firstOrFail();
     }
 

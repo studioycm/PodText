@@ -272,12 +272,13 @@
                             </div>
                         @endif
                     @elseif($section->contentGroups->isNotEmpty())
+                        @php($groupCards = app(\App\Support\PublicFront\Cards\PublicContentGroupCardPresenter::class)->presentMany($section->contentGroups, $section->cardTemplate))
                         <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3" data-test="content-groups-grid">
-                            @foreach($section->contentGroups as $group)
+                            @foreach($groupCards as $card)
                                 <x-public.content-group-card
-                                    :group="$group"
+                                    :card="$card"
                                     :card-template="$section->cardTemplate"
-                                    wire:key="homepage-content-group-{{ $group->id }}"
+                                    wire:key="homepage-content-group-{{ $card['id'] }}"
                                 />
                             @endforeach
                         </div>

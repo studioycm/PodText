@@ -173,7 +173,7 @@ it('consumes card field visibility and semantic display settings', function (): 
     $this->get('/')
         ->assertSuccessful()
         ->assertSee($item->title)
-        ->assertDontSee('data-test="item-author"', false)
+        ->assertDontSee('data-test="item-transcriber"', false)
         ->assertDontSee('data-test="item-categories"', false)
         ->assertDontSee('data-test="item-tags"', false)
         ->assertDontSee('data-test="duration"', false)

@@ -8,6 +8,13 @@
     $itemLabel = $publicItemsCount === 1
         ? $contentGroup->default_item_type_label_singular
         : $contentGroup->default_item_type_label_plural;
+    $publicTranscriptionsCount = (int) ($contentGroup->public_transcriptions_count ?? 0);
+    $publicTranscriberCount = (int) ($contentGroup->public_transcriber_count ?? 0);
+    $totalWordCount = (int) ($contentGroup->public_total_word_count ?? 0);
+    $totalReadingMinutes = $totalWordCount > 0 ? max(1, (int) ceil($totalWordCount / 200)) : 0;
+    $latestTranscriptionDate = filled($contentGroup->public_latest_transcription_published_at ?? null)
+        ? \Carbon\Carbon::parse($contentGroup->public_latest_transcription_published_at)->timezone('Asia/Jerusalem')->format('d/m/Y')
+        : null;
     $initials = str($contentGroup->title)->squish()->substr(0, 2)->upper();
 @endphp
 
@@ -42,9 +49,36 @@
                     {{ $contentGroup->title }}
                 </h1>
 
-                <p class="text-sm font-medium text-gray-700 dark:text-gray-200" data-test="content-group-public-count">
-                    {{ __('public.labels.public_group_items_count', ['count' => $publicItemsCount, 'label' => $itemLabel]) }}
-                </p>
+                <dl class="flex flex-wrap gap-2 text-sm font-medium text-gray-700 dark:text-gray-200" data-test="content-group-public-stats">
+                    <div class="rounded-md bg-gray-100 px-2 py-1 dark:bg-gray-800" data-test="content-group-public-count">
+                        <dt class="sr-only">{{ __('public.labels.items') }}</dt>
+                        <dd>{{ __('public.labels.public_group_items_count', ['count' => $publicItemsCount, 'label' => $itemLabel]) }}</dd>
+                    </div>
+
+                    @if($totalReadingMinutes > 0)
+                        <div class="rounded-md bg-gray-100 px-2 py-1 dark:bg-gray-800" data-test="content-group-total-reading-time">
+                            <dt class="sr-only">{{ __('public.labels.reading_time') }}</dt>
+                            <dd>{{ trans_choice('public.labels.public_group_reading_minutes_count', $totalReadingMinutes, ['count' => $totalReadingMinutes]) }}</dd>
+                        </div>
+                    @endif
+
+                    <div class="rounded-md bg-gray-100 px-2 py-1 dark:bg-gray-800" data-test="content-group-transcription-count">
+                        <dt class="sr-only">{{ __('public.labels.transcriptions') }}</dt>
+                        <dd>{{ trans_choice('public.labels.public_transcriptions_count', $publicTranscriptionsCount, ['count' => $publicTranscriptionsCount]) }}</dd>
+                    </div>
+
+                    <div class="rounded-md bg-gray-100 px-2 py-1 dark:bg-gray-800" data-test="content-group-transcriber-count">
+                        <dt class="sr-only">{{ __('public.labels.transcribers') }}</dt>
+                        <dd>{{ trans_choice('public.labels.public_transcribers_count', $publicTranscriberCount, ['count' => $publicTranscriberCount]) }}</dd>
+                    </div>
+
+                    @if($latestTranscriptionDate)
+                        <div class="rounded-md bg-gray-100 px-2 py-1 dark:bg-gray-800" data-test="content-group-latest-transcription-date">
+                            <dt class="sr-only">{{ __('public.labels.published_at') }}</dt>
+                            <dd>{{ __('public.labels.public_group_latest_transcription_date', ['date' => $latestTranscriptionDate]) }}</dd>
+                        </div>
+                    @endif
+                </dl>
 
                 @if(($groupPageConfig['show_categories'] ?? true) && $categories->isNotEmpty())
                     <div class="flex flex-wrap gap-2" data-test="content-group-categories">
