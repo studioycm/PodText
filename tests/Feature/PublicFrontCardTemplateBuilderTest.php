@@ -850,6 +850,7 @@ it('renders m5 labels icons and grouped parts on content item cards', function (
         ->assertSee('data-card-part-icon="sparkles"', false)
         ->assertSee('data-card-part-icon-position="inline_after"', false)
         ->assertSee('data-card-part-icon-graphic', false)
+        ->assertSee('class="min-w-0 w-full"', false)
         ->assertSee('class="flex min-w-0 w-full items-center gap-1.5 justify-between"', false)
         ->assertSee('data-card-part="part_group"', false)
         ->assertSee('data-card-part-group-layout="inline"', false)
