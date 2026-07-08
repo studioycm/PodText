@@ -359,6 +359,101 @@ it('rejects unsafe css tailwind blade php html script and iframe looking values'
         ->and($paths)->toContain('card_templates.0.parts.2.layout');
 });
 
+it('normalizes m5 label icon and grouped part tokens safely', function (): void {
+    $result = app(PublicFrontConfigValidator::class)->validate([
+        'card_templates' => [
+            makeStep10rB2ContentItemTemplate('m5_normalized_template', [
+                [
+                    'type' => 'title',
+                    'source' => 'content_item',
+                    'attribute' => 'title',
+                    'label' => 'Legacy label',
+                    'label_position' => 'before',
+                    'label_alignment' => 'center',
+                    'icon' => 'calendar',
+                    'icon_position' => 'after',
+                    'visible' => true,
+                    'order' => 10,
+                ],
+                [
+                    'type' => 'metadata_row',
+                    'source' => 'content_item',
+                    'attribute' => 'duration',
+                    'label_position' => 'grid grid-cols-2',
+                    'label_alignment' => 'float-right',
+                    'icon' => '<svg></svg>',
+                    'icon_position' => 'after',
+                    'columns' => 'grid-cols-3',
+                    'visible' => true,
+                    'order' => 20,
+                ],
+                [
+                    'type' => 'part_group',
+                    'layout' => 'grid',
+                    'columns' => 3,
+                    'gap' => 'spacious',
+                    'alignment' => 'between',
+                    'visible' => true,
+                    'order' => 30,
+                    'children' => [
+                        [
+                            'type' => 'custom_text',
+                            'source' => 'custom',
+                            'attribute' => 'text',
+                            'text' => 'Grouped child',
+                            'visible' => true,
+                            'order' => 10,
+                        ],
+                        [
+                            'type' => 'part_group',
+                            'layout' => 'inline',
+                            'visible' => true,
+                            'order' => 20,
+                            'children' => [
+                                [
+                                    'type' => 'custom_text',
+                                    'source' => 'custom',
+                                    'attribute' => 'text',
+                                    'text' => 'Too deep',
+                                    'visible' => true,
+                                    'order' => 10,
+                                ],
+                            ],
+                        ],
+                    ],
+                ],
+            ]),
+        ],
+    ]);
+
+    $paths = collect($result->invalidConfig())->map(fn ($invalidConfig): string => $invalidConfig->path);
+    $parts = $result->group('card_templates')[0]['parts'];
+
+    expect($parts)->toHaveCount(3)
+        ->and($parts[0])->toMatchArray([
+            'label_position' => 'inline_before',
+            'label_alignment' => 'center',
+            'icon' => 'calendar',
+            'icon_position' => 'inline_after',
+        ])
+        ->and($parts[1])->not->toHaveKey('label_position')
+        ->and($parts[1])->not->toHaveKey('icon')
+        ->and($parts[1]['label_alignment'])->toBe('start')
+        ->and($parts[2])->toMatchArray([
+            'type' => 'part_group',
+            'layout' => 'grid',
+            'columns' => '3',
+            'gap' => 'spacious',
+            'alignment' => 'between',
+        ])
+        ->and($parts[2]['children'])->toHaveCount(1)
+        ->and($paths)->toContain('card_templates.0.parts.1.label_position')
+        ->and($paths)->toContain('card_templates.0.parts.1.label_alignment')
+        ->and($paths)->toContain('card_templates.0.parts.1.icon')
+        ->and($paths)->toContain('card_templates.0.parts.1.columns')
+        ->and($paths)->toContain('card_templates.0.parts.2.children.1.type');
+});
+
 it('falls back to a family default when a requested template key is missing', function (): void {
     $template = app(PublicFrontCardTemplateResolver::class)->resolveFromTemplates([
         makeStep3CardTemplate('content_item', 'available_template'),
@@ -595,6 +690,181 @@ it('renders homepage content item template parts in configured order and hides d
         ->assertDontSee('<strong>B2 unsafe marker</strong>', false)
         ->assertDontSee('B2 unsafe marker')
         ->assertDontSee('B2 hidden description text.');
+});
+
+it('renders m5 labels icons and grouped parts on content item cards', function (): void {
+    $item = createStep3PublicItem([
+        'title' => 'M5 Label Icon Episode',
+        'duration_seconds' => 245,
+    ]);
+
+    saveStep3PublicFrontConfig([
+        'card_templates' => [
+            makeStep10rB2ContentItemTemplate('m5_item_card', [
+                [
+                    'type' => 'title',
+                    'source' => 'content_item',
+                    'attribute' => 'title',
+                    'label' => 'Above title label',
+                    'label_position' => 'above',
+                    'label_alignment' => 'center',
+                    'icon' => 'calendar',
+                    'icon_position' => 'inline_before',
+                    'visible' => true,
+                    'order' => 10,
+                    'url_target' => 'self',
+                ],
+                [
+                    'type' => 'metadata_row',
+                    'source' => 'content_item',
+                    'attribute' => 'duration',
+                    'label' => 'Below duration label',
+                    'label_position' => 'below',
+                    'icon' => 'clock',
+                    'icon_position' => 'inline_after',
+                    'visible' => true,
+                    'order' => 20,
+                ],
+                [
+                    'type' => 'custom_text',
+                    'source' => 'custom',
+                    'attribute' => 'text',
+                    'text' => 'Inline before value',
+                    'label' => 'Inline before label',
+                    'label_position' => 'inline_before',
+                    'icon' => 'sparkles',
+                    'icon_position' => 'inline_before',
+                    'visible' => true,
+                    'order' => 30,
+                ],
+                [
+                    'type' => 'custom_text',
+                    'source' => 'custom',
+                    'attribute' => 'text',
+                    'text' => 'Inline after value',
+                    'label' => 'Inline after label',
+                    'label_position' => 'inline_after',
+                    'icon' => 'arrow_right',
+                    'icon_position' => 'inline_after',
+                    'visible' => true,
+                    'order' => 40,
+                ],
+                [
+                    'type' => 'custom_text',
+                    'source' => 'custom',
+                    'attribute' => 'text',
+                    'text' => 'Hidden control value',
+                    'label' => 'Hidden control label',
+                    'label_position' => 'hidden',
+                    'icon' => 'calendar',
+                    'icon_position' => 'hidden',
+                    'visible' => true,
+                    'order' => 50,
+                ],
+                [
+                    'type' => 'part_group',
+                    'layout' => 'inline',
+                    'gap' => 'compact',
+                    'alignment' => 'center',
+                    'visible' => true,
+                    'order' => 60,
+                    'children' => [
+                        [
+                            'type' => 'custom_text',
+                            'source' => 'custom',
+                            'attribute' => 'text',
+                            'text' => 'Inline group first',
+                            'visible' => true,
+                            'order' => 10,
+                        ],
+                        [
+                            'type' => 'metadata_row',
+                            'source' => 'content_item',
+                            'attribute' => 'duration',
+                            'visible' => true,
+                            'order' => 20,
+                        ],
+                    ],
+                ],
+                [
+                    'type' => 'part_group',
+                    'layout' => 'grid',
+                    'columns' => '3',
+                    'gap' => 'spacious',
+                    'alignment' => 'between',
+                    'visible' => true,
+                    'order' => 70,
+                    'children' => [
+                        [
+                            'type' => 'custom_text',
+                            'source' => 'custom',
+                            'attribute' => 'text',
+                            'text' => 'Grid group first',
+                            'visible' => true,
+                            'order' => 10,
+                        ],
+                        [
+                            'type' => 'custom_text',
+                            'source' => 'custom',
+                            'attribute' => 'text',
+                            'text' => 'Grid group second',
+                            'visible' => true,
+                            'order' => 20,
+                        ],
+                    ],
+                ],
+            ]),
+        ],
+    ]);
+
+    HomepageSection::factory()->create([
+        'name' => 'M5 Item Labels Icons',
+        'type' => HomepageSectionType::Latest,
+        'source_config' => ['source_type' => 'manual_content_items'],
+        'selection_config' => ['include_ids' => [$item->id]],
+        'display_config' => [
+            'template_family' => 'content_item',
+            'template_key' => 'm5_item_card',
+        ],
+    ]);
+
+    $this->get('/')
+        ->assertSuccessful()
+        ->assertSee('data-card-template-key="m5_item_card"', false)
+        ->assertSee('data-card-renderer-parts="title,metadata_row,custom_text,part_group"', false)
+        ->assertSee('Above title label')
+        ->assertSee('Below duration label')
+        ->assertSee('Inline before label')
+        ->assertSee('Inline after label')
+        ->assertDontSee('Hidden control label')
+        ->assertSee('data-card-part-label-position="above"', false)
+        ->assertSee('data-card-part-label-position="below"', false)
+        ->assertSee('data-card-part-label-position="inline_before"', false)
+        ->assertSee('data-card-part-label-position="inline_after"', false)
+        ->assertSee('data-card-part-label-alignment="center"', false)
+        ->assertSee('data-card-part-icon="calendar"', false)
+        ->assertSee('data-card-part-icon="clock"', false)
+        ->assertSee('data-card-part-icon="sparkles"', false)
+        ->assertSee('data-card-part-icon-position="inline_after"', false)
+        ->assertSee('data-card-part-icon-graphic', false)
+        ->assertSee('data-card-part="part_group"', false)
+        ->assertSee('data-card-part-group-layout="inline"', false)
+        ->assertSee('data-card-part-group-layout="grid"', false)
+        ->assertSee('data-card-part-group-columns="3"', false)
+        ->assertSee('data-card-part-group-gap="spacious"', false)
+        ->assertSeeInOrder([
+            'Above title label',
+            'M5 Label Icon Episode',
+            'Below duration label',
+            'Inline before label',
+            'Inline before value',
+            'Inline after value',
+            'Inline after label',
+            'Hidden control value',
+            'Inline group first',
+            'Grid group first',
+            'Grid group second',
+        ]);
 });
 
 it('renders custom content item parts on search category and tag pages', function (): void {
@@ -975,6 +1245,82 @@ it('renders custom contributor templates on contributor cards and top transcribe
         ->assertDontSee('fi-ta-table', false);
 });
 
+it('renders m5 labels and icons on content group and contributor card families', function (): void {
+    $group = ContentGroup::factory()->published()->create([
+        'title' => 'M5 Label Podcast',
+        'slug' => 'm5-label-podcast',
+    ]);
+    createStep3PublicItem(['title' => 'M5 Group Family Item'], $group);
+
+    $author = Author::factory()->create([
+        'name' => 'M5 Label Contributor',
+        'slug' => 'm5-label-contributor',
+    ]);
+    createStep10rB3PublicContributorItem($author, ['title' => 'M5 Contributor Family Item']);
+
+    saveStep3PublicFrontConfig([
+        'card_templates' => [
+            makeStep10rB3ContentGroupTemplate('default_content_group', [
+                [
+                    'type' => 'title',
+                    'source' => 'content_group',
+                    'attribute' => 'title',
+                    'label' => 'Podcast title label',
+                    'label_position' => 'inline_before',
+                    'icon' => 'podcast',
+                    'icon_position' => 'inline_before',
+                    'visible' => true,
+                    'order' => 10,
+                    'url_target' => 'self',
+                ],
+            ]),
+            makeStep10rB3ContributorTemplate('default_contributor', [
+                [
+                    'type' => 'title',
+                    'source' => 'author',
+                    'attribute' => 'name',
+                    'label' => 'Contributor title label',
+                    'label_position' => 'above',
+                    'icon' => 'user',
+                    'icon_position' => 'inline_before',
+                    'visible' => true,
+                    'order' => 10,
+                    'url_target' => 'self',
+                ],
+                [
+                    'type' => 'metadata_row',
+                    'source' => 'author',
+                    'attribute' => 'transcription_count',
+                    'label' => 'Contributor count label',
+                    'label_position' => 'inline_after',
+                    'icon' => 'microphone',
+                    'icon_position' => 'inline_after',
+                    'visible' => true,
+                    'order' => 20,
+                ],
+            ]),
+        ],
+    ]);
+
+    $this->get('/podcasts')
+        ->assertSuccessful()
+        ->assertSee('Podcast title label')
+        ->assertSee('M5 Label Podcast')
+        ->assertSee('data-card-template-family="content_group"', false)
+        ->assertSee('data-card-part-icon="podcast"', false)
+        ->assertSee('data-card-part-label-position="inline_before"', false);
+
+    $this->get('/contributors')
+        ->assertSuccessful()
+        ->assertSee('Contributor title label')
+        ->assertSee('Contributor count label')
+        ->assertSee('M5 Label Contributor')
+        ->assertSee('data-card-template-family="contributor"', false)
+        ->assertSee('data-card-part-icon="user"', false)
+        ->assertSee('data-card-part-icon="microphone"', false)
+        ->assertSee('data-card-part-label-position="inline_after"', false);
+});
+
 it('saves a simple card template definition through the public content settings page', function (): void {
     $this->actingAs(User::factory()->create());
 
@@ -1019,9 +1365,37 @@ it('saves a simple card template definition through the public content settings 
                         'data' => [
                             'source' => 'content_item',
                             'attribute' => 'title',
+                            'label' => 'Admin title label',
+                            'label_position' => 'inline_before',
+                            'label_alignment' => 'start',
+                            'icon' => 'title',
+                            'icon_position' => 'inline_before',
                             'visible' => true,
                             'order' => 10,
                             'layout' => 'inline',
+                        ],
+                    ],
+                    [
+                        'type' => 'part_group',
+                        'data' => [
+                            'layout' => 'grid',
+                            'columns' => '2',
+                            'gap' => 'comfortable',
+                            'alignment' => 'center',
+                            'visible' => true,
+                            'order' => 20,
+                            'children' => [
+                                [
+                                    'type' => 'custom_text',
+                                    'data' => [
+                                        'source' => 'custom',
+                                        'attribute' => 'text',
+                                        'text' => 'Admin grouped child',
+                                        'visible' => true,
+                                        'order' => 10,
+                                    ],
+                                ],
+                            ],
                         ],
                     ],
                 ],
@@ -1049,8 +1423,26 @@ it('saves a simple card template definition through the public content settings 
             'type' => 'title',
             'source' => 'content_item',
             'attribute' => 'title',
+            'label' => 'Admin title label',
+            'label_position' => 'inline_before',
+            'label_alignment' => 'start',
+            'icon' => 'title',
+            'icon_position' => 'inline_before',
         ])
-        ->and($templates[0]['parts'][0])->not->toHaveKey('data');
+        ->and($templates[0]['parts'][0])->not->toHaveKey('data')
+        ->and($templates[0]['parts'][1])->toMatchArray([
+            'type' => 'part_group',
+            'layout' => 'grid',
+            'columns' => '2',
+            'gap' => 'comfortable',
+            'alignment' => 'center',
+        ])
+        ->and($templates[0]['parts'][1]['children'][0])->toMatchArray([
+            'type' => 'custom_text',
+            'source' => 'custom',
+            'attribute' => 'text',
+            'text' => 'Admin grouped child',
+        ]);
 });
 
 it('keeps contributor card template settings deferred until a later renderer step adds a setting', function (): void {

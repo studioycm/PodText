@@ -1539,9 +1539,10 @@ class PublicContentSettings extends SettingsPage
     /**
      * @return array<Block>
      */
-    private function cardTemplatePartBlocks(): array
+    private function cardTemplatePartBlocks(bool $allowGroups = true): array
     {
         return collect(PublicFrontConfigRegistry::cardPartTypes())
+            ->when(! $allowGroups, fn ($types) => $types->reject(fn (string $type): bool => $type === 'part_group'))
             ->map(fn (string $type): Block => Block::make($type)
                 ->label(__("admin.card_template_part_types.{$type}"))
                 ->schema($this->cardTemplatePartSchema($type))
@@ -1768,7 +1769,8 @@ class PublicContentSettings extends SettingsPage
      */
     private function cardTemplatePartSchema(string $type): array
     {
-        $requiresSource = ! in_array($type, ['divider', 'spacer'], true);
+        $requiresSource = ! in_array($type, ['divider', 'spacer', 'part_group'], true);
+        $isGroup = $type === 'part_group';
 
         return [
             Toggle::make('visible')
@@ -1783,14 +1785,16 @@ class PublicContentSettings extends SettingsPage
                 ->native(false)
                 ->live()
                 ->required($requiresSource)
-                ->afterStateUpdated(fn (Set $set): mixed => $set('attribute', null)),
+                ->afterStateUpdated(fn (Set $set): mixed => $set('attribute', null))
+                ->visible($requiresSource),
             Select::make('attribute')
                 ->label(__('admin.fields.card_template_part_attribute'))
                 ->helperText(__('admin.helpers.card_template_part_attribute'))
                 ->options(fn (Get $get): array => PublicFrontConfigRegistry::cardAttributeOptions($get('source')))
                 ->default(PublicFrontCardTemplateRegistry::defaultAttributeForPart($type))
                 ->native(false)
-                ->required($requiresSource),
+                ->required($requiresSource)
+                ->visible($requiresSource),
             TextInput::make('label')
                 ->label(__('admin.fields.card_template_part_label'))
                 ->helperText(__('admin.helpers.card_template_part_label'))
@@ -1798,6 +1802,12 @@ class PublicContentSettings extends SettingsPage
             Select::make('label_position')
                 ->label(__('admin.fields.card_template_part_label_position'))
                 ->options(fn (): array => PublicFrontCardTemplateRegistry::labelPositionOptions())
+                ->native(false),
+            Select::make('label_alignment')
+                ->label(__('admin.fields.card_template_part_label_alignment'))
+                ->helperText(__('admin.helpers.card_template_part_label_alignment'))
+                ->options(fn (): array => PublicFrontCardTemplateRegistry::labelAlignmentOptions())
+                ->default('start')
                 ->native(false),
             Select::make('icon')
                 ->label(__('admin.fields.card_template_part_icon'))
@@ -1811,9 +1821,32 @@ class PublicContentSettings extends SettingsPage
             Select::make('layout')
                 ->label(__('admin.fields.card_template_part_layout'))
                 ->helperText(__('admin.helpers.card_template_part_layout'))
-                ->options(fn (): array => PublicFrontCardTemplateRegistry::partLayoutOptions())
+                ->options(fn (): array => $isGroup
+                    ? PublicFrontCardTemplateRegistry::groupLayoutOptions()
+                    : PublicFrontCardTemplateRegistry::partLayoutOptions())
                 ->default('inline')
                 ->native(false),
+            Select::make('columns')
+                ->label(__('admin.fields.card_template_part_group_columns'))
+                ->helperText(__('admin.helpers.card_template_part_group_columns'))
+                ->options(fn (): array => PublicFrontCardTemplateRegistry::groupColumnOptions())
+                ->default('auto')
+                ->native(false)
+                ->visible($isGroup),
+            Select::make('gap')
+                ->label(__('admin.fields.card_template_part_group_gap'))
+                ->helperText(__('admin.helpers.card_template_part_group_gap'))
+                ->options(fn (): array => PublicFrontCardTemplateRegistry::groupGapOptions())
+                ->default('compact')
+                ->native(false)
+                ->visible($isGroup),
+            Select::make('alignment')
+                ->label(__('admin.fields.card_template_part_group_alignment'))
+                ->helperText(__('admin.helpers.card_template_part_group_alignment'))
+                ->options(fn (): array => PublicFrontCardTemplateRegistry::groupAlignmentOptions())
+                ->default('start')
+                ->native(false)
+                ->visible($isGroup),
             TextInput::make('order')
                 ->label(__('admin.fields.card_template_part_order'))
                 ->helperText(__('admin.helpers.card_template_part_order'))
@@ -1839,6 +1872,19 @@ class PublicContentSettings extends SettingsPage
                 ->helperText(__('admin.helpers.card_template_part_text'))
                 ->maxLength(500)
                 ->visible($type === 'custom_text'),
+            ...($isGroup ? [
+                Builder::make('children')
+                    ->label(__('admin.fields.card_template_part_group_children'))
+                    ->helperText(__('admin.helpers.card_template_part_group_children'))
+                    ->blocks($this->cardTemplatePartBlocks(allowGroups: false))
+                    ->blockPickerColumns(2)
+                    ->collapsible()
+                    ->collapsed()
+                    ->cloneable()
+                    ->default([])
+                    ->addActionLabel(__('admin.actions.add_card_template_part'))
+                    ->columnSpanFull(),
+            ] : []),
         ];
     }
 
@@ -1852,10 +1898,7 @@ class PublicContentSettings extends SettingsPage
             ->map(function (array $template): array {
                 $template['parts'] = collect($template['parts'] ?? [])
                     ->filter(fn (mixed $part): bool => is_array($part))
-                    ->map(fn (array $part): array => [
-                        'type' => $part['type'] ?? 'custom_text',
-                        'data' => Arr::except($part, ['type']),
-                    ])
+                    ->map(fn (array $part): array => $this->cardTemplatePartForBuilder($part))
                     ->values()
                     ->all();
 
@@ -1863,6 +1906,28 @@ class PublicContentSettings extends SettingsPage
             })
             ->values()
             ->all();
+    }
+
+    /**
+     * @param  array<string, mixed>  $part
+     * @return array{type: string, data: array<string, mixed>}
+     */
+    private function cardTemplatePartForBuilder(array $part): array
+    {
+        $data = Arr::except($part, ['type']);
+
+        if (isset($data['children']) && is_array($data['children'])) {
+            $data['children'] = collect($data['children'])
+                ->filter(fn (mixed $child): bool => is_array($child))
+                ->map(fn (array $child): array => $this->cardTemplatePartForBuilder($child))
+                ->values()
+                ->all();
+        }
+
+        return [
+            'type' => $part['type'] ?? 'custom_text',
+            'data' => $data,
+        ];
     }
 
     /**

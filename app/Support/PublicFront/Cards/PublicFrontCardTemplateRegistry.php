@@ -47,6 +47,7 @@ class PublicFrontCardTemplateRegistry
             'taxonomy',
             'custom_text',
             'action_link',
+            'part_group',
             'divider',
             'spacer',
         ];
@@ -216,8 +217,10 @@ class PublicFrontCardTemplateRegistry
     {
         return [
             'hidden',
-            'before',
-            'after',
+            'inline_before',
+            'inline_after',
+            'above',
+            'below',
         ];
     }
 
@@ -232,12 +235,33 @@ class PublicFrontCardTemplateRegistry
     /**
      * @return array<string>
      */
+    public static function labelAlignments(): array
+    {
+        return [
+            'start',
+            'center',
+            'end',
+            'between',
+        ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public static function labelAlignmentOptions(): array
+    {
+        return self::translatedOptions(self::labelAlignments(), 'admin.card_template_label_alignments');
+    }
+
+    /**
+     * @return array<string>
+     */
     public static function iconPositions(): array
     {
         return [
             'hidden',
-            'before',
-            'after',
+            'inline_before',
+            'inline_after',
         ];
     }
 
@@ -281,6 +305,89 @@ class PublicFrontCardTemplateRegistry
     public static function iconOptions(): array
     {
         return self::translatedOptions(self::icons(), 'admin.card_template_icons');
+    }
+
+    /**
+     * @return array<string>
+     */
+    public static function groupLayouts(): array
+    {
+        return [
+            'inline',
+            'stacked',
+            'grid',
+        ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public static function groupLayoutOptions(): array
+    {
+        return self::translatedOptions(self::groupLayouts(), 'admin.card_template_group_layouts');
+    }
+
+    /**
+     * @return array<string>
+     */
+    public static function groupColumns(): array
+    {
+        return [
+            '1',
+            '2',
+            '3',
+            '4',
+            'auto',
+        ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public static function groupColumnOptions(): array
+    {
+        return self::translatedOptions(self::groupColumns(), 'admin.card_template_group_columns');
+    }
+
+    /**
+     * @return array<string>
+     */
+    public static function groupGaps(): array
+    {
+        return [
+            'compact',
+            'comfortable',
+            'spacious',
+        ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public static function groupGapOptions(): array
+    {
+        return self::translatedOptions(self::groupGaps(), 'admin.card_template_group_gaps');
+    }
+
+    /**
+     * @return array<string>
+     */
+    public static function groupAlignments(): array
+    {
+        return [
+            'start',
+            'center',
+            'end',
+            'between',
+        ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public static function groupAlignmentOptions(): array
+    {
+        return self::translatedOptions(self::groupAlignments(), 'admin.card_template_group_alignments');
     }
 
     /**
@@ -354,6 +461,7 @@ class PublicFrontCardTemplateRegistry
             'taxonomy' => ['source' => 'categories', 'attribute' => 'links'],
             'custom_text' => ['source' => 'custom', 'attribute' => 'text'],
             'action_link' => ['source' => 'content_item', 'attribute' => 'url'],
+            'part_group' => ['source' => null, 'attribute' => null],
             'divider' => ['source' => null, 'attribute' => null],
             'spacer' => ['source' => null, 'attribute' => null],
         ];

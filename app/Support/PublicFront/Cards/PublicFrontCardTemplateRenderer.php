@@ -15,6 +15,7 @@ class PublicFrontCardTemplateRenderer
         'metadata_row',
         'action_link',
         'custom_text',
+        'part_group',
         'divider',
         'spacer',
     ];
@@ -28,6 +29,7 @@ class PublicFrontCardTemplateRenderer
         'taxonomy',
         'action_link',
         'custom_text',
+        'part_group',
         'divider',
         'spacer',
     ];
@@ -40,6 +42,7 @@ class PublicFrontCardTemplateRenderer
         'entity_attribute',
         'action_link',
         'custom_text',
+        'part_group',
         'divider',
         'spacer',
     ];

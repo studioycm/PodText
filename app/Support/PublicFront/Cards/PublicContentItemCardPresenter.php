@@ -194,10 +194,14 @@ class PublicContentItemCardPresenter
             'layout' => $part->layout,
             'label' => $part->label,
             'label_position' => $part->labelPosition,
+            'label_alignment' => $part->labelAlignment,
+            'icon' => $part->icon,
+            'icon_position' => $part->iconPosition,
             'class' => $this->partClass($part),
         ];
 
         return match ($part->type) {
+            'part_group' => $this->partGroup($base, $part, $data, $options, $presentation),
             'image' => $this->imagePart($base, $data, $presentation),
             'title' => $this->titlePart($base, $part, $data, $presentation),
             'description' => $this->descriptionPart($base, $part, $data, $options, $presentation),
@@ -212,6 +216,35 @@ class PublicContentItemCardPresenter
             'spacer' => [...$base, 'region' => 'body'],
             default => null,
         };
+    }
+
+    /**
+     * @param  array<string, mixed>  $base
+     * @param  array<string, mixed>  $data
+     * @param  array<string, mixed>  $presentation
+     * @return array<string, mixed>|null
+     */
+    private function partGroup(array $base, PublicFrontCardPart $part, array $data, PublicContentCardOptions $options, array $presentation): ?array
+    {
+        $children = collect($part->children)
+            ->map(fn (PublicFrontCardPart $child): ?array => $this->part($child, $data, $options, $presentation))
+            ->filter(fn (?array $child): bool => $child !== null && ($child['region'] ?? null) === 'body')
+            ->values()
+            ->all();
+
+        if ($children === []) {
+            return null;
+        }
+
+        return [
+            ...$base,
+            'region' => 'body',
+            'children' => $children,
+            'columns' => $part->columns ?? 'auto',
+            'gap' => $part->gap ?? 'compact',
+            'alignment' => $part->alignment ?? 'start',
+            'children_class' => $this->groupChildrenClass($part),
+        ];
     }
 
     /**
@@ -626,9 +659,47 @@ class PublicContentItemCardPresenter
             'metadata_row', 'date_read_time', 'transcriber_line' => 'flex flex-wrap gap-2 text-xs text-gray-600 dark:text-gray-300',
             'taxonomy' => 'flex flex-wrap gap-2',
             'action_link' => 'pt-1',
+            'part_group' => 'min-w-0',
             'divider' => 'border-t border-gray-200 dark:border-gray-800',
             'spacer' => 'h-2',
             default => 'min-w-0',
+        };
+    }
+
+    private function groupChildrenClass(PublicFrontCardPart $part): string
+    {
+        $gap = match ($part->gap) {
+            'comfortable' => 'gap-2',
+            'spacious' => 'gap-4',
+            default => 'gap-1.5',
+        };
+        $justify = match ($part->alignment) {
+            'center' => 'justify-center',
+            'end' => 'justify-end',
+            'between' => 'justify-between',
+            default => 'justify-start',
+        };
+        $items = match ($part->alignment) {
+            'center' => 'items-center',
+            'end' => 'items-end',
+            default => 'items-start',
+        };
+
+        return match ($part->layout) {
+            'stacked' => trim("flex flex-col {$gap} {$items}"),
+            'grid' => trim('grid '.$this->groupColumnClass($part->columns).' '.$gap.' '.$justify),
+            default => trim("flex flex-wrap items-center {$gap} {$justify}"),
+        };
+    }
+
+    private function groupColumnClass(?string $columns): string
+    {
+        return match ($columns) {
+            '1' => 'grid-cols-1',
+            '2' => 'grid-cols-2',
+            '3' => 'grid-cols-3',
+            '4' => 'grid-cols-4',
+            default => 'grid-flow-col auto-cols-max',
         };
     }
 
@@ -661,9 +732,13 @@ class PublicContentItemCardPresenter
             attribute: 'title',
             label: null,
             labelPosition: null,
+            labelAlignment: null,
             icon: null,
             iconPosition: null,
             layout: 'inline',
+            columns: null,
+            gap: null,
+            alignment: null,
             visible: true,
             order: 0,
             lineClamp: null,

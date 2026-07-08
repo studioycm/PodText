@@ -86,7 +86,7 @@ class PublicFrontConfigValidator
      * @param  array<PublicFrontInvalidConfig>  $invalidConfig
      * @return array<int, array<string, mixed>>
      */
-    private function normalizeCardTemplateParts(mixed $items, string $path, array &$invalidConfig): array
+    private function normalizeCardTemplateParts(mixed $items, string $path, array &$invalidConfig, int $depth = 0): array
     {
         if (! is_array($items)) {
             $invalidConfig[] = PublicFrontInvalidConfig::make($path, 'expected_list', $items);
@@ -109,7 +109,7 @@ class PublicFrontConfigValidator
                 continue;
             }
 
-            $part = $this->normalizeCardTemplatePart($item, "{$path}.{$index}", $invalidConfig, $index);
+            $part = $this->normalizeCardTemplatePart($item, "{$path}.{$index}", $invalidConfig, $index, $depth);
 
             if ($part !== null) {
                 $normalized[] = $part;
@@ -127,7 +127,7 @@ class PublicFrontConfigValidator
      * @param  array<PublicFrontInvalidConfig>  $invalidConfig
      * @return array<string, mixed>|null
      */
-    private function normalizeCardTemplatePart(array $item, string $path, array &$invalidConfig, int $index): ?array
+    private function normalizeCardTemplatePart(array $item, string $path, array &$invalidConfig, int $index, int $depth = 0): ?array
     {
         [$part, $fieldPath] = $this->unwrapBuilderPart($item, $path, $invalidConfig);
 
@@ -137,9 +137,14 @@ class PublicFrontConfigValidator
             'attribute',
             'label',
             'label_position',
+            'label_alignment',
             'icon',
             'icon_position',
             'layout',
+            'columns',
+            'gap',
+            'alignment',
+            'children',
             'visible',
             'order',
             'line_clamp',
@@ -154,6 +159,48 @@ class PublicFrontConfigValidator
 
         if ($type === null) {
             return null;
+        }
+
+        if ($type === 'part_group') {
+            if ($depth >= 1) {
+                $invalidConfig[] = PublicFrontInvalidConfig::make("{$fieldPath}.type", 'max_depth_exceeded', $type);
+
+                return null;
+            }
+
+            return array_filter([
+                'type' => $type,
+                'label' => $this->plainString($part['label'] ?? null, "{$fieldPath}.label", $invalidConfig, maxLength: 80, nullable: true),
+                'label_position' => array_key_exists('label_position', $part)
+                    ? $this->labelPosition($part['label_position'], "{$fieldPath}.label_position", $invalidConfig)
+                    : null,
+                'label_alignment' => array_key_exists('label_alignment', $part)
+                    ? $this->finiteString($part['label_alignment'], PublicFrontCardTemplateRegistry::labelAlignments(), "{$fieldPath}.label_alignment", $invalidConfig, 'start')
+                    : null,
+                'icon' => array_key_exists('icon', $part)
+                    ? $this->finiteString($part['icon'], PublicFrontCardTemplateRegistry::icons(), "{$fieldPath}.icon", $invalidConfig, nullable: true)
+                    : null,
+                'icon_position' => array_key_exists('icon_position', $part)
+                    ? $this->iconPosition($part['icon_position'], "{$fieldPath}.icon_position", $invalidConfig)
+                    : null,
+                'layout' => $this->finiteString($part['layout'] ?? null, PublicFrontCardTemplateRegistry::groupLayouts(), "{$fieldPath}.layout", $invalidConfig, 'inline'),
+                'columns' => array_key_exists('columns', $part)
+                    ? $this->finiteString(is_int($part['columns']) ? (string) $part['columns'] : $part['columns'], PublicFrontCardTemplateRegistry::groupColumns(), "{$fieldPath}.columns", $invalidConfig, 'auto')
+                    : 'auto',
+                'gap' => $this->finiteString($part['gap'] ?? null, PublicFrontCardTemplateRegistry::groupGaps(), "{$fieldPath}.gap", $invalidConfig, 'compact'),
+                'alignment' => $this->finiteString($part['alignment'] ?? null, PublicFrontCardTemplateRegistry::groupAlignments(), "{$fieldPath}.alignment", $invalidConfig, 'start'),
+                'visible' => $this->boolean($part['visible'] ?? null, "{$fieldPath}.visible", true, $invalidConfig),
+                'order' => array_key_exists('order', $part)
+                    ? $this->integerRange($part['order'], "{$fieldPath}.order", 0, 1000, ($index + 1) * 10, $invalidConfig)
+                    : ($index + 1) * 10,
+                'children' => $this->normalizeCardTemplateParts($part['children'] ?? [], "{$fieldPath}.children", $invalidConfig, $depth + 1),
+            ], fn (mixed $value): bool => $value !== null);
+        }
+
+        foreach (['columns', 'gap', 'alignment', 'children'] as $groupOnlyField) {
+            if (array_key_exists($groupOnlyField, $part)) {
+                $invalidConfig[] = PublicFrontInvalidConfig::make("{$fieldPath}.{$groupOnlyField}", 'group_only_field', $part[$groupOnlyField]);
+            }
         }
 
         $source = $this->normalizePartSource($part, $type, $fieldPath, $invalidConfig);
@@ -188,13 +235,16 @@ class PublicFrontConfigValidator
             'attribute' => $attribute,
             'label' => $this->plainString($part['label'] ?? null, "{$fieldPath}.label", $invalidConfig, maxLength: 80, nullable: true),
             'label_position' => array_key_exists('label_position', $part)
-                ? $this->finiteString($part['label_position'], PublicFrontCardTemplateRegistry::labelPositions(), "{$fieldPath}.label_position", $invalidConfig, nullable: true)
+                ? $this->labelPosition($part['label_position'], "{$fieldPath}.label_position", $invalidConfig)
+                : null,
+            'label_alignment' => array_key_exists('label_alignment', $part)
+                ? $this->finiteString($part['label_alignment'], PublicFrontCardTemplateRegistry::labelAlignments(), "{$fieldPath}.label_alignment", $invalidConfig, 'start')
                 : null,
             'icon' => array_key_exists('icon', $part)
                 ? $this->finiteString($part['icon'], PublicFrontCardTemplateRegistry::icons(), "{$fieldPath}.icon", $invalidConfig, nullable: true)
                 : null,
             'icon_position' => array_key_exists('icon_position', $part)
-                ? $this->finiteString($part['icon_position'], PublicFrontCardTemplateRegistry::iconPositions(), "{$fieldPath}.icon_position", $invalidConfig, nullable: true)
+                ? $this->iconPosition($part['icon_position'], "{$fieldPath}.icon_position", $invalidConfig)
                 : null,
             'layout' => $this->finiteString($part['layout'] ?? null, PublicFrontCardTemplateRegistry::partLayouts(), "{$fieldPath}.layout", $invalidConfig, 'inline'),
             'visible' => $this->boolean($part['visible'] ?? null, "{$fieldPath}.visible", true, $invalidConfig),
@@ -1943,6 +1993,35 @@ class PublicFrontConfigValidator
         }
 
         return $value;
+    }
+
+    /**
+     * @param  array<PublicFrontInvalidConfig>  $invalidConfig
+     */
+    private function labelPosition(mixed $value, string $path, array &$invalidConfig): ?string
+    {
+        $value = $this->legacyInlinePosition($value);
+
+        return $this->finiteString($value, PublicFrontCardTemplateRegistry::labelPositions(), $path, $invalidConfig, nullable: true);
+    }
+
+    /**
+     * @param  array<PublicFrontInvalidConfig>  $invalidConfig
+     */
+    private function iconPosition(mixed $value, string $path, array &$invalidConfig): ?string
+    {
+        $value = $this->legacyInlinePosition($value);
+
+        return $this->finiteString($value, PublicFrontCardTemplateRegistry::iconPositions(), $path, $invalidConfig, nullable: true);
+    }
+
+    private function legacyInlinePosition(mixed $value): mixed
+    {
+        return match ($value) {
+            'before' => 'inline_before',
+            'after' => 'inline_after',
+            default => $value,
+        };
     }
 
     /**
