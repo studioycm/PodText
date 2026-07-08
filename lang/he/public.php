@@ -77,6 +77,14 @@ return [
         'success' => 'תודה. השליחה התקבלה.',
         'unavailable' => 'הטופס אינו זמין.',
     ],
+    'dates' => [
+        'original_published_long' => 'פורסם במקור',
+        'original_published_short' => 'מקור',
+        'site_published_long' => 'פורסם באתר',
+        'site_published_short' => 'באתר',
+        'transcription_date_long' => 'התמלול פורסם',
+        'transcription_date_short' => 'תמלול',
+    ],
     'labels' => [
         'authors' => 'מתמללים',
         'breadcrumbs' => 'פירורי לחם',

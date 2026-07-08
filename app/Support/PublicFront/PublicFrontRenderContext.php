@@ -79,6 +79,14 @@ class PublicFrontRenderContext
     /**
      * @return array<string, mixed>
      */
+    public function itemPage(): array
+    {
+        return $this->group('item_page');
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
     public function menu(): array
     {
         return $this->group('menu_config');

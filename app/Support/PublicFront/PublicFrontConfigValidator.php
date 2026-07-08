@@ -7,6 +7,7 @@ use App\Support\PublicContent\PublicTranscriptionPolicy;
 use App\Support\PublicFront\About\PublicAboutPageRegistry;
 use App\Support\PublicFront\Cards\PublicFrontCardTemplateRegistry;
 use App\Support\PublicFront\Forms\PublicFormDefinitionRegistry;
+use App\Support\PublicFront\ItemPage\PublicItemPageRegistry;
 
 class PublicFrontConfigValidator
 {
@@ -37,6 +38,7 @@ class PublicFrontConfigValidator
                 'route_labels' => $this->normalizeRouteLabels($value, $invalidConfig),
                 'display_defaults' => $this->normalizeDisplayDefaults($value, $defaults['display_defaults'], $invalidConfig),
                 'transcription_policy' => $this->normalizeTranscriptionPolicy($value, $defaults['transcription_policy'], $invalidConfig),
+                'item_page' => $this->normalizeItemPage($value, $defaults['item_page'], $invalidConfig),
                 'podcasts_page' => $this->normalizePodcastsPage($value, $defaults['podcasts_page'], $invalidConfig),
                 'contributors_page' => $this->normalizeContributorsPage($value, $defaults['contributors_page'], $invalidConfig),
             };
@@ -1304,6 +1306,217 @@ class PublicFrontConfigValidator
             'title_size' => $this->finiteString($displayDefaults['title_size'] ?? null, PublicFrontConfigRegistry::titleSizes(), 'display_defaults.title_size', $invalidConfig, $defaults['title_size']),
             'page_size' => $this->integerRange($displayDefaults['page_size'] ?? null, 'display_defaults.page_size', 1, 48, $defaults['page_size'], $invalidConfig),
             'transcription_display' => $this->finiteString($displayDefaults['transcription_display'] ?? null, PublicFrontConfigRegistry::transcriptionDisplayModes(), 'display_defaults.transcription_display', $invalidConfig, $defaults['transcription_display'] ?? 'effective_plus_count'),
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $itemPage
+     * @param  array<string, mixed>  $defaults
+     * @param  array<PublicFrontInvalidConfig>  $invalidConfig
+     * @return array<string, mixed>
+     */
+    private function normalizeItemPage(array $itemPage, array $defaults, array &$invalidConfig): array
+    {
+        $this->reportUnknownKeys($itemPage, ['dates', 'badges'], 'item_page', $invalidConfig);
+
+        return [
+            'dates' => $this->normalizeItemPageDates($itemPage['dates'] ?? [], $defaults['dates'], $invalidConfig),
+            'badges' => $this->normalizeItemPageBadges($itemPage['badges'] ?? [], $defaults['badges'], $invalidConfig),
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $defaults
+     * @param  array<PublicFrontInvalidConfig>  $invalidConfig
+     * @return array<string, mixed>
+     */
+    private function normalizeItemPageDates(mixed $dates, array $defaults, array &$invalidConfig): array
+    {
+        if ($dates === null || $dates === []) {
+            return $defaults;
+        }
+
+        if (! is_array($dates)) {
+            $invalidConfig[] = PublicFrontInvalidConfig::make('item_page.dates', 'expected_array', $dates);
+
+            return $defaults;
+        }
+
+        $this->reportUnknownKeys($dates, [
+            'display',
+            'site_published',
+            'original_published',
+            'transcription_date',
+        ], 'item_page.dates', $invalidConfig);
+
+        return [
+            'display' => $this->finiteString(
+                $dates['display'] ?? null,
+                PublicItemPageRegistry::dateDisplays(),
+                'item_page.dates.display',
+                $invalidConfig,
+                $defaults['display'] ?? 'both',
+            ),
+            'site_published' => $this->normalizeItemPageDateConfig(
+                $dates['site_published'] ?? [],
+                $defaults['site_published'],
+                'item_page.dates.site_published',
+                $invalidConfig,
+            ),
+            'original_published' => $this->normalizeItemPageDateConfig(
+                $dates['original_published'] ?? [],
+                $defaults['original_published'],
+                'item_page.dates.original_published',
+                $invalidConfig,
+            ),
+            'transcription_date' => $this->normalizeItemPageDateConfig(
+                $dates['transcription_date'] ?? [],
+                $defaults['transcription_date'],
+                'item_page.dates.transcription_date',
+                $invalidConfig,
+                withEnabled: true,
+            ),
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $defaults
+     * @param  array<PublicFrontInvalidConfig>  $invalidConfig
+     * @return array<string, mixed>
+     */
+    private function normalizeItemPageDateConfig(mixed $config, array $defaults, string $path, array &$invalidConfig, bool $withEnabled = false): array
+    {
+        if ($config === null || $config === []) {
+            return $defaults;
+        }
+
+        if (! is_array($config)) {
+            $invalidConfig[] = PublicFrontInvalidConfig::make($path, 'expected_array', $config);
+
+            return $defaults;
+        }
+
+        $allowedKeys = ['label_mode', 'label_override', 'icon', 'icon_position'];
+
+        if ($withEnabled) {
+            $allowedKeys[] = 'enabled';
+        }
+
+        $this->reportUnknownKeys($config, $allowedKeys, $path, $invalidConfig);
+
+        $iconPosition = array_key_exists('icon_position', $config)
+            ? $this->iconPosition($config['icon_position'], "{$path}.icon_position", $invalidConfig)
+            : ($defaults['icon_position'] ?? 'inline_before');
+
+        $normalized = [
+            'label_mode' => $this->finiteString(
+                $config['label_mode'] ?? null,
+                PublicItemPageRegistry::labelModes(),
+                "{$path}.label_mode",
+                $invalidConfig,
+                $defaults['label_mode'] ?? 'short',
+            ),
+            'label_override' => $this->plainString(
+                $config['label_override'] ?? null,
+                "{$path}.label_override",
+                $invalidConfig,
+                maxLength: 80,
+                nullable: true,
+            ),
+            'icon' => $this->finiteString(
+                $config['icon'] ?? null,
+                PublicFrontCardTemplateRegistry::icons(),
+                "{$path}.icon",
+                $invalidConfig,
+                $defaults['icon'] ?? 'calendar',
+            ),
+            'icon_position' => $iconPosition ?? ($defaults['icon_position'] ?? 'inline_before'),
+        ];
+
+        if ($withEnabled) {
+            $normalized = [
+                'enabled' => $this->boolean(
+                    $config['enabled'] ?? null,
+                    "{$path}.enabled",
+                    (bool) ($defaults['enabled'] ?? true),
+                    $invalidConfig,
+                ),
+                ...$normalized,
+            ];
+        }
+
+        return $normalized;
+    }
+
+    /**
+     * @param  array<string, mixed>  $defaults
+     * @param  array<PublicFrontInvalidConfig>  $invalidConfig
+     * @return array<string, mixed>
+     */
+    private function normalizeItemPageBadges(mixed $badges, array $defaults, array &$invalidConfig): array
+    {
+        if ($badges === null || $badges === []) {
+            return $defaults;
+        }
+
+        if (! is_array($badges)) {
+            $invalidConfig[] = PublicFrontInvalidConfig::make('item_page.badges', 'expected_array', $badges);
+
+            return $defaults;
+        }
+
+        $this->reportUnknownKeys($badges, ['info'], 'item_page.badges', $invalidConfig);
+
+        return [
+            'info' => $this->normalizeItemPageInfoBadge(
+                $badges['info'] ?? [],
+                $defaults['info'],
+                'item_page.badges.info',
+                $invalidConfig,
+            ),
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $defaults
+     * @param  array<PublicFrontInvalidConfig>  $invalidConfig
+     * @return array{size: string, color: string}
+     */
+    private function normalizeItemPageInfoBadge(mixed $badge, array $defaults, string $path, array &$invalidConfig): array
+    {
+        if ($badge === null || $badge === []) {
+            return [
+                'size' => $defaults['size'] ?? 'sm',
+                'color' => $defaults['color'] ?? 'gray',
+            ];
+        }
+
+        if (! is_array($badge)) {
+            $invalidConfig[] = PublicFrontInvalidConfig::make($path, 'expected_array', $badge);
+
+            return [
+                'size' => $defaults['size'] ?? 'sm',
+                'color' => $defaults['color'] ?? 'gray',
+            ];
+        }
+
+        $this->reportUnknownKeys($badge, ['size', 'color'], $path, $invalidConfig);
+
+        return [
+            'size' => $this->finiteString(
+                $badge['size'] ?? null,
+                PublicItemPageRegistry::badgeSizes(),
+                "{$path}.size",
+                $invalidConfig,
+                $defaults['size'] ?? 'sm',
+            ),
+            'color' => $this->finiteString(
+                $badge['color'] ?? null,
+                PublicItemPageRegistry::badgeColors(),
+                "{$path}.color",
+                $invalidConfig,
+                $defaults['color'] ?? 'gray',
+            ),
         ];
     }
 

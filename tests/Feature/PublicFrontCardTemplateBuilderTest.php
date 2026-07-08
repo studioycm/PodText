@@ -17,6 +17,7 @@ use App\Support\PublicFront\Cards\PublicFrontCardTemplateResolver;
 use App\Support\PublicFront\PublicFrontConfigReader;
 use App\Support\PublicFront\PublicFrontConfigValidator;
 use App\Support\PublicFront\PublicFrontRenderContext;
+use Carbon\CarbonImmutable;
 use Filament\Facades\Filament;
 use Filament\Forms\Components\Select;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -864,6 +865,80 @@ it('renders m5 labels icons and grouped parts on content item cards', function (
             'Inline group first',
             'Grid group first',
             'Grid group second',
+        ]);
+});
+
+it('renders site and original publication dates as content item card template parts', function (): void {
+    $item = createStep3PublicItem([
+        'title' => 'IP1 Date Card Episode',
+        'published_at' => CarbonImmutable::parse('2026-02-01 22:30:00', 'UTC'),
+        'original_published_at' => CarbonImmutable::parse('2026-01-14 22:30:00', 'UTC'),
+    ]);
+
+    saveStep3PublicFrontConfig([
+        'card_templates' => [
+            makeStep10rB2ContentItemTemplate('ip1_item_dates', [
+                [
+                    'type' => 'title',
+                    'source' => 'content_item',
+                    'attribute' => 'title',
+                    'visible' => true,
+                    'order' => 10,
+                    'url_target' => 'self',
+                ],
+                [
+                    'type' => 'metadata_row',
+                    'source' => 'content_item',
+                    'attribute' => 'site_published_date',
+                    'label' => 'Published on site label',
+                    'label_position' => 'inline_before',
+                    'icon' => 'calendar',
+                    'icon_position' => 'inline_before',
+                    'visible' => true,
+                    'order' => 20,
+                ],
+                [
+                    'type' => 'metadata_row',
+                    'source' => 'content_item',
+                    'attribute' => 'original_published_date',
+                    'label' => 'Original publication label',
+                    'label_position' => 'inline_before',
+                    'icon' => 'calendar',
+                    'icon_position' => 'inline_before',
+                    'visible' => true,
+                    'order' => 30,
+                ],
+            ]),
+        ],
+    ]);
+
+    HomepageSection::factory()->create([
+        'name' => 'IP1 Dates',
+        'type' => HomepageSectionType::Latest,
+        'source_config' => ['source_type' => 'manual_content_items'],
+        'selection_config' => ['include_ids' => [$item->id]],
+        'display_config' => [
+            'template_family' => 'content_item',
+            'template_key' => 'ip1_item_dates',
+        ],
+    ]);
+
+    $this->get('/')
+        ->assertSuccessful()
+        ->assertSee('data-card-template-key="ip1_item_dates"', false)
+        ->assertSee('data-card-part-attribute="site_published_date"', false)
+        ->assertSee('data-card-part-attribute="original_published_date"', false)
+        ->assertSee('data-card-part-icon="calendar"', false)
+        ->assertSee('Published on site label')
+        ->assertSee('Original publication label')
+        ->assertSee('02/02/2026')
+        ->assertSee('15/01/2026')
+        ->assertSeeInOrder([
+            'IP1 Date Card Episode',
+            'Published on site label',
+            '02/02/2026',
+            'Original publication label',
+            '15/01/2026',
         ]);
 });
 

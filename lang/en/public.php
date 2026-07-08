@@ -77,6 +77,14 @@ return [
         'success' => 'Thank you. Your submission was received.',
         'unavailable' => 'This form is not available.',
     ],
+    'dates' => [
+        'original_published_long' => 'Originally published',
+        'original_published_short' => 'Original',
+        'site_published_long' => 'Published on site',
+        'site_published_short' => 'Site published',
+        'transcription_date_long' => 'Transcription published',
+        'transcription_date_short' => 'Transcript',
+    ],
     'labels' => [
         'authors' => 'Authors',
         'breadcrumbs' => 'Breadcrumbs',

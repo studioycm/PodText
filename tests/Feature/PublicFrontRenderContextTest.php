@@ -31,6 +31,7 @@ it('exposes normalized public front settings groups', function (): void {
             'density' => 'comfortable',
             'page_size' => 12,
         ])
+        ->and($context->itemPage())->toHaveKey('dates')
         ->and($context->menu())->toHaveKey('items')
         ->and($context->aboutPage())->toHaveKey('blocks')
         ->and($context->publicForms())->toHaveKey('definitions')

@@ -100,6 +100,8 @@ class PublicFrontCardTemplateRegistry
                 'effective_date',
                 'effective_transcription_title',
                 'original_published_at',
+                'original_published_date',
+                'site_published_date',
                 'read_time',
                 'reading_time',
                 'transcribers',

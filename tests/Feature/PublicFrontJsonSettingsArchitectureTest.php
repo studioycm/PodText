@@ -45,6 +45,11 @@ it('merges nested stored config arrays with defaults', function (): void {
         'display_defaults' => [
             'layout' => 'rows',
         ],
+        'item_page' => [
+            'dates' => [
+                'display' => 'site',
+            ],
+        ],
         'menu_config' => [
             'enabled' => true,
         ],
@@ -61,11 +66,105 @@ it('merges nested stored config arrays with defaults', function (): void {
         'title_size' => 'base',
         'page_size' => 12,
     ])->and($menuConfig['enabled'])->toBeTrue()
+        ->and($result->group('item_page')['dates'])->toMatchArray([
+            'display' => 'site',
+            'site_published' => [
+                'label_mode' => 'long',
+                'label_override' => null,
+                'icon' => 'calendar',
+                'icon_position' => 'inline_before',
+            ],
+            'original_published' => [
+                'label_mode' => 'short',
+                'label_override' => null,
+                'icon' => 'calendar',
+                'icon_position' => 'inline_before',
+            ],
+        ])
         ->and($menuConfig['items'])->not->toBeEmpty()
         ->and($menuConfig['theme_selector'])->toMatchArray([
             'enabled' => true,
             'mode' => 'light_dark_system',
         ]);
+});
+
+it('creates item page settings defaults through the settings migration', function (): void {
+    $settings = app(PublicContentSettings::class);
+
+    expect(DB::table('settings')
+        ->where('group', PublicContentSettings::group())
+        ->where('name', 'item_page')
+        ->exists())->toBeTrue()
+        ->and($settings->item_page)->toMatchArray(PublicFrontConfigRegistry::defaults()['item_page']);
+});
+
+it('normalizes item page date and badge settings safely', function (): void {
+    $result = app(PublicFrontConfigValidator::class)->validate([
+        'item_page' => [
+            'dates' => [
+                'display' => 'p-4 text-red-500',
+                'raw_classes' => 'gap-4',
+                'site_published' => [
+                    'label_mode' => 'verbose',
+                    'label_override' => '<script>alert(1)</script>',
+                    'icon' => 'heroicon-o-calendar',
+                    'icon_position' => 'before',
+                    'raw_classes' => 'text-red-500',
+                ],
+                'original_published' => 'bad-value',
+                'transcription_date' => [
+                    'enabled' => 'yes',
+                    'label_mode' => 'hidden',
+                    'icon' => 'document',
+                    'icon_position' => 'after',
+                ],
+            ],
+            'badges' => [
+                'info' => [
+                    'size' => 'xl',
+                    'color' => '#fff',
+                    'class' => 'bg-red-500',
+                ],
+            ],
+        ],
+    ]);
+
+    $itemPage = $result->group('item_page');
+    $paths = collect($result->invalidConfig())
+        ->map(fn ($invalidConfig): string => $invalidConfig->path)
+        ->all();
+
+    expect($itemPage['dates']['display'])->toBe('both')
+        ->and($itemPage['dates']['site_published'])->toMatchArray([
+            'label_mode' => 'long',
+            'label_override' => null,
+            'icon' => 'calendar',
+            'icon_position' => 'inline_before',
+        ])
+        ->and($itemPage['dates']['original_published'])->toMatchArray(
+            PublicFrontConfigRegistry::defaults()['item_page']['dates']['original_published'],
+        )
+        ->and($itemPage['dates']['transcription_date'])->toMatchArray([
+            'enabled' => true,
+            'label_mode' => 'hidden',
+            'icon' => 'document',
+            'icon_position' => 'inline_after',
+        ])
+        ->and($itemPage['badges']['info'])->toMatchArray([
+            'size' => 'sm',
+            'color' => 'gray',
+        ])
+        ->and($paths)->toContain('item_page.dates.display')
+        ->and($paths)->toContain('item_page.dates.raw_classes')
+        ->and($paths)->toContain('item_page.dates.site_published.label_mode')
+        ->and($paths)->toContain('item_page.dates.site_published.label_override')
+        ->and($paths)->toContain('item_page.dates.site_published.icon')
+        ->and($paths)->toContain('item_page.dates.site_published.raw_classes')
+        ->and($paths)->toContain('item_page.dates.original_published')
+        ->and($paths)->toContain('item_page.dates.transcription_date.enabled')
+        ->and($paths)->toContain('item_page.badges.info.size')
+        ->and($paths)->toContain('item_page.badges.info.color')
+        ->and($paths)->toContain('item_page.badges.info.class');
 });
 
 it('reports unknown top level and nested keys safely', function (): void {
@@ -170,6 +269,22 @@ it('saves sanitized public front config through the settings page while preservi
         ->set('data.display_defaults.image_size', 'large')
         ->set('data.display_defaults.title_size', 'lg')
         ->set('data.display_defaults.page_size', 16)
+        ->set('data.item_page.dates.display', 'both')
+        ->set('data.item_page.dates.site_published.label_mode', 'long')
+        ->set('data.item_page.dates.site_published.label_override', 'Published here')
+        ->set('data.item_page.dates.site_published.icon', 'calendar')
+        ->set('data.item_page.dates.site_published.icon_position', 'inline_after')
+        ->set('data.item_page.dates.original_published.label_mode', 'short')
+        ->set('data.item_page.dates.original_published.label_override', null)
+        ->set('data.item_page.dates.original_published.icon', 'calendar')
+        ->set('data.item_page.dates.original_published.icon_position', 'inline_before')
+        ->set('data.item_page.dates.transcription_date.enabled', true)
+        ->set('data.item_page.dates.transcription_date.label_mode', 'hidden')
+        ->set('data.item_page.dates.transcription_date.label_override', null)
+        ->set('data.item_page.dates.transcription_date.icon', 'document')
+        ->set('data.item_page.dates.transcription_date.icon_position', 'hidden')
+        ->set('data.item_page.badges.info.size', 'md')
+        ->set('data.item_page.badges.info.color', 'primary')
         ->set('data.route_labels', [
             [
                 'route_key' => 'podcasts',
@@ -198,6 +313,35 @@ it('saves sanitized public front config through the settings page while preservi
         'title_size' => 'lg',
         'page_size' => 16,
         'transcription_display' => 'effective_plus_count',
+    ])->and($config->group('item_page'))->toMatchArray([
+        'dates' => [
+            'display' => 'both',
+            'site_published' => [
+                'label_mode' => 'long',
+                'label_override' => 'Published here',
+                'icon' => 'calendar',
+                'icon_position' => 'inline_after',
+            ],
+            'original_published' => [
+                'label_mode' => 'short',
+                'label_override' => null,
+                'icon' => 'calendar',
+                'icon_position' => 'inline_before',
+            ],
+            'transcription_date' => [
+                'enabled' => true,
+                'label_mode' => 'hidden',
+                'label_override' => null,
+                'icon' => 'document',
+                'icon_position' => 'hidden',
+            ],
+        ],
+        'badges' => [
+            'info' => [
+                'size' => 'md',
+                'color' => 'primary',
+            ],
+        ],
     ])->and($config->group('route_labels'))->toBe([
         [
             'route_key' => 'podcasts',
@@ -221,4 +365,23 @@ it('does not introduce settings only models', function (): void {
         ->and(class_exists('App\\Models\\PublicFormDefinition'))->toBeFalse()
         ->and(class_exists('App\\Models\\PublicDisplaySection'))->toBeFalse()
         ->and(class_exists('App\\Models\\PublicLooper'))->toBeFalse();
+});
+
+it('has translated item page date labels in both locales', function (): void {
+    foreach (['en', 'he'] as $locale) {
+        app()->setLocale($locale);
+
+        foreach ([
+            'site_published_long',
+            'site_published_short',
+            'original_published_long',
+            'original_published_short',
+            'transcription_date_long',
+            'transcription_date_short',
+        ] as $key) {
+            expect(__("public.dates.{$key}"))->not->toBe("public.dates.{$key}");
+        }
+    }
+
+    app()->setLocale(config('app.locale'));
 });

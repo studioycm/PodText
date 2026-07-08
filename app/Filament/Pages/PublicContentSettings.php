@@ -7,6 +7,7 @@ use App\Support\PublicContent\PublicTranscriptionPolicy;
 use App\Support\PublicFront\About\PublicAboutPageRegistry;
 use App\Support\PublicFront\Cards\PublicFrontCardTemplateRegistry;
 use App\Support\PublicFront\Cards\PublicFrontCardTemplateResolver;
+use App\Support\PublicFront\ItemPage\PublicItemPageRegistry;
 use App\Support\PublicFront\PublicFrontConfigReader;
 use App\Support\PublicFront\PublicFrontConfigRegistry;
 use App\Support\PublicFront\PublicFrontConfigValidator;
@@ -118,16 +119,6 @@ class PublicContentSettings extends SettingsPage
                                             ->options([
                                                 'cards' => __('admin.layouts.cards'),
                                                 'rows' => __('admin.layouts.rows'),
-                                            ])
-                                            ->required(),
-                                        Select::make('item_page_layout')
-                                            ->label(__('admin.fields.item_page_layout'))
-                                            ->helperText(__('admin.helpers.item_page_layout'))
-                                            ->options([
-                                                'standard' => __('admin.layouts.standard'),
-                                                'default' => __('admin.layouts.default'),
-                                                'media_first' => __('admin.layouts.media_first'),
-                                                'transcript_first' => __('admin.layouts.transcript_first'),
                                             ])
                                             ->required(),
                                     ])
@@ -320,6 +311,66 @@ class PublicContentSettings extends SettingsPage
                                             ->helperText(__('admin.helpers.public_transcription_policy_show_multiple_transcriptions_on_item_page')),
                                     ])
                                     ->columns(3)
+                                    ->collapsible()
+                                    ->columnSpanFull(),
+                            ]),
+                        Tab::make(__('admin.tabs.public_content_settings.item_page'))
+                            ->id('item-page')
+                            ->key('public-settings-tab-item-page')
+                            ->schema([
+                                Section::make(__('admin.sections.public_front_item_page_layout'))
+                                    ->description(__('admin.descriptions.public_front_item_page_layout'))
+                                    ->schema([
+                                        Select::make('item_page_layout')
+                                            ->label(__('admin.fields.item_page_layout'))
+                                            ->helperText(__('admin.helpers.item_page_layout'))
+                                            ->options([
+                                                'standard' => __('admin.layouts.standard'),
+                                                'default' => __('admin.layouts.default'),
+                                                'media_first' => __('admin.layouts.media_first'),
+                                                'transcript_first' => __('admin.layouts.transcript_first'),
+                                            ])
+                                            ->required(),
+                                    ])
+                                    ->columns(3)
+                                    ->collapsible()
+                                    ->columnSpanFull(),
+                                Section::make(__('admin.sections.public_front_item_page_dates'))
+                                    ->description(__('admin.descriptions.public_front_item_page_dates'))
+                                    ->schema([
+                                        Select::make('item_page.dates.display')
+                                            ->label(__('admin.fields.item_page_dates_display'))
+                                            ->helperText(__('admin.helpers.item_page_dates_display'))
+                                            ->options(fn (): array => PublicItemPageRegistry::dateDisplayOptions())
+                                            ->default('both')
+                                            ->native(false)
+                                            ->required(),
+                                        $this->itemPageDateFieldset('site_published', 'item_page_site_published_date'),
+                                        $this->itemPageDateFieldset('original_published', 'item_page_original_published_date'),
+                                        $this->itemPageDateFieldset('transcription_date', 'item_page_transcription_date', withEnabled: true),
+                                    ])
+                                    ->columns(1)
+                                    ->collapsible()
+                                    ->columnSpanFull(),
+                                Section::make(__('admin.sections.public_front_item_page_badges'))
+                                    ->description(__('admin.descriptions.public_front_item_page_badges'))
+                                    ->schema([
+                                        Select::make('item_page.badges.info.size')
+                                            ->label(__('admin.fields.item_page_info_badge_size'))
+                                            ->helperText(__('admin.helpers.item_page_info_badge_size'))
+                                            ->options(fn (): array => PublicItemPageRegistry::badgeSizeOptions())
+                                            ->default('sm')
+                                            ->native(false)
+                                            ->required(),
+                                        Select::make('item_page.badges.info.color')
+                                            ->label(__('admin.fields.item_page_info_badge_color'))
+                                            ->helperText(__('admin.helpers.item_page_info_badge_color'))
+                                            ->options(fn (): array => PublicItemPageRegistry::badgeColorOptions())
+                                            ->default('gray')
+                                            ->native(false)
+                                            ->required(),
+                                    ])
+                                    ->columns(2)
                                     ->collapsible()
                                     ->columnSpanFull(),
                             ]),
@@ -1419,6 +1470,48 @@ class PublicContentSettings extends SettingsPage
                     ])
                     ->columnSpanFull(),
             ]);
+    }
+
+    private function itemPageDateFieldset(string $dateKey, string $sectionKey, bool $withEnabled = false): Fieldset
+    {
+        $statePath = "item_page.dates.{$dateKey}";
+
+        return Fieldset::make(__("admin.sections.{$sectionKey}"))
+            ->schema([
+                ...($withEnabled ? [
+                    Toggle::make("{$statePath}.enabled")
+                        ->label(__('admin.fields.item_page_transcription_date_enabled'))
+                        ->helperText(__('admin.helpers.item_page_transcription_date_enabled'))
+                        ->default(true),
+                ] : []),
+                Select::make("{$statePath}.label_mode")
+                    ->label(__('admin.fields.item_page_date_label_mode'))
+                    ->helperText(__('admin.helpers.item_page_date_label_mode'))
+                    ->options(fn (): array => PublicItemPageRegistry::labelModeOptions())
+                    ->default($dateKey === 'site_published' ? 'long' : 'short')
+                    ->native(false)
+                    ->required(),
+                TextInput::make("{$statePath}.label_override")
+                    ->label(__('admin.fields.item_page_date_label_override'))
+                    ->helperText(__('admin.helpers.item_page_date_label_override'))
+                    ->maxLength(80),
+                Select::make("{$statePath}.icon")
+                    ->label(__('admin.fields.item_page_date_icon'))
+                    ->helperText(__('admin.helpers.item_page_date_icon'))
+                    ->options(fn (): array => PublicFrontCardTemplateRegistry::iconOptions())
+                    ->default($dateKey === 'transcription_date' ? 'document' : 'calendar')
+                    ->native(false)
+                    ->required(),
+                Select::make("{$statePath}.icon_position")
+                    ->label(__('admin.fields.item_page_date_icon_position'))
+                    ->helperText(__('admin.helpers.item_page_date_icon_position'))
+                    ->options(fn (): array => PublicFrontCardTemplateRegistry::iconPositionOptions())
+                    ->default('inline_before')
+                    ->native(false)
+                    ->required(),
+            ])
+            ->columns(3)
+            ->columnSpanFull();
     }
 
     /**

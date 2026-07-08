@@ -87,6 +87,7 @@ class PublicContentItemCardPresenter
         ], panel: 'public');
         $effectiveTranscription = $this->selectedTranscription($item, $contributorContext);
         $effectiveDate = $effectiveTranscription?->published_at?->timezone('Asia/Jerusalem')->format('d/m/Y');
+        $sitePublishedDate = $item->published_at?->timezone('Asia/Jerusalem')->format('d/m/Y');
         $originalDate = $item->original_published_at?->timezone('Asia/Jerusalem')->format('d/m/Y');
         $duration = $this->duration($item->duration_seconds);
         $groupCoverUrl = $item->contentGroup->cover_path
@@ -125,6 +126,7 @@ class PublicContentItemCardPresenter
             'tags' => $tags,
             'duration' => $duration,
             'effective_date' => $effectiveDate,
+            'site_published_date' => $sitePublishedDate,
             'original_date' => $originalDate,
             'public_transcriptions_count' => $publicTranscriptionsCount,
             'public_transcriptions_count_label' => trans_choice('public.labels.public_transcriptions_count', $publicTranscriptionsCount, ['count' => $publicTranscriptionsCount]),
@@ -506,6 +508,8 @@ class PublicContentItemCardPresenter
             'test' => match ($key) {
                 'content_item.duration' => 'duration',
                 'content_item.effective_date', 'transcription.published_at' => 'effective-date',
+                'content_item.site_published_date' => 'site-published-date',
+                'content_item.original_published_at', 'content_item.original_published_date' => 'original-published-date',
                 default => 'card-metadata',
             },
         ];
@@ -522,7 +526,8 @@ class PublicContentItemCardPresenter
             'content_item.duration' => $data['duration'],
             'content_item.effective_date' => $data['effective_date'],
             'content_item.effective_transcription_title' => $data['transcription']['title'],
-            'content_item.original_published_at' => $data['original_date'],
+            'content_item.original_published_at', 'content_item.original_published_date' => $data['original_date'],
+            'content_item.site_published_date' => $data['site_published_date'],
             'content_item.read_time', 'content_item.reading_time' => $data['transcription']['read_time'],
             'content_item.transcribers' => collect($data['transcribers'])->pluck('label')->join(', '),
             'content_item.transcription_count' => $data['public_transcriptions_count_label'],

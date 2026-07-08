@@ -9,6 +9,7 @@ use App\Support\PublicContent\PublicTranscriptionPolicy;
 use App\Support\PublicFront\About\PublicAboutPageRegistry;
 use App\Support\PublicFront\Cards\PublicFrontCardTemplateRegistry;
 use App\Support\PublicFront\Forms\PublicFormDefinitionRegistry;
+use App\Support\PublicFront\ItemPage\PublicItemPageRegistry;
 use App\Support\PublicFront\Menu\PublicRouteRegistry;
 
 class PublicFrontConfigRegistry
@@ -26,6 +27,7 @@ class PublicFrontConfigRegistry
             'route_labels',
             'display_defaults',
             'transcription_policy',
+            'item_page',
             'podcasts_page',
             'contributors_page',
         ];
@@ -100,6 +102,36 @@ class PublicFrontConfigRegistry
                 'transcription_display' => 'effective_plus_count',
             ],
             'transcription_policy' => PublicTranscriptionPolicy::defaults(),
+            'item_page' => [
+                'dates' => [
+                    'display' => 'both',
+                    'site_published' => [
+                        'label_mode' => 'long',
+                        'label_override' => null,
+                        'icon' => 'calendar',
+                        'icon_position' => 'inline_before',
+                    ],
+                    'original_published' => [
+                        'label_mode' => 'short',
+                        'label_override' => null,
+                        'icon' => 'calendar',
+                        'icon_position' => 'inline_before',
+                    ],
+                    'transcription_date' => [
+                        'enabled' => true,
+                        'label_mode' => 'short',
+                        'label_override' => null,
+                        'icon' => 'document',
+                        'icon_position' => 'inline_before',
+                    ],
+                ],
+                'badges' => [
+                    'info' => [
+                        'size' => PublicItemPageRegistry::badgeSizes()[1],
+                        'color' => PublicItemPageRegistry::badgeColors()[0],
+                    ],
+                ],
+            ],
             'podcasts_page' => [
                 'enabled' => true,
                 'title' => __('public.pages.podcasts.title'),
@@ -214,6 +246,7 @@ class PublicFrontConfigRegistry
             'route_labels' => 'routeLabels',
             'display_defaults' => 'displayDefaults',
             'transcription_policy' => 'transcriptionPolicy',
+            'item_page' => 'itemPage',
             'podcasts_page' => 'podcastsPage',
             'contributors_page' => 'contributorsPage',
         ];

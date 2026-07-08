@@ -66,6 +66,8 @@ class PublicContentSettings extends Settings
 
     public array $transcription_policy;
 
+    public array $item_page;
+
     public array $podcasts_page;
 
     public array $contributors_page;

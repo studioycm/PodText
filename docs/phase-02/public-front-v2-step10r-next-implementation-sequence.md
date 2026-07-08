@@ -35,4 +35,4 @@ This file records the active continuation-runner order after Step 10R-HF1. The c
 
 ## Current Recommendation
 
-Continue with Step 10R-IP1. Step 10R-M5 is complete, so the next run should add the episode-page settings foundation, date settings, info-badge tokens, and card-side date attributes before IP2/IP3 and M6.
+Continue with Step 10R-IP2 after IP1 review. Step 10R-IP1 adds the episode-page settings foundation, date settings, info-badge tokens, and card-side date attributes; IP2 should consume those settings to rebuild the public episode page header and info line.
