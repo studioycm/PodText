@@ -664,7 +664,7 @@ class PublicContentItemCardPresenter
             'metadata_row', 'date_read_time', 'transcriber_line' => 'flex flex-wrap gap-2 text-xs text-gray-600 dark:text-gray-300',
             'taxonomy' => 'flex flex-wrap gap-2',
             'action_link' => 'pt-1',
-            'part_group' => 'min-w-0',
+            'part_group' => 'w-full',
             'divider' => 'border-t border-gray-200 dark:border-gray-800',
             'spacer' => 'h-2',
             default => 'min-w-0',
@@ -691,9 +691,9 @@ class PublicContentItemCardPresenter
         };
 
         return match ($part->layout) {
-            'stacked' => trim("flex flex-col {$gap} {$items}"),
-            'grid' => trim('grid '.$this->groupColumnClass($part->columns).' '.$gap.' '.$justify),
-            default => trim("flex flex-wrap items-center {$gap} {$justify}"),
+            'stacked' => trim("flex w-full flex-col {$gap} {$items}"),
+            'grid' => trim('grid w-full '.$this->groupColumnClass($part->columns).' '.$gap.' '.$justify),
+            default => trim("flex w-full flex-wrap items-center {$gap} {$justify}"),
         };
     }
 

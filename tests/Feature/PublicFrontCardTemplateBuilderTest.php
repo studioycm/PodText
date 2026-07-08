@@ -745,6 +745,7 @@ it('renders m5 labels icons and grouped parts on content item cards', function (
                     'text' => 'Inline after value',
                     'label' => 'Inline after label',
                     'label_position' => 'inline_after',
+                    'label_alignment' => 'between',
                     'icon' => 'arrow_right',
                     'icon_position' => 'inline_after',
                     'visible' => true,
@@ -766,7 +767,7 @@ it('renders m5 labels icons and grouped parts on content item cards', function (
                     'type' => 'part_group',
                     'layout' => 'inline',
                     'gap' => 'compact',
-                    'alignment' => 'center',
+                    'alignment' => 'between',
                     'visible' => true,
                     'order' => 60,
                     'children' => [
@@ -843,16 +844,20 @@ it('renders m5 labels icons and grouped parts on content item cards', function (
         ->assertSee('data-card-part-label-position="inline_before"', false)
         ->assertSee('data-card-part-label-position="inline_after"', false)
         ->assertSee('data-card-part-label-alignment="center"', false)
+        ->assertSee('data-card-part-label-alignment="between"', false)
         ->assertSee('data-card-part-icon="calendar"', false)
         ->assertSee('data-card-part-icon="clock"', false)
         ->assertSee('data-card-part-icon="sparkles"', false)
         ->assertSee('data-card-part-icon-position="inline_after"', false)
         ->assertSee('data-card-part-icon-graphic', false)
+        ->assertSee('class="flex min-w-0 w-full items-center gap-1.5 justify-between"', false)
         ->assertSee('data-card-part="part_group"', false)
         ->assertSee('data-card-part-group-layout="inline"', false)
         ->assertSee('data-card-part-group-layout="grid"', false)
         ->assertSee('data-card-part-group-columns="3"', false)
         ->assertSee('data-card-part-group-gap="spacious"', false)
+        ->assertSee('class="flex w-full flex-wrap items-center gap-1.5 justify-between"', false)
+        ->assertSee('class="grid w-full grid-cols-3 gap-4 justify-between"', false)
         ->assertSeeInOrder([
             'Above title label',
             'M5 Label Icon Episode',

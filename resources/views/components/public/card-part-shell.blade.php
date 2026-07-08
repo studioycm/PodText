@@ -41,7 +41,7 @@
         </span>
     @endif
 
-    <div class="flex min-w-0 items-center gap-1.5 {{ $inlineClass }}">
+    <div class="flex min-w-0 w-full items-center gap-1.5 {{ $inlineClass }}">
         @if($hasIcon && $iconPosition === 'inline_before')
             <x-filament::icon :icon="$icon" class="h-4 w-4 shrink-0 text-gray-500 dark:text-gray-400" data-card-part-icon-graphic />
         @endif
