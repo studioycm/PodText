@@ -4,7 +4,6 @@ namespace App\Livewire\Public;
 
 use App\Filament\Public\Pages\ShowContentGroup;
 use App\Filament\Public\Pages\ShowContentItem;
-use App\Models\Author;
 use App\Models\Category;
 use App\Models\ContentGroup;
 use App\Models\ContentItem;
@@ -12,6 +11,8 @@ use App\Models\ContentTag;
 use App\Models\HomepageSection;
 use App\Support\PublicContent\PublicContentCardOptions;
 use App\Support\PublicContent\PublicContentItemQueries;
+use App\Support\PublicContent\PublicContributorDiscovery;
+use App\Support\PublicContent\PublicTranscriptionSelector;
 use App\Support\PublicFront\Cards\PublicFrontCardTemplate;
 use App\Support\PublicFront\Cards\PublicFrontCardTemplateResolver;
 use App\Support\PublicFront\PublicFrontRenderContext;
@@ -326,11 +327,7 @@ class ContentItemSearch extends Component
      */
     public function transcriberOptions(): array
     {
-        return Author::query()
-            ->whereHas('authoredTranscriptions')
-            ->orderBy('name')
-            ->pluck('name', 'id')
-            ->all();
+        return PublicContributorDiscovery::transcriberOptions();
     }
 
     /**
@@ -518,9 +515,8 @@ class ContentItemSearch extends Component
         }
 
         if (filled($this->filterTranscriberId)) {
-            $query->whereHas('transcriptions', fn (Builder $query): Builder => $query
-                ->published()
-                ->whereHas('authors', fn (Builder $query): Builder => $query->whereKey($this->filterTranscriberId)));
+            app(PublicTranscriptionSelector::class)
+                ->whereContentItemHasTranscriber($query, (int) $this->filterTranscriberId);
         }
 
         if (filled($this->filterProvider)) {

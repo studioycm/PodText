@@ -134,6 +134,7 @@ it('loads public content settings defaults', function (): void {
             'public_forms' => $settings->public_forms,
             'route_labels' => $settings->route_labels,
             'display_defaults' => $settings->display_defaults,
+            'transcription_policy' => $settings->transcription_policy,
             'podcasts_page' => $settings->podcasts_page,
             'contributors_page' => $settings->contributors_page,
         ])->toMatchArray($publicFrontDefaults);

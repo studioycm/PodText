@@ -71,6 +71,14 @@ class PublicFrontRenderContext
     /**
      * @return array<string, mixed>
      */
+    public function transcriptionPolicy(): array
+    {
+        return $this->group('transcription_policy');
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
     public function menu(): array
     {
         return $this->group('menu_config');

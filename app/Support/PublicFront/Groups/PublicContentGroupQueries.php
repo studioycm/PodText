@@ -4,6 +4,7 @@ namespace App\Support\PublicFront\Groups;
 
 use App\Models\Category;
 use App\Models\ContentGroup;
+use App\Support\PublicContent\PublicTranscriptionAggregates;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 
@@ -17,7 +18,8 @@ class PublicContentGroupQueries
             ->with(['categories'])
             ->withCount([
                 'contentItems as public_content_items_count' => fn (Builder $query): Builder => $query->published(),
-            ]);
+            ])
+            ->addSelect(app(PublicTranscriptionAggregates::class)->contentGroupAggregateSelects());
     }
 
     public static function applySearch(Builder $query, string $search): Builder

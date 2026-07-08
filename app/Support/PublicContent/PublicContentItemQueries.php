@@ -11,16 +11,17 @@ class PublicContentItemQueries
 {
     public static function base(): Builder
     {
-        return ContentItem::query()
+        $query = ContentItem::query()
             ->published()
             ->with([
                 'categories',
                 'contentGroup.categories',
                 'enabledContentTags',
-                'featuredTranscription.authors',
-                'latestPublishedTranscription.authors',
             ])
+            ->addSelect(app(PublicTranscriptionAggregates::class)->contentItemAggregateSelects())
             ->withEffectiveTranscriptionPublishedAt();
+
+        return app(PublicTranscriptionSelector::class)->withPublicTranscriptionRelations($query);
     }
 
     public static function pinnedFirst(Builder $query): Builder

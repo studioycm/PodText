@@ -3,6 +3,7 @@
 namespace App\Support\PublicFront;
 
 use App\Enums\PublicMenuItemType;
+use App\Support\PublicContent\PublicTranscriptionPolicy;
 use App\Support\PublicFront\About\PublicAboutPageRegistry;
 use App\Support\PublicFront\Cards\PublicFrontCardTemplateRegistry;
 use App\Support\PublicFront\Forms\PublicFormDefinitionRegistry;
@@ -35,6 +36,7 @@ class PublicFrontConfigValidator
                 'public_forms' => $this->normalizePublicForms($value, $invalidConfig),
                 'route_labels' => $this->normalizeRouteLabels($value, $invalidConfig),
                 'display_defaults' => $this->normalizeDisplayDefaults($value, $defaults['display_defaults'], $invalidConfig),
+                'transcription_policy' => $this->normalizeTranscriptionPolicy($value, $defaults['transcription_policy'], $invalidConfig),
                 'podcasts_page' => $this->normalizePodcastsPage($value, $defaults['podcasts_page'], $invalidConfig),
                 'contributors_page' => $this->normalizeContributorsPage($value, $defaults['contributors_page'], $invalidConfig),
             };
@@ -1251,6 +1253,44 @@ class PublicFrontConfigValidator
             'image_radius' => $this->finiteString($displayDefaults['image_radius'] ?? null, PublicFrontConfigRegistry::imageRadii(), 'display_defaults.image_radius', $invalidConfig, $defaults['image_radius'] ?? 'mid_rounded'),
             'title_size' => $this->finiteString($displayDefaults['title_size'] ?? null, PublicFrontConfigRegistry::titleSizes(), 'display_defaults.title_size', $invalidConfig, $defaults['title_size']),
             'page_size' => $this->integerRange($displayDefaults['page_size'] ?? null, 'display_defaults.page_size', 1, 48, $defaults['page_size'], $invalidConfig),
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $policy
+     * @param  array<string, mixed>  $defaults
+     * @param  array<PublicFrontInvalidConfig>  $invalidConfig
+     * @return array<string, mixed>
+     */
+    private function normalizeTranscriptionPolicy(array $policy, array $defaults, array &$invalidConfig): array
+    {
+        $this->reportUnknownKeys($policy, [
+            'public_mode',
+            'count_mode',
+            'show_multiple_transcriptions_on_item_page',
+        ], 'transcription_policy', $invalidConfig);
+
+        return [
+            'public_mode' => $this->finiteString(
+                $policy['public_mode'] ?? null,
+                PublicTranscriptionPolicy::modes(),
+                'transcription_policy.public_mode',
+                $invalidConfig,
+                $defaults['public_mode'] ?? PublicTranscriptionPolicy::MODE_FEATURED_ONLY,
+            ),
+            'count_mode' => $this->finiteString(
+                $policy['count_mode'] ?? null,
+                PublicTranscriptionPolicy::modes(),
+                'transcription_policy.count_mode',
+                $invalidConfig,
+                $defaults['count_mode'] ?? PublicTranscriptionPolicy::MODE_FEATURED_ONLY,
+            ),
+            'show_multiple_transcriptions_on_item_page' => $this->boolean(
+                $policy['show_multiple_transcriptions_on_item_page'] ?? null,
+                'transcription_policy.show_multiple_transcriptions_on_item_page',
+                (bool) ($defaults['show_multiple_transcriptions_on_item_page'] ?? false),
+                $invalidConfig,
+            ),
         ];
     }
 

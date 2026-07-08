@@ -4,7 +4,6 @@ namespace App\Support\PublicContent;
 
 use App\Models\Author;
 use App\Models\ContentItem;
-use App\Models\Transcription;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Pagination\LengthAwarePaginator;
@@ -14,16 +13,15 @@ class PublicContributorDiscovery
 {
     public static function contributors(?string $search = null, string $sort = 'count_desc'): Builder
     {
+        $aggregates = app(PublicTranscriptionAggregates::class);
+
         $query = Author::query()
             ->select('authors.*')
             ->addSelect([
-                'public_transcriptions_count' => self::publicTranscriptionsCountQuery(),
-                'public_content_items_count' => self::publicContentItemsCountQuery(),
+                'public_transcriptions_count' => $aggregates->contributorTranscriptionsCountQuery(),
+                'public_content_items_count' => $aggregates->contributorContentItemsCountQuery(),
             ])
-            ->whereHas(
-                'transcriptions',
-                fn (Builder $query): Builder => self::publicTranscriptionConstraint($query),
-            );
+            ->whereExists($aggregates->contributorExistsQuery());
 
         $search = trim((string) $search);
 
@@ -90,17 +88,15 @@ class PublicContributorDiscovery
     {
         $authorId = $author instanceof Author ? $author->getKey() : $author;
         $search = trim((string) $search);
+        $aggregates = app(PublicTranscriptionAggregates::class);
 
         $query = PublicContentItemQueries::base()
-            ->whereHas('transcriptions', function (Builder $query) use ($authorId): Builder {
-                return $query
-                    ->published()
-                    ->where('author_id', $authorId);
-            })
+            ->tap(fn (Builder $query): Builder => $aggregates->whereContentItemHasContributor($query, (int) $authorId))
             ->with([
                 'transcriptions' => fn ($query) => $query
                     ->published()
-                    ->where('author_id', $authorId)
+                    ->whereHas('authors', fn (Builder $query): Builder => $query->whereKey($authorId))
+                    ->with('authors')
                     ->orderByDesc('published_at')
                     ->orderByDesc('id'),
             ]);
@@ -108,14 +104,11 @@ class PublicContributorDiscovery
         if ($search !== '') {
             $like = "%{$search}%";
 
-            $query->where(function (Builder $query) use ($authorId, $like): void {
+            $query->where(function (Builder $query) use ($aggregates, $authorId, $like): void {
                 $query
                     ->where('title', 'like', $like)
                     ->orWhereHas('contentGroup', fn (Builder $query): Builder => $query->where('title', 'like', $like))
-                    ->orWhereHas('transcriptions', fn (Builder $query): Builder => $query
-                        ->published()
-                        ->where('author_id', $authorId)
-                        ->where('title', 'like', $like));
+                    ->orWhere(fn (Builder $query): Builder => $aggregates->whereContentItemHasContributorTranscriptionTitle($query, (int) $authorId, $like));
             });
         }
 
@@ -157,28 +150,13 @@ class PublicContributorDiscovery
         );
     }
 
-    private static function publicTranscriptionConstraint(Builder $query): Builder
+    /**
+     * @return array<int, string>
+     */
+    public static function transcriberOptions(): array
     {
-        return $query
-            ->published()
-            ->whereHas('contentItem', fn (Builder $query): Builder => $query->published());
-    }
-
-    private static function publicTranscriptionsCountQuery(): Builder
-    {
-        return Transcription::query()
-            ->selectRaw('count(*)')
-            ->whereColumn('transcriptions.author_id', 'authors.id')
-            ->published()
-            ->whereHas('contentItem', fn (Builder $query): Builder => $query->published());
-    }
-
-    private static function publicContentItemsCountQuery(): Builder
-    {
-        return Transcription::query()
-            ->selectRaw('count(distinct content_item_id)')
-            ->whereColumn('transcriptions.author_id', 'authors.id')
-            ->published()
-            ->whereHas('contentItem', fn (Builder $query): Builder => $query->published());
+        return self::contributors(sort: 'name_asc')
+            ->pluck('name', 'id')
+            ->all();
     }
 }

@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use App\Settings\PublicContentSettings;
+use App\Support\PublicContent\PublicTranscriptionPolicy;
 use App\Support\PublicFront\PublicFrontRenderContext;
 use App\Support\PublicFront\PublicFrontRenderContextFactory;
 use Illuminate\Support\Facades\Event;
@@ -22,6 +23,13 @@ class AppServiceProvider extends ServiceProvider
                 ->make(PublicFrontRenderContextFactory::class)
                 ->make(),
         );
+
+        $this->app->scoped(
+            PublicTranscriptionPolicy::class,
+            fn (): PublicTranscriptionPolicy => PublicTranscriptionPolicy::fromContext(
+                $this->app->make(PublicFrontRenderContext::class),
+            ),
+        );
     }
 
     /**
@@ -35,6 +43,7 @@ class AppServiceProvider extends ServiceProvider
             }
 
             $this->app->forgetInstance(PublicFrontRenderContext::class);
+            $this->app->forgetInstance(PublicTranscriptionPolicy::class);
         });
     }
 }

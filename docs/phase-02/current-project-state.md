@@ -46,7 +46,7 @@ Recorded after the Markdown-only post-Prompt-10 prompt-progress centralization c
 - Public Front v2 Step 10R-B2 content item card part rendering is implemented and committed as `e3c81de feat: render content item card template parts`.
 - Public Front v2 Step 10R-B3 content group and contributor card part rendering is implemented and committed as `f712791 feat: render group and contributor card templates`.
 - Public Front v2 post-B3 contributor item card overflow follow-up is committed as `549b331 refactor: remove unused contributor transcription list component from grid layout`.
-- Public Front v2 post-B3 multi-transcriber/card-template continuation is active. Step 10R-M2 is complete in this commit after Step 10R-M1 completed as `800218a feat: add multi-transcriber relationship foundation`. Step 10R-M3 is the next mini-step, and Step 10R-B4 remains paused until Step 10R-M1 through Step 10R-M6 are complete.
+- Public Front v2 post-B3 multi-transcriber/card-template continuation is active. Step 10R-M2 is complete as `e813513 feat: replace episode authors with transcription transcribers` after Step 10R-M1 completed as `800218a feat: add multi-transcriber relationship foundation`. Step 10R-M3 is complete in this commit with public transcription policy/count aggregates. Step 10R-M4 is the next mini-step, and Step 10R-B4 remains paused until Step 10R-M1 through Step 10R-M6 are complete.
 
 ## Prompt Progress
 
@@ -86,7 +86,8 @@ Recorded after the Markdown-only post-Prompt-10 prompt-progress centralization c
 | Public Front v2 Step 10R-B2 content item card part renderer | Complete | `e3c81de feat: render content item card template parts` | Adds a controlled content item card presenter, makes supported content item template parts visibly render on homepage/search/category/tag and podcast detail item cards, and keeps group/contributor renderers deferred to Step 10R-B3. |
 | Public Front v2 Step 10R-B3 content group and contributor card renderers | Complete | `f712791 feat: render group and contributor card templates`; follow-up `549b331 refactor: remove unused contributor transcription list component from grid layout` | Adds controlled presenters for `content_group` and `contributor` cards so `/podcasts`, homepage group/contributor sections, contributor directory cards, and top-transcriber selector cards visibly honor safe card template parts. The follow-up removed the old contributor transcription list from contributor item grid cards to avoid overflow. |
 | Public Front v2 Step 10R-M1 multi-transcriber schema and model foundation | Complete | `800218a feat: add multi-transcriber relationship foundation` | Adds the `author_transcription` pivot and backfills it from `transcriptions.author_id`, adds ordered multi-transcriber relationships/helpers, preserves `transcriptions.author_id` compatibility/primary storage, and keeps first-transcription-auto-featured behavior intact. `author_content_item` remained for M2 and is removed by Step 10R-M2. |
-| Public Front v2 Step 10R-M2 episode-author removal and transcription transcriber conversion | Complete | this commit: `feat: replace episode authors with transcription transcribers` | Drops `author_content_item`, removes `ContentItem::authors()` and `Author::contentItems()`, converts admin transcription forms/actions plus import/export/public search/display paths to `Transcription::authors()`, and keeps `transcriptions.author_id` synchronized as compatibility primary storage. Next mini-step is Step 10R-M3 public transcription policy and aggregates. |
+| Public Front v2 Step 10R-M2 episode-author removal and transcription transcriber conversion | Complete | `e813513 feat: replace episode authors with transcription transcribers` | Drops `author_content_item`, removes `ContentItem::authors()` and `Author::contentItems()`, converts admin transcription forms/actions plus import/export/public search/display paths to `Transcription::authors()`, and keeps `transcriptions.author_id` synchronized as compatibility primary storage. |
+| Public Front v2 Step 10R-M3 public transcription policy and aggregates | Complete | this commit: `feat: add public transcription policy and aggregates` | Adds normalized `transcription_policy`, scoped policy/selector/aggregate services, pivot-backed contributor counts, featured-only/all-published count behavior, public item/group aggregate subselects, and policy-aware public transcriber filters. Next mini-step is Step 10R-M4 public rendering and aggregate attributes. |
 | Prompt 13 dashboard metrics | Not started / blocked unless explicitly chosen by user | Active prompt/blueprint | Owns editorial dashboard widgets after Public Front v2 Step 12 readiness or an explicit dashboard-first decision. |
 | Prompt 14 viewer/studio future plan | Future planning after Prompt 13 | Active prompt/blueprint | Documentation/planning only. |
 | Prompt 15 Filament Blueprint security audit | Audit after Prompt 14 | Active prompt/blueprint | Audit-only unless fixes are explicitly approved. |
@@ -95,7 +96,7 @@ Recorded after the Markdown-only post-Prompt-10 prompt-progress centralization c
 
 - Prompt 13 dashboard metrics has not started and is intentionally blocked until Public Front v2 reaches the approved post-B3 readiness point or the user explicitly chooses dashboard metrics first.
 - The `model:show` baseline issue below remains unresolved and should be avoided until investigated.
-- The active post-B3 implementation sequence is Step 10R-M3 through Step 10R-M6 before Step 10R-B4 can resume. The original Step 10R-C1 single-author attribution task must not run as written. Step 9F/10F Footer + Rich Section Builder must wait until M1-M6, B4, and C2 are complete. Step 11 Seeders, Demo Data, Assets, and Cleanup must wait for approved Step 10R and Step 9F/10F completion or explicit Yoni approval. The full Step 2 transcription publication workflow remains deferred/reserved.
+- The active post-B3 implementation sequence is Step 10R-M4 through Step 10R-M6 before Step 10R-B4 can resume. The original Step 10R-C1 single-author attribution task must not run as written. Step 9F/10F Footer + Rich Section Builder must wait until M1-M6, B4, and C2 are complete. Step 11 Seeders, Demo Data, Assets, and Cleanup must wait for approved Step 10R and Step 9F/10F completion or explicit Yoni approval. The full Step 2 transcription publication workflow remains deferred/reserved.
 
 ## Deferred Items
 
@@ -174,6 +175,7 @@ Laravel Boost MCP tools were exposed and usable during Prompt 10.
 - Public Front v2 Step 10R-B3 used Boost `application_info`, `database_schema`, and `search_docs` before changing Blade components, presenters, Livewire-rendered card surfaces, and Pest tests. FilamentExamples `search_examples` was run in focused batches plus a refined second pass for card grids, profile view data, custom view cards, eager-loaded cards, and Livewire card grids; access level was search/snippet only.
 - Public Front v2 Step 10R-M1 used Boost `application_info`, `database_schema`, `database_query`, and `search_docs` before changing migrations, Eloquent many-to-many relationships, model events/helpers, and Pest tests. FilamentExamples `search_examples` was run in focused batches plus a refined second pass for multiple relationship selects, pivot/repeater patterns, and relationship filters; access level was search/snippet only.
 - Public Front v2 Step 10R-M2 used Boost `application_info`, `database_schema`, `database_query`, and `search_docs` before dropping the old pivot, changing Eloquent relationships, Filament forms/tables/relation managers, native import/export classes, Livewire URL-backed search state, public rendering, and Pest tests. FilamentExamples `search_examples` was run in focused batches plus a refined second pass for multiple relationship selects, belongs-to-many relation state, searchable filters, and importer/exporter relationship patterns; access level was search/snippet only.
+- Public Front v2 Step 10R-M3 used Boost `application_info`, `database_schema`, `database_query`, and `search_docs` before changing Spatie Settings JSON policy, Eloquent query helpers, aggregate subqueries, Livewire public filter behavior, and Pest tests. FilamentExamples `search_examples` was run in focused batches plus a refined second pass for settings pages, public page query data, aggregate counts, and Livewire URL state; access level was search/snippet only.
 
 ## Application Shape
 
@@ -554,7 +556,7 @@ Current physical schema verified through Boost `database_schema`:
 - `ContentItemTranscriptViewer` defaults to the effective transcription, exposes only published transcription tabs/selector choices, keeps selection URL-backed by transcription reference key, and falls back to safe Markdown when parsing finds no segments.
 - Viewer controls are local Alpine preferences for show/hide timestamps and speakers; timestamp anchors are direction-safe with `dir="ltr"`.
 - Prompt 12 did not add player sync, transcription studio, autosave, dashboard widgets, analytics, metadata extraction automation, import/export behavior changes, admin relationship UX changes, homepage/search rewrites, or contributor discovery changes.
-- Prompt 13 dashboard metrics remains not started. Public Front v2 post-Step-10 mini-step sequencing is controlled by `docs/phase-02/public-front-v2-step10r-9f-mini-step-ledger.md`; after Step 10R-B3, the next mini-step is Step 10R-B4.
+- Prompt 13 dashboard metrics remains not started. Public Front v2 post-Step-10 mini-step sequencing is controlled by `docs/phase-02/public-front-v2-step10r-9f-mini-step-ledger.md`; Step 10R-M3 is complete in this commit, and the next mini-step is Step 10R-M4.
 
 ## Public Front v2 Planning Notes
 
@@ -586,7 +588,7 @@ Current physical schema verified through Boost `database_schema`:
 - Step 9R Podcast Episode Grid Settings follow-up is implemented and committed as `af23555`.
 - Step 10 Contributors and Top Transcribers UX is implemented and committed as `37ce738`.
 - Post-Step-10 public label/header polish is committed through `cea4f60`.
-- Future Step 9F/10F Footer + Rich Section Builder foundation remains planned after Step 10R-M1 through Step 10R-M6, Step 10R-B4, and Step 10R-C2 are complete; the active next mini-step after Step 10R-M2 is Step 10R-M3.
+- Future Step 9F/10F Footer + Rich Section Builder foundation remains planned after Step 10R-M1 through Step 10R-M6, Step 10R-B4, and Step 10R-C2 are complete; the active next mini-step after Step 10R-M3 is Step 10R-M4.
 - The PodText logo already exists at `public/images/podtext-logo.jpg` and must be preserved by future public-front work.
 
 ## Public Front v2 Step 9 Public Menu/Header and UX Fixes Notes

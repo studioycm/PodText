@@ -199,7 +199,7 @@ it('renders a horizontal top transcribers selector with a selected preview and n
         ],
     ]);
 
-    $top = Author::factory()->create(['name' => 'Top Transcriber', 'slug' => 'top-transcriber']);
+    $top = Author::factory()->create(['name' => 'Alpha Top Transcriber', 'slug' => 'top-transcriber']);
     $second = Author::factory()->create(['name' => 'Second Transcriber', 'slug' => 'second-transcriber']);
     $hidden = Author::factory()->create(['name' => 'Hidden Transcriber', 'slug' => 'hidden-transcriber']);
 
@@ -227,7 +227,7 @@ it('renders a horizontal top transcribers selector with a selected preview and n
     $previewItems = PublicContributorDiscovery::contentItemsForContributor($top)->get();
 
     expect($top->refresh()->public_transcriptions_count)->toBeNull()
-        ->and(PublicContributorDiscovery::topContributors(2)->first()->public_transcriptions_count)->toBe(2)
+        ->and(PublicContributorDiscovery::topContributors(2)->first()->public_transcriptions_count)->toBe(1)
         ->and($previewItems)->toHaveCount(1);
 
     $component = Livewire::test(TopTranscribersSection::class, [
@@ -241,7 +241,7 @@ it('renders a horizontal top transcribers selector with a selected preview and n
         ->assertDontSee($hidden->name)
         ->assertSee('data-test="top-transcriber-preview"', false)
         ->assertSee('data-test="top-transcriber-preview-counts"', false)
-        ->assertSee(trans_choice('public.labels.public_transcriptions_count', 2, ['count' => 2]))
+        ->assertSee(trans_choice('public.labels.public_transcriptions_count', 1, ['count' => 1]))
         ->assertSee(trans_choice('public.labels.public_content_items_count', 1, ['count' => 1]))
         ->assertSee('data-test="top-transcriber-preview-page-size"', false)
         ->assertSee('value="5"', false)

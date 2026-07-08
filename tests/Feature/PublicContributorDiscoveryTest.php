@@ -48,7 +48,7 @@ function createPrompt11BPublicItem(
 }
 
 it('renders top transcribers homepage section with public counts and section limit', function (): void {
-    $top = Author::factory()->create(['name' => 'Top Contributor', 'slug' => 'top-contributor']);
+    $top = Author::factory()->create(['name' => 'Alpha Top Contributor', 'slug' => 'top-contributor']);
     $second = Author::factory()->create(['name' => 'Second Contributor', 'slug' => 'second-contributor']);
     $hidden = Author::factory()->create(['name' => 'Draft Only Contributor', 'slug' => 'draft-only-contributor']);
 
@@ -81,7 +81,7 @@ it('renders top transcribers homepage section with public counts and section lim
         ->assertSee('data-section-type="top_transcribers"', false)
         ->assertSee('data-test="top-transcribers-section"', false)
         ->assertSee($top->name)
-        ->assertSee(trans_choice('public.labels.public_transcriptions_count', 2, ['count' => 2]))
+        ->assertSee(trans_choice('public.labels.public_transcriptions_count', 1, ['count' => 1]))
         ->assertSee(trans_choice('public.labels.public_content_items_count', 1, ['count' => 1]))
         ->assertDontSee("data-contributor-id=\"{$second->id}\"", false)
         ->assertDontSee("data-contributor-id=\"{$hidden->id}\"", false);

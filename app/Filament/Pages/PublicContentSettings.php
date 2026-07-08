@@ -3,6 +3,7 @@
 namespace App\Filament\Pages;
 
 use App\Settings\PublicContentSettings as PublicContentSettingsData;
+use App\Support\PublicContent\PublicTranscriptionPolicy;
 use App\Support\PublicFront\About\PublicAboutPageRegistry;
 use App\Support\PublicFront\Cards\PublicFrontCardTemplateRegistry;
 use App\Support\PublicFront\Cards\PublicFrontCardTemplateResolver;
@@ -286,6 +287,30 @@ class PublicContentSettings extends SettingsPage
                                             ->integer()
                                             ->minValue(1)
                                             ->maxValue(48),
+                                    ])
+                                    ->columns(3)
+                                    ->collapsible()
+                                    ->columnSpanFull(),
+                                Section::make(__('admin.sections.public_transcription_policy'))
+                                    ->description(__('admin.descriptions.public_transcription_policy'))
+                                    ->schema([
+                                        Select::make('transcription_policy.public_mode')
+                                            ->label(__('admin.fields.public_transcription_policy_public_mode'))
+                                            ->helperText(__('admin.helpers.public_transcription_policy_public_mode'))
+                                            ->options(fn (): array => PublicTranscriptionPolicy::modeOptions())
+                                            ->default(PublicTranscriptionPolicy::MODE_FEATURED_ONLY)
+                                            ->native(false)
+                                            ->required(),
+                                        Select::make('transcription_policy.count_mode')
+                                            ->label(__('admin.fields.public_transcription_policy_count_mode'))
+                                            ->helperText(__('admin.helpers.public_transcription_policy_count_mode'))
+                                            ->options(fn (): array => PublicTranscriptionPolicy::modeOptions())
+                                            ->default(PublicTranscriptionPolicy::MODE_FEATURED_ONLY)
+                                            ->native(false)
+                                            ->required(),
+                                        Toggle::make('transcription_policy.show_multiple_transcriptions_on_item_page')
+                                            ->label(__('admin.fields.public_transcription_policy_show_multiple_transcriptions_on_item_page'))
+                                            ->helperText(__('admin.helpers.public_transcription_policy_show_multiple_transcriptions_on_item_page')),
                                     ])
                                     ->columns(3)
                                     ->collapsible()

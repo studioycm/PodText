@@ -5,6 +5,7 @@ namespace App\Support\PublicFront;
 use App\Enums\PublicFrontConfigBlockType;
 use App\Enums\PublicFrontLayoutVariant;
 use App\Enums\PublicMenuItemType;
+use App\Support\PublicContent\PublicTranscriptionPolicy;
 use App\Support\PublicFront\About\PublicAboutPageRegistry;
 use App\Support\PublicFront\Cards\PublicFrontCardTemplateRegistry;
 use App\Support\PublicFront\Forms\PublicFormDefinitionRegistry;
@@ -24,6 +25,7 @@ class PublicFrontConfigRegistry
             'public_forms',
             'route_labels',
             'display_defaults',
+            'transcription_policy',
             'podcasts_page',
             'contributors_page',
         ];
@@ -96,6 +98,7 @@ class PublicFrontConfigRegistry
                 'title_size' => PublicFrontLayoutVariant::Base->value,
                 'page_size' => 12,
             ],
+            'transcription_policy' => PublicTranscriptionPolicy::defaults(),
             'podcasts_page' => [
                 'enabled' => true,
                 'title' => __('public.pages.podcasts.title'),
@@ -205,6 +208,7 @@ class PublicFrontConfigRegistry
             'public_forms' => 'publicForms',
             'route_labels' => 'routeLabels',
             'display_defaults' => 'displayDefaults',
+            'transcription_policy' => 'transcriptionPolicy',
             'podcasts_page' => 'podcastsPage',
             'contributors_page' => 'contributorsPage',
         ];
