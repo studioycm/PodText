@@ -32,6 +32,7 @@ Created in Step 10R-M4.
 | F13 | Grid class maps are duplicated. | scheduled | C2 | Not changed in M4. |
 | F14 | Ledger 9F-A note still says "after Step 10R-A/B/C". | resolved | M4 | M4 ledger update fixes the note. |
 | F15 | `PublicContentItemQueries::base()` adds correlated aggregate subselects to every public item listing. | scheduled | P2 | M4 consumes aggregate values on cards/pages where needed. P2 owns opt-in aggregate selects for surfaces that do not render them. |
+| F16 | Symfony sanitizer truncation plus possible PCRE null-wipe in the Markdown transcript path. | resolved | HF1 | HF1 removes the capped Symfony sanitizer pass from CommonMark-generated Markdown, adds transcript-specific soft-break rendering, guards executable-block prefilter failure so it never returns an empty transcript on PCRE failure, keeps generated Markdown images HTTPS-only, and adds long-transcript/XSS/viewer tests. P3 transcript render economy remains scheduled. |
 
 ## Query-Count Harness
 

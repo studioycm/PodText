@@ -235,3 +235,58 @@ it('falls back to sanitized markdown when no parseable transcript segments exist
         ->assertDontSee('data-test="transcript-segment"', false)
         ->assertDontSee("alert('x')");
 });
+
+it('renders parsed segment markdown with transcript formatting and no long transcript truncation', function (): void {
+    $longTail = str_repeat("שורת מקטע ארוכה עם תוכן עברי\n", 900).'FINAL_PARSED_SEGMENT_TOKEN';
+
+    [$item, , $group] = createPrompt12PublicItem(transcriptionAttributes: [
+        'transcript_markdown' => <<<MARKDOWN
+[00:01:23] Host: Segment with **bold**, *italic*, and ***bold italic***.
+single soft break
+
+{$longTail}
+MARKDOWN,
+    ]);
+
+    $this->get("/items/{$group->slug}/{$item->slug}")
+        ->assertSuccessful()
+        ->assertSee('data-test="transcript-segment"', false)
+        ->assertSee('data-test="transcript-segment-content"', false)
+        ->assertSee('<strong>bold</strong>', false)
+        ->assertSee('<em>italic</em>', false)
+        ->assertSee('<br', false)
+        ->assertSee('FINAL_PARSED_SEGMENT_TOKEN')
+        ->assertSee('id="t-83"', false)
+        ->assertSee('href="#t-83"', false)
+        ->assertSee('dir="ltr"', false);
+});
+
+it('renders fallback transcript markdown with paragraphs soft breaks styling and no long transcript truncation', function (): void {
+    $longTail = str_repeat("שורת תמלול מלאה עם תוכן עברי\n", 900).'FINAL_FALLBACK_TRANSCRIPT_TOKEN';
+
+    [$item, , $group] = createPrompt12PublicItem(transcriptionAttributes: [
+        'transcript_markdown' => <<<MARKDOWN
+## Plain Transcript
+
+First paragraph with **bold**, *italic*, and ***bold italic***.
+single soft break
+
+Second paragraph.
+
+{$longTail}
+MARKDOWN,
+    ]);
+
+    $this->get("/items/{$group->slug}/{$item->slug}")
+        ->assertSuccessful()
+        ->assertSee('data-test="transcript-fallback-content"', false)
+        ->assertDontSee('data-test="transcript-segment"', false)
+        ->assertSee('<h2>Plain Transcript</h2>', false)
+        ->assertSee('<strong>bold</strong>', false)
+        ->assertSee('<em>italic</em>', false)
+        ->assertSee('<br', false)
+        ->assertSee('<p>Second paragraph.</p>', false)
+        ->assertSee('FINAL_FALLBACK_TRANSCRIPT_TOKEN')
+        ->assertSee('data-test="toggle-timestamps"', false)
+        ->assertSee('data-test="toggle-speakers"', false);
+});

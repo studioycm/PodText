@@ -145,14 +145,16 @@
                         </span>
                     </div>
 
-                    <div class="space-y-4 leading-7 text-gray-700 [&_a]:font-medium [&_a]:text-primary-700 [&_a]:underline [&_a]:underline-offset-4 [&_li]:ms-5 [&_li]:list-disc [&_ol_li]:list-decimal dark:text-gray-300 dark:[&_a]:text-primary-300">
-                        {!! $renderer->toHtml($segment['markdown']) !!}
+                    <div class="{{ $renderer->publicTranscriptClasses() }}" data-test="transcript-segment-content">
+                        {!! $renderer->toTranscriptHtml($segment['markdown']) !!}
                     </div>
                 </article>
             @endforeach
         </div>
     @elseif($activeTranscription)
-        <x-public.markdown-content :markdown="$activeTranscription->transcript_markdown" />
+        <div class="{{ $renderer->publicTranscriptClasses() }}" data-test="transcript-fallback-content">
+            {!! $renderer->toTranscriptHtml($activeTranscription->transcript_markdown) !!}
+        </div>
     @else
         <div class="rounded-lg border border-dashed border-gray-300 bg-white p-6 text-sm text-gray-600 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300">
             {{ __('public.empty.items') }}
