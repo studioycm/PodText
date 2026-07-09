@@ -3,6 +3,7 @@
 namespace App\Support\PublicFront\ItemPage;
 
 use App\Support\PublicFront\Colors\PublicFrontColor;
+use App\Support\PublicFront\PublicFrontConfigCache;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
 use Throwable;
@@ -63,7 +64,7 @@ class PublicItemPagePodcastPalette
             return null;
         }
 
-        return 'public_front.podcast_palette.v1.'.sha1($coverPath.'|'.$mtime);
+        return app(PublicFrontConfigCache::class)->podcastPaletteKey($coverPath, $mtime);
     }
 
     /**

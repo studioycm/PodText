@@ -9,9 +9,19 @@ class PublicFrontConfigReader
 {
     public function __construct(
         private readonly PublicFrontConfigValidator $validator = new PublicFrontConfigValidator,
+        private readonly PublicFrontConfigCache $cache = new PublicFrontConfigCache,
     ) {}
 
     public function read(?PublicContentSettings $settings = null): PublicFrontConfigResult
+    {
+        if ($settings instanceof PublicContentSettings) {
+            return $this->readFresh($settings);
+        }
+
+        return $this->cache->remember(fn (): PublicFrontConfigResult => $this->readFresh($settings));
+    }
+
+    public function readFresh(?PublicContentSettings $settings = null): PublicFrontConfigResult
     {
         try {
             $rawConfig = $this->rawConfig($settings ?? app(PublicContentSettings::class));

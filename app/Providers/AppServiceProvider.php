@@ -4,6 +4,7 @@ namespace App\Providers;
 
 use App\Settings\PublicContentSettings;
 use App\Support\PublicContent\PublicTranscriptionPolicy;
+use App\Support\PublicFront\PublicFrontConfigCache;
 use App\Support\PublicFront\PublicFrontRenderContext;
 use App\Support\PublicFront\PublicFrontRenderContextFactory;
 use Filament\Actions\Action;
@@ -77,6 +78,7 @@ class AppServiceProvider extends ServiceProvider
                 return;
             }
 
+            $this->app->make(PublicFrontConfigCache::class)->forget();
             $this->app->forgetInstance(PublicFrontRenderContext::class);
             $this->app->forgetInstance(PublicTranscriptionPolicy::class);
         });

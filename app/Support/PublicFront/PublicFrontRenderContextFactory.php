@@ -13,6 +13,8 @@ class PublicFrontRenderContextFactory
 
     public function make(?PublicContentSettings $settings = null): PublicFrontRenderContext
     {
+        $hasExplicitSettings = $settings instanceof PublicContentSettings;
+
         try {
             $settings ??= app(PublicContentSettings::class);
             $settingsValues = $this->settingsValues($settings);
@@ -22,7 +24,9 @@ class PublicFrontRenderContextFactory
         }
 
         return new PublicFrontRenderContext(
-            result: $this->reader->read($settings),
+            result: $hasExplicitSettings && $settings instanceof PublicContentSettings
+                ? $this->reader->read($settings)
+                : $this->reader->read(),
             settingsValues: $settingsValues,
         );
     }
