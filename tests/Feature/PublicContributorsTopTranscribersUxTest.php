@@ -1,6 +1,8 @@
 <?php
 
 use App\Enums\PublicationStatus;
+use App\Filament\Public\Pages\ShowContentGroup;
+use App\Filament\Public\Pages\ShowContentItem;
 use App\Filament\Public\Pages\ShowContributor;
 use App\Livewire\Public\ContributorContentItems;
 use App\Livewire\Public\ContributorDirectory;
@@ -250,7 +252,21 @@ it('renders a horizontal top transcribers selector with a selected preview and n
         ->assertSee(ShowContributor::getUrl(['authorSlug' => $top->slug], panel: 'public'), false)
         ->assertSee('Shared Top Item')
         ->assertDontSee('First Top Transcript')
-        ->assertDontSee('Second Top Transcript')
+        ->assertDontSee('Second Top Transcript');
+
+    expect(substr_count($component->html(), 'data-test="contributor-item-card-group"'))->toBe(1);
+    $sharedItem->load('contentGroup');
+
+    expect($component->html())
+        ->toContain(ShowContentItem::getUrl([
+            'contentGroupSlug' => $sharedItem->contentGroup->slug,
+            'contentItemSlug' => $sharedItem->slug,
+        ], panel: 'public'))
+        ->toContain(ShowContentGroup::getUrl([
+            'contentGroupSlug' => $sharedItem->contentGroup->slug,
+        ], panel: 'public'));
+
+    $component
         ->call('selectContributor', $second->id)
         ->assertSet('selectedContributorId', $second->id)
         ->assertSee($second->name)
@@ -258,8 +274,6 @@ it('renders a horizontal top transcribers selector with a selected preview and n
         ->assertDontSee('Shared Top Item')
         ->set('previewPerPage', 10)
         ->assertSet('previewPerPage', 10);
-
-    expect(substr_count($component->html(), 'data-test="contributor-item-card-group"'))->toBe(1);
 });
 
 it('adds search sort page-size controls without an overflow transcript title list on the full contributor item list', function (): void {

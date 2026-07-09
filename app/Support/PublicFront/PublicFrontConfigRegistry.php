@@ -103,6 +103,14 @@ class PublicFrontConfigRegistry
             ],
             'transcription_policy' => PublicTranscriptionPolicy::defaults(),
             'item_page' => [
+                'show_breadcrumbs' => true,
+                'podcast_identity' => [
+                    'mode' => 'badge',
+                    'color' => 'primary',
+                    'icon' => 'podcast',
+                    'icon_position' => 'inline_before',
+                ],
+                'info_fields' => PublicItemPageRegistry::defaultInfoFields(),
                 'dates' => [
                     'display' => 'both',
                     'site_published' => [

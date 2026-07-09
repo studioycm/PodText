@@ -1317,12 +1317,175 @@ class PublicFrontConfigValidator
      */
     private function normalizeItemPage(array $itemPage, array $defaults, array &$invalidConfig): array
     {
-        $this->reportUnknownKeys($itemPage, ['dates', 'badges'], 'item_page', $invalidConfig);
+        $this->reportUnknownKeys($itemPage, [
+            'show_breadcrumbs',
+            'podcast_identity',
+            'info_fields',
+            'dates',
+            'badges',
+        ], 'item_page', $invalidConfig);
 
         return [
+            'show_breadcrumbs' => $this->boolean(
+                $itemPage['show_breadcrumbs'] ?? null,
+                'item_page.show_breadcrumbs',
+                (bool) ($defaults['show_breadcrumbs'] ?? true),
+                $invalidConfig,
+            ),
+            'podcast_identity' => $this->normalizeItemPagePodcastIdentity(
+                $itemPage['podcast_identity'] ?? [],
+                $defaults['podcast_identity'],
+                $invalidConfig,
+            ),
+            'info_fields' => $this->normalizeItemPageInfoFields(
+                $itemPage['info_fields'] ?? [],
+                $defaults['info_fields'],
+                $invalidConfig,
+            ),
             'dates' => $this->normalizeItemPageDates($itemPage['dates'] ?? [], $defaults['dates'], $invalidConfig),
             'badges' => $this->normalizeItemPageBadges($itemPage['badges'] ?? [], $defaults['badges'], $invalidConfig),
         ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $defaults
+     * @param  array<PublicFrontInvalidConfig>  $invalidConfig
+     * @return array{mode: string, color: string, icon: string, icon_position: string}
+     */
+    private function normalizeItemPagePodcastIdentity(mixed $identity, array $defaults, array &$invalidConfig): array
+    {
+        if ($identity === null || $identity === []) {
+            return [
+                'mode' => $defaults['mode'] ?? 'badge',
+                'color' => $defaults['color'] ?? 'primary',
+                'icon' => $defaults['icon'] ?? 'podcast',
+                'icon_position' => $defaults['icon_position'] ?? 'inline_before',
+            ];
+        }
+
+        if (! is_array($identity)) {
+            $invalidConfig[] = PublicFrontInvalidConfig::make('item_page.podcast_identity', 'expected_array', $identity);
+
+            return [
+                'mode' => $defaults['mode'] ?? 'badge',
+                'color' => $defaults['color'] ?? 'primary',
+                'icon' => $defaults['icon'] ?? 'podcast',
+                'icon_position' => $defaults['icon_position'] ?? 'inline_before',
+            ];
+        }
+
+        $this->reportUnknownKeys($identity, ['mode', 'color', 'icon', 'icon_position'], 'item_page.podcast_identity', $invalidConfig);
+
+        $iconPosition = array_key_exists('icon_position', $identity)
+            ? $this->iconPosition($identity['icon_position'], 'item_page.podcast_identity.icon_position', $invalidConfig)
+            : ($defaults['icon_position'] ?? 'inline_before');
+
+        return [
+            'mode' => $this->finiteString(
+                $identity['mode'] ?? null,
+                PublicItemPageRegistry::podcastIdentityModes(),
+                'item_page.podcast_identity.mode',
+                $invalidConfig,
+                $defaults['mode'] ?? 'badge',
+            ),
+            'color' => $this->finiteString(
+                $identity['color'] ?? null,
+                PublicItemPageRegistry::badgeColors(),
+                'item_page.podcast_identity.color',
+                $invalidConfig,
+                $defaults['color'] ?? 'primary',
+            ),
+            'icon' => $this->finiteString(
+                $identity['icon'] ?? null,
+                PublicFrontCardTemplateRegistry::icons(),
+                'item_page.podcast_identity.icon',
+                $invalidConfig,
+                $defaults['icon'] ?? 'podcast',
+            ),
+            'icon_position' => $iconPosition ?? ($defaults['icon_position'] ?? 'inline_before'),
+        ];
+    }
+
+    /**
+     * @param  array<int, array<string, mixed>>  $defaults
+     * @param  array<PublicFrontInvalidConfig>  $invalidConfig
+     * @return array<int, array<string, mixed>>
+     */
+    private function normalizeItemPageInfoFields(mixed $fields, array $defaults, array &$invalidConfig): array
+    {
+        if ($fields === null || $fields === []) {
+            return $defaults;
+        }
+
+        if (! is_array($fields)) {
+            $invalidConfig[] = PublicFrontInvalidConfig::make('item_page.info_fields', 'expected_list', $fields);
+
+            return $defaults;
+        }
+
+        $normalized = $this->normalizeList($fields, 'item_page.info_fields', $invalidConfig, function (array $field, string $path, array &$invalidConfig): ?array {
+            $this->reportUnknownKeys($field, [
+                'field',
+                'label_mode',
+                'label_override',
+                'icon',
+                'icon_position',
+                'size',
+                'color',
+            ], $path, $invalidConfig);
+
+            $iconPosition = array_key_exists('icon_position', $field)
+                ? $this->iconPosition($field['icon_position'], "{$path}.icon_position", $invalidConfig)
+                : 'inline_before';
+
+            return [
+                'field' => $this->finiteString(
+                    $field['field'] ?? null,
+                    PublicItemPageRegistry::infoFields(),
+                    "{$path}.field",
+                    $invalidConfig,
+                    'duration',
+                ),
+                'label_mode' => $this->finiteString(
+                    $field['label_mode'] ?? null,
+                    PublicItemPageRegistry::labelModes(),
+                    "{$path}.label_mode",
+                    $invalidConfig,
+                    'hidden',
+                ),
+                'label_override' => $this->plainString(
+                    $field['label_override'] ?? null,
+                    "{$path}.label_override",
+                    $invalidConfig,
+                    maxLength: 80,
+                    nullable: true,
+                ),
+                'icon' => $this->finiteString(
+                    $field['icon'] ?? null,
+                    PublicFrontCardTemplateRegistry::icons(),
+                    "{$path}.icon",
+                    $invalidConfig,
+                    'document',
+                ),
+                'icon_position' => $iconPosition ?? 'inline_before',
+                'size' => $this->finiteString(
+                    $field['size'] ?? null,
+                    PublicItemPageRegistry::badgeSizes(),
+                    "{$path}.size",
+                    $invalidConfig,
+                    'sm',
+                ),
+                'color' => $this->finiteString(
+                    $field['color'] ?? null,
+                    PublicItemPageRegistry::badgeColors(),
+                    "{$path}.color",
+                    $invalidConfig,
+                    'gray',
+                ),
+            ];
+        });
+
+        return $normalized === [] ? $defaults : $normalized;
     }
 
     /**

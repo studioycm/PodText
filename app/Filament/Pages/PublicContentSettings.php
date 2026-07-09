@@ -335,6 +335,45 @@ class PublicContentSettings extends SettingsPage
                                     ->columns(3)
                                     ->collapsible()
                                     ->columnSpanFull(),
+                                Section::make(__('admin.sections.public_front_item_page_header'))
+                                    ->description(__('admin.descriptions.public_front_item_page_header'))
+                                    ->schema([
+                                        Toggle::make('item_page.show_breadcrumbs')
+                                            ->label(__('admin.fields.item_page_show_breadcrumbs'))
+                                            ->helperText(__('admin.helpers.item_page_show_breadcrumbs'))
+                                            ->default(true),
+                                        Select::make('item_page.podcast_identity.mode')
+                                            ->label(__('admin.fields.item_page_podcast_identity_mode'))
+                                            ->helperText(__('admin.helpers.item_page_podcast_identity_mode'))
+                                            ->options(fn (): array => PublicItemPageRegistry::podcastIdentityModeOptions())
+                                            ->default('badge')
+                                            ->native(false)
+                                            ->required(),
+                                        Select::make('item_page.podcast_identity.color')
+                                            ->label(__('admin.fields.item_page_podcast_identity_color'))
+                                            ->helperText(__('admin.helpers.item_page_podcast_identity_color'))
+                                            ->options(fn (): array => PublicItemPageRegistry::badgeColorOptions())
+                                            ->default('primary')
+                                            ->native(false)
+                                            ->required(),
+                                        Select::make('item_page.podcast_identity.icon')
+                                            ->label(__('admin.fields.item_page_podcast_identity_icon'))
+                                            ->helperText(__('admin.helpers.item_page_podcast_identity_icon'))
+                                            ->options(fn (): array => PublicFrontCardTemplateRegistry::iconOptions())
+                                            ->default('podcast')
+                                            ->native(false)
+                                            ->required(),
+                                        Select::make('item_page.podcast_identity.icon_position')
+                                            ->label(__('admin.fields.item_page_podcast_identity_icon_position'))
+                                            ->helperText(__('admin.helpers.item_page_podcast_identity_icon_position'))
+                                            ->options(fn (): array => PublicFrontCardTemplateRegistry::iconPositionOptions())
+                                            ->default('inline_before')
+                                            ->native(false)
+                                            ->required(),
+                                    ])
+                                    ->columns(3)
+                                    ->collapsible()
+                                    ->columnSpanFull(),
                                 Section::make(__('admin.sections.public_front_item_page_dates'))
                                     ->description(__('admin.descriptions.public_front_item_page_dates'))
                                     ->schema([
@@ -371,6 +410,13 @@ class PublicContentSettings extends SettingsPage
                                             ->required(),
                                     ])
                                     ->columns(2)
+                                    ->collapsible()
+                                    ->columnSpanFull(),
+                                Section::make(__('admin.sections.public_front_item_page_info_fields'))
+                                    ->description(__('admin.descriptions.public_front_item_page_info_fields'))
+                                    ->schema([
+                                        $this->itemPageInfoFieldRepeater(),
+                                    ])
                                     ->collapsible()
                                     ->columnSpanFull(),
                             ]),
@@ -1470,6 +1516,70 @@ class PublicContentSettings extends SettingsPage
                     ])
                     ->columnSpanFull(),
             ]);
+    }
+
+    private function itemPageInfoFieldRepeater(): Repeater
+    {
+        return Repeater::make('item_page.info_fields')
+            ->label(__('admin.fields.item_page_info_fields'))
+            ->helperText(__('admin.helpers.item_page_info_fields'))
+            ->schema([
+                Select::make('field')
+                    ->label(__('admin.fields.item_page_info_field_key'))
+                    ->helperText(__('admin.helpers.item_page_info_field_key'))
+                    ->options(fn (): array => PublicItemPageRegistry::infoFieldOptions())
+                    ->native(false)
+                    ->required(),
+                Select::make('label_mode')
+                    ->label(__('admin.fields.item_page_info_field_label_mode'))
+                    ->helperText(__('admin.helpers.item_page_info_field_label_mode'))
+                    ->options(fn (): array => PublicItemPageRegistry::labelModeOptions())
+                    ->default('hidden')
+                    ->native(false)
+                    ->required(),
+                TextInput::make('label_override')
+                    ->label(__('admin.fields.item_page_info_field_label_override'))
+                    ->helperText(__('admin.helpers.item_page_info_field_label_override'))
+                    ->maxLength(80),
+                Select::make('icon')
+                    ->label(__('admin.fields.item_page_info_field_icon'))
+                    ->helperText(__('admin.helpers.item_page_info_field_icon'))
+                    ->options(fn (): array => PublicFrontCardTemplateRegistry::iconOptions())
+                    ->default('document')
+                    ->native(false)
+                    ->required(),
+                Select::make('icon_position')
+                    ->label(__('admin.fields.item_page_info_field_icon_position'))
+                    ->helperText(__('admin.helpers.item_page_info_field_icon_position'))
+                    ->options(fn (): array => PublicFrontCardTemplateRegistry::iconPositionOptions())
+                    ->default('inline_before')
+                    ->native(false)
+                    ->required(),
+                Select::make('size')
+                    ->label(__('admin.fields.item_page_info_field_size'))
+                    ->helperText(__('admin.helpers.item_page_info_field_size'))
+                    ->options(fn (): array => PublicItemPageRegistry::badgeSizeOptions())
+                    ->default('sm')
+                    ->native(false)
+                    ->required(),
+                Select::make('color')
+                    ->label(__('admin.fields.item_page_info_field_color'))
+                    ->helperText(__('admin.helpers.item_page_info_field_color'))
+                    ->options(fn (): array => PublicItemPageRegistry::badgeColorOptions())
+                    ->default('gray')
+                    ->native(false)
+                    ->required(),
+            ])
+            ->itemLabel(fn (array $state): ?string => filled($state['field'] ?? null)
+                ? __('admin.item_page_info_fields.'.$state['field'])
+                : __('admin.labels.untitled'))
+            ->default(PublicItemPageRegistry::defaultInfoFields())
+            ->defaultItems(0)
+            ->reorderable()
+            ->cloneable()
+            ->collapsed()
+            ->columns(3)
+            ->columnSpanFull();
     }
 
     private function itemPageDateFieldset(string $dateKey, string $sectionKey, bool $withEnabled = false): Fieldset

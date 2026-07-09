@@ -3,6 +3,7 @@
 use App\Enums\PublicationStatus;
 use App\Filament\Public\Pages\BrowseCategoryContentItems;
 use App\Filament\Public\Pages\BrowseTagContentItems;
+use App\Filament\Public\Pages\ShowContentGroup;
 use App\Filament\Public\Pages\ShowContributor;
 use App\Livewire\Public\ContentItemTranscriptViewer;
 use App\Models\Author;
@@ -11,9 +12,14 @@ use App\Models\ContentGroup;
 use App\Models\ContentItem;
 use App\Models\ContentTag;
 use App\Models\Transcription;
+use App\Settings\PublicContentSettings;
+use App\Support\PublicFront\PublicFrontConfigRegistry;
+use App\Support\PublicFront\PublicFrontRenderContext;
 use App\Support\Transcripts\TranscriptSegmentParser;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Livewire\Livewire;
+use Spatie\LaravelSettings\SettingsContainer;
 
 uses(RefreshDatabase::class);
 
@@ -50,6 +56,28 @@ function createPrompt12PublicItem(
     $item->update(['featured_transcription_id' => $transcription->id]);
 
     return [$item->refresh(), $transcription->refresh(), $group->refresh()];
+}
+
+function saveStep10RIp2PublicFrontSettings(array $settings): void
+{
+    foreach ($settings as $key => $value) {
+        DB::table('settings')->updateOrInsert(
+            [
+                'group' => PublicContentSettings::group(),
+                'name' => $key,
+            ],
+            [
+                'locked' => false,
+                'payload' => json_encode($value),
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+        );
+    }
+
+    app()->forgetInstance(PublicContentSettings::class);
+    app()->forgetInstance(PublicFrontRenderContext::class);
+    app(SettingsContainer::class)->clearCache();
 }
 
 it('parses timestamp and speaker transcript segments', function (): void {
@@ -129,6 +157,211 @@ it('renders a public item page with safe media metadata contributor links and tr
         ->assertSee('data-test="transcript-length"', false)
         ->assertSee('data-test="item-duration"', false)
         ->assertSee($transcription->published_at->timezone('Asia/Jerusalem')->format('d/m/Y'));
+});
+
+it('renders the configured item page header image podcast identity and info line', function (): void {
+    $transcriber = Author::factory()->create([
+        'name' => 'Header Transcriber',
+        'slug' => 'header-transcriber',
+    ]);
+    $category = Category::factory()->create([
+        'name' => 'Header Category',
+        'slug' => 'header-category',
+    ]);
+    $tag = ContentTag::findOrCreate('Header Tag', 'content')->enable();
+    $group = ContentGroup::factory()->published()->create([
+        'title' => 'Header Podcast',
+        'slug' => 'header-podcast',
+        'default_item_type_label_singular' => 'Hidden Type Marker',
+    ]);
+    [$item, $transcription] = createPrompt12PublicItem([
+        'title' => 'Configured Header Title',
+        'slug' => 'configured-header-title',
+        'description_markdown' => 'Header **description**',
+        'duration_seconds' => 3661,
+        'external_thumbnail_url' => 'https://cdn.example.test/item-header.jpg',
+        'original_published_at' => now()->subDays(30),
+        'published_at' => now()->subDays(3),
+    ], [
+        'published_at' => now()->subDays(2),
+        'word_count' => 420,
+    ], group: $group, transcriber: $transcriber);
+
+    $item->categories()->attach($category);
+    $item->attachTag($tag);
+
+    $defaults = PublicFrontConfigRegistry::defaults()['item_page'];
+    saveStep10RIp2PublicFrontSettings([
+        'item_page' => [
+            ...$defaults,
+            'show_breadcrumbs' => false,
+            'podcast_identity' => [
+                'mode' => 'text',
+                'color' => 'success',
+                'icon' => 'podcast',
+                'icon_position' => 'inline_after',
+            ],
+            'dates' => [
+                ...$defaults['dates'],
+                'display' => 'both',
+                'site_published' => [
+                    'label_mode' => 'long',
+                    'label_override' => 'On this site',
+                    'icon' => 'calendar',
+                    'icon_position' => 'inline_before',
+                ],
+                'original_published' => [
+                    'label_mode' => 'long',
+                    'label_override' => 'Original source',
+                    'icon' => 'calendar',
+                    'icon_position' => 'inline_after',
+                ],
+                'transcription_date' => [
+                    'enabled' => true,
+                    'label_mode' => 'short',
+                    'label_override' => 'Transcript date',
+                    'icon' => 'document',
+                    'icon_position' => 'inline_before',
+                ],
+            ],
+            'info_fields' => [
+                [
+                    'field' => 'categories',
+                    'label_mode' => 'long',
+                    'label_override' => null,
+                    'icon' => 'folder',
+                    'icon_position' => 'inline_before',
+                    'size' => 'sm',
+                    'color' => 'info',
+                ],
+                [
+                    'field' => 'tags',
+                    'label_mode' => 'long',
+                    'label_override' => null,
+                    'icon' => 'tag',
+                    'icon_position' => 'inline_before',
+                    'size' => 'sm',
+                    'color' => 'success',
+                ],
+                [
+                    'field' => 'site_published_date',
+                    'label_mode' => 'short',
+                    'label_override' => null,
+                    'icon' => 'calendar',
+                    'icon_position' => 'inline_after',
+                    'size' => 'md',
+                    'color' => 'primary',
+                ],
+                [
+                    'field' => 'original_published_date',
+                    'label_mode' => 'short',
+                    'label_override' => null,
+                    'icon' => 'calendar',
+                    'icon_position' => 'inline_after',
+                    'size' => 'md',
+                    'color' => 'warning',
+                ],
+                [
+                    'field' => 'transcription_date',
+                    'label_mode' => 'short',
+                    'label_override' => null,
+                    'icon' => 'document',
+                    'icon_position' => 'inline_before',
+                    'size' => 'sm',
+                    'color' => 'gray',
+                ],
+                [
+                    'field' => 'duration',
+                    'label_mode' => 'hidden',
+                    'label_override' => null,
+                    'icon' => 'clock',
+                    'icon_position' => 'inline_before',
+                    'size' => 'sm',
+                    'color' => 'gray',
+                ],
+                [
+                    'field' => 'transcribers',
+                    'label_mode' => 'long',
+                    'label_override' => null,
+                    'icon' => 'users',
+                    'icon_position' => 'inline_before',
+                    'size' => 'sm',
+                    'color' => 'gray',
+                ],
+                [
+                    'field' => 'reading_time',
+                    'label_mode' => 'short',
+                    'label_override' => null,
+                    'icon' => 'clock',
+                    'icon_position' => 'inline_before',
+                    'size' => 'sm',
+                    'color' => 'gray',
+                ],
+                [
+                    'field' => 'word_count',
+                    'label_mode' => 'short',
+                    'label_override' => null,
+                    'icon' => 'document',
+                    'icon_position' => 'inline_before',
+                    'size' => 'sm',
+                    'color' => 'gray',
+                ],
+            ],
+        ],
+    ]);
+
+    $this->get("/items/{$group->slug}/{$item->slug}")
+        ->assertSuccessful()
+        ->assertDontSee('data-test="item-breadcrumbs"', false)
+        ->assertSee('data-test="item-page-image"', false)
+        ->assertSee('data-item-page-image-source="item"', false)
+        ->assertSee('https://cdn.example.test/item-header.jpg', false)
+        ->assertSee('data-test="item-page-title"', false)
+        ->assertSee('Configured Header Title')
+        ->assertSee('data-test="item-podcast-identity"', false)
+        ->assertSee('data-podcast-identity-mode="text"', false)
+        ->assertSee(ShowContentGroup::getUrl(['contentGroupSlug' => $group->slug], panel: 'public'), false)
+        ->assertSee(BrowseCategoryContentItems::getUrl(['categorySlug' => $category->slug], panel: 'public'), false)
+        ->assertSee(BrowseTagContentItems::getUrl(['tagSlug' => $tag->slug], panel: 'public'), false)
+        ->assertSee(ShowContributor::getUrl(['authorSlug' => $transcriber->slug], panel: 'public'), false)
+        ->assertSee('data-test="item-info-categories"', false)
+        ->assertSee('data-test="item-info-tags"', false)
+        ->assertSee('data-card-part-icon="calendar"', false)
+        ->assertSee('data-card-part-icon="document"', false)
+        ->assertSee('data-card-part-icon-position="inline_after"', false)
+        ->assertSeeInOrder([
+            'Header Category',
+            'Header Tag',
+            'On this site',
+            $item->published_at->timezone('Asia/Jerusalem')->format('d/m/Y'),
+            'Original source',
+            $item->original_published_at->timezone('Asia/Jerusalem')->format('d/m/Y'),
+            'Transcript date',
+            $transcription->published_at->timezone('Asia/Jerusalem')->format('d/m/Y'),
+        ])
+        ->assertSee('data-test="item-duration"', false)
+        ->assertSee(__('public.labels.duration_value', ['duration' => '01:01:01']))
+        ->assertSee('data-test="reading-time"', false)
+        ->assertSee('data-test="transcript-length"', false)
+        ->assertSee('Header Transcriber')
+        ->assertDontSee('Hidden Type Marker');
+});
+
+it('uses the podcast cover as the item page image fallback', function (): void {
+    $group = ContentGroup::factory()->published()->create([
+        'slug' => 'cover-fallback-podcast',
+        'cover_path' => 'content-groups/covers/fallback-cover.jpg',
+    ]);
+    [$item] = createPrompt12PublicItem([
+        'slug' => 'cover-fallback-item',
+        'external_thumbnail_url' => null,
+    ], group: $group);
+
+    $this->get("/items/{$group->slug}/{$item->slug}")
+        ->assertSuccessful()
+        ->assertSee('data-test="item-page-image"', false)
+        ->assertSee('data-item-page-image-source="group"', false)
+        ->assertSee('content-groups/covers/fallback-cover.jpg', false);
 });
 
 it('renders approved embeds and falls back for unapproved http or raw embed values', function (string $embedUrl): void {

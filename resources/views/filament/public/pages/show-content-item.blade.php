@@ -1,84 +1,135 @@
 @php
-    $durationSeconds = $contentItem->media_duration_seconds ?: $contentItem->duration_seconds;
-    $duration = $durationSeconds
-        ? gmdate($durationSeconds >= 3600 ? 'H:i:s' : 'i:s', $durationSeconds)
-        : null;
-    $publishedDate = $contentItem->published_at?->timezone('Asia/Jerusalem')->format('d/m/Y');
-    $categories = $contentItem->effectiveCategories()
-        ->where('is_visible', true)
-        ->values();
-    $tags = $contentItem->relationLoaded('enabledContentTags') ? $contentItem->enabledContentTags : collect();
-    $effectiveTranscription = $contentItem->effectiveTranscription();
-    $transcribers = $effectiveTranscription?->relationLoaded('authors') ? $effectiveTranscription->authors : collect();
-    $publicTranscriptionsCount = (int) ($contentItem->public_transcriptions_count ?? 0);
-    $showTranscriptionCount = app(\App\Support\PublicContent\PublicTranscriptionPolicy::class)->countModeCountsAllPublished()
-        && $publicTranscriptionsCount > 1;
+    $mediaDurationSeconds = $this->mediaDurationSeconds();
+    $pageImage = $this->pageImage();
+    $podcastIdentity = $this->podcastIdentity();
+    $infoParts = $this->infoParts();
 @endphp
 
 <x-filament-panels::page>
     <article class="space-y-8" dir="{{ __('public.meta.dir') }}">
-        <nav aria-label="{{ __('public.labels.breadcrumbs') }}" class="flex flex-wrap items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
-            <a
-                href="{{ \App\Filament\Public\Pages\BrowseContentGroups::getUrl(panel: 'public') }}"
-                class="font-medium text-primary-700 hover:text-primary-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-600 dark:text-primary-300 dark:hover:text-primary-100"
+        @if($this->showBreadcrumbs())
+            <nav
+                aria-label="{{ __('public.labels.breadcrumbs') }}"
+                class="flex flex-wrap items-center gap-2 text-sm text-gray-600 dark:text-gray-300"
+                data-test="item-breadcrumbs"
             >
-                {{ __('public.pages.browse.title') }}
-            </a>
-            <span aria-hidden="true">/</span>
-            <a
-                href="{{ \App\Filament\Public\Pages\ShowContentGroup::getUrl(['contentGroupSlug' => $contentGroup->slug], panel: 'public') }}"
-                class="font-medium text-primary-700 hover:text-primary-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-600 dark:text-primary-300 dark:hover:text-primary-100"
-            >
-                {{ $contentGroup->title }}
-            </a>
-        </nav>
+                <a
+                    href="{{ \App\Filament\Public\Pages\BrowseContentGroups::getUrl(panel: 'public') }}"
+                    class="font-medium text-primary-700 hover:text-primary-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-600 dark:text-primary-300 dark:hover:text-primary-100"
+                >
+                    {{ __('public.pages.browse.title') }}
+                </a>
+                <span aria-hidden="true">/</span>
+                <a
+                    href="{{ \App\Filament\Public\Pages\ShowContentGroup::getUrl(['contentGroupSlug' => $contentGroup->slug], panel: 'public') }}"
+                    class="font-medium text-primary-700 hover:text-primary-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-600 dark:text-primary-300 dark:hover:text-primary-100"
+                >
+                    {{ $contentGroup->title }}
+                </a>
+            </nav>
+        @endif
 
-        <header class="space-y-4">
-            <h1 class="text-3xl font-semibold leading-tight text-gray-950 dark:text-white">
-                {{ $contentItem->title }}
-            </h1>
+        <header class="grid gap-6 md:grid-cols-[14rem_minmax(0,1fr)] md:items-start">
+            @if($pageImage)
+                <span
+                    class="block aspect-square w-full overflow-hidden rounded-lg bg-gray-100 ring-1 ring-gray-950/10 dark:bg-gray-800 dark:ring-white/10"
+                    data-test="item-page-image"
+                    data-item-page-image-source="{{ $pageImage['source'] }}"
+                >
+                    <img
+                        src="{{ $pageImage['url'] }}"
+                        alt=""
+                        class="h-full w-full object-cover"
+                    >
+                </span>
+            @endif
 
-            <dl class="flex flex-wrap gap-x-6 gap-y-2 text-sm text-gray-600 dark:text-gray-300">
-{{--                @if ($transcribers->isNotEmpty())--}}
-{{--                    <div>--}}
-{{--                        <dt class="sr-only">{{ __('public.labels.transcribers') }}</dt>--}}
-{{--                        <dd class="flex flex-wrap gap-2">--}}
-{{--                            @foreach($transcribers as $author)--}}
-{{--                                <a--}}
-{{--                                    href="{{ \App\Filament\Public\Pages\ShowContributor::getUrl(['authorSlug' => $author->slug], panel: 'public') }}"--}}
-{{--                                    class="font-medium text-primary-700 hover:text-primary-900 dark:text-primary-300 dark:hover:text-primary-100"--}}
-{{--                                    data-test="item-transcriber-link"--}}
-{{--                                >--}}
-{{--                                    {{ $author->name }}--}}
-{{--                                </a>--}}
-{{--                            @endforeach--}}
-{{--                        </dd>--}}
-{{--                    </div>--}}
-{{--                @endif--}}
+            <div class="min-w-0 space-y-4">
+                @if($podcastIdentity)
+                    @php
+                        $podcastIcon = \App\Support\PublicFront\Cards\PublicFrontCardIconResolver::resolve($podcastIdentity['icon'] ?? null);
+                        $podcastIconPosition = $podcastIdentity['icon_position'] ?? 'hidden';
+                    @endphp
 
-                @if ($duration)
-                    <div>
-                        <dt class="sr-only">{{ __('public.labels.duration') }}</dt>
-                        <dd data-test="item-duration">{{ __('public.labels.duration_value', ['duration' => $duration]) }}</dd>
-                    </div>
+                    <a
+                        href="{{ $podcastIdentity['url'] }}"
+                        class="{{ $podcastIdentity['class'] }}"
+                        data-test="item-podcast-identity"
+                        data-podcast-identity-mode="{{ $podcastIdentity['mode'] }}"
+                        data-podcast-identity-icon="{{ $podcastIdentity['icon'] ?? 'none' }}"
+                        data-podcast-identity-icon-position="{{ $podcastIconPosition }}"
+                    >
+                        @if($podcastIcon && $podcastIconPosition === 'inline_before')
+                            <x-filament::icon :icon="$podcastIcon" class="h-4 w-4 shrink-0" />
+                        @endif
+
+                        <span class="min-w-0 truncate">{{ $podcastIdentity['label'] }}</span>
+
+                        @if($podcastIcon && $podcastIconPosition === 'inline_after')
+                            <x-filament::icon :icon="$podcastIcon" class="h-4 w-4 shrink-0" />
+                        @endif
+                    </a>
                 @endif
 
-                @if ($publishedDate)
-                    <div>
-                        <dt class="sr-only">{{ __('public.labels.published_at') }}</dt>
-                        <dd>{{ $publishedDate }}</dd>
-                    </div>
-                @endif
+                <h1 class="text-3xl font-semibold leading-tight text-gray-950 dark:text-white" data-test="item-page-title">
+                    {{ $contentItem->title }}
+                </h1>
 
-                @if ($showTranscriptionCount)
-                    <div>
-                        <dt class="sr-only">{{ __('public.labels.transcriptions') }}</dt>
-                        <dd data-test="item-transcription-count">
-                            {{ trans_choice('public.labels.public_transcriptions_count', $publicTranscriptionsCount, ['count' => $publicTranscriptionsCount]) }}
-                        </dd>
-                    </div>
+                @if($infoParts !== [])
+                    <dl class="flex flex-wrap items-center gap-2" data-test="item-info-line">
+                        @foreach($infoParts as $infoPart)
+                            @php
+                                $key = $infoPart['key'];
+                                $value = $infoPart['value'];
+                                $isLinkList = in_array($key, ['categories', 'tags', 'transcribers'], true);
+                            @endphp
+
+                            <div>
+                                <dt class="sr-only">{{ $infoPart['part']['label'] ?? __("public.item_page.info_fields.{$key}_long") }}</dt>
+                                <dd>
+                                    <x-public.card-part-shell
+                                        :part="$infoPart['part']"
+                                        class="{{ $infoPart['class'] }}"
+                                        data-test="{{ $infoPart['data_test'] }}"
+                                    >
+                                        @if($isLinkList)
+                                            <span
+                                                class="flex min-w-0 flex-wrap items-center gap-1.5"
+                                                @if($key === 'categories') data-test="item-categories" @endif
+                                                @if($key === 'tags') data-test="item-tags" @endif
+                                            >
+                                                @foreach($value as $link)
+                                                    <a
+                                                        href="{{ $link['url'] }}"
+                                                        class="font-medium underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-600"
+                                                        @if($key === 'transcribers') data-test="item-transcriber-link" @endif
+                                                    >
+                                                        {{ $link['label'] }}
+                                                    </a>
+                                                @endforeach
+                                            </span>
+                                        @else
+                                            <span
+                                                class="block min-w-0 truncate"
+                                                @if($key === 'duration') data-test="item-duration" @endif
+                                                @if($key === 'reading_time') data-test="reading-time" @endif
+                                                @if($key === 'word_count') data-test="transcript-length" @endif
+                                                @if($key === 'transcription_count') data-test="item-transcription-count" @endif
+                                            >
+                                                @if($key === 'duration')
+                                                    {{ __('public.labels.duration_value', ['duration' => $value]) }}
+                                                @else
+                                                    {{ $value }}
+                                                @endif
+                                            </span>
+                                        @endif
+                                    </x-public.card-part-shell>
+                                </dd>
+                            </div>
+                        @endforeach
+                    </dl>
                 @endif
-            </dl>
+            </div>
         </header>
 
         <div class="grid gap-8 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start">
@@ -90,7 +141,7 @@
                     :provider="$contentItem->embed_provider"
                     :source-title="$contentItem->external_title"
                     :source-description="$contentItem->external_description"
-                    :duration-seconds="$durationSeconds"
+                    :duration-seconds="$mediaDurationSeconds"
                     :published-at="$contentItem->external_published_at"
                 />
 
@@ -140,42 +191,8 @@
             </aside>
 
             <div class="space-y-8 lg:order-1">
-                @if($categories->isNotEmpty() || $tags->isNotEmpty())
-                    <section class="space-y-3" aria-label="{{ __('public.labels.taxonomy') }}">
-                        @if($categories->isNotEmpty())
-                            <div class="flex flex-wrap gap-2" data-test="item-categories">
-                                @foreach($categories as $category)
-                                    <a
-                                        href="{{ \App\Filament\Public\Pages\BrowseCategoryContentItems::getUrl(['categorySlug' => $category->slug], panel: 'public') }}"
-                                        class="rounded-md border border-gray-200 px-2.5 py-1 text-sm text-gray-700 hover:border-primary-300 hover:text-primary-700 dark:border-gray-700 dark:text-gray-300 dark:hover:border-primary-500"
-                                    >
-                                        {{ $category->name }}
-                                    </a>
-                                @endforeach
-                            </div>
-                        @endif
-
-                        @if($tags->isNotEmpty())
-                            <div class="flex flex-wrap gap-2" data-test="item-tags">
-                                @foreach($tags as $tag)
-                                    <a
-                                        href="{{ \App\Filament\Public\Pages\BrowseTagContentItems::getUrl(['tagSlug' => $tag->slug], panel: 'public') }}"
-                                        class="rounded-md bg-gray-950 px-2.5 py-1 text-sm text-white hover:bg-primary-700 dark:bg-gray-100 dark:text-gray-950"
-                                    >
-                                        {{ $tag->name }}
-                                    </a>
-                                @endforeach
-                            </div>
-                        @endif
-                    </section>
-                @endif
-
                 @if (filled($contentItem->description_markdown))
-                    <section class="space-y-3" aria-labelledby="item-description-heading">
-{{--                        <h2 id="item-description-heading" class="text-xl font-semibold text-gray-950 dark:text-white">--}}
-{{--                            {{ __('public.pages.item.description_heading') }}--}}
-{{--                        </h2>--}}
-
+                    <section class="space-y-3" aria-label="{{ __('public.pages.item.description_heading') }}">
                         <x-public.markdown-content :markdown="$contentItem->description_markdown" />
                     </section>
                 @endif

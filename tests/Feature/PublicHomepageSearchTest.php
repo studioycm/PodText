@@ -2,6 +2,7 @@
 
 use App\Enums\HomepageSectionType;
 use App\Enums\PublicationStatus;
+use App\Filament\Public\Pages\ShowContentGroup;
 use App\Livewire\Public\ContentItemSearch;
 use App\Models\Author;
 use App\Models\Category;
@@ -109,7 +110,8 @@ it('shows group badges when enabled and hides them when disabled', function (): 
 
     Livewire::test(ContentItemSearch::class)
         ->assertSee($item->title)
-        ->assertSee('data-test="group-badge"', false);
+        ->assertSee('data-test="group-badge"', false)
+        ->assertSee(ShowContentGroup::getUrl(['contentGroupSlug' => $group->slug], panel: 'public'), false);
 
     savePrompt11PublicSettings(['homepage_show_group_badge' => false]);
 

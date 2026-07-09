@@ -1,6 +1,9 @@
 <?php
 
 use App\Enums\PublicationStatus;
+use App\Filament\Public\Pages\BrowseCategoryContentItems;
+use App\Filament\Public\Pages\ShowContentGroup;
+use App\Filament\Public\Pages\ShowContentItem;
 use App\Livewire\Public\ContentGroupBrowser;
 use App\Livewire\Public\ContentItemBrowser;
 use App\Models\Category;
@@ -224,6 +227,7 @@ it('renders cover fallback categories counts and configured public labels', func
         ->assertSee('Browse public shows.')
         ->assertSee('Show')
         ->assertSee('Configured Category')
+        ->assertSee(ShowContentGroup::getUrl(['contentGroupSlug' => $withCover->slug], panel: 'public'), false)
         ->assertSee('content-groups/covers/covered-show.jpg')
         ->assertSee('data-test="content-group-fallback"', false)
         ->assertSee('1 Episode');
@@ -255,8 +259,13 @@ it('shows public podcast detail pages with public episode descriptions only', fu
         ->assertSee($group->title)
         ->assertSee('<strong>description</strong>', false)
         ->assertSee($category->name)
+        ->assertSee(BrowseCategoryContentItems::getUrl(['categorySlug' => $category->slug], panel: 'public'), false)
         ->assertSee('1 Episode')
         ->assertSee($visibleItem->title)
+        ->assertSee(ShowContentItem::getUrl([
+            'contentGroupSlug' => $group->slug,
+            'contentItemSlug' => $visibleItem->slug,
+        ], panel: 'public'), false)
         ->assertSee('Visible episode description.')
         ->assertDontSee($hiddenItem->title)
         ->assertDontSee('Hidden description.');

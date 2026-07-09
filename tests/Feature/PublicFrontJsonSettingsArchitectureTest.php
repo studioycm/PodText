@@ -4,6 +4,7 @@ use App\Filament\Pages\PublicContentSettings as PublicContentSettingsPage;
 use App\Models\User;
 use App\Settings\PublicContentSettings;
 use App\Support\PublicContent\PublicContentCardOptions;
+use App\Support\PublicFront\ItemPage\PublicItemPageRegistry;
 use App\Support\PublicFront\PublicFrontConfigReader;
 use App\Support\PublicFront\PublicFrontConfigRegistry;
 use App\Support\PublicFront\PublicFrontConfigValidator;
@@ -98,9 +99,96 @@ it('creates item page settings defaults through the settings migration', functio
         ->and($settings->item_page)->toMatchArray(PublicFrontConfigRegistry::defaults()['item_page']);
 });
 
+it('backfills item page header settings through the settings migration', function (): void {
+    $legacyItemPage = [
+        'dates' => [
+            'display' => 'site',
+        ],
+        'badges' => [
+            'info' => [
+                'size' => 'md',
+                'color' => 'primary',
+            ],
+        ],
+    ];
+
+    DB::table('settings')->updateOrInsert(
+        [
+            'group' => PublicContentSettings::group(),
+            'name' => 'item_page',
+        ],
+        [
+            'locked' => false,
+            'payload' => json_encode($legacyItemPage),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ],
+    );
+
+    $migration = include base_path('database/settings/2026_07_09_000001_add_public_item_page_header_settings.php');
+    $migration->up();
+
+    $itemPage = json_decode(
+        DB::table('settings')
+            ->where('group', PublicContentSettings::group())
+            ->where('name', 'item_page')
+            ->value('payload'),
+        true,
+    );
+
+    expect($itemPage)->toMatchArray([
+        'show_breadcrumbs' => true,
+        'podcast_identity' => [
+            'mode' => 'badge',
+            'color' => 'primary',
+            'icon' => 'podcast',
+            'icon_position' => 'inline_before',
+        ],
+        'badges' => [
+            'info' => [
+                'size' => 'md',
+                'color' => 'primary',
+            ],
+        ],
+    ])->and($itemPage['dates']['display'])->toBe('site')
+        ->and($itemPage['dates']['site_published'])->toMatchArray(
+            PublicFrontConfigRegistry::defaults()['item_page']['dates']['site_published'],
+        )
+        ->and($itemPage['info_fields'])->toBe(PublicItemPageRegistry::defaultInfoFields());
+});
+
 it('normalizes item page date and badge settings safely', function (): void {
     $result = app(PublicFrontConfigValidator::class)->validate([
         'item_page' => [
+            'show_breadcrumbs' => 'yes',
+            'podcast_identity' => [
+                'mode' => 'pill',
+                'color' => 'bg-red-500',
+                'icon' => 'App\\Icons\\Unsafe',
+                'icon_position' => 'after',
+                'class' => 'rounded-full',
+            ],
+            'info_fields' => [
+                [
+                    'field' => 'site_published_date',
+                    'label_mode' => 'long',
+                    'label_override' => 'Published locally',
+                    'icon' => 'calendar',
+                    'icon_position' => 'inline_before',
+                    'size' => 'sm',
+                    'color' => 'primary',
+                ],
+                [
+                    'field' => 'raw_html',
+                    'label_mode' => 'verbose',
+                    'label_override' => '<b>Bad</b>',
+                    'icon' => 'heroicon-o-calendar',
+                    'icon_position' => 'beside',
+                    'size' => 'xl',
+                    'color' => '#fff',
+                    'class' => 'text-red-500',
+                ],
+            ],
             'dates' => [
                 'display' => 'p-4 text-red-500',
                 'raw_classes' => 'gap-4',
@@ -135,6 +223,32 @@ it('normalizes item page date and badge settings safely', function (): void {
         ->all();
 
     expect($itemPage['dates']['display'])->toBe('both')
+        ->and($itemPage['show_breadcrumbs'])->toBeTrue()
+        ->and($itemPage['podcast_identity'])->toMatchArray([
+            'mode' => 'badge',
+            'color' => 'primary',
+            'icon' => 'podcast',
+            'icon_position' => 'inline_after',
+        ])
+        ->and($itemPage['info_fields'])->toHaveCount(2)
+        ->and($itemPage['info_fields'][0])->toMatchArray([
+            'field' => 'site_published_date',
+            'label_mode' => 'long',
+            'label_override' => 'Published locally',
+            'icon' => 'calendar',
+            'icon_position' => 'inline_before',
+            'size' => 'sm',
+            'color' => 'primary',
+        ])
+        ->and($itemPage['info_fields'][1])->toMatchArray([
+            'field' => 'duration',
+            'label_mode' => 'hidden',
+            'label_override' => null,
+            'icon' => 'document',
+            'icon_position' => 'inline_before',
+            'size' => 'sm',
+            'color' => 'gray',
+        ])
         ->and($itemPage['dates']['site_published'])->toMatchArray([
             'label_mode' => 'long',
             'label_override' => null,
@@ -154,6 +268,19 @@ it('normalizes item page date and badge settings safely', function (): void {
             'size' => 'sm',
             'color' => 'gray',
         ])
+        ->and($paths)->toContain('item_page.show_breadcrumbs')
+        ->and($paths)->toContain('item_page.podcast_identity.mode')
+        ->and($paths)->toContain('item_page.podcast_identity.color')
+        ->and($paths)->toContain('item_page.podcast_identity.icon')
+        ->and($paths)->toContain('item_page.podcast_identity.class')
+        ->and($paths)->toContain('item_page.info_fields.1.field')
+        ->and($paths)->toContain('item_page.info_fields.1.label_mode')
+        ->and($paths)->toContain('item_page.info_fields.1.label_override')
+        ->and($paths)->toContain('item_page.info_fields.1.icon')
+        ->and($paths)->toContain('item_page.info_fields.1.icon_position')
+        ->and($paths)->toContain('item_page.info_fields.1.size')
+        ->and($paths)->toContain('item_page.info_fields.1.color')
+        ->and($paths)->toContain('item_page.info_fields.1.class')
         ->and($paths)->toContain('item_page.dates.display')
         ->and($paths)->toContain('item_page.dates.raw_classes')
         ->and($paths)->toContain('item_page.dates.site_published.label_mode')
@@ -269,6 +396,31 @@ it('saves sanitized public front config through the settings page while preservi
         ->set('data.display_defaults.image_size', 'large')
         ->set('data.display_defaults.title_size', 'lg')
         ->set('data.display_defaults.page_size', 16)
+        ->set('data.item_page.show_breadcrumbs', false)
+        ->set('data.item_page.podcast_identity.mode', 'text')
+        ->set('data.item_page.podcast_identity.color', 'success')
+        ->set('data.item_page.podcast_identity.icon', 'podcast')
+        ->set('data.item_page.podcast_identity.icon_position', 'inline_after')
+        ->set('data.item_page.info_fields', [
+            [
+                'field' => 'categories',
+                'label_mode' => 'long',
+                'label_override' => null,
+                'icon' => 'folder',
+                'icon_position' => 'inline_before',
+                'size' => 'sm',
+                'color' => 'info',
+            ],
+            [
+                'field' => 'site_published_date',
+                'label_mode' => 'short',
+                'label_override' => 'Site',
+                'icon' => 'calendar',
+                'icon_position' => 'inline_after',
+                'size' => 'md',
+                'color' => 'primary',
+            ],
+        ])
         ->set('data.item_page.dates.display', 'both')
         ->set('data.item_page.dates.site_published.label_mode', 'long')
         ->set('data.item_page.dates.site_published.label_override', 'Published here')
@@ -314,6 +466,33 @@ it('saves sanitized public front config through the settings page while preservi
         'page_size' => 16,
         'transcription_display' => 'effective_plus_count',
     ])->and($config->group('item_page'))->toMatchArray([
+        'show_breadcrumbs' => false,
+        'podcast_identity' => [
+            'mode' => 'text',
+            'color' => 'success',
+            'icon' => 'podcast',
+            'icon_position' => 'inline_after',
+        ],
+        'info_fields' => [
+            [
+                'field' => 'categories',
+                'label_mode' => 'long',
+                'label_override' => null,
+                'icon' => 'folder',
+                'icon_position' => 'inline_before',
+                'size' => 'sm',
+                'color' => 'info',
+            ],
+            [
+                'field' => 'site_published_date',
+                'label_mode' => 'short',
+                'label_override' => 'Site',
+                'icon' => 'calendar',
+                'icon_position' => 'inline_after',
+                'size' => 'md',
+                'color' => 'primary',
+            ],
+        ],
         'dates' => [
             'display' => 'both',
             'site_published' => [
@@ -367,7 +546,7 @@ it('does not introduce settings only models', function (): void {
         ->and(class_exists('App\\Models\\PublicLooper'))->toBeFalse();
 });
 
-it('has translated item page date labels in both locales', function (): void {
+it('has translated item page settings labels in both locales', function (): void {
     foreach (['en', 'he'] as $locale) {
         app()->setLocale($locale);
 
@@ -380,6 +559,31 @@ it('has translated item page date labels in both locales', function (): void {
             'transcription_date_short',
         ] as $key) {
             expect(__("public.dates.{$key}"))->not->toBe("public.dates.{$key}");
+        }
+
+        foreach ([
+            'categories_long',
+            'duration_short',
+            'reading_time_long',
+            'tags_short',
+            'transcribers_long',
+            'transcription_count_short',
+            'word_count_long',
+        ] as $key) {
+            expect(__("public.item_page.info_fields.{$key}"))->not->toBe("public.item_page.info_fields.{$key}");
+        }
+
+        foreach ([
+            'admin.sections.public_front_item_page_header',
+            'admin.sections.public_front_item_page_info_fields',
+            'admin.fields.item_page_show_breadcrumbs',
+            'admin.fields.item_page_podcast_identity_mode',
+            'admin.fields.item_page_info_fields',
+            'admin.helpers.item_page_info_field_key',
+            'admin.item_page_info_fields.site_published_date',
+            'admin.item_page_podcast_identity_modes.badge',
+        ] as $translationKey) {
+            expect(__($translationKey))->not->toBe($translationKey);
         }
     }
 

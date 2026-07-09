@@ -87,6 +87,70 @@ class PublicItemPageRegistry
         return self::translatedOptions(self::badgeColors(), 'admin.item_page_badge_colors');
     }
 
+    /**
+     * @return array<string>
+     */
+    public static function podcastIdentityModes(): array
+    {
+        return [
+            'badge',
+            'text',
+            'hidden',
+        ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public static function podcastIdentityModeOptions(): array
+    {
+        return self::translatedOptions(self::podcastIdentityModes(), 'admin.item_page_podcast_identity_modes');
+    }
+
+    /**
+     * @return array<string>
+     */
+    public static function infoFields(): array
+    {
+        return [
+            'site_published_date',
+            'original_published_date',
+            'transcription_date',
+            'duration',
+            'transcribers',
+            'reading_time',
+            'word_count',
+            'transcription_count',
+            'categories',
+            'tags',
+        ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public static function infoFieldOptions(): array
+    {
+        return self::translatedOptions(self::infoFields(), 'admin.item_page_info_fields');
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    public static function defaultInfoFields(): array
+    {
+        return [
+            self::infoField('site_published_date', 'long', 'calendar'),
+            self::infoField('original_published_date', 'short', 'calendar'),
+            self::infoField('transcription_date', 'short', 'document'),
+            self::infoField('duration', 'hidden', 'clock'),
+            self::infoField('transcribers', 'hidden', 'users'),
+            self::infoField('categories', 'hidden', 'folder'),
+            self::infoField('tags', 'hidden', 'tag'),
+            self::infoField('transcription_count', 'hidden', 'document'),
+        ];
+    }
+
     public static function infoBadgeSizeClass(?string $size): string
     {
         return match ($size) {
@@ -117,5 +181,21 @@ class PublicItemPageRegistry
         return collect($values)
             ->mapWithKeys(fn (string $value): array => [$value => __("{$baseKey}.{$value}")])
             ->all();
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private static function infoField(string $field, string $labelMode, string $icon): array
+    {
+        return [
+            'field' => $field,
+            'label_mode' => $labelMode,
+            'label_override' => null,
+            'icon' => $icon,
+            'icon_position' => 'inline_before',
+            'size' => self::badgeSizes()[1],
+            'color' => self::badgeColors()[0],
+        ];
     }
 }
