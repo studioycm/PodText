@@ -1,7 +1,10 @@
 # Public Front v2 Admin and Settings Enhancement Plan
 
-Date: 09/07/2026 (v3 — supersedes v2/v1; v3 adds the flip-slider display-type and
-result display-template builder work package, requests 12-17, steps SL1-SL4)
+Date: 09/07/2026 (v4 — supersedes v3/v2/v1; v3 added the flip-slider display-type and
+result display-template builder work package, requests 12-17, steps SL1-SL4; v4 adds
+the GSAP motion work package, requests 18-21, steps AX1-AX3, per Yoni's decisions:
+foundation-first, expressive catalog including loading/transition concealment,
+reveals + scroll-linked, per-template/section admin control)
 
 ## Purpose
 
@@ -22,7 +25,7 @@ The central ledger remains authoritative for per-run selection:
 
 - Step 10R-M6 is complete and closed the M1-M5 plus IP1-IP3 arc; R1-R23 landed.
 - Step 10R-C1 is superseded.
-- The v1 addendum inserted UX1/UX2/V1/S1/S2; this v2 plan splits V1 into V1a/V1b/V1c and
+- The v1 addendum inserted UX1/UX2/V1/S1/S2; v2 split V1 into V1a/V1b/V1c and
   flips S2 before S1. The first implementation run must amend the ledger accordingly.
 - This plan is documentation-only; no app code, migrations, or settings rows change here.
 
@@ -36,7 +39,7 @@ The central ledger remains authoritative for per-run selection:
 - Spatie settings migrations do NOT fire `SettingsSaved`; any persistent config cache
   must key on a settings-migration watermark, not rely on the save event alone.
 
-## Active Sequence Addendum (v2 order)
+## Active Sequence Addendum (v4 order)
 
 | # | Step | Depends on | Request IDs | One-line scope |
 |---|---|---|---|---|
@@ -50,15 +53,23 @@ The central ledger remains authoritative for per-run selection:
 | 8 | Step 10R-S1 | P1, S2 | 10 | Settings import/export as a versioned JSON package built on the shared `PublicSettingsPackage` serializer and S2 backups. |
 | 9 | Step 10R-P2 | S1 | F2, F7, F12, F15 | Listing fetch-window, lazy options/form definitions, opt-in aggregate subselects. |
 | 10 | Step 10R-P3 | P2 | F3 | Derived transcript segments and viewer render economy. |
-| 11 | Step 10R-SL1 | P2 (bounded-fetch discipline), M5 | 17 | Result display-template builder foundation: `display_templates` settings group, finite vocabularies, admin builder, surface selectors, grid default template. |
-| 12 | Step 10R-SL2 | SL1 | 12, 14 | Flip-slider rendering engine: scroll-snap track, responsive columns×rows paging with bounded lazy page fetch, front-face cards, RTL-aware hover/always controls. |
-| 13 | Step 10R-SL3 | SL2 | 13 | Flip animation and smart side-open back face rendered from existing card templates, with server-computed logical open direction. |
-| 14 | Step 10R-SL4 | SL2 | 15, 16 | Quick-view modal: flat app-owned modal embedding episode/podcast page content with density/label-size controls and a modal card template. |
-| 15 | Step 10R-B4 | M1-M6, IP1-IP3, P1-P3, SL1-SL4 | F11 | Converge legacy card options with card presentation services (now covering slider/modal surfaces). |
-| 16 | Step 10R-C2 | B4 | F13 | Card layout consistency and semantic layout tokens (now covering slider front/back faces). |
-| 17 | Step 9F-A → 9F-B → 9F-C | all 10R above | 9F | Rich homepage columns; footer config/renderer; admin polish. |
-| 18 | Step 11 | all above + explicit Yoni approval | Step 11 | Seeders/demo/assets/cleanup incl. promoting the local evaluation seed and demo display templates. |
-| 19 | Prompt 13 | explicit Yoni approval | Prompt 13 | Dashboard metrics. |
+| 11 | Step 10R-AX1 | P2 (bounded-fetch), P1 (cache conventions) | 18 | GSAP motion foundation: dependency, public-panel JS wiring, `PodTextMotion` preset registry + data-attribute contract, motion settings tokens, always-on reduced-motion policy, FOUC/SEO guard. |
+| 12 | Step 10R-SL1 | AX1, M5 | 17 | Result display-template builder foundation: `display_templates` settings group (including per-template `motion` config), finite vocabularies, admin builder, surface selectors, grid default template. |
+| 13 | Step 10R-SL2 | SL1 | 12, 14 | Flip-slider rendering engine: scroll-snap track, responsive columns×rows paging with bounded lazy page fetch, front-face cards, RTL-aware hover/always controls, AX1 entrance/load presets. |
+| 14 | Step 10R-SL3 | SL2 | 13 | Flip animation and smart side-open back face rendered from existing card templates, implemented with the GSAP Flip plugin from AX1, server-computed logical open direction. |
+| 15 | Step 10R-SL4 | SL2 | 15, 16 | Quick-view modal: flat app-owned modal embedding episode/podcast page content with density/label-size controls, a modal card template, and AX1 open/close choreography. |
+| 16 | Step 10R-AX2 | AX1 (SL not required) | 19, 20 | Retrofit motion presets onto existing grids/sections/load-more + loading/update/page-transition concealment (Livewire loading choreography, morph-added staggers, cross-document View Transitions). |
+| 17 | Step 10R-AX3 | AX2 | 21 | Scroll-linked effects: episode/podcast header parallax, transcript reading-progress bar, scroll-linked cover emphasis — ScrollTrigger, capped and reduced-motion-safe. |
+| 18 | Step 10R-B4 | M1-M6, IP1-IP3, P1-P3, SL1-SL4, AX1-AX3 | F11 | Converge legacy card options with card presentation services (now covering slider/modal/motion surfaces). |
+| 19 | Step 10R-C2 | B4 | F13 | Card layout consistency and semantic layout tokens (now covering slider front/back faces). |
+| 20 | Step 9F-A → 9F-B → 9F-C | all 10R above | 9F | Rich homepage columns; footer config/renderer; admin polish. |
+| 21 | Step 11 | all above + explicit Yoni approval | Step 11 | Seeders/demo/assets/cleanup incl. promoting the local evaluation seed, demo display templates, and demo motion presets. |
+| 22 | Prompt 13 | explicit Yoni approval | Prompt 13 | Dashboard metrics. |
+
+AX placement rationale: AX1 sits directly before SL1 (Yoni: foundation-first) so the
+slider consumes motion natively; AX2/AX3 follow SL4 so the slider ships sooner, but AX2
+does not depend on SL and MAY be pulled before SL1 by editing the ledger if
+loading-concealment is more urgent than the slider.
 
 Sequencing rationale for SL placement: SL builds on perf-hardened foundations (P1 cached
 config, P2 bounded fetching) so the slider never ships with the F2-style over-fetch
@@ -484,6 +495,127 @@ podcast variants; harness green.
 
 Commit: `feat: add quick view modal for slider cards`
 
+## Requests 18-21 — GSAP Motion Work Package (v4)
+
+Research basis: GSAP and ALL formerly-paid plugins (ScrollTrigger, Flip, SplitText,
+ScrollSmoother, MorphSVG, Inertia) are 100% free including commercial use since
+Webflow's April 2025 change. `package.json` currently has zero runtime JS dependencies
+(Alpine ships inside Livewire/Filament); adding `gsap` is a new-dependency decision and
+YONI HAS APPROVED IT for this package. Livewire integration uses `wire:ignore` for
+GSAP-owned DOM plus Livewire morph hooks (`morph.added` per inserted element is the
+load-more animation anchor — verify exact hook names against installed Livewire 4.3 via
+Boost). SPA mode remains OFF (removed in `2b1c6b3`); page-to-page transitions therefore
+use the native cross-document View Transitions API as progressive enhancement, NOT
+`wire:navigate`.
+
+18. Motion foundation: one `PodTextMotion` boundary; finite motion preset tokens per
+    display template/section plus a global default; expressive catalog.
+19. Expressive presets incl. hover micro-interactions and slider page choreography.
+20. Loading/update/page-transition concealment: Livewire loading-state choreography,
+    staggered content swap-in on updates, View Transitions between pages — animation
+    conceals REAL waiting only.
+21. Scroll-linked effects: reveals via `ScrollTrigger.batch(..., once: true)` plus
+    scroll-linked header parallax, transcript reading-progress bar, cover emphasis.
+
+### Motion decisions D15-D20 (defaults; Yoni may override in review)
+
+- D15 — GSAP enters behind ONE app-owned boundary (`PodTextMotion` registry + Alpine
+  data-attribute contract, e.g. `data-motion="fade_up_stagger"`). Blade/presenters emit
+  finite tokens only; JSON settings never contain durations/easings/raw values; the JS
+  registry maps tokens → timelines. Same philosophy as the icon/color resolvers.
+- D16 — Catalog is expressive per Yoni: entrance (`none|fade_up|fade_up_stagger|
+  scale_in|slide_start|flip_reveal`), hover (`none|lift|tilt`), load-more
+  (`stagger_in|fade_in`), loading (`skeleton_shimmer|pulse|none`), transition
+  (`view_transition|none`), with `stagger: tight|normal|relaxed` and
+  `duration: fast|normal|slow`. "start"-based directions keep RTL correct.
+- D17 — Scroll-snap remains the slider transport (D12 stands); GSAP never takes over
+  scrolling. ScrollSmoother is BANNED (scroll-jacking vs RTL/a11y/Livewire is a bad
+  trade for a content site).
+- D18 — Page transitions = cross-document View Transitions API (progressive
+  enhancement; unsupported browsers get instant navigation). SPA mode stays off;
+  revisit only if View Transitions coverage proves insufficient.
+- D19 — `prefers-reduced-motion` always wins via `gsap.matchMedia()`; it is NOT an
+  admin setting. Reduced-motion users get opacity-only or no animation.
+- D20 — Never add artificial latency: loading/transition animations conceal real waits
+  only; no minimum-duration loaders; entrance animations must not delay LCP or hide
+  above-the-fold content for no-JS/crawlers (initial hidden states set by JS, not CSS).
+
+## Step 10R-AX1 Plan (motion foundation)
+
+Goal: adopt GSAP once, correctly, behind one boundary, before the slider consumes it.
+
+Scope:
+
+- `npm i gsap` (approved); import in the public JS bundle; register only ScrollTrigger
+  and Flip in AX1. VERIFY FIRST where public-panel JS actually loads today (Filament
+  panels do not auto-include `resources/js/app.js`) — wire the bundle via the panel's
+  asset registration or render hook and record the mechanism in the handoff, including
+  the built bundle size before/after.
+- `PodTextMotion` module: preset registry (D16 tokens → GSAP timelines/config), Alpine
+  directive or `data-motion-*` attribute contract, group/stagger orchestration,
+  `gsap.matchMedia()` reduced-motion gating (D19), FOUC/SEO guard (content visible by
+  default; JS applies initial states then animates).
+- Livewire bridges: `morph.added` handler animating only newly inserted nodes tagged
+  with motion attributes; `ScrollTrigger.refresh()` after appends; `wire:ignore`
+  guidance for GSAP-owned DOM documented in the module.
+- Settings: `motion` config group — global defaults in `display_defaults.motion` plus
+  per-homepage-section and (from SL1) per-display-template overrides; finite tokens per
+  D16; registry defaults + validator + settings migration + render-context accessor +
+  translated admin fields (en+he).
+- No visible behavior change yet beyond an optional single demo surface; AX2/SL own
+  broad application.
+
+Tests: token normalization/migration; data-attribute contract emitted from presenters;
+reduced-motion gating markers; FOUC guard (content present without JS-applied classes);
+harness green; bundle builds.
+
+Commit: `feat: add gsap motion foundation and presets`
+
+## Step 10R-AX2 Plan (retrofit + loading/transition concealment)
+
+Goal: apply motion to existing surfaces and make waiting feel intentional.
+
+Scope:
+
+- Retrofit entrance/load-more presets onto existing homepage sections, latest/search
+  grids, podcast episode grids, contributor grids — per-section/template settings from
+  AX1; `ScrollTrigger.batch(..., once: true)` for on-scroll reveals.
+- Livewire update concealment: loading-state choreography coordinated with
+  `wire:loading` targets (skeleton shimmer/pulse presets on the results region),
+  staggered swap-in of updated content via morph hooks instead of content "popping".
+- Page-to-page transitions per D18: `@view-transition` opt-in CSS + named transition
+  elements for stable chrome (header/logo), GSAP-enhanced where it adds value;
+  unsupported browsers degrade to instant navigation; no artificial delay (D20).
+- Slider integration check: SL2/SL3/SL4 surfaces already consume AX1 presets; AX2
+  verifies homepage sections using sliders and grids compose motion consistently.
+
+Tests: new-node-only stagger on load-more (existing nodes untouched); loading preset
+markers appear during `wire:loading` and vanish after; view-transition opt-in present;
+reduced-motion path; no-JS content visibility; harness green.
+
+Commit: `feat: add loading and page transition motion`
+
+## Step 10R-AX3 Plan (scroll-linked effects)
+
+Goal: the scroll-linked layer, capped and safe.
+
+Scope:
+
+- Episode/podcast page header parallax (cover background subtle translate/scale,
+  transform-only, small amplitude).
+- Transcript reading-progress bar on the episode page (scroll-linked, client-only,
+  pairs with the IP3 reading controls; no server state).
+- Optional scroll-linked cover/palette emphasis on podcast pages (uses V1c palette
+  variables).
+- All via ScrollTrigger with `scrub`; transform/opacity only; disabled entirely under
+  reduced motion; no pinning that changes document height on mobile unless proven
+  CLS-free.
+
+Tests: markers/data hooks present; progress bar bounds; reduced-motion disable;
+no CLS on fixture pages; harness green.
+
+Commit: `feat: add scroll linked motion effects`
+
 ## Impact on Existing Queue
 
 - P1 waits for UX1/UX2/V1a-V1c (settings shape churn finishes first); with the
@@ -505,7 +637,7 @@ Commit: `feat: add quick view modal for slider cards`
 
 - Stop before app-code changes if the ledger and current state disagree on the first
   pending mini-step, or if the ledger still shows the v1 rows (single V1, S1-before-S2)
-  and this v2 plan has not been applied to the ledger in the same run's docs step.
+  and this v4 plan has not been applied to the ledger in the same run's docs step.
 - Stop if custom-color implementation would require storing anything other than strict
   normalized hex.
 - Stop if palette sampling would require remote fetches or per-request GD decoding after
@@ -516,7 +648,14 @@ Commit: `feat: add quick view modal for slider cards`
 - Stop if a create page cannot support relation managers; document non-applicability.
 - Stop if settings import/export scope expands into demo/content seeding (Step 11).
 - Stop if an SL step would require a third-party carousel/JS library — scroll-snap +
-  Alpine is the approved mechanism unless Yoni explicitly approves a dependency.
+  Alpine (+ GSAP from AX1 for motion only) is the approved mechanism unless Yoni
+  explicitly approves another dependency. `gsap` itself is approved (v4).
+- Stop if any motion work would introduce ScrollSmoother/scroll-jacking, take over the
+  slider's scroll transport, add artificial loading latency, animate layout properties
+  (width/height/top/left) instead of transforms/opacity, or hide above-the-fold content
+  from no-JS visitors/crawlers.
+- Stop if the public panel has no safe JS bundle attachment point — resolve the asset
+  wiring question in AX1's plan before writing motion code.
 - Stop if the slider or modal would fetch/hydrate all pages up front or preload modal
   content per card — bounded first-page fetch and lazy-on-open are requirements.
 - Stop if modal content would become the only public path to any content (SEO/crawl
