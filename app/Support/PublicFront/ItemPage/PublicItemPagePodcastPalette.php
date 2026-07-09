@@ -2,23 +2,68 @@
 
 namespace App\Support\PublicFront\ItemPage;
 
+use App\Support\PublicFront\Colors\PublicFrontColor;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
 use Throwable;
 
 class PublicItemPagePodcastPalette
 {
     /**
-     * @return array<string, string>
+     * @return array<string, array{light: string, dark: string}>
      */
     public function colors(?string $coverPath): array
+    {
+        if (blank($coverPath) || $this->isRemotePath($coverPath)) {
+            return $this->fallbackThemeColors();
+        }
+
+        $cacheKey = $this->cacheKey($coverPath);
+
+        if ($cacheKey === null) {
+            return $this->computeColors($coverPath);
+        }
+
+        return Cache::rememberForever($cacheKey, fn (): array => $this->computeColors($coverPath));
+    }
+
+    /**
+     * @return array<string, array{light: string, dark: string}>
+     */
+    protected function computeColors(?string $coverPath): array
     {
         $sampled = $this->sampleColors($coverPath);
 
         return [
-            'image_1' => $sampled[0] ?? '#2563eb',
-            'image_2' => $sampled[1] ?? '#16a34a',
-            'image_3' => $sampled[2] ?? '#dc2626',
+            'image_1' => PublicFrontColor::themeVariants($sampled[0] ?? $this->fallbackColors()['image_1']),
+            'image_2' => PublicFrontColor::themeVariants($sampled[1] ?? $this->fallbackColors()['image_2']),
+            'image_3' => PublicFrontColor::themeVariants($sampled[2] ?? $this->fallbackColors()['image_3']),
         ];
+    }
+
+    private function cacheKey(?string $coverPath): ?string
+    {
+        if (blank($coverPath) || $this->isRemotePath($coverPath)) {
+            return null;
+        }
+
+        try {
+            $path = Storage::disk('public')->path($coverPath);
+        } catch (Throwable) {
+            return null;
+        }
+
+        if (! is_file($path) || ! is_readable($path)) {
+            return null;
+        }
+
+        $mtime = filemtime($path);
+
+        if ($mtime === false) {
+            return null;
+        }
+
+        return 'public_front.podcast_palette.v1.'.sha1($coverPath.'|'.$mtime);
     }
 
     /**
@@ -26,7 +71,7 @@ class PublicItemPagePodcastPalette
      */
     private function sampleColors(?string $coverPath): array
     {
-        if (! extension_loaded('gd') || blank($coverPath)) {
+        if (! extension_loaded('gd') || blank($coverPath) || $this->isRemotePath($coverPath)) {
             return [];
         }
 
@@ -95,5 +140,32 @@ class PublicItemPagePodcastPalette
     private function hex(int $red, int $green, int $blue): string
     {
         return sprintf('#%02x%02x%02x', $red, $green, $blue);
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private function fallbackColors(): array
+    {
+        return [
+            'image_1' => '#2563eb',
+            'image_2' => '#16a34a',
+            'image_3' => '#dc2626',
+        ];
+    }
+
+    /**
+     * @return array<string, array{light: string, dark: string}>
+     */
+    private function fallbackThemeColors(): array
+    {
+        return collect($this->fallbackColors())
+            ->map(fn (string $color): array => PublicFrontColor::themeVariants($color))
+            ->all();
+    }
+
+    private function isRemotePath(?string $coverPath): bool
+    {
+        return is_string($coverPath) && (str_contains($coverPath, '://') || str_starts_with($coverPath, '//'));
     }
 }

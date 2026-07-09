@@ -11,6 +11,7 @@ use App\Models\ContentTag;
 use App\Models\Transcription;
 use App\Support\PublicContent\PublicContentItemQueries;
 use App\Support\PublicContent\PublicTranscriptionPolicy;
+use App\Support\PublicFront\Colors\PublicFrontColor;
 use App\Support\PublicFront\ItemPage\PublicItemPagePodcastPalette;
 use App\Support\PublicFront\ItemPage\PublicItemPageRegistry;
 use App\Support\PublicFront\PublicDefaultImageResolver;
@@ -40,7 +41,7 @@ class ShowContentItem extends Page
     private ?array $itemPageConfig = null;
 
     /**
-     * @var array<string, string>|null
+     * @var array<string, array{light: string, dark: string}>|null
      */
     private ?array $podcastImagePalette = null;
 
@@ -108,12 +109,13 @@ class ShowContentItem extends Page
             'position' => $identity['position'] ?? 'above_title',
             'size' => $identity['size'] ?? 'sm',
             'color' => $identity['color'] ?? 'primary',
+            'custom_color' => $identity['custom_color'] ?? null,
             'label' => $this->contentGroup->title,
             'url' => ShowContentGroup::getUrl(['contentGroupSlug' => $this->contentGroup->slug], panel: 'public'),
             'icon' => $identity['icon'] ?? 'podcast',
             'icon_position' => $identity['icon_position'] ?? 'inline_before',
             'class' => $this->podcastIdentityClass($mode, $identity['size'] ?? 'sm', $identity['color'] ?? 'primary'),
-            'style' => $this->podcastIdentityStyle($identity['color'] ?? 'primary'),
+            'style' => $this->podcastIdentityStyle($identity['color'] ?? 'primary', $identity['custom_color'] ?? null),
         ];
     }
 
@@ -159,6 +161,7 @@ class ShowContentItem extends Page
                         'icon_position' => $presentation['icon_position'],
                     ],
                     'class' => $this->badgeClass($field['size'] ?? 'sm', $field['color'] ?? 'gray'),
+                    'style' => $this->badgeStyle($field['color'] ?? 'gray', $field['custom_color'] ?? null),
                     'data_test' => "item-info-{$key}",
                 ];
             })
@@ -372,13 +375,13 @@ class ShowContentItem extends Page
     private function podcastIdentityClass(string $mode, ?string $size, ?string $color): string
     {
         $base = 'inline-flex max-w-full items-center gap-1.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-600';
-        $colorClass = PublicItemPageRegistry::isPodcastImageColor($color)
-            ? 'text-[var(--podcast-identity-color)] hover:opacity-80 dark:text-[var(--podcast-identity-color)]'
+        $colorClass = PublicItemPageRegistry::usesCssVariableColor($color)
+            ? 'text-[var(--podcast-identity-color)] hover:opacity-80 dark:text-[var(--podcast-identity-color-dark)]'
             : PublicItemPageRegistry::podcastIdentityTextColorClass($color);
 
         if ($mode === 'badge') {
-            $badgeColorClass = PublicItemPageRegistry::isPodcastImageColor($color)
-                ? 'border-[var(--podcast-identity-border)] bg-[var(--podcast-identity-bg)] text-[var(--podcast-identity-color)] hover:opacity-80 dark:border-[var(--podcast-identity-border)] dark:bg-[var(--podcast-identity-bg)] dark:text-[var(--podcast-identity-color)]'
+            $badgeColorClass = PublicItemPageRegistry::usesCssVariableColor($color)
+                ? 'border-[var(--podcast-identity-border)] bg-[var(--podcast-identity-bg)] text-[var(--podcast-identity-color)] hover:opacity-80 dark:border-[var(--podcast-identity-border-dark)] dark:bg-[var(--podcast-identity-bg-dark)] dark:text-[var(--podcast-identity-color-dark)]'
                 : PublicItemPageRegistry::infoBadgeColorClass($color);
 
             return trim($base.' rounded-md border font-medium '.
@@ -393,23 +396,30 @@ class ShowContentItem extends Page
             $colorClass);
     }
 
-    private function podcastIdentityStyle(?string $color): ?string
+    private function podcastIdentityStyle(?string $color, mixed $customColor): ?string
     {
+        if (PublicItemPageRegistry::isCustomColor($color)) {
+            return PublicFrontColor::cssVariables('podcast-identity', $customColor);
+        }
+
         if (! PublicItemPageRegistry::isPodcastImageColor($color)) {
             return null;
         }
 
-        $hex = $this->podcastImagePalette()[$color] ?? null;
+        return PublicFrontColor::cssVariables('podcast-identity', $this->podcastImagePalette()[$color] ?? null);
+    }
 
-        if (! is_string($hex) || ! preg_match('/^#[0-9a-f]{6}$/', $hex)) {
+    private function badgeStyle(?string $color, mixed $customColor): ?string
+    {
+        if (! PublicItemPageRegistry::isCustomColor($color)) {
             return null;
         }
 
-        return "--podcast-identity-color: {$hex}; --podcast-identity-bg: color-mix(in srgb, {$hex} 12%, transparent); --podcast-identity-border: color-mix(in srgb, {$hex} 32%, transparent);";
+        return PublicFrontColor::cssVariables('item-info', $customColor);
     }
 
     /**
-     * @return array<string, string>
+     * @return array<string, array{light: string, dark: string}>
      */
     private function podcastImagePalette(): array
     {

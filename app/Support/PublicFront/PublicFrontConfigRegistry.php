@@ -128,6 +128,7 @@ class PublicFrontConfigRegistry
                 'podcast_identity' => [
                     'mode' => 'badge',
                     'color' => 'primary',
+                    'custom_color' => null,
                     'icon' => PublicFrontIconRegistry::DEFAULT_PODCAST,
                     'icon_position' => 'inline_before',
                     'position' => 'above_title',
@@ -160,6 +161,7 @@ class PublicFrontConfigRegistry
                     'info' => [
                         'size' => PublicItemPageRegistry::badgeSizes()[1],
                         'color' => PublicItemPageRegistry::badgeColors()[0],
+                        'custom_color' => null,
                     ],
                 ],
             ],

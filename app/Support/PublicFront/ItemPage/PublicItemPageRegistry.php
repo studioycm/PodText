@@ -6,6 +6,8 @@ use App\Support\PublicFront\Icons\PublicFrontIconRegistry;
 
 class PublicItemPageRegistry
 {
+    public const CUSTOM_COLOR = 'custom';
+
     /**
      * @return array<string>
      */
@@ -78,6 +80,7 @@ class PublicItemPageRegistry
             'success',
             'warning',
             'danger',
+            self::CUSTOM_COLOR,
         ];
     }
 
@@ -189,6 +192,16 @@ class PublicItemPageRegistry
         return in_array($color, self::podcastImageColors(), true);
     }
 
+    public static function isCustomColor(?string $color): bool
+    {
+        return $color === self::CUSTOM_COLOR;
+    }
+
+    public static function usesCssVariableColor(?string $color): bool
+    {
+        return self::isCustomColor($color) || self::isPodcastImageColor($color);
+    }
+
     /**
      * @return array<string>
      */
@@ -250,6 +263,7 @@ class PublicItemPageRegistry
             'success' => 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950 dark:text-emerald-200',
             'warning' => 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200',
             'danger' => 'border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-800 dark:bg-rose-950 dark:text-rose-200',
+            self::CUSTOM_COLOR => 'border-[var(--item-info-border)] bg-[var(--item-info-bg)] text-[var(--item-info-color)] dark:border-[var(--item-info-border-dark)] dark:bg-[var(--item-info-bg-dark)] dark:text-[var(--item-info-color-dark)]',
             default => 'border-gray-200 bg-gray-50 text-gray-700 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200',
         };
     }
@@ -312,6 +326,7 @@ class PublicItemPageRegistry
             'icon_position' => 'inline_before',
             'size' => self::badgeSizes()[1],
             'color' => self::badgeColors()[0],
+            'custom_color' => null,
         ];
     }
 }

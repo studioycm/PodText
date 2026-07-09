@@ -142,6 +142,7 @@ it('backfills item page header settings through the settings migration', functio
         'podcast_identity' => [
             'mode' => 'badge',
             'color' => 'primary',
+            'custom_color' => null,
             'icon' => 'OutlinedRectangleGroup',
             'icon_position' => 'inline_before',
             'position' => 'above_title',
@@ -151,6 +152,7 @@ it('backfills item page header settings through the settings migration', functio
             'info' => [
                 'size' => 'md',
                 'color' => 'primary',
+                'custom_color' => null,
             ],
         ],
     ])->and($itemPage['dates']['display'])->toBe('site')
@@ -651,6 +653,7 @@ it('saves sanitized public front config through the settings page while preservi
         'podcast_identity' => [
             'mode' => 'text',
             'color' => 'image_2',
+            'custom_color' => null,
             'icon' => 'OutlinedRectangleGroup',
             'icon_position' => 'inline_after',
             'position' => 'title_row_after',
@@ -665,6 +668,7 @@ it('saves sanitized public front config through the settings page while preservi
                 'icon_position' => 'inline_before',
                 'size' => 'sm',
                 'color' => 'info',
+                'custom_color' => null,
             ],
             [
                 'field' => 'site_published_date',
@@ -674,6 +678,7 @@ it('saves sanitized public front config through the settings page while preservi
                 'icon_position' => 'inline_after',
                 'size' => 'md',
                 'color' => 'primary',
+                'custom_color' => null,
             ],
         ],
         'dates' => [
@@ -702,6 +707,7 @@ it('saves sanitized public front config through the settings page while preservi
             'info' => [
                 'size' => 'md',
                 'color' => 'primary',
+                'custom_color' => null,
             ],
         ],
     ])->and($config->group('route_labels'))->toBe([

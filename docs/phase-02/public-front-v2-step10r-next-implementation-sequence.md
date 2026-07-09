@@ -12,7 +12,7 @@ This file records the active continuation-runner order after Step 10R-M6 plus th
 | 2 | Step 10R-UX2 | UX1 | Complete: effective/featured/main transcription edit action on episode lists in the Episodes resource and podcast episode relation manager. |
 | 3 | Step 10R-V1a | M6, UX1 | Complete: default/no-image fallback settings with per-family inherit/custom/none modes and public fallback rendering. |
 | 4 | Step 10R-V1b | V1a | Complete: Heroicon-enum registry, permanent legacy aliases, and shared lazy searchable icon-picker helper. |
-| 5 | Step 10R-V1c | V1a | Custom hex color controls and theme-safe persistent podcast-palette cache. |
+| 5 | Step 10R-V1c | V1a | Complete: custom hex color controls and theme-safe persistent podcast-palette cache. |
 | 6 | Step 10R-P1 | UX1, UX2, V1a-V1c | Cache validated public-front config with versioned key `public_front.config.v1` and settings-migration watermark. |
 | 7 | Step 10R-S2 | P1 | Settings backup versions, shared package serializer, compare/download, retention, and restore flow. |
 | 8 | Step 10R-S1 | P1, S2 | Settings import/export package with dry-run validation, backup-before-import, transaction, and cache invalidation. |
@@ -53,10 +53,11 @@ This file records the active continuation-runner order after Step 10R-M6 plus th
 
 ## Current Recommendation
 
-Continue with Step 10R-V1c. Step 10R-UX1 standardized admin navigation, table action
+Continue with Step 10R-P1. Step 10R-UX1 standardized admin navigation, table action
 placement, action modal defaults, section width defaults, and relation-manager tabs.
 Step 10R-UX2 added the shared effective transcription edit action on both episode list
 surfaces. Step 10R-V1a added finite default/no-image fallback settings and shared
 public image fallback rendering. Step 10R-V1b added enum-backed icon settings and a
-shared lazy searchable icon picker. The v4 continuation order is reflected here and in
-the central ledger.
+shared lazy searchable icon picker. Step 10R-V1c added strict custom hex color controls
+and a theme-safe cached podcast palette. The v4 continuation order is reflected here and
+in the central ledger.

@@ -121,6 +121,7 @@
                                     <x-public.card-part-shell
                                         :part="$infoPart['part']"
                                         class="{{ $infoPart['class'] }}"
+                                        :style="$infoPart['style'] ?? null"
                                         data-test="{{ $infoPart['data_test'] }}"
                                     >
                                         @if($isLinkList)

@@ -6,6 +6,7 @@ use App\Enums\PublicMenuItemType;
 use App\Support\PublicContent\PublicTranscriptionPolicy;
 use App\Support\PublicFront\About\PublicAboutPageRegistry;
 use App\Support\PublicFront\Cards\PublicFrontCardTemplateRegistry;
+use App\Support\PublicFront\Colors\PublicFrontColor;
 use App\Support\PublicFront\Forms\PublicFormDefinitionRegistry;
 use App\Support\PublicFront\Icons\PublicFrontIconRegistry;
 use App\Support\PublicFront\ItemPage\PublicItemPageRegistry;
@@ -1409,7 +1410,7 @@ class PublicFrontConfigValidator
     /**
      * @param  array<string, mixed>  $defaults
      * @param  array<PublicFrontInvalidConfig>  $invalidConfig
-     * @return array{mode: string, color: string, icon: string, icon_position: string, position: string, size: string}
+     * @return array{mode: string, color: string, custom_color: ?string, icon: string, icon_position: string, position: string, size: string}
      */
     private function normalizeItemPagePodcastIdentity(mixed $identity, array $defaults, array &$invalidConfig): array
     {
@@ -1417,6 +1418,7 @@ class PublicFrontConfigValidator
             return [
                 'mode' => $defaults['mode'] ?? 'badge',
                 'color' => $defaults['color'] ?? 'primary',
+                'custom_color' => null,
                 'icon' => $this->defaultIconToken($defaults['icon'] ?? PublicFrontIconRegistry::DEFAULT_PODCAST),
                 'icon_position' => $defaults['icon_position'] ?? 'inline_before',
                 'position' => $defaults['position'] ?? 'above_title',
@@ -1430,6 +1432,7 @@ class PublicFrontConfigValidator
             return [
                 'mode' => $defaults['mode'] ?? 'badge',
                 'color' => $defaults['color'] ?? 'primary',
+                'custom_color' => null,
                 'icon' => $this->defaultIconToken($defaults['icon'] ?? PublicFrontIconRegistry::DEFAULT_PODCAST),
                 'icon_position' => $defaults['icon_position'] ?? 'inline_before',
                 'position' => $defaults['position'] ?? 'above_title',
@@ -1437,11 +1440,25 @@ class PublicFrontConfigValidator
             ];
         }
 
-        $this->reportUnknownKeys($identity, ['mode', 'color', 'icon', 'icon_position', 'position', 'size'], 'item_page.podcast_identity', $invalidConfig);
+        $this->reportUnknownKeys($identity, ['mode', 'color', 'custom_color', 'icon', 'icon_position', 'position', 'size'], 'item_page.podcast_identity', $invalidConfig);
 
         $iconPosition = array_key_exists('icon_position', $identity)
             ? $this->iconPosition($identity['icon_position'], 'item_page.podcast_identity.icon_position', $invalidConfig)
             : ($defaults['icon_position'] ?? 'inline_before');
+        $color = $this->finiteString(
+            $identity['color'] ?? null,
+            PublicItemPageRegistry::podcastIdentityColors(),
+            'item_page.podcast_identity.color',
+            $invalidConfig,
+            $defaults['color'] ?? 'primary',
+        );
+        [$color, $customColor] = $this->normalizeCustomColorSetting(
+            $color,
+            $identity['custom_color'] ?? null,
+            'item_page.podcast_identity.custom_color',
+            $invalidConfig,
+            $defaults['color'] ?? 'primary',
+        );
 
         return [
             'mode' => $this->finiteString(
@@ -1451,13 +1468,8 @@ class PublicFrontConfigValidator
                 $invalidConfig,
                 $defaults['mode'] ?? 'badge',
             ),
-            'color' => $this->finiteString(
-                $identity['color'] ?? null,
-                PublicItemPageRegistry::podcastIdentityColors(),
-                'item_page.podcast_identity.color',
-                $invalidConfig,
-                $defaults['color'] ?? 'primary',
-            ),
+            'color' => $color,
+            'custom_color' => $customColor,
             'icon' => $this->iconToken(
                 $identity['icon'] ?? null,
                 'item_page.podcast_identity.icon',
@@ -1508,11 +1520,26 @@ class PublicFrontConfigValidator
                 'icon_position',
                 'size',
                 'color',
+                'custom_color',
             ], $path, $invalidConfig);
 
             $iconPosition = array_key_exists('icon_position', $field)
                 ? $this->iconPosition($field['icon_position'], "{$path}.icon_position", $invalidConfig)
                 : 'inline_before';
+            $color = $this->finiteString(
+                $field['color'] ?? null,
+                PublicItemPageRegistry::badgeColors(),
+                "{$path}.color",
+                $invalidConfig,
+                'gray',
+            );
+            [$color, $customColor] = $this->normalizeCustomColorSetting(
+                $color,
+                $field['custom_color'] ?? null,
+                "{$path}.custom_color",
+                $invalidConfig,
+                'gray',
+            );
 
             return [
                 'field' => $this->finiteString(
@@ -1550,13 +1577,8 @@ class PublicFrontConfigValidator
                     $invalidConfig,
                     'sm',
                 ),
-                'color' => $this->finiteString(
-                    $field['color'] ?? null,
-                    PublicItemPageRegistry::badgeColors(),
-                    "{$path}.color",
-                    $invalidConfig,
-                    'gray',
-                ),
+                'color' => $color,
+                'custom_color' => $customColor,
             ];
         });
 
@@ -1717,7 +1739,7 @@ class PublicFrontConfigValidator
     /**
      * @param  array<string, mixed>  $defaults
      * @param  array<PublicFrontInvalidConfig>  $invalidConfig
-     * @return array{size: string, color: string}
+     * @return array{size: string, color: string, custom_color: ?string}
      */
     private function normalizeItemPageInfoBadge(mixed $badge, array $defaults, string $path, array &$invalidConfig): array
     {
@@ -1725,6 +1747,7 @@ class PublicFrontConfigValidator
             return [
                 'size' => $defaults['size'] ?? 'sm',
                 'color' => $defaults['color'] ?? 'gray',
+                'custom_color' => null,
             ];
         }
 
@@ -1734,10 +1757,26 @@ class PublicFrontConfigValidator
             return [
                 'size' => $defaults['size'] ?? 'sm',
                 'color' => $defaults['color'] ?? 'gray',
+                'custom_color' => null,
             ];
         }
 
-        $this->reportUnknownKeys($badge, ['size', 'color'], $path, $invalidConfig);
+        $this->reportUnknownKeys($badge, ['size', 'color', 'custom_color'], $path, $invalidConfig);
+
+        $color = $this->finiteString(
+            $badge['color'] ?? null,
+            PublicItemPageRegistry::badgeColors(),
+            "{$path}.color",
+            $invalidConfig,
+            $defaults['color'] ?? 'gray',
+        );
+        [$color, $customColor] = $this->normalizeCustomColorSetting(
+            $color,
+            $badge['custom_color'] ?? null,
+            "{$path}.custom_color",
+            $invalidConfig,
+            $defaults['color'] ?? 'gray',
+        );
 
         return [
             'size' => $this->finiteString(
@@ -1747,14 +1786,30 @@ class PublicFrontConfigValidator
                 $invalidConfig,
                 $defaults['size'] ?? 'sm',
             ),
-            'color' => $this->finiteString(
-                $badge['color'] ?? null,
-                PublicItemPageRegistry::badgeColors(),
-                "{$path}.color",
-                $invalidConfig,
-                $defaults['color'] ?? 'gray',
-            ),
+            'color' => $color,
+            'custom_color' => $customColor,
         ];
+    }
+
+    /**
+     * @param  array<PublicFrontInvalidConfig>  $invalidConfig
+     * @return array{0: string, 1: ?string}
+     */
+    private function normalizeCustomColorSetting(?string $color, mixed $customColor, string $path, array &$invalidConfig, string $fallbackColor): array
+    {
+        if (! PublicItemPageRegistry::isCustomColor($color)) {
+            return [$color ?? $fallbackColor, null];
+        }
+
+        $normalized = PublicFrontColor::normalizeHex($customColor);
+
+        if ($normalized !== null) {
+            return [PublicItemPageRegistry::CUSTOM_COLOR, $normalized];
+        }
+
+        $invalidConfig[] = PublicFrontInvalidConfig::make($path, 'invalid_custom_hex', $customColor);
+
+        return [$fallbackColor, null];
     }
 
     /**

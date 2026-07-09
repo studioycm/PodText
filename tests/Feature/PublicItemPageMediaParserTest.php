@@ -415,7 +415,8 @@ it('renders podcast identity with title row positioning and sampled podcast imag
         ->assertSee('data-podcast-identity-position="title_row_after"', false)
         ->assertSee('data-podcast-identity-size="title"', false)
         ->assertSee('data-podcast-identity-color="image_2"', false)
-        ->assertSee('--podcast-identity-color: #16a34a', false)
+        ->assertSee('--podcast-identity-color:', false)
+        ->assertSee('--podcast-identity-color-dark:', false)
         ->assertSeeInOrder([
             'Palette Episode',
             'Palette Podcast',

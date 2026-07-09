@@ -9,6 +9,7 @@ use App\Support\PublicContent\PublicTranscriptionPolicy;
 use App\Support\PublicFront\About\PublicAboutPageRegistry;
 use App\Support\PublicFront\Cards\PublicFrontCardTemplateRegistry;
 use App\Support\PublicFront\Cards\PublicFrontCardTemplateResolver;
+use App\Support\PublicFront\Colors\PublicFrontColor;
 use App\Support\PublicFront\Icons\PublicFrontIconRegistry;
 use App\Support\PublicFront\ItemPage\PublicItemPageRegistry;
 use App\Support\PublicFront\PublicFrontConfigReader;
@@ -17,6 +18,7 @@ use App\Support\PublicFront\PublicFrontConfigValidator;
 use BackedEnum;
 use Filament\Forms\Components\Builder;
 use Filament\Forms\Components\Builder\Block;
+use Filament\Forms\Components\ColorPicker;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\MarkdownEditor;
 use Filament\Forms\Components\Repeater;
@@ -366,7 +368,21 @@ class PublicContentSettings extends SettingsPage
                                             ->options(fn (): array => PublicItemPageRegistry::podcastIdentityColorOptions())
                                             ->default('primary')
                                             ->native(false)
+                                            ->live()
                                             ->required(),
+                                        ColorPicker::make('item_page.podcast_identity.custom_color')
+                                            ->label(__('admin.fields.item_page_podcast_identity_custom_color'))
+                                            ->helperText(__('admin.helpers.item_page_podcast_identity_custom_color'))
+                                            ->hex()
+                                            ->hexColor(fn (Get $get): bool => $get('item_page.podcast_identity.color') === PublicItemPageRegistry::CUSTOM_COLOR)
+                                            ->regex(fn (Get $get): ?string => $get('item_page.podcast_identity.color') === PublicItemPageRegistry::CUSTOM_COLOR
+                                                ? '/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/'
+                                                : null)
+                                            ->nullable(fn (Get $get): bool => $get('item_page.podcast_identity.color') !== PublicItemPageRegistry::CUSTOM_COLOR)
+                                            ->required(fn (Get $get): bool => $get('item_page.podcast_identity.color') === PublicItemPageRegistry::CUSTOM_COLOR)
+                                            ->dehydrateStateUsing(fn (mixed $state): ?string => PublicFrontColor::normalizeHex($state))
+                                            ->dehydratedWhenHidden()
+                                            ->visible(fn (Get $get): bool => $get('item_page.podcast_identity.color') === PublicItemPageRegistry::CUSTOM_COLOR),
                                         Select::make('item_page.podcast_identity.size')
                                             ->label(__('admin.fields.item_page_podcast_identity_size'))
                                             ->helperText(__('admin.helpers.item_page_podcast_identity_size'))
@@ -430,9 +446,23 @@ class PublicContentSettings extends SettingsPage
                                             ->options(fn (): array => PublicItemPageRegistry::badgeColorOptions())
                                             ->default('gray')
                                             ->native(false)
+                                            ->live()
                                             ->required(),
+                                        ColorPicker::make('item_page.badges.info.custom_color')
+                                            ->label(__('admin.fields.item_page_info_badge_custom_color'))
+                                            ->helperText(__('admin.helpers.item_page_info_badge_custom_color'))
+                                            ->hex()
+                                            ->hexColor(fn (Get $get): bool => $get('item_page.badges.info.color') === PublicItemPageRegistry::CUSTOM_COLOR)
+                                            ->regex(fn (Get $get): ?string => $get('item_page.badges.info.color') === PublicItemPageRegistry::CUSTOM_COLOR
+                                                ? '/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/'
+                                                : null)
+                                            ->nullable(fn (Get $get): bool => $get('item_page.badges.info.color') !== PublicItemPageRegistry::CUSTOM_COLOR)
+                                            ->required(fn (Get $get): bool => $get('item_page.badges.info.color') === PublicItemPageRegistry::CUSTOM_COLOR)
+                                            ->dehydrateStateUsing(fn (mixed $state): ?string => PublicFrontColor::normalizeHex($state))
+                                            ->dehydratedWhenHidden()
+                                            ->visible(fn (Get $get): bool => $get('item_page.badges.info.color') === PublicItemPageRegistry::CUSTOM_COLOR),
                                     ])
-                                    ->columns(2)
+                                    ->columns(3)
                                     ->collapsible()
                                     ->columnSpanFull(),
                                 Section::make(__('admin.sections.public_front_item_page_transcript_controls'))
@@ -1598,7 +1628,21 @@ class PublicContentSettings extends SettingsPage
                     ->options(fn (): array => PublicItemPageRegistry::badgeColorOptions())
                     ->default('gray')
                     ->native(false)
+                    ->live()
                     ->required(),
+                ColorPicker::make('custom_color')
+                    ->label(__('admin.fields.item_page_info_field_custom_color'))
+                    ->helperText(__('admin.helpers.item_page_info_field_custom_color'))
+                    ->hex()
+                    ->hexColor(fn (Get $get): bool => $get('color') === PublicItemPageRegistry::CUSTOM_COLOR)
+                    ->regex(fn (Get $get): ?string => $get('color') === PublicItemPageRegistry::CUSTOM_COLOR
+                        ? '/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/'
+                        : null)
+                    ->nullable(fn (Get $get): bool => $get('color') !== PublicItemPageRegistry::CUSTOM_COLOR)
+                    ->required(fn (Get $get): bool => $get('color') === PublicItemPageRegistry::CUSTOM_COLOR)
+                    ->dehydrateStateUsing(fn (mixed $state): ?string => PublicFrontColor::normalizeHex($state))
+                    ->dehydratedWhenHidden()
+                    ->visible(fn (Get $get): bool => $get('color') === PublicItemPageRegistry::CUSTOM_COLOR),
             ])
             ->itemLabel(fn (array $state): ?string => filled($state['field'] ?? null)
                 ? __('admin.item_page_info_fields.'.$state['field'])

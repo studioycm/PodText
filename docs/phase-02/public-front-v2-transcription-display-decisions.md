@@ -62,3 +62,9 @@ From Step 10R-M5 onward, grouped rows use the validated `part_group` mechanism. 
 Label rendering, icon rendering, and nested row/group parts remain Step 10R-M5 scope.
 
 Step 10R-M4 does not partially implement those features.
+
+## D9 - Strict Custom Color Exception
+
+Step 10R-V1c permits the only sanctioned non-finite visual setting value: strict normalized `#rrggbb` custom colors stored in `custom_color` fields beside finite color token fields.
+
+Three-digit hex inputs normalize to six-digit lowercase hex on save. Public rendering uses app-owned CSS custom properties only; raw Tailwind classes, CSS snippets, SVG, HTML, and arbitrary component names remain disallowed in settings.
