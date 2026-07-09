@@ -45,35 +45,33 @@
             @endif
 
             <div class="min-w-0 space-y-4">
-                @if($podcastIdentity)
-                    @php
-                        $podcastIcon = \App\Support\PublicFront\Cards\PublicFrontCardIconResolver::resolve($podcastIdentity['icon'] ?? null);
-                        $podcastIconPosition = $podcastIdentity['icon_position'] ?? 'hidden';
-                    @endphp
-
-                    <a
-                        href="{{ $podcastIdentity['url'] }}"
-                        class="{{ $podcastIdentity['class'] }}"
-                        data-test="item-podcast-identity"
-                        data-podcast-identity-mode="{{ $podcastIdentity['mode'] }}"
-                        data-podcast-identity-icon="{{ $podcastIdentity['icon'] ?? 'none' }}"
-                        data-podcast-identity-icon-position="{{ $podcastIconPosition }}"
-                    >
-                        @if($podcastIcon && $podcastIconPosition === 'inline_before')
-                            <x-filament::icon :icon="$podcastIcon" class="h-4 w-4 shrink-0" />
-                        @endif
-
-                        <span class="min-w-0 truncate">{{ $podcastIdentity['label'] }}</span>
-
-                        @if($podcastIcon && $podcastIconPosition === 'inline_after')
-                            <x-filament::icon :icon="$podcastIcon" class="h-4 w-4 shrink-0" />
-                        @endif
-                    </a>
+                @if($podcastIdentity && ($podcastIdentity['position'] ?? 'above_title') === 'above_title')
+                    <x-public.item-page-podcast-identity :podcast-identity="$podcastIdentity" />
                 @endif
 
-                <h1 class="text-3xl font-semibold leading-tight text-gray-950 dark:text-white" data-test="item-page-title">
-                    {{ $contentItem->title }}
-                </h1>
+                @if($podcastIdentity && in_array($podcastIdentity['position'] ?? null, ['title_row_before', 'title_row_after'], true))
+                    <div class="flex flex-wrap items-baseline gap-3" data-test="item-title-row">
+                        @if(($podcastIdentity['position'] ?? null) === 'title_row_before')
+                            <x-public.item-page-podcast-identity :podcast-identity="$podcastIdentity" />
+                        @endif
+
+                        <h1 class="min-w-0 text-3xl font-semibold leading-tight text-gray-950 dark:text-white" data-test="item-page-title">
+                            {{ $contentItem->title }}
+                        </h1>
+
+                        @if(($podcastIdentity['position'] ?? null) === 'title_row_after')
+                            <x-public.item-page-podcast-identity :podcast-identity="$podcastIdentity" />
+                        @endif
+                    </div>
+                @else
+                    <h1 class="text-3xl font-semibold leading-tight text-gray-950 dark:text-white" data-test="item-page-title">
+                        {{ $contentItem->title }}
+                    </h1>
+                @endif
+
+                @if($podcastIdentity && ($podcastIdentity['position'] ?? null) === 'below_title')
+                    <x-public.item-page-podcast-identity :podcast-identity="$podcastIdentity" />
+                @endif
 
                 @if($infoParts !== [])
                     <dl class="flex flex-wrap items-center gap-2" data-test="item-info-line">

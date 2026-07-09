@@ -18,6 +18,7 @@ use App\Support\PublicFront\PublicFrontRenderContext;
 use App\Support\Transcripts\TranscriptSegmentParser;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
 use Spatie\LaravelSettings\SettingsContainer;
 
@@ -78,6 +79,23 @@ function saveStep10RIp2PublicFrontSettings(array $settings): void
     app()->forgetInstance(PublicContentSettings::class);
     app()->forgetInstance(PublicFrontRenderContext::class);
     app(SettingsContainer::class)->clearCache();
+}
+
+function putPrompt12PodcastPaletteCover(string $path): void
+{
+    $image = imagecreatetruecolor(30, 30);
+
+    imagefilledrectangle($image, 0, 0, 9, 29, imagecolorallocate($image, 37, 99, 235));
+    imagefilledrectangle($image, 10, 0, 19, 29, imagecolorallocate($image, 22, 163, 74));
+    imagefilledrectangle($image, 20, 0, 29, 29, imagecolorallocate($image, 220, 38, 38));
+
+    ob_start();
+    imagepng($image);
+    $contents = ob_get_clean();
+
+    imagedestroy($image);
+
+    Storage::disk('public')->put($path, $contents);
 }
 
 it('parses timestamp and speaker transcript segments', function (): void {
@@ -345,6 +363,53 @@ it('renders the configured item page header image podcast identity and info line
         ->assertSee('data-test="transcript-length"', false)
         ->assertSee('Header Transcriber')
         ->assertDontSee('Hidden Type Marker');
+});
+
+it('renders podcast identity with title row positioning and sampled podcast image color', function (): void {
+    Storage::fake('public');
+
+    $coverPath = 'content-groups/covers/palette-cover.png';
+    putPrompt12PodcastPaletteCover($coverPath);
+
+    $group = ContentGroup::factory()->published()->create([
+        'title' => 'Palette Podcast',
+        'slug' => 'palette-podcast',
+        'cover_path' => $coverPath,
+    ]);
+    [$item] = createPrompt12PublicItem([
+        'title' => 'Palette Episode',
+        'slug' => 'palette-episode',
+        'external_thumbnail_url' => null,
+    ], group: $group);
+
+    $defaults = PublicFrontConfigRegistry::defaults()['item_page'];
+    saveStep10RIp2PublicFrontSettings([
+        'item_page' => [
+            ...$defaults,
+            'show_breadcrumbs' => false,
+            'podcast_identity' => [
+                'mode' => 'title',
+                'color' => 'image_2',
+                'icon' => 'podcast',
+                'icon_position' => 'inline_before',
+                'position' => 'title_row_after',
+                'size' => 'title',
+            ],
+        ],
+    ]);
+
+    $this->get("/items/{$group->slug}/{$item->slug}")
+        ->assertSuccessful()
+        ->assertSee('data-test="item-title-row"', false)
+        ->assertSee('data-podcast-identity-mode="title"', false)
+        ->assertSee('data-podcast-identity-position="title_row_after"', false)
+        ->assertSee('data-podcast-identity-size="title"', false)
+        ->assertSee('data-podcast-identity-color="image_2"', false)
+        ->assertSee('--podcast-identity-color: #16a34a', false)
+        ->assertSeeInOrder([
+            'Palette Episode',
+            'Palette Podcast',
+        ]);
 });
 
 it('uses the podcast cover as the item page image fallback', function (): void {

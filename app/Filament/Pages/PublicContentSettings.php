@@ -352,8 +352,22 @@ class PublicContentSettings extends SettingsPage
                                         Select::make('item_page.podcast_identity.color')
                                             ->label(__('admin.fields.item_page_podcast_identity_color'))
                                             ->helperText(__('admin.helpers.item_page_podcast_identity_color'))
-                                            ->options(fn (): array => PublicItemPageRegistry::badgeColorOptions())
+                                            ->options(fn (): array => PublicItemPageRegistry::podcastIdentityColorOptions())
                                             ->default('primary')
+                                            ->native(false)
+                                            ->required(),
+                                        Select::make('item_page.podcast_identity.size')
+                                            ->label(__('admin.fields.item_page_podcast_identity_size'))
+                                            ->helperText(__('admin.helpers.item_page_podcast_identity_size'))
+                                            ->options(fn (): array => PublicItemPageRegistry::podcastIdentitySizeOptions())
+                                            ->default('sm')
+                                            ->native(false)
+                                            ->required(),
+                                        Select::make('item_page.podcast_identity.position')
+                                            ->label(__('admin.fields.item_page_podcast_identity_position'))
+                                            ->helperText(__('admin.helpers.item_page_podcast_identity_position'))
+                                            ->options(fn (): array => PublicItemPageRegistry::podcastIdentityPositionOptions())
+                                            ->default('above_title')
                                             ->native(false)
                                             ->required(),
                                         Select::make('item_page.podcast_identity.icon')

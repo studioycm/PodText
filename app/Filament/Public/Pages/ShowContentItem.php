@@ -11,6 +11,7 @@ use App\Models\ContentTag;
 use App\Models\Transcription;
 use App\Support\PublicContent\PublicContentItemQueries;
 use App\Support\PublicContent\PublicTranscriptionPolicy;
+use App\Support\PublicFront\ItemPage\PublicItemPagePodcastPalette;
 use App\Support\PublicFront\ItemPage\PublicItemPageRegistry;
 use App\Support\PublicFront\PublicFrontRenderContext;
 use Carbon\CarbonInterface;
@@ -37,6 +38,11 @@ class ShowContentItem extends Page
      * @var array<string, mixed>|null
      */
     private ?array $itemPageConfig = null;
+
+    /**
+     * @var array<string, string>|null
+     */
+    private ?array $podcastImagePalette = null;
 
     public static function getRelativeRouteName(Panel $panel): string
     {
@@ -110,13 +116,15 @@ class ShowContentItem extends Page
 
         return [
             'mode' => $mode,
+            'position' => $identity['position'] ?? 'above_title',
+            'size' => $identity['size'] ?? 'sm',
+            'color' => $identity['color'] ?? 'primary',
             'label' => $this->contentGroup->title,
             'url' => ShowContentGroup::getUrl(['contentGroupSlug' => $this->contentGroup->slug], panel: 'public'),
             'icon' => $identity['icon'] ?? 'podcast',
             'icon_position' => $identity['icon_position'] ?? 'inline_before',
-            'class' => $mode === 'badge'
-                ? $this->badgeClass($identity['size'] ?? 'sm', $identity['color'] ?? 'primary')
-                : 'inline-flex items-center gap-1.5 text-sm font-medium text-primary-700 hover:text-primary-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-600 dark:text-primary-300 dark:hover:text-primary-100',
+            'class' => $this->podcastIdentityClass($mode, $identity['size'] ?? 'sm', $identity['color'] ?? 'primary'),
+            'style' => $this->podcastIdentityStyle($identity['color'] ?? 'primary'),
         ];
     }
 
@@ -370,5 +378,53 @@ class ShowContentItem extends Page
         return trim('inline-flex max-w-full items-center rounded-md border font-medium '.
             PublicItemPageRegistry::infoBadgeSizeClass($size).' '.
             PublicItemPageRegistry::infoBadgeColorClass($color));
+    }
+
+    private function podcastIdentityClass(string $mode, ?string $size, ?string $color): string
+    {
+        $base = 'inline-flex max-w-full items-center gap-1.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-600';
+        $colorClass = PublicItemPageRegistry::isPodcastImageColor($color)
+            ? 'text-[var(--podcast-identity-color)] hover:opacity-80 dark:text-[var(--podcast-identity-color)]'
+            : PublicItemPageRegistry::podcastIdentityTextColorClass($color);
+
+        if ($mode === 'badge') {
+            $badgeColorClass = PublicItemPageRegistry::isPodcastImageColor($color)
+                ? 'border-[var(--podcast-identity-border)] bg-[var(--podcast-identity-bg)] text-[var(--podcast-identity-color)] hover:opacity-80 dark:border-[var(--podcast-identity-border)] dark:bg-[var(--podcast-identity-bg)] dark:text-[var(--podcast-identity-color)]'
+                : PublicItemPageRegistry::infoBadgeColorClass($color);
+
+            return trim($base.' rounded-md border font-medium '.
+                PublicItemPageRegistry::podcastIdentityBadgeSizeClass($size).' '.
+                $badgeColorClass);
+        }
+
+        $fontWeight = $mode === 'title' ? 'font-semibold' : 'font-medium';
+
+        return trim($base.' '.$fontWeight.' '.
+            PublicItemPageRegistry::podcastIdentityTextSizeClass($mode === 'title' ? 'title' : $size).' '.
+            $colorClass);
+    }
+
+    private function podcastIdentityStyle(?string $color): ?string
+    {
+        if (! PublicItemPageRegistry::isPodcastImageColor($color)) {
+            return null;
+        }
+
+        $hex = $this->podcastImagePalette()[$color] ?? null;
+
+        if (! is_string($hex) || ! preg_match('/^#[0-9a-f]{6}$/', $hex)) {
+            return null;
+        }
+
+        return "--podcast-identity-color: {$hex}; --podcast-identity-bg: color-mix(in srgb, {$hex} 12%, transparent); --podcast-identity-border: color-mix(in srgb, {$hex} 32%, transparent);";
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private function podcastImagePalette(): array
+    {
+        return $this->podcastImagePalette ??= app(PublicItemPagePodcastPalette::class)
+            ->colors($this->contentGroup->cover_path);
     }
 }

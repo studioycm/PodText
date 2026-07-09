@@ -109,6 +109,8 @@ class PublicFrontConfigRegistry
                     'color' => 'primary',
                     'icon' => 'podcast',
                     'icon_position' => 'inline_before',
+                    'position' => 'above_title',
+                    'size' => 'sm',
                 ],
                 'info_fields' => PublicItemPageRegistry::defaultInfoFields(),
                 'dates' => [

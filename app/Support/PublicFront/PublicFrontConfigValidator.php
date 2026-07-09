@@ -1350,7 +1350,7 @@ class PublicFrontConfigValidator
     /**
      * @param  array<string, mixed>  $defaults
      * @param  array<PublicFrontInvalidConfig>  $invalidConfig
-     * @return array{mode: string, color: string, icon: string, icon_position: string}
+     * @return array{mode: string, color: string, icon: string, icon_position: string, position: string, size: string}
      */
     private function normalizeItemPagePodcastIdentity(mixed $identity, array $defaults, array &$invalidConfig): array
     {
@@ -1360,6 +1360,8 @@ class PublicFrontConfigValidator
                 'color' => $defaults['color'] ?? 'primary',
                 'icon' => $defaults['icon'] ?? 'podcast',
                 'icon_position' => $defaults['icon_position'] ?? 'inline_before',
+                'position' => $defaults['position'] ?? 'above_title',
+                'size' => $defaults['size'] ?? 'sm',
             ];
         }
 
@@ -1371,10 +1373,12 @@ class PublicFrontConfigValidator
                 'color' => $defaults['color'] ?? 'primary',
                 'icon' => $defaults['icon'] ?? 'podcast',
                 'icon_position' => $defaults['icon_position'] ?? 'inline_before',
+                'position' => $defaults['position'] ?? 'above_title',
+                'size' => $defaults['size'] ?? 'sm',
             ];
         }
 
-        $this->reportUnknownKeys($identity, ['mode', 'color', 'icon', 'icon_position'], 'item_page.podcast_identity', $invalidConfig);
+        $this->reportUnknownKeys($identity, ['mode', 'color', 'icon', 'icon_position', 'position', 'size'], 'item_page.podcast_identity', $invalidConfig);
 
         $iconPosition = array_key_exists('icon_position', $identity)
             ? $this->iconPosition($identity['icon_position'], 'item_page.podcast_identity.icon_position', $invalidConfig)
@@ -1390,7 +1394,7 @@ class PublicFrontConfigValidator
             ),
             'color' => $this->finiteString(
                 $identity['color'] ?? null,
-                PublicItemPageRegistry::badgeColors(),
+                PublicItemPageRegistry::podcastIdentityColors(),
                 'item_page.podcast_identity.color',
                 $invalidConfig,
                 $defaults['color'] ?? 'primary',
@@ -1403,6 +1407,20 @@ class PublicFrontConfigValidator
                 $defaults['icon'] ?? 'podcast',
             ),
             'icon_position' => $iconPosition ?? ($defaults['icon_position'] ?? 'inline_before'),
+            'position' => $this->finiteString(
+                $identity['position'] ?? null,
+                PublicItemPageRegistry::podcastIdentityPositions(),
+                'item_page.podcast_identity.position',
+                $invalidConfig,
+                $defaults['position'] ?? 'above_title',
+            ),
+            'size' => $this->finiteString(
+                $identity['size'] ?? null,
+                PublicItemPageRegistry::podcastIdentitySizes(),
+                'item_page.podcast_identity.size',
+                $invalidConfig,
+                $defaults['size'] ?? 'sm',
+            ),
         ];
     }
 

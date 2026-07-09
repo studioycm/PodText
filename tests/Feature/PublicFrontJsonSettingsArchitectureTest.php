@@ -143,6 +143,8 @@ it('backfills item page header settings through the settings migration', functio
             'color' => 'primary',
             'icon' => 'podcast',
             'icon_position' => 'inline_before',
+            'position' => 'above_title',
+            'size' => 'sm',
         ],
         'badges' => [
             'info' => [
@@ -157,6 +159,48 @@ it('backfills item page header settings through the settings migration', functio
         ->and($itemPage['info_fields'])->toBe(PublicItemPageRegistry::defaultInfoFields());
 });
 
+it('backfills item page podcast identity presentation settings through the settings migration', function (): void {
+    DB::table('settings')->updateOrInsert(
+        [
+            'group' => PublicContentSettings::group(),
+            'name' => 'item_page',
+        ],
+        [
+            'locked' => false,
+            'payload' => json_encode([
+                'podcast_identity' => [
+                    'mode' => 'text',
+                    'color' => 'success',
+                    'icon' => 'podcast',
+                    'icon_position' => 'inline_after',
+                ],
+            ]),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ],
+    );
+
+    $migration = include base_path('database/settings/2026_07_09_000002_extend_public_item_page_podcast_identity_settings.php');
+    $migration->up();
+
+    $itemPage = json_decode(
+        DB::table('settings')
+            ->where('group', PublicContentSettings::group())
+            ->where('name', 'item_page')
+            ->value('payload'),
+        true,
+    );
+
+    expect($itemPage['podcast_identity'])->toMatchArray([
+        'mode' => 'text',
+        'color' => 'success',
+        'icon' => 'podcast',
+        'icon_position' => 'inline_after',
+        'position' => 'above_title',
+        'size' => 'sm',
+    ]);
+});
+
 it('normalizes item page date and badge settings safely', function (): void {
     $result = app(PublicFrontConfigValidator::class)->validate([
         'item_page' => [
@@ -166,6 +210,8 @@ it('normalizes item page date and badge settings safely', function (): void {
                 'color' => 'bg-red-500',
                 'icon' => 'App\\Icons\\Unsafe',
                 'icon_position' => 'after',
+                'position' => 'inside-title',
+                'size' => 'huge',
                 'class' => 'rounded-full',
             ],
             'info_fields' => [
@@ -229,6 +275,8 @@ it('normalizes item page date and badge settings safely', function (): void {
             'color' => 'primary',
             'icon' => 'podcast',
             'icon_position' => 'inline_after',
+            'position' => 'above_title',
+            'size' => 'sm',
         ])
         ->and($itemPage['info_fields'])->toHaveCount(2)
         ->and($itemPage['info_fields'][0])->toMatchArray([
@@ -272,6 +320,8 @@ it('normalizes item page date and badge settings safely', function (): void {
         ->and($paths)->toContain('item_page.podcast_identity.mode')
         ->and($paths)->toContain('item_page.podcast_identity.color')
         ->and($paths)->toContain('item_page.podcast_identity.icon')
+        ->and($paths)->toContain('item_page.podcast_identity.position')
+        ->and($paths)->toContain('item_page.podcast_identity.size')
         ->and($paths)->toContain('item_page.podcast_identity.class')
         ->and($paths)->toContain('item_page.info_fields.1.field')
         ->and($paths)->toContain('item_page.info_fields.1.label_mode')
@@ -398,7 +448,9 @@ it('saves sanitized public front config through the settings page while preservi
         ->set('data.display_defaults.page_size', 16)
         ->set('data.item_page.show_breadcrumbs', false)
         ->set('data.item_page.podcast_identity.mode', 'text')
-        ->set('data.item_page.podcast_identity.color', 'success')
+        ->set('data.item_page.podcast_identity.color', 'image_2')
+        ->set('data.item_page.podcast_identity.size', 'lg')
+        ->set('data.item_page.podcast_identity.position', 'title_row_after')
         ->set('data.item_page.podcast_identity.icon', 'podcast')
         ->set('data.item_page.podcast_identity.icon_position', 'inline_after')
         ->set('data.item_page.info_fields', [
@@ -469,9 +521,11 @@ it('saves sanitized public front config through the settings page while preservi
         'show_breadcrumbs' => false,
         'podcast_identity' => [
             'mode' => 'text',
-            'color' => 'success',
+            'color' => 'image_2',
             'icon' => 'podcast',
             'icon_position' => 'inline_after',
+            'position' => 'title_row_after',
+            'size' => 'lg',
         ],
         'info_fields' => [
             [
@@ -578,10 +632,15 @@ it('has translated item page settings labels in both locales', function (): void
             'admin.sections.public_front_item_page_info_fields',
             'admin.fields.item_page_show_breadcrumbs',
             'admin.fields.item_page_podcast_identity_mode',
+            'admin.fields.item_page_podcast_identity_position',
+            'admin.fields.item_page_podcast_identity_size',
             'admin.fields.item_page_info_fields',
             'admin.helpers.item_page_info_field_key',
             'admin.item_page_info_fields.site_published_date',
             'admin.item_page_podcast_identity_modes.badge',
+            'admin.item_page_podcast_identity_colors.image_2',
+            'admin.item_page_podcast_identity_positions.title_row_after',
+            'admin.item_page_podcast_identity_sizes.lg',
         ] as $translationKey) {
             expect(__($translationKey))->not->toBe($translationKey);
         }

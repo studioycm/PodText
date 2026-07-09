@@ -95,6 +95,7 @@ class PublicItemPageRegistry
         return [
             'badge',
             'text',
+            'title',
             'hidden',
         ];
     }
@@ -105,6 +106,85 @@ class PublicItemPageRegistry
     public static function podcastIdentityModeOptions(): array
     {
         return self::translatedOptions(self::podcastIdentityModes(), 'admin.item_page_podcast_identity_modes');
+    }
+
+    /**
+     * @return array<string>
+     */
+    public static function podcastIdentityPositions(): array
+    {
+        return [
+            'above_title',
+            'below_title',
+            'title_row_before',
+            'title_row_after',
+        ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public static function podcastIdentityPositionOptions(): array
+    {
+        return self::translatedOptions(self::podcastIdentityPositions(), 'admin.item_page_podcast_identity_positions');
+    }
+
+    /**
+     * @return array<string>
+     */
+    public static function podcastIdentitySizes(): array
+    {
+        return [
+            'xs',
+            'sm',
+            'md',
+            'lg',
+            'title',
+        ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public static function podcastIdentitySizeOptions(): array
+    {
+        return self::translatedOptions(self::podcastIdentitySizes(), 'admin.item_page_podcast_identity_sizes');
+    }
+
+    /**
+     * @return array<string>
+     */
+    public static function podcastIdentityColors(): array
+    {
+        return [
+            ...self::badgeColors(),
+            ...self::podcastImageColors(),
+        ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public static function podcastIdentityColorOptions(): array
+    {
+        return self::translatedOptions(self::podcastIdentityColors(), 'admin.item_page_podcast_identity_colors');
+    }
+
+    /**
+     * @return array<string>
+     */
+    public static function podcastImageColors(): array
+    {
+        return [
+            'image_1',
+            'image_2',
+            'image_3',
+        ];
+    }
+
+    public static function isPodcastImageColor(?string $color): bool
+    {
+        return in_array($color, self::podcastImageColors(), true);
     }
 
     /**
@@ -169,6 +249,40 @@ class PublicItemPageRegistry
             'warning' => 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200',
             'danger' => 'border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-800 dark:bg-rose-950 dark:text-rose-200',
             default => 'border-gray-200 bg-gray-50 text-gray-700 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200',
+        };
+    }
+
+    public static function podcastIdentityTextColorClass(?string $color): string
+    {
+        return match ($color) {
+            'primary' => 'text-primary-700 hover:text-primary-900 dark:text-primary-300 dark:hover:text-primary-100',
+            'info' => 'text-sky-700 hover:text-sky-900 dark:text-sky-300 dark:hover:text-sky-100',
+            'success' => 'text-emerald-700 hover:text-emerald-900 dark:text-emerald-300 dark:hover:text-emerald-100',
+            'warning' => 'text-amber-700 hover:text-amber-900 dark:text-amber-300 dark:hover:text-amber-100',
+            'danger' => 'text-rose-700 hover:text-rose-900 dark:text-rose-300 dark:hover:text-rose-100',
+            default => 'text-gray-700 hover:text-gray-950 dark:text-gray-200 dark:hover:text-white',
+        };
+    }
+
+    public static function podcastIdentityTextSizeClass(?string $size): string
+    {
+        return match ($size) {
+            'xs' => 'text-xs',
+            'md' => 'text-base',
+            'lg' => 'text-lg',
+            'title' => 'text-3xl leading-tight',
+            default => 'text-sm',
+        };
+    }
+
+    public static function podcastIdentityBadgeSizeClass(?string $size): string
+    {
+        return match ($size) {
+            'xs' => 'gap-1 px-1.5 py-0.5 text-xs',
+            'md' => 'gap-2 px-2.5 py-1.5 text-sm',
+            'lg' => 'gap-2.5 px-3 py-2 text-base',
+            'title' => 'gap-2.5 px-3.5 py-2 text-lg',
+            default => 'gap-1.5 px-2 py-1 text-xs',
         };
     }
 

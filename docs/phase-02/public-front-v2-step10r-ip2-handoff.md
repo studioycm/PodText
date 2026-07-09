@@ -7,13 +7,15 @@ Step 10R-IP2 rebuilds the public episode page header and info line so the page c
 ## What was implemented
 
 - Extended `item_page` with breadcrumb, podcast identity, and ordered info-field settings.
-- Added a Spatie settings migration to backfill those keys into existing `public_content.item_page` rows.
+- Added Spatie settings migrations to backfill those keys into existing `public_content.item_page` rows.
 - Added Episode page admin controls for breadcrumbs, podcast identity, and ordered metadata fields.
 - Rebuilt the public episode page header with:
   - optional breadcrumbs;
   - episode thumbnail with podcast cover fallback;
   - large episode title;
-  - linked podcast identity as badge/text/hidden;
+  - linked podcast identity as badge/text/title/hidden;
+  - linked podcast identity placement above the title, below the title, or in the title row before/after the episode title;
+  - linked podcast identity semantic colors or one of three request-time sampled colors from the podcast cover image;
   - wrapping ordered info fields under the title.
 - Rendered page dates from IP1 date settings, including label overrides, icon keys, icon position, and `dd/mm/yyyy` `Asia/Jerusalem` formatting.
 - Moved category/tag links into the header info line above the description.
@@ -30,7 +32,7 @@ Landed:
 - R14: no standalone episode/transcription type label is rendered on the episode page.
 - R15: breadcrumbs are controlled by `item_page.show_breadcrumbs`.
 - R16: page image uses episode thumbnail, else podcast cover.
-- R17: podcast identity is badge/text/hidden, finite icon/color, and links to podcast.
+- R17: podcast identity is badge/text/title/hidden, finite icon/color/size/position, and links to podcast.
 - R18: ordered info fields render under the title.
 
 Remaining:
@@ -49,9 +51,12 @@ F1-F3, F7, F11-F13, and F15 remain scheduled for their owning P/B4/C2 steps.
 - `app/Filament/Pages/PublicContentSettings.php`
 - `app/Filament/Public/Pages/ShowContentItem.php`
 - `app/Support/PublicFront/ItemPage/PublicItemPageRegistry.php`
+- `app/Support/PublicFront/ItemPage/PublicItemPagePodcastPalette.php`
 - `app/Support/PublicFront/PublicFrontConfigRegistry.php`
 - `app/Support/PublicFront/PublicFrontConfigValidator.php`
 - `database/settings/2026_07_09_000001_add_public_item_page_header_settings.php`
+- `database/settings/2026_07_09_000002_extend_public_item_page_podcast_identity_settings.php`
+- `resources/views/components/public/item-page-podcast-identity.blade.php`
 - `resources/views/filament/public/pages/show-content-item.blade.php`
 - `lang/en/admin.php`
 - `lang/en/public.php`
@@ -71,6 +76,7 @@ F1-F3, F7, F11-F13, and F15 remain scheduled for their owning P/B4/C2 steps.
 ## Migrations/settings/schema changes
 
 - Added settings migration `2026_07_09_000001_add_public_item_page_header_settings`.
+- Added settings migration `2026_07_09_000002_extend_public_item_page_podcast_identity_settings` to backfill podcast identity `position` and `size` for local rows that already ran the first IP2 migration.
 - No database table schema changed.
 - Local `php artisan migrate` ran the new settings migration successfully.
 
@@ -85,7 +91,9 @@ Extended `item_page`:
     "mode": "badge",
     "color": "primary",
     "icon": "podcast",
-    "icon_position": "inline_before"
+    "icon_position": "inline_before",
+    "position": "above_title",
+    "size": "sm"
   },
   "info_fields": [
     { "field": "site_published_date", "label_mode": "long", "label_override": null, "icon": "calendar", "icon_position": "inline_before", "size": "sm", "color": "gray" },
@@ -106,6 +114,7 @@ IP1 `item_page.dates` and `item_page.badges` remain in the same group. Date fiel
 
 - `PublicItemPageRegistry` now owns:
   - podcast identity modes;
+  - podcast identity positions, sizes, semantic color/image-color tokens, and fixed class maps;
   - info field keys/options;
   - default info field rows.
 - `PublicFrontConfigRegistry::defaults()` includes the new keys.
@@ -114,12 +123,16 @@ IP1 `item_page.dates` and `item_page.badges` remain in the same group. Date fiel
   - `podcast_identity`;
   - `info_fields`.
 - `PublicFrontRenderContext::itemPage()` is unchanged from IP1 and now returns the extended normalized group.
+- `PublicItemPagePodcastPalette` samples three safe hex colors from local public-disk podcast covers when an `image_1`, `image_2`, or `image_3` token is selected; it falls back to deterministic safe colors when GD/local image sampling is unavailable.
 
 ## Public rendering behavior
 
 - The episode page header is settings-driven.
 - Breadcrumbs hide when `item_page.show_breadcrumbs` is false.
 - Podcast identity always links to the podcast detail page when visible.
+- Podcast identity supports badge, text, same-as-title, and hidden styles.
+- Podcast identity supports above-title, below-title, title-row-before, and title-row-after placement.
+- Podcast identity supports semantic colors plus `image_1`, `image_2`, and `image_3` cover-sampled color tokens.
 - Info fields skip empty values.
 - Category/tag/transcriber values render as links.
 - Date fields render only when allowed by `item_page.dates.display` and transcription-date `enabled`.
@@ -130,7 +143,7 @@ IP1 `item_page.dates` and `item_page.badges` remain in the same group. Date fiel
 
 - The Episode page tab now includes:
   - breadcrumbs toggle;
-  - podcast identity mode/color/icon/icon-position controls;
+  - podcast identity mode/color/size/position/icon/icon-position controls;
   - ordered Repeater for info fields.
 - Repeater rows use finite field keys, label modes, icon keys, icon positions, size tokens, and color tokens.
 - No raw classes, HTML, SVG, or component names are accepted.
@@ -155,11 +168,16 @@ Added in `lang/en/admin.php` and `lang/he/admin.php`:
 - `admin.fields.item_page_podcast_identity_color`
 - `admin.fields.item_page_podcast_identity_icon`
 - `admin.fields.item_page_podcast_identity_icon_position`
+- `admin.fields.item_page_podcast_identity_position`
+- `admin.fields.item_page_podcast_identity_size`
 - `admin.fields.item_page_info_fields`
 - `admin.fields.item_page_info_field_*`
 - matching `admin.helpers.*`
 - `admin.item_page_info_fields.*`
 - `admin.item_page_podcast_identity_modes.*`
+- `admin.item_page_podcast_identity_colors.*`
+- `admin.item_page_podcast_identity_positions.*`
+- `admin.item_page_podcast_identity_sizes.*`
 
 Added in `lang/en/public.php` and `lang/he/public.php`:
 
@@ -172,11 +190,13 @@ Updated:
 
 - `tests/Feature/PublicFrontJsonSettingsArchitectureTest.php`
   - settings migration backfill for IP2 keys;
+  - podcast identity presentation backfill for the review-fix migration;
   - unsafe-token normalization;
   - settings-page save path;
   - translation-key coverage.
 - `tests/Feature/PublicItemPageMediaParserTest.php`
   - configured header/image/podcast identity/info line rendering;
+  - title-row podcast identity placement with cover-sampled image color;
   - date setting consumption;
   - group-cover image fallback.
 - `tests/Feature/PublicHomepageSearchTest.php`
@@ -198,8 +218,10 @@ No tests were renamed.
 
 - Labels are escaped Blade text.
 - Icons are finite registry keys resolved by the app-owned icon resolver.
-- Settings validator rejects/normalizes unsafe raw strings, raw classes, invalid icon keys, invalid fields, and malformed nested rows.
+- Settings JSON stores finite podcast identity tokens only; image colors are selected with `image_1`, `image_2`, and `image_3`, not stored hex values.
+- Settings validator rejects/normalizes unsafe raw strings, raw classes, invalid icon keys, invalid fields, invalid podcast identity positions/sizes/colors, and malformed nested rows.
 - The settings migration converts nested object payloads to arrays before merging so existing values are preserved.
+- Cover-image sampling reads only the local public disk cover path and falls back when the image is missing, unreadable, remote, or unsupported.
 - Public pages still resolve only public groups/items/transcriptions through existing query constraints.
 
 ## Bounded query-count harness result
@@ -246,4 +268,4 @@ Note: the first attempted combined focused command with `--filter=PublicTranscri
 
 ## Commit hash
 
-This commit: `feat: rebuild public episode page header and info line`.
+This review-fix commit: `feat: refine episode podcast identity settings`.
