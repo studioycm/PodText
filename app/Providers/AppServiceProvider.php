@@ -7,6 +7,7 @@ use App\Support\PublicContent\PublicTranscriptionPolicy;
 use App\Support\PublicFront\PublicFrontConfigCache;
 use App\Support\PublicFront\PublicFrontRenderContext;
 use App\Support\PublicFront\PublicFrontRenderContextFactory;
+use App\Support\SettingsLifecycle\SettingsBackupManager;
 use Filament\Actions\Action;
 use Filament\Facades\Filament;
 use Filament\Schemas\Components\Section;
@@ -79,6 +80,7 @@ class AppServiceProvider extends ServiceProvider
             }
 
             $this->app->make(PublicFrontConfigCache::class)->forget();
+            $this->app->make(SettingsBackupManager::class)->createSystem();
             $this->app->forgetInstance(PublicFrontRenderContext::class);
             $this->app->forgetInstance(PublicTranscriptionPolicy::class);
         });

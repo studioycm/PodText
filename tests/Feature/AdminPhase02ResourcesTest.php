@@ -26,6 +26,7 @@ use App\Filament\Resources\HomepageSections\Pages\CreateHomepageSection;
 use App\Filament\Resources\HomepageSections\Pages\EditHomepageSection;
 use App\Filament\Resources\HomepageSections\Pages\ListHomepageSections;
 use App\Filament\Resources\PublicFormSubmissions\PublicFormSubmissionResource;
+use App\Filament\Resources\SettingsBackups\SettingsBackupResource;
 use App\Filament\Resources\Transcriptions\Pages\CreateTranscription;
 use App\Filament\Resources\Transcriptions\Pages\EditTranscription;
 use App\Filament\Resources\Transcriptions\Pages\ListTranscriptions;
@@ -112,6 +113,7 @@ it('orders every registered admin navigation resource and page through the centr
         PublicFormSubmissionResource::class => 70,
         HomepageSectionResource::class => 80,
         PublicContentSettingsPage::class => 90,
+        SettingsBackupResource::class => 95,
     ];
 
     expect(AdminNavigationOrder::all())->toBe($expected);

@@ -11,6 +11,7 @@ use App\Filament\Resources\ContentItems\ContentItemResource;
 use App\Filament\Resources\ContentTags\ContentTagResource;
 use App\Filament\Resources\HomepageSections\HomepageSectionResource;
 use App\Filament\Resources\PublicFormSubmissions\PublicFormSubmissionResource;
+use App\Filament\Resources\SettingsBackups\SettingsBackupResource;
 use App\Filament\Resources\Transcriptions\TranscriptionResource;
 
 class AdminNavigationOrder
@@ -29,6 +30,7 @@ class AdminNavigationOrder
         PublicFormSubmissionResource::class => 70,
         HomepageSectionResource::class => 80,
         PublicContentSettings::class => 90,
+        SettingsBackupResource::class => 95,
     ];
 
     public static function sort(string $class): ?int

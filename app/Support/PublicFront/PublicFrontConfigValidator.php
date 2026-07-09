@@ -44,6 +44,7 @@ class PublicFrontConfigValidator
                 'item_page' => $this->normalizeItemPage($value, $defaults['item_page'], $invalidConfig),
                 'podcasts_page' => $this->normalizePodcastsPage($value, $defaults['podcasts_page'], $invalidConfig),
                 'contributors_page' => $this->normalizeContributorsPage($value, $defaults['contributors_page'], $invalidConfig),
+                'settings_backups' => $this->normalizeSettingsBackups($value, $defaults['settings_backups'], $invalidConfig),
             };
         }
 
@@ -1363,6 +1364,45 @@ class PublicFrontConfigValidator
     }
 
     /**
+     * @param  array<string, mixed>  $settingsBackups
+     * @param  array<string, mixed>  $defaults
+     * @param  array<PublicFrontInvalidConfig>  $invalidConfig
+     * @return array<string, mixed>
+     */
+    private function normalizeSettingsBackups(array $settingsBackups, array $defaults, array &$invalidConfig): array
+    {
+        $this->reportUnknownKeys($settingsBackups, [
+            'thumbnail_max_width',
+            'snapshot_formats',
+            'snapshot_themes',
+        ], 'settings_backups', $invalidConfig);
+
+        return [
+            'thumbnail_max_width' => $this->finiteInteger(
+                $settingsBackups['thumbnail_max_width'] ?? null,
+                PublicFrontConfigRegistry::settingsBackupThumbnailMaxWidths(),
+                'settings_backups.thumbnail_max_width',
+                $defaults['thumbnail_max_width'],
+                $invalidConfig,
+            ),
+            'snapshot_formats' => $this->finiteStringList(
+                $settingsBackups['snapshot_formats'] ?? null,
+                PublicFrontConfigRegistry::settingsBackupSnapshotFormats(),
+                'settings_backups.snapshot_formats',
+                $defaults['snapshot_formats'],
+                $invalidConfig,
+            ),
+            'snapshot_themes' => $this->finiteStringList(
+                $settingsBackups['snapshot_themes'] ?? null,
+                PublicFrontConfigRegistry::settingsBackupSnapshotThemes(),
+                'settings_backups.snapshot_themes',
+                $defaults['snapshot_themes'],
+                $invalidConfig,
+            ),
+        ];
+    }
+
+    /**
      * @param  array<string, mixed>  $itemPage
      * @param  array<string, mixed>  $defaults
      * @param  array<PublicFrontInvalidConfig>  $invalidConfig
@@ -2367,6 +2407,27 @@ class PublicFrontConfigValidator
             ->all();
 
         return $normalized === [] ? $defaults : $normalized;
+    }
+
+    /**
+     * @param  array<int>  $allowed
+     * @param  array<PublicFrontInvalidConfig>  $invalidConfig
+     */
+    private function finiteInteger(mixed $value, array $allowed, string $path, int $default, array &$invalidConfig): int
+    {
+        if ($value === null) {
+            return $default;
+        }
+
+        $normalized = $this->integerRange($value, $path, min($allowed), max($allowed), $default, $invalidConfig);
+
+        if (! in_array($normalized, $allowed, true)) {
+            $invalidConfig[] = PublicFrontInvalidConfig::make($path, 'unknown_semantic_value', $normalized);
+
+            return $default;
+        }
+
+        return $normalized;
     }
 
     /**

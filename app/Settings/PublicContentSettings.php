@@ -74,6 +74,8 @@ class PublicContentSettings extends Settings
 
     public array $contributors_page;
 
+    public array $settings_backups;
+
     public static function group(): string
     {
         return 'public_content';

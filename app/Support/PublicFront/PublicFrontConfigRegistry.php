@@ -32,6 +32,7 @@ class PublicFrontConfigRegistry
             'item_page',
             'podcasts_page',
             'contributors_page',
+            'settings_backups',
         ];
     }
 
@@ -263,6 +264,11 @@ class PublicFrontConfigRegistry
                     'transcription_display' => 'effective_only',
                 ],
             ],
+            'settings_backups' => [
+                'thumbnail_max_width' => 800,
+                'snapshot_formats' => ['png'],
+                'snapshot_themes' => ['light', 'dark'],
+            ],
         ];
     }
 
@@ -283,6 +289,7 @@ class PublicFrontConfigRegistry
             'item_page' => 'itemPage',
             'podcasts_page' => 'podcastsPage',
             'contributors_page' => 'contributorsPage',
+            'settings_backups' => 'settingsBackups',
         ];
     }
 
@@ -476,6 +483,41 @@ class PublicFrontConfigRegistry
     public static function defaultImageMaxSize(): int
     {
         return 2048;
+    }
+
+    /**
+     * @return array<int>
+     */
+    public static function settingsBackupThumbnailMaxWidths(): array
+    {
+        return [
+            400,
+            600,
+            800,
+        ];
+    }
+
+    /**
+     * @return array<string>
+     */
+    public static function settingsBackupSnapshotFormats(): array
+    {
+        return [
+            'png',
+            'pdf',
+            'html',
+        ];
+    }
+
+    /**
+     * @return array<string>
+     */
+    public static function settingsBackupSnapshotThemes(): array
+    {
+        return [
+            'light',
+            'dark',
+        ];
     }
 
     /**

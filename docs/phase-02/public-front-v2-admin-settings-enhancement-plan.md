@@ -50,21 +50,22 @@ The central ledger remains authoritative for per-run selection:
 | 5 | Step 10R-V1c | V1a | 4, 5 | Custom hex color mode with ColorPicker + theme-safe podcast-palette sampling with persistent cache. |
 | 6 | Step 10R-P1 | UX1, UX2, V1a-V1c | F1 | Cache validated public-front config (`public_front.config.v1`), keyed with the settings-migration watermark; palette cache shares the infrastructure. |
 | 7 | Step 10R-S2 | P1 | 11 | Settings backup versions: schema, auto system backups on save (hash-deduped), manual backup, compare/download, retention, restore. |
-| 8 | Step 10R-S1 | P1, S2 | 10 | Settings import/export as a versioned JSON package built on the shared `PublicSettingsPackage` serializer and S2 backups. |
-| 9 | Step 10R-P2 | S1 | F2, F7, F12, F15 | Listing fetch-window, lazy options/form definitions, opt-in aggregate subselects. |
-| 10 | Step 10R-P3 | P2 | F3 | Derived transcript segments and viewer render economy. |
-| 11 | Step 10R-AX1 | P2 (bounded-fetch), P1 (cache conventions) | 18 | GSAP motion foundation: dependency, public-panel JS wiring, `PodTextMotion` preset registry + data-attribute contract, motion settings tokens, always-on reduced-motion policy, FOUC/SEO guard. |
-| 12 | Step 10R-SL1 | AX1, M5 | 17 | Result display-template builder foundation: `display_templates` settings group (including per-template `motion` config), finite vocabularies, admin builder, surface selectors, grid default template. |
-| 13 | Step 10R-SL2 | SL1 | 12, 14 | Flip-slider rendering engine: scroll-snap track, responsive columns×rows paging with bounded lazy page fetch, front-face cards, RTL-aware hover/always controls, AX1 entrance/load presets. |
-| 14 | Step 10R-SL3 | SL2 | 13 | Flip animation and smart side-open back face rendered from existing card templates, implemented with the GSAP Flip plugin from AX1, server-computed logical open direction. |
-| 15 | Step 10R-SL4 | SL2 | 15, 16 | Quick-view modal: flat app-owned modal embedding episode/podcast page content with density/label-size controls, a modal card template, and AX1 open/close choreography. |
-| 16 | Step 10R-AX2 | AX1 (SL not required) | 19, 20 | Retrofit motion presets onto existing grids/sections/load-more + loading/update/page-transition concealment (Livewire loading choreography, morph-added staggers, cross-document View Transitions). |
-| 17 | Step 10R-AX3 | AX2 | 21 | Scroll-linked effects: episode/podcast header parallax, transcript reading-progress bar, scroll-linked cover emphasis — ScrollTrigger, capped and reduced-motion-safe. |
-| 18 | Step 10R-B4 | M1-M6, IP1-IP3, P1-P3, SL1-SL4, AX1-AX3 | F11 | Converge legacy card options with card presentation services (now covering slider/modal/motion surfaces). |
-| 19 | Step 10R-C2 | B4 | F13 | Card layout consistency and semantic layout tokens (now covering slider front/back faces). |
-| 20 | Step 9F-A → 9F-B → 9F-C | all 10R above | 9F | Rich homepage columns; footer config/renderer; admin polish. |
-| 21 | Step 11 | all above + explicit Yoni approval | Step 11 | Seeders/demo/assets/cleanup incl. promoting the local evaluation seed, demo display templates, and demo motion presets. |
-| 22 | Prompt 13 | explicit Yoni approval | Prompt 13 | Dashboard metrics. |
+| 8 | Step 10R-S2V | S2 | NEW | Backup visual snapshots: Playwright thumbnails/full captures, private storage, queued jobs, and gallery UI. S1 does not depend on S2V. |
+| 9 | Step 10R-S1 | P1, S2 | 10 | Settings import/export as a versioned JSON package built on the shared `PublicSettingsPackage` serializer and S2 backups. |
+| 10 | Step 10R-P2 | S1 | F2, F7, F12, F15 | Listing fetch-window, lazy options/form definitions, opt-in aggregate subselects. |
+| 11 | Step 10R-P3 | P2 | F3 | Derived transcript segments and viewer render economy. |
+| 12 | Step 10R-AX1 | P2 (bounded-fetch), P1 (cache conventions) | 18 | GSAP motion foundation: dependency, public-panel JS wiring, `PodTextMotion` preset registry + data-attribute contract, motion settings tokens, always-on reduced-motion policy, FOUC/SEO guard. |
+| 13 | Step 10R-SL1 | AX1, M5 | 17 | Result display-template builder foundation: `display_templates` settings group (including per-template `motion` config), finite vocabularies, admin builder, surface selectors, grid default template. |
+| 14 | Step 10R-SL2 | SL1 | 12, 14 | Flip-slider rendering engine: scroll-snap track, responsive columns×rows paging with bounded lazy page fetch, front-face cards, RTL-aware hover/always controls, AX1 entrance/load presets. |
+| 15 | Step 10R-SL3 | SL2 | 13 | Flip animation and smart side-open back face rendered from existing card templates, implemented with the GSAP Flip plugin from AX1, server-computed logical open direction. |
+| 16 | Step 10R-SL4 | SL2 | 15, 16 | Quick-view modal: flat app-owned modal embedding episode/podcast page content with density/label-size controls, a modal card template, and AX1 open/close choreography. |
+| 17 | Step 10R-AX2 | AX1 (SL not required) | 19, 20 | Retrofit motion presets onto existing grids/sections/load-more + loading/update/page-transition concealment (Livewire loading choreography, morph-added staggers, cross-document View Transitions). |
+| 18 | Step 10R-AX3 | AX2 | 21 | Scroll-linked effects: episode/podcast header parallax, transcript reading-progress bar, scroll-linked cover emphasis — ScrollTrigger, capped and reduced-motion-safe. |
+| 19 | Step 10R-B4 | M1-M6, IP1-IP3, P1-P3, SL1-SL4, AX1-AX3 | F11 | Converge legacy card options with card presentation services (now covering slider/modal/motion surfaces). |
+| 20 | Step 10R-C2 | B4 | F13 | Card layout consistency and semantic layout tokens (now covering slider front/back faces). |
+| 21 | Step 9F-A → 9F-B → 9F-C | all 10R above | 9F | Rich homepage columns; footer config/renderer; admin polish. |
+| 22 | Step 11 | all above + explicit Yoni approval | Step 11 | Seeders/demo/assets/cleanup incl. promoting the local evaluation seed, demo display templates, and demo motion presets. |
+| 23 | Prompt 13 | explicit Yoni approval | Prompt 13 | Dashboard metrics. |
 
 AX placement rationale: AX1 sits directly before SL1 (Yoni: foundation-first) so the
 slider consumes motion natively; AX2/AX3 follow SL4 so the slider ships sooner, but AX2
@@ -289,8 +290,12 @@ settings_backup_versions
 ```
 
 - Single shared serializer `PublicSettingsPackage` (schema version, generated-at, app
-  version, settings-migration watermark, group list, normalized payload, checksum) —
+  version, settings-migration watermark, settings group, verbatim full Spatie payload,
+  checksum) —
   the SAME format S1 exports and the backup download produces. Build it here; S1 reuses it.
+- Add `settings_backups` inside `public_content` now so S2V needs no second settings
+  migration: `thumbnail_max_width` 400|600|800, `snapshot_formats` png|pdf|html, and
+  `snapshot_themes` light|dark. No public render-context accessor is needed in S2.
 - Automatic `system` backup on every `PublicContentSettings` save, deduped by
   `payload_hash` (identical consecutive payloads skip), retained last N (finite, e.g. 25)
   with prune-on-create — no scheduler dependency.
@@ -304,6 +309,76 @@ with cache invalidation; before-restore backup created; unauthorized access abse
 MySQL/SQLite-compatible schema.
 
 Commit: `feat: add settings backup versions and restore`
+
+## Step 10R-S2V Plan (backup visual snapshots)
+
+Goal: add visual context to backup rows without blocking backup creation or restore.
+S2V is inserted after S2 as a NEW step. S1 has no dependency on S2V and can run first if
+Yoni selects it explicitly.
+
+Research refinements:
+
+- Playwright is already available in the JavaScript toolchain; S2V reuses it.
+- v1 captures desktop only. Mobile snapshots stay later.
+- System backups get thumbnails only. Manual, before-import, and before-restore backups
+  may get full snapshot sets by policy.
+- Snapshot failures never fail or block the backup row.
+
+Engine:
+
+- Move Playwright to the runtime dependency set if production queue workers need it.
+- Add `scripts/settings-snapshots.mjs` taking a JSON job file with finite targets:
+  URL, screen key, theme, formats, full/thumbnail mode, max width, and output paths.
+- Use Chromium. Set the public theme through the same persistence path as the public
+  theme selector. Do not hack CSS.
+- Capture full-page PNG, PDF, and reference-only HTML. Thumbnails are scaled to
+  `settings_backups.thumbnail_max_width`.
+- Laravel runs the script from a queued `SettingsBackupSnapshotJob` via `Process`.
+  Jobs write per-shot rows sequentially; each shot can fail independently.
+
+Manifest:
+
+- Screens: `home`, `search`, `podcasts`, first public podcast, first public episode,
+  `contributors`, and first public contributor.
+- Themes come from `settings_backups.snapshot_themes`.
+- Desktop viewport width is 1440px.
+- Base URL is `config('app.url')`.
+
+Policy:
+
+- Every backup source gets two thumbnail shots: home and podcasts.
+- Full sets cover all manifest screens, selected themes, and selected formats for
+  manual, before-import, and before-restore sources.
+- The manual-backup modal later adds format/theme controls prefilled from
+  `settings_backups`.
+
+Schema/UI:
+
+- Add `settings_backup_snapshots`: backup FK cascade, screen key, theme, viewport, kind
+  `thumbnail|full`, format, resolved URL, private-disk path, status `pending|done|failed`,
+  nullable error, timestamps.
+- Store files under private disk `settings-backups/{backup_id}/`.
+- The backup table gains the home thumbnail as row identity.
+- A Snapshots action opens a gallery with screen tabs, theme switcher, scrollable full
+  image container, per-shot download, download-all zip, PDF/HTML links where present,
+  and per-shot retry for failures.
+
+Deploy notes:
+
+- Forge/server setup must run `npx playwright install chromium --with-deps` once.
+- The queue worker user must be allowed to execute Chromium.
+- `APP_URL` must point to the public site that the worker can reach.
+
+Tests:
+
+- Process-faked job creates expected pending rows and command contract.
+- System source creates thumbnails only; manual source creates the full configured set.
+- Per-shot failure marks that row failed and continues.
+- Gallery renders rows plus scroll-container markers.
+- Image column appears on the backup table.
+- Deleting/pruning a backup removes private snapshot storage.
+
+Commit: `feat: add backup visual snapshots`
 
 ## Step 10R-S1 Plan (import/export — now AFTER S2)
 

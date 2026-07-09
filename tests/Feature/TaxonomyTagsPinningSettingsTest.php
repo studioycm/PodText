@@ -139,6 +139,7 @@ it('loads public content settings defaults', function (): void {
             'item_page' => $settings->item_page,
             'podcasts_page' => $settings->podcasts_page,
             'contributors_page' => $settings->contributors_page,
+            'settings_backups' => $settings->settings_backups,
         ])->toMatchArray($publicFrontDefaults);
 });
 
