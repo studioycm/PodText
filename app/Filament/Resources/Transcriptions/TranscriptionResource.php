@@ -7,6 +7,7 @@ use App\Filament\Resources\Transcriptions\Pages\EditTranscription;
 use App\Filament\Resources\Transcriptions\Pages\ListTranscriptions;
 use App\Filament\Resources\Transcriptions\Schemas\TranscriptionForm;
 use App\Filament\Resources\Transcriptions\Tables\TranscriptionsTable;
+use App\Filament\Support\Concerns\UsesAdminNavigationOrder;
 use App\Models\Transcription;
 use BackedEnum;
 use Filament\Resources\Resource;
@@ -16,6 +17,8 @@ use Filament\Tables\Table;
 
 class TranscriptionResource extends Resource
 {
+    use UsesAdminNavigationOrder;
+
     protected static ?string $model = Transcription::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedDocumentText;

@@ -21,7 +21,6 @@ use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Tabs\Tab;
 use Filament\Schemas\Schema;
-use Filament\Support\Enums\Width;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
@@ -174,8 +173,7 @@ class TranscriptionsRelationManager extends RelationManager
                     ->createAnother(false),
             ])
             ->recordActions([
-                EditAction::make()
-                    ->modalWidth(Width::FiveExtraLarge),
+                EditAction::make(),
                 Action::make('setFeatured')
                     ->label(__('admin.actions.set_featured_transcription'))
                     ->icon(Heroicon::OutlinedStar)

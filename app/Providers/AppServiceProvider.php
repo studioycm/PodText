@@ -6,6 +6,12 @@ use App\Settings\PublicContentSettings;
 use App\Support\PublicContent\PublicTranscriptionPolicy;
 use App\Support\PublicFront\PublicFrontRenderContext;
 use App\Support\PublicFront\PublicFrontRenderContextFactory;
+use Filament\Actions\Action;
+use Filament\Facades\Filament;
+use Filament\Schemas\Components\Section;
+use Filament\Support\Enums\Width;
+use Filament\Tables\Enums\RecordActionsPosition;
+use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\ServiceProvider;
@@ -40,6 +46,32 @@ class AppServiceProvider extends ServiceProvider
     {
         Model::preventLazyLoading(! $this->app->isProduction());
 
+        Table::configureUsing(function (Table $table): void {
+            if (! $this->isAdminPanel()) {
+                return;
+            }
+
+            $table->recordActionsPosition(RecordActionsPosition::BeforeColumns);
+        });
+
+        Action::configureUsing(function (Action $action): void {
+            if (! $this->isAdminPanel()) {
+                return;
+            }
+
+            $action->modalWidth(fn (Action $action): Width => $action->isConfirmationRequired()
+                ? Width::Medium
+                : Width::SevenExtraLarge);
+        });
+
+        Section::configureUsing(function (Section $section): void {
+            if (! $this->isAdminPanel()) {
+                return;
+            }
+
+            $section->columnSpanFull();
+        });
+
         Event::listen(SettingsSaved::class, function (SettingsSaved $event): void {
             if (! $event->settings instanceof PublicContentSettings) {
                 return;
@@ -48,5 +80,10 @@ class AppServiceProvider extends ServiceProvider
             $this->app->forgetInstance(PublicFrontRenderContext::class);
             $this->app->forgetInstance(PublicTranscriptionPolicy::class);
         });
+    }
+
+    private function isAdminPanel(): bool
+    {
+        return Filament::getCurrentPanel()?->getId() === 'admin';
     }
 }

@@ -5,6 +5,7 @@ namespace App\Filament\Resources\ContentItems\Pages;
 use App\Filament\Resources\ContentItems\ContentItemResource;
 use Filament\Actions\DeleteAction;
 use Filament\Resources\Pages\EditRecord;
+use Filament\Resources\Pages\Enums\ContentTabPosition;
 
 class EditContentItem extends EditRecord
 {
@@ -20,6 +21,11 @@ class EditContentItem extends EditRecord
     public function hasCombinedRelationManagerTabsWithContent(): bool
     {
         return true;
+    }
+
+    public function getContentTabPosition(): ?ContentTabPosition
+    {
+        return ContentTabPosition::Before;
     }
 
     public function getContentTabLabel(): ?string

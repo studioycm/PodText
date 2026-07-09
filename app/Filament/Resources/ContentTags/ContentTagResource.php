@@ -7,6 +7,7 @@ use App\Filament\Resources\ContentTags\Pages\EditContentTag;
 use App\Filament\Resources\ContentTags\Pages\ListContentTags;
 use App\Filament\Resources\ContentTags\Schemas\ContentTagForm;
 use App\Filament\Resources\ContentTags\Tables\ContentTagsTable;
+use App\Filament\Support\Concerns\UsesAdminNavigationOrder;
 use App\Models\ContentTag;
 use BackedEnum;
 use Filament\Resources\Resource;
@@ -16,6 +17,8 @@ use Filament\Tables\Table;
 
 class ContentTagResource extends Resource
 {
+    use UsesAdminNavigationOrder;
+
     protected static ?string $model = ContentTag::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedTag;

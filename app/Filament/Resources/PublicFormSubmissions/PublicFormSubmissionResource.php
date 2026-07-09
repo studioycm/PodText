@@ -6,6 +6,7 @@ use App\Filament\Resources\PublicFormSubmissions\Pages\EditPublicFormSubmission;
 use App\Filament\Resources\PublicFormSubmissions\Pages\ListPublicFormSubmissions;
 use App\Filament\Resources\PublicFormSubmissions\Schemas\PublicFormSubmissionForm;
 use App\Filament\Resources\PublicFormSubmissions\Tables\PublicFormSubmissionsTable;
+use App\Filament\Support\Concerns\UsesAdminNavigationOrder;
 use App\Models\PublicFormSubmission;
 use BackedEnum;
 use Filament\Resources\Resource;
@@ -15,6 +16,8 @@ use Filament\Tables\Table;
 
 class PublicFormSubmissionResource extends Resource
 {
+    use UsesAdminNavigationOrder;
+
     protected static ?string $model = PublicFormSubmission::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedInboxStack;

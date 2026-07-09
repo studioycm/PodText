@@ -7,6 +7,7 @@ use App\Filament\Resources\Authors\Pages\EditAuthor;
 use App\Filament\Resources\Authors\Pages\ListAuthors;
 use App\Filament\Resources\Authors\Schemas\AuthorForm;
 use App\Filament\Resources\Authors\Tables\AuthorsTable;
+use App\Filament\Support\Concerns\UsesAdminNavigationOrder;
 use App\Models\Author;
 use BackedEnum;
 use Filament\Resources\Resource;
@@ -16,6 +17,8 @@ use Filament\Tables\Table;
 
 class AuthorResource extends Resource
 {
+    use UsesAdminNavigationOrder;
+
     protected static ?string $model = Author::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedUsers;

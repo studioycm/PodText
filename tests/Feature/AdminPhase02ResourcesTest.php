@@ -2,7 +2,9 @@
 
 use App\Enums\HomepageSectionType;
 use App\Enums\PublicationStatus;
+use App\Filament\Pages\Dashboard;
 use App\Filament\Pages\PublicContentSettings as PublicContentSettingsPage;
+use App\Filament\Resources\Authors\AuthorResource;
 use App\Filament\Resources\Categories\CategoryResource;
 use App\Filament\Resources\Categories\Pages\CreateCategory;
 use App\Filament\Resources\Categories\Pages\EditCategory;
@@ -23,10 +25,12 @@ use App\Filament\Resources\HomepageSections\HomepageSectionResource;
 use App\Filament\Resources\HomepageSections\Pages\CreateHomepageSection;
 use App\Filament\Resources\HomepageSections\Pages\EditHomepageSection;
 use App\Filament\Resources\HomepageSections\Pages\ListHomepageSections;
+use App\Filament\Resources\PublicFormSubmissions\PublicFormSubmissionResource;
 use App\Filament\Resources\Transcriptions\Pages\CreateTranscription;
 use App\Filament\Resources\Transcriptions\Pages\EditTranscription;
 use App\Filament\Resources\Transcriptions\Pages\ListTranscriptions;
 use App\Filament\Resources\Transcriptions\TranscriptionResource;
+use App\Filament\Support\AdminNavigationOrder;
 use App\Models\Author;
 use App\Models\Category;
 use App\Models\ContentGroup;
@@ -36,9 +40,14 @@ use App\Models\HomepageSection;
 use App\Models\Transcription;
 use App\Models\User;
 use App\Settings\PublicContentSettings;
+use Filament\Actions\Action;
 use Filament\Actions\Testing\TestAction;
 use Filament\Facades\Filament;
 use Filament\Notifications\Notification;
+use Filament\Resources\Pages\Enums\ContentTabPosition;
+use Filament\Schemas\Components\Section;
+use Filament\Support\Enums\Width;
+use Filament\Tables\Enums\RecordActionsPosition;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Validation\ValidationException;
 use Livewire\Features\SupportTesting\Testable;
@@ -68,6 +77,96 @@ beforeEach(function (): void {
     });
 
     $this->actingAs(User::factory()->create());
+});
+
+it('orders every registered admin navigation resource and page through the central map', function (): void {
+    $expected = [
+        Dashboard::class => 0,
+        ContentGroupResource::class => 10,
+        ContentItemResource::class => 20,
+        TranscriptionResource::class => 30,
+        AuthorResource::class => 40,
+        CategoryResource::class => 50,
+        ContentTagResource::class => 60,
+        PublicFormSubmissionResource::class => 70,
+        HomepageSectionResource::class => 80,
+        PublicContentSettingsPage::class => 90,
+    ];
+
+    expect(AdminNavigationOrder::all())->toBe($expected);
+
+    foreach ($expected as $class => $sort) {
+        expect($class::getNavigationSort())->toBe($sort);
+    }
+
+    $panel = Filament::getPanel('admin');
+    $registeredNavigationClasses = [
+        ...$panel->getResources(),
+        ...$panel->getPages(),
+    ];
+
+    $missing = collect($registeredNavigationClasses)
+        ->filter(fn (string $class): bool => method_exists($class, 'shouldRegisterNavigation')
+            ? $class::shouldRegisterNavigation()
+            : true)
+        ->reject(fn (string $class): bool => AdminNavigationOrder::has($class))
+        ->values()
+        ->all();
+
+    expect($missing)->toBeEmpty();
+});
+
+it('applies admin table action modal and section defaults', function (): void {
+    $group = ContentGroup::factory()->create();
+
+    $itemsTable = Livewire::test(ListContentItems::class)
+        ->assertOk()
+        ->instance()
+        ->getTable();
+
+    $relationManagerTable = Livewire::test(ContentItemsRelationManager::class, [
+        'ownerRecord' => $group,
+        'pageClass' => EditContentGroup::class,
+    ])
+        ->assertOk()
+        ->instance()
+        ->getTable();
+
+    expect($itemsTable->getRecordActionsPosition())->toBe(RecordActionsPosition::BeforeColumns)
+        ->and($relationManagerTable->getRecordActionsPosition())->toBe(RecordActionsPosition::BeforeColumns)
+        ->and(Action::make('wide-admin-modal')->getModalWidth())->toBe(Width::SevenExtraLarge)
+        ->and(Action::make('compact-confirmation')->requiresConfirmation()->getModalWidth())->toBe(Width::Medium)
+        ->and(Section::make('Admin section')->getColumnSpan())->toHaveKey('default', 'full');
+});
+
+it('combines relation manager tabs with content first on edit pages', function (): void {
+    $group = ContentGroup::factory()->create([
+        'title' => 'Tabbed Group',
+        'slug' => 'tabbed-group',
+    ]);
+    $item = ContentItem::factory()->for($group)->create([
+        'title' => 'Tabbed Item',
+        'slug' => 'tabbed-item',
+    ]);
+
+    $itemEditor = Livewire::test(EditContentItem::class, ['record' => $item->getRouteKey()])
+        ->assertOk()
+        ->assertSee(__('admin.tabs.item_details'))
+        ->assertSee(__('admin.tabs.transcriptions'))
+        ->instance();
+
+    $groupEditor = Livewire::test(EditContentGroup::class, ['record' => $group->getRouteKey()])
+        ->assertOk()
+        ->assertSee(__('admin.tabs.group_details'))
+        ->assertSee(__('admin.tabs.content_items'))
+        ->instance();
+
+    expect($itemEditor->hasCombinedRelationManagerTabsWithContent())->toBeTrue()
+        ->and($itemEditor->getContentTabPosition())->toBe(ContentTabPosition::Before)
+        ->and($groupEditor->hasCombinedRelationManagerTabsWithContent())->toBeTrue()
+        ->and($groupEditor->getContentTabPosition())->toBe(ContentTabPosition::Before)
+        ->and(file_get_contents(resource_path('css/filament/admin/theme.css')))
+        ->toContain('relationManagerTabs.container');
 });
 
 it('renders prompt nine resource pages and protects tag routes from guests', function (): void {

@@ -7,6 +7,7 @@ use App\Filament\Resources\ContentGroups\Pages\EditContentGroup;
 use App\Filament\Resources\ContentGroups\Pages\ListContentGroups;
 use App\Filament\Resources\ContentGroups\Schemas\ContentGroupForm;
 use App\Filament\Resources\ContentGroups\Tables\ContentGroupsTable;
+use App\Filament\Support\Concerns\UsesAdminNavigationOrder;
 use App\Models\ContentGroup;
 use BackedEnum;
 use Filament\Resources\Resource;
@@ -16,6 +17,8 @@ use Filament\Tables\Table;
 
 class ContentGroupResource extends Resource
 {
+    use UsesAdminNavigationOrder;
+
     protected static ?string $model = ContentGroup::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleGroup;

@@ -8,6 +8,7 @@ use App\Filament\Resources\ContentItems\Pages\ListContentItems;
 use App\Filament\Resources\ContentItems\RelationManagers\TranscriptionsRelationManager;
 use App\Filament\Resources\ContentItems\Schemas\ContentItemForm;
 use App\Filament\Resources\ContentItems\Tables\ContentItemsTable;
+use App\Filament\Support\Concerns\UsesAdminNavigationOrder;
 use App\Models\ContentItem;
 use BackedEnum;
 use Filament\Resources\Resource;
@@ -17,6 +18,8 @@ use Filament\Tables\Table;
 
 class ContentItemResource extends Resource
 {
+    use UsesAdminNavigationOrder;
+
     protected static ?string $model = ContentItem::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedDocumentText;

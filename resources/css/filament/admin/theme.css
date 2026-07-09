@@ -9,3 +9,10 @@
 @theme {
     --font-sans: 'Varela Round', ui-sans-serif, system-ui, sans-serif;
 }
+
+/* Scoped to Filament's combined relation-manager tabs. This selector depends on Filament's component key markup. */
+.fi-sc-tabs[wire\:key$='relationManagerTabs.container'] .fi-tabs-item-label {
+    font-size: 0.95rem;
+    font-weight: 600;
+    line-height: 1.5rem;
+}

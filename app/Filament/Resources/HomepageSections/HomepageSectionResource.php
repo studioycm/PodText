@@ -7,6 +7,7 @@ use App\Filament\Resources\HomepageSections\Pages\EditHomepageSection;
 use App\Filament\Resources\HomepageSections\Pages\ListHomepageSections;
 use App\Filament\Resources\HomepageSections\Schemas\HomepageSectionForm;
 use App\Filament\Resources\HomepageSections\Tables\HomepageSectionsTable;
+use App\Filament\Support\Concerns\UsesAdminNavigationOrder;
 use App\Models\HomepageSection;
 use BackedEnum;
 use Filament\Resources\Resource;
@@ -16,6 +17,8 @@ use Filament\Tables\Table;
 
 class HomepageSectionResource extends Resource
 {
+    use UsesAdminNavigationOrder;
+
     protected static ?string $model = HomepageSection::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedSquares2x2;

@@ -1281,6 +1281,7 @@ return [
     'tabs' => [
         'content_items' => 'פרקים',
         'content_items_badge_tooltip' => 'מספר פרקים בפודקאסט זה.',
+        'group_details' => 'פרטי פודקאסט',
         'item_details' => 'פרטי פרק',
         'transcriptions' => 'תמלולים',
         'transcriptions_badge_tooltip' => 'מספר התמלולים של פרק זה.',

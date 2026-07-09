@@ -2,6 +2,7 @@
 
 namespace App\Filament\Pages;
 
+use App\Filament\Support\Concerns\UsesAdminNavigationOrder;
 use App\Settings\PublicContentSettings as PublicContentSettingsData;
 use App\Support\PublicContent\PublicTranscriptionPolicy;
 use App\Support\PublicFront\About\PublicAboutPageRegistry;
@@ -35,6 +36,8 @@ use Illuminate\Support\Arr;
 
 class PublicContentSettings extends SettingsPage
 {
+    use UsesAdminNavigationOrder;
+
     protected static string $settings = PublicContentSettingsData::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedCog6Tooth;

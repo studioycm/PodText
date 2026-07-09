@@ -1326,6 +1326,7 @@ return [
     'tabs' => [
         'content_items' => 'Content items',
         'content_items_badge_tooltip' => 'Number of content items in this group.',
+        'group_details' => 'Podcast details',
         'item_details' => 'Item details',
         'transcriptions' => 'Transcriptions',
         'transcriptions_badge_tooltip' => 'Number of transcriptions for this item.',

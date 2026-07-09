@@ -21,7 +21,6 @@ use Filament\Forms\Components\MarkdownEditor;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
-use Filament\Support\Enums\Width;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
@@ -197,7 +196,6 @@ class ContentItemsTable
         return Action::make('addTranscription')
             ->label(__('admin.actions.add_transcription'))
             ->icon(Heroicon::OutlinedDocumentPlus)
-            ->modalWidth(Width::FiveExtraLarge)
             ->schema([
                 RelationshipOptionForms::configureTranscriberOptionsSelect(
                     Select::make('transcriber_ids'),
