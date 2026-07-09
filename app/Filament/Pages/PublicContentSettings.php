@@ -292,6 +292,12 @@ class PublicContentSettings extends SettingsPage
                                     ->columns(3)
                                     ->collapsible()
                                     ->columnSpanFull(),
+                                Section::make(__('admin.sections.public_default_images'))
+                                    ->description(__('admin.descriptions.public_default_images'))
+                                    ->schema($this->defaultImageFamilyFieldsets())
+                                    ->columns(1)
+                                    ->collapsible()
+                                    ->columnSpanFull(),
                                 Section::make(__('admin.sections.public_transcription_policy'))
                                     ->description(__('admin.descriptions.public_transcription_policy'))
                                     ->schema([
@@ -1608,6 +1614,42 @@ class PublicContentSettings extends SettingsPage
             ->collapsed()
             ->columns(3)
             ->columnSpanFull();
+    }
+
+    /**
+     * @return array<int, Fieldset>
+     */
+    private function defaultImageFamilyFieldsets(): array
+    {
+        return collect(PublicFrontConfigRegistry::defaultImageFamilies())
+            ->map(fn (string $family): Fieldset => Fieldset::make(__("admin.default_image_families.{$family}"))
+                ->schema([
+                    Select::make("default_images.{$family}.mode")
+                        ->label(__('admin.fields.default_image_mode'))
+                        ->helperText(__('admin.helpers.default_image_mode'))
+                        ->options(fn (): array => PublicFrontConfigRegistry::defaultImageModeOptions())
+                        ->default('inherit')
+                        ->native(false)
+                        ->live()
+                        ->required(),
+                    FileUpload::make("default_images.{$family}.path")
+                        ->label(__('admin.fields.default_image_path'))
+                        ->helperText(__('admin.helpers.default_image_path'))
+                        ->disk('public')
+                        ->directory(PublicFrontConfigRegistry::defaultImageDirectory())
+                        ->visibility('public')
+                        ->image()
+                        ->imagePreviewHeight('160')
+                        ->acceptedFileTypes(PublicFrontConfigRegistry::defaultImageAcceptedFileTypes())
+                        ->maxSize(PublicFrontConfigRegistry::defaultImageMaxSize())
+                        ->visible(fn (Get $get): bool => $get("default_images.{$family}.mode") === 'custom')
+                        ->required(fn (Get $get): bool => $get("default_images.{$family}.mode") === 'custom')
+                        ->columnSpanFull(),
+                ])
+                ->columns(2)
+                ->columnSpanFull())
+            ->values()
+            ->all();
     }
 
     private function itemPageDateFieldset(string $dateKey, string $sectionKey, bool $withEnabled = false): Fieldset

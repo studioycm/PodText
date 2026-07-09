@@ -3,11 +3,13 @@
 namespace App\Support\PublicFront\Cards;
 
 use App\Models\Author;
+use App\Support\PublicFront\PublicDefaultImageResolver;
 
 class PublicContributorCardPresenter
 {
     public function __construct(
         private readonly PublicFrontCardTemplateRenderer $renderer,
+        private readonly PublicDefaultImageResolver $defaultImages,
     ) {}
 
     /**
@@ -23,6 +25,7 @@ class PublicContributorCardPresenter
         $presentation = $this->renderer->contributorPresentation($template, $compact);
         $transcriptionsCount = (int) ($author->public_transcriptions_count ?? 0);
         $contentItemsCount = (int) ($author->public_content_items_count ?? 0);
+        $image = $this->defaultImages->contributorImage($author);
 
         $data = [
             'author' => $author,
@@ -30,6 +33,7 @@ class PublicContributorCardPresenter
             'name' => (string) $author->name,
             'bio' => $this->plainText($author->bio_markdown),
             'initial' => str($author->name)->squish()->substr(0, 1)->upper()->toString(),
+            'image' => $image,
             'compact' => $compact,
             'selected' => $selected,
             'selected_classes' => $selected
@@ -151,6 +155,7 @@ class PublicContributorCardPresenter
             ...$base,
             'region' => 'body',
             'initial' => $data['initial'],
+            'image' => $data['image'],
         ];
     }
 
@@ -175,6 +180,7 @@ class PublicContributorCardPresenter
             'text' => $text,
             'class' => $presentation['title'],
             'initial' => $data['initial'],
+            'image' => $data['image'],
             'show_avatar' => ! $compact && $presentation['image_size'] === 'hidden',
         ];
     }

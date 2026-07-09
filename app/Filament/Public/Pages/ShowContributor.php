@@ -5,6 +5,7 @@ namespace App\Filament\Public\Pages;
 use App\Filament\Public\Pages\Concerns\HidesPublicPageHeader;
 use App\Models\Author;
 use App\Support\PublicContent\PublicContributorDiscovery;
+use App\Support\PublicFront\PublicDefaultImageResolver;
 use App\Support\PublicFront\PublicFrontRenderContext;
 use Filament\Pages\Page;
 use Filament\Panel;
@@ -45,5 +46,13 @@ class ShowContributor extends Page
     public function getTitle(): string|Htmlable
     {
         return $this->author->name;
+    }
+
+    /**
+     * @return array{url: string|null, source: string, path: string|null}
+     */
+    public function pageImage(): array
+    {
+        return app(PublicDefaultImageResolver::class)->contributorImage($this->author);
     }
 }

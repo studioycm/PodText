@@ -16,6 +16,7 @@
         ? \Carbon\Carbon::parse($contentGroup->public_latest_transcription_published_at)->timezone('Asia/Jerusalem')->format('d/m/Y')
         : null;
     $initials = str($contentGroup->title)->squish()->substr(0, 2)->upper();
+    $pageImage = $this->pageImage();
 @endphp
 
 <x-filament-panels::page>
@@ -28,10 +29,14 @@
         </a>
 
         <header class="grid gap-6 md:grid-cols-[16rem_1fr] md:items-start">
-            @if ($contentGroup->cover_path)
-                <span class="block aspect-square w-full overflow-hidden rounded-lg bg-gray-100 ring-1 ring-gray-950/10 dark:bg-gray-800 dark:ring-white/10">
+            @if ($pageImage['url'])
+                <span
+                    class="block aspect-square w-full overflow-hidden rounded-lg bg-gray-100 ring-1 ring-gray-950/10 dark:bg-gray-800 dark:ring-white/10"
+                    data-test="content-group-detail-image"
+                    data-content-group-image-source="{{ $pageImage['source'] }}"
+                >
                     <img
-                        src="{{ \Illuminate\Support\Facades\Storage::disk('public')->url($contentGroup->cover_path) }}"
+                        src="{{ $pageImage['url'] }}"
                         alt=""
                         class="h-full w-full object-cover"
                     >

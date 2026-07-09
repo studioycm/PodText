@@ -71,6 +71,14 @@ class PublicFrontRenderContext
     /**
      * @return array<string, mixed>
      */
+    public function defaultImages(): array
+    {
+        return $this->group('default_images');
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
     public function transcriptionPolicy(): array
     {
         return $this->group('transcription_policy');

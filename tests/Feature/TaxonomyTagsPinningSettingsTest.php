@@ -134,6 +134,7 @@ it('loads public content settings defaults', function (): void {
             'public_forms' => $settings->public_forms,
             'route_labels' => $settings->route_labels,
             'display_defaults' => $settings->display_defaults,
+            'default_images' => $settings->default_images,
             'transcription_policy' => $settings->transcription_policy,
             'item_page' => $settings->item_page,
             'podcasts_page' => $settings->podcasts_page,

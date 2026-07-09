@@ -5,6 +5,7 @@ namespace App\Filament\Public\Pages;
 use App\Filament\Public\Pages\Concerns\HidesPublicPageHeader;
 use App\Models\ContentGroup;
 use App\Support\PublicFront\Groups\PublicContentGroupQueries;
+use App\Support\PublicFront\PublicDefaultImageResolver;
 use App\Support\PublicFront\PublicFrontRenderContext;
 use Filament\Pages\Page;
 use Filament\Panel;
@@ -47,5 +48,13 @@ class ShowContentGroup extends Page
     public function pageConfig(): array
     {
         return app(PublicFrontRenderContext::class)->podcastsPage();
+    }
+
+    /**
+     * @return array{url: string|null, source: string, path: string|null}
+     */
+    public function pageImage(): array
+    {
+        return app(PublicDefaultImageResolver::class)->contentGroupImage($this->contentGroup);
     }
 }

@@ -7,14 +7,15 @@ use App\Filament\Public\Pages\ShowContentGroup;
 use App\Models\Category;
 use App\Models\ContentGroup;
 use App\Support\PublicContent\PublicContentCardOptions;
+use App\Support\PublicFront\PublicDefaultImageResolver;
 use Carbon\Carbon;
 use Illuminate\Contracts\Pagination\Paginator;
-use Illuminate\Support\Facades\Storage;
 
 class PublicContentGroupCardPresenter
 {
     public function __construct(
         private readonly PublicFrontCardTemplateRenderer $renderer,
+        private readonly PublicDefaultImageResolver $defaultImages,
     ) {}
 
     /**
@@ -71,6 +72,7 @@ class PublicContentGroupCardPresenter
             'round',
             'circle',
         ], 'mid_rounded');
+        $image = $this->defaultImages->contentGroupImage($group);
 
         $data = [
             'id' => $group->getKey(),
@@ -81,7 +83,9 @@ class PublicContentGroupCardPresenter
             'type_label' => $this->plainText($displayConfig['group_label_singular'] ?? null)
                 ?? (string) $group->group_type_label_singular,
             'image' => [
-                'url' => $group->cover_path ? Storage::disk('public')->url($group->cover_path) : null,
+                'url' => $image['url'],
+                'source' => $image['source'],
+                'path' => $image['path'],
                 'fit' => $imageFit,
                 'fit_class' => $imageFit === 'contain' ? 'object-contain' : 'object-cover',
                 'radius' => $imageRadius,

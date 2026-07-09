@@ -26,6 +26,7 @@ class PublicFrontConfigRegistry
             'public_forms',
             'route_labels',
             'display_defaults',
+            'default_images',
             'transcription_policy',
             'item_page',
             'podcasts_page',
@@ -100,6 +101,24 @@ class PublicFrontConfigRegistry
                 'title_size' => PublicFrontLayoutVariant::Base->value,
                 'page_size' => 12,
                 'transcription_display' => 'effective_only',
+            ],
+            'default_images' => [
+                'global' => [
+                    'mode' => 'inherit',
+                    'path' => null,
+                ],
+                'content_item' => [
+                    'mode' => 'inherit',
+                    'path' => null,
+                ],
+                'content_group' => [
+                    'mode' => 'inherit',
+                    'path' => null,
+                ],
+                'contributor' => [
+                    'mode' => 'inherit',
+                    'path' => null,
+                ],
             ],
             'transcription_policy' => PublicTranscriptionPolicy::defaults(),
             'item_page' => [
@@ -256,6 +275,7 @@ class PublicFrontConfigRegistry
             'public_forms' => 'publicForms',
             'route_labels' => 'routeLabels',
             'display_defaults' => 'displayDefaults',
+            'default_images' => 'defaultImages',
             'transcription_policy' => 'transcriptionPolicy',
             'item_page' => 'itemPage',
             'podcasts_page' => 'podcastsPage',
@@ -386,6 +406,73 @@ class PublicFrontConfigRegistry
         return collect(self::transcriptionDisplayModes())
             ->mapWithKeys(fn (string $mode): array => [$mode => __("admin.transcription_display.{$mode}")])
             ->all();
+    }
+
+    /**
+     * @return array<string>
+     */
+    public static function defaultImageFamilies(): array
+    {
+        return [
+            'global',
+            'content_item',
+            'content_group',
+            'contributor',
+        ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public static function defaultImageFamilyOptions(): array
+    {
+        return collect(self::defaultImageFamilies())
+            ->mapWithKeys(fn (string $family): array => [$family => __("admin.default_image_families.{$family}")])
+            ->all();
+    }
+
+    /**
+     * @return array<string>
+     */
+    public static function defaultImageModes(): array
+    {
+        return [
+            'inherit',
+            'custom',
+            'none',
+        ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public static function defaultImageModeOptions(): array
+    {
+        return collect(self::defaultImageModes())
+            ->mapWithKeys(fn (string $mode): array => [$mode => __("admin.default_image_modes.{$mode}")])
+            ->all();
+    }
+
+    public static function defaultImageDirectory(): string
+    {
+        return 'default-images';
+    }
+
+    /**
+     * @return array<string>
+     */
+    public static function defaultImageAcceptedFileTypes(): array
+    {
+        return [
+            'image/jpeg',
+            'image/png',
+            'image/webp',
+        ];
+    }
+
+    public static function defaultImageMaxSize(): int
+    {
+        return 2048;
     }
 
     /**

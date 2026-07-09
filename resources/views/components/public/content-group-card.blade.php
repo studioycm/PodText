@@ -34,6 +34,7 @@
             data-card-part-source="{{ $part['source'] }}"
             data-card-part-attribute="{{ $part['attribute'] }}"
             data-card-part-order="{{ $part['order'] }}"
+            data-card-image-source="{{ $part['image']['source'] }}"
         >
             @if($part['image']['url'])
                 <img

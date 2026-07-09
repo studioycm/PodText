@@ -23,7 +23,18 @@
 
     @case('image')
         <x-public.card-part-shell :part="$part" class="{{ $part['class'] }}">
-            <div class="{{ $presentation['avatar'] }}">{{ $part['initial'] }}</div>
+            @if($part['image']['url'])
+                <img
+                    src="{{ $part['image']['url'] }}"
+                    alt=""
+                    class="{{ $presentation['avatar'] }} object-cover"
+                    loading="lazy"
+                    data-test="contributor-image"
+                    data-contributor-image-source="{{ $part['image']['source'] }}"
+                >
+            @else
+                <div class="{{ $presentation['avatar'] }}">{{ $part['initial'] }}</div>
+            @endif
         </x-public.card-part-shell>
         @break
 
@@ -38,7 +49,18 @@
             <x-public.card-part-shell :part="$part">
                 <div @class(['flex items-start gap-3' => $part['show_avatar']])>
                     @if($part['show_avatar'])
-                        <div class="{{ $presentation['avatar'] }}">{{ $part['initial'] }}</div>
+                        @if($part['image']['url'])
+                            <img
+                                src="{{ $part['image']['url'] }}"
+                                alt=""
+                                class="{{ $presentation['avatar'] }} object-cover"
+                                loading="lazy"
+                                data-test="contributor-image"
+                                data-contributor-image-source="{{ $part['image']['source'] }}"
+                            >
+                        @else
+                            <div class="{{ $presentation['avatar'] }}">{{ $part['initial'] }}</div>
+                        @endif
                     @endif
 
                     <h3 class="{{ $part['class'] }}" data-test="contributor-name">

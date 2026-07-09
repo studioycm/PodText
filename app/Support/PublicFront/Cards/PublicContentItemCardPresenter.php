@@ -14,8 +14,8 @@ use App\Models\Transcription;
 use App\Support\PublicContent\PublicContentCardOptions;
 use App\Support\PublicContent\PublicTranscriptionPolicy;
 use App\Support\PublicContent\PublicTranscriptionSelector;
+use App\Support\PublicFront\PublicDefaultImageResolver;
 use Illuminate\Contracts\Pagination\Paginator;
-use Illuminate\Support\Facades\Storage;
 
 class PublicContentItemCardPresenter
 {
@@ -23,6 +23,7 @@ class PublicContentItemCardPresenter
         private readonly PublicFrontCardTemplateRenderer $renderer,
         private readonly PublicTranscriptionSelector $selector,
         private readonly PublicTranscriptionPolicy $policy,
+        private readonly PublicDefaultImageResolver $defaultImages,
     ) {}
 
     /**
@@ -90,11 +91,7 @@ class PublicContentItemCardPresenter
         $sitePublishedDate = $item->published_at?->timezone('Asia/Jerusalem')->format('d/m/Y');
         $originalDate = $item->original_published_at?->timezone('Asia/Jerusalem')->format('d/m/Y');
         $duration = $this->duration($item->duration_seconds);
-        $groupCoverUrl = $item->contentGroup->cover_path
-            ? Storage::disk('public')->url($item->contentGroup->cover_path)
-            : null;
-        $imageUrl = $item->external_thumbnail_url ?: $groupCoverUrl;
-        $imageSource = $item->external_thumbnail_url ? 'item' : ($groupCoverUrl ? 'group' : 'fallback');
+        $image = $this->defaultImages->contentItemImage($item);
         $titleText = $options->groupBadgeMode === 'combined_title'
             ? $item->contentGroup->title.$options->groupTitleSeparator.$item->title
             : $item->title;
@@ -116,8 +113,9 @@ class PublicContentItemCardPresenter
             'description' => $this->plainText($item->description_markdown),
             'type_label' => $item->effectiveTypeLabelSingular(),
             'image' => [
-                'url' => $imageUrl,
-                'source' => $imageSource,
+                'url' => $image['url'],
+                'source' => $image['source'],
+                'path' => $image['path'],
                 'fit_class' => $options->imageFitClass(),
                 'radius_class' => $options->imageRadiusClass(),
             ],

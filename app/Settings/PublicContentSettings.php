@@ -64,6 +64,8 @@ class PublicContentSettings extends Settings
 
     public array $display_defaults;
 
+    public array $default_images;
+
     public array $transcription_policy;
 
     public array $item_page;

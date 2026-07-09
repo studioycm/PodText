@@ -37,6 +37,7 @@ class PublicFrontConfigValidator
                 'public_forms' => $this->normalizePublicForms($value, $invalidConfig),
                 'route_labels' => $this->normalizeRouteLabels($value, $invalidConfig),
                 'display_defaults' => $this->normalizeDisplayDefaults($value, $defaults['display_defaults'], $invalidConfig),
+                'default_images' => $this->normalizeDefaultImages($value, $defaults['default_images'], $invalidConfig),
                 'transcription_policy' => $this->normalizeTranscriptionPolicy($value, $defaults['transcription_policy'], $invalidConfig),
                 'item_page' => $this->normalizeItemPage($value, $defaults['item_page'], $invalidConfig),
                 'podcasts_page' => $this->normalizePodcastsPage($value, $defaults['podcasts_page'], $invalidConfig),
@@ -1307,6 +1308,56 @@ class PublicFrontConfigValidator
             'page_size' => $this->integerRange($displayDefaults['page_size'] ?? null, 'display_defaults.page_size', 1, 48, $defaults['page_size'], $invalidConfig),
             'transcription_display' => $this->finiteString($displayDefaults['transcription_display'] ?? null, PublicFrontConfigRegistry::transcriptionDisplayModes(), 'display_defaults.transcription_display', $invalidConfig, $defaults['transcription_display'] ?? 'effective_only'),
         ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $defaultImages
+     * @param  array<string, mixed>  $defaults
+     * @param  array<PublicFrontInvalidConfig>  $invalidConfig
+     * @return array<string, array{mode: string, path: string|null}>
+     */
+    private function normalizeDefaultImages(array $defaultImages, array $defaults, array &$invalidConfig): array
+    {
+        $this->reportUnknownKeys($defaultImages, PublicFrontConfigRegistry::defaultImageFamilies(), 'default_images', $invalidConfig);
+
+        $normalized = [];
+
+        foreach (PublicFrontConfigRegistry::defaultImageFamilies() as $family) {
+            $familyPath = "default_images.{$family}";
+            $familyDefaults = $defaults[$family] ?? ['mode' => 'inherit', 'path' => null];
+            $familyConfig = $defaultImages[$family] ?? [];
+
+            if (is_object($familyConfig)) {
+                $familyConfig = (array) $familyConfig;
+            }
+
+            if (! is_array($familyConfig)) {
+                $invalidConfig[] = PublicFrontInvalidConfig::make($familyPath, 'expected_array', $familyConfig);
+                $familyConfig = [];
+            }
+
+            $this->reportUnknownKeys($familyConfig, ['mode', 'path'], $familyPath, $invalidConfig);
+
+            $normalized[$family] = [
+                'mode' => $this->finiteString(
+                    $familyConfig['mode'] ?? null,
+                    PublicFrontConfigRegistry::defaultImageModes(),
+                    "{$familyPath}.mode",
+                    $invalidConfig,
+                    $familyDefaults['mode'] ?? 'inherit',
+                ),
+                'path' => array_key_exists('path', $familyConfig)
+                    ? $this->publicImagePath(
+                        $familyConfig['path'],
+                        "{$familyPath}.path",
+                        $invalidConfig,
+                        [PublicFrontConfigRegistry::defaultImageDirectory()],
+                    )
+                    : ($familyDefaults['path'] ?? null),
+            ];
+        }
+
+        return $normalized;
     }
 
     /**

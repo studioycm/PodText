@@ -13,12 +13,12 @@ use App\Support\PublicContent\PublicContentItemQueries;
 use App\Support\PublicContent\PublicTranscriptionPolicy;
 use App\Support\PublicFront\ItemPage\PublicItemPagePodcastPalette;
 use App\Support\PublicFront\ItemPage\PublicItemPageRegistry;
+use App\Support\PublicFront\PublicDefaultImageResolver;
 use App\Support\PublicFront\PublicFrontRenderContext;
 use Carbon\CarbonInterface;
 use Filament\Pages\Page;
 use Filament\Panel;
 use Illuminate\Contracts\Support\Htmlable;
-use Illuminate\Support\Facades\Storage;
 
 class ShowContentItem extends Page
 {
@@ -60,6 +60,7 @@ class ShowContentItem extends Page
             ->whereBelongsTo($this->contentGroup)
             ->where('slug', $contentItemSlug)
             ->firstOrFail();
+        $this->contentItem->setRelation('contentGroup', $this->contentGroup);
     }
 
     public function getTitle(): string|Htmlable
@@ -81,25 +82,13 @@ class ShowContentItem extends Page
     }
 
     /**
-     * @return array{url: string, source: string}|null
+     * @return array{url: string, source: string, path: string|null}|null
      */
     public function pageImage(): ?array
     {
-        if (filled($this->contentItem->external_thumbnail_url)) {
-            return [
-                'url' => (string) $this->contentItem->external_thumbnail_url,
-                'source' => 'item',
-            ];
-        }
+        $image = app(PublicDefaultImageResolver::class)->contentItemImage($this->contentItem);
 
-        if (filled($this->contentGroup->cover_path)) {
-            return [
-                'url' => Storage::disk('public')->url($this->contentGroup->cover_path),
-                'source' => 'group',
-            ];
-        }
-
-        return null;
+        return filled($image['url']) ? $image : null;
     }
 
     /**
