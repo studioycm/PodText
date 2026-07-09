@@ -11,7 +11,7 @@ This file records the active continuation-runner order after Step 10R-M6 plus th
 | 1 | Step 10R-UX1 | M6 | Complete: admin navigation order, relation-manager tab placement, record-action column placement, and wide/full-width modal standards. |
 | 2 | Step 10R-UX2 | UX1 | Complete: effective/featured/main transcription edit action on episode lists in the Episodes resource and podcast episode relation manager. |
 | 3 | Step 10R-V1a | M6, UX1 | Complete: default/no-image fallback settings with per-family inherit/custom/none modes and public fallback rendering. |
-| 4 | Step 10R-V1b | V1a | Heroicon-enum registry and shared lazy searchable icon-picker helper. |
+| 4 | Step 10R-V1b | V1a | Complete: Heroicon-enum registry, permanent legacy aliases, and shared lazy searchable icon-picker helper. |
 | 5 | Step 10R-V1c | V1a | Custom hex color controls and theme-safe persistent podcast-palette cache. |
 | 6 | Step 10R-P1 | UX1, UX2, V1a-V1c | Cache validated public-front config with versioned key `public_front.config.v1` and settings-migration watermark. |
 | 7 | Step 10R-S2 | P1 | Settings backup versions, shared package serializer, compare/download, retention, and restore flow. |
@@ -53,9 +53,10 @@ This file records the active continuation-runner order after Step 10R-M6 plus th
 
 ## Current Recommendation
 
-Continue with Step 10R-V1b. Step 10R-UX1 standardized admin navigation, table action
+Continue with Step 10R-V1c. Step 10R-UX1 standardized admin navigation, table action
 placement, action modal defaults, section width defaults, and relation-manager tabs.
 Step 10R-UX2 added the shared effective transcription edit action on both episode list
 surfaces. Step 10R-V1a added finite default/no-image fallback settings and shared
-public image fallback rendering. The v4 continuation order is reflected here and in the
-central ledger.
+public image fallback rendering. Step 10R-V1b added enum-backed icon settings and a
+shared lazy searchable icon picker. The v4 continuation order is reflected here and in
+the central ledger.

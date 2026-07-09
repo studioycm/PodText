@@ -122,7 +122,7 @@ it('normalizes contributor settings to safe finite values', function (): void {
         ->and($contributorsPage['directory']['preview_grid_columns'])->toBe(3)
         ->and($contributorsPage['top_transcribers']['layout'])->toBe('horizontal')
         ->and($contributorsPage['top_transcribers']['preview_page_size_options'])->toBe([5, 10, 15])
-        ->and($contributorsPage['cards']['compact_count_icon'])->toBe('document-text')
+        ->and($contributorsPage['cards']['compact_count_icon'])->toBe('OutlinedDocumentText')
         ->and($contributorsPage['page']['page_size_options'])->toBe([7, 12])
         ->and($contributorsPage['page']['default_sort'])->toBe('latest_transcription')
         ->and($contributorsPage['page']['grid_gap'])->toBe('comfortable')

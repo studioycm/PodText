@@ -2,6 +2,8 @@
 
 namespace App\Support\PublicFront\Cards;
 
+use App\Support\PublicFront\Icons\PublicFrontIconRegistry;
+
 class PublicFrontCardTemplateRegistry
 {
     public const CONTENT_ITEM_FAMILY = 'content_item';
@@ -280,25 +282,7 @@ class PublicFrontCardTemplateRegistry
      */
     public static function icons(): array
     {
-        return [
-            'none',
-            'image',
-            'title',
-            'description',
-            'calendar',
-            'clock',
-            'tag',
-            'folder',
-            'user',
-            'users',
-            'microphone',
-            'link',
-            'play',
-            'document',
-            'podcast',
-            'sparkles',
-            'arrow_right',
-        ];
+        return PublicFrontIconRegistry::tokens();
     }
 
     /**
@@ -306,7 +290,7 @@ class PublicFrontCardTemplateRegistry
      */
     public static function iconOptions(): array
     {
-        return self::translatedOptions(self::icons(), 'admin.card_template_icons');
+        return PublicFrontIconRegistry::searchResults('');
     }
 
     /**

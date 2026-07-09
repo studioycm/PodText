@@ -371,7 +371,7 @@ it('normalizes m5 label icon and grouped part tokens safely', function (): void 
                     'label' => 'Legacy label',
                     'label_position' => 'before',
                     'label_alignment' => 'center',
-                    'icon' => 'calendar',
+                    'icon' => 'OutlinedCalendar',
                     'icon_position' => 'after',
                     'visible' => true,
                     'order' => 10,
@@ -434,7 +434,7 @@ it('normalizes m5 label icon and grouped part tokens safely', function (): void 
         ->and($parts[0])->toMatchArray([
             'label_position' => 'inline_before',
             'label_alignment' => 'center',
-            'icon' => 'calendar',
+            'icon' => 'OutlinedCalendar',
             'icon_position' => 'inline_after',
         ])
         ->and($parts[1])->not->toHaveKey('label_position')
@@ -709,7 +709,7 @@ it('renders m5 labels icons and grouped parts on content item cards', function (
                     'label' => 'Above title label',
                     'label_position' => 'above',
                     'label_alignment' => 'center',
-                    'icon' => 'calendar',
+                    'icon' => 'OutlinedCalendar',
                     'icon_position' => 'inline_before',
                     'visible' => true,
                     'order' => 10,
@@ -721,7 +721,7 @@ it('renders m5 labels icons and grouped parts on content item cards', function (
                     'attribute' => 'duration',
                     'label' => 'Below duration label',
                     'label_position' => 'below',
-                    'icon' => 'clock',
+                    'icon' => 'OutlinedClock',
                     'icon_position' => 'inline_after',
                     'visible' => true,
                     'order' => 20,
@@ -733,7 +733,7 @@ it('renders m5 labels icons and grouped parts on content item cards', function (
                     'text' => 'Inline before value',
                     'label' => 'Inline before label',
                     'label_position' => 'inline_before',
-                    'icon' => 'sparkles',
+                    'icon' => 'OutlinedSparkles',
                     'icon_position' => 'inline_before',
                     'visible' => true,
                     'order' => 30,
@@ -746,7 +746,7 @@ it('renders m5 labels icons and grouped parts on content item cards', function (
                     'label' => 'Inline after label',
                     'label_position' => 'inline_after',
                     'label_alignment' => 'between',
-                    'icon' => 'arrow_right',
+                    'icon' => 'OutlinedArrowRight',
                     'icon_position' => 'inline_after',
                     'visible' => true,
                     'order' => 40,
@@ -758,7 +758,7 @@ it('renders m5 labels icons and grouped parts on content item cards', function (
                     'text' => 'Hidden control value',
                     'label' => 'Hidden control label',
                     'label_position' => 'hidden',
-                    'icon' => 'calendar',
+                    'icon' => 'OutlinedCalendar',
                     'icon_position' => 'hidden',
                     'visible' => true,
                     'order' => 50,
@@ -845,9 +845,9 @@ it('renders m5 labels icons and grouped parts on content item cards', function (
         ->assertSee('data-card-part-label-position="inline_after"', false)
         ->assertSee('data-card-part-label-alignment="center"', false)
         ->assertSee('data-card-part-label-alignment="between"', false)
-        ->assertSee('data-card-part-icon="calendar"', false)
-        ->assertSee('data-card-part-icon="clock"', false)
-        ->assertSee('data-card-part-icon="sparkles"', false)
+        ->assertSee('data-card-part-icon="OutlinedCalendar"', false)
+        ->assertSee('data-card-part-icon="OutlinedClock"', false)
+        ->assertSee('data-card-part-icon="OutlinedSparkles"', false)
         ->assertSee('data-card-part-icon-position="inline_after"', false)
         ->assertSee('data-card-part-icon-graphic', false)
         ->assertSee('class="min-w-0 w-full"', false)
@@ -898,7 +898,7 @@ it('renders site and original publication dates as content item card template pa
                     'attribute' => 'site_published_date',
                     'label' => 'Published on site label',
                     'label_position' => 'inline_before',
-                    'icon' => 'calendar',
+                    'icon' => 'OutlinedCalendar',
                     'icon_position' => 'inline_before',
                     'visible' => true,
                     'order' => 20,
@@ -909,7 +909,7 @@ it('renders site and original publication dates as content item card template pa
                     'attribute' => 'original_published_date',
                     'label' => 'Original publication label',
                     'label_position' => 'inline_before',
-                    'icon' => 'calendar',
+                    'icon' => 'OutlinedCalendar',
                     'icon_position' => 'inline_before',
                     'visible' => true,
                     'order' => 30,
@@ -934,7 +934,7 @@ it('renders site and original publication dates as content item card template pa
         ->assertSee('data-card-template-key="ip1_item_dates"', false)
         ->assertSee('data-card-part-attribute="site_published_date"', false)
         ->assertSee('data-card-part-attribute="original_published_date"', false)
-        ->assertSee('data-card-part-icon="calendar"', false)
+        ->assertSee('data-card-part-icon="OutlinedCalendar"', false)
         ->assertSee('Published on site label')
         ->assertSee('Original publication label')
         ->assertSee('02/02/2026')
@@ -1348,7 +1348,7 @@ it('renders m5 labels and icons on content group and contributor card families',
                     'attribute' => 'title',
                     'label' => 'Podcast title label',
                     'label_position' => 'inline_before',
-                    'icon' => 'podcast',
+                    'icon' => 'OutlinedRectangleGroup',
                     'icon_position' => 'inline_before',
                     'visible' => true,
                     'order' => 10,
@@ -1362,7 +1362,7 @@ it('renders m5 labels and icons on content group and contributor card families',
                     'attribute' => 'name',
                     'label' => 'Contributor title label',
                     'label_position' => 'above',
-                    'icon' => 'user',
+                    'icon' => 'OutlinedUser',
                     'icon_position' => 'inline_before',
                     'visible' => true,
                     'order' => 10,
@@ -1374,7 +1374,7 @@ it('renders m5 labels and icons on content group and contributor card families',
                     'attribute' => 'transcription_count',
                     'label' => 'Contributor count label',
                     'label_position' => 'inline_after',
-                    'icon' => 'microphone',
+                    'icon' => 'OutlinedMicrophone',
                     'icon_position' => 'inline_after',
                     'visible' => true,
                     'order' => 20,
@@ -1388,7 +1388,7 @@ it('renders m5 labels and icons on content group and contributor card families',
         ->assertSee('Podcast title label')
         ->assertSee('M5 Label Podcast')
         ->assertSee('data-card-template-family="content_group"', false)
-        ->assertSee('data-card-part-icon="podcast"', false)
+        ->assertSee('data-card-part-icon="OutlinedRectangleGroup"', false)
         ->assertSee('data-card-part-label-position="inline_before"', false);
 
     $this->get('/contributors')
@@ -1397,8 +1397,8 @@ it('renders m5 labels and icons on content group and contributor card families',
         ->assertSee('Contributor count label')
         ->assertSee('M5 Label Contributor')
         ->assertSee('data-card-template-family="contributor"', false)
-        ->assertSee('data-card-part-icon="user"', false)
-        ->assertSee('data-card-part-icon="microphone"', false)
+        ->assertSee('data-card-part-icon="OutlinedUser"', false)
+        ->assertSee('data-card-part-icon="OutlinedMicrophone"', false)
         ->assertSee('data-card-part-label-position="inline_after"', false);
 });
 
@@ -1507,7 +1507,7 @@ it('saves a simple card template definition through the public content settings 
             'label' => 'Admin title label',
             'label_position' => 'inline_before',
             'label_alignment' => 'start',
-            'icon' => 'title',
+            'icon' => 'OutlinedDocumentText',
             'icon_position' => 'inline_before',
         ])
         ->and($templates[0]['parts'][0])->not->toHaveKey('data')

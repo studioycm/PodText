@@ -9,6 +9,7 @@ use App\Support\PublicContent\PublicTranscriptionPolicy;
 use App\Support\PublicFront\About\PublicAboutPageRegistry;
 use App\Support\PublicFront\Cards\PublicFrontCardTemplateRegistry;
 use App\Support\PublicFront\Forms\PublicFormDefinitionRegistry;
+use App\Support\PublicFront\Icons\PublicFrontIconRegistry;
 use App\Support\PublicFront\ItemPage\PublicItemPageRegistry;
 use App\Support\PublicFront\Menu\PublicRouteRegistry;
 
@@ -127,7 +128,7 @@ class PublicFrontConfigRegistry
                 'podcast_identity' => [
                     'mode' => 'badge',
                     'color' => 'primary',
-                    'icon' => 'podcast',
+                    'icon' => PublicFrontIconRegistry::DEFAULT_PODCAST,
                     'icon_position' => 'inline_before',
                     'position' => 'above_title',
                     'size' => 'sm',
@@ -138,20 +139,20 @@ class PublicFrontConfigRegistry
                     'site_published' => [
                         'label_mode' => 'long',
                         'label_override' => null,
-                        'icon' => 'calendar',
+                        'icon' => PublicFrontIconRegistry::DEFAULT_CALENDAR,
                         'icon_position' => 'inline_before',
                     ],
                     'original_published' => [
                         'label_mode' => 'short',
                         'label_override' => null,
-                        'icon' => 'calendar',
+                        'icon' => PublicFrontIconRegistry::DEFAULT_CALENDAR,
                         'icon_position' => 'inline_before',
                     ],
                     'transcription_date' => [
                         'enabled' => true,
                         'label_mode' => 'short',
                         'label_override' => null,
-                        'icon' => 'document',
+                        'icon' => PublicFrontIconRegistry::DEFAULT_CONTENT,
                         'icon_position' => 'inline_before',
                     ],
                 ],
@@ -245,7 +246,7 @@ class PublicFrontConfigRegistry
                 ],
                 'cards' => [
                     'compact_show_count' => true,
-                    'compact_count_icon' => 'document-text',
+                    'compact_count_icon' => PublicFrontIconRegistry::DEFAULT_CONTENT,
                     'preview_show_bio' => true,
                     'preview_show_counts' => true,
                 ],
@@ -776,9 +777,7 @@ class PublicFrontConfigRegistry
      */
     public static function contributorCardIcons(): array
     {
-        return [
-            'document-text',
-        ];
+        return PublicFrontIconRegistry::tokens();
     }
 
     /**
@@ -786,9 +785,7 @@ class PublicFrontConfigRegistry
      */
     public static function contributorCardIconOptions(): array
     {
-        return [
-            'document-text' => __('admin.icons.document_text'),
-        ];
+        return PublicFrontIconRegistry::searchResults('');
     }
 
     /**

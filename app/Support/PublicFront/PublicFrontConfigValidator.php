@@ -7,6 +7,7 @@ use App\Support\PublicContent\PublicTranscriptionPolicy;
 use App\Support\PublicFront\About\PublicAboutPageRegistry;
 use App\Support\PublicFront\Cards\PublicFrontCardTemplateRegistry;
 use App\Support\PublicFront\Forms\PublicFormDefinitionRegistry;
+use App\Support\PublicFront\Icons\PublicFrontIconRegistry;
 use App\Support\PublicFront\ItemPage\PublicItemPageRegistry;
 
 class PublicFrontConfigValidator
@@ -181,7 +182,7 @@ class PublicFrontConfigValidator
                     ? $this->finiteString($part['label_alignment'], PublicFrontCardTemplateRegistry::labelAlignments(), "{$fieldPath}.label_alignment", $invalidConfig, 'start')
                     : null,
                 'icon' => array_key_exists('icon', $part)
-                    ? $this->finiteString($part['icon'], PublicFrontCardTemplateRegistry::icons(), "{$fieldPath}.icon", $invalidConfig, nullable: true)
+                    ? $this->iconToken($part['icon'], "{$fieldPath}.icon", $invalidConfig, nullable: true)
                     : null,
                 'icon_position' => array_key_exists('icon_position', $part)
                     ? $this->iconPosition($part['icon_position'], "{$fieldPath}.icon_position", $invalidConfig)
@@ -244,7 +245,7 @@ class PublicFrontConfigValidator
                 ? $this->finiteString($part['label_alignment'], PublicFrontCardTemplateRegistry::labelAlignments(), "{$fieldPath}.label_alignment", $invalidConfig, 'start')
                 : null,
             'icon' => array_key_exists('icon', $part)
-                ? $this->finiteString($part['icon'], PublicFrontCardTemplateRegistry::icons(), "{$fieldPath}.icon", $invalidConfig, nullable: true)
+                ? $this->iconToken($part['icon'], "{$fieldPath}.icon", $invalidConfig, nullable: true)
                 : null,
             'icon_position' => array_key_exists('icon_position', $part)
                 ? $this->iconPosition($part['icon_position'], "{$fieldPath}.icon_position", $invalidConfig)
@@ -1416,7 +1417,7 @@ class PublicFrontConfigValidator
             return [
                 'mode' => $defaults['mode'] ?? 'badge',
                 'color' => $defaults['color'] ?? 'primary',
-                'icon' => $defaults['icon'] ?? 'podcast',
+                'icon' => $this->defaultIconToken($defaults['icon'] ?? PublicFrontIconRegistry::DEFAULT_PODCAST),
                 'icon_position' => $defaults['icon_position'] ?? 'inline_before',
                 'position' => $defaults['position'] ?? 'above_title',
                 'size' => $defaults['size'] ?? 'sm',
@@ -1429,7 +1430,7 @@ class PublicFrontConfigValidator
             return [
                 'mode' => $defaults['mode'] ?? 'badge',
                 'color' => $defaults['color'] ?? 'primary',
-                'icon' => $defaults['icon'] ?? 'podcast',
+                'icon' => $this->defaultIconToken($defaults['icon'] ?? PublicFrontIconRegistry::DEFAULT_PODCAST),
                 'icon_position' => $defaults['icon_position'] ?? 'inline_before',
                 'position' => $defaults['position'] ?? 'above_title',
                 'size' => $defaults['size'] ?? 'sm',
@@ -1457,12 +1458,11 @@ class PublicFrontConfigValidator
                 $invalidConfig,
                 $defaults['color'] ?? 'primary',
             ),
-            'icon' => $this->finiteString(
+            'icon' => $this->iconToken(
                 $identity['icon'] ?? null,
-                PublicFrontCardTemplateRegistry::icons(),
                 'item_page.podcast_identity.icon',
                 $invalidConfig,
-                $defaults['icon'] ?? 'podcast',
+                $defaults['icon'] ?? PublicFrontIconRegistry::DEFAULT_PODCAST,
             ),
             'icon_position' => $iconPosition ?? ($defaults['icon_position'] ?? 'inline_before'),
             'position' => $this->finiteString(
@@ -1536,12 +1536,11 @@ class PublicFrontConfigValidator
                     maxLength: 80,
                     nullable: true,
                 ),
-                'icon' => $this->finiteString(
+                'icon' => $this->iconToken(
                     $field['icon'] ?? null,
-                    PublicFrontCardTemplateRegistry::icons(),
                     "{$path}.icon",
                     $invalidConfig,
-                    'document',
+                    PublicFrontIconRegistry::DEFAULT_CONTENT,
                 ),
                 'icon_position' => $iconPosition ?? 'inline_before',
                 'size' => $this->finiteString(
@@ -1662,12 +1661,11 @@ class PublicFrontConfigValidator
                 maxLength: 80,
                 nullable: true,
             ),
-            'icon' => $this->finiteString(
+            'icon' => $this->iconToken(
                 $config['icon'] ?? null,
-                PublicFrontCardTemplateRegistry::icons(),
                 "{$path}.icon",
                 $invalidConfig,
-                $defaults['icon'] ?? 'calendar',
+                $defaults['icon'] ?? PublicFrontIconRegistry::DEFAULT_CALENDAR,
             ),
             'icon_position' => $iconPosition ?? ($defaults['icon_position'] ?? 'inline_before'),
         ];
@@ -2166,7 +2164,7 @@ class PublicFrontConfigValidator
 
         return [
             'compact_show_count' => $this->boolean($cards['compact_show_count'] ?? null, 'contributors_page.cards.compact_show_count', $defaults['compact_show_count'] ?? true, $invalidConfig),
-            'compact_count_icon' => $this->finiteString($cards['compact_count_icon'] ?? null, PublicFrontConfigRegistry::contributorCardIcons(), 'contributors_page.cards.compact_count_icon', $invalidConfig, $defaults['compact_count_icon'] ?? 'document-text'),
+            'compact_count_icon' => $this->iconToken($cards['compact_count_icon'] ?? null, 'contributors_page.cards.compact_count_icon', $invalidConfig, $defaults['compact_count_icon'] ?? PublicFrontIconRegistry::DEFAULT_CONTENT),
             'preview_show_bio' => $this->boolean($cards['preview_show_bio'] ?? null, 'contributors_page.cards.preview_show_bio', $defaults['preview_show_bio'] ?? true, $invalidConfig),
             'preview_show_counts' => $this->boolean($cards['preview_show_counts'] ?? null, 'contributors_page.cards.preview_show_counts', $defaults['preview_show_counts'] ?? true, $invalidConfig),
         ];
@@ -2460,6 +2458,29 @@ class PublicFrontConfigValidator
     /**
      * @param  array<PublicFrontInvalidConfig>  $invalidConfig
      */
+    private function iconToken(mixed $value, string $path, array &$invalidConfig, ?string $default = null, bool $nullable = false): ?string
+    {
+        $default = $this->defaultIconToken($default);
+        $value = $this->plainString($value, $path, $invalidConfig, nullable: $nullable || $default !== null);
+
+        if ($value === null) {
+            return $default;
+        }
+
+        $normalized = PublicFrontIconRegistry::normalizeToken($value);
+
+        if ($normalized === null) {
+            $invalidConfig[] = PublicFrontInvalidConfig::make($path, 'unknown_semantic_value', $value);
+
+            return $default;
+        }
+
+        return $normalized;
+    }
+
+    /**
+     * @param  array<PublicFrontInvalidConfig>  $invalidConfig
+     */
     private function iconPosition(mixed $value, string $path, array &$invalidConfig): ?string
     {
         $value = $this->legacyInlinePosition($value);
@@ -2474,6 +2495,15 @@ class PublicFrontConfigValidator
             'after' => 'inline_after',
             default => $value,
         };
+    }
+
+    private function defaultIconToken(?string $default): ?string
+    {
+        if ($default === null) {
+            return null;
+        }
+
+        return PublicFrontIconRegistry::normalizeToken($default) ?? PublicFrontIconRegistry::DEFAULT_CONTENT;
     }
 
     /**

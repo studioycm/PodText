@@ -2,6 +2,8 @@
 
 namespace App\Support\PublicFront\ItemPage;
 
+use App\Support\PublicFront\Icons\PublicFrontIconRegistry;
+
 class PublicItemPageRegistry
 {
     /**
@@ -220,14 +222,14 @@ class PublicItemPageRegistry
     public static function defaultInfoFields(): array
     {
         return [
-            self::infoField('site_published_date', 'long', 'calendar'),
-            self::infoField('original_published_date', 'short', 'calendar'),
-            self::infoField('transcription_date', 'short', 'document'),
-            self::infoField('duration', 'hidden', 'clock'),
-            self::infoField('transcribers', 'hidden', 'users'),
-            self::infoField('categories', 'hidden', 'folder'),
-            self::infoField('tags', 'hidden', 'tag'),
-            self::infoField('transcription_count', 'hidden', 'document'),
+            self::infoField('site_published_date', 'long', PublicFrontIconRegistry::DEFAULT_CALENDAR),
+            self::infoField('original_published_date', 'short', PublicFrontIconRegistry::DEFAULT_CALENDAR),
+            self::infoField('transcription_date', 'short', PublicFrontIconRegistry::DEFAULT_CONTENT),
+            self::infoField('duration', 'hidden', 'OutlinedClock'),
+            self::infoField('transcribers', 'hidden', 'OutlinedUsers'),
+            self::infoField('categories', 'hidden', 'OutlinedFolder'),
+            self::infoField('tags', 'hidden', 'OutlinedTag'),
+            self::infoField('transcription_count', 'hidden', PublicFrontIconRegistry::DEFAULT_CONTENT),
         ];
     }
 

@@ -73,13 +73,13 @@ it('merges nested stored config arrays with defaults', function (): void {
             'site_published' => [
                 'label_mode' => 'long',
                 'label_override' => null,
-                'icon' => 'calendar',
+                'icon' => 'OutlinedCalendar',
                 'icon_position' => 'inline_before',
             ],
             'original_published' => [
                 'label_mode' => 'short',
                 'label_override' => null,
-                'icon' => 'calendar',
+                'icon' => 'OutlinedCalendar',
                 'icon_position' => 'inline_before',
             ],
         ])
@@ -142,7 +142,7 @@ it('backfills item page header settings through the settings migration', functio
         'podcast_identity' => [
             'mode' => 'badge',
             'color' => 'primary',
-            'icon' => 'podcast',
+            'icon' => 'OutlinedRectangleGroup',
             'icon_position' => 'inline_before',
             'position' => 'above_title',
             'size' => 'sm',
@@ -172,7 +172,7 @@ it('backfills item page podcast identity presentation settings through the setti
                 'podcast_identity' => [
                     'mode' => 'text',
                     'color' => 'success',
-                    'icon' => 'podcast',
+                    'icon' => 'OutlinedRectangleGroup',
                     'icon_position' => 'inline_after',
                 ],
             ]),
@@ -195,7 +195,7 @@ it('backfills item page podcast identity presentation settings through the setti
     expect($itemPage['podcast_identity'])->toMatchArray([
         'mode' => 'text',
         'color' => 'success',
-        'icon' => 'podcast',
+        'icon' => 'OutlinedRectangleGroup',
         'icon_position' => 'inline_after',
         'position' => 'above_title',
         'size' => 'sm',
@@ -344,7 +344,7 @@ it('normalizes item page date and badge settings safely', function (): void {
                     'field' => 'site_published_date',
                     'label_mode' => 'long',
                     'label_override' => 'Published locally',
-                    'icon' => 'calendar',
+                    'icon' => 'OutlinedCalendar',
                     'icon_position' => 'inline_before',
                     'size' => 'sm',
                     'color' => 'primary',
@@ -374,7 +374,7 @@ it('normalizes item page date and badge settings safely', function (): void {
                 'transcription_date' => [
                     'enabled' => 'yes',
                     'label_mode' => 'hidden',
-                    'icon' => 'document',
+                    'icon' => 'OutlinedDocumentText',
                     'icon_position' => 'after',
                 ],
             ],
@@ -399,7 +399,7 @@ it('normalizes item page date and badge settings safely', function (): void {
         ->and($itemPage['podcast_identity'])->toMatchArray([
             'mode' => 'badge',
             'color' => 'primary',
-            'icon' => 'podcast',
+            'icon' => 'OutlinedRectangleGroup',
             'icon_position' => 'inline_after',
             'position' => 'above_title',
             'size' => 'sm',
@@ -409,7 +409,7 @@ it('normalizes item page date and badge settings safely', function (): void {
             'field' => 'site_published_date',
             'label_mode' => 'long',
             'label_override' => 'Published locally',
-            'icon' => 'calendar',
+            'icon' => 'OutlinedCalendar',
             'icon_position' => 'inline_before',
             'size' => 'sm',
             'color' => 'primary',
@@ -418,7 +418,7 @@ it('normalizes item page date and badge settings safely', function (): void {
             'field' => 'duration',
             'label_mode' => 'hidden',
             'label_override' => null,
-            'icon' => 'document',
+            'icon' => 'OutlinedDocumentText',
             'icon_position' => 'inline_before',
             'size' => 'sm',
             'color' => 'gray',
@@ -426,7 +426,7 @@ it('normalizes item page date and badge settings safely', function (): void {
         ->and($itemPage['dates']['site_published'])->toMatchArray([
             'label_mode' => 'long',
             'label_override' => null,
-            'icon' => 'calendar',
+            'icon' => 'OutlinedCalendar',
             'icon_position' => 'inline_before',
         ])
         ->and($itemPage['dates']['original_published'])->toMatchArray(
@@ -435,7 +435,7 @@ it('normalizes item page date and badge settings safely', function (): void {
         ->and($itemPage['dates']['transcription_date'])->toMatchArray([
             'enabled' => true,
             'label_mode' => 'hidden',
-            'icon' => 'document',
+            'icon' => 'OutlinedDocumentText',
             'icon_position' => 'inline_after',
         ])
         ->and($itemPage['badges']['info'])->toMatchArray([
@@ -586,7 +586,7 @@ it('saves sanitized public front config through the settings page while preservi
                 'field' => 'categories',
                 'label_mode' => 'long',
                 'label_override' => null,
-                'icon' => 'folder',
+                'icon' => 'OutlinedFolder',
                 'icon_position' => 'inline_before',
                 'size' => 'sm',
                 'color' => 'info',
@@ -595,7 +595,7 @@ it('saves sanitized public front config through the settings page while preservi
                 'field' => 'site_published_date',
                 'label_mode' => 'short',
                 'label_override' => 'Site',
-                'icon' => 'calendar',
+                'icon' => 'OutlinedCalendar',
                 'icon_position' => 'inline_after',
                 'size' => 'md',
                 'color' => 'primary',
@@ -651,7 +651,7 @@ it('saves sanitized public front config through the settings page while preservi
         'podcast_identity' => [
             'mode' => 'text',
             'color' => 'image_2',
-            'icon' => 'podcast',
+            'icon' => 'OutlinedRectangleGroup',
             'icon_position' => 'inline_after',
             'position' => 'title_row_after',
             'size' => 'lg',
@@ -661,7 +661,7 @@ it('saves sanitized public front config through the settings page while preservi
                 'field' => 'categories',
                 'label_mode' => 'long',
                 'label_override' => null,
-                'icon' => 'folder',
+                'icon' => 'OutlinedFolder',
                 'icon_position' => 'inline_before',
                 'size' => 'sm',
                 'color' => 'info',
@@ -670,7 +670,7 @@ it('saves sanitized public front config through the settings page while preservi
                 'field' => 'site_published_date',
                 'label_mode' => 'short',
                 'label_override' => 'Site',
-                'icon' => 'calendar',
+                'icon' => 'OutlinedCalendar',
                 'icon_position' => 'inline_after',
                 'size' => 'md',
                 'color' => 'primary',
@@ -681,20 +681,20 @@ it('saves sanitized public front config through the settings page while preservi
             'site_published' => [
                 'label_mode' => 'long',
                 'label_override' => 'Published here',
-                'icon' => 'calendar',
+                'icon' => 'OutlinedCalendar',
                 'icon_position' => 'inline_after',
             ],
             'original_published' => [
                 'label_mode' => 'short',
                 'label_override' => null,
-                'icon' => 'calendar',
+                'icon' => 'OutlinedCalendar',
                 'icon_position' => 'inline_before',
             ],
             'transcription_date' => [
                 'enabled' => true,
                 'label_mode' => 'hidden',
                 'label_override' => null,
-                'icon' => 'document',
+                'icon' => 'OutlinedDocumentText',
                 'icon_position' => 'hidden',
             ],
         ],

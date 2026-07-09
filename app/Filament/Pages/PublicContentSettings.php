@@ -2,12 +2,14 @@
 
 namespace App\Filament\Pages;
 
+use App\Filament\Forms\Components\IconSelect;
 use App\Filament\Support\Concerns\UsesAdminNavigationOrder;
 use App\Settings\PublicContentSettings as PublicContentSettingsData;
 use App\Support\PublicContent\PublicTranscriptionPolicy;
 use App\Support\PublicFront\About\PublicAboutPageRegistry;
 use App\Support\PublicFront\Cards\PublicFrontCardTemplateRegistry;
 use App\Support\PublicFront\Cards\PublicFrontCardTemplateResolver;
+use App\Support\PublicFront\Icons\PublicFrontIconRegistry;
 use App\Support\PublicFront\ItemPage\PublicItemPageRegistry;
 use App\Support\PublicFront\PublicFrontConfigReader;
 use App\Support\PublicFront\PublicFrontConfigRegistry;
@@ -379,12 +381,10 @@ class PublicContentSettings extends SettingsPage
                                             ->default('above_title')
                                             ->native(false)
                                             ->required(),
-                                        Select::make('item_page.podcast_identity.icon')
+                                        IconSelect::make('item_page.podcast_identity.icon')
                                             ->label(__('admin.fields.item_page_podcast_identity_icon'))
                                             ->helperText(__('admin.helpers.item_page_podcast_identity_icon'))
-                                            ->options(fn (): array => PublicFrontCardTemplateRegistry::iconOptions())
-                                            ->default('podcast')
-                                            ->native(false)
+                                            ->default(PublicFrontIconRegistry::DEFAULT_PODCAST)
                                             ->required(),
                                         Select::make('item_page.podcast_identity.icon_position')
                                             ->label(__('admin.fields.item_page_podcast_identity_icon_position'))
@@ -1087,12 +1087,10 @@ class PublicContentSettings extends SettingsPage
                                                 Toggle::make('contributors_page.cards.compact_show_count')
                                                     ->label(__('admin.fields.contributor_cards_compact_show_count'))
                                                     ->helperText(__('admin.helpers.contributor_cards_compact_show_count')),
-                                                Select::make('contributors_page.cards.compact_count_icon')
+                                                IconSelect::make('contributors_page.cards.compact_count_icon')
                                                     ->label(__('admin.fields.contributor_cards_compact_count_icon'))
                                                     ->helperText(__('admin.helpers.contributor_cards_compact_count_icon'))
-                                                    ->options(fn (): array => PublicFrontConfigRegistry::contributorCardIconOptions())
-                                                    ->default('document-text')
-                                                    ->native(false)
+                                                    ->default(PublicFrontIconRegistry::DEFAULT_CONTENT)
                                                     ->required(),
                                                 Toggle::make('contributors_page.cards.preview_show_bio')
                                                     ->label(__('admin.fields.contributor_cards_preview_show_bio'))
@@ -1575,12 +1573,10 @@ class PublicContentSettings extends SettingsPage
                     ->label(__('admin.fields.item_page_info_field_label_override'))
                     ->helperText(__('admin.helpers.item_page_info_field_label_override'))
                     ->maxLength(80),
-                Select::make('icon')
+                IconSelect::make('icon')
                     ->label(__('admin.fields.item_page_info_field_icon'))
                     ->helperText(__('admin.helpers.item_page_info_field_icon'))
-                    ->options(fn (): array => PublicFrontCardTemplateRegistry::iconOptions())
-                    ->default('document')
-                    ->native(false)
+                    ->default(PublicFrontIconRegistry::DEFAULT_CONTENT)
                     ->required(),
                 Select::make('icon_position')
                     ->label(__('admin.fields.item_page_info_field_icon_position'))
@@ -1675,12 +1671,10 @@ class PublicContentSettings extends SettingsPage
                     ->label(__('admin.fields.item_page_date_label_override'))
                     ->helperText(__('admin.helpers.item_page_date_label_override'))
                     ->maxLength(80),
-                Select::make("{$statePath}.icon")
+                IconSelect::make("{$statePath}.icon")
                     ->label(__('admin.fields.item_page_date_icon'))
                     ->helperText(__('admin.helpers.item_page_date_icon'))
-                    ->options(fn (): array => PublicFrontCardTemplateRegistry::iconOptions())
-                    ->default($dateKey === 'transcription_date' ? 'document' : 'calendar')
-                    ->native(false)
+                    ->default($dateKey === 'transcription_date' ? PublicFrontIconRegistry::DEFAULT_CONTENT : PublicFrontIconRegistry::DEFAULT_CALENDAR)
                     ->required(),
                 Select::make("{$statePath}.icon_position")
                     ->label(__('admin.fields.item_page_date_icon_position'))
@@ -2082,11 +2076,10 @@ class PublicContentSettings extends SettingsPage
                 ->options(fn (): array => PublicFrontCardTemplateRegistry::labelAlignmentOptions())
                 ->default('start')
                 ->native(false),
-            Select::make('icon')
+            IconSelect::make('icon')
                 ->label(__('admin.fields.card_template_part_icon'))
                 ->helperText(__('admin.helpers.card_template_part_icon'))
-                ->options(fn (): array => PublicFrontCardTemplateRegistry::iconOptions())
-                ->native(false),
+                ->default(PublicFrontIconRegistry::NONE),
             Select::make('icon_position')
                 ->label(__('admin.fields.card_template_part_icon_position'))
                 ->options(fn (): array => PublicFrontCardTemplateRegistry::iconPositionOptions())

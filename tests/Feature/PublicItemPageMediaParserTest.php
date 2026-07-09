@@ -226,7 +226,7 @@ it('renders the configured item page header image podcast identity and info line
             'podcast_identity' => [
                 'mode' => 'text',
                 'color' => 'success',
-                'icon' => 'podcast',
+                'icon' => 'OutlinedRectangleGroup',
                 'icon_position' => 'inline_after',
             ],
             'dates' => [
@@ -235,20 +235,20 @@ it('renders the configured item page header image podcast identity and info line
                 'site_published' => [
                     'label_mode' => 'long',
                     'label_override' => 'On this site',
-                    'icon' => 'calendar',
+                    'icon' => 'OutlinedCalendar',
                     'icon_position' => 'inline_before',
                 ],
                 'original_published' => [
                     'label_mode' => 'long',
                     'label_override' => 'Original source',
-                    'icon' => 'calendar',
+                    'icon' => 'OutlinedCalendar',
                     'icon_position' => 'inline_after',
                 ],
                 'transcription_date' => [
                     'enabled' => true,
                     'label_mode' => 'short',
                     'label_override' => 'Transcript date',
-                    'icon' => 'document',
+                    'icon' => 'OutlinedDocumentText',
                     'icon_position' => 'inline_before',
                 ],
             ],
@@ -257,7 +257,7 @@ it('renders the configured item page header image podcast identity and info line
                     'field' => 'categories',
                     'label_mode' => 'long',
                     'label_override' => null,
-                    'icon' => 'folder',
+                    'icon' => 'OutlinedFolder',
                     'icon_position' => 'inline_before',
                     'size' => 'sm',
                     'color' => 'info',
@@ -266,7 +266,7 @@ it('renders the configured item page header image podcast identity and info line
                     'field' => 'tags',
                     'label_mode' => 'long',
                     'label_override' => null,
-                    'icon' => 'tag',
+                    'icon' => 'OutlinedTag',
                     'icon_position' => 'inline_before',
                     'size' => 'sm',
                     'color' => 'success',
@@ -275,7 +275,7 @@ it('renders the configured item page header image podcast identity and info line
                     'field' => 'site_published_date',
                     'label_mode' => 'short',
                     'label_override' => null,
-                    'icon' => 'calendar',
+                    'icon' => 'OutlinedCalendar',
                     'icon_position' => 'inline_after',
                     'size' => 'md',
                     'color' => 'primary',
@@ -284,7 +284,7 @@ it('renders the configured item page header image podcast identity and info line
                     'field' => 'original_published_date',
                     'label_mode' => 'short',
                     'label_override' => null,
-                    'icon' => 'calendar',
+                    'icon' => 'OutlinedCalendar',
                     'icon_position' => 'inline_after',
                     'size' => 'md',
                     'color' => 'warning',
@@ -293,7 +293,7 @@ it('renders the configured item page header image podcast identity and info line
                     'field' => 'transcription_date',
                     'label_mode' => 'short',
                     'label_override' => null,
-                    'icon' => 'document',
+                    'icon' => 'OutlinedDocumentText',
                     'icon_position' => 'inline_before',
                     'size' => 'sm',
                     'color' => 'gray',
@@ -302,7 +302,7 @@ it('renders the configured item page header image podcast identity and info line
                     'field' => 'duration',
                     'label_mode' => 'hidden',
                     'label_override' => null,
-                    'icon' => 'clock',
+                    'icon' => 'OutlinedClock',
                     'icon_position' => 'inline_before',
                     'size' => 'sm',
                     'color' => 'gray',
@@ -311,7 +311,7 @@ it('renders the configured item page header image podcast identity and info line
                     'field' => 'transcribers',
                     'label_mode' => 'long',
                     'label_override' => null,
-                    'icon' => 'users',
+                    'icon' => 'OutlinedUsers',
                     'icon_position' => 'inline_before',
                     'size' => 'sm',
                     'color' => 'gray',
@@ -320,7 +320,7 @@ it('renders the configured item page header image podcast identity and info line
                     'field' => 'reading_time',
                     'label_mode' => 'short',
                     'label_override' => null,
-                    'icon' => 'clock',
+                    'icon' => 'OutlinedClock',
                     'icon_position' => 'inline_before',
                     'size' => 'sm',
                     'color' => 'gray',
@@ -329,7 +329,7 @@ it('renders the configured item page header image podcast identity and info line
                     'field' => 'word_count',
                     'label_mode' => 'short',
                     'label_override' => null,
-                    'icon' => 'document',
+                    'icon' => 'OutlinedDocumentText',
                     'icon_position' => 'inline_before',
                     'size' => 'sm',
                     'color' => 'gray',
@@ -354,8 +354,8 @@ it('renders the configured item page header image podcast identity and info line
         ->assertSee(ShowContributor::getUrl(['authorSlug' => $transcriber->slug], panel: 'public'), false)
         ->assertSee('data-test="item-info-categories"', false)
         ->assertSee('data-test="item-info-tags"', false)
-        ->assertSee('data-card-part-icon="calendar"', false)
-        ->assertSee('data-card-part-icon="document"', false)
+        ->assertSee('data-card-part-icon="OutlinedCalendar"', false)
+        ->assertSee('data-card-part-icon="OutlinedDocumentText"', false)
         ->assertSee('data-card-part-icon-position="inline_after"', false)
         ->assertSeeInOrder([
             'Header Category',
@@ -400,7 +400,7 @@ it('renders podcast identity with title row positioning and sampled podcast imag
             'podcast_identity' => [
                 'mode' => 'title',
                 'color' => 'image_2',
-                'icon' => 'podcast',
+                'icon' => 'OutlinedRectangleGroup',
                 'icon_position' => 'inline_before',
                 'position' => 'title_row_after',
                 'size' => 'title',
@@ -556,7 +556,7 @@ it('renders the transcript actions menu and local reading controls when enabled'
                     ...$defaults['dates']['transcription_date'],
                     'label_mode' => 'long',
                     'label_override' => 'Transcript published',
-                    'icon' => 'calendar',
+                    'icon' => 'OutlinedCalendar',
                     'icon_position' => 'inline_after',
                 ],
             ],
@@ -570,7 +570,7 @@ it('renders the transcript actions menu and local reading controls when enabled'
         ->assertSee('Actions transcript')
         ->assertSee('Transcript published')
         ->assertSee($transcription->published_at->timezone('Asia/Jerusalem')->format('d/m/Y'))
-        ->assertSee('data-card-part-icon="calendar"', false)
+        ->assertSee('data-card-part-icon="OutlinedCalendar"', false)
         ->assertSee('data-card-part-icon-position="inline_after"', false)
         ->assertSee('data-test="transcript-actions-menu"', false)
         ->assertSee('data-test="transcript-actions-menu-trigger"', false)
