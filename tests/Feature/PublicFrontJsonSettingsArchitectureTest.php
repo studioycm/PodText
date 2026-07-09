@@ -66,6 +66,7 @@ it('merges nested stored config arrays with defaults', function (): void {
         'image_radius' => 'mid_rounded',
         'title_size' => 'base',
         'page_size' => 12,
+        'transcription_display' => 'effective_only',
     ])->and($menuConfig['enabled'])->toBeTrue()
         ->and($result->group('item_page')['dates'])->toMatchArray([
             'display' => 'site',
@@ -233,6 +234,95 @@ it('backfills item page transcript actions setting through the settings migratio
         'show_breadcrumbs' => false,
         'show_transcript_actions_menu' => false,
     ]);
+});
+
+it('aligns transcription display defaults through the settings migration', function (): void {
+    DB::table('settings')->updateOrInsert(
+        [
+            'group' => PublicContentSettings::group(),
+            'name' => 'display_defaults',
+        ],
+        [
+            'locked' => false,
+            'payload' => json_encode([
+                'layout' => 'cards',
+                'transcription_display' => 'effective_plus_count',
+            ]),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ],
+    );
+
+    DB::table('settings')->updateOrInsert(
+        [
+            'group' => PublicContentSettings::group(),
+            'name' => 'podcasts_page',
+        ],
+        [
+            'locked' => false,
+            'payload' => json_encode([
+                'group_page' => [
+                    'transcription_display' => 'effective_plus_count',
+                ],
+            ]),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ],
+    );
+
+    DB::table('settings')->updateOrInsert(
+        [
+            'group' => PublicContentSettings::group(),
+            'name' => 'contributors_page',
+        ],
+        [
+            'locked' => false,
+            'payload' => json_encode([
+                'directory' => [
+                    'transcription_display' => 'effective_plus_count',
+                ],
+                'top_transcribers' => [
+                    'transcription_display' => 'effective_plus_count',
+                ],
+                'page' => [
+                    'transcription_display' => 'effective_plus_count',
+                ],
+            ]),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ],
+    );
+
+    $migration = include base_path('database/settings/2026_07_09_000004_align_public_transcription_display_defaults.php');
+    $migration->up();
+
+    $displayDefaults = json_decode(
+        DB::table('settings')
+            ->where('group', PublicContentSettings::group())
+            ->where('name', 'display_defaults')
+            ->value('payload'),
+        true,
+    );
+    $podcastsPage = json_decode(
+        DB::table('settings')
+            ->where('group', PublicContentSettings::group())
+            ->where('name', 'podcasts_page')
+            ->value('payload'),
+        true,
+    );
+    $contributorsPage = json_decode(
+        DB::table('settings')
+            ->where('group', PublicContentSettings::group())
+            ->where('name', 'contributors_page')
+            ->value('payload'),
+        true,
+    );
+
+    expect($displayDefaults['transcription_display'])->toBe('effective_only')
+        ->and($podcastsPage['group_page']['transcription_display'])->toBe('effective_only')
+        ->and($contributorsPage['directory']['transcription_display'])->toBe('effective_only')
+        ->and($contributorsPage['top_transcribers']['transcription_display'])->toBe('effective_only')
+        ->and($contributorsPage['page']['transcription_display'])->toBe('effective_only');
 });
 
 it('normalizes item page date and badge settings safely', function (): void {
@@ -554,7 +644,7 @@ it('saves sanitized public front config through the settings page while preservi
         'image_radius' => 'mid_rounded',
         'title_size' => 'lg',
         'page_size' => 16,
-        'transcription_display' => 'effective_plus_count',
+        'transcription_display' => 'effective_only',
     ])->and($config->group('item_page'))->toMatchArray([
         'show_breadcrumbs' => false,
         'show_transcript_actions_menu' => true,
@@ -624,6 +714,7 @@ it('saves sanitized public front config through the settings page while preservi
         ->and($cardOptions->imageSize)->toBe('large')
         ->and($cardOptions->density)->toBe('compact')
         ->and($cardOptions->titleSize)->toBe('lg')
+        ->and($cardOptions->transcriptionDisplay)->toBe('effective_only')
         ->and($cardOptions->cardsPerPage)->toBe(7);
 });
 

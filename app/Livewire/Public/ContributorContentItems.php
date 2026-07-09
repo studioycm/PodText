@@ -82,7 +82,7 @@ class ContributorContentItems extends Component
 
         return $this->renderContext()
             ->cardOptions()
-            ->withTranscriptionDisplay((string) ($pageConfig['transcription_display'] ?? 'effective_plus_count'));
+            ->withTranscriptionDisplay((string) ($pageConfig['transcription_display'] ?? 'effective_only'));
     }
 
     /**

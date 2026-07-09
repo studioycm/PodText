@@ -39,7 +39,7 @@ class PublicContentCardOptions
         public readonly bool $showDescription = true,
         public readonly int $descriptionLines = 3,
         public readonly int $cardsPerPage = 12,
-        public readonly string $transcriptionDisplay = 'effective_plus_count',
+        public readonly string $transcriptionDisplay = 'effective_only',
     ) {}
 
     public static function fromSettings(?PublicContentSettings $settings = null): self
@@ -77,7 +77,7 @@ class PublicContentCardOptions
                 showDescription: self::boolean($values['homepage_show_description'] ?? null, true),
                 descriptionLines: self::integerRange($values['homepage_description_lines'] ?? null, 0, 4, 3),
                 cardsPerPage: self::integerRange($values['homepage_cards_per_page'] ?? $values['homepage_item_limit'] ?? null, 1, 48, 12),
-                transcriptionDisplay: self::finite(data_get($values, 'display_defaults.transcription_display'), self::TRANSCRIPTION_DISPLAY_MODES, 'effective_plus_count'),
+                transcriptionDisplay: self::finite(data_get($values, 'display_defaults.transcription_display'), self::TRANSCRIPTION_DISPLAY_MODES, 'effective_only'),
             );
         } catch (Throwable) {
             return new self;

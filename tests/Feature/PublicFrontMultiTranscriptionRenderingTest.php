@@ -177,6 +177,11 @@ function enableStep10M4AllPublishedDisplay(array $extraSettings = []): void
         'display_defaults' => [
             'transcription_display' => 'effective_plus_count',
         ],
+        'podcasts_page' => [
+            'group_page' => [
+                'transcription_display' => 'effective_plus_count',
+            ],
+        ],
         'card_templates' => [
             step10M4ContentItemTemplate(),
             step10M4ContentGroupTemplate(),
@@ -209,6 +214,11 @@ it('renders effective transcription transcribers and optional counts on episode 
         ],
         'display_defaults' => [
             'transcription_display' => 'effective_plus_count',
+        ],
+        'podcasts_page' => [
+            'group_page' => [
+                'transcription_display' => 'effective_plus_count',
+            ],
         ],
         'card_templates' => [
             step10M4ContentItemTemplate(),

@@ -172,7 +172,7 @@ class TopTranscribersSection extends Component
 
         return $this->renderContext()
             ->cardOptions()
-            ->withTranscriptionDisplay((string) ($topConfig['transcription_display'] ?? 'effective_plus_count'));
+            ->withTranscriptionDisplay((string) ($topConfig['transcription_display'] ?? 'effective_only'));
     }
 
     /**
