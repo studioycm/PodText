@@ -6,7 +6,40 @@
 @endphp
 
 <x-filament-panels::page>
-    <article class="space-y-8" dir="{{ __('public.meta.dir') }}">
+    <article
+        class="space-y-8"
+        dir="{{ __('public.meta.dir') }}"
+        x-data="{
+            fullscreen: false,
+            playerHidden: localStorage.getItem('podtext.itemPage.playerHidden') === 'true',
+            setPlayerHidden(value) {
+                this.playerHidden = value
+                localStorage.setItem('podtext.itemPage.playerHidden', JSON.stringify(value))
+            },
+            togglePlayer() {
+                this.setPlayerHidden(! this.playerHidden)
+            },
+            toggleFullscreen() {
+                this.fullscreen = ! this.fullscreen
+            },
+        }"
+        x-on:keydown.escape.window="fullscreen = false"
+        x-on:podtext:transcript-fullscreen-toggle.window="toggleFullscreen()"
+        x-on:podtext:transcript-player-toggle.window="togglePlayer()"
+        x-bind:class="{ 'fixed inset-0 z-50 overflow-y-auto bg-white p-4 dark:bg-gray-950 sm:p-6': fullscreen }"
+        data-test="item-reading-shell"
+    >
+        <div x-show="fullscreen" x-cloak class="sticky top-0 z-20 flex justify-end">
+            <button
+                type="button"
+                x-on:click="fullscreen = false"
+                class="rounded-md border border-gray-200 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 shadow-sm hover:border-primary-300 hover:text-primary-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-600 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200 dark:hover:border-primary-500"
+                data-test="transcript-fullscreen-exit"
+            >
+                {{ __('public.actions.close') }}
+            </button>
+        </div>
+
         @if($this->showBreadcrumbs())
             <nav
                 aria-label="{{ __('public.labels.breadcrumbs') }}"
@@ -130,19 +163,16 @@
             </div>
         </header>
 
-        <div class="grid gap-8 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start">
-            <aside class="space-y-5 lg:sticky lg:top-6 lg:order-2">
-                <x-public.media-embed
-                    :media-url="$contentItem->media_url"
-                    :embed-url="$contentItem->embed_url"
-                    :title="$contentItem->title"
-                    :provider="$contentItem->embed_provider"
-                    :source-title="$contentItem->external_title"
-                    :source-description="$contentItem->external_description"
-                    :duration-seconds="$mediaDurationSeconds"
-                    :published-at="$contentItem->external_published_at"
-                />
-
+        <div
+            class="grid gap-8 lg:items-start"
+            x-bind:class="playerHidden ? 'lg:grid-cols-1' : 'lg:grid-cols-[minmax(0,1fr)_22rem]'"
+        >
+            <aside
+                class="space-y-5 lg:sticky lg:top-6 lg:order-2"
+                x-show="! playerHidden"
+                x-cloak
+                data-test="item-media-column"
+            >
                 <div
                     class="space-y-3 rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-900"
                     x-data="{
@@ -186,6 +216,17 @@
                         </button>
                     </div>
                 </div>
+
+                <x-public.media-embed
+                    :media-url="$contentItem->media_url"
+                    :embed-url="$contentItem->embed_url"
+                    :title="$contentItem->title"
+                    :provider="$contentItem->embed_provider"
+                    :source-title="$contentItem->external_title"
+                    :source-description="$contentItem->external_description"
+                    :duration-seconds="$mediaDurationSeconds"
+                    :published-at="$contentItem->external_published_at"
+                />
             </aside>
 
             <div class="space-y-8 lg:order-1">

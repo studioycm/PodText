@@ -7,11 +7,37 @@
     x-data="{
         showTimestamps: JSON.parse(localStorage.getItem('podtext.showTimestamps') ?? 'true'),
         showSpeakers: JSON.parse(localStorage.getItem('podtext.showSpeakers') ?? 'true'),
+        fontStep: 0,
         copiedTranscript: false,
+        init() {
+            this.fontStep = this.normalizeFontStep(localStorage.getItem('podtext.transcript.fontStep') ?? 0)
+        },
         copyTranscriptLink() {
             navigator.clipboard?.writeText(window.location.href)
             this.copiedTranscript = true
             setTimeout(() => this.copiedTranscript = false, 1800)
+        },
+        normalizeFontStep(value) {
+            const step = Number(value)
+
+            if (Number.isNaN(step)) {
+                return 0
+            }
+
+            return Math.max(-2, Math.min(3, step))
+        },
+        setFontStep(value) {
+            this.fontStep = this.normalizeFontStep(value)
+            localStorage.setItem('podtext.transcript.fontStep', String(this.fontStep))
+        },
+        increaseFont() {
+            this.setFontStep(this.fontStep + 1)
+        },
+        decreaseFont() {
+            this.setFontStep(this.fontStep - 1)
+        },
+        resetFont() {
+            this.setFontStep(0)
         },
         setTimestampPreference(value) {
             this.showTimestamps = value
@@ -22,40 +48,56 @@
             localStorage.setItem('podtext.showSpeakers', JSON.stringify(value))
         },
     }"
+    x-on:podtext:transcript-font-increase.window="increaseFont()"
+    x-on:podtext:transcript-font-decrease.window="decreaseFont()"
+    x-on:podtext:transcript-font-reset.window="resetFont()"
     aria-labelledby="item-transcript-heading"
 >
     <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-        <div class="space-y-2">
-{{--            <h2 id="item-transcript-heading" class="text-xl font-semibold text-gray-950 dark:text-white">--}}
-{{--                {{ __('public.pages.item.transcript_heading') }}--}}
-{{--            </h2>--}}
+        <div class="min-w-0 space-y-3">
+            <h2 id="item-transcript-heading" class="sr-only">
+                {{ __('public.pages.item.transcript_heading') }}
+            </h2>
 
-            @if($activeTranscription)
-                <dl class="flex flex-wrap gap-2 text-xs text-gray-600 dark:text-gray-300">
-                    <div class="rounded-md bg-gray-100 px-2 py-1 dark:bg-gray-800" data-test="reading-time">
-                        <dt class="sr-only">{{ __('public.labels.reading_time') }}</dt>
-                        <dd>{{ trans_choice('public.labels.reading_minutes_count', $readingMinutes, ['count' => $readingMinutes]) }}</dd>
-                    </div>
-                    <div class="rounded-md bg-gray-100 px-2 py-1 dark:bg-gray-800" data-test="transcript-length">
-                        <dt class="sr-only">{{ __('public.labels.transcript_length') }}</dt>
-                        <dd>{{ trans_choice('public.labels.transcript_words_count', $wordCount, ['count' => $wordCount]) }}</dd>
-                    </div>
-                    @if($activeTranscription->published_at)
-                        <div class="rounded-md bg-gray-100 px-2 py-1 dark:bg-gray-800" data-test="transcript-published-at">
-                            <dt class="sr-only">{{ __('public.labels.published_at') }}</dt>
-                            <dd>{{ $activeTranscription->published_at->timezone('Asia/Jerusalem')->format('d/m/Y') }}</dd>
+            @if($activeTranscription && $details)
+                <dl class="flex flex-wrap items-center gap-2 text-xs text-gray-600 dark:text-gray-300" data-test="transcript-details-row">
+                    @if($details['title'])
+                        <div class="max-w-full rounded-md bg-gray-100 px-2 py-1 font-medium text-gray-800 dark:bg-gray-800 dark:text-gray-100" data-test="transcript-detail-title">
+                            <dt class="sr-only">{{ __('public.labels.transcription') }}</dt>
+                            <dd class="truncate">{{ $details['title'] }}</dd>
                         </div>
                     @endif
-                    @if($activeTranscription->authors->isNotEmpty())
-                        <div class="rounded-md bg-gray-100 px-2 py-1 dark:bg-gray-800" data-test="transcriber-link">
+
+                    <div class="rounded-md bg-gray-100 px-2 py-1 dark:bg-gray-800" data-test="reading-time" data-transcript-detail="reading-time">
+                        <dt class="sr-only">{{ __('public.labels.reading_time') }}</dt>
+                        <dd>{{ $details['reading_time'] }}</dd>
+                    </div>
+                    <div class="rounded-md bg-gray-100 px-2 py-1 dark:bg-gray-800" data-test="transcript-length" data-transcript-detail="word-count">
+                        <dt class="sr-only">{{ __('public.labels.transcript_length') }}</dt>
+                        <dd>{{ $details['word_count'] }}</dd>
+                    </div>
+
+                    @if($details['published_at'] && $details['published_part'])
+                        <div class="{{ $details['published_class'] }}" data-test="transcript-published-at" data-transcript-detail="published-at">
+                            <dt class="sr-only">{{ __('public.labels.published_at') }}</dt>
+                            <dd>
+                                <x-public.card-part-shell :part="$details['published_part']">
+                                    <span class="block min-w-0 truncate">{{ $details['published_at'] }}</span>
+                                </x-public.card-part-shell>
+                            </dd>
+                        </div>
+                    @endif
+
+                    @if($details['transcribers'] !== [])
+                        <div class="rounded-md bg-gray-100 px-2 py-1 dark:bg-gray-800" data-test="transcriber-link" data-transcript-detail="transcribers">
                             <dt class="sr-only">{{ __('public.labels.transcribers') }}</dt>
                             <dd class="flex flex-wrap gap-1">
-                                @foreach($activeTranscription->authors as $author)
+                                @foreach($details['transcribers'] as $transcriber)
                                     <a
-                                        href="{{ \App\Filament\Public\Pages\ShowContributor::getUrl(['authorSlug' => $author->slug], panel: 'public') }}"
+                                        href="{{ $transcriber['url'] }}"
                                         class="font-medium text-primary-700 hover:text-primary-900 dark:text-primary-300 dark:hover:text-primary-100"
                                     >
-                                        {{ $author->name }}
+                                        {{ $transcriber['label'] }}
                                     </a>@if(! $loop->last)<span aria-hidden="true">,</span>@endif
                                 @endforeach
                             </dd>
@@ -65,35 +107,111 @@
             @endif
         </div>
 
-        <div class="flex flex-wrap gap-2 text-sm">
-            <button
-                type="button"
-                x-on:click="setTimestampPreference(! showTimestamps)"
-                class="rounded-md border border-gray-200 px-3 py-1.5 font-medium text-gray-700 hover:border-primary-300 hover:text-primary-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-600 dark:border-gray-700 dark:text-gray-200 dark:hover:border-primary-500 dark:hover:text-primary-200"
-                data-test="toggle-timestamps"
+        @if($showActionsMenu)
+            <div
+                class="relative self-start"
+                x-data="{ actionsOpen: false }"
+                x-on:keydown.escape.window="actionsOpen = false"
+                data-test="transcript-actions-menu"
             >
-                <span x-show="showTimestamps">{{ __('public.viewer.hide_timestamps') }}</span>
-                <span x-show="! showTimestamps">{{ __('public.viewer.show_timestamps') }}</span>
-            </button>
-            <button
-                type="button"
-                x-on:click="setSpeakerPreference(! showSpeakers)"
-                class="rounded-md border border-gray-200 px-3 py-1.5 font-medium text-gray-700 hover:border-primary-300 hover:text-primary-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-600 dark:border-gray-700 dark:text-gray-200 dark:hover:border-primary-500 dark:hover:text-primary-200"
-                data-test="toggle-speakers"
-            >
-                <span x-show="showSpeakers">{{ __('public.viewer.hide_speakers') }}</span>
-                <span x-show="! showSpeakers">{{ __('public.viewer.show_speakers') }}</span>
-            </button>
-            <button
-                type="button"
-                x-on:click="copyTranscriptLink()"
-                class="rounded-md bg-primary-600 px-3 py-1.5 font-medium text-white hover:bg-primary-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-600 dark:bg-primary-500 dark:hover:bg-primary-400"
-                data-test="copy-transcript-link"
-            >
-                <span x-show="! copiedTranscript">{{ __('public.actions.copy_link') }}</span>
-                <span x-show="copiedTranscript">{{ __('public.actions.copied') }}</span>
-            </button>
-        </div>
+                <button
+                    type="button"
+                    x-on:click="actionsOpen = ! actionsOpen"
+                    class="rounded-md border border-gray-200 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 shadow-sm hover:border-primary-300 hover:text-primary-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-600 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200 dark:hover:border-primary-500"
+                    data-test="transcript-actions-menu-trigger"
+                    aria-haspopup="menu"
+                    x-bind:aria-expanded="actionsOpen.toString()"
+                >
+                    {{ __('public.viewer.actions') }}
+                </button>
+
+                <div
+                    x-show="actionsOpen"
+                    x-cloak
+                    x-transition
+                    x-on:click.outside="actionsOpen = false"
+                    class="absolute end-0 z-10 mt-2 w-64 rounded-lg border border-gray-200 bg-white p-2 text-sm shadow-lg dark:border-gray-700 dark:bg-gray-900"
+                    role="menu"
+                >
+                    <button
+                        type="button"
+                        x-on:click="setTimestampPreference(! showTimestamps)"
+                        class="flex w-full items-center rounded-md px-3 py-2 text-start font-medium text-gray-700 hover:bg-gray-50 hover:text-primary-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-600 dark:text-gray-200 dark:hover:bg-gray-800 dark:hover:text-primary-200"
+                        data-test="toggle-timestamps"
+                        role="menuitem"
+                    >
+                        <span x-show="showTimestamps">{{ __('public.viewer.hide_timestamps') }}</span>
+                        <span x-show="! showTimestamps">{{ __('public.viewer.show_timestamps') }}</span>
+                    </button>
+                    <button
+                        type="button"
+                        x-on:click="setSpeakerPreference(! showSpeakers)"
+                        class="flex w-full items-center rounded-md px-3 py-2 text-start font-medium text-gray-700 hover:bg-gray-50 hover:text-primary-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-600 dark:text-gray-200 dark:hover:bg-gray-800 dark:hover:text-primary-200"
+                        data-test="toggle-speakers"
+                        role="menuitem"
+                    >
+                        <span x-show="showSpeakers">{{ __('public.viewer.hide_speakers') }}</span>
+                        <span x-show="! showSpeakers">{{ __('public.viewer.show_speakers') }}</span>
+                    </button>
+                    <button
+                        type="button"
+                        x-on:click="copyTranscriptLink()"
+                        class="flex w-full items-center rounded-md px-3 py-2 text-start font-medium text-gray-700 hover:bg-gray-50 hover:text-primary-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-600 dark:text-gray-200 dark:hover:bg-gray-800 dark:hover:text-primary-200"
+                        data-test="copy-transcript-link"
+                        role="menuitem"
+                    >
+                        <span x-show="! copiedTranscript">{{ __('public.actions.copy_link') }}</span>
+                        <span x-show="copiedTranscript">{{ __('public.actions.copied') }}</span>
+                    </button>
+                    <button
+                        type="button"
+                        x-on:click="$dispatch('podtext:transcript-font-decrease')"
+                        class="flex w-full items-center rounded-md px-3 py-2 text-start font-medium text-gray-700 hover:bg-gray-50 hover:text-primary-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-600 dark:text-gray-200 dark:hover:bg-gray-800 dark:hover:text-primary-200"
+                        data-test="transcript-font-decrease"
+                        role="menuitem"
+                    >
+                        {{ __('public.viewer.decrease_font') }}
+                    </button>
+                    <button
+                        type="button"
+                        x-on:click="$dispatch('podtext:transcript-font-increase')"
+                        class="flex w-full items-center rounded-md px-3 py-2 text-start font-medium text-gray-700 hover:bg-gray-50 hover:text-primary-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-600 dark:text-gray-200 dark:hover:bg-gray-800 dark:hover:text-primary-200"
+                        data-test="transcript-font-increase"
+                        role="menuitem"
+                    >
+                        {{ __('public.viewer.increase_font') }}
+                    </button>
+                    <button
+                        type="button"
+                        x-on:click="$dispatch('podtext:transcript-font-reset')"
+                        class="flex w-full items-center rounded-md px-3 py-2 text-start font-medium text-gray-700 hover:bg-gray-50 hover:text-primary-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-600 dark:text-gray-200 dark:hover:bg-gray-800 dark:hover:text-primary-200"
+                        data-test="transcript-font-reset"
+                        role="menuitem"
+                    >
+                        {{ __('public.viewer.reset_font') }}
+                    </button>
+                    <button
+                        type="button"
+                        x-on:click="$dispatch('podtext:transcript-fullscreen-toggle')"
+                        class="flex w-full items-center rounded-md px-3 py-2 text-start font-medium text-gray-700 hover:bg-gray-50 hover:text-primary-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-600 dark:text-gray-200 dark:hover:bg-gray-800 dark:hover:text-primary-200"
+                        data-test="transcript-fullscreen-toggle"
+                        role="menuitem"
+                    >
+                        {{ __('public.viewer.fullscreen') }}
+                    </button>
+                    <button
+                        type="button"
+                        x-on:click="$dispatch('podtext:transcript-player-toggle')"
+                        class="flex w-full items-center rounded-md px-3 py-2 text-start font-medium text-gray-700 hover:bg-gray-50 hover:text-primary-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-600 dark:text-gray-200 dark:hover:bg-gray-800 dark:hover:text-primary-200"
+                        data-test="transcript-player-toggle"
+                        role="menuitem"
+                    >
+                        <span x-show="! playerHidden">{{ __('public.viewer.hide_player') }}</span>
+                        <span x-show="playerHidden">{{ __('public.viewer.show_player') }}</span>
+                    </button>
+                </div>
+            </div>
+        @endif
     </div>
 
     @if($transcriptions->count() > 1)
@@ -145,14 +263,24 @@
                         </span>
                     </div>
 
-                    <div class="{{ $renderer->publicTranscriptClasses() }}" data-test="transcript-segment-content">
+                    <div
+                        class="{{ $renderer->publicTranscriptClasses() }}"
+                        x-bind:class="{ 'text-sm': fontStep <= -1, 'text-base': fontStep === 0, 'text-lg': fontStep === 1, 'text-xl': fontStep >= 2 }"
+                        data-test="transcript-segment-content"
+                        data-transcript-font-wrapper
+                    >
                         {!! $renderer->toTranscriptHtml($segment['markdown']) !!}
                     </div>
                 </article>
             @endforeach
         </div>
     @elseif($activeTranscription)
-        <div class="{{ $renderer->publicTranscriptClasses() }}" data-test="transcript-fallback-content">
+        <div
+            class="{{ $renderer->publicTranscriptClasses() }}"
+            x-bind:class="{ 'text-sm': fontStep <= -1, 'text-base': fontStep === 0, 'text-lg': fontStep === 1, 'text-xl': fontStep >= 2 }"
+            data-test="transcript-fallback-content"
+            data-transcript-font-wrapper
+        >
             {!! $renderer->toTranscriptHtml($activeTranscription->transcript_markdown) !!}
         </div>
     @else

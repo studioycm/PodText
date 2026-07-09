@@ -1319,6 +1319,7 @@ class PublicFrontConfigValidator
     {
         $this->reportUnknownKeys($itemPage, [
             'show_breadcrumbs',
+            'show_transcript_actions_menu',
             'podcast_identity',
             'info_fields',
             'dates',
@@ -1330,6 +1331,12 @@ class PublicFrontConfigValidator
                 $itemPage['show_breadcrumbs'] ?? null,
                 'item_page.show_breadcrumbs',
                 (bool) ($defaults['show_breadcrumbs'] ?? true),
+                $invalidConfig,
+            ),
+            'show_transcript_actions_menu' => $this->boolean(
+                $itemPage['show_transcript_actions_menu'] ?? null,
+                'item_page.show_transcript_actions_menu',
+                (bool) ($defaults['show_transcript_actions_menu'] ?? false),
                 $invalidConfig,
             ),
             'podcast_identity' => $this->normalizeItemPagePodcastIdentity(

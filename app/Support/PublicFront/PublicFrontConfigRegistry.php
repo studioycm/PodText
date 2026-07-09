@@ -104,6 +104,7 @@ class PublicFrontConfigRegistry
             'transcription_policy' => PublicTranscriptionPolicy::defaults(),
             'item_page' => [
                 'show_breadcrumbs' => true,
+                'show_transcript_actions_menu' => false,
                 'podcast_identity' => [
                     'mode' => 'badge',
                     'color' => 'primary',

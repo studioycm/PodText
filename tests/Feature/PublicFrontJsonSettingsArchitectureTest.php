@@ -201,10 +201,45 @@ it('backfills item page podcast identity presentation settings through the setti
     ]);
 });
 
+it('backfills item page transcript actions setting through the settings migration', function (): void {
+    DB::table('settings')->updateOrInsert(
+        [
+            'group' => PublicContentSettings::group(),
+            'name' => 'item_page',
+        ],
+        [
+            'locked' => false,
+            'payload' => json_encode([
+                'show_breadcrumbs' => false,
+                'show_transcript_actions_menu' => 'yes',
+            ]),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ],
+    );
+
+    $migration = include base_path('database/settings/2026_07_09_000003_add_public_item_page_transcript_actions_setting.php');
+    $migration->up();
+
+    $itemPage = json_decode(
+        DB::table('settings')
+            ->where('group', PublicContentSettings::group())
+            ->where('name', 'item_page')
+            ->value('payload'),
+        true,
+    );
+
+    expect($itemPage)->toMatchArray([
+        'show_breadcrumbs' => false,
+        'show_transcript_actions_menu' => false,
+    ]);
+});
+
 it('normalizes item page date and badge settings safely', function (): void {
     $result = app(PublicFrontConfigValidator::class)->validate([
         'item_page' => [
             'show_breadcrumbs' => 'yes',
+            'show_transcript_actions_menu' => '<script>alert(1)</script>',
             'podcast_identity' => [
                 'mode' => 'pill',
                 'color' => 'bg-red-500',
@@ -270,6 +305,7 @@ it('normalizes item page date and badge settings safely', function (): void {
 
     expect($itemPage['dates']['display'])->toBe('both')
         ->and($itemPage['show_breadcrumbs'])->toBeTrue()
+        ->and($itemPage['show_transcript_actions_menu'])->toBeFalse()
         ->and($itemPage['podcast_identity'])->toMatchArray([
             'mode' => 'badge',
             'color' => 'primary',
@@ -317,6 +353,7 @@ it('normalizes item page date and badge settings safely', function (): void {
             'color' => 'gray',
         ])
         ->and($paths)->toContain('item_page.show_breadcrumbs')
+        ->and($paths)->toContain('item_page.show_transcript_actions_menu')
         ->and($paths)->toContain('item_page.podcast_identity.mode')
         ->and($paths)->toContain('item_page.podcast_identity.color')
         ->and($paths)->toContain('item_page.podcast_identity.icon')
@@ -447,6 +484,7 @@ it('saves sanitized public front config through the settings page while preservi
         ->set('data.display_defaults.title_size', 'lg')
         ->set('data.display_defaults.page_size', 16)
         ->set('data.item_page.show_breadcrumbs', false)
+        ->set('data.item_page.show_transcript_actions_menu', true)
         ->set('data.item_page.podcast_identity.mode', 'text')
         ->set('data.item_page.podcast_identity.color', 'image_2')
         ->set('data.item_page.podcast_identity.size', 'lg')
@@ -519,6 +557,7 @@ it('saves sanitized public front config through the settings page while preservi
         'transcription_display' => 'effective_plus_count',
     ])->and($config->group('item_page'))->toMatchArray([
         'show_breadcrumbs' => false,
+        'show_transcript_actions_menu' => true,
         'podcast_identity' => [
             'mode' => 'text',
             'color' => 'image_2',
@@ -630,17 +669,28 @@ it('has translated item page settings labels in both locales', function (): void
         foreach ([
             'admin.sections.public_front_item_page_header',
             'admin.sections.public_front_item_page_info_fields',
+            'admin.sections.public_front_item_page_transcript_controls',
+            'admin.descriptions.public_front_item_page_transcript_controls',
             'admin.fields.item_page_show_breadcrumbs',
+            'admin.fields.item_page_show_transcript_actions_menu',
             'admin.fields.item_page_podcast_identity_mode',
             'admin.fields.item_page_podcast_identity_position',
             'admin.fields.item_page_podcast_identity_size',
             'admin.fields.item_page_info_fields',
+            'admin.helpers.item_page_show_transcript_actions_menu',
             'admin.helpers.item_page_info_field_key',
             'admin.item_page_info_fields.site_published_date',
             'admin.item_page_podcast_identity_modes.badge',
             'admin.item_page_podcast_identity_colors.image_2',
             'admin.item_page_podcast_identity_positions.title_row_after',
             'admin.item_page_podcast_identity_sizes.lg',
+            'public.viewer.actions',
+            'public.viewer.decrease_font',
+            'public.viewer.fullscreen',
+            'public.viewer.hide_player',
+            'public.viewer.increase_font',
+            'public.viewer.reset_font',
+            'public.viewer.show_player',
         ] as $translationKey) {
             expect(__($translationKey))->not->toBe($translationKey);
         }

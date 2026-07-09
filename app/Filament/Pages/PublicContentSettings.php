@@ -426,6 +426,17 @@ class PublicContentSettings extends SettingsPage
                                     ->columns(2)
                                     ->collapsible()
                                     ->columnSpanFull(),
+                                Section::make(__('admin.sections.public_front_item_page_transcript_controls'))
+                                    ->description(__('admin.descriptions.public_front_item_page_transcript_controls'))
+                                    ->schema([
+                                        Toggle::make('item_page.show_transcript_actions_menu')
+                                            ->label(__('admin.fields.item_page_show_transcript_actions_menu'))
+                                            ->helperText(__('admin.helpers.item_page_show_transcript_actions_menu'))
+                                            ->default(false),
+                                    ])
+                                    ->columns(3)
+                                    ->collapsible()
+                                    ->columnSpanFull(),
                                 Section::make(__('admin.sections.public_front_item_page_info_fields'))
                                     ->description(__('admin.descriptions.public_front_item_page_info_fields'))
                                     ->schema([

@@ -35,4 +35,4 @@ This file records the active continuation-runner order after Step 10R-HF1. The c
 
 ## Current Recommendation
 
-Continue with Step 10R-IP2 after IP1 review. Step 10R-IP1 adds the episode-page settings foundation, date settings, info-badge tokens, and card-side date attributes; IP2 should consume those settings to rebuild the public episode page header and info line.
+Continue with Step 10R-M6 after IP3 review. Step 10R-IP1 through Step 10R-IP3 are complete, so M6 should run the stabilization audit, verify R1-R23, verify IP1-IP3 regressions, and record the final Step 10R-C1 status before P1 starts.

@@ -2,11 +2,16 @@
 
 namespace App\Livewire\Public;
 
+use App\Filament\Public\Pages\ShowContributor;
+use App\Models\Author;
 use App\Models\ContentItem;
 use App\Models\Transcription;
 use App\Support\PublicContent\PublicTranscriptionPolicy;
 use App\Support\PublicContent\PublicTranscriptionSelector;
+use App\Support\PublicFront\ItemPage\PublicItemPageRegistry;
+use App\Support\PublicFront\PublicFrontRenderContext;
 use App\Support\Transcripts\TranscriptSegmentParser;
+use Carbon\CarbonInterface;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Collection;
 use Livewire\Attributes\Computed;
@@ -36,13 +41,19 @@ class ContentItemTranscriptViewer extends Component
         $transcriptions = $this->publishedTranscriptions;
         $selectedTranscription = $this->resolveSelectedTranscription($transcriptions);
         $this->selectedTranscription = $selectedTranscription?->reference_key ?? '';
+        $wordCount = $selectedTranscription ? $this->wordCount($selectedTranscription) : 0;
+        $readingMinutes = $selectedTranscription ? max(1, (int) ceil($wordCount / 200)) : null;
 
         return view('livewire.public.content-item-transcript-viewer', [
             'activeTranscription' => $selectedTranscription,
-            'readingMinutes' => $selectedTranscription ? $this->readingMinutes($selectedTranscription) : null,
+            'details' => $selectedTranscription && $readingMinutes
+                ? $this->transcriptDetails($selectedTranscription, $readingMinutes, $wordCount)
+                : null,
+            'readingMinutes' => $readingMinutes,
             'segments' => $selectedTranscription ? $parser->parse($selectedTranscription->transcript_markdown) : [],
+            'showActionsMenu' => $this->showActionsMenu(),
             'transcriptions' => $transcriptions,
-            'wordCount' => $selectedTranscription ? $this->wordCount($selectedTranscription) : 0,
+            'wordCount' => $wordCount,
         ]);
     }
 
@@ -96,11 +107,6 @@ class ContentItemTranscriptViewer extends Component
         return $transcriptions->first()?->reference_key ?? '';
     }
 
-    protected function readingMinutes(Transcription $transcription): int
-    {
-        return max(1, (int) ceil($this->wordCount($transcription) / 200));
-    }
-
     protected function wordCount(Transcription $transcription): int
     {
         if ($transcription->word_count !== null && $transcription->word_count > 0) {
@@ -118,5 +124,93 @@ class ContentItemTranscriptViewer extends Component
         }
 
         return count(preg_split('/\s+/u', $plainText, flags: PREG_SPLIT_NO_EMPTY) ?: []);
+    }
+
+    protected function showActionsMenu(): bool
+    {
+        return (bool) (app(PublicFrontRenderContext::class)->itemPage()['show_transcript_actions_menu'] ?? false);
+    }
+
+    /**
+     * @return array{
+     *     title: ?string,
+     *     reading_time: string,
+     *     word_count: string,
+     *     published_at: ?string,
+     *     published_part: ?array<string, mixed>,
+     *     published_class: string,
+     *     transcribers: array<int, array{label: string, url: string}>
+     * }
+     */
+    protected function transcriptDetails(Transcription $transcription, int $readingMinutes, int $wordCount): array
+    {
+        $dateConfig = app(PublicFrontRenderContext::class)->itemPage()['dates']['transcription_date'] ?? [];
+        $publishedAt = $this->formatDate($transcription->published_at);
+        $publishedLabel = $this->dateLabel((string) ($dateConfig['label_mode'] ?? 'short'), $dateConfig['label_override'] ?? null);
+
+        return [
+            'title' => filled($transcription->title) ? (string) $transcription->title : null,
+            'reading_time' => trans_choice('public.labels.reading_minutes_count', $readingMinutes, ['count' => $readingMinutes]),
+            'word_count' => trans_choice('public.labels.transcript_words_count', $wordCount, ['count' => $wordCount]),
+            'published_at' => $publishedAt,
+            'published_part' => $publishedAt ? [
+                'type' => 'transcript_detail',
+                'source' => 'transcription',
+                'attribute' => 'published_at',
+                'order' => 30,
+                'label' => $publishedLabel,
+                'label_position' => filled($publishedLabel) ? 'inline_before' : 'hidden',
+                'label_alignment' => 'start',
+                'icon' => $dateConfig['icon'] ?? 'document',
+                'icon_position' => $dateConfig['icon_position'] ?? 'inline_before',
+            ] : null,
+            'published_class' => $this->detailBadgeClass(),
+            'transcribers' => $this->transcriberLinks($transcription),
+        ];
+    }
+
+    private function dateLabel(string $mode, mixed $override): ?string
+    {
+        if ($mode === 'hidden') {
+            return null;
+        }
+
+        if (is_string($override) && filled($override)) {
+            return $override;
+        }
+
+        return __('public.dates.transcription_date_'.$mode);
+    }
+
+    private function formatDate(mixed $date): ?string
+    {
+        if (! $date instanceof CarbonInterface) {
+            return null;
+        }
+
+        return $date->timezone('Asia/Jerusalem')->format('d/m/Y');
+    }
+
+    private function detailBadgeClass(): string
+    {
+        return trim('inline-flex max-w-full items-center rounded-md border font-medium '.
+            PublicItemPageRegistry::infoBadgeSizeClass('sm').' '.
+            PublicItemPageRegistry::infoBadgeColorClass('gray'));
+    }
+
+    /**
+     * @return array<int, array{label: string, url: string}>
+     */
+    private function transcriberLinks(Transcription $transcription): array
+    {
+        $authors = $transcription->relationLoaded('authors') ? $transcription->authors : collect();
+
+        return $authors
+            ->map(fn (Author $author): array => [
+                'label' => (string) $author->name,
+                'url' => ShowContributor::getUrl(['authorSlug' => $author->slug], panel: 'public'),
+            ])
+            ->values()
+            ->all();
     }
 }

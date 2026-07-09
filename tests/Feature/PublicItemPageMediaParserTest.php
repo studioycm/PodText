@@ -171,8 +171,18 @@ it('renders a public item page with safe media metadata contributor links and tr
         ->assertSee(ShowContributor::getUrl(['authorSlug' => $transcriber->slug], panel: 'public'), false)
         ->assertSee(BrowseCategoryContentItems::getUrl(['categorySlug' => $category->slug], panel: 'public'), false)
         ->assertSee(BrowseTagContentItems::getUrl(['tagSlug' => $tag->slug], panel: 'public'), false)
+        ->assertSee('data-test="item-share-actions"', false)
+        ->assertSeeInOrder([
+            'data-test="item-share-actions"',
+            'data-test="media-embed"',
+        ], false)
+        ->assertSee('data-test="transcript-details-row"', false)
+        ->assertSee('data-test="transcript-detail-title"', false)
         ->assertSee('data-test="reading-time"', false)
         ->assertSee('data-test="transcript-length"', false)
+        ->assertSee('data-test="transcript-published-at"', false)
+        ->assertDontSee('data-test="transcript-actions-menu"', false)
+        ->assertDontSee('data-test="copy-transcript-link"', false)
         ->assertSee('data-test="item-duration"', false)
         ->assertSee($transcription->published_at->timezone('Asia/Jerusalem')->format('d/m/Y'));
 });
@@ -501,7 +511,7 @@ it('defaults to the effective transcription and hides alternate transcription ta
         ->assertDontSee('Draft transcript');
 });
 
-it('renders timestamp anchors and local-only viewer controls without player sync hooks', function (): void {
+it('renders timestamp anchors and keeps transcript actions hidden by default without player sync hooks', function (): void {
     [$item, , $group] = createPrompt12PublicItem(transcriptionAttributes: [
         'transcript_markdown' => '[00:01:23] Host: Segment body',
     ]);
@@ -509,17 +519,78 @@ it('renders timestamp anchors and local-only viewer controls without player sync
     $this->get("/items/{$group->slug}/{$item->slug}")
         ->assertSuccessful()
         ->assertSee('data-test="transcript-viewer"', false)
-        ->assertSee('data-test="toggle-timestamps"', false)
-        ->assertSee('data-test="toggle-speakers"', false)
+        ->assertSee('data-test="transcript-details-row"', false)
+        ->assertSee('data-transcript-font-wrapper', false)
+        ->assertDontSee('data-test="transcript-actions-menu"', false)
+        ->assertDontSee('data-test="toggle-timestamps"', false)
+        ->assertDontSee('data-test="toggle-speakers"', false)
+        ->assertDontSee('data-test="copy-transcript-link"', false)
         ->assertSee('showTimestamps', false)
         ->assertSee('showSpeakers', false)
         ->assertSee('localStorage', false)
+        ->assertSee('podtext.transcript.fontStep', false)
         ->assertSee('id="t-83"', false)
         ->assertSee('href="#t-83"', false)
         ->assertSee('dir="ltr"', false)
         ->assertDontSee('timeupdate', false)
         ->assertDontSee('currentTime', false)
         ->assertDontSee('wire:poll', false);
+});
+
+it('renders the transcript actions menu and local reading controls when enabled', function (): void {
+    [$item, $transcription, $group] = createPrompt12PublicItem(transcriptionAttributes: [
+        'published_at' => now()->subDays(5),
+        'title' => 'Actions transcript',
+        'transcript_markdown' => '[00:01:23] Host: Segment body',
+        'word_count' => 500,
+    ]);
+
+    $defaults = PublicFrontConfigRegistry::defaults()['item_page'];
+    saveStep10RIp2PublicFrontSettings([
+        'item_page' => [
+            ...$defaults,
+            'show_transcript_actions_menu' => true,
+            'dates' => [
+                ...$defaults['dates'],
+                'transcription_date' => [
+                    ...$defaults['dates']['transcription_date'],
+                    'label_mode' => 'long',
+                    'label_override' => 'Transcript published',
+                    'icon' => 'calendar',
+                    'icon_position' => 'inline_after',
+                ],
+            ],
+        ],
+    ]);
+
+    $this->get("/items/{$group->slug}/{$item->slug}")
+        ->assertSuccessful()
+        ->assertSee('data-test="transcript-details-row"', false)
+        ->assertSee('data-test="transcript-detail-title"', false)
+        ->assertSee('Actions transcript')
+        ->assertSee('Transcript published')
+        ->assertSee($transcription->published_at->timezone('Asia/Jerusalem')->format('d/m/Y'))
+        ->assertSee('data-card-part-icon="calendar"', false)
+        ->assertSee('data-card-part-icon-position="inline_after"', false)
+        ->assertSee('data-test="transcript-actions-menu"', false)
+        ->assertSee('data-test="transcript-actions-menu-trigger"', false)
+        ->assertSee('data-test="toggle-timestamps"', false)
+        ->assertSee('data-test="toggle-speakers"', false)
+        ->assertSee('data-test="copy-transcript-link"', false)
+        ->assertSee('data-test="transcript-font-decrease"', false)
+        ->assertSee('data-test="transcript-font-increase"', false)
+        ->assertSee('data-test="transcript-font-reset"', false)
+        ->assertSee('data-test="transcript-fullscreen-toggle"', false)
+        ->assertSee('data-test="transcript-fullscreen-exit"', false)
+        ->assertSee('data-test="transcript-player-toggle"', false)
+        ->assertSee('podtext:transcript-font-increase', false)
+        ->assertSee('podtext:transcript-font-decrease', false)
+        ->assertSee('podtext:transcript-font-reset', false)
+        ->assertSee('podtext:transcript-fullscreen-toggle', false)
+        ->assertSee('podtext:transcript-player-toggle', false)
+        ->assertSee('podtext.itemPage.playerHidden', false)
+        ->assertSee('data-test="item-media-column"', false)
+        ->assertSee('data-transcript-font-wrapper', false);
 });
 
 it('falls back to sanitized markdown when no parseable transcript segments exist', function (): void {
@@ -585,6 +656,7 @@ MARKDOWN,
         ->assertSee('<br', false)
         ->assertSee('<p>Second paragraph.</p>', false)
         ->assertSee('FINAL_FALLBACK_TRANSCRIPT_TOKEN')
-        ->assertSee('data-test="toggle-timestamps"', false)
-        ->assertSee('data-test="toggle-speakers"', false);
+        ->assertSee('data-transcript-font-wrapper', false)
+        ->assertDontSee('data-test="toggle-timestamps"', false)
+        ->assertDontSee('data-test="toggle-speakers"', false);
 });
