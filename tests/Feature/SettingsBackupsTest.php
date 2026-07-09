@@ -14,6 +14,7 @@ use Filament\Actions\Testing\TestAction;
 use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Process;
 use Livewire\Livewire;
 use Spatie\LaravelSettings\SettingsContainer;
 
@@ -28,6 +29,7 @@ beforeEach(function (): void {
     ]);
 
     Cache::flush();
+    Process::fake();
     clearStep10S2SettingsState();
 
     $this->actingAs(User::factory()->create());
@@ -83,6 +85,10 @@ it('dedupes identical system backups and prunes by retention', function (): void
     SettingsBackupVersion::query()->delete();
     config(['settings-backups.retention' => 3]);
 
+    app(SettingsBackupManager::class)->createManual('Manual retention keeper', auth()->user());
+    app(SettingsBackupManager::class)->create(SettingsBackupSource::BeforeImport, 'Before import retention keeper', auth()->user());
+    app(SettingsBackupManager::class)->create(SettingsBackupSource::BeforeRestore, 'Before restore retention keeper', auth()->user());
+
     for ($i = 1; $i <= 5; $i++) {
         $settings = step10S2Settings();
         $settings->homepage_item_limit = 40 + $i;
@@ -91,8 +97,10 @@ it('dedupes identical system backups and prunes by retention', function (): void
 
     $backups = SettingsBackupVersion::query()->orderBy('id')->get();
 
-    expect($backups)->toHaveCount(3)
-        ->and($backups->pluck('source')->unique()->all())->toBe([SettingsBackupSource::System]);
+    expect($backups->where('source', SettingsBackupSource::System)->values())->toHaveCount(3)
+        ->and($backups->where('source', SettingsBackupSource::Manual)->values())->toHaveCount(1)
+        ->and($backups->where('source', SettingsBackupSource::BeforeImport)->values())->toHaveCount(1)
+        ->and($backups->where('source', SettingsBackupSource::BeforeRestore)->values())->toHaveCount(1);
 });
 
 it('downloads a checksum-valid package and protects the backup resource from guests', function (): void {

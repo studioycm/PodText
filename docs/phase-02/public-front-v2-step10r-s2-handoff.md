@@ -100,7 +100,7 @@ Final gate results:
 
 Commit message: `feat: add settings backup versions and restore`.
 
-The exact commit hash is created after the final gate and lands in the final report.
+Commit hash: `f694c49`.
 
 ## Local Front Check Report
 

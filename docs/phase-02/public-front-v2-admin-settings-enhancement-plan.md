@@ -12,7 +12,7 @@ This plan expands the post-M6 Public Front v2 continuation queue with Yoni's adm
 visual-settings, and settings-lifecycle requests before resuming the performance/cache
 sequence. Version 2 folded in the deep-dive amendments: global Filament defaults instead
 of per-file edits, a two-tier transcription resolution for the episode-list edit action,
-the V1 split into V1a/V1b/V1c, the S2-before-S1 flip, the P1 settings-migration cache
+the V1 split into V1a/V1b/V1c, the S2-before-S1a flip, the P1 settings-migration cache
 watermark, and the persistent podcast-palette cache. Version 3 adds the flip-card
 slider display type, quick-view modal, and reusable result display-template builder
 (requests 12-17, mini-steps SL1-SL4), sequenced after P2/P3 and before B4/C2.
@@ -50,22 +50,23 @@ The central ledger remains authoritative for per-run selection:
 | 5 | Step 10R-V1c | V1a | 4, 5 | Custom hex color mode with ColorPicker + theme-safe podcast-palette sampling with persistent cache. |
 | 6 | Step 10R-P1 | UX1, UX2, V1a-V1c | F1 | Cache validated public-front config (`public_front.config.v1`), keyed with the settings-migration watermark; palette cache shares the infrastructure. |
 | 7 | Step 10R-S2 | P1 | 11 | Settings backup versions: schema, auto system backups on save (hash-deduped), manual backup, compare/download, retention, restore. |
-| 8 | Step 10R-S2V | S2 | NEW | Backup visual snapshots: Playwright thumbnails/full captures, private storage, queued jobs, and gallery UI. S1 does not depend on S2V. |
-| 9 | Step 10R-S1 | P1, S2 | 10 | Settings import/export as a versioned JSON package built on the shared `PublicSettingsPackage` serializer and S2 backups. |
-| 10 | Step 10R-P2 | S1 | F2, F7, F12, F15 | Listing fetch-window, lazy options/form definitions, opt-in aggregate subselects. |
-| 11 | Step 10R-P3 | P2 | F3 | Derived transcript segments and viewer render economy. |
-| 12 | Step 10R-AX1 | P2 (bounded-fetch), P1 (cache conventions) | 18 | GSAP motion foundation: dependency, public-panel JS wiring, `PodTextMotion` preset registry + data-attribute contract, motion settings tokens, always-on reduced-motion policy, FOUC/SEO guard. |
-| 13 | Step 10R-SL1 | AX1, M5 | 17 | Result display-template builder foundation: `display_templates` settings group (including per-template `motion` config), finite vocabularies, admin builder, surface selectors, grid default template. |
-| 14 | Step 10R-SL2 | SL1 | 12, 14 | Flip-slider rendering engine: scroll-snap track, responsive columns×rows paging with bounded lazy page fetch, front-face cards, RTL-aware hover/always controls, AX1 entrance/load presets. |
-| 15 | Step 10R-SL3 | SL2 | 13 | Flip animation and smart side-open back face rendered from existing card templates, implemented with the GSAP Flip plugin from AX1, server-computed logical open direction. |
-| 16 | Step 10R-SL4 | SL2 | 15, 16 | Quick-view modal: flat app-owned modal embedding episode/podcast page content with density/label-size controls, a modal card template, and AX1 open/close choreography. |
-| 17 | Step 10R-AX2 | AX1 (SL not required) | 19, 20 | Retrofit motion presets onto existing grids/sections/load-more + loading/update/page-transition concealment (Livewire loading choreography, morph-added staggers, cross-document View Transitions). |
-| 18 | Step 10R-AX3 | AX2 | 21 | Scroll-linked effects: episode/podcast header parallax, transcript reading-progress bar, scroll-linked cover emphasis — ScrollTrigger, capped and reduced-motion-safe. |
-| 19 | Step 10R-B4 | M1-M6, IP1-IP3, P1-P3, SL1-SL4, AX1-AX3 | F11 | Converge legacy card options with card presentation services (now covering slider/modal/motion surfaces). |
-| 20 | Step 10R-C2 | B4 | F13 | Card layout consistency and semantic layout tokens (now covering slider front/back faces). |
-| 21 | Step 9F-A → 9F-B → 9F-C | all 10R above | 9F | Rich homepage columns; footer config/renderer; admin polish. |
-| 22 | Step 11 | all above + explicit Yoni approval | Step 11 | Seeders/demo/assets/cleanup incl. promoting the local evaluation seed, demo display templates, and demo motion presets. |
-| 23 | Prompt 13 | explicit Yoni approval | Prompt 13 | Dashboard metrics. |
+| 8 | Step 10R-S2V | S2 | NEW | Backup visual snapshots: Playwright thumbnails/full captures, private storage, queued jobs, and gallery UI. S1a/S1b do not depend on S2V. |
+| 9 | Step 10R-S1a | P1, S2 | 10 | Settings export and import wizard core: schema boundary, export, source validation, dry-run selection, replace-mode apply, before-import backup, and warnings. |
+| 10 | Step 10R-S1b | S1a | 10 | Import locks and add-only mode: persistent locks, lock manager, hard wizard enforcement, add-only merge semantics, and outcome chips. Importer Workbench opens after S1b. |
+| 11 | Step 10R-P2 | S1b | F2, F7, F12, F15 | Listing fetch-window, lazy options/form definitions, opt-in aggregate subselects. |
+| 12 | Step 10R-P3 | P2 | F3 | Derived transcript segments and viewer render economy. |
+| 13 | Step 10R-AX1 | P2 (bounded-fetch), P1 (cache conventions) | 18 | GSAP motion foundation: dependency, public-panel JS wiring, `PodTextMotion` preset registry + data-attribute contract, motion settings tokens, always-on reduced-motion policy, FOUC/SEO guard. |
+| 14 | Step 10R-SL1 | AX1, M5 | 17 | Result display-template builder foundation: `display_templates` settings group (including per-template `motion` config), finite vocabularies, admin builder, surface selectors, grid default template. |
+| 15 | Step 10R-SL2 | SL1 | 12, 14 | Flip-slider rendering engine: scroll-snap track, responsive columns×rows paging with bounded lazy page fetch, front-face cards, RTL-aware hover/always controls, AX1 entrance/load presets. |
+| 16 | Step 10R-SL3 | SL2 | 13 | Flip animation and smart side-open back face rendered from existing card templates, implemented with the GSAP Flip plugin from AX1, server-computed logical open direction. |
+| 17 | Step 10R-SL4 | SL2 | 15, 16 | Quick-view modal: flat app-owned modal embedding episode/podcast page content with density/label-size controls, a modal card template, and AX1 open/close choreography. |
+| 18 | Step 10R-AX2 | AX1 (SL not required) | 19, 20 | Retrofit motion presets onto existing grids/sections/load-more + loading/update/page-transition concealment (Livewire loading choreography, morph-added staggers, cross-document View Transitions). |
+| 19 | Step 10R-AX3 | AX2 | 21 | Scroll-linked effects: episode/podcast header parallax, transcript reading-progress bar, scroll-linked cover emphasis — ScrollTrigger, capped and reduced-motion-safe. |
+| 20 | Step 10R-B4 | M1-M6, IP1-IP3, P1-P3, SL1-SL4, AX1-AX3 | F11 | Converge legacy card options with card presentation services (now covering slider/modal/motion surfaces). |
+| 21 | Step 10R-C2 | B4 | F13 | Card layout consistency and semantic layout tokens (now covering slider front/back faces). |
+| 22 | Step 9F-A → 9F-B → 9F-C | all 10R above | 9F | Rich homepage columns; footer config/renderer; admin polish. |
+| 23 | Step 11 | all above + explicit Yoni approval | Step 11 | Seeders/demo/assets/cleanup incl. promoting the local evaluation seed, demo display templates, and demo motion presets. |
+| 24 | Prompt 13 | explicit Yoni approval | Prompt 13 | Dashboard metrics. |
 
 AX placement rationale: AX1 sits directly before SL1 (Yoni: foundation-first) so the
 slider consumes motion natively; AX2/AX3 follow SL4 so the slider ships sooner, but AX2
@@ -292,7 +293,7 @@ settings_backup_versions
 - Single shared serializer `PublicSettingsPackage` (schema version, generated-at, app
   version, settings-migration watermark, settings group, verbatim full Spatie payload,
   checksum) —
-  the SAME format S1 exports and the backup download produces. Build it here; S1 reuses it.
+  the SAME format S1a exports and the backup download produces. Build it here; S1a reuses it.
 - Add `settings_backups` inside `public_content` now so S2V needs no second settings
   migration: `thumbnail_max_width` 400|600|800, `snapshot_formats` png|pdf|html, and
   `snapshot_themes` light|dark. No public render-context accessor is needed in S2.
@@ -313,7 +314,7 @@ Commit: `feat: add settings backup versions and restore`
 ## Step 10R-S2V Plan (backup visual snapshots)
 
 Goal: add visual context to backup rows without blocking backup creation or restore.
-S2V is inserted after S2 as a NEW step. S1 has no dependency on S2V and can run first if
+S2V is inserted after S2 as a NEW step. S1a/S1b have no dependency on S2V and can run first if
 Yoni selects it explicitly.
 
 Research refinements:
@@ -380,28 +381,87 @@ Tests:
 
 Commit: `feat: add backup visual snapshots`
 
-## Step 10R-S1 Plan (import/export — now AFTER S2)
+## Step 10R-S1a/S1b Plans (settings lifecycle import/export)
 
-Goal: versioned JSON settings import/export built on `PublicSettingsPackage` and S2.
+Goal: versioned JSON settings export/import built on S2 backups, with lifecycle
+machinery that survives the next settings-structure changes.
 
-- Export: download the current normalized `public_content` payload as a
-  `PublicSettingsPackage` file (identical format to S2 backup downloads).
-- Import flow: upload JSON → validate schema version + settings-migration watermark
-  (refuse newer-schema packages; warn on older) + checksum → DRY-RUN diff (grouped
-  changed keys vs current normalized settings, with "compare against latest backup"
-  available) → on confirm: create `before_import` backup (S2) → apply inside a
-  transaction → run the standard validator and APPLY-WITH-WARNINGS (normalized result is
-  saved; invalid-config entries surface as import warnings, consistent with runtime
-  handling) → invalidate caches via the P1 path.
-- Scope: Spatie `public_content` settings only. Homepage sections and public form
-  definitions are database records and are excluded unless a future plan defines an
-  optional package section. Demo/content seeding stays Step 11.
+### Binding design decisions D21-D28
 
-Tests: export validity + checksum; dry-run reports without saving; import applies +
-invalidates cache + creates before-import backup; newer-schema package rejected;
-tampered checksum rejected; warnings surfaced for normalized-away values.
+- D21 — one schema boundary. `SettingsLifecycleSchema` is the only component that knows
+  the settings shape. It exposes managed groups, selectable units, structural type per
+  path derived from registry defaults/current payload, expected scalar PHP types via
+  reflection, and label translation keys with graceful raw-path fallback.
+- D22 — segmentation is a policy, not a hard depth. Scalars are their own units; array
+  groups default to first-level units; per-path overrides live in one lifecycle overlay.
+- D23 — semantic overlay + drift guard. The overlay owns non-derived semantics such as
+  front-facing free text and asset paths, and a drift test asserts every overlay path
+  still exists in merged defaults.
+- D24 — persistent import locks. `import_locks` lives inside `public_content`, validates
+  locked paths against the schema service, is never importable, and is hard-enforced by
+  the wizard. S2 backup restore ignores locks and restores them verbatim.
+- D25 — import modes. Each import run chooses `replace` or `add_only`; add-only merges
+  associative maps by current-wins recursive union and fills lists/scalars only when
+  current is empty. Locks beat mode and outcome chips show the server resolution.
+- D26 — backups are import sources. Wizard source step offers JSON upload or an existing
+  backup row, using its `payload_json` package for selective restore.
+- D27 — packages survive restructures. `PublicSettingsPackage` gains a schema-versioned
+  payload upgrade pipeline; v1 is identity and future versions map old paths to new.
+- D28 — group-parametric lifecycle. A registration point maps group name to settings
+  class, defaults provider, and overlay. v1 registers only `public_content`.
 
-Commit: `feat: add settings import export package`
+### Step 10R-S1a - Settings export and import wizard core
+
+Scope:
+
+- Add `SettingsLifecycleGroups` and `SettingsLifecycleSchema` per D21/D22/D23/D28, with
+  an overlay skeleton for the current public-content structure and a drift test.
+- Add a v1 identity upgrade pipeline to `PublicSettingsPackage` per D27.
+- Refactor diff labels/grouping to consume the schema service while keeping generic
+  diff mechanics.
+- Add export header actions on the Public Content Settings page and backups list that
+  stream `PublicSettingsPackage::fromCurrentSettings()` JSON.
+- Add a dedicated import wizard admin page launched from the backups list header action:
+  source upload or backup source, checksum/newer-schema refusal, watermark warning,
+  scalar type-check errors, dry-run selection table, missing-file warnings, validator
+  warnings, confirm/apply summary.
+- Apply replace mode only in S1a: create a `before_import` backup, apply selected units
+  through the settings instance inside a transaction, validate lifecycle groups, and
+  rely on the existing settings-save listener for cache invalidation.
+
+Tests:
+
+- Derived-count export/import round trip; partial selection on scalar and nested unit;
+  tri-state group toggle semantics; tamper/newer-schema refusal; watermark warning;
+  scalar type mismatch error row; missing-file warning; backup-as-source parity;
+  identity upgrader; before-import backup; cache invalidation; guest/unauthorized
+  blocking; drift test; bounded public harness.
+
+Commit: `feat: add settings export and import wizard`
+
+### Step 10R-S1b - Import locks and add-only mode
+
+Scope:
+
+- Add `import_locks` inside `public_content` with `locked_paths`, validated against the
+  schema service. Unknown/stale paths are dropped with warnings.
+- Add a lock manager header action on the backups list, reusing the S1a selection-table
+  component in lock mode with group/unit lock toggles, "Lock all front texts", and
+  "Unlock all".
+- Integrate locks into the wizard: locked rows are greyed, lock-iconed,
+  forced-unselected, included in excluded-count summaries, and server-enforced.
+- Add `replace | add_only` mode selector and a pure merge engine. Add-only recursively
+  adds new map keys while current wins on conflicts, and fills lists/scalars only when
+  current is empty.
+
+Tests:
+
+- Lock persistence; front-text preset paths derived from overlay; locked unit excluded
+  even if forged selected server-side; `import_locks` never importable; restore ignores
+  locks and restores lock values; add-only map/scalar/list behavior; lock beats mode;
+  outcome chips; drift test remains green; bounded public harness.
+
+Commit: `feat: add settings import locks and add-only mode`
 
 ## Requests 12-17 — Flip-Slider Display Type and Result Display Templates (v3)
 
@@ -695,7 +755,7 @@ Commit: `feat: add scroll linked motion effects`
 
 - P1 waits for UX1/UX2/V1a-V1c (settings shape churn finishes first); with the
   migration-watermark key this ordering is a convenience, not a correctness requirement.
-- S2 before S1 removes the v1 plan's "backup-before-import if S2 storage exists" interim
+- S2 before S1a removes the v1 plan's "backup-before-import if S2 storage exists" interim
   behavior — the safety net exists before import ships.
 - SL1-SL4 run after P2/P3 so the slider is built on cached config and bounded-fetch
   discipline, and before B4/C2 so option convergence and semantic layout tokens cover

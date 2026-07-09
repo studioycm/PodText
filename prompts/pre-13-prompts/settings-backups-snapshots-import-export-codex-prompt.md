@@ -107,6 +107,8 @@ Commit: `feat: add settings backup versions and restore`
 
 ## Run 2 — Step 10R-S2V: Backup visual snapshots (NEW)
 
+Superseded by `prompts/pre-13-prompts/settings-lifecycle-s2v-s1a-s1b-codex-prompt.md`; do not run this block directly.
+
 Decisions (Yoni): Playwright reuse (already in package.json), desktop viewport only in
 v1 (mobile later), system backups get THUMBNAILS ONLY, full sets are policy-gated.
 
@@ -174,6 +176,8 @@ Commit: `feat: add backup visual snapshots`
 ---
 
 ## Run 3 — Step 10R-S1: Settings import/export package
+
+Superseded by `prompts/pre-13-prompts/settings-lifecycle-s2v-s1a-s1b-codex-prompt.md`; do not run this block directly.
 
 ### Export
 

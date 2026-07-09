@@ -3,20 +3,28 @@
 namespace App\Filament\Resources\SettingsBackups\Tables;
 
 use App\Enums\SettingsBackupSource;
+use App\Models\SettingsBackupSnapshot;
 use App\Models\SettingsBackupVersion;
 use App\Models\User;
+use App\Settings\PublicContentSettings;
+use App\Support\PublicFront\PublicFrontConfigRegistry;
 use App\Support\SettingsLifecycle\SettingsBackupManager;
+use App\Support\SettingsLifecycle\SettingsBackupSnapshotManager;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\DeleteAction;
+use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\TextInput;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Notifications\Notification;
 use Filament\Schemas\Components\Section;
 use Filament\Support\Icons\Heroicon;
+use Filament\Tables\Columns\ImageColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
+use Illuminate\Contracts\View\View;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Number;
 
 class SettingsBackupsTable
@@ -24,8 +32,22 @@ class SettingsBackupsTable
     public static function configure(Table $table): Table
     {
         return $table
+            ->modifyQueryUsing(fn (Builder $query): Builder => $query->with([
+                'snapshots' => fn ($query) => $query
+                    ->where('screen_key', 'home')
+                    ->where('kind', SettingsBackupSnapshot::KIND_THUMBNAIL)
+                    ->where('format', SettingsBackupSnapshot::FORMAT_PNG)
+                    ->where('status', SettingsBackupSnapshot::STATUS_DONE)
+                    ->latest('id'),
+            ]))
             ->defaultSort('id', 'desc')
             ->columns([
+                ImageColumn::make('home_thumbnail')
+                    ->label(__('admin.fields.home_thumbnail'))
+                    ->state(fn (SettingsBackupVersion $record): ?string => $record->homeThumbnailSnapshot()?->fileUrl())
+                    ->imageWidth(96)
+                    ->imageHeight(54)
+                    ->extraImgAttributes(['class' => 'rounded-md object-cover']),
                 TextColumn::make('created_at')
                     ->label(__('admin.fields.created_at'))
                     ->dateTime('d/m/Y H:i', 'Asia/Jerusalem')
@@ -59,6 +81,18 @@ class SettingsBackupsTable
                         TextInput::make('label')
                             ->label(__('admin.fields.label'))
                             ->maxLength(255),
+                        CheckboxList::make('snapshot_formats')
+                            ->label(__('admin.fields.snapshot_formats'))
+                            ->options(self::snapshotFormatOptions())
+                            ->default(fn (): array => self::defaultSettingsBackupConfig()['snapshot_formats'])
+                            ->columns(3)
+                            ->required(),
+                        CheckboxList::make('snapshot_themes')
+                            ->label(__('admin.fields.snapshot_themes'))
+                            ->options(self::snapshotThemeOptions())
+                            ->default(fn (): array => self::defaultSettingsBackupConfig()['snapshot_themes'])
+                            ->columns(2)
+                            ->required(),
                     ])
                     ->modalSubmitActionLabel(__('admin.actions.create_backup'))
                     ->action(function (array $data): void {
@@ -66,6 +100,8 @@ class SettingsBackupsTable
                         $backup = app(SettingsBackupManager::class)->createManual(
                             $data['label'] ?? null,
                             $user instanceof User ? $user : null,
+                            $data['snapshot_formats'] ?? null,
+                            $data['snapshot_themes'] ?? null,
                         );
 
                         Notification::make()
@@ -116,8 +152,20 @@ class SettingsBackupsTable
                                 ->title(__('admin.notifications.settings_backup_restored'))
                                 ->send();
                         }),
+                    Action::make('snapshots')
+                        ->label(__('admin.actions.snapshots'))
+                        ->icon(Heroicon::OutlinedPhoto)
+                        ->color('gray')
+                        ->slideOver()
+                        ->modalHeading(__('admin.actions.snapshots'))
+                        ->modalSubmitAction(false)
+                        ->modalCancelActionLabel(__('admin.actions.close'))
+                        ->modalContent(fn (SettingsBackupVersion $record): View => view('filament.settings-backups.snapshots-gallery', [
+                            'backup' => $record,
+                        ])),
                     DeleteAction::make()
-                        ->label(__('admin.actions.delete')),
+                        ->label(__('admin.actions.delete'))
+                        ->using(fn (SettingsBackupVersion $record) => app(SettingsBackupSnapshotManager::class)->deleteBackup($record)),
                 ]),
             ]);
     }
@@ -145,5 +193,34 @@ class SettingsBackupsTable
                         ->columnSpanFull(),
                 ]),
         ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private static function snapshotFormatOptions(): array
+    {
+        return collect(PublicFrontConfigRegistry::settingsBackupSnapshotFormats())
+            ->mapWithKeys(fn (string $format): array => [$format => __("admin.settings_backup_snapshot_formats.{$format}")])
+            ->all();
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private static function snapshotThemeOptions(): array
+    {
+        return collect(PublicFrontConfigRegistry::settingsBackupSnapshotThemes())
+            ->mapWithKeys(fn (string $theme): array => [$theme => __("admin.settings_backup_snapshot_themes.{$theme}")])
+            ->all();
+    }
+
+    /**
+     * @return array{snapshot_formats: array<int, string>, snapshot_themes: array<int, string>}
+     */
+    private static function defaultSettingsBackupConfig(): array
+    {
+        return app(PublicContentSettings::class)->settings_backups
+            ?? PublicFrontConfigRegistry::defaults()['settings_backups'];
     }
 }

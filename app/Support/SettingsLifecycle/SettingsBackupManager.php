@@ -20,11 +20,16 @@ class SettingsBackupManager
     public function __construct(
         private readonly PublicFrontConfigCache $cache,
         private readonly PublicFrontConfigValidator $validator,
+        private readonly SettingsBackupSnapshotManager $snapshots,
     ) {}
 
-    public function createManual(?string $label = null, ?User $user = null): SettingsBackupVersion
+    /**
+     * @param  array<int, string>|null  $snapshotFormats
+     * @param  array<int, string>|null  $snapshotThemes
+     */
+    public function createManual(?string $label = null, ?User $user = null, ?array $snapshotFormats = null, ?array $snapshotThemes = null): SettingsBackupVersion
     {
-        return $this->create(SettingsBackupSource::Manual, $label, $user);
+        return $this->create(SettingsBackupSource::Manual, $label, $user, $snapshotFormats, $snapshotThemes);
     }
 
     public function createSystem(): ?SettingsBackupVersion
@@ -41,7 +46,11 @@ class SettingsBackupManager
         );
     }
 
-    public function create(SettingsBackupSource $source, ?string $label = null, ?User $user = null): ?SettingsBackupVersion
+    /**
+     * @param  array<int, string>|null  $snapshotFormats
+     * @param  array<int, string>|null  $snapshotThemes
+     */
+    public function create(SettingsBackupSource $source, ?string $label = null, ?User $user = null, ?array $snapshotFormats = null, ?array $snapshotThemes = null): ?SettingsBackupVersion
     {
         if (! Schema::hasTable('settings_backup_versions')) {
             if ($source === SettingsBackupSource::System) {
@@ -68,6 +77,7 @@ class SettingsBackupManager
             'created_by_user_id' => $user?->getKey(),
         ]);
 
+        $this->snapshots->scheduleForBackup($backup, $snapshotFormats, $snapshotThemes);
         $this->prune($package->settingsGroup());
 
         return $backup;
@@ -100,6 +110,7 @@ class SettingsBackupManager
         $retention = max(1, (int) config('settings-backups.retention', 25));
         $idsToPrune = SettingsBackupVersion::query()
             ->where('scope', $scope)
+            ->where('source', SettingsBackupSource::System->value)
             ->orderByDesc('id')
             ->pluck('id')
             ->slice($retention)
@@ -108,6 +119,8 @@ class SettingsBackupManager
         if ($idsToPrune->isEmpty()) {
             return;
         }
+
+        $this->snapshots->deleteFilesForBackupIds($idsToPrune);
 
         SettingsBackupVersion::query()
             ->whereKey($idsToPrune)

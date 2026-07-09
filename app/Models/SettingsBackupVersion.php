@@ -7,6 +7,7 @@ use App\Support\SettingsLifecycle\PublicSettingsPackage;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Str;
 
 class SettingsBackupVersion extends Model
@@ -33,6 +34,32 @@ class SettingsBackupVersion extends Model
     public function creator(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by_user_id');
+    }
+
+    public function snapshots(): HasMany
+    {
+        return $this->hasMany(SettingsBackupSnapshot::class, 'backup_id');
+    }
+
+    public function homeThumbnailSnapshot(): ?SettingsBackupSnapshot
+    {
+        $matchesHomeThumbnail = fn (SettingsBackupSnapshot $snapshot): bool => $snapshot->screen_key === 'home'
+            && $snapshot->kind === SettingsBackupSnapshot::KIND_THUMBNAIL
+            && $snapshot->format === SettingsBackupSnapshot::FORMAT_PNG
+            && $snapshot->status === SettingsBackupSnapshot::STATUS_DONE;
+
+        if ($this->relationLoaded('snapshots')) {
+            return $this->snapshots
+                ->first($matchesHomeThumbnail);
+        }
+
+        return $this->snapshots()
+            ->where('screen_key', 'home')
+            ->where('kind', SettingsBackupSnapshot::KIND_THUMBNAIL)
+            ->where('format', SettingsBackupSnapshot::FORMAT_PNG)
+            ->where('status', SettingsBackupSnapshot::STATUS_DONE)
+            ->latest('id')
+            ->first();
     }
 
     public function package(): PublicSettingsPackage
