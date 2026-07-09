@@ -1,10 +1,18 @@
 # Public Front v2 Admin and Settings Enhancement Plan
 
-Date: 09/07/2026
+Date: 09/07/2026 (v3 — supersedes v2/v1; v3 adds the flip-slider display-type and
+result display-template builder work package, requests 12-17, steps SL1-SL4)
 
 ## Purpose
 
-This plan expands the post-M6 Public Front v2 continuation queue with Yoni's admin, visual-settings, and settings-lifecycle requests before resuming the performance/cache sequence.
+This plan expands the post-M6 Public Front v2 continuation queue with Yoni's admin,
+visual-settings, and settings-lifecycle requests before resuming the performance/cache
+sequence. Version 2 folded in the deep-dive amendments: global Filament defaults instead
+of per-file edits, a two-tier transcription resolution for the episode-list edit action,
+the V1 split into V1a/V1b/V1c, the S2-before-S1 flip, the P1 settings-migration cache
+watermark, and the persistent podcast-palette cache. Version 3 adds the flip-card
+slider display type, quick-view modal, and reusable result display-template builder
+(requests 12-17, mini-steps SL1-SL4), sequenced after P2/P3 and before B4/C2.
 
 The central ledger remains authoritative for per-run selection:
 
@@ -12,251 +20,507 @@ The central ledger remains authoritative for per-run selection:
 
 ## Current State
 
-- Step 10R-M6 is complete and closed the M1-M5 plus IP1-IP3 arc.
-- R1-R23 are landed.
+- Step 10R-M6 is complete and closed the M1-M5 plus IP1-IP3 arc; R1-R23 landed.
 - Step 10R-C1 is superseded.
-- Step 10R-P1 was previously next, but the new requests change the queue before P1.
-- The planning addendum is documentation-only; no app code, migrations, or settings rows are changed by this plan.
+- The v1 addendum inserted UX1/UX2/V1/S1/S2; this v2 plan splits V1 into V1a/V1b/V1c and
+  flips S2 before S1. The first implementation run must amend the ledger accordingly.
+- This plan is documentation-only; no app code, migrations, or settings rows change here.
 
-## Research Inputs
+## Verified Code Facts Driving the Amendments
 
-- Laravel Boost tools used: `application_info`, `database_schema`, `search_docs`.
-- FilamentExamples MCP used: `search_examples`.
-- FilamentExamples access level: search/snippet only.
-- Research note: `docs/research/public-front-v2/19-admin-settings-enhancement-mcp-research.md`.
+- `PublicItemPagePodcastPalette` (`app/Support/PublicFront/ItemPage/`) GD-decodes the
+  cover and samples pixels on every call — no caching, no light/dark contrast handling.
+- `PublicFrontCardTemplateRegistry::icons()` holds 17 finite keys; the icon picker work
+  replaces this with a Heroicon-enum-backed registry plus compatibility aliases.
+- `EditContentItem` is the only page using `hasCombinedRelationManagerTabsWithContent()`.
+- Spatie settings migrations do NOT fire `SettingsSaved`; any persistent config cache
+  must key on a settings-migration watermark, not rely on the save event alone.
 
-## Active Sequence Addendum
+## Active Sequence Addendum (v2 order)
 
 | # | Step | Depends on | Request IDs | One-line scope |
 |---|---|---|---|---|
-| 1 | Step 10R-UX1 | M6 | 1, 6, 7, 8 | Admin navigation order, relation-manager tab placement, record-action column placement, and modal width/full-width schema standards. |
-| 2 | Step 10R-UX2 | UX1 | 9 | Add reusable effective-transcription edit action to episode lists in the Episodes resource and podcast episode relation manager. |
-| 3 | Step 10R-V1 | M6, UX1 | 2, 3, 4, 5 | Default/no-image uploads, expanded safe icon picker, custom-color controls, and light/dark-safe podcast-image color sampling. |
-| 4 | Step 10R-P1 | UX1, UX2, V1 | F1 | Cache validated public-front config after the new visual/settings shape is known. |
-| 5 | Step 10R-S1 | P1, V1 | 10 | Plan and implement a versioned JSON settings import/export package with validation, dry-run, backup-before-import, and cache invalidation. |
-| 6 | Step 10R-S2 | P1, S1 | 11 | Plan and implement settings backup versions, retention, compare/download, and restore flow. |
-| 7 | Step 10R-P2 | S2 | F2, F7, F12, F15 | Listing fetch-window, lazy options/form definitions, and opt-in aggregate subselects. |
-| 8 | Step 10R-P3 | P2 | F3 | Derived transcript segments and viewer render economy. |
-| 9 | Step 10R-B4 | P3 | F11 | Converge legacy card options with card presentation services. |
-| 10 | Step 10R-C2 | B4 | F13 | Normalize card layout consistency and semantic layout tokens. |
-| 11 | Step 9F-A | M1-M6, IP1-IP3, P1-P3, B4, C2 | 9F | Rich homepage columns foundation. |
-| 12 | Step 9F-B | 9F-A | 9F | Footer config and footer renderer. |
-| 13 | Step 9F-C | 9F-B | 9F | Footer/rich section admin UX and integration polish. |
-| 14 | Step 11 | all above and explicit Yoni approval | Step 11 | Seeders/demo/assets/cleanup. |
-| 15 | Prompt 13 | explicit Yoni approval | Prompt 13 | Dashboard metrics. |
+| 1 | Step 10R-UX1 | M6 | 1, 6, 7, 8 | Admin navigation order via a central map, relation-manager tabs above content, record actions before columns, wide/full-width modal standards — set globally via `configureUsing()` defaults where supported. |
+| 2 | Step 10R-UX2 | UX1 | 9 | Reusable effective-transcription edit action on episode lists with two-tier resolution and status-aware modal heading. |
+| 3 | Step 10R-V1a | M6, UX1 | 2 | Default/no-image fallback settings with per-family `inherit\|custom\|none` modes and public fallback rendering. |
+| 4 | Step 10R-V1b | V1a | 3 | Heroicon-enum icon registry + shared searchable icon-picker helper (lazy search results, live preview, legacy aliases). |
+| 5 | Step 10R-V1c | V1a | 4, 5 | Custom hex color mode with ColorPicker + theme-safe podcast-palette sampling with persistent cache. |
+| 6 | Step 10R-P1 | UX1, UX2, V1a-V1c | F1 | Cache validated public-front config (`public_front.config.v1`), keyed with the settings-migration watermark; palette cache shares the infrastructure. |
+| 7 | Step 10R-S2 | P1 | 11 | Settings backup versions: schema, auto system backups on save (hash-deduped), manual backup, compare/download, retention, restore. |
+| 8 | Step 10R-S1 | P1, S2 | 10 | Settings import/export as a versioned JSON package built on the shared `PublicSettingsPackage` serializer and S2 backups. |
+| 9 | Step 10R-P2 | S1 | F2, F7, F12, F15 | Listing fetch-window, lazy options/form definitions, opt-in aggregate subselects. |
+| 10 | Step 10R-P3 | P2 | F3 | Derived transcript segments and viewer render economy. |
+| 11 | Step 10R-SL1 | P2 (bounded-fetch discipline), M5 | 17 | Result display-template builder foundation: `display_templates` settings group, finite vocabularies, admin builder, surface selectors, grid default template. |
+| 12 | Step 10R-SL2 | SL1 | 12, 14 | Flip-slider rendering engine: scroll-snap track, responsive columns×rows paging with bounded lazy page fetch, front-face cards, RTL-aware hover/always controls. |
+| 13 | Step 10R-SL3 | SL2 | 13 | Flip animation and smart side-open back face rendered from existing card templates, with server-computed logical open direction. |
+| 14 | Step 10R-SL4 | SL2 | 15, 16 | Quick-view modal: flat app-owned modal embedding episode/podcast page content with density/label-size controls and a modal card template. |
+| 15 | Step 10R-B4 | M1-M6, IP1-IP3, P1-P3, SL1-SL4 | F11 | Converge legacy card options with card presentation services (now covering slider/modal surfaces). |
+| 16 | Step 10R-C2 | B4 | F13 | Card layout consistency and semantic layout tokens (now covering slider front/back faces). |
+| 17 | Step 9F-A → 9F-B → 9F-C | all 10R above | 9F | Rich homepage columns; footer config/renderer; admin polish. |
+| 18 | Step 11 | all above + explicit Yoni approval | Step 11 | Seeders/demo/assets/cleanup incl. promoting the local evaluation seed and demo display templates. |
+| 19 | Prompt 13 | explicit Yoni approval | Prompt 13 | Dashboard metrics. |
 
-## Step 10R-UX1 Plan
+Sequencing rationale for SL placement: SL builds on perf-hardened foundations (P1 cached
+config, P2 bounded fetching) so the slider never ships with the F2-style over-fetch
+pattern; B4/C2 run after SL so card-option convergence and semantic layout tokens cover
+the new slider/modal surfaces instead of being reworked for them. Yoni may pull SL1-SL4
+before P2/P3 by editing the ledger, accepting that SL2 must then implement its own
+bounded fetching independently (that requirement holds in either order).
+
+## Step 10R-UX1 Plan (amended)
 
 Goal: normalize admin navigation and table/page UX before adding more settings and actions.
 
 Scope:
 
-- Add explicit navigation sort values in this order:
-  - Podcasts: `ContentGroupResource`
-  - Episodes: `ContentItemResource`
-  - Transcriptions: `TranscriptionResource`
-  - Transcribers: `AuthorResource`
-  - Categories: `CategoryResource`
-  - Tags: `ContentTagResource`
-  - Form submissions: `PublicFormSubmissionResource`
-  - Homepage sections: `HomepageSectionResource`
-  - Settings: `PublicContentSettings`
-- Keep existing translated navigation labels and group labels unless the implementation discovers mismatched wording.
-- Audit all edit/view pages that expose relation managers and make relation managers display as tabs above the main content/form where a persisted record exists.
-- Do not force relation managers onto create pages before a record exists; document any create-page non-applicability in the handoff.
-- Add admin theme CSS for larger relation-manager tab labels instead of per-page inline styling.
-- Move all record actions to `RecordActionsPosition::BeforeColumns`, which keeps bulk checkboxes first and places actions before data columns.
-- Standardize action modal width for table actions, favoring `Width::SevenExtraLarge` or `Width::Screen` where forms are dense.
-- Ensure action modal form sections are `columnSpanFull()` where the section is a major logical group.
+- Navigation order (Podcasts `ContentGroupResource`, Episodes `ContentItemResource`,
+  Transcriptions `TranscriptionResource`, Transcribers `AuthorResource`, Categories
+  `CategoryResource`, Tags `ContentTagResource`, Form submissions
+  `PublicFormSubmissionResource`, Homepage sections `HomepageSectionResource`, Settings
+  `PublicContentSettings`) implemented through ONE `AdminNavigationOrder` support map
+  (class => sort) consumed by each resource/page `getNavigationSort()`. Add a Pest
+  completeness test asserting every registered panel resource/page has a map entry so
+  future resources fail fast instead of landing unsorted.
+- Global interaction defaults in a service provider (verify exact Filament 5.6 static
+  APIs via Boost before relying on them; fall back to per-class configuration only where
+  a component lacks the hook):
+  - `Table::configureUsing(...)` sets `recordActionsPosition(RecordActionsPosition::BeforeColumns)`
+    so record actions render before data columns while bulk checkboxes stay first.
+  - `Action::configureUsing(...)` (and table-action equivalents) default
+    `modalWidth(Width::SevenExtraLarge)`; individual dense forms may opt into
+    `Width::Screen`; individual confirmations may opt down.
+  - Default major `Section` components to `columnSpanFull()` for admin schemas, or apply
+    per-schema where a global default is unsafe.
+  - Document every intentional exception in the handoff.
+- Relation managers as tabs above content: audit all edit/view pages exposing relation
+  managers; enable combined relation-manager tabs with an EXPLICIT, pinned content-tab
+  position (content tab first) so all pages present identically. Create pages that
+  cannot show relation managers before a record exists are documented as not applicable.
+- Larger relation-manager tab labels via admin theme CSS scoped to the combined-tabs
+  container only; record the upgrade-fragility note (Filament class names may change).
 
 Tests:
 
-- Admin resource navigation order smoke test.
-- Resource/relation-manager table assertions for record action placement where testable.
-- Relation-manager tab behavior for content item/content group edit pages.
-- Existing admin resource smoke tests.
-- FilaCheck full gate.
+- Navigation order smoke test + map completeness test.
+- Record-action position assertions on representative resource and relation-manager tables.
+- Combined-tab behavior on `EditContentItem` and `EditContentGroup`.
+- Existing admin resource smoke tests; FilaCheck full gate.
 
-Out of scope:
+Out of scope: public navigation/menu behavior; new resources/clusters; settings
+import/export/backups.
 
-- Changing public navigation/menu behavior.
-- Creating new admin resources or clusters.
-- Implementing settings import/export/backups.
+Commit: `feat: standardize admin navigation tables and modals`
 
-## Step 10R-UX2 Plan
+## Step 10R-UX2 Plan (amended)
 
-Goal: add a single reusable edit action for the effective/featured/main transcription on episode list surfaces.
+Goal: one reusable edit action for the episode's main transcription on episode lists.
 
 Scope:
 
-- Add the action to:
-  - `ContentItemsTable` on the Episodes resource page.
-  - `ContentGroups\RelationManagers\ContentItemsRelationManager` on podcast episode lists.
-- Resolve the transcription in the same priority order used by public rendering: featured/effective/main published transcription where available, with an explicit fallback policy documented before coding.
-- Disable or hide the action when no editable transcription exists.
-- Reuse the existing transcription form schema where safe, preserving multi-transcriber state and `transcriptions.author_id` compatibility.
-- Use the wide modal and full-width section standards from UX1.
-- Keep this as an admin edit modal, not a public-page feature.
+- One shared action class (e.g. `app/Filament/Actions/EditEffectiveTranscriptionAction`)
+  mounted on `ContentItemsTable` (Episodes resource) and
+  `ContentGroups\RelationManagers\ContentItemsRelationManager`.
+- Two-tier resolution (this is the documented fallback policy): effective published
+  transcription → featured transcription even if unpublished → latest transcription by
+  id. Hide the action only when the episode has zero transcriptions. The modal heading
+  shows the resolved transcription's title and status badge so admins always know what
+  they are editing.
+- Cross-model pattern: the row record is a `ContentItem`; the modal edits a
+  `Transcription`. Use `->fillForm()` from the resolved transcription and `->action()`
+  applying updates through the existing `TranscriptionForm` schema (minus
+  `content_item_id`), persisting transcribers via `Transcription::syncTranscribers()` so
+  multi-transcriber pivot state and `transcriptions.author_id` compatibility stay
+  synchronized.
+- `extraModalFooterActions()`: link to the full transcription edit page for the
+  big-workspace case.
+- Optional context column on both lists: effective transcription status/title, sourced
+  from the existing M3/M4 aggregate selects (zero extra queries).
+- Wide modal + full-width sections come from UX1 defaults.
 
-Tests:
+Tests: action present on both surfaces; edits title/body/status/transcribers of the
+resolved transcription; two-tier resolution covered (published, featured-unpublished,
+latest-only fixtures); hidden with zero transcriptions; public rendering and the bounded
+query-count harness stay green.
 
-- Action appears on both requested episode-list surfaces.
-- Action edits the effective/featured/main transcription, including transcriber relation state.
-- Action is hidden/disabled when an item has no transcription.
-- Public rendering and bounded query-count harness remain green.
+Out of scope: associate-existing transcription; studio/autosave; public transcript changes.
 
-Out of scope:
+Commit: `feat: add effective transcription edit action to episode lists`
 
-- Associate-existing transcription workflow.
-- Studio/editor autosave.
-- Public transcript action changes.
+## Step 10R-V1a Plan (default/no-image fallbacks)
 
-## Step 10R-V1 Plan
+Goal: admin-managed fallback images with an explicit "no image" mode.
 
-Goal: add visual fallback assets and broaden safe icon/color controls.
-
-Settings shape draft:
+Settings shape:
 
 ```json
 {
   "default_images": {
-    "content_item": null,
-    "content_group": null,
-    "contributor": null,
-    "global": null
-  },
-  "color_controls": {
-    "allow_custom_hex": true
+    "content_item": { "mode": "inherit", "path": null },
+    "content_group": { "mode": "inherit", "path": null },
+    "contributor": { "mode": "inherit", "path": null },
+    "global": { "mode": "inherit", "path": null }
   }
 }
 ```
 
-Implementation notes:
+- `mode`: `inherit` (current behavior), `custom` (use uploaded `path`), `none`
+  (suppress the fallback chain and force the initials/placeholder block). `none` is the
+  literal "no image" half of the request that a nullable upload cannot express.
+- Registry defaults + validator normalization + settings migration +
+  `PublicFrontRenderContext` accessor + admin fields on the settings page.
+- Uploads: public disk, constrained directory, accepted image MIME types, max size,
+  image preview, `columnSpanFull()`.
+- Public fallback order stays specific-before-generic: episode surfaces
+  item-image → podcast cover → content_item fallback → global fallback; podcast surfaces
+  cover → content_group fallback → global; contributor surfaces contributor image →
+  contributor fallback → global. `none` at any configured level stops the chain.
+- No remote image fetching during public rendering.
 
-- Add registry defaults, validator normalization, settings migration, `PublicFrontRenderContext` accessors, and admin fields.
-- File uploads use the public disk, constrained directories, accepted image MIME types, max size, and image previews.
-- Public image fallback order should remain specific before generic:
-  - Episode cards/pages: item thumbnail or episode image, podcast cover, configured content-item fallback, configured global fallback.
-  - Podcast cards/pages: podcast cover, configured content-group fallback, configured global fallback.
-  - Contributor cards/pages: contributor image if present, configured contributor fallback, configured global fallback.
-- Do not fetch remote image URLs during public rendering.
-- Expand icon settings through an app-owned icon registry built from `Filament\Support\Icons\Heroicon::cases()`.
-- Preserve compatibility aliases for current stored icon keys such as `calendar`, `document`, `podcast`, and `arrow_right`.
-- Use Yoni's selected FilamentExamples reference for the icon picker:
-  - **Icon Picker Select Field with Live Icon Display - Select With Custom HTML Values and Search Results**
-  - `https://filamentexamples.com/project/filament-v4-filament-icon-select-field-with-preview`
-  - `https://github.com/LaravelDaily/FilamentExamples-Projects/tree/main/v4/forms/select-with-custom-html-values-and-search-results`
-- Adapt the example's Select pattern: `allowHtml()`, `searchable()`, HTML icon labels/results, live icon preview, and option/search-result generation from `Heroicon::cases()`.
-- Keep the copied behavior as a PodText-owned helper, not ad hoc duplicated fields, so all icon settings share the same preview/search UI.
-- Render icons only through app-owned resolver output; never render raw component names or arbitrary strings from JSON.
-- Add a safe `custom` color mode where requested color settings expose a `ColorPicker`.
-- Store only strict `#rrggbb` values for custom colors; never store classes, raw CSS snippets, HTML, Blade, SVG, PHP, or SQL.
-- Extend `PublicItemPagePodcastPalette` to expose dark samples for light theme and light samples for dark theme. Fall back to semantic colors when GD is unavailable, the image is remote, or the local cover is unreadable.
+Tests: normalization/migration; each mode per family on card + page surfaces
+(fixture-owned); precedence preserved; harness green.
 
-Tests:
+Commit: `feat: add default image fallback settings`
 
-- Default image settings normalize and migrate.
-- Uploaded fallback image appears on item/group/contributor card/page surfaces without seeded data assumptions.
-- Existing image precedence is preserved.
-- Expanded icon options normalize safely; invalid icon values fall back.
-- Existing icon aliases still render.
-- Custom hex color accepts valid hex and rejects/normalizes invalid input.
-- Podcast-image color samples are contrast-normalized into dark/light variants.
-- Public pages render without extra public-request image fetching.
+## Step 10R-V1b Plan (icon registry + picker)
 
-Out of scope:
+Goal: replace the 17-key icon list with a Heroicon-enum-backed registry and one shared
+searchable picker used by every icon setting (card templates, `item_page`, future).
 
-- Image generation, remote image fetching, or queued image analysis.
-- Replacing existing `cover_path`/thumbnail schema.
+- App-owned `PublicFrontIconRegistry` built from `Filament\Support\Icons\Heroicon`
+  cases; stored tokens are validated enum-name strings; the 17 legacy keys
+  (`calendar`, `document`, `podcast`, `arrow_right`, ...) remain permanent aliases with
+  a test asserting every legacy key resolves.
+- One shared form helper (e.g. `IconSelect::make()`), adapting Yoni's selected
+  FilamentExamples reference (Icon Picker Select Field with Live Icon Display —
+  `filamentexamples.com/project/filament-v4-filament-icon-select-field-with-preview`):
+  `searchable()`, `allowHtml()`, HTML option labels with a live icon preview.
+- LAZY results, not preloaded: use `getSearchResultsUsing()` + `getOptionLabelUsing()`
+  so hundreds of enum cases are never materialized into the form payload; add a static
+  per-request cache for label rendering. HTML labels are generated app-side from the
+  enum only — never from stored strings.
+- Rendering stays exclusively through `PublicFrontCardIconResolver` (extended for enum
+  tokens + aliases); JSON never carries raw component names/SVG.
 
-## Step 10R-S1 Plan
+Tests: expanded options normalize; invalid values fall back; legacy aliases render;
+picker search returns expected subsets; settings page render stays performant
+(no full-enum option payload); harness green.
 
-Goal: design and implement settings import/export as a versioned JSON package.
+Commit: `feat: expand icon settings with searchable heroicon picker`
 
-Scope:
+## Step 10R-V1c Plan (custom colors + theme-safe palette)
 
-- Export a JSON package with:
-  - schema version;
-  - generated timestamp;
-  - app/package metadata;
-  - public settings groups included;
-  - normalized `public_content` payload;
-  - checksum/hash for integrity.
-- Import flow:
-  - upload JSON file in admin settings;
-  - validate schema version and payload shape;
-  - dry-run preview/diff before applying;
-  - create a settings backup before import;
-  - apply inside a database transaction;
-  - clear Spatie/settings cache and app-level public-front config cache.
-- Initial implementation should focus on Spatie public settings. Homepage sections and public form definitions are normal database records and should only be included if the S1 plan explicitly defines them as an optional package section.
+Goal: safe custom colors and podcast-image sampled colors that are always dark on light
+theme and light on dark theme.
 
-Tests:
+- Custom color mode: wherever a finite color token select exists, add a `custom` option
+  revealing a `ColorPicker` (visible only when selected). Store strict `#rrggbb` only;
+  validator normalizes 3-digit hex to 6-digit lowercase and rejects anything else. This
+  is the single sanctioned exception to finite tokens — record it as decision D9 in
+  `public-front-v2-transcription-display-decisions.md`.
+- Rendering reality: dynamic hex can never be a Tailwind class (JIT cannot see it).
+  Custom and sampled colors render only as CSS custom properties via inline `style`
+  attributes from validated hex.
+- Palette: extend `PublicItemPagePodcastPalette` to produce BOTH theme variants per
+  sample — convert to HSL, clamp lightness (light theme ≤ ~0.4, dark theme ≥ ~0.65),
+  and enforce a WCAG ≥ 4.5:1 contrast target against the theme background while
+  preserving hue/saturation. Fall back to semantic colors when GD is unavailable, the
+  cover is remote, or unreadable.
+- PERSISTENT PALETTE CACHE (required): cache computed palettes keyed by cover path +
+  file mtime (versioned key, no tags) so GD decoding never runs per public request.
+  This cache shares the P1 infrastructure/conventions; if V1c lands before P1, use a
+  plain versioned `Cache::rememberForever` key now and align naming in P1.
 
-- Export produces valid JSON with normalized settings.
-- Import dry-run reports changes without saving.
-- Import applies valid JSON and invalidates cache.
-- Invalid/mismatched package is rejected.
-- Backup-before-import is created when S2 storage exists, or the handoff records the interim behavior.
+Tests: hex validation/normalization; custom mode reveals picker and renders style vars;
+sampled palettes are contrast-normalized per theme (deterministic fixture image);
+palette cache hit avoids re-decoding (assert single computation); no remote fetching;
+harness green.
 
-Out of scope:
+Commit: `feat: add custom colors and theme safe podcast palette`
 
-- Demo content imports.
-- CSV importer/exporter changes.
-- Step 11 seed data.
+## Step 10R-P1 Plan (amendments only)
 
-## Step 10R-S2 Plan
+Unchanged goal: cache the validated public-front config behind the scoped context with
+versioned key `public_front.config.v1`, invalidated on `SettingsSaved`; Forge env
+checklist in the handoff.
 
-Goal: add admin-only settings backup versions and restore behavior.
+Injected requirements:
 
-Schema draft:
+1. The cache key MUST incorporate a settings-migration watermark (count or latest
+   settings-migration name) because Spatie settings migrations do not fire
+   `SettingsSaved`; without the watermark every future settings migration would serve a
+   stale config until the next admin save.
+2. Adopt/align the V1c palette cache under the same conventions (documented key naming,
+   invalidation notes); palette entries stay content-addressed (path + mtime) and do not
+   need the settings watermark.
+3. Corrupted/missing cache falls back to a fresh validated read; tests cover
+   save-visibility, migration-watermark rotation, and fallback.
+
+Commit: `perf: cache validated public front config`
+
+## Step 10R-S2 Plan (backups — now BEFORE S1)
+
+Goal: admin-only settings backup versions and restore, delivering the safety net before
+import/export needs it.
+
+Schema:
 
 ```text
 settings_backup_versions
 - id
-- scope
-- label
-- payload_json
-- checksum
-- created_by_user_id nullable
+- scope (string, e.g. public_content)
+- label (nullable string)
+- payload_json (longText/json per project convention; MySQL+SQLite compatible)
+- checksum (string)
+- payload_hash (string, indexed — dedupe key)
 - source: manual|before_import|before_restore|system
-- created_at
-- updated_at
+- created_by_user_id (nullable FK)
+- created_at / updated_at
 ```
 
-Implementation notes:
+- Single shared serializer `PublicSettingsPackage` (schema version, generated-at, app
+  version, settings-migration watermark, group list, normalized payload, checksum) —
+  the SAME format S1 exports and the backup download produces. Build it here; S1 reuses it.
+- Automatic `system` backup on every `PublicContentSettings` save, deduped by
+  `payload_hash` (identical consecutive payloads skip), retained last N (finite, e.g. 25)
+  with prune-on-create — no scheduler dependency.
+- Manual backup, download (package format), compare (grouped changed-keys diff of
+  normalized payloads), restore. Restore: create `before_restore` backup → apply inside
+  a DB transaction → invalidate settings + public-front config caches via the P1 path.
+- Admin-only; no public exposure of `User` or backup metadata.
 
-- Use MySQL/SQLite-compatible columns; store JSON as text or JSON according to the existing project migration convention.
-- Backups are admin-only and must not expose `User` publicly.
-- Provide manual backup, download, compare, and restore actions from the settings area.
-- Restore should create a pre-restore backup, run inside a transaction, and invalidate all relevant settings/public config caches.
-- Add retention settings only if they remain finite and safe, for example keep last 25 manual/system versions.
+Tests: manual + system backup creation and dedupe; retention prune; restore round-trip
+with cache invalidation; before-restore backup created; unauthorized access absent;
+MySQL/SQLite-compatible schema.
 
-Tests:
+Commit: `feat: add settings backup versions and restore`
 
-- Manual backup stores normalized settings payload.
-- Restore applies a prior version and invalidates cache.
-- Before-import and before-restore backups are created.
-- Unauthorized/public access is absent.
-- MySQL/SQLite-compatible schema and rollback.
+## Step 10R-S1 Plan (import/export — now AFTER S2)
 
-Out of scope:
+Goal: versioned JSON settings import/export built on `PublicSettingsPackage` and S2.
 
-- Full audit log UI.
-- Versioning arbitrary editorial content.
-- Public exposure of backup metadata.
+- Export: download the current normalized `public_content` payload as a
+  `PublicSettingsPackage` file (identical format to S2 backup downloads).
+- Import flow: upload JSON → validate schema version + settings-migration watermark
+  (refuse newer-schema packages; warn on older) + checksum → DRY-RUN diff (grouped
+  changed keys vs current normalized settings, with "compare against latest backup"
+  available) → on confirm: create `before_import` backup (S2) → apply inside a
+  transaction → run the standard validator and APPLY-WITH-WARNINGS (normalized result is
+  saved; invalid-config entries surface as import warnings, consistent with runtime
+  handling) → invalidate caches via the P1 path.
+- Scope: Spatie `public_content` settings only. Homepage sections and public form
+  definitions are database records and are excluded unless a future plan defines an
+  optional package section. Demo/content seeding stays Step 11.
+
+Tests: export validity + checksum; dry-run reports without saving; import applies +
+invalidates cache + creates before-import backup; newer-schema package rejected;
+tampered checksum rejected; warnings surfaced for normalized-away values.
+
+Commit: `feat: add settings import export package`
+
+## Requests 12-17 — Flip-Slider Display Type and Result Display Templates (v3)
+
+Consolidated from Yoni's three request formats (short, long, list). Numbering continues
+the addendum's request IDs:
+
+12. Flip-slider display type for podcast or episode cards: image front face with
+    configurable badge slots, title at top or bottom with an overlay background token.
+13. Interaction: hover/click flips the card to an information back face; alternative
+    `side_open` mode where the back face opens beside the image and covers part of the
+    slider grid, with SMART direction: corner cards always open toward the inner side of
+    the screen; bottom-row cards open upward, never downward.
+14. Slider layout: columns configurable 6 → 1; ~3 rows per slide page so page size =
+    columns × rows (6 cols → 18/page, 5 cols → 15/page); mobile defaults to 2 × 3 = 6;
+    gap tokens including NONE (seamless); prev/next controls hidden on desktop unless
+    the slider is hovered (and hidden while a card back is open — resolves the
+    short-vs-long format contradiction), always visible on touch devices.
+15. Quick-view modal: clicking the image/back face (anywhere that is not an explicit
+    action link) opens the episode page content — or the podcast all-episodes content —
+    in a modal. Modal is deliberately NOT Filament-styled: flat background, section
+    separators/borders, the image as the HEADER BACKGROUND (not image-on-the-side),
+    closable only by a corner X or outside press (ESC retained for accessibility).
+16. Modal density controls: label size `sm|md|hidden` (icons-only when hidden); reduced
+    children (fewer episodes, smaller episode cards); a SEPARATE card template selection
+    for modal results.
+17. All of it packaged as a reusable RESULT DISPLAY TEMPLATE builder: create several
+    named configurations (slider layout + card faces + open behavior + modal config) and
+    choose which homepage section or listing page uses which, repeatable for both
+    podcasts (content groups) and episodes (content items).
+
+### Design decisions D10-D14 (defaults; Yoni may override in review)
+
+- D10 — Back face = an existing card template. The back face and the modal results each
+  reference a normal `card_templates` entry (per family). No second parts schema is
+  invented; M5 labels/icons/groups work on back faces for free.
+- D11 — Display templates generalize, not specialize: `display_templates` entries carry
+  `display_type: grid | flip_slider` (extensible to future types), so today's grid
+  rendering becomes the default display template and every listing surface selects a
+  display template key. This is the literal "section template builder" request.
+- D12 — Slider mechanics are platform-first: CSS scroll-snap track + Alpine for
+  controls/state; NO third-party carousel/JS library without explicit approval.
+  Page fetching is server-side and bounded: first page (columns × rows, computed from
+  the LARGEST configured breakpoint) rendered initially; subsequent pages lazy-load
+  through Livewire on navigation. The slider must never fetch-all-hydrate-all (the F2
+  anti-pattern).
+- D13 — Smart open direction is computed server-side from grid position (column/row
+  index known at render time) using LOGICAL sides (start/end) so RTL works by
+  construction; a light Alpine fallback recomputes on viewport resize. One card open at
+  a time; opening a card closes the previous one.
+- D14 — Accessibility and touch are requirements, not extras: keyboard navigation for
+  slider controls; focus trap + ESC close in the modal; `prefers-reduced-motion`
+  replaces flip with fade; touch devices flip on tap and always show controls; deep
+  "open full page" link inside modal and on the back face so no content is
+  modal-only/SEO-invisible (public URLs remain the crawlable source of truth).
+
+## Step 10R-SL1 Plan (display-template builder foundation)
+
+Goal: the settings/registry/admin foundation for reusable result display templates.
+
+Scope:
+
+- New `display_templates` settings group (repeater/builder in the settings page, modeled
+  on `card_templates`): entries carry `key`, `label`, `result_family`
+  (`content_item|content_group`), `display_type` (`grid|flip_slider`), and type-specific
+  config:
+  - shared: `columns` (1-6), `rows` (1-3, default 3), `gap`
+    (`none|compact|comfortable|spacious`), `card_template_key` (validated against the
+    matching family);
+  - flip_slider: `title_position` (`top|bottom`), `overlay` token
+    (`none|soft|strong`), badge slots (limited finite parts subset positioned
+    `top_start|top_end|bottom_start|bottom_end`), `back_mode` (`flip|side_open`),
+    `back_card_template_key`, `controls_visibility` (`hover|always`),
+    `open_modal_on_click` (bool);
+  - modal config: `modal_card_template_key`, `label_size` (`sm|md|hidden`),
+    `children_limit` (finite range), `modal_density` (`compact|comfortable`).
+- Registry defaults (a `default_grid` per family reproducing current grid behavior for
+  compatibility) + validator normalization + settings migration +
+  `PublicFrontRenderContext::displayTemplates()`.
+- Surface selectors: `display_template_key` on `HomepageSection.display_config`, the
+  podcasts page (group index + group-page episode grid), and search/latest defaults —
+  selects populated per family via a resolver `optionsForFamily()` mirroring the card
+  template resolver.
+- No public rendering change yet beyond the default-grid passthrough; SL2 owns rendering.
+
+Tests: normalization/defaults/migration; invalid tokens and unknown template-key
+references rejected safely (fallback to default grid); admin builder saves entries;
+selects populated; harness green.
+
+Commit: `feat: add result display template builder foundation`
+
+## Step 10R-SL2 Plan (slider rendering engine)
+
+Goal: render `flip_slider` display templates on real surfaces.
+
+Scope:
+
+- Public slider rendering (Livewire component or section-renderer extension) consuming a
+  resolved display template: scroll-snap track of slide pages, each page a
+  columns × rows grid of FRONT faces (image with existing fallback chain incl. V1a
+  defaults, badge slots, title top/bottom with overlay token classes).
+- Responsive behavior: columns derive from fixed breakpoint maps (PHP/Blade class maps,
+  no raw classes in JSON); page size = columns × rows per breakpoint; mobile default
+  2 × 3.
+- Bounded fetching per D12: initial page server-rendered; next pages lazy-loaded on
+  navigation; total window capped by the section's existing limit config; query-count
+  harness extended to a slider fixture and green.
+- Controls: prev/next with `hover|always` visibility (desktop hover-reveal; always on
+  touch), RTL-flipped direction and icons, keyboard accessible, page indicators.
+- Wire into homepage sections + podcast surfaces selected via SL1 keys; grid display
+  templates keep rendering through the existing grid path.
+
+Tests: rendered slider markup (pages/columns/gap markers incl. `none`), RTL direction
+markers, lazy page fetch (bounded counts asserted), controls visibility modes, fallback
+to default grid on invalid template, harness green.
+
+Commit: `feat: render flip slider display sections`
+
+## Step 10R-SL3 Plan (flip and smart side-open back face)
+
+Goal: the interactive back face.
+
+Scope:
+
+- Back face renders the configured card template's parts (D10) prepared in the same
+  presenter pass as the front face — zero additional queries per card.
+- `flip` mode: CSS 3D transform driven by Alpine state (hover intent on desktop, tap on
+  touch); one open card at a time; `prefers-reduced-motion` fade variant.
+- `side_open` mode: back face expands beside the card over the grid within the slider
+  viewport; direction from server-computed logical position per D13 (corner → inner
+  side, bottom row → upward), Alpine resize fallback; z-index/overflow contained to the
+  slider; controls hidden while a card is open.
+- All interaction state is Alpine-local; nothing persists server-side.
+
+Tests: back-face parts render from the configured template; direction data attributes
+correct for corner/bottom fixtures in LTR and RTL; single-open behavior markers;
+reduced-motion class present; harness green.
+
+Commit: `feat: add card flip and smart side open behavior`
+
+## Step 10R-SL4 Plan (quick-view modal)
+
+Goal: the flat quick-view modal per requests 15-16.
+
+Scope:
+
+- App-owned Blade/Alpine modal component (NOT Filament-styled): flat background,
+  bordered/separated sections, image-as-header-background with overlay for text
+  contrast, corner X + outside-press + ESC close, focus trap, scroll lock.
+- Content: for episodes, the episode page content (header + transcript summary +
+  actions) rendered by a lazy-mounted Livewire quick-view component reusing
+  `PublicContentItemQueries`/existing presenters; for podcasts, the podcast episodes
+  browser embedded with density props. Modal content loads ON OPEN only (lazy Livewire),
+  never preloaded per card.
+- Density/label controls from the display template's modal config: `label_size`
+  (`sm|md|hidden` → icons-only), `children_limit`, smaller episode-card variant via the
+  configured `modal_card_template_key`.
+- Deep-link affordance: visible "open full page" action in the modal header/footer;
+  clicking explicit action links inside cards still navigates normally (modal only
+  intercepts the non-action surface per request 15).
+- No URL swap in v1 of this feature (recorded as a future decision if wanted).
+
+Tests: modal opens from front/back non-action clicks and NOT from explicit action
+links; lazy mount asserted (no modal queries until opened); label-size and
+children-limit behavior; close paths (X, outside, ESC); focus trap markers; episode and
+podcast variants; harness green.
+
+Commit: `feat: add quick view modal for slider cards`
 
 ## Impact on Existing Queue
 
-- P1 should wait until V1 lands so the cached validated public-front config includes the new default-image/icon/color settings from its first implementation.
-- S1/S2 should run after P1 so import/restore can use the single public-front config cache invalidation path.
-- P2/P3 remain performance work and still resolve their existing F findings after the settings lifecycle mini-steps.
-- B4, C2, 9F, Step 11, and Prompt 13 keep their prior guardrails.
+- P1 waits for UX1/UX2/V1a-V1c (settings shape churn finishes first); with the
+  migration-watermark key this ordering is a convenience, not a correctness requirement.
+- S2 before S1 removes the v1 plan's "backup-before-import if S2 storage exists" interim
+  behavior — the safety net exists before import ships.
+- SL1-SL4 run after P2/P3 so the slider is built on cached config and bounded-fetch
+  discipline, and before B4/C2 so option convergence and semantic layout tokens cover
+  the slider/modal surfaces. If Yoni pulls SL earlier, SL2's bounded-fetch requirement
+  still applies in full.
+- B4/C2 scopes now explicitly include the slider front/back faces and modal card
+  surfaces. 9F rich sections remain content sections and stay separate from result
+  display templates; they share the render-context/registry patterns only.
+- Step 11 gains: seed one or two demo display templates alongside the evaluation card
+  templates.
+- P2/P3/9F/Step 11/Prompt 13 otherwise keep their prior scopes, owners, and guardrails.
 
 ## Stop Conditions
 
-- Stop before app-code changes if the ledger and current state disagree on the first pending mini-step.
-- Stop if a requested custom-color implementation would require storing raw classes/CSS snippets instead of strict sanitized hex values.
-- Stop if image palette sampling requires remote fetches on public requests.
-- Stop if a create page cannot support relation managers because no persisted record exists; document non-applicability instead of forcing a brittle workaround.
-- Stop if settings import/export scope expands into demo/content seeding; that belongs to Step 11 after explicit approval.
+- Stop before app-code changes if the ledger and current state disagree on the first
+  pending mini-step, or if the ledger still shows the v1 rows (single V1, S1-before-S2)
+  and this v2 plan has not been applied to the ledger in the same run's docs step.
+- Stop if custom-color implementation would require storing anything other than strict
+  normalized hex.
+- Stop if palette sampling would require remote fetches or per-request GD decoding after
+  the cache is specified.
+- Stop if a `configureUsing()` global default is unavailable in installed Filament 5.6
+  for a needed component AND per-class fallback would contradict the standard — record
+  and continue with per-class application instead.
+- Stop if a create page cannot support relation managers; document non-applicability.
+- Stop if settings import/export scope expands into demo/content seeding (Step 11).
+- Stop if an SL step would require a third-party carousel/JS library — scroll-snap +
+  Alpine is the approved mechanism unless Yoni explicitly approves a dependency.
+- Stop if the slider or modal would fetch/hydrate all pages up front or preload modal
+  content per card — bounded first-page fetch and lazy-on-open are requirements.
+- Stop if modal content would become the only public path to any content (SEO/crawl
+  regression); public URLs remain canonical and the deep "open full page" link is
+  mandatory.
+- Stop if display-template JSON would need raw classes/HTML/JS to express a requested
+  behavior; extend the finite vocabularies instead.
