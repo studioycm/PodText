@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\ContentItems\Tables;
 
 use App\Enums\PublicationStatus;
+use App\Filament\Actions\EditEffectiveTranscriptionAction;
 use App\Filament\Exports\ContentItemExporter;
 use App\Filament\Imports\ContentItemImporter;
 use App\Filament\Resources\Support\RelationshipOptionForms;
@@ -39,7 +40,8 @@ class ContentItemsTable
                     'contentGroup',
                     'featuredTranscription.authors',
                     'latestPublishedTranscription.authors',
-                ]))
+                ])
+                ->withCount('transcriptions'))
             ->columns([
                 TextColumn::make('title')
                     ->label(__('admin.fields.title'))
@@ -58,6 +60,13 @@ class ContentItemsTable
                     ->state(fn (ContentItem $record): string => self::effectiveTranscriberNames($record))
                     ->badge()
                     ->separator(', '),
+                TextColumn::make('effective_transcription_context')
+                    ->label(__('admin.fields.effective_transcription'))
+                    ->state(fn (ContentItem $record): ?string => EditEffectiveTranscriptionAction::contextStateFor($record))
+                    ->placeholder(__('admin.labels.none'))
+                    ->badge()
+                    ->color(fn (ContentItem $record): string => EditEffectiveTranscriptionAction::contextColorFor($record))
+                    ->toggleable(),
                 TextColumn::make('categories.name')
                     ->label(__('admin.fields.categories'))
                     ->badge()
@@ -178,6 +187,7 @@ class ContentItemsTable
                     ->maxRows(10000),
             ])
             ->recordActions([
+                EditEffectiveTranscriptionAction::make(),
                 self::addTranscriptionAction(),
                 EditAction::make(),
             ])

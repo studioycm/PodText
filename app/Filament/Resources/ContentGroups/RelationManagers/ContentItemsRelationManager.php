@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\ContentGroups\RelationManagers;
 
 use App\Enums\PublicationStatus;
+use App\Filament\Actions\EditEffectiveTranscriptionAction;
 use App\Filament\Resources\ContentItems\ContentItemResource;
 use App\Filament\Resources\ContentItems\Tables\ContentItemsTable;
 use App\Models\ContentItem;
@@ -48,6 +49,7 @@ class ContentItemsRelationManager extends RelationManager
                     'featuredTranscription.authors',
                     'latestPublishedTranscription.authors',
                 ])
+                ->withCount('transcriptions')
                 ->latest('published_at')
                 ->latest('id'))
             ->columns([
@@ -64,6 +66,13 @@ class ContentItemsRelationManager extends RelationManager
                     ->state(fn (ContentItem $record): string => implode(', ', $record->effectiveTranscription()?->transcriberNames() ?? []))
                     ->badge()
                     ->separator(', '),
+                TextColumn::make('effective_transcription_context')
+                    ->label(__('admin.fields.effective_transcription'))
+                    ->state(fn (ContentItem $record): ?string => EditEffectiveTranscriptionAction::contextStateFor($record))
+                    ->placeholder(__('admin.labels.none'))
+                    ->badge()
+                    ->color(fn (ContentItem $record): string => EditEffectiveTranscriptionAction::contextColorFor($record))
+                    ->toggleable(),
                 TextColumn::make('categories.name')
                     ->label(__('admin.fields.categories'))
                     ->badge()
@@ -135,6 +144,7 @@ class ContentItemsRelationManager extends RelationManager
                     ->modalWidth(Width::SevenExtraLarge),
             ])
             ->recordActions([
+                EditEffectiveTranscriptionAction::make(),
                 ContentItemsTable::addTranscriptionAction(),
                 EditAction::make()
                     ->modalWidth(Width::SevenExtraLarge),

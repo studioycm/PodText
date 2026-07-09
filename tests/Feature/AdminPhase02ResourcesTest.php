@@ -49,6 +49,7 @@ use Filament\Schemas\Components\Section;
 use Filament\Support\Enums\Width;
 use Filament\Tables\Enums\RecordActionsPosition;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use Livewire\Features\SupportTesting\Testable;
 use Livewire\Livewire;
@@ -78,6 +79,26 @@ beforeEach(function (): void {
 
     $this->actingAs(User::factory()->create());
 });
+
+function mountUx2EffectiveTranscriptionAction(ContentItem $item): Testable
+{
+    return Livewire::test(ListContentItems::class)
+        ->mountAction(TestAction::make('editEffectiveTranscription')->table($item));
+}
+
+/**
+ * @param  array<int, int>  $authorIds
+ */
+function assertUx2TranscriberOrder(Transcription $transcription, array $authorIds): void
+{
+    $pivotRows = DB::table('author_transcription')
+        ->where('transcription_id', $transcription->id)
+        ->orderBy('sort_order')
+        ->get(['author_id', 'sort_order']);
+
+    expect($pivotRows->pluck('author_id')->map(fn (int $authorId): int => $authorId)->all())->toBe($authorIds)
+        ->and($pivotRows->pluck('sort_order')->map(fn (int $sortOrder): int => $sortOrder)->all())->toBe(array_keys($authorIds));
+}
 
 it('orders every registered admin navigation resource and page through the central map', function (): void {
     $expected = [
@@ -796,6 +817,146 @@ it('creates transcriptions from the content item table row action and defers mov
 
     expect($transcription->content_item_id)->toBe($item->id)
         ->and($item->refresh()->featured_transcription_id)->toBe($transcription->id);
+});
+
+it('shows the effective transcription edit action on both episode list surfaces and hides it without transcriptions', function (): void {
+    $group = ContentGroup::factory()->create();
+    $item = ContentItem::factory()->for($group)->create(['title' => 'Action visible item']);
+    $emptyItem = ContentItem::factory()->for($group)->create(['title' => 'Action hidden item']);
+    $author = Author::factory()->create(['name' => 'Visible Transcriber']);
+    $transcription = Transcription::factory()
+        ->for($item)
+        ->forAuthor($author)
+        ->published()
+        ->create(['title' => 'Visible effective transcript']);
+
+    $item->update(['featured_transcription_id' => $transcription->id]);
+
+    $expectedContext = __('admin.labels.transcription_context', [
+        'title' => 'Visible effective transcript',
+        'status' => __('admin.publication_status.published'),
+    ]);
+
+    Livewire::test(ListContentItems::class)
+        ->assertActionVisible(TestAction::make('editEffectiveTranscription')->table($item))
+        ->assertActionHidden(TestAction::make('editEffectiveTranscription')->table($emptyItem))
+        ->assertTableColumnStateSet('effective_transcription_context', $expectedContext, $item);
+
+    Livewire::test(ContentItemsRelationManager::class, [
+        'ownerRecord' => $group,
+        'pageClass' => EditContentGroup::class,
+    ])
+        ->assertActionVisible(TestAction::make('editEffectiveTranscription')->table($item))
+        ->assertActionHidden(TestAction::make('editEffectiveTranscription')->table($emptyItem))
+        ->assertTableColumnStateSet('effective_transcription_context', $expectedContext, $item);
+});
+
+it('resolves and saves effective transcription edit action fallback tiers', function (): void {
+    $primary = Author::factory()->create(['name' => 'Primary UX2']);
+    $secondary = Author::factory()->create(['name' => 'Secondary UX2']);
+    $tertiary = Author::factory()->create(['name' => 'Tertiary UX2']);
+
+    $effectiveItem = ContentItem::factory()->create(['title' => 'Effective published item']);
+    $effectiveTarget = Transcription::factory()
+        ->for($effectiveItem)
+        ->forAuthor($primary)
+        ->published(now()->subDays(3))
+        ->create([
+            'title' => 'Effective published transcript',
+            'transcript_markdown' => 'Original effective body',
+        ]);
+    $effectiveItem->update(['featured_transcription_id' => $effectiveTarget->id]);
+    $untouchedEffectiveSibling = Transcription::factory()
+        ->for($effectiveItem)
+        ->forAuthor($tertiary)
+        ->create(['title' => 'Untouched effective sibling']);
+
+    mountUx2EffectiveTranscriptionAction($effectiveItem)
+        ->assertMountedActionModalSee('Effective published transcript')
+        ->assertMountedActionModalSee(__('admin.publication_status.published'))
+        ->assertSchemaStateSet([
+            'title' => 'Effective published transcript',
+            'transcriber_ids' => [$primary->id],
+            'transcript_markdown' => 'Original effective body',
+            'status' => PublicationStatus::Published,
+        ])
+        ->set('mountedActions.0.data.transcriber_ids', [$secondary->id, $primary->id])
+        ->set('mountedActions.0.data.title', 'Edited effective transcript')
+        ->set('mountedActions.0.data.status', PublicationStatus::Draft->value)
+        ->set('mountedActions.0.data.transcript_markdown', 'Edited effective body')
+        ->callMountedAction()
+        ->assertHasNoFormErrors();
+
+    $effectiveTarget->refresh();
+
+    expect($effectiveTarget->title)->toBe('Edited effective transcript')
+        ->and($effectiveTarget->status)->toBe(PublicationStatus::Draft)
+        ->and($effectiveTarget->transcript_markdown)->toBe('Edited effective body')
+        ->and($effectiveTarget->author_id)->toBe($secondary->id)
+        ->and($untouchedEffectiveSibling->refresh()->title)->toBe('Untouched effective sibling');
+
+    assertUx2TranscriberOrder($effectiveTarget, [$secondary->id, $primary->id]);
+
+    $featuredDraftItem = ContentItem::factory()->create(['title' => 'Featured draft item']);
+    $featuredDraftTarget = Transcription::factory()
+        ->for($featuredDraftItem)
+        ->forAuthor($primary)
+        ->create([
+            'title' => 'Featured draft transcript',
+            'status' => PublicationStatus::Draft,
+            'transcript_markdown' => 'Original featured draft body',
+        ]);
+
+    $featuredDraftItem->update(['featured_transcription_id' => $featuredDraftTarget->id]);
+
+    mountUx2EffectiveTranscriptionAction($featuredDraftItem)
+        ->assertMountedActionModalSee('Featured draft transcript')
+        ->assertMountedActionModalSee(__('admin.publication_status.draft'))
+        ->set('mountedActions.0.data.transcriber_ids', [$tertiary->id])
+        ->set('mountedActions.0.data.title', 'Edited featured draft transcript')
+        ->set('mountedActions.0.data.status', PublicationStatus::Published->value)
+        ->set('mountedActions.0.data.transcript_markdown', 'Edited featured draft body')
+        ->callMountedAction()
+        ->assertHasNoFormErrors();
+
+    expect($featuredDraftTarget->refresh()->title)->toBe('Edited featured draft transcript')
+        ->and($featuredDraftTarget->status)->toBe(PublicationStatus::Published)
+        ->and($featuredDraftTarget->transcript_markdown)->toBe('Edited featured draft body')
+        ->and($featuredDraftTarget->author_id)->toBe($tertiary->id);
+
+    assertUx2TranscriberOrder($featuredDraftTarget, [$tertiary->id]);
+
+    $latestDraftItem = ContentItem::factory()->create(['title' => 'Latest draft item']);
+    $olderDraft = Transcription::factory()
+        ->for($latestDraftItem)
+        ->forAuthor($primary)
+        ->create(['title' => 'Older latest-only draft']);
+    $latestDraftTarget = Transcription::factory()
+        ->for($latestDraftItem)
+        ->forAuthor($secondary)
+        ->create([
+            'title' => 'Newest latest-only draft',
+            'transcript_markdown' => 'Original latest-only body',
+        ]);
+    $latestDraftItem->refresh()->forceFill(['featured_transcription_id' => null])->save();
+
+    mountUx2EffectiveTranscriptionAction($latestDraftItem)
+        ->assertMountedActionModalSee('Newest latest-only draft')
+        ->assertMountedActionModalSee(__('admin.publication_status.draft'))
+        ->set('mountedActions.0.data.transcriber_ids', [$primary->id])
+        ->set('mountedActions.0.data.title', 'Edited newest latest-only draft')
+        ->set('mountedActions.0.data.status', PublicationStatus::Published->value)
+        ->set('mountedActions.0.data.transcript_markdown', 'Edited latest-only body')
+        ->callMountedAction()
+        ->assertHasNoFormErrors();
+
+    expect($latestDraftTarget->refresh()->title)->toBe('Edited newest latest-only draft')
+        ->and($latestDraftTarget->status)->toBe(PublicationStatus::Published)
+        ->and($latestDraftTarget->transcript_markdown)->toBe('Edited latest-only body')
+        ->and($latestDraftTarget->author_id)->toBe($primary->id)
+        ->and($olderDraft->refresh()->title)->toBe('Older latest-only draft');
+
+    assertUx2TranscriberOrder($latestDraftTarget, [$primary->id]);
 });
 
 it('creates standalone transcriptions and validates same item featured selection', function (): void {
