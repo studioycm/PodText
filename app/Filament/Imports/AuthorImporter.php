@@ -25,6 +25,7 @@ class AuthorImporter extends Importer
                 ->rules(fn (?Author $record): array => [
                     'nullable',
                     'ulid',
+                    'max:26',
                     Rule::unique('authors', 'reference_key')->ignore($record?->getKey()),
                 ]),
             ImportColumn::make('name')

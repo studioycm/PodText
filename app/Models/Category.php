@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\Slugs\HebrewSlugger;
 use Database\Factories\CategoryFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
@@ -11,7 +12,6 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Str;
 
 #[Fillable([
     'parent_id',
@@ -93,15 +93,9 @@ class Category extends Model
 
     private static function uniqueSlug(string $source): string
     {
-        $baseSlug = Str::slug($source) ?: Str::lower((string) Str::ulid());
-        $slug = $baseSlug;
-        $suffix = 2;
-
-        while (static::query()->where('slug', $slug)->exists()) {
-            $slug = "{$baseSlug}-{$suffix}";
-            $suffix++;
-        }
-
-        return $slug;
+        return HebrewSlugger::unique(
+            $source,
+            fn (string $slug): bool => static::query()->where('slug', $slug)->exists(),
+        );
     }
 }

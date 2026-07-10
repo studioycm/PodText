@@ -30,13 +30,14 @@ class TranscriptionImporter extends Importer
                 ->rules(fn (?Transcription $record): array => [
                     'nullable',
                     'ulid',
+                    'max:26',
                     Rule::unique('transcriptions', 'reference_key')->ignore($record?->getKey()),
                 ]),
             ImportColumn::make('content_item_reference_key')
                 ->label(__('admin.import.columns.content_item_reference_key'))
                 ->requiredMapping()
                 ->example('01JITEM0000000000000000001')
-                ->rules(['required', 'ulid'])
+                ->rules(['required', 'ulid', 'max:26'])
                 ->fillRecordUsing(function (Transcription $record, ?string $state): void {
                     $contentItem = filled($state)
                         ? ContentItem::query()->where('reference_key', $state)->first()
@@ -53,18 +54,18 @@ class TranscriptionImporter extends Importer
             ImportColumn::make('author_reference_key')
                 ->label(__('admin.import.columns.author_reference_key'))
                 ->example('01JAUTHOR00000000000000001')
-                ->rules(['nullable', 'ulid'])
+                ->rules(['nullable', 'ulid', 'max:26'])
                 ->fillRecordUsing(fn (): null => null),
             ImportColumn::make('primary_transcriber_reference_key')
                 ->label(__('admin.import.columns.primary_transcriber_reference_key'))
                 ->example('01JAUTHOR00000000000000001')
-                ->rules(['nullable', 'ulid'])
+                ->rules(['nullable', 'ulid', 'max:26'])
                 ->fillRecordUsing(fn (): null => null),
             ImportColumn::make('transcriber_reference_keys')
                 ->label(__('admin.import.columns.transcriber_reference_keys'))
                 ->multiple('|')
                 ->example('01JAUTHOR00000000000000001|01JAUTHOR00000000000000002')
-                ->nestedRecursiveRules(['ulid'])
+                ->nestedRecursiveRules(['ulid', 'max:26'])
                 ->rules([
                     function (string $attribute, mixed $state, \Closure $fail): void {
                         if (blank($state)) {

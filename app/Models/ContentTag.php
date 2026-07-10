@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\Slugs\HebrewSlugger;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -68,5 +69,17 @@ class ContentTag extends Tag
             'created_by_id' => 'integer',
             'is_enabled' => 'boolean',
         ];
+    }
+
+    protected function generateSlug(string $locale): string
+    {
+        return HebrewSlugger::unique(
+            $this->getTranslation('name', $locale, false),
+            fn (string $slug): bool => static::query()
+                ->where('type', $this->type)
+                ->where("slug->{$locale}", $slug)
+                ->when($this->exists, fn (Builder $query): Builder => $query->whereKeyNot($this))
+                ->exists(),
+        );
     }
 }

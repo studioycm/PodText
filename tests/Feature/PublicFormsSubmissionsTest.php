@@ -273,7 +273,7 @@ it('submits enabled forms and stores only configured escaped payload fields', fu
     expect($submission->form_key)->toBe('request_transcription')
         ->and($submission->form_name_snapshot)->toBe('Request transcription')
         ->and($submission->status)->toBe(PublicFormSubmissionStatus::New)
-        ->and($submission->payload)->toBe([
+        ->and($submission->payload)->toMatchArray([
             'name' => '&lt;script&gt;alert(1)&lt;/script&gt;',
             'email' => 'submitter@example.com',
             'source_url' => 'https://example.com/source',

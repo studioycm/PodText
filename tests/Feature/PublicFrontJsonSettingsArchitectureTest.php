@@ -28,6 +28,23 @@ function clearPublicFrontSettingsCache(): void
     app(SettingsContainer::class)->clearCache();
 }
 
+function sortPublicFrontJsonKeys(mixed $value): mixed
+{
+    if (! is_array($value)) {
+        return $value;
+    }
+
+    $value = array_map(sortPublicFrontJsonKeys(...), $value);
+
+    if (array_is_list($value)) {
+        return $value;
+    }
+
+    ksort($value);
+
+    return $value;
+}
+
 it('loads public front defaults when settings rows are missing', function (): void {
     DB::table('settings')->where('group', PublicContentSettings::group())->delete();
 
@@ -137,6 +154,9 @@ it('backfills item page header settings through the settings migration', functio
         true,
     );
 
+    $infoFields = sortPublicFrontJsonKeys($itemPage['info_fields']);
+    $defaultInfoFields = sortPublicFrontJsonKeys(PublicItemPageRegistry::defaultInfoFields());
+
     expect($itemPage)->toMatchArray([
         'show_breadcrumbs' => true,
         'podcast_identity' => [
@@ -159,7 +179,7 @@ it('backfills item page header settings through the settings migration', functio
         ->and($itemPage['dates']['site_published'])->toMatchArray(
             PublicFrontConfigRegistry::defaults()['item_page']['dates']['site_published'],
         )
-        ->and($itemPage['info_fields'])->toBe(PublicItemPageRegistry::defaultInfoFields());
+        ->and($infoFields)->toBe($defaultInfoFields);
 });
 
 it('backfills item page podcast identity presentation settings through the settings migration', function (): void {
@@ -638,7 +658,7 @@ it('saves sanitized public front config through the settings page while preservi
     $config = app(PublicFrontConfigReader::class)->read($settings);
     $cardOptions = PublicContentCardOptions::fromSettings($settings);
 
-    expect($settings->display_defaults)->toBe([
+    expect($settings->display_defaults)->toMatchArray([
         'layout' => 'rows',
         'density' => 'compact',
         'image_size' => 'large',

@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\HomepageSections\Schemas;
 
 use App\Enums\HomepageSectionType;
+use App\Filament\Forms\Components\SlugInput;
 use App\Filament\Resources\Support\RelationshipOptionForms;
 use App\Models\ContentItem;
 use App\Support\PublicFront\Cards\PublicFrontCardTemplateResolver;
@@ -18,7 +19,6 @@ use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
-use Illuminate\Support\Str;
 
 class HomepageSectionForm
 {
@@ -29,25 +29,13 @@ class HomepageSectionForm
                 Section::make(__('admin.sections.identity'))
                     ->description(__('admin.descriptions.homepage_section_identity'))
                     ->schema([
-                        TextInput::make('name')
+                        SlugInput::source('name', table: 'homepage_sections')
                             ->label(__('admin.fields.name'))
                             ->helperText(__('admin.helpers.homepage_section_name'))
-                            ->live(onBlur: true)
-                            ->afterStateUpdated(function (Set $set, Get $get, ?string $old, ?string $state): void {
-                                if (filled($get('slug')) && $get('slug') !== Str::slug((string) $old)) {
-                                    return;
-                                }
-
-                                $set('slug', Str::slug((string) $state));
-                            })
                             ->required()
                             ->maxLength(255),
-                        TextInput::make('slug')
-                            ->label(__('admin.fields.slug'))
-                            ->helperText(__('admin.helpers.slug'))
-                            ->required()
-                            ->maxLength(255)
-                            ->unique(),
+                        SlugInput::slug(table: 'homepage_sections')
+                            ->label(__('admin.fields.slug')),
                         Select::make('type')
                             ->label(__('admin.fields.homepage_section_type'))
                             ->helperText(__('admin.helpers.homepage_section_type'))

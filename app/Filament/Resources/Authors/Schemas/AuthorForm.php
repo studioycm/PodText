@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Authors\Schemas;
 
+use App\Filament\Forms\Components\SlugInput;
 use Filament\Forms\Components\MarkdownEditor;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Section;
@@ -20,15 +21,12 @@ class AuthorForm
                             ->disabled()
                             ->dehydrated(false)
                             ->visibleOn('edit'),
-                        TextInput::make('name')
+                        SlugInput::source('name', table: 'authors')
                             ->label(__('admin.fields.author_name'))
                             ->required()
                             ->maxLength(255),
-                        TextInput::make('slug')
-                            ->label(__('admin.fields.slug'))
-                            ->required()
-                            ->maxLength(255)
-                            ->unique(),
+                        SlugInput::slug(table: 'authors')
+                            ->label(__('admin.fields.slug')),
                     ])
                     ->columns(2),
                 Section::make(__('admin.sections.content'))

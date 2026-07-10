@@ -31,13 +31,14 @@ class ContentItemImporter extends Importer
                 ->rules(fn (?ContentItem $record): array => [
                     'nullable',
                     'ulid',
+                    'max:26',
                     Rule::unique('content_items', 'reference_key')->ignore($record?->getKey()),
                 ]),
             ImportColumn::make('content_group_reference_key')
                 ->label(__('admin.import.columns.content_group_reference_key'))
                 ->requiredMapping()
                 ->example('01JGROUP000000000000000001')
-                ->rules(['required', 'ulid'])
+                ->rules(['required', 'ulid', 'max:26'])
                 ->fillRecordUsing(function (ContentItem $record, ?string $state): void {
                     $contentGroup = ContentGroup::query()
                         ->where('reference_key', $state)
@@ -107,7 +108,7 @@ class ContentItemImporter extends Importer
             ImportColumn::make('embed_provider')
                 ->label(__('admin.fields.embed_provider'))
                 ->example('youtube')
-                ->rules(['nullable', 'max:255'])
+                ->rules(['nullable', 'max:50'])
                 ->ignoreBlankState(fn (?ContentItem $record, array $options): bool => static::shouldIgnoreBlankForUpdate($record, $options)),
             ImportColumn::make('media_duration_seconds')
                 ->label(__('admin.fields.media_duration_seconds'))
@@ -263,6 +264,7 @@ class ContentItemImporter extends Importer
             ImportColumn::make('featured_transcription_reference_key')
                 ->label(__('admin.import.columns.featured_transcription_reference_key'))
                 ->example('01JTRANSCRIPTION00000000001')
+                ->rules(['nullable', 'ulid', 'max:26'])
                 ->ignoreBlankState()
                 ->fillRecordUsing(fn (): null => null)
                 ->saveRelationshipsUsing(function (ContentItem $record, ?string $state): void {

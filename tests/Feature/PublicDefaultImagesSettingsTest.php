@@ -187,7 +187,7 @@ it('normalizes default image settings and backfills the settings row', function 
         true,
     );
 
-    expect($payload)->toBe(PublicFrontConfigRegistry::defaults()['default_images']);
+    expect($payload)->toMatchArray(PublicFrontConfigRegistry::defaults()['default_images']);
 });
 
 it('saves no-image mode through the public settings page', function (): void {

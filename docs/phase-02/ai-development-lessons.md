@@ -32,6 +32,7 @@ For current prompt completion/progress state, see `docs/phase-02/current-project
 
 - Preserve native Filament import/export behavior in later prompts unless an active blueprint explicitly requires a compatible change.
 - Keep portable identifiers as the import/export boundary: reference keys, category paths, and typed tag slugs.
+- `reference_key` values are opaque portable identifiers, not human-readable labels. Seeders, demo data, and import fixtures must use contract-valid `char(26)` ULID-shaped keys; descriptive strings can pass unnoticed on SQLite but fail on MySQL with column-length errors.
 - Transcript imports write to `Transcription` records only.
 - Missing categories, missing tags, wrong-type tags, and disabled-public tags should fail rows by default.
 - `transcript_file` support remains deferred until a safe import package structure is specified and tested.

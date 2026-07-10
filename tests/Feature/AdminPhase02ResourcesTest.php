@@ -4,12 +4,16 @@ use App\Enums\HomepageSectionType;
 use App\Enums\PublicationStatus;
 use App\Filament\Pages\Dashboard;
 use App\Filament\Pages\PublicContentSettings as PublicContentSettingsPage;
+use App\Filament\Public\Pages\ShowContentGroup;
+use App\Filament\Public\Pages\ShowContentItem;
 use App\Filament\Resources\Authors\AuthorResource;
+use App\Filament\Resources\Authors\Pages\CreateAuthor;
 use App\Filament\Resources\Categories\CategoryResource;
 use App\Filament\Resources\Categories\Pages\CreateCategory;
 use App\Filament\Resources\Categories\Pages\EditCategory;
 use App\Filament\Resources\Categories\Pages\ListCategories;
 use App\Filament\Resources\ContentGroups\ContentGroupResource;
+use App\Filament\Resources\ContentGroups\Pages\CreateContentGroup;
 use App\Filament\Resources\ContentGroups\Pages\EditContentGroup;
 use App\Filament\Resources\ContentGroups\RelationManagers\ContentItemsRelationManager;
 use App\Filament\Resources\ContentItems\ContentItemResource;
@@ -294,6 +298,119 @@ it('auto-generates slugs and manages categories, tags, and homepage sections', f
         ->and($section->tag_id)->toBeNull();
 });
 
+it('generates hebrew slugs from blank admin fields and preserves manual overrides', function (): void {
+    Author::factory()->create([
+        'name' => 'שלום עולם',
+        'slug' => 'שלום-עולם',
+    ]);
+
+    Livewire::test(CreateAuthor::class)
+        ->set('data.name', 'שלום עולם')
+        ->assertSet('data.slug', 'שלום-עולם-2')
+        ->call('create')
+        ->assertHasNoFormErrors();
+
+    expect(Author::query()->where('slug', 'שלום-עולם-2')->exists())->toBeTrue();
+
+    Livewire::test(CreateCategory::class)
+        ->set('data.slug', 'manual-category')
+        ->set('data.name', 'קטגוריה חדשה')
+        ->assertSet('data.slug', 'manual-category')
+        ->callAction(TestAction::make('regenerateSlug')->schemaComponent('slug', 'form'))
+        ->assertSet('data.slug', 'קטגוריה-חדשה')
+        ->set('data.is_visible', true)
+        ->set('data.sort_order', 0)
+        ->call('create')
+        ->assertHasNoFormErrors();
+
+    expect(Category::query()->where('slug', 'קטגוריה-חדשה')->exists())->toBeTrue();
+
+    Livewire::test(CreateContentGroup::class)
+        ->set('data.title', 'פודקאסט ציבורי')
+        ->assertSet('data.slug', 'פודקאסט-ציבורי')
+        ->set('data.status', PublicationStatus::Published->value)
+        ->set('data.published_at', now()->subMinute())
+        ->call('create')
+        ->assertHasNoFormErrors();
+
+    $group = ContentGroup::query()->where('slug', 'פודקאסט-ציבורי')->firstOrFail();
+
+    ContentItem::factory()
+        ->for($group)
+        ->published()
+        ->withTranscription()
+        ->create();
+
+    Filament::setCurrentPanel(Filament::getPanel('public'));
+
+    $this->get(ShowContentGroup::getUrl(['contentGroupSlug' => $group->slug], panel: 'public'))
+        ->assertSuccessful()
+        ->assertSee($group->title);
+});
+
+it('scopes content item hebrew slugs to the group and enforces media field lengths', function (): void {
+    $firstGroup = ContentGroup::factory()->published()->create();
+    $secondGroup = ContentGroup::factory()->published()->create();
+
+    ContentItem::factory()->for($firstGroup)->create([
+        'title' => 'פרק מיוחד',
+        'slug' => 'פרק-מיוחד',
+    ]);
+
+    Livewire::test(CreateContentItem::class)
+        ->set('data.content_group_id', $firstGroup->id)
+        ->set('data.title', 'פרק מיוחד')
+        ->assertSet('data.slug', 'פרק-מיוחד-2')
+        ->set('data.media_url', 'https://example.com/media/scoped-a.mp3')
+        ->set('data.status', PublicationStatus::Published->value)
+        ->set('data.published_at', now()->subMinute())
+        ->call('create')
+        ->assertHasNoFormErrors();
+
+    $scopedItem = ContentItem::query()->where('slug', 'פרק-מיוחד-2')->firstOrFail();
+
+    Transcription::factory()
+        ->for($scopedItem)
+        ->forAuthor()
+        ->published()
+        ->create();
+
+    Filament::setCurrentPanel(Filament::getPanel('public'));
+
+    $this->get(ShowContentItem::getUrl([
+        'contentGroupSlug' => $firstGroup->slug,
+        'contentItemSlug' => $scopedItem->slug,
+    ], panel: 'public'))
+        ->assertSuccessful()
+        ->assertSee($scopedItem->title);
+
+    Filament::setCurrentPanel(Filament::getPanel('admin'));
+
+    Livewire::test(CreateContentItem::class)
+        ->set('data.content_group_id', $secondGroup->id)
+        ->set('data.title', 'פרק מיוחד')
+        ->assertSet('data.slug', 'פרק-מיוחד');
+
+    $longMediaUrl = 'https://example.com/'.str_repeat('a', 2030);
+    $longEmbedUrl = 'https://www.youtube.com/embed/'.str_repeat('a', 2030);
+
+    Livewire::test(CreateContentItem::class)
+        ->fillForm([
+            'content_group_id' => $firstGroup->id,
+            'title' => 'Length Contract Item',
+            'media_url' => $longMediaUrl,
+            'embed_url' => $longEmbedUrl,
+            'embed_provider' => str_repeat('a', 51),
+            'status' => PublicationStatus::Draft->value,
+        ])
+        ->call('create')
+        ->assertHasFormErrors([
+            'media_url' => 'max',
+            'embed_url' => 'max',
+            'embed_provider' => 'max',
+        ]);
+});
+
 it('drives homepage section target fields and validation from section type', function (): void {
     $category = Category::factory()->create();
     $tag = ContentTag::findOrCreateFromString('Homepage Typed Tag', 'content')->enable();
@@ -470,22 +587,22 @@ it('creates and selects simple related records from content item relationship se
         ->assertActionExists(TestAction::make('createOption')->schemaComponent('categories', 'form'))
         ->assertActionDoesNotExist(TestAction::make('editOption')->schemaComponent('categories', 'form'))
         ->mountAction(TestAction::make('createOption')->schemaComponent('content_group_id', 'form'))
-        ->set('mountedActions.0.data.title', 'Inline Group')
-        ->set('mountedActions.0.data.slug', 'inline-group')
+        ->set('mountedActions.0.data.title', 'פודקאסט מוטמע')
+        ->assertSet('mountedActions.0.data.slug', 'פודקאסט-מוטמע')
         ->set('mountedActions.0.data.original_language_code', 'he')
         ->set('mountedActions.0.data.status', PublicationStatus::Draft->value)
         ->callMountedAction()
         ->assertHasNoFormErrors()
         ->mountAction(TestAction::make('createOption')->schemaComponent('categories', 'form'))
-        ->set('mountedActions.0.data.name', 'Inline Category')
-        ->set('mountedActions.0.data.slug', 'inline-category')
+        ->set('mountedActions.0.data.name', 'קטגוריה מוטמעת')
+        ->assertSet('mountedActions.0.data.slug', 'קטגוריה-מוטמעת')
         ->set('mountedActions.0.data.is_visible', true)
         ->set('mountedActions.0.data.sort_order', 0)
         ->callMountedAction()
         ->assertHasNoFormErrors();
 
-    $group = ContentGroup::query()->where('slug', 'inline-group')->firstOrFail();
-    $category = Category::query()->where('slug', 'inline-category')->firstOrFail();
+    $group = ContentGroup::query()->where('slug', 'פודקאסט-מוטמע')->firstOrFail();
+    $category = Category::query()->where('slug', 'קטגוריה-מוטמעת')->firstOrFail();
 
     $component
         ->assertSet('data.content_group_id', $group->id)

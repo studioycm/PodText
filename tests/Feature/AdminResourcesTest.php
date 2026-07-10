@@ -120,7 +120,6 @@ it('creates and edits authors with validation', function (): void {
         ->call('create')
         ->assertHasFormErrors([
             'name' => 'required',
-            'slug' => 'required',
         ]);
 
     Livewire::test(CreateAuthor::class)
@@ -231,7 +230,6 @@ it('validates content group required and unique fields', function (): void {
         ->call('create')
         ->assertHasFormErrors([
             'title' => 'required',
-            'slug' => 'required',
             'group_type_label_singular' => 'required',
             'group_type_label_plural' => 'required',
             'default_item_type_label_singular' => 'required',
@@ -370,7 +368,6 @@ it('validates content item required fields, scoped slugs, and embed URLs', funct
         ->assertHasFormErrors([
             'content_group_id' => 'required',
             'title' => 'required',
-            'slug' => 'required',
             'media_url' => 'required',
             'status' => 'required',
         ]);

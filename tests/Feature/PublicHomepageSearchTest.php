@@ -2,6 +2,7 @@
 
 use App\Enums\HomepageSectionType;
 use App\Enums\PublicationStatus;
+use App\Filament\Public\Pages\BrowseTagContentItems;
 use App\Filament\Public\Pages\ShowContentGroup;
 use App\Livewire\Public\ContentItemSearch;
 use App\Models\Author;
@@ -337,6 +338,20 @@ it('renders category and tag landing pages with matching public content items', 
         ->assertSee($tag->name)
         ->assertSee($tagItem->title)
         ->assertDontSee($categoryItem->title);
+});
+
+it('resolves hebrew content tag slugs on public tag pages', function (): void {
+    $tag = ContentTag::findOrCreateFromString('תגית שלום', 'content')->enable();
+    $item = createPrompt11PublicItem(['title' => 'פרק תגית עברית']);
+    $item->attachTag($tag);
+    $slug = $tag->getTranslation('slug', app()->getLocale(), false);
+
+    expect($slug)->toBe('תגית-שלום');
+
+    $this->get(BrowseTagContentItems::getUrl(['tagSlug' => $slug], panel: 'public'))
+        ->assertSuccessful()
+        ->assertSee($tag->name)
+        ->assertSee($item->title);
 });
 
 it('shows result count supports url backed state clear filters and empty state', function (): void {

@@ -5,6 +5,7 @@ use App\Filament\Exports\CategoryExporter;
 use App\Filament\Exports\ContentGroupExporter;
 use App\Filament\Exports\ContentItemExporter;
 use App\Filament\Exports\TranscriptionExporter;
+use App\Filament\Imports\AuthorImporter;
 use App\Filament\Imports\CategoryImporter;
 use App\Filament\Imports\ContentGroupImporter;
 use App\Filament\Imports\ContentItemImporter;
@@ -514,6 +515,39 @@ it('continues valid rows and stores failed rows for prompt ten relationship fail
     expect(ContentItem::query()->where('title', 'Valid Row')->exists())->toBeTrue()
         ->and(ContentItem::query()->where('title', 'Invalid Row')->exists())->toBeFalse()
         ->and($import->refresh()->successful_rows)->toBe(1)
+        ->and($import->failedRows()->count())->toBe(1);
+});
+
+it('stores failed rows for overlong importer reference keys', function (): void {
+    $import = Import::query()->create([
+        'file_name' => 'authors.csv',
+        'file_path' => 'imports/authors.csv',
+        'importer' => AuthorImporter::class,
+        'processed_rows' => 0,
+        'total_rows' => 1,
+        'successful_rows' => 0,
+        'user_id' => User::factory()->create()->id,
+    ]);
+
+    $job = new ImportCsv($import, [
+        [
+            'reference_key' => str_repeat('0', 30),
+            'name' => 'Overlong Reference Author',
+            'slug' => 'overlong-reference-author',
+        ],
+    ], [
+        'reference_key' => 'reference_key',
+        'name' => 'name',
+        'slug' => 'slug',
+    ], [
+        'mode' => 'upsert',
+        'blank_update_behavior' => 'preserve',
+    ]);
+
+    $job->handle();
+
+    expect(Author::query()->where('name', 'Overlong Reference Author')->exists())->toBeFalse()
+        ->and($import->refresh()->successful_rows)->toBe(0)
         ->and($import->failedRows()->count())->toBe(1);
 });
 

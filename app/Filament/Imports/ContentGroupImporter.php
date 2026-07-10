@@ -28,6 +28,7 @@ class ContentGroupImporter extends Importer
                 ->rules(fn (?ContentGroup $record): array => [
                     'nullable',
                     'ulid',
+                    'max:26',
                     Rule::unique('content_groups', 'reference_key')->ignore($record?->getKey()),
                 ]),
             ImportColumn::make('title')

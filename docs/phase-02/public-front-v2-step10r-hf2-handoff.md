@@ -70,9 +70,7 @@ Full gate passed:
 
 ## Commit hash
 
-Commit message: `fix: bound snapshot index column lengths for mysql`.
-
-The actual commit hash lands in the final report after the commit is created.
+Commit hash: `f719d30`.
 
 ## Local Front Check Report
 

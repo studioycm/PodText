@@ -3,8 +3,10 @@
 namespace App\Filament\Resources\ContentItems\Schemas;
 
 use App\Enums\PublicationStatus;
+use App\Filament\Forms\Components\SlugInput;
 use App\Filament\Resources\ContentGroups\RelationManagers\ContentItemsRelationManager;
 use App\Filament\Resources\Support\RelationshipOptionForms;
+use App\Models\ContentGroup;
 use App\Models\ContentItem;
 use App\Rules\ApprovedEmbedUrl;
 use App\Support\Media\ContentItemMediaRules;
@@ -17,10 +19,11 @@ use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
-use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
-use Illuminate\Support\Str;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Query\Builder as QueryBuilder;
 use Illuminate\Validation\Rules\Unique;
+use Livewire\Component as Livewire;
 
 class ContentItemForm
 {
@@ -47,25 +50,24 @@ class ContentItemForm
                                 ->hiddenOn(ContentItemsRelationManager::class)
                                 ->required()
                         ),
-                        TextInput::make('title')
+                        SlugInput::source(
+                            'title',
+                            table: 'content_items',
+                            scopeUsing: self::scopeSlugToContentGroup(...)
+                        )
                             ->label(__('admin.fields.title'))
                             ->helperText(__('admin.helpers.content_item_title'))
-                            ->live(onBlur: true)
-                            ->afterStateUpdated(function (Set $set, Get $get, ?string $old, ?string $state): void {
-                                if (filled($get('slug')) && $get('slug') !== Str::slug((string) $old)) {
-                                    return;
-                                }
-
-                                $set('slug', Str::slug((string) $state));
-                            })
                             ->required()
                             ->maxLength(255),
-                        TextInput::make('slug')
+                        SlugInput::slug(
+                            source: 'title',
+                            table: 'content_items',
+                            scopeUsing: self::scopeSlugToContentGroup(...),
+                            modifyRuleUsing: fn (Unique $rule, Get $get, ?Livewire $livewire = null): Unique => $rule
+                                ->where('content_group_id', self::contentGroupIdForSlug($get, $livewire)),
+                        )
                             ->label(__('admin.fields.slug'))
-                            ->helperText(__('admin.helpers.slug'))
-                            ->required()
-                            ->maxLength(255)
-                            ->unique(table: 'content_items', column: 'slug', modifyRuleUsing: fn (Unique $rule, Get $get): Unique => $rule->where('content_group_id', $get('content_group_id'))),
+                            ->helperText(__('admin.helpers.content_item_slug')),
                         TextInput::make('type_label_singular_override')
                             ->label(__('admin.fields.type_label_singular_override'))
                             ->helperText(__('admin.helpers.type_label_singular_override'))
@@ -171,7 +173,7 @@ class ContentItemForm
                         TextInput::make('embed_provider')
                             ->label(__('admin.fields.embed_provider'))
                             ->helperText(__('admin.helpers.embed_provider'))
-                            ->maxLength(100),
+                            ->maxLength(50),
                         TextInput::make('external_id')
                             ->label(__('admin.fields.external_id'))
                             ->helperText(__('admin.helpers.external_id'))
@@ -233,5 +235,29 @@ class ContentItemForm
                     ])
                     ->columns(3),
             ]);
+    }
+
+    private static function scopeSlugToContentGroup(QueryBuilder $query, Get $get, ?Model $record = null, ?Livewire $livewire = null): QueryBuilder
+    {
+        return $query->where('content_group_id', self::contentGroupIdForSlug($get, $livewire));
+    }
+
+    private static function contentGroupIdForSlug(Get $get, ?Livewire $livewire = null): mixed
+    {
+        $contentGroupId = $get('content_group_id');
+
+        if (filled($contentGroupId)) {
+            return $contentGroupId;
+        }
+
+        if ($livewire === null || ! method_exists($livewire, 'getOwnerRecord')) {
+            return $contentGroupId;
+        }
+
+        $ownerRecord = $livewire->getOwnerRecord();
+
+        return $ownerRecord instanceof ContentGroup
+            ? $ownerRecord->getKey()
+            : $contentGroupId;
     }
 }

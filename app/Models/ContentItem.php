@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\PublicationStatus;
 use App\Support\Media\ContentItemMediaRules;
+use App\Support\Slugs\HebrewSlugger;
 use Database\Factories\ContentItemFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
@@ -340,18 +341,12 @@ class ContentItem extends Model
 
     private static function uniqueSlug(string $source, int $contentGroupId): string
     {
-        $baseSlug = Str::slug($source) ?: Str::lower((string) Str::ulid());
-        $slug = $baseSlug;
-        $suffix = 2;
-
-        while (static::query()
-            ->where('content_group_id', $contentGroupId)
-            ->where('slug', $slug)
-            ->exists()) {
-            $slug = "{$baseSlug}-{$suffix}";
-            $suffix++;
-        }
-
-        return $slug;
+        return HebrewSlugger::unique(
+            $source,
+            fn (string $slug): bool => static::query()
+                ->where('content_group_id', $contentGroupId)
+                ->where('slug', $slug)
+                ->exists(),
+        );
     }
 }

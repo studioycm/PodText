@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\Slugs\HebrewSlugger;
 use Database\Factories\AuthorFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -47,15 +48,9 @@ class Author extends Model
 
     private static function uniqueSlug(string $source): string
     {
-        $baseSlug = Str::slug($source) ?: Str::lower((string) Str::ulid());
-        $slug = $baseSlug;
-        $suffix = 2;
-
-        while (static::query()->where('slug', $slug)->exists()) {
-            $slug = "{$baseSlug}-{$suffix}";
-            $suffix++;
-        }
-
-        return $slug;
+        return HebrewSlugger::unique(
+            $source,
+            fn (string $slug): bool => static::query()->where('slug', $slug)->exists(),
+        );
     }
 }

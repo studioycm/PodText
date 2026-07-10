@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\ContentGroups\Schemas;
 
 use App\Enums\PublicationStatus;
+use App\Filament\Forms\Components\SlugInput;
 use App\Filament\Resources\Support\RelationshipOptionForms;
 use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\FileUpload;
@@ -10,10 +11,7 @@ use Filament\Forms\Components\MarkdownEditor;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Section;
-use Filament\Schemas\Components\Utilities\Get;
-use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
-use Illuminate\Support\Str;
 
 class ContentGroupForm
 {
@@ -29,24 +27,12 @@ class ContentGroupForm
                             ->disabled()
                             ->dehydrated(false)
                             ->visibleOn('edit'),
-                        TextInput::make('title')
+                        SlugInput::source('title', table: 'content_groups')
                             ->label(__('admin.fields.title'))
-                            ->live(onBlur: true)
-                            ->afterStateUpdated(function (Set $set, Get $get, ?string $old, ?string $state): void {
-                                if (filled($get('slug')) && $get('slug') !== Str::slug((string) $old)) {
-                                    return;
-                                }
-
-                                $set('slug', Str::slug((string) $state));
-                            })
                             ->required()
                             ->maxLength(255),
-                        TextInput::make('slug')
-                            ->label(__('admin.fields.slug'))
-                            ->helperText(__('admin.helpers.slug'))
-                            ->required()
-                            ->maxLength(255)
-                            ->unique(),
+                        SlugInput::slug(source: 'title', table: 'content_groups')
+                            ->label(__('admin.fields.slug')),
                         Select::make('original_language_code')
                             ->label(__('admin.fields.original_language_code'))
                             ->options(fn (): array => collect(config('localization.available_locales', ['he', 'en']))

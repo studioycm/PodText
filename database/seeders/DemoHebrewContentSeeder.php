@@ -18,6 +18,32 @@ use Illuminate\Support\Facades\DB;
 
 class DemoHebrewContentSeeder extends Seeder
 {
+    public const REFERENCE_KEYS = [
+        'author_yael' => '01J00000000000000000000001',
+        'author_noam' => '01J00000000000000000000002',
+        'author_michal' => '01J00000000000000000000003',
+        'author_amir' => '01J00000000000000000000004',
+        'group_deep_talks' => '01J00000000000000000000010',
+        'group_technology' => '01J00000000000000000000011',
+        'group_people_culture' => '01J00000000000000000000012',
+        'item_ai_tools' => '01J00000000000000000000020',
+        'item_listening' => '01J00000000000000000000021',
+        'item_hebrew_data' => '01J00000000000000000000022',
+        'item_culture_archive' => '01J00000000000000000000023',
+        'item_learning' => '01J00000000000000000000024',
+        'item_product_decisions' => '01J00000000000000000000025',
+        'item_creators_routine' => '01J00000000000000000000026',
+        'item_accessible_knowledge' => '01J00000000000000000000027',
+        'transcription_ai_tools' => '01J00000000000000000000040',
+        'transcription_listening' => '01J00000000000000000000041',
+        'transcription_hebrew_data' => '01J00000000000000000000042',
+        'transcription_culture_archive' => '01J00000000000000000000043',
+        'transcription_learning' => '01J00000000000000000000044',
+        'transcription_product_decisions' => '01J00000000000000000000045',
+        'transcription_creators_routine' => '01J00000000000000000000046',
+        'transcription_accessible_knowledge' => '01J00000000000000000000047',
+    ];
+
     public function run(): void
     {
         $publishedAt = now()->subDays(14);
@@ -40,7 +66,7 @@ class DemoHebrewContentSeeder extends Seeder
             'yael' => Author::query()->updateOrCreate(
                 ['slug' => 'yael-ben-david'],
                 [
-                    'reference_key' => 'demo-author-yael-ben-david',
+                    'reference_key' => self::REFERENCE_KEYS['author_yael'],
                     'name' => 'ד"ר יעל בן דוד',
                     'bio_markdown' => "חוקרת שפה וטכנולוגיה.\n\nמובילה שיחות על ידע, קול ותמלול בעברית.",
                 ],
@@ -48,7 +74,7 @@ class DemoHebrewContentSeeder extends Seeder
             'noam' => Author::query()->updateOrCreate(
                 ['slug' => 'noam-levi'],
                 [
-                    'reference_key' => 'demo-author-noam-levi',
+                    'reference_key' => self::REFERENCE_KEYS['author_noam'],
                     'name' => 'נועם לוי',
                     'bio_markdown' => "מגיש ועורך תוכן.\n\nמתמקד בראיונות עומק ובסיפורים אנושיים.",
                 ],
@@ -56,7 +82,7 @@ class DemoHebrewContentSeeder extends Seeder
             'michal' => Author::query()->updateOrCreate(
                 ['slug' => 'michal-cohen'],
                 [
-                    'reference_key' => 'demo-author-michal-cohen',
+                    'reference_key' => self::REFERENCE_KEYS['author_michal'],
                     'name' => 'מיכל כהן',
                     'bio_markdown' => "עיתונאית תרבות ומדיה.\n\nכותבת על יצירה, קהילה וטכנולוגיה.",
                 ],
@@ -64,7 +90,7 @@ class DemoHebrewContentSeeder extends Seeder
             'amir' => Author::query()->updateOrCreate(
                 ['slug' => 'amir-shalev'],
                 [
-                    'reference_key' => 'demo-author-amir-shalev',
+                    'reference_key' => self::REFERENCE_KEYS['author_amir'],
                     'name' => 'אמיר שלו',
                     'bio_markdown' => "יזם ומרצה.\n\nחוקר את החיבור בין חינוך, מוצר וקול.",
                 ],
@@ -155,7 +181,7 @@ class DemoHebrewContentSeeder extends Seeder
             'deep-talks' => ContentGroup::query()->updateOrCreate(
                 ['slug' => 'deep-talks'],
                 [
-                    'reference_key' => 'demo-group-deep-talks',
+                    'reference_key' => self::REFERENCE_KEYS['group_deep_talks'],
                     'title' => 'שיחות עומק',
                     'description_markdown' => "פודקאסט על אנשים, רעיונות ותהליכים.\n\nכל פרק כולל תמלול מלא בעברית.",
                     'group_type_label_singular' => 'Podcast',
@@ -171,7 +197,7 @@ class DemoHebrewContentSeeder extends Seeder
             'technology-in-hebrew' => ContentGroup::query()->updateOrCreate(
                 ['slug' => 'technology-in-hebrew'],
                 [
-                    'reference_key' => 'demo-group-technology-in-hebrew',
+                    'reference_key' => self::REFERENCE_KEYS['group_technology'],
                     'title' => 'טכנולוגיה בעברית',
                     'description_markdown' => "שיחות בהירות על מוצר, דאטה ובינה מלאכותית.\n\nמיועד למי שרוצה להבין לעומק.",
                     'group_type_label_singular' => 'Podcast',
@@ -187,7 +213,7 @@ class DemoHebrewContentSeeder extends Seeder
             'people-and-culture' => ContentGroup::query()->updateOrCreate(
                 ['slug' => 'people-and-culture'],
                 [
-                    'reference_key' => 'demo-group-people-and-culture',
+                    'reference_key' => self::REFERENCE_KEYS['group_people_culture'],
                     'title' => 'אנשים ותרבות',
                     'description_markdown' => "סיפורים מקומיים על יצירה, קהילה ושפה.\n\nשיחות קצרות עם עומק.",
                     'group_type_label_singular' => 'Podcast',
@@ -229,7 +255,8 @@ class DemoHebrewContentSeeder extends Seeder
         $items = [
             [
                 'group' => 'technology-in-hebrew',
-                'reference_key' => 'demo-item-ai-tools-for-editors',
+                'reference_key' => self::REFERENCE_KEYS['item_ai_tools'],
+                'transcription_reference_key' => self::REFERENCE_KEYS['transcription_ai_tools'],
                 'slug' => 'ai-tools-for-editors',
                 'title' => 'איך עורכים עובדים עם כלי בינה מלאכותית',
                 'description' => 'שיחה מעשית על שילוב כלים חכמים בתהליך עריכה ותמלול.',
@@ -243,7 +270,8 @@ class DemoHebrewContentSeeder extends Seeder
             ],
             [
                 'group' => 'deep-talks',
-                'reference_key' => 'demo-item-listening-as-craft',
+                'reference_key' => self::REFERENCE_KEYS['item_listening'],
+                'transcription_reference_key' => self::REFERENCE_KEYS['transcription_listening'],
                 'slug' => 'listening-as-craft',
                 'title' => 'הקשבה כמקצוע',
                 'description' => 'על שאלות טובות, שקט בשיחה והיכולת לשמוע מעבר למילים.',
@@ -257,7 +285,8 @@ class DemoHebrewContentSeeder extends Seeder
             ],
             [
                 'group' => 'technology-in-hebrew',
-                'reference_key' => 'demo-item-hebrew-data-products',
+                'reference_key' => self::REFERENCE_KEYS['item_hebrew_data'],
+                'transcription_reference_key' => self::REFERENCE_KEYS['transcription_hebrew_data'],
                 'slug' => 'hebrew-data-products',
                 'title' => 'מוצרי דאטה בעברית',
                 'description' => 'מה מיוחד בבניית חיפוש, תמלול וסיווג עבור עברית.',
@@ -269,7 +298,8 @@ class DemoHebrewContentSeeder extends Seeder
             ],
             [
                 'group' => 'people-and-culture',
-                'reference_key' => 'demo-item-local-culture-archive',
+                'reference_key' => self::REFERENCE_KEYS['item_culture_archive'],
+                'transcription_reference_key' => self::REFERENCE_KEYS['transcription_culture_archive'],
                 'slug' => 'local-culture-archive',
                 'title' => 'למה ארכיון קולי חשוב לתרבות מקומית',
                 'description' => 'שיחה על זיכרון, קהילה והדרך שבה קול משמר סיפורים.',
@@ -281,7 +311,8 @@ class DemoHebrewContentSeeder extends Seeder
             ],
             [
                 'group' => 'deep-talks',
-                'reference_key' => 'demo-item-learning-through-conversation',
+                'reference_key' => self::REFERENCE_KEYS['item_learning'],
+                'transcription_reference_key' => self::REFERENCE_KEYS['transcription_learning'],
                 'slug' => 'learning-through-conversation',
                 'title' => 'למידה דרך שיחה',
                 'description' => 'איך שיחה פתוחה יכולה להפוך לתוכן לימודי מדויק ונגיש.',
@@ -293,7 +324,8 @@ class DemoHebrewContentSeeder extends Seeder
             ],
             [
                 'group' => 'technology-in-hebrew',
-                'reference_key' => 'demo-item-product-decisions',
+                'reference_key' => self::REFERENCE_KEYS['item_product_decisions'],
+                'transcription_reference_key' => self::REFERENCE_KEYS['transcription_product_decisions'],
                 'slug' => 'product-decisions',
                 'title' => 'החלטות מוצר שמתחילות בתמלול',
                 'description' => 'על תובנות משתמשים, חיפוש בתוך שיחות והפיכת קול לידע.',
@@ -305,7 +337,8 @@ class DemoHebrewContentSeeder extends Seeder
             ],
             [
                 'group' => 'people-and-culture',
-                'reference_key' => 'demo-item-creators-routine',
+                'reference_key' => self::REFERENCE_KEYS['item_creators_routine'],
+                'transcription_reference_key' => self::REFERENCE_KEYS['transcription_creators_routine'],
                 'slug' => 'creators-routine',
                 'title' => 'שגרת עבודה של יוצרי תוכן',
                 'description' => 'מה קורה מאחורי הקלעים של פודקאסט עצמאי בעברית.',
@@ -317,7 +350,8 @@ class DemoHebrewContentSeeder extends Seeder
             ],
             [
                 'group' => 'deep-talks',
-                'reference_key' => 'demo-item-accessible-knowledge',
+                'reference_key' => self::REFERENCE_KEYS['item_accessible_knowledge'],
+                'transcription_reference_key' => self::REFERENCE_KEYS['transcription_accessible_knowledge'],
                 'slug' => 'accessible-knowledge',
                 'title' => 'ידע נגיש מתחיל בטקסט טוב',
                 'description' => 'שיחה על תמלול, נגישות והאפשרות לחפש בתוך רעיונות.',
@@ -384,7 +418,7 @@ class DemoHebrewContentSeeder extends Seeder
         );
 
         $transcription = Transcription::query()->updateOrCreate(
-            ['reference_key' => $itemData['reference_key'].'-transcription-main'],
+            ['reference_key' => $itemData['transcription_reference_key']],
             [
                 'content_item_id' => $contentItem->getKey(),
                 'author_id' => $authors[$itemData['authors'][0]]->getKey(),

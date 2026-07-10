@@ -197,13 +197,18 @@ it('keeps the demo contributor discovery seeder idempotent', function (): void {
     $this->seed(DemoHebrewContentSeeder::class);
     $this->seed(DemoHebrewContentSeeder::class);
 
-    expect(Author::query()->whereIn('reference_key', [
-        'demo-author-yael-ben-david',
-        'demo-author-noam-levi',
-        'demo-author-michal-cohen',
-        'demo-author-amir-shalev',
-    ])->count())->toBe(4)
+    $referenceKeys = collect(DemoHebrewContentSeeder::REFERENCE_KEYS);
+
+    expect($referenceKeys->every(fn (string $referenceKey): bool => strlen($referenceKey) === 26))->toBeTrue()
+        ->and(Author::query()->whereIn('reference_key', $referenceKeys->only([
+            'author_yael',
+            'author_noam',
+            'author_michal',
+            'author_amir',
+        ])->values()->all())->count())->toBe(4)
         ->and(HomepageSection::query()->where('slug', 'top-transcribers')->count())->toBe(1)
         ->and(HomepageSection::query()->where('slug', 'top-transcribers')->firstOrFail()->type)->toBe(HomepageSectionType::TopTranscribers)
-        ->and(Transcription::query()->where('reference_key', 'like', 'demo-item-%-transcription-main')->count())->toBe(8);
+        ->and(Transcription::query()->whereIn('reference_key', $referenceKeys->filter(
+            fn (string $referenceKey, string $key): bool => str_starts_with($key, 'transcription_'),
+        )->values()->all())->count())->toBe(8);
 });

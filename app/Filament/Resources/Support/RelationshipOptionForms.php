@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Support;
 
 use App\Enums\PublicationStatus;
+use App\Filament\Forms\Components\SlugInput;
 use App\Models\Author;
 use App\Models\Transcription;
 use Filament\Actions\Action;
@@ -11,10 +12,7 @@ use Filament\Forms\Components\MarkdownEditor;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
-use Filament\Schemas\Components\Utilities\Get;
-use Filament\Schemas\Components\Utilities\Set;
 use Filament\Support\Enums\Width;
-use Illuminate\Support\Str;
 
 class RelationshipOptionForms
 {
@@ -189,18 +187,12 @@ class RelationshipOptionForms
     private static function authorForm(): array
     {
         return [
-            TextInput::make('name')
+            SlugInput::source('name', table: 'authors')
                 ->label(__('admin.fields.author_name'))
-                ->live(onBlur: true)
-                ->afterStateUpdated(self::syncSlugFrom(...))
                 ->required()
                 ->maxLength(255),
-            TextInput::make('slug')
-                ->label(__('admin.fields.slug'))
-                ->helperText(__('admin.helpers.slug'))
-                ->required()
-                ->maxLength(255)
-                ->unique(),
+            SlugInput::slug(table: 'authors')
+                ->label(__('admin.fields.slug')),
             MarkdownEditor::make('bio_markdown')
                 ->label(__('admin.fields.bio_markdown'))
                 ->disableToolbarButtons(['attachFiles'])
@@ -215,18 +207,12 @@ class RelationshipOptionForms
     private static function categoryForm(): array
     {
         return [
-            TextInput::make('name')
+            SlugInput::source('name', table: 'categories')
                 ->label(__('admin.fields.name'))
-                ->live(onBlur: true)
-                ->afterStateUpdated(self::syncSlugFrom(...))
                 ->required()
                 ->maxLength(255),
-            TextInput::make('slug')
-                ->label(__('admin.fields.slug'))
-                ->helperText(__('admin.helpers.slug'))
-                ->required()
-                ->maxLength(255)
-                ->unique(),
+            SlugInput::slug(table: 'categories')
+                ->label(__('admin.fields.slug')),
             Toggle::make('is_visible')
                 ->label(__('admin.fields.is_visible'))
                 ->default(true)
@@ -247,18 +233,12 @@ class RelationshipOptionForms
     private static function contentGroupForm(): array
     {
         return [
-            TextInput::make('title')
+            SlugInput::source('title', table: 'content_groups')
                 ->label(__('admin.fields.title'))
-                ->live(onBlur: true)
-                ->afterStateUpdated(self::syncSlugFrom(...))
                 ->required()
                 ->maxLength(255),
-            TextInput::make('slug')
-                ->label(__('admin.fields.slug'))
-                ->helperText(__('admin.helpers.slug'))
-                ->required()
-                ->maxLength(255)
-                ->unique(),
+            SlugInput::slug(source: 'title', table: 'content_groups')
+                ->label(__('admin.fields.slug')),
             Select::make('original_language_code')
                 ->label(__('admin.fields.original_language_code'))
                 ->options(fn (): array => collect(config('localization.available_locales', ['he', 'en']))
@@ -311,14 +291,5 @@ class RelationshipOptionForms
                 ->integer()
                 ->default(0),
         ];
-    }
-
-    private static function syncSlugFrom(Set $set, Get $get, ?string $old, ?string $state): void
-    {
-        if (filled($get('slug')) && $get('slug') !== Str::slug((string) $old)) {
-            return;
-        }
-
-        $set('slug', Str::slug((string) $state));
     }
 }
