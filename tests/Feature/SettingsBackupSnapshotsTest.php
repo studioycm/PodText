@@ -18,11 +18,13 @@ use App\Support\SettingsLifecycle\SettingsBackupSnapshotManifest;
 use Filament\Actions\Testing\TestAction;
 use Filament\Facades\Filament;
 use Illuminate\Contracts\Queue\ShouldQueueAfterCommit;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Process;
 use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
 use Spatie\LaravelSettings\SettingsContainer;
@@ -132,6 +134,37 @@ function createStep10S2VSnapshot(
         'error' => $status === SettingsBackupSnapshot::STATUS_FAILED ? 'Browser failed.' : null,
     ]);
 }
+
+it('creates the snapshots table and keeps target rows unique', function (): void {
+    $backup = createStep10S2VBackup(label: 'Unique target');
+
+    expect(Schema::hasTable('settings_backup_snapshots'))->toBeTrue()
+        ->and(Schema::hasColumns('settings_backup_snapshots', [
+            'backup_id',
+            'screen_key',
+            'theme',
+            'viewport',
+            'kind',
+            'format',
+            'resolved_url',
+            'path',
+            'status',
+        ]))->toBeTrue();
+
+    createStep10S2VSnapshot($backup);
+
+    expect(fn () => SettingsBackupSnapshot::query()->create([
+        'backup_id' => $backup->getKey(),
+        'screen_key' => 'home',
+        'theme' => 'light',
+        'viewport' => SettingsBackupSnapshot::VIEWPORT_DESKTOP,
+        'kind' => SettingsBackupSnapshot::KIND_THUMBNAIL,
+        'format' => SettingsBackupSnapshot::FORMAT_PNG,
+        'resolved_url' => 'https://podtext.test/home',
+        'path' => 'settings-backups/duplicate.png',
+        'status' => SettingsBackupSnapshot::STATUS_PENDING,
+    ]))->toThrow(UniqueConstraintViolationException::class);
+});
 
 it('schedules thumbnail-only snapshots for system backups and full configured snapshots for manual backups', function (): void {
     createStep10S2VPublicFixtures();

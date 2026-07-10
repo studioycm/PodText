@@ -39,16 +39,16 @@ pauses for Yoni's custom importer side quest before returning to P2/P3/AX/SL/B4/
 
 ## Tests
 
-Focused verification passed before the full gate:
+Focused verification passed:
 
 - `php artisan migrate`
 - `php artisan test --compact tests/Feature/SettingsImportExportTest.php`
 - `php artisan test --compact tests/Feature/SettingsBackupsTest.php tests/Feature/SettingsBackupSnapshotsTest.php`
 
-Full gate is run after this handoff is written:
+Full gate passed:
 
 - `vendor/bin/pint --dirty --format agent`
-- `php artisan test`
+- `php artisan test` - 343 tests passed
 - `vendor/bin/pint --test`
 - `vendor/bin/filacheck`
 - `npm run build`
@@ -76,9 +76,10 @@ Full gate is run after this handoff is written:
 
 ## Commit hash
 
-Commit message: `feat: add settings import locks and add-only mode`.
+Commit: `ada29fb feat: add settings import locks and add-only mode`.
 
-The actual commit hash lands in the final report after the commit is created.
+The S1b hash and gate outcomes were backfilled during the HF2 run per the standing
+correction rule.
 
 ## Local Front Check Report
 

@@ -55,6 +55,7 @@ For current prompt completion/progress state, see `docs/phase-02/current-project
 - Public tests should prove visibility constraints, URL-backed state, sorting, filters, RTL markers where practical, and draft exclusion.
 - Browser tests are appropriate when a workflow can pass component tests while failing visibly in a real page.
 - Keep tests aligned with actual user workflows and existing package APIs.
+- Composite indexes on string columns must use explicit bounded lengths. Finite-token columns get small explicit lengths; with `utf8mb4`, each character can cost 4 bytes and InnoDB's key limit is 3072 bytes. SQLite tests cannot catch MySQL key-length violations, so review index byte math for every new string composite index.
 
 ## Documentation/state-management lessons
 
