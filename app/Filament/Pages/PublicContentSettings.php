@@ -34,6 +34,7 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
+use Filament\Infolists\Components\TextEntry;
 use Filament\Pages\SettingsPage;
 use Filament\Schemas\Components\Component as SchemaComponent;
 use Filament\Schemas\Components\Fieldset;
@@ -1576,6 +1577,68 @@ class PublicContentSettings extends SettingsPage
                                 'public-front-forms',
                             ),
                         ]),
+                    Tab::make(__('admin.tabs.public_content_settings.maintenance'))
+                        ->id('maintenance')
+                        ->key('public-settings-tab-maintenance')
+                        ->schema([
+                            $this->withImportLockSection(
+                                Section::make(__('admin.sections.public_front_maintenance'))
+                                    ->description(__('admin.descriptions.public_front_maintenance'))
+                                    ->schema([
+                                        Toggle::make('maintenance.enabled')
+                                            ->label(__('admin.fields.maintenance_enabled'))
+                                            ->helperText(__('admin.helpers.maintenance_enabled'))
+                                            ->live(),
+                                        TextEntry::make('maintenance_enabled_warning')
+                                            ->label(__('admin.labels.maintenance_warning'))
+                                            ->state(__('admin.helpers.maintenance_warning'))
+                                            ->columnSpanFull(),
+                                        Select::make('maintenance.retry_after_hours')
+                                            ->label(__('admin.fields.maintenance_retry_after_hours'))
+                                            ->helperText(__('admin.helpers.maintenance_retry_after_hours'))
+                                            ->options(fn (): array => collect(PublicFrontConfigRegistry::maintenanceRetryAfterHours())
+                                                ->mapWithKeys(fn (int $hours): array => [$hours => trans_choice('admin.labels.hours_count', $hours, ['count' => $hours])])
+                                                ->all())
+                                            ->default(24)
+                                            ->native(false)
+                                            ->required(),
+                                        TextInput::make('maintenance.title')
+                                            ->label(__('admin.fields.maintenance_title'))
+                                            ->helperText(__('admin.helpers.maintenance_title'))
+                                            ->maxLength(255)
+                                            ->visible(fn (Get $get): bool => $this->maintenanceFieldsVisible($get)),
+                                        RichEditor::make('maintenance.rich_html')
+                                            ->label(__('admin.fields.maintenance_rich_html'))
+                                            ->helperText(__('admin.helpers.maintenance_rich_html'))
+                                            ->fileAttachments(false)
+                                            ->columnSpanFull()
+                                            ->visible(fn (Get $get): bool => $this->maintenanceFieldsVisible($get)),
+                                    ])
+                                    ->columns(2)
+                                    ->collapsible()
+                                    ->columnSpanFull(),
+                                'maintenance',
+                                'public-front-maintenance',
+                            ),
+                            $this->withImportLockSection(
+                                Section::make(__('admin.sections.public_front_maintenance_raw_override'))
+                                    ->description(__('admin.descriptions.public_front_maintenance_raw_override'))
+                                    ->schema([
+                                        Textarea::make('maintenance.raw_html_override')
+                                            ->label(__('admin.fields.maintenance_raw_html_override'))
+                                            ->helperText(__('admin.helpers.maintenance_raw_html_override'))
+                                            ->rows(12)
+                                            ->extraInputAttributes(['class' => 'font-mono'])
+                                            ->columnSpanFull()
+                                            ->visible(fn (Get $get): bool => $this->maintenanceFieldsVisible($get)),
+                                    ])
+                                    ->collapsible()
+                                    ->collapsed()
+                                    ->columnSpanFull(),
+                                'maintenance',
+                                'public-front-maintenance-raw-override',
+                            ),
+                        ]),
                     Tab::make(__('admin.tabs.public_content_settings.advanced'))
                         ->id('advanced')
                         ->key('public-settings-tab-advanced')
@@ -1876,6 +1939,14 @@ class PublicContentSettings extends SettingsPage
     private function inlineImportLockActionKey(string $path): string
     {
         return trim((string) preg_replace('/[^A-Za-z0-9]+/', '_', $path), '_');
+    }
+
+    private function maintenanceFieldsVisible(Get $get): bool
+    {
+        return (bool) $get('maintenance.enabled')
+            || filled($get('maintenance.title'))
+            || filled($get('maintenance.rich_html'))
+            || filled($get('maintenance.raw_html_override'));
     }
 
     private function itemPageInfoFieldRepeater(): Repeater

@@ -38,6 +38,10 @@ it('exposes normalized public front settings groups', function (): void {
         ->and($context->routeLabels())->toBeArray()
         ->and($context->podcastsPage())->toHaveKey('group_page')
         ->and($context->contributorsPage())->toHaveKey('top_transcribers')
+        ->and($context->maintenance())->toMatchArray([
+            'enabled' => false,
+            'retry_after_hours' => 24,
+        ])
         ->and($context->footer())->toBe([]);
 });
 

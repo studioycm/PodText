@@ -77,6 +77,10 @@ return [
         'success' => 'Thank you. Your submission was received.',
         'unavailable' => 'This form is not available.',
     ],
+    'maintenance' => [
+        'body' => 'We are preparing the site and will be back soon.',
+        'title' => 'Coming soon',
+    ],
     'dates' => [
         'original_published_long' => 'Originally published',
         'original_published_short' => 'Original',

@@ -34,6 +34,7 @@ class PublicFrontConfigRegistry
             'contributors_page',
             'settings_backups',
             'import_locks',
+            'maintenance',
         ];
     }
 
@@ -273,6 +274,13 @@ class PublicFrontConfigRegistry
             'import_locks' => [
                 'locked_paths' => [],
             ],
+            'maintenance' => [
+                'enabled' => false,
+                'title' => null,
+                'rich_html' => null,
+                'raw_html_override' => null,
+                'retry_after_hours' => 24,
+            ],
         ];
     }
 
@@ -295,6 +303,7 @@ class PublicFrontConfigRegistry
             'contributors_page' => 'contributorsPage',
             'settings_backups' => 'settingsBackups',
             'import_locks' => 'importLocks',
+            'maintenance' => 'maintenance',
         ];
     }
 
@@ -522,6 +531,20 @@ class PublicFrontConfigRegistry
         return [
             'light',
             'dark',
+        ];
+    }
+
+    /**
+     * @return array<int>
+     */
+    public static function maintenanceRetryAfterHours(): array
+    {
+        return [
+            1,
+            6,
+            12,
+            24,
+            48,
         ];
     }
 

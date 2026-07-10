@@ -143,6 +143,14 @@ class PublicFrontRenderContext
     /**
      * @return array<string, mixed>
      */
+    public function maintenance(): array
+    {
+        return $this->group('maintenance');
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
     public function footer(): array
     {
         return $this->group('footer_config');

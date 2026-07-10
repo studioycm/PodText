@@ -78,6 +78,8 @@ class PublicContentSettings extends Settings
 
     public array $import_locks;
 
+    public array $maintenance;
+
     public static function group(): string
     {
         return 'public_content';

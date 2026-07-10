@@ -35,6 +35,11 @@ The central ledger remains authoritative for per-run selection:
   Settings page toggle the existing `SettingsImportLocks` store, affect imports and
   dry-runs only, and must never make settings fields read-only or block normal settings
   form saves.
+- D30: maintenance content is trusted admin-authored raw HTML and renders
+  unsanitized only on the standalone maintenance response. Normal public pages must
+  never render this raw HTML.
+- D31: maintenance mode returns HTTP 503 with `Retry-After` in place for public URLs.
+  It does not redirect and does not use Laravel's native `artisan down` mode.
 
 ## Verified Code Facts Driving the Amendments
 

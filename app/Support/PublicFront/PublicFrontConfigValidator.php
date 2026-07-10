@@ -47,6 +47,7 @@ class PublicFrontConfigValidator
                 'contributors_page' => $this->normalizeContributorsPage($value, $defaults['contributors_page'], $invalidConfig),
                 'settings_backups' => $this->normalizeSettingsBackups($value, $defaults['settings_backups'], $invalidConfig),
                 'import_locks' => $this->normalizeImportLocks($value, $defaults['import_locks'], $invalidConfig),
+                'maintenance' => $this->normalizeMaintenance($value, $defaults['maintenance'], $invalidConfig),
             };
         }
 
@@ -1467,6 +1468,37 @@ class PublicFrontConfigValidator
 
         return [
             'locked_paths' => array_values(array_unique($lockedPaths)),
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $maintenance
+     * @param  array<string, mixed>  $defaults
+     * @param  array<PublicFrontInvalidConfig>  $invalidConfig
+     * @return array{enabled: bool, title: ?string, rich_html: ?string, raw_html_override: ?string, retry_after_hours: int}
+     */
+    private function normalizeMaintenance(array $maintenance, array $defaults, array &$invalidConfig): array
+    {
+        $this->reportUnknownKeys($maintenance, [
+            'enabled',
+            'title',
+            'rich_html',
+            'raw_html_override',
+            'retry_after_hours',
+        ], 'maintenance', $invalidConfig);
+
+        return [
+            'enabled' => $this->boolean($maintenance['enabled'] ?? null, 'maintenance.enabled', (bool) $defaults['enabled'], $invalidConfig),
+            'title' => $this->trustedNullableString($maintenance['title'] ?? null, 'maintenance.title', $invalidConfig),
+            'rich_html' => $this->trustedNullableString($maintenance['rich_html'] ?? null, 'maintenance.rich_html', $invalidConfig),
+            'raw_html_override' => $this->trustedNullableString($maintenance['raw_html_override'] ?? null, 'maintenance.raw_html_override', $invalidConfig),
+            'retry_after_hours' => $this->finiteInteger(
+                $maintenance['retry_after_hours'] ?? null,
+                PublicFrontConfigRegistry::maintenanceRetryAfterHours(),
+                'maintenance.retry_after_hours',
+                (int) $defaults['retry_after_hours'],
+                $invalidConfig,
+            ),
         ];
     }
 
@@ -2994,6 +3026,24 @@ class PublicFrontConfigValidator
 
         if (mb_strlen($value) > $maxLength) {
             $invalidConfig[] = PublicFrontInvalidConfig::make($path, 'string_too_long', $value);
+
+            return null;
+        }
+
+        return $value;
+    }
+
+    /**
+     * @param  array<PublicFrontInvalidConfig>  $invalidConfig
+     */
+    private function trustedNullableString(mixed $value, string $path, array &$invalidConfig): ?string
+    {
+        if ($value === null || $value === '') {
+            return null;
+        }
+
+        if (! is_string($value)) {
+            $invalidConfig[] = PublicFrontInvalidConfig::make($path, 'expected_string', $value);
 
             return null;
         }

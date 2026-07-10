@@ -141,6 +141,7 @@ it('loads public content settings defaults', function (): void {
             'contributors_page' => $settings->contributors_page,
             'settings_backups' => $settings->settings_backups,
             'import_locks' => $settings->import_locks,
+            'maintenance' => $settings->maintenance,
         ])->toMatchArray($publicFrontDefaults);
 });
 

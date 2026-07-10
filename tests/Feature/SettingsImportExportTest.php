@@ -134,6 +134,27 @@ it('exposes export and import actions on settings surfaces', function (): void {
         ->assertFileDownloaded();
 });
 
+it('renders and saves maintenance settings from the admin form', function (): void {
+    Livewire::test(PublicContentSettingsPage::class)
+        ->assertSee(__('admin.tabs.public_content_settings.maintenance'))
+        ->assertSee(__('admin.helpers.maintenance_warning'))
+        ->set('data.maintenance.enabled', true)
+        ->set('data.maintenance.retry_after_hours', 12)
+        ->set('data.maintenance.title', 'Admin maintenance title')
+        ->set('data.maintenance.rich_html', '<p>Admin rich content</p>')
+        ->set('data.maintenance.raw_html_override', '<!doctype html><html><body>Admin raw</body></html>')
+        ->call('save')
+        ->assertHasNoFormErrors();
+
+    expect(step10S1aSettings()->maintenance)->toMatchArray([
+        'enabled' => true,
+        'retry_after_hours' => 12,
+        'title' => 'Admin maintenance title',
+        'rich_html' => '<p>Admin rich content</p>',
+        'raw_html_override' => '<!doctype html><html><body>Admin raw</body></html>',
+    ]);
+});
+
 it('imports a package round trip and creates a before-import backup', function (): void {
     $settings = step10S1aSettings();
     $settings->homepage_item_limit = 17;
@@ -199,6 +220,54 @@ it('applies only selected scalar and nested setting units', function (): void {
     expect($settings->homepage_item_limit)->toBe(22)
         ->and($settings->show_latest_section)->toBeFalse()
         ->and($settings->settings_backups['thumbnail_max_width'])->toBe(800);
+});
+
+it('round trips maintenance mode settings through exported packages and selected imports', function (): void {
+    $maintenance = [
+        'enabled' => true,
+        'title' => 'תחזוקה זמנית',
+        'rich_html' => '<p data-maintenance-marker="mp1">Maintenance export</p>',
+        'raw_html_override' => '<!doctype html><html><body>Raw export</body></html>',
+        'retry_after_hours' => 12,
+    ];
+
+    $settings = step10S1aSettings();
+    $settings->maintenance = $maintenance;
+    $settings->save();
+
+    $package = PublicSettingsPackage::fromCurrentSettings()->toArray();
+    $maintenancePaths = collect(app(SettingsLifecycleSchema::class)->units($package['payload']))
+        ->filter(fn ($unit): bool => $unit->section === 'maintenance')
+        ->pluck('path')
+        ->values()
+        ->all();
+
+    $settings = step10S1aSettings();
+    $settings->maintenance = [
+        'enabled' => false,
+        'title' => null,
+        'rich_html' => null,
+        'raw_html_override' => null,
+        'retry_after_hours' => 24,
+    ];
+    $settings->save();
+
+    $appliedPaths = app(SettingsBackupManager::class)->import(
+        PublicSettingsPackage::fromArray($package),
+        $maintenancePaths,
+        auth()->user(),
+    );
+
+    expect($package['payload']['maintenance'])->toBe($maintenance)
+        ->and($maintenancePaths)->toEqualCanonicalizing([
+            'maintenance.enabled',
+            'maintenance.raw_html_override',
+            'maintenance.retry_after_hours',
+            'maintenance.rich_html',
+            'maintenance.title',
+        ])
+        ->and($appliedPaths)->toEqualCanonicalizing($maintenancePaths)
+        ->and(step10S1aSettings()->maintenance)->toBe($maintenance);
 });
 
 it('persists import locks and derives the front-text preset from lockable units', function (): void {

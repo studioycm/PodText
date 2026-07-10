@@ -77,6 +77,10 @@ return [
         'success' => 'תודה. השליחה התקבלה.',
         'unavailable' => 'הטופס אינו זמין.',
     ],
+    'maintenance' => [
+        'body' => 'אנחנו מכינים את האתר ונחזור בקרוב.',
+        'title' => 'בקרוב',
+    ],
     'dates' => [
         'original_published_long' => 'פורסם במקור',
         'original_published_short' => 'מקור',
