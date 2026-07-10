@@ -2,10 +2,10 @@
 
 namespace App\Support\SettingsLifecycle;
 
+use App\Enums\SettingsImportMode;
 use App\Support\PublicFront\PublicFrontConfigCache;
 use App\Support\PublicFront\PublicFrontConfigRegistry;
 use App\Support\PublicFront\PublicFrontConfigValidator;
-use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Storage;
 use Throwable;
 
@@ -16,12 +16,14 @@ class SettingsPackageImportAnalyzer
         private readonly SettingsLifecycleGroups $groups,
         private readonly PublicFrontConfigCache $cache,
         private readonly PublicFrontConfigValidator $validator,
+        private readonly SettingsImportLocks $locks,
+        private readonly SettingsImportMergeEngine $mergeEngine,
     ) {}
 
     /**
      * @param  array<string, mixed>  $packageArray
      */
-    public function analyzeArray(array $packageArray): SettingsPackageImportAnalysis
+    public function analyzeArray(array $packageArray, SettingsImportMode|string|null $mode = SettingsImportMode::Replace): SettingsPackageImportAnalysis
     {
         try {
             $package = PublicSettingsPackage::fromArray($packageArray);
@@ -43,11 +45,12 @@ class SettingsPackageImportAnalyzer
             );
         }
 
-        return $this->analyze($package);
+        return $this->analyze($package, $mode);
     }
 
-    public function analyze(PublicSettingsPackage $package): SettingsPackageImportAnalysis
+    public function analyze(PublicSettingsPackage $package, SettingsImportMode|string|null $mode = SettingsImportMode::Replace): SettingsPackageImportAnalysis
     {
+        $mode = SettingsImportMode::normalize($mode);
         $errors = $this->packageErrors($package);
 
         if ($errors !== []) {
@@ -58,7 +61,7 @@ class SettingsPackageImportAnalyzer
         $importedPayload = $package->payload();
         $schemaPayload = array_replace_recursive($currentPayload, $importedPayload);
         $warnings = $this->packageWarnings($package, $importedPayload);
-        $rows = $this->rows($currentPayload, $importedPayload, $schemaPayload, $package->settingsGroup());
+        $rows = $this->rows($currentPayload, $importedPayload, $schemaPayload, $package->settingsGroup(), $mode);
         $selectedPaths = collect($rows)
             ->filter(fn (array $row): bool => (bool) ($row['selected'] ?? false))
             ->pluck('path')
@@ -173,17 +176,25 @@ class SettingsPackageImportAnalyzer
      * @param  array<string, mixed>  $schemaPayload
      * @return array<int, array<string, mixed>>
      */
-    private function rows(array $currentPayload, array $importedPayload, array $schemaPayload, string $group): array
+    private function rows(array $currentPayload, array $importedPayload, array $schemaPayload, string $group, SettingsImportMode $mode): array
     {
+        $lockedPaths = $this->locks->lockedPaths();
+
         return collect($this->schema->units($schemaPayload, $group))
-            ->map(function (SettingsLifecycleUnit $unit) use ($currentPayload, $importedPayload): array {
-                $currentExists = Arr::has($currentPayload, $unit->path);
-                $importedExists = Arr::has($importedPayload, $unit->path);
-                $currentValue = data_get($currentPayload, $unit->path);
-                $importedValue = data_get($importedPayload, $unit->path);
+            ->map(function (SettingsLifecycleUnit $unit) use ($currentPayload, $importedPayload, $lockedPaths, $mode): array {
+                $currentExists = $this->schema->valueExists($currentPayload, $unit->path);
+                $importedExists = $this->schema->valueExists($importedPayload, $unit->path);
+                $currentValue = $this->schema->value($currentPayload, $unit->path);
+                $importedValue = $this->schema->value($importedPayload, $unit->path);
                 $state = $this->state($currentExists, $importedExists, $currentValue, $importedValue);
                 $error = $this->rowError($unit, $importedExists, $importedValue);
-                $selectable = $error === null && $state !== 'unchanged' && ($importedExists || str_contains($unit->path, '.'));
+                $locked = in_array($unit->path, $lockedPaths, true);
+                $outcome = $error === null ? $this->outcome($state, $importedExists, $mode, $locked, $currentExists, $currentValue, $importedValue) : 'error';
+                $selectable = $error === null
+                    && ! $locked
+                    && $state !== 'unchanged'
+                    && ($importedExists || ($mode === SettingsImportMode::Replace && str_contains($unit->path, '.')))
+                    && $outcome !== 'skip_exists';
 
                 return [
                     'group' => $unit->section,
@@ -195,11 +206,12 @@ class SettingsPackageImportAnalyzer
                     'expected_type' => $unit->expectedScalarType,
                     'semantics' => $unit->semantics,
                     'state' => $state,
-                    'outcome' => $error === null ? $this->outcome($state, $importedExists) : 'error',
+                    'outcome' => $outcome,
                     'current_preview' => $this->preview($currentValue, $currentExists),
                     'imported_preview' => $this->preview($importedValue, $importedExists),
                     'selectable' => $selectable,
-                    'selected' => $selectable && in_array($state, ['added', 'changed'], true),
+                    'selected' => $selectable && in_array($outcome, ['replace', 'add_new'], true),
+                    'locked' => $locked,
                     'error' => $error,
                 ];
             })
@@ -240,10 +252,20 @@ class SettingsPackageImportAnalyzer
         ]);
     }
 
-    private function outcome(string $state, bool $importedExists): string
+    private function outcome(string $state, bool $importedExists, SettingsImportMode $mode, bool $locked, bool $currentExists, mixed $currentValue, mixed $importedValue): string
     {
+        if ($locked && $state !== 'unchanged') {
+            return 'skip_locked';
+        }
+
         if ($state === 'unchanged') {
             return 'skip_unchanged';
+        }
+
+        if ($mode === SettingsImportMode::AddOnly) {
+            return $this->mergeEngine->shouldApplyAddOnly($currentValue, $currentExists, $importedValue, $importedExists)
+                ? 'add_new'
+                : 'skip_exists';
         }
 
         if (! $importedExists) {

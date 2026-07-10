@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Admin;
 
+use App\Enums\SettingsImportMode;
 use App\Models\SettingsBackupVersion;
 use App\Models\User;
 use App\Support\SettingsLifecycle\PublicSettingsPackage;
@@ -41,6 +42,8 @@ class SettingsImportWizard extends SettingsLifecycleSelectionTable
 
     public ?string $resultMessage = null;
 
+    public string $importMode = 'replace';
+
     public function render(): View
     {
         return view('livewire.admin.settings-import-wizard', [
@@ -55,7 +58,7 @@ class SettingsImportWizard extends SettingsLifecycleSelectionTable
     public function loadUploadedPackage(): void
     {
         $this->validate([
-            'packageFile' => ['required', 'file', 'max:2048'],
+            'packageFile' => ['required', 'file', 'max:2048', 'mimetypes:application/json,text/plain'],
         ]);
 
         if (! $this->packageFile instanceof UploadedFile) {
@@ -101,10 +104,11 @@ class SettingsImportWizard extends SettingsLifecycleSelectionTable
         try {
             $user = auth()->user();
 
-            app(SettingsBackupManager::class)->import(
+            $appliedPaths = app(SettingsBackupManager::class)->import(
                 PublicSettingsPackage::fromArray($this->packageArray),
                 $this->selectedPaths,
                 $user instanceof User ? $user : null,
+                $this->importMode,
             );
         } catch (Throwable $exception) {
             $this->importErrors = [$exception->getMessage()];
@@ -114,7 +118,7 @@ class SettingsImportWizard extends SettingsLifecycleSelectionTable
 
         $this->step = 'complete';
         $this->resultMessage = __('admin.messages.settings_import_applied', [
-            'count' => count($this->selectedPaths),
+            'count' => count($appliedPaths),
         ]);
     }
 
@@ -132,7 +136,20 @@ class SettingsImportWizard extends SettingsLifecycleSelectionTable
             'resultMessage',
         ]);
 
+        $this->importMode = SettingsImportMode::Replace->value;
         $this->step = 'source';
+    }
+
+    public function updatedImportMode(): void
+    {
+        $this->reanalyzePackage();
+    }
+
+    public function lockedRowsCount(): int
+    {
+        return collect($this->rows)
+            ->where('locked', true)
+            ->count();
     }
 
     /**
@@ -171,10 +188,25 @@ class SettingsImportWizard extends SettingsLifecycleSelectionTable
             return;
         }
 
-        $analysis = app(SettingsPackageImportAnalyzer::class)->analyzeArray($packageArray);
+        $analysis = app(SettingsPackageImportAnalyzer::class)->analyzeArray($packageArray, $this->importMode);
 
         $this->packageArray = $packageArray;
         $this->sourceLabel = $sourceLabel;
+        $this->rows = $analysis->rows;
+        $this->selectedPaths = $analysis->selectedPaths;
+        $this->warnings = $analysis->warnings;
+        $this->importErrors = $analysis->errors;
+        $this->step = $analysis->refused() ? 'source' : 'dry-run';
+    }
+
+    private function reanalyzePackage(): void
+    {
+        if ($this->packageArray === [] || $this->step !== 'dry-run') {
+            return;
+        }
+
+        $analysis = app(SettingsPackageImportAnalyzer::class)->analyzeArray($this->packageArray, $this->importMode);
+
         $this->rows = $analysis->rows;
         $this->selectedPaths = $analysis->selectedPaths;
         $this->warnings = $analysis->warnings;

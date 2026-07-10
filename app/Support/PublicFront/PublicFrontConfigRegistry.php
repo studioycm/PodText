@@ -33,6 +33,7 @@ class PublicFrontConfigRegistry
             'podcasts_page',
             'contributors_page',
             'settings_backups',
+            'import_locks',
         ];
     }
 
@@ -269,6 +270,9 @@ class PublicFrontConfigRegistry
                 'snapshot_formats' => ['png'],
                 'snapshot_themes' => ['light', 'dark'],
             ],
+            'import_locks' => [
+                'locked_paths' => [],
+            ],
         ];
     }
 
@@ -290,6 +294,7 @@ class PublicFrontConfigRegistry
             'podcasts_page' => 'podcastsPage',
             'contributors_page' => 'contributorsPage',
             'settings_backups' => 'settingsBackups',
+            'import_locks' => 'importLocks',
         ];
     }
 

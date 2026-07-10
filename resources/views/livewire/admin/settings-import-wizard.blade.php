@@ -9,7 +9,7 @@
                     <label class="block text-sm font-medium text-gray-950 dark:text-white">
                         {{ __('admin.fields.settings_import_upload') }}
                     </label>
-                    <input type="file" wire:model="packageFile" accept="application/json,.json" class="block w-full text-sm text-gray-700 dark:text-gray-200">
+                    <input type="file" wire:model="packageFile" accept="application/json,text/plain,.json" class="block w-full text-sm text-gray-700 dark:text-gray-200">
                     @error('packageFile')
                         <p class="text-sm text-danger-600 dark:text-danger-400">{{ $message }}</p>
                     @enderror
@@ -68,7 +68,25 @@
             <x-slot name="heading">{{ __('admin.settings_import.dry_run_heading') }}</x-slot>
             <x-slot name="description">{{ __('admin.settings_import.dry_run_description', ['source' => $sourceLabel]) }}</x-slot>
 
-            @include('livewire.admin.partials.settings-lifecycle-selection-table', ['groupedRows' => $groupedRows])
+            <div class="mb-5 flex flex-wrap items-center gap-4">
+                <label class="text-sm font-medium text-gray-950 dark:text-white">
+                    {{ __('admin.fields.settings_import_mode') }}
+                </label>
+                <select wire:model.live="importMode" class="fi-select-input rounded-lg border-gray-300 bg-white text-sm text-gray-950 shadow-sm dark:border-white/10 dark:bg-gray-900 dark:text-white">
+                    <option value="replace">{{ __('admin.settings_import.modes.replace') }}</option>
+                    <option value="add_only">{{ __('admin.settings_import.modes.add_only') }}</option>
+                </select>
+                @if($this->lockedRowsCount() > 0)
+                    <x-filament::badge color="warning" icon="heroicon-o-lock-closed">
+                        {{ __('admin.settings_import.locked_summary', ['count' => $this->lockedRowsCount()]) }}
+                    </x-filament::badge>
+                @endif
+            </div>
+
+            @include('livewire.admin.partials.settings-lifecycle-selection-table', [
+                'groupedRows' => $groupedRows,
+                'tableMode' => 'import',
+            ])
 
             <div class="mt-6 flex flex-wrap gap-3">
                 <x-filament::button wire:click="applyImport" icon="heroicon-o-check">

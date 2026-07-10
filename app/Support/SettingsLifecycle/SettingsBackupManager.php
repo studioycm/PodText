@@ -3,6 +3,7 @@
 namespace App\Support\SettingsLifecycle;
 
 use App\Enums\SettingsBackupSource;
+use App\Enums\SettingsImportMode;
 use App\Models\SettingsBackupVersion;
 use App\Models\User;
 use App\Settings\PublicContentSettings;
@@ -11,7 +12,6 @@ use App\Support\PublicFront\PublicFrontConfigCache;
 use App\Support\PublicFront\PublicFrontConfigRegistry;
 use App\Support\PublicFront\PublicFrontConfigValidator;
 use App\Support\PublicFront\PublicFrontRenderContext;
-use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use RuntimeException;
@@ -22,6 +22,8 @@ class SettingsBackupManager
         private readonly PublicFrontConfigCache $cache,
         private readonly PublicFrontConfigValidator $validator,
         private readonly SettingsBackupSnapshotManager $snapshots,
+        private readonly SettingsLifecycleSchema $schema,
+        private readonly SettingsImportMergeEngine $mergeEngine,
     ) {}
 
     /**
@@ -117,11 +119,13 @@ class SettingsBackupManager
 
     /**
      * @param  array<int, string>  $selectedPaths
+     * @return array<int, string>
      */
-    public function import(PublicSettingsPackage $package, array $selectedPaths, ?User $user = null): void
+    public function import(PublicSettingsPackage $package, array $selectedPaths, ?User $user = null, SettingsImportMode|string|null $mode = SettingsImportMode::Replace): array
     {
+        $mode = SettingsImportMode::normalize($mode);
         $this->validatePackageForRestore($package);
-        $analysis = app(SettingsPackageImportAnalyzer::class)->analyze($package);
+        $analysis = app(SettingsPackageImportAnalyzer::class)->analyze($package, $mode);
 
         if ($analysis->refused()) {
             throw new RuntimeException(implode(' ', $analysis->errors));
@@ -129,13 +133,16 @@ class SettingsBackupManager
 
         $allowedPaths = $analysis->selectablePaths();
         $selectedPaths = array_values(array_intersect($selectedPaths, $allowedPaths));
+        $appliedPaths = [];
 
-        DB::transaction(function () use ($package, $selectedPaths, $user): void {
+        DB::transaction(function () use ($package, $selectedPaths, $user, $mode, &$appliedPaths): void {
             $this->createBeforeImport($user);
-            $this->applySelectedPayload($package->payload(), $selectedPaths);
+            $appliedPaths = $this->applySelectedPayload($package->payload(), $selectedPaths, $mode);
         });
 
         $this->forgetPublicFrontState();
+
+        return $appliedPaths;
     }
 
     public function prune(string $scope): void
@@ -208,24 +215,41 @@ class SettingsBackupManager
     /**
      * @param  array<string, mixed>  $importedPayload
      * @param  array<int, string>  $selectedPaths
+     * @return array<int, string>
      */
-    private function applySelectedPayload(array $importedPayload, array $selectedPaths): void
+    private function applySelectedPayload(array $importedPayload, array $selectedPaths, SettingsImportMode $mode): array
     {
         $currentPayload = PublicSettingsPackage::fromCurrentSettings()->payload();
+        $appliedPaths = [];
 
         foreach (array_values(array_unique($selectedPaths)) as $path) {
-            if (Arr::has($importedPayload, $path)) {
-                data_set($currentPayload, $path, data_get($importedPayload, $path));
+            $currentExists = $this->schema->valueExists($currentPayload, $path);
+            $importedExists = $this->schema->valueExists($importedPayload, $path);
+
+            if ($importedExists) {
+                $currentValue = $this->schema->value($currentPayload, $path);
+                $importedValue = $this->schema->value($importedPayload, $path);
+                $mergedValue = $this->mergeEngine->merge($mode, $currentValue, $currentExists, $importedValue, $importedExists);
+
+                if ($mergedValue === $currentValue) {
+                    continue;
+                }
+
+                $this->schema->setValue($currentPayload, $path, $mergedValue);
+                $appliedPaths[] = $path;
 
                 continue;
             }
 
-            if (str_contains($path, '.')) {
-                Arr::forget($currentPayload, $path);
+            if ($mode === SettingsImportMode::Replace && str_contains($path, '.')) {
+                $this->schema->forgetValue($currentPayload, $path);
+                $appliedPaths[] = $path;
             }
         }
 
         $this->applyPayload($currentPayload);
+
+        return $appliedPaths;
     }
 
     /**

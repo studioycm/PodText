@@ -2,26 +2,39 @@
 
 namespace App\Support\SettingsLifecycle;
 
+use App\Support\PublicFront\PublicFrontConfigRegistry;
+
 class SettingsLifecycleOverlay
 {
     /**
      * @param  array<string, array<int, string>>  $semantics
      * @param  array<string, array<string, mixed>>  $segmentationOverrides
+     * @param  array<int, string>  $excludedTopLevelPaths
      */
     public function __construct(
         private readonly array $semantics = [],
         private readonly array $segmentationOverrides = [],
+        private readonly array $excludedTopLevelPaths = [],
     ) {}
 
     public static function publicContent(): self
     {
+        $routeLabelPaths = array_map(
+            fn (string $routeKey): string => "route_labels.{$routeKey}",
+            PublicFrontConfigRegistry::routeKeys(),
+        );
+        $cardTemplatePaths = array_map(
+            fn (string $family): string => "card_templates.{$family}",
+            PublicFrontConfigRegistry::cardFamilies(),
+        );
+
         return new self(
             semantics: [
                 'front_text' => [
                     'menu_config.logo.alt_text',
                     'menu_config.search.placeholder',
                     'menu_config.items',
-                    'route_labels',
+                    ...$routeLabelPaths,
                     'about_page.title',
                     'about_page.kicker',
                     'about_page.description',
@@ -44,7 +57,7 @@ class SettingsLifecycleOverlay
                     'item_page.dates.original_published.label_override',
                     'item_page.dates.transcription_date.label_override',
                     'item_page.info_fields',
-                    'card_templates',
+                    ...$cardTemplatePaths,
                 ],
                 'asset_path' => [
                     'menu_config.logo.light_path',
@@ -56,8 +69,11 @@ class SettingsLifecycleOverlay
                 ],
             ],
             segmentationOverrides: [
-                'card_templates' => ['mode' => 'whole'],
-                'route_labels' => ['mode' => 'whole'],
+                'card_templates' => ['mode' => 'card_family'],
+                'route_labels' => ['mode' => 'route_key'],
+            ],
+            excludedTopLevelPaths: [
+                'import_locks',
             ],
         );
     }
@@ -83,6 +99,11 @@ class SettingsLifecycleOverlay
         $override = $this->segmentationOverrides[$path] ?? null;
 
         return is_array($override) ? ($override['mode'] ?? null) : null;
+    }
+
+    public function excludesTopLevelPath(string $path): bool
+    {
+        return in_array($path, $this->excludedTopLevelPaths, true);
     }
 
     /**

@@ -1,9 +1,11 @@
 <?php
 
 use App\Enums\SettingsBackupSource;
+use App\Enums\SettingsImportMode;
 use App\Filament\Pages\ImportPublicSettings;
 use App\Filament\Pages\PublicContentSettings as PublicContentSettingsPage;
 use App\Filament\Resources\SettingsBackups\Pages\ListSettingsBackups;
+use App\Livewire\Admin\SettingsImportLocksManager;
 use App\Livewire\Admin\SettingsImportWizard;
 use App\Models\SettingsBackupVersion;
 use App\Models\User;
@@ -11,6 +13,8 @@ use App\Settings\PublicContentSettings;
 use App\Support\PublicFront\PublicFrontConfigCache;
 use App\Support\PublicFront\PublicFrontConfigReader;
 use App\Support\SettingsLifecycle\PublicSettingsPackage;
+use App\Support\SettingsLifecycle\SettingsBackupManager;
+use App\Support\SettingsLifecycle\SettingsImportLocks;
 use App\Support\SettingsLifecycle\SettingsLifecycleSchema;
 use App\Support\SettingsLifecycle\SettingsLifecycleSelectionState;
 use App\Support\SettingsLifecycle\SettingsPackageImportAnalyzer;
@@ -93,11 +97,23 @@ it('derives lifecycle units and keeps the semantic overlay in sync with defaults
     expect($schema->managedGroups())->toContain(PublicContentSettings::group())
         ->and($paths)->toContain('homepage_item_limit')
         ->and($paths)->toContain('settings_backups.thumbnail_max_width')
-        ->and($paths)->toContain('card_templates');
+        ->and($paths)->toContain('card_templates.content_item')
+        ->and($paths)->toContain('route_labels.home')
+        ->and($paths)->not->toContain('import_locks');
+
+    expect(data_get($payload, '__known_bogus_overlay_path__', '__missing__'))->toBe('__missing__');
 
     foreach ($schema->overlaySemantics() as $semantic => $semanticPaths) {
         foreach ($semanticPaths as $path) {
-            expect(data_get($payload, $path))->not->toBe('__missing__', "Missing overlay {$semantic} path [{$path}].");
+            $value = data_get($payload, $path, '__missing__');
+
+            if ($value === '__missing__') {
+                expect($schema->unitFor($path, $payload))->not->toBeNull("Missing overlay {$semantic} path [{$path}].");
+
+                continue;
+            }
+
+            expect($value)->not->toBe('__missing__', "Missing overlay {$semantic} path [{$path}].");
         }
     }
 });
@@ -111,6 +127,7 @@ it('exposes export and import actions on settings surfaces', function (): void {
     Livewire::test(ListSettingsBackups::class)
         ->assertActionVisible(TestAction::make('exportPublicSettings')->table())
         ->assertActionVisible(TestAction::make('importSettings')->table())
+        ->assertActionVisible(TestAction::make('manageImportLocks')->table())
         ->callAction(TestAction::make('exportPublicSettings')->table())
         ->assertFileDownloaded();
 });
@@ -180,6 +197,234 @@ it('applies only selected scalar and nested setting units', function (): void {
     expect($settings->homepage_item_limit)->toBe(22)
         ->and($settings->show_latest_section)->toBeFalse()
         ->and($settings->settings_backups['thumbnail_max_width'])->toBe(800);
+});
+
+it('persists import locks and derives the front-text preset from lockable units', function (): void {
+    $schema = app(SettingsLifecycleSchema::class);
+    $payload = $schema->payloadForGroup();
+
+    foreach ($schema->overlaySemantics()['front_text'] as $path) {
+        expect($schema->unitPathsForSemanticPath($path, $payload))->toHaveCount(1, "Front-text path [{$path}] must map to exactly one lockable unit.");
+    }
+
+    Livewire::test(SettingsImportLocksManager::class)
+        ->call('lockAllFrontTexts')
+        ->assertSet('selectedPaths', fn (array $paths): bool => $paths !== [] && count($paths) === count(array_unique($paths)))
+        ->call('saveLocks')
+        ->assertSee(__('admin.messages.settings_import_locks_saved', ['count' => count(app(SettingsImportLocks::class)->frontTextLockPaths())]));
+
+    expect(app(SettingsImportLocks::class)->lockedPaths())
+        ->toEqualCanonicalizing(app(SettingsImportLocks::class)->frontTextLockPaths());
+});
+
+it('excludes locked units from import even when they are force-selected', function (): void {
+    app(SettingsImportLocks::class)->save(['homepage_item_limit']);
+
+    $settings = step10S1aSettings();
+    $settings->homepage_item_limit = 10;
+    $settings->show_latest_section = false;
+    $settings->save();
+
+    $payload = PublicSettingsPackage::fromCurrentSettings()->payload();
+    $payload['homepage_item_limit'] = 99;
+    $payload['show_latest_section'] = true;
+    $package = PublicSettingsPackage::fromArray(step10S1aPackageArray($payload));
+
+    $analysis = app(SettingsPackageImportAnalyzer::class)->analyze($package);
+
+    expect($analysis->rowsByPath()['homepage_item_limit'])
+        ->toMatchArray([
+            'locked' => true,
+            'outcome' => 'skip_locked',
+            'selectable' => false,
+        ]);
+
+    $appliedPaths = app(SettingsBackupManager::class)->import(
+        $package,
+        ['homepage_item_limit', 'show_latest_section'],
+        auth()->user(),
+    );
+
+    $settings = step10S1aSettings();
+
+    expect($appliedPaths)->toBe(['show_latest_section'])
+        ->and($settings->homepage_item_limit)->toBe(10)
+        ->and($settings->show_latest_section)->toBeTrue();
+});
+
+it('restores import locks verbatim and never exposes import_locks as a selectable unit', function (): void {
+    app(SettingsImportLocks::class)->save(['homepage_item_limit']);
+
+    $backup = app(SettingsBackupManager::class)->createManual('Lock restore source', auth()->user());
+
+    app(SettingsImportLocks::class)->save(['show_latest_section']);
+
+    app(SettingsBackupManager::class)->restore($backup, auth()->user());
+
+    expect(app(SettingsImportLocks::class)->lockedPaths())->toBe(['homepage_item_limit'])
+        ->and(app(SettingsLifecycleSchema::class)->unitPaths())->not->toContain('import_locks')
+        ->and(collect(app(SettingsLifecycleSchema::class)->unitPaths())->filter(fn (string $path): bool => str_starts_with($path, 'import_locks.'))->values()->all())->toBe([]);
+});
+
+it('adds new card-template keys in add-only mode while preserving existing keys', function (): void {
+    $settings = step10S1aSettings();
+    $settings->card_templates = [
+        [
+            'key' => 'existing_card',
+            'family' => 'content_item',
+            'label' => 'Existing',
+            'layout' => 'cards',
+            'density' => 'comfortable',
+            'image_size' => 'medium',
+            'title_size' => 'base',
+            'parts' => [],
+        ],
+    ];
+    $settings->save();
+
+    $payload = PublicSettingsPackage::fromCurrentSettings()->payload();
+    $payload['card_templates'] = [
+        [
+            'key' => 'existing_card',
+            'family' => 'content_item',
+            'label' => 'Imported collision',
+            'layout' => 'rows',
+            'density' => 'compact',
+            'image_size' => 'small',
+            'title_size' => 'sm',
+            'parts' => [],
+        ],
+        [
+            'key' => 'new_card',
+            'family' => 'content_item',
+            'label' => 'New',
+            'layout' => 'cards',
+            'density' => 'comfortable',
+            'image_size' => 'medium',
+            'title_size' => 'base',
+            'parts' => [],
+        ],
+    ];
+
+    $appliedPaths = app(SettingsBackupManager::class)->import(
+        PublicSettingsPackage::fromArray(step10S1aPackageArray($payload)),
+        ['card_templates.content_item'],
+        auth()->user(),
+        SettingsImportMode::AddOnly,
+    );
+
+    $templates = collect(step10S1aSettings()->card_templates)->keyBy('key');
+
+    expect($appliedPaths)->toBe(['card_templates.content_item'])
+        ->and($templates)->toHaveKeys(['existing_card', 'new_card'])
+        ->and($templates['existing_card']['label'])->toBe('Existing')
+        ->and($templates['new_card']['label'])->toBe('New');
+});
+
+it('fills empty values and skips populated values in add-only mode', function (): void {
+    $settings = step10S1aSettings();
+    $settings->homepage_group_title_separator = '';
+    $settings->route_labels = [
+        [
+            'route_key' => 'home',
+            'label' => 'Current home',
+        ],
+    ];
+    $settings->save();
+
+    $payload = PublicSettingsPackage::fromCurrentSettings()->payload();
+    $payload['homepage_group_title_separator'] = ' / ';
+    $payload['route_labels'] = [
+        [
+            'route_key' => 'home',
+            'label' => 'Imported home',
+        ],
+        [
+            'route_key' => 'search',
+            'label' => 'Imported search',
+        ],
+    ];
+
+    $appliedPaths = app(SettingsBackupManager::class)->import(
+        PublicSettingsPackage::fromArray(step10S1aPackageArray($payload)),
+        ['homepage_group_title_separator', 'route_labels.home', 'route_labels.search'],
+        auth()->user(),
+        SettingsImportMode::AddOnly,
+    );
+
+    $settings = step10S1aSettings();
+    $labels = collect($settings->route_labels)->keyBy('route_key');
+
+    expect($appliedPaths)->toEqualCanonicalizing(['homepage_group_title_separator', 'route_labels.search'])
+        ->and($settings->homepage_group_title_separator)->toBe(' / ')
+        ->and($labels['home']['label'])->toBe('Current home')
+        ->and($labels['search']['label'])->toBe('Imported search');
+});
+
+it('lets locks beat add-only mode and reports applied paths after server-side filtering', function (): void {
+    app(SettingsImportLocks::class)->save(['route_labels.search']);
+
+    $settings = step10S1aSettings();
+    $settings->route_labels = [];
+    $settings->save();
+
+    $payload = PublicSettingsPackage::fromCurrentSettings()->payload();
+    $payload['route_labels'] = [
+        [
+            'route_key' => 'search',
+            'label' => 'Imported search',
+        ],
+    ];
+
+    $appliedPaths = app(SettingsBackupManager::class)->import(
+        PublicSettingsPackage::fromArray(step10S1aPackageArray($payload)),
+        ['route_labels.search'],
+        auth()->user(),
+        SettingsImportMode::AddOnly,
+    );
+
+    expect($appliedPaths)->toBe([])
+        ->and(step10S1aSettings()->route_labels)->toBe([]);
+});
+
+it('computes add-only and lock outcome chips', function (): void {
+    app(SettingsImportLocks::class)->save(['route_labels.contributors']);
+
+    $settings = step10S1aSettings();
+    $settings->route_labels = [
+        [
+            'route_key' => 'home',
+            'label' => 'Current home',
+        ],
+    ];
+    $settings->save();
+
+    $payload = PublicSettingsPackage::fromCurrentSettings()->payload();
+    $payload['route_labels'] = [
+        [
+            'route_key' => 'home',
+            'label' => 'Imported home',
+        ],
+        [
+            'route_key' => 'search',
+            'label' => 'Imported search',
+        ],
+        [
+            'route_key' => 'contributors',
+            'label' => 'Imported contributors',
+        ],
+    ];
+    $payload['homepage_item_limit'] = 'invalid';
+
+    $analysis = app(SettingsPackageImportAnalyzer::class)
+        ->analyze(PublicSettingsPackage::fromArray(step10S1aPackageArray($payload)), SettingsImportMode::AddOnly);
+    $rows = $analysis->rowsByPath();
+
+    expect($rows['route_labels.search']['outcome'])->toBe('add_new')
+        ->and($rows['route_labels.home']['outcome'])->toBe('skip_exists')
+        ->and($rows['route_labels.contributors']['outcome'])->toBe('skip_locked')
+        ->and($rows['route_labels.about']['outcome'])->toBe('skip_unchanged')
+        ->and($rows['homepage_item_limit']['outcome'])->toBe('error');
 });
 
 it('computes tri-state group toggle semantics', function (): void {

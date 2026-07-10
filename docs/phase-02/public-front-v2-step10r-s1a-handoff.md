@@ -71,9 +71,9 @@ Full required gate passed:
 
 ## Commit hash
 
-Commit message: `feat: add settings export and import wizard`.
+Commit: `30e413c feat: add settings export and import wizard`.
 
-The actual commit hash lands in the final report after the commit is created.
+The S1a hash was backfilled during the S1b run per the standing correction rule.
 
 ## Local Front Check Report
 

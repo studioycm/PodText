@@ -22,6 +22,8 @@ class SettingsLifecycleSelectionTable extends Component
 
     public string $search = '';
 
+    public string $tableMode = 'import';
+
     public function render(): View
     {
         return view('livewire.admin.settings-lifecycle-selection-table', [
@@ -75,6 +77,14 @@ class SettingsLifecycleSelectionTable extends Component
 
     private function matchesFilter(array $row): bool
     {
+        if ($this->tableMode === 'locks') {
+            return match ($this->filter) {
+                'locked' => in_array($row['path'] ?? null, $this->selectedPaths, true),
+                'unlocked' => ! in_array($row['path'] ?? null, $this->selectedPaths, true),
+                default => true,
+            };
+        }
+
         return match ($this->filter) {
             'added' => ($row['state'] ?? null) === 'added',
             'removed' => ($row['state'] ?? null) === 'removed',

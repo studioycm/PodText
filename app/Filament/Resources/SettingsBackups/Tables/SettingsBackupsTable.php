@@ -5,6 +5,7 @@ namespace App\Filament\Resources\SettingsBackups\Tables;
 use App\Enums\SettingsBackupSource;
 use App\Filament\Actions\ExportPublicSettingsAction;
 use App\Filament\Pages\ImportPublicSettings;
+use App\Filament\Pages\ManageSettingsImportLocks;
 use App\Models\SettingsBackupSnapshot;
 use App\Models\SettingsBackupVersion;
 use App\Models\User;
@@ -82,6 +83,11 @@ class SettingsBackupsTable
                     ->icon(Heroicon::OutlinedArrowUpTray)
                     ->color('gray')
                     ->url(fn (): string => ImportPublicSettings::getUrl()),
+                Action::make('manageImportLocks')
+                    ->label(__('admin.actions.manage_import_locks'))
+                    ->icon(Heroicon::OutlinedLockClosed)
+                    ->color('gray')
+                    ->url(fn (): string => ManageSettingsImportLocks::getUrl()),
                 Action::make('createBackup')
                     ->label(__('admin.actions.create_backup'))
                     ->icon(Heroicon::OutlinedArchiveBox)

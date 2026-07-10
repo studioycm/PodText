@@ -76,6 +76,8 @@ class PublicContentSettings extends Settings
 
     public array $settings_backups;
 
+    public array $import_locks;
+
     public static function group(): string
     {
         return 'public_content';

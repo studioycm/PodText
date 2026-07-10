@@ -10,6 +10,7 @@ use App\Support\PublicFront\Colors\PublicFrontColor;
 use App\Support\PublicFront\Forms\PublicFormDefinitionRegistry;
 use App\Support\PublicFront\Icons\PublicFrontIconRegistry;
 use App\Support\PublicFront\ItemPage\PublicItemPageRegistry;
+use App\Support\SettingsLifecycle\SettingsLifecycleSchema;
 
 class PublicFrontConfigValidator
 {
@@ -45,6 +46,7 @@ class PublicFrontConfigValidator
                 'podcasts_page' => $this->normalizePodcastsPage($value, $defaults['podcasts_page'], $invalidConfig),
                 'contributors_page' => $this->normalizeContributorsPage($value, $defaults['contributors_page'], $invalidConfig),
                 'settings_backups' => $this->normalizeSettingsBackups($value, $defaults['settings_backups'], $invalidConfig),
+                'import_locks' => $this->normalizeImportLocks($value, $defaults['import_locks'], $invalidConfig),
             };
         }
 
@@ -1399,6 +1401,54 @@ class PublicFrontConfigValidator
                 $defaults['snapshot_themes'],
                 $invalidConfig,
             ),
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $importLocks
+     * @param  array<string, mixed>  $defaults
+     * @param  array<PublicFrontInvalidConfig>  $invalidConfig
+     * @return array{locked_paths: array<int, string>}
+     */
+    private function normalizeImportLocks(array $importLocks, array $defaults, array &$invalidConfig): array
+    {
+        $this->reportUnknownKeys($importLocks, [
+            'locked_paths',
+        ], 'import_locks', $invalidConfig);
+
+        if (! is_array($importLocks['locked_paths'] ?? null)) {
+            if (array_key_exists('locked_paths', $importLocks)) {
+                $invalidConfig[] = PublicFrontInvalidConfig::make('import_locks.locked_paths', 'expected_list', $importLocks['locked_paths']);
+            }
+
+            return [
+                'locked_paths' => $defaults['locked_paths'] ?? [],
+            ];
+        }
+
+        $knownPaths = app(SettingsLifecycleSchema::class)->unitPaths();
+        $lockedPaths = [];
+
+        foreach ($importLocks['locked_paths'] as $index => $path) {
+            if (! is_string($path)) {
+                $invalidConfig[] = PublicFrontInvalidConfig::make("import_locks.locked_paths.{$index}", 'expected_string', $path);
+
+                continue;
+            }
+
+            if (! in_array($path, $knownPaths, true)) {
+                $invalidConfig[] = PublicFrontInvalidConfig::make("import_locks.locked_paths.{$index}", 'unknown_setting_unit', $path);
+
+                continue;
+            }
+
+            $lockedPaths[] = $path;
+        }
+
+        sort($lockedPaths);
+
+        return [
+            'locked_paths' => array_values(array_unique($lockedPaths)),
         ];
     }
 
