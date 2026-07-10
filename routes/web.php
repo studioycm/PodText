@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\ImporterGoogleOAuthController;
 use App\Http\Controllers\SettingsBackupSnapshotFileController;
 use App\Http\Controllers\SettingsBackupSnapshotRetryController;
 use App\Http\Controllers\SettingsBackupSnapshotsZipController;
@@ -7,6 +8,12 @@ use Filament\Http\Middleware\Authenticate;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware(Authenticate::class)->group(function (): void {
+    Route::get('/admin/importer/google/{importConnection}/redirect', [ImporterGoogleOAuthController::class, 'redirect'])
+        ->name('admin.importer.google.redirect');
+
+    Route::get('/admin/importer/google/callback', [ImporterGoogleOAuthController::class, 'callback'])
+        ->name('admin.importer.google.callback');
+
     Route::get('/admin/settings-backup-snapshots/{settingsBackupSnapshot}/file', SettingsBackupSnapshotFileController::class)
         ->name('admin.settings-backup-snapshots.file');
 

@@ -3,6 +3,7 @@
 return [
     'navigation' => [
         'content' => 'Content',
+        'importer' => 'Import',
     ],
     'resources' => [
         'author' => [
@@ -114,6 +115,8 @@ return [
         'public_display' => 'Public display',
         'settings_backup_diff' => 'Changed settings',
         'settings_backup_diff_summary' => 'Change summary',
+        'importer_connection_defaults' => 'Connection defaults',
+        'importer_connection_credentials' => 'Credentials',
         'transcript' => 'Transcript',
         'type_labels' => 'Display labels',
         'visibility_order' => 'Visibility and order',
@@ -860,6 +863,7 @@ return [
         'delete' => 'Delete',
         'download' => 'Download',
         'download_all_snapshots' => 'Download all snapshots',
+        'edit' => 'Edit',
         'export_public_settings' => 'Export settings',
         'edit_author' => 'Edit author',
         'edit_category' => 'Edit category',
@@ -881,6 +885,7 @@ return [
         'recapture_snapshot' => 'Recapture snapshot',
         'regenerate_slug' => 'Regenerate slug',
         'retry_snapshot' => 'Retry snapshot',
+        'save' => 'Save',
         'save_import_locks' => 'Save locks',
         'save_transcription' => 'Save transcription',
         'set_featured_transcription' => 'Set featured',
@@ -1671,6 +1676,86 @@ return [
                 'update' => 'Update only',
                 'upsert' => 'Create and update',
             ],
+        ],
+    ],
+    'importer' => [
+        'actions' => [
+            'connect_google_oauth' => 'Connect Google OAuth',
+            'create_connection' => 'Create connection',
+            'test_connection' => 'Test connection',
+        ],
+        'auth_types' => [
+            'client_credentials' => 'Client credentials',
+            'none' => 'None',
+            'oauth' => 'OAuth',
+            'service_account' => 'Service account',
+        ],
+        'descriptions' => [
+            'credentials' => 'Credential fields are encrypted at rest. Leave credential fields blank while editing to keep the stored secret.',
+            'defaults' => 'Optional Google defaults used by tests, probes, and future workbench source steps.',
+        ],
+        'fields' => [
+            'auth_type' => 'Auth type',
+            'default_folder_id' => 'Default folder ID',
+            'default_spreadsheet_id' => 'Default spreadsheet ID',
+            'last_tested_at' => 'Last tested',
+            'oauth_connection' => 'OAuth connection',
+            'provider' => 'Provider',
+            'service_account_json' => 'Service-account JSON',
+            'spotify_client_id' => 'Spotify client ID',
+            'spotify_client_secret' => 'Spotify client secret',
+            'status' => 'Status',
+        ],
+        'helpers' => [
+            'auth_type' => 'Choose only one of the approved authentication modes for the selected provider.',
+            'default_folder_id' => 'Google Drive folder ID for future document/image source steps.',
+            'default_spreadsheet_id' => 'Google Sheets spreadsheet ID used by the connection test and future sheet source step.',
+            'name' => 'Short internal label shown in importer tools.',
+            'oauth_connection' => 'Save this connection, then use the table action to grant offline Google Drive and Sheets access.',
+            'provider' => 'The external source family this connection can talk to.',
+            'service_account_json' => 'Paste the downloaded Google service-account key JSON. Do not paste this into docs or commits.',
+            'spotify_client_id' => 'Spotify app client ID from the developer dashboard.',
+            'spotify_client_secret' => 'Spotify app client secret. It is stored encrypted and never displayed after save.',
+        ],
+        'notifications' => [
+            'connection_created' => 'Connection created.',
+            'connection_test_failed' => 'Connection test failed.',
+            'connection_test_failed_body' => 'The connector could not prove access. Check credentials and provider defaults.',
+            'connection_updated' => 'Connection updated.',
+            'oauth_connected' => 'Google OAuth refresh token stored on the connection.',
+        ],
+        'pages' => [
+            'settings' => [
+                'navigation' => 'Importer Settings',
+                'title' => 'Importer Settings',
+            ],
+        ],
+        'providers' => [
+            'google_drive' => 'Google Drive',
+            'manual' => 'Manual',
+            'spotify' => 'Spotify',
+        ],
+        'sections' => [
+            'credentials' => 'Credentials',
+            'defaults' => 'Defaults',
+        ],
+        'statuses' => [
+            'connected' => 'Connected',
+            'failed' => 'Failed',
+            'untested' => 'Untested',
+        ],
+        'test' => [
+            'files' => 'Files: :files',
+            'google_drive_connected' => 'Google Drive folder access confirmed.',
+            'google_missing_defaults' => 'Add a default spreadsheet ID or folder ID before testing.',
+            'google_sheets_connected' => 'Google Sheets access confirmed.',
+            'manual_ready' => 'Manual connections do not require external credentials.',
+            'spotify_connected' => 'Spotify client credentials accepted.',
+            'spotify_profile' => 'Profile: :profile',
+            'tabs' => 'Tabs: :tabs',
+        ],
+        'validation' => [
+            'invalid_auth_type' => 'The selected auth type is not allowed for this provider.',
         ],
     ],
     'validation' => [

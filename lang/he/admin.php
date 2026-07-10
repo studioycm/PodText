@@ -3,6 +3,7 @@
 return [
     'navigation' => [
         'content' => 'תוכן',
+        'importer' => 'ייבוא',
     ],
     'resources' => [
         'author' => [
@@ -116,6 +117,8 @@ return [
         'public_front_configuration' => 'הגדרות החזית',
         'settings_backup_diff' => 'הגדרות שהשתנו',
         'settings_backup_diff_summary' => 'סיכום שינויים',
+        'importer_connection_defaults' => 'ברירות מחדל לחיבור',
+        'importer_connection_credentials' => 'פרטי גישה',
         'visibility_order' => 'נראות וסדר',
     ],
     'fields' => [
@@ -845,6 +848,7 @@ return [
         'delete' => 'מחיקה',
         'download' => 'הורדה',
         'download_all_snapshots' => 'הורדת כל הצילומים',
+        'edit' => 'עריכה',
         'export_public_settings' => 'ייצוא הגדרות',
         'edit_author' => 'עריכת מחבר',
         'edit_category' => 'עריכת קטגוריה',
@@ -865,6 +869,7 @@ return [
         'open_snapshot_file' => 'פתיחת קובץ',
         'recapture_snapshot' => 'צילום מחדש',
         'retry_snapshot' => 'צילום מחדש',
+        'save' => 'שמירה',
         'save_import_locks' => 'שמירת נעילות',
         'save_transcription' => 'שמירת תמלול',
         'set_featured_transcription' => 'הגדרה כנבחר',
@@ -1639,6 +1644,86 @@ return [
                 'update' => 'עדכון בלבד',
                 'upsert' => 'יצירה ועדכון',
             ],
+        ],
+    ],
+    'importer' => [
+        'actions' => [
+            'connect_google_oauth' => 'חיבור OAuth של Google',
+            'create_connection' => 'יצירת חיבור',
+            'test_connection' => 'בדיקת חיבור',
+        ],
+        'auth_types' => [
+            'client_credentials' => 'Client credentials',
+            'none' => 'ללא',
+            'oauth' => 'OAuth',
+            'service_account' => 'Service account',
+        ],
+        'descriptions' => [
+            'credentials' => 'פרטי הגישה מוצפנים במנוחה. בעריכת חיבור אפשר להשאיר שדות סוד ריקים כדי לשמור את הערך הקיים.',
+            'defaults' => 'ברירות מחדל אופציונליות ל-Google שישמשו בדיקות, דגימות ושלבי מקור עתידיים.',
+        ],
+        'fields' => [
+            'auth_type' => 'סוג הזדהות',
+            'default_folder_id' => 'מזהה תיקיית ברירת מחדל',
+            'default_spreadsheet_id' => 'מזהה גיליון ברירת מחדל',
+            'last_tested_at' => 'נבדק לאחרונה',
+            'oauth_connection' => 'חיבור OAuth',
+            'provider' => 'ספק',
+            'service_account_json' => 'JSON של Service account',
+            'spotify_client_id' => 'Client ID של Spotify',
+            'spotify_client_secret' => 'Client secret של Spotify',
+            'status' => 'סטטוס',
+        ],
+        'helpers' => [
+            'auth_type' => 'בחרו רק מצב הזדהות מאושר אחד עבור הספק שנבחר.',
+            'default_folder_id' => 'מזהה תיקיית Google Drive לשלבי מקור עתידיים של מסמכים ותמונות.',
+            'default_spreadsheet_id' => 'מזהה Google Sheets לבדיקת החיבור ולשלב מקור גיליון עתידי.',
+            'name' => 'תווית פנימית קצרה שמוצגת בכלי הייבוא.',
+            'oauth_connection' => 'שמרו את החיבור ואז השתמשו בפעולת הטבלה כדי לאשר גישה לא מקוונת ל-Google Drive ו-Sheets.',
+            'provider' => 'משפחת המקור החיצוני שהחיבור יודע לדבר איתה.',
+            'service_account_json' => 'הדביקו את קובץ ה-JSON שהורד מ-Google. לא להדביק אותו במסמכים או בקומיטים.',
+            'spotify_client_id' => 'Client ID של אפליקציית Spotify מלוח המפתחים.',
+            'spotify_client_secret' => 'Client secret של אפליקציית Spotify. הערך נשמר מוצפן ולא מוצג אחרי שמירה.',
+        ],
+        'notifications' => [
+            'connection_created' => 'החיבור נוצר.',
+            'connection_test_failed' => 'בדיקת החיבור נכשלה.',
+            'connection_test_failed_body' => 'המחבר לא הצליח להוכיח גישה. בדקו את פרטי הגישה וברירות המחדל.',
+            'connection_updated' => 'החיבור עודכן.',
+            'oauth_connected' => 'Refresh token של Google OAuth נשמר בחיבור.',
+        ],
+        'pages' => [
+            'settings' => [
+                'navigation' => 'הגדרות ייבוא',
+                'title' => 'הגדרות ייבוא',
+            ],
+        ],
+        'providers' => [
+            'google_drive' => 'Google Drive',
+            'manual' => 'ידני',
+            'spotify' => 'Spotify',
+        ],
+        'sections' => [
+            'credentials' => 'פרטי גישה',
+            'defaults' => 'ברירות מחדל',
+        ],
+        'statuses' => [
+            'connected' => 'מחובר',
+            'failed' => 'נכשל',
+            'untested' => 'לא נבדק',
+        ],
+        'test' => [
+            'files' => 'קבצים: :files',
+            'google_drive_connected' => 'גישה לתיקיית Google Drive אושרה.',
+            'google_missing_defaults' => 'הוסיפו מזהה גיליון או תיקייה לפני בדיקה.',
+            'google_sheets_connected' => 'גישה ל-Google Sheets אושרה.',
+            'manual_ready' => 'חיבורים ידניים לא דורשים פרטי גישה חיצוניים.',
+            'spotify_connected' => 'פרטי Client credentials של Spotify התקבלו.',
+            'spotify_profile' => 'פרופיל: :profile',
+            'tabs' => 'לשוניות: :tabs',
+        ],
+        'validation' => [
+            'invalid_auth_type' => 'סוג ההזדהות שנבחר אינו מותר לספק הזה.',
         ],
     ],
     'validation' => [

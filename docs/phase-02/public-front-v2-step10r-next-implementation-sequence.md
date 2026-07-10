@@ -4,6 +4,10 @@ This file records the active continuation-runner order after Step 10R-M6 plus th
 
 `docs/phase-02/public-front-v2-step10r-9f-mini-step-ledger.md`
 
+Importer Workbench WB1-WB7 are tracked in that ledger's `Importer Workbench Track`
+section; WB runs interleave only by Yoni's per-run selection and do not change the
+main Public Front v2 queue order below.
+
 ## Active Order
 
 | # | Step | Depends on | One-line scope |
@@ -57,7 +61,7 @@ This file records the active continuation-runner order after Step 10R-M6 plus th
 
 ## Current Recommendation
 
-Continue with Step 10R-S1b. Step 10R-UX1 standardized admin navigation, table action
+Continue with Step 10R-P2 when Yoni returns to the main queue. Step 10R-UX1 standardized admin navigation, table action
 placement, action modal defaults, section width defaults, and relation-manager tabs.
 Step 10R-UX2 added the shared effective transcription edit action on both episode list
 surfaces. Step 10R-V1a added finite default/no-image fallback settings and shared
@@ -67,6 +71,6 @@ and a theme-safe cached podcast palette. Step 10R-P1 added the validated public-
 config cache boundary. Step 10R-S2 added settings backup versions and restore.
 Step 10R-S2V added backup visual snapshots plus the S2 system-only prune/file-cleanup
 correction. Step 10R-S1a added the settings export/import wizard core and S2V audit
-corrections. Yoni asked this branch to continue through S1b, then pause for the
-custom importer side quest before returning to P2/P3/AX/SL/B4/C2/9F work. The v4
-continuation order is reflected here and in the central ledger.
+corrections. Step 10R-S1b, HF2, UX3, S1c, MP1, and S1d are complete; the Importer
+Workbench side track is recorded separately in the central ledger. The v4 continuation
+order is reflected here and in the central ledger.

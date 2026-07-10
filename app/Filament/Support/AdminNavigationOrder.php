@@ -3,6 +3,7 @@
 namespace App\Filament\Support;
 
 use App\Filament\Pages\Dashboard;
+use App\Filament\Pages\ImporterSettings;
 use App\Filament\Pages\PublicContentSettings;
 use App\Filament\Resources\Authors\AuthorResource;
 use App\Filament\Resources\Categories\CategoryResource;
@@ -31,6 +32,7 @@ class AdminNavigationOrder
         HomepageSectionResource::class => 80,
         PublicContentSettings::class => 90,
         SettingsBackupResource::class => 95,
+        ImporterSettings::class => 100,
     ];
 
     public static function sort(string $class): ?int

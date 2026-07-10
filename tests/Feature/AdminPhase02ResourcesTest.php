@@ -3,6 +3,7 @@
 use App\Enums\HomepageSectionType;
 use App\Enums\PublicationStatus;
 use App\Filament\Pages\Dashboard;
+use App\Filament\Pages\ImporterSettings;
 use App\Filament\Pages\PublicContentSettings as PublicContentSettingsPage;
 use App\Filament\Public\Pages\ShowContentGroup;
 use App\Filament\Public\Pages\ShowContentItem;
@@ -118,6 +119,7 @@ it('orders every registered admin navigation resource and page through the centr
         HomepageSectionResource::class => 80,
         PublicContentSettingsPage::class => 90,
         SettingsBackupResource::class => 95,
+        ImporterSettings::class => 100,
     ];
 
     expect(AdminNavigationOrder::all())->toBe($expected);

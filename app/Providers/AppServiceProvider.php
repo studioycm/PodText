@@ -3,6 +3,10 @@
 namespace App\Providers;
 
 use App\Settings\PublicContentSettings;
+use App\Support\Importer\Contracts\GoogleDriveClientFactory;
+use App\Support\Importer\Contracts\SpotifyClientFactory;
+use App\Support\Importer\Google\GoogleApiDriveClientFactory;
+use App\Support\Importer\Spotify\SpotifyHttpClientFactory;
 use App\Support\PublicContent\PublicTranscriptionPolicy;
 use App\Support\PublicFront\PublicFrontConfigCache;
 use App\Support\PublicFront\PublicFrontRenderContext;
@@ -26,6 +30,9 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
+        $this->app->bind(GoogleDriveClientFactory::class, GoogleApiDriveClientFactory::class);
+        $this->app->bind(SpotifyClientFactory::class, SpotifyHttpClientFactory::class);
+
         $this->app->scoped(
             PublicFrontRenderContext::class,
             fn (): PublicFrontRenderContext => $this->app
