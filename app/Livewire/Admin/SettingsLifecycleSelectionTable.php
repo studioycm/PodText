@@ -88,6 +88,7 @@ class SettingsLifecycleSelectionTable extends Component
         return match ($this->filter) {
             'added' => ($row['state'] ?? null) === 'added',
             'removed' => ($row['state'] ?? null) === 'removed',
+            'locked' => (bool) ($row['locked'] ?? false),
             'all' => true,
             default => ($row['state'] ?? null) !== 'unchanged' || ($row['error'] ?? null) !== null,
         };

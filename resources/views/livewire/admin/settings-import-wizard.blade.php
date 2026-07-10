@@ -76,12 +76,46 @@
                     <option value="replace">{{ __('admin.settings_import.modes.replace') }}</option>
                     <option value="add_only">{{ __('admin.settings_import.modes.add_only') }}</option>
                 </select>
-                @if($this->lockedRowsCount() > 0)
-                    <x-filament::badge color="warning" icon="heroicon-o-lock-closed">
-                        {{ __('admin.settings_import.locked_summary', ['count' => $this->lockedRowsCount()]) }}
+            </div>
+
+            <div class="mb-5 flex flex-wrap items-center gap-2" data-test="settings-import-dry-run-summary">
+                <x-filament::badge color="info">
+                    {{ __('admin.settings_import.summary.selected', ['count' => $dryRunSummary['selected']]) }}
+                </x-filament::badge>
+                <x-filament::badge color="success">
+                    {{ __('admin.settings_import.summary.added', ['count' => $dryRunSummary['added']]) }}
+                </x-filament::badge>
+                <x-filament::badge color="info">
+                    {{ __('admin.settings_import.summary.changed', ['count' => $dryRunSummary['changed']]) }}
+                </x-filament::badge>
+                <x-filament::badge :color="$dryRunSummary['locked'] > 0 ? 'warning' : 'gray'" icon="heroicon-o-lock-closed">
+                    {{ __('admin.settings_import.summary.locked', ['count' => $dryRunSummary['locked']]) }}
+                </x-filament::badge>
+                <x-filament::badge :color="$dryRunSummary['errors'] > 0 ? 'danger' : 'gray'">
+                    {{ __('admin.settings_import.summary.errors', ['count' => $dryRunSummary['errors']]) }}
+                </x-filament::badge>
+                @if($importMode === 'add_only')
+                    <x-filament::badge color="gray">
+                        {{ __('admin.settings_import.summary.skip_exists', ['count' => $dryRunSummary['skip_exists']]) }}
                     </x-filament::badge>
                 @endif
             </div>
+
+            @if($lockedExcludedRows !== [])
+                <details class="mb-5 rounded-lg border border-warning-200 bg-warning-50 p-4 text-sm text-warning-900 dark:border-warning-500/30 dark:bg-warning-500/10 dark:text-warning-100" data-test="settings-import-locked-excluded">
+                    <summary class="cursor-pointer font-medium">
+                        {{ __('admin.settings_import.locked_summary', ['count' => count($lockedExcludedRows)]) }}
+                    </summary>
+                    <ul class="mt-3 list-disc space-y-1 ps-5">
+                        @foreach($lockedExcludedRows as $row)
+                            <li>{{ $row['label'] }} <span class="text-xs opacity-80">({{ $row['path'] }})</span></li>
+                        @endforeach
+                    </ul>
+                    <a href="{{ $importLocksUrl }}" class="mt-3 inline-flex text-sm font-medium underline">
+                        {{ __('admin.actions.manage_import_locks') }}
+                    </a>
+                </details>
+            @endif
 
             @include('livewire.admin.partials.settings-lifecycle-selection-table', [
                 'groupedRows' => $groupedRows,
@@ -103,6 +137,61 @@
         <x-filament::section>
             <x-slot name="heading">{{ __('admin.settings_import.complete_heading') }}</x-slot>
             <p class="text-sm text-gray-700 dark:text-gray-200">{{ $resultMessage }}</p>
+            <div class="mt-3 text-sm text-gray-700 dark:text-gray-200">
+                <a href="{{ \App\Filament\Resources\SettingsBackups\SettingsBackupResource::getUrl() }}" class="font-medium underline">
+                    {{ __('admin.settings_import.report.backup_link', ['id' => $structuredImportReport->beforeImportBackupId]) }}
+                </a>
+            </div>
+
+            <div class="mt-5 space-y-4" data-test="settings-import-completion-report">
+                <div class="grid gap-3 text-sm md:grid-cols-3">
+                    <div>
+                        <div class="font-medium text-gray-950 dark:text-white">{{ __('admin.settings_import.report.mode') }}</div>
+                        <div class="text-gray-600 dark:text-gray-300">{{ __('admin.settings_import.modes.' . $structuredImportReport->mode) }}</div>
+                    </div>
+                    <div>
+                        <div class="font-medium text-gray-950 dark:text-white">{{ __('admin.settings_import.report.source') }}</div>
+                        <div class="text-gray-600 dark:text-gray-300">{{ $structuredImportReport->sourceLabel ?? __('admin.placeholders.empty') }}</div>
+                    </div>
+                    <div>
+                        <div class="font-medium text-gray-950 dark:text-white">{{ __('admin.settings_import.report.generated_at') }}</div>
+                        <div class="text-gray-600 dark:text-gray-300">{{ $structuredImportReport->generatedAtLabel() }}</div>
+                    </div>
+                </div>
+
+                @if($structuredImportReport->warnings !== [])
+                    <div>
+                        <h3 class="text-sm font-semibold text-gray-950 dark:text-white">{{ __('admin.settings_import.report.warnings') }}</h3>
+                        <ul class="mt-2 list-disc space-y-1 ps-5 text-sm text-warning-700 dark:text-warning-300">
+                            @foreach($structuredImportReport->warnings as $warning)
+                                <li>{{ $warning }}</li>
+                            @endforeach
+                        </ul>
+                    </div>
+                @endif
+
+                @foreach(\App\Support\SettingsLifecycle\SettingsImportReport::OUTCOME_GROUPS as $outcome)
+                    @php($rows = $structuredImportReport->outcomeRows($outcome))
+                    @if($rows !== [])
+                        <div>
+                            <h3 class="text-sm font-semibold text-gray-950 dark:text-white">
+                                {{ __('admin.settings_import_report.outcomes.' . $outcome) }}
+                            </h3>
+                            <ul class="mt-2 list-disc space-y-1 ps-5 text-sm text-gray-700 dark:text-gray-200">
+                                @foreach($rows as $row)
+                                    <li>
+                                        {{ $row['label'] }}
+                                        <span class="text-xs text-gray-500 dark:text-gray-400">({{ $row['path'] }})</span>
+                                        @if(filled($row['reason'] ?? null))
+                                            <span class="text-xs text-gray-500 dark:text-gray-400">- {{ $row['reason'] }}</span>
+                                        @endif
+                                    </li>
+                                @endforeach
+                            </ul>
+                        </div>
+                    @endif
+                @endforeach
+            </div>
             <div class="mt-4">
                 <x-filament::button wire:click="resetImport" color="gray">
                     {{ __('admin.actions.import_another_package') }}

@@ -70,6 +70,12 @@ class SettingsLifecycleOverlay
                     'default_images.content_group.path',
                     'default_images.contributor.path',
                 ],
+                'sensitive' => [
+                    'maintenance.enabled',
+                    'maintenance.title',
+                    'maintenance.rich_html',
+                    'maintenance.raw_html_override',
+                ],
             ],
             segmentationOverrides: [
                 'card_templates' => ['mode' => 'card_family'],

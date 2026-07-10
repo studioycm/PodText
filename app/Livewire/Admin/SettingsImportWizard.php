@@ -3,10 +3,12 @@
 namespace App\Livewire\Admin;
 
 use App\Enums\SettingsImportMode;
+use App\Filament\Pages\ManageSettingsImportLocks;
 use App\Models\SettingsBackupVersion;
 use App\Models\User;
 use App\Support\SettingsLifecycle\PublicSettingsPackage;
 use App\Support\SettingsLifecycle\SettingsBackupManager;
+use App\Support\SettingsLifecycle\SettingsImportReport;
 use App\Support\SettingsLifecycle\SettingsPackageImportAnalyzer;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\UploadedFile;
@@ -44,6 +46,11 @@ class SettingsImportWizard extends SettingsLifecycleSelectionTable
 
     public string $importMode = 'replace';
 
+    /**
+     * @var array<string, mixed>
+     */
+    public array $importReport = [];
+
     public function render(): View
     {
         return view('livewire.admin.settings-import-wizard', [
@@ -51,7 +58,11 @@ class SettingsImportWizard extends SettingsLifecycleSelectionTable
                 ->latest('id')
                 ->limit(50)
                 ->get(),
+            'dryRunSummary' => $this->dryRunSummary(),
             'groupedRows' => $this->groupedRows(),
+            'importLocksUrl' => ManageSettingsImportLocks::getUrl(),
+            'structuredImportReport' => $this->structuredImportReport(),
+            'lockedExcludedRows' => $this->lockedExcludedRows(),
         ]);
     }
 
@@ -104,11 +115,12 @@ class SettingsImportWizard extends SettingsLifecycleSelectionTable
         try {
             $user = auth()->user();
 
-            $appliedPaths = app(SettingsBackupManager::class)->import(
+            $report = app(SettingsBackupManager::class)->import(
                 PublicSettingsPackage::fromArray($this->packageArray),
                 $this->selectedPaths,
                 $user instanceof User ? $user : null,
                 $this->importMode,
+                $this->sourceLabel,
             );
         } catch (Throwable $exception) {
             $this->importErrors = [$exception->getMessage()];
@@ -117,8 +129,9 @@ class SettingsImportWizard extends SettingsLifecycleSelectionTable
         }
 
         $this->step = 'complete';
+        $this->importReport = $report->toArray();
         $this->resultMessage = __('admin.messages.settings_import_applied', [
-            'count' => count($appliedPaths),
+            'count' => $report->appliedCount(),
         ]);
     }
 
@@ -132,6 +145,7 @@ class SettingsImportWizard extends SettingsLifecycleSelectionTable
             'selectedPaths',
             'warnings',
             'importErrors',
+            'importReport',
             'sourceLabel',
             'resultMessage',
         ]);
@@ -153,6 +167,36 @@ class SettingsImportWizard extends SettingsLifecycleSelectionTable
     }
 
     /**
+     * @return array{selected: int, added: int, changed: int, locked: int, errors: int, skip_exists: int}
+     */
+    public function dryRunSummary(): array
+    {
+        $rows = collect($this->rows);
+
+        return [
+            'selected' => count($this->selectedPaths),
+            'added' => $rows->where('outcome', 'add_new')->count(),
+            'changed' => $rows
+                ->filter(fn (array $row): bool => ($row['outcome'] ?? null) === 'replace' && ($row['state'] ?? null) === 'changed')
+                ->count(),
+            'locked' => $rows->where('outcome', 'skip_locked')->count(),
+            'errors' => $rows->where('outcome', 'error')->count(),
+            'skip_exists' => $rows->where('outcome', 'skip_exists')->count(),
+        ];
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    public function lockedExcludedRows(): array
+    {
+        return collect($this->rows)
+            ->where('outcome', 'skip_locked')
+            ->values()
+            ->all();
+    }
+
+    /**
      * @return array<int, array<string, mixed>>
      */
     public function dryRunSignature(): array
@@ -168,6 +212,11 @@ class SettingsImportWizard extends SettingsLifecycleSelectionTable
             ])
             ->values()
             ->all();
+    }
+
+    public function structuredImportReport(): SettingsImportReport
+    {
+        return SettingsImportReport::fromArray($this->importReport);
     }
 
     private function loadPackageJson(string $json, string $sourceLabel): void

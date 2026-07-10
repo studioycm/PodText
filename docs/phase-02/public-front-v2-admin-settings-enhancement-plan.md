@@ -40,6 +40,11 @@ The central ledger remains authoritative for per-run selection:
   never render this raw HTML.
 - D31: maintenance mode returns HTTP 503 with `Retry-After` in place for public URLs.
   It does not redirect and does not use Laravel's native `artisan down` mode.
+- D32: settings-import result reports are anchored on the `before_import` backup row.
+  The report is review metadata for that import and is deleted with the backup row.
+- D33: the `sensitive` lifecycle semantic marks import units that must remain
+  selectable but never be preselected by imported packages. Maintenance enablement and
+  maintenance HTML fields are sensitive; importing them is strictly opt-in.
 
 ## Verified Code Facts Driving the Amendments
 

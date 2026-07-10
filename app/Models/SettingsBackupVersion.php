@@ -22,11 +22,13 @@ class SettingsBackupVersion extends Model
         'payload_hash',
         'source',
         'created_by_user_id',
+        'import_report',
     ];
 
     protected function casts(): array
     {
         return [
+            'import_report' => 'array',
             'source' => SettingsBackupSource::class,
         ];
     }

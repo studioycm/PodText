@@ -11,6 +11,7 @@
                 <option value="changed">{{ __('admin.settings_import.filters.changed') }}</option>
                 <option value="added">{{ __('admin.settings_import.filters.added') }}</option>
                 <option value="removed">{{ __('admin.settings_import.filters.removed') }}</option>
+                <option value="locked">{{ __('admin.settings_import.filters.locked') }}</option>
                 <option value="all">{{ __('admin.settings_import.filters.all') }}</option>
             @endif
         </select>

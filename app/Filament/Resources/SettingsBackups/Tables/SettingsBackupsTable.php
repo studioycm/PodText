@@ -13,6 +13,7 @@ use App\Settings\PublicContentSettings;
 use App\Support\PublicFront\PublicFrontConfigRegistry;
 use App\Support\SettingsLifecycle\SettingsBackupManager;
 use App\Support\SettingsLifecycle\SettingsBackupSnapshotManager;
+use App\Support\SettingsLifecycle\SettingsImportReport;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\DeleteAction;
@@ -146,6 +147,15 @@ class SettingsBackupsTable
                         ->schema(fn (SettingsBackupVersion $record): array => self::diffSchema($record))
                         ->modalSubmitAction(false)
                         ->modalCancelActionLabel(__('admin.actions.close')),
+                    Action::make('importReport')
+                        ->label(__('admin.actions.import_report'))
+                        ->icon(Heroicon::OutlinedClipboardDocumentList)
+                        ->color('info')
+                        ->visible(fn (SettingsBackupVersion $record): bool => filled($record->import_report))
+                        ->modalHeading(__('admin.actions.import_report'))
+                        ->schema(fn (SettingsBackupVersion $record): array => self::importReportSchema($record))
+                        ->modalSubmitAction(false)
+                        ->modalCancelActionLabel(__('admin.actions.close')),
                     Action::make('restore')
                         ->label(__('admin.actions.restore'))
                         ->icon(Heroicon::OutlinedArrowPath)
@@ -182,6 +192,54 @@ class SettingsBackupsTable
                         ->using(fn (SettingsBackupVersion $record) => app(SettingsBackupSnapshotManager::class)->deleteBackup($record)),
                 ]),
             ]);
+    }
+
+    /**
+     * @return array<int, Section>
+     */
+    private static function importReportSchema(SettingsBackupVersion $record): array
+    {
+        $report = SettingsImportReport::fromArray($record->import_report);
+
+        return [
+            Section::make(__('admin.settings_import_report.summary'))
+                ->schema([
+                    TextEntry::make('import_report_mode')
+                        ->label(__('admin.settings_import.report.mode'))
+                        ->state(__('admin.settings_import.modes.'.$report->mode)),
+                    TextEntry::make('import_report_source')
+                        ->label(__('admin.settings_import.report.source'))
+                        ->state($report->sourceLabel ?? __('admin.placeholders.empty')),
+                    TextEntry::make('import_report_generated_at')
+                        ->label(__('admin.settings_import.report.generated_at'))
+                        ->state($report->generatedAtLabel()),
+                    TextEntry::make('import_report_before_import_backup_id')
+                        ->label(__('admin.settings_import.report.before_import_backup'))
+                        ->state($report->beforeImportBackupId ?? __('admin.placeholders.empty')),
+                ])
+                ->columns(2),
+            Section::make(__('admin.settings_import.report.warnings'))
+                ->schema([
+                    TextEntry::make('import_report_warnings')
+                        ->label(__('admin.settings_import.report.warnings'))
+                        ->state($report->warnings)
+                        ->listWithLineBreaks()
+                        ->columnSpanFull(),
+                ])
+                ->visible(fn (): bool => $report->warnings !== []),
+            ...collect(SettingsImportReport::OUTCOME_GROUPS)
+                ->filter(fn (string $outcome): bool => $report->outcomeRows($outcome) !== [])
+                ->map(fn (string $outcome): Section => Section::make(__('admin.settings_import_report.outcomes.'.$outcome))
+                    ->schema([
+                        TextEntry::make("import_report_{$outcome}")
+                            ->label(__('admin.settings_import_report.outcomes.'.$outcome))
+                            ->state($report->outcomeLines($outcome))
+                            ->listWithLineBreaks()
+                            ->columnSpanFull(),
+                    ]))
+                ->values()
+                ->all(),
+        ];
     }
 
     /**

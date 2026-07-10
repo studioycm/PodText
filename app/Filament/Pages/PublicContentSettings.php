@@ -2129,6 +2129,7 @@ class PublicContentSettings extends SettingsPage
     {
         $data['about_page'] = $this->normalizeAboutPageUploadState($data['about_page'] ?? []);
         $data['menu_config'] = $this->normalizeMenuUploadState($data['menu_config'] ?? []);
+        $data = $this->preserveUntouchedMaintenanceFields($data);
 
         $publicFrontConfig = app(PublicFrontConfigValidator::class)
             ->validate($data)
@@ -2142,6 +2143,54 @@ class PublicContentSettings extends SettingsPage
             ...$publicFrontConfig,
             'import_locks' => $currentImportLocks,
         ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    private function preserveUntouchedMaintenanceFields(array $data): array
+    {
+        $currentMaintenance = app(PublicContentSettingsData::class)->maintenance
+            ?? PublicFrontConfigRegistry::defaults()['maintenance'];
+
+        if (! is_array($currentMaintenance)) {
+            return $data;
+        }
+
+        if (! is_array($data['maintenance'] ?? null)) {
+            $data['maintenance'] = $currentMaintenance;
+
+            return $data;
+        }
+
+        foreach (['title', 'rich_html', 'raw_html_override'] as $field) {
+            if (! array_key_exists($field, $data['maintenance']) && array_key_exists($field, $currentMaintenance)) {
+                $data['maintenance'][$field] = $currentMaintenance[$field];
+            }
+        }
+
+        $currentRichHtml = $currentMaintenance['rich_html'] ?? null;
+        $incomingRichHtml = $data['maintenance']['rich_html'] ?? null;
+
+        if ($this->maintenanceRichHtmlWasOnlyNormalized($currentRichHtml, $incomingRichHtml)) {
+            $data['maintenance']['rich_html'] = $currentRichHtml;
+        }
+
+        return $data;
+    }
+
+    private function maintenanceRichHtmlWasOnlyNormalized(mixed $current, mixed $incoming): bool
+    {
+        if (! is_string($current) || ! is_string($incoming) || $current === $incoming) {
+            return false;
+        }
+
+        if (blank($current) || blank($incoming)) {
+            return false;
+        }
+
+        return trim(strip_tags($current)) === trim(strip_tags($incoming));
     }
 
     /**

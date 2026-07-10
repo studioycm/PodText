@@ -6,6 +6,7 @@ use App\Filament\Pages\ImportPublicSettings;
 use App\Filament\Pages\ManageSettingsImportLocks;
 use App\Filament\Pages\PublicContentSettings as PublicContentSettingsPage;
 use App\Filament\Resources\SettingsBackups\Pages\ListSettingsBackups;
+use App\Filament\Resources\SettingsBackups\SettingsBackupResource;
 use App\Livewire\Admin\SettingsImportLocksManager;
 use App\Livewire\Admin\SettingsImportWizard;
 use App\Models\SettingsBackupVersion;
@@ -152,7 +153,32 @@ it('renders and saves maintenance settings from the admin form', function (): vo
         'title' => 'Admin maintenance title',
         'rich_html' => '<p>Admin rich content</p>',
         'raw_html_override' => '<!doctype html><html><body>Admin raw</body></html>',
-    ]);
+    ])
+        ->and(step10S1aSettings()->maintenance['rich_html'])->toBeString();
+});
+
+it('preserves maintenance html fields during unrelated settings saves', function (): void {
+    $richHtml = '<p data-maintenance-preserve="rich">Stored rich maintenance</p>';
+    $rawHtml = '<!doctype html><html><body data-maintenance-preserve="raw">Stored raw maintenance</body></html>';
+
+    $settings = step10S1aSettings();
+    $settings->maintenance = [
+        'enabled' => false,
+        'title' => 'Stored maintenance title',
+        'rich_html' => $richHtml,
+        'raw_html_override' => $rawHtml,
+        'retry_after_hours' => 24,
+    ];
+    $settings->save();
+
+    Livewire::test(PublicContentSettingsPage::class)
+        ->set('data.homepage_item_limit', 42)
+        ->call('save')
+        ->assertHasNoFormErrors();
+
+    expect(step10S1aSettings()->homepage_item_limit)->toBe(42)
+        ->and(step10S1aSettings()->maintenance['rich_html'])->toBe($richHtml)
+        ->and(step10S1aSettings()->maintenance['raw_html_override'])->toBe($rawHtml);
 });
 
 it('imports a package round trip and creates a before-import backup', function (): void {
@@ -252,7 +278,7 @@ it('round trips maintenance mode settings through exported packages and selected
     ];
     $settings->save();
 
-    $appliedPaths = app(SettingsBackupManager::class)->import(
+    $report = app(SettingsBackupManager::class)->import(
         PublicSettingsPackage::fromArray($package),
         $maintenancePaths,
         auth()->user(),
@@ -266,7 +292,7 @@ it('round trips maintenance mode settings through exported packages and selected
             'maintenance.rich_html',
             'maintenance.title',
         ])
-        ->and($appliedPaths)->toEqualCanonicalizing($maintenancePaths)
+        ->and($report->appliedPaths())->toEqualCanonicalizing($maintenancePaths)
         ->and(step10S1aSettings()->maintenance)->toBe($maintenance);
 });
 
@@ -286,6 +312,44 @@ it('persists import locks and derives the front-text preset from lockable units'
 
     expect(app(SettingsImportLocks::class)->lockedPaths())
         ->toEqualCanonicalizing(app(SettingsImportLocks::class)->frontTextLockPaths());
+});
+
+it('keeps sensitive maintenance units selectable but deselected by default', function (): void {
+    $settings = step10S1aSettings();
+    $settings->maintenance = [
+        'enabled' => false,
+        'title' => null,
+        'rich_html' => null,
+        'raw_html_override' => null,
+        'retry_after_hours' => 24,
+    ];
+    $settings->save();
+
+    $payload = PublicSettingsPackage::fromCurrentSettings()->payload();
+    $payload['maintenance'] = [
+        'enabled' => true,
+        'title' => 'Imported sensitive title',
+        'rich_html' => '<p>Imported sensitive rich content</p>',
+        'raw_html_override' => '<!doctype html><html><body>Imported sensitive raw</body></html>',
+        'retry_after_hours' => 12,
+    ];
+
+    $analysis = app(SettingsPackageImportAnalyzer::class)->analyze(
+        PublicSettingsPackage::fromArray(step10S1aPackageArray($payload)),
+    );
+    $rows = $analysis->rowsByPath();
+
+    foreach (['maintenance.enabled', 'maintenance.title', 'maintenance.rich_html', 'maintenance.raw_html_override'] as $path) {
+        expect($rows[$path]['semantics'])->toContain('sensitive')
+            ->and($rows[$path]['selectable'])->toBeTrue()
+            ->and($rows[$path]['selected'])->toBeFalse();
+    }
+
+    expect($rows['maintenance.title']['semantics'])
+        ->toContain('front_text')
+        ->and($rows['maintenance.rich_html']['semantics'])->toContain('front_text')
+        ->and($rows['maintenance.raw_html_override']['semantics'])->toContain('front_text')
+        ->and($analysis->selectedPaths)->not->toContain('maintenance.enabled');
 });
 
 it('unions the front-text preset with manually selected import locks', function (): void {
@@ -329,7 +393,7 @@ it('excludes locked units from import even when they are force-selected', functi
             'selectable' => false,
         ]);
 
-    $appliedPaths = app(SettingsBackupManager::class)->import(
+    $report = app(SettingsBackupManager::class)->import(
         $package,
         ['homepage_item_limit', 'show_latest_section'],
         auth()->user(),
@@ -337,7 +401,7 @@ it('excludes locked units from import even when they are force-selected', functi
 
     $settings = step10S1aSettings();
 
-    expect($appliedPaths)->toBe(['show_latest_section'])
+    expect($report->appliedPaths())->toBe(['show_latest_section'])
         ->and($settings->homepage_item_limit)->toBe(10)
         ->and($settings->show_latest_section)->toBeTrue();
 });
@@ -421,7 +485,7 @@ it('keeps the first duplicate card template during analysis and import', functio
         ->and($analysis->rowsByPath()['card_templates.content_item']['imported_preview'])->toContain('First template')
         ->and($analysis->rowsByPath()['card_templates.content_item']['imported_preview'])->not->toContain('Second template');
 
-    $appliedPaths = app(SettingsBackupManager::class)->import(
+    $report = app(SettingsBackupManager::class)->import(
         $package,
         ['card_templates.content_item'],
         auth()->user(),
@@ -429,7 +493,7 @@ it('keeps the first duplicate card template during analysis and import', functio
 
     $templates = collect(step10S1aSettings()->card_templates)->keyBy('key');
 
-    expect($appliedPaths)->toBe(['card_templates.content_item'])
+    expect($report->appliedPaths())->toBe(['card_templates.content_item'])
         ->and($templates['duplicate_card']['label'])->toBe('First template')
         ->and($templates['duplicate_card']['layout'])->toBe('cards');
 });
@@ -474,7 +538,7 @@ it('adds new card-template keys in add-only mode while preserving existing keys'
         ],
     ];
 
-    $appliedPaths = app(SettingsBackupManager::class)->import(
+    $report = app(SettingsBackupManager::class)->import(
         PublicSettingsPackage::fromArray(step10S1aPackageArray($payload)),
         ['card_templates.content_item'],
         auth()->user(),
@@ -483,7 +547,7 @@ it('adds new card-template keys in add-only mode while preserving existing keys'
 
     $templates = collect(step10S1aSettings()->card_templates)->keyBy('key');
 
-    expect($appliedPaths)->toBe(['card_templates.content_item'])
+    expect($report->appliedPaths())->toBe(['card_templates.content_item'])
         ->and($templates)->toHaveKeys(['existing_card', 'new_card'])
         ->and($templates['existing_card']['label'])->toBe('Existing')
         ->and($templates['new_card']['label'])->toBe('New');
@@ -513,7 +577,7 @@ it('fills empty values and skips populated values in add-only mode', function ()
         ],
     ];
 
-    $appliedPaths = app(SettingsBackupManager::class)->import(
+    $report = app(SettingsBackupManager::class)->import(
         PublicSettingsPackage::fromArray(step10S1aPackageArray($payload)),
         ['homepage_group_title_separator', 'route_labels.home', 'route_labels.search'],
         auth()->user(),
@@ -523,7 +587,7 @@ it('fills empty values and skips populated values in add-only mode', function ()
     $settings = step10S1aSettings();
     $labels = collect($settings->route_labels)->keyBy('route_key');
 
-    expect($appliedPaths)->toEqualCanonicalizing(['homepage_group_title_separator', 'route_labels.search'])
+    expect($report->appliedPaths())->toEqualCanonicalizing(['homepage_group_title_separator', 'route_labels.search'])
         ->and($settings->homepage_group_title_separator)->toBe(' / ')
         ->and($labels['home']['label'])->toBe('Current home')
         ->and($labels['search']['label'])->toBe('Imported search');
@@ -544,14 +608,14 @@ it('lets locks beat add-only mode and reports applied paths after server-side fi
         ],
     ];
 
-    $appliedPaths = app(SettingsBackupManager::class)->import(
+    $report = app(SettingsBackupManager::class)->import(
         PublicSettingsPackage::fromArray(step10S1aPackageArray($payload)),
         ['route_labels.search'],
         auth()->user(),
         SettingsImportMode::AddOnly,
     );
 
-    expect($appliedPaths)->toBe([])
+    expect($report->appliedPaths())->toBe([])
         ->and(step10S1aSettings()->route_labels)->toBe([]);
 });
 
@@ -593,6 +657,103 @@ it('computes add-only and lock outcome chips', function (): void {
         ->and($rows['route_labels.contributors']['outcome'])->toBe('skip_locked')
         ->and($rows['route_labels.about']['outcome'])->toBe('skip_unchanged')
         ->and($rows['homepage_item_limit']['outcome'])->toBe('error');
+});
+
+it('persists and renders a grouped import report from a mixed add-only import', function (): void {
+    app(SettingsImportLocks::class)->save(['route_labels.contributors']);
+
+    $settings = step10S1aSettings();
+    $settings->homepage_item_limit = 11;
+    $settings->route_labels = [
+        [
+            'route_key' => 'home',
+            'label' => 'Current home',
+        ],
+    ];
+    $settings->save();
+
+    SettingsBackupVersion::query()->delete();
+
+    $payload = PublicSettingsPackage::fromCurrentSettings()->payload();
+    $payload['homepage_item_limit'] = 'bad scalar';
+    $payload['route_labels'] = [
+        [
+            'route_key' => 'home',
+            'label' => 'Imported home collision',
+        ],
+        [
+            'route_key' => 'search',
+            'label' => 'Imported search label',
+        ],
+        [
+            'route_key' => 'contributors',
+            'label' => 'Imported locked contributors',
+        ],
+    ];
+    $package = step10S1aPackageArray($payload);
+
+    $component = Livewire::test(SettingsImportWizard::class)
+        ->set('importMode', SettingsImportMode::AddOnly->value)
+        ->set('packageFile', step10S1aUploadedPackage($package))
+        ->call('loadUploadedPackage')
+        ->assertSet('step', 'dry-run')
+        ->assertSee(__('admin.settings_import.summary.selected', ['count' => 1]))
+        ->assertSee(__('admin.settings_import.summary.added', ['count' => 1]))
+        ->assertSee(__('admin.settings_import.summary.locked', ['count' => 1]))
+        ->assertSee(__('admin.settings_import.summary.errors', ['count' => 1]))
+        ->assertSee(__('admin.settings_import.summary.skip_exists', ['count' => 1]))
+        ->set('filter', 'locked')
+        ->assertSee('Imported locked contributors')
+        ->assertDontSee('Imported search label')
+        ->set('filter', 'all')
+        ->call('applyImport')
+        ->assertSet('step', 'complete')
+        ->assertSee('data-test="settings-import-completion-report"', false)
+        ->assertSee(__('admin.settings_import_report.outcomes.applied'))
+        ->assertSee(__('admin.settings_import_report.outcomes.skipped_locked'))
+        ->assertSee(__('admin.settings_import_report.outcomes.skipped_exists'))
+        ->assertSee(__('admin.settings_import_report.outcomes.errors'));
+
+    $report = $component->instance()->structuredImportReport();
+    $beforeImport = SettingsBackupVersion::query()
+        ->where('source', SettingsBackupSource::BeforeImport->value)
+        ->latest('id')
+        ->firstOrFail();
+
+    expect($report->beforeImportBackupId)->toBe($beforeImport->getKey())
+        ->and($report->appliedPaths())->toBe(['route_labels.search'])
+        ->and($report->outcomeRows('skipped_locked'))->sequence(
+            fn ($row) => $row->toMatchArray([
+                'path' => 'route_labels.contributors',
+                'lock' => [
+                    'label' => __('admin.settings_import_report.lock_import_locks'),
+                    'path' => 'route_labels.contributors',
+                ],
+            ]),
+        )
+        ->and($report->outcomeRows('skipped_exists'))->sequence(
+            fn ($row) => $row->toMatchArray(['path' => 'route_labels.home']),
+        )
+        ->and($report->outcomeRows('errors'))->sequence(
+            fn ($row) => $row->toMatchArray(['path' => 'homepage_item_limit']),
+        )
+        ->and($report->outcomeRows('errors')[0]['reason'])->toContain('homepage_item_limit')
+        ->and($beforeImport->import_report['before_import_backup_id'])->toBe($beforeImport->getKey());
+
+    $manualWithoutReport = app(SettingsBackupManager::class)->createManual('No import report', auth()->user());
+
+    Livewire::test(ListSettingsBackups::class)
+        ->assertActionVisible(TestAction::make('importReport')->table($beforeImport))
+        ->assertActionHidden(TestAction::make('importReport')->table($manualWithoutReport))
+        ->mountAction(TestAction::make('importReport')->table($beforeImport))
+        ->assertMountedActionModalSee(__('admin.settings_import_report.outcomes.applied'))
+        ->assertMountedActionModalSee('route_labels.search')
+        ->assertMountedActionModalSee('homepage_item_limit');
+
+    auth()->logout();
+
+    $this->get(SettingsBackupResource::getUrl('index'))
+        ->assertRedirect('/admin/login');
 });
 
 it('computes tri-state group toggle semantics', function (): void {

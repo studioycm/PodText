@@ -190,6 +190,7 @@ class SettingsPackageImportAnalyzer
                 $error = $this->rowError($unit, $importedExists, $importedValue);
                 $locked = in_array($unit->path, $lockedPaths, true);
                 $outcome = $error === null ? $this->outcome($state, $importedExists, $mode, $locked, $currentExists, $currentValue, $importedValue) : 'error';
+                $sensitive = in_array('sensitive', $unit->semantics, true);
                 $selectable = $error === null
                     && ! $locked
                     && $state !== 'unchanged'
@@ -210,7 +211,7 @@ class SettingsPackageImportAnalyzer
                     'current_preview' => $this->preview($currentValue, $currentExists),
                     'imported_preview' => $this->preview($importedValue, $importedExists),
                     'selectable' => $selectable,
-                    'selected' => $selectable && in_array($outcome, ['replace', 'add_new'], true),
+                    'selected' => $selectable && ! $sensitive && in_array($outcome, ['replace', 'add_new'], true),
                     'locked' => $locked,
                     'error' => $error,
                 ];

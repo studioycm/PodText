@@ -122,10 +122,14 @@ class SettingsBackupManager
 
     /**
      * @param  array<int, string>  $selectedPaths
-     * @return array<int, string>
      */
-    public function import(PublicSettingsPackage $package, array $selectedPaths, ?User $user = null, SettingsImportMode|string|null $mode = SettingsImportMode::Replace): array
-    {
+    public function import(
+        PublicSettingsPackage $package,
+        array $selectedPaths,
+        ?User $user = null,
+        SettingsImportMode|string|null $mode = SettingsImportMode::Replace,
+        ?string $sourceLabel = null,
+    ): SettingsImportReport {
         $mode = SettingsImportMode::normalize($mode);
         $this->validatePackageForRestore($package);
         $analysis = app(SettingsPackageImportAnalyzer::class)->analyze($package, $mode);
@@ -137,15 +141,32 @@ class SettingsBackupManager
         $allowedPaths = $analysis->selectablePaths();
         $selectedPaths = array_values(array_intersect($selectedPaths, $allowedPaths));
         $appliedPaths = [];
+        $report = null;
 
-        DB::transaction(function () use ($package, $selectedPaths, $user, $mode, &$appliedPaths): void {
-            $this->createBeforeImport($user);
+        DB::transaction(function () use ($analysis, $package, $selectedPaths, $user, $mode, $sourceLabel, &$appliedPaths, &$report): void {
+            $beforeImportBackup = $this->createBeforeImport($user);
             $appliedPaths = $this->applySelectedPayload($package->payload(), $selectedPaths, $mode);
+            $report = SettingsImportReport::fromAnalysis(
+                analysis: $analysis,
+                selectedPaths: $selectedPaths,
+                appliedPaths: $appliedPaths,
+                beforeImportBackup: $beforeImportBackup,
+                mode: $mode,
+                sourceLabel: $sourceLabel,
+            );
+
+            $beforeImportBackup->update([
+                'import_report' => $report->toArray(),
+            ]);
         });
 
         $this->forgetPublicFrontState();
 
-        return $appliedPaths;
+        if (! $report instanceof SettingsImportReport) {
+            throw new RuntimeException('The settings import report was not created.');
+        }
+
+        return $report;
     }
 
     public function prune(string $scope): void

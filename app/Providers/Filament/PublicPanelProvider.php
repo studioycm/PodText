@@ -69,12 +69,14 @@ class PublicPanelProvider extends PanelProvider
                 AddQueuedCookiesToResponse::class,
                 StartSession::class,
                 AuthenticateSession::class,
-                RenderMaintenanceMode::class,
                 ShareErrorsFromSession::class,
                 PreventRequestForgery::class,
                 SubstituteBindings::class,
                 DisableBladeIconComponents::class,
                 DispatchServingFilamentEvent::class,
-            ]);
+            ])
+            ->middleware([
+                RenderMaintenanceMode::class,
+            ], isPersistent: true);
     }
 }

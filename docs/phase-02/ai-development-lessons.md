@@ -62,6 +62,7 @@ For current prompt completion/progress state, see `docs/phase-02/current-project
 - Never run `migrate:fresh`, `db:wipe`, or seeders against the dev database. Destructive artisan commands belong to tests only, where the canary has already forced SQLite `:memory:`.
 - Composite indexes on string columns must use explicit bounded lengths. Finite-token columns get small explicit lengths; with `utf8mb4`, each character can cost 4 bytes and InnoDB's key limit is 3072 bytes. SQLite tests cannot catch MySQL key-length violations, so review index byte math for every new string composite index.
 - PHP language files silently keep the last duplicate key at runtime. Use a token-level duplicate-key scan for both `lang/en` and `lang/he` after translation edits, especially when moving or merging nested admin arrays.
+- `User::canAccessPanel()` currently admits every authenticated user to the admin panel and is the single load-bearing admin-auth decision. This is acceptable only while the only account is Yoni's; before any non-admin account type exists, add an `is_admin` gate first.
 
 ## Documentation/state-management lessons
 

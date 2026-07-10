@@ -1,5 +1,6 @@
 <?php
 
+use App\Livewire\Public\ContentItemBrowser;
 use App\Models\ContentGroup;
 use App\Models\ContentItem;
 use App\Models\User;
@@ -10,6 +11,7 @@ use App\Support\PublicFront\PublicFrontConfigRegistry;
 use App\Support\PublicFront\PublicFrontRenderContext;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
+use Livewire\Livewire;
 use Spatie\LaravelSettings\SettingsContainer;
 
 uses(RefreshDatabase::class);
@@ -82,6 +84,8 @@ it('serves public urls as maintenance responses with retry-after when enabled', 
             ->assertHeader('Retry-After', '21600')
             ->assertSee('lang="he"', false)
             ->assertSee('dir="rtl"', false)
+            ->assertSee('<meta charset="utf-8">', false)
+            ->assertSee('<meta name="viewport" content="width=device-width, initial-scale=1">', false)
             ->assertSee('data-maintenance-marker="mp1"', false)
             ->assertSee('MP1 maintenance marker')
             ->assertDontSee($item->title);
@@ -108,6 +112,22 @@ it('lets admin users bypass maintenance while admin routes remain reachable for 
         ->assertOk()
         ->assertSee($item->title)
         ->assertDontSee('data-maintenance-marker="mp1"', false);
+});
+
+it('lets admin users bypass maintenance during a livewire interaction', function (): void {
+    [$group, $item] = step10rMp1PublicContent();
+
+    step10rMp1SaveMaintenance([
+        'enabled' => true,
+        'rich_html' => '<p data-maintenance-marker="mp1-livewire">Hidden from admin Livewire requests</p>',
+    ]);
+
+    $this->actingAs(User::factory()->create());
+
+    Livewire::test(ContentItemBrowser::class, ['contentGroup' => $group])
+        ->set('search', 'MP1')
+        ->assertSee($item->title)
+        ->assertDontSee('data-maintenance-marker="mp1-livewire"', false);
 });
 
 it('leaves public routes normal when maintenance is disabled', function (): void {
