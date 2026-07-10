@@ -107,16 +107,35 @@ as a SEPARATE ->middleware([...], isPersistent: true) call on the public panel,
 leaving the default stack untouched — it appends after StartSession/AuthenticateSession
 so auth()->user() works. Do not prepend into the default array.
 
-Job 3 — panel middleware/auth hardening (from Fable's provider audit):
+Job 3 — panel middleware/auth hardening (implements Fable's provider audit, 10/07/2026):
+
 a. Define the viewHorizon gate in HorizonServiceProvider: authorize users who can
-   access the admin panel — production /horizon is currently local-only. Test it.
+access the admin panel — production /horizon is currently local-only (the
+published provider authorizes only the local environment by default; the gate was
+never defined). Test it: an admin-capable user passes, a guest is denied.
 b. Record as a standing rule (ai-development-lessons + ledger guardrail):
-   User::canAccessPanel() currently admits EVERY authenticated user to the admin
-   panel; before any non-admin account type is ever introduced, an is_admin gate must
-   land first.
-c. Handoff deploy note: set SESSION_SECURE_COOKIE=true in the production env.
-d. Write a short research note documenting both panels' middleware stacks and the
-   persistent-middleware behavior for future runs.
+User::canAccessPanel() currently admits EVERY authenticated user to the admin
+panel — the single load-bearing auth decision in the app. Safe while the only
+account is Yoni's; the moment any non-admin account type exists (public-form
+accounts, Workbench-era users), an is_admin gate must land FIRST, before those
+accounts are created.
+c. Handoff deploy note: set SESSION_SECURE_COOKIE=true in the production env —
+session cookies on HTTPS prod are not currently forced secure.
+d. Write the panel middleware/auth audit research note recording the FULL findings,
+including what was verified CORRECT so future runs do not re-audit or "fix" it:
+- Both panels run the untouched Filament install-default middleware stacks, and
+  the defaults are right: EncryptCookies → AddQueuedCookiesToResponse →
+  StartSession → AuthenticateSession → ShareErrorsFromSession →
+  PreventRequestForgery (CSRF) → SubstituteBindings → Filament internals.
+- The public panel correctly has NO authMiddleware (guest panel); the admin panel
+  gates through Filament Authenticate in authMiddleware.
+- No throttling exists on public routes — ACCEPTED and documented, not a defect:
+  Filament's login has built-in rate limiting, and public-browsing throttling
+  belongs at the server/nginx level; if app-level throttling is ever wanted, a
+  throttle middleware on the public panel is the designated extension point.
+- Panel middleware persistence behavior: default panel middleware runs only on
+  first page load; isPersistent: true re-applies it on Livewire requests — the
+  mechanism the maintenance middleware relies on (Job 1 refinement).
 
 Job 4 — test-suite performance investigation (report before optimizing):
 a. Run php artisan test --profile and record the 10 slowest tests; identify the
