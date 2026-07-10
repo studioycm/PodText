@@ -5,19 +5,22 @@ namespace App\Support\SettingsLifecycle;
 class SettingsPackageDiff
 {
     /**
-     * @param  array<string, array{added: array<int, array{path: string, current: string}>, removed: array<int, array{path: string, backup: string}>, changed: array<int, array{path: string, backup: string, current: string}>}>  $groups
+     * @param  array<string, array{added: array<int, array{path: string, label: string, current: string}>, removed: array<int, array{path: string, label: string, backup: string}>, changed: array<int, array{path: string, label: string, backup: string, current: string}>}>  $groups
      */
     public function __construct(private readonly array $groups) {}
 
     public static function between(array $backupPayload, array $currentPayload): self
     {
+        $schema = app(SettingsLifecycleSchema::class);
         $backup = self::flatten($backupPayload);
         $current = self::flatten($currentPayload);
         $paths = collect(array_unique([...array_keys($backup), ...array_keys($current)]))->sort()->values();
         $groups = [];
 
         foreach ($paths as $path) {
-            $group = self::groupFor($path);
+            $unit = $schema->unitFor($path, array_replace_recursive($backupPayload, $currentPayload));
+            $group = $unit?->sectionLabel ?? self::groupFor($path);
+            $label = $unit?->label ?? $schema->labelFor($path);
             $groups[$group] ??= [
                 'added' => [],
                 'removed' => [],
@@ -27,6 +30,7 @@ class SettingsPackageDiff
             if (! array_key_exists($path, $backup)) {
                 $groups[$group]['added'][] = [
                     'path' => $path,
+                    'label' => $label,
                     'current' => self::preview($current[$path]),
                 ];
 
@@ -36,6 +40,7 @@ class SettingsPackageDiff
             if (! array_key_exists($path, $current)) {
                 $groups[$group]['removed'][] = [
                     'path' => $path,
+                    'label' => $label,
                     'backup' => self::preview($backup[$path]),
                 ];
 
@@ -45,6 +50,7 @@ class SettingsPackageDiff
             if ($backup[$path] !== $current[$path]) {
                 $groups[$group]['changed'][] = [
                     'path' => $path,
+                    'label' => $label,
                     'backup' => self::preview($backup[$path]),
                     'current' => self::preview($current[$path]),
                 ];
@@ -104,15 +110,15 @@ class SettingsPackageDiff
             $lines[] = $groupName;
 
             foreach ($group['added'] as $entry) {
-                $lines[] = "  + {$entry['path']}: current={$entry['current']}";
+                $lines[] = "  + {$entry['label']} ({$entry['path']}): current={$entry['current']}";
             }
 
             foreach ($group['removed'] as $entry) {
-                $lines[] = "  - {$entry['path']}: backup={$entry['backup']}";
+                $lines[] = "  - {$entry['label']} ({$entry['path']}): backup={$entry['backup']}";
             }
 
             foreach ($group['changed'] as $entry) {
-                $lines[] = "  * {$entry['path']}: backup={$entry['backup']} current={$entry['current']}";
+                $lines[] = "  * {$entry['label']} ({$entry['path']}): backup={$entry['backup']} current={$entry['current']}";
             }
 
             if (count($lines) >= $limit) {

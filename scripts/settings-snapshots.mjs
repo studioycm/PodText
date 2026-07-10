@@ -27,9 +27,27 @@ try {
 
 async function captureTarget(browser, target) {
     const viewport = normalizeViewport(target.viewport);
+    const fallbackViewport = normalizeViewport(target.fallback_viewport ?? target.viewport);
+    const deviceScaleFactor = normalizeDeviceScaleFactor(target.device_scale_factor);
     const theme = target.theme === 'dark' ? 'dark' : 'light';
+
+    try {
+        await captureTargetWithViewport(browser, target, theme, viewport, deviceScaleFactor);
+
+        return;
+    } catch (error) {
+        if (target.mode !== 'thumb' && target.kind !== 'thumbnail') {
+            throw error;
+        }
+
+        await captureTargetWithViewport(browser, target, theme, fallbackViewport, 1);
+    }
+}
+
+async function captureTargetWithViewport(browser, target, theme, viewport, deviceScaleFactor) {
     const context = await browser.newContext({
         viewport,
+        deviceScaleFactor,
         colorScheme: theme,
     });
 
@@ -109,4 +127,14 @@ function normalizeViewport(viewport) {
         width: Number.isFinite(width) && width > 0 ? Math.round(width) : 1440,
         height: Number.isFinite(height) && height > 0 ? Math.round(height) : 900,
     };
+}
+
+function normalizeDeviceScaleFactor(value) {
+    const scale = Number(value ?? 1);
+
+    if (!Number.isFinite(scale) || scale <= 0) {
+        return 1;
+    }
+
+    return scale;
 }

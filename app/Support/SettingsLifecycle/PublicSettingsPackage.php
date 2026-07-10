@@ -40,6 +40,8 @@ class PublicSettingsPackage
 
     public static function fromArray(array $package): self
     {
+        $package = app(SettingsPackageUpgradePipeline::class)->upgrade($package);
+
         if (! is_array($package['payload'] ?? null)) {
             throw new InvalidArgumentException('Settings package payload must be an array.');
         }

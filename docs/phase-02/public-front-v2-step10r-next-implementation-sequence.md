@@ -16,7 +16,7 @@ This file records the active continuation-runner order after Step 10R-M6 plus th
 | 6 | Step 10R-P1 | UX1, UX2, V1a-V1c | Complete: cached validated public-front config with versioned key `public_front.config.v1`, settings-migration watermark, save invalidation, and corrupted-cache fallback. |
 | 7 | Step 10R-S2 | P1 | Complete: settings backup versions, shared package serializer, compare/download, retention, and restore flow. |
 | 8 | Step 10R-S2V | S2 | Complete: backup visual snapshots with Playwright thumbnails/full captures, private storage, queued jobs, and gallery UI. S1a/S1b do not depend on S2V. |
-| 9 | Step 10R-S1a | P1, S2 | Settings export and import wizard core: schema boundary, export, source/validate/dry-run/selection/apply replace flow, and before-import backup. |
+| 9 | Step 10R-S1a | P1, S2 | Complete: settings export and import wizard core with schema boundary, export, source/validate/dry-run/selection/apply replace flow, before-import backup, and S2V audit corrections. |
 | 10 | Step 10R-S1b | S1a | Import locks and add-only mode: persistent locks, lock manager, hard wizard enforcement, merge mode, and outcome chips. Importer Workbench opens after S1b. |
 | 11 | Step 10R-P2 | S1b | Listing fetch-window, lazy filter options/form definitions, and opt-in aggregate subselects. |
 | 12 | Step 10R-P3 | P2 | Derived transcript segments and viewer render economy. |
@@ -57,7 +57,7 @@ This file records the active continuation-runner order after Step 10R-M6 plus th
 
 ## Current Recommendation
 
-Continue with Step 10R-S1a. Step 10R-UX1 standardized admin navigation, table action
+Continue with Step 10R-S1b. Step 10R-UX1 standardized admin navigation, table action
 placement, action modal defaults, section width defaults, and relation-manager tabs.
 Step 10R-UX2 added the shared effective transcription edit action on both episode list
 surfaces. Step 10R-V1a added finite default/no-image fallback settings and shared
@@ -66,6 +66,7 @@ shared lazy searchable icon picker. Step 10R-V1c added strict custom hex color c
 and a theme-safe cached podcast palette. Step 10R-P1 added the validated public-front
 config cache boundary. Step 10R-S2 added settings backup versions and restore.
 Step 10R-S2V added backup visual snapshots plus the S2 system-only prune/file-cleanup
-correction. Yoni asked this branch to continue through S1a/S1b, then pause for the
+correction. Step 10R-S1a added the settings export/import wizard core and S2V audit
+corrections. Yoni asked this branch to continue through S1b, then pause for the
 custom importer side quest before returning to P2/P3/AX/SL/B4/C2/9F work. The v4
 continuation order is reflected here and in the central ledger.

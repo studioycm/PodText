@@ -17,8 +17,10 @@ use App\Support\SettingsLifecycle\SettingsBackupSnapshotManager;
 use App\Support\SettingsLifecycle\SettingsBackupSnapshotManifest;
 use Filament\Actions\Testing\TestAction;
 use Filament\Facades\Filament;
+use Illuminate\Contracts\Queue\ShouldQueueAfterCommit;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Process;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
@@ -167,6 +169,50 @@ it('schedules thumbnail-only snapshots for system backups and full configured sn
     Queue::assertPushed(SettingsBackupSnapshotJob::class, 2);
 });
 
+it('queues snapshot jobs after commit and keeps the timeout chain ordered', function (): void {
+    config([
+        'settings-backups.snapshot_job_timeout' => 1800,
+        'horizon.defaults.supervisor-1.timeout' => 1850,
+        'queue.connections.redis.retry_after' => 1900,
+    ]);
+
+    $job = new SettingsBackupSnapshotJob(123);
+
+    expect($job)->toBeInstanceOf(ShouldQueueAfterCommit::class)
+        ->and($job->timeout)->toBe(1800)
+        ->and($job->timeout)->toBeLessThan(config('horizon.defaults.supervisor-1.timeout'))
+        ->and(config('horizon.defaults.supervisor-1.timeout'))->toBeLessThan(config('queue.connections.redis.retry_after'));
+});
+
+it('queues restore-created snapshot jobs only after the before-restore backup is committed', function (): void {
+    createStep10S2VPublicFixtures();
+    Queue::fake();
+
+    $settings = step10S2VSettings();
+    $settings->homepage_item_limit = 17;
+    $settings->save();
+
+    $backup = app(SettingsBackupManager::class)->createManual('Restore after commit source', auth()->user(), ['png'], ['light']);
+
+    $settings = step10S2VSettings();
+    $settings->homepage_item_limit = 23;
+    $settings->save();
+
+    app(SettingsBackupManager::class)->restore($backup, auth()->user());
+
+    $beforeRestore = SettingsBackupVersion::query()
+        ->where('source', SettingsBackupSource::BeforeRestore->value)
+        ->latest('id')
+        ->firstOrFail();
+
+    expect($beforeRestore->snapshots()->exists())->toBeTrue();
+
+    Queue::assertPushed(
+        SettingsBackupSnapshotJob::class,
+        fn (SettingsBackupSnapshotJob $job): bool => $job->backupId === $beforeRestore->getKey(),
+    );
+});
+
 it('processes snapshots through the script contract and isolates per-shot failures', function (): void {
     Storage::fake('local');
     Queue::fake();
@@ -202,7 +248,11 @@ it('processes snapshots through the script contract and isolates per-shot failur
         ->and($secondSnapshot->status)->toBe(SettingsBackupSnapshot::STATUS_FAILED)
         ->and($secondSnapshot->error)->toContain('boom')
         ->and($backup->refresh()->exists)->toBeTrue()
-        ->and($firstContract)->toHaveKeys(['url', 'screen_key', 'theme', 'formats', 'mode', 'max_width', 'viewport', 'outputs'])
+        ->and($firstContract)->toHaveKeys(['url', 'screen_key', 'theme', 'formats', 'mode', 'max_width', 'device_scale_factor', 'viewport', 'fallback_viewport', 'outputs'])
+        ->and($firstContract['viewport']['width'])->toBe(1440)
+        ->and($firstContract['device_scale_factor'])->toBeGreaterThan(0)
+        ->and($firstContract['device_scale_factor'])->toBeLessThan(1)
+        ->and($firstContract['fallback_viewport']['width'])->toBe($firstContract['max_width'])
         ->and($firstContract['outputs'])->toHaveKey(SettingsBackupSnapshot::FORMAT_PNG)
         ->and(base_path('scripts/settings-snapshots.mjs'))->toBeFile();
 });
@@ -256,4 +306,30 @@ it('removes snapshot files on explicit delete and retention prune while preservi
     Storage::disk('local')->assertMissing("settings-backups/{$oldSystem->getKey()}");
     Storage::disk('local')->assertExists("settings-backups/{$newSystem->getKey()}/thumbnail/home-light-desktop-1440.png");
     Storage::disk('local')->assertExists("settings-backups/{$manual->getKey()}/thumbnail/home-light-desktop-1440.png");
+});
+
+it('does not delete pruned snapshot files when the surrounding transaction rolls back', function (): void {
+    Storage::fake('local');
+    config(['settings-backups.retention' => 1]);
+
+    $oldSystem = createStep10S2VBackup(SettingsBackupSource::System, 'Old rollback system');
+    createStep10S2VSnapshot($oldSystem);
+    $newSystem = createStep10S2VBackup(SettingsBackupSource::System, 'New rollback system');
+    createStep10S2VSnapshot($newSystem);
+
+    try {
+        DB::transaction(function (): void {
+            app(SettingsBackupManager::class)->prune(PublicContentSettings::group());
+
+            throw new RuntimeException('Rollback prune.');
+        });
+    } catch (RuntimeException) {
+        // Expected rollback path.
+    }
+
+    expect(SettingsBackupVersion::query()->whereKey($oldSystem->getKey())->exists())->toBeTrue()
+        ->and(SettingsBackupVersion::query()->whereKey($newSystem->getKey())->exists())->toBeTrue();
+
+    Storage::disk('local')->assertExists("settings-backups/{$oldSystem->getKey()}/thumbnail/home-light-desktop-1440.png");
+    Storage::disk('local')->assertExists("settings-backups/{$newSystem->getKey()}/thumbnail/home-light-desktop-1440.png");
 });

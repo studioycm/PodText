@@ -11,6 +11,7 @@ use App\Support\PublicFront\PublicFrontConfigCache;
 use App\Support\PublicFront\PublicFrontConfigRegistry;
 use App\Support\PublicFront\PublicFrontConfigValidator;
 use App\Support\PublicFront\PublicFrontRenderContext;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use RuntimeException;
@@ -42,6 +43,15 @@ class SettingsBackupManager
         return $this->create(
             source: SettingsBackupSource::BeforeRestore,
             label: __('admin.messages.settings_backup_before_restore_label', ['id' => $backup->getKey()]),
+            user: $user,
+        );
+    }
+
+    public function createBeforeImport(?User $user = null): SettingsBackupVersion
+    {
+        return $this->create(
+            source: SettingsBackupSource::BeforeImport,
+            label: __('admin.messages.settings_backup_before_import_label'),
             user: $user,
         );
     }
@@ -105,6 +115,29 @@ class SettingsBackupManager
         $this->forgetPublicFrontState();
     }
 
+    /**
+     * @param  array<int, string>  $selectedPaths
+     */
+    public function import(PublicSettingsPackage $package, array $selectedPaths, ?User $user = null): void
+    {
+        $this->validatePackageForRestore($package);
+        $analysis = app(SettingsPackageImportAnalyzer::class)->analyze($package);
+
+        if ($analysis->refused()) {
+            throw new RuntimeException(implode(' ', $analysis->errors));
+        }
+
+        $allowedPaths = $analysis->selectablePaths();
+        $selectedPaths = array_values(array_intersect($selectedPaths, $allowedPaths));
+
+        DB::transaction(function () use ($package, $selectedPaths, $user): void {
+            $this->createBeforeImport($user);
+            $this->applySelectedPayload($package->payload(), $selectedPaths);
+        });
+
+        $this->forgetPublicFrontState();
+    }
+
     public function prune(string $scope): void
     {
         $retention = max(1, (int) config('settings-backups.retention', 25));
@@ -120,11 +153,11 @@ class SettingsBackupManager
             return;
         }
 
-        $this->snapshots->deleteFilesForBackupIds($idsToPrune);
-
         SettingsBackupVersion::query()
             ->whereKey($idsToPrune)
             ->delete();
+
+        DB::afterCommit(fn () => $this->snapshots->deleteFilesForBackupIds($idsToPrune));
     }
 
     private function shouldSkipSystemBackup(string $scope, string $payloadHash): bool
@@ -170,6 +203,29 @@ class SettingsBackupManager
         }
 
         $settings->save();
+    }
+
+    /**
+     * @param  array<string, mixed>  $importedPayload
+     * @param  array<int, string>  $selectedPaths
+     */
+    private function applySelectedPayload(array $importedPayload, array $selectedPaths): void
+    {
+        $currentPayload = PublicSettingsPackage::fromCurrentSettings()->payload();
+
+        foreach (array_values(array_unique($selectedPaths)) as $path) {
+            if (Arr::has($importedPayload, $path)) {
+                data_set($currentPayload, $path, data_get($importedPayload, $path));
+
+                continue;
+            }
+
+            if (str_contains($path, '.')) {
+                Arr::forget($currentPayload, $path);
+            }
+        }
+
+        $this->applyPayload($currentPayload);
     }
 
     /**

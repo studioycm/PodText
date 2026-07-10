@@ -4,17 +4,17 @@ namespace App\Jobs;
 
 use App\Models\SettingsBackupSnapshot;
 use App\Support\SettingsLifecycle\SettingsBackupSnapshotManager;
-use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Contracts\Queue\ShouldQueueAfterCommit;
 use Illuminate\Foundation\Queue\Queueable;
 use Throwable;
 
-class SettingsBackupSnapshotJob implements ShouldQueue
+class SettingsBackupSnapshotJob implements ShouldQueueAfterCommit
 {
     use Queueable;
 
     public int $tries = 1;
 
-    public int $timeout = 300;
+    public int $timeout;
 
     /**
      * @param  array<int, int>  $snapshotIds
@@ -22,7 +22,9 @@ class SettingsBackupSnapshotJob implements ShouldQueue
     public function __construct(
         public int $backupId,
         public array $snapshotIds = [],
-    ) {}
+    ) {
+        $this->timeout = (int) config('settings-backups.snapshot_job_timeout', 1800);
+    }
 
     public function handle(SettingsBackupSnapshotManager $manager): void
     {

@@ -291,8 +291,8 @@ class SettingsBackupSnapshotManager
         $thumbnailWidth = max(1, $maxWidth);
         $thumbnailHeight = max(1, (int) round($thumbnailWidth * (self::THUMBNAIL_HEIGHT / self::VIEWPORT_WIDTH)));
         $isThumbnail = $snapshot->kind === SettingsBackupSnapshot::KIND_THUMBNAIL;
-        $width = $isThumbnail ? $thumbnailWidth : self::VIEWPORT_WIDTH;
-        $height = $isThumbnail ? $thumbnailHeight : self::VIEWPORT_HEIGHT;
+        $width = self::VIEWPORT_WIDTH;
+        $height = self::VIEWPORT_HEIGHT;
 
         return [
             'targets' => [
@@ -304,10 +304,18 @@ class SettingsBackupSnapshotManager
                     'kind' => $snapshot->kind,
                     'mode' => $isThumbnail ? 'thumb' : 'full',
                     'max_width' => $maxWidth,
+                    'device_scale_factor' => $isThumbnail
+                        ? round($thumbnailWidth / self::VIEWPORT_WIDTH, 6)
+                        : 1,
                     'viewport' => [
                         'name' => $snapshot->viewport,
                         'width' => $width,
                         'height' => $height,
+                    ],
+                    'fallback_viewport' => [
+                        'name' => "{$snapshot->viewport}-thumbnail-fallback",
+                        'width' => $isThumbnail ? $thumbnailWidth : $width,
+                        'height' => $isThumbnail ? $thumbnailHeight : $height,
                     ],
                     'outputs' => [
                         $snapshot->format => $this->disk()->path($path),

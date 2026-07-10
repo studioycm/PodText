@@ -63,13 +63,13 @@ Full required gate passed:
 
 - No S1a or S1b import/export functionality was implemented.
 - No GSAP/AX work was implemented.
-- Thumbnail capture uses a viewport width equal to the configured maximum width so it does not require an extra image-resize dependency.
+- S1a audit correction changed thumbnail capture to use the desktop 1440px layout with fractional `deviceScaleFactor`; the prior narrow configured-width viewport remains the script fallback only.
 
 ## Commit hash
 
 Commit message: `feat: add backup visual snapshots`.
 
-The actual commit hash lands in the final report after the commit is created.
+Commit hash: `86d21cb`.
 
 ## Local Front Check Report
 

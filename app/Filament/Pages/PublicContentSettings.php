@@ -2,6 +2,7 @@
 
 namespace App\Filament\Pages;
 
+use App\Filament\Actions\ExportPublicSettingsAction;
 use App\Filament\Forms\Components\IconSelect;
 use App\Filament\Support\Concerns\UsesAdminNavigationOrder;
 use App\Settings\PublicContentSettings as PublicContentSettingsData;
@@ -59,6 +60,13 @@ class PublicContentSettings extends SettingsPage
     public static function getNavigationGroup(): ?string
     {
         return __('admin.navigation.content');
+    }
+
+    protected function getHeaderActions(): array
+    {
+        return [
+            ExportPublicSettingsAction::make(),
+        ];
     }
 
     public function form(Schema $schema): Schema
