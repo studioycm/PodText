@@ -29,6 +29,13 @@ The central ledger remains authoritative for per-run selection:
   flips S2 before S1. The first implementation run must amend the ledger accordingly.
 - This plan is documentation-only; no app code, migrations, or settings rows change here.
 
+## Decisions
+
+- D29: import locks are import-only everywhere. Inline locks on the Public Content
+  Settings page toggle the existing `SettingsImportLocks` store, affect imports and
+  dry-runs only, and must never make settings fields read-only or block normal settings
+  form saves.
+
 ## Verified Code Facts Driving the Amendments
 
 - `PublicItemPagePodcastPalette` (`app/Support/PublicFront/ItemPage/`) GD-decodes the

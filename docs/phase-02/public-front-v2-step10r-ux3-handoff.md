@@ -69,9 +69,9 @@ This run executed only UX3. S1c and Importer Workbench were not run.
 
 ## Commit hash
 
-Commit message: `feat: add hebrew smart slugs and key contract alignment`.
+Commit hash: `0f3aed6`.
 
-Final commit hash is reported in the run response after the commit is finalized.
+Commit message: `feat: add hebrew smart slugs and key contract alignment`.
 
 ## Local Front Check Report
 

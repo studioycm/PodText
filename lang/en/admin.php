@@ -116,19 +116,6 @@ return [
         'type_labels' => 'Display labels',
         'visibility_order' => 'Visibility and order',
     ],
-    'tabs' => [
-        'public_content_settings' => [
-            'about' => 'About',
-            'advanced' => 'Advanced / diagnostics',
-            'display' => 'General / display',
-            'forms' => 'Forms',
-            'homepage' => 'Homepage / sections',
-            'item_page' => 'Episode page',
-            'menu_header' => 'Menu / header',
-            'podcasts' => 'Podcasts',
-            'contributors' => 'Contributors',
-        ],
-    ],
     'descriptions' => [
         'content_item_identity' => 'Core item identity and grouping. These fields control where the item belongs and how admins and URLs identify it.',
         'content_item_content' => 'Editorial content, taxonomy, and media URLs for this item. Episode transcribers are managed on transcriptions.',
@@ -875,6 +862,7 @@ return [
         'restore' => 'Restore',
         'restore_backup' => 'Restore backup',
         'open_snapshot_file' => 'Open file',
+        'recapture_snapshot' => 'Recapture snapshot',
         'regenerate_slug' => 'Regenerate slug',
         'retry_snapshot' => 'Retry snapshot',
         'save_import_locks' => 'Save locks',
@@ -1490,11 +1478,33 @@ return [
         ],
     ],
     'settings_import_locks' => [
-        'description' => 'Locked units are visible during import, but cannot be selected or applied.',
+        'description' => 'Locked units are visible during import, but cannot be selected or applied. Locks protect settings from imports only; editing on this settings page is unaffected.',
         'group_summary' => 'Locked: :locked / :total',
         'heading' => 'Manage import locks',
+        'inline_field_locked' => 'Protected from import',
+        'inline_field_tooltip' => [
+            'locked' => 'Protected from import. Editing this setting is unaffected. This control covers the :unit unit (:path).',
+            'unlocked' => 'Imports may update this setting. Editing this setting is unaffected. This control covers the :unit unit (:path).',
+        ],
+        'inline_field_unlocked' => 'Import allowed',
+        'inline_group_state' => [
+            'all' => 'Locked',
+            'some' => 'Partially locked',
+            'none' => 'Unlocked',
+        ],
+        'inline_group_tooltip' => [
+            'all' => 'All :total units in this section are protected from imports. Editing is unaffected. Click to unlock them for import.',
+            'some' => ':locked of :total units in this section are protected from imports. Editing is unaffected. Click to lock the remaining units.',
+            'none' => 'No units in this section are protected from imports. Editing is unaffected. Click to protect them from import.',
+        ],
         'locked' => 'Locked',
         'unlocked' => 'Unlocked',
+    ],
+    'settings_paths' => [
+        'homepage_item_limit' => 'Homepage item limit',
+        'item_page' => [
+            'dates' => 'Episode page dates',
+        ],
     ],
     'publication_status' => [
         'draft' => 'Draft',
@@ -1537,6 +1547,17 @@ return [
         'item_details' => 'Item details',
         'transcriptions' => 'Transcriptions',
         'transcriptions_badge_tooltip' => 'Number of transcriptions for this item.',
+        'public_content_settings' => [
+            'about' => 'About',
+            'advanced' => 'Advanced / diagnostics',
+            'display' => 'General / display',
+            'forms' => 'Forms',
+            'homepage' => 'Homepage / sections',
+            'item_page' => 'Episode page',
+            'menu_header' => 'Menu / header',
+            'podcasts' => 'Podcasts',
+            'contributors' => 'Contributors',
+        ],
     ],
     'import' => [
         'columns' => [

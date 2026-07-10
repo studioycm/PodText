@@ -89,7 +89,10 @@ class SettingsBackupManager
             'created_by_user_id' => $user?->getKey(),
         ]);
 
-        $this->snapshots->scheduleForBackup($backup, $snapshotFormats, $snapshotThemes);
+        if (! $this->shouldSkipSnapshots($source, $package, $backup)) {
+            $this->snapshots->scheduleForBackup($backup, $snapshotFormats, $snapshotThemes);
+        }
+
         $this->prune($package->settingsGroup());
 
         return $backup;
@@ -182,6 +185,37 @@ class SettingsBackupManager
             ->where('scope', $scope)
             ->where('payload_hash', $payloadHash)
             ->exists();
+    }
+
+    private function shouldSkipSnapshots(SettingsBackupSource $source, PublicSettingsPackage $package, SettingsBackupVersion $backup): bool
+    {
+        if ($source !== SettingsBackupSource::System) {
+            return false;
+        }
+
+        $latest = SettingsBackupVersion::query()
+            ->where('scope', $package->settingsGroup())
+            ->whereKeyNot($backup->getKey())
+            ->latest('id')
+            ->first();
+
+        if (! $latest) {
+            return false;
+        }
+
+        return PublicSettingsPackage::canonicalPayloadJson($this->payloadWithoutImportLocks($latest->package()->payload()))
+            === PublicSettingsPackage::canonicalPayloadJson($this->payloadWithoutImportLocks($package->payload()));
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     * @return array<string, mixed>
+     */
+    private function payloadWithoutImportLocks(array $payload): array
+    {
+        unset($payload['import_locks']);
+
+        return $payload;
     }
 
     private function validatePackageForRestore(PublicSettingsPackage $package): void

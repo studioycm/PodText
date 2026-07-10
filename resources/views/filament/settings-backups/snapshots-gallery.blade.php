@@ -124,7 +124,7 @@
                                 </a>
                             @endif
 
-                            @if($snapshot->status === SettingsBackupSnapshot::STATUS_FAILED)
+                            @if(in_array($snapshot->status, [SettingsBackupSnapshot::STATUS_DONE, SettingsBackupSnapshot::STATUS_FAILED], true))
                                 <form method="POST" action="{{ route('admin.settings-backup-snapshots.retry', $snapshot) }}">
                                     @csrf
                                     <button
@@ -132,7 +132,7 @@
                                         class="rounded-md border border-warning-500 px-3 py-1.5 text-xs font-medium text-warning-700 transition hover:bg-warning-50 dark:text-warning-200 dark:hover:bg-warning-950"
                                         data-test="settings-backup-snapshot-retry"
                                     >
-                                        {{ __('admin.actions.retry_snapshot') }}
+                                        {{ $snapshot->status === SettingsBackupSnapshot::STATUS_DONE ? __('admin.actions.recapture_snapshot') : __('admin.actions.retry_snapshot') }}
                                     </button>
                                 </form>
                             @endif

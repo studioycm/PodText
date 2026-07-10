@@ -60,7 +60,7 @@ class PublicFrontConfigValidator
      */
     private function normalizeCardTemplates(array $items, array &$invalidConfig): array
     {
-        return $this->normalizeList($items, 'card_templates', $invalidConfig, function (array $item, string $path, array &$invalidConfig): ?array {
+        $templates = $this->normalizeList($items, 'card_templates', $invalidConfig, function (array $item, string $path, array &$invalidConfig): ?array {
             $this->reportUnknownKeys($item, ['key', 'slug', 'family', 'label', 'layout', 'layout_variant', 'density', 'image_size', 'title_size', 'parts'], $path, $invalidConfig);
 
             $key = $this->semanticKey($item['key'] ?? $item['slug'] ?? null, "{$path}.key", $invalidConfig);
@@ -87,6 +87,24 @@ class PublicFrontConfigValidator
                 'parts' => $parts,
             ];
         });
+
+        $seenTemplateKeys = [];
+        $uniqueTemplates = [];
+
+        foreach ($templates as $index => $template) {
+            $templateKey = "{$template['family']}:{$template['key']}";
+
+            if (isset($seenTemplateKeys[$templateKey])) {
+                $invalidConfig[] = PublicFrontInvalidConfig::make("card_templates.{$index}.key", 'duplicate_template_key', $template['key']);
+
+                continue;
+            }
+
+            $seenTemplateKeys[$templateKey] = true;
+            $uniqueTemplates[] = $template;
+        }
+
+        return $uniqueTemplates;
     }
 
     /**
@@ -2731,9 +2749,21 @@ class PublicFrontConfigValidator
         }
 
         $directories = $directories === [] ? PublicAboutPageRegistry::imageDirectories() : $directories;
-        $directoryPattern = implode('|', array_map(fn (string $directory): string => preg_quote($directory, '/'), $directories));
+        $matchingDirectory = collect($directories)
+            ->first(fn (string $directory): bool => str_starts_with(strtolower($value), strtolower($directory).'/'));
 
-        if (! preg_match("/^(?:{$directoryPattern})\/[A-Za-z0-9][A-Za-z0-9._\/-]*\.(?:jpe?g|png|webp)$/i", $value)) {
+        if ($matchingDirectory === null) {
+            $invalidConfig[] = PublicFrontInvalidConfig::make($path, 'invalid_public_image_path', $value);
+
+            return null;
+        }
+
+        $relativePath = substr($value, strlen($matchingDirectory) + 1);
+
+        if (
+            ! preg_match('/^[A-Za-z0-9][A-Za-z0-9._\/-]*$/', $relativePath)
+            || ! in_array(strtolower(pathinfo($relativePath, PATHINFO_EXTENSION)), ['jpeg', 'jpg', 'png', 'webp'], true)
+        ) {
             $invalidConfig[] = PublicFrontInvalidConfig::make($path, 'invalid_public_image_path', $value);
 
             return null;

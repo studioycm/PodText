@@ -3,6 +3,7 @@
 use App\Enums\SettingsBackupSource;
 use App\Enums\SettingsImportMode;
 use App\Filament\Pages\ImportPublicSettings;
+use App\Filament\Pages\ManageSettingsImportLocks;
 use App\Filament\Pages\PublicContentSettings as PublicContentSettingsPage;
 use App\Filament\Resources\SettingsBackups\Pages\ListSettingsBackups;
 use App\Livewire\Admin\SettingsImportLocksManager;
@@ -42,6 +43,7 @@ beforeEach(function (): void {
     Cache::flush();
     Process::fake();
     Queue::fake();
+    Storage::fake('local');
     clearStep10S1aSettingsState();
 
     $this->actingAs(User::factory()->create());
@@ -217,6 +219,25 @@ it('persists import locks and derives the front-text preset from lockable units'
         ->toEqualCanonicalizing(app(SettingsImportLocks::class)->frontTextLockPaths());
 });
 
+it('unions the front-text preset with manually selected import locks', function (): void {
+    $manualPath = 'settings_backups.thumbnail_max_width';
+    $expectedPaths = app(SettingsImportLocks::class)->normalize([
+        $manualPath,
+        ...app(SettingsImportLocks::class)->frontTextLockPaths(),
+    ]);
+
+    expect(app(SettingsImportLocks::class)->frontTextLockPaths())->not->toContain($manualPath);
+
+    Livewire::test(SettingsImportLocksManager::class)
+        ->set('selectedPaths', [$manualPath])
+        ->call('lockAllFrontTexts')
+        ->assertSet('selectedPaths', fn (array $paths): bool => $paths === $expectedPaths)
+        ->call('saveLocks')
+        ->assertSee(__('admin.messages.settings_import_locks_saved', ['count' => count($expectedPaths)]));
+
+    expect(app(SettingsImportLocks::class)->lockedPaths())->toBe($expectedPaths);
+});
+
 it('excludes locked units from import even when they are force-selected', function (): void {
     app(SettingsImportLocks::class)->save(['homepage_item_limit']);
 
@@ -252,6 +273,35 @@ it('excludes locked units from import even when they are force-selected', functi
         ->and($settings->show_latest_section)->toBeTrue();
 });
 
+it('preserves import row selections when switching import modes', function (): void {
+    $settings = step10S1aSettings();
+    $settings->route_labels = [];
+    $settings->save();
+
+    $payload = PublicSettingsPackage::fromCurrentSettings()->payload();
+    $payload['route_labels'] = [
+        [
+            'route_key' => 'search',
+            'label' => 'Imported search',
+        ],
+        [
+            'route_key' => 'about',
+            'label' => 'Imported about',
+        ],
+    ];
+
+    Livewire::test(SettingsImportWizard::class)
+        ->set('packageFile', step10S1aUploadedPackage(step10S1aPackageArray($payload)))
+        ->call('loadUploadedPackage')
+        ->assertSet('selectedPaths', fn (array $paths): bool => in_array('route_labels.search', $paths, true)
+            && in_array('route_labels.about', $paths, true))
+        ->set('selectedPaths', ['route_labels.about'])
+        ->set('importMode', SettingsImportMode::AddOnly->value)
+        ->assertSet('selectedPaths', ['route_labels.about'])
+        ->set('importMode', SettingsImportMode::Replace->value)
+        ->assertSet('selectedPaths', ['route_labels.about']);
+});
+
 it('restores import locks verbatim and never exposes import_locks as a selectable unit', function (): void {
     app(SettingsImportLocks::class)->save(['homepage_item_limit']);
 
@@ -264,6 +314,55 @@ it('restores import locks verbatim and never exposes import_locks as a selectabl
     expect(app(SettingsImportLocks::class)->lockedPaths())->toBe(['homepage_item_limit'])
         ->and(app(SettingsLifecycleSchema::class)->unitPaths())->not->toContain('import_locks')
         ->and(collect(app(SettingsLifecycleSchema::class)->unitPaths())->filter(fn (string $path): bool => str_starts_with($path, 'import_locks.'))->values()->all())->toBe([]);
+});
+
+it('keeps the first duplicate card template during analysis and import', function (): void {
+    $settings = step10S1aSettings();
+    $settings->card_templates = [];
+    $settings->save();
+
+    $payload = PublicSettingsPackage::fromCurrentSettings()->payload();
+    $payload['card_templates'] = [
+        [
+            'key' => 'duplicate_card',
+            'family' => 'content_item',
+            'label' => 'First template',
+            'layout' => 'cards',
+            'density' => 'comfortable',
+            'image_size' => 'medium',
+            'title_size' => 'base',
+            'parts' => [],
+        ],
+        [
+            'key' => 'duplicate_card',
+            'family' => 'content_item',
+            'label' => 'Second template',
+            'layout' => 'rows',
+            'density' => 'compact',
+            'image_size' => 'small',
+            'title_size' => 'sm',
+            'parts' => [],
+        ],
+    ];
+
+    $package = PublicSettingsPackage::fromArray(step10S1aPackageArray($payload));
+    $analysis = app(SettingsPackageImportAnalyzer::class)->analyze($package);
+
+    expect(implode("\n", $analysis->warnings))->toContain('duplicate_template_key')
+        ->and($analysis->rowsByPath()['card_templates.content_item']['imported_preview'])->toContain('First template')
+        ->and($analysis->rowsByPath()['card_templates.content_item']['imported_preview'])->not->toContain('Second template');
+
+    $appliedPaths = app(SettingsBackupManager::class)->import(
+        $package,
+        ['card_templates.content_item'],
+        auth()->user(),
+    );
+
+    $templates = collect(step10S1aSettings()->card_templates)->keyBy('key');
+
+    expect($appliedPaths)->toBe(['card_templates.content_item'])
+        ->and($templates['duplicate_card']['label'])->toBe('First template')
+        ->and($templates['duplicate_card']['layout'])->toBe('cards');
 });
 
 it('adds new card-template keys in add-only mode while preserving existing keys', function (): void {
@@ -440,6 +539,69 @@ it('computes tri-state group toggle semantics', function (): void {
         ->and($state->groupState($rows, ['sample.one', 'sample.two'], 'sample'))->toBe('all')
         ->and($state->toggleGroup($rows, [], 'sample'))->toBe(['sample.one', 'sample.two'])
         ->and($state->toggleGroup($rows, ['sample.one', 'sample.two'], 'sample'))->toBe([]);
+});
+
+it('toggles import locks from inline section and deep field actions', function (): void {
+    $homepageSectionPath = 'public-content-settings-tabs.public-settings-tab-homepage.public-settings-lock-section-homepage-settings';
+    $itemPageDatesFieldPath = 'public-content-settings-tabs.public-settings-tab-item-page.public-settings-lock-section-public-front-item-page-dates.item_page.dates.site_published.label_override';
+    $scalarPaths = collect(app(SettingsLifecycleSchema::class)->units())
+        ->filter(fn ($unit): bool => $unit->section === '_scalars')
+        ->pluck('path')
+        ->values()
+        ->all();
+
+    $component = Livewire::test(PublicContentSettingsPage::class)
+        ->assertActionVisible(TestAction::make('manageImportLocks'))
+        ->assertActionHasUrl(TestAction::make('manageImportLocks'), ManageSettingsImportLocks::getUrl())
+        ->assertActionExists(TestAction::make('toggleImportLockGroup_homepage_settings')->schemaComponent($homepageSectionPath, 'form'))
+        ->assertActionExists(TestAction::make('toggleImportLockUnit_item_page_dates')->schemaComponent($itemPageDatesFieldPath, 'form'));
+
+    expect(str_ends_with(ManageSettingsImportLocks::getUrl(), '/admin/settings-import-locks'))->toBeTrue();
+
+    $component->callAction(TestAction::make('toggleImportLockGroup_homepage_settings')->schemaComponent($homepageSectionPath, 'form'));
+
+    expect(app(SettingsImportLocks::class)->lockedPaths())->toBe($scalarPaths);
+
+    $component->callAction(TestAction::make('toggleImportLockGroup_homepage_settings')->schemaComponent($homepageSectionPath, 'form'));
+
+    expect(app(SettingsImportLocks::class)->lockedPaths())->toBe([]);
+
+    $component->callAction(TestAction::make('toggleImportLockUnit_item_page_dates')->schemaComponent($itemPageDatesFieldPath, 'form'));
+
+    expect(app(SettingsImportLocks::class)->lockedPaths())->toBe(['item_page.dates']);
+});
+
+it('lets locked settings remain editable and save normally', function (): void {
+    app(SettingsImportLocks::class)->save(['homepage_item_limit']);
+
+    Livewire::test(PublicContentSettingsPage::class)
+        ->set('data.homepage_item_limit', 41)
+        ->call('save')
+        ->assertHasNoFormErrors();
+
+    expect(step10S1aSettings()->homepage_item_limit)->toBe(41)
+        ->and(app(SettingsImportLocks::class)->lockedPaths())->toBe(['homepage_item_limit']);
+});
+
+it('renders the settings header action and rtl lock hints', function (): void {
+    $homepageLimitFieldPath = 'public-content-settings-tabs.public-settings-tab-homepage.public-settings-lock-section-homepage-settings.homepage_item_limit';
+
+    app()->setLocale('he');
+    app(SettingsImportLocks::class)->save(['homepage_item_limit']);
+
+    Livewire::test(PublicContentSettingsPage::class)
+        ->assertActionVisible(TestAction::make('manageImportLocks'))
+        ->assertActionHasLabel(TestAction::make('manageImportLocks'), __('admin.actions.manage_import_locks'))
+        ->assertActionExists(TestAction::make('toggleImportLockUnit_homepage_item_limit')->schemaComponent($homepageLimitFieldPath, 'form'));
+
+    $this->get(PublicContentSettingsPage::getUrl())
+        ->assertOk()
+        ->assertSee('dir="rtl"', false)
+        ->assertSee(__('admin.actions.manage_import_locks'))
+        ->assertSee(__('admin.settings_import_locks.inline_field_tooltip.locked', [
+            'unit' => __('admin.fields.homepage_item_limit'),
+            'path' => 'homepage_item_limit',
+        ]));
 });
 
 it('refuses checksum tampering and newer schema versions', function (): void {

@@ -56,7 +56,12 @@ For current prompt completion/progress state, see `docs/phase-02/current-project
 - Public tests should prove visibility constraints, URL-backed state, sorting, filters, RTL markers where practical, and draft exclusion.
 - Browser tests are appropriate when a workflow can pass component tests while failing visibly in a real page.
 - Keep tests aligned with actual user workflows and existing package APIs.
+- Any test file that can write, assert, prune, delete, or stream app storage paths must fake the relevant disk at file-level setup before helpers or tests touch storage. Per-test fakes are too easy to miss and can overwrite or delete real local artifacts when test IDs collide with real records.
+- `phpunit.xml` environment entries can be too late for a Pest/Laravel stack when the invoking shell exports project DB variables. Force safe test env in the Pest bootstrap too, and keep the base TestCase canary that aborts unless `APP_ENV=testing`, `database.default=sqlite`, and SQLite database is `:memory:`.
+- Test commands must run sequentially for this repository unless a prompt explicitly authorizes parallelism. Parallel or overlapping gates make DB/storage safety failures harder to attribute.
+- Never run `migrate:fresh`, `db:wipe`, or seeders against the dev database. Destructive artisan commands belong to tests only, where the canary has already forced SQLite `:memory:`.
 - Composite indexes on string columns must use explicit bounded lengths. Finite-token columns get small explicit lengths; with `utf8mb4`, each character can cost 4 bytes and InnoDB's key limit is 3072 bytes. SQLite tests cannot catch MySQL key-length violations, so review index byte math for every new string composite index.
+- PHP language files silently keep the last duplicate key at runtime. Use a token-level duplicate-key scan for both `lang/en` and `lang/he` after translation edits, especially when moving or merging nested admin arrays.
 
 ## Documentation/state-management lessons
 

@@ -16,10 +16,16 @@ use App\Support\PublicFront\ItemPage\PublicItemPageRegistry;
 use App\Support\PublicFront\PublicFrontConfigReader;
 use App\Support\PublicFront\PublicFrontConfigRegistry;
 use App\Support\PublicFront\PublicFrontConfigValidator;
+use App\Support\SettingsLifecycle\SettingsImportLocks;
+use App\Support\SettingsLifecycle\SettingsLifecycleSchema;
+use App\Support\SettingsLifecycle\SettingsLifecycleSelectionState;
+use App\Support\SettingsLifecycle\SettingsLifecycleUnit;
 use BackedEnum;
+use Filament\Actions\Action;
 use Filament\Forms\Components\Builder;
 use Filament\Forms\Components\Builder\Block;
 use Filament\Forms\Components\ColorPicker;
+use Filament\Forms\Components\Field;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\MarkdownEditor;
 use Filament\Forms\Components\Repeater;
@@ -29,6 +35,7 @@ use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Pages\SettingsPage;
+use Filament\Schemas\Components\Component as SchemaComponent;
 use Filament\Schemas\Components\Fieldset;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Tabs;
@@ -46,6 +53,16 @@ class PublicContentSettings extends SettingsPage
     protected static string $settings = PublicContentSettingsData::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedCog6Tooth;
+
+    /**
+     * @var array<int, array{group: string, path: string, selectable: bool}>|null
+     */
+    private ?array $inlineImportLockRows = null;
+
+    /**
+     * @var array<int, string>|null
+     */
+    private ?array $inlineImportLockedPaths = null;
 
     public static function getNavigationLabel(): string
     {
@@ -65,23 +82,28 @@ class PublicContentSettings extends SettingsPage
     protected function getHeaderActions(): array
     {
         return [
+            Action::make('manageImportLocks')
+                ->label(__('admin.actions.manage_import_locks'))
+                ->icon(Heroicon::OutlinedLockClosed)
+                ->color('gray')
+                ->url(fn (): string => ManageSettingsImportLocks::getUrl()),
             ExportPublicSettingsAction::make(),
         ];
     }
 
     public function form(Schema $schema): Schema
     {
-        return $schema
-            ->components([
-                Tabs::make(__('admin.sections.public_content_settings_tabs'))
-                    ->key('public-content-settings-tabs')
-                    ->persistTabInQueryString('public-content-tab')
-                    ->vertical()
-                    ->tabs([
-                        Tab::make(__('admin.tabs.public_content_settings.homepage'))
-                            ->id('homepage')
-                            ->key('public-settings-tab-homepage')
-                            ->schema([
+        $components = [
+            Tabs::make(__('admin.sections.public_content_settings_tabs'))
+                ->key('public-content-settings-tabs')
+                ->persistTabInQueryString('public-content-tab')
+                ->vertical()
+                ->tabs([
+                    Tab::make(__('admin.tabs.public_content_settings.homepage'))
+                        ->id('homepage')
+                        ->key('public-settings-tab-homepage')
+                        ->schema([
+                            $this->withImportLockSection(
                                 Section::make(__('admin.sections.homepage_settings'))
                                     ->description(__('admin.descriptions.public_content_settings_homepage'))
                                     ->schema([
@@ -106,11 +128,15 @@ class PublicContentSettings extends SettingsPage
                                     ->columns(3)
                                     ->collapsible()
                                     ->columnSpanFull(),
-                            ]),
-                        Tab::make(__('admin.tabs.public_content_settings.display'))
-                            ->id('display')
-                            ->key('public-settings-tab-display')
-                            ->schema([
+                                '_scalars',
+                                'homepage-settings',
+                            ),
+                        ]),
+                    Tab::make(__('admin.tabs.public_content_settings.display'))
+                        ->id('display')
+                        ->key('public-settings-tab-display')
+                        ->schema([
+                            $this->withImportLockSection(
                                 Section::make(__('admin.sections.public_display'))
                                     ->description(__('admin.descriptions.public_content_settings_display'))
                                     ->schema([
@@ -140,6 +166,10 @@ class PublicContentSettings extends SettingsPage
                                     ->columns(3)
                                     ->collapsible()
                                     ->columnSpanFull(),
+                                '_scalars',
+                                'public-display',
+                            ),
+                            $this->withImportLockSection(
                                 Section::make(__('admin.sections.public_card_display'))
                                     ->description(__('admin.descriptions.public_content_settings_cards'))
                                     ->schema([
@@ -233,6 +263,10 @@ class PublicContentSettings extends SettingsPage
                                     ->columns(3)
                                     ->collapsible()
                                     ->columnSpanFull(),
+                                '_scalars',
+                                'public-card-display',
+                            ),
+                            $this->withImportLockSection(
                                 Section::make(__('admin.sections.public_front_configuration'))
                                     ->description(__('admin.descriptions.public_front_configuration'))
                                     ->schema([
@@ -304,12 +338,20 @@ class PublicContentSettings extends SettingsPage
                                     ->columns(3)
                                     ->collapsible()
                                     ->columnSpanFull(),
+                                'display_defaults',
+                                'public-front-configuration',
+                            ),
+                            $this->withImportLockSection(
                                 Section::make(__('admin.sections.public_default_images'))
                                     ->description(__('admin.descriptions.public_default_images'))
                                     ->schema($this->defaultImageFamilyFieldsets())
                                     ->columns(1)
                                     ->collapsible()
                                     ->columnSpanFull(),
+                                'default_images',
+                                'public-default-images',
+                            ),
+                            $this->withImportLockSection(
                                 Section::make(__('admin.sections.public_transcription_policy'))
                                     ->description(__('admin.descriptions.public_transcription_policy'))
                                     ->schema([
@@ -334,11 +376,15 @@ class PublicContentSettings extends SettingsPage
                                     ->columns(3)
                                     ->collapsible()
                                     ->columnSpanFull(),
-                            ]),
-                        Tab::make(__('admin.tabs.public_content_settings.item_page'))
-                            ->id('item-page')
-                            ->key('public-settings-tab-item-page')
-                            ->schema([
+                                'transcription_policy',
+                                'public-transcription-policy',
+                            ),
+                        ]),
+                    Tab::make(__('admin.tabs.public_content_settings.item_page'))
+                        ->id('item-page')
+                        ->key('public-settings-tab-item-page')
+                        ->schema([
+                            $this->withImportLockSection(
                                 Section::make(__('admin.sections.public_front_item_page_layout'))
                                     ->description(__('admin.descriptions.public_front_item_page_layout'))
                                     ->schema([
@@ -356,6 +402,10 @@ class PublicContentSettings extends SettingsPage
                                     ->columns(3)
                                     ->collapsible()
                                     ->columnSpanFull(),
+                                '_scalars',
+                                'public-front-item-page-layout',
+                            ),
+                            $this->withImportLockSection(
                                 Section::make(__('admin.sections.public_front_item_page_header'))
                                     ->description(__('admin.descriptions.public_front_item_page_header'))
                                     ->schema([
@@ -421,6 +471,10 @@ class PublicContentSettings extends SettingsPage
                                     ->columns(3)
                                     ->collapsible()
                                     ->columnSpanFull(),
+                                'item_page',
+                                'public-front-item-page-header',
+                            ),
+                            $this->withImportLockSection(
                                 Section::make(__('admin.sections.public_front_item_page_dates'))
                                     ->description(__('admin.descriptions.public_front_item_page_dates'))
                                     ->schema([
@@ -438,6 +492,10 @@ class PublicContentSettings extends SettingsPage
                                     ->columns(1)
                                     ->collapsible()
                                     ->columnSpanFull(),
+                                'item_page',
+                                'public-front-item-page-dates',
+                            ),
+                            $this->withImportLockSection(
                                 Section::make(__('admin.sections.public_front_item_page_badges'))
                                     ->description(__('admin.descriptions.public_front_item_page_badges'))
                                     ->schema([
@@ -473,6 +531,10 @@ class PublicContentSettings extends SettingsPage
                                     ->columns(3)
                                     ->collapsible()
                                     ->columnSpanFull(),
+                                'item_page',
+                                'public-front-item-page-badges',
+                            ),
+                            $this->withImportLockSection(
                                 Section::make(__('admin.sections.public_front_item_page_transcript_controls'))
                                     ->description(__('admin.descriptions.public_front_item_page_transcript_controls'))
                                     ->schema([
@@ -484,6 +546,10 @@ class PublicContentSettings extends SettingsPage
                                     ->columns(3)
                                     ->collapsible()
                                     ->columnSpanFull(),
+                                'item_page',
+                                'public-front-item-page-transcript-controls',
+                            ),
+                            $this->withImportLockSection(
                                 Section::make(__('admin.sections.public_front_item_page_info_fields'))
                                     ->description(__('admin.descriptions.public_front_item_page_info_fields'))
                                     ->schema([
@@ -491,11 +557,15 @@ class PublicContentSettings extends SettingsPage
                                     ])
                                     ->collapsible()
                                     ->columnSpanFull(),
-                            ]),
-                        Tab::make(__('admin.tabs.public_content_settings.menu_header'))
-                            ->id('menu-header')
-                            ->key('public-settings-tab-menu-header')
-                            ->schema([
+                                'item_page',
+                                'public-front-item-page-info-fields',
+                            ),
+                        ]),
+                    Tab::make(__('admin.tabs.public_content_settings.menu_header'))
+                        ->id('menu-header')
+                        ->key('public-settings-tab-menu-header')
+                        ->schema([
+                            $this->withImportLockSection(
                                 Section::make(__('admin.sections.public_front_menu_header'))
                                     ->description(__('admin.descriptions.public_front_menu_header'))
                                     ->schema([
@@ -702,11 +772,15 @@ class PublicContentSettings extends SettingsPage
                                     ->columns(1)
                                     ->collapsible()
                                     ->columnSpanFull(),
-                            ]),
-                        Tab::make(__('admin.tabs.public_content_settings.podcasts'))
-                            ->id('podcasts')
-                            ->key('public-settings-tab-podcasts')
-                            ->schema([
+                                'menu_config',
+                                'public-front-menu-header',
+                            ),
+                        ]),
+                    Tab::make(__('admin.tabs.public_content_settings.podcasts'))
+                        ->id('podcasts')
+                        ->key('public-settings-tab-podcasts')
+                        ->schema([
+                            $this->withImportLockSection(
                                 Section::make(__('admin.sections.public_front_podcasts_page'))
                                     ->description(__('admin.descriptions.public_front_podcasts_page'))
                                     ->schema([
@@ -958,11 +1032,15 @@ class PublicContentSettings extends SettingsPage
                                     ->columns(3)
                                     ->collapsible()
                                     ->columnSpanFull(),
-                            ]),
-                        Tab::make(__('admin.tabs.public_content_settings.contributors'))
-                            ->id('contributors')
-                            ->key('public-settings-tab-contributors')
-                            ->schema([
+                                'podcasts_page',
+                                'public-front-podcasts-page',
+                            ),
+                        ]),
+                    Tab::make(__('admin.tabs.public_content_settings.contributors'))
+                        ->id('contributors')
+                        ->key('public-settings-tab-contributors')
+                        ->schema([
+                            $this->withImportLockSection(
                                 Section::make(__('admin.sections.public_front_contributors_page'))
                                     ->description(__('admin.descriptions.public_front_contributors_page'))
                                     ->schema([
@@ -1208,11 +1286,15 @@ class PublicContentSettings extends SettingsPage
                                     ->columns(1)
                                     ->collapsible()
                                     ->columnSpanFull(),
-                            ]),
-                        Tab::make(__('admin.tabs.public_content_settings.about'))
-                            ->id('about')
-                            ->key('public-settings-tab-about')
-                            ->schema([
+                                'contributors_page',
+                                'public-front-contributors-page',
+                            ),
+                        ]),
+                    Tab::make(__('admin.tabs.public_content_settings.about'))
+                        ->id('about')
+                        ->key('public-settings-tab-about')
+                        ->schema([
+                            $this->withImportLockSection(
                                 Section::make(__('admin.sections.public_front_about_page'))
                                     ->description(__('admin.descriptions.public_front_about_page'))
                                     ->schema([
@@ -1381,11 +1463,15 @@ class PublicContentSettings extends SettingsPage
                                     ])
                                     ->collapsible()
                                     ->columnSpanFull(),
-                            ]),
-                        Tab::make(__('admin.tabs.public_content_settings.forms'))
-                            ->id('forms')
-                            ->key('public-settings-tab-forms')
-                            ->schema([
+                                'about_page',
+                                'public-front-about-page',
+                            ),
+                        ]),
+                    Tab::make(__('admin.tabs.public_content_settings.forms'))
+                        ->id('forms')
+                        ->key('public-settings-tab-forms')
+                        ->schema([
+                            $this->withImportLockSection(
                                 Section::make(__('admin.sections.public_front_forms'))
                                     ->description(__('admin.descriptions.public_front_forms'))
                                     ->schema([
@@ -1486,11 +1572,15 @@ class PublicContentSettings extends SettingsPage
                                     ])
                                     ->collapsible()
                                     ->columnSpanFull(),
-                            ]),
-                        Tab::make(__('admin.tabs.public_content_settings.advanced'))
-                            ->id('advanced')
-                            ->key('public-settings-tab-advanced')
-                            ->schema([
+                                'public_forms',
+                                'public-front-forms',
+                            ),
+                        ]),
+                    Tab::make(__('admin.tabs.public_content_settings.advanced'))
+                        ->id('advanced')
+                        ->key('public-settings-tab-advanced')
+                        ->schema([
+                            $this->withImportLockSection(
                                 Section::make(__('admin.sections.public_front_card_templates'))
                                     ->description(__('admin.descriptions.public_front_card_templates'))
                                     ->schema([
@@ -1582,10 +1672,210 @@ class PublicContentSettings extends SettingsPage
                                     ])
                                     ->collapsible()
                                     ->columnSpanFull(),
-                            ]),
-                    ])
-                    ->columnSpanFull(),
+                                'card_templates',
+                                'public-front-card-templates',
+                            ),
+                        ]),
+                ])
+                ->columnSpanFull(),
+        ];
+
+        $schema = $schema->components($components);
+
+        $this->applyInlineImportLockHints($schema->getComponents());
+
+        return $schema;
+    }
+
+    private function withImportLockSection(Section $section, string $group, string $key): Section
+    {
+        return $section
+            ->key("public-settings-lock-section-{$key}")
+            ->headerActions([
+                $this->inlineImportLockGroupAction($group, $key),
             ]);
+    }
+
+    /**
+     * @param  array<int, mixed>  $components
+     */
+    private function applyInlineImportLockHints(array $components): void
+    {
+        foreach ($components as $component) {
+            if ($component instanceof Field) {
+                $this->applyInlineImportLockHint($component);
+            }
+
+            if (! $component instanceof SchemaComponent || ! method_exists($component, 'getChildComponents')) {
+                continue;
+            }
+
+            $this->applyInlineImportLockHints($component->getChildComponents());
+        }
+    }
+
+    private function applyInlineImportLockHint(Field $field): void
+    {
+        $statePath = $field->getStatePath(isAbsolute: false);
+
+        if (blank($statePath)) {
+            return;
+        }
+
+        $unitPaths = $this->inlineImportLockUnitPathsForSemanticPath($statePath);
+
+        if (count($unitPaths) !== 1) {
+            return;
+        }
+
+        $field->hintAction($this->inlineImportLockUnitAction($unitPaths[0]));
+    }
+
+    private function inlineImportLockGroupAction(string $group, string $key): Action
+    {
+        return Action::make('toggleImportLockGroup_'.$this->inlineImportLockActionKey($key))
+            ->label(fn (): string => __('admin.settings_import_locks.inline_group_state.'.$this->inlineImportLockGroupState($group)))
+            ->icon(fn (): Heroicon => $this->inlineImportLockGroupIcon($group))
+            ->color(fn (): string => $this->inlineImportLockGroupColor($group))
+            ->tooltip(fn (): string => __('admin.settings_import_locks.inline_group_tooltip.'.$this->inlineImportLockGroupState($group), $this->inlineImportLockGroupCounts($group)))
+            ->action(function () use ($group): void {
+                $this->toggleInlineImportLockGroup($group);
+            });
+    }
+
+    private function inlineImportLockUnitAction(string $unitPath): Action
+    {
+        return Action::make('toggleImportLockUnit_'.$this->inlineImportLockActionKey($unitPath))
+            ->label(fn (): string => $this->inlineImportLockUnitLocked($unitPath)
+                ? __('admin.settings_import_locks.inline_field_locked')
+                : __('admin.settings_import_locks.inline_field_unlocked'))
+            ->icon(fn (): Heroicon => $this->inlineImportLockUnitLocked($unitPath) ? Heroicon::OutlinedLockClosed : Heroicon::OutlinedLockOpen)
+            ->color(fn (): string => $this->inlineImportLockUnitLocked($unitPath) ? 'warning' : 'gray')
+            ->tooltip(fn (): string => __('admin.settings_import_locks.inline_field_tooltip.'.($this->inlineImportLockUnitLocked($unitPath) ? 'locked' : 'unlocked'), [
+                'unit' => $this->inlineImportLockUnit($unitPath)?->label ?? $unitPath,
+                'path' => $unitPath,
+            ]))
+            ->iconButton()
+            ->action(function () use ($unitPath): void {
+                $this->toggleInlineImportLockUnit($unitPath);
+            });
+    }
+
+    private function toggleInlineImportLockGroup(string $group): void
+    {
+        $this->inlineImportLockedPaths = app(SettingsImportLocks::class)->save(
+            app(SettingsLifecycleSelectionState::class)->toggleGroup(
+                $this->inlineImportLockRows(),
+                $this->inlineImportLockedPaths(),
+                $group,
+            ),
+        );
+    }
+
+    private function toggleInlineImportLockUnit(string $unitPath): void
+    {
+        $this->inlineImportLockedPaths = app(SettingsImportLocks::class)->save(
+            app(SettingsLifecycleSelectionState::class)->togglePath(
+                $this->inlineImportLockRows(),
+                $this->inlineImportLockedPaths(),
+                $unitPath,
+            ),
+        );
+    }
+
+    private function inlineImportLockGroupState(string $group): string
+    {
+        return app(SettingsLifecycleSelectionState::class)
+            ->groupState($this->inlineImportLockRows(), $this->inlineImportLockedPaths(), $group);
+    }
+
+    private function inlineImportLockGroupIcon(string $group): Heroicon
+    {
+        return match ($this->inlineImportLockGroupState($group)) {
+            'all' => Heroicon::OutlinedLockClosed,
+            'some' => Heroicon::OutlinedShieldExclamation,
+            default => Heroicon::OutlinedLockOpen,
+        };
+    }
+
+    private function inlineImportLockGroupColor(string $group): string
+    {
+        return match ($this->inlineImportLockGroupState($group)) {
+            'all' => 'warning',
+            'some' => 'info',
+            default => 'gray',
+        };
+    }
+
+    /**
+     * @return array{locked: int, total: int}
+     */
+    private function inlineImportLockGroupCounts(string $group): array
+    {
+        $paths = collect($this->inlineImportLockRows())
+            ->filter(fn (array $row): bool => ($row['group'] ?? null) === $group && (bool) ($row['selectable'] ?? false))
+            ->pluck('path')
+            ->values()
+            ->all();
+
+        return [
+            'locked' => count(array_intersect($paths, $this->inlineImportLockedPaths())),
+            'total' => count($paths),
+        ];
+    }
+
+    private function inlineImportLockUnitLocked(string $unitPath): bool
+    {
+        return in_array($unitPath, $this->inlineImportLockedPaths(), true);
+    }
+
+    private function inlineImportLockUnit(string $unitPath): ?SettingsLifecycleUnit
+    {
+        return app(SettingsLifecycleSchema::class)->unitFor($unitPath);
+    }
+
+    /**
+     * @return array<int, array{group: string, path: string, selectable: bool}>
+     */
+    private function inlineImportLockRows(): array
+    {
+        if ($this->inlineImportLockRows !== null) {
+            return $this->inlineImportLockRows;
+        }
+
+        $schema = app(SettingsLifecycleSchema::class);
+        $payload = $schema->payloadForGroup();
+
+        return $this->inlineImportLockRows = collect($schema->units($payload))
+            ->map(fn (SettingsLifecycleUnit $unit): array => [
+                'group' => $unit->section,
+                'path' => $unit->path,
+                'selectable' => true,
+            ])
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function inlineImportLockedPaths(): array
+    {
+        return $this->inlineImportLockedPaths ??= app(SettingsImportLocks::class)->lockedPaths();
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function inlineImportLockUnitPathsForSemanticPath(string $semanticPath): array
+    {
+        return app(SettingsLifecycleSchema::class)
+            ->unitPathsForSemanticPath($semanticPath);
+    }
+
+    private function inlineImportLockActionKey(string $path): string
+    {
+        return trim((string) preg_replace('/[^A-Za-z0-9]+/', '_', $path), '_');
     }
 
     private function itemPageInfoFieldRepeater(): Repeater
@@ -1772,10 +2062,14 @@ class PublicContentSettings extends SettingsPage
         $publicFrontConfig = app(PublicFrontConfigValidator::class)
             ->validate($data)
             ->config();
+        $currentImportLocks = [
+            'locked_paths' => app(SettingsImportLocks::class)->lockedPaths(),
+        ];
 
         return [
             ...$data,
             ...$publicFrontConfig,
+            'import_locks' => $currentImportLocks,
         ];
     }
 

@@ -15,6 +15,7 @@ use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Process;
+use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
 use Spatie\LaravelSettings\SettingsContainer;
 
@@ -30,6 +31,7 @@ beforeEach(function (): void {
 
     Cache::flush();
     Process::fake();
+    Storage::fake('local');
     clearStep10S2SettingsState();
 
     $this->actingAs(User::factory()->create());

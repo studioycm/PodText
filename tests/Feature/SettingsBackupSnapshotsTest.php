@@ -15,6 +15,7 @@ use App\Support\SettingsLifecycle\PublicSettingsPackage;
 use App\Support\SettingsLifecycle\SettingsBackupManager;
 use App\Support\SettingsLifecycle\SettingsBackupSnapshotManager;
 use App\Support\SettingsLifecycle\SettingsBackupSnapshotManifest;
+use App\Support\SettingsLifecycle\SettingsImportLocks;
 use Filament\Actions\Testing\TestAction;
 use Filament\Facades\Filament;
 use Illuminate\Contracts\Queue\ShouldQueueAfterCommit;
@@ -42,6 +43,7 @@ beforeEach(function (): void {
 
     Cache::flush();
     Process::fake();
+    Storage::fake('local');
     clearStep10S2VSettingsState();
 
     $this->actingAs(User::factory()->create());
@@ -202,6 +204,50 @@ it('schedules thumbnail-only snapshots for system backups and full configured sn
     Queue::assertPushed(SettingsBackupSnapshotJob::class, 2);
 });
 
+it('creates locks-only system backups without scheduling snapshots', function (): void {
+    createStep10S2VPublicFixtures();
+
+    $settings = step10S2VSettings();
+    $settings->homepage_item_limit = 17;
+    $settings->save();
+
+    SettingsBackupVersion::query()->delete();
+    Queue::fake();
+
+    $baseline = app(SettingsBackupManager::class)->createSystem();
+
+    expect($baseline->snapshots()->count())->toBeGreaterThan(0);
+
+    Queue::assertPushed(SettingsBackupSnapshotJob::class, 1);
+    Queue::fake();
+
+    app(SettingsImportLocks::class)->save(['homepage_item_limit']);
+
+    $locksOnly = SettingsBackupVersion::query()
+        ->whereKeyNot($baseline->getKey())
+        ->latest('id')
+        ->firstOrFail();
+
+    expect($locksOnly->source)->toBe(SettingsBackupSource::System)
+        ->and($locksOnly->snapshots()->count())->toBe(0);
+
+    Queue::assertNothingPushed();
+    Queue::fake();
+
+    $settings = step10S2VSettings();
+    $settings->homepage_item_limit = 18;
+    $settings->save();
+
+    $visualBackup = SettingsBackupVersion::query()
+        ->whereKeyNot($locksOnly->getKey())
+        ->latest('id')
+        ->firstOrFail();
+
+    expect($visualBackup->snapshots()->count())->toBeGreaterThan(0);
+
+    Queue::assertPushed(SettingsBackupSnapshotJob::class, 1);
+});
+
 it('queues snapshot jobs after commit and keeps the timeout chain ordered', function (): void {
     config([
         'settings-backups.snapshot_job_timeout' => 1800,
@@ -247,7 +293,6 @@ it('queues restore-created snapshot jobs only after the before-restore backup is
 });
 
 it('processes snapshots through the script contract and isolates per-shot failures', function (): void {
-    Storage::fake('local');
     Queue::fake();
 
     $backup = app(SettingsBackupManager::class)->createManual('Process contract', auth()->user(), ['png'], ['light']);
@@ -291,8 +336,6 @@ it('processes snapshots through the script contract and isolates per-shot failur
 });
 
 it('renders the table image column and snapshot gallery controls', function (): void {
-    Storage::fake('local');
-
     $backup = createStep10S2VBackup(label: 'Gallery backup');
     createStep10S2VSnapshot($backup);
     createStep10S2VSnapshot($backup, screenKey: 'episode', theme: 'dark', kind: SettingsBackupSnapshot::KIND_FULL);
@@ -308,11 +351,11 @@ it('renders the table image column and snapshot gallery controls', function (): 
         ->assertMountedActionModalSee('data-test="settings-backup-snapshot-theme"', false)
         ->assertMountedActionModalSee('data-test="settings-backup-snapshot-scroll-container"', false)
         ->assertMountedActionModalSee('data-test="settings-backup-snapshot-retry"', false)
+        ->assertMountedActionModalSee(__('admin.actions.recapture_snapshot'))
         ->assertMountedActionModalSee(__('admin.actions.download_all_snapshots'));
 });
 
 it('removes snapshot files on explicit delete and retention prune while preserving non-system backups', function (): void {
-    Storage::fake('local');
     config(['settings-backups.retention' => 1]);
 
     $singleDeleteBackup = createStep10S2VBackup(label: 'Delete with files');
@@ -342,7 +385,6 @@ it('removes snapshot files on explicit delete and retention prune while preservi
 });
 
 it('does not delete pruned snapshot files when the surrounding transaction rolls back', function (): void {
-    Storage::fake('local');
     config(['settings-backups.retention' => 1]);
 
     $oldSystem = createStep10S2VBackup(SettingsBackupSource::System, 'Old rollback system');

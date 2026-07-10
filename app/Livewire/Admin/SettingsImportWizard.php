@@ -205,10 +205,11 @@ class SettingsImportWizard extends SettingsLifecycleSelectionTable
             return;
         }
 
+        $previousSelectedPaths = $this->selectedPaths;
         $analysis = app(SettingsPackageImportAnalyzer::class)->analyzeArray($this->packageArray, $this->importMode);
 
         $this->rows = $analysis->rows;
-        $this->selectedPaths = $analysis->selectedPaths;
+        $this->selectedPaths = array_values(array_intersect($previousSelectedPaths, $analysis->selectablePaths()));
         $this->warnings = $analysis->warnings;
         $this->importErrors = $analysis->errors;
         $this->step = $analysis->refused() ? 'source' : 'dry-run';

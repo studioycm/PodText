@@ -64,7 +64,12 @@ class SettingsImportLocksManager extends SettingsLifecycleSelectionTable
 
     public function lockAllFrontTexts(): void
     {
-        $this->selectedPaths = app(SettingsImportLocks::class)->frontTextLockPaths();
+        $locks = app(SettingsImportLocks::class);
+
+        $this->selectedPaths = $locks->normalize([
+            ...$this->selectedPaths,
+            ...$locks->frontTextLockPaths(),
+        ]);
     }
 
     public function unlockAll(): void

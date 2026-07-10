@@ -50,8 +50,13 @@ class SettingsLifecycleSchema
 
     public function unitFor(string $path, ?array $payload = null, ?string $group = null): ?SettingsLifecycleUnit
     {
-        return collect($this->units($payload, $group))
-            ->first(fn (SettingsLifecycleUnit $unit): bool => $unit->path === $path);
+        foreach ($this->units($payload, $group) as $unit) {
+            if ($unit->path === $path) {
+                return $unit;
+            }
+        }
+
+        return null;
     }
 
     /**
@@ -74,7 +79,7 @@ class SettingsLifecycleSchema
         $key = $this->labelKeyFor($path);
         $label = __($key);
 
-        return $label === $key ? $path : $label;
+        return is_string($label) && $label !== $key ? $label : $path;
     }
 
     public function structuralType(mixed $value): string
@@ -394,11 +399,19 @@ class SettingsLifecycleSchema
     private function cardTemplatesForPath(array $payload, string $path): array
     {
         $family = $this->cardFamilyFromPath($path);
+        $templates = [];
 
-        return collect($payload['card_templates'] ?? [])
-            ->filter(fn (mixed $item): bool => is_array($item) && ($item['family'] ?? null) === $family && filled($item['key'] ?? null))
-            ->mapWithKeys(fn (array $item): array => [(string) $item['key'] => $item])
-            ->all();
+        foreach ($payload['card_templates'] ?? [] as $item) {
+            if (! is_array($item) || ($item['family'] ?? null) !== $family || blank($item['key'] ?? null)) {
+                continue;
+            }
+
+            $key = (string) $item['key'];
+
+            $templates[$key] ??= $item;
+        }
+
+        return $templates;
     }
 
     private function setRouteLabelForPath(array &$payload, string $path, mixed $value): void
@@ -441,7 +454,9 @@ class SettingsLifecycleSchema
                 $item['family'] = $family;
 
                 return $item;
-            });
+            })
+            ->values()
+            ->all();
 
         $payload['card_templates'] = $otherTemplates
             ->concat($familyTemplates)
