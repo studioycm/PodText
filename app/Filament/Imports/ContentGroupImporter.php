@@ -9,8 +9,6 @@ use App\Models\ContentGroup;
 use Filament\Actions\Imports\Exceptions\RowImportFailedException;
 use Filament\Actions\Imports\ImportColumn;
 use Filament\Actions\Imports\Importer;
-use Filament\Actions\Imports\Models\Import;
-use Illuminate\Support\Number;
 use Illuminate\Validation\Rule;
 
 class ContentGroupImporter extends Importer
@@ -153,16 +151,5 @@ class ContentGroupImporter extends Importer
         $this->data['default_item_type_label_plural'] ??= 'Episodes';
         $this->data['original_language_code'] ??= 'he';
         $this->data['status'] ??= PublicationStatus::Draft->value;
-    }
-
-    public static function getCompletedNotificationBody(Import $import): string
-    {
-        $body = 'Your content group import has completed and '.Number::format($import->successful_rows).' '.str('row')->plural($import->successful_rows).' imported.';
-
-        if ($failedRowsCount = $import->getFailedRowsCount()) {
-            $body .= ' '.Number::format($failedRowsCount).' '.str('row')->plural($failedRowsCount).' failed to import.';
-        }
-
-        return $body;
     }
 }

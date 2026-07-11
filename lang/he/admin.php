@@ -1371,6 +1371,18 @@ return [
         'transcription_created' => 'התמלול נוצר.',
         'transcription_not_found' => 'לא נמצא תמלול מתאים לפרק הזה.',
     ],
+    'import_export' => [
+        'notifications' => [
+            'export' => [
+                'completed_body' => '{0} הייצוא של :label הושלם ולא יוצאו שורות.|{1} הייצוא של :label הושלם ושורה אחת יוצאה.|[2,*] הייצוא של :label הושלם ו-:count שורות יוצאו.',
+                'failed_body' => '{1} שורה אחת נכשלה בייצוא.|[2,*] :count שורות נכשלו בייצוא.',
+            ],
+            'import' => [
+                'completed_body' => '{0} הייבוא של :label הושלם ולא יובאו שורות.|{1} הייבוא של :label הושלם ושורה אחת יובאה.|[2,*] הייבוא של :label הושלם ו-:count שורות יובאו.',
+                'failed_body' => '{1} שורה אחת נכשלה בייבוא.|[2,*] :count שורות נכשלו בייבוא.',
+            ],
+        ],
+    ],
     'messages' => [
         'settings_backup_before_import_label' => 'לפני ייבוא הגדרות',
         'settings_backup_before_restore_label' => 'לפני שחזור מגיבוי מספר :id',

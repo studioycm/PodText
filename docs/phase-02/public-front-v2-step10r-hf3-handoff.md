@@ -26,9 +26,8 @@ research source for this hotfix; no separate research document was created.
 
 - First half adopted retroactively: `7d80c99 feat: add import/export logging and
   lifecycle tracing with horizon queue integration`.
-- Completion half: this run's commit message is `fix: complete imports-exports hotfix
-  across exporters with shared lifecycle tracing`; the final hash is reported after
-  the commit because this handoff is part of that commit.
+- Completion half: `8d24ce8 fix: complete imports-exports hotfix across exporters
+  with shared lifecycle tracing`.
 
 ## What Changed
 
@@ -63,21 +62,53 @@ research source for this hotfix; no separate research document was created.
 
 ## Verification
 
-- `php artisan test --compact tests/Feature/ImportExportTest.php`
-- `php artisan test --compact tests/Feature/ImportExportQueueConfigurationTest.php`
-- `php artisan test`
-- `vendor/bin/pint --test`
-- `vendor/bin/filacheck`
-- `npm run build`
-- `git diff --check`
+- `php artisan test --compact tests/Feature/ImportExportTest.php` passed in the HF3 run.
+- `php artisan test --compact tests/Feature/ImportExportQueueConfigurationTest.php` passed in the HF3 run.
+- `php artisan test` passed in the HF3 run.
+- `vendor/bin/pint --test` passed in the HF3 run.
+- `vendor/bin/filacheck` passed in the HF3 run.
+- `npm run build` passed in the HF3 run.
+- `git diff --check` passed in the HF3 run.
 
 ## Commit hash
 
 First-half commit: `7d80c99 feat: add import/export logging and lifecycle tracing with
 horizon queue integration`.
 
-Completion commit: `fix: complete imports-exports hotfix across exporters with shared
-lifecycle tracing`; final hash reported after local commit creation.
+Completion commit: `8d24ce8 fix: complete imports-exports hotfix across exporters
+with shared lifecycle tracing`.
+
+## Notes
+
+- Retry semantics: Filament import/export chunk jobs define `retryUntil()` through
+  the app importer/exporter traits as `now()->addHour()`. That job-level window takes
+  precedence over the Horizon supervisor's `tries => 1`, so failing chunk jobs retry
+  with backoff `[30, 120, 300]` for up to an hour.
+- The Redis queue connection has `after_commit => false`. Any future import/export
+  dispatch inside a database transaction can race the worker and would rely on
+  `deleteWhenMissingModels` for missing-model cleanup.
+- Known round-trip asymmetry handed to the planned IE-1 step: `ContentItemExporter`
+  writes all `contentTags`, including disabled tags, while `ContentItemImporter`
+  resolves only enabled tags. Round-trips therefore silently drop disabled tags.
+- Vendor localization check: `vendor/filament/actions/resources/lang/he/export.php`
+  includes `notifications.completed.title`,
+  `notifications.completed.actions.download_csv.label`, and
+  `notifications.completed.actions.download_xlsx.label`, but no completed body key.
+  `vendor/filament/actions/resources/lang/he/import.php` includes
+  `notifications.completed.title` and
+  `notifications.completed.actions.download_failed_rows_csv.label`, but no completed
+  body key. The importer/exporter base classes still require app classes to implement
+  `getCompletedNotificationBody()`.
+
+## Coda
+
+HF3 coda localized the import/export completion notification bodies in Hebrew and
+English by moving the body text into shared importer/exporter trait methods backed by
+app translation keys, then removed the ten per-class hardcoded English body copies.
+
+Coda commit message: `fix: localize import export completion notifications`.
+
+Coda commit hash: to be backfilled by the next run.
 
 ## Local Front Check Report
 

@@ -1391,6 +1391,18 @@ return [
         'transcription_created' => 'Transcription created.',
         'transcription_not_found' => 'No transcription could be resolved for this episode.',
     ],
+    'import_export' => [
+        'notifications' => [
+            'export' => [
+                'completed_body' => '{0} Your :label export has completed and no rows were exported.|{1} Your :label export has completed and :count row exported.|[2,*] Your :label export has completed and :count rows exported.',
+                'failed_body' => '{1} :count row failed to export.|[2,*] :count rows failed to export.',
+            ],
+            'import' => [
+                'completed_body' => '{0} Your :label import has completed and no rows were imported.|{1} Your :label import has completed and :count row imported.|[2,*] Your :label import has completed and :count rows imported.',
+                'failed_body' => '{1} :count row failed to import.|[2,*] :count rows failed to import.',
+            ],
+        ],
+    ],
     'messages' => [
         'settings_backup_before_restore_label' => 'Before restore from backup #:id',
         'settings_backup_checksum_invalid' => 'The settings backup checksum is invalid.',

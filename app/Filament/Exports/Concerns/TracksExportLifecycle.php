@@ -6,6 +6,7 @@ use Carbon\CarbonInterface;
 use Filament\Actions\Exports\Models\Export;
 use Filament\Notifications\Notification;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Number;
 
 trait TracksExportLifecycle
 {
@@ -48,6 +49,22 @@ trait TracksExportLifecycle
     public function getJobBackoff(): array
     {
         return [30, 120, 300];
+    }
+
+    public static function getCompletedNotificationBody(Export $export): string
+    {
+        $body = trans_choice('admin.import_export.notifications.export.completed_body', $export->successful_rows, [
+            'count' => Number::format($export->successful_rows),
+            'label' => self::exportNotificationResourceLabel(),
+        ]);
+
+        if ($failedRowsCount = $export->getFailedRowsCount()) {
+            $body .= ' '.trans_choice('admin.import_export.notifications.export.failed_body', $failedRowsCount, [
+                'count' => Number::format($failedRowsCount),
+            ]);
+        }
+
+        return $body;
     }
 
     public static function modifyCompletedNotification(Notification $notification, Export $export): Notification
@@ -102,5 +119,14 @@ trait TracksExportLifecycle
         return ucfirst((string) str(class_basename(static::class))
             ->beforeLast('Exporter')
             ->snake(' '));
+    }
+
+    private static function exportNotificationResourceLabel(): string
+    {
+        $resourceKey = (string) str(class_basename(static::class))
+            ->beforeLast('Exporter')
+            ->snake();
+
+        return (string) str(__("admin.resources.{$resourceKey}.singular"))->lower();
     }
 }

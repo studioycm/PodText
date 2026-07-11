@@ -10,9 +10,7 @@ use App\Models\Transcription;
 use Filament\Actions\Imports\Exceptions\RowImportFailedException;
 use Filament\Actions\Imports\ImportColumn;
 use Filament\Actions\Imports\Importer;
-use Filament\Actions\Imports\Models\Import;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Number;
 use Illuminate\Validation\Rule;
 
 class TranscriptionImporter extends Importer
@@ -220,17 +218,6 @@ class TranscriptionImporter extends Importer
         }
 
         $this->record->syncTranscribers($transcriberIds);
-    }
-
-    public static function getCompletedNotificationBody(Import $import): string
-    {
-        $body = 'Your transcription import has completed and '.Number::format($import->successful_rows).' '.str('row')->plural($import->successful_rows).' imported.';
-
-        if ($failedRowsCount = $import->getFailedRowsCount()) {
-            $body .= ' '.Number::format($failedRowsCount).' '.str('row')->plural($failedRowsCount).' failed to import.';
-        }
-
-        return $body;
     }
 
     private function resolveContentItem(mixed $referenceKey): ContentItem

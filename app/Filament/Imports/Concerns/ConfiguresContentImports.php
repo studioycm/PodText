@@ -8,9 +8,11 @@ use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
 use Carbon\Exceptions\InvalidFormatException;
 use Filament\Actions\Imports\Exceptions\RowImportFailedException;
+use Filament\Actions\Imports\Models\Import;
 use Filament\Forms\Components\Select;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Number;
 use JsonException;
 
 trait ConfiguresContentImports
@@ -59,6 +61,22 @@ trait ConfiguresContentImports
     public function getJobBackoff(): array
     {
         return [30, 120, 300];
+    }
+
+    public static function getCompletedNotificationBody(Import $import): string
+    {
+        $body = trans_choice('admin.import_export.notifications.import.completed_body', $import->successful_rows, [
+            'count' => Number::format($import->successful_rows),
+            'label' => self::importNotificationResourceLabel(),
+        ]);
+
+        if ($failedRowsCount = $import->getFailedRowsCount()) {
+            $body .= ' '.trans_choice('admin.import_export.notifications.import.failed_body', $failedRowsCount, [
+                'count' => Number::format($failedRowsCount),
+            ]);
+        }
+
+        return $body;
     }
 
     public function getJobBatchName(): ?string
@@ -261,5 +279,14 @@ trait ConfiguresContentImports
             ->map(fn (string $slugOrName): ?ContentTag => static::resolveEnabledContentTag($slugOrName))
             ->filter()
             ->values();
+    }
+
+    private static function importNotificationResourceLabel(): string
+    {
+        $resourceKey = (string) str(class_basename(static::class))
+            ->beforeLast('Importer')
+            ->snake();
+
+        return (string) str(__("admin.resources.{$resourceKey}.singular"))->lower();
     }
 }

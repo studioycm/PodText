@@ -520,3 +520,42 @@ it('denies public access to admin import and export surfaces and protects genera
         ->get(route('filament.imports.failed-rows.download', $import))
         ->assertForbidden();
 });
+
+it('localizes completed notification bodies for import export completions', function (): void {
+    app()->setLocale('he');
+
+    $export = Export::query()->create([
+        'file_disk' => 'local',
+        'file_name' => 'exports/test.csv',
+        'exporter' => ContentGroupExporter::class,
+        'processed_rows' => 3,
+        'total_rows' => 3,
+        'successful_rows' => 2,
+        'user_id' => User::factory()->create()->id,
+    ]);
+    $import = Import::query()->create([
+        'file_name' => 'imports/test.csv',
+        'file_path' => 'imports/test.csv',
+        'importer' => ContentGroupImporter::class,
+        'processed_rows' => 3,
+        'total_rows' => 3,
+        'successful_rows' => 2,
+        'user_id' => User::factory()->create()->id,
+    ]);
+
+    $exportBody = ContentGroupExporter::getCompletedNotificationBody($export);
+    $importBody = ContentGroupImporter::getCompletedNotificationBody($import);
+
+    expect($exportBody)
+        ->toContain('הייצוא')
+        ->toContain('שורות יוצאו')
+        ->toContain('שורה אחת נכשלה בייצוא')
+        ->not->toContain('Your content group export has completed')
+        ->not->toContain('failed to export')
+        ->and($importBody)
+        ->toContain('הייבוא')
+        ->toContain('שורות יובאו')
+        ->toContain('שורה אחת נכשלה בייבוא')
+        ->not->toContain('Your content group import has completed')
+        ->not->toContain('failed to import');
+});
