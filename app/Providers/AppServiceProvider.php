@@ -7,6 +7,7 @@ use App\Support\Importer\Contracts\GoogleDriveClientFactory;
 use App\Support\Importer\Contracts\SpotifyClientFactory;
 use App\Support\Importer\Google\GoogleApiDriveClientFactory;
 use App\Support\Importer\Spotify\SpotifyHttpClientFactory;
+use App\Support\ImportExport\ImportExportQueueTracer;
 use App\Support\PublicContent\PublicTranscriptionPolicy;
 use App\Support\PublicFront\PublicFrontConfigCache;
 use App\Support\PublicFront\PublicFrontRenderContext;
@@ -54,6 +55,8 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         Model::preventLazyLoading(! $this->app->isProduction());
+
+        $this->app->make(ImportExportQueueTracer::class)->register();
 
         Table::configureUsing(function (Table $table): void {
             if (! $this->isAdminPanel()) {

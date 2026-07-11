@@ -8,13 +8,16 @@ use App\Filament\Imports\AuthorImporter;
 use App\Filament\Imports\ContentGroupImporter;
 use App\Filament\Imports\ContentItemImporter;
 use App\Models\Author;
+use App\Models\Category;
 use App\Models\ContentGroup;
 use App\Models\ContentItem;
 use App\Models\User;
+use Filament\Actions\Exports\ExportColumn;
 use Filament\Actions\Exports\Models\Export;
 use Filament\Actions\Imports\Exceptions\RowImportFailedException;
 use Filament\Actions\Imports\Jobs\ImportCsv;
 use Filament\Actions\Imports\Models\Import;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
@@ -306,6 +309,12 @@ it('defines expected export columns and disables large optional content by defau
     $authorColumns = collect(AuthorExporter::getColumns());
     $groupColumns = collect(ContentGroupExporter::getColumns());
     $itemColumns = collect(ContentItemExporter::getColumns());
+    $descriptionMarkdownColumn = $groupColumns->first(
+        fn (ExportColumn $column): bool => $column->getName() === 'description_markdown',
+    );
+
+    expect($descriptionMarkdownColumn)->toBeInstanceOf(ExportColumn::class);
+    assert($descriptionMarkdownColumn instanceof ExportColumn);
 
     expect($authorColumns->map->getName()->all())->toBe([
         'reference_key',
@@ -316,10 +325,35 @@ it('defines expected export columns and disables large optional content by defau
         'updated_at',
     ])
         ->and($groupColumns->map->getName()->all())->toContain('description_markdown', 'cover_path')
-        ->and($groupColumns->first(fn ($column): bool => $column->getName() === 'description_markdown')->isEnabledByDefault())->toBeFalse()
+        ->and($descriptionMarkdownColumn->isEnabledByDefault())->toBeFalse()
         ->and($itemColumns->map->getName()->all())->toContain('content_group_reference_key')
         ->and($itemColumns->map->getName()->all())->not->toContain('author_reference_keys')
         ->and($itemColumns->map->getName()->all())->not->toContain('transcript_markdown');
+});
+
+it('eager loads content group export category paths for queued records', function (): void {
+    $parent = Category::factory()->create([
+        'slug' => 'parent-category',
+    ]);
+    $child = Category::factory()->for($parent, 'parent')->create([
+        'slug' => 'child-category',
+    ]);
+    $group = ContentGroup::factory()->create();
+    $group->categories()->attach($child);
+
+    $record = ContentGroupExporter::modifyQuery(ContentGroup::query())->findOrFail($group->getKey());
+
+    Model::preventLazyLoading();
+
+    try {
+        $exported = exportRecord(ContentGroupExporter::class, $record, [
+            'category_paths' => 'category_paths',
+        ]);
+    } finally {
+        Model::preventLazyLoading(! app()->isProduction());
+    }
+
+    expect($exported)->toBe(['parent-category/child-category']);
 });
 
 it('exports relationship reference keys and escapes spreadsheet formula text', function (): void {
