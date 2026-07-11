@@ -3,19 +3,18 @@
 namespace App\Filament\Exports;
 
 use App\Filament\Exports\Concerns\EscapesSpreadsheetFormulae;
+use App\Filament\Exports\Concerns\TracksExportLifecycle;
 use App\Models\ContentGroup;
-use Carbon\CarbonInterface;
 use Filament\Actions\Exports\ExportColumn;
 use Filament\Actions\Exports\Exporter;
 use Filament\Actions\Exports\Models\Export;
-use Filament\Notifications\Notification;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Number;
 
 class ContentGroupExporter extends Exporter
 {
     use EscapesSpreadsheetFormulae;
+    use TracksExportLifecycle;
 
     protected static ?string $model = ContentGroup::class;
 
@@ -73,54 +72,9 @@ class ContentGroupExporter extends Exporter
         ];
     }
 
-    public function getJobQueue(): ?string
-    {
-        $this->logLifecycle('dispatch queue resolved', [
-            'queue' => 'imports-exports',
-        ]);
-
-        return 'imports-exports';
-    }
-
     public static function modifyQuery(Builder $query): Builder
     {
         return $query->with('categories.parent');
-    }
-
-    public function getJobBatchName(): ?string
-    {
-        $name = "content-group-export-{$this->export->getKey()}";
-
-        $this->logLifecycle('batch name resolved', [
-            'batch' => $name,
-        ]);
-
-        return $name;
-    }
-
-    /**
-     * @return array<int, string>
-     */
-    public function getJobTags(): array
-    {
-        return [
-            ...parent::getJobTags(),
-            'filament-export',
-            'content-group-export',
-        ];
-    }
-
-    public function getJobRetryUntil(): ?CarbonInterface
-    {
-        return now()->addHour();
-    }
-
-    /**
-     * @return array<int, int>
-     */
-    public function getJobBackoff(): array
-    {
-        return [30, 120, 300];
     }
 
     public static function getCompletedNotificationBody(Export $export): string
@@ -132,40 +86,5 @@ class ContentGroupExporter extends Exporter
         }
 
         return $body;
-    }
-
-    public static function modifyCompletedNotification(Notification $notification, Export $export): Notification
-    {
-        self::logLifecycleFor($export, 'completion notification prepared', [
-            'failed_rows' => $export->getFailedRowsCount(),
-        ]);
-
-        return $notification;
-    }
-
-    /**
-     * @param  array<string, mixed>  $context
-     */
-    private function logLifecycle(string $event, array $context = []): void
-    {
-        self::logLifecycleFor($this->export, $event, $context);
-    }
-
-    /**
-     * @param  array<string, mixed>  $context
-     */
-    private static function logLifecycleFor(Export $export, string $event, array $context = []): void
-    {
-        Log::channel('import_export')->info("Content group export {$event}", [
-            'export_id' => $export->getKey(),
-            'user_id' => $export->user_id,
-            'exporter' => $export->exporter,
-            'total_rows' => $export->total_rows,
-            'processed_rows' => $export->processed_rows,
-            'successful_rows' => $export->successful_rows,
-            'completed_at' => $export->completed_at instanceof CarbonInterface
-                ? $export->completed_at->toISOString()
-                : $export->completed_at,
-        ] + $context);
     }
 }

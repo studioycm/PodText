@@ -3,16 +3,18 @@
 namespace App\Filament\Exports;
 
 use App\Filament\Exports\Concerns\EscapesSpreadsheetFormulae;
+use App\Filament\Exports\Concerns\TracksExportLifecycle;
 use App\Models\Category;
-use Carbon\CarbonInterface;
 use Filament\Actions\Exports\ExportColumn;
 use Filament\Actions\Exports\Exporter;
 use Filament\Actions\Exports\Models\Export;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Number;
 
 class CategoryExporter extends Exporter
 {
     use EscapesSpreadsheetFormulae;
+    use TracksExportLifecycle;
 
     protected static ?string $model = Category::class;
 
@@ -50,22 +52,9 @@ class CategoryExporter extends Exporter
         ];
     }
 
-    public function getJobQueue(): ?string
+    public static function modifyQuery(Builder $query): Builder
     {
-        return 'imports-exports';
-    }
-
-    public function getJobRetryUntil(): ?CarbonInterface
-    {
-        return now()->addHour();
-    }
-
-    /**
-     * @return array<int, int>
-     */
-    public function getJobBackoff(): array
-    {
-        return [30, 120, 300];
+        return $query->with('parent');
     }
 
     public static function getCompletedNotificationBody(Export $export): string

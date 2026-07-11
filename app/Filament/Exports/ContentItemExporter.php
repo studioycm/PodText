@@ -3,16 +3,18 @@
 namespace App\Filament\Exports;
 
 use App\Filament\Exports\Concerns\EscapesSpreadsheetFormulae;
+use App\Filament\Exports\Concerns\TracksExportLifecycle;
 use App\Models\ContentItem;
-use Carbon\CarbonInterface;
 use Filament\Actions\Exports\ExportColumn;
 use Filament\Actions\Exports\Exporter;
 use Filament\Actions\Exports\Models\Export;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Number;
 
 class ContentItemExporter extends Exporter
 {
     use EscapesSpreadsheetFormulae;
+    use TracksExportLifecycle;
 
     protected static ?string $model = ContentItem::class;
 
@@ -113,22 +115,14 @@ class ContentItemExporter extends Exporter
         ];
     }
 
-    public function getJobQueue(): ?string
+    public static function modifyQuery(Builder $query): Builder
     {
-        return 'imports-exports';
-    }
-
-    public function getJobRetryUntil(): ?CarbonInterface
-    {
-        return now()->addHour();
-    }
-
-    /**
-     * @return array<int, int>
-     */
-    public function getJobBackoff(): array
-    {
-        return [30, 120, 300];
+        return $query->with([
+            'contentGroup',
+            'categories.parent',
+            'contentTags',
+            'featuredTranscription',
+        ]);
     }
 
     public static function getCompletedNotificationBody(Export $export): string

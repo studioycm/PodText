@@ -49,11 +49,11 @@ class ImportExportQueueTracer
 
     private function traceQueuedEvent(string $eventName, JobQueueing|JobQueued $event): null
     {
-        $payload = $this->decodePayload($event->payload);
-
-        if (! $this->shouldTrace($event->queue, $payload, $event->job)) {
+        if (! $this->shouldTraceQueuedEvent($event)) {
             return null;
         }
+
+        $payload = $this->decodePayload($event->payload);
 
         $this->log($eventName, [
             'connection' => $event->connectionName,
@@ -73,10 +73,15 @@ class ImportExportQueueTracer
      */
     private function traceWorkerEvent(string $eventName, string $connectionName, QueueJob $job, array $context = []): null
     {
-        $payload = $this->jobPayload($job);
         $queue = method_exists($job, 'getQueue') ? $job->getQueue() : null;
 
-        if (! $this->shouldTrace($queue, $payload, null)) {
+        if ($queue !== self::QUEUE && filled($queue)) {
+            return null;
+        }
+
+        $payload = $this->jobPayload($job);
+
+        if ($queue !== self::QUEUE && ! $this->payloadMatchesTracePrefixes($payload)) {
             return null;
         }
 
@@ -93,17 +98,42 @@ class ImportExportQueueTracer
         return null;
     }
 
-    /**
-     * @param  array<string, mixed>  $payload
-     */
-    private function shouldTrace(?string $queue, array $payload, mixed $job = null): bool
+    private function shouldTraceQueuedEvent(JobQueueing|JobQueued $event): bool
     {
-        if ($queue === self::QUEUE) {
+        if ($event->queue === self::QUEUE) {
             return true;
         }
 
-        $jobName = $this->jobName($payload, $job);
+        if ($this->jobMatchesTracePrefixes($event->job)) {
+            return true;
+        }
 
+        if (filled($event->queue)) {
+            return false;
+        }
+
+        return $this->payloadMatchesTracePrefixes($this->decodePayload($event->payload));
+    }
+
+    private function jobMatchesTracePrefixes(mixed $job): bool
+    {
+        if (is_object($job)) {
+            return $this->matchesTracePrefixes($job::class);
+        }
+
+        return is_string($job) && $this->matchesTracePrefixes($job);
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     */
+    private function payloadMatchesTracePrefixes(array $payload): bool
+    {
+        return $this->matchesTracePrefixes($this->jobName($payload));
+    }
+
+    private function matchesTracePrefixes(string $jobName): bool
+    {
         foreach (self::JOB_PREFIXES as $prefix) {
             if (str_starts_with($jobName, $prefix)) {
                 return true;

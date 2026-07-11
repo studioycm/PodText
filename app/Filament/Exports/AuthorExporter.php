@@ -3,8 +3,8 @@
 namespace App\Filament\Exports;
 
 use App\Filament\Exports\Concerns\EscapesSpreadsheetFormulae;
+use App\Filament\Exports\Concerns\TracksExportLifecycle;
 use App\Models\Author;
-use Carbon\CarbonInterface;
 use Filament\Actions\Exports\ExportColumn;
 use Filament\Actions\Exports\Exporter;
 use Filament\Actions\Exports\Models\Export;
@@ -13,6 +13,7 @@ use Illuminate\Support\Number;
 class AuthorExporter extends Exporter
 {
     use EscapesSpreadsheetFormulae;
+    use TracksExportLifecycle;
 
     protected static ?string $model = Author::class;
 
@@ -37,24 +38,6 @@ class AuthorExporter extends Exporter
                 ->label(__('admin.fields.updated_at'))
                 ->formatStateUsing(fn (mixed $state): ?string => self::safeSpreadsheetDateTime($state)),
         ];
-    }
-
-    public function getJobQueue(): ?string
-    {
-        return 'imports-exports';
-    }
-
-    public function getJobRetryUntil(): ?CarbonInterface
-    {
-        return now()->addHour();
-    }
-
-    /**
-     * @return array<int, int>
-     */
-    public function getJobBackoff(): array
-    {
-        return [30, 120, 300];
     }
 
     public static function getCompletedNotificationBody(Export $export): string

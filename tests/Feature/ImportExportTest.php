@@ -2,8 +2,10 @@
 
 use App\Enums\PublicationStatus;
 use App\Filament\Exports\AuthorExporter;
+use App\Filament\Exports\CategoryExporter;
 use App\Filament\Exports\ContentGroupExporter;
 use App\Filament\Exports\ContentItemExporter;
+use App\Filament\Exports\TranscriptionExporter;
 use App\Filament\Imports\AuthorImporter;
 use App\Filament\Imports\ContentGroupImporter;
 use App\Filament\Imports\ContentItemImporter;
@@ -11,6 +13,8 @@ use App\Models\Author;
 use App\Models\Category;
 use App\Models\ContentGroup;
 use App\Models\ContentItem;
+use App\Models\ContentTag;
+use App\Models\Transcription;
 use App\Models\User;
 use Filament\Actions\Exports\ExportColumn;
 use Filament\Actions\Exports\Models\Export;
@@ -354,6 +358,109 @@ it('eager loads content group export category paths for queued records', functio
     }
 
     expect($exported)->toBe(['parent-category/child-category']);
+});
+
+it('eager loads content item export relations for queued records', function (): void {
+    $root = Category::factory()->create([
+        'slug' => 'root-category',
+    ]);
+    $parent = Category::factory()->for($root, 'parent')->create([
+        'slug' => 'parent-category',
+    ]);
+    $child = Category::factory()->for($parent, 'parent')->create([
+        'slug' => 'child-category',
+    ]);
+    $tag = ContentTag::findOrCreateFromString('Queued Export Tag', 'content')->enable();
+    $group = ContentGroup::factory()->create();
+    $item = ContentItem::factory()->for($group)->create();
+    $transcription = Transcription::factory()->for($item)->create();
+
+    $item->categories()->attach($child);
+    $item->tags()->sync([$tag->id]);
+    $item->update(['featured_transcription_id' => $transcription->id]);
+
+    $record = ContentItemExporter::modifyQuery(ContentItem::query())->findOrFail($item->getKey());
+
+    Model::preventLazyLoading();
+
+    try {
+        $exported = exportRecord(ContentItemExporter::class, $record, [
+            'content_group_reference_key' => 'content_group_reference_key',
+            'category_paths' => 'category_paths',
+            'content_tag_slugs' => 'content_tag_slugs',
+            'featured_transcription_reference_key' => 'featured_transcription_reference_key',
+        ]);
+    } finally {
+        Model::preventLazyLoading(! app()->isProduction());
+    }
+
+    expect($exported)->toBe([
+        $group->reference_key,
+        'root-category/parent-category/child-category',
+        $tag->getTranslation('slug', app()->getLocale(), false),
+        $transcription->reference_key,
+    ]);
+});
+
+it('eager loads transcription export relations for queued records', function (): void {
+    $item = ContentItem::factory()->create();
+    $primary = Author::factory()->create(['name' => 'Primary Exporter']);
+    $secondary = Author::factory()->create(['name' => 'Secondary Exporter']);
+    $transcription = Transcription::factory()
+        ->for($item)
+        ->forAuthor($primary)
+        ->create();
+    $transcription->syncTranscribers([$primary, $secondary]);
+
+    $record = TranscriptionExporter::modifyQuery(Transcription::query())->findOrFail($transcription->getKey());
+
+    Model::preventLazyLoading();
+
+    try {
+        $exported = exportRecord(TranscriptionExporter::class, $record, [
+            'content_item_reference_key' => 'content_item_reference_key',
+            'author_reference_key' => 'author_reference_key',
+            'primary_transcriber_reference_key' => 'primary_transcriber_reference_key',
+            'transcriber_reference_keys' => 'transcriber_reference_keys',
+            'transcriber_names' => 'transcriber_names',
+        ]);
+    } finally {
+        Model::preventLazyLoading(! app()->isProduction());
+    }
+
+    expect($exported)->toBe([
+        $item->reference_key,
+        $primary->reference_key,
+        $primary->reference_key,
+        "{$primary->reference_key}|{$secondary->reference_key}",
+        "{$primary->name}|{$secondary->name}",
+    ]);
+});
+
+it('eager loads category export parent path without relying on path column order', function (): void {
+    $root = Category::factory()->create([
+        'slug' => 'root-category',
+    ]);
+    $parent = Category::factory()->for($root, 'parent')->create([
+        'slug' => 'parent-category',
+    ]);
+    $child = Category::factory()->for($parent, 'parent')->create([
+        'slug' => 'child-category',
+    ]);
+
+    $record = CategoryExporter::modifyQuery(Category::query())->findOrFail($child->getKey());
+
+    Model::preventLazyLoading();
+
+    try {
+        $exported = exportRecord(CategoryExporter::class, $record, [
+            'parent_slug' => 'parent_slug',
+        ]);
+    } finally {
+        Model::preventLazyLoading(! app()->isProduction());
+    }
+
+    expect($exported)->toBe(['root-category/parent-category']);
 });
 
 it('exports relationship reference keys and escapes spreadsheet formula text', function (): void {

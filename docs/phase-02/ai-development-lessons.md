@@ -37,6 +37,7 @@ For current prompt completion/progress state, see `docs/phase-02/current-project
 - Missing categories, missing tags, wrong-type tags, and disabled-public tags should fail rows by default.
 - `transcript_file` support remains deferred until a safe import package structure is specified and tested.
 - Preserve formula-injection protection and native failed-row behavior.
+- Any queue name returned by a Filament importer/exporter must appear in both Horizon supervisor queue config and Horizon `waits`. The import/export queue configuration test now guards `imports-exports` so native import/export jobs cannot sit unconsumed in Redis again.
 
 ## Cross-cutting implementation workflow lessons
 
@@ -48,6 +49,7 @@ For current prompt completion/progress state, see `docs/phase-02/current-project
 - Docs-only tasks must stay docs-only.
 - Do not run `vendor/bin/filacheck --fix` without explicit approval.
 - If FilaCheck rewrites app or test files during a docs task, revert those app/test diffs immediately and keep only intended Markdown changes.
+- Ad-hoc production-fix sessions still need ledger/current-state/handoff adoption. A pushed fix with an unnamed or misleading commit message is invisible to the project record until a follow-up run adopts it and records the remaining scope.
 
 ## Testing lessons
 
@@ -63,6 +65,7 @@ For current prompt completion/progress state, see `docs/phase-02/current-project
 - Composite indexes on string columns must use explicit bounded lengths. Finite-token columns get small explicit lengths; with `utf8mb4`, each character can cost 4 bytes and InnoDB's key limit is 3072 bytes. SQLite tests cannot catch MySQL key-length violations, so review index byte math for every new string composite index.
 - PHP language files silently keep the last duplicate key at runtime. Use a token-level duplicate-key scan for both `lang/en` and `lang/he` after translation edits, especially when moving or merging nested admin arrays.
 - `User::canAccessPanel()` currently admits every authenticated user to the admin panel and is the single load-bearing admin-auth decision. This is acceptable only while the only account is Yoni's; before any non-admin account type exists, add an `is_admin` gate first.
+- Known order-dependent flake: `PublicFrontIconRegistryTest` test `normalizes saved icon aliases` failed only in a full-suite run and passed alone and on rerun. Suspect static or memoized icon-registry/render-context state leaking across tests. This is recorded for future isolation work and was not fixed in Step 10R-HF3.
 
 ## Documentation/state-management lessons
 

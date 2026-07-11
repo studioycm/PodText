@@ -228,10 +228,12 @@ trait ConfiguresContentImports
     protected static function categoryPath(Category $category): string
     {
         $segments = collect([$category->slug]);
+        $category->loadMissing('parent');
         $parent = $category->parent;
 
         while ($parent) {
             $segments->prepend($parent->slug);
+            $parent->loadMissing('parent');
             $parent = $parent->parent;
         }
 

@@ -3,16 +3,18 @@
 namespace App\Filament\Exports;
 
 use App\Filament\Exports\Concerns\EscapesSpreadsheetFormulae;
+use App\Filament\Exports\Concerns\TracksExportLifecycle;
 use App\Models\Transcription;
-use Carbon\CarbonInterface;
 use Filament\Actions\Exports\ExportColumn;
 use Filament\Actions\Exports\Exporter;
 use Filament\Actions\Exports\Models\Export;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Number;
 
 class TranscriptionExporter extends Exporter
 {
     use EscapesSpreadsheetFormulae;
+    use TracksExportLifecycle;
 
     protected static ?string $model = Transcription::class;
 
@@ -32,7 +34,7 @@ class TranscriptionExporter extends Exporter
                 ->state(fn (Transcription $record): ?string => $record->primaryTranscriber()?->reference_key),
             ExportColumn::make('transcriber_reference_keys')
                 ->label(__('admin.import.columns.transcriber_reference_keys'))
-                ->state(fn (Transcription $record): string => $record->authors()
+                ->state(fn (Transcription $record): string => $record->authors
                     ->pluck('reference_key')
                     ->implode('|')),
             ExportColumn::make('transcriber_names')
@@ -66,22 +68,13 @@ class TranscriptionExporter extends Exporter
         ];
     }
 
-    public function getJobQueue(): ?string
+    public static function modifyQuery(Builder $query): Builder
     {
-        return 'imports-exports';
-    }
-
-    public function getJobRetryUntil(): ?CarbonInterface
-    {
-        return now()->addHour();
-    }
-
-    /**
-     * @return array<int, int>
-     */
-    public function getJobBackoff(): array
-    {
-        return [30, 120, 300];
+        return $query->with([
+            'contentItem',
+            'authors',
+            'author',
+        ]);
     }
 
     public static function getCompletedNotificationBody(Export $export): string
