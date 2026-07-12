@@ -2,11 +2,15 @@
 
 use App\Http\Controllers\ContentImagesExportDownloadController;
 use App\Http\Controllers\ImporterGoogleOAuthController;
+use App\Http\Controllers\MaintenanceFormSubmissionController;
 use App\Http\Controllers\SettingsBackupSnapshotFileController;
 use App\Http\Controllers\SettingsBackupSnapshotRetryController;
 use App\Http\Controllers\SettingsBackupSnapshotsZipController;
 use Filament\Http\Middleware\Authenticate;
 use Illuminate\Support\Facades\Route;
+
+Route::post('/maintenance/form', MaintenanceFormSubmissionController::class)
+    ->name('public.maintenance-form.submit');
 
 Route::middleware(Authenticate::class)->group(function (): void {
     Route::get('/admin/importer/google/{importConnection}/redirect', [ImporterGoogleOAuthController::class, 'redirect'])

@@ -151,4 +151,4 @@ M  tests/Feature/AdminPhase02ResourcesTest.php
 
 ## Commit hash
 
-Final NAV1 commit hash is reported in the session final after this handoff is committed.
+Final NAV1 commit hash: `e59705b feat: restructure admin navigation groups and defer badges`.

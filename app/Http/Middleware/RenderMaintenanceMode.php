@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Support\PublicFront\Maintenance\MaintenancePageRenderer;
 use App\Support\PublicFront\PublicFrontConfigReader;
 use Closure;
 use Filament\Facades\Filament;
@@ -14,6 +15,7 @@ class RenderMaintenanceMode
 {
     public function __construct(
         private readonly PublicFrontConfigReader $configReader,
+        private readonly MaintenancePageRenderer $maintenancePageRenderer,
     ) {}
 
     public function handle(Request $request, Closure $next): Response
@@ -30,12 +32,10 @@ class RenderMaintenanceMode
 
         $retryAfter = max(1, (int) ($maintenance['retry_after_hours'] ?? 24)) * 3600;
 
-        return response()
-            ->view('public.maintenance', [
-                'maintenance' => $maintenance,
-                'retryAfter' => $retryAfter,
-            ], 503)
-            ->header('Retry-After', (string) $retryAfter);
+        return $this->maintenancePageRenderer->response(
+            maintenance: $maintenance,
+            retryAfter: $retryAfter,
+        );
     }
 
     private function adminCanBypass(): bool

@@ -3,14 +3,20 @@
 use App\Livewire\Public\ContentItemBrowser;
 use App\Models\ContentGroup;
 use App\Models\ContentItem;
+use App\Models\PublicFormSubmission;
 use App\Models\User;
 use App\Settings\PublicContentSettings;
+use App\Support\PublicFront\Maintenance\MaintenanceForm;
 use App\Support\PublicFront\PublicFrontConfigCache;
 use App\Support\PublicFront\PublicFrontConfigReader;
 use App\Support\PublicFront\PublicFrontConfigRegistry;
 use App\Support\PublicFront\PublicFrontRenderContext;
+use Illuminate\Contracts\Debug\ExceptionHandler;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Request;
+use Illuminate\Session\TokenMismatchException;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Route;
 use Livewire\Livewire;
 use Spatie\LaravelSettings\SettingsContainer;
 
@@ -42,6 +48,56 @@ function step10rMp1SaveMaintenance(array $overrides): void
         ...$overrides,
     ];
     $settings->save();
+}
+
+/**
+ * @param  array<string, mixed>  $overrides
+ * @return array<string, mixed>
+ */
+function step10rMp2FormDefinition(array $overrides = []): array
+{
+    return [
+        'key' => 'maintenance_contact',
+        'name' => 'Maintenance contact',
+        'heading' => 'Contact during maintenance',
+        'description' => 'Send a short maintenance message.',
+        'submit_label' => 'Send',
+        'success_message' => 'Maintenance message received.',
+        'enabled' => true,
+        'display_mode_default' => 'modal',
+        'settings' => [
+            'rate_limit_attempts' => 5,
+            'rate_limit_decay_seconds' => 600,
+        ],
+        'fields' => [
+            [
+                'key' => 'email',
+                'type' => 'email',
+                'label' => 'Email',
+                'required' => true,
+            ],
+            [
+                'key' => 'message',
+                'type' => 'textarea',
+                'label' => 'Message',
+                'required' => true,
+                'max_length' => 500,
+            ],
+        ],
+        ...$overrides,
+    ];
+}
+
+/**
+ * @param  array<int, array<string, mixed>>  $definitions
+ */
+function step10rMp2SavePublicForms(array $definitions): void
+{
+    $settings = app(PublicContentSettings::class);
+    $settings->public_forms = ['definitions' => $definitions];
+    $settings->save();
+
+    step10rMp1ForgetPublicFrontState();
 }
 
 function step10rMp1PublicContent(): array
@@ -165,6 +221,159 @@ it('renders raw html override verbatim instead of the maintenance shell', functi
         ->assertSee('<script>window.mp1 = true;</script>', false)
         ->assertDontSee('data-maintenance-content', false)
         ->assertDontSee('Ignored rich content');
+});
+
+it('renders a configured plain maintenance form and stores submissions', function (): void {
+    step10rMp2SavePublicForms([
+        step10rMp2FormDefinition(),
+    ]);
+    step10rMp1SaveMaintenance([
+        'enabled' => true,
+        'title' => 'Maintenance form shell',
+        'form_key' => 'maintenance_contact',
+        'form_location' => MaintenanceForm::LOCATION_RENDERED_PAGE,
+        'form_position' => MaintenanceForm::POSITION_AFTER_CONTENT,
+    ]);
+
+    $this->get('/search')
+        ->assertStatus(503)
+        ->assertSee('Maintenance form shell')
+        ->assertSee('data-maintenance-form', false)
+        ->assertSee('data-form-key="maintenance_contact"', false)
+        ->assertSee('action="'.route('public.maintenance-form.submit').'"', false)
+        ->assertSee('Contact during maintenance');
+
+    $this->post(route('public.maintenance-form.submit'), [
+        'source_url' => 'https://example.com/requested-page',
+        'data' => [
+            'email' => 'visitor@example.com',
+            'message' => 'Please notify me.',
+        ],
+    ])
+        ->assertStatus(503)
+        ->assertSee('data-maintenance-form-success', false)
+        ->assertSee('Maintenance message received.');
+
+    $submission = PublicFormSubmission::query()->firstOrFail();
+
+    expect($submission->form_key)->toBe('maintenance_contact')
+        ->and($submission->payload)->toBe([
+            'email' => 'visitor@example.com',
+            'message' => 'Please notify me.',
+        ])
+        ->and($submission->source_url)->toBe('https://example.com/requested-page')
+        ->and($submission->metadata)->toMatchArray([
+            'display_mode' => 'maintenance_plain',
+            'maintenance_form_location' => MaintenanceForm::LOCATION_RENDERED_PAGE,
+            'maintenance_form_position' => MaintenanceForm::POSITION_AFTER_CONTENT,
+        ]);
+});
+
+it('returns the maintenance page with inline validation errors for invalid form submissions', function (): void {
+    step10rMp2SavePublicForms([
+        step10rMp2FormDefinition(),
+    ]);
+    step10rMp1SaveMaintenance([
+        'enabled' => true,
+        'form_key' => 'maintenance_contact',
+    ]);
+
+    $this->post(route('public.maintenance-form.submit'), [
+        'data' => [
+            'email' => 'not-an-email',
+            'message' => '',
+        ],
+    ])
+        ->assertStatus(503)
+        ->assertSee('data-maintenance-form-field-error="email"', false)
+        ->assertSee('data-maintenance-form-field-error="message"', false);
+
+    expect(PublicFormSubmission::query()->count())->toBe(0);
+});
+
+it('injects the maintenance form at the raw html marker and falls back when the marker is missing', function (): void {
+    step10rMp2SavePublicForms([
+        step10rMp2FormDefinition(),
+    ]);
+
+    step10rMp1SaveMaintenance([
+        'enabled' => true,
+        'form_key' => 'maintenance_contact',
+        'form_location' => MaintenanceForm::LOCATION_RAW_HTML,
+        'raw_html_override' => '<!doctype html><main>Before '.MaintenanceForm::MARKER.' After</main>',
+    ]);
+
+    $this->get('/')
+        ->assertStatus(503)
+        ->assertSee('Before', false)
+        ->assertSee('data-maintenance-form', false)
+        ->assertSee('After', false)
+        ->assertDontSee(MaintenanceForm::MARKER, false);
+
+    step10rMp1SaveMaintenance([
+        'enabled' => true,
+        'form_key' => 'maintenance_contact',
+        'form_location' => MaintenanceForm::LOCATION_RAW_HTML,
+        'raw_html_override' => '<!doctype html><main>No marker</main>',
+    ]);
+
+    $this->get('/')
+        ->assertStatus(503)
+        ->assertSee('data-podtext-maintenance-form-marker-missing', false)
+        ->assertSee('data-maintenance-form', false);
+});
+
+it('keeps the maintenance form submission route unavailable when maintenance or the form is disabled', function (): void {
+    step10rMp2SavePublicForms([
+        step10rMp2FormDefinition(),
+    ]);
+    step10rMp1SaveMaintenance([
+        'enabled' => false,
+        'form_key' => 'maintenance_contact',
+    ]);
+
+    $this->post(route('public.maintenance-form.submit'))
+        ->assertNotFound();
+
+    step10rMp2SavePublicForms([
+        step10rMp2FormDefinition(['enabled' => false]),
+    ]);
+    step10rMp1SaveMaintenance([
+        'enabled' => true,
+        'form_key' => 'maintenance_contact',
+    ]);
+
+    $this->post(route('public.maintenance-form.submit'))
+        ->assertNotFound();
+});
+
+it('renders stale csrf maintenance form errors without exposing the live site', function (): void {
+    step10rMp2SavePublicForms([
+        step10rMp2FormDefinition(),
+    ]);
+    step10rMp1SaveMaintenance([
+        'enabled' => true,
+        'form_key' => 'maintenance_contact',
+    ]);
+
+    $request = Request::create('/maintenance/form', 'POST', [
+        'source_url' => 'https://example.com/stale',
+        'data' => [
+            'email' => 'visitor@example.com',
+            'message' => 'Still here.',
+        ],
+    ]);
+    $route = Route::getRoutes()->getByName('public.maintenance-form.submit');
+
+    $route->bind($request);
+    $request->setRouteResolver(fn () => $route);
+
+    $response = app(ExceptionHandler::class)->render($request, new TokenMismatchException);
+
+    expect($response->getStatusCode())->toBe(503)
+        ->and($response->getContent())->toContain(__('public.maintenance_form.csrf_retry'))
+        ->and($response->getContent())->toContain('data-maintenance-form-error')
+        ->and(PublicFormSubmission::query()->count())->toBe(0);
 });
 
 it('falls back to translated maintenance content when no content is configured', function (): void {

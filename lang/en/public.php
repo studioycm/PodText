@@ -81,6 +81,10 @@ return [
         'body' => 'We are preparing the site and will be back soon.',
         'title' => 'Coming soon',
     ],
+    'maintenance_form' => [
+        'csrf_retry' => 'The form expired. Please review your details and submit again.',
+        'marker_missing' => 'Maintenance form marker was missing from the raw HTML override.',
+    ],
     'dates' => [
         'original_published_long' => 'Originally published',
         'original_published_short' => 'Original',

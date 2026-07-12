@@ -6,6 +6,7 @@ use App\Enums\PublicFormSubmissionStatus;
 use App\Filament\Pages\AdminUxSettings as AdminUxSettingsPage;
 use App\Filament\Pages\Dashboard;
 use App\Filament\Pages\ImporterSettings;
+use App\Filament\Pages\ManagePublicForms;
 use App\Filament\Pages\PublicContentSettings as PublicContentSettingsPage;
 use App\Filament\Public\Pages\ShowContentGroup;
 use App\Filament\Public\Pages\ShowContentItem;
@@ -144,6 +145,10 @@ it('orders every registered admin navigation resource and page through the centr
             'sort' => 310,
             'group' => AdminNavigationOrder::SITE_MANAGEMENT,
         ],
+        ManagePublicForms::class => [
+            'sort' => 315,
+            'group' => AdminNavigationOrder::SITE_MANAGEMENT,
+        ],
         AdminUxSettingsPage::class => [
             'sort' => 320,
             'group' => AdminNavigationOrder::SITE_MANAGEMENT,
@@ -233,6 +238,7 @@ it('orders every registered admin navigation resource and page through the centr
         ->and($itemLabelsFor(AdminNavigationOrder::groupLabel(AdminNavigationOrder::SITE_MANAGEMENT)))->toBe([
             __('admin.resources.homepage_section.navigation'),
             __('admin.pages.public_content_settings.navigation'),
+            __('admin.pages.manage_public_forms.navigation'),
             __('admin.pages.admin_ux_settings.navigation'),
             __('admin.resources.settings_backup.navigation'),
             __('admin.importer.pages.settings.navigation'),

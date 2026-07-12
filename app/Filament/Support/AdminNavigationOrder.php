@@ -4,6 +4,7 @@ namespace App\Filament\Support;
 
 use App\Filament\Pages\AdminUxSettings;
 use App\Filament\Pages\ImporterSettings;
+use App\Filament\Pages\ManagePublicForms;
 use App\Filament\Pages\PublicContentSettings;
 use App\Filament\Resources\Authors\AuthorResource;
 use App\Filament\Resources\Categories\CategoryResource;
@@ -80,6 +81,10 @@ class AdminNavigationOrder
         ],
         PublicContentSettings::class => [
             'sort' => 310,
+            'group' => self::SITE_MANAGEMENT,
+        ],
+        ManagePublicForms::class => [
+            'sort' => 315,
             'group' => self::SITE_MANAGEMENT,
         ],
         AdminUxSettings::class => [

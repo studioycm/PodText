@@ -1,6 +1,7 @@
 <?php
 
 use App\Enums\PublicFormSubmissionStatus;
+use App\Filament\Pages\ManagePublicForms;
 use App\Filament\Pages\PublicContentSettings as PublicContentSettingsPage;
 use App\Filament\Resources\PublicFormSubmissions\Pages\ListPublicFormSubmissions;
 use App\Filament\Resources\PublicFormSubmissions\PublicFormSubmissionResource;
@@ -12,6 +13,7 @@ use App\Support\PublicFront\Forms\PublicFormSubmissionPresenter;
 use App\Support\PublicFront\PublicFrontConfigReader;
 use App\Support\PublicFront\PublicFrontConfigValidator;
 use App\Support\PublicFront\PublicFrontRenderContext;
+use App\Support\Settings\SettingsItemCloner;
 use Filament\Actions\Testing\TestAction;
 use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -199,10 +201,10 @@ it('reports invalid field types unsafe config values and file upload fields', fu
         ->and(class_exists('App\\Models\\PublicFormDefinition'))->toBeFalse();
 });
 
-it('saves public form definitions through the admin settings page as JSON settings', function (): void {
+it('saves public form definitions through the forms management page as JSON settings', function (): void {
     $this->actingAs(User::factory()->create());
 
-    Livewire::test(PublicContentSettingsPage::class)
+    Livewire::test(ManagePublicForms::class)
         ->set('data.public_forms.definitions', [
             [
                 'key' => 'volunteer',
@@ -242,6 +244,60 @@ it('saves public form definitions through the admin settings page as JSON settin
     expect($definition['key'])->toBe('volunteer')
         ->and($definition['display_mode_default'])->toBe('slide_over')
         ->and($definition['fields'][0]['type'])->toBe('textarea');
+});
+
+it('does not clobber public form definitions when saving unrelated public content settings', function (): void {
+    saveStep6PublicFrontConfig(step6PublicFormsConfig());
+
+    $this->actingAs(User::factory()->create());
+
+    Livewire::test(PublicContentSettingsPage::class)
+        ->set('data.homepage_item_limit', 33)
+        ->call('save')
+        ->assertHasNoFormErrors();
+
+    clearStep6PublicFrontSettingsCache();
+
+    $definition = app(PublicFrontConfigReader::class)
+        ->read()
+        ->group('public_forms')['definitions'][0];
+
+    expect($definition['key'])->toBe('request_transcription')
+        ->and($definition['fields'])->toHaveCount(4)
+        ->and(app(PublicContentSettings::class)->homepage_item_limit)->toBe(33);
+});
+
+it('clones public form definitions with a disabled unique key', function (): void {
+    $cloned = app(SettingsItemCloner::class)->clone(
+        item: [
+            'key' => 'request_transcription',
+            'name' => 'Request transcription',
+            'enabled' => true,
+            'fields' => [
+                [
+                    'key' => 'message',
+                    'type' => 'textarea',
+                ],
+            ],
+        ],
+        collection: [
+            [
+                'key' => 'request_transcription',
+                'name' => 'Request transcription',
+            ],
+            [
+                'key' => 'request_transcription_2',
+                'name' => 'Request transcription Copy',
+            ],
+        ],
+        copySuffix: 'Copy',
+        overrides: ['enabled' => false],
+    );
+
+    expect($cloned['key'])->toBe('request_transcription_3')
+        ->and($cloned['name'])->toBe('Request transcription Copy')
+        ->and($cloned['enabled'])->toBeFalse()
+        ->and($cloned['fields'][0]['key'])->toBe('message');
 });
 
 it('does not render or submit disabled public forms', function (): void {

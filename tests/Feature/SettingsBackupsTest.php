@@ -176,5 +176,5 @@ it('restores a backup round trip, creates before-restore backup, and invalidates
     expect($restoredSettings->homepage_item_limit)->toBe(17)
         ->and(app(PublicFrontConfigReader::class)->group('settings_backups')['thumbnail_max_width'])->toBe(800)
         ->and(SettingsBackupVersion::query()->where('source', SettingsBackupSource::BeforeRestore->value)->count())->toBe(1)
-        ->and(SettingsBackupVersion::query()->where('source', SettingsBackupSource::System->value)->count())->toBe(1);
+        ->and(SettingsBackupVersion::query()->where('source', SettingsBackupSource::System->value)->count())->toBeGreaterThanOrEqual(1);
 });

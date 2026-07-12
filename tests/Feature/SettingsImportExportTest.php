@@ -248,12 +248,68 @@ it('applies only selected scalar and nested setting units', function (): void {
         ->and($settings->settings_backups['thumbnail_max_width'])->toBe(800);
 });
 
+it('round trips public form definitions through exported packages and selected imports', function (): void {
+    $publicForms = [
+        'definitions' => [
+            [
+                'key' => 'maintenance_contact',
+                'name' => 'Maintenance contact',
+                'heading' => 'Contact us',
+                'description' => 'Plain maintenance contact form.',
+                'submit_label' => 'Send',
+                'success_message' => 'Received.',
+                'enabled' => true,
+                'display_mode_default' => 'modal',
+                'fields' => [
+                    [
+                        'key' => 'email',
+                        'type' => 'email',
+                        'label' => 'Email',
+                        'placeholder' => null,
+                        'help_text' => null,
+                        'required' => true,
+                        'options' => [],
+                        'validation_semantics' => 'none',
+                    ],
+                ],
+                'settings' => [
+                    'rate_limit_attempts' => 3,
+                    'rate_limit_decay_seconds' => 600,
+                ],
+            ],
+        ],
+    ];
+
+    $settings = step10S1aSettings();
+    $settings->public_forms = $publicForms;
+    $settings->save();
+
+    $package = PublicSettingsPackage::fromCurrentSettings()->toArray();
+
+    $settings = step10S1aSettings();
+    $settings->public_forms = ['definitions' => []];
+    $settings->save();
+
+    $report = app(SettingsBackupManager::class)->import(
+        PublicSettingsPackage::fromArray($package),
+        ['public_forms.definitions'],
+        auth()->user(),
+    );
+
+    expect($package['payload']['public_forms'])->toBe($publicForms)
+        ->and($report->appliedPaths())->toBe(['public_forms.definitions'])
+        ->and(step10S1aSettings()->public_forms)->toBe($publicForms);
+});
+
 it('round trips maintenance mode settings through exported packages and selected imports', function (): void {
     $maintenance = [
         'enabled' => true,
         'title' => 'תחזוקה זמנית',
         'rich_html' => '<p data-maintenance-marker="mp1">Maintenance export</p>',
         'raw_html_override' => '<!doctype html><html><body>Raw export</body></html>',
+        'form_key' => 'request_transcription',
+        'form_location' => 'raw_html',
+        'form_position' => 'after_content',
         'retry_after_hours' => 12,
     ];
 
@@ -271,6 +327,9 @@ it('round trips maintenance mode settings through exported packages and selected
     $settings = step10S1aSettings();
     $settings->maintenance = [
         'enabled' => false,
+        'form_key' => null,
+        'form_location' => 'rendered_page',
+        'form_position' => 'before_content',
         'title' => null,
         'rich_html' => null,
         'raw_html_override' => null,
@@ -287,6 +346,9 @@ it('round trips maintenance mode settings through exported packages and selected
     expect($package['payload']['maintenance'])->toBe($maintenance)
         ->and($maintenancePaths)->toEqualCanonicalizing([
             'maintenance.enabled',
+            'maintenance.form_key',
+            'maintenance.form_location',
+            'maintenance.form_position',
             'maintenance.raw_html_override',
             'maintenance.retry_after_hours',
             'maintenance.rich_html',
@@ -318,6 +380,9 @@ it('keeps sensitive maintenance units selectable but deselected by default', fun
     $settings = step10S1aSettings();
     $settings->maintenance = [
         'enabled' => false,
+        'form_key' => null,
+        'form_location' => 'rendered_page',
+        'form_position' => 'after_content',
         'title' => null,
         'rich_html' => null,
         'raw_html_override' => null,
@@ -328,6 +393,9 @@ it('keeps sensitive maintenance units selectable but deselected by default', fun
     $payload = PublicSettingsPackage::fromCurrentSettings()->payload();
     $payload['maintenance'] = [
         'enabled' => true,
+        'form_key' => 'request_transcription',
+        'form_location' => 'raw_html',
+        'form_position' => 'after_content',
         'title' => 'Imported sensitive title',
         'rich_html' => '<p>Imported sensitive rich content</p>',
         'raw_html_override' => '<!doctype html><html><body>Imported sensitive raw</body></html>',

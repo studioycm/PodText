@@ -37,6 +37,10 @@ snapshots intentionally capture the maintenance page.
 - Toggling maintenance mode is runtime-only through Public Content Settings.
 - Do not use `php artisan down` for this feature; the admin toggle, rich content, and
   admin bypass are app-owned behavior.
+- Forge deploy scripts must run `npx playwright install chromium` after the npm
+  install/build step so Playwright browser binaries stay aligned after package version
+  bumps. This is a maintenance deploy note from the 2026-07-12 browser-staleness
+  incident.
 
 ## Verification
 

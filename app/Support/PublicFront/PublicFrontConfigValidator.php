@@ -10,6 +10,7 @@ use App\Support\PublicFront\Colors\PublicFrontColor;
 use App\Support\PublicFront\Forms\PublicFormDefinitionRegistry;
 use App\Support\PublicFront\Icons\PublicFrontIconRegistry;
 use App\Support\PublicFront\ItemPage\PublicItemPageRegistry;
+use App\Support\PublicFront\Maintenance\MaintenanceForm;
 use App\Support\SettingsLifecycle\SettingsLifecycleSchema;
 
 class PublicFrontConfigValidator
@@ -1475,7 +1476,7 @@ class PublicFrontConfigValidator
      * @param  array<string, mixed>  $maintenance
      * @param  array<string, mixed>  $defaults
      * @param  array<PublicFrontInvalidConfig>  $invalidConfig
-     * @return array{enabled: bool, title: ?string, rich_html: ?string, raw_html_override: ?string, retry_after_hours: int}
+     * @return array{enabled: bool, title: ?string, rich_html: ?string, raw_html_override: ?string, retry_after_hours: int, form_key: ?string, form_location: string, form_position: string}
      */
     private function normalizeMaintenance(array $maintenance, array $defaults, array &$invalidConfig): array
     {
@@ -1485,6 +1486,9 @@ class PublicFrontConfigValidator
             'rich_html',
             'raw_html_override',
             'retry_after_hours',
+            'form_key',
+            'form_location',
+            'form_position',
         ], 'maintenance', $invalidConfig);
 
         return [
@@ -1492,6 +1496,21 @@ class PublicFrontConfigValidator
             'title' => $this->trustedNullableString($maintenance['title'] ?? null, 'maintenance.title', $invalidConfig),
             'rich_html' => $this->trustedNullableString($maintenance['rich_html'] ?? null, 'maintenance.rich_html', $invalidConfig),
             'raw_html_override' => $this->trustedNullableString($maintenance['raw_html_override'] ?? null, 'maintenance.raw_html_override', $invalidConfig),
+            'form_key' => $this->semanticKey($maintenance['form_key'] ?? null, 'maintenance.form_key', $invalidConfig, nullable: true),
+            'form_location' => $this->finiteString(
+                $maintenance['form_location'] ?? null,
+                MaintenanceForm::locations(),
+                'maintenance.form_location',
+                $invalidConfig,
+                $defaults['form_location'] ?? MaintenanceForm::LOCATION_RENDERED_PAGE,
+            ) ?? MaintenanceForm::LOCATION_RENDERED_PAGE,
+            'form_position' => $this->finiteString(
+                $maintenance['form_position'] ?? null,
+                MaintenanceForm::positions(),
+                'maintenance.form_position',
+                $invalidConfig,
+                $defaults['form_position'] ?? MaintenanceForm::POSITION_AFTER_CONTENT,
+            ) ?? MaintenanceForm::POSITION_AFTER_CONTENT,
             'retry_after_hours' => $this->finiteInteger(
                 $maintenance['retry_after_hours'] ?? null,
                 PublicFrontConfigRegistry::maintenanceRetryAfterHours(),

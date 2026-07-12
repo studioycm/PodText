@@ -6,6 +6,7 @@ use App\Filament\Actions\ExportPublicSettingsAction;
 use App\Filament\Forms\Components\IconSelect;
 use App\Filament\Forms\MediaPickerField;
 use App\Filament\Support\Concerns\UsesAdminNavigationOrder;
+use App\Filament\Support\PublicFormsSettingsForm;
 use App\Settings\PublicContentSettings as PublicContentSettingsData;
 use App\Support\Media\ImageFileNamer;
 use App\Support\PublicContent\PublicTranscriptionPolicy;
@@ -14,6 +15,7 @@ use App\Support\PublicFront\Cards\PublicFrontCardTemplateResolver;
 use App\Support\PublicFront\Colors\PublicFrontColor;
 use App\Support\PublicFront\Icons\PublicFrontIconRegistry;
 use App\Support\PublicFront\ItemPage\PublicItemPageRegistry;
+use App\Support\PublicFront\Maintenance\MaintenanceForm;
 use App\Support\PublicFront\PublicFrontConfigReader;
 use App\Support\PublicFront\PublicFrontConfigRegistry;
 use App\Support\PublicFront\PublicFrontConfigValidator;
@@ -1447,115 +1449,6 @@ class PublicContentSettings extends SettingsPage
                                 'public-front-about-page',
                             ),
                         ]),
-                    Tab::make(__('admin.tabs.public_content_settings.forms'))
-                        ->id('forms')
-                        ->key('public-settings-tab-forms')
-                        ->schema([
-                            $this->withImportLockSection(
-                                Section::make(__('admin.sections.public_front_forms'))
-                                    ->description(__('admin.descriptions.public_front_forms'))
-                                    ->schema([
-                                        Repeater::make('public_forms.definitions')
-                                            ->label(__('admin.fields.public_forms'))
-                                            ->helperText(__('admin.helpers.public_forms'))
-                                            ->schema([
-                                                Fieldset::make(__('admin.sections.public_form_identity'))
-                                                    ->schema([
-                                                        TextInput::make('key')
-                                                            ->label(__('admin.fields.public_form_key'))
-                                                            ->helperText(__('admin.helpers.public_form_key'))
-                                                            ->required()
-                                                            ->maxLength(80)
-                                                            ->rules(['regex:/^[a-z][a-z0-9_-]*$/']),
-                                                        TextInput::make('name')
-                                                            ->label(__('admin.fields.public_form_name'))
-                                                            ->helperText(__('admin.helpers.public_form_name'))
-                                                            ->required()
-                                                            ->maxLength(120),
-                                                        TextInput::make('heading')
-                                                            ->label(__('admin.fields.public_form_heading'))
-                                                            ->helperText(__('admin.helpers.public_form_heading'))
-                                                            ->maxLength(160),
-                                                        Select::make('display_mode_default')
-                                                            ->label(__('admin.fields.public_form_display_mode'))
-                                                            ->helperText(__('admin.helpers.public_form_display_mode'))
-                                                            ->options(fn (): array => PublicFrontConfigRegistry::publicFormDisplayModeOptions())
-                                                            ->default('modal')
-                                                            ->native(false)
-                                                            ->required(),
-                                                        Toggle::make('enabled')
-                                                            ->label(__('admin.fields.public_form_enabled'))
-                                                            ->helperText(__('admin.helpers.public_form_enabled'))
-                                                            ->default(false),
-                                                    ])
-                                                    ->columns(3)
-                                                    ->columnSpanFull(),
-                                                Fieldset::make(__('admin.sections.public_form_behavior'))
-                                                    ->schema([
-                                                        TextInput::make('submit_label')
-                                                            ->label(__('admin.fields.public_form_submit_label'))
-                                                            ->helperText(__('admin.helpers.public_form_submit_label'))
-                                                            ->maxLength(80),
-                                                        TextInput::make('success_message')
-                                                            ->label(__('admin.fields.public_form_success_message'))
-                                                            ->helperText(__('admin.helpers.public_form_success_message'))
-                                                            ->maxLength(240)
-                                                            ->columnSpanFull(),
-                                                        Textarea::make('description')
-                                                            ->label(__('admin.fields.public_form_description'))
-                                                            ->helperText(__('admin.helpers.public_form_description'))
-                                                            ->rows(3)
-                                                            ->maxLength(1000)
-                                                            ->columnSpanFull(),
-                                                        TextInput::make('settings.rate_limit_attempts')
-                                                            ->label(__('admin.fields.public_form_rate_limit_attempts'))
-                                                            ->helperText(__('admin.helpers.public_form_rate_limit_attempts'))
-                                                            ->numeric()
-                                                            ->integer()
-                                                            ->minValue(1)
-                                                            ->maxValue(30)
-                                                            ->default(5),
-                                                        TextInput::make('settings.rate_limit_decay_seconds')
-                                                            ->label(__('admin.fields.public_form_rate_limit_decay_seconds'))
-                                                            ->helperText(__('admin.helpers.public_form_rate_limit_decay_seconds'))
-                                                            ->numeric()
-                                                            ->integer()
-                                                            ->minValue(60)
-                                                            ->maxValue(86400)
-                                                            ->default(600),
-                                                    ])
-                                                    ->columns(2)
-                                                    ->columnSpanFull(),
-                                                Fieldset::make(__('admin.sections.public_form_fields_config'))
-                                                    ->schema([
-                                                        Builder::make('fields')
-                                                            ->label(__('admin.fields.public_form_fields'))
-                                                            ->helperText(__('admin.helpers.public_form_fields'))
-                                                            ->blocks($this->publicFormFieldBlocks())
-                                                            ->blockPickerColumns(2)
-                                                            ->collapsible()
-                                                            ->collapsed()
-                                                            ->cloneable()
-                                                            ->default([])
-                                                            ->addActionLabel(__('admin.actions.add_public_form_field'))
-                                                            ->columnSpanFull(),
-                                                    ])
-                                                    ->columnSpanFull(),
-                                            ])
-                                            ->itemLabel(fn (array $state): ?string => $state['name'] ?? $state['key'] ?? __('admin.labels.untitled'))
-                                            ->defaultItems(0)
-                                            ->reorderable()
-                                            ->cloneable()
-                                            ->collapsed()
-                                            ->columns(3)
-                                            ->columnSpanFull(),
-                                    ])
-                                    ->collapsible()
-                                    ->columnSpanFull(),
-                                'public_forms',
-                                'public-front-forms',
-                            ),
-                        ]),
                     Tab::make(__('admin.tabs.public_content_settings.maintenance'))
                         ->id('maintenance')
                         ->key('public-settings-tab-maintenance')
@@ -1592,6 +1485,29 @@ class PublicContentSettings extends SettingsPage
                                             ->fileAttachments(false)
                                             ->columnSpanFull()
                                             ->visible(fn (Get $get): bool => $this->maintenanceFieldsVisible($get)),
+                                        Select::make('maintenance.form_key')
+                                            ->label(__('admin.fields.maintenance_form_key'))
+                                            ->helperText(__('admin.helpers.maintenance_form_key'))
+                                            ->options(fn (): array => $this->enabledPublicFormOptions())
+                                            ->native(false)
+                                            ->searchable()
+                                            ->live(),
+                                        Select::make('maintenance.form_location')
+                                            ->label(__('admin.fields.maintenance_form_location'))
+                                            ->helperText(__('admin.helpers.maintenance_form_location'))
+                                            ->options(fn (): array => MaintenanceForm::locationOptions())
+                                            ->default(MaintenanceForm::LOCATION_RENDERED_PAGE)
+                                            ->native(false)
+                                            ->live()
+                                            ->visible(fn (Get $get): bool => filled($get('maintenance.form_key'))),
+                                        Select::make('maintenance.form_position')
+                                            ->label(__('admin.fields.maintenance_form_position'))
+                                            ->helperText(__('admin.helpers.maintenance_form_position'))
+                                            ->options(fn (): array => MaintenanceForm::positionOptions())
+                                            ->default(MaintenanceForm::POSITION_AFTER_CONTENT)
+                                            ->native(false)
+                                            ->visible(fn (Get $get): bool => filled($get('maintenance.form_key'))
+                                                && $get('maintenance.form_location') === MaintenanceForm::LOCATION_RENDERED_PAGE),
                                     ])
                                     ->columns(2)
                                     ->collapsible()
@@ -1610,6 +1526,23 @@ class PublicContentSettings extends SettingsPage
                                             ->extraInputAttributes(['class' => 'font-mono'])
                                             ->columnSpanFull()
                                             ->visible(fn (Get $get): bool => $this->maintenanceFieldsVisible($get)),
+                                        TextInput::make('maintenance_form_marker')
+                                            ->label(__('admin.fields.maintenance_form_marker'))
+                                            ->helperText(__('admin.helpers.maintenance_form_marker'))
+                                            ->default(MaintenanceForm::MARKER)
+                                            ->copyable()
+                                            ->readOnly()
+                                            ->dehydrated(false)
+                                            ->columnSpanFull()
+                                            ->visible(fn (Get $get): bool => filled($get('maintenance.form_key'))
+                                                && $get('maintenance.form_location') === MaintenanceForm::LOCATION_RAW_HTML),
+                                        TextEntry::make('maintenance_raw_html_marker_warning')
+                                            ->label(__('admin.labels.maintenance_form_marker_missing'))
+                                            ->state(__('admin.helpers.maintenance_form_marker_missing'))
+                                            ->columnSpanFull()
+                                            ->visible(fn (Get $get): bool => filled($get('maintenance.form_key'))
+                                                && $get('maintenance.form_location') === MaintenanceForm::LOCATION_RAW_HTML
+                                                && ! str_contains((string) $get('maintenance.raw_html_override'), MaintenanceForm::MARKER)),
                                     ])
                                     ->collapsible()
                                     ->collapsed()
@@ -1925,7 +1858,23 @@ class PublicContentSettings extends SettingsPage
         return (bool) $get('maintenance.enabled')
             || filled($get('maintenance.title'))
             || filled($get('maintenance.rich_html'))
-            || filled($get('maintenance.raw_html_override'));
+            || filled($get('maintenance.raw_html_override'))
+            || filled($get('maintenance.form_key'));
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private function enabledPublicFormOptions(): array
+    {
+        return collect(app(PublicFrontConfigReader::class)->group('public_forms')['definitions'] ?? [])
+            ->filter(fn (mixed $definition): bool => is_array($definition)
+                && filled($definition['key'] ?? null)
+                && ($definition['enabled'] ?? false) === true)
+            ->mapWithKeys(fn (array $definition): array => [
+                (string) $definition['key'] => (string) ($definition['name'] ?? $definition['key']),
+            ])
+            ->all();
     }
 
     private function itemPageInfoFieldRepeater(): Repeater
@@ -2085,7 +2034,7 @@ class PublicContentSettings extends SettingsPage
 
         $publicFrontConfig['about_page'] = $this->aboutPageForBuilder($publicFrontConfig['about_page'] ?? []);
         $publicFrontConfig['card_templates'] = $this->cardTemplatesForBuilder($publicFrontConfig['card_templates'] ?? []);
-        $publicFrontConfig['public_forms'] = $this->publicFormsForBuilder($publicFrontConfig['public_forms'] ?? []);
+        $publicFrontConfig['public_forms'] = PublicFormsSettingsForm::publicFormsForBuilder($publicFrontConfig['public_forms'] ?? []);
 
         return [
             ...$data,
@@ -2101,6 +2050,7 @@ class PublicContentSettings extends SettingsPage
     {
         $data['about_page'] = $this->normalizeAboutPageUploadState($data['about_page'] ?? []);
         $data['menu_config'] = $this->normalizeMenuUploadState($data['menu_config'] ?? []);
+        $data = $this->preserveUntouchedPublicForms($data);
         $data = $this->preserveUntouchedMaintenanceFields($data);
 
         $publicFrontConfig = app(PublicFrontConfigValidator::class)
@@ -2115,6 +2065,22 @@ class PublicContentSettings extends SettingsPage
             ...$publicFrontConfig,
             'import_locks' => $currentImportLocks,
         ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    private function preserveUntouchedPublicForms(array $data): array
+    {
+        if (array_key_exists('public_forms', $data)) {
+            return $data;
+        }
+
+        $data['public_forms'] = app(PublicContentSettingsData::class)->public_forms
+            ?? PublicFrontConfigRegistry::defaults()['public_forms'];
+
+        return $data;
     }
 
     /**
@@ -2136,7 +2102,7 @@ class PublicContentSettings extends SettingsPage
             return $data;
         }
 
-        foreach (['title', 'rich_html', 'raw_html_override'] as $field) {
+        foreach (['title', 'rich_html', 'raw_html_override', 'form_key', 'form_location', 'form_position'] as $field) {
             if (! array_key_exists($field, $data['maintenance']) && array_key_exists($field, $currentMaintenance)) {
                 $data['maintenance'][$field] = $currentMaintenance[$field];
             }

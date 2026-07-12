@@ -519,6 +519,10 @@ return [
         'maintenance_title' => 'כותרת תחזוקה',
         'maintenance_rich_html' => 'תוכן תחזוקה',
         'maintenance_raw_html_override' => 'דריסת HTML גולמי',
+        'maintenance_form_key' => 'טופס תחזוקה',
+        'maintenance_form_location' => 'מיקום הטופס',
+        'maintenance_form_position' => 'מיקום בתוך העמוד',
+        'maintenance_form_marker' => 'סמן טופס ב-HTML גולמי',
     ],
     'helpers' => [
         'maintenance_enabled' => 'כשהמצב מופעל, מבקרים שאינם מחוברים רואים תגובת תחזוקה בכל כתובת ציבורית. מנהלים עדיין רואים את האתר האמיתי.',
@@ -527,6 +531,11 @@ return [
         'maintenance_title' => 'כותרת אופציונלית למעטפת התחזוקה. נשמרת כטקסט ניהולי מהימן.',
         'maintenance_rich_html' => 'HTML ניהולי מהימן מהעורך העשיר. העלאות קבצים מושבתות; השתמשו בכתובות תמונה כשצריך.',
         'maintenance_raw_html_override' => 'כשיש תוכן בשדה זה, HTML מלא ומהימן מחליף את הכותרת ומעטפת התוכן ומרונדר כפי שהוא בתגובת התחזוקה.',
+        'maintenance_form_key' => 'טופס ציבורי פעיל אופציונלי שיוצג בתוך תגובת התחזוקה.',
+        'maintenance_form_location' => 'בחרו אם הטופס יוכנס למעטפת התחזוקה המרונדרת או לדריסת ה-HTML הגולמי.',
+        'maintenance_form_position' => 'בחרו היכן הטופס יוצג במעטפת התחזוקה המרונדרת.',
+        'maintenance_form_marker' => 'הדביקו את הסמן המדויק הזה בדריסת ה-HTML במקום שבו הטופס צריך להופיע.',
+        'maintenance_form_marker_missing' => 'דריסת ה-HTML אינה כוללת את הסמן. הטופס יוצמד אחרי ה-HTML הגולמי כגיבוי.',
         'default_item_type_label_plural' => 'ברירת מחדל: פרקים.',
         'default_item_type_label_singular' => 'ברירת מחדל: פרק.',
         'embed_html' => 'HTML גולמי ומהימן ממנהל. הוא מרונדר רק דרך קומפוננטת המדיה הציבורית של האפליקציה וגובר על כתובת ההטמעה המאושרת.',
@@ -887,6 +896,7 @@ return [
         'archive' => 'ארכוב',
         'add_about_page_block' => 'הוספת בלוק',
         'add_public_form_field' => 'הוספת שדה',
+        'clone_public_form' => 'שכפול טופס',
         'add_transcription' => 'הוספת תמלול',
         'add_card_template_part' => 'הוספת חלק',
         'classic_create' => 'פרק חדש (מערכת)',
@@ -979,7 +989,10 @@ return [
         'untitled' => 'ללא כותרת',
         'untitled_transcription' => 'תמלול מספר :id',
         'maintenance_warning' => 'אזהרת מצב תחזוקה באתר הציבורי',
+        'maintenance_form_marker_missing' => 'סמן טופס התחזוקה חסר',
         'hours_count' => '{1} שעה אחת|[2,*] :count שעות',
+        'copy_suffix' => 'עותק',
+        'public_form_key_locked' => 'המפתח נעול לאחר שקיימות שליחות',
         'combined_title_preview' => 'כותרת משולבת: :title',
         'visibility_group' => 'פודקאסט מפורסם: :state',
         'visibility_item' => 'פרק מפורסם: :state',
@@ -1408,6 +1421,14 @@ return [
         'modal' => 'מודל',
         'slide_over' => 'לוח צד',
     ],
+    'maintenance_form_locations' => [
+        'rendered_page' => 'עמוד תחזוקה מרונדר',
+        'raw_html' => 'סמן בדריסת HTML גולמי',
+    ],
+    'maintenance_form_positions' => [
+        'before_content' => 'לפני תוכן התחזוקה',
+        'after_content' => 'אחרי תוכן התחזוקה',
+    ],
     'about_block_types' => [
         'heading' => 'כותרת',
         'markdown' => 'Markdown',
@@ -1583,6 +1604,10 @@ return [
         'manage_settings_import_locks' => [
             'title' => 'נעילות ייבוא הגדרות',
         ],
+        'manage_public_forms' => [
+            'navigation' => 'טפסים',
+            'title' => 'טפסים ציבוריים',
+        ],
         'public_content_settings' => [
             'navigation' => 'הגדרות תוכן ציבורי',
             'title' => 'הגדרות תוכן',
@@ -1694,6 +1719,9 @@ return [
         ],
         'maintenance' => [
             'enabled' => 'מצב תחזוקה מופעל',
+            'form_key' => 'מפתח טופס תחזוקה',
+            'form_location' => 'מיקום טופס תחזוקה',
+            'form_position' => 'מיקום טופס בתוך התחזוקה',
             'retry_after_hours' => 'שעות Retry-After לתחזוקה',
             'rich_html' => 'HTML עשיר לתחזוקה',
             'raw_html_override' => 'דריסת HTML גולמי לתחזוקה',

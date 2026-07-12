@@ -11,6 +11,7 @@ use App\Support\PublicFront\Cards\PublicFrontCardTemplateRegistry;
 use App\Support\PublicFront\Forms\PublicFormDefinitionRegistry;
 use App\Support\PublicFront\Icons\PublicFrontIconRegistry;
 use App\Support\PublicFront\ItemPage\PublicItemPageRegistry;
+use App\Support\PublicFront\Maintenance\MaintenanceForm;
 use App\Support\PublicFront\Menu\PublicRouteRegistry;
 
 class PublicFrontConfigRegistry
@@ -280,6 +281,9 @@ class PublicFrontConfigRegistry
                 'rich_html' => null,
                 'raw_html_override' => null,
                 'retry_after_hours' => 24,
+                'form_key' => null,
+                'form_location' => MaintenanceForm::LOCATION_RENDERED_PAGE,
+                'form_position' => MaintenanceForm::POSITION_AFTER_CONTENT,
             ],
         ];
     }

@@ -81,6 +81,10 @@ return [
         'body' => 'אנחנו מכינים את האתר ונחזור בקרוב.',
         'title' => 'בקרוב',
     ],
+    'maintenance_form' => [
+        'csrf_retry' => 'תוקף הטופס פג. בדקו את הפרטים ושלחו שוב.',
+        'marker_missing' => 'סמן טופס התחזוקה חסר בדריסת ה-HTML הגולמי.',
+    ],
     'dates' => [
         'original_published_long' => 'פורסם במקור',
         'original_published_short' => 'מקור',

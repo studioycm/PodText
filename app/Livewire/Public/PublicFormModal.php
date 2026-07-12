@@ -2,12 +2,10 @@
 
 namespace App\Livewire\Public;
 
-use App\Models\PublicFormSubmission;
-use App\Support\PublicFront\Forms\PublicFormPayloadValidator;
 use App\Support\PublicFront\Forms\PublicFormSchemaFactory;
+use App\Support\PublicFront\Forms\PublicFormSubmitter;
 use App\Support\PublicFront\PublicFrontRenderContext;
 use Illuminate\Contracts\View\View;
-use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Locked;
 use Livewire\Component;
@@ -39,7 +37,7 @@ class PublicFormModal extends Component
         $this->data = $this->defaultData($definition);
     }
 
-    public function submit(PublicFormPayloadValidator $validator): void
+    public function submit(PublicFormSubmitter $submitter): void
     {
         $definition = $this->definition();
 
@@ -49,46 +47,23 @@ class PublicFormModal extends Component
             return;
         }
 
-        if (filled($this->honeypot)) {
-            $this->addError('form', __('public.forms.unavailable'));
-
-            return;
-        }
-
-        $rateLimitKey = $this->rateLimitKey($definition);
-        $maxAttempts = (int) ($definition['settings']['rate_limit_attempts'] ?? 5);
-
-        if (RateLimiter::tooManyAttempts($rateLimitKey, $maxAttempts)) {
-            $this->addError('form', __('public.forms.rate_limited', [
-                'seconds' => RateLimiter::availableIn($rateLimitKey),
-            ]));
-
-            return;
-        }
-
-        RateLimiter::hit($rateLimitKey, (int) ($definition['settings']['rate_limit_decay_seconds'] ?? 600));
-
         try {
-            $payload = $validator->validate($definition, $this->data);
+            $submitter->submit(
+                definition: $definition,
+                data: $this->data,
+                honeypot: $this->honeypot,
+                sourceUrl: $this->sourceUrl(),
+                metadata: [
+                    'display_mode' => $this->displayMode,
+                ],
+            );
         } catch (ValidationException $exception) {
-            foreach ($exception->validator->errors()->messages() as $key => $messages) {
-                $this->addError("data.{$key}", $messages[0] ?? __('validation.invalid'));
+            foreach ($exception->errors() as $key => $messages) {
+                $this->addError($key === 'form' ? 'form' : "data.{$key}", $messages[0] ?? __('validation.invalid'));
             }
 
             return;
         }
-
-        PublicFormSubmission::query()->create([
-            'form_key' => $definition['key'],
-            'form_name_snapshot' => $definition['name'],
-            'payload' => $payload,
-            'source_url' => $this->sourceUrl(),
-            'submitter_ip_hash' => $this->hashValue(request()->ip()),
-            'user_agent_hash' => $this->hashValue(request()->userAgent()),
-            'metadata' => [
-                'display_mode' => $this->displayMode,
-            ],
-        ]);
 
         $this->successMessage = (string) $definition['success_message'];
         $this->honeypot = '';
@@ -162,23 +137,6 @@ class PublicFormModal extends Component
         }
 
         return (string) ($definition['display_mode_default'] ?? 'modal');
-    }
-
-    /**
-     * @param  array<string, mixed>  $definition
-     */
-    private function rateLimitKey(array $definition): string
-    {
-        return 'public-form:'.$definition['key'].':'.($this->hashValue(request()->ip().'|'.request()->userAgent()) ?? 'unknown');
-    }
-
-    private function hashValue(?string $value): ?string
-    {
-        if (blank($value)) {
-            return null;
-        }
-
-        return hash_hmac('sha256', $value, config('app.key') ?: config('app.name'));
     }
 
     private function sourceUrl(): ?string

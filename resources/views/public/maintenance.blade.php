@@ -1,9 +1,16 @@
 @php
     $rawHtmlOverride = $maintenance['raw_html_override'] ?? null;
+    $maintenanceFormHtml = $maintenanceFormHtml ?? null;
+    $maintenanceFormLocation = $maintenanceFormLocation ?? \App\Support\PublicFront\Maintenance\MaintenanceForm::LOCATION_RENDERED_PAGE;
+    $maintenanceFormPosition = $maintenanceFormPosition ?? \App\Support\PublicFront\Maintenance\MaintenanceForm::POSITION_AFTER_CONTENT;
 @endphp
 
 @if (filled($rawHtmlOverride))
-    {!! $rawHtmlOverride !!}
+    @if ($maintenanceFormLocation === \App\Support\PublicFront\Maintenance\MaintenanceForm::LOCATION_RAW_HTML && filled($maintenanceFormHtml))
+        {!! app(\App\Support\PublicFront\Maintenance\MaintenancePageRenderer::class)->rawHtmlWithForm($rawHtmlOverride, $maintenanceFormHtml) !!}
+    @else
+        {!! $rawHtmlOverride !!}
+    @endif
 @else
     @php
         $title = $maintenance['title'] ?? null;
@@ -85,6 +92,12 @@
         </head>
         <body>
             <main>
+                @if ($maintenanceFormLocation === \App\Support\PublicFront\Maintenance\MaintenanceForm::LOCATION_RENDERED_PAGE
+                    && $maintenanceFormPosition === \App\Support\PublicFront\Maintenance\MaintenanceForm::POSITION_BEFORE_CONTENT
+                    && filled($maintenanceFormHtml))
+                    {!! $maintenanceFormHtml !!}
+                @endif
+
                 @if (filled($title))
                     <h1>{{ $title }}</h1>
                 @endif
@@ -96,6 +109,12 @@
                         <p>{{ __('public.maintenance.body') }}</p>
                     @endif
                 </div>
+
+                @if ($maintenanceFormLocation === \App\Support\PublicFront\Maintenance\MaintenanceForm::LOCATION_RENDERED_PAGE
+                    && $maintenanceFormPosition === \App\Support\PublicFront\Maintenance\MaintenanceForm::POSITION_AFTER_CONTENT
+                    && filled($maintenanceFormHtml))
+                    {!! $maintenanceFormHtml !!}
+                @endif
             </main>
         </body>
     </html>
