@@ -71,9 +71,12 @@ For current prompt completion/progress state, see `docs/phase-02/current-project
 
 - `docs/phase-02/current-project-state.md` is the single source of truth for rolling prompt progress.
 - Update progress state before the final implementation commit.
+- A run is complete only when its handoff exists as a committed repository file. Chat output alone is not a handoff.
 - Patch `feature-map.md`, `answers-coverage-matrix.md`, `prompts/README.md`, specs, blueprints, and guidelines only when stable requirements, ownership, or scope changed.
 - Do not duplicate rolling status in prompt files, specs, blueprints, guidelines, or indexes.
 - Prompt final reports are not a substitute for updating the current state document.
+- "Run the full suite exactly once" means once green. A failed full-suite run does not satisfy the gate; after fixes and targeted verification, the full suite must be run again and every full run must be recorded.
+- A Local Front Check Report is a numbered list of manual operator steps, separate from automated coverage notes.
 
 ## Deferred-item handling lessons
 

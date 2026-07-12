@@ -60,4 +60,4 @@ No Composer changes were made.
 
 ## Commit hash
 
-Final EP1 commit hash is reported after this handoff is committed as part of the EP1 implementation commit.
+`e70d6f3 feat: add episode workspace with single transcription lens`

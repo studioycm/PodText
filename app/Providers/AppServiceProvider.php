@@ -2,6 +2,8 @@
 
 namespace App\Providers;
 
+use App\Observers\CuratorMediaObserver;
+use App\Policies\CuratorMediaPolicy;
 use App\Settings\PublicContentSettings;
 use App\Support\Importer\Contracts\GoogleDriveClientFactory;
 use App\Support\Importer\Contracts\SpotifyClientFactory;
@@ -13,6 +15,7 @@ use App\Support\PublicFront\PublicFrontConfigCache;
 use App\Support\PublicFront\PublicFrontRenderContext;
 use App\Support\PublicFront\PublicFrontRenderContextFactory;
 use App\Support\SettingsLifecycle\SettingsBackupManager;
+use Awcodes\Curator\Models\Media;
 use Filament\Actions\Action;
 use Filament\Facades\Filament;
 use Filament\Schemas\Components\Section;
@@ -21,6 +24,7 @@ use Filament\Tables\Enums\RecordActionsPosition;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
 use Spatie\LaravelSettings\Events\SettingsSaved;
 
@@ -55,6 +59,9 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         Model::preventLazyLoading(! $this->app->isProduction());
+
+        Gate::policy(Media::class, CuratorMediaPolicy::class);
+        Media::observe(CuratorMediaObserver::class);
 
         $this->app->make(ImportExportQueueTracer::class)->register();
 

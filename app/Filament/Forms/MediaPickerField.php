@@ -4,7 +4,6 @@ namespace App\Filament\Forms;
 
 use App\Enums\MediaNamingStrategy;
 use App\Filament\Forms\Components\PathCuratorPicker;
-use App\Settings\AdminUxSettings;
 use App\Support\Media\ImageFileNamer;
 use App\Support\Media\ImageUploadRules;
 use Closure;
@@ -84,19 +83,10 @@ class MediaPickerField
                 is_string($slug) ? $slug : null,
                 $referenceKey,
                 $file->getMimeType() ?: 'image/'.$file->getClientOriginalExtension(),
-                self::mediaNamingStrategy(),
+                MediaNamingStrategy::Slug,
                 fn (string $fileName): bool => Storage::disk('public')->exists("{$directory}/{$fileName}"),
             );
         };
-    }
-
-    private static function mediaNamingStrategy(): MediaNamingStrategy
-    {
-        try {
-            return MediaNamingStrategy::fromSetting(app(AdminUxSettings::class)->media_naming_strategy);
-        } catch (\Throwable) {
-            return MediaNamingStrategy::Slug;
-        }
     }
 
     private static function allowFilePathFor(string $directory): Closure

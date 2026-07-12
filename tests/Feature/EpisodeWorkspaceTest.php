@@ -11,6 +11,7 @@ use App\Filament\Resources\ContentItems\ContentItemResource;
 use App\Filament\Resources\ContentItems\Pages\CreateEpisodeWorkspace;
 use App\Filament\Resources\ContentItems\Pages\EditEpisodeWorkspace;
 use App\Filament\Resources\ContentItems\Pages\ListContentItems;
+use App\Jobs\DownloadExternalContentItemImage;
 use App\Models\ContentGroup;
 use App\Models\ContentItem;
 use App\Models\ImportConnection;
@@ -21,6 +22,7 @@ use App\Support\Media\EpisodeSpotifyLookup;
 use Filament\Actions\Testing\TestAction;
 use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Queue;
 use Livewire\Features\SupportTesting\Testable;
 use Livewire\Livewire;
 use Spatie\LaravelSettings\SettingsContainer;
@@ -259,4 +261,38 @@ it('defaults item list rows and relation manager rows to the episode workspace w
     ])
         ->assertActionVisible(TestAction::make('openEpisodeWorkspace')->table($item))
         ->assertActionVisible(TestAction::make('edit')->table($item));
+});
+
+it('shows TB1 image actions and queues external image downloads from episode tables', function (): void {
+    Queue::fake();
+
+    $withoutLocal = ContentItem::factory()->create([
+        'external_thumbnail_url' => 'https://cdn.example.test/without-local.jpg',
+        'image_path' => null,
+    ]);
+    $withLocal = ContentItem::factory()->create([
+        'external_thumbnail_url' => 'https://cdn.example.test/with-local.jpg',
+        'image_path' => 'content-items/images/local.jpg',
+    ]);
+    $withoutExternal = ContentItem::factory()->create([
+        'external_thumbnail_url' => null,
+        'image_path' => null,
+    ]);
+
+    Livewire::test(ListContentItems::class)
+        ->assertActionVisible(TestAction::make('chooseContentItemImage')->table($withoutLocal))
+        ->assertActionVisible(TestAction::make('downloadExternalImage')->table($withoutLocal))
+        ->assertActionHidden(TestAction::make('downloadExternalImageOverwrite')->table($withoutLocal))
+        ->assertActionHidden(TestAction::make('downloadExternalImage')->table($withLocal))
+        ->assertActionVisible(TestAction::make('downloadExternalImageOverwrite')->table($withLocal))
+        ->assertActionHidden(TestAction::make('downloadExternalImage')->table($withoutExternal))
+        ->callAction(TestAction::make('downloadExternalImage')->table($withoutLocal));
+
+    Queue::assertPushed(
+        DownloadExternalContentItemImage::class,
+        fn (DownloadExternalContentItemImage $job): bool => $job->contentItemId === $withoutLocal->id
+            && $job->userId === auth()->id()
+            && $job->overwrite === false
+            && $job->queue === 'imports-exports',
+    );
 });

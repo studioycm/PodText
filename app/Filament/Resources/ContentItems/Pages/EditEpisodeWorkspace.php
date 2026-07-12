@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\ContentItems\Pages;
 
+use App\Filament\Actions\ContentImageActions;
 use App\Filament\Resources\ContentItems\ContentItemResource;
 use App\Filament\Resources\ContentItems\Schemas\EpisodeWorkspaceForm;
 use App\Models\ContentItem;
@@ -35,6 +36,8 @@ class EditEpisodeWorkspace extends EditRecord
     protected function getHeaderActions(): array
     {
         return [
+            ContentImageActions::downloadExternalImage(),
+            ContentImageActions::downloadExternalImage(overwrite: true),
             $this->replaceWorkspaceTranscriptionAction(),
             Action::make('classicEdit')
                 ->label(__('admin.actions.classic_edit'))

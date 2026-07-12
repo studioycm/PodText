@@ -33,7 +33,11 @@ it('adds deterministic collision suffixes before the extension', function (): vo
     expect($name)->toBe('show-3.jpg');
 });
 
-it('uses slug and reference key for export filenames regardless of storage strategy', function (): void {
+it('uses the selected egress strategy for export filenames', function (): void {
     expect(ImageFileNamer::exportFileName('show', '01HXYZ', 'image/webp'))
-        ->toBe('show--01hxyz.webp');
+        ->toBe('show--01hxyz.webp')
+        ->and(ImageFileNamer::exportFileName('show', '01HXYZ', 'image/webp', MediaNamingStrategy::ReferenceKey))
+        ->toBe('01hxyz.webp')
+        ->and(ImageFileNamer::exportFileName('show', '01HXYZ', 'image/webp', MediaNamingStrategy::Slug))
+        ->toBe('show.webp');
 });

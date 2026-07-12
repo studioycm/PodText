@@ -2,23 +2,23 @@
 
 Date: 2026-07-12
 
-This plan follows IMG-R research in `docs/research/images-media/00-images-media-research.md`. IMG-A implemented the approved IMG-1 + IMG-2 merge on 2026-07-12; the remaining mini-steps stay gated as noted below.
+This plan follows IMG-R research in `docs/research/images-media/00-images-media-research.md`. IMG-A implemented the approved IMG-1 + IMG-2 merge on 2026-07-12. IMG-B implements the local episode-image, TB1 table-action, media-guard, and export-only content-images ZIP scope.
 
 ## Guardrails
 
-- No schema changes until Yoni decides D-IMG-C.
+- New image schema requires an explicit prompt decision. IMG-A added cover alt text after D-IMG-C; IMG-B adds `content_items.image_path` for local episode images.
 - No dependency changes or plugin installs until Yoni decides D-IMG-B.
 - No content package / zip import-export work until Yoni decides D-IMG-D.
 - Existing stored paths are never rewritten by naming work.
 - Public image output must continue through `PublicDefaultImageResolver`.
-- Bulk media ingestion remains a WB7 concern unless D-IMG-D explicitly promotes zip package work.
+- Bulk media ingestion remains a WB7 concern unless D-IMG-D explicitly promotes zip package import work.
 - Native CSV imports must not fetch remote media.
 
 ## Yoni Decisions
 
-### D-IMG-A - On-Disk Naming Policy
+### D-IMG-A v2 - Egress Naming Policy
 
-Final IMG-A decision: on-disk naming is a site setting named `media_naming_strategy`.
+Final IMG-B correction: `admin_ux.media_naming_strategy` controls egress names only: downloaded/exported filenames for model-owned images. Storage filenames remain whatever the uploader or media library stores, and existing paths are never renamed by strategy changes.
 
 Implemented values:
 
@@ -27,9 +27,9 @@ Implemented values:
 - `slug_key` stores `{slug}--{reference_key}`.
 - Empty slugs always fall back to `reference_key`.
 - Existing stored files and paths are forward-only and are never renamed by strategy changes.
-- Export stems remain `{slug}--{reference_key}` independently of the storage strategy.
+- Content-images ZIP export has a per-action naming-strategy override prefilled from `admin_ux.media_naming_strategy`.
 
-Options:
+Historical IMG-A options:
 
 - A1: `content-groups/covers/{reference_key}.{ext}`.
 - A2 implemented as default: raw slug filenames, with validated extensions and `reference_key` fallback.
@@ -52,7 +52,7 @@ Implements R1, R2, and R9.
 
 ### D-IMG-C - New Image Schema
 
-Final IMG-A decision: harden existing group covers and add content group cover alt text. Contributor avatars are dead.
+Final IMG-A decision: harden existing group covers and add content group cover alt text. IMG-B adds local content item images. Contributor avatars are dead.
 
 Options:
 
@@ -60,35 +60,52 @@ Options:
 - C2 dead: do not build author/contributor avatars.
 - C3 implemented: `content_groups.cover_alt_text` is shipped and public group images use it with group-title fallback.
 - C4: add category images later if category landing pages need them.
-- C5 defer: local content item images, because items already have `external_thumbnail_url`.
+- C5 implemented by IMG-B: local content item images use nullable `content_items.image_path` and `content-items/images`.
 
 Implements R4, R5, and R6.
 
 ### IMG-A Implementation Outcomes
 
 - The only root Composer dependency added is `awcodes/filament-curator`.
-- `App\Settings\AdminUxSettings` currently contains only `media_naming_strategy`; EP1 may extend the settings group later.
+- `App\Settings\AdminUxSettings` started with `media_naming_strategy`; EP1 extended it with workspace/TB1 controls.
 - Settings-page image assets now use the app-owned media picker factory and continue storing plain path strings in JSON.
 - SVG remains allowed only for menu logos; Curator mode relies on Curator's SVG sanitizer, while content/default/about/team images remain JPEG/PNG/WebP.
 - Existing `cover_path`, `header`, `team`, `about`, and `default-images` files can be registered in Curator with `php artisan media:register-existing-curator-assets` without moving or renaming files.
 - The command was run locally during IMG-A and reported 11 created, 0 existing, 0 missing, and 0 skipped.
 - EXIF stripping is deferred until a future image re-encoding step; IMG-A records the validation cap only.
 
+### IMG-B Implementation Outcomes
+
+- `content_items.image_path` stores local episode images, with the public resolver preference order: local episode image, external thumbnail URL, group cover when mode allows, then configured defaults/fallback.
+- The episode workspace and episode table surfaces expose image picker actions and queued external-thumbnail download actions; podcast tables expose cover picker actions.
+- Episode tables include an effective-image thumbnail column using `PublicDefaultImageResolver`.
+- Curator media referenced by group covers, item images, or settings assets cannot be deleted until references are removed.
+- Content-images export queues on `imports-exports`, writes a private ZIP under `content-images-exports/user-{id}`, and deletes the user's prior ZIPs before creating a new one.
+- CSV import/export of `image_path` remains deferred to future import/export/package work.
+
 ### D-IMG-D - Image Packages In Import/Export
 
-Recommendation: defer zip image packages and prefer WB7 Drive-folder media fetch.
+Decision after IMG-B: export-only content-images ZIP is shipped for editorial download. Zip import packages remain deferred; WB7 remains the preferred future bulk media ingestion path.
 
 Options:
 
-- D1 recommended: keep image zip packages deferred; use WB7 for bulk image ingestion.
-- D2: design an export-only media package manifest first.
+- D1 still applies to import packages: keep image zip imports deferred; use WB7 for bulk image ingestion.
+- D2 implemented in a bounded form: export-only content image ZIP without an import manifest.
 - D3: build full import/export zip package support with manifest, zip-slip protection, caps, image validation, private scratch storage, cleanup, and missing-file warnings.
 
-Implements R7.
+Implements the export portion of R7; import package work remains deferred.
+
+### D-IMG-E - Library Retention And Delete Guard
+
+Implemented by IMG-B:
+
+- Replacing or clearing an image, and deleting the owning record, keeps files that have a Curator media row.
+- Automatic cleanup applies only to app-owned no-row strays with no remaining model/settings references.
+- Deleting a referenced Curator `Media` row is blocked at the policy/observer boundary, with translated messages naming referencing surfaces.
 
 ## Mini-Step IMG-1 - Native Image Baseline
 
-Status: implemented as part of IMG-A, except the quick-upload table action which was superseded by Curator picker integration and remains out of this run.
+Status: implemented as part of IMG-A and corrected by IMG-B's D-IMG-A v2/D-IMG-E decisions.
 
 Scope:
 
@@ -96,7 +113,7 @@ Scope:
 - Apply explicit photo-safe accepted MIME types to `ContentGroup` covers: JPEG, PNG, WebP only.
 - Add cover helper text that explains size/type/fallback behavior.
 - Add a fallback hint linking editorially to default image settings.
-- Add delete-on-replace and delete-on-delete cleanup for app-owned group cover files.
+- Add D-IMG-E cleanup for app-owned no-row group cover files only; Curator-registered media remains library-owned.
 - Add a quick-upload record action on the content groups table after naming/cleanup are centralized.
 - Use D-IMG-A to choose the storage filename strategy.
 - Do not add cover alt text unless D-IMG-C explicitly chooses it.
@@ -113,8 +130,8 @@ Tests:
 - Cover accepts JPEG/PNG/WebP and rejects SVG.
 - Cover max size and dimensions are enforced.
 - Existing cover paths remain valid and are not rewritten by edit forms.
-- Replacing a cover deletes only the old app-owned file.
-- Deleting a group deletes its app-owned cover file.
+- Replacing a cover deletes only unregistered app-owned strays.
+- Deleting a group deletes only unregistered app-owned strays.
 - Quick-upload action stores the expected path and preserves table rendering.
 - Public resolver still returns item remote thumbnail, then group cover, then default fallback in the documented order.
 
@@ -188,14 +205,15 @@ Research decisions: R2, R3, R6, R9.
 
 ## Mini-Step IMG-3 - Content Packages And Zip Media
 
-Gate: run only after D-IMG-D approves zip package work.
+Gate: import package work remains deferred until D-IMG-D promotes it.
 
-Likely status: deferred.
+Status: export-only content-images ZIP shipped by IMG-B; zip import packages remain deferred.
 
 Scope if promoted:
 
 - Define a package manifest with portable identifiers and media relative paths.
 - Export bundled media files using naming concern export stems, not raw `cover_path` values.
+- IMG-B export ships `podcasts/{podcast-stem}/cover.{ext}` and `podcasts/{podcast-stem}/episodes/{episode-stem}.{ext}` with selected egress naming strategy, skip reporting, private local ZIP storage, queued notification, and delete-before-create per-user retention.
 - Import package media from private scratch storage only.
 - Add zip-slip protections, archive caps, count caps, per-image validation, cleanup, and missing-file warnings.
 - Reuse settings lifecycle package semantics where practical.

@@ -3,41 +3,32 @@
 namespace App\Support\Media;
 
 use App\Models\ContentGroup;
-use Awcodes\Curator\Models\Media;
-use Illuminate\Support\Facades\Schema;
+use App\Models\ContentItem;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 class AppOwnedMediaFileCleaner
 {
+    public function __construct(
+        private readonly MediaReferenceFinder $references,
+    ) {}
+
     public function deleteUnusedContentGroupCover(?string $path, ?ContentGroup $excluding = null): bool
     {
-        $path = $this->normalize($path);
+        return $this->deleteUnusedAppOwnedFile(
+            $path,
+            ImageFileNamer::directoryFor(ImageFileNamer::CONTENT_GROUP_COVER),
+            excludingGroup: $excluding,
+        );
+    }
 
-        if ($path === null || ! $this->isAppOwnedContentGroupCover($path)) {
-            return false;
-        }
-
-        if ($this->isReferencedByAnotherGroup($path, $excluding)) {
-            return false;
-        }
-
-        if (Schema::hasTable('curator')) {
-            $media = Media::query()
-                ->where('disk', 'public')
-                ->where('path', $path)
-                ->first();
-
-            if ($media instanceof Media) {
-                return (bool) $media->delete();
-            }
-        }
-
-        if (! Storage::disk('public')->exists($path)) {
-            return false;
-        }
-
-        return Storage::disk('public')->delete($path);
+    public function deleteUnusedContentItemImage(?string $path, ?ContentItem $excluding = null): bool
+    {
+        return $this->deleteUnusedAppOwnedFile(
+            $path,
+            ImageFileNamer::directoryFor(ImageFileNamer::CONTENT_ITEM_IMAGE),
+            excludingItem: $excluding,
+        );
     }
 
     public function isAppOwnedContentGroupCover(?string $path): bool
@@ -51,12 +42,42 @@ class AppOwnedMediaFileCleaner
         return Str::startsWith($path, ImageFileNamer::directoryFor(ImageFileNamer::CONTENT_GROUP_COVER).'/');
     }
 
-    private function isReferencedByAnotherGroup(string $path, ?ContentGroup $excluding): bool
+    public function isAppOwnedContentItemImage(?string $path): bool
     {
-        return ContentGroup::query()
-            ->where('cover_path', $path)
-            ->when($excluding?->exists, fn ($query): mixed => $query->whereKeyNot($excluding->getKey()))
-            ->exists();
+        $path = $this->normalize($path);
+
+        if ($path === null) {
+            return false;
+        }
+
+        return Str::startsWith($path, ImageFileNamer::directoryFor(ImageFileNamer::CONTENT_ITEM_IMAGE).'/');
+    }
+
+    private function deleteUnusedAppOwnedFile(
+        ?string $path,
+        string $directory,
+        ?ContentGroup $excludingGroup = null,
+        ?ContentItem $excludingItem = null,
+    ): bool {
+        $path = $this->normalize($path);
+
+        if ($path === null || ! Str::startsWith($path, "{$directory}/")) {
+            return false;
+        }
+
+        if ($this->references->hasCuratorMediaRow($path)) {
+            return false;
+        }
+
+        if ($this->references->referencesForPath($path, $excludingGroup, $excludingItem) !== []) {
+            return false;
+        }
+
+        if (! Storage::disk('public')->exists($path)) {
+            return false;
+        }
+
+        return Storage::disk('public')->delete($path);
     }
 
     private function normalize(?string $path): ?string

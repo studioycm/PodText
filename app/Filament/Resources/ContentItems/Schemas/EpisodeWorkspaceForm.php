@@ -4,6 +4,7 @@ namespace App\Filament\Resources\ContentItems\Schemas;
 
 use App\Enums\PublicationStatus;
 use App\Filament\Forms\Components\SlugInput;
+use App\Filament\Forms\MediaPickerField;
 use App\Filament\Public\Pages\ShowContentItem;
 use App\Filament\Resources\Support\RelationshipOptionForms;
 use App\Models\ContentGroup;
@@ -14,6 +15,7 @@ use App\Settings\AdminUxSettings;
 use App\Support\Media\ContentItemMediaRules;
 use App\Support\Media\EpisodeEmbedInputNormalizer;
 use App\Support\Media\EpisodeSpotifyLookup;
+use App\Support\Media\ImageFileNamer;
 use App\Support\PublicFront\ContentItemDisplayTitle;
 use Filament\Actions\Action;
 use Filament\Forms\Components\DateTimePicker;
@@ -103,6 +105,10 @@ class EpisodeWorkspaceForm
                             ->helperText(__('admin.helpers.content_item_description'))
                             ->disableToolbarButtons(['attachFiles'])
                             ->fileAttachments(false)
+                            ->columnSpanFull(),
+                        MediaPickerField::make('image_path', ImageFileNamer::CONTENT_ITEM_IMAGE)
+                            ->label(__('admin.fields.image_path'))
+                            ->helperText(__('admin.helpers.content_item_image_path'))
                             ->columnSpanFull(),
                         TextInput::make('media_url')
                             ->label(__('admin.fields.media_url'))

@@ -42,6 +42,7 @@ class ContentItemFactory extends Factory
             'external_title' => null,
             'external_description' => null,
             'external_thumbnail_url' => null,
+            'image_path' => null,
             'external_published_at' => null,
             'media_metadata' => null,
             'direct_media_url' => null,

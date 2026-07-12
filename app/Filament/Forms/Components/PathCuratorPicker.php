@@ -5,11 +5,12 @@ namespace App\Filament\Forms\Components;
 use Awcodes\Curator\Components\Forms\CuratorPicker;
 use Awcodes\Curator\Models\Media;
 use Illuminate\Support\Arr;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 class PathCuratorPicker extends CuratorPicker
 {
+    private const PRESERVED_PATH_KEY = '__podtext_preserved_path';
+
     private ?string $preservedPath = null;
 
     protected function setUp(): void
@@ -19,7 +20,13 @@ class PathCuratorPicker extends CuratorPicker
         $this->clearAfterStateUpdatedHooks();
 
         $this->afterStateHydrated(function (PathCuratorPicker $component, array|int|string|null $state): void {
-            $component->state($component->itemsForState($state));
+            $items = $component->itemsForState($state);
+
+            if ($items === [] && $component->pathFromScalarState($state) !== null) {
+                return;
+            }
+
+            $component->state($items);
         });
 
         $this->afterStateUpdated(function (PathCuratorPicker $component, mixed $state): void {
@@ -31,7 +38,13 @@ class PathCuratorPicker extends CuratorPicker
             }
 
             if (is_string($state) || is_int($state)) {
-                $component->state($component->itemsForState($state));
+                $items = $component->itemsForState($state);
+
+                if ($items === [] && $component->pathFromScalarState($state) !== null) {
+                    return;
+                }
+
+                $component->state($items);
 
                 return;
             }
@@ -40,6 +53,12 @@ class PathCuratorPicker extends CuratorPicker
         });
 
         $this->dehydrateStateUsing(function (PathCuratorPicker $component, mixed $state): ?string {
+            $preservedPath = $component->preservedPathFromState($state);
+
+            if ($preservedPath !== null) {
+                return $preservedPath;
+            }
+
             if (blank($state)) {
                 return $component->preservedPath;
             }
@@ -61,8 +80,17 @@ class PathCuratorPicker extends CuratorPicker
     {
         $state = parent::getState();
 
+        if ($this->preservedPathFromState($state) !== null) {
+            return [];
+        }
+
         if (is_string($state) || is_int($state) || $this->isScalarStateArray($state)) {
             $items = $this->itemsForState($state);
+
+            if ($items === [] && $this->pathFromScalarState($state) !== null) {
+                return [];
+            }
+
             $this->state($items);
 
             return $items;
@@ -82,12 +110,22 @@ class PathCuratorPicker extends CuratorPicker
             return [];
         }
 
+        $preservedPath = $this->preservedPathFromState($state);
+
+        if ($preservedPath !== null) {
+            $this->preservedPath = $preservedPath;
+
+            return $this->preservedStateForPath($preservedPath);
+        }
+
         $media = $this->mediaForState($state);
 
         if ($media === []) {
             $this->preservedPath = $this->pathFromScalarState($state);
 
-            return [];
+            return $this->preservedPath === null
+                ? []
+                : $this->preservedStateForPath($this->preservedPath);
         }
 
         $this->preservedPath = null;
@@ -153,7 +191,7 @@ class PathCuratorPicker extends CuratorPicker
             return [$media->toArray()];
         }
 
-        return Storage::disk('public')->exists($path) ? [] : [];
+        return [];
     }
 
     /**
@@ -192,5 +230,34 @@ class PathCuratorPicker extends CuratorPicker
         }
 
         return null;
+    }
+
+    /**
+     * @return array<string, array<string, string>>
+     */
+    private function preservedStateForPath(string $path): array
+    {
+        return [
+            (string) Str::uuid() => [
+                self::PRESERVED_PATH_KEY => $path,
+            ],
+        ];
+    }
+
+    private function preservedPathFromState(mixed $state): ?string
+    {
+        if (! is_array($state) || $state === []) {
+            return null;
+        }
+
+        $first = Arr::first($state);
+
+        if (! is_array($first)) {
+            return null;
+        }
+
+        $path = $first[self::PRESERVED_PATH_KEY] ?? null;
+
+        return is_string($path) && filled($path) ? $path : null;
     }
 }

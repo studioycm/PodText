@@ -3,10 +3,12 @@
 namespace App\Models;
 
 use App\Enums\PublicationStatus;
+use App\Observers\ContentItemObserver;
 use App\Support\Media\ContentItemMediaRules;
 use App\Support\Slugs\HebrewSlugger;
 use Database\Factories\ContentItemFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Attributes\ObservedBy;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -39,6 +41,7 @@ use Spatie\Tags\HasTags;
     'external_title',
     'external_description',
     'external_thumbnail_url',
+    'image_path',
     'external_published_at',
     'media_metadata',
     'direct_media_url',
@@ -51,6 +54,7 @@ use Spatie\Tags\HasTags;
     'published_at',
     'original_published_at',
 ])]
+#[ObservedBy([ContentItemObserver::class])]
 class ContentItem extends Model
 {
     /** @use HasFactory<ContentItemFactory> */

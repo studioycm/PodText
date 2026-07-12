@@ -18,10 +18,14 @@ class PublicDefaultImageResolver
      */
     public function contentItemImage(ContentItem $item): array
     {
+        if (filled($item->image_path)) {
+            return $this->publicDiskImage((string) $item->image_path, 'item', (string) $item->title);
+        }
+
         if (filled($item->external_thumbnail_url)) {
             return [
                 'url' => (string) $item->external_thumbnail_url,
-                'source' => 'item',
+                'source' => 'item_external',
                 'path' => null,
                 'alt' => (string) $item->title,
             ];

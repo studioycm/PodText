@@ -259,8 +259,14 @@ it('renders content item custom inherit and none fallbacks on cards and item pag
         ->assertDontSee('default-images/global-hidden.jpg', false);
 });
 
-it('keeps explicit item thumbnails and podcast covers ahead of configured item fallbacks', function (): void {
-    $explicit = createStep10V1aPublicItem('V1A Item Explicit', [
+it('keeps local item images external thumbnails and podcast covers ahead of configured item fallbacks', function (): void {
+    $local = createStep10V1aPublicItem('V1A Item Local', [
+        'cover_path' => 'content-groups/covers/ignored-local-cover.jpg',
+    ], [
+        'external_thumbnail_url' => 'https://cdn.example.test/v1a-local-external.jpg',
+        'image_path' => 'content-items/images/v1a-local.jpg',
+    ]);
+    $external = createStep10V1aPublicItem('V1A Item Explicit', [
         'cover_path' => 'content-groups/covers/ignored-cover.jpg',
     ], [
         'external_thumbnail_url' => 'https://cdn.example.test/v1a-explicit.jpg',
@@ -275,15 +281,27 @@ it('keeps explicit item thumbnails and podcast covers ahead of configured item f
         ]),
     ]);
 
+    $this->get('/search?q=V1A%20Item%20Local')
+        ->assertSuccessful()
+        ->assertSee('/storage/content-items/images/v1a-local.jpg', false)
+        ->assertSee('data-card-image-source="item"', false)
+        ->assertDontSee('v1a-local-external.jpg', false)
+        ->assertDontSee('default-images/item-ignored.jpg', false);
+    $this->get("/items/{$local['group']->slug}/{$local['item']->slug}")
+        ->assertSuccessful()
+        ->assertSee('/storage/content-items/images/v1a-local.jpg', false)
+        ->assertSee('data-item-page-image-source="item"', false)
+        ->assertDontSee('v1a-local-external.jpg', false);
+
     $this->get('/search?q=V1A%20Item%20Explicit')
         ->assertSuccessful()
         ->assertSee('https://cdn.example.test/v1a-explicit.jpg', false)
-        ->assertSee('data-card-image-source="item"', false)
+        ->assertSee('data-card-image-source="item_external"', false)
         ->assertDontSee('default-images/item-ignored.jpg', false);
-    $this->get("/items/{$explicit['group']->slug}/{$explicit['item']->slug}")
+    $this->get("/items/{$external['group']->slug}/{$external['item']->slug}")
         ->assertSuccessful()
         ->assertSee('https://cdn.example.test/v1a-explicit.jpg', false)
-        ->assertSee('data-item-page-image-source="item"', false);
+        ->assertSee('data-item-page-image-source="item_external"', false);
 
     $this->get('/search?q=V1A%20Item%20Cover')
         ->assertSuccessful()

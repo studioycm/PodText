@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\ContentItems\Tables;
 
 use App\Enums\PublicationStatus;
+use App\Filament\Actions\ContentImageActions;
 use App\Filament\Actions\EditEffectiveTranscriptionAction;
 use App\Filament\Exports\ContentItemExporter;
 use App\Filament\Imports\ContentItemImporter;
@@ -11,6 +12,7 @@ use App\Filament\Resources\Support\RelationshipOptionForms;
 use App\Models\Author;
 use App\Models\ContentItem;
 use App\Models\ContentTag;
+use App\Support\PublicFront\PublicDefaultImageResolver;
 use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
@@ -24,6 +26,7 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Support\Icons\Heroicon;
+use Filament\Tables\Columns\ImageColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Filters\TernaryFilter;
@@ -44,6 +47,11 @@ class ContentItemsTable
                 ])
                 ->withCount('transcriptions'))
             ->columns([
+                ImageColumn::make('effective_image')
+                    ->label(__('admin.fields.effective_image'))
+                    ->state(fn (ContentItem $record): ?string => app(PublicDefaultImageResolver::class)->contentItemImage($record)['url'])
+                    ->imageSize(48)
+                    ->square(),
                 TextColumn::make('title')
                     ->label(__('admin.fields.title'))
                     ->searchable()
@@ -110,7 +118,7 @@ class ContentItemsTable
                     ->label(__('admin.fields.pin_order'))
                     ->numeric()
                     ->sortable()
-                    ->toggleable(),
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('slug')
                     ->label(__('admin.fields.slug'))
                     ->searchable()
@@ -193,6 +201,9 @@ class ContentItemsTable
                     ->label(__('admin.actions.open_episode_workspace'))
                     ->icon(Heroicon::OutlinedPencilSquare)
                     ->url(fn (ContentItem $record): string => ContentItemResource::getUrl('workspace', ['record' => $record])),
+                ContentImageActions::contentItemImage(),
+                ContentImageActions::downloadExternalImage(),
+                ContentImageActions::downloadExternalImage(overwrite: true),
                 EditEffectiveTranscriptionAction::make(),
                 self::addTranscriptionAction(),
                 EditAction::make()

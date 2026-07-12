@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Models\ContentGroup;
+use App\Models\ContentItem;
 use App\Settings\PublicContentSettings;
 use App\Support\Media\ImageFileNamer;
 use Awcodes\Curator\Models\Media;
@@ -69,6 +70,9 @@ class RegisterExistingCuratorMedia extends Command
     {
         return collect()
             ->merge(ContentGroup::query()->whereNotNull('cover_path')->pluck('cover_path'))
+            ->merge(Schema::hasColumn('content_items', 'image_path')
+                ? ContentItem::query()->whereNotNull('image_path')->pluck('image_path')
+                : [])
             ->merge($this->settingsPaths())
             ->filter(fn (mixed $path): bool => is_string($path) && filled($path))
             ->map(fn (string $path): string => str_replace('\\', '/', trim($path)))

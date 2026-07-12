@@ -345,7 +345,7 @@ it('renders the configured item page header image podcast identity and info line
         ->assertSuccessful()
         ->assertDontSee('data-test="item-breadcrumbs"', false)
         ->assertSee('data-test="item-page-image"', false)
-        ->assertSee('data-item-page-image-source="item"', false)
+        ->assertSee('data-item-page-image-source="item_external"', false)
         ->assertSee('https://cdn.example.test/item-header.jpg', false)
         ->assertSee('data-test="item-page-title"', false)
         ->assertSee('Configured Header Title')

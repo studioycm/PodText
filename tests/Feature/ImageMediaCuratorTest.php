@@ -21,6 +21,7 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\ValidationException;
 use Livewire\Livewire;
 use Spatie\LaravelSettings\SettingsContainer;
 
@@ -147,6 +148,75 @@ it('deletes only unused app-owned cover files on replace and record delete', fun
     Storage::disk('public')->assertExists('content-groups/covers/shared.jpg');
     Storage::disk('public')->assertMissing('content-groups/covers/delete-me.jpg');
     Storage::disk('public')->assertExists('legacy/outside.jpg');
+});
+
+it('keeps library registered cover files while deleting only no-row strays', function (): void {
+    Storage::fake('public');
+    Storage::disk('public')->put('content-groups/covers/library.jpg', 'library');
+    Storage::disk('public')->put('content-groups/covers/stray.jpg', 'stray');
+    imgAMedia('content-groups/covers/library.jpg');
+
+    $library = ContentGroup::factory()->create(['cover_path' => 'content-groups/covers/library.jpg']);
+    $stray = ContentGroup::factory()->create(['cover_path' => 'content-groups/covers/stray.jpg']);
+
+    $library->update(['cover_path' => null]);
+    $stray->update(['cover_path' => null]);
+
+    Storage::disk('public')->assertExists('content-groups/covers/library.jpg');
+    Storage::disk('public')->assertMissing('content-groups/covers/stray.jpg');
+    expect(Media::query()->where('path', 'content-groups/covers/library.jpg')->exists())->toBeTrue();
+});
+
+it('blocks deleting curator media that is still referenced by app surfaces', function (): void {
+    Storage::fake('public');
+    Storage::disk('public')->put('content-groups/covers/referenced.jpg', 'image');
+    $media = imgAMedia('content-groups/covers/referenced.jpg');
+    $group = ContentGroup::factory()->create([
+        'title' => 'Referenced Podcast',
+        'cover_path' => 'content-groups/covers/referenced.jpg',
+    ]);
+
+    expect(fn () => $media->delete())->toThrow(ValidationException::class);
+    expect(Media::query()->whereKey($media->getKey())->exists())->toBeTrue();
+
+    $group->update(['cover_path' => null]);
+
+    expect($media->refresh()->delete())->toBeTrue();
+});
+
+it('preserves legacy paths without curator rows when the admin form is saved untouched', function (): void {
+    config(['media.picker.driver' => 'curator']);
+    $this->actingAs(User::factory()->create());
+    $group = ContentGroup::factory()->create([
+        'cover_path' => 'legacy/outside.jpg',
+    ]);
+
+    Livewire::test(EditContentGroup::class, ['record' => $group->getRouteKey()])
+        ->call('save')
+        ->assertHasNoFormErrors();
+
+    expect($group->refresh()->cover_path)->toBe('legacy/outside.jpg');
+});
+
+it('cleans only unregistered local episode image strays when item image paths change', function (): void {
+    Storage::fake('public');
+    Storage::disk('public')->put('content-items/images/library.jpg', 'library');
+    Storage::disk('public')->put('content-items/images/stray.jpg', 'stray');
+    Storage::disk('public')->put('content-items/images/shared.jpg', 'shared');
+    imgAMedia('content-items/images/library.jpg');
+
+    $library = ContentItem::factory()->create(['image_path' => 'content-items/images/library.jpg']);
+    $stray = ContentItem::factory()->create(['image_path' => 'content-items/images/stray.jpg']);
+    $shared = ContentItem::factory()->create(['image_path' => 'content-items/images/shared.jpg']);
+    ContentItem::factory()->create(['image_path' => 'content-items/images/shared.jpg']);
+
+    $library->update(['image_path' => null]);
+    $stray->update(['image_path' => null]);
+    $shared->update(['image_path' => null]);
+
+    Storage::disk('public')->assertExists('content-items/images/library.jpg');
+    Storage::disk('public')->assertMissing('content-items/images/stray.jpg');
+    Storage::disk('public')->assertExists('content-items/images/shared.jpg');
 });
 
 it('registers existing cover and settings asset files as curator media idempotently', function (): void {

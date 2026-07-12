@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\ContentImagesExportDownloadController;
 use App\Http\Controllers\ImporterGoogleOAuthController;
 use App\Http\Controllers\SettingsBackupSnapshotFileController;
 use App\Http\Controllers\SettingsBackupSnapshotRetryController;
@@ -22,4 +23,7 @@ Route::middleware(Authenticate::class)->group(function (): void {
 
     Route::get('/admin/settings-backups/{settingsBackupVersion}/snapshots.zip', SettingsBackupSnapshotsZipController::class)
         ->name('admin.settings-backups.snapshots-zip');
+
+    Route::get('/admin/content-images-exports/{token}.zip', ContentImagesExportDownloadController::class)
+        ->name('admin.content-images-exports.download');
 });

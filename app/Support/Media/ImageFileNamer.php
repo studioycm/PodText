@@ -10,6 +10,8 @@ class ImageFileNamer
 {
     public const CONTENT_GROUP_COVER = 'content_group_cover';
 
+    public const CONTENT_ITEM_IMAGE = 'content_item_image';
+
     public const HEADER = 'header';
 
     public const TEAM = 'team';
@@ -25,6 +27,7 @@ class ImageFileNamer
     {
         return [
             self::directoryFor(self::CONTENT_GROUP_COVER),
+            self::directoryFor(self::CONTENT_ITEM_IMAGE),
             self::directoryFor(self::HEADER),
             self::directoryFor(self::TEAM),
             self::directoryFor(self::ABOUT),
@@ -36,6 +39,7 @@ class ImageFileNamer
     {
         return match ($family) {
             self::CONTENT_GROUP_COVER => 'content-groups/covers',
+            self::CONTENT_ITEM_IMAGE => 'content-items/images',
             self::HEADER => 'header',
             self::TEAM => 'team',
             self::ABOUT => 'about',
@@ -62,9 +66,17 @@ class ImageFileNamer
         );
     }
 
-    public static function exportFileName(?string $slug, string $referenceKey, string $mimeType): string
-    {
-        return self::storageStem($slug, $referenceKey, MediaNamingStrategy::SlugKey)
+    public static function exportFileName(
+        ?string $slug,
+        string $referenceKey,
+        string $mimeType,
+        MediaNamingStrategy|string|null $strategy = MediaNamingStrategy::SlugKey,
+    ): string {
+        $strategy = $strategy instanceof MediaNamingStrategy
+            ? $strategy
+            : MediaNamingStrategy::fromSetting($strategy);
+
+        return self::storageStem($slug, $referenceKey, $strategy)
             .'.'
             .self::extensionForMimeType($mimeType);
     }

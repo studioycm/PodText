@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\ContentGroups\Tables;
 
 use App\Enums\PublicationStatus;
+use App\Filament\Actions\ContentImageActions;
 use App\Filament\Exports\ContentGroupExporter;
 use App\Filament\Imports\ContentGroupImporter;
 use Filament\Actions\BulkActionGroup;
@@ -97,8 +98,11 @@ class ContentGroupsTable
                 ExportAction::make()
                     ->exporter(ContentGroupExporter::class)
                     ->maxRows(10000),
+                ContentImageActions::exportContentImagesHeader(),
             ])
             ->recordActions([
+                ContentImageActions::contentGroupCover(),
+                ContentImageActions::exportContentImagesRecord(),
                 EditAction::make(),
             ])
             ->toolbarActions([
