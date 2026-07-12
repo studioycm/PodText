@@ -1,0 +1,87 @@
+<svg
+    xmlns="http://www.w3.org/2000/svg"
+    viewBox="0 0 800 240"
+    width="100%"
+    height="100%"
+    class="max-w-4xl shadow-2xl"
+    style="background-color: #0f172a; border-radius: 24px;"
+>
+    <defs>
+        <!-- 1. Animation Styles for the Waves -->
+        <style>
+            /* We use CSS animations inside the SVG to make the waves dynamic */
+            .wave-bar {
+            transform-box: fill-box;
+            transform-origin: center;
+            }
+            .bar-1 { animation: pulse 1.4s ease-in-out infinite; }
+            .bar-2 { animation: pulse 1.1s ease-in-out infinite 0.2s; }
+            .bar-3 { animation: pulse 1.6s ease-in-out infinite 0.4s; }
+
+            @keyframes pulse {
+            0%, 100% { transform: scaleY(1); }
+            50% { transform: scaleY(0.4); }
+            }
+        </style>
+
+        <!-- 2. The Gradient matching the site's brand colors (Teal to Blue to Purple) -->
+        <!-- gradientUnits="userSpaceOnUse" ensures the gradient spans the whole 800px gracefully -->
+        <linearGradient id="waveGradient" x1="0" y1="0" x2="800" y2="0" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stop-color="#14b8a6" />   <!-- Brand Teal -->
+            <stop offset="33%" stop-color="#0ea5e9" />  <!-- Light Blue -->
+            <stop offset="66%" stop-color="#8b5cf6" />  <!-- Violet -->
+            <stop offset="100%" stop-color="#ec4899" /> <!-- Pink -->
+        </linearGradient>
+
+        <!-- 3. The Repeating Radio/Audio Wave Pattern -->
+        <pattern id="audioWaves" width="120" height="240" patternUnits="userSpaceOnUse">
+            <rect x="0" y="100" width="8" height="40" rx="4" fill="url(#waveGradient)" class="wave-bar bar-1"/>
+            <rect x="12" y="80" width="8" height="80" rx="4" fill="url(#waveGradient)" class="wave-bar bar-2"/>
+            <rect x="24" y="50" width="8" height="140" rx="4" fill="url(#waveGradient)" class="wave-bar bar-3"/>
+            <rect x="36" y="30" width="8" height="180" rx="4" fill="url(#waveGradient)" class="wave-bar bar-1"/>
+            <rect x="48" y="65" width="8" height="110" rx="4" fill="url(#waveGradient)" class="wave-bar bar-2"/>
+            <rect x="60" y="90" width="8" height="60" rx="4" fill="url(#waveGradient)" class="wave-bar bar-3"/>
+            <rect x="72" y="45" width="8" height="150" rx="4" fill="url(#waveGradient)" class="wave-bar bar-1"/>
+            <rect x="84" y="75" width="8" height="90" rx="4" fill="url(#waveGradient)" class="wave-bar bar-2"/>
+            <rect x="96" y="55" width="8" height="130" rx="4" fill="url(#waveGradient)" class="wave-bar bar-3"/>
+            <rect x="108" y="95" width="8" height="50" rx="4" fill="url(#waveGradient)" class="wave-bar bar-1"/>
+        </pattern>
+
+        <!-- 4. Text Mask (Hides everything outside the text letters) -->
+        <mask id="textMask">
+            <!-- Black makes everything outside the text transparent -->
+            <rect width="100%" height="100%" fill="black" />
+            <!-- White text acts as the window revealing the waves -->
+            <text
+                x="50%" y="50%"
+                dominant-baseline="central" text-anchor="middle"
+                font-family="system-ui, -apple-system, sans-serif"
+                font-weight="900" font-size="160" letter-spacing="4"
+                fill="white">
+                PodText
+            </text>
+        </mask>
+    </defs>
+
+    <!-- BACKGROUND: Base Text Outline
+         This acts as a dark backdrop so you can still read "PodText"
+         even when the audio waves animate and shrink. -->
+    <text
+        x="50%" y="50%"
+        dominant-baseline="central" text-anchor="middle"
+        font-family="system-ui, -apple-system, sans-serif"
+        font-weight="900" font-size="160" letter-spacing="4"
+        fill="#1e293b" stroke="#334155" stroke-width="2">
+        PodText
+    </text>
+
+    <!-- FOREGROUND: The Animated Waves
+         A rectangle covering the whole screen, filled with the repeating wave pattern,
+         but restricted ONLY to the shape of the word "PodText" using the mask. -->
+    <rect
+        width="100%" height="100%"
+        fill="url(#audioWaves)"
+        mask="url(#textMask)"
+    />
+
+</svg>
