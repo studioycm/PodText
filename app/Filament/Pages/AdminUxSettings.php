@@ -34,11 +34,6 @@ class AdminUxSettings extends SettingsPage
         return __('admin.pages.admin_ux_settings.title');
     }
 
-    public static function getNavigationGroup(): ?string
-    {
-        return __('admin.navigation.content');
-    }
-
     public function form(Schema $schema): Schema
     {
         return $schema

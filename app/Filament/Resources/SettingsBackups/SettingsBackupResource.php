@@ -37,11 +37,6 @@ class SettingsBackupResource extends Resource
         return __('admin.resources.settings_backup.navigation');
     }
 
-    public static function getNavigationGroup(): ?string
-    {
-        return __('admin.navigation.content');
-    }
-
     public static function canCreate(): bool
     {
         return false;

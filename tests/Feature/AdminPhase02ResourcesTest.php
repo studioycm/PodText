@@ -2,6 +2,7 @@
 
 use App\Enums\HomepageSectionType;
 use App\Enums\PublicationStatus;
+use App\Enums\PublicFormSubmissionStatus;
 use App\Filament\Pages\AdminUxSettings as AdminUxSettingsPage;
 use App\Filament\Pages\Dashboard;
 use App\Filament\Pages\ImporterSettings;
@@ -44,6 +45,7 @@ use App\Models\ContentGroup;
 use App\Models\ContentItem;
 use App\Models\ContentTag;
 use App\Models\HomepageSection;
+use App\Models\PublicFormSubmission;
 use App\Models\Transcription;
 use App\Models\User;
 use App\Settings\PublicContentSettings;
@@ -110,27 +112,72 @@ function assertUx2TranscriberOrder(Transcription $transcription, array $authorId
 
 it('orders every registered admin navigation resource and page through the central map', function (): void {
     $expected = [
-        Dashboard::class => 0,
-        ContentGroupResource::class => 10,
-        ContentItemResource::class => 20,
-        TranscriptionResource::class => 30,
-        AuthorResource::class => 40,
-        CategoryResource::class => 50,
-        ContentTagResource::class => 60,
-        PublicFormSubmissionResource::class => 70,
-        MediaResource::class => 75,
-        HomepageSectionResource::class => 80,
-        PublicContentSettingsPage::class => 90,
-        AdminUxSettingsPage::class => 92,
-        SettingsBackupResource::class => 95,
-        ImporterSettings::class => 100,
+        ContentGroupResource::class => [
+            'sort' => 100,
+            'group' => AdminNavigationOrder::CONTENT_MANAGEMENT,
+        ],
+        ContentItemResource::class => [
+            'sort' => 110,
+            'group' => AdminNavigationOrder::CONTENT_MANAGEMENT,
+        ],
+        TranscriptionResource::class => [
+            'sort' => 120,
+            'group' => AdminNavigationOrder::CONTENT_MANAGEMENT,
+        ],
+        AuthorResource::class => [
+            'sort' => 200,
+            'group' => AdminNavigationOrder::TAXONOMY_MANAGEMENT,
+        ],
+        CategoryResource::class => [
+            'sort' => 210,
+            'group' => AdminNavigationOrder::TAXONOMY_MANAGEMENT,
+        ],
+        ContentTagResource::class => [
+            'sort' => 220,
+            'group' => AdminNavigationOrder::TAXONOMY_MANAGEMENT,
+        ],
+        HomepageSectionResource::class => [
+            'sort' => 300,
+            'group' => AdminNavigationOrder::SITE_MANAGEMENT,
+        ],
+        PublicContentSettingsPage::class => [
+            'sort' => 310,
+            'group' => AdminNavigationOrder::SITE_MANAGEMENT,
+        ],
+        AdminUxSettingsPage::class => [
+            'sort' => 320,
+            'group' => AdminNavigationOrder::SITE_MANAGEMENT,
+        ],
+        SettingsBackupResource::class => [
+            'sort' => 330,
+            'group' => AdminNavigationOrder::SITE_MANAGEMENT,
+        ],
+        ImporterSettings::class => [
+            'sort' => 340,
+            'group' => AdminNavigationOrder::SITE_MANAGEMENT,
+        ],
+        PublicFormSubmissionResource::class => [
+            'sort' => 10,
+            'group' => null,
+            'badge_deferred' => true,
+        ],
+        MediaResource::class => [
+            'sort' => 20,
+            'group' => null,
+        ],
     ];
 
     expect(AdminNavigationOrder::all())->toBe($expected);
 
-    foreach ($expected as $class => $sort) {
-        expect($class::getNavigationSort())->toBe($sort);
+    foreach ($expected as $class => $config) {
+        expect($class::getNavigationSort())->toBe($config['sort'])
+            ->and($class::getNavigationGroup())->toBe(
+                $config['group'] ? AdminNavigationOrder::groupLabel($config['group']) : null,
+            );
     }
+
+    expect(Dashboard::shouldRegisterNavigation())->toBeFalse()
+        ->and(PublicFormSubmissionResource::isNavigationBadgeDeferred())->toBeTrue();
 
     $panel = Filament::getPanel('admin');
     $registeredNavigationClasses = [
@@ -147,6 +194,106 @@ it('orders every registered admin navigation resource and page through the centr
         ->all();
 
     expect($missing)->toBeEmpty();
+
+    $navigation = collect($panel->getNavigation());
+    $navigationLabels = $navigation
+        ->map(fn ($group): ?string => $group->getLabel())
+        ->values()
+        ->all();
+
+    expect($navigationLabels)->toBe([
+        null,
+        AdminNavigationOrder::groupLabel(AdminNavigationOrder::CONTENT_MANAGEMENT),
+        AdminNavigationOrder::groupLabel(AdminNavigationOrder::TAXONOMY_MANAGEMENT),
+        AdminNavigationOrder::groupLabel(AdminNavigationOrder::SITE_MANAGEMENT),
+    ]);
+
+    $itemLabelsFor = fn (?string $groupLabel): array => collect($navigation
+        ->first(fn ($group): bool => $group->getLabel() === $groupLabel)
+        ->getItems())
+        ->map(fn ($item): string => $item->getLabel())
+        ->values()
+        ->all();
+
+    expect($itemLabelsFor(null))->toBe([
+        __('admin.resources.content_item.workspace_navigation'),
+        __('admin.resources.public_form_submission.navigation'),
+        __('admin.curator.plural_label'),
+    ])
+        ->and($itemLabelsFor(AdminNavigationOrder::groupLabel(AdminNavigationOrder::CONTENT_MANAGEMENT)))->toBe([
+            __('admin.resources.content_group.navigation'),
+            __('admin.resources.content_item.navigation'),
+            __('admin.resources.transcription.navigation'),
+        ])
+        ->and($itemLabelsFor(AdminNavigationOrder::groupLabel(AdminNavigationOrder::TAXONOMY_MANAGEMENT)))->toBe([
+            __('admin.resources.author.navigation'),
+            __('admin.resources.category.navigation'),
+            __('admin.resources.content_tag.navigation'),
+        ])
+        ->and($itemLabelsFor(AdminNavigationOrder::groupLabel(AdminNavigationOrder::SITE_MANAGEMENT)))->toBe([
+            __('admin.resources.homepage_section.navigation'),
+            __('admin.pages.public_content_settings.navigation'),
+            __('admin.pages.admin_ux_settings.navigation'),
+            __('admin.resources.settings_backup.navigation'),
+            __('admin.importer.pages.settings.navigation'),
+        ]);
+});
+
+it('defers the public form submission navigation badge query until badge evaluation', function (): void {
+    PublicFormSubmission::factory()
+        ->count(2)
+        ->create(['status' => PublicFormSubmissionStatus::New]);
+
+    PublicFormSubmission::factory()->reviewed()->create();
+
+    $navigationItem = PublicFormSubmissionResource::getNavigationItems()[0];
+    $badgeProperty = new ReflectionProperty($navigationItem, 'badge');
+    $badgeProperty->setAccessible(true);
+
+    expect($badgeProperty->getValue($navigationItem))->toBeInstanceOf(Closure::class)
+        ->and($navigationItem->getBadge())->toBe('2')
+        ->and($navigationItem->getBadgeColor($navigationItem->getBadge()))->toBe('warning')
+        ->and($navigationItem->getBadgeTooltip())->toBe(__('admin.resources.public_form_submission.navigation_badge_tooltip'));
+
+    PublicFormSubmission::factory()->create(['status' => PublicFormSubmissionStatus::New]);
+
+    expect($navigationItem->getBadge())->toBe('3');
+});
+
+it('labels episode workspace actions as the defaults and classic actions as system actions', function (): void {
+    $group = ContentGroup::factory()->create();
+
+    $listPage = Livewire::test(ListContentItems::class)
+        ->assertOk()
+        ->instance();
+
+    $headerActions = collect($listPage->getCachedHeaderActions())
+        ->keyBy(fn (Action $action): string => $action->getName());
+
+    $tableActions = collect($listPage->getTable()->getRecordActions())
+        ->keyBy(fn (Action $action): string => $action->getName());
+
+    expect($headerActions->get('createEpisodeWorkspace')->getLabel())->toBe(__('admin.actions.create_episode_workspace'))
+        ->and($headerActions->get('create')->getLabel())->toBe(__('admin.actions.classic_create'))
+        ->and($tableActions->get('openEpisodeWorkspace')->getLabel())->toBe(__('admin.actions.open_episode_workspace'))
+        ->and($tableActions->get('edit')->getLabel())->toBe(__('admin.actions.classic_edit'));
+
+    $relationManagerTable = Livewire::test(ContentItemsRelationManager::class, [
+        'ownerRecord' => $group,
+        'pageClass' => EditContentGroup::class,
+    ])
+        ->assertOk()
+        ->instance()
+        ->getTable();
+
+    $relationHeaderActions = collect($relationManagerTable->getHeaderActions())
+        ->keyBy(fn (Action $action): string => $action->getName());
+    $relationRecordActions = collect($relationManagerTable->getRecordActions())
+        ->keyBy(fn (Action $action): string => $action->getName());
+
+    expect($relationHeaderActions->get('create')->getLabel())->toBe(__('admin.actions.classic_create'))
+        ->and($relationRecordActions->get('openEpisodeWorkspace')->getLabel())->toBe(__('admin.actions.open_episode_workspace'))
+        ->and($relationRecordActions->get('edit')->getLabel())->toBe(__('admin.actions.classic_edit'));
 });
 
 it('applies admin table action modal and section defaults', function (): void {

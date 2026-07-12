@@ -40,11 +40,6 @@ class ContentGroupResource extends Resource
         return __('admin.resources.content_group.navigation');
     }
 
-    public static function getNavigationGroup(): ?string
-    {
-        return __('admin.navigation.content');
-    }
-
     public static function form(Schema $schema): Schema
     {
         return ContentGroupForm::configure($schema);

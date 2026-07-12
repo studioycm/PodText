@@ -40,11 +40,6 @@ class TranscriptionResource extends Resource
         return __('admin.resources.transcription.navigation');
     }
 
-    public static function getNavigationGroup(): ?string
-    {
-        return __('admin.navigation.content');
-    }
-
     public static function form(Schema $schema): Schema
     {
         return TranscriptionForm::configure($schema);

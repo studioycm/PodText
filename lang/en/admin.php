@@ -4,23 +4,28 @@ return [
     'navigation' => [
         'content' => 'Content',
         'importer' => 'Import',
+        'groups' => [
+            'content_management' => 'Content management',
+            'taxonomy_management' => 'Taxonomy management',
+            'site_management' => 'Site management',
+        ],
     ],
     'resources' => [
         'author' => [
             'singular' => 'Author',
             'plural' => 'Authors',
-            'navigation' => 'Authors',
+            'navigation' => 'Transcribers',
         ],
         'content_group' => [
             'singular' => 'Content Group',
             'plural' => 'Content Groups',
-            'navigation' => 'Content Groups',
+            'navigation' => 'Podcasts',
         ],
         'content_item' => [
             'singular' => 'Content Item',
             'plural' => 'Content Items',
-            'navigation' => 'Content Items',
-            'workspace_navigation' => 'New Episode Workspace',
+            'navigation' => 'Episodes',
+            'workspace_navigation' => 'New episode',
         ],
         'category' => [
             'singular' => 'Category',
@@ -35,12 +40,13 @@ return [
         'homepage_section' => [
             'singular' => 'Homepage Content Section',
             'plural' => 'Homepage Content Sections',
-            'navigation' => 'Homepage Content',
+            'navigation' => 'Homepage sections',
         ],
         'public_form_submission' => [
             'singular' => 'Public Form Submission',
             'plural' => 'Public Form Submissions',
-            'navigation' => 'Form Submissions',
+            'navigation' => 'Form submissions',
+            'navigation_badge_tooltip' => 'New public form submissions',
         ],
         'settings_backup' => [
             'singular' => 'Settings Backup',
@@ -55,7 +61,7 @@ return [
     ],
     'curator' => [
         'label' => 'Media',
-        'plural_label' => 'Media Library',
+        'plural_label' => 'Media',
     ],
     'sections' => [
         'admin_ux' => 'Admin UX',
@@ -899,8 +905,8 @@ return [
         'add_public_form_field' => 'Add field',
         'add_transcription' => 'Add transcription',
         'add_card_template_part' => 'Add part',
-        'classic_create' => 'Classic create',
-        'classic_edit' => 'Classic edit',
+        'classic_create' => 'New episode (system)',
+        'classic_edit' => 'Edit (system)',
         'create_author' => 'Create author',
         'create_category' => 'Create category',
         'create_content_group' => 'Create content group',
@@ -917,7 +923,7 @@ return [
         'download_external_image_overwrite' => 'Replace from external image',
         'download_podcast_images' => 'Download podcast images',
         'clear_slug' => 'Clear slug',
-        'create_episode_workspace' => 'New episode workspace',
+        'create_episode_workspace' => 'New episode',
         'manage_default_images' => 'Default images',
         'pick_media' => 'Choose media',
         'choose_cover_image' => 'Choose cover image',
@@ -936,7 +942,7 @@ return [
         'manage_import_locks' => 'Import locks',
         'open_transcription_resource' => 'Open full resource',
         'open_content_item_resource' => 'Open full item',
-        'open_episode_workspace' => 'Open workspace',
+        'open_episode_workspace' => 'Edit',
         'mark_reviewed' => 'Mark reviewed',
         'reopen' => 'Reopen',
         'restore' => 'Restore',
@@ -1598,7 +1604,7 @@ return [
             'title' => 'Settings Import Locks',
         ],
         'public_content_settings' => [
-            'navigation' => 'Public Settings',
+            'navigation' => 'Public content settings',
             'title' => 'Public Content Settings',
         ],
     ],

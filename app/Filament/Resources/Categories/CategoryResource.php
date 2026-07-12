@@ -40,11 +40,6 @@ class CategoryResource extends Resource
         return __('admin.resources.category.navigation');
     }
 
-    public static function getNavigationGroup(): ?string
-    {
-        return __('admin.navigation.content');
-    }
-
     public static function form(Schema $schema): Schema
     {
         return CategoryForm::configure($schema);

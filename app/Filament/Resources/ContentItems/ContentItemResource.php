@@ -10,6 +10,7 @@ use App\Filament\Resources\ContentItems\Pages\ListContentItems;
 use App\Filament\Resources\ContentItems\RelationManagers\TranscriptionsRelationManager;
 use App\Filament\Resources\ContentItems\Schemas\ContentItemForm;
 use App\Filament\Resources\ContentItems\Tables\ContentItemsTable;
+use App\Filament\Support\AdminNavigationOrder;
 use App\Filament\Support\Concerns\UsesAdminNavigationOrder;
 use App\Models\ContentItem;
 use BackedEnum;
@@ -51,17 +52,12 @@ class ContentItemResource extends Resource
         return [
             ...parent::getNavigationItems(),
             NavigationItem::make(__('admin.resources.content_item.workspace_navigation'))
-                ->group(static::getNavigationGroup())
+                ->group(null)
                 ->icon(Heroicon::OutlinedPencilSquare)
                 ->isActiveWhen(fn (): bool => original_request()->routeIs(static::getRouteBaseName().'.workspace-create'))
-                ->sort((static::getNavigationSort() ?? 20) + 1)
+                ->sort(AdminNavigationOrder::episodeWorkspaceCreateSort())
                 ->url(static::getUrl('workspace-create')),
         ];
-    }
-
-    public static function getNavigationGroup(): ?string
-    {
-        return __('admin.navigation.content');
     }
 
     public static function form(Schema $schema): Schema

@@ -40,11 +40,6 @@ class ContentTagResource extends Resource
         return __('admin.resources.content_tag.navigation');
     }
 
-    public static function getNavigationGroup(): ?string
-    {
-        return __('admin.navigation.content');
-    }
-
     public static function form(Schema $schema): Schema
     {
         return ContentTagForm::configure($schema);

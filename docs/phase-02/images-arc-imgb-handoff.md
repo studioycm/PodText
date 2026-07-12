@@ -91,4 +91,4 @@ Episode table queries already eager-load `contentGroup`, `featuredTranscription.
 
 ## Commit hash
 
-Final IMG-B commit hash is reported in the session final after this handoff is committed.
+IMG-B was committed as `8c590ab58f1b4b4b89ec85b7c0541d95a41cde90 feat: add episode images, media guards, and content images export`.

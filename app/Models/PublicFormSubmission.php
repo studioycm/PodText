@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Cache;
 
 #[Fillable([
     'form_key',
@@ -25,6 +26,8 @@ class PublicFormSubmission extends Model
     /** @use HasFactory<PublicFormSubmissionFactory> */
     use HasFactory;
 
+    public const NEW_SUBMISSIONS_NAVIGATION_BADGE_CACHE_KEY = 'public_form_submissions.new_navigation_badge';
+
     protected $attributes = [
         'status' => 'new',
     ];
@@ -34,6 +37,9 @@ class PublicFormSubmission extends Model
         static::creating(function (PublicFormSubmission $submission): void {
             $submission->submitted_at ??= now();
         });
+
+        static::saved(fn (): bool => Cache::forget(self::NEW_SUBMISSIONS_NAVIGATION_BADGE_CACHE_KEY));
+        static::deleted(fn (): bool => Cache::forget(self::NEW_SUBMISSIONS_NAVIGATION_BADGE_CACHE_KEY));
     }
 
     public function markReviewed(): void

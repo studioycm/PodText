@@ -3,7 +3,9 @@
 namespace App\Providers\Filament;
 
 use App\Filament\Pages\Dashboard;
+use App\Filament\Support\AdminNavigationOrder;
 use Awcodes\Curator\CuratorPlugin;
+use Awcodes\Curator\Resources\Media\MediaResource;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
@@ -38,9 +40,10 @@ class AdminPanelProvider extends PanelProvider
                 CuratorPlugin::make()
                     ->label(fn (): string => __('admin.curator.label'))
                     ->pluralLabel(fn (): string => __('admin.curator.plural_label'))
-                    ->navigationGroup(fn (): string => __('admin.navigation.content'))
+                    ->navigationGroup(fn (): ?string => AdminNavigationOrder::group(MediaResource::class))
                     ->navigationIcon(Heroicon::OutlinedPhoto)
-                    ->navigationSort(75),
+                    ->navigationSort(fn (): int => AdminNavigationOrder::sort(MediaResource::class) ?? 20)
+                    ->showBadge(false),
             )
             ->brandLogo(fn (): string => asset('images/podtext-logo.svg'))
             ->darkModeBrandLogo(fn (): string => asset('images/podtext-logo-dark.svg'))
@@ -60,6 +63,7 @@ class AdminPanelProvider extends PanelProvider
                 'gray' => Color::Slate,
             ])
             ->databaseNotifications()
+            ->navigationGroups(AdminNavigationOrder::panelNavigationGroups())
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\Filament\Resources')
             ->discoverPages(in: app_path('Filament/Pages'), for: 'App\Filament\Pages')
             ->pages([

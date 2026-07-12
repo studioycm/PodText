@@ -51,11 +51,6 @@ class ImporterSettings extends Page implements HasActions, HasSchemas, HasTable
         return __('admin.importer.pages.settings.navigation');
     }
 
-    public static function getNavigationGroup(): ?string
-    {
-        return __('admin.navigation.importer');
-    }
-
     public function getTitle(): string
     {
         return __('admin.importer.pages.settings.title');

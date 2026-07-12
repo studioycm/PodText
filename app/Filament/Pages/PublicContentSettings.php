@@ -75,11 +75,6 @@ class PublicContentSettings extends SettingsPage
         return __('admin.pages.public_content_settings.title');
     }
 
-    public static function getNavigationGroup(): ?string
-    {
-        return __('admin.navigation.content');
-    }
-
     protected function getHeaderActions(): array
     {
         return [

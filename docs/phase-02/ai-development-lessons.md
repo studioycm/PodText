@@ -76,6 +76,9 @@ For current prompt completion/progress state, see `docs/phase-02/current-project
 - Do not duplicate rolling status in prompt files, specs, blueprints, guidelines, or indexes.
 - Prompt final reports are not a substitute for updating the current state document.
 - "Run the full suite exactly once" means once green. A failed full-suite run does not satisfy the gate; after fixes and targeted verification, the full suite must be run again and every full run must be recorded.
+- When a prompt pins final gate order, run cheap deterministic checks first and keep the full suite last. For NAV-style prompts this means the pre-gate requirement sweep, then Pint, FilaCheck, frontend build, and only then the full profiled suite.
+- Treat the pre-gate requirements sweep as a real audit against the prompt's job and test lists, not a vague readiness note. Record each implemented/deferred/not-applicable item before starting the final gate.
+- A green full-suite result belongs only to the final code state. Any code, test, translation, or documentation change after that green result re-enters the gate from Pint and requires another full-suite run, with every full run recorded.
 - A Local Front Check Report is a numbered list of manual operator steps, separate from automated coverage notes.
 
 ## Deferred-item handling lessons

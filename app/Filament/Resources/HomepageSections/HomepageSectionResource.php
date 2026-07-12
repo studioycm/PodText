@@ -40,11 +40,6 @@ class HomepageSectionResource extends Resource
         return __('admin.resources.homepage_section.navigation');
     }
 
-    public static function getNavigationGroup(): ?string
-    {
-        return __('admin.navigation.content');
-    }
-
     public static function form(Schema $schema): Schema
     {
         return HomepageSectionForm::configure($schema);

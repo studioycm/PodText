@@ -4,12 +4,17 @@ return [
     'navigation' => [
         'content' => 'תוכן',
         'importer' => 'ייבוא',
+        'groups' => [
+            'content_management' => 'ניהול תוכן',
+            'taxonomy_management' => 'ניהול סיווג',
+            'site_management' => 'ניהול אתר',
+        ],
     ],
     'resources' => [
         'author' => [
             'singular' => 'מחבר',
             'plural' => 'מחברים',
-            'navigation' => 'מחברים',
+            'navigation' => 'מתמללים',
         ],
         'content_group' => [
             'singular' => 'פודקאסט',
@@ -20,7 +25,7 @@ return [
             'singular' => 'פרק',
             'plural' => 'פרקים',
             'navigation' => 'פרקים',
-            'workspace_navigation' => 'סביבת עבודה חדשה לפרק',
+            'workspace_navigation' => 'פרק חדש',
         ],
         'category' => [
             'singular' => 'קטגוריה',
@@ -35,12 +40,13 @@ return [
         'homepage_section' => [
             'singular' => 'מקטע בדף הבית',
             'plural' => 'מקטעי בדף הבית',
-            'navigation' => 'תוכן דף הבית',
+            'navigation' => 'מקטעי דף הבית',
         ],
         'public_form_submission' => [
             'singular' => 'שליחת טופס',
             'plural' => 'שליחות טפסים',
-            'navigation' => 'שליחות טפסים',
+            'navigation' => 'רשומות טפסים',
+            'navigation_badge_tooltip' => 'רשומות טפסים חדשות',
         ],
         'settings_backup' => [
             'singular' => 'גיבוי הגדרות',
@@ -55,7 +61,7 @@ return [
     ],
     'curator' => [
         'label' => 'מדיה',
-        'plural_label' => 'ספריית מדיה',
+        'plural_label' => 'מדיה',
     ],
     'sections' => [
         'admin_ux' => 'חוויית ניהול',
@@ -883,8 +889,8 @@ return [
         'add_public_form_field' => 'הוספת שדה',
         'add_transcription' => 'הוספת תמלול',
         'add_card_template_part' => 'הוספת חלק',
-        'classic_create' => 'יצירה קלאסית',
-        'classic_edit' => 'עריכה קלאסית',
+        'classic_create' => 'פרק חדש (מערכת)',
+        'classic_edit' => 'עריכה (מערכת)',
         'create_author' => 'יצירת מחבר',
         'create_category' => 'יצירת קטגוריה',
         'create_content_group' => 'יצירת פודקאסט',
@@ -892,7 +898,7 @@ return [
         'create_backup' => 'יצירת גיבוי',
         'regenerate_slug' => 'יצירת מזהה מחדש',
         'clear_slug' => 'ניקוי מזהה',
-        'create_episode_workspace' => 'סביבת עבודה חדשה',
+        'create_episode_workspace' => 'פרק חדש',
         'manage_default_images' => 'תמונות ברירת מחדל',
         'pick_media' => 'בחירת מדיה',
         'choose_cover_image' => 'בחירת תמונת שער',
@@ -920,7 +926,7 @@ return [
         'lock_all_front_texts' => 'נעילת כל טקסטי החזית',
         'manage_import_locks' => 'נעילות ייבוא',
         'open_content_item_resource' => 'פתיחת הפרק המלא',
-        'open_episode_workspace' => 'פתיחת סביבת עבודה',
+        'open_episode_workspace' => 'עריכה',
         'open_transcription_resource' => 'פתיחת המשאב המלא',
         'mark_reviewed' => 'סימון כנבדק',
         'reopen' => 'פתיחה מחדש',
@@ -1578,7 +1584,7 @@ return [
             'title' => 'נעילות ייבוא הגדרות',
         ],
         'public_content_settings' => [
-            'navigation' => 'הגדרות',
+            'navigation' => 'הגדרות תוכן ציבורי',
             'title' => 'הגדרות תוכן',
         ],
     ],

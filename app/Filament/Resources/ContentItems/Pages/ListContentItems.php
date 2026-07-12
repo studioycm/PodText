@@ -19,7 +19,8 @@ class ListContentItems extends ListRecords
                 ->label(__('admin.actions.create_episode_workspace'))
                 ->icon(Heroicon::OutlinedPencilSquare)
                 ->url(ContentItemResource::getUrl('workspace-create')),
-            CreateAction::make(),
+            CreateAction::make()
+                ->label(__('admin.actions.classic_create')),
         ];
     }
 }
