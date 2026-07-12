@@ -1,6 +1,8 @@
 <?php
 
+use App\Jobs\SettingsBackupSnapshotJob;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Queue;
 use Tests\TestCase;
 
 foreach ([
@@ -60,7 +62,9 @@ expect()->extend('toBeOne', function () {
 |
 */
 
-function something()
+function fakeSettingsBackupSnapshotQueue(): void
 {
-    // ..
+    Queue::fake([
+        SettingsBackupSnapshotJob::class,
+    ]);
 }

@@ -130,9 +130,9 @@ Why it is safe:
 - Targeted confirmation:
   `php artisan test tests/Feature/PublicMaintenanceModeTest.php tests/Feature/SettingsImportExportTest.php`
   passed: 42 tests, 402 assertions.
-- Final gate is run after this handoff is complete, in the prompt-required order.
-  Exact final gate results are recorded in the session final so no post-gate file
-  edit is needed.
+- Final gate outcomes: gate outcomes reported only in the session chat. The TS1
+  kickoff message did not provide the exact suite line, so the exact MP2
+  test/assertion counts remain an explicit handoff gap.
 
 ## Tooling Notes
 
@@ -155,10 +155,7 @@ Why it is safe:
 
 Previous run NAV1: `e59705b feat: restructure admin navigation groups and defer badges`.
 
-MP2 commit message: `feat: add forms management page and maintenance form embedding`.
-
-Final MP2 commit hash is the commit containing this handoff; the exact hash is
-reported in the session final after commit creation.
+Final MP2 commit hash: `465967f feat: add forms management page and maintenance form embedding`.
 
 ## Local Front Check Report
 
@@ -193,8 +190,9 @@ reported in the session final after commit creation.
   can re-place it cheaply later if needed.
 - The maintenance form route may exist globally, but accepting submissions only while
   maintenance is enabled and an enabled form is configured keeps it safe.
-- The final commit hash cannot be hard-coded inside the same committed file without
-  changing the hash; the session final reports the exact hash after commit.
+- MP2 final gate output was not written into this committed handoff before the MP2
+  commit; TS1 records that as an explicit historical gap instead of inventing
+  missing numbers.
 
 ## Deferred Issues
 

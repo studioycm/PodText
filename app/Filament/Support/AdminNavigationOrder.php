@@ -3,6 +3,7 @@
 namespace App\Filament\Support;
 
 use App\Filament\Pages\AdminUxSettings;
+use App\Filament\Pages\Dashboard;
 use App\Filament\Pages\ImporterSettings;
 use App\Filament\Pages\ManagePublicForms;
 use App\Filament\Pages\PublicContentSettings;
@@ -27,7 +28,7 @@ class AdminNavigationOrder
 
     public const SITE_MANAGEMENT = 'site_management';
 
-    public const EPISODE_WORKSPACE_CREATE_SORT = 0;
+    public const EPISODE_WORKSPACE_CREATE_SORT = 10;
 
     /**
      * @var array<string, array{label: string, icon: Heroicon}>
@@ -51,6 +52,10 @@ class AdminNavigationOrder
      * @var array<class-string, array{sort: int, group: string|null, badge_deferred?: bool}>
      */
     private const ITEMS = [
+        Dashboard::class => [
+            'sort' => 0,
+            'group' => null,
+        ],
         ContentGroupResource::class => [
             'sort' => 100,
             'group' => self::CONTENT_MANAGEMENT,
@@ -100,12 +105,12 @@ class AdminNavigationOrder
             'group' => self::SITE_MANAGEMENT,
         ],
         PublicFormSubmissionResource::class => [
-            'sort' => 10,
+            'sort' => 20,
             'group' => null,
             'badge_deferred' => true,
         ],
         MediaResource::class => [
-            'sort' => 20,
+            'sort' => 30,
             'group' => null,
         ],
     ];

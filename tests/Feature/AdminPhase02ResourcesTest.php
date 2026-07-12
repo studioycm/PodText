@@ -69,6 +69,8 @@ uses(RefreshDatabase::class);
 
 beforeEach(function (): void {
     Filament::setCurrentPanel(Filament::getPanel('admin'));
+    fakeSettingsBackupSnapshotQueue();
+
     Testable::macro('fillForm', function (array|Closure $state = [], ?string $form = null): Testable {
         if ($state instanceof Closure) {
             $state = $state([]);
@@ -113,6 +115,10 @@ function assertUx2TranscriberOrder(Transcription $transcription, array $authorId
 
 it('orders every registered admin navigation resource and page through the central map', function (): void {
     $expected = [
+        Dashboard::class => [
+            'sort' => 0,
+            'group' => null,
+        ],
         ContentGroupResource::class => [
             'sort' => 100,
             'group' => AdminNavigationOrder::CONTENT_MANAGEMENT,
@@ -162,12 +168,12 @@ it('orders every registered admin navigation resource and page through the centr
             'group' => AdminNavigationOrder::SITE_MANAGEMENT,
         ],
         PublicFormSubmissionResource::class => [
-            'sort' => 10,
+            'sort' => 20,
             'group' => null,
             'badge_deferred' => true,
         ],
         MediaResource::class => [
-            'sort' => 20,
+            'sort' => 30,
             'group' => null,
         ],
     ];
@@ -181,7 +187,7 @@ it('orders every registered admin navigation resource and page through the centr
             );
     }
 
-    expect(Dashboard::shouldRegisterNavigation())->toBeFalse()
+    expect(Dashboard::shouldRegisterNavigation())->toBeTrue()
         ->and(PublicFormSubmissionResource::isNavigationBadgeDeferred())->toBeTrue();
 
     $panel = Filament::getPanel('admin');
@@ -221,6 +227,7 @@ it('orders every registered admin navigation resource and page through the centr
         ->all();
 
     expect($itemLabelsFor(null))->toBe([
+        Dashboard::getNavigationLabel(),
         __('admin.resources.content_item.workspace_navigation'),
         __('admin.resources.public_form_submission.navigation'),
         __('admin.curator.plural_label'),

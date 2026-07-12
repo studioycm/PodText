@@ -28,6 +28,8 @@ uses(RefreshDatabase::class);
 
 beforeEach(function (): void {
     Filament::setCurrentPanel(Filament::getPanel('admin'));
+    fakeSettingsBackupSnapshotQueue();
+
     Cache::flush();
     RateLimiter::clear('public-form:request_transcription:test');
     Mail::fake();

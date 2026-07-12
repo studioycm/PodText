@@ -72,6 +72,7 @@ For current prompt completion/progress state, see `docs/phase-02/current-project
 - `docs/phase-02/current-project-state.md` is the single source of truth for rolling prompt progress.
 - Update progress state before the final implementation commit.
 - A run is complete only when its handoff exists as a committed repository file. Chat output alone is not a handoff.
+- Final gate outcomes must be written into the handoff file after the gate passes and before the implementation commit. A result mentioned only in the session final is chat history, not a durable project record.
 - Patch `feature-map.md`, `answers-coverage-matrix.md`, `prompts/README.md`, specs, blueprints, and guidelines only when stable requirements, ownership, or scope changed.
 - Do not duplicate rolling status in prompt files, specs, blueprints, guidelines, or indexes.
 - Prompt final reports are not a substitute for updating the current state document.

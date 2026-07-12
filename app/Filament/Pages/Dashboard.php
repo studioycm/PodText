@@ -8,6 +8,4 @@ use Filament\Pages\Dashboard as BaseDashboard;
 class Dashboard extends BaseDashboard
 {
     use UsesAdminNavigationOrder;
-
-    protected static bool $shouldRegisterNavigation = false;
 }
