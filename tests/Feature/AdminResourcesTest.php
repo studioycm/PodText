@@ -163,6 +163,7 @@ it('renders content group resource pages', function (): void {
 });
 
 it('creates and edits content groups with defaults, cover upload, and publication enum', function (): void {
+    config(['media.picker.driver' => 'file_upload']);
     Storage::fake('public');
 
     Livewire::test(CreateContentGroup::class)

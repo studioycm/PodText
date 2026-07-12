@@ -410,6 +410,7 @@ it('renders enabled about page content team profiles safe images and enabled for
 });
 
 it('saves about content blocks and team profiles through the admin settings page', function (): void {
+    config(['media.picker.driver' => 'file_upload']);
     $this->actingAs(User::factory()->create());
 
     Livewire::test(PublicContentSettingsPage::class)
@@ -484,6 +485,7 @@ it('saves about content blocks and team profiles through the admin settings page
 });
 
 it('configures about and team image uploads with safe public constraints', function (): void {
+    config(['media.picker.driver' => 'file_upload']);
     $this->actingAs(User::factory()->create());
 
     $schema = Livewire::test(PublicContentSettingsPage::class)

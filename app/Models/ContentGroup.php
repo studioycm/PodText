@@ -3,9 +3,11 @@
 namespace App\Models;
 
 use App\Enums\PublicationStatus;
+use App\Observers\ContentGroupObserver;
 use App\Support\Slugs\HebrewSlugger;
 use Database\Factories\ContentGroupFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Attributes\ObservedBy;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -23,11 +25,13 @@ use Illuminate\Support\Str;
     'default_item_type_label_plural',
     'description_markdown',
     'cover_path',
+    'cover_alt_text',
     'original_language_code',
     'status',
     'published_at',
     'homepage_order',
 ])]
+#[ObservedBy([ContentGroupObserver::class])]
 class ContentGroup extends Model
 {
     /** @use HasFactory<ContentGroupFactory> */

@@ -37,7 +37,7 @@
                 >
                     <img
                         src="{{ $pageImage['url'] }}"
-                        alt=""
+                        alt="{{ $pageImage['alt'] ?? '' }}"
                         class="h-full w-full object-cover"
                     >
                 </span>

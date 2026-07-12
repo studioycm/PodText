@@ -1,6 +1,10 @@
 <?php
 
 return [
+    'picker' => [
+        'driver' => env('PODTEXT_MEDIA_PICKER_DRIVER', 'curator'),
+    ],
+
     'embeds' => [
         'allowed_hosts' => [
             'embed.podcasts.apple.com',

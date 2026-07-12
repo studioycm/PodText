@@ -4,10 +4,11 @@ namespace App\Filament\Pages;
 
 use App\Filament\Actions\ExportPublicSettingsAction;
 use App\Filament\Forms\Components\IconSelect;
+use App\Filament\Forms\MediaPickerField;
 use App\Filament\Support\Concerns\UsesAdminNavigationOrder;
 use App\Settings\PublicContentSettings as PublicContentSettingsData;
+use App\Support\Media\ImageFileNamer;
 use App\Support\PublicContent\PublicTranscriptionPolicy;
-use App\Support\PublicFront\About\PublicAboutPageRegistry;
 use App\Support\PublicFront\Cards\PublicFrontCardTemplateRegistry;
 use App\Support\PublicFront\Cards\PublicFrontCardTemplateResolver;
 use App\Support\PublicFront\Colors\PublicFrontColor;
@@ -26,7 +27,6 @@ use Filament\Forms\Components\Builder;
 use Filament\Forms\Components\Builder\Block;
 use Filament\Forms\Components\ColorPicker;
 use Filament\Forms\Components\Field;
-use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\MarkdownEditor;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\RichEditor;
@@ -582,22 +582,12 @@ class PublicContentSettings extends SettingsPage
                                             ->required(),
                                         Fieldset::make(__('admin.sections.public_menu_logo'))
                                             ->schema([
-                                                FileUpload::make('menu_config.logo.light_path')
+                                                MediaPickerField::make('menu_config.logo.light_path', ImageFileNamer::HEADER, allowSvg: true)
                                                     ->label(__('admin.fields.public_menu_logo_light_path'))
-                                                    ->helperText(__('admin.helpers.public_menu_logo_light_path'))
-                                                    ->disk('public')
-                                                    ->directory('header')
-                                                    ->visibility('public')
-                                                    ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/webp', 'image/svg+xml'])
-                                                    ->maxSize(2048),
-                                                FileUpload::make('menu_config.logo.dark_path')
+                                                    ->helperText(__('admin.helpers.public_menu_logo_light_path')),
+                                                MediaPickerField::make('menu_config.logo.dark_path', ImageFileNamer::HEADER, allowSvg: true)
                                                     ->label(__('admin.fields.public_menu_logo_dark_path'))
-                                                    ->helperText(__('admin.helpers.public_menu_logo_dark_path'))
-                                                    ->disk('public')
-                                                    ->directory('header')
-                                                    ->visibility('public')
-                                                    ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/webp', 'image/svg+xml'])
-                                                    ->maxSize(2048),
+                                                    ->helperText(__('admin.helpers.public_menu_logo_dark_path')),
                                                 TextInput::make('menu_config.logo.alt_text')
                                                     ->label(__('admin.fields.public_menu_logo_alt_text'))
                                                     ->helperText(__('admin.helpers.public_menu_logo_alt_text'))
@@ -1428,15 +1418,9 @@ class PublicContentSettings extends SettingsPage
                                                     ->integer()
                                                     ->minValue(0)
                                                     ->maxValue(1000),
-                                                FileUpload::make('image_path')
+                                                MediaPickerField::make('image_path', ImageFileNamer::TEAM)
                                                     ->label(__('admin.fields.about_team_profile_image'))
-                                                    ->helperText(__('admin.helpers.about_team_profile_image'))
-                                                    ->disk('public')
-                                                    ->directory('team')
-                                                    ->visibility('public')
-                                                    ->avatar()
-                                                    ->acceptedFileTypes(PublicAboutPageRegistry::acceptedImageTypes())
-                                                    ->maxSize(PublicAboutPageRegistry::maxImageSize()),
+                                                    ->helperText(__('admin.helpers.about_team_profile_image')),
                                                 TextInput::make('name')
                                                     ->label(__('admin.fields.about_team_profile_name'))
                                                     ->helperText(__('admin.helpers.about_team_profile_name'))
@@ -2041,16 +2025,9 @@ class PublicContentSettings extends SettingsPage
                         ->native(false)
                         ->live()
                         ->required(),
-                    FileUpload::make("default_images.{$family}.path")
+                    MediaPickerField::make("default_images.{$family}.path", ImageFileNamer::DEFAULT_IMAGES)
                         ->label(__('admin.fields.default_image_path'))
                         ->helperText(__('admin.helpers.default_image_path'))
-                        ->disk('public')
-                        ->directory(PublicFrontConfigRegistry::defaultImageDirectory())
-                        ->visibility('public')
-                        ->image()
-                        ->imagePreviewHeight('160')
-                        ->acceptedFileTypes(PublicFrontConfigRegistry::defaultImageAcceptedFileTypes())
-                        ->maxSize(PublicFrontConfigRegistry::defaultImageMaxSize())
                         ->visible(fn (Get $get): bool => $get("default_images.{$family}.mode") === 'custom')
                         ->required(fn (Get $get): bool => $get("default_images.{$family}.mode") === 'custom')
                         ->columnSpanFull(),
@@ -2367,15 +2344,9 @@ class PublicContentSettings extends SettingsPage
                 ->required($type === 'rich_content')
                 ->visible($type === 'rich_content')
                 ->columnSpanFull(),
-            FileUpload::make('image_path')
+            MediaPickerField::make('image_path', ImageFileNamer::ABOUT)
                 ->label(__('admin.fields.about_block_image'))
                 ->helperText(__('admin.helpers.about_block_image'))
-                ->disk('public')
-                ->directory('about')
-                ->visibility('public')
-                ->image()
-                ->acceptedFileTypes(PublicAboutPageRegistry::acceptedImageTypes())
-                ->maxSize(PublicAboutPageRegistry::maxImageSize())
                 ->required($type === 'image')
                 ->visible($type === 'image'),
             TextInput::make('image_alt')

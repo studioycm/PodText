@@ -52,7 +52,12 @@ return [
             'navigation' => 'תמלולים',
         ],
     ],
+    'curator' => [
+        'label' => 'מדיה',
+        'plural_label' => 'ספריית מדיה',
+    ],
     'sections' => [
+        'admin_ux' => 'חוויית ניהול',
         'identity' => 'זהות',
         'content' => 'תוכן',
         'publication' => 'פרסום',
@@ -192,11 +197,13 @@ return [
         'about_block_form_key' => 'טופס',
         'about_block_button_label' => 'תווית כפתור',
         'content_group' => 'פודקאסט',
+        'cover_alt_text' => 'טקסט חלופי לתמונת שער',
         'cover_path' => 'תמונת שער',
         'created_at' => 'נוצר',
         'default_item_type_label_plural' => 'תווית רבים לפרקים',
         'default_item_type_label_singular' => 'תווית יחיד לפרקים',
         'description_markdown' => 'תיאור',
+        'media_naming_strategy' => 'שיטת שמות למדיה',
         'duration_seconds' => 'משך בשניות',
         'effective_transcription' => 'תמלול אפקטיבי',
         'effective_type_label' => 'תווית סוג',
@@ -607,6 +614,8 @@ return [
         'about_block_image_radius' => 'אסימון עיגול סמנטי עבור בלוק התמונה .',
         'about_block_form_key' => 'מוצעים רק טפסים פעילים כרגע.',
         'about_block_button_label' => 'טקסט פשוט לכפתור הקריאה לפעולה.',
+        'cover_alt_text' => 'טקסט חלופי פשוט לתמונת השער הציבורית. ערך ריק חוזר לכותרת הפודקאסט.',
+        'cover_path' => 'בחירה מספריית המדיה או העלאת JPEG, PNG או WebP עד 2MB ועד 3000px בכל צד.',
         'homepage_section_name' => 'שם עריכתי למקטע התוכן הזה בדף הבית.',
         'homepage_section_type' => 'בחרו את סוג מקטע התוכן. שאילתה אצורה נדחתה ואינה זמינה עדיין.',
         'language_code' => 'יש להשתמש בקוד קצר בסגנון BCP-47, למשל he או en.',
@@ -764,6 +773,7 @@ return [
         'public_display_total_limit' => 'חלון תוצאות מרבי למקטע. במקור JSON של אחרונים, מגבלות מתחת ל-50 יידחו.',
         'public_display_view_all_route_key' => 'מפתח נתיב ידוע אופציונלי. נתיבים חסרים ידולגו בצד השרת.',
         'reference_key' => 'מזהה נייד ויציב. הוא נוצר על ידי המערכת ואינו נערך ידנית.',
+        'media_naming_strategy' => 'קובע את שם הקובץ הדיפולטי לתמונות חדשות ששייכות למודל. שמות קבצי יצוא תמיד כוללים slug ומפתח ייחוס.',
         'set_featured_transcription_action' => 'מגדיר את התמלול המפורסם הזה כתמלול הנבחר של הפרק. תמלולי טיוטה נשארים פרטיים ואינם יכולים להפוך לפעילים.',
         'edit_effective_transcription_action' => 'יעד העריכה נבחר לפי תמלול אפקטיבי שפורסם, אחר כך תמלול נבחר, ואחר כך התמלול האחרון.',
         'slug' => 'מזהה כתובת. השאירו ריק כדי ליצור מהכותרת או מהשם. עריכה ידנית נשמרת; השתמשו ביצירה מחדש כדי להחליף לפי המקור הנוכחי.',
@@ -792,6 +802,7 @@ return [
         'curated_query' => 'שאילתה אצורה',
     ],
     'descriptions' => [
+        'admin_ux' => 'ברירות מחדל עריכתיות לתהליכי ניהול. EP1 עשוי להרחיב את העמוד להעדפות סביבת עבודה.',
         'content_item_identity' => 'זהות וקיבוץ בסיסיים של הפריט. שדות אלה קובעים לאן הפריט שייך וכיצד מנהלים וכתובות מזהים אותו.',
         'content_item_content' => 'תוכן עריכתי, טקסונומיה וכתובות מדיה עבור פריט זה. מתמללי פרק מנוהלים בתמלולים.',
         'content_item_publication' => 'בקרות פרסום עבור הפריט. נראות מחייבת גם פודקאסט הורה מפורסם ותמלול פעיל.',
@@ -842,6 +853,8 @@ return [
         'create_content_tag' => 'יצירת תגית',
         'create_backup' => 'יצירת גיבוי',
         'regenerate_slug' => 'יצירת מזהה מחדש',
+        'manage_default_images' => 'תמונות ברירת מחדל',
+        'pick_media' => 'בחירת מדיה',
         'close' => 'סגירה',
         'compare' => 'השוואה',
         'compare_backup' => 'השוואת גיבוי',
@@ -907,6 +920,11 @@ return [
     'options' => [
         'ascending' => 'עולה',
         'descending' => 'יורד',
+    ],
+    'media_naming_strategies' => [
+        'reference_key' => 'מפתח ייחוס',
+        'slug' => 'Slug',
+        'slug_key' => 'Slug ומפתח ייחוס',
     ],
     'placeholders' => [
         'empty' => 'לא מוגדר',
@@ -1440,6 +1458,10 @@ return [
         'light' => 'בהירה',
     ],
     'pages' => [
+        'admin_ux_settings' => [
+            'navigation' => 'חוויית ניהול',
+            'title' => 'הגדרות חוויית ניהול',
+        ],
         'import_public_settings' => [
             'title' => 'ייבוא הגדרות ציבוריות',
         ],

@@ -39,7 +39,7 @@
             @if($part['image']['url'])
                 <img
                     src="{{ $part['image']['url'] }}"
-                    alt=""
+                    alt="{{ $part['image']['alt'] ?? '' }}"
                     class="h-full w-full {{ $part['image']['fit_class'] }}"
                     loading="lazy"
                     data-test="content-group-image"

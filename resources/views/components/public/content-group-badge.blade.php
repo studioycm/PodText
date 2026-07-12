@@ -26,7 +26,7 @@
     @if($showThumbnail)
         <img
             src="{{ $coverUrl }}"
-            alt=""
+            alt="{{ $group->cover_alt_text ?: $group->title }}"
             class="h-6 w-6 shrink-0 rounded-sm object-cover"
             loading="lazy"
         >

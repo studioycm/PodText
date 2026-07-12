@@ -32,6 +32,7 @@ class ContentGroupFactory extends Factory
             'default_item_type_label_plural' => 'Episodes',
             'description_markdown' => fake()->paragraph(),
             'cover_path' => null,
+            'cover_alt_text' => null,
             'original_language_code' => 'he',
             'status' => PublicationStatus::Draft,
             'published_at' => null,

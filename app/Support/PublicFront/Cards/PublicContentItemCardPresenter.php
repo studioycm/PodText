@@ -116,6 +116,7 @@ class PublicContentItemCardPresenter
                 'url' => $image['url'],
                 'source' => $image['source'],
                 'path' => $image['path'],
+                'alt' => $image['alt'],
                 'fit_class' => $options->imageFitClass(),
                 'radius_class' => $options->imageRadiusClass(),
             ],

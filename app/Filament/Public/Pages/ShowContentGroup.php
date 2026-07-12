@@ -51,7 +51,7 @@ class ShowContentGroup extends Page
     }
 
     /**
-     * @return array{url: string|null, source: string, path: string|null}
+     * @return array{url: string|null, source: string, path: string|null, alt: string|null}
      */
     public function pageImage(): array
     {

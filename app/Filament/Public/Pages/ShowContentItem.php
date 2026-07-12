@@ -83,7 +83,7 @@ class ShowContentItem extends Page
     }
 
     /**
-     * @return array{url: string, source: string, path: string|null}|null
+     * @return array{url: string, source: string, path: string|null, alt: string|null}|null
      */
     public function pageImage(): ?array
     {

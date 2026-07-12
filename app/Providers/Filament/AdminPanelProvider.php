@@ -3,6 +3,7 @@
 namespace App\Providers\Filament;
 
 use App\Filament\Pages\Dashboard;
+use Awcodes\Curator\CuratorPlugin;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
@@ -11,6 +12,7 @@ use Filament\Panel;
 use Filament\PanelProvider;
 use Filament\Support\Colors\Color;
 use Filament\Support\Enums\Width;
+use Filament\Support\Icons\Heroicon;
 use Filament\Widgets\AccountWidget;
 use Filament\Widgets\FilamentInfoWidget;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
@@ -32,6 +34,14 @@ class AdminPanelProvider extends PanelProvider
             ->login()
             ->profile()
             ->passwordReset()
+            ->plugin(
+                CuratorPlugin::make()
+                    ->label(fn (): string => __('admin.curator.label'))
+                    ->pluralLabel(fn (): string => __('admin.curator.plural_label'))
+                    ->navigationGroup(fn (): string => __('admin.navigation.content'))
+                    ->navigationIcon(Heroicon::OutlinedPhoto)
+                    ->navigationSort(75),
+            )
             ->brandLogo(fn (): string => asset('images/podtext-logo.svg'))
             ->darkModeBrandLogo(fn (): string => asset('images/podtext-logo-dark.svg'))
             ->brandLogoHeight('60px')

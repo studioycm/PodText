@@ -4,14 +4,20 @@ namespace App\Filament\Resources\ContentGroups\Schemas;
 
 use App\Enums\PublicationStatus;
 use App\Filament\Forms\Components\SlugInput;
+use App\Filament\Forms\MediaPickerField;
+use App\Filament\Pages\PublicContentSettings;
 use App\Filament\Resources\Support\RelationshipOptionForms;
+use App\Support\Media\ImageFileNamer;
+use Filament\Actions\Action;
 use Filament\Forms\Components\DateTimePicker;
-use Filament\Forms\Components\FileUpload;
+use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\MarkdownEditor;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
+use Filament\Support\Icons\Heroicon;
+use Illuminate\Support\Str;
 
 class ContentGroupForm
 {
@@ -21,6 +27,10 @@ class ContentGroupForm
             ->components([
                 Section::make(__('admin.sections.identity'))
                     ->schema([
+                        Hidden::make('reference_key')
+                            ->default(fn (): string => (string) Str::ulid())
+                            ->dehydrated()
+                            ->visibleOn('create'),
                         TextInput::make('reference_key')
                             ->label(__('admin.fields.reference_key'))
                             ->helperText(__('admin.helpers.reference_key'))
@@ -77,13 +87,19 @@ class ContentGroupForm
                             ->disableToolbarButtons(['attachFiles'])
                             ->fileAttachments(false)
                             ->columnSpanFull(),
-                        FileUpload::make('cover_path')
+                        MediaPickerField::make('cover_path', ImageFileNamer::CONTENT_GROUP_COVER)
                             ->label(__('admin.fields.cover_path'))
-                            ->disk('public')
-                            ->directory('content-groups/covers')
-                            ->visibility('public')
-                            ->image()
-                            ->maxSize(2048),
+                            ->helperText(__('admin.helpers.cover_path'))
+                            ->hintAction(
+                                Action::make('manageDefaultImages')
+                                    ->label(__('admin.actions.manage_default_images'))
+                                    ->icon(Heroicon::OutlinedPhoto)
+                                    ->url(fn (): string => PublicContentSettings::getUrl(['public-content-tab' => 'homepage'])),
+                            ),
+                        TextInput::make('cover_alt_text')
+                            ->label(__('admin.fields.cover_alt_text'))
+                            ->helperText(__('admin.helpers.cover_alt_text'))
+                            ->maxLength(160),
                         RelationshipOptionForms::configureCategorySelect(
                             Select::make('categories')
                                 ->label(__('admin.fields.categories'))

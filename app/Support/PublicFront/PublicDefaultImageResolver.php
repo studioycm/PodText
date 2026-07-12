@@ -14,7 +14,7 @@ class PublicDefaultImageResolver
     ) {}
 
     /**
-     * @return array{url: string|null, source: string, path: string|null}
+     * @return array{url: string|null, source: string, path: string|null, alt: string|null}
      */
     public function contentItemImage(ContentItem $item): array
     {
@@ -23,34 +23,39 @@ class PublicDefaultImageResolver
                 'url' => (string) $item->external_thumbnail_url,
                 'source' => 'item',
                 'path' => null,
+                'alt' => (string) $item->title,
             ];
         }
 
         if ($this->mode('content_item') !== 'none' && filled($item->contentGroup?->cover_path)) {
-            return $this->publicDiskImage((string) $item->contentGroup->cover_path, 'group');
+            return $this->publicDiskImage(
+                (string) $item->contentGroup->cover_path,
+                'group',
+                $this->groupCoverAlt($item->contentGroup),
+            );
         }
 
-        return $this->familyImage('content_item', 'content_item_default');
+        return $this->familyImage('content_item', 'content_item_default', (string) $item->title);
     }
 
     /**
-     * @return array{url: string|null, source: string, path: string|null}
+     * @return array{url: string|null, source: string, path: string|null, alt: string|null}
      */
     public function contentGroupImage(ContentGroup $group): array
     {
         if (filled($group->cover_path)) {
-            return $this->publicDiskImage((string) $group->cover_path, 'group');
+            return $this->publicDiskImage((string) $group->cover_path, 'group', $this->groupCoverAlt($group));
         }
 
-        return $this->familyImage('content_group', 'content_group_default');
+        return $this->familyImage('content_group', 'content_group_default', (string) $group->title);
     }
 
     /**
-     * @return array{url: string|null, source: string, path: string|null}
+     * @return array{url: string|null, source: string, path: string|null, alt: string|null}
      */
     public function contributorImage(Author $author): array
     {
-        return $this->familyImage('contributor', 'contributor_default');
+        return $this->familyImage('contributor', 'contributor_default', (string) $author->name);
     }
 
     /**
@@ -80,14 +85,14 @@ class PublicDefaultImageResolver
     }
 
     /**
-     * @return array{url: string|null, source: string, path: string|null}
+     * @return array{url: string|null, source: string, path: string|null, alt: string|null}
      */
-    private function familyImage(string $family, string $source): array
+    private function familyImage(string $family, string $source, ?string $alt = null): array
     {
         $config = $this->familyConfig($family);
 
         if ($config['mode'] === 'custom' && filled($config['path'])) {
-            return $this->publicDiskImage($config['path'], $source);
+            return $this->publicDiskImage($config['path'], $source, $alt);
         }
 
         if ($config['mode'] === 'none') {
@@ -97,26 +102,27 @@ class PublicDefaultImageResolver
         $global = $this->familyConfig('global');
 
         if ($global['mode'] === 'custom' && filled($global['path'])) {
-            return $this->publicDiskImage($global['path'], 'global_default');
+            return $this->publicDiskImage($global['path'], 'global_default', $alt);
         }
 
         return $this->emptyImage();
     }
 
     /**
-     * @return array{url: string|null, source: string, path: string|null}
+     * @return array{url: string|null, source: string, path: string|null, alt: string|null}
      */
-    private function publicDiskImage(string $path, string $source): array
+    private function publicDiskImage(string $path, string $source, ?string $alt = null): array
     {
         return [
             'url' => Storage::disk('public')->url($path),
             'source' => $source,
             'path' => $path,
+            'alt' => $alt,
         ];
     }
 
     /**
-     * @return array{url: null, source: string, path: null}
+     * @return array{url: null, source: string, path: null, alt: null}
      */
     private function emptyImage(): array
     {
@@ -124,6 +130,14 @@ class PublicDefaultImageResolver
             'url' => null,
             'source' => 'fallback',
             'path' => null,
+            'alt' => null,
         ];
+    }
+
+    private function groupCoverAlt(ContentGroup $group): string
+    {
+        return filled($group->cover_alt_text)
+            ? (string) $group->cover_alt_text
+            : (string) $group->title;
     }
 }

@@ -86,6 +86,7 @@ class PublicContentGroupCardPresenter
                 'url' => $image['url'],
                 'source' => $image['source'],
                 'path' => $image['path'],
+                'alt' => $image['alt'],
                 'fit' => $imageFit,
                 'fit_class' => $imageFit === 'contain' ? 'object-contain' : 'object-cover',
                 'radius' => $imageRadius,

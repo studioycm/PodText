@@ -2,7 +2,7 @@
 
 Date: 2026-07-12
 
-This plan follows IMG-R research in `docs/research/images-media/00-images-media-research.md`. It is a planning document only. No app code, migrations, dependency changes, plugin installs, or tests are part of IMG-R.
+This plan follows IMG-R research in `docs/research/images-media/00-images-media-research.md`. IMG-A implemented the approved IMG-1 + IMG-2 merge on 2026-07-12; the remaining mini-steps stay gated as noted below.
 
 ## Guardrails
 
@@ -18,42 +18,61 @@ This plan follows IMG-R research in `docs/research/images-media/00-images-media-
 
 ### D-IMG-A - On-Disk Naming Policy
 
-Recommendation: use ASCII `reference_key` stems for generated storage paths, while keeping slug-readable names for export manifests and matching.
+Final IMG-A decision: on-disk naming is a site setting named `media_naming_strategy`.
+
+Implemented values:
+
+- `slug` is the default. Hebrew slugs are allowed.
+- `reference_key` stores the portable key as the filename stem.
+- `slug_key` stores `{slug}--{reference_key}`.
+- Empty slugs always fall back to `reference_key`.
+- Existing stored files and paths are forward-only and are never renamed by strategy changes.
+- Export stems remain `{slug}--{reference_key}` independently of the storage strategy.
 
 Options:
 
-- A1 recommended: `content-groups/covers/{reference_key}.{ext}`. Safest for Laravel local public URLs and collision-free.
-- A2: raw Hebrew slug filenames. More editorially readable on disk, but Laravel local URLs are not URL encoded and the local probe returned raw Hebrew/space characters.
-- A3: slug plus reference key, for example `{slug}--{reference_key}.{ext}`. Readable but still URL-encoding sensitive if the slug is Hebrew.
+- A1: `content-groups/covers/{reference_key}.{ext}`.
+- A2 implemented as default: raw slug filenames, with validated extensions and `reference_key` fallback.
+- A3 implemented as an available setting: `{slug}--{reference_key}.{ext}`.
 
 Implements R3.
 
 ### D-IMG-B - Media Plugin Direction
 
-Recommendation: no plugin for IMG-1. Revisit the official Filament Spatie Media Library plugin only if Yoni wants central media records, conversions, responsive images, and migration work.
+Final IMG-A decision: Curator is selected and installed as the approved Filament 5 media library.
 
 Options:
 
-- B1 recommended now: native Filament `FileUpload` plus PodText naming and cleanup services.
-- B2: official `filament/spatie-laravel-media-library-plugin` plus `spatie/laravel-medialibrary`. Requires Composer, migration, model changes, resolver adapter, and export/import redesign.
-- B3: `awcodes/filament-curator`. Gives central picker UX but does not work with Spatie Media Library and needs source review for filename/metadata/cleanup details.
+- B1: native Filament `FileUpload` remains available behind the PodText field factory fallback.
+- B2: official `filament/spatie-laravel-media-library-plugin` plus `spatie/laravel-medialibrary` remains unselected.
+- B3 implemented: `awcodes/filament-curator` v5 for Filament 5, registered on the admin panel only.
 - B4 rejected for this stack: `tomatophp/filament-media-manager`, because its current package requires Filament 4.
 
 Implements R1, R2, and R9.
 
 ### D-IMG-C - New Image Schema
 
-Recommendation: IMG-1 should harden existing group covers first. If Yoni wants a new schema target, prioritize contributor avatars.
+Final IMG-A decision: harden existing group covers and add content group cover alt text. Contributor avatars are dead.
 
 Options:
 
-- C1 recommended first: no new image columns in IMG-1; harden `content_groups.cover_path`.
-- C2: add contributor avatar fields after IMG-1: `authors.avatar_path` and optionally `avatar_alt_text`.
-- C3: add `content_groups.cover_alt_text` with the existing cover hardening.
+- C1 partially implemented: `content_groups.cover_path` remains the canonical cover path and was hardened through the app-owned picker factory.
+- C2 dead: do not build author/contributor avatars.
+- C3 implemented: `content_groups.cover_alt_text` is shipped and public group images use it with group-title fallback.
 - C4: add category images later if category landing pages need them.
 - C5 defer: local content item images, because items already have `external_thumbnail_url`.
 
 Implements R4, R5, and R6.
+
+### IMG-A Implementation Outcomes
+
+- The only root Composer dependency added is `awcodes/filament-curator`.
+- `App\Settings\AdminUxSettings` currently contains only `media_naming_strategy`; EP1 may extend the settings group later.
+- Settings-page image assets now use the app-owned media picker factory and continue storing plain path strings in JSON.
+- SVG remains allowed only for menu logos; Curator mode relies on Curator's SVG sanitizer, while content/default/about/team images remain JPEG/PNG/WebP.
+- Existing `cover_path`, `header`, `team`, `about`, and `default-images` files can be registered in Curator with `php artisan media:register-existing-curator-assets` without moving or renaming files.
+- The command was run locally during IMG-A and reported 11 created, 0 existing, 0 missing, and 0 skipped.
+- EXIF stripping is deferred until a future image re-encoding step; IMG-A records the validation cap only.
 
 ### D-IMG-D - Image Packages In Import/Export
 
@@ -68,6 +87,8 @@ Options:
 Implements R7.
 
 ## Mini-Step IMG-1 - Native Image Baseline
+
+Status: implemented as part of IMG-A, except the quick-upload table action which was superseded by Curator picker integration and remains out of this run.
 
 Scope:
 
@@ -129,7 +150,9 @@ Research decisions: R8.
 
 ## Mini-Step IMG-2 - Optional Media Plugin Track
 
-Gate: run only after D-IMG-B approves a plugin.
+Status: implemented for Curator as part of IMG-A.
+
+Gate: complete for Curator; Spatie Media Library remains unselected.
 
 Scope if Spatie is selected:
 
@@ -143,10 +166,10 @@ Scope if Spatie is selected:
 
 Scope if Curator is selected:
 
-- Install Curator only if Spatie Media Library is not selected.
-- Register Curator plugin and theme sources.
-- Add resolver adapter beneath `PublicDefaultImageResolver`.
-- Verify custom path/filename control, metadata, cleanup, and authorization from source before coding.
+- Installed Curator only; Spatie Media Library was not selected.
+- Registered Curator plugin and theme sources.
+- Kept public output beneath `PublicDefaultImageResolver`; no Curator public renderer was added.
+- Verified custom path/filename control, metadata, cleanup, authorization, and SVG sanitizer behavior from source before coding.
 
 Out of scope:
 

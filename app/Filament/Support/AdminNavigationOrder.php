@@ -2,6 +2,7 @@
 
 namespace App\Filament\Support;
 
+use App\Filament\Pages\AdminUxSettings;
 use App\Filament\Pages\Dashboard;
 use App\Filament\Pages\ImporterSettings;
 use App\Filament\Pages\PublicContentSettings;
@@ -14,6 +15,7 @@ use App\Filament\Resources\HomepageSections\HomepageSectionResource;
 use App\Filament\Resources\PublicFormSubmissions\PublicFormSubmissionResource;
 use App\Filament\Resources\SettingsBackups\SettingsBackupResource;
 use App\Filament\Resources\Transcriptions\TranscriptionResource;
+use Awcodes\Curator\Resources\Media\MediaResource;
 
 class AdminNavigationOrder
 {
@@ -29,8 +31,10 @@ class AdminNavigationOrder
         CategoryResource::class => 50,
         ContentTagResource::class => 60,
         PublicFormSubmissionResource::class => 70,
+        MediaResource::class => 75,
         HomepageSectionResource::class => 80,
         PublicContentSettings::class => 90,
+        AdminUxSettings::class => 92,
         SettingsBackupResource::class => 95,
         ImporterSettings::class => 100,
     ];

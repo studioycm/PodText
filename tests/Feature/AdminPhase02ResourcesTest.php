@@ -2,6 +2,7 @@
 
 use App\Enums\HomepageSectionType;
 use App\Enums\PublicationStatus;
+use App\Filament\Pages\AdminUxSettings as AdminUxSettingsPage;
 use App\Filament\Pages\Dashboard;
 use App\Filament\Pages\ImporterSettings;
 use App\Filament\Pages\PublicContentSettings as PublicContentSettingsPage;
@@ -46,6 +47,7 @@ use App\Models\HomepageSection;
 use App\Models\Transcription;
 use App\Models\User;
 use App\Settings\PublicContentSettings;
+use Awcodes\Curator\Resources\Media\MediaResource;
 use Filament\Actions\Action;
 use Filament\Actions\Testing\TestAction;
 use Filament\Facades\Filament;
@@ -116,8 +118,10 @@ it('orders every registered admin navigation resource and page through the centr
         CategoryResource::class => 50,
         ContentTagResource::class => 60,
         PublicFormSubmissionResource::class => 70,
+        MediaResource::class => 75,
         HomepageSectionResource::class => 80,
         PublicContentSettingsPage::class => 90,
+        AdminUxSettingsPage::class => 92,
         SettingsBackupResource::class => 95,
         ImporterSettings::class => 100,
     ];
