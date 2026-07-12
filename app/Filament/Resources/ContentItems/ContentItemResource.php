@@ -3,7 +3,9 @@
 namespace App\Filament\Resources\ContentItems;
 
 use App\Filament\Resources\ContentItems\Pages\CreateContentItem;
+use App\Filament\Resources\ContentItems\Pages\CreateEpisodeWorkspace;
 use App\Filament\Resources\ContentItems\Pages\EditContentItem;
+use App\Filament\Resources\ContentItems\Pages\EditEpisodeWorkspace;
 use App\Filament\Resources\ContentItems\Pages\ListContentItems;
 use App\Filament\Resources\ContentItems\RelationManagers\TranscriptionsRelationManager;
 use App\Filament\Resources\ContentItems\Schemas\ContentItemForm;
@@ -11,10 +13,13 @@ use App\Filament\Resources\ContentItems\Tables\ContentItemsTable;
 use App\Filament\Support\Concerns\UsesAdminNavigationOrder;
 use App\Models\ContentItem;
 use BackedEnum;
+use Filament\Navigation\NavigationItem;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
+
+use function Filament\Support\original_request;
 
 class ContentItemResource extends Resource
 {
@@ -39,6 +44,19 @@ class ContentItemResource extends Resource
     public static function getNavigationLabel(): string
     {
         return __('admin.resources.content_item.navigation');
+    }
+
+    public static function getNavigationItems(): array
+    {
+        return [
+            ...parent::getNavigationItems(),
+            NavigationItem::make(__('admin.resources.content_item.workspace_navigation'))
+                ->group(static::getNavigationGroup())
+                ->icon(Heroicon::OutlinedPencilSquare)
+                ->isActiveWhen(fn (): bool => original_request()->routeIs(static::getRouteBaseName().'.workspace-create'))
+                ->sort((static::getNavigationSort() ?? 20) + 1)
+                ->url(static::getUrl('workspace-create')),
+        ];
     }
 
     public static function getNavigationGroup(): ?string
@@ -67,7 +85,9 @@ class ContentItemResource extends Resource
     {
         return [
             'index' => ListContentItems::route('/'),
+            'workspace-create' => CreateEpisodeWorkspace::route('/workspace/create'),
             'create' => CreateContentItem::route('/create'),
+            'workspace' => EditEpisodeWorkspace::route('/{record}/workspace'),
             'edit' => EditContentItem::route('/{record}/edit'),
         ];
     }

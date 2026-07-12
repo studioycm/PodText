@@ -12,6 +12,7 @@ use App\Models\Transcription;
 use App\Support\PublicContent\PublicContentItemQueries;
 use App\Support\PublicContent\PublicTranscriptionPolicy;
 use App\Support\PublicFront\Colors\PublicFrontColor;
+use App\Support\PublicFront\ContentItemDisplayTitle;
 use App\Support\PublicFront\ItemPage\PublicItemPagePodcastPalette;
 use App\Support\PublicFront\ItemPage\PublicItemPageRegistry;
 use App\Support\PublicFront\PublicDefaultImageResolver;
@@ -66,7 +67,12 @@ class ShowContentItem extends Page
 
     public function getTitle(): string|Htmlable
     {
-        return $this->contentItem->title;
+        return $this->displayTitle();
+    }
+
+    public function displayTitle(): string
+    {
+        return app(ContentItemDisplayTitle::class)->combined($this->contentItem);
     }
 
     /**

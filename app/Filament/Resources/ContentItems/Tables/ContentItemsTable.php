@@ -6,6 +6,7 @@ use App\Enums\PublicationStatus;
 use App\Filament\Actions\EditEffectiveTranscriptionAction;
 use App\Filament\Exports\ContentItemExporter;
 use App\Filament\Imports\ContentItemImporter;
+use App\Filament\Resources\ContentItems\ContentItemResource;
 use App\Filament\Resources\Support\RelationshipOptionForms;
 use App\Models\Author;
 use App\Models\ContentItem;
@@ -186,10 +187,17 @@ class ContentItemsTable
                     ->exporter(ContentItemExporter::class)
                     ->maxRows(10000),
             ])
+            ->recordUrl(fn (ContentItem $record): string => ContentItemResource::getUrl('workspace', ['record' => $record]))
             ->recordActions([
+                Action::make('openEpisodeWorkspace')
+                    ->label(__('admin.actions.open_episode_workspace'))
+                    ->icon(Heroicon::OutlinedPencilSquare)
+                    ->url(fn (ContentItem $record): string => ContentItemResource::getUrl('workspace', ['record' => $record])),
                 EditEffectiveTranscriptionAction::make(),
                 self::addTranscriptionAction(),
-                EditAction::make(),
+                EditAction::make()
+                    ->label(__('admin.actions.classic_edit'))
+                    ->icon(Heroicon::OutlinedDocumentText),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([

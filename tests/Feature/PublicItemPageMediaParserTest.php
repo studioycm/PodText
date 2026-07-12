@@ -5,6 +5,7 @@ use App\Filament\Public\Pages\BrowseCategoryContentItems;
 use App\Filament\Public\Pages\BrowseTagContentItems;
 use App\Filament\Public\Pages\ShowContentGroup;
 use App\Filament\Public\Pages\ShowContributor;
+use App\Filament\Resources\ContentItems\Pages\ListContentItems;
 use App\Livewire\Public\ContentItemTranscriptViewer;
 use App\Models\Author;
 use App\Models\Category;
@@ -12,10 +13,12 @@ use App\Models\ContentGroup;
 use App\Models\ContentItem;
 use App\Models\ContentTag;
 use App\Models\Transcription;
+use App\Models\User;
 use App\Settings\PublicContentSettings;
 use App\Support\PublicFront\PublicFrontConfigRegistry;
 use App\Support\PublicFront\PublicFrontRenderContext;
 use App\Support\Transcripts\TranscriptSegmentParser;
+use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -457,6 +460,55 @@ it('renders approved embeds and falls back for unapproved http or raw embed valu
     'http url' => ['http://www.youtube.com/embed/prompt12'],
     'raw iframe' => ['<iframe src="https://www.youtube.com/embed/prompt12"></iframe>'],
 ]);
+
+it('renders trusted item embed html only through the public media component and prefers it over embed url', function (): void {
+    [$item, , $group] = createPrompt12PublicItem([
+        'media_url' => 'https://example.com/media/raw-source',
+        'embed_url' => 'https://www.youtube.com/embed/prompt12',
+        'embed_html' => '<iframe data-raw-embed-marker src="https://trusted.example/embed"></iframe>',
+    ]);
+
+    $this->get("/items/{$group->slug}/{$item->slug}")
+        ->assertSuccessful()
+        ->assertSee('data-test="media-embed-html"', false)
+        ->assertSee('<iframe data-raw-embed-marker src="https://trusted.example/embed"></iframe>', false)
+        ->assertDontSee('src="https://www.youtube.com/embed/prompt12"', false);
+
+    Filament::setCurrentPanel(Filament::getPanel('admin'));
+    $this->actingAs(User::factory()->create());
+
+    Livewire::test(ListContentItems::class)
+        ->assertDontSee('data-raw-embed-marker', false);
+
+    Filament::setCurrentPanel(Filament::getPanel('public'));
+});
+
+it('uses title prefix for public item display title and falls back to the group title when blank', function (): void {
+    [$prefixedItem, , $prefixedGroup] = createPrompt12PublicItem([
+        'title' => 'Prefixed Episode',
+        'slug' => 'prefixed-episode',
+        'title_prefix' => 'Curated Prefix',
+    ]);
+
+    $this->get("/items/{$prefixedGroup->slug}/{$prefixedItem->slug}")
+        ->assertSuccessful()
+        ->assertSee('Curated Prefix - Prefixed Episode')
+        ->assertSee('data-test="item-page-title"', false);
+
+    $group = ContentGroup::factory()->published()->create([
+        'title' => 'Fallback Podcast',
+        'slug' => 'fallback-podcast',
+    ]);
+    [$fallbackItem] = createPrompt12PublicItem([
+        'title' => 'Fallback Episode',
+        'slug' => 'fallback-episode',
+        'title_prefix' => null,
+    ], group: $group);
+
+    $this->get("/items/{$group->slug}/{$fallbackItem->slug}")
+        ->assertSuccessful()
+        ->assertSee('Fallback Podcast - Fallback Episode');
+});
 
 it('returns not found for draft items and items without effective published transcriptions', function (): void {
     $group = ContentGroup::factory()->published()->create(['slug' => 'prompt12-visibility']);

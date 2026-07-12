@@ -3,6 +3,7 @@
     $pageImage = $this->pageImage();
     $podcastIdentity = $this->podcastIdentity();
     $infoParts = $this->infoParts();
+    $displayTitle = $this->displayTitle();
 @endphp
 
 <x-filament-panels::page>
@@ -89,7 +90,7 @@
                         @endif
 
                         <h1 class="min-w-0 text-3xl font-semibold leading-tight text-gray-950 dark:text-white" data-test="item-page-title">
-                            {{ $contentItem->title }}
+                            {{ $displayTitle }}
                         </h1>
 
                         @if(($podcastIdentity['position'] ?? null) === 'title_row_after')
@@ -98,7 +99,7 @@
                     </div>
                 @else
                     <h1 class="text-3xl font-semibold leading-tight text-gray-950 dark:text-white" data-test="item-page-title">
-                        {{ $contentItem->title }}
+                        {{ $displayTitle }}
                     </h1>
                 @endif
 
@@ -185,7 +186,7 @@
                         },
                         shareLink() {
                             if (navigator.share) {
-                                navigator.share({ title: @js($contentItem->title), url: window.location.href })
+                                navigator.share({ title: @js($displayTitle), url: window.location.href })
                                 return
                             }
 
@@ -221,7 +222,8 @@
                 <x-public.media-embed
                     :media-url="$contentItem->media_url"
                     :embed-url="$contentItem->embed_url"
-                    :title="$contentItem->title"
+                    :embed-html="$contentItem->embed_html"
+                    :title="$displayTitle"
                     :provider="$contentItem->embed_provider"
                     :source-title="$contentItem->external_title"
                     :source-description="$contentItem->external_description"

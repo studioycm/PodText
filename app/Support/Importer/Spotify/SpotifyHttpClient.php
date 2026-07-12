@@ -26,11 +26,17 @@ class SpotifyHttpClient implements SpotifyClient
         $image = is_array($images) ? ($images[0]['url'] ?? null) : null;
 
         return [
+            'description' => data_get($episode, 'description'),
             'duration' => data_get($episode, 'duration_ms') ? (int) floor(((int) data_get($episode, 'duration_ms')) / 1000) : null,
+            'embed_url' => data_get($episode, 'id') ? 'https://open.spotify.com/embed/episode/'.data_get($episode, 'id') : null,
+            'external_id' => data_get($episode, 'id'),
+            'external_url' => data_get($episode, 'external_urls.spotify'),
+            'html_description' => data_get($episode, 'html_description'),
             'release_date' => data_get($episode, 'release_date'),
             'show' => data_get($episode, 'show.name'),
             'thumbnail' => $image,
             'title' => data_get($episode, 'name'),
+            'uri' => data_get($episode, 'uri'),
         ];
     }
 

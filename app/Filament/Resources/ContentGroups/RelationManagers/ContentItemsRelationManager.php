@@ -140,13 +140,21 @@ class ContentItemsRelationManager extends RelationManager
             ])
             ->headerActions([
                 CreateAction::make()
+                    ->label(__('admin.actions.classic_create'))
                     ->createAnother(false)
                     ->modalWidth(Width::SevenExtraLarge),
             ])
+            ->recordUrl(fn (ContentItem $record): string => ContentItemResource::getUrl('workspace', ['record' => $record]))
             ->recordActions([
+                Action::make('openEpisodeWorkspace')
+                    ->label(__('admin.actions.open_episode_workspace'))
+                    ->icon(Heroicon::OutlinedPencilSquare)
+                    ->url(fn (ContentItem $record): string => ContentItemResource::getUrl('workspace', ['record' => $record])),
                 EditEffectiveTranscriptionAction::make(),
                 ContentItemsTable::addTranscriptionAction(),
                 EditAction::make()
+                    ->label(__('admin.actions.classic_edit'))
+                    ->icon(Heroicon::OutlinedDocumentText)
                     ->modalWidth(Width::SevenExtraLarge),
                 Action::make('openResource')
                     ->label(__('admin.actions.open_content_item_resource'))

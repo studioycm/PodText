@@ -25,11 +25,13 @@ use Spatie\Tags\HasTags;
     'reference_key',
     'content_group_id',
     'title',
+    'title_prefix',
     'slug',
     'type_label_singular_override',
     'description_markdown',
     'media_url',
     'embed_url',
+    'embed_html',
     'embed_provider',
     'duration_seconds',
     'media_duration_seconds',
@@ -116,6 +118,36 @@ class ContentItem extends Model
             ->latest('id');
     }
 
+    /**
+     * Workspace-only single-transcription lens.
+     *
+     * Do not eager-load this relation from list, table, or collection queries:
+     * the fallback ordering is instance-conditional and intended only for the
+     * episode workspace form.
+     */
+    public function workspaceTranscription(): HasOne
+    {
+        $relation = $this->hasOne(Transcription::class);
+
+        if (filled($this->featured_transcription_id)) {
+            return $relation->whereKey($this->featured_transcription_id);
+        }
+
+        $publishedValue = PublicationStatus::Published->value;
+        $now = now();
+
+        return $relation
+            ->orderByRaw(
+                'case when status = ? and transcript_markdown is not null and transcript_markdown != ? and (published_at is null or published_at <= ?) then 0 else 1 end',
+                [$publishedValue, '', $now],
+            )
+            ->orderByRaw(
+                'case when status = ? and transcript_markdown is not null and transcript_markdown != ? and (published_at is null or published_at <= ?) then published_at else null end desc',
+                [$publishedValue, '', $now],
+            )
+            ->latest('id');
+    }
+
     public function effectiveTypeLabelSingular(): string
     {
         return $this->type_label_singular_override
@@ -138,6 +170,52 @@ class ContentItem extends Model
         }
 
         return $this->latestPublishedTranscription()->first();
+    }
+
+    public function resolveWorkspaceTranscription(): ?Transcription
+    {
+        return $this->workspaceTranscription()->first();
+    }
+
+    public function adoptWorkspaceTranscription(?Transcription $transcription = null): ?Transcription
+    {
+        $transcription ??= $this->resolveWorkspaceTranscription();
+
+        if (! $transcription || $transcription->content_item_id !== $this->getKey()) {
+            return null;
+        }
+
+        if ((int) $this->featured_transcription_id !== (int) $transcription->getKey()) {
+            $this->forceFill([
+                'featured_transcription_id' => $transcription->getKey(),
+            ])->save();
+        }
+
+        return $transcription->refresh();
+    }
+
+    public function replaceWorkspaceTranscriptionWith(Transcription $transcription): Transcription
+    {
+        if ($transcription->content_item_id !== $this->getKey()) {
+            throw ValidationException::withMessages([
+                'featured_transcription_id' => __('validation.exists', [
+                    'attribute' => 'featured transcription',
+                ]),
+            ]);
+        }
+
+        return $this->adoptWorkspaceTranscription($transcription) ?? $transcription;
+    }
+
+    public function startFreshWorkspaceTranscription(): Transcription
+    {
+        $transcription = $this->transcriptions()->create([
+            'language_code' => 'he',
+            'status' => PublicationStatus::Draft,
+            'transcript_markdown' => '',
+        ]);
+
+        return $this->replaceWorkspaceTranscriptionWith($transcription);
     }
 
     public function effectiveCategories(): Collection

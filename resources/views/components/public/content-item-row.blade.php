@@ -6,6 +6,7 @@
         'contentItemSlug' => $item->slug,
     ], panel: 'public');
     $transcriberNames = $item->effectiveTranscription()?->transcriberNames() ?? [];
+    $displayTitle = app(\App\Support\PublicFront\ContentItemDisplayTitle::class)->combined($item);
 @endphp
 
 <article {{ $attributes->merge(['class' => 'p-4 transition hover:bg-primary-50/60 dark:hover:bg-primary-400/5']) }}>
@@ -14,7 +15,7 @@
             <x-public.type-label :label="$item->effectiveTypeLabelSingular()" />
 
             <h3 class="text-base font-semibold text-gray-950 dark:text-white">
-                {{ $item->title }}
+                {{ $displayTitle }}
             </h3>
 
             @if ($transcriberNames !== [])

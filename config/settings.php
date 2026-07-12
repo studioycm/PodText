@@ -1,5 +1,6 @@
 <?php
 
+use App\Settings\AdminUxSettings;
 use App\Settings\PublicContentSettings;
 use Spatie\LaravelData\Data;
 use Spatie\LaravelSettings\SettingsCasts\DataCast;
@@ -9,6 +10,7 @@ use Spatie\LaravelSettings\SettingsRepositories\DatabaseSettingsRepository;
 
 return [
     'settings' => [
+        AdminUxSettings::class,
         PublicContentSettings::class,
     ],
 

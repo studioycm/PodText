@@ -1,6 +1,7 @@
 @props([
     'mediaUrl' => null,
     'embedUrl' => null,
+    'embedHtml' => null,
     'title' => null,
     'provider' => null,
     'sourceTitle' => null,
@@ -11,11 +12,14 @@
 
 @php
     $embedUrl = filled($embedUrl) ? trim((string) $embedUrl) : null;
+    $embedHtml = filled($embedHtml) ? trim((string) $embedHtml) : null;
     $mediaUrl = filled($mediaUrl) ? trim((string) $mediaUrl) : null;
     $allowedHosts = array_map('strtolower', config('media.embeds.allowed_hosts', []));
     $safeEmbedHost = $embedUrl ? strtolower((string) parse_url($embedUrl, PHP_URL_HOST)) : null;
     $safeMediaHost = $mediaUrl ? parse_url($mediaUrl, PHP_URL_HOST) : null;
-    $canRenderEmbed = $embedUrl
+    $canRenderRawEmbed = filled($embedHtml);
+    $canRenderEmbed = ! $canRenderRawEmbed
+        && $embedUrl
         && ! str_contains($embedUrl, '<')
         && ! str_contains($embedUrl, '>')
         && filter_var($embedUrl, FILTER_VALIDATE_URL) !== false
@@ -42,7 +46,14 @@
         {{ __('public.media.heading') }}
     </h2>
 
-    @if ($canRenderEmbed)
+    @if ($canRenderRawEmbed)
+        <div
+            class="overflow-hidden rounded-lg bg-gray-100 ring-1 ring-gray-950/10 dark:bg-gray-800 dark:ring-white/10"
+            data-test="media-embed-html"
+        >
+            {!! $embedHtml !!}
+        </div>
+    @elseif ($canRenderEmbed)
         <div x-data="{ loaded: false }" class="relative aspect-video overflow-hidden rounded-lg bg-gray-100 ring-1 ring-gray-950/10 dark:bg-gray-800 dark:ring-white/10">
             <div
                 x-show="! loaded"

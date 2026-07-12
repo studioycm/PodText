@@ -13,6 +13,8 @@ This plan follows EP1-R research in `docs/research/episode-workspace/00-ep1-rese
 - D-EP5 defaults: transcription presentation modes are `collapsible`, `modal`, and `slideover`, default `collapsible`; `transcription_mode` setting is `single` or `multi`, default `single`; language code is hidden behind a setting, default `he`; slug keeps UX3 smart behavior plus clear action and URL preview; embed input supports both trusted `embed_html` storage and an extract-src helper for the `embed_url` path; categories/tags are collapsed; advanced fields are collapsed; public visibility checklist is shown; inline audio player renders for a valid MP3 URL; Spotify-link fetch action fills form fields. Implements R5-R13.
 - D-EMB1 trusted embed HTML: add `content_items.embed_html` nullable text for admin-pasted embed code stored verbatim with no sanitization, rendered only through the owned public media-embed component raw mode, with precedence over `embed_url`. The workspace offers both keep-as-HTML and extract-src-to-URL affordances. Implements R10.
 
+Implementation status after EP1: D-EP1 through D-EP5 and D-EMB1 are implemented by the EP1 workspace run. The transcript paste cleanup conversion boundary in Section 8 remains deferred to the format-probe follow-up because EP1 did not have a known safe transcript-convention mapping to implement without guessing.
+
 ## Guardrails
 
 - EP1 is an admin workspace feature. Do not start Prompt 13, SF1 bulk tooling, IE-1, IMG implementation, WB2, or public-front motion/slider steps.

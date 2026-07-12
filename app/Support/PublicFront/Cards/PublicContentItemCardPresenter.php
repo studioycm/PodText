@@ -14,6 +14,7 @@ use App\Models\Transcription;
 use App\Support\PublicContent\PublicContentCardOptions;
 use App\Support\PublicContent\PublicTranscriptionPolicy;
 use App\Support\PublicContent\PublicTranscriptionSelector;
+use App\Support\PublicFront\ContentItemDisplayTitle;
 use App\Support\PublicFront\PublicDefaultImageResolver;
 use Illuminate\Contracts\Pagination\Paginator;
 
@@ -24,6 +25,7 @@ class PublicContentItemCardPresenter
         private readonly PublicTranscriptionSelector $selector,
         private readonly PublicTranscriptionPolicy $policy,
         private readonly PublicDefaultImageResolver $defaultImages,
+        private readonly ContentItemDisplayTitle $displayTitle,
     ) {}
 
     /**
@@ -93,7 +95,7 @@ class PublicContentItemCardPresenter
         $duration = $this->duration($item->duration_seconds);
         $image = $this->defaultImages->contentItemImage($item);
         $titleText = $options->groupBadgeMode === 'combined_title'
-            ? $item->contentGroup->title.$options->groupTitleSeparator.$item->title
+            ? $this->displayTitle->combined($item, $options->groupTitleSeparator)
             : $item->title;
         $categories = $this->categoryLinks($item);
         $tags = $this->tagLinks($item);

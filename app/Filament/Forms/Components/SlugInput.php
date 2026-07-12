@@ -47,14 +47,20 @@ class SlugInput
         $field = TextInput::make($name)
             ->helperText(__('admin.helpers.slug'))
             ->maxLength(255)
-            ->hintAction(
+            ->hintActions([
                 Action::make('regenerateSlug')
                     ->label(__('admin.actions.regenerate_slug'))
                     ->icon(Heroicon::OutlinedArrowPath)
                     ->action(function (Set $set, Get $get, ?Model $record = null, ?Livewire $livewire = null) use ($name, $source, $table, $scopeUsing): void {
                         $set($name, self::slugFor($get($source), $table, $scopeUsing, $get, $record, $livewire));
                     }),
-            );
+                Action::make('clearSlug')
+                    ->label(__('admin.actions.clear_slug'))
+                    ->icon(Heroicon::OutlinedXMark)
+                    ->action(function (Set $set) use ($name): void {
+                        $set($name, null);
+                    }),
+            ]);
 
         if ($table === null) {
             return $field;
