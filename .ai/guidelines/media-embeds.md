@@ -2,23 +2,29 @@
 
 ## Purpose
 
-Keep media storage URL-only, safe to render, and available before import/export revisions.
+Keep media storage URL-first, safe to render, and available before import/export revisions, with the narrow D-EMB1 trusted-admin `embed_html` exception.
 
 ## Preferred architecture
 
-Store URLs/metadata on `ContentItem`; render through the app-owned Blade media component.
+Store URLs/metadata on `ContentItem` by default. Trusted admin-pasted embed code may be stored verbatim only in `content_items.embed_html`; render all media through the app-owned Blade media component.
 
 ## Do
 
 - Add media metadata foundation before import/export revision.
 - Accept HTTPS URLs only.
 - Use provider/host allowlists.
+- Store admin-pasted trusted embed code only in `content_items.embed_html` when D-EMB1 behavior is in scope.
+- Render `embed_html` only through the owned public media-embed component raw mode.
+- Give `embed_html` precedence over `embed_url` in that owned component.
+- Keep an explicit extract-src helper for admins who want to fill the allowlisted `embed_url` path instead.
 - Render original source link fallback.
 - Keep metadata extraction explicit and admin-triggered.
 
 ## Do not
 
-- Do not store raw iframe HTML.
+- Do not store raw embed/iframe HTML anywhere except `content_items.embed_html`.
+- Do not sanitize, normalize, rewrite, or extract `embed_html` on save.
+- Do not render `embed_html` through Markdown, public cards, admin tables, imports/exports, generic presenters, or any surface outside the owned media component.
 - Do not fetch remote media during import.
 - Do not render unapproved embed URLs.
 
@@ -27,12 +33,15 @@ Store URLs/metadata on `ContentItem`; render through the app-owned Blade media c
 - Approved embed accepted/rendered.
 - Unknown host rejected/fallback.
 - HTTP rejected.
-- Raw iframe HTML rejected.
+- Trusted `embed_html` renders verbatim on the item page through the media component.
+- `embed_html` takes precedence over `embed_url`.
+- `embed_html` renders nowhere else.
+- Extract-src helper fills `embed_url` without changing `embed_html`.
 
 ## Security rules
 
-- URL-only storage.
-- Owned component controls iframe attributes.
+- URL-first storage, with D-EMB1 trusted `embed_html` as the only raw HTML exception.
+- Owned component controls iframe attributes for URL embeds and owns raw-mode rendering for trusted `embed_html`.
 - Sanitize displayed metadata.
 
 ## FilaCheck / FilaCheck Pro notes

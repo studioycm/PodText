@@ -4,9 +4,9 @@ This ledger controls the post-Step-10 mini-step sequence. Each run implements ex
 
 ## Current Run
 
-- Selected mini-step: IMG-R - Images and media track research and plan
+- Selected mini-step: EP1-R - Episode workspace research and plan
 - Status: complete
-- Next mini-step: Waiting for Yoni decisions on D-IMG-A..D before any IMG/IE implementation; WB2 remains at Yoni's choice and the main queue position remains Step 10R-P2.
+- Next mini-step: Waiting for Yoni review of `docs/research/episode-workspace/00-ep1-research.md` and `docs/phase-02/episode-workspace-plan.md` before EP1 implementation.
 
 ## Checklist
 
@@ -66,6 +66,7 @@ This ledger controls the post-Step-10 mini-step sequence. Each run implements ex
 Guardrails: WB opened after S1 per D-WB16; WB runs interleave with P2/P3/AX/SL at Yoni's per-run selection; main-queue guardrails unaffected; WB never uses Filament ImportAction/Importer classes; credentials never in tracked files/logs.
 
 - Pending IMG / IE track note: IMG-R research and plan are recorded in `docs/research/images-media/00-images-media-research.md` and `docs/phase-02/images-media-track-plan.md`; IMG-1, IE-1, IMG-2, and IMG-3 remain pending until Yoni decides D-IMG-A..D.
+- Pending episode workspace track note: EP1-R research and plan are recorded in `docs/research/episode-workspace/00-ep1-research.md` and `docs/phase-02/episode-workspace-plan.md`; EP1 implementation remains pending until Yoni reviews the plan.
 
 | WB step | Status | Commit | Scope / notes |
 |---|---|---|---|
