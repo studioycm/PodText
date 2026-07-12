@@ -1823,6 +1823,114 @@ return [
             ],
         ],
     ],
+    'tools' => [
+        'actions' => [
+            'add_editor' => 'הוספת עורך',
+            'copy_all_cells' => 'העתקת הכל כתאים',
+            'copy_markdown' => 'העתקת Markdown',
+            'copy_selected_cells' => 'העתקת נבחרים כתאים',
+            'remove_editor' => 'הסרת עורך',
+        ],
+        'copied' => [
+            'all_cells' => 'כל התאים הועתקו.',
+            'markdown' => 'ה-Markdown הועתק.',
+            'selected_cells' => 'התאים הנבחרים הועתקו.',
+        ],
+        'fields' => [
+            'editor_title' => 'כותרת',
+            'markdown' => 'Markdown',
+        ],
+        'markdown' => [
+            'heading' => 'עורכי Markdown',
+            'local_storage_hint' => 'רשימת העורכים נשמרת רק ב-localStorage של הדפדפן הזה ולא נשמרת בשרת.',
+            'untitled_editor' => 'עורך ללא שם',
+        ],
+        'pages' => [
+            'tools' => [
+                'navigation' => 'כלים',
+                'title' => 'כלים',
+            ],
+        ],
+        'tabs' => [
+            'label' => 'לשוניות כלים',
+            'markdown' => 'עורכי Markdown',
+        ],
+    ],
+    'spotify_fetcher' => [
+        'actions' => [
+            'download_episodes' => 'הורדת CSV פרקים',
+            'download_podcasts' => 'הורדת CSV פודקאסטים',
+            'fetch' => 'שליפה',
+            'parse' => 'פענוח קישורים',
+        ],
+        'connection_options' => [
+            'reduced' => 'מצב מצומצם - ללא פרטי גישה',
+        ],
+        'descriptions' => [
+            'input' => 'אפשר להדביק קישורי Spotify, URI או מזהים, או להעלות CSV שבו העמודה הראשונה או עמודת link/url/id מכילה אותם.',
+        ],
+        'fields' => [
+            'batch_cap' => 'מגבלת אצווה',
+            'connection' => 'חיבור Spotify',
+            'csv_upload' => 'העלאת CSV',
+            'entity_mode' => 'סוג ישות',
+            'external_id' => 'מזהה חיצוני',
+            'links' => 'קישורי Spotify',
+            'show' => 'פודקאסט',
+            'show_id' => 'מזהה פודקאסט',
+            'source' => 'מקור',
+            'status' => 'סטטוס',
+            'type' => 'סוג',
+        ],
+        'files' => [
+            'episodes' => 'spotify-episodes.csv',
+            'podcasts' => 'spotify-podcasts.csv',
+        ],
+        'helpers' => [
+            'batch_cap' => 'ברירת מחדל 25. עד 100 קישורים בשליפה.',
+            'connection' => 'בחרו חיבור Spotify מחובר מסוג client credentials, או השאירו ריק למצב oEmbed מצומצם.',
+        ],
+        'loading' => [
+            'fetch' => 'שולף שורות...',
+        ],
+        'modes' => [
+            'episodes' => 'פרקים',
+            'shows' => 'פודקאסטים',
+        ],
+        'notifications' => [
+            'fetch_complete' => 'שליפת Spotify הושלמה.',
+        ],
+        'pages' => [
+            'navigation' => 'שליפת Spotify',
+            'title' => 'שליפת קישורי Spotify',
+        ],
+        'reduced_mode_label' => 'מצב מצומצם פעיל. השורות כוללות כותרת ותמונה בלבד.',
+        'reduced_reason' => 'נשלף דרך oEmbed הציבורי של Spotify ללא פרטי גישה ל-API.',
+        'sections' => [
+            'input' => 'קלט',
+            'parsed' => 'קישורים שפוענחו',
+            'podcasts' => 'שורות CSV לפודקאסטים',
+            'results' => 'תוצאות לעריכה',
+            'warnings' => 'אזהרות',
+        ],
+        'statuses' => [
+            'error' => 'שגיאה',
+            'fetched' => 'נשלף',
+            'reduced' => 'מצומצם',
+        ],
+        'types' => [
+            'episode' => 'פרק',
+            'show' => 'פודקאסט',
+        ],
+        'warnings' => [
+            'cap_applied' => 'פוענחו :count קישורים; רק :cap הראשונים נשמרו.',
+            'csv_unreadable' => 'אי אפשר לקרוא את קובץ ה-CSV שהועלה.',
+            'no_valid_links' => 'לא נמצאו קישורי Spotify תקינים.',
+            'reduced_without_connection' => 'לא נבחר חיבור Spotify מחובר, ולכן השליפה משתמשת במצב מצומצם.',
+            'unrecognized' => 'ערך לא מזוהה נדחה: :value',
+            'wrong_type' => 'ערך מסוג :type נדחה כי המצב הנוכחי מצפה לישות אחרת: :value',
+        ],
+    ],
     'importer' => [
         'actions' => [
             'connect_google_oauth' => 'חיבור OAuth של Google',

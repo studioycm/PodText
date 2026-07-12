@@ -12,5 +12,10 @@ interface SpotifyClient
     /**
      * @return array<string, mixed>
      */
+    public function fetchShow(string $spotifyId): array;
+
+    /**
+     * @return array<string, mixed>
+     */
     public function ping(): array;
 }

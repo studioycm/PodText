@@ -138,6 +138,27 @@ it('sends a database notification when the queued content image export is ready'
     Storage::disk('local')->assertExists($files[0]);
 });
 
+it('blocks guests and non owners from content image export downloads', function (): void {
+    Storage::fake('local');
+
+    $owner = User::factory()->create();
+    $other = User::factory()->create();
+    $token = '01JEXPORTTOKEN000000000001';
+    $manager = app(ContentImagesExportManager::class);
+
+    Storage::disk('local')->put($manager->pathFor((int) $owner->getKey(), $token), 'zip-bytes');
+
+    $this->get(route('admin.content-images-exports.download', ['token' => $token]))
+        ->assertRedirect('/admin/login');
+
+    $this->actingAs($other)
+        ->get(route('admin.content-images-exports.download', ['token' => $token]))
+        ->assertNotFound();
+
+    Storage::disk('local')->assertExists($manager->pathFor((int) $owner->getKey(), $token));
+    Storage::disk('local')->assertMissing($manager->pathFor((int) $other->getKey(), $token));
+});
+
 it('downloads valid HTTPS external item images into local episode images', function (): void {
     Storage::fake('public');
     Http::fake([

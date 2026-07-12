@@ -1855,6 +1855,114 @@ return [
             ],
         ],
     ],
+    'tools' => [
+        'actions' => [
+            'add_editor' => 'Add editor',
+            'copy_all_cells' => 'Copy all as cells',
+            'copy_markdown' => 'Copy markdown',
+            'copy_selected_cells' => 'Copy selected as cells',
+            'remove_editor' => 'Remove editor',
+        ],
+        'copied' => [
+            'all_cells' => 'All cells copied.',
+            'markdown' => 'Markdown copied.',
+            'selected_cells' => 'Selected cells copied.',
+        ],
+        'fields' => [
+            'editor_title' => 'Title',
+            'markdown' => 'Markdown',
+        ],
+        'markdown' => [
+            'heading' => 'Markdown editors',
+            'local_storage_hint' => 'The editor list is stored only in this browser localStorage and is not saved on the server.',
+            'untitled_editor' => 'Untitled editor',
+        ],
+        'pages' => [
+            'tools' => [
+                'navigation' => 'Tools',
+                'title' => 'Tools',
+            ],
+        ],
+        'tabs' => [
+            'label' => 'Tools tabs',
+            'markdown' => 'Markdown editors',
+        ],
+    ],
+    'spotify_fetcher' => [
+        'actions' => [
+            'download_episodes' => 'Download episodes CSV',
+            'download_podcasts' => 'Download podcasts CSV',
+            'fetch' => 'Fetch',
+            'parse' => 'Parse links',
+        ],
+        'connection_options' => [
+            'reduced' => 'Reduced mode - no credentials',
+        ],
+        'descriptions' => [
+            'input' => 'Paste Spotify links, URIs, or IDs, or upload a CSV whose first column or link/url/id column contains them.',
+        ],
+        'fields' => [
+            'batch_cap' => 'Batch cap',
+            'connection' => 'Spotify connection',
+            'csv_upload' => 'CSV upload',
+            'entity_mode' => 'Entity mode',
+            'external_id' => 'External ID',
+            'links' => 'Spotify links',
+            'show' => 'Show',
+            'show_id' => 'Show ID',
+            'source' => 'Source',
+            'status' => 'Status',
+            'type' => 'Type',
+        ],
+        'files' => [
+            'episodes' => 'spotify-episodes.csv',
+            'podcasts' => 'spotify-podcasts.csv',
+        ],
+        'helpers' => [
+            'batch_cap' => 'Default 25. Maximum 100 links per fetch.',
+            'connection' => 'Choose a connected Spotify client-credentials connection, or leave blank for public oEmbed reduced mode.',
+        ],
+        'loading' => [
+            'fetch' => 'Fetching rows...',
+        ],
+        'modes' => [
+            'episodes' => 'Episodes',
+            'shows' => 'Shows',
+        ],
+        'notifications' => [
+            'fetch_complete' => 'Spotify fetch complete.',
+        ],
+        'pages' => [
+            'navigation' => 'Spotify fetcher',
+            'title' => 'Spotify links fetcher',
+        ],
+        'reduced_mode_label' => 'Reduced mode is active. Rows include title and thumbnail only.',
+        'reduced_reason' => 'Fetched through Spotify public oEmbed without API credentials.',
+        'sections' => [
+            'input' => 'Input',
+            'parsed' => 'Parsed links',
+            'podcasts' => 'Podcast CSV rows',
+            'results' => 'Editable results',
+            'warnings' => 'Warnings',
+        ],
+        'statuses' => [
+            'error' => 'Error',
+            'fetched' => 'Fetched',
+            'reduced' => 'Reduced',
+        ],
+        'types' => [
+            'episode' => 'Episode',
+            'show' => 'Show',
+        ],
+        'warnings' => [
+            'cap_applied' => ':count links were parsed; only the first :cap are kept.',
+            'csv_unreadable' => 'The uploaded CSV could not be read.',
+            'no_valid_links' => 'No valid Spotify links were found.',
+            'reduced_without_connection' => 'No connected Spotify connection was selected, so fetches use reduced mode.',
+            'unrecognized' => 'Ignored unrecognized value: :value',
+            'wrong_type' => 'Ignored :type value while this mode expects a different entity: :value',
+        ],
+    ],
     'importer' => [
         'actions' => [
             'connect_google_oauth' => 'Connect Google OAuth',

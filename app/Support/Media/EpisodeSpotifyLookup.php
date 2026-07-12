@@ -52,8 +52,39 @@ class EpisodeSpotifyLookup
                 'episode_id' => $spotifyId,
                 'episode_uri' => $episode['uri'] ?? null,
                 'show' => $episode['show'] ?? null,
+                'show_external_url' => $episode['show_external_url'] ?? null,
+                'show_id' => $episode['show_id'] ?? null,
                 'html_description' => $episode['html_description'] ?? null,
             ],
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function lookupShow(string $showInput, ?ImportConnection $connection = null): array
+    {
+        $spotifyId = $this->showId($showInput);
+
+        if ($spotifyId === null) {
+            throw new InvalidArgumentException('The Spotify show value is not a valid show URL, URI, or ID.');
+        }
+
+        $connection ??= $this->defaultConnection();
+        $show = $this->spotify->fetchShow($connection, $spotifyId);
+        $externalUrl = $show['external_url'] ?? "https://open.spotify.com/show/{$spotifyId}";
+
+        return [
+            'description' => $show['description'] ?? null,
+            'external_id' => $show['external_id'] ?? $spotifyId,
+            'external_url' => $externalUrl,
+            'html_description' => $show['html_description'] ?? null,
+            'languages' => $show['languages'] ?? [],
+            'publisher' => $show['publisher'] ?? null,
+            'thumbnail' => $show['thumbnail'] ?? null,
+            'title' => $show['title'] ?? null,
+            'total_episodes' => $show['total_episodes'] ?? null,
+            'uri' => $show['uri'] ?? null,
         ];
     }
 
@@ -80,6 +111,25 @@ class EpisodeSpotifyLookup
         }
 
         if (preg_match('#open\.spotify\.com/(?:intl-[a-z]{2}/)?episode/([A-Za-z0-9]+)#i', $input, $matches) === 1) {
+            return $matches[1];
+        }
+
+        return null;
+    }
+
+    private function showId(string $input): ?string
+    {
+        $input = trim($input);
+
+        if (preg_match('/^[A-Za-z0-9]{10,}$/', $input) === 1) {
+            return $input;
+        }
+
+        if (preg_match('/spotify:show:([A-Za-z0-9]+)/', $input, $matches) === 1) {
+            return $matches[1];
+        }
+
+        if (preg_match('#open\.spotify\.com/(?:intl-[a-z]{2}/)?show/([A-Za-z0-9]+)#i', $input, $matches) === 1) {
             return $matches[1];
         }
 

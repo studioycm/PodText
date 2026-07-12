@@ -3,11 +3,13 @@
 use App\Enums\HomepageSectionType;
 use App\Enums\PublicationStatus;
 use App\Enums\PublicFormSubmissionStatus;
+use App\Filament\Pages\AdminTools;
 use App\Filament\Pages\AdminUxSettings as AdminUxSettingsPage;
 use App\Filament\Pages\Dashboard;
 use App\Filament\Pages\ImporterSettings;
 use App\Filament\Pages\ManagePublicForms;
 use App\Filament\Pages\PublicContentSettings as PublicContentSettingsPage;
+use App\Filament\Pages\SpotifyLinksFetcher;
 use App\Filament\Public\Pages\ShowContentGroup;
 use App\Filament\Public\Pages\ShowContentItem;
 use App\Filament\Resources\Authors\AuthorResource;
@@ -163,8 +165,16 @@ it('orders every registered admin navigation resource and page through the centr
             'sort' => 330,
             'group' => AdminNavigationOrder::SITE_MANAGEMENT,
         ],
+        AdminTools::class => [
+            'sort' => 335,
+            'group' => AdminNavigationOrder::SITE_MANAGEMENT,
+        ],
         ImporterSettings::class => [
             'sort' => 340,
+            'group' => AdminNavigationOrder::SITE_MANAGEMENT,
+        ],
+        SpotifyLinksFetcher::class => [
+            'sort' => 345,
             'group' => AdminNavigationOrder::SITE_MANAGEMENT,
         ],
         PublicFormSubmissionResource::class => [
@@ -248,7 +258,9 @@ it('orders every registered admin navigation resource and page through the centr
             __('admin.pages.manage_public_forms.navigation'),
             __('admin.pages.admin_ux_settings.navigation'),
             __('admin.resources.settings_backup.navigation'),
+            __('admin.tools.pages.tools.navigation'),
             __('admin.importer.pages.settings.navigation'),
+            __('admin.spotify_fetcher.pages.navigation'),
         ]);
 });
 

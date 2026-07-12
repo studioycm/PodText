@@ -25,6 +25,14 @@ class SpotifyConnector
     /**
      * @return array<string, mixed>
      */
+    public function fetchShow(ImportConnection $connection, string $spotifyId): array
+    {
+        return $this->client($connection)->fetchShow($spotifyId);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
     public function ping(ImportConnection $connection): array
     {
         return $this->client($connection)->ping();

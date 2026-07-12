@@ -2,11 +2,13 @@
 
 namespace App\Filament\Support;
 
+use App\Filament\Pages\AdminTools;
 use App\Filament\Pages\AdminUxSettings;
 use App\Filament\Pages\Dashboard;
 use App\Filament\Pages\ImporterSettings;
 use App\Filament\Pages\ManagePublicForms;
 use App\Filament\Pages\PublicContentSettings;
+use App\Filament\Pages\SpotifyLinksFetcher;
 use App\Filament\Resources\Authors\AuthorResource;
 use App\Filament\Resources\Categories\CategoryResource;
 use App\Filament\Resources\ContentGroups\ContentGroupResource;
@@ -100,8 +102,16 @@ class AdminNavigationOrder
             'sort' => 330,
             'group' => self::SITE_MANAGEMENT,
         ],
+        AdminTools::class => [
+            'sort' => 335,
+            'group' => self::SITE_MANAGEMENT,
+        ],
         ImporterSettings::class => [
             'sort' => 340,
+            'group' => self::SITE_MANAGEMENT,
+        ],
+        SpotifyLinksFetcher::class => [
+            'sort' => 345,
             'group' => self::SITE_MANAGEMENT,
         ],
         PublicFormSubmissionResource::class => [

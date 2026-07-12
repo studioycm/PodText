@@ -120,6 +120,15 @@ class FakeImporterSpotifyClient implements SpotifyClient
         ];
     }
 
+    public function fetchShow(string $spotifyId): array
+    {
+        return [
+            'external_id' => $spotifyId,
+            'thumbnail' => 'https://i.scdn.co/image/fake-show',
+            'title' => "Show {$spotifyId}",
+        ];
+    }
+
     public function ping(): array
     {
         return [

@@ -34,9 +34,39 @@ class SpotifyHttpClient implements SpotifyClient
             'html_description' => data_get($episode, 'html_description'),
             'release_date' => data_get($episode, 'release_date'),
             'show' => data_get($episode, 'show.name'),
+            'show_external_url' => data_get($episode, 'show.external_urls.spotify'),
+            'show_id' => data_get($episode, 'show.id'),
             'thumbnail' => $image,
             'title' => data_get($episode, 'name'),
             'uri' => data_get($episode, 'uri'),
+        ];
+    }
+
+    public function fetchShow(string $spotifyId): array
+    {
+        $show = Http::withToken($this->accessToken)
+            ->acceptJson()
+            ->timeout(15)
+            ->get("https://api.spotify.com/v1/shows/{$spotifyId}", [
+                'market' => 'IL',
+            ])
+            ->throw()
+            ->json();
+
+        $images = data_get($show, 'images', []);
+        $image = is_array($images) ? ($images[0]['url'] ?? null) : null;
+
+        return [
+            'description' => data_get($show, 'description'),
+            'external_id' => data_get($show, 'id'),
+            'external_url' => data_get($show, 'external_urls.spotify'),
+            'html_description' => data_get($show, 'html_description'),
+            'languages' => data_get($show, 'languages', []),
+            'publisher' => data_get($show, 'publisher'),
+            'thumbnail' => $image,
+            'title' => data_get($show, 'name'),
+            'total_episodes' => data_get($show, 'total_episodes'),
+            'uri' => data_get($show, 'uri'),
         ];
     }
 
