@@ -1534,6 +1534,7 @@ return [
             'import' => [
                 'completed_body' => '{0} הייבוא של :label הושלם ולא יובאו שורות.|{1} הייבוא של :label הושלם ושורה אחת יובאה.|[2,*] הייבוא של :label הושלם ו-:count שורות יובאו.',
                 'failed_body' => '{1} שורה אחת נכשלה בייבוא.|[2,*] :count שורות נכשלו בייבוא.',
+                'skipped_disabled_content_tags' => 'דולגו תגיות תוכן מושבתות: :tags.',
             ],
         ],
     ],
@@ -1801,7 +1802,7 @@ return [
             'unresolved_categories' => 'לא ניתן היה לפתור את נתיבי הקטגוריות: :paths.',
             'unresolved_content_group' => 'לא ניתן היה לפתור את מפתח הייחוס של הפודקאסט :reference_key.',
             'unresolved_content_item' => 'לא ניתן היה לפתור את מפתח הייחוס של פרק :reference_key.',
-            'unresolved_content_tags' => 'לא ניתן היה לפתור את מזהי הכתובת של תגיות התוכן המופעלות: :slugs.',
+            'unresolved_content_tags' => 'לא ניתן היה לפתור את מזהי הכתובת של תגיות התוכן: :slugs.',
             'unresolved_featured_transcription' => 'לא ניתן היה לפתור את מפתח הייחוס של התמלול הנבחר מאותו פרק :reference_key.',
             'unresolved_parent_category' => 'לא ניתן היה לפתור את נתיב קטגוריית האב :path.',
             'update_missing_category' => 'ייבוא לעדכון בלבד לא מצא קטגוריה בנתיב :path.',
@@ -1820,6 +1821,22 @@ return [
                 'create' => 'יצירה בלבד',
                 'update' => 'עדכון בלבד',
                 'upsert' => 'יצירה ועדכון',
+            ],
+            'relation_mode' => 'מצב ייבוא קשרים',
+            'relation_mode_helper' => 'החלפה מתייחסת לתאי קשרים שמולאו כאל הרשימה הפעילה המלאה. הוספה בלבד מצרפת ערכים חסרים ולא מסירה קיימים. תאי קשרים ריקים משאירים קטגוריות, תגיות ומתמללים ללא שינוי בשני המצבים.',
+            'relation_modes' => [
+                'add_only' => 'הוספה בלבד',
+                'replace' => 'החלפה',
+            ],
+        ],
+    ],
+    'export' => [
+        'options' => [
+            'tag_scope' => 'היקף ייצוא תגיות',
+            'tag_scope_helper' => 'תגיות מופעלות בלבד הן ברירת המחדל לייצוא נייד. כל התגיות כולל תגיות תוכן מושבתות לייצוא ניהולי מלא.',
+            'tag_scopes' => [
+                'all_tags' => 'כל התגיות',
+                'enabled_only' => 'מופעלות בלבד',
             ],
         ],
     ],

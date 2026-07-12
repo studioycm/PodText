@@ -1554,6 +1554,7 @@ return [
             'import' => [
                 'completed_body' => '{0} Your :label import has completed and no rows were imported.|{1} Your :label import has completed and :count row imported.|[2,*] Your :label import has completed and :count rows imported.',
                 'failed_body' => '{1} :count row failed to import.|[2,*] :count rows failed to import.',
+                'skipped_disabled_content_tags' => 'Skipped disabled content tags: :tags.',
             ],
         ],
     ],
@@ -1833,7 +1834,7 @@ return [
             'unresolved_categories' => 'Could not resolve category paths: :paths.',
             'unresolved_content_item' => 'Could not resolve content item reference key :reference_key.',
             'unresolved_content_group' => 'Could not resolve content group reference key :reference_key.',
-            'unresolved_content_tags' => 'Could not resolve enabled content tag slugs: :slugs.',
+            'unresolved_content_tags' => 'Could not resolve content tag slugs: :slugs.',
             'unresolved_featured_transcription' => 'Could not resolve same-item featured transcription reference key :reference_key.',
             'unresolved_parent_category' => 'Could not resolve parent category path :path.',
             'update_missing_category' => 'Update-only import could not find a category at :path.',
@@ -1852,6 +1853,22 @@ return [
                 'create' => 'Create only',
                 'update' => 'Update only',
                 'upsert' => 'Create and update',
+            ],
+            'relation_mode' => 'Relation import mode',
+            'relation_mode_helper' => 'Replace treats provided relation cells as the complete enabled set. Add only attaches missing values and never detaches. Blank relation cells leave existing categories, tags, and transcribers unchanged in both modes.',
+            'relation_modes' => [
+                'add_only' => 'Add only',
+                'replace' => 'Replace',
+            ],
+        ],
+    ],
+    'export' => [
+        'options' => [
+            'tag_scope' => 'Tag export scope',
+            'tag_scope_helper' => 'Enabled only is the default portable export. All tags includes disabled content tags for admin full-fidelity exports.',
+            'tag_scopes' => [
+                'all_tags' => 'All tags',
+                'enabled_only' => 'Enabled only',
             ],
         ],
     ],

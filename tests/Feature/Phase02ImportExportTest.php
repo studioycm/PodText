@@ -27,6 +27,7 @@ use Filament\Actions\Imports\Jobs\ImportCsv;
 use Filament\Actions\Imports\Models\Import;
 use Filament\Actions\Testing\TestAction;
 use Filament\Facades\Filament;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
@@ -64,7 +65,7 @@ function phase02ImportRecord(string $importerClass, array $row, ?array $columnMa
     return $import;
 }
 
-function phase02ExportRecord(string $exporterClass, mixed $record, array $columnMap): array
+function phase02ExportRecord(string $exporterClass, mixed $record, array $columnMap, array $options = []): array
 {
     $export = Export::query()->create([
         'file_disk' => 'local',
@@ -76,7 +77,7 @@ function phase02ExportRecord(string $exporterClass, mixed $record, array $column
         'user_id' => User::factory()->create()->id,
     ]);
 
-    return $export->getExporter($columnMap, [])($record);
+    return $export->getExporter($columnMap, $options)($record);
 }
 
 it('imports transcriptions by reference key and never writes the legacy item transcript', function (): void {
@@ -255,7 +256,6 @@ it('imports content item taxonomy tags pinning media metadata and day first date
     $category = Category::factory()->create(['slug' => 'media']);
     $tag = ContentTag::findOrCreateFromString('Enabled Tag', 'content')->enable();
     $wrongTypeTag = ContentTag::findOrCreateFromString('Wrong Type Tag', 'internal');
-    $disabledTag = ContentTag::findOrCreateFromString('Disabled Tag', 'content');
 
     phase02ImportRecord(ContentItemImporter::class, [
         'reference_key' => (string) Str::ulid(),
@@ -326,13 +326,6 @@ it('imports content item taxonomy tags pinning media metadata and day first date
         'content_tag_slugs' => $wrongTypeTag->getTranslation('slug', app()->getLocale(), false),
     ]))->toThrow(ValidationException::class);
 
-    expect(fn () => phase02ImportRecord(ContentItemImporter::class, [
-        'reference_key' => (string) Str::ulid(),
-        'content_group_reference_key' => $group->reference_key,
-        'title' => 'Disabled Tag',
-        'media_url' => 'https://example.com/media/disabled-tag',
-        'content_tag_slugs' => $disabledTag->getTranslation('slug', app()->getLocale(), false),
-    ]))->toThrow(ValidationException::class);
 });
 
 it('imports item featured transcription references only when explicitly provided', function (): void {
@@ -390,6 +383,272 @@ it('imports content group category paths and homepage ordering', function (): vo
         'slug' => 'missing-group-category',
         'category_paths' => 'missing',
     ]))->toThrow(ValidationException::class);
+});
+
+it('imports category relation modes for groups and items while blank cells preserve links', function (): void {
+    $categoryA = Category::factory()->create(['slug' => 'category-a']);
+    $categoryB = Category::factory()->create(['slug' => 'category-b']);
+    $categoryC = Category::factory()->create(['slug' => 'category-c']);
+    $group = ContentGroup::factory()->create(['title' => 'Relation Mode Group']);
+    $item = ContentItem::factory()->for($group)->create([
+        'title' => 'Relation Mode Item',
+        'media_url' => 'https://example.com/media/relation-mode-item',
+    ]);
+
+    $group->categories()->sync([$categoryA->id, $categoryB->id]);
+    $item->categories()->sync([$categoryA->id, $categoryB->id]);
+
+    phase02ImportRecord(ContentGroupImporter::class, [
+        'reference_key' => $group->reference_key,
+        'title' => 'Default Replace Group',
+        'category_paths' => 'category-c',
+    ]);
+    phase02ImportRecord(ContentItemImporter::class, [
+        'reference_key' => $item->reference_key,
+        'content_group_reference_key' => $group->reference_key,
+        'title' => 'Default Replace Item',
+        'media_url' => 'https://example.com/media/default-replace-item',
+        'category_paths' => 'category-c',
+    ]);
+
+    expect($group->refresh()->categories()->pluck('categories.slug')->sort()->values()->all())->toBe(['category-c'])
+        ->and($item->refresh()->categories()->pluck('categories.slug')->sort()->values()->all())->toBe(['category-c']);
+
+    phase02ImportRecord(ContentGroupImporter::class, [
+        'reference_key' => $group->reference_key,
+        'title' => 'Add Only Group',
+        'category_paths' => 'category-a',
+    ], null, ['relation_mode' => 'add_only']);
+    phase02ImportRecord(ContentItemImporter::class, [
+        'reference_key' => $item->reference_key,
+        'content_group_reference_key' => $group->reference_key,
+        'title' => 'Add Only Item',
+        'media_url' => 'https://example.com/media/add-only-item',
+        'category_paths' => 'category-a',
+    ], null, ['relation_mode' => 'add_only']);
+
+    expect($group->refresh()->categories()->pluck('categories.slug')->sort()->values()->all())->toBe(['category-a', 'category-c'])
+        ->and($item->refresh()->categories()->pluck('categories.slug')->sort()->values()->all())->toBe(['category-a', 'category-c']);
+
+    phase02ImportRecord(ContentGroupImporter::class, [
+        'reference_key' => $group->reference_key,
+        'title' => 'Blank Replace Group',
+        'category_paths' => '',
+    ], null, ['relation_mode' => 'replace']);
+    phase02ImportRecord(ContentItemImporter::class, [
+        'reference_key' => $item->reference_key,
+        'content_group_reference_key' => $group->reference_key,
+        'title' => 'Blank Replace Item',
+        'media_url' => 'https://example.com/media/blank-replace-item',
+        'category_paths' => '',
+    ], null, ['relation_mode' => 'replace']);
+    phase02ImportRecord(ContentGroupImporter::class, [
+        'reference_key' => $group->reference_key,
+        'title' => 'Blank Add Group',
+        'category_paths' => '',
+    ], null, ['relation_mode' => 'add_only']);
+    phase02ImportRecord(ContentItemImporter::class, [
+        'reference_key' => $item->reference_key,
+        'content_group_reference_key' => $group->reference_key,
+        'title' => 'Blank Add Item',
+        'media_url' => 'https://example.com/media/blank-add-item',
+        'category_paths' => '',
+    ], null, ['relation_mode' => 'add_only']);
+
+    expect($group->refresh()->categories()->pluck('categories.slug')->sort()->values()->all())->toBe(['category-a', 'category-c'])
+        ->and($item->refresh()->categories()->pluck('categories.slug')->sort()->values()->all())->toBe(['category-a', 'category-c']);
+});
+
+it('imports content tag relation modes and exports enabled or all tag scopes without lazy loading', function (): void {
+    $group = ContentGroup::factory()->create();
+    $item = ContentItem::factory()->for($group)->create([
+        'title' => 'Tag Mode Item',
+        'media_url' => 'https://example.com/media/tag-mode-item',
+    ]);
+    $enabledOld = ContentTag::findOrCreateFromString('Enabled Old Tag', 'content')->enable();
+    $enabledNew = ContentTag::findOrCreateFromString('Enabled New Tag', 'content')->enable();
+    $enabledAdd = ContentTag::findOrCreateFromString('Enabled Add Tag', 'content')->enable();
+    $disabledExisting = ContentTag::findOrCreateFromString('Disabled Existing Tag', 'content');
+    $disabledInput = ContentTag::findOrCreateFromString('Disabled Input Tag', 'content');
+    $internalTag = ContentTag::findOrCreateFromString('Internal Keep Tag', 'internal');
+    $slug = fn (ContentTag $tag): string => $tag->getTranslation('slug', app()->getLocale(), false);
+    $contentTagSlugs = fn (): array => $item->refresh()->contentTags()->get()
+        ->map(fn (ContentTag $tag): string => $slug($tag))
+        ->sort()
+        ->values()
+        ->all();
+    $enabledTagSlugs = fn (): array => $item->refresh()->enabledContentTags()->get()
+        ->map(fn (ContentTag $tag): string => $slug($tag))
+        ->sort()
+        ->values()
+        ->all();
+
+    $item->tags()->sync([$enabledOld->id, $disabledExisting->id, $internalTag->id]);
+
+    $import = Import::query()->create([
+        'file_name' => 'items.csv',
+        'file_path' => 'imports/items.csv',
+        'importer' => ContentItemImporter::class,
+        'processed_rows' => 0,
+        'total_rows' => 1,
+        'successful_rows' => 0,
+        'user_id' => User::factory()->create()->id,
+    ]);
+    $job = new ImportCsv($import, [
+        [
+            'reference_key' => $item->reference_key,
+            'content_group_reference_key' => $group->reference_key,
+            'title' => 'Default Replace With Disabled Warning',
+            'media_url' => 'https://example.com/media/default-replace-with-disabled-warning',
+            'content_tag_slugs' => $slug($enabledNew).'|'.$slug($disabledInput),
+        ],
+    ], [
+        'reference_key' => 'reference_key',
+        'content_group_reference_key' => 'content_group_reference_key',
+        'title' => 'title',
+        'media_url' => 'media_url',
+        'content_tag_slugs' => 'content_tag_slugs',
+    ], [
+        'mode' => 'upsert',
+        'blank_update_behavior' => 'preserve',
+    ]);
+
+    $job->handle();
+
+    expect($import->refresh())
+        ->successful_rows->toBe(1)
+        ->and($import->failedRows()->count())->toBe(0)
+        ->and($enabledTagSlugs())->toBe([$slug($enabledNew)])
+        ->and($contentTagSlugs())->toBe([$slug($disabledExisting), $slug($enabledNew)])
+        ->and($item->refresh()->tags()->whereKey($internalTag->getKey())->exists())->toBeTrue()
+        ->and($item->tags()->whereKey($disabledInput->getKey())->exists())->toBeFalse()
+        ->and(ContentItemImporter::getCompletedNotificationBody($import))->toContain('Disabled Input Tag');
+
+    phase02ImportRecord(ContentItemImporter::class, [
+        'reference_key' => $item->reference_key,
+        'content_group_reference_key' => $group->reference_key,
+        'title' => 'Add Only Tag',
+        'media_url' => 'https://example.com/media/add-only-tag',
+        'content_tag_slugs' => $slug($enabledAdd),
+    ], null, ['relation_mode' => 'add_only']);
+
+    expect($enabledTagSlugs())->toBe([$slug($enabledAdd), $slug($enabledNew)])
+        ->and($contentTagSlugs())->toBe([$slug($disabledExisting), $slug($enabledAdd), $slug($enabledNew)]);
+
+    phase02ImportRecord(ContentItemImporter::class, [
+        'reference_key' => $item->reference_key,
+        'content_group_reference_key' => $group->reference_key,
+        'title' => 'Blank Replace Tags',
+        'media_url' => 'https://example.com/media/blank-replace-tags',
+        'content_tag_slugs' => '',
+    ], null, ['relation_mode' => 'replace']);
+    phase02ImportRecord(ContentItemImporter::class, [
+        'reference_key' => $item->reference_key,
+        'content_group_reference_key' => $group->reference_key,
+        'title' => 'Blank Add Tags',
+        'media_url' => 'https://example.com/media/blank-add-tags',
+        'content_tag_slugs' => '',
+    ], null, ['relation_mode' => 'add_only']);
+
+    expect($contentTagSlugs())->toBe([$slug($disabledExisting), $slug($enabledAdd), $slug($enabledNew)]);
+
+    Model::preventLazyLoading();
+
+    try {
+        $exportRecord = ContentItemExporter::modifyQuery(ContentItem::query())->whereKey($item->getKey())->firstOrFail();
+        $defaultExport = phase02ExportRecord(ContentItemExporter::class, $exportRecord, [
+            'content_tag_slugs' => 'content_tag_slugs',
+        ]);
+        $allTagsExport = phase02ExportRecord(ContentItemExporter::class, $exportRecord, [
+            'content_tag_slugs' => 'content_tag_slugs',
+        ], ['tag_scope' => 'all_tags']);
+    } finally {
+        Model::preventLazyLoading(false);
+    }
+
+    $defaultTagSlugs = collect(explode('|', $defaultExport[0]))->sort()->values()->all();
+    $allExportTagSlugs = collect(explode('|', $allTagsExport[0]))->sort()->values()->all();
+
+    expect($defaultTagSlugs)->toBe([$slug($enabledAdd), $slug($enabledNew)])
+        ->and($allExportTagSlugs)->toBe([$slug($disabledExisting), $slug($enabledAdd), $slug($enabledNew)]);
+
+    phase02ImportRecord(ContentItemImporter::class, [
+        'reference_key' => $item->reference_key,
+        'content_group_reference_key' => $group->reference_key,
+        'title' => 'Default Export Round Trip',
+        'media_url' => 'https://example.com/media/default-export-round-trip',
+        'content_tag_slugs' => $defaultExport[0],
+    ]);
+
+    expect($contentTagSlugs())->toBe([$slug($disabledExisting), $slug($enabledAdd), $slug($enabledNew)]);
+});
+
+it('imports transcriber relation modes while blank cells preserve existing transcribers', function (): void {
+    $item = ContentItem::factory()->create();
+    $first = Author::factory()->create(['name' => 'First Relation Transcriber']);
+    $second = Author::factory()->create(['name' => 'Second Relation Transcriber']);
+    $third = Author::factory()->create(['name' => 'Third Relation Transcriber']);
+    $fourth = Author::factory()->create(['name' => 'Fourth Relation Transcriber']);
+    $transcription = Transcription::factory()
+        ->for($item)
+        ->forAuthor($first)
+        ->create(['title' => 'Relation Transcription']);
+    $transcription->syncTranscribers([$first, $second]);
+    $transcriberIds = fn (): array => $transcription->refresh()->authors()->pluck('authors.id')->all();
+
+    phase02ImportRecord(TranscriptionImporter::class, [
+        'reference_key' => $transcription->reference_key,
+        'content_item_reference_key' => $item->reference_key,
+        'primary_transcriber_reference_key' => $third->reference_key,
+        'title' => 'Replace Relation Transcription',
+        'language_code' => 'he',
+        'transcript_markdown' => 'Updated body',
+        'status' => PublicationStatus::Draft->value,
+    ]);
+
+    expect($transcription->refresh()->author_id)->toBe($third->id)
+        ->and($transcriberIds())->toBe([$third->id]);
+
+    phase02ImportRecord(TranscriptionImporter::class, [
+        'reference_key' => $transcription->reference_key,
+        'content_item_reference_key' => $item->reference_key,
+        'transcriber_names' => $fourth->name,
+        'title' => 'Add Only Relation Transcription',
+        'language_code' => 'he',
+        'transcript_markdown' => 'Updated body',
+        'status' => PublicationStatus::Draft->value,
+    ], null, ['relation_mode' => 'add_only']);
+
+    expect($transcription->refresh()->author_id)->toBe($third->id)
+        ->and($transcriberIds())->toBe([$third->id, $fourth->id]);
+
+    phase02ImportRecord(TranscriptionImporter::class, [
+        'reference_key' => $transcription->reference_key,
+        'content_item_reference_key' => $item->reference_key,
+        'author_reference_key' => '',
+        'primary_transcriber_reference_key' => '',
+        'transcriber_reference_keys' => '',
+        'transcriber_names' => '',
+        'title' => 'Blank Replace Relation Transcription',
+        'language_code' => 'he',
+        'transcript_markdown' => 'Updated body',
+        'status' => PublicationStatus::Draft->value,
+    ], null, ['relation_mode' => 'replace']);
+    phase02ImportRecord(TranscriptionImporter::class, [
+        'reference_key' => $transcription->reference_key,
+        'content_item_reference_key' => $item->reference_key,
+        'author_reference_key' => '',
+        'primary_transcriber_reference_key' => '',
+        'transcriber_reference_keys' => '',
+        'transcriber_names' => '',
+        'title' => 'Blank Add Relation Transcription',
+        'language_code' => 'he',
+        'transcript_markdown' => 'Updated body',
+        'status' => PublicationStatus::Draft->value,
+    ], null, ['relation_mode' => 'add_only']);
+
+    expect($transcription->refresh()->author_id)->toBe($third->id)
+        ->and($transcriberIds())->toBe([$third->id, $fourth->id]);
 });
 
 it('exports portable prompt ten columns without numeric identifiers', function (): void {

@@ -139,12 +139,16 @@ Research decisions: R1, R2, R3, R4, R5.
 
 ## Mini-Step IE-1 - Relation Import/Export Semantics
 
+Status: implemented in IE-1.
+
 Scope:
 
-- Add relation mode import option for categories, tags, and transcription transcribers: `replace`, `merge`, `add_only`.
-- Keep existing `replace` behavior as the compatibility default unless Yoni changes the default.
-- Add export option for content item tags: enabled-only vs all content tags.
-- Make disabled-tag round trips explicit: row warning/failure or a documented all-tags admin mode, not silent loss.
+- Add relation mode import option for categories, tags, and transcription transcribers: `replace`, `add_only`.
+- Keep existing `replace` behavior as the compatibility default.
+- Blank relation cells leave existing categories, tags, and transcribers unchanged in both modes; there is no clear-via-import behavior in IE-1.
+- Add export option for content item tags: enabled-only default vs all content tags.
+- Make disabled-tag imports explicit: imported disabled content tags are skipped with a completion warning and the row still succeeds.
+- Preserve disabled content tags during enabled-only export/import round trips so default portable exports do not silently detach admin-only tags.
 - Preserve existing import/export chunk-size tuning.
 - Align option names with the existing settings-import vocabulary from D25/S1b.
 
@@ -159,11 +163,15 @@ Tests:
 - Group category relation modes.
 - Item category relation modes.
 - Content tag relation modes.
-- Disabled tag export/import behavior.
+- Disabled tag warning/skip behavior.
+- Enabled-only/all-tags content tag export scope.
+- Default enabled-only export then import round trip without silent disabled-tag loss.
 - Transcriber relation modes with `author_id` compatibility.
-- Blank relation cells preserve or clear exactly as the selected mode documents.
+- Blank relation cells preserve exactly as the selected mode documents.
 
 Research decisions: R8.
+
+Delivered decisions: Yoni selected `replace` and `add_only` only; `merge` is not part of IE-1. The default is `replace`.
 
 ## Mini-Step IMG-2 - Optional Media Plugin Track
 

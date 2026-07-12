@@ -3,6 +3,7 @@
 namespace App\Filament\Imports;
 
 use App\Enums\PublicationStatus;
+use App\Enums\RelationImportMode;
 use App\Filament\Imports\Concerns\ConfiguresContentImports;
 use App\Models\Author;
 use App\Models\ContentItem;
@@ -190,7 +191,11 @@ class TranscriptionImporter extends Importer
 
     protected function beforeSave(): void
     {
-        $transcriberIds = $this->resolvedTranscriberIds();
+        if ($this->shouldLeaveTranscribersUnchanged()) {
+            $transcriberIds = [];
+        } else {
+            $transcriberIds = $this->resolvedTranscriberIdsForRelationMode();
+        }
 
         if ($transcriberIds !== []) {
             $this->record->forceFill(['author_id' => $transcriberIds[0]]);
@@ -211,7 +216,11 @@ class TranscriptionImporter extends Importer
 
     protected function afterSave(): void
     {
-        $transcriberIds = $this->resolvedTranscriberIds();
+        if ($this->shouldLeaveTranscribersUnchanged()) {
+            return;
+        }
+
+        $transcriberIds = $this->resolvedTranscriberIdsForRelationMode();
 
         if ($transcriberIds === []) {
             return;
@@ -252,7 +261,7 @@ class TranscriptionImporter extends Importer
 
     private function resolvePrimaryTranscriber(): Author
     {
-        $transcriberIds = $this->resolvedTranscriberIds();
+        $transcriberIds = $this->resolvedTranscriberIdsForRelationMode();
 
         if ($transcriberIds === []) {
             throw new RowImportFailedException(__('admin.import.failures.missing_transcriber'));
@@ -286,6 +295,55 @@ class TranscriptionImporter extends Importer
 
         return $ids
             ->filter()
+            ->unique()
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @return array<int, int>
+     */
+    private function resolvedTranscriberIdsForRelationMode(): array
+    {
+        $resolvedIds = $this->resolvedTranscriberIds();
+
+        if ($this->relationMode($this->options) !== RelationImportMode::AddOnly || ! $this->record?->exists) {
+            return $resolvedIds;
+        }
+
+        return collect($this->existingTranscriberIds())
+            ->merge($resolvedIds)
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
+    }
+
+    private function shouldLeaveTranscribersUnchanged(): bool
+    {
+        return ($this->record?->exists ?? false)
+            && ! $this->hasTranscriberInput();
+    }
+
+    private function hasTranscriberInput(): bool
+    {
+        return collect([
+            $this->data['author_reference_key'] ?? null,
+            $this->data['primary_transcriber_reference_key'] ?? null,
+            $this->data['transcriber_reference_keys'] ?? [],
+            $this->data['transcriber_names'] ?? [],
+        ])->contains(fn (mixed $value): bool => ! static::isBlankRelationState($value));
+    }
+
+    /**
+     * @return array<int, int>
+     */
+    private function existingTranscriberIds(): array
+    {
+        return collect([$this->record?->author_id])
+            ->merge($this->record?->authors()->pluck('authors.id') ?? [])
+            ->filter()
+            ->map(fn (mixed $authorId): int => (int) $authorId)
             ->unique()
             ->values()
             ->all();

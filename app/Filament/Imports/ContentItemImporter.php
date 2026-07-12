@@ -3,10 +3,12 @@
 namespace App\Filament\Imports;
 
 use App\Enums\PublicationStatus;
+use App\Enums\RelationImportMode;
 use App\Filament\Imports\Concerns\ConfiguresContentImports;
 use App\Models\Category;
 use App\Models\ContentGroup;
 use App\Models\ContentItem;
+use App\Models\ContentTag;
 use App\Models\Transcription;
 use App\Rules\ApprovedEmbedUrl;
 use Filament\Actions\Imports\Exceptions\RowImportFailedException;
@@ -216,7 +218,11 @@ class ContentItemImporter extends Importer
                     },
                 ])
                 ->fillRecordUsing(fn (): null => null)
-                ->saveRelationshipsUsing(function (ContentItem $record, array $state): void {
+                ->saveRelationshipsUsing(function (ContentItem $record, array $state, array $options): void {
+                    if (static::isBlankRelationState($state)) {
+                        return;
+                    }
+
                     $categories = static::resolveCategoryPaths($state);
 
                     if ($categories->count() !== count($state)) {
@@ -225,7 +231,7 @@ class ContentItemImporter extends Importer
                         ]));
                     }
 
-                    $record->categories()->sync($categories->pluck('id')->all());
+                    static::syncImportRelation($record->categories(), $categories->pluck('id')->all(), $options);
                 }),
             ImportColumn::make('content_tag_slugs')
                 ->label(__('admin.import.columns.content_tag_slugs'))
@@ -238,18 +244,31 @@ class ContentItemImporter extends Importer
                             return;
                         }
 
-                        $tags = static::resolveEnabledContentTags($state);
+                        $tags = static::resolveContentTags($state);
 
                         if ($tags->count() !== count($state)) {
+                            $missing = collect($state)
+                                ->reject(fn (string $slugOrName): bool => $tags->contains(
+                                    fn (ContentTag $tag): bool => in_array($slugOrName, [
+                                        $tag->getTranslation('slug', app()->getLocale(), false),
+                                        $tag->getTranslation('name', app()->getLocale(), false),
+                                    ], true),
+                                ))
+                                ->implode('|');
+
                             $fail(__('admin.import.failures.unresolved_content_tags', [
-                                'slugs' => collect($state)->implode('|'),
+                                'slugs' => $missing,
                             ]));
                         }
                     },
                 ])
                 ->fillRecordUsing(fn (): null => null)
-                ->saveRelationshipsUsing(function (ContentItem $record, array $state): void {
-                    $tags = static::resolveEnabledContentTags($state);
+                ->saveRelationshipsUsing(function (ContentItem $record, array $state, array $options, Importer $importer): void {
+                    if (static::isBlankRelationState($state)) {
+                        return;
+                    }
+
+                    $tags = static::resolveContentTags($state);
 
                     if ($tags->count() !== count($state)) {
                         throw new RowImportFailedException(__('admin.import.failures.unresolved_content_tags', [
@@ -257,7 +276,26 @@ class ContentItemImporter extends Importer
                         ]));
                     }
 
-                    $record->tags()->sync($tags->pluck('id')->all());
+                    $enabledTags = static::enabledImportableContentTags($tags);
+                    $disabledTags = static::disabledImportableContentTags($tags);
+
+                    static::recordSkippedDisabledContentTags($importer, $disabledTags);
+
+                    if (static::relationMode($options) === RelationImportMode::AddOnly) {
+                        $record->tags()->syncWithoutDetaching($enabledTags->pluck('id')->all());
+
+                        return;
+                    }
+
+                    $existingEnabledContentTagIds = $record->enabledContentTags()
+                        ->pluck('tags.id')
+                        ->all();
+                    $enabledTagIds = $enabledTags
+                        ->pluck('id')
+                        ->all();
+
+                    $record->tags()->detach(array_diff($existingEnabledContentTagIds, $enabledTagIds));
+                    $record->tags()->syncWithoutDetaching($enabledTagIds);
                 }),
             ImportColumn::make('featured_transcription_reference_key')
                 ->label(__('admin.import.columns.featured_transcription_reference_key'))

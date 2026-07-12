@@ -81,6 +81,7 @@ For current prompt completion/progress state, see `docs/phase-02/current-project
 - Treat the pre-gate requirements sweep as a real audit against the prompt's job and test lists, not a vague readiness note. Record each implemented/deferred/not-applicable item before starting the final gate.
 - A green full-suite result belongs only to the final code state. Any code, test, translation, or documentation change after that green result re-enters the gate from Pint and requires another full-suite run, with every full run recorded.
 - A Local Front Check Report is a numbered list of manual operator steps, separate from automated coverage notes.
+- When a run introduces or changes an env-dependent config key, the same run must update `.env.example`, add a handoff deploy note, and flag the production env expectation. Do not rely on a fallback such as `APP_KEY` without documenting the intended production override.
 
 ## Deferred-item handling lessons
 

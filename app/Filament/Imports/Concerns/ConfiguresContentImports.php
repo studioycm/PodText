@@ -2,21 +2,28 @@
 
 namespace App\Filament\Imports\Concerns;
 
+use App\Enums\RelationImportMode;
 use App\Models\Category;
 use App\Models\ContentTag;
 use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
 use Carbon\Exceptions\InvalidFormatException;
 use Filament\Actions\Imports\Exceptions\RowImportFailedException;
+use Filament\Actions\Imports\Importer;
 use Filament\Actions\Imports\Models\Import;
 use Filament\Forms\Components\Select;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Number;
 use JsonException;
+use Throwable;
 
 trait ConfiguresContentImports
 {
+    private const SkippedDisabledContentTagsCachePrefix = 'podtext.imports.skipped_disabled_content_tags.';
+
     /**
      * @var array<int, string>
      */
@@ -33,6 +40,15 @@ trait ConfiguresContentImports
                     'update' => __('admin.import.options.modes.update'),
                 ])
                 ->default('upsert')
+                ->required(),
+            Select::make('relation_mode')
+                ->label(__('admin.import.options.relation_mode'))
+                ->helperText(__('admin.import.options.relation_mode_helper'))
+                ->options([
+                    RelationImportMode::Replace->value => __('admin.import.options.relation_modes.replace'),
+                    RelationImportMode::AddOnly->value => __('admin.import.options.relation_modes.add_only'),
+                ])
+                ->default(RelationImportMode::Replace->value)
                 ->required(),
             Select::make('blank_update_behavior')
                 ->label(__('admin.import.options.blank_update_behavior'))
@@ -73,6 +89,12 @@ trait ConfiguresContentImports
         if ($failedRowsCount = $import->getFailedRowsCount()) {
             $body .= ' '.trans_choice('admin.import_export.notifications.import.failed_body', $failedRowsCount, [
                 'count' => Number::format($failedRowsCount),
+            ]);
+        }
+
+        if ($skippedDisabledTags = self::skippedDisabledContentTagNames($import)) {
+            $body .= ' '.__('admin.import_export.notifications.import.skipped_disabled_content_tags', [
+                'tags' => collect($skippedDisabledTags)->sort()->implode(', '),
             ]);
         }
 
@@ -146,6 +168,40 @@ trait ConfiguresContentImports
     protected function importMode(): string
     {
         return $this->options['mode'] ?? 'upsert';
+    }
+
+    /**
+     * @param  array<string, mixed>  $options
+     */
+    protected static function relationMode(array $options): RelationImportMode
+    {
+        return RelationImportMode::fromOptions($options);
+    }
+
+    protected static function isBlankRelationState(mixed $state): bool
+    {
+        if (is_array($state)) {
+            return collect($state)
+                ->filter(fn (mixed $value): bool => filled($value))
+                ->isEmpty();
+        }
+
+        return blank($state);
+    }
+
+    /**
+     * @param  array<int, int>  $ids
+     * @param  array<string, mixed>  $options
+     */
+    protected static function syncImportRelation(BelongsToMany $relationship, array $ids, array $options): void
+    {
+        if (static::relationMode($options) === RelationImportMode::AddOnly) {
+            $relationship->syncWithoutDetaching($ids);
+
+            return;
+        }
+
+        $relationship->sync($ids);
     }
 
     protected static function castImportedDateTime(mixed $state): ?CarbonInterface
@@ -279,6 +335,119 @@ trait ConfiguresContentImports
             ->map(fn (string $slugOrName): ?ContentTag => static::resolveEnabledContentTag($slugOrName))
             ->filter()
             ->values();
+    }
+
+    protected static function resolveContentTag(string $slugOrName): ?ContentTag
+    {
+        $tag = ContentTag::findFromString($slugOrName, 'content');
+
+        return $tag instanceof ContentTag ? $tag : null;
+    }
+
+    /**
+     * @param  array<int, string>  $slugsOrNames
+     * @return Collection<int, ContentTag>
+     */
+    protected static function resolveContentTags(array $slugsOrNames): Collection
+    {
+        return collect($slugsOrNames)
+            ->map(fn (string $slugOrName): ?ContentTag => static::resolveContentTag($slugOrName))
+            ->filter()
+            ->values();
+    }
+
+    /**
+     * @param  Collection<int, ContentTag>  $tags
+     * @return Collection<int, ContentTag>
+     */
+    protected static function enabledImportableContentTags(Collection $tags): Collection
+    {
+        return $tags
+            ->filter(fn (ContentTag $tag): bool => $tag->is_enabled)
+            ->values();
+    }
+
+    /**
+     * @param  Collection<int, ContentTag>  $tags
+     * @return Collection<int, ContentTag>
+     */
+    protected static function disabledImportableContentTags(Collection $tags): Collection
+    {
+        return $tags
+            ->reject(fn (ContentTag $tag): bool => $tag->is_enabled)
+            ->values();
+    }
+
+    /**
+     * @param  Collection<int, ContentTag>  $tags
+     */
+    protected static function recordSkippedDisabledContentTags(Importer $importer, Collection $tags): void
+    {
+        $names = $tags
+            ->map(fn (ContentTag $tag): string => static::contentTagDisplayName($tag))
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
+
+        if ($names === []) {
+            return;
+        }
+
+        $key = static::skippedDisabledContentTagsCacheKey($importer->getImport());
+        $lock = Cache::lock("{$key}.lock", 10);
+
+        $write = function () use ($key, $names): void {
+            $existing = Cache::get($key, []);
+            $merged = collect(is_array($existing) ? $existing : [])
+                ->merge($names)
+                ->filter()
+                ->unique()
+                ->values()
+                ->all();
+
+            Cache::put($key, $merged, now()->addDay());
+        };
+
+        try {
+            $lock->block(5, $write);
+        } catch (Throwable) {
+            $write();
+        }
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private static function skippedDisabledContentTagNames(Import $import): array
+    {
+        $names = Cache::get(static::skippedDisabledContentTagsCacheKey($import), []);
+
+        if (! is_array($names)) {
+            return [];
+        }
+
+        return collect($names)
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
+    }
+
+    private static function skippedDisabledContentTagsCacheKey(Import $import): string
+    {
+        return self::SkippedDisabledContentTagsCachePrefix.$import->getKey();
+    }
+
+    private static function contentTagDisplayName(ContentTag $tag): string
+    {
+        $name = $tag->getTranslation('name', app()->getLocale(), false);
+
+        if (filled($name)) {
+            return $name;
+        }
+
+        return (string) $tag->getTranslation('slug', app()->getLocale(), false);
     }
 
     private static function importNotificationResourceLabel(): string

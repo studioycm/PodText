@@ -117,7 +117,11 @@ class ContentGroupImporter extends Importer
                     },
                 ])
                 ->fillRecordUsing(fn (): null => null)
-                ->saveRelationshipsUsing(function (ContentGroup $record, array $state): void {
+                ->saveRelationshipsUsing(function (ContentGroup $record, array $state, array $options): void {
+                    if (static::isBlankRelationState($state)) {
+                        return;
+                    }
+
                     $categories = static::resolveCategoryPaths($state);
 
                     if ($categories->count() !== count($state)) {
@@ -126,7 +130,7 @@ class ContentGroupImporter extends Importer
                         ]));
                     }
 
-                    $record->categories()->sync($categories->pluck('id')->all());
+                    static::syncImportRelation($record->categories(), $categories->pluck('id')->all(), $options);
                 }),
         ];
     }

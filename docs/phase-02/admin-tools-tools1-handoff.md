@@ -219,7 +219,7 @@ podcasts CSV row for the normal podcast importer.
 
 ## Commit hash
 
-Pending final local commit: `feat: add admin tools page and spotify links fetcher`.
+Final TOOLS1 commit hash: `a6d6408 feat: add admin tools page and spotify links fetcher`.
 
 ## Local Front Check Report
 

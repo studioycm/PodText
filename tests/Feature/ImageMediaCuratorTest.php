@@ -85,6 +85,10 @@ it('renders the shared media field in curator and file upload modes', function (
         ->toBeInstanceOf(FileUpload::class);
 });
 
+it('resolves a non empty curator glide token fallback', function (): void {
+    expect(config('curator.glide_token'))->not->toBeEmpty();
+});
+
 it('persists curator picker selections as plain cover path strings', function (): void {
     config(['media.picker.driver' => 'curator']);
     Storage::fake('public');

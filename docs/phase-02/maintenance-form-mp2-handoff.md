@@ -130,9 +130,10 @@ Why it is safe:
 - Targeted confirmation:
   `php artisan test tests/Feature/PublicMaintenanceModeTest.php tests/Feature/SettingsImportExportTest.php`
   passed: 42 tests, 402 assertions.
-- Final gate outcomes: gate outcomes reported only in the session chat. The TS1
-  kickoff message did not provide the exact suite line, so the exact MP2
-  test/assertion counts remain an explicit handoff gap.
+- Final gate outcomes: gate outcomes were reported only in the MP2 session chat.
+  The TS1 kickoff message did not provide the exact suite line, so IE-1 closes
+  this as a documented historical gap rather than inventing unrecoverable MP2
+  test/assertion counts.
 
 ## Tooling Notes
 
@@ -191,8 +192,8 @@ Final MP2 commit hash: `465967f feat: add forms management page and maintenance 
 - The maintenance form route may exist globally, but accepting submissions only while
   maintenance is enabled and an enabled form is configured keeps it safe.
 - MP2 final gate output was not written into this committed handoff before the MP2
-  commit; TS1 records that as an explicit historical gap instead of inventing
-  missing numbers.
+  commit; IE-1 closes that as documented by preserving the historical gap instead
+  of inventing missing numbers.
 
 ## Deferred Issues
 

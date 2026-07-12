@@ -2,12 +2,15 @@
 
 namespace App\Filament\Exports;
 
+use App\Enums\ContentItemTagExportScope;
 use App\Filament\Exports\Concerns\EscapesSpreadsheetFormulae;
 use App\Filament\Exports\Concerns\TracksExportLifecycle;
 use App\Models\ContentItem;
 use Filament\Actions\Exports\ExportColumn;
 use Filament\Actions\Exports\Exporter;
+use Filament\Forms\Components\Select;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Collection;
 
 class ContentItemExporter extends Exporter
 {
@@ -15,6 +18,21 @@ class ContentItemExporter extends Exporter
     use TracksExportLifecycle;
 
     protected static ?string $model = ContentItem::class;
+
+    public static function getOptionsFormComponents(): array
+    {
+        return [
+            Select::make('tag_scope')
+                ->label(__('admin.export.options.tag_scope'))
+                ->helperText(__('admin.export.options.tag_scope_helper'))
+                ->options([
+                    ContentItemTagExportScope::EnabledOnly->value => __('admin.export.options.tag_scopes.enabled_only'),
+                    ContentItemTagExportScope::AllTags->value => __('admin.export.options.tag_scopes.all_tags'),
+                ])
+                ->default(ContentItemTagExportScope::EnabledOnly->value)
+                ->required(),
+        ];
+    }
 
     public static function getColumns(): array
     {
@@ -96,7 +114,7 @@ class ContentItemExporter extends Exporter
                 ->state(fn (ContentItem $record): string => self::categoryPaths($record->categories)),
             ExportColumn::make('content_tag_slugs')
                 ->label(__('admin.import.columns.content_tag_slugs'))
-                ->state(fn (ContentItem $record): string => $record->contentTags
+                ->state(fn (ContentItem $record, array $options): string => self::contentTagsForScope($record, $options)
                     ->map(fn ($tag): string => $tag->getTranslation('slug', app()->getLocale(), false))
                     ->implode('|')),
             ExportColumn::make('featured_transcription_reference_key')
@@ -119,7 +137,24 @@ class ContentItemExporter extends Exporter
             'contentGroup',
             'categories.parent',
             'contentTags',
+            'enabledContentTags',
             'featuredTranscription',
         ]);
+    }
+
+    /**
+     * @param  array<string, mixed>  $options
+     */
+    private static function contentTagsForScope(ContentItem $record, array $options): Collection
+    {
+        if (ContentItemTagExportScope::fromOptions($options) === ContentItemTagExportScope::AllTags) {
+            return $record->relationLoaded('contentTags')
+                ? $record->contentTags
+                : $record->contentTags()->get();
+        }
+
+        return $record->relationLoaded('enabledContentTags')
+            ? $record->enabledContentTags
+            : $record->enabledContentTags()->get();
     }
 }
