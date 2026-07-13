@@ -308,6 +308,7 @@ it('injects the maintenance form at the raw html marker and falls back when the 
         ->assertSee('Before', false)
         ->assertSee('data-maintenance-form', false)
         ->assertSee('After', false)
+        ->assertDontSee('data-podtext-maintenance-form-fallback-container', false)
         ->assertDontSee(MaintenanceForm::MARKER, false);
 
     step10rMp1SaveMaintenance([
@@ -319,6 +320,7 @@ it('injects the maintenance form at the raw html marker and falls back when the 
 
     $this->get('/')
         ->assertStatus(503)
+        ->assertSee('data-podtext-maintenance-form-fallback-container', false)
         ->assertSee('data-podtext-maintenance-form-marker-missing', false)
         ->assertSee('data-maintenance-form', false);
 });

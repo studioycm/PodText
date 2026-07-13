@@ -15,6 +15,7 @@ use App\Support\Importer\SpotifyLinks\SpotifyEntityMode;
 use App\Support\Importer\SpotifyLinks\SpotifyHtmlToMarkdown;
 use App\Support\Importer\SpotifyLinks\SpotifyLinkParser;
 use App\Support\Importer\SpotifyLinks\SpotifyOEmbedClient;
+use App\Support\Importer\SpotifyLinks\SpotifyOpenGraphClient;
 use App\Support\Media\EpisodeSpotifyLookup;
 use BackedEnum;
 use Carbon\CarbonInterface;
@@ -22,6 +23,7 @@ use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Str;
 use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
 use Livewire\WithFileUploads;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -309,14 +311,11 @@ class SpotifyLinksFetcher extends Page
     private function episodeRow(array $item, array $lookup, array $show, ?ContentGroup $group, string $status): array
     {
         $releaseDate = $this->dateString($lookup['original_published_at'] ?? null);
-        $description = app(SpotifyHtmlToMarkdown::class)->convert((string) data_get($lookup, 'media_metadata.html_description'));
-
-        if ($description === '') {
-            $description = (string) ($lookup['external_description'] ?? '');
-        }
+        $description = $this->markdownDescriptionFromLookup($lookup);
 
         return [
             'content_group_reference_key' => $group?->reference_key ?? '',
+            'description_preview' => $this->descriptionPreview($description),
             'description_markdown' => $description,
             'duration_seconds' => $lookup['duration_seconds'] ?? '',
             'embed_url' => $lookup['embed_url'] ?? '',
@@ -330,6 +329,8 @@ class SpotifyLinksFetcher extends Page
             'release_date' => $releaseDate,
             'show_id' => data_get($lookup, 'media_metadata.show_id') ?: ($show['external_id'] ?? ''),
             'show_name' => $show['title'] ?? $lookup['title_prefix'] ?? '',
+            'source' => 'api',
+            'source_label' => $this->sourceLabel('api'),
             'status' => $status,
             'status_label' => __("admin.spotify_fetcher.statuses.{$status}"),
             'title' => $lookup['title'] ?? $lookup['external_title'] ?? $item['id'],
@@ -343,10 +344,12 @@ class SpotifyLinksFetcher extends Page
      */
     private function showRow(array $item, array $show, string $status): array
     {
+        $description = $this->markdownDescriptionFromLookup($show);
+
         return [
             'content_group_reference_key' => '',
-            'description_markdown' => app(SpotifyHtmlToMarkdown::class)->convert((string) ($show['html_description'] ?? ''))
-                ?: (string) ($show['description'] ?? ''),
+            'description_markdown' => $description,
+            'description_preview' => $this->descriptionPreview($description),
             'duration_seconds' => '',
             'embed_url' => '',
             'external_description' => $show['description'] ?? '',
@@ -359,6 +362,8 @@ class SpotifyLinksFetcher extends Page
             'release_date' => '',
             'show_id' => $show['external_id'] ?? $item['id'],
             'show_name' => $show['title'] ?? $item['id'],
+            'source' => $status === 'reduced' ? 'reduced' : 'api',
+            'source_label' => $this->sourceLabel($status === 'reduced' ? 'reduced' : 'api'),
             'status' => $status,
             'status_label' => __("admin.spotify_fetcher.statuses.{$status}"),
             'title' => $show['title'] ?? $item['id'],
@@ -374,25 +379,35 @@ class SpotifyLinksFetcher extends Page
     {
         $this->usedReducedMode = true;
         $embed = app(SpotifyOEmbedClient::class)->fetch($item['url']);
+        $openGraph = app(SpotifyOpenGraphClient::class)->fetch($item['url']);
+        $description = app(SpotifyHtmlToMarkdown::class)->normalizePlainText($openGraph['description'] ?? null);
+        $title = $this->firstFilled($openGraph['title'] ?? null, $embed['title'] ?? null, $item['id']);
+        $image = $this->firstFilled($openGraph['image'] ?? null, $embed['thumbnail'] ?? null, '');
+        $showName = $item['type'] === 'show'
+            ? $title
+            : $this->firstFilled($openGraph['show_name'] ?? null, '');
 
         return [
             'content_group_reference_key' => '',
-            'description_markdown' => '',
-            'duration_seconds' => '',
-            'embed_url' => '',
-            'external_description' => '',
+            'description_markdown' => $description,
+            'description_preview' => $this->descriptionPreview($description),
+            'duration_seconds' => $openGraph['duration_seconds'] ?? '',
+            'embed_url' => $embed['embed_url'] ?? '',
+            'external_description' => $description,
             'external_id' => $item['id'],
-            'external_thumbnail_url' => $embed['thumbnail'] ?? '',
+            'external_thumbnail_url' => $image,
             'input' => $item['input'],
-            'media_url' => $item['url'],
+            'media_url' => $openGraph['canonical_url'] ?? $item['url'],
             'reason' => __('admin.spotify_fetcher.reduced_reason'),
             'reduced' => true,
-            'release_date' => '',
+            'release_date' => $this->dateString($openGraph['release_date'] ?? null),
             'show_id' => $item['type'] === 'show' ? $item['id'] : '',
-            'show_name' => $item['type'] === 'show' ? ($embed['title'] ?? $item['id']) : '',
+            'show_name' => $showName,
+            'source' => 'reduced',
+            'source_label' => $this->sourceLabel('reduced'),
             'status' => 'reduced',
             'status_label' => __('admin.spotify_fetcher.statuses.reduced'),
-            'title' => $embed['title'] ?? $item['id'],
+            'title' => $title,
             'title_prefix' => '',
             'type' => $item['type'],
         ];
@@ -421,6 +436,8 @@ class SpotifyLinksFetcher extends Page
                 'release_date' => '',
                 'show_id' => $item['type'] === 'show' ? $item['id'] : '',
                 'show_name' => '',
+                'source' => 'unknown',
+                'source_label' => '',
                 'status' => 'error',
                 'status_label' => __('admin.spotify_fetcher.statuses.error'),
                 'title' => $item['id'],
@@ -446,13 +463,14 @@ class SpotifyLinksFetcher extends Page
         }
 
         $this->podcastRows[] = [
-            'description_markdown' => app(SpotifyHtmlToMarkdown::class)->convert((string) ($show['html_description'] ?? ''))
-                ?: (string) ($show['description_markdown'] ?? $show['description'] ?? ''),
+            'description_markdown' => $this->markdownDescriptionFromLookup($show),
             'external_id' => $show['external_id'] ?? $show['show_id'] ?? '',
             'external_thumbnail_url' => $show['thumbnail'] ?? $show['external_thumbnail_url'] ?? '',
             'media_url' => $show['external_url'] ?? $show['media_url'] ?? '',
             'reason' => $status === 'reduced' ? __('admin.spotify_fetcher.reduced_reason') : '',
             'show_id' => $show['external_id'] ?? $show['show_id'] ?? '',
+            'source' => $show['source'] ?? ($status === 'reduced' ? 'reduced' : 'api'),
+            'source_label' => $show['source_label'] ?? $this->sourceLabel($status === 'reduced' ? 'reduced' : 'api'),
             'status' => $status,
             'status_label' => __("admin.spotify_fetcher.statuses.{$status}"),
             'title' => $show['title'] ?? $show['show_name'] ?? $key,
@@ -470,6 +488,7 @@ class SpotifyLinksFetcher extends Page
             'reduced' => (bool) ($row['reduced'] ?? false),
             'show' => $row['show_name'] ?? null,
             'show_id' => $row['show_id'] ?? null,
+            'source' => $row['source'] ?? null,
             'source_input' => $row['input'] ?? null,
         ], fn (mixed $value): bool => filled($value) || is_bool($value));
 
@@ -525,6 +544,54 @@ class SpotifyLinksFetcher extends Page
             'status' => 'draft',
             'title' => $row['title'] ?? '',
         ];
+    }
+
+    private function markdownDescriptionFromLookup(array $lookup): string
+    {
+        $converter = app(SpotifyHtmlToMarkdown::class);
+        $description = $converter->normalizePlainText($lookup['description_markdown'] ?? null);
+
+        if ($description !== '') {
+            return $description;
+        }
+
+        $description = $converter->convert(is_string($lookup['html_description'] ?? null) ? $lookup['html_description'] : null);
+
+        if ($description !== '') {
+            return $description;
+        }
+
+        $description = $converter->convert(is_string(data_get($lookup, 'media_metadata.html_description')) ? data_get($lookup, 'media_metadata.html_description') : null);
+
+        if ($description !== '') {
+            return $description;
+        }
+
+        return $converter->normalizePlainText($lookup['external_description'] ?? $lookup['description'] ?? null);
+    }
+
+    private function descriptionPreview(string $markdown): string
+    {
+        $preview = preg_replace("/\s+/u", ' ', str_replace(["\r", "\n"], ' ', $markdown)) ?? $markdown;
+        $preview = trim($preview);
+
+        return $preview === '' ? '' : Str::limit($preview, 140);
+    }
+
+    private function firstFilled(mixed ...$values): string
+    {
+        foreach ($values as $value) {
+            if (filled($value)) {
+                return (string) $value;
+            }
+        }
+
+        return '';
+    }
+
+    private function sourceLabel(string $source): string
+    {
+        return __("admin.spotify_fetcher.sources.{$source}");
     }
 
     /**

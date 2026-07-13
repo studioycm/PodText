@@ -219,6 +219,7 @@ it('fills blank fields from spotify lookup and extracts iframe src values', func
             expect($episodeInput)->toBe('spotify:episode:abc123');
 
             return [
+                'description_markdown' => "Spotify paragraph\n\nSecond paragraph",
                 'title' => 'Spotify title',
                 'title_prefix' => 'Spotify show',
                 'media_url' => 'https://open.spotify.com/episode/abc123',
@@ -236,6 +237,7 @@ it('fills blank fields from spotify lookup and extracts iframe src values', func
         ->callAction(TestAction::make('fetchSpotifyEpisode')->schemaComponent('spotify_episode', 'form'))
         ->assertSet('data.title', 'Manual title')
         ->assertSet('data.title_prefix', 'Manual prefix')
+        ->assertSet('data.description_markdown', "Spotify paragraph\n\nSecond paragraph")
         ->assertSet('data.media_url', 'https://open.spotify.com/episode/abc123')
         ->assertSet('data.embed_url', 'https://open.spotify.com/embed/episode/abc123')
         ->assertSet('data.embed_provider', 'spotify')

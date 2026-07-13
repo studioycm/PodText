@@ -1924,10 +1924,12 @@ return [
             'csv_upload' => 'CSV upload',
             'entity_mode' => 'Entity mode',
             'external_id' => 'External ID',
+            'image_preview' => 'Image preview',
             'links' => 'Spotify links',
             'show' => 'Show',
             'show_id' => 'Show ID',
             'source' => 'Source',
+            'source_tier' => 'Fetch source',
             'status' => 'Status',
             'type' => 'Type',
         ],
@@ -1938,6 +1940,7 @@ return [
         'helpers' => [
             'batch_cap' => 'Default 25. Maximum 100 links per fetch.',
             'connection' => 'Choose a connected Spotify client-credentials connection, or leave blank for public oEmbed reduced mode.',
+            'reduced_open_graph' => 'Reduced mode uses public oEmbed plus static OpenGraph/LD-JSON. Spotify often truncates og:description, so LD-JSON descriptions are preferred when present.',
         ],
         'loading' => [
             'fetch' => 'Fetching rows...',
@@ -1953,7 +1956,10 @@ return [
             'navigation' => 'Spotify fetcher',
             'title' => 'Spotify links fetcher',
         ],
-        'reduced_mode_label' => 'Reduced mode is active. Rows include title and thumbnail only.',
+        'placeholders' => [
+            'no_image' => 'No image',
+        ],
+        'reduced_mode_label' => 'Reduced mode is active. Rows use public oEmbed plus static OpenGraph metadata.',
         'reduced_reason' => 'Fetched through Spotify public oEmbed without API credentials.',
         'sections' => [
             'input' => 'Input',
@@ -1961,6 +1967,10 @@ return [
             'podcasts' => 'Podcast CSV rows',
             'results' => 'Editable results',
             'warnings' => 'Warnings',
+        ],
+        'sources' => [
+            'api' => 'API',
+            'reduced' => 'No credentials',
         ],
         'statuses' => [
             'error' => 'Error',

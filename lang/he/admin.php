@@ -1892,10 +1892,12 @@ return [
             'csv_upload' => 'העלאת CSV',
             'entity_mode' => 'סוג ישות',
             'external_id' => 'מזהה חיצוני',
+            'image_preview' => 'תצוגת תמונה',
             'links' => 'קישורי Spotify',
             'show' => 'פודקאסט',
             'show_id' => 'מזהה פודקאסט',
             'source' => 'מקור',
+            'source_tier' => 'מקור שליפה',
             'status' => 'סטטוס',
             'type' => 'סוג',
         ],
@@ -1906,6 +1908,7 @@ return [
         'helpers' => [
             'batch_cap' => 'ברירת מחדל 25. עד 100 קישורים בשליפה.',
             'connection' => 'בחרו חיבור Spotify מחובר מסוג client credentials, או השאירו ריק למצב oEmbed מצומצם.',
+            'reduced_open_graph' => 'מצב מצומצם משתמש ב-oEmbed ציבורי וב-OpenGraph/LD-JSON סטטי. Spotify מקצרת לעיתים את og:description, לכן תיאור LD-JSON מועדף כשהוא קיים.',
         ],
         'loading' => [
             'fetch' => 'שולף שורות...',
@@ -1921,7 +1924,10 @@ return [
             'navigation' => 'שליפת Spotify',
             'title' => 'שליפת קישורי Spotify',
         ],
-        'reduced_mode_label' => 'מצב מצומצם פעיל. השורות כוללות כותרת ותמונה בלבד.',
+        'placeholders' => [
+            'no_image' => 'אין תמונה',
+        ],
+        'reduced_mode_label' => 'מצב מצומצם פעיל. השורות משתמשות ב-oEmbed ציבורי ובנתוני OpenGraph סטטיים.',
         'reduced_reason' => 'נשלף דרך oEmbed הציבורי של Spotify ללא פרטי גישה ל-API.',
         'sections' => [
             'input' => 'קלט',
@@ -1929,6 +1935,10 @@ return [
             'podcasts' => 'שורות CSV לפודקאסטים',
             'results' => 'תוצאות לעריכה',
             'warnings' => 'אזהרות',
+        ],
+        'sources' => [
+            'api' => 'API',
+            'reduced' => 'ללא הרשאות',
         ],
         'statuses' => [
             'error' => 'שגיאה',

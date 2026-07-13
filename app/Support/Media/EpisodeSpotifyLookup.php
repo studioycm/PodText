@@ -6,6 +6,7 @@ use App\Enums\ImportConnectionProvider;
 use App\Enums\ImportConnectionStatus;
 use App\Models\ImportConnection;
 use App\Support\Importer\Spotify\SpotifyConnector;
+use App\Support\Importer\SpotifyLinks\SpotifyHtmlToMarkdown;
 use Carbon\CarbonImmutable;
 use InvalidArgumentException;
 
@@ -32,8 +33,13 @@ class EpisodeSpotifyLookup
         $duration = $episode['duration'] ?? null;
         $releaseDate = $this->releaseDate($episode['release_date'] ?? null);
         $externalUrl = $episode['external_url'] ?? "https://open.spotify.com/episode/{$spotifyId}";
+        $descriptionMarkdown = $this->descriptionMarkdown(
+            $episode['html_description'] ?? null,
+            $episode['description'] ?? null,
+        );
 
         return [
+            'description_markdown' => $descriptionMarkdown,
             'title' => $episode['title'] ?? null,
             'title_prefix' => $episode['show'] ?? null,
             'media_url' => $externalUrl,
@@ -73,9 +79,14 @@ class EpisodeSpotifyLookup
         $connection ??= $this->defaultConnection();
         $show = $this->spotify->fetchShow($connection, $spotifyId);
         $externalUrl = $show['external_url'] ?? "https://open.spotify.com/show/{$spotifyId}";
+        $descriptionMarkdown = $this->descriptionMarkdown(
+            $show['html_description'] ?? null,
+            $show['description'] ?? null,
+        );
 
         return [
             'description' => $show['description'] ?? null,
+            'description_markdown' => $descriptionMarkdown,
             'external_id' => $show['external_id'] ?? $spotifyId,
             'external_url' => $externalUrl,
             'html_description' => $show['html_description'] ?? null,
@@ -143,5 +154,17 @@ class EpisodeSpotifyLookup
         }
 
         return CarbonImmutable::parse((string) $value, 'Asia/Jerusalem')->startOfDay();
+    }
+
+    private function descriptionMarkdown(mixed $html, mixed $plainText): string
+    {
+        $converter = app(SpotifyHtmlToMarkdown::class);
+        $description = $converter->convert(is_string($html) ? $html : null);
+
+        if ($description !== '') {
+            return $description;
+        }
+
+        return $converter->normalizePlainText(is_string($plainText) ? $plainText : null);
     }
 }

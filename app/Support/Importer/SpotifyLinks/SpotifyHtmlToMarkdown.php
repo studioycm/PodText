@@ -24,12 +24,22 @@ class SpotifyHtmlToMarkdown
         $body = $document->getElementsByTagName('body')->item(0);
         $markdown = $body instanceof DOMNode ? $this->children($body) : strip_tags($html);
 
-        $markdown = html_entity_decode($markdown, ENT_QUOTES | ENT_HTML5, 'UTF-8');
-        $markdown = str_replace("\xc2\xa0", ' ', $markdown);
-        $markdown = preg_replace("/[ \t]+\n/u", "\n", $markdown) ?? $markdown;
-        $markdown = preg_replace("/\n{3,}/u", "\n\n", $markdown) ?? $markdown;
+        return $this->normalizePlainText($markdown);
+    }
 
-        return trim($markdown);
+    public function normalizePlainText(?string $text): string
+    {
+        if (blank($text)) {
+            return '';
+        }
+
+        $text = html_entity_decode((string) $text, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        $text = str_replace("\xc2\xa0", ' ', $text);
+        $text = preg_replace("/\r\n?/", "\n", $text) ?? $text;
+        $text = preg_replace("/[ \t]+\n/u", "\n", $text) ?? $text;
+        $text = preg_replace("/\n{3,}/u", "\n\n", $text) ?? $text;
+
+        return trim($text);
     }
 
     private function children(DOMNode $node): string

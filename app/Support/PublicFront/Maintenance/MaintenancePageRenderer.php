@@ -81,14 +81,31 @@ class MaintenancePageRenderer
             return Str::replaceFirst(MaintenanceForm::MARKER, $formHtml, $rawHtml);
         }
 
-        return $rawHtml.$this->missingMarkerFallbackHtml().$formHtml;
+        return $rawHtml.$this->missingMarkerFallbackHtml($formHtml);
     }
 
-    private function missingMarkerFallbackHtml(): string
+    private function missingMarkerFallbackHtml(string $formHtml): string
     {
         return '<div data-podtext-maintenance-form-marker-missing hidden>'
             .e(__('public.maintenance_form.marker_missing'))
-            .'</div>';
+            .'</div>'
+            .'<section data-podtext-maintenance-form-fallback-container style="'
+            .'direction:rtl;'
+            .'width:min(92vw,42rem);'
+            .'margin:1.5rem auto;'
+            .'padding:clamp(1.25rem,4vw,2.5rem);'
+            .'border:1px solid var(--maintenance-border,#d7d7ce);'
+            .'border-radius:0.5rem;'
+            .'background:var(--maintenance-panel,#ffffff);'
+            .'color:var(--maintenance-text,#1f2933);'
+            .'font-family:&quot;Varela Round&quot;,system-ui,-apple-system,BlinkMacSystemFont,&quot;Segoe UI&quot;,sans-serif;'
+            .'font-size:1rem;'
+            .'line-height:1.7;'
+            .'box-shadow:0 18px 60px rgb(0 0 0 / 10%);'
+            .'text-align:start;'
+            .'">'
+            .$formHtml
+            .'</section>';
     }
 
     /**
