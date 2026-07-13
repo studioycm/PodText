@@ -24,6 +24,7 @@ use App\Support\Media\EpisodeSpotifyLookup;
 use Filament\Actions\Testing\TestAction;
 use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Queue;
@@ -64,6 +65,24 @@ function clearEpisodeWorkspaceSettingsCache(): void
 {
     app()->forgetInstance(AdminUxSettings::class);
     app(SettingsContainer::class)->clearCache();
+}
+
+function setEpisodeWorkspaceTranscriptionMode(TranscriptionMode $mode): void
+{
+    DB::table('settings')->updateOrInsert(
+        [
+            'group' => AdminUxSettings::group(),
+            'name' => 'transcription_mode',
+        ],
+        [
+            'locked' => false,
+            'payload' => json_encode($mode->value),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ],
+    );
+
+    clearEpisodeWorkspaceSettingsCache();
 }
 
 it('resolves the workspace transcription as featured then latest published then newest draft', function (): void {
@@ -142,6 +161,8 @@ it('creates an episode workspace with one empty transcription and pins it idempo
 });
 
 it('replaces the workspace transcription by selecting an existing record or starting fresh', function (): void {
+    setEpisodeWorkspaceTranscriptionMode(TranscriptionMode::Multi);
+
     $item = ContentItem::factory()->create();
     $first = Transcription::factory()->for($item)->create(['title' => 'First workspace']);
     $second = Transcription::factory()->for($item)->create(['title' => 'Second workspace']);
@@ -170,6 +191,25 @@ it('replaces the workspace transcription by selecting an existing record or star
         ->and($fresh->transcript_markdown)->toBe('')
         ->and($item->transcriptions()->count())->toBe(3)
         ->and($second->refresh()->content_item_id)->toBe($item->id);
+});
+
+it('rejects forged existing workspace replacement while single-transcription mode is active', function (): void {
+    setEpisodeWorkspaceTranscriptionMode(TranscriptionMode::Single);
+
+    $item = ContentItem::factory()->create();
+    $first = Transcription::factory()->for($item)->create(['title' => 'First workspace']);
+    $second = Transcription::factory()->for($item)->create(['title' => 'Second workspace']);
+
+    $item->update(['featured_transcription_id' => $first->id]);
+
+    Livewire::test(EditEpisodeWorkspace::class, ['record' => $item->getRouteKey()])
+        ->mountAction(TestAction::make('replaceWorkspaceTranscription'))
+        ->set('mountedActions.0.data.replacement_mode', 'existing')
+        ->set('mountedActions.0.data.existing_transcription_id', $second->id)
+        ->callMountedAction()
+        ->assertForbidden();
+
+    expect($item->refresh()->featured_transcription_id)->toBe($first->id);
 });
 
 it('saves workspace admin ux settings and renders modal and slideover transcript modes', function (): void {

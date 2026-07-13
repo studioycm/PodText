@@ -2,6 +2,7 @@
 
 namespace App\Filament\Pages;
 
+use App\Enums\UserRole;
 use App\Filament\Actions\ExportPublicSettingsAction;
 use App\Filament\Forms\Components\IconSelect;
 use App\Filament\Forms\Components\TrustedHtmlCodeEditor;
@@ -25,6 +26,7 @@ use App\Support\SettingsLifecycle\SettingsImportLocks;
 use App\Support\SettingsLifecycle\SettingsLifecycleSchema;
 use App\Support\SettingsLifecycle\SettingsLifecycleSelectionState;
 use App\Support\SettingsLifecycle\SettingsLifecycleUnit;
+use App\Support\Transcriptions\MultiTranscriptionSurfaces;
 use BackedEnum;
 use Closure;
 use Filament\Actions\Action;
@@ -479,6 +481,7 @@ class PublicContentSettings extends SettingsPage
                                                 ->options(fn (): array => PublicTranscriptionPolicy::modeOptions())
                                                 ->default(PublicTranscriptionPolicy::MODE_FEATURED_ONLY)
                                                 ->native(false)
+                                                ->multiTranscription(UserRole::SuperAdmin)
                                                 ->required(),
                                             Select::make('transcription_policy.count_mode')
                                                 ->label(__('admin.fields.public_transcription_policy_count_mode'))
@@ -486,14 +489,17 @@ class PublicContentSettings extends SettingsPage
                                                 ->options(fn (): array => PublicTranscriptionPolicy::modeOptions())
                                                 ->default(PublicTranscriptionPolicy::MODE_FEATURED_ONLY)
                                                 ->native(false)
+                                                ->multiTranscription(UserRole::SuperAdmin)
                                                 ->required(),
                                             Toggle::make('transcription_policy.show_multiple_transcriptions_on_item_page')
                                                 ->label(__('admin.fields.public_transcription_policy_show_multiple_transcriptions_on_item_page'))
-                                                ->helperText(__('admin.helpers.public_transcription_policy_show_multiple_transcriptions_on_item_page')),
+                                                ->helperText(__('admin.helpers.public_transcription_policy_show_multiple_transcriptions_on_item_page'))
+                                                ->multiTranscription(UserRole::SuperAdmin),
                                         ])
                                         ->columns(3)
                                         ->collapsible()
-                                        ->columnSpanFull(),
+                                        ->columnSpanFull()
+                                        ->multiTranscription(UserRole::SuperAdmin),
                                     'transcription_policy',
                                     'public-transcription-policy',
                                 ),
@@ -2254,11 +2260,13 @@ class PublicContentSettings extends SettingsPage
             'locked_paths' => app(SettingsImportLocks::class)->lockedPaths(),
         ];
 
-        return [
+        $data = [
             ...$data,
             ...$publicFrontConfig,
             'import_locks' => $currentImportLocks,
         ];
+
+        return MultiTranscriptionSurfaces::overlayUnauthorizedSettings($data, PublicContentSettingsData::class);
     }
 
     /**
@@ -2649,7 +2657,11 @@ class PublicContentSettings extends SettingsPage
             Select::make('attribute')
                 ->label(__('admin.fields.card_template_part_attribute'))
                 ->helperText(__('admin.helpers.card_template_part_attribute'))
-                ->options(fn (Get $get): array => PublicFrontConfigRegistry::cardAttributeOptions($get('source')))
+                ->options(fn (Get $get): array => MultiTranscriptionSurfaces::filterCardAttributeOptions(
+                    $get('source'),
+                    PublicFrontConfigRegistry::cardAttributeOptions($get('source')),
+                    $get('attribute'),
+                ))
                 ->default(PublicFrontCardTemplateRegistry::defaultAttributeForPart($type))
                 ->native(false)
                 ->required($requiresSource)

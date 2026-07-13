@@ -64,7 +64,9 @@ For current prompt completion/progress state, see `docs/phase-02/current-project
 - Never run `migrate:fresh`, `db:wipe`, or seeders against the dev database. Destructive artisan commands belong to tests only, where the canary has already forced SQLite `:memory:`.
 - Composite indexes on string columns must use explicit bounded lengths. Finite-token columns get small explicit lengths; with `utf8mb4`, each character can cost 4 bytes and InnoDB's key limit is 3072 bytes. SQLite tests cannot catch MySQL key-length violations, so review index byte math for every new string composite index.
 - PHP language files silently keep the last duplicate key at runtime. Use a token-level duplicate-key scan for both `lang/en` and `lang/he` after translation edits, especially when moving or merging nested admin arrays.
-- `User::canAccessPanel()` currently admits every authenticated user to the admin panel and is the single load-bearing admin-auth decision. This is acceptable only while the only account is Yoni's; before any non-admin account type exists, add an `is_admin` gate first.
+- `User::canAccessPanel()` is the load-bearing admin-auth decision and, after
+  ROLES1, must require at least the `admin` role for the admin panel. Future
+  moderator/transcriber panel access must be explicit, role-scoped, and tested.
 - Known order-dependent flake: `PublicFrontIconRegistryTest` test `normalizes saved icon aliases` failed only in a full-suite run and passed alone and on rerun. Suspect static or memoized icon-registry/render-context state leaking across tests. This is recorded for future isolation work and was not fixed in Step 10R-HF3.
 
 ## Documentation/state-management lessons
@@ -88,6 +90,7 @@ For current prompt completion/progress state, see `docs/phase-02/current-project
 - HTTP-touching tests must call `Http::preventStrayRequests()` and serve response bodies from committed fixtures. Inline fake bodies are too easy to leave stale and can hide unowned external calls.
 - Trusted raw HTML fields are narrow admin-only exceptions. Edit them in LTR code editors and save/render them verbatim; do not route them through Markdown, sanitizer, escaping, trimming, or app-level length caps.
 - Spatie settings cache toggles must be explicit in `.env.example`, disabled locally by default, covered by save-invalidation tests, and called out in handoff deploy notes when production should enable them.
+- Per-deployment white-labeling is done with mode flags and role gates in one codebase, never forks. Illusion features require server-side save guards against forged or hidden state, not only field visibility.
 
 ## Deferred-item handling lessons
 

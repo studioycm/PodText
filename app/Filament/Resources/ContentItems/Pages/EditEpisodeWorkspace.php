@@ -2,11 +2,13 @@
 
 namespace App\Filament\Resources\ContentItems\Pages;
 
+use App\Enums\UserRole;
 use App\Filament\Actions\ContentImageActions;
 use App\Filament\Resources\ContentItems\ContentItemResource;
 use App\Filament\Resources\ContentItems\Schemas\EpisodeWorkspaceForm;
 use App\Models\ContentItem;
 use App\Models\Transcription;
+use App\Support\Transcriptions\MultiTranscriptionSurfaces;
 use Filament\Actions\Action;
 use Filament\Actions\DeleteAction;
 use Filament\Forms\Components\Radio;
@@ -56,13 +58,29 @@ class EditEpisodeWorkspace extends EditRecord
             ->modalHeading(__('admin.modals.replace_workspace_transcription'))
             ->modalSubmitActionLabel(__('admin.actions.replace_transcription'))
             ->fillForm(fn (): array => [
-                'replacement_mode' => $this->otherTranscriptionsExist() ? 'existing' : 'fresh',
+                'replacement_mode' => $this->canPickExistingTranscription() && $this->otherTranscriptionsExist()
+                    ? 'existing'
+                    : 'fresh',
             ])
+            ->beforeFormValidated(function (): void {
+                $mountedActionIndex = array_key_last($this->mountedActions ?? []);
+                $rawData = is_int($mountedActionIndex)
+                    ? ($this->mountedActions[$mountedActionIndex]['data'] ?? [])
+                    : [];
+
+                abort_if(
+                    ($rawData['replacement_mode'] ?? null) === 'existing'
+                    && ! $this->canPickExistingTranscription(),
+                    403,
+                );
+            })
             ->schema([
                 Radio::make('replacement_mode')
                     ->label(__('admin.fields.replacement_mode'))
-                    ->options([
-                        'existing' => __('admin.actions.select_existing_transcription'),
+                    ->options(fn (Get $get): array => [
+                        ...($this->canPickExistingTranscription() || $get('replacement_mode') === 'existing'
+                            ? ['existing' => __('admin.actions.select_existing_transcription')]
+                            : []),
                         'fresh' => __('admin.actions.start_fresh_transcription'),
                     ])
                     ->default('fresh')
@@ -72,13 +90,16 @@ class EditEpisodeWorkspace extends EditRecord
                     ->label(__('admin.fields.existing_transcription'))
                     ->options(fn (): array => $this->existingTranscriptionOptions())
                     ->searchable()
-                    ->visible(fn (Get $get): bool => $get('replacement_mode') === 'existing')
+                    ->visible(fn (Get $get): bool => $this->canPickExistingTranscription()
+                        && $get('replacement_mode') === 'existing')
                     ->required(fn (Get $get): bool => $get('replacement_mode') === 'existing'),
             ])
             ->action(function (array $data): void {
                 $record = $this->getRecord();
 
                 if (($data['replacement_mode'] ?? null) === 'existing') {
+                    abort_unless($this->canPickExistingTranscription(), 403);
+
                     $transcription = $record->transcriptions()
                         ->whereKey($data['existing_transcription_id'] ?? null)
                         ->first();
@@ -135,5 +156,10 @@ class EditEpisodeWorkspace extends EditRecord
                 $transcription->getKey() => $transcription->title ?: __('admin.labels.untitled_transcription', ['id' => $transcription->getKey()]),
             ])
             ->all();
+    }
+
+    private function canPickExistingTranscription(): bool
+    {
+        return MultiTranscriptionSurfaces::currentUserCan(UserRole::Admin);
     }
 }

@@ -2,6 +2,8 @@
 
 namespace App\Providers;
 
+use App\Enums\UserRole;
+use App\Models\User;
 use App\Observers\CuratorMediaObserver;
 use App\Policies\CuratorMediaPolicy;
 use App\Settings\PublicContentSettings;
@@ -16,9 +18,11 @@ use App\Support\PublicFront\PublicFrontRenderContext;
 use App\Support\PublicFront\PublicFrontRenderContextFactory;
 use App\Support\Settings\SettingsPageProfiler;
 use App\Support\SettingsLifecycle\SettingsBackupManager;
+use App\Support\Transcriptions\MultiTranscriptionSurfaces;
 use Awcodes\Curator\Models\Media;
 use Filament\Actions\Action;
 use Filament\Facades\Filament;
+use Filament\Schemas\Components\Component as SchemaComponent;
 use Filament\Schemas\Components\Section;
 use Filament\Support\Enums\Width;
 use Filament\Tables\Enums\RecordActionsPosition;
@@ -67,6 +71,35 @@ class AppServiceProvider extends ServiceProvider
         Model::preventLazyLoading(! $this->app->isProduction());
 
         Gate::policy(Media::class, CuratorMediaPolicy::class);
+        Gate::define('super-admin', fn (User $user): bool => $user->hasRoleAtLeast(UserRole::SuperAdmin));
+        Gate::define('multi-transcription', function (User $user, UserRole|string|null $minimum = null): bool {
+            $minimumRole = $minimum instanceof UserRole
+                ? $minimum
+                : UserRole::tryFrom((string) $minimum) ?? UserRole::SuperAdmin;
+
+            return MultiTranscriptionSurfaces::userCan($user, $minimumRole);
+        });
+
+        SchemaComponent::macro('multiTranscription', function (?UserRole $minimum = null) {
+            /** @var SchemaComponent $this */
+            return $this->hidden(fn (): bool => Gate::denies('multi-transcription', [$minimum ?? UserRole::SuperAdmin]));
+        });
+
+        SchemaComponent::macro('superAdminOnly', function () {
+            /** @var SchemaComponent $this */
+            return $this->hidden(fn (): bool => Gate::denies('super-admin'));
+        });
+
+        Action::macro('multiTranscription', function (?UserRole $minimum = null) {
+            /** @var Action $this */
+            return $this->hidden(fn (): bool => Gate::denies('multi-transcription', [$minimum ?? UserRole::SuperAdmin]));
+        });
+
+        Action::macro('superAdminOnly', function () {
+            /** @var Action $this */
+            return $this->hidden(fn (): bool => Gate::denies('super-admin'));
+        });
+
         Media::observe(CuratorMediaObserver::class);
 
         $this->app->make(ImportExportQueueTracer::class)->register();

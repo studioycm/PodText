@@ -19,6 +19,7 @@ use App\Filament\Resources\HomepageSections\HomepageSectionResource;
 use App\Filament\Resources\PublicFormSubmissions\PublicFormSubmissionResource;
 use App\Filament\Resources\SettingsBackups\SettingsBackupResource;
 use App\Filament\Resources\Transcriptions\TranscriptionResource;
+use App\Filament\Resources\Users\UserResource;
 use Awcodes\Curator\Resources\Media\MediaResource;
 use Filament\Navigation\NavigationGroup;
 use Filament\Navigation\NavigationItem;
@@ -98,6 +99,10 @@ class AdminNavigationOrder
         ],
         AdminUxSettings::class => [
             'sort' => 320,
+            'group' => self::SITE_MANAGEMENT,
+        ],
+        UserResource::class => [
+            'sort' => 325,
             'group' => self::SITE_MANAGEMENT,
         ],
         SettingsBackupResource::class => [

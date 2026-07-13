@@ -2,6 +2,7 @@
 
 namespace Database\Factories;
 
+use App\Enums\UserRole;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Facades\Hash;
@@ -29,8 +30,41 @@ class UserFactory extends Factory
             'email' => fake()->unique()->safeEmail(),
             'email_verified_at' => now(),
             'password' => static::$password ??= Hash::make('password'),
+            'role' => UserRole::Admin,
             'remember_token' => Str::random(10),
         ];
+    }
+
+    public function role(UserRole $role): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'role' => $role,
+        ]);
+    }
+
+    public function superAdmin(): static
+    {
+        return $this->role(UserRole::SuperAdmin);
+    }
+
+    public function admin(): static
+    {
+        return $this->role(UserRole::Admin);
+    }
+
+    public function moderator(): static
+    {
+        return $this->role(UserRole::Moderator);
+    }
+
+    public function transcriber(): static
+    {
+        return $this->role(UserRole::Transcriber);
+    }
+
+    public function regularUser(): static
+    {
+        return $this->role(UserRole::User);
     }
 
     /**

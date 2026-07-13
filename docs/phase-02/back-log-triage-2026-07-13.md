@@ -47,7 +47,7 @@ Prompt 13), DEFER-POST-13, WAITING-ON-YONI, CLOSED.
 | Record-level clone (episodes/podcasts) | Yoni | **CLOSED** — dropped by decision. |
 | Playwright-scraping Spotify | Yoni proposal | **CLOSED** — rejected (ToS/fragility/weight); OG tier approved instead. |
 | Corpus audit (ChatGPT-era vs Fable-era docs) | parked long ago | On-demand ("run the docs audit"). |
-| is_admin gate before any non-admin account | standing guardrail | **STANDING** — must precede any additional user accounts. |
+| Admin gate before any non-admin account | standing guardrail | **CLOSED BY ROLES1** — `UserRole` and admin+ panel access replace the earlier `is_admin` placeholder. |
 | Real mailer + from-address | env review | Before any mail-sending feature (password reset works only then). |
 | Production human checks | growing | Checklist file + per-run handoff lists; SP1 added six more items. |
 | Server housekeeping: remove `/home/forge/podtext.data4.work` dir + DNS record; confirm SESSION_SECURE_COOKIE landed | infra night | Yoni, when convenient. |

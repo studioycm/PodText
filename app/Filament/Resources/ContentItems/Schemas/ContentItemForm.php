@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\ContentItems\Schemas;
 
+use App\Enums\UserRole;
 use App\Filament\Forms\Components\PublicationStatusSelect;
 use App\Filament\Forms\Components\SlugInput;
 use App\Filament\Forms\Components\TrustedHtmlCodeEditor;
@@ -147,7 +148,8 @@ class ContentItemForm
                             ->searchable(),
                     ])
                     ->visible(fn (?ContentItem $record): bool => $record
-                        && $record->transcriptions()->count() > 1),
+                        && $record->transcriptions()->count() > 1)
+                    ->multiTranscription(UserRole::Admin),
                 Section::make(__('admin.sections.pinning'))
                     ->description(__('admin.descriptions.pinning'))
                     ->schema([

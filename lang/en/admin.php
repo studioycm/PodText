@@ -59,6 +59,11 @@ return [
             'plural' => 'Transcriptions',
             'navigation' => 'Transcriptions',
         ],
+        'user' => [
+            'singular' => 'User',
+            'plural' => 'Users',
+            'navigation' => 'Users',
+        ],
     ],
     'curator' => [
         'label' => 'Media',
@@ -118,6 +123,7 @@ return [
         'public_front_contributor_cards' => 'Contributor cards',
         'public_front_contributor_page_items' => 'Contributor page items',
         'public_transcription_policy' => 'Public transcription policy',
+        'user_role' => 'User role',
         'public_menu_theme_selector' => 'Theme selector',
         'about_page_identity' => 'About page identity',
         'about_page_team_card' => 'Team profile cards',
@@ -187,6 +193,7 @@ return [
         'transcript_markdown' => 'Canonical transcript Markdown for this item. Public rendering uses the safe Markdown renderer.',
         'transcription_identity' => 'Transcript ownership metadata. The item is supplied by the relation manager context.',
         'transcription_publication' => 'Only published transcriptions can become publicly effective. Drafts remain admin-only.',
+        'user_role' => 'Only super admins can assign roles. Admin-panel access begins at Admin; multi-transcription controls require the configured role gates and multi mode.',
     ],
     'fields' => [
         'author' => 'Author',
@@ -273,6 +280,7 @@ return [
         'description_markdown' => 'Description',
         'direct_media_url' => 'Direct media URL',
         'duration_seconds' => 'Duration seconds',
+        'email' => 'Email',
         'effective_image' => 'Effective image',
         'effective_transcription' => 'Effective transcription',
         'effective_type_label' => 'Type label',
@@ -538,6 +546,7 @@ return [
         'reference_key' => 'Reference key',
         'media_naming_strategy' => 'Media naming strategy',
         'replacement_mode' => 'Replacement mode',
+        'role' => 'Role',
         'section_summary' => 'Section summary',
         'show_latest_section' => 'Show latest section',
         'show_episode_workspace_hint_line' => 'Show hidden-transcriptions hint',
@@ -910,8 +919,9 @@ return [
         'spotify_episode' => 'Paste a Spotify episode URL, URI, or ID, then fetch metadata into blank fields only.',
         'tb1_picker_container' => 'Default container for TB1 picker interactions.',
         'title_prefix' => 'Optional display prefix. When empty, public combined titles fall back to the podcast/group title.',
-        'transcription_mode' => 'Single keeps the episode workspace focused on one selected transcription.',
+        'transcription_mode' => 'Single mode hides multi-transcription controls and preserves the one-transcript workspace. Multi mode exposes eligible multi-transcription controls by role.',
         'transcription_presentation_mode' => 'Controls how the transcription section is presented inside the workspace form.',
+        'user_role' => 'Controls admin access and feature gates. Use the command-line role assignment path for emergency recovery if no super admin remains.',
         'content_item_slug' => 'URL identifier scoped to this content group. Leave it blank to generate one from the title. Manual edits are preserved; use regenerate to replace it from the current title.',
         'sort_order' => 'Lower values appear earlier.',
         'set_featured_transcription_action' => 'Sets this published transcription as the item featured transcript. Draft transcriptions remain private and cannot become publicly effective.',
@@ -1054,6 +1064,13 @@ return [
     'transcription_modes' => [
         'multi' => 'Multiple transcriptions',
         'single' => 'Single transcription',
+    ],
+    'user_roles' => [
+        'admin' => 'Admin',
+        'moderator' => 'Moderator',
+        'super-admin' => 'Super admin',
+        'transcriber' => 'Transcriber',
+        'user' => 'User',
     ],
     'tb1_picker_containers' => [
         'modal' => 'Modal',
@@ -2123,6 +2140,8 @@ return [
         ],
     ],
     'validation' => [
+        'cannot_demote_last_super_admin' => 'At least one super admin must remain.',
+        'cannot_demote_self' => 'You cannot demote your own super admin account.',
         'embed_url_host' => 'The embed URL host is not approved.',
         'embed_url_https' => 'The embed URL must use HTTPS.',
         'embed_url_no_html' => 'Paste an embed URL, not HTML.',

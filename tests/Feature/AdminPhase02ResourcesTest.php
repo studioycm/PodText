@@ -3,6 +3,7 @@
 use App\Enums\HomepageSectionType;
 use App\Enums\PublicationStatus;
 use App\Enums\PublicFormSubmissionStatus;
+use App\Enums\TranscriptionMode;
 use App\Filament\Pages\AdminTools;
 use App\Filament\Pages\AdminUxSettings as AdminUxSettingsPage;
 use App\Filament\Pages\Dashboard;
@@ -42,6 +43,7 @@ use App\Filament\Resources\Transcriptions\Pages\CreateTranscription;
 use App\Filament\Resources\Transcriptions\Pages\EditTranscription;
 use App\Filament\Resources\Transcriptions\Pages\ListTranscriptions;
 use App\Filament\Resources\Transcriptions\TranscriptionResource;
+use App\Filament\Resources\Users\UserResource;
 use App\Filament\Support\AdminNavigationOrder;
 use App\Models\Author;
 use App\Models\Category;
@@ -52,6 +54,7 @@ use App\Models\HomepageSection;
 use App\Models\PublicFormSubmission;
 use App\Models\Transcription;
 use App\Models\User;
+use App\Settings\AdminUxSettings;
 use App\Settings\PublicContentSettings;
 use Awcodes\Curator\Resources\Media\MediaResource;
 use Filament\Actions\Action;
@@ -70,6 +73,7 @@ use Illuminate\Support\Facades\Mail;
 use Illuminate\Validation\ValidationException;
 use Livewire\Features\SupportTesting\Testable;
 use Livewire\Livewire;
+use Spatie\LaravelSettings\SettingsContainer;
 
 uses(RefreshDatabase::class);
 
@@ -100,6 +104,25 @@ beforeEach(function (): void {
 
     $this->actingAs(User::factory()->create());
 });
+
+function setAdminPhase02ResourcesTranscriptionMode(TranscriptionMode $mode): void
+{
+    DB::table('settings')->updateOrInsert(
+        [
+            'group' => AdminUxSettings::group(),
+            'name' => 'transcription_mode',
+        ],
+        [
+            'locked' => false,
+            'payload' => json_encode($mode->value),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ],
+    );
+
+    app()->forgetInstance(AdminUxSettings::class);
+    app(SettingsContainer::class)->clearCache();
+}
 
 function mountUx2EffectiveTranscriptionAction(ContentItem $item): Testable
 {
@@ -165,6 +188,10 @@ it('orders every registered admin navigation resource and page through the centr
         ],
         AdminUxSettingsPage::class => [
             'sort' => 320,
+            'group' => AdminNavigationOrder::SITE_MANAGEMENT,
+        ],
+        UserResource::class => [
+            'sort' => 325,
             'group' => AdminNavigationOrder::SITE_MANAGEMENT,
         ],
         SettingsBackupResource::class => [
@@ -933,31 +960,35 @@ it('manages content items from the content group relation manager', function ():
 });
 
 it('saves public content settings through the settings page', function (): void {
-    Livewire::test(PublicContentSettingsPage::class)
-        ->fillForm([
-            'homepage_item_limit' => 9,
-            'pinned_item_limit' => 4,
-            'default_public_sort' => 'title_desc',
-            'default_result_layout' => 'rows',
-            'show_latest_section' => false,
-            'item_page_layout' => 'media_first',
-            'homepage_card_image_size' => 'large',
-            'homepage_card_density' => 'compact',
-            'homepage_card_title_size' => 'lg',
-            'homepage_show_group_badge' => false,
-            'homepage_show_authors' => false,
-            'homepage_show_categories' => false,
-            'homepage_show_tags' => false,
-            'homepage_show_duration' => false,
-            'homepage_show_effective_date' => false,
-            'homepage_show_description' => false,
-            'homepage_description_lines' => 1,
-            'homepage_cards_per_page' => 7,
-        ])
+    $component = Livewire::withQueryParams(['public-content-tab' => 'homepage'])
+        ->test(PublicContentSettingsPage::class)
+        ->set('data.homepage_item_limit', 9)
+        ->set('data.pinned_item_limit', 4)
+        ->set('data.default_public_sort', 'title_desc')
+        ->set('data.default_result_layout', 'rows')
+        ->set('data.show_latest_section', false)
+        ->set('data.item_page_layout', 'media_first')
+        ->set('data.homepage_card_image_size', 'large')
+        ->set('data.homepage_card_density', 'compact')
+        ->set('data.homepage_card_title_size', 'lg')
+        ->set('data.homepage_show_group_badge', false)
+        ->set('data.homepage_show_authors', false)
+        ->set('data.homepage_show_categories', false)
+        ->set('data.homepage_show_tags', false)
+        ->set('data.homepage_show_duration', false)
+        ->set('data.homepage_show_effective_date', false)
+        ->set('data.homepage_show_description', false)
+        ->set('data.homepage_description_lines', 1)
+        ->set('data.homepage_cards_per_page', 7);
+
+    expect($component->instance()->data['homepage_item_limit'])->toBe(9);
+
+    $component
         ->call('save')
         ->assertHasNoFormErrors();
 
     app()->forgetInstance(PublicContentSettings::class);
+    app(SettingsContainer::class)->clearCache();
 
     $settings = app(PublicContentSettings::class);
 
@@ -982,6 +1013,8 @@ it('saves public content settings through the settings page', function (): void 
 });
 
 it('manages item transcriptions through the content item relation manager', function (): void {
+    setAdminPhase02ResourcesTranscriptionMode(TranscriptionMode::Multi);
+
     $item = ContentItem::factory()->create();
     $otherItem = ContentItem::factory()->create();
     $author = Author::factory()->create();
@@ -1082,6 +1115,8 @@ it('auto-features the first relation-manager transcription and only offers manua
         ->forAuthor($author)
         ->published()
         ->create(['title' => 'Second item transcript']);
+
+    setAdminPhase02ResourcesTranscriptionMode(TranscriptionMode::Multi);
 
     Livewire::test(TranscriptionsRelationManager::class, [
         'ownerRecord' => $item->refresh(),

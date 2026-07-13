@@ -8,6 +8,7 @@ use App\Enums\TranscriptionMode;
 use App\Enums\TranscriptionPresentationMode;
 use App\Filament\Support\Concerns\UsesAdminNavigationOrder;
 use App\Settings\AdminUxSettings as AdminUxSettingsData;
+use App\Support\Transcriptions\MultiTranscriptionSurfaces;
 use BackedEnum;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Toggle;
@@ -73,7 +74,8 @@ class AdminUxSettings extends SettingsPage
                                 ->all())
                             ->default(TranscriptionMode::Single->value)
                             ->native(false)
-                            ->required(),
+                            ->required()
+                            ->superAdminOnly(),
                         Toggle::make('show_episode_workspace_hint_line')
                             ->label(__('admin.fields.show_episode_workspace_hint_line'))
                             ->helperText(__('admin.helpers.show_episode_workspace_hint_line'))
@@ -94,5 +96,14 @@ class AdminUxSettings extends SettingsPage
                     ])
                     ->columns(2),
             ]);
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    protected function mutateFormDataBeforeSave(array $data): array
+    {
+        return MultiTranscriptionSurfaces::overlayUnauthorizedSettings($data, AdminUxSettingsData::class);
     }
 }

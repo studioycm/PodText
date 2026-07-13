@@ -51,6 +51,30 @@ Remaining follow-up requirements:
 - Follow-up tests should cover explicit admin unpublish/delete behavior after Prompt 09 admin management exists.
 - Public latest/search sorting by effective/main transcription `published_at` must remain queryable and tested as Prompt 11 replaces the current public listing UI.
 
+## Single/Multi White-Labeling Contract
+
+- The codebase supports both single-transcription and multi-transcription
+  deployments through `AdminUxSettings.transcription_mode`; no forked codebase
+  or per-client branch should be created for this behavior.
+- Fresh deployments default to `single`. Existing stored settings are preserved
+  unless an authorized super-admin changes the mode.
+- Multi-transcription surfaces are visible only when the stored mode is `multi`
+  and the actor meets that surface's minimum role.
+- The mode switch itself is a super-admin-only control and remains available to
+  super-admins in either mode.
+- Settings knobs that reveal multi-transcription policy or per-episode
+  transcription-count template choices require super-admin in `multi` mode.
+- Admin working surfaces that operate on multiple existing transcriptions, such
+  as featured-transcription selection, relation-manager add-second/set-featured
+  affordances, and workspace replacement from another existing transcription,
+  require at least admin in `multi` mode.
+- Hidden-by-gate settings must be protected server-side: every settings save
+  path that can contain registered multi-transcription state overlays stored
+  values for unauthorized paths after validation and before persistence, so a
+  forged Livewire/settings payload cannot change or wipe them.
+- Public vocabulary and count-semantics cleanup belongs to the later LENS1 run;
+  this contract only defines mode/role visibility and save enforcement.
+
 ## Legacy Transcript Field Policy
 
 - `content_items.transcript_markdown` remains only as a legacy/backfill source.

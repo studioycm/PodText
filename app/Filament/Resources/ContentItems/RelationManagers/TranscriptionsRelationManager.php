@@ -3,10 +3,12 @@
 namespace App\Filament\Resources\ContentItems\RelationManagers;
 
 use App\Enums\PublicationStatus;
+use App\Enums\UserRole;
 use App\Filament\Forms\Components\PublicationStatusSelect;
 use App\Filament\Resources\Support\RelationshipOptionForms;
 use App\Filament\Resources\Transcriptions\TranscriptionResource;
 use App\Models\Transcription;
+use App\Support\Transcriptions\MultiTranscriptionSurfaces;
 use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\CreateAction;
@@ -169,7 +171,9 @@ class TranscriptionsRelationManager extends RelationManager
             ])
             ->headerActions([
                 CreateAction::make()
-                    ->createAnother(false),
+                    ->createAnother(false)
+                    ->visible(fn (): bool => $this->getOwnerRecord()->transcriptions()->doesntExist()
+                        || MultiTranscriptionSurfaces::currentUserCan(UserRole::Admin)),
             ])
             ->recordActions([
                 EditAction::make(),
@@ -181,6 +185,7 @@ class TranscriptionsRelationManager extends RelationManager
                     ->visible(fn (Transcription $record): bool => $record->isPublished()
                         && $this->getOwnerRecord()->transcriptions()->count() > 1
                         && $record->getKey() !== $this->getOwnerRecord()->featured_transcription_id)
+                    ->multiTranscription(UserRole::Admin)
                     ->action(function (Transcription $record): void {
                         abort_unless($record->content_item_id === $this->getOwnerRecord()->getKey(), 403);
 

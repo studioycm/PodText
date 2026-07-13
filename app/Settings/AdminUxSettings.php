@@ -8,9 +8,9 @@ class AdminUxSettings extends Settings
 {
     public string $media_naming_strategy;
 
-    public string $transcription_presentation_mode;
+    public string $transcription_presentation_mode = 'collapsible';
 
-    public string $transcription_mode;
+    public string $transcription_mode = 'single';
 
     public bool $show_episode_workspace_hint_line;
 
