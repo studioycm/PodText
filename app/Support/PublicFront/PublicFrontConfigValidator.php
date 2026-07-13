@@ -18,16 +18,33 @@ class PublicFrontConfigValidator
 {
     public function validate(array $config): PublicFrontConfigResult
     {
+        return $this->validateGroups($config);
+    }
+
+    /**
+     * @param  array<string, mixed>  $config
+     * @param  array<int, string>|null  $only
+     */
+    public function validateGroups(array $config, ?array $only = null): PublicFrontConfigResult
+    {
         $profiler = app(SettingsPageProfiler::class);
         $defaults = $profiler->measure(
             'registry.defaults_build',
             fn (): array => PublicFrontConfigRegistry::defaults(),
         );
-        $normalized = $defaults;
+        $settingsKeys = PublicFrontConfigRegistry::settingsKeys();
+        $onlyLookup = $only === null ? null : array_flip(array_values(array_unique($only)));
+        $normalized = $only === null
+            ? $defaults
+            : array_intersect_key($defaults, $onlyLookup);
         $invalidConfig = [];
 
         foreach ($config as $key => $value) {
-            if (! in_array($key, PublicFrontConfigRegistry::settingsKeys(), true)) {
+            if ($onlyLookup !== null && ! array_key_exists($key, $onlyLookup)) {
+                continue;
+            }
+
+            if (! in_array($key, $settingsKeys, true)) {
                 $invalidConfig[] = PublicFrontInvalidConfig::make($key, 'unknown_top_level_key', $value);
 
                 continue;
@@ -42,27 +59,37 @@ class PublicFrontConfigValidator
             $normalized[$key] = $profiler->measure(
                 "validator.group.{$key}",
                 function () use ($key, $value, $defaults, &$invalidConfig): array {
-                    return match ($key) {
-                        'card_templates' => $this->normalizeCardTemplates($value, $invalidConfig),
-                        'menu_config' => $this->normalizeMenuConfig($value, $defaults['menu_config'], $invalidConfig),
-                        'about_page' => $this->normalizeAboutPage($value, $defaults['about_page'], $invalidConfig),
-                        'public_forms' => $this->normalizePublicForms($value, $invalidConfig),
-                        'route_labels' => $this->normalizeRouteLabels($value, $invalidConfig),
-                        'display_defaults' => $this->normalizeDisplayDefaults($value, $defaults['display_defaults'], $invalidConfig),
-                        'default_images' => $this->normalizeDefaultImages($value, $defaults['default_images'], $invalidConfig),
-                        'transcription_policy' => $this->normalizeTranscriptionPolicy($value, $defaults['transcription_policy'], $invalidConfig),
-                        'item_page' => $this->normalizeItemPage($value, $defaults['item_page'], $invalidConfig),
-                        'podcasts_page' => $this->normalizePodcastsPage($value, $defaults['podcasts_page'], $invalidConfig),
-                        'contributors_page' => $this->normalizeContributorsPage($value, $defaults['contributors_page'], $invalidConfig),
-                        'settings_backups' => $this->normalizeSettingsBackups($value, $defaults['settings_backups'], $invalidConfig),
-                        'import_locks' => $this->normalizeImportLocks($value, $defaults['import_locks'], $invalidConfig),
-                        'maintenance' => $this->normalizeMaintenance($value, $defaults['maintenance'], $invalidConfig),
-                    };
+                    return $this->normalizeGroup($key, $value, $defaults, $invalidConfig);
                 },
             );
         }
 
         return new PublicFrontConfigResult($normalized, $invalidConfig);
+    }
+
+    /**
+     * @param  array<string, mixed>  $defaults
+     * @param  array<PublicFrontInvalidConfig>  $invalidConfig
+     * @return array<string, mixed>|array<int, array<string, mixed>>
+     */
+    private function normalizeGroup(string $key, array $value, array $defaults, array &$invalidConfig): array
+    {
+        return match ($key) {
+            'card_templates' => $this->normalizeCardTemplates($value, $invalidConfig),
+            'menu_config' => $this->normalizeMenuConfig($value, $defaults['menu_config'], $invalidConfig),
+            'about_page' => $this->normalizeAboutPage($value, $defaults['about_page'], $invalidConfig),
+            'public_forms' => $this->normalizePublicForms($value, $invalidConfig),
+            'route_labels' => $this->normalizeRouteLabels($value, $invalidConfig),
+            'display_defaults' => $this->normalizeDisplayDefaults($value, $defaults['display_defaults'], $invalidConfig),
+            'default_images' => $this->normalizeDefaultImages($value, $defaults['default_images'], $invalidConfig),
+            'transcription_policy' => $this->normalizeTranscriptionPolicy($value, $defaults['transcription_policy'], $invalidConfig),
+            'item_page' => $this->normalizeItemPage($value, $defaults['item_page'], $invalidConfig),
+            'podcasts_page' => $this->normalizePodcastsPage($value, $defaults['podcasts_page'], $invalidConfig),
+            'contributors_page' => $this->normalizeContributorsPage($value, $defaults['contributors_page'], $invalidConfig),
+            'settings_backups' => $this->normalizeSettingsBackups($value, $defaults['settings_backups'], $invalidConfig),
+            'import_locks' => $this->normalizeImportLocks($value, $defaults['import_locks'], $invalidConfig),
+            'maintenance' => $this->normalizeMaintenance($value, $defaults['maintenance'], $invalidConfig),
+        };
     }
 
     /**

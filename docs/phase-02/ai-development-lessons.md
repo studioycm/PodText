@@ -103,9 +103,11 @@ For current prompt completion/progress state, see `docs/phase-02/current-project
 - Documentation-only validation should normally be `git diff --check` and `git status --short` unless the active prompt asks for more.
 - On a single server, multiple Horizon masters that share the same `APP_NAME`
   also share the Redis prefix and queue namespace. After release renames,
-  topology changes, or deploy-script edits, verify exactly one intended Horizon
-  master with `ps aux`; stale masters from old releases can keep processing live
-  jobs with old code.
+  topology changes, or deploy-script edits, inspect each suspected master before
+  any kill decision: use `ls -l /proc/<pid>/cwd` to identify the owning release
+  path, and treat the process as ours only when its cwd is this app's release
+  path and its environment shares this app's `APP_NAME`. Extra masters can
+  belong to other tenant sites; killing them can take those sites down.
 
 ## How future prompts should use this file
 

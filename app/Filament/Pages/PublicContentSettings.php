@@ -72,6 +72,11 @@ class PublicContentSettings extends SettingsPage
      */
     private ?array $inlineImportLockedPaths = null;
 
+    /**
+     * @var array<string, array<int, string>>
+     */
+    private array $inlineImportLockUnitPathsBySemanticPath = [];
+
     public static function getNavigationLabel(): string
     {
         return __('admin.pages.public_content_settings.navigation');
@@ -1772,7 +1777,11 @@ class PublicContentSettings extends SettingsPage
 
             $schema = $schema->components($components);
 
-            $this->applyInlineImportLockHints($schema->getComponents());
+            $this->settingsProfiler()->measure(
+                'form.inline_import_lock_hints',
+                fn (): mixed => $this->applyInlineImportLockHints($schema->getComponents()),
+                SettingsPageProfiler::REQUEST_INITIAL_LOAD,
+            );
 
             return $schema;
         } finally {
@@ -2022,8 +2031,16 @@ class PublicContentSettings extends SettingsPage
      */
     private function inlineImportLockUnitPathsForSemanticPath(string $semanticPath): array
     {
-        return app(SettingsLifecycleSchema::class)
-            ->unitPathsForSemanticPath($semanticPath);
+        if (array_key_exists($semanticPath, $this->inlineImportLockUnitPathsBySemanticPath)) {
+            return $this->inlineImportLockUnitPathsBySemanticPath[$semanticPath];
+        }
+
+        return $this->inlineImportLockUnitPathsBySemanticPath[$semanticPath] = collect($this->inlineImportLockRows())
+            ->filter(fn (array $row): bool => $row['path'] === $semanticPath
+                || str_starts_with($semanticPath, "{$row['path']}."))
+            ->pluck('path')
+            ->values()
+            ->all();
     }
 
     private function inlineImportLockActionKey(string $path): string
