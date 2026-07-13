@@ -14,7 +14,7 @@ package added was `resend/resend-php`.
 
 ## Commit hash
 
-Pending until implementation commit.
+`330350d feat: add mail foundation and email otp form verification`
 
 ## Requirement Classification
 
