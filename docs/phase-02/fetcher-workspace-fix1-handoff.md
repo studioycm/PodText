@@ -11,7 +11,7 @@ tests, no Playwright/browser automation, and no push.
 
 ## Commit hash
 
-Pending implementation commit.
+`700de7f feat: add fetcher direct import and workspace publishing fixes`
 
 ## Requirement Classification
 
