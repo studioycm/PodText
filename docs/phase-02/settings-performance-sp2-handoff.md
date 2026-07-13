@@ -17,7 +17,7 @@ landed.
 
 ## Commit Hash
 
-Pending final SP2 commit.
+`fb3f515 perf: optimize public settings lock hints`.
 
 ## Requirement Classification
 
