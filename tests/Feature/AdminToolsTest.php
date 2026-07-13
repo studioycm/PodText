@@ -73,6 +73,11 @@ beforeEach(function (): void {
     Filament::setCurrentPanel(Filament::getPanel('admin'));
 });
 
+function tools1SpotifyFixture(string $name): string
+{
+    return file_get_contents(base_path("tests/Fixtures/spotify-fetcher/{$name}")) ?: '';
+}
+
 it('formats markdown editors as one spreadsheet column with quoted cells', function (): void {
     $payload = SpreadsheetCellClipboard::oneColumnPayload([
         'First',
@@ -189,10 +194,10 @@ it('fetches spotify episode rows with a fake lookup service and exports importer
     $builder = app(ImporterCsvBuilder::class);
 
     expect($episodeRows[0]['title'])->toBe('Edited Episode')
-        ->and($episodeRows[0]['reference_key'])->toBe('')
+        ->and($episodeRows[0]['reference_key'])->not->toBe('')
         ->and($episodeRows[0]['content_group_reference_key'])->toBe($group->reference_key)
-        ->and($podcastRows)->toHaveCount(1)
-        ->and($podcastRows[0]['title'])->toBe('Missing Show');
+        ->and($podcastRows)->toHaveCount(2)
+        ->and(collect($podcastRows)->pluck('title')->all())->toContain('Existing Show', 'Missing Show');
 
     $episodeCsv = $builder->csv($builder->headersFor(ContentItemImporter::class), $episodeRows);
     $podcastCsv = $builder->csv($builder->headersFor(ContentGroupImporter::class), $podcastRows);
@@ -203,10 +208,10 @@ it('fetches spotify episode rows with a fake lookup service and exports importer
 
 it('uses spotify oembed reduced fallback when no credentials are selected', function (): void {
     $this->actingAs(User::factory()->create());
+    Http::preventStrayRequests();
     Http::fake([
-        'https://open.spotify.com/oembed*' => Http::response([
-            'thumbnail_url' => 'https://i.scdn.co/image/reduced',
-            'title' => 'Reduced episode title',
+        'https://open.spotify.com/oembed*' => Http::response(tools1SpotifyFixture('oembed-tools1.json'), 200, [
+            'Content-Type' => 'application/json',
         ]),
     ]);
 
@@ -222,8 +227,11 @@ it('uses spotify oembed reduced fallback when no credentials are selected', func
 
 it('isolates per row spotify errors and continues fetching later rows', function (): void {
     $this->actingAs(User::factory()->create());
+    Http::preventStrayRequests();
     Http::fake([
-        'https://open.spotify.com/oembed*' => Http::response([], 500),
+        'https://open.spotify.com/oembed*' => Http::response(tools1SpotifyFixture('oembed-empty.json'), 500, [
+            'Content-Type' => 'application/json',
+        ]),
     ]);
     $connection = ImportConnection::factory()->spotify()->create([
         'status' => ImportConnectionStatus::Connected,

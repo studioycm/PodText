@@ -12,7 +12,7 @@
 
 @php
     $embedUrl = filled($embedUrl) ? trim((string) $embedUrl) : null;
-    $embedHtml = filled($embedHtml) ? trim((string) $embedHtml) : null;
+    $embedHtml = filled($embedHtml) ? (string) $embedHtml : null;
     $mediaUrl = filled($mediaUrl) ? trim((string) $mediaUrl) : null;
     $allowedHosts = array_map('strtolower', config('media.embeds.allowed_hosts', []));
     $safeEmbedHost = $embedUrl ? strtolower((string) parse_url($embedUrl, PHP_URL_HOST)) : null;

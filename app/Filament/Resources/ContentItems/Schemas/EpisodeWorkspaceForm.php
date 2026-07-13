@@ -3,7 +3,9 @@
 namespace App\Filament\Resources\ContentItems\Schemas;
 
 use App\Enums\PublicationStatus;
+use App\Filament\Forms\Components\PublicationStatusSelect;
 use App\Filament\Forms\Components\SlugInput;
+use App\Filament\Forms\Components\TrustedHtmlCodeEditor;
 use App\Filament\Forms\MediaPickerField;
 use App\Filament\Public\Pages\ShowContentItem;
 use App\Filament\Resources\Support\RelationshipOptionForms;
@@ -12,20 +14,24 @@ use App\Models\ContentItem;
 use App\Models\Transcription;
 use App\Rules\ApprovedEmbedUrl;
 use App\Settings\AdminUxSettings;
+use App\Support\Importer\SpotifyLinks\SpotifyLinksImportResolver;
 use App\Support\Media\ContentItemMediaRules;
 use App\Support\Media\EpisodeEmbedInputNormalizer;
 use App\Support\Media\EpisodeSpotifyLookup;
 use App\Support\Media\ImageFileNamer;
 use App\Support\PublicFront\ContentItemDisplayTitle;
+use App\Support\Slugs\HebrewSlugger;
 use Filament\Actions\Action;
+use Filament\Forms\Components\Checkbox;
 use Filament\Forms\Components\DateTimePicker;
+use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\KeyValue;
 use Filament\Forms\Components\MarkdownEditor;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\SpatieTagsInput;
-use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
+use Filament\Infolists\Components\TextEntry;
 use Filament\Notifications\Notification;
 use Filament\Schemas\Components\Html;
 use Filament\Schemas\Components\Section;
@@ -72,6 +78,12 @@ class EpisodeWorkspaceForm
                         TextInput::make('title_prefix')
                             ->label(__('admin.fields.title_prefix'))
                             ->helperText(__('admin.helpers.title_prefix'))
+                            ->suffixAction(
+                                Action::make('clearTitlePrefix')
+                                    ->label(__('admin.actions.clear_title_prefix'))
+                                    ->icon(Heroicon::OutlinedXMark)
+                                    ->action(fn (Set $set): null => self::clearTitlePrefix($set)),
+                            )
                             ->maxLength(255),
                         SlugInput::source(
                             'title',
@@ -128,13 +140,34 @@ class EpisodeWorkspaceForm
                                 Action::make('fetchSpotifyEpisode')
                                     ->label(__('admin.actions.fetch_spotify_episode'))
                                     ->icon(Heroicon::OutlinedArrowDownTray)
-                                    ->action(fn (Set $set, Get $get): null => self::fetchSpotifyEpisode($set, $get)),
+                                    ->modalHeading(__('admin.modals.fetch_spotify_episode'))
+                                    ->modalSubmitActionLabel(__('admin.actions.fetch_spotify_episode'))
+                                    ->fillForm(fn (Get $get): array => self::spotifyFetchOptionsDefaults($get))
+                                    ->schema([
+                                        Checkbox::make('fill_slug_when_empty')
+                                            ->label(__('admin.fields.spotify_fill_slug_when_empty'))
+                                            ->helperText(__('admin.helpers.spotify_fill_slug_when_empty')),
+                                        Checkbox::make('fill_title_prefix_when_empty')
+                                            ->label(__('admin.fields.spotify_fill_title_prefix_when_empty'))
+                                            ->helperText(__('admin.helpers.spotify_fill_title_prefix_when_empty')),
+                                        Checkbox::make('link_matched_podcast')
+                                            ->label(__('admin.fields.spotify_link_matched_podcast'))
+                                            ->helperText(__('admin.helpers.spotify_link_matched_podcast')),
+                                        Checkbox::make('overwrite_non_empty_fields')
+                                            ->label(__('admin.fields.spotify_overwrite_non_empty_fields'))
+                                            ->helperText(__('admin.helpers.spotify_overwrite_non_empty_fields')),
+                                        Hidden::make('matched_podcast_name'),
+                                        TextEntry::make('matched_podcast_preview')
+                                            ->label(__('admin.fields.spotify_matched_podcast'))
+                                            ->state(fn (Get $get): string => filled($get('matched_podcast_name'))
+                                                ? (string) $get('matched_podcast_name')
+                                                : __('admin.labels.none')),
+                                    ])
+                                    ->action(fn (array $data, Set $set, Get $get, ?Livewire $livewire = null): null => self::fetchSpotifyEpisode($set, $get, $data, $livewire)),
                             ),
-                        Textarea::make('embed_html')
+                        TrustedHtmlCodeEditor::make('embed_html')
                             ->label(__('admin.fields.embed_html'))
                             ->helperText(__('admin.helpers.embed_html'))
-                            ->rows(4)
-                            ->maxLength(65535)
                             ->hintAction(
                                 Action::make('extractEmbedSrc')
                                     ->label(__('admin.actions.extract_embed_src'))
@@ -241,11 +274,9 @@ class EpisodeWorkspaceForm
                 Section::make(__('admin.sections.episode_workspace_visibility'))
                     ->description(__('admin.descriptions.episode_workspace_visibility'))
                     ->schema([
-                        Select::make('status')
+                        PublicationStatusSelect::make('status')
                             ->label(__('admin.fields.status'))
                             ->helperText(__('admin.helpers.content_item_status'))
-                            ->options(PublicationStatus::class)
-                            ->default(PublicationStatus::Draft->value)
                             ->required(),
                         DateTimePicker::make('published_at')
                             ->label(__('admin.fields.published_at'))
@@ -305,11 +336,9 @@ class EpisodeWorkspaceForm
                     ->required()
                     ->maxLength(10)
                     ->visible((bool) $settings->show_episode_workspace_language_code),
-                Select::make('status')
+                PublicationStatusSelect::make('status')
                     ->label(__('admin.fields.status'))
                     ->helperText(__('admin.helpers.transcription_status'))
-                    ->options(PublicationStatus::class)
-                    ->default(PublicationStatus::Draft->value)
                     ->required(),
                 DateTimePicker::make('published_at')
                     ->label(__('admin.fields.published_at'))
@@ -456,7 +485,44 @@ class EpisodeWorkspaceForm
         return null;
     }
 
-    private static function fetchSpotifyEpisode(Set $set, Get $get): null
+    /**
+     * @return array<string, mixed>
+     */
+    private static function spotifyFetchOptionsDefaults(Get $get): array
+    {
+        return [
+            'fill_slug_when_empty' => true,
+            'fill_title_prefix_when_empty' => true,
+            'link_matched_podcast' => true,
+            'overwrite_non_empty_fields' => false,
+            'matched_podcast_name' => self::matchedPodcastNameForSpotifyInput((string) $get('spotify_episode')),
+        ];
+    }
+
+    private static function matchedPodcastNameForSpotifyInput(string $spotifyEpisode): string
+    {
+        if (blank($spotifyEpisode)) {
+            return '';
+        }
+
+        try {
+            $data = app(EpisodeSpotifyLookup::class)->lookup($spotifyEpisode);
+        } catch (Throwable) {
+            return '';
+        }
+
+        $group = app(SpotifyLinksImportResolver::class)->resolveGroup([
+            'show_id' => data_get($data, 'media_metadata.show_id'),
+            'show_name' => $data['title_prefix'] ?? null,
+        ]);
+
+        return $group?->title ?? '';
+    }
+
+    /**
+     * @param  array<string, mixed>  $options
+     */
+    private static function fetchSpotifyEpisode(Set $set, Get $get, array $options, ?Livewire $livewire = null): null
     {
         try {
             $data = app(EpisodeSpotifyLookup::class)->lookup((string) $get('spotify_episode'));
@@ -470,8 +536,45 @@ class EpisodeWorkspaceForm
             return null;
         }
 
+        $overwrite = (bool) ($options['overwrite_non_empty_fields'] ?? false);
+
+        if ((bool) ($options['link_matched_podcast'] ?? true)) {
+            $group = app(SpotifyLinksImportResolver::class)->resolveGroup([
+                'show_id' => data_get($data, 'media_metadata.show_id'),
+                'show_name' => $data['title_prefix'] ?? null,
+            ]);
+
+            if ($group instanceof ContentGroup && ($overwrite || blank($get('content_group_id')))) {
+                $set('content_group_id', $group->getKey());
+            }
+        }
+
+        $slugSource = $overwrite || blank($get('title'))
+            ? ($data['title'] ?? null)
+            : $get('title');
+
+        if ((bool) ($options['fill_slug_when_empty'] ?? true) && ($overwrite || blank($get('slug'))) && filled($slugSource)) {
+            $contentGroupId = self::contentGroupIdForSlug($get, $livewire);
+
+            $set('slug', HebrewSlugger::unique(
+                (string) $slugSource,
+                fn (string $slug): bool => ContentItem::query()
+                    ->where('content_group_id', $contentGroupId)
+                    ->where('slug', $slug)
+                    ->exists(),
+            ));
+        }
+
         foreach ($data as $field => $value) {
-            if ($value === null || filled($get($field))) {
+            if ($value === null) {
+                continue;
+            }
+
+            if ($field === 'title_prefix' && ! (bool) ($options['fill_title_prefix_when_empty'] ?? true)) {
+                continue;
+            }
+
+            if (! $overwrite && filled($get($field))) {
                 continue;
             }
 
@@ -482,6 +585,13 @@ class EpisodeWorkspaceForm
             ->success()
             ->title(__('admin.notifications.spotify_episode_lookup_filled'))
             ->send();
+
+        return null;
+    }
+
+    private static function clearTitlePrefix(Set $set): null
+    {
+        $set('title_prefix', null);
 
         return null;
     }

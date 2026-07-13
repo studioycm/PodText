@@ -2,7 +2,7 @@
 
 namespace App\Filament\Resources\ContentGroups\Schemas;
 
-use App\Enums\PublicationStatus;
+use App\Filament\Forms\Components\PublicationStatusSelect;
 use App\Filament\Forms\Components\SlugInput;
 use App\Filament\Forms\MediaPickerField;
 use App\Filament\Pages\PublicContentSettings;
@@ -122,10 +122,8 @@ class ContentGroupForm
                     ]),
                 Section::make(__('admin.sections.publication'))
                     ->schema([
-                        Select::make('status')
+                        PublicationStatusSelect::make('status')
                             ->label(__('admin.fields.status'))
-                            ->options(PublicationStatus::class)
-                            ->default(PublicationStatus::Draft->value)
                             ->required(),
                         DateTimePicker::make('published_at')
                             ->label(__('admin.fields.published_at'))

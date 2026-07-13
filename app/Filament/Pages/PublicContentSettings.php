@@ -4,6 +4,7 @@ namespace App\Filament\Pages;
 
 use App\Filament\Actions\ExportPublicSettingsAction;
 use App\Filament\Forms\Components\IconSelect;
+use App\Filament\Forms\Components\TrustedHtmlCodeEditor;
 use App\Filament\Forms\MediaPickerField;
 use App\Filament\Support\Concerns\UsesAdminNavigationOrder;
 use App\Filament\Support\PublicFormsSettingsForm;
@@ -1638,11 +1639,9 @@ class PublicContentSettings extends SettingsPage
                                     Section::make(__('admin.sections.public_front_maintenance_raw_override'))
                                         ->description(__('admin.descriptions.public_front_maintenance_raw_override'))
                                         ->schema([
-                                            Textarea::make('maintenance.raw_html_override')
+                                            TrustedHtmlCodeEditor::make('maintenance.raw_html_override')
                                                 ->label(__('admin.fields.maintenance_raw_html_override'))
                                                 ->helperText(__('admin.helpers.maintenance_raw_html_override'))
-                                                ->rows(12)
-                                                ->extraInputAttributes(['class' => 'font-mono'])
                                                 ->columnSpanFull()
                                                 ->visible(fn (Get $get): bool => $this->maintenanceFieldsVisible($get)),
                                             TextInput::make('maintenance_form_marker')

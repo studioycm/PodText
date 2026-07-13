@@ -8,9 +8,11 @@ use App\Filament\Pages\AdminUxSettings as AdminUxSettingsPage;
 use App\Filament\Resources\ContentGroups\Pages\EditContentGroup;
 use App\Filament\Resources\ContentGroups\RelationManagers\ContentItemsRelationManager;
 use App\Filament\Resources\ContentItems\ContentItemResource;
+use App\Filament\Resources\ContentItems\Pages\CreateContentItem;
 use App\Filament\Resources\ContentItems\Pages\CreateEpisodeWorkspace;
 use App\Filament\Resources\ContentItems\Pages\EditEpisodeWorkspace;
 use App\Filament\Resources\ContentItems\Pages\ListContentItems;
+use App\Filament\Resources\Transcriptions\Pages\CreateTranscription;
 use App\Jobs\DownloadExternalContentItemImage;
 use App\Models\ContentGroup;
 use App\Models\ContentItem;
@@ -210,6 +212,8 @@ it('saves workspace admin ux settings and renders modal and slideover transcript
 });
 
 it('fills blank fields from spotify lookup and extracts iframe src values', function (): void {
+    $matchedGroup = ContentGroup::factory()->create(['title' => 'Spotify show']);
+
     app()->instance(EpisodeSpotifyLookup::class, new class extends EpisodeSpotifyLookup
     {
         public function __construct() {}
@@ -226,6 +230,9 @@ it('fills blank fields from spotify lookup and extracts iframe src values', func
                 'embed_url' => 'https://open.spotify.com/embed/episode/abc123',
                 'embed_provider' => 'spotify',
                 'external_id' => 'abc123',
+                'media_metadata' => [
+                    'show_id' => 'spotify-show',
+                ],
             ];
         }
     });
@@ -234,9 +241,17 @@ it('fills blank fields from spotify lookup and extracts iframe src values', func
         ->set('data.title', 'Manual title')
         ->set('data.title_prefix', 'Manual prefix')
         ->set('data.spotify_episode', 'spotify:episode:abc123')
-        ->callAction(TestAction::make('fetchSpotifyEpisode')->schemaComponent('spotify_episode', 'form'))
+        ->mountAction(TestAction::make('fetchSpotifyEpisode')->schemaComponent('spotify_episode', 'form'))
+        ->assertSet('mountedActions.0.data.fill_slug_when_empty', true)
+        ->assertSet('mountedActions.0.data.fill_title_prefix_when_empty', true)
+        ->assertSet('mountedActions.0.data.link_matched_podcast', true)
+        ->assertSet('mountedActions.0.data.overwrite_non_empty_fields', false)
+        ->assertSet('mountedActions.0.data.matched_podcast_name', 'Spotify show')
+        ->callMountedAction()
         ->assertSet('data.title', 'Manual title')
         ->assertSet('data.title_prefix', 'Manual prefix')
+        ->assertSet('data.content_group_id', $matchedGroup->id)
+        ->assertSet('data.slug', 'manual-title')
         ->assertSet('data.description_markdown', "Spotify paragraph\n\nSecond paragraph")
         ->assertSet('data.media_url', 'https://open.spotify.com/episode/abc123')
         ->assertSet('data.embed_url', 'https://open.spotify.com/embed/episode/abc123')
@@ -244,6 +259,92 @@ it('fills blank fields from spotify lookup and extracts iframe src values', func
         ->set('data.embed_html', '<iframe src="https://open.spotify.com/embed/episode/from-html"></iframe>')
         ->callAction(TestAction::make('extractEmbedSrc')->schemaComponent('embed_html', 'form'))
         ->assertSet('data.embed_url', 'https://open.spotify.com/embed/episode/from-html');
+});
+
+it('honors spotify workspace modal options and clears the title prefix', function (): void {
+    app()->instance(EpisodeSpotifyLookup::class, new class extends EpisodeSpotifyLookup
+    {
+        public function __construct() {}
+
+        public function lookup(string $episodeInput, ?ImportConnection $connection = null): array
+        {
+            return [
+                'description_markdown' => 'Spotify description',
+                'title' => 'Spotify title',
+                'title_prefix' => 'Spotify show',
+                'media_url' => 'https://open.spotify.com/episode/offpath12345',
+                'embed_url' => 'https://open.spotify.com/embed/episode/offpath12345',
+                'embed_provider' => 'spotify',
+                'external_id' => 'offpath12345',
+                'media_metadata' => [
+                    'show_id' => 'missing-show',
+                ],
+            ];
+        }
+    });
+
+    Livewire::test(CreateEpisodeWorkspace::class)
+        ->set('data.title', '')
+        ->set('data.slug', '')
+        ->set('data.title_prefix', '')
+        ->set('data.spotify_episode', 'spotify:episode:offpath12345')
+        ->mountAction(TestAction::make('fetchSpotifyEpisode')->schemaComponent('spotify_episode', 'form'))
+        ->set('mountedActions.0.data.fill_slug_when_empty', false)
+        ->set('mountedActions.0.data.fill_title_prefix_when_empty', false)
+        ->set('mountedActions.0.data.link_matched_podcast', true)
+        ->set('mountedActions.0.data.overwrite_non_empty_fields', false)
+        ->callMountedAction()
+        ->assertSet('data.title', 'Spotify title')
+        ->assertSet('data.slug', '')
+        ->assertSet('data.title_prefix', '')
+        ->assertSet('data.content_group_id', null)
+        ->set('data.title_prefix', 'Temporary prefix')
+        ->callAction(TestAction::make('clearTitlePrefix')->schemaComponent('title_prefix', 'form'))
+        ->assertSet('data.title_prefix', null);
+});
+
+it('autofills published dates for workspace items and transcriptions only when blank', function (): void {
+    $group = ContentGroup::factory()->create();
+    $contentItem = ContentItem::factory()->for($group)->create();
+    $existingPublishedAt = now('Asia/Jerusalem')->subDay();
+
+    Livewire::test(EditEpisodeWorkspace::class, ['record' => $contentItem->getRouteKey()])
+        ->set('data.published_at', null)
+        ->set('data.status', PublicationStatus::Published->value)
+        ->assertSet('data.status', PublicationStatus::Published->value)
+        ->assertSet('data.published_at', fn (mixed $value): bool => filled($value))
+        ->set('data.published_at', $existingPublishedAt)
+        ->set('data.status', PublicationStatus::Published->value)
+        ->assertSet('data.published_at', $existingPublishedAt);
+
+    Livewire::test(CreateTranscription::class)
+        ->set('data.content_item_id', $contentItem->id)
+        ->set('data.transcript_markdown', 'Published transcript')
+        ->set('data.published_at', null)
+        ->set('data.status', PublicationStatus::Published->value)
+        ->assertSet('data.published_at', fn (mixed $value): bool => filled($value));
+});
+
+it('saves trusted embed html verbatim from the system item form and renders the ltr editor', function (): void {
+    $group = ContentGroup::factory()->create();
+    $rawHtml = "<section data-fix1-embed=\"raw\">\n<script>window.fix1Embed = true;</script><iframe src=\"https://example.com/embed\"></iframe>\n</section>";
+
+    Livewire::test(CreateContentItem::class)
+        ->assertSeeHtml('data-trusted-html-code-editor="true"')
+        ->assertSeeHtml('dir="ltr"')
+        ->fillForm([
+            'content_group_id' => $group->id,
+            'title' => 'Raw HTML Episode',
+            'slug' => 'raw-html-episode',
+            'media_url' => 'https://example.com/raw-html-episode.mp3',
+            'embed_html' => $rawHtml,
+            'status' => PublicationStatus::Draft->value,
+        ])
+        ->call('create')
+        ->assertHasNoFormErrors();
+
+    expect(ContentItem::query()->where('slug', 'raw-html-episode')->firstOrFail()->embed_html)
+        ->toBe($rawHtml);
 });
 
 it('defaults item list rows and relation manager rows to the episode workspace while preserving classic edit', function (): void {

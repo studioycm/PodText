@@ -2,8 +2,9 @@
 
 namespace App\Filament\Resources\ContentItems\Schemas;
 
-use App\Enums\PublicationStatus;
+use App\Filament\Forms\Components\PublicationStatusSelect;
 use App\Filament\Forms\Components\SlugInput;
+use App\Filament\Forms\Components\TrustedHtmlCodeEditor;
 use App\Filament\Resources\ContentGroups\RelationManagers\ContentItemsRelationManager;
 use App\Filament\Resources\Support\RelationshipOptionForms;
 use App\Models\ContentGroup;
@@ -102,6 +103,10 @@ class ContentItemForm
                             ->validationMessages([
                                 'embed_url.url' => __('admin.validation.embed_url_url'),
                             ]),
+                        TrustedHtmlCodeEditor::make('embed_html')
+                            ->label(__('admin.fields.embed_html'))
+                            ->helperText(__('admin.helpers.embed_html'))
+                            ->columnSpanFull(),
                         TextInput::make('duration_seconds')
                             ->label(__('admin.fields.duration_seconds'))
                             ->numeric()
@@ -218,11 +223,9 @@ class ContentItemForm
                 Section::make(__('admin.sections.publication'))
                     ->description(__('admin.descriptions.content_item_publication'))
                     ->schema([
-                        Select::make('status')
+                        PublicationStatusSelect::make('status')
                             ->label(__('admin.fields.status'))
                             ->helperText(__('admin.helpers.content_item_status'))
-                            ->options(PublicationStatus::class)
-                            ->default(PublicationStatus::Draft->value)
                             ->required(),
                         DateTimePicker::make('published_at')
                             ->label(__('admin.fields.published_at'))

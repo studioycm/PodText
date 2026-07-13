@@ -11,7 +11,7 @@ and no push.
 
 ## Commit hash
 
-Pending final implementation commit hash backfill.
+`524a292 feat: enrich spotify fetcher reduced mode with opengraph and previews`
 
 ## Requirement Classification
 

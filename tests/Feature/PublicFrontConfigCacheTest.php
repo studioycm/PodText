@@ -77,6 +77,28 @@ it('makes saved public content settings visible after cache invalidation', funct
         ->toBe('P1 cached podcasts');
 });
 
+it('invalidates the spatie settings cache when public content settings are saved', function (): void {
+    $settings = app(PublicContentSettings::class);
+    $podcastsPage = $settings->podcasts_page;
+    $podcastsPage['title'] = 'Spatie cache before save';
+    $settings->podcasts_page = $podcastsPage;
+    $settings->save();
+
+    app()->forgetInstance(PublicContentSettings::class);
+
+    expect(app(PublicContentSettings::class)->podcasts_page['title'])->toBe('Spatie cache before save');
+
+    $settings = app(PublicContentSettings::class);
+    $podcastsPage = $settings->podcasts_page;
+    $podcastsPage['title'] = 'Spatie cache after save';
+    $settings->podcasts_page = $podcastsPage;
+    $settings->save();
+
+    app()->forgetInstance(PublicContentSettings::class);
+
+    expect(app(PublicContentSettings::class)->podcasts_page['title'])->toBe('Spatie cache after save');
+});
+
 it('rotates the cache key when a settings migration watermark changes', function (): void {
     $validator = step10P1CountingValidator();
     $cache = app(PublicFrontConfigCache::class);

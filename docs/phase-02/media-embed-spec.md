@@ -27,7 +27,8 @@ Media provider, external ID, external published date, trusted embed HTML, and me
 
 - Store URLs and metadata by default.
 - D-EMB1 exception: `content_items.embed_html` may store admin-pasted embed code verbatim in a nullable text column. It is trusted-admin content with the same trust model as D30 maintenance HTML.
-- Do not sanitize, normalize, rewrite, or extract `embed_html` on save. `ContentItemMediaRules` may pass it through as nullable trusted text with only bounded string/length checks if needed.
+- Maintenance raw override exception: `PublicContentSettings` `maintenance.raw_html_override` may store full trusted admin HTML verbatim for the maintenance response only.
+- Do not sanitize, normalize, rewrite, extract, trim, escape, or app-limit trusted raw HTML fields on save. `ContentItemMediaRules` may pass `embed_html` through as nullable trusted text without a length rule.
 - Public media rendering precedence is `embed_html` first, else the existing `embed_url` allowlist flow.
 - `embed_html` renders only through the application-owned public media Blade component raw mode.
 - Never render `embed_html` through public cards, admin tables, Markdown rendering, generic presenters, imports/exports, or any surface outside the owned media component.
@@ -43,10 +44,12 @@ Media provider, external ID, external published date, trusted embed HTML, and me
   - keep pasted iframe/embed code as trusted `embed_html`;
   - run an explicit extract-src helper that fills `embed_url` for the simple allowlisted URL path.
 - Helper text must state that `embed_html` takes precedence over `embed_url` on the public item page.
+- Admin forms should edit trusted raw HTML fields in LTR HTML code editors, not RTL prose textareas.
 
 ## Tests
 
 - `embed_html` renders verbatim on the public item page through the media component.
+- Maintenance `raw_html_override` renders verbatim on the maintenance response.
 - When both `embed_html` and `embed_url` are present, `embed_html` wins.
 - `embed_html` renders nowhere else.
 - The extract-src helper fills `embed_url`.

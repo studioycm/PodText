@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\ContentItems\RelationManagers;
 
 use App\Enums\PublicationStatus;
+use App\Filament\Forms\Components\PublicationStatusSelect;
 use App\Filament\Resources\Support\RelationshipOptionForms;
 use App\Filament\Resources\Transcriptions\TranscriptionResource;
 use App\Models\Transcription;
@@ -59,11 +60,9 @@ class TranscriptionsRelationManager extends RelationManager
                 Section::make(__('admin.sections.publication'))
                     ->description(__('admin.descriptions.transcription_publication'))
                     ->schema([
-                        Select::make('status')
+                        PublicationStatusSelect::make('status')
                             ->label(__('admin.fields.status'))
                             ->helperText(__('admin.helpers.transcription_status'))
-                            ->options(PublicationStatus::class)
-                            ->default(PublicationStatus::Draft->value)
                             ->required(),
                         DateTimePicker::make('published_at')
                             ->label(__('admin.fields.published_at'))

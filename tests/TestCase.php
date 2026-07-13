@@ -9,9 +9,38 @@ abstract class TestCase extends BaseTestCase
 {
     protected function refreshApplication(): void
     {
+        $this->forceSafeTestingEnvironment();
+
         parent::refreshApplication();
 
+        config([
+            'app.env' => 'testing',
+            'cache.default' => 'array',
+            'database.default' => 'sqlite',
+            'database.connections.sqlite.database' => ':memory:',
+            'queue.default' => 'sync',
+            'session.driver' => 'array',
+        ]);
+        $this->app->detectEnvironment(fn (): string => 'testing');
+
         $this->assertSafeTestingDatabase();
+    }
+
+    private function forceSafeTestingEnvironment(): void
+    {
+        foreach ([
+            'APP_ENV' => 'testing',
+            'CACHE_STORE' => 'array',
+            'DB_CONNECTION' => 'sqlite',
+            'DB_DATABASE' => ':memory:',
+            'DB_URL' => '',
+            'QUEUE_CONNECTION' => 'sync',
+            'SESSION_DRIVER' => 'array',
+        ] as $key => $value) {
+            putenv("{$key}={$value}");
+            $_ENV[$key] = $value;
+            $_SERVER[$key] = $value;
+        }
     }
 
     private function assertSafeTestingDatabase(): void

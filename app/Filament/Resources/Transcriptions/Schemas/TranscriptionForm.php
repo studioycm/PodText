@@ -2,7 +2,7 @@
 
 namespace App\Filament\Resources\Transcriptions\Schemas;
 
-use App\Enums\PublicationStatus;
+use App\Filament\Forms\Components\PublicationStatusSelect;
 use App\Filament\Resources\Support\RelationshipOptionForms;
 use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\MarkdownEditor;
@@ -77,10 +77,8 @@ class TranscriptionForm
                 ]),
             Section::make(__('admin.sections.publication'))
                 ->schema([
-                    Select::make('status')
+                    PublicationStatusSelect::make('status')
                         ->label(__('admin.fields.status'))
-                        ->options(PublicationStatus::class)
-                        ->default(PublicationStatus::Draft->value)
                         ->required(),
                     DateTimePicker::make('published_at')
                         ->label(__('admin.fields.published_at'))

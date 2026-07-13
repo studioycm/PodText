@@ -14,11 +14,15 @@ use App\Support\Importer\SpotifyLinks\ImporterCsvBuilder;
 use App\Support\Importer\SpotifyLinks\SpotifyEntityMode;
 use App\Support\Importer\SpotifyLinks\SpotifyHtmlToMarkdown;
 use App\Support\Importer\SpotifyLinks\SpotifyLinkParser;
+use App\Support\Importer\SpotifyLinks\SpotifyLinksDirectImporter;
+use App\Support\Importer\SpotifyLinks\SpotifyLinksImportResolver;
+use App\Support\Importer\SpotifyLinks\SpotifyLinksImportSummary;
 use App\Support\Importer\SpotifyLinks\SpotifyOEmbedClient;
 use App\Support\Importer\SpotifyLinks\SpotifyOpenGraphClient;
 use App\Support\Media\EpisodeSpotifyLookup;
 use BackedEnum;
 use Carbon\CarbonInterface;
+use Filament\Actions\Action;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Filament\Support\Icons\Heroicon;
@@ -72,6 +76,11 @@ class SpotifyLinksFetcher extends Page
 
     public bool $usedReducedMode = false;
 
+    /**
+     * @var array<string, int>
+     */
+    public array $lastDirectImportSummary = [];
+
     public static function getNavigationLabel(): string
     {
         return __('admin.spotify_fetcher.pages.navigation');
@@ -85,6 +94,23 @@ class SpotifyLinksFetcher extends Page
     public function mount(): void
     {
         $this->connectionId = array_key_first($this->spotifyConnections());
+    }
+
+    /**
+     * @return array<int, Action>
+     */
+    protected function getHeaderActions(): array
+    {
+        return [
+            Action::make('directImport')
+                ->label(__('admin.spotify_fetcher.actions.direct_import'))
+                ->icon(Heroicon::OutlinedArrowDownTray)
+                ->visible(fn (): bool => $this->hasImportableRows())
+                ->requiresConfirmation()
+                ->modalHeading(__('admin.spotify_fetcher.modals.direct_import'))
+                ->modalDescription(fn (): string => $this->directImportModalDescription())
+                ->action(fn (): null => $this->directImport()),
+        ];
     }
 
     public function parseLinks(): void
@@ -142,10 +168,31 @@ class SpotifyLinksFetcher extends Page
             $this->fetchEpisode($item, $connection);
         }
 
+        $this->prepareImportRows();
+
         Notification::make()
             ->success()
             ->title(__('admin.spotify_fetcher.notifications.fetch_complete'))
             ->send();
+    }
+
+    public function directImport(): null
+    {
+        $this->prepareImportRows();
+
+        $result = app(SpotifyLinksDirectImporter::class)->import($this->rows, $this->podcastRows);
+
+        $this->rows = $result['episode_rows'];
+        $this->podcastRows = $result['podcast_rows'];
+        $this->lastDirectImportSummary = $result['summary']->toArray();
+
+        Notification::make()
+            ->title(__('admin.spotify_fetcher.notifications.direct_import_complete'))
+            ->body($this->summaryText($result['summary']))
+            ->color($result['summary']->failedRows > 0 ? 'warning' : 'success')
+            ->send();
+
+        return null;
     }
 
     public function downloadEpisodesCsv(): StreamedResponse
@@ -184,6 +231,8 @@ class SpotifyLinksFetcher extends Page
      */
     public function episodeCsvRows(): array
     {
+        $this->prepareImportRows();
+
         return collect($this->rows)
             ->filter(fn (array $row): bool => ($row['type'] ?? null) === 'episode' && ($row['status'] ?? null) !== 'error')
             ->map(fn (array $row): array => $this->contentItemImportRow($row))
@@ -196,6 +245,8 @@ class SpotifyLinksFetcher extends Page
      */
     public function podcastCsvRows(): array
     {
+        $this->prepareImportRows();
+
         return collect($this->podcastRows)
             ->filter(fn (array $row): bool => ($row['status'] ?? null) !== 'error')
             ->map(fn (array $row): array => $this->contentGroupImportRow($row))
@@ -286,23 +337,10 @@ class SpotifyLinksFetcher extends Page
 
     private function resolveContentGroup(string $showId, string $showName): ?ContentGroup
     {
-        if ($showId !== '') {
-            $group = ContentGroup::query()
-                ->whereHas('contentItems', fn ($query): mixed => $query->where('media_metadata->show_id', $showId))
-                ->first();
-
-            if ($group instanceof ContentGroup) {
-                return $group;
-            }
-        }
-
-        if ($showName === '') {
-            return null;
-        }
-
-        return ContentGroup::query()
-            ->where('title', $showName)
-            ->first();
+        return app(SpotifyLinksImportResolver::class)->resolveGroup([
+            'show_id' => $showId,
+            'show_name' => $showName,
+        ]);
     }
 
     /**
@@ -507,7 +545,7 @@ class SpotifyLinksFetcher extends Page
             'external_thumbnail_url' => $row['external_thumbnail_url'] ?? '',
             'external_title' => $row['title'] ?? '',
             'featured_transcription_reference_key' => '',
-            'is_pinned' => '',
+            'is_pinned' => 'false',
             'media_duration_seconds' => $row['duration_seconds'] ?? '',
             'media_metadata' => $metadata,
             'media_url' => $row['media_url'] ?? '',
@@ -516,7 +554,7 @@ class SpotifyLinksFetcher extends Page
             'pinned_at' => '',
             'pinned_until' => '',
             'published_at' => '',
-            'reference_key' => '',
+            'reference_key' => $row['reference_key'] ?? '',
             'slug' => '',
             'status' => 'draft',
             'title' => $row['title'] ?? '',
@@ -539,7 +577,7 @@ class SpotifyLinksFetcher extends Page
             'homepage_order' => '',
             'original_language_code' => 'he',
             'published_at' => '',
-            'reference_key' => '',
+            'reference_key' => $row['reference_key'] ?? '',
             'slug' => '',
             'status' => 'draft',
             'title' => $row['title'] ?? '',
@@ -592,6 +630,38 @@ class SpotifyLinksFetcher extends Page
     private function sourceLabel(string $source): string
     {
         return __("admin.spotify_fetcher.sources.{$source}");
+    }
+
+    private function prepareImportRows(): void
+    {
+        $prepared = app(SpotifyLinksImportResolver::class)->prepareRows($this->rows, $this->podcastRows);
+
+        $this->rows = $prepared['episode_rows'];
+        $this->podcastRows = $prepared['podcast_rows'];
+    }
+
+    private function hasImportableRows(): bool
+    {
+        return collect([...$this->rows, ...$this->podcastRows])
+            ->contains(fn (array $row): bool => ($row['status'] ?? null) !== 'error');
+    }
+
+    private function directImportModalDescription(): string
+    {
+        $this->prepareImportRows();
+
+        return $this->summaryText(app(SpotifyLinksDirectImporter::class)->summarize($this->rows, $this->podcastRows));
+    }
+
+    private function summaryText(SpotifyLinksImportSummary $summary): string
+    {
+        return __('admin.spotify_fetcher.notifications.direct_import_summary', [
+            'new_podcasts' => $summary->newPodcasts,
+            'new_episodes' => $summary->newEpisodes,
+            'linked_existing_podcasts' => $summary->linkedExistingPodcasts,
+            'existing_episodes_skipped' => $summary->existingEpisodesSkipped,
+            'failed_rows' => $summary->failedRows,
+        ]);
     }
 
     /**

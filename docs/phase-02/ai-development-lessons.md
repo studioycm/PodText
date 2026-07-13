@@ -82,6 +82,11 @@ For current prompt completion/progress state, see `docs/phase-02/current-project
 - A green full-suite result belongs only to the final code state. Any code, test, translation, or documentation change after that green result re-enters the gate from Pint and requires another full-suite run, with every full run recorded.
 - A Local Front Check Report is a numbered list of manual operator steps, separate from automated coverage notes.
 - When a run introduces or changes an env-dependent config key, the same run must update `.env.example`, add a handoff deploy note, and flag the production env expectation. Do not rely on a fallback such as `APP_KEY` without documenting the intended production override.
+- When a prompt says "full suite last", the full Pest suite must be the final gate command after Pint, FilaCheck, and frontend build. If any app/test/docs code changes happen after that green full-suite run, restart the gate from Pint and run the full suite again.
+- Fetcher-style tools that generate native importer CSVs own compatibility with strict importers. Do not relax importer required mappings or row-failure behavior to compensate for sparse fetched data; resolve existing records and preassign portable keys before export or direct import.
+- HTTP-touching tests must call `Http::preventStrayRequests()` and serve response bodies from committed fixtures. Inline fake bodies are too easy to leave stale and can hide unowned external calls.
+- Trusted raw HTML fields are narrow admin-only exceptions. Edit them in LTR code editors and save/render them verbatim; do not route them through Markdown, sanitizer, escaping, trimming, or app-level length caps.
+- Spatie settings cache toggles must be explicit in `.env.example`, disabled locally by default, covered by save-invalidation tests, and called out in handoff deploy notes when production should enable them.
 
 ## Deferred-item handling lessons
 
@@ -111,6 +116,7 @@ For current prompt completion/progress state, see `docs/phase-02/current-project
 
 ## How future prompts should use this file
 
+- Every implementation run MUST read this file in full during preflight before planning or code changes.
 - Read this file during preflight when a prompt touches Phase 02 workflows, public UI, admin UX, import/export, dashboard metrics, or prompt-state documentation.
 - Apply the lessons as guardrails while following the active prompt and blueprint.
 - Update this file only when a new durable lesson is discovered; do not add prompt completion notes here.

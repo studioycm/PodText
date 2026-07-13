@@ -523,6 +523,11 @@ return [
         'maintenance_form_location' => 'מיקום הטופס',
         'maintenance_form_position' => 'מיקום בתוך העמוד',
         'maintenance_form_marker' => 'סמן טופס ב-HTML גולמי',
+        'spotify_fill_slug_when_empty' => 'מילוי מזהה כתובת כשהוא ריק',
+        'spotify_fill_title_prefix_when_empty' => 'מילוי קידומת כותרת כשהיא ריקה',
+        'spotify_link_matched_podcast' => 'חיבור לפודקאסט תואם',
+        'spotify_matched_podcast' => 'פודקאסט תואם',
+        'spotify_overwrite_non_empty_fields' => 'דריסת שדות שאינם ריקים',
     ],
     'helpers' => [
         'maintenance_enabled' => 'כשהמצב מופעל, מבקרים שאינם מחוברים רואים תגובת תחזוקה בכל כתובת ציבורית. מנהלים עדיין רואים את האתר האמיתי.',
@@ -536,6 +541,10 @@ return [
         'maintenance_form_position' => 'בחרו היכן הטופס יוצג במעטפת התחזוקה המרונדרת.',
         'maintenance_form_marker' => 'הדביקו את הסמן המדויק הזה בדריסת ה-HTML במקום שבו הטופס צריך להופיע.',
         'maintenance_form_marker_missing' => 'דריסת ה-HTML אינה כוללת את הסמן. הטופס יוצמד אחרי ה-HTML הגולמי כגיבוי.',
+        'spotify_fill_slug_when_empty' => 'יצירת מזהה כתובת מכותרת Spotify רק כשהמזהה ריק, אלא אם דריסה מופעלת.',
+        'spotify_fill_title_prefix_when_empty' => 'שימוש בשם הפודקאסט מ-Spotify כקידומת תצוגה רק כשהקידומת ריקה, אלא אם דריסה מופעלת.',
+        'spotify_link_matched_podcast' => 'כאשר הפודקאסט של Spotify תואם לפודקאסט קיים, בחרו אותו בסביבת העבודה.',
+        'spotify_overwrite_non_empty_fields' => 'מאפשר לנתוני Spotify להחליף ערכים שכבר מולאו בטופס.',
         'default_item_type_label_plural' => 'ברירת מחדל: פרקים.',
         'default_item_type_label_singular' => 'ברירת מחדל: פרק.',
         'embed_html' => 'HTML גולמי ומהימן ממנהל. הוא מרונדר רק דרך קומפוננטת המדיה הציבורית של האפליקציה וגובר על כתובת ההטמעה המאושרת.',
@@ -923,6 +932,7 @@ return [
         'download_external_image' => 'הורדת תמונה חיצונית',
         'download_external_image_overwrite' => 'החלפה מתמונה חיצונית',
         'download_podcast_images' => 'הורדת תמונות פודקאסט',
+        'clear_title_prefix' => 'ניקוי קידומת כותרת',
         'edit' => 'עריכה',
         'export_public_settings' => 'ייצוא הגדרות',
         'edit_author' => 'עריכת מחבר',
@@ -975,6 +985,7 @@ return [
         'download_content_images' => 'הורדת תמונות תוכן',
         'download_external_image' => 'הורדת תמונה חיצונית',
         'download_external_image_overwrite' => 'החלפת תמונה מקומית מהתמונה החיצונית',
+        'fetch_spotify_episode' => 'משיכת פרק Spotify',
         'replace_workspace_transcription' => 'החלפת תמלול סביבת העבודה',
     ],
     'labels' => [
@@ -1877,6 +1888,7 @@ return [
         'actions' => [
             'download_episodes' => 'הורדת CSV פרקים',
             'download_podcasts' => 'הורדת CSV פודקאסטים',
+            'direct_import' => 'ייבוא ישיר',
             'fetch' => 'שליפה',
             'parse' => 'פענוח קישורים',
         ],
@@ -1893,6 +1905,7 @@ return [
             'entity_mode' => 'סוג ישות',
             'external_id' => 'מזהה חיצוני',
             'image_preview' => 'תצוגת תמונה',
+            'direct_import' => 'ייבוא ישיר',
             'links' => 'קישורי Spotify',
             'show' => 'פודקאסט',
             'show_id' => 'מזהה פודקאסט',
@@ -1909,6 +1922,14 @@ return [
             'batch_cap' => 'ברירת מחדל 25. עד 100 קישורים בשליפה.',
             'connection' => 'בחרו חיבור Spotify מחובר מסוג client credentials, או השאירו ריק למצב oEmbed מצומצם.',
             'reduced_open_graph' => 'מצב מצומצם משתמש ב-oEmbed ציבורי וב-OpenGraph/LD-JSON סטטי. Spotify מקצרת לעיתים את og:description, לכן תיאור LD-JSON מועדף כשהוא קיים.',
+            'csv_import_order' => 'יש לייבא קודם את CSV הפודקאסטים ורק אחריו את CSV הפרקים. השורות כוללות מפתחות ייחוס יציבים כדי שייבוא חוזר יעדכן רשומות קיימות במקום ליצור כפילויות.',
+        ],
+        'import_outcomes' => [
+            'existing_podcast' => 'פודקאסט קיים',
+            'failed' => 'נכשל',
+            'imported_episode' => 'פרק יובא',
+            'imported_podcast' => 'פודקאסט יובא',
+            'skipped_existing_episode' => 'פרק קיים דולג',
         ],
         'loading' => [
             'fetch' => 'שולף שורות...',
@@ -1918,7 +1939,12 @@ return [
             'shows' => 'פודקאסטים',
         ],
         'notifications' => [
+            'direct_import_complete' => 'הייבוא הישיר הושלם.',
+            'direct_import_summary' => 'פודקאסטים חדשים: :new_podcasts. פרקים חדשים: :new_episodes. פרקים שחוברו לפודקאסטים קיימים: :linked_existing_podcasts. פרקים קיימים שדולגו: :existing_episodes_skipped. שורות שנכשלו: :failed_rows.',
             'fetch_complete' => 'שליפת Spotify הושלמה.',
+        ],
+        'modals' => [
+            'direct_import' => 'ייבוא שורות Spotify שנשלפו',
         ],
         'pages' => [
             'navigation' => 'שליפת Spotify',

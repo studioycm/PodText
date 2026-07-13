@@ -214,13 +214,15 @@ it('renders raw html override verbatim instead of the maintenance shell', functi
         'raw_html_override' => $rawHtml,
     ]);
 
-    $this->get('/search')
+    $response = $this->get('/search')
         ->assertStatus(503)
         ->assertSee('<!doctype html>', false)
         ->assertSee('data-raw-maintenance="mp1"', false)
         ->assertSee('<script>window.mp1 = true;</script>', false)
         ->assertDontSee('data-maintenance-content', false)
         ->assertDontSee('Ignored rich content');
+
+    expect(trim($response->getContent()))->toBe($rawHtml);
 });
 
 it('renders a configured plain maintenance form and stores submissions', function (): void {

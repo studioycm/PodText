@@ -3,6 +3,7 @@
 use App\Enums\ImportConnectionStatus;
 use App\Filament\Imports\ContentItemImporter;
 use App\Filament\Pages\SpotifyLinksFetcher;
+use App\Filament\Resources\ContentItems\Pages\CreateEpisodeWorkspace;
 use App\Models\ImportConnection;
 use App\Models\User;
 use App\Support\Importer\Spotify\SpotifyConnector;
@@ -11,6 +12,7 @@ use App\Support\Importer\SpotifyLinks\SpotifyHtmlToMarkdown;
 use App\Support\Importer\SpotifyLinks\SpotifyOpenGraphClient;
 use App\Support\Media\EpisodeSpotifyLookup;
 use Carbon\CarbonImmutable;
+use Filament\Actions\Testing\TestAction;
 use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
@@ -118,15 +120,13 @@ it('extracts spotify show opengraph fixture fields', function (): void {
 it('returns null for failed or unsafe opengraph fetches and tolerates malformed json', function (): void {
     Http::preventStrayRequests();
     Http::fake([
-        'https://open.spotify.com/episode/failurefixture1' => Http::response('Server error', 500),
-        'https://open.spotify.com/episode/redirectfixture1' => Http::response('', 302, [
+        'https://open.spotify.com/episode/failurefixture1' => Http::response(fetch1Fixture('server-error.txt'), 500),
+        'https://open.spotify.com/episode/redirectfixture1' => Http::response(fetch1Fixture('empty.txt'), 302, [
             'Location' => 'https://example.com/not-spotify',
         ]),
-        'https://open.spotify.com/episode/malformedfix1' => Http::response(
-            '<html><head><meta property="og:title" content="Malformed OG"><script type="application/ld+json">{bad json</script></head>',
-            200,
-            ['Content-Type' => 'text/html; charset=utf-8'],
-        ),
+        'https://open.spotify.com/episode/malformedfix1' => Http::response(fetch1Fixture('opengraph-malformed.html'), 200, [
+            'Content-Type' => 'text/html; charset=utf-8',
+        ]),
     ]);
 
     $client = app(SpotifyOpenGraphClient::class);
@@ -140,10 +140,8 @@ it('merges reduced mode oembed and opengraph data per field and renders image pr
     $this->actingAs(User::factory()->create());
     Http::preventStrayRequests();
     Http::fake([
-        'https://open.spotify.com/oembed*' => Http::response([
-            'html' => '<iframe src="https://open.spotify.com/embed/episode/reduced11111"></iframe>',
-            'thumbnail_url' => 'https://i.scdn.co/image/oembed-fallback',
-            'title' => 'OEmbed fallback title',
+        'https://open.spotify.com/oembed*' => Http::response(fetch1Fixture('oembed-reduced.json'), 200, [
+            'Content-Type' => 'application/json',
         ]),
         'https://open.spotify.com/episode/reduced11111' => Http::response(fetch1Fixture('episode-head.html'), 200, [
             'Content-Type' => 'text/html; charset=utf-8',
@@ -181,11 +179,10 @@ it('falls back to the oembed thumbnail when opengraph is unavailable', function 
     $this->actingAs(User::factory()->create());
     Http::preventStrayRequests();
     Http::fake([
-        'https://open.spotify.com/oembed*' => Http::response([
-            'thumbnail_url' => 'https://i.scdn.co/image/oembed-only-thumb',
-            'title' => 'OEmbed only title',
+        'https://open.spotify.com/oembed*' => Http::response(fetch1Fixture('oembed-only.json'), 200, [
+            'Content-Type' => 'application/json',
         ]),
-        'https://open.spotify.com/episode/oembedonly11' => Http::response('Nope', 500),
+        'https://open.spotify.com/episode/oembedonly11' => Http::response(fetch1Fixture('server-error.txt'), 500),
     ]);
 
     Livewire::test(SpotifyLinksFetcher::class)
@@ -258,6 +255,52 @@ it('adds markdown descriptions to the episode workspace lookup payload', functio
     $data = $lookup->lookup('spotify:episode:workspace11111', $connection);
 
     expect($data['description_markdown'])->toBe("Workspace API\ndescription\n\nSecond paragraph");
+});
+
+it('keeps rich spotify api html descriptions as markdown in results csv and workspace fill', function (): void {
+    $this->actingAs(User::factory()->create());
+    $connection = ImportConnection::factory()->spotify()->create([
+        'status' => ImportConnectionStatus::Connected,
+    ]);
+    $lookup = new EpisodeSpotifyLookup(new Fetch1FakeSpotifyConnector([
+        'description' => 'Fallback plain description',
+        'duration' => 120,
+        'external_id' => 'richhtml1111',
+        'external_url' => 'https://open.spotify.com/episode/richhtml1111',
+        'html_description' => '<p><strong>Bold point</strong><br><a href="https://example.com">Linked source</a></p><p>Second paragraph</p>',
+        'release_date' => '2026-07-10',
+        'show' => 'Rich Show',
+        'show_id' => 'rich-show',
+        'thumbnail' => 'https://i.scdn.co/image/richhtml1111',
+        'title' => 'Rich HTML Episode',
+    ]));
+
+    app()->instance(EpisodeSpotifyLookup::class, $lookup);
+
+    $component = Livewire::test(SpotifyLinksFetcher::class)
+        ->set('connectionId', $connection->id)
+        ->set('linksInput', 'spotify:episode:richhtml1111')
+        ->call('fetch')
+        ->assertSet('rows.0.description_markdown', fn (string $markdown): bool => str_contains($markdown, '**Bold point**')
+            && str_contains($markdown, '[Linked source](https://example.com)')
+            && str_contains($markdown, 'Second paragraph'));
+
+    expect($component->instance()->episodeCsvRows()[0]['description_markdown'])
+        ->toContain('**Bold point**')
+        ->toContain('[Linked source](https://example.com)')
+        ->toContain('Second paragraph');
+
+    Livewire::test(CreateEpisodeWorkspace::class)
+        ->set('data.spotify_episode', 'spotify:episode:richhtml1111')
+        ->callAction(TestAction::make('fetchSpotifyEpisode')->schemaComponent('spotify_episode', 'form'), data: [
+            'fill_slug_when_empty' => true,
+            'fill_title_prefix_when_empty' => true,
+            'link_matched_podcast' => false,
+            'overwrite_non_empty_fields' => false,
+        ])
+        ->assertSet('data.description_markdown', fn (string $markdown): bool => str_contains($markdown, '**Bold point**')
+            && str_contains($markdown, '[Linked source](https://example.com)')
+            && str_contains($markdown, 'Second paragraph'));
 });
 
 /**

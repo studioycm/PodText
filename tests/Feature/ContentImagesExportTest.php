@@ -34,9 +34,14 @@ function imgbStoreImage(string $path): void
 function imgbPngBytes(): string
 {
     return base64_decode(
-        'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAFgwJ/lpO2ygAAAABJRU5ErkJggg==',
+        trim(file_get_contents(base_path('tests/Fixtures/content-images/one-pixel.png.base64')) ?: ''),
         true,
     ) ?: '';
+}
+
+function imgbFixture(string $name): string
+{
+    return file_get_contents(base_path("tests/Fixtures/content-images/{$name}")) ?: '';
 }
 
 it('builds content image zip files with egress naming and skipped-file reporting', function (): void {
@@ -161,6 +166,7 @@ it('blocks guests and non owners from content image export downloads', function 
 
 it('downloads valid HTTPS external item images into local episode images', function (): void {
     Storage::fake('public');
+    Http::preventStrayRequests();
     Http::fake([
         'https://cdn.example.test/episode.png' => Http::response(imgbPngBytes(), 200, [
             'Content-Type' => 'image/png',
@@ -187,11 +193,12 @@ it('downloads valid HTTPS external item images into local episode images', funct
 
 it('rejects non-HTTPS oversized and non-raster external image downloads', function (): void {
     Storage::fake('public');
+    Http::preventStrayRequests();
     Http::fake([
-        'https://cdn.example.test/not-image.txt' => Http::response('not an image', 200, [
+        'https://cdn.example.test/not-image.txt' => Http::response(imgbFixture('not-image.txt'), 200, [
             'Content-Type' => 'text/plain',
         ]),
-        'https://cdn.example.test/too-large.png' => Http::response(str_repeat('x', 2048 * 1024 + 1), 200, [
+        'https://cdn.example.test/too-large.png' => Http::response(str_repeat(imgbFixture('too-large-seed.txt'), 2048 * 1024 + 1), 200, [
             'Content-Type' => 'image/png',
         ]),
     ]);
