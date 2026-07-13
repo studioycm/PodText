@@ -2,6 +2,7 @@
 
 namespace App\Support\PublicFront\Forms;
 
+use App\Enums\PublicFormEmailVerificationMode;
 use App\Enums\PublicFormFieldType;
 
 class PublicFormDefinitionRegistry
@@ -80,7 +81,29 @@ class PublicFormDefinitionRegistry
         return [
             'rate_limit_attempts' => 5,
             'rate_limit_decay_seconds' => 600,
+            'submitter_email_verification' => PublicFormEmailVerificationMode::Off->value,
         ];
+    }
+
+    /**
+     * @return array<string>
+     */
+    public static function emailVerificationModes(): array
+    {
+        return array_map(
+            fn (PublicFormEmailVerificationMode $mode): string => $mode->value,
+            PublicFormEmailVerificationMode::cases(),
+        );
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public static function emailVerificationModeOptions(): array
+    {
+        return collect(PublicFormEmailVerificationMode::cases())
+            ->mapWithKeys(fn (PublicFormEmailVerificationMode $mode): array => [$mode->value => $mode->getLabel()])
+            ->all();
     }
 
     public static function defaultSubmitLabel(): string

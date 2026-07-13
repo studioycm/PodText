@@ -10,6 +10,8 @@ use Illuminate\Validation\ValidationException;
 
 class PublicFormPayloadValidator
 {
+    private const MAX_PAYLOAD_BYTES = 20000;
+
     /**
      * @param  array<string, mixed>  $definition
      * @param  array<string, mixed>  $payload
@@ -19,6 +21,12 @@ class PublicFormPayloadValidator
      */
     public function validate(array $definition, array $payload): array
     {
+        if (strlen(json_encode($payload, JSON_THROW_ON_ERROR)) > self::MAX_PAYLOAD_BYTES) {
+            throw ValidationException::withMessages([
+                'form' => __('public.forms.payload_too_large'),
+            ]);
+        }
+
         $rules = $this->rules($definition);
 
         $validated = Validator::make(

@@ -279,6 +279,18 @@ it('round trips public form definitions through exported packages and selected i
             ],
         ],
     ];
+    $normalizedPublicForms = [
+        'require_email_verification' => false,
+        'definitions' => [
+            [
+                ...$publicForms['definitions'][0],
+                'settings' => [
+                    ...$publicForms['definitions'][0]['settings'],
+                    'submitter_email_verification' => 'off',
+                ],
+            ],
+        ],
+    ];
 
     $settings = step10S1aSettings();
     $settings->public_forms = $publicForms;
@@ -298,7 +310,7 @@ it('round trips public form definitions through exported packages and selected i
 
     expect($package['payload']['public_forms'])->toBe($publicForms)
         ->and($report->appliedPaths())->toBe(['public_forms.definitions'])
-        ->and(step10S1aSettings()->public_forms)->toBe($publicForms);
+        ->and(step10S1aSettings()->public_forms)->toBe($normalizedPublicForms);
 });
 
 it('round trips maintenance mode settings through exported packages and selected imports', function (): void {

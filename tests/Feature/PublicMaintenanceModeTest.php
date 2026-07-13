@@ -1,6 +1,8 @@
 <?php
 
+use App\Enums\FormVerificationChannel;
 use App\Livewire\Public\ContentItemBrowser;
+use App\Mail\PublicFormEmailVerificationCodeMail;
 use App\Models\ContentGroup;
 use App\Models\ContentItem;
 use App\Models\PublicFormSubmission;
@@ -16,6 +18,8 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
 use Illuminate\Session\TokenMismatchException;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Route;
 use Livewire\Livewire;
 use Spatie\LaravelSettings\SettingsContainer;
@@ -26,8 +30,24 @@ beforeEach(function (): void {
     config(['settings.cache.enabled' => true]);
 
     Cache::flush();
+    Http::preventStrayRequests();
+    Mail::fake();
     step10rMp1ForgetPublicFrontState();
 });
+
+function mail1QueuedMaintenanceCode(): string
+{
+    $code = null;
+
+    Mail::assertQueued(PublicFormEmailVerificationCodeMail::class, function (PublicFormEmailVerificationCodeMail $mail) use (&$code): bool {
+        $code = $mail->code;
+
+        return $mail->formName === 'Maintenance contact'
+            && preg_match('/^\d{6}$/', $mail->code) === 1;
+    });
+
+    return (string) $code;
+}
 
 function step10rMp1ForgetPublicFrontState(): void
 {
@@ -291,6 +311,63 @@ it('returns the maintenance page with inline validation errors for invalid form 
         ->assertSee('data-maintenance-form-field-error="message"', false);
 
     expect(PublicFormSubmission::query()->count())->toBe(0);
+});
+
+it('enforces email otp verification on the maintenance plain post form flow', function (): void {
+    step10rMp2SavePublicForms([
+        step10rMp2FormDefinition([
+            'settings' => [
+                'rate_limit_attempts' => 5,
+                'rate_limit_decay_seconds' => 600,
+                'submitter_email_verification' => 'email_otp',
+            ],
+        ]),
+    ]);
+    step10rMp1SaveMaintenance([
+        'enabled' => true,
+        'form_key' => 'maintenance_contact',
+    ]);
+
+    $payload = [
+        'source_url' => 'https://example.com/requested-page',
+        'form_key' => 'maintenance_contact',
+        'data' => [
+            'email' => 'visitor@example.com',
+            'message' => 'Please notify me.',
+        ],
+    ];
+
+    $this->post(route('public.maintenance-form.submit'), $payload)
+        ->assertStatus(503)
+        ->assertSee(__('public.forms.verification.signed_token_invalid'));
+
+    expect(PublicFormSubmission::query()->count())->toBe(0);
+
+    $sendCodeResponse = $this->post(route('public.maintenance-form.send-code'), $payload)
+        ->assertStatus(503)
+        ->assertSee(__('public.forms.verification.sent'))
+        ->assertSee('name="verification_token"', false);
+
+    $code = mail1QueuedMaintenanceCode();
+    $html = $sendCodeResponse->getContent();
+
+    preg_match('/<form method="POST" action="([^"]+)"/', $html, $matches);
+
+    $signedAction = html_entity_decode($matches[1] ?? '');
+
+    expect($signedAction)->not->toBe('');
+
+    $this->post($signedAction, [
+        ...$payload,
+        'verification_code' => $code,
+    ])
+        ->assertStatus(503)
+        ->assertSee('data-maintenance-form-success', false);
+
+    $submission = PublicFormSubmission::query()->firstOrFail();
+
+    expect($submission->verification_channel)->toBe(FormVerificationChannel::Email->value)
+        ->and($submission->verification_verified_at)->not->toBeNull();
 });
 
 it('injects the maintenance form at the raw html marker and falls back when the marker is missing', function (): void {

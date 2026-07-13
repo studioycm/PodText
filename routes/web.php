@@ -3,6 +3,7 @@
 use App\Http\Controllers\ContentImagesExportDownloadController;
 use App\Http\Controllers\ImporterGoogleOAuthController;
 use App\Http\Controllers\MaintenanceFormSubmissionController;
+use App\Http\Controllers\MaintenanceFormVerificationCodeController;
 use App\Http\Controllers\SettingsBackupSnapshotFileController;
 use App\Http\Controllers\SettingsBackupSnapshotRetryController;
 use App\Http\Controllers\SettingsBackupSnapshotsZipController;
@@ -10,7 +11,12 @@ use Filament\Http\Middleware\Authenticate;
 use Illuminate\Support\Facades\Route;
 
 Route::post('/maintenance/form', MaintenanceFormSubmissionController::class)
+    ->middleware('throttle:public-form-submissions')
     ->name('public.maintenance-form.submit');
+
+Route::post('/maintenance/form/send-code', MaintenanceFormVerificationCodeController::class)
+    ->middleware('throttle:public-form-verification-codes')
+    ->name('public.maintenance-form.send-code');
 
 Route::middleware(Authenticate::class)->group(function (): void {
     Route::get('/admin/importer/google/{importConnection}/redirect', [ImporterGoogleOAuthController::class, 'redirect'])

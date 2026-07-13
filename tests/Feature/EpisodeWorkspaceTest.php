@@ -24,6 +24,8 @@ use App\Support\Media\EpisodeSpotifyLookup;
 use Filament\Actions\Testing\TestAction;
 use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Queue;
 use Livewire\Features\SupportTesting\Testable;
 use Livewire\Livewire;
@@ -33,6 +35,8 @@ uses(RefreshDatabase::class);
 
 beforeEach(function (): void {
     Filament::setCurrentPanel(Filament::getPanel('admin'));
+    Http::preventStrayRequests();
+    Mail::fake();
 
     Testable::macro('fillForm', function (array|Closure $state = [], ?string $form = null): Testable {
         if ($state instanceof Closure) {
@@ -212,7 +216,7 @@ it('saves workspace admin ux settings and renders modal and slideover transcript
 });
 
 it('fills blank fields from spotify lookup and extracts iframe src values', function (): void {
-    $matchedGroup = ContentGroup::factory()->create(['title' => 'Spotify show']);
+    $matchedGroup = ContentGroup::factory()->create(['title' => 'Spotify Show']);
 
     app()->instance(EpisodeSpotifyLookup::class, new class extends EpisodeSpotifyLookup
     {
@@ -225,7 +229,7 @@ it('fills blank fields from spotify lookup and extracts iframe src values', func
             return [
                 'description_markdown' => "Spotify paragraph\n\nSecond paragraph",
                 'title' => 'Spotify title',
-                'title_prefix' => 'Spotify show',
+                'title_prefix' => '  spotify   show  ',
                 'media_url' => 'https://open.spotify.com/episode/abc123',
                 'embed_url' => 'https://open.spotify.com/embed/episode/abc123',
                 'embed_provider' => 'spotify',
@@ -246,7 +250,8 @@ it('fills blank fields from spotify lookup and extracts iframe src values', func
         ->assertSet('mountedActions.0.data.fill_title_prefix_when_empty', true)
         ->assertSet('mountedActions.0.data.link_matched_podcast', true)
         ->assertSet('mountedActions.0.data.overwrite_non_empty_fields', false)
-        ->assertSet('mountedActions.0.data.matched_podcast_name', 'Spotify show')
+        ->assertSet('mountedActions.0.data.matched_podcast_name', 'Spotify Show')
+        ->assertSet('mountedActions.0.data.matched_podcast_tier', 'exact_title')
         ->callMountedAction()
         ->assertSet('data.title', 'Manual title')
         ->assertSet('data.title_prefix', 'Manual prefix')
@@ -259,6 +264,75 @@ it('fills blank fields from spotify lookup and extracts iframe src values', func
         ->set('data.embed_html', '<iframe src="https://open.spotify.com/embed/episode/from-html"></iframe>')
         ->callAction(TestAction::make('extractEmbedSrc')->schemaComponent('embed_html', 'form'))
         ->assertSet('data.embed_url', 'https://open.spotify.com/embed/episode/from-html');
+});
+
+it('prechecks spotify workspace podcast linking for show id matches', function (): void {
+    $matchedGroup = ContentGroup::factory()->create(['title' => 'Existing ID Show']);
+    ContentItem::factory()
+        ->for($matchedGroup)
+        ->create([
+            'media_metadata' => [
+                'show_id' => 'id-show',
+            ],
+        ]);
+
+    app()->instance(EpisodeSpotifyLookup::class, new class extends EpisodeSpotifyLookup
+    {
+        public function __construct() {}
+
+        public function lookup(string $episodeInput, ?ImportConnection $connection = null): array
+        {
+            return [
+                'title' => 'ID Matched Episode',
+                'title_prefix' => 'Different API Show Name',
+                'media_url' => 'https://open.spotify.com/episode/idmatch12345',
+                'external_id' => 'idmatch12345',
+                'media_metadata' => [
+                    'show_id' => 'id-show',
+                ],
+            ];
+        }
+    });
+
+    Livewire::test(CreateEpisodeWorkspace::class)
+        ->set('data.spotify_episode', 'spotify:episode:idmatch12345')
+        ->mountAction(TestAction::make('fetchSpotifyEpisode')->schemaComponent('spotify_episode', 'form'))
+        ->assertSet('mountedActions.0.data.matched_podcast_name', 'Existing ID Show')
+        ->assertSet('mountedActions.0.data.matched_podcast_tier', 'show_id')
+        ->assertSet('mountedActions.0.data.link_matched_podcast', true)
+        ->callMountedAction()
+        ->assertSet('data.content_group_id', $matchedGroup->id);
+});
+
+it('shows close spotify workspace podcast matches unchecked as suggestions', function (): void {
+    ContentGroup::factory()->create(['title' => 'Daily Podcast']);
+
+    app()->instance(EpisodeSpotifyLookup::class, new class extends EpisodeSpotifyLookup
+    {
+        public function __construct() {}
+
+        public function lookup(string $episodeInput, ?ImportConnection $connection = null): array
+        {
+            return [
+                'title' => 'Close Match Episode',
+                'title_prefix' => 'Daily Podcast with Yoni',
+                'media_url' => 'https://open.spotify.com/episode/close12345',
+                'external_id' => 'close12345',
+                'media_metadata' => [
+                    'show_id' => 'unknown-show',
+                ],
+            ];
+        }
+    });
+
+    Livewire::test(CreateEpisodeWorkspace::class)
+        ->set('data.spotify_episode', 'spotify:episode:close12345')
+        ->mountAction(TestAction::make('fetchSpotifyEpisode')->schemaComponent('spotify_episode', 'form'))
+        ->assertSet('mountedActions.0.data.matched_podcast_name', 'Daily Podcast')
+        ->assertSet('mountedActions.0.data.matched_podcast_tier', 'close_title')
+        ->assertSet('mountedActions.0.data.link_matched_podcast', false)
+        ->callMountedAction()
+        ->assertSet('data.content_group_id', null);
 });
 
 it('honors spotify workspace modal options and clears the title prefix', function (): void {

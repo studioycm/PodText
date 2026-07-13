@@ -30,6 +30,8 @@ use Filament\Facades\Filament;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Livewire\Livewire;
@@ -38,6 +40,8 @@ uses(RefreshDatabase::class);
 
 beforeEach(function (): void {
     Filament::setCurrentPanel(Filament::getPanel('admin'));
+    Http::preventStrayRequests();
+    Mail::fake();
 });
 
 function phase02ImportRecord(string $importerClass, array $row, ?array $columnMap = null, array $options = []): Import
@@ -775,6 +779,21 @@ it('continues valid rows and stores failed rows for prompt ten relationship fail
         ->and(ContentItem::query()->where('title', 'Invalid Row')->exists())->toBeFalse()
         ->and($import->refresh()->successful_rows)->toBe(1)
         ->and($import->failedRows()->count())->toBe(1);
+
+    $failedRow = $import->failedRows()->firstOrFail();
+    $notificationBody = ContentItemImporter::getCompletedNotificationBody($import->refresh());
+    $failureCausesPrefix = Str::before(__('admin.import_export.notifications.import.failure_causes', ['causes' => '__causes__']), '__causes__');
+
+    expect($failedRow->validation_error)->toContain('missing-tag')
+        ->and($notificationBody)->toContain($failureCausesPrefix)
+        ->and($notificationBody)->toContain('missing-tag');
+
+    $response = $this->actingAs($import->user)
+        ->get(route('filament.imports.failed-rows.download', ['import' => $import]));
+
+    $response->assertOk();
+
+    expect($response->streamedContent())->toContain('missing-tag');
 });
 
 it('stores failed rows for overlong importer reference keys', function (): void {

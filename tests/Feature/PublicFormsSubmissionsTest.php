@@ -1,11 +1,13 @@
 <?php
 
+use App\Enums\FormVerificationChannel;
 use App\Enums\PublicFormSubmissionStatus;
 use App\Filament\Pages\ManagePublicForms;
 use App\Filament\Pages\PublicContentSettings as PublicContentSettingsPage;
 use App\Filament\Resources\PublicFormSubmissions\Pages\ListPublicFormSubmissions;
 use App\Filament\Resources\PublicFormSubmissions\PublicFormSubmissionResource;
 use App\Livewire\Public\PublicFormModal;
+use App\Mail\PublicFormEmailVerificationCodeMail;
 use App\Models\PublicFormSubmission;
 use App\Models\User;
 use App\Settings\PublicContentSettings;
@@ -19,6 +21,7 @@ use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\RateLimiter;
 use Livewire\Livewire;
@@ -31,6 +34,7 @@ beforeEach(function (): void {
     fakeSettingsBackupSnapshotQueue();
 
     Cache::flush();
+    Http::preventStrayRequests();
     RateLimiter::clear('public-form:request_transcription:test');
     Mail::fake();
 });
@@ -79,6 +83,7 @@ function step6PublicFormsConfig(array $overrides = []): array
                     'settings' => [
                         'rate_limit_attempts' => 5,
                         'rate_limit_decay_seconds' => 600,
+                        'submitter_email_verification' => 'off',
                     ],
                     'fields' => [
                         [
@@ -124,6 +129,20 @@ function step6PublicFormsConfig(array $overrides = []): array
     ];
 }
 
+function mail1QueuedPublicFormCode(): string
+{
+    $code = null;
+
+    Mail::assertQueued(PublicFormEmailVerificationCodeMail::class, function (PublicFormEmailVerificationCodeMail $mail) use (&$code): bool {
+        $code = $mail->code;
+
+        return preg_match('/^\d{6}$/', $mail->code) === 1
+            && $mail->queue === 'default';
+    });
+
+    return (string) $code;
+}
+
 it('normalizes valid public form definitions through the public front validator', function (): void {
     $result = app(PublicFrontConfigValidator::class)->validate(step6PublicFormsConfig());
     $definition = $result->group('public_forms')['definitions'][0];
@@ -136,6 +155,7 @@ it('normalizes valid public form definitions through the public front validator'
         ->and($definition['settings'])->toBe([
             'rate_limit_attempts' => 5,
             'rate_limit_decay_seconds' => 600,
+            'submitter_email_verification' => 'off',
         ]);
 });
 
@@ -220,6 +240,7 @@ it('saves public form definitions through the forms management page as JSON sett
                 'settings' => [
                     'rate_limit_attempts' => 3,
                     'rate_limit_decay_seconds' => 600,
+                    'submitter_email_verification' => 'email_otp',
                 ],
                 'fields' => [
                     [
@@ -245,6 +266,7 @@ it('saves public form definitions through the forms management page as JSON sett
 
     expect($definition['key'])->toBe('volunteer')
         ->and($definition['display_mode_default'])->toBe('slide_over')
+        ->and($definition['settings']['submitter_email_verification'])->toBe('email_otp')
         ->and($definition['fields'][0]['type'])->toBe('textarea');
 });
 
@@ -370,6 +392,81 @@ it('validates required email url and select fields before creating submissions',
     expect(PublicFormSubmission::query()->count())->toBe(0);
 });
 
+it('requires and consumes livewire email otp verification before storing protected public forms', function (): void {
+    saveStep6PublicFrontConfig(step6PublicFormsConfig([
+        'settings' => [
+            'rate_limit_attempts' => 5,
+            'rate_limit_decay_seconds' => 600,
+            'submitter_email_verification' => 'email_otp',
+        ],
+    ]));
+
+    $component = Livewire::test(PublicFormModal::class, ['formKey' => 'request_transcription'])
+        ->set('data.name', 'Submitter')
+        ->set('data.email', 'submitter@example.com')
+        ->set('data.topic', 'podcast')
+        ->call('submit')
+        ->assertHasErrors(['verification'])
+        ->call('sendEmailVerificationCode')
+        ->assertHasNoErrors()
+        ->assertSet('emailVerificationVerified', false);
+
+    $code = mail1QueuedPublicFormCode();
+
+    $component
+        ->set('emailVerificationCode', $code)
+        ->call('verifyEmailCode')
+        ->assertHasNoErrors()
+        ->assertSet('emailVerificationVerified', true)
+        ->call('submit')
+        ->assertHasNoErrors()
+        ->assertSee('Request received.');
+
+    $submission = PublicFormSubmission::query()->firstOrFail();
+
+    expect($submission->verification_channel)->toBe(FormVerificationChannel::Email->value)
+        ->and($submission->verification_verified_at)->not->toBeNull()
+        ->and($submission->payload['email'])->toBe('submitter@example.com');
+});
+
+it('uses the global email verification flag as the server authority even when a form is off', function (): void {
+    $config = step6PublicFormsConfig();
+    $config['public_forms']['require_email_verification'] = true;
+
+    saveStep6PublicFrontConfig($config);
+
+    Livewire::test(PublicFormModal::class, ['formKey' => 'request_transcription'])
+        ->set('data.name', 'Submitter')
+        ->set('data.email', 'submitter@example.com')
+        ->set('data.topic', 'podcast')
+        ->call('submit')
+        ->assertHasErrors(['verification']);
+
+    expect(PublicFormSubmission::query()->count())->toBe(0);
+    Mail::assertNothingQueued();
+});
+
+it('rejects oversized payloads and configured length violations before creating submissions', function (): void {
+    saveStep6PublicFrontConfig(step6PublicFormsConfig());
+
+    Livewire::test(PublicFormModal::class, ['formKey' => 'request_transcription'])
+        ->set('data.name', str_repeat('a', 81))
+        ->set('data.email', 'submitter@example.com')
+        ->set('data.topic', 'podcast')
+        ->call('submit')
+        ->assertHasErrors(['data.name']);
+
+    Livewire::test(PublicFormModal::class, ['formKey' => 'request_transcription'])
+        ->set('data.name', 'Submitter')
+        ->set('data.email', 'submitter@example.com')
+        ->set('data.topic', 'podcast')
+        ->set('data.unconfigured', str_repeat('x', 21000))
+        ->call('submit')
+        ->assertHasErrors(['form']);
+
+    expect(PublicFormSubmission::query()->count())->toBe(0);
+});
+
 it('blocks honeypot submissions', function (): void {
     saveStep6PublicFrontConfig(step6PublicFormsConfig());
 
@@ -418,12 +515,15 @@ it('lists submissions safely and manages review statuses in the admin resource',
         'payload' => [
             'message' => '<script>alert(1)</script>',
         ],
+        'verification_channel' => FormVerificationChannel::Email->value,
+        'verification_verified_at' => now(),
     ]);
 
     Livewire::test(ListPublicFormSubmissions::class)
         ->assertOk()
         ->assertCanSeeTableRecords([$submission])
         ->assertSee('Request transcription')
+        ->assertSee(__('admin.labels.verified'))
         ->assertDontSee('<script>alert(1)</script>', false)
         ->callAction(TestAction::make('markReviewed')->table($submission));
 

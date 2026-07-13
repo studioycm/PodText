@@ -10,6 +10,7 @@ use App\Filament\Pages\ImporterSettings;
 use App\Filament\Pages\ManagePublicForms;
 use App\Filament\Pages\PublicContentSettings as PublicContentSettingsPage;
 use App\Filament\Pages\SpotifyLinksFetcher;
+use App\Filament\Public\Pages\BrowseContentGroups;
 use App\Filament\Public\Pages\ShowContentGroup;
 use App\Filament\Public\Pages\ShowContentItem;
 use App\Filament\Resources\Authors\AuthorResource;
@@ -60,9 +61,12 @@ use Filament\Notifications\Notification;
 use Filament\Resources\Pages\Enums\ContentTabPosition;
 use Filament\Schemas\Components\Section;
 use Filament\Support\Enums\Width;
+use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Enums\RecordActionsPosition;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Validation\ValidationException;
 use Livewire\Features\SupportTesting\Testable;
 use Livewire\Livewire;
@@ -72,6 +76,8 @@ uses(RefreshDatabase::class);
 beforeEach(function (): void {
     Filament::setCurrentPanel(Filament::getPanel('admin'));
     fakeSettingsBackupSnapshotQueue();
+    Http::preventStrayRequests();
+    Mail::fake();
 
     Testable::macro('fillForm', function (array|Closure $state = [], ?string $form = null): Testable {
         if ($state instanceof Closure) {
@@ -261,7 +267,18 @@ it('orders every registered admin navigation resource and page through the centr
             __('admin.tools.pages.tools.navigation'),
             __('admin.importer.pages.settings.navigation'),
             __('admin.spotify_fetcher.pages.navigation'),
+            __('admin.navigation.public_homepage'),
         ]);
+
+    $siteItems = collect($navigation
+        ->first(fn ($group): bool => $group->getLabel() === AdminNavigationOrder::groupLabel(AdminNavigationOrder::SITE_MANAGEMENT))
+        ->getItems());
+    $publicHomepageItem = $siteItems->last();
+
+    expect($publicHomepageItem->getLabel())->toBe(__('admin.navigation.public_homepage'))
+        ->and($publicHomepageItem->getUrl())->toBe(BrowseContentGroups::getUrl(panel: 'public'))
+        ->and($publicHomepageItem->shouldOpenUrlInNewTab())->toBeTrue()
+        ->and($publicHomepageItem->getIcon())->toBe(Heroicon::OutlinedArrowTopRightOnSquare);
 });
 
 it('defers the public form submission navigation badge query until badge evaluation', function (): void {

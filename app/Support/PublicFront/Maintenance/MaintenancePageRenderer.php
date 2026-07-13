@@ -3,6 +3,7 @@
 namespace App\Support\PublicFront\Maintenance;
 
 use App\Support\PublicFront\Forms\PublicFormSchemaFactory;
+use App\Support\PublicFront\Forms\PublicFormVerificationPolicy;
 use App\Support\PublicFront\PublicFrontConfigReader;
 use Illuminate\Support\MessageBag;
 use Illuminate\Support\Str;
@@ -13,6 +14,7 @@ class MaintenancePageRenderer
     public function __construct(
         private readonly PublicFrontConfigReader $configReader,
         private readonly PublicFormSchemaFactory $schemaFactory,
+        private readonly PublicFormVerificationPolicy $verificationPolicy,
     ) {}
 
     /**
@@ -26,13 +28,25 @@ class MaintenancePageRenderer
         array $formData = [],
         ?MessageBag $formErrors = null,
         ?string $formSuccessMessage = null,
+        ?string $formVerificationToken = null,
+        ?string $formActionUrl = null,
+        ?string $formVerificationMessage = null,
         ?string $sourceUrl = null,
     ): Response {
         $retryAfter ??= max(1, (int) ($maintenance['retry_after_hours'] ?? 24)) * 3600;
         $definition = $this->definition($maintenance);
         $formHtml = $definition === null
             ? null
-            : $this->formHtml($definition, $formData, $formErrors ?? new MessageBag, $formSuccessMessage, $sourceUrl);
+            : $this->formHtml(
+                $definition,
+                $formData,
+                $formErrors ?? new MessageBag,
+                $formSuccessMessage,
+                $formVerificationToken,
+                $formActionUrl,
+                $formVerificationMessage,
+                $sourceUrl,
+            );
 
         return response()
             ->view('public.maintenance', [
@@ -117,6 +131,9 @@ class MaintenancePageRenderer
         array $formData,
         MessageBag $formErrors,
         ?string $formSuccessMessage,
+        ?string $formVerificationToken,
+        ?string $formActionUrl,
+        ?string $formVerificationMessage,
         ?string $sourceUrl,
     ): string {
         return view('public.partials.maintenance-form', [
@@ -125,8 +142,12 @@ class MaintenancePageRenderer
             'formData' => $formData,
             'formErrors' => $formErrors,
             'formSuccessMessage' => $formSuccessMessage,
+            'formVerificationRequired' => $this->verificationPolicy->requiresEmailVerification($definition),
+            'formVerificationToken' => $formVerificationToken,
+            'formVerificationMessage' => $formVerificationMessage,
             'sourceUrl' => $sourceUrl ?? url()->full(),
-            'actionUrl' => route('public.maintenance-form.submit'),
+            'actionUrl' => $formActionUrl ?? route('public.maintenance-form.submit'),
+            'sendCodeActionUrl' => route('public.maintenance-form.send-code'),
         ])->render();
     }
 }

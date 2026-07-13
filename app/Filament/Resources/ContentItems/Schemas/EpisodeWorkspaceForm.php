@@ -14,6 +14,7 @@ use App\Models\ContentItem;
 use App\Models\Transcription;
 use App\Rules\ApprovedEmbedUrl;
 use App\Settings\AdminUxSettings;
+use App\Support\Importer\SpotifyLinks\SpotifyGroupMatch;
 use App\Support\Importer\SpotifyLinks\SpotifyLinksImportResolver;
 use App\Support\Media\ContentItemMediaRules;
 use App\Support\Media\EpisodeEmbedInputNormalizer;
@@ -58,6 +59,7 @@ class EpisodeWorkspaceForm
                 Section::make(__('admin.sections.episode_workspace_identity'))
                     ->description(__('admin.descriptions.episode_workspace_identity'))
                     ->schema([
+                        self::spotifyEpisodeInput(),
                         RelationshipOptionForms::configureContentGroupSelect(
                             Select::make('content_group_id')
                                 ->label(__('admin.fields.content_group'))
@@ -132,39 +134,6 @@ class EpisodeWorkspaceForm
                             ->validationMessages([
                                 'media_url.starts_with' => __('admin.validation.media_url_https'),
                             ]),
-                        TextInput::make('spotify_episode')
-                            ->label(__('admin.fields.spotify_episode'))
-                            ->helperText(__('admin.helpers.spotify_episode'))
-                            ->dehydrated(false)
-                            ->suffixAction(
-                                Action::make('fetchSpotifyEpisode')
-                                    ->label(__('admin.actions.fetch_spotify_episode'))
-                                    ->icon(Heroicon::OutlinedArrowDownTray)
-                                    ->modalHeading(__('admin.modals.fetch_spotify_episode'))
-                                    ->modalSubmitActionLabel(__('admin.actions.fetch_spotify_episode'))
-                                    ->fillForm(fn (Get $get): array => self::spotifyFetchOptionsDefaults($get))
-                                    ->schema([
-                                        Checkbox::make('fill_slug_when_empty')
-                                            ->label(__('admin.fields.spotify_fill_slug_when_empty'))
-                                            ->helperText(__('admin.helpers.spotify_fill_slug_when_empty')),
-                                        Checkbox::make('fill_title_prefix_when_empty')
-                                            ->label(__('admin.fields.spotify_fill_title_prefix_when_empty'))
-                                            ->helperText(__('admin.helpers.spotify_fill_title_prefix_when_empty')),
-                                        Checkbox::make('link_matched_podcast')
-                                            ->label(__('admin.fields.spotify_link_matched_podcast'))
-                                            ->helperText(__('admin.helpers.spotify_link_matched_podcast')),
-                                        Checkbox::make('overwrite_non_empty_fields')
-                                            ->label(__('admin.fields.spotify_overwrite_non_empty_fields'))
-                                            ->helperText(__('admin.helpers.spotify_overwrite_non_empty_fields')),
-                                        Hidden::make('matched_podcast_name'),
-                                        TextEntry::make('matched_podcast_preview')
-                                            ->label(__('admin.fields.spotify_matched_podcast'))
-                                            ->state(fn (Get $get): string => filled($get('matched_podcast_name'))
-                                                ? (string) $get('matched_podcast_name')
-                                                : __('admin.labels.none')),
-                                    ])
-                                    ->action(fn (array $data, Set $set, Get $get, ?Livewire $livewire = null): null => self::fetchSpotifyEpisode($set, $get, $data, $livewire)),
-                            ),
                         TrustedHtmlCodeEditor::make('embed_html')
                             ->label(__('admin.fields.embed_html'))
                             ->helperText(__('admin.helpers.embed_html'))
@@ -488,35 +457,95 @@ class EpisodeWorkspaceForm
     /**
      * @return array<string, mixed>
      */
+    private static function spotifyEpisodeInput(): TextInput
+    {
+        return TextInput::make('spotify_episode')
+            ->label(__('admin.fields.spotify_episode'))
+            ->helperText(__('admin.helpers.spotify_episode'))
+            ->dehydrated(false)
+            ->columnSpanFull()
+            ->suffixAction(
+                Action::make('fetchSpotifyEpisode')
+                    ->label(__('admin.actions.fetch_spotify_episode'))
+                    ->icon(Heroicon::OutlinedArrowDownTray)
+                    ->modalHeading(__('admin.modals.fetch_spotify_episode'))
+                    ->modalSubmitActionLabel(__('admin.actions.fetch_spotify_episode'))
+                    ->fillForm(fn (Get $get): array => self::spotifyFetchOptionsDefaults($get))
+                    ->schema([
+                        Checkbox::make('fill_slug_when_empty')
+                            ->label(__('admin.fields.spotify_fill_slug_when_empty'))
+                            ->helperText(__('admin.helpers.spotify_fill_slug_when_empty')),
+                        Checkbox::make('fill_title_prefix_when_empty')
+                            ->label(__('admin.fields.spotify_fill_title_prefix_when_empty'))
+                            ->helperText(__('admin.helpers.spotify_fill_title_prefix_when_empty')),
+                        Checkbox::make('link_matched_podcast')
+                            ->label(__('admin.fields.spotify_link_matched_podcast'))
+                            ->helperText(__('admin.helpers.spotify_link_matched_podcast')),
+                        Checkbox::make('overwrite_non_empty_fields')
+                            ->label(__('admin.fields.spotify_overwrite_non_empty_fields'))
+                            ->helperText(__('admin.helpers.spotify_overwrite_non_empty_fields')),
+                        Hidden::make('matched_podcast_name'),
+                        Hidden::make('matched_podcast_tier'),
+                        TextEntry::make('matched_podcast_preview')
+                            ->label(__('admin.fields.spotify_matched_podcast'))
+                            ->state(fn (Get $get): string => self::matchedPodcastPreview(
+                                (string) $get('matched_podcast_name'),
+                                (string) $get('matched_podcast_tier'),
+                            )),
+                    ])
+                    ->action(fn (array $data, Set $set, Get $get, ?Livewire $livewire = null): null => self::fetchSpotifyEpisode($set, $get, $data, $livewire)),
+            );
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
     private static function spotifyFetchOptionsDefaults(Get $get): array
     {
+        $match = self::matchedPodcastForSpotifyInput((string) $get('spotify_episode'));
+
         return [
             'fill_slug_when_empty' => true,
             'fill_title_prefix_when_empty' => true,
-            'link_matched_podcast' => true,
+            'link_matched_podcast' => $match?->shouldLinkByDefault() ?? false,
             'overwrite_non_empty_fields' => false,
-            'matched_podcast_name' => self::matchedPodcastNameForSpotifyInput((string) $get('spotify_episode')),
+            'matched_podcast_name' => $match?->group->title ?? '',
+            'matched_podcast_tier' => $match?->tier ?? '',
         ];
     }
 
-    private static function matchedPodcastNameForSpotifyInput(string $spotifyEpisode): string
+    private static function matchedPodcastForSpotifyInput(string $spotifyEpisode): ?SpotifyGroupMatch
     {
         if (blank($spotifyEpisode)) {
-            return '';
+            return null;
         }
 
         try {
             $data = app(EpisodeSpotifyLookup::class)->lookup($spotifyEpisode);
         } catch (Throwable) {
-            return '';
+            return null;
         }
 
-        $group = app(SpotifyLinksImportResolver::class)->resolveGroup([
+        return app(SpotifyLinksImportResolver::class)->resolveGroupMatch([
             'show_id' => data_get($data, 'media_metadata.show_id'),
             'show_name' => $data['title_prefix'] ?? null,
         ]);
+    }
 
-        return $group?->title ?? '';
+    private static function matchedPodcastPreview(string $name, string $tier): string
+    {
+        if (blank($name)) {
+            return __('admin.labels.none');
+        }
+
+        if (blank($tier)) {
+            return $name;
+        }
+
+        return __('admin.labels.spotify_match_preview', [
+            'name' => $name,
+            'tier' => __("admin.spotify_match_tiers.{$tier}"),
+        ]);
     }
 
     /**
@@ -539,10 +568,11 @@ class EpisodeWorkspaceForm
         $overwrite = (bool) ($options['overwrite_non_empty_fields'] ?? false);
 
         if ((bool) ($options['link_matched_podcast'] ?? true)) {
-            $group = app(SpotifyLinksImportResolver::class)->resolveGroup([
+            $match = app(SpotifyLinksImportResolver::class)->resolveGroupMatch([
                 'show_id' => data_get($data, 'media_metadata.show_id'),
                 'show_name' => $data['title_prefix'] ?? null,
             ]);
+            $group = $match?->group;
 
             if ($group instanceof ContentGroup && ($overwrite || blank($get('content_group_id')))) {
                 $set('content_group_id', $group->getKey());

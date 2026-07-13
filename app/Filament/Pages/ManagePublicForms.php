@@ -9,6 +9,7 @@ use App\Settings\PublicContentSettings as PublicContentSettingsData;
 use App\Support\PublicFront\PublicFrontConfigReader;
 use App\Support\PublicFront\PublicFrontConfigValidator;
 use BackedEnum;
+use Filament\Forms\Components\Toggle;
 use Filament\Pages\SettingsPage;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
@@ -46,6 +47,10 @@ class ManagePublicForms extends SettingsPage
                 Section::make(__('admin.sections.public_front_forms'))
                     ->description(__('admin.descriptions.public_front_forms'))
                     ->schema([
+                        Toggle::make('public_forms.require_email_verification')
+                            ->label(__('admin.fields.public_forms_require_email_verification'))
+                            ->helperText(__('admin.helpers.public_forms_require_email_verification'))
+                            ->default(false),
                         PublicFormsSettingsForm::definitionsRepeater(),
                     ])
                     ->collapsible()

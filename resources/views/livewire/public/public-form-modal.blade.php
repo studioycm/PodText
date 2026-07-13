@@ -159,6 +159,58 @@
                             </div>
                         @endforeach
 
+                        @if($verificationRequired)
+                            <div class="rounded-md border border-primary-200 bg-primary-50 p-3 text-sm text-primary-900 dark:border-primary-800 dark:bg-primary-950 dark:text-primary-100" data-test="public-form-verification">
+                                <div class="space-y-2">
+                                    <p class="font-medium">{{ __('public.forms.verification.title') }}</p>
+
+                                    <div class="flex flex-wrap items-end gap-2">
+                                        <button
+                                            type="button"
+                                            wire:click="sendEmailVerificationCode"
+                                            wire:loading.attr="disabled"
+                                            wire:target="sendEmailVerificationCode"
+                                            class="inline-flex items-center justify-center rounded-md border border-primary-700 bg-primary-700 px-3 py-2 text-sm font-medium text-white transition hover:bg-primary-800 focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:cursor-not-allowed disabled:opacity-60"
+                                            data-test="public-form-send-code"
+                                        >
+                                            {{ __('public.forms.verification.send_code') }}
+                                        </button>
+
+                                        <label class="grid gap-1">
+                                            <span>{{ __('public.forms.verification.code_label') }}</span>
+                                            <input
+                                                type="text"
+                                                inputmode="numeric"
+                                                autocomplete="one-time-code"
+                                                wire:model="emailVerificationCode"
+                                                class="w-36 rounded-md border-gray-300 text-sm shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:border-gray-700 dark:bg-gray-950"
+                                                data-test="public-form-code"
+                                            >
+                                        </label>
+
+                                        <button
+                                            type="button"
+                                            wire:click="verifyEmailCode"
+                                            wire:loading.attr="disabled"
+                                            wire:target="verifyEmailCode"
+                                            class="inline-flex items-center justify-center rounded-md border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:cursor-not-allowed disabled:opacity-60 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800"
+                                            data-test="public-form-verify-code"
+                                        >
+                                            {{ __('public.forms.verification.verify_code') }}
+                                        </button>
+                                    </div>
+
+                                    @if($emailVerificationStatus)
+                                        <p data-test="public-form-verification-status">{{ $emailVerificationStatus }}</p>
+                                    @endif
+
+                                    @error('verification')
+                                        <p class="text-danger-700 dark:text-danger-300" data-test="public-form-verification-error">{{ $message }}</p>
+                                    @enderror
+                                </div>
+                            </div>
+                        @endif
+
                         <div class="flex justify-end gap-3 pt-2">
                             <button
                                 type="button"
@@ -172,6 +224,7 @@
                                 type="submit"
                                 class="inline-flex items-center justify-center rounded-md border border-primary-700 bg-primary-700 px-4 py-2 text-sm font-medium text-white transition hover:bg-primary-800 focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:cursor-not-allowed disabled:opacity-60"
                                 wire:loading.attr="disabled"
+                                @disabled($verificationRequired && ! $emailVerificationVerified)
                                 data-test="public-form-submit"
                             >
                                 {{ $definition['submit_label'] }}

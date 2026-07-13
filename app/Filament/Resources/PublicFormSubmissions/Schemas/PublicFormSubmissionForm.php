@@ -42,6 +42,19 @@ class PublicFormSubmissionForm
                             ->timezone('Asia/Jerusalem')
                             ->disabled()
                             ->dehydrated(false),
+                        TextInput::make('verification_channel')
+                            ->label(__('admin.fields.public_form_verification_channel'))
+                            ->formatStateUsing(fn (?string $state): string => filled($state)
+                                ? __("admin.form_verification_channels.{$state}")
+                                : __('admin.labels.not_verified'))
+                            ->disabled()
+                            ->dehydrated(false),
+                        DateTimePicker::make('verification_verified_at')
+                            ->label(__('admin.fields.public_form_verification_verified_at'))
+                            ->displayFormat('d/m/Y H:i')
+                            ->timezone('Asia/Jerusalem')
+                            ->disabled()
+                            ->dehydrated(false),
                         TextInput::make('source_url')
                             ->label(__('admin.fields.source_url'))
                             ->disabled()

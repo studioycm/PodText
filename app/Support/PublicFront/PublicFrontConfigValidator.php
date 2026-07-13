@@ -997,13 +997,15 @@ class PublicFrontConfigValidator
     {
         if (array_is_list($config)) {
             return [
+                'require_email_verification' => false,
                 'definitions' => $this->normalizePublicFormDefinitions($config, 'public_forms.definitions', $invalidConfig),
             ];
         }
 
-        $this->reportUnknownKeys($config, ['definitions'], 'public_forms', $invalidConfig);
+        $this->reportUnknownKeys($config, ['require_email_verification', 'definitions'], 'public_forms', $invalidConfig);
 
         return [
+            'require_email_verification' => $this->boolean($config['require_email_verification'] ?? null, 'public_forms.require_email_verification', false, $invalidConfig),
             'definitions' => $this->normalizePublicFormDefinitions($config['definitions'] ?? [], 'public_forms.definitions', $invalidConfig),
         ];
     }
@@ -1298,7 +1300,7 @@ class PublicFrontConfigValidator
     /**
      * @param  array<string, mixed>|mixed  $settings
      * @param  array<PublicFrontInvalidConfig>  $invalidConfig
-     * @return array{rate_limit_attempts: int, rate_limit_decay_seconds: int}
+     * @return array{rate_limit_attempts: int, rate_limit_decay_seconds: int, submitter_email_verification: string}
      */
     private function normalizePublicFormSettings(mixed $settings, string $path, array &$invalidConfig): array
     {
@@ -1314,7 +1316,7 @@ class PublicFrontConfigValidator
             return $defaults;
         }
 
-        $this->reportUnknownKeys($settings, ['rate_limit_attempts', 'rate_limit_decay_seconds'], $path, $invalidConfig);
+        $this->reportUnknownKeys($settings, ['rate_limit_attempts', 'rate_limit_decay_seconds', 'submitter_email_verification'], $path, $invalidConfig);
 
         return [
             'rate_limit_attempts' => array_key_exists('rate_limit_attempts', $settings)
@@ -1323,6 +1325,13 @@ class PublicFrontConfigValidator
             'rate_limit_decay_seconds' => array_key_exists('rate_limit_decay_seconds', $settings)
                 ? $this->integerRange($settings['rate_limit_decay_seconds'], "{$path}.rate_limit_decay_seconds", 60, 86400, $defaults['rate_limit_decay_seconds'], $invalidConfig)
                 : $defaults['rate_limit_decay_seconds'],
+            'submitter_email_verification' => $this->finiteString(
+                $settings['submitter_email_verification'] ?? null,
+                PublicFormDefinitionRegistry::emailVerificationModes(),
+                "{$path}.submitter_email_verification",
+                $invalidConfig,
+                $defaults['submitter_email_verification'],
+            ),
         ];
     }
 

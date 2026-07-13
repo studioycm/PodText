@@ -99,7 +99,9 @@
     .podtext-maintenance-form__actions {
         margin-block-start: 1rem;
         display: flex;
+        flex-wrap: wrap;
         justify-content: end;
+        gap: 0.5rem;
     }
 
     .podtext-maintenance-form__button {
@@ -111,6 +113,12 @@
         font: inherit;
         font-weight: 600;
         padding: 0.65rem 1rem;
+    }
+
+    .podtext-maintenance-form__button--secondary {
+        border-color: var(--maintenance-border, #d7d7ce);
+        background: var(--maintenance-panel, #ffffff);
+        color: var(--maintenance-text, #1f2933);
     }
 
     .podtext-maintenance-form__honeypot {
@@ -143,10 +151,27 @@
         </div>
     @endif
 
+    @if($formErrors->has('verification'))
+        <div class="podtext-maintenance-form__alert podtext-maintenance-form__alert--error" data-maintenance-form-verification-error>
+            {{ $formErrors->first('verification') }}
+        </div>
+    @endif
+
+    @if(filled($formVerificationMessage))
+        <div class="podtext-maintenance-form__alert podtext-maintenance-form__alert--success" data-maintenance-form-verification-message>
+            {{ $formVerificationMessage }}
+        </div>
+    @endif
+
     <form method="POST" action="{{ $actionUrl }}" data-maintenance-form-post>
         @csrf
 
         <input type="hidden" name="source_url" value="{{ $sourceUrl }}">
+        <input type="hidden" name="form_key" value="{{ $definition['key'] }}">
+
+        @if(filled($formVerificationToken))
+            <input type="hidden" name="verification_token" value="{{ $formVerificationToken }}">
+        @endif
 
         <div class="podtext-maintenance-form__honeypot" aria-hidden="true">
             <label>
@@ -244,7 +269,42 @@
             @endforeach
         </div>
 
+        @if($formVerificationRequired)
+            <div class="podtext-maintenance-form__field" data-maintenance-form-verification>
+                <label class="podtext-maintenance-form__label" for="maintenance-form-verification-code">
+                    {{ __('public.forms.verification.code_label') }}
+                </label>
+
+                <input
+                    id="maintenance-form-verification-code"
+                    class="podtext-maintenance-form__input"
+                    type="text"
+                    name="verification_code"
+                    inputmode="numeric"
+                    autocomplete="one-time-code"
+                    value="{{ old('verification_code') }}"
+                    placeholder="{{ __('public.forms.verification.code_placeholder') }}"
+                    data-maintenance-form-code
+                >
+
+                <div class="podtext-maintenance-form__help">
+                    {{ __('public.forms.verification.maintenance_help') }}
+                </div>
+            </div>
+        @endif
+
         <div class="podtext-maintenance-form__actions">
+            @if($formVerificationRequired)
+                <button
+                    class="podtext-maintenance-form__button podtext-maintenance-form__button--secondary"
+                    type="submit"
+                    formaction="{{ $sendCodeActionUrl }}"
+                    data-maintenance-form-send-code
+                >
+                    {{ __('public.forms.verification.send_code') }}
+                </button>
+            @endif
+
             <button class="podtext-maintenance-form__button" type="submit" data-maintenance-form-submit>
                 {{ $definition['submit_label'] }}
             </button>

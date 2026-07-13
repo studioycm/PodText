@@ -20,6 +20,8 @@ use Illuminate\Support\Facades\Cache;
     'submitter_ip_hash',
     'user_agent_hash',
     'metadata',
+    'verification_channel',
+    'verification_verified_at',
 ])]
 class PublicFormSubmission extends Model
 {
@@ -74,6 +76,7 @@ class PublicFormSubmission extends Model
             'metadata' => 'array',
             'status' => PublicFormSubmissionStatus::class,
             'submitted_at' => 'datetime',
+            'verification_verified_at' => 'datetime',
         ];
     }
 }

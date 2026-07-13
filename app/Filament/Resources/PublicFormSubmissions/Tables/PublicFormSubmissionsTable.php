@@ -35,6 +35,14 @@ class PublicFormSubmissionsTable
                     ->label(__('admin.fields.status'))
                     ->badge()
                     ->sortable(),
+                TextColumn::make('verification_verified_at')
+                    ->label(__('admin.fields.public_form_verification'))
+                    ->badge()
+                    ->getStateUsing(fn (PublicFormSubmission $record): string => $record->verification_verified_at
+                        ? __('admin.labels.verified')
+                        : __('admin.labels.not_verified'))
+                    ->color(fn (PublicFormSubmission $record): string => $record->verification_verified_at ? 'success' : 'gray')
+                    ->sortable(),
                 TextColumn::make('submitted_at')
                     ->label(__('admin.fields.submitted_at'))
                     ->dateTime('d/m/Y H:i', 'Asia/Jerusalem')

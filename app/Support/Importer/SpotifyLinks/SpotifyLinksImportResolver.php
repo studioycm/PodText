@@ -109,6 +109,20 @@ class SpotifyLinksImportResolver
      */
     public function resolveGroup(array $row): ?ContentGroup
     {
+        $match = $this->resolveGroupMatch($row);
+
+        if (! $match?->shouldLinkByDefault()) {
+            return null;
+        }
+
+        return $match->group;
+    }
+
+    /**
+     * @param  array<string, mixed>  $row
+     */
+    public function resolveGroupMatch(array $row): ?SpotifyGroupMatch
+    {
         $showId = $this->showId($row);
 
         if (filled($showId)) {
@@ -118,7 +132,7 @@ class SpotifyLinksImportResolver
                 ->first();
 
             if ($contentItem?->contentGroup instanceof ContentGroup) {
-                return $contentItem->contentGroup;
+                return new SpotifyGroupMatch($contentItem->contentGroup, SpotifyGroupMatch::TIER_SHOW_ID);
             }
         }
 
@@ -128,9 +142,37 @@ class SpotifyLinksImportResolver
             return null;
         }
 
-        return ContentGroup::query()
-            ->where('title', $showName)
+        $groups = ContentGroup::query()
+            ->get(['id', 'title', 'reference_key']);
+
+        $normalizedShowName = $this->normalizeName($showName);
+
+        $exactMatch = $groups->first(fn (ContentGroup $group): bool => $this->normalizeName($group->title) === $normalizedShowName);
+
+        if ($exactMatch instanceof ContentGroup) {
+            return new SpotifyGroupMatch($exactMatch, SpotifyGroupMatch::TIER_EXACT_TITLE);
+        }
+
+        $closeMatch = $groups
+            ->map(function (ContentGroup $group) use ($normalizedShowName): array {
+                $normalizedTitle = $this->normalizeName($group->title);
+
+                similar_text($normalizedShowName, $normalizedTitle, $percent);
+
+                return [
+                    'group' => $group,
+                    'score' => str_contains($normalizedShowName, $normalizedTitle) || str_contains($normalizedTitle, $normalizedShowName)
+                        ? max($percent, 88.0)
+                        : $percent,
+                ];
+            })
+            ->filter(fn (array $candidate): bool => $candidate['score'] >= 78.0)
+            ->sortByDesc('score')
             ->first();
+
+        return $closeMatch
+            ? new SpotifyGroupMatch($closeMatch['group'], SpotifyGroupMatch::TIER_CLOSE_TITLE)
+            : null;
     }
 
     /**
@@ -273,5 +315,13 @@ class SpotifyLinksImportResolver
         }
 
         return filled($showName) ? (string) $showName : null;
+    }
+
+    private function normalizeName(string $name): string
+    {
+        return (string) Str::of($name)
+            ->lower()
+            ->replaceMatches('/[^\pL\pN]+/u', ' ')
+            ->squish();
     }
 }

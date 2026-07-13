@@ -105,6 +105,13 @@ class PublicFormsSettingsForm
                             ->minValue(60)
                             ->maxValue(86400)
                             ->default(600),
+                        Select::make('settings.submitter_email_verification')
+                            ->label(__('admin.fields.public_form_submitter_email_verification'))
+                            ->helperText(__('admin.helpers.public_form_submitter_email_verification'))
+                            ->options(fn (): array => PublicFrontConfigRegistry::publicFormEmailVerificationModeOptions())
+                            ->default('off')
+                            ->native(false)
+                            ->required(),
                     ])
                     ->columns(2)
                     ->columnSpanFull(),

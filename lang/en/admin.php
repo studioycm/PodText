@@ -4,6 +4,7 @@ return [
     'navigation' => [
         'content' => 'Content',
         'importer' => 'Import',
+        'public_homepage' => 'Public site',
         'groups' => [
             'content_management' => 'Content management',
             'taxonomy_management' => 'Taxonomy management',
@@ -496,6 +497,7 @@ return [
         'public_form_display_mode' => 'Default display mode',
         'public_form_rate_limit_attempts' => 'Rate limit attempts',
         'public_form_rate_limit_decay_seconds' => 'Rate limit window',
+        'public_form_submitter_email_verification' => 'Submitter email verification',
         'public_form_fields' => 'Fields',
         'public_form_field_key' => 'Field key',
         'public_form_field_label' => 'Field label',
@@ -509,6 +511,10 @@ return [
         'public_form_option_value' => 'Option value',
         'public_form_option_label' => 'Option label',
         'public_form_name_snapshot' => 'Form name snapshot',
+        'public_form_verification' => 'Verification',
+        'public_form_verification_channel' => 'Verification channel',
+        'public_form_verification_verified_at' => 'Verified at',
+        'public_forms_require_email_verification' => 'Require email verification for all public forms',
         'public_display_direction' => 'Direction',
         'public_display_exclude_items' => 'Exclude items',
         'public_display_button_display_mode' => 'Button form display mode',
@@ -863,6 +869,7 @@ return [
         'public_form_display_mode' => 'Future callers can override this with modal or slide-over.',
         'public_form_rate_limit_attempts' => 'Maximum submissions per browser/IP fingerprint inside the window.',
         'public_form_rate_limit_decay_seconds' => 'Rate-limit window in seconds. Defaults to 600.',
+        'public_form_submitter_email_verification' => 'Requires a one-time code before storing this form when an email field exists.',
         'public_form_fields' => 'Only supported v1 field types are accepted. File uploads are deferred.',
         'public_form_field_key' => 'Stable semantic payload key. It must be unique inside the form.',
         'public_form_field_label' => 'Plain public field label.',
@@ -873,6 +880,7 @@ return [
         'public_form_option_value' => 'Stable semantic value stored in submissions.',
         'public_form_option_label' => 'Plain public option label.',
         'public_form_field_validation_semantics' => 'Optional safe validation profile from the registry. Arbitrary rules and regex are not accepted.',
+        'public_forms_require_email_verification' => 'Forces OTP verification on every enabled public form with an email field, regardless of its per-form setting.',
         'public_display_direction' => 'Optional direction hint for supported sorts.',
         'public_display_exclude_items' => 'Records selected here are removed after the public-safe query runs.',
         'public_display_button_display_mode' => 'Modal or slide-over display when the button opens a public form.',
@@ -1010,6 +1018,7 @@ return [
         'inactive' => 'Inactive',
         'none' => 'None',
         'not_featured' => 'Not featured',
+        'not_verified' => 'Not verified',
         'transcription_context' => ':title [:status]',
         'settings_import_backup_source' => 'Backup #:id',
         'settings_import_missing' => 'Missing',
@@ -1020,6 +1029,8 @@ return [
         'hours_count' => '{1} 1 hour|[2,*] :count hours',
         'copy_suffix' => 'Copy',
         'public_form_key_locked' => 'Key locked after submissions exist',
+        'spotify_match_preview' => ':name (:tier)',
+        'verified' => 'Verified',
         'combined_title_preview' => 'Combined title: :title',
         'visibility_group' => 'Published group: :state',
         'visibility_item' => 'Published item: :state',
@@ -1191,6 +1202,19 @@ return [
     'public_form_display_modes' => [
         'modal' => 'Modal',
         'slide_over' => 'Slide-over',
+    ],
+    'public_form_email_verification_modes' => [
+        'email_otp' => 'Email one-time code',
+        'off' => 'Off',
+    ],
+    'form_verification_channels' => [
+        'email' => 'Email',
+        'phone' => 'Phone',
+    ],
+    'spotify_match_tiers' => [
+        'close_title' => 'close title suggestion',
+        'exact_title' => 'exact title match',
+        'show_id' => 'Spotify show ID match',
     ],
     'maintenance_form_locations' => [
         'rendered_page' => 'Rendered maintenance page',
@@ -1564,6 +1588,8 @@ return [
             ],
             'import' => [
                 'completed_body' => '{0} Your :label import has completed and no rows were imported.|{1} Your :label import has completed and :count row imported.|[2,*] Your :label import has completed and :count rows imported.',
+                'failure_cause' => '{1} :count row: :message|[2,*] :count rows: :message',
+                'failure_causes' => 'Failure causes: :causes.',
                 'failed_body' => '{1} :count row failed to import.|[2,*] :count rows failed to import.',
                 'skipped_disabled_content_tags' => 'Skipped disabled content tags: :tags.',
             ],

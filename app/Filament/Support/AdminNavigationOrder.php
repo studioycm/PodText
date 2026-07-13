@@ -9,6 +9,7 @@ use App\Filament\Pages\ImporterSettings;
 use App\Filament\Pages\ManagePublicForms;
 use App\Filament\Pages\PublicContentSettings;
 use App\Filament\Pages\SpotifyLinksFetcher;
+use App\Filament\Public\Pages\BrowseContentGroups;
 use App\Filament\Resources\Authors\AuthorResource;
 use App\Filament\Resources\Categories\CategoryResource;
 use App\Filament\Resources\ContentGroups\ContentGroupResource;
@@ -20,6 +21,7 @@ use App\Filament\Resources\SettingsBackups\SettingsBackupResource;
 use App\Filament\Resources\Transcriptions\TranscriptionResource;
 use Awcodes\Curator\Resources\Media\MediaResource;
 use Filament\Navigation\NavigationGroup;
+use Filament\Navigation\NavigationItem;
 use Filament\Support\Icons\Heroicon;
 
 class AdminNavigationOrder
@@ -169,6 +171,20 @@ class AdminNavigationOrder
                     ->collapsible(false),
             ])
             ->all();
+    }
+
+    /**
+     * @return array<int, NavigationItem>
+     */
+    public static function externalNavigationItems(): array
+    {
+        return [
+            NavigationItem::make(fn (): string => __('admin.navigation.public_homepage'))
+                ->group(fn (): string => self::groupLabel(self::SITE_MANAGEMENT))
+                ->icon(Heroicon::OutlinedArrowTopRightOnSquare)
+                ->sort(999)
+                ->url(fn (): string => BrowseContentGroups::getUrl(panel: 'public'), shouldOpenInNewTab: true),
+        ];
     }
 
     public static function has(string $class): bool

@@ -23,9 +23,12 @@ use Filament\Schemas\Components\Section;
 use Filament\Support\Enums\Width;
 use Filament\Tables\Enums\RecordActionsPosition;
 use Filament\Tables\Table;
+use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 use Spatie\LaravelSettings\Events\SettingsSaved;
 
@@ -113,6 +116,21 @@ class AppServiceProvider extends ServiceProvider
                 });
             });
         });
+
+        RateLimiter::for('public-form-submissions', function (Request $request): Limit {
+            return Limit::perMinute(10)->by('submit:'.$this->publicFormThrottleKey($request));
+        });
+
+        RateLimiter::for('public-form-verification-codes', function (Request $request): Limit {
+            return Limit::perMinute(5)->by('code:'.$this->publicFormThrottleKey($request));
+        });
+    }
+
+    private function publicFormThrottleKey(Request $request): string
+    {
+        $formKey = $request->string('form_key')->toString() ?: 'unknown';
+
+        return $formKey.':'.$request->ip();
     }
 
     private function isAdminPanel(): bool

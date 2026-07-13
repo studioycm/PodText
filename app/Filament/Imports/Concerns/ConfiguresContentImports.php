@@ -10,6 +10,7 @@ use Carbon\CarbonInterface;
 use Carbon\Exceptions\InvalidFormatException;
 use Filament\Actions\Imports\Exceptions\RowImportFailedException;
 use Filament\Actions\Imports\Importer;
+use Filament\Actions\Imports\Models\FailedImportRow;
 use Filament\Actions\Imports\Models\Import;
 use Filament\Forms\Components\Select;
 use Illuminate\Database\Eloquent\Model;
@@ -90,6 +91,10 @@ trait ConfiguresContentImports
             $body .= ' '.trans_choice('admin.import_export.notifications.import.failed_body', $failedRowsCount, [
                 'count' => Number::format($failedRowsCount),
             ]);
+
+            if ($failureSummary = self::failedRowsCauseSummary($import)) {
+                $body .= ' '.$failureSummary;
+            }
         }
 
         if ($skippedDisabledTags = self::skippedDisabledContentTagNames($import)) {
@@ -99,6 +104,29 @@ trait ConfiguresContentImports
         }
 
         return $body;
+    }
+
+    private static function failedRowsCauseSummary(Import $import): string
+    {
+        $causes = $import->failedRows()
+            ->get()
+            ->map(fn (FailedImportRow $row): string => filled($row->validation_error)
+                ? (string) $row->validation_error
+                : __('filament-actions::import.failure_csv.system_error'))
+            ->countBy()
+            ->map(fn (int $count, string $message): string => trans_choice('admin.import_export.notifications.import.failure_cause', $count, [
+                'count' => Number::format($count),
+                'message' => $message,
+            ]))
+            ->values();
+
+        if ($causes->isEmpty()) {
+            return '';
+        }
+
+        return __('admin.import_export.notifications.import.failure_causes', [
+            'causes' => $causes->implode('; '),
+        ]);
     }
 
     public function getJobBatchName(): ?string

@@ -94,6 +94,7 @@ class PublicFrontConfigRegistry
                 ],
             ],
             'public_forms' => [
+                'require_email_verification' => false,
                 'definitions' => [],
             ],
             'route_labels' => [],
@@ -1099,5 +1100,21 @@ class PublicFrontConfigRegistry
     public static function publicFormValidationSemanticOptions(): array
     {
         return PublicFormDefinitionRegistry::validationSemanticOptions();
+    }
+
+    /**
+     * @return array<string>
+     */
+    public static function publicFormEmailVerificationModes(): array
+    {
+        return PublicFormDefinitionRegistry::emailVerificationModes();
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public static function publicFormEmailVerificationModeOptions(): array
+    {
+        return PublicFormDefinitionRegistry::emailVerificationModeOptions();
     }
 }
