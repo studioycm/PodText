@@ -101,6 +101,11 @@ For current prompt completion/progress state, see `docs/phase-02/current-project
 - Do not use one broad FilamentExamples query as the whole research pass. Split work into short topic batches, use higher limits such as 8 to 10 when accepted, inspect result names/snippets/paths, run a refined second pass, and record which examples influenced the implementation.
 - When FilamentExamples exposes only `search_examples`, describe the access as search/snippet access and do not imply a separate source fetch occurred.
 - Documentation-only validation should normally be `git diff --check` and `git status --short` unless the active prompt asks for more.
+- On a single server, multiple Horizon masters that share the same `APP_NAME`
+  also share the Redis prefix and queue namespace. After release renames,
+  topology changes, or deploy-script edits, verify exactly one intended Horizon
+  master with `ps aux`; stale masters from old releases can keep processing live
+  jobs with old code.
 
 ## How future prompts should use this file
 

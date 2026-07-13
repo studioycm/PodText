@@ -12,6 +12,7 @@ use App\Support\PublicFront\PublicFrontConfigCache;
 use App\Support\PublicFront\PublicFrontConfigRegistry;
 use App\Support\PublicFront\PublicFrontConfigValidator;
 use App\Support\PublicFront\PublicFrontRenderContext;
+use App\Support\Settings\SettingsPageProfiler;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use RuntimeException;
@@ -90,7 +91,10 @@ class SettingsBackupManager
         ]);
 
         if (! $this->shouldSkipSnapshots($source, $package, $backup)) {
-            $this->snapshots->scheduleForBackup($backup, $snapshotFormats, $snapshotThemes);
+            app(SettingsPageProfiler::class)->measure(
+                'settings_saved.snapshot_scheduling',
+                fn () => $this->snapshots->scheduleForBackup($backup, $snapshotFormats, $snapshotThemes),
+            );
         }
 
         $this->prune($package->settingsGroup());

@@ -14,6 +14,7 @@ use App\Support\PublicContent\PublicTranscriptionPolicy;
 use App\Support\PublicFront\PublicFrontConfigCache;
 use App\Support\PublicFront\PublicFrontRenderContext;
 use App\Support\PublicFront\PublicFrontRenderContextFactory;
+use App\Support\Settings\SettingsPageProfiler;
 use App\Support\SettingsLifecycle\SettingsBackupManager;
 use Awcodes\Curator\Models\Media;
 use Filament\Actions\Action;
@@ -37,6 +38,8 @@ class AppServiceProvider extends ServiceProvider
     {
         $this->app->bind(GoogleDriveClientFactory::class, GoogleApiDriveClientFactory::class);
         $this->app->bind(SpotifyClientFactory::class, SpotifyHttpClientFactory::class);
+
+        $this->app->scoped(SettingsPageProfiler::class);
 
         $this->app->scoped(
             PublicFrontRenderContext::class,
@@ -96,10 +99,19 @@ class AppServiceProvider extends ServiceProvider
                 return;
             }
 
-            $this->app->make(PublicFrontConfigCache::class)->forget();
-            $this->app->make(SettingsBackupManager::class)->createSystem();
-            $this->app->forgetInstance(PublicFrontRenderContext::class);
-            $this->app->forgetInstance(PublicTranscriptionPolicy::class);
+            $profiler = $this->app->make(SettingsPageProfiler::class);
+
+            $profiler->withRequestKind(SettingsPageProfiler::REQUEST_SAVE, function () use ($profiler): void {
+                $profiler->measure('settings_saved.listener.total', function () use ($profiler): void {
+                    $this->app->make(PublicFrontConfigCache::class)->forget();
+                    $profiler->measure(
+                        'settings_saved.backup_creation',
+                        fn () => $this->app->make(SettingsBackupManager::class)->createSystem(),
+                    );
+                    $this->app->forgetInstance(PublicFrontRenderContext::class);
+                    $this->app->forgetInstance(PublicTranscriptionPolicy::class);
+                });
+            });
         });
     }
 

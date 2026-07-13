@@ -11,13 +11,18 @@ use App\Support\PublicFront\Forms\PublicFormDefinitionRegistry;
 use App\Support\PublicFront\Icons\PublicFrontIconRegistry;
 use App\Support\PublicFront\ItemPage\PublicItemPageRegistry;
 use App\Support\PublicFront\Maintenance\MaintenanceForm;
+use App\Support\Settings\SettingsPageProfiler;
 use App\Support\SettingsLifecycle\SettingsLifecycleSchema;
 
 class PublicFrontConfigValidator
 {
     public function validate(array $config): PublicFrontConfigResult
     {
-        $defaults = PublicFrontConfigRegistry::defaults();
+        $profiler = app(SettingsPageProfiler::class);
+        $defaults = $profiler->measure(
+            'registry.defaults_build',
+            fn (): array => PublicFrontConfigRegistry::defaults(),
+        );
         $normalized = $defaults;
         $invalidConfig = [];
 
@@ -34,22 +39,27 @@ class PublicFrontConfigValidator
                 continue;
             }
 
-            $normalized[$key] = match ($key) {
-                'card_templates' => $this->normalizeCardTemplates($value, $invalidConfig),
-                'menu_config' => $this->normalizeMenuConfig($value, $defaults['menu_config'], $invalidConfig),
-                'about_page' => $this->normalizeAboutPage($value, $defaults['about_page'], $invalidConfig),
-                'public_forms' => $this->normalizePublicForms($value, $invalidConfig),
-                'route_labels' => $this->normalizeRouteLabels($value, $invalidConfig),
-                'display_defaults' => $this->normalizeDisplayDefaults($value, $defaults['display_defaults'], $invalidConfig),
-                'default_images' => $this->normalizeDefaultImages($value, $defaults['default_images'], $invalidConfig),
-                'transcription_policy' => $this->normalizeTranscriptionPolicy($value, $defaults['transcription_policy'], $invalidConfig),
-                'item_page' => $this->normalizeItemPage($value, $defaults['item_page'], $invalidConfig),
-                'podcasts_page' => $this->normalizePodcastsPage($value, $defaults['podcasts_page'], $invalidConfig),
-                'contributors_page' => $this->normalizeContributorsPage($value, $defaults['contributors_page'], $invalidConfig),
-                'settings_backups' => $this->normalizeSettingsBackups($value, $defaults['settings_backups'], $invalidConfig),
-                'import_locks' => $this->normalizeImportLocks($value, $defaults['import_locks'], $invalidConfig),
-                'maintenance' => $this->normalizeMaintenance($value, $defaults['maintenance'], $invalidConfig),
-            };
+            $normalized[$key] = $profiler->measure(
+                "validator.group.{$key}",
+                function () use ($key, $value, $defaults, &$invalidConfig): array {
+                    return match ($key) {
+                        'card_templates' => $this->normalizeCardTemplates($value, $invalidConfig),
+                        'menu_config' => $this->normalizeMenuConfig($value, $defaults['menu_config'], $invalidConfig),
+                        'about_page' => $this->normalizeAboutPage($value, $defaults['about_page'], $invalidConfig),
+                        'public_forms' => $this->normalizePublicForms($value, $invalidConfig),
+                        'route_labels' => $this->normalizeRouteLabels($value, $invalidConfig),
+                        'display_defaults' => $this->normalizeDisplayDefaults($value, $defaults['display_defaults'], $invalidConfig),
+                        'default_images' => $this->normalizeDefaultImages($value, $defaults['default_images'], $invalidConfig),
+                        'transcription_policy' => $this->normalizeTranscriptionPolicy($value, $defaults['transcription_policy'], $invalidConfig),
+                        'item_page' => $this->normalizeItemPage($value, $defaults['item_page'], $invalidConfig),
+                        'podcasts_page' => $this->normalizePodcastsPage($value, $defaults['podcasts_page'], $invalidConfig),
+                        'contributors_page' => $this->normalizeContributorsPage($value, $defaults['contributors_page'], $invalidConfig),
+                        'settings_backups' => $this->normalizeSettingsBackups($value, $defaults['settings_backups'], $invalidConfig),
+                        'import_locks' => $this->normalizeImportLocks($value, $defaults['import_locks'], $invalidConfig),
+                        'maintenance' => $this->normalizeMaintenance($value, $defaults['maintenance'], $invalidConfig),
+                    };
+                },
+            );
         }
 
         return new PublicFrontConfigResult($normalized, $invalidConfig);

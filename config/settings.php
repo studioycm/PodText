@@ -42,6 +42,10 @@ return [
         'memo' => env('SETTINGS_CACHE_MEMO', false),
     ],
 
+    'profiling' => [
+        'enabled' => (bool) env('SETTINGS_PROFILING', false),
+    ],
+
     'global_casts' => [
         DateTimeInterface::class => DateTimeInterfaceCast::class,
         DateTimeZone::class => DateTimeZoneCast::class,

@@ -151,6 +151,12 @@ Why it is safe:
 - Forge deploy scripts must run `npx playwright install chromium` after the npm
   install/build step so Playwright browser binaries stay aligned after package version
   bumps. This was also added to the MP1 maintenance deploy notes.
+- After PHP version upgrades, re-apply `memory_limit = 512M` in the new FPM
+  `php.ini`; the distro default can return to `128M`.
+- Zero-downtime sites must either pass `$realpath_root` in nginx FastCGI params or
+  keep the post-activation FPM reload in the deploy script so workers do not serve
+  stale release paths.
+- `storage` must be configured as a Shared Path on zero-downtime sites.
 
 ## Commit hash
 

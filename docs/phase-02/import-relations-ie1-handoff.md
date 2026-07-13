@@ -138,7 +138,7 @@ Iteration commands already run:
 
 ## Commit Hash
 
-Pending final local commit: `feat: add relation import modes and tag export scope`.
+Final IE-1 commit hash: `6f1cea7 feat: add relation import modes and tag export scope`.
 
 ## Local Front Check Report
 
