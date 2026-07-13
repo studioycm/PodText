@@ -17,7 +17,7 @@ No Composer or npm dependency changes were made.
 
 ## Commit hash
 
-`PENDING feat: add user roles and multi-transcription visibility gates`
+`9cd7349 feat: add user roles and multi-transcription visibility gates`
 
 ## MAIL1 Verification
 
