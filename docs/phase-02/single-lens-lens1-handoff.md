@@ -21,7 +21,7 @@ hide or relabel those columns.
 
 ## Commit hash
 
-`pending feat: apply single transcription ontology across public and admin`
+`2299c71 feat: apply single transcription ontology across public and admin`
 
 ## ROLES1 Verification
 
