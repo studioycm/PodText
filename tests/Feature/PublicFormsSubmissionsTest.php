@@ -11,6 +11,7 @@ use App\Mail\PublicFormEmailVerificationCodeMail;
 use App\Models\PublicFormSubmission;
 use App\Models\User;
 use App\Settings\PublicContentSettings;
+use App\Support\Forms\Verification\FormVerificationManager;
 use App\Support\PublicFront\Forms\PublicFormSubmissionPresenter;
 use App\Support\PublicFront\PublicFrontConfigReader;
 use App\Support\PublicFront\PublicFrontConfigValidator;
@@ -131,16 +132,28 @@ function step6PublicFormsConfig(array $overrides = []): array
 
 function mail1QueuedPublicFormCode(): string
 {
-    $code = null;
+    $mail = Mail::queued(PublicFormEmailVerificationCodeMail::class)->last();
 
-    Mail::assertQueued(PublicFormEmailVerificationCodeMail::class, function (PublicFormEmailVerificationCodeMail $mail) use (&$code): bool {
-        $code = $mail->code;
+    expect($mail)->toBeInstanceOf(PublicFormEmailVerificationCodeMail::class)
+        ->and($mail->code)->toMatch('/^\d{6}$/')
+        ->and($mail->queue)->toBe('default');
 
-        return preg_match('/^\d{6}$/', $mail->code) === 1
-            && $mail->queue === 'default';
-    });
+    return $mail->code;
+}
 
-    return (string) $code;
+function mail2PublicFormButtonIsDisabled(string $html, string $testId): bool
+{
+    $document = new DOMDocument;
+    $previous = libxml_use_internal_errors(true);
+
+    $document->loadHTML('<meta charset="utf-8">'.$html, LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD);
+
+    libxml_clear_errors();
+    libxml_use_internal_errors($previous);
+
+    $button = (new DOMXPath($document))->query("//*[@data-test='{$testId}']")?->item(0);
+
+    return $button instanceof DOMElement && $button->hasAttribute('disabled');
 }
 
 it('normalizes valid public form definitions through the public front validator', function (): void {
@@ -392,7 +405,122 @@ it('validates required email url and select fields before creating submissions',
     expect(PublicFormSubmission::query()->count())->toBe(0);
 });
 
-it('requires and consumes livewire email otp verification before storing protected public forms', function (): void {
+it('attaches livewire email verification to the email field and resets server authority when the address changes', function (): void {
+    app()->setLocale('en');
+
+    expect(trans('public.forms.verification.send_code', locale: 'en'))->toBe('Send verification code')
+        ->and(trans('public.forms.verification.resend_in', ['seconds' => 42], 'en'))->toBe('Send again in 42')
+        ->and(trans('public.forms.verification.verify_code', locale: 'en'))->toBe('Verify')
+        ->and(trans('public.forms.verification.send_code', locale: 'he'))->toBe('שלח קוד אימות')
+        ->and(trans('public.forms.verification.resend_in', ['seconds' => 42], 'he'))->toBe('שליחה חוזרת בעוד 42')
+        ->and(trans('public.forms.verification.verify_code', locale: 'he'))->toBe('אמת');
+
+    saveStep6PublicFrontConfig(step6PublicFormsConfig([
+        'settings' => [
+            'rate_limit_attempts' => 5,
+            'rate_limit_decay_seconds' => 600,
+            'submitter_email_verification' => 'email_otp',
+        ],
+    ]));
+
+    $component = Livewire::test(PublicFormModal::class, ['formKey' => 'request_transcription']);
+
+    $component
+        ->assertSeeHtmlInOrder([
+            'data-test="public-form-field-email"',
+            'data-test="public-form-send-code"',
+        ])
+        ->assertSee('Send verification code')
+        ->assertDontSeeHtml('data-test="public-form-code-group"');
+
+    expect(mail2PublicFormButtonIsDisabled($component->html(), 'public-form-send-code'))->toBeTrue();
+
+    $component->set('data.email', 'not-an-email');
+
+    expect(mail2PublicFormButtonIsDisabled($component->html(), 'public-form-send-code'))->toBeTrue();
+
+    $component
+        ->set('data.name', 'Submitter')
+        ->set('data.email', 'submitter@example.com')
+        ->set('data.topic', 'podcast')
+        ->assertSet('emailVerificationCodeSent', false);
+
+    expect(mail2PublicFormButtonIsDisabled($component->html(), 'public-form-send-code'))->toBeFalse();
+
+    $component
+        ->call('sendEmailVerificationCode')
+        ->assertHasNoErrors()
+        ->assertSet('emailVerificationVerified', false)
+        ->assertSet('emailVerificationCodeSent', true)
+        ->assertSeeHtmlInOrder([
+            'data-test="public-form-field-email"',
+            'data-test="public-form-send-code"',
+            'data-test="public-form-code-group"',
+            'data-test="public-form-code"',
+            'data-test="public-form-verify-code"',
+            'data-test="public-form-field-source_url"',
+        ])
+        ->assertSee('Send again in 60')
+        ->assertSee('Verify')
+        ->assertSeeHtml('wire:keydown.enter.prevent="verifyEmailCode"');
+
+    expect(mail2PublicFormButtonIsDisabled($component->html(), 'public-form-send-code'))->toBeTrue();
+
+    $code = mail1QueuedPublicFormCode();
+    $wrongCode = $code === '000000' ? '111111' : '000000';
+
+    $component
+        ->set('emailVerificationCode', $wrongCode)
+        ->call('verifyEmailCode')
+        ->assertHasErrors(['emailVerificationCode'])
+        ->assertSeeHtml('data-test="public-form-code-error"')
+        ->assertSee(__('public.forms.verification.results.invalid'));
+
+    $component
+        ->set('emailVerificationCode', $code)
+        ->call('verifyEmailCode')
+        ->assertHasNoErrors()
+        ->assertSet('emailVerificationVerified', true)
+        ->assertSeeHtml('data-test="public-form-email-verified"')
+        ->assertDontSeeHtml('data-test="public-form-code-group"');
+
+    $verifiedToken = $component->get('verificationToken');
+
+    $component
+        ->set('data.email', 'changed@example.com')
+        ->assertSet('emailVerificationVerified', false)
+        ->assertSet('emailVerificationCodeSent', false)
+        ->assertDontSeeHtml('data-test="public-form-email-verified"')
+        ->call('submit')
+        ->assertHasErrors(['verification']);
+
+    expect($component->get('verificationToken'))->not->toBe($verifiedToken)
+        ->and(PublicFormSubmission::query()->count())->toBe(0);
+
+    $component
+        ->call('sendEmailVerificationCode')
+        ->assertHasNoErrors();
+
+    Mail::assertQueued(PublicFormEmailVerificationCodeMail::class, 2);
+
+    $component
+        ->set('emailVerificationCode', mail1QueuedPublicFormCode())
+        ->call('verifyEmailCode')
+        ->assertHasNoErrors()
+        ->call('submit')
+        ->assertHasNoErrors()
+        ->assertSee('Request received.');
+
+    $submission = PublicFormSubmission::query()->firstOrFail();
+
+    expect($submission->verification_channel)->toBe(FormVerificationChannel::Email->value)
+        ->and($submission->verification_verified_at)->not->toBeNull()
+        ->and($submission->payload['email'])->toBe('changed@example.com');
+});
+
+it('renders exhausted livewire verification attempts beside the code input', function (): void {
+    app()->setLocale('en');
+
     saveStep6PublicFrontConfig(step6PublicFormsConfig([
         'settings' => [
             'rate_limit_attempts' => 5,
@@ -402,31 +530,24 @@ it('requires and consumes livewire email otp verification before storing protect
     ]));
 
     $component = Livewire::test(PublicFormModal::class, ['formKey' => 'request_transcription'])
-        ->set('data.name', 'Submitter')
-        ->set('data.email', 'submitter@example.com')
-        ->set('data.topic', 'podcast')
-        ->call('submit')
-        ->assertHasErrors(['verification'])
+        ->set('data.email', 'attempts@example.com')
         ->call('sendEmailVerificationCode')
-        ->assertHasNoErrors()
-        ->assertSet('emailVerificationVerified', false);
+        ->assertHasNoErrors();
 
     $code = mail1QueuedPublicFormCode();
+    $wrongCode = $code === '000000' ? '111111' : '000000';
+
+    $component->set('emailVerificationCode', $wrongCode);
+
+    foreach (range(1, FormVerificationManager::MAX_ATTEMPTS) as $attempt) {
+        $component->call('verifyEmailCode');
+    }
 
     $component
-        ->set('emailVerificationCode', $code)
-        ->call('verifyEmailCode')
-        ->assertHasNoErrors()
-        ->assertSet('emailVerificationVerified', true)
-        ->call('submit')
-        ->assertHasNoErrors()
-        ->assertSee('Request received.');
-
-    $submission = PublicFormSubmission::query()->firstOrFail();
-
-    expect($submission->verification_channel)->toBe(FormVerificationChannel::Email->value)
-        ->and($submission->verification_verified_at)->not->toBeNull()
-        ->and($submission->payload['email'])->toBe('submitter@example.com');
+        ->assertHasErrors(['emailVerificationCode'])
+        ->assertSeeHtml('data-test="public-form-code-error"')
+        ->assertSee(__('public.forms.verification.results.attempts_exceeded'))
+        ->assertSeeHtml('data-test="public-form-code-group"');
 });
 
 it('uses the global email verification flag as the server authority even when a form is off', function (): void {

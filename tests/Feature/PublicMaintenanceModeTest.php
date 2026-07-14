@@ -346,7 +346,16 @@ it('enforces email otp verification on the maintenance plain post form flow', fu
     $sendCodeResponse = $this->post(route('public.maintenance-form.send-code'), $payload)
         ->assertStatus(503)
         ->assertSee(__('public.forms.verification.sent'))
-        ->assertSee('name="verification_token"', false);
+        ->assertSee('name="verification_token"', false)
+        ->assertSee('data-suffix-position="inline-start"', false)
+        ->assertSeeInOrder([
+            'data-maintenance-form-email-verification-group',
+            'data-maintenance-form-email',
+            'data-maintenance-form-send-code',
+            'data-maintenance-form-verification',
+            'data-maintenance-form-code',
+            'name="data[message]"',
+        ], false);
 
     $code = mail1QueuedMaintenanceCode();
     $html = $sendCodeResponse->getContent();

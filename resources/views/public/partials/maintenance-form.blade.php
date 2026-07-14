@@ -42,6 +42,18 @@
         gap: 0.35rem;
     }
 
+    .podtext-maintenance-form__input-action {
+        display: flex;
+        flex-direction: row-reverse;
+        align-items: stretch;
+        gap: 0.5rem;
+    }
+
+    .podtext-maintenance-form__input-action .podtext-maintenance-form__input {
+        min-width: 0;
+        flex: 1;
+    }
+
     .podtext-maintenance-form__label {
         font-size: 0.95rem;
         font-weight: 600;
@@ -196,15 +208,43 @@
                     </label>
 
                     @if(in_array($field['type'], ['text', 'email', 'phone', 'url'], true))
-                        <input
-                            id="maintenance-form-{{ $fieldKey }}"
-                            class="podtext-maintenance-form__input"
-                            type="{{ $field['type'] === 'phone' ? 'tel' : $field['type'] }}"
-                            name="data[{{ $fieldKey }}]"
-                            value="{{ is_scalar($fieldValue) ? $fieldValue : '' }}"
-                            placeholder="{{ $field['placeholder'] }}"
-                            @required($field['required'])
-                        >
+                        @if($formVerificationRequired && $fieldKey === $formVerificationEmailFieldKey)
+                            <div
+                                class="podtext-maintenance-form__input-action"
+                                data-maintenance-form-email-verification-group
+                            >
+                                <input
+                                    id="maintenance-form-{{ $fieldKey }}"
+                                    class="podtext-maintenance-form__input"
+                                    type="email"
+                                    name="data[{{ $fieldKey }}]"
+                                    value="{{ is_scalar($fieldValue) ? $fieldValue : '' }}"
+                                    placeholder="{{ $field['placeholder'] }}"
+                                    data-maintenance-form-email
+                                    @required($field['required'])
+                                >
+
+                                <button
+                                    class="podtext-maintenance-form__button podtext-maintenance-form__button--secondary"
+                                    type="submit"
+                                    formaction="{{ $sendCodeActionUrl }}"
+                                    data-maintenance-form-send-code
+                                    data-suffix-position="inline-start"
+                                >
+                                    {{ __('public.forms.verification.send_code') }}
+                                </button>
+                            </div>
+                        @else
+                            <input
+                                id="maintenance-form-{{ $fieldKey }}"
+                                class="podtext-maintenance-form__input"
+                                type="{{ $field['type'] === 'phone' ? 'tel' : $field['type'] }}"
+                                name="data[{{ $fieldKey }}]"
+                                value="{{ is_scalar($fieldValue) ? $fieldValue : '' }}"
+                                placeholder="{{ $field['placeholder'] }}"
+                                @required($field['required'])
+                            >
+                        @endif
                     @elseif($field['type'] === 'textarea')
                         <textarea
                             id="maintenance-form-{{ $fieldKey }}"
@@ -265,46 +305,35 @@
                             {{ $formErrors->first($fieldKey) }}
                         </div>
                     @endif
+
+                    @if($formVerificationRequired && $fieldKey === $formVerificationEmailFieldKey)
+                        <div class="podtext-maintenance-form__field" data-maintenance-form-verification>
+                            <label class="podtext-maintenance-form__label" for="maintenance-form-verification-code">
+                                {{ __('public.forms.verification.code_label') }}
+                            </label>
+
+                            <input
+                                id="maintenance-form-verification-code"
+                                class="podtext-maintenance-form__input"
+                                type="text"
+                                name="verification_code"
+                                inputmode="numeric"
+                                autocomplete="one-time-code"
+                                value="{{ old('verification_code') }}"
+                                placeholder="{{ __('public.forms.verification.code_placeholder') }}"
+                                data-maintenance-form-code
+                            >
+
+                            <div class="podtext-maintenance-form__help">
+                                {{ __('public.forms.verification.maintenance_help') }}
+                            </div>
+                        </div>
+                    @endif
                 </div>
             @endforeach
         </div>
 
-        @if($formVerificationRequired)
-            <div class="podtext-maintenance-form__field" data-maintenance-form-verification>
-                <label class="podtext-maintenance-form__label" for="maintenance-form-verification-code">
-                    {{ __('public.forms.verification.code_label') }}
-                </label>
-
-                <input
-                    id="maintenance-form-verification-code"
-                    class="podtext-maintenance-form__input"
-                    type="text"
-                    name="verification_code"
-                    inputmode="numeric"
-                    autocomplete="one-time-code"
-                    value="{{ old('verification_code') }}"
-                    placeholder="{{ __('public.forms.verification.code_placeholder') }}"
-                    data-maintenance-form-code
-                >
-
-                <div class="podtext-maintenance-form__help">
-                    {{ __('public.forms.verification.maintenance_help') }}
-                </div>
-            </div>
-        @endif
-
         <div class="podtext-maintenance-form__actions">
-            @if($formVerificationRequired)
-                <button
-                    class="podtext-maintenance-form__button podtext-maintenance-form__button--secondary"
-                    type="submit"
-                    formaction="{{ $sendCodeActionUrl }}"
-                    data-maintenance-form-send-code
-                >
-                    {{ __('public.forms.verification.send_code') }}
-                </button>
-            @endif
-
             <button class="podtext-maintenance-form__button" type="submit" data-maintenance-form-submit>
                 {{ $definition['submit_label'] }}
             </button>

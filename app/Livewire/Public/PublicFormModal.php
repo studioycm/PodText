@@ -38,9 +38,17 @@ class PublicFormModal extends Component
 
     public string $emailVerificationCode = '';
 
+    #[Locked]
     public ?string $emailVerificationStatus = null;
 
+    #[Locked]
     public bool $emailVerificationVerified = false;
+
+    #[Locked]
+    public bool $emailVerificationCodeSent = false;
+
+    #[Locked]
+    public ?int $emailVerificationAvailableAt = null;
 
     public function mount(string $formKey, ?string $displayMode = null, bool $showTrigger = true): void
     {
@@ -88,6 +96,24 @@ class PublicFormModal extends Component
         $this->resetVerificationState();
     }
 
+    public function updatedData(mixed $value, ?string $key): void
+    {
+        $definition = $this->definition();
+
+        if ($definition === null) {
+            return;
+        }
+
+        $field = app(PublicFormVerificationPolicy::class)->submitterEmailField($definition);
+
+        if ($key !== (string) ($field['key'] ?? '')) {
+            return;
+        }
+
+        $this->resetVerificationState();
+        $this->resetErrorBag("data.{$key}");
+    }
+
     public function sendEmailVerificationCode(
         FormVerificationManager $manager,
         PublicFormVerificationPolicy $verificationPolicy,
@@ -121,9 +147,12 @@ class PublicFormModal extends Component
         }
 
         $this->emailVerificationVerified = false;
+        $this->emailVerificationCodeSent = true;
+        $this->emailVerificationAvailableAt = now()->addSeconds(FormVerificationManager::RESEND_COOLDOWN_SECONDS)->getTimestamp();
         $this->emailVerificationCode = '';
         $this->emailVerificationStatus = __('public.forms.verification.sent');
         $this->resetErrorBag('verification');
+        $this->resetErrorBag('emailVerificationCode');
     }
 
     public function verifyEmailCode(
@@ -152,7 +181,8 @@ class PublicFormModal extends Component
 
         if ($result !== FormVerificationResult::Verified) {
             $this->emailVerificationVerified = false;
-            $this->addError('verification', $result->message());
+            $this->resetErrorBag('emailVerificationCode');
+            $this->addError('emailVerificationCode', $result->message());
 
             return;
         }
@@ -160,17 +190,26 @@ class PublicFormModal extends Component
         $this->emailVerificationVerified = true;
         $this->emailVerificationStatus = __('public.forms.verification.verified');
         $this->resetErrorBag('verification');
+        $this->resetErrorBag('emailVerificationCode');
     }
 
     public function render(PublicFormSchemaFactory $schemaFactory): View
     {
         $definition = $this->definition();
+        $verificationPolicy = app(PublicFormVerificationPolicy::class);
+        $verificationRequired = $definition !== null && $verificationPolicy->requiresEmailVerification($definition);
+        $emailVerificationField = $verificationRequired
+            ? $verificationPolicy->submitterEmailField($definition)
+            : null;
 
         return view('livewire.public.public-form-modal', [
             'definition' => $definition,
             'fields' => $schemaFactory->fields($definition),
             'displayMode' => $this->displayMode,
-            'verificationRequired' => $definition !== null && app(PublicFormVerificationPolicy::class)->requiresEmailVerification($definition),
+            'verificationRequired' => $verificationRequired,
+            'emailVerificationFieldKey' => $emailVerificationField['key'] ?? null,
+            'emailVerificationEmailValid' => $this->submitterEmailIsValid($emailVerificationField),
+            'emailVerificationCooldownSeconds' => max(0, (int) $this->emailVerificationAvailableAt - now()->getTimestamp()),
             'emailVerificationVerified' => $this->emailVerificationVerified,
         ]);
     }
@@ -279,12 +318,32 @@ class PublicFormModal extends Component
         return Str::of((string) $this->data[$key])->trim()->lower()->toString();
     }
 
+    /**
+     * @param  array<string, mixed>|null  $field
+     */
+    private function submitterEmailIsValid(?array $field): bool
+    {
+        if ($field === null) {
+            return false;
+        }
+
+        $key = (string) $field['key'];
+
+        return Validator::make(
+            ['email' => $this->data[$key] ?? null],
+            ['email' => ['required', 'string', 'email:rfc', 'max:255']],
+        )->passes();
+    }
+
     private function resetVerificationState(): void
     {
         $this->verificationToken = Str::random(40);
         $this->emailVerificationCode = '';
         $this->emailVerificationStatus = null;
         $this->emailVerificationVerified = false;
+        $this->emailVerificationCodeSent = false;
+        $this->emailVerificationAvailableAt = null;
         $this->resetErrorBag('verification');
+        $this->resetErrorBag('emailVerificationCode');
     }
 }

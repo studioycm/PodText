@@ -136,13 +136,18 @@ class MaintenancePageRenderer
         ?string $formVerificationMessage,
         ?string $sourceUrl,
     ): string {
+        $formVerificationRequired = $this->verificationPolicy->requiresEmailVerification($definition);
+
         return view('public.partials.maintenance-form', [
             'definition' => $definition,
             'fields' => $this->schemaFactory->fields($definition),
             'formData' => $formData,
             'formErrors' => $formErrors,
             'formSuccessMessage' => $formSuccessMessage,
-            'formVerificationRequired' => $this->verificationPolicy->requiresEmailVerification($definition),
+            'formVerificationRequired' => $formVerificationRequired,
+            'formVerificationEmailFieldKey' => $formVerificationRequired
+                ? ($this->verificationPolicy->submitterEmailField($definition)['key'] ?? null)
+                : null,
             'formVerificationToken' => $formVerificationToken,
             'formVerificationMessage' => $formVerificationMessage,
             'sourceUrl' => $sourceUrl ?? url()->full(),
