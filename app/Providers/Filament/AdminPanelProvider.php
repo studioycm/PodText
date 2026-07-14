@@ -48,6 +48,7 @@ class AdminPanelProvider extends PanelProvider
             ->brandLogo(fn (): string => asset('images/podtext-logo.svg'))
             ->darkModeBrandLogo(fn (): string => asset('images/podtext-logo-dark.svg'))
             ->brandLogoHeight('60px')
+            ->favicon(fn (): string => asset('favicon.svg'))
             ->sidebarWidth('15rem')
             ->sidebarCollapsibleOnDesktop()
 //            ->sidebarFullyCollapsibleOnDesktop()
