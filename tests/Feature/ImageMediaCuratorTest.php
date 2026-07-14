@@ -5,7 +5,7 @@ use App\Filament\Exports\ContentGroupExporter;
 use App\Filament\Forms\Components\PathCuratorPicker;
 use App\Filament\Forms\MediaPickerField;
 use App\Filament\Pages\AdminUxSettings as AdminUxSettingsPage;
-use App\Filament\Pages\PublicContentSettings as PublicContentSettingsPage;
+use App\Filament\Pages\MenuHeaderSettings;
 use App\Filament\Resources\ContentGroups\Pages\EditContentGroup;
 use App\Models\ContentGroup;
 use App\Models\ContentItem;
@@ -111,7 +111,7 @@ it('round trips public settings image paths through the curator picker without c
     imgAMedia('header/logo.svg', 'image/svg+xml', 'svg');
     $this->actingAs(User::factory()->create());
 
-    Livewire::test(PublicContentSettingsPage::class)
+    Livewire::test(MenuHeaderSettings::class)
         ->set('data.menu_config.logo.light_path', 'header/logo.svg')
         ->call('save')
         ->assertHasNoFormErrors();

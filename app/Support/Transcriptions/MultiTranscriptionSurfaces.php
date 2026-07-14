@@ -93,10 +93,14 @@ class MultiTranscriptionSurfaces
      * @param  array<string, mixed>  $data
      * @return array<string, mixed>
      */
-    public static function overlayUnauthorizedSettings(array $data, string $settingsClass, ?User $user = null): array
-    {
+    public static function overlayUnauthorizedSettings(
+        array $data,
+        string $settingsClass,
+        ?User $user = null,
+        ?array $storedSnapshot = null,
+    ): array {
         $user ??= auth()->user();
-        $stored = app($settingsClass)->toArray();
+        $stored = $storedSnapshot ?? app($settingsClass)->toArray();
 
         foreach (self::settingsPathsFor($settingsClass) as $surface) {
             if ($user instanceof User && self::userCan($user, $surface['minimum'], $surface['requires_mode'])) {

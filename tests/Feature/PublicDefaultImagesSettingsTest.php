@@ -1,6 +1,6 @@
 <?php
 
-use App\Filament\Pages\PublicContentSettings as PublicContentSettingsPage;
+use App\Filament\Pages\DisplaySettings;
 use App\Models\Author;
 use App\Models\ContentGroup;
 use App\Models\ContentItem;
@@ -197,7 +197,7 @@ it('normalizes default image settings and backfills the settings row', function 
 it('saves no-image mode through the public settings page', function (): void {
     $this->actingAs(User::factory()->create());
 
-    Livewire::test(PublicContentSettingsPage::class)
+    Livewire::test(DisplaySettings::class)
         ->set('data.default_images.content_item.mode', 'none')
         ->call('save')
         ->assertHasNoFormErrors();

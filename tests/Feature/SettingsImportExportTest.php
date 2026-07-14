@@ -2,9 +2,10 @@
 
 use App\Enums\SettingsBackupSource;
 use App\Enums\SettingsImportMode;
+use App\Filament\Pages\HomepageSettings;
 use App\Filament\Pages\ImportPublicSettings;
+use App\Filament\Pages\MaintenanceSettings;
 use App\Filament\Pages\ManageSettingsImportLocks;
-use App\Filament\Pages\PublicContentSettings as PublicContentSettingsPage;
 use App\Filament\Resources\SettingsBackups\Pages\ListSettingsBackups;
 use App\Filament\Resources\SettingsBackups\SettingsBackupResource;
 use App\Livewire\Admin\SettingsImportLocksManager;
@@ -123,7 +124,7 @@ it('derives lifecycle units and keeps the semantic overlay in sync with defaults
 });
 
 it('exposes export and import actions on settings surfaces', function (): void {
-    Livewire::test(PublicContentSettingsPage::class)
+    Livewire::test(HomepageSettings::class)
         ->assertActionVisible(TestAction::make('exportPublicSettings'))
         ->callAction(TestAction::make('exportPublicSettings'))
         ->assertFileDownloaded();
@@ -137,8 +138,7 @@ it('exposes export and import actions on settings surfaces', function (): void {
 });
 
 it('renders and saves maintenance settings from the admin form', function (): void {
-    Livewire::test(PublicContentSettingsPage::class)
-        ->assertSee(__('admin.tabs.public_content_settings.maintenance'))
+    Livewire::test(MaintenanceSettings::class)
         ->assertSee(__('admin.helpers.maintenance_warning'))
         ->set('data.maintenance.enabled', true)
         ->set('data.maintenance.retry_after_hours', 12)
@@ -172,7 +172,7 @@ it('preserves maintenance html fields during unrelated settings saves', function
     ];
     $settings->save();
 
-    Livewire::test(PublicContentSettingsPage::class)
+    Livewire::test(HomepageSettings::class)
         ->set('data.homepage_item_limit', 42)
         ->call('save')
         ->assertHasNoFormErrors();
@@ -856,18 +856,20 @@ it('computes tri-state group toggle semantics', function (): void {
 });
 
 it('toggles import locks from inline section and deep field actions', function (): void {
-    $homepageSectionPath = 'public-content-settings-tabs.public-settings-tab-homepage.public-settings-lock-section-homepage-settings';
-    $maintenanceFieldPath = 'public-content-settings-tabs.public-settings-tab-maintenance.public-settings-lock-section-public-front-maintenance.maintenance.enabled';
+    $homepageSectionPath = 'public-settings-lock-section-homepage-settings';
+    $maintenanceFieldPath = 'public-settings-lock-section-public-front-maintenance.maintenance.enabled';
     $scalarPaths = collect(app(SettingsLifecycleSchema::class)->units())
         ->filter(fn ($unit): bool => $unit->section === '_scalars')
         ->pluck('path')
         ->values()
         ->all();
 
-    $component = Livewire::test(PublicContentSettingsPage::class)
+    $component = Livewire::test(HomepageSettings::class)
         ->assertActionVisible(TestAction::make('manageImportLocks'))
         ->assertActionHasUrl(TestAction::make('manageImportLocks'), ManageSettingsImportLocks::getUrl())
-        ->assertActionExists(TestAction::make('toggleImportLockGroup_homepage_settings')->schemaComponent($homepageSectionPath, 'form'))
+        ->assertActionExists(TestAction::make('toggleImportLockGroup_homepage_settings')->schemaComponent($homepageSectionPath, 'form'));
+
+    $maintenanceComponent = Livewire::test(MaintenanceSettings::class)
         ->assertActionExists(TestAction::make('toggleImportLockUnit_maintenance_enabled')->schemaComponent($maintenanceFieldPath, 'form'));
 
     expect(str_ends_with(ManageSettingsImportLocks::getUrl(), '/admin/settings-import-locks'))->toBeTrue();
@@ -880,7 +882,7 @@ it('toggles import locks from inline section and deep field actions', function (
 
     expect(app(SettingsImportLocks::class)->lockedPaths())->toBe([]);
 
-    $component->callAction(TestAction::make('toggleImportLockUnit_maintenance_enabled')->schemaComponent($maintenanceFieldPath, 'form'));
+    $maintenanceComponent->callAction(TestAction::make('toggleImportLockUnit_maintenance_enabled')->schemaComponent($maintenanceFieldPath, 'form'));
 
     expect(app(SettingsImportLocks::class)->lockedPaths())->toBe(['maintenance.enabled']);
 });
@@ -888,7 +890,7 @@ it('toggles import locks from inline section and deep field actions', function (
 it('lets locked settings remain editable and save normally', function (): void {
     app(SettingsImportLocks::class)->save(['homepage_item_limit']);
 
-    Livewire::test(PublicContentSettingsPage::class)
+    Livewire::test(HomepageSettings::class)
         ->set('data.homepage_item_limit', 41)
         ->call('save')
         ->assertHasNoFormErrors();
@@ -898,17 +900,17 @@ it('lets locked settings remain editable and save normally', function (): void {
 });
 
 it('renders the settings header action and rtl lock hints', function (): void {
-    $maintenanceFieldPath = 'public-content-settings-tabs.public-settings-tab-maintenance.public-settings-lock-section-public-front-maintenance.maintenance.enabled';
+    $maintenanceFieldPath = 'public-settings-lock-section-public-front-maintenance.maintenance.enabled';
 
     app()->setLocale('he');
     app(SettingsImportLocks::class)->save(['maintenance.enabled']);
 
-    Livewire::test(PublicContentSettingsPage::class)
+    Livewire::test(MaintenanceSettings::class)
         ->assertActionVisible(TestAction::make('manageImportLocks'))
         ->assertActionHasLabel(TestAction::make('manageImportLocks'), __('admin.actions.manage_import_locks'))
         ->assertActionExists(TestAction::make('toggleImportLockUnit_maintenance_enabled')->schemaComponent($maintenanceFieldPath, 'form'));
 
-    $this->get(PublicContentSettingsPage::getUrl())
+    $this->get(MaintenanceSettings::getUrl())
         ->assertOk()
         ->assertSee('dir="rtl"', false)
         ->assertSee(__('admin.actions.manage_import_locks'))

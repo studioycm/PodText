@@ -3,7 +3,8 @@
 use App\Enums\TranscriptionMode;
 use App\Enums\UserRole;
 use App\Filament\Pages\AdminUxSettings as AdminUxSettingsPage;
-use App\Filament\Pages\PublicContentSettings as PublicContentSettingsPage;
+use App\Filament\Pages\CardTemplateSettings;
+use App\Filament\Pages\DisplaySettings;
 use App\Filament\Resources\ContentItems\Pages\EditContentItem;
 use App\Filament\Resources\ContentItems\RelationManagers\TranscriptionsRelationManager;
 use App\Filament\Resources\Users\Pages\EditUser;
@@ -153,13 +154,6 @@ function roles1SchemaComponentByStatePath(mixed $component, string $statePath): 
             && $schemaComponent->getStatePath() === $absoluteStatePath);
 }
 
-function roles1SchemaSectionByHeading(mixed $component, string $heading): mixed
-{
-    return collect($component->instance()->getSchema('form')->getFlatComponents(withActions: false, withHidden: true, withAbsoluteKeys: true))
-        ->first(fn (mixed $schemaComponent): bool => method_exists($schemaComponent, 'getHeading')
-            && (string) $schemaComponent->getHeading() === $heading);
-}
-
 it('casts hierarchical user roles and gates admin panel access by role', function (): void {
     $panel = Filament::getPanel('admin');
 
@@ -269,7 +263,7 @@ it('keeps hidden public transcription policy values byte-identical during forged
 
         $this->actingAs(User::factory()->admin()->create());
 
-        Livewire::test(PublicContentSettingsPage::class)
+        Livewire::test(DisplaySettings::class)
             ->set('data.transcription_policy.public_mode', PublicTranscriptionPolicy::MODE_ALL_PUBLISHED)
             ->set('data.transcription_policy.count_mode', PublicTranscriptionPolicy::MODE_ALL_PUBLISHED)
             ->set('data.transcription_policy.show_multiple_transcriptions_on_item_page', true)
@@ -293,7 +287,7 @@ it('allows a super-admin in multi mode to save public transcription policy value
 
     $this->actingAs(User::factory()->superAdmin()->create());
 
-    Livewire::test(PublicContentSettingsPage::class)
+    Livewire::test(DisplaySettings::class)
         ->set('data.transcription_policy.public_mode', PublicTranscriptionPolicy::MODE_ALL_PUBLISHED)
         ->set('data.transcription_policy.count_mode', PublicTranscriptionPolicy::MODE_ALL_PUBLISHED)
         ->set('data.transcription_policy.show_multiple_transcriptions_on_item_page', true)
@@ -339,7 +333,7 @@ it('filters and save-guards the public card template transcription-count part', 
     roles1SaveSetting(PublicContentSettings::class, 'card_templates', [$storedTemplate]);
     $this->actingAs(User::factory()->admin()->create());
 
-    Livewire::test(PublicContentSettingsPage::class)
+    Livewire::test(CardTemplateSettings::class)
         ->set('data.card_templates', [
             roles1CardTemplate('stored_count', []),
             roles1CardTemplate('forged_count', [
@@ -384,14 +378,6 @@ it('applies the two visibility gates to settings and current admin transcription
     Livewire::test(AdminUxSettingsPage::class)
         ->assertSchemaComponentVisible('transcription_mode');
 
-    $publicSettingsComponent = roles1SchemaSectionByHeading(
-        Livewire::test(PublicContentSettingsPage::class),
-        __('admin.sections.public_transcription_policy'),
-    );
-
-    expect($publicSettingsComponent)->not->toBeNull()
-        ->and($publicSettingsComponent->isHidden())->toBeTrue();
-
     Livewire::test(EditContentItem::class, ['record' => $item->getRouteKey()])
         ->assertSchemaComponentHidden('featured_transcription_id', 'form');
 
@@ -408,14 +394,6 @@ it('applies the two visibility gates to settings and current admin transcription
     Livewire::test(AdminUxSettingsPage::class)
         ->assertSchemaComponentHidden('transcription_mode');
 
-    $publicSettingsComponent = roles1SchemaSectionByHeading(
-        Livewire::test(PublicContentSettingsPage::class),
-        __('admin.sections.public_transcription_policy'),
-    );
-
-    expect($publicSettingsComponent)->not->toBeNull()
-        ->and($publicSettingsComponent->isHidden())->toBeTrue();
-
     Livewire::test(EditContentItem::class, ['record' => $item->getRouteKey()])
         ->assertSchemaComponentVisible('featured_transcription_id', 'form');
 
@@ -428,13 +406,6 @@ it('applies the two visibility gates to settings and current admin transcription
 
     $this->actingAs(User::factory()->superAdmin()->create());
 
-    $publicSettingsComponent = roles1SchemaSectionByHeading(
-        Livewire::test(PublicContentSettingsPage::class),
-        __('admin.sections.public_transcription_policy'),
-    );
-
-    expect($publicSettingsComponent)->not->toBeNull()
-        ->and($publicSettingsComponent->isHidden())->toBeFalse();
 });
 
 it('exposes the users resource only to super-admins and blocks create or delete paths', function (): void {

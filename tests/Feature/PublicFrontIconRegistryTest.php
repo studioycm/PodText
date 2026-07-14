@@ -1,6 +1,7 @@
 <?php
 
-use App\Filament\Pages\PublicContentSettings as PublicContentSettingsPage;
+use App\Filament\Pages\CardTemplateSettings;
+use App\Filament\Pages\EpisodePageSettings;
 use App\Models\User;
 use App\Settings\PublicContentSettings;
 use App\Support\PublicFront\Cards\PublicFrontCardIconResolver;
@@ -156,7 +157,7 @@ it('returns lazy searchable icon picker results without legacy keys as stored va
 it('normalizes saved icon aliases through the settings page', function (): void {
     $this->actingAs(User::factory()->create());
 
-    Livewire::test(PublicContentSettingsPage::class)
+    Livewire::test(EpisodePageSettings::class)
         ->set('data.item_page.podcast_identity.icon', 'podcast')
         ->set('data.item_page.info_fields', [
             [
@@ -290,15 +291,16 @@ it('normalizes stored legacy icon aliases through the settings migration', funct
 it('uses the lazy shared icon picker without preloading the full heroicon enum payload', function (): void {
     $this->actingAs(User::factory()->create());
 
-    $settingsPage = Livewire::test(PublicContentSettingsPage::class);
-    $podcastIconSelect = step10V1bSelectByStatePath($settingsPage, 'item_page.podcast_identity.icon');
-    $partIconSelect = step10V1bSelectByStatePath($settingsPage, 'card_templates.0.icon');
+    $episodePage = Livewire::test(EpisodePageSettings::class);
+    $cardTemplatePage = Livewire::test(CardTemplateSettings::class);
+    $podcastIconSelect = step10V1bSelectByStatePath($episodePage, 'item_page.podcast_identity.icon');
+    $partIconSelect = step10V1bSelectByStatePath($cardTemplatePage, 'card_templates.0.icon');
 
     expect($podcastIconSelect)->toBeInstanceOf(Select::class)
         ->and($podcastIconSelect?->getOptions())->toBe([])
-        ->and($settingsPage->html())->not->toContain('OutlinedAcademicCap')
-        ->and($settingsPage->html())->not->toContain('OutlinedArchiveBoxXMark')
-        ->and(substr_count($settingsPage->html(), 'Outlined'))->toBeLessThan(80);
+        ->and($episodePage->html())->not->toContain('OutlinedAcademicCap')
+        ->and($episodePage->html())->not->toContain('OutlinedArchiveBoxXMark')
+        ->and(substr_count($episodePage->html(), 'Outlined'))->toBeLessThan(80);
 
     expect($partIconSelect === null || $partIconSelect->getOptions() === [])->toBeTrue();
 });

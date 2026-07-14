@@ -8,6 +8,7 @@ return [
         'groups' => [
             'content_management' => 'ניהול תוכן',
             'taxonomy_management' => 'ניהול סיווג',
+            'settings' => 'הגדרות',
             'site_management' => 'ניהול אתר',
         ],
     ],
@@ -1701,6 +1702,10 @@ return [
         'light' => 'בהירה',
     ],
     'pages' => [
+        'about_settings' => [
+            'navigation' => 'מי אנחנו',
+            'title' => 'הגדרות דף מי אנחנו',
+        ],
         'admin_ux_settings' => [
             'navigation' => 'חוויית ניהול',
             'title' => 'הגדרות חוויית ניהול',
@@ -1708,8 +1713,36 @@ return [
         'import_public_settings' => [
             'title' => 'ייבוא הגדרות ציבוריות',
         ],
+        'card_template_settings' => [
+            'navigation' => 'תבניות כרטיסים',
+            'title' => 'הגדרות תבניות כרטיסים',
+        ],
+        'contributor_settings' => [
+            'navigation' => 'מתמללים',
+            'title' => 'הגדרות מתמללים',
+        ],
+        'display_settings' => [
+            'navigation' => 'תצוגה',
+            'title' => 'הגדרות תצוגה',
+        ],
+        'episode_page_settings' => [
+            'navigation' => 'דף פרק',
+            'title' => 'הגדרות דף פרק',
+        ],
+        'homepage_settings' => [
+            'navigation' => 'דף הבית',
+            'title' => 'הגדרות דף הבית',
+        ],
         'manage_settings_import_locks' => [
             'title' => 'נעילות ייבוא הגדרות',
+        ],
+        'maintenance_settings' => [
+            'navigation' => 'תחזוקה',
+            'title' => 'הגדרות תחזוקה',
+        ],
+        'menu_header_settings' => [
+            'navigation' => 'תפריט / כותרת',
+            'title' => 'הגדרות תפריט וכותרת',
         ],
         'manage_public_forms' => [
             'navigation' => 'טפסים',
@@ -1718,6 +1751,10 @@ return [
         'public_content_settings' => [
             'navigation' => 'הגדרות תוכן ציבורי',
             'title' => 'הגדרות תוכן',
+        ],
+        'podcast_settings' => [
+            'navigation' => 'פודקאסטים',
+            'title' => 'הגדרות פודקאסטים',
         ],
     ],
     'settings_import' => [

@@ -1,6 +1,9 @@
 <?php
 
-use App\Filament\Pages\PublicContentSettings as PublicContentSettingsPage;
+use App\Filament\Pages\DisplaySettings;
+use App\Filament\Pages\EpisodePageSettings;
+use App\Filament\Pages\HomepageSettings;
+use App\Filament\Pages\MenuHeaderSettings;
 use App\Models\User;
 use App\Settings\PublicContentSettings;
 use App\Support\PublicContent\PublicContentCardOptions;
@@ -571,13 +574,16 @@ it('rejects unsafe class css sql blade html and javascript values', function ():
 it('saves sanitized public front config through the settings page while preserving card settings', function (): void {
     $this->actingAs(User::factory()->create());
 
-    Livewire::test(PublicContentSettingsPage::class)
+    Livewire::test(HomepageSettings::class)
         ->set('data.homepage_item_limit', 9)
         ->set('data.pinned_item_limit', 4)
+        ->set('data.show_latest_section', false)
+        ->call('save')
+        ->assertHasNoFormErrors();
+
+    Livewire::test(DisplaySettings::class)
         ->set('data.default_public_sort', 'title_desc')
         ->set('data.default_result_layout', 'rows')
-        ->set('data.show_latest_section', false)
-        ->set('data.item_page_layout', 'media_first')
         ->set('data.homepage_card_image_size', 'large')
         ->set('data.homepage_card_density', 'compact')
         ->set('data.homepage_card_title_size', 'lg')
@@ -590,12 +596,16 @@ it('saves sanitized public front config through the settings page while preservi
         ->set('data.homepage_show_description', false)
         ->set('data.homepage_description_lines', 1)
         ->set('data.homepage_cards_per_page', 7)
-        ->set('data.menu_config.enabled', true)
         ->set('data.display_defaults.layout', 'rows')
         ->set('data.display_defaults.density', 'compact')
         ->set('data.display_defaults.image_size', 'large')
         ->set('data.display_defaults.title_size', 'lg')
         ->set('data.display_defaults.page_size', 16)
+        ->call('save')
+        ->assertHasNoFormErrors();
+
+    Livewire::test(EpisodePageSettings::class)
+        ->set('data.item_page_layout', 'media_first')
         ->set('data.item_page.show_breadcrumbs', false)
         ->set('data.item_page.show_transcript_actions_menu', true)
         ->set('data.item_page.podcast_identity.mode', 'text')
@@ -640,6 +650,11 @@ it('saves sanitized public front config through the settings page while preservi
         ->set('data.item_page.dates.transcription_date.icon_position', 'hidden')
         ->set('data.item_page.badges.info.size', 'md')
         ->set('data.item_page.badges.info.color', 'primary')
+        ->call('save')
+        ->assertHasNoFormErrors();
+
+    Livewire::test(MenuHeaderSettings::class)
+        ->set('data.menu_config.enabled', true)
         ->set('data.route_labels', [
             [
                 'route_key' => 'podcasts',

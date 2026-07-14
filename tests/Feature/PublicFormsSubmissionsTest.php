@@ -2,8 +2,8 @@
 
 use App\Enums\FormVerificationChannel;
 use App\Enums\PublicFormSubmissionStatus;
+use App\Filament\Pages\HomepageSettings;
 use App\Filament\Pages\ManagePublicForms;
-use App\Filament\Pages\PublicContentSettings as PublicContentSettingsPage;
 use App\Filament\Resources\PublicFormSubmissions\Pages\ListPublicFormSubmissions;
 use App\Filament\Resources\PublicFormSubmissions\PublicFormSubmissionResource;
 use App\Livewire\Public\PublicFormModal;
@@ -288,7 +288,7 @@ it('does not clobber public form definitions when saving unrelated public conten
 
     $this->actingAs(User::factory()->create());
 
-    Livewire::test(PublicContentSettingsPage::class)
+    Livewire::test(HomepageSettings::class)
         ->set('data.homepage_item_limit', 33)
         ->call('save')
         ->assertHasNoFormErrors();

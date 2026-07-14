@@ -5,7 +5,7 @@ namespace App\Filament\Resources\ContentGroups\Schemas;
 use App\Filament\Forms\Components\PublicationStatusSelect;
 use App\Filament\Forms\Components\SlugInput;
 use App\Filament\Forms\MediaPickerField;
-use App\Filament\Pages\PublicContentSettings;
+use App\Filament\Pages\DisplaySettings;
 use App\Filament\Resources\Support\RelationshipOptionForms;
 use App\Support\Media\ImageFileNamer;
 use Filament\Actions\Action;
@@ -94,7 +94,7 @@ class ContentGroupForm
                                 Action::make('manageDefaultImages')
                                     ->label(__('admin.actions.manage_default_images'))
                                     ->icon(Heroicon::OutlinedPhoto)
-                                    ->url(fn (): string => PublicContentSettings::getUrl(['public-content-tab' => 'homepage'])),
+                                    ->url(fn (): string => DisplaySettings::getUrl()),
                             ),
                         TextInput::make('cover_alt_text')
                             ->label(__('admin.fields.cover_alt_text'))

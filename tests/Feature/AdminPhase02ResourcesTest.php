@@ -4,12 +4,20 @@ use App\Enums\HomepageSectionType;
 use App\Enums\PublicationStatus;
 use App\Enums\PublicFormSubmissionStatus;
 use App\Enums\TranscriptionMode;
+use App\Filament\Pages\AboutSettings;
 use App\Filament\Pages\AdminTools;
 use App\Filament\Pages\AdminUxSettings as AdminUxSettingsPage;
+use App\Filament\Pages\CardTemplateSettings;
+use App\Filament\Pages\ContributorSettings;
 use App\Filament\Pages\Dashboard;
+use App\Filament\Pages\DisplaySettings;
+use App\Filament\Pages\EpisodePageSettings;
+use App\Filament\Pages\HomepageSettings;
 use App\Filament\Pages\ImporterSettings;
+use App\Filament\Pages\MaintenanceSettings;
 use App\Filament\Pages\ManagePublicForms;
-use App\Filament\Pages\PublicContentSettings as PublicContentSettingsPage;
+use App\Filament\Pages\MenuHeaderSettings;
+use App\Filament\Pages\PodcastSettings;
 use App\Filament\Pages\SpotifyLinksFetcher;
 use App\Filament\Public\Pages\BrowseContentGroups;
 use App\Filament\Public\Pages\ShowContentGroup;
@@ -179,24 +187,56 @@ it('orders every registered admin navigation resource and page through the centr
             'sort' => 300,
             'group' => AdminNavigationOrder::SITE_MANAGEMENT,
         ],
-        PublicContentSettingsPage::class => [
+        HomepageSettings::class => [
+            'sort' => 300,
+            'group' => AdminNavigationOrder::SETTINGS,
+        ],
+        DisplaySettings::class => [
             'sort' => 310,
-            'group' => AdminNavigationOrder::SITE_MANAGEMENT,
+            'group' => AdminNavigationOrder::SETTINGS,
+        ],
+        EpisodePageSettings::class => [
+            'sort' => 320,
+            'group' => AdminNavigationOrder::SETTINGS,
+        ],
+        MenuHeaderSettings::class => [
+            'sort' => 330,
+            'group' => AdminNavigationOrder::SETTINGS,
+        ],
+        PodcastSettings::class => [
+            'sort' => 340,
+            'group' => AdminNavigationOrder::SETTINGS,
+        ],
+        ContributorSettings::class => [
+            'sort' => 350,
+            'group' => AdminNavigationOrder::SETTINGS,
+        ],
+        AboutSettings::class => [
+            'sort' => 360,
+            'group' => AdminNavigationOrder::SETTINGS,
+        ],
+        MaintenanceSettings::class => [
+            'sort' => 370,
+            'group' => AdminNavigationOrder::SETTINGS,
         ],
         ManagePublicForms::class => [
-            'sort' => 315,
-            'group' => AdminNavigationOrder::SITE_MANAGEMENT,
+            'sort' => 380,
+            'group' => AdminNavigationOrder::SETTINGS,
+        ],
+        CardTemplateSettings::class => [
+            'sort' => 390,
+            'group' => AdminNavigationOrder::SETTINGS,
         ],
         AdminUxSettingsPage::class => [
-            'sort' => 320,
-            'group' => AdminNavigationOrder::SITE_MANAGEMENT,
+            'sort' => 400,
+            'group' => AdminNavigationOrder::SETTINGS,
+        ],
+        SettingsBackupResource::class => [
+            'sort' => 410,
+            'group' => AdminNavigationOrder::SETTINGS,
         ],
         UserResource::class => [
             'sort' => 325,
-            'group' => AdminNavigationOrder::SITE_MANAGEMENT,
-        ],
-        SettingsBackupResource::class => [
-            'sort' => 330,
             'group' => AdminNavigationOrder::SITE_MANAGEMENT,
         ],
         AdminTools::class => [
@@ -260,6 +300,7 @@ it('orders every registered admin navigation resource and page through the centr
         null,
         AdminNavigationOrder::groupLabel(AdminNavigationOrder::CONTENT_MANAGEMENT),
         AdminNavigationOrder::groupLabel(AdminNavigationOrder::TAXONOMY_MANAGEMENT),
+        AdminNavigationOrder::groupLabel(AdminNavigationOrder::SETTINGS),
         AdminNavigationOrder::groupLabel(AdminNavigationOrder::SITE_MANAGEMENT),
     ]);
 
@@ -286,12 +327,22 @@ it('orders every registered admin navigation resource and page through the centr
             __('admin.resources.category.navigation'),
             __('admin.resources.content_tag.navigation'),
         ])
+        ->and($itemLabelsFor(AdminNavigationOrder::groupLabel(AdminNavigationOrder::SETTINGS)))->toBe([
+            HomepageSettings::getNavigationLabel(),
+            DisplaySettings::getNavigationLabel(),
+            EpisodePageSettings::getNavigationLabel(),
+            MenuHeaderSettings::getNavigationLabel(),
+            PodcastSettings::getNavigationLabel(),
+            ContributorSettings::getNavigationLabel(),
+            AboutSettings::getNavigationLabel(),
+            MaintenanceSettings::getNavigationLabel(),
+            ManagePublicForms::getNavigationLabel(),
+            CardTemplateSettings::getNavigationLabel(),
+            AdminUxSettingsPage::getNavigationLabel(),
+            __('admin.resources.settings_backup.navigation'),
+        ])
         ->and($itemLabelsFor(AdminNavigationOrder::groupLabel(AdminNavigationOrder::SITE_MANAGEMENT)))->toBe([
             __('admin.resources.homepage_section.navigation'),
-            __('admin.pages.public_content_settings.navigation'),
-            __('admin.pages.manage_public_forms.navigation'),
-            __('admin.pages.admin_ux_settings.navigation'),
-            __('admin.resources.settings_backup.navigation'),
             __('admin.tools.pages.tools.navigation'),
             __('admin.importer.pages.settings.navigation'),
             __('admin.spotify_fetcher.pages.navigation'),
@@ -441,7 +492,7 @@ it('renders prompt nine resource pages and protects tag routes from guests', fun
     Livewire::test(CreateTranscription::class)->assertOk();
     Livewire::test(EditTranscription::class, ['record' => $transcription->getRouteKey()])->assertOk();
 
-    Livewire::test(PublicContentSettingsPage::class)->assertOk();
+    Livewire::test(HomepageSettings::class)->assertOk();
 
     auth()->logout();
 
@@ -960,27 +1011,11 @@ it('manages content items from the content group relation manager', function ():
         ->and($created->transcriptions()->where('title', 'Group relation transcript')->exists())->toBeTrue();
 });
 
-it('saves public content settings through the settings page', function (): void {
-    $component = Livewire::withQueryParams(['public-content-tab' => 'homepage'])
-        ->test(PublicContentSettingsPage::class)
+it('saves homepage settings through its focused settings page', function (): void {
+    $component = Livewire::test(HomepageSettings::class)
         ->set('data.homepage_item_limit', 9)
         ->set('data.pinned_item_limit', 4)
-        ->set('data.default_public_sort', 'title_desc')
-        ->set('data.default_result_layout', 'rows')
-        ->set('data.show_latest_section', false)
-        ->set('data.item_page_layout', 'media_first')
-        ->set('data.homepage_card_image_size', 'large')
-        ->set('data.homepage_card_density', 'compact')
-        ->set('data.homepage_card_title_size', 'lg')
-        ->set('data.homepage_show_group_badge', false)
-        ->set('data.homepage_show_authors', false)
-        ->set('data.homepage_show_categories', false)
-        ->set('data.homepage_show_tags', false)
-        ->set('data.homepage_show_duration', false)
-        ->set('data.homepage_show_effective_date', false)
-        ->set('data.homepage_show_description', false)
-        ->set('data.homepage_description_lines', 1)
-        ->set('data.homepage_cards_per_page', 7);
+        ->set('data.show_latest_section', false);
 
     expect($component->instance()->data['homepage_item_limit'])->toBe(9);
 
@@ -995,22 +1030,7 @@ it('saves public content settings through the settings page', function (): void 
 
     expect($settings->homepage_item_limit)->toBe(9)
         ->and($settings->pinned_item_limit)->toBe(4)
-        ->and($settings->default_public_sort)->toBe('title_desc')
-        ->and($settings->default_result_layout)->toBe('rows')
-        ->and($settings->show_latest_section)->toBeFalse()
-        ->and($settings->item_page_layout)->toBe('media_first')
-        ->and($settings->homepage_card_image_size)->toBe('large')
-        ->and($settings->homepage_card_density)->toBe('compact')
-        ->and($settings->homepage_card_title_size)->toBe('lg')
-        ->and($settings->homepage_show_group_badge)->toBeFalse()
-        ->and($settings->homepage_show_authors)->toBeFalse()
-        ->and($settings->homepage_show_categories)->toBeFalse()
-        ->and($settings->homepage_show_tags)->toBeFalse()
-        ->and($settings->homepage_show_duration)->toBeFalse()
-        ->and($settings->homepage_show_effective_date)->toBeFalse()
-        ->and($settings->homepage_show_description)->toBeFalse()
-        ->and($settings->homepage_description_lines)->toBe(1)
-        ->and($settings->homepage_cards_per_page)->toBe(7);
+        ->and($settings->show_latest_section)->toBeFalse();
 });
 
 it('manages item transcriptions through the content item relation manager', function (): void {

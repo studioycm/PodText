@@ -1,7 +1,7 @@
 <?php
 
 use App\Enums\HomepageSectionType;
-use App\Filament\Pages\PublicContentSettings as PublicContentSettingsPage;
+use App\Filament\Pages\MenuHeaderSettings;
 use App\Livewire\Public\ContributorDirectory;
 use App\Models\Author;
 use App\Models\ContentGroup;
@@ -140,19 +140,11 @@ function createStep9PublicItem(
     return $contentItem->refresh();
 }
 
-it('renders the public settings page as major tabs with menu and about card settings', function (): void {
+it('renders the focused menu and header settings page', function (): void {
     $this->actingAs(User::factory()->create());
 
-    Livewire::test(PublicContentSettingsPage::class)
-        ->assertSee(__('admin.tabs.public_content_settings.display'))
-        ->assertSee(__('admin.tabs.public_content_settings.homepage'))
-        ->assertSee(__('admin.tabs.public_content_settings.podcasts'))
-        ->assertSee(__('admin.tabs.public_content_settings.forms'))
-        ->assertSee(__('admin.tabs.public_content_settings.about'))
-        ->assertSee(__('admin.tabs.public_content_settings.menu_header'))
-        ->assertSee(__('admin.tabs.public_content_settings.advanced'))
+    Livewire::test(MenuHeaderSettings::class)
         ->assertSee(__('admin.sections.public_front_menu_header'))
-        ->assertSee(__('admin.sections.about_page_team_card'))
         ->assertSee('data.menu_config.items', false);
 });
 

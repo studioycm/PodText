@@ -5,13 +5,17 @@
     const listenerEstimate = typeof getEventListeners === 'function'
         ? elements.reduce((total, element) => total + Object.values(getEventListeners(element)).reduce((sum, listeners) => sum + listeners.length, 0), 0)
         : null;
-    const panels = [...document.querySelectorAll('[role="tabpanel"]')].map((panel) => ({
-        id: panel.id || panel.getAttribute('aria-labelledby') || 'unnamed',
-        elements: panel.querySelectorAll('*').length,
-        htmlBytes: new TextEncoder().encode(panel.outerHTML).length,
+    const parameters = new URLSearchParams(window.location.search);
+    const subjectSections = [...document.querySelectorAll('[wire\\:key^="public-settings-lock-section-"]')].map((section) => ({
+        key: section.getAttribute('wire:key'),
+        elements: section.querySelectorAll('*').length,
+        html_bytes: new TextEncoder().encode(section.outerHTML).length,
     }));
 
     console.table({
+        page: window.location.pathname,
+        subject_fixture: parameters.get('sp3b_subject_fixture') || 'baseline',
+        measurement_mode: parameters.get('sp3a_measure') === '1',
         ttfb_ms: navigation.responseStart - navigation.requestStart,
         dom_content_loaded_ms: navigation.domContentLoadedEventEnd - navigation.startTime,
         load_ms: navigation.loadEventEnd - navigation.startTime,
@@ -21,5 +25,5 @@
         listener_estimate: listenerEstimate,
         heap_bytes: performance.memory?.usedJSHeapSize ?? null,
     });
-    console.table(panels);
+    console.table(subjectSections);
 })();

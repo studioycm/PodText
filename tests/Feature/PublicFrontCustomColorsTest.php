@@ -1,6 +1,6 @@
 <?php
 
-use App\Filament\Pages\PublicContentSettings as PublicContentSettingsPage;
+use App\Filament\Pages\EpisodePageSettings;
 use App\Models\ContentGroup;
 use App\Models\ContentItem;
 use App\Models\Transcription;
@@ -179,7 +179,7 @@ it('exposes custom color options and revealable color pickers on the settings pa
     $this->actingAs(User::factory()->create());
     ColorPicker::disableVisibilityCache();
 
-    $settingsPage = Livewire::test(PublicContentSettingsPage::class)
+    $settingsPage = Livewire::test(EpisodePageSettings::class)
         ->set('data.item_page.podcast_identity.color', PublicItemPageRegistry::CUSTOM_COLOR);
 
     $podcastColorSelect = step10V1cSelectByStatePath($settingsPage, 'item_page.podcast_identity.color');
@@ -194,7 +194,7 @@ it('exposes custom color options and revealable color pickers on the settings pa
 it('saves custom colors through the settings page and clears stale custom values for semantic tokens', function (): void {
     $this->actingAs(User::factory()->create());
 
-    Livewire::test(PublicContentSettingsPage::class)
+    Livewire::test(EpisodePageSettings::class)
         ->set('data.item_page.podcast_identity.color', PublicItemPageRegistry::CUSTOM_COLOR)
         ->set('data.item_page.podcast_identity.custom_color', '#abc')
         ->set('data.item_page.badges.info.color', PublicItemPageRegistry::CUSTOM_COLOR)
@@ -224,7 +224,7 @@ it('saves custom colors through the settings page and clears stale custom values
         ->and($itemPage['badges']['info']['custom_color'])->toBe('#00ff00')
         ->and($itemPage['info_fields'][0]['custom_color'])->toBe('#12abef');
 
-    Livewire::test(PublicContentSettingsPage::class)
+    Livewire::test(EpisodePageSettings::class)
         ->set('data.item_page.podcast_identity.color', 'primary')
         ->set('data.item_page.podcast_identity.custom_color', '#abcdef')
         ->call('save')

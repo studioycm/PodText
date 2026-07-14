@@ -2,12 +2,20 @@
 
 namespace App\Filament\Support;
 
+use App\Filament\Pages\AboutSettings;
 use App\Filament\Pages\AdminTools;
 use App\Filament\Pages\AdminUxSettings;
+use App\Filament\Pages\CardTemplateSettings;
+use App\Filament\Pages\ContributorSettings;
 use App\Filament\Pages\Dashboard;
+use App\Filament\Pages\DisplaySettings;
+use App\Filament\Pages\EpisodePageSettings;
+use App\Filament\Pages\HomepageSettings;
 use App\Filament\Pages\ImporterSettings;
+use App\Filament\Pages\MaintenanceSettings;
 use App\Filament\Pages\ManagePublicForms;
-use App\Filament\Pages\PublicContentSettings;
+use App\Filament\Pages\MenuHeaderSettings;
+use App\Filament\Pages\PodcastSettings;
 use App\Filament\Pages\SpotifyLinksFetcher;
 use App\Filament\Public\Pages\BrowseContentGroups;
 use App\Filament\Resources\Authors\AuthorResource;
@@ -31,6 +39,8 @@ class AdminNavigationOrder
 
     public const TAXONOMY_MANAGEMENT = 'taxonomy_management';
 
+    public const SETTINGS = 'settings';
+
     public const SITE_MANAGEMENT = 'site_management';
 
     public const EPISODE_WORKSPACE_CREATE_SORT = 10;
@@ -46,6 +56,10 @@ class AdminNavigationOrder
         self::TAXONOMY_MANAGEMENT => [
             'label' => 'admin.navigation.groups.taxonomy_management',
             'icon' => Heroicon::OutlinedTag,
+        ],
+        self::SETTINGS => [
+            'label' => 'admin.navigation.groups.settings',
+            'icon' => Heroicon::OutlinedAdjustmentsHorizontal,
         ],
         self::SITE_MANAGEMENT => [
             'label' => 'admin.navigation.groups.site_management',
@@ -89,24 +103,56 @@ class AdminNavigationOrder
             'sort' => 300,
             'group' => self::SITE_MANAGEMENT,
         ],
-        PublicContentSettings::class => [
+        HomepageSettings::class => [
+            'sort' => 300,
+            'group' => self::SETTINGS,
+        ],
+        DisplaySettings::class => [
             'sort' => 310,
-            'group' => self::SITE_MANAGEMENT,
+            'group' => self::SETTINGS,
+        ],
+        EpisodePageSettings::class => [
+            'sort' => 320,
+            'group' => self::SETTINGS,
+        ],
+        MenuHeaderSettings::class => [
+            'sort' => 330,
+            'group' => self::SETTINGS,
+        ],
+        PodcastSettings::class => [
+            'sort' => 340,
+            'group' => self::SETTINGS,
+        ],
+        ContributorSettings::class => [
+            'sort' => 350,
+            'group' => self::SETTINGS,
+        ],
+        AboutSettings::class => [
+            'sort' => 360,
+            'group' => self::SETTINGS,
+        ],
+        MaintenanceSettings::class => [
+            'sort' => 370,
+            'group' => self::SETTINGS,
         ],
         ManagePublicForms::class => [
-            'sort' => 315,
-            'group' => self::SITE_MANAGEMENT,
+            'sort' => 380,
+            'group' => self::SETTINGS,
+        ],
+        CardTemplateSettings::class => [
+            'sort' => 390,
+            'group' => self::SETTINGS,
         ],
         AdminUxSettings::class => [
-            'sort' => 320,
-            'group' => self::SITE_MANAGEMENT,
+            'sort' => 400,
+            'group' => self::SETTINGS,
+        ],
+        SettingsBackupResource::class => [
+            'sort' => 410,
+            'group' => self::SETTINGS,
         ],
         UserResource::class => [
             'sort' => 325,
-            'group' => self::SITE_MANAGEMENT,
-        ],
-        SettingsBackupResource::class => [
-            'sort' => 330,
             'group' => self::SITE_MANAGEMENT,
         ],
         AdminTools::class => [

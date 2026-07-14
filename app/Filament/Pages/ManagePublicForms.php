@@ -5,21 +5,19 @@ namespace App\Filament\Pages;
 use App\Filament\Actions\ExportPublicSettingsAction;
 use App\Filament\Support\Concerns\UsesAdminNavigationOrder;
 use App\Filament\Support\PublicFormsSettingsForm;
-use App\Settings\PublicContentSettings as PublicContentSettingsData;
 use App\Support\PublicFront\PublicFrontConfigReader;
 use App\Support\PublicFront\PublicFrontConfigValidator;
 use BackedEnum;
 use Filament\Forms\Components\Toggle;
-use Filament\Pages\SettingsPage;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 
-class ManagePublicForms extends SettingsPage
+class ManagePublicForms extends PublicContentSettingsSubjectPage
 {
     use UsesAdminNavigationOrder;
 
-    protected static string $settings = PublicContentSettingsData::class;
+    protected static bool $shouldRegisterNavigation = true;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedClipboardDocumentList;
 
@@ -33,6 +31,11 @@ class ManagePublicForms extends SettingsPage
         return __('admin.pages.manage_public_forms.title');
     }
 
+    protected function settingsSubject(): string
+    {
+        return SettingsSubjectOwnershipRegistry::PUBLIC_FORMS;
+    }
+
     protected function getHeaderActions(): array
     {
         return [
@@ -42,8 +45,8 @@ class ManagePublicForms extends SettingsPage
 
     public function form(Schema $schema): Schema
     {
-        return $schema
-            ->components([
+        $schema = $schema->components([
+            $this->withImportLockSection(
                 Section::make(__('admin.sections.public_front_forms'))
                     ->description(__('admin.descriptions.public_front_forms'))
                     ->schema([
@@ -55,7 +58,14 @@ class ManagePublicForms extends SettingsPage
                     ])
                     ->collapsible()
                     ->columnSpanFull(),
-            ]);
+                'public_forms',
+                'public-front-forms',
+            ),
+        ]);
+
+        $this->applyInlineImportLockHints($schema->getComponents());
+
+        return $schema;
     }
 
     /**
@@ -77,7 +87,7 @@ class ManagePublicForms extends SettingsPage
      * @param  array<string, mixed>  $data
      * @return array<string, mixed>
      */
-    protected function mutateFormDataBeforeSave(array $data): array
+    protected function normalizeOwnedFormData(array $data, array $stored): array
     {
         $publicForms = app(PublicFrontConfigValidator::class)
             ->validate([

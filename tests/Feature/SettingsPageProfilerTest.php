@@ -1,6 +1,7 @@
 <?php
 
-use App\Filament\Pages\PublicContentSettings as PublicContentSettingsPage;
+use App\Filament\Pages\HomepageSettings;
+use App\Filament\Pages\MaintenanceSettings;
 use App\Jobs\SettingsBackupSnapshotJob;
 use App\Models\User;
 use App\Settings\PublicContentSettings;
@@ -107,7 +108,7 @@ it('writes named settings profiling phases when the flag is enabled', function (
         ->with('settings_profiling')
         ->andReturn($logger);
 
-    Livewire::test(PublicContentSettingsPage::class)
+    Livewire::test(HomepageSettings::class)
         ->set('data.homepage_item_limit', 17)
         ->call('save')
         ->assertHasNoFormErrors();
@@ -124,9 +125,8 @@ it('writes named settings profiling phases when the flag is enabled', function (
         ->toContain('settings_saved.listener.total')
         ->toContain('settings_saved.backup_creation')
         ->and(collect($contexts)->firstWhere('phase', 'payload.load')['payload_bytes'] ?? 0)->toBeGreaterThan(0)
-        ->and(collect($contexts)->firstWhere('phase', 'validator.group.maintenance'))->toBeArray()
         ->and(collect($contexts)
-            ->where('phase', 'validator.group.maintenance')
+            ->where('phase', 'save.settings_persist')
             ->pluck('request_kind'))
         ->toContain(SettingsPageProfiler::REQUEST_SAVE);
 });
@@ -134,7 +134,7 @@ it('writes named settings profiling phases when the flag is enabled', function (
 it('renders the maintenance raw html marker and copies the exact marker payload', function (): void {
     stepSp1SaveMaintenanceMarkerSettings();
 
-    $component = Livewire::test(PublicContentSettingsPage::class);
+    $component = Livewire::test(MaintenanceSettings::class);
 
     expect($component->html())->toContain('data-podtext-maintenance-form');
 

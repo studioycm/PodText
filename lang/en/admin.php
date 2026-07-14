@@ -8,6 +8,7 @@ return [
         'groups' => [
             'content_management' => 'Content management',
             'taxonomy_management' => 'Taxonomy management',
+            'settings' => 'Settings',
             'site_management' => 'Site management',
         ],
     ],
@@ -1721,6 +1722,10 @@ return [
         'light' => 'Light',
     ],
     'pages' => [
+        'about_settings' => [
+            'navigation' => 'About',
+            'title' => 'About Settings',
+        ],
         'admin_ux_settings' => [
             'navigation' => 'Admin UX',
             'title' => 'Admin UX Settings',
@@ -1728,8 +1733,36 @@ return [
         'import_public_settings' => [
             'title' => 'Import Public Settings',
         ],
+        'card_template_settings' => [
+            'navigation' => 'Card Templates',
+            'title' => 'Card Template Settings',
+        ],
+        'contributor_settings' => [
+            'navigation' => 'Contributors',
+            'title' => 'Contributor Settings',
+        ],
+        'display_settings' => [
+            'navigation' => 'Display',
+            'title' => 'Display Settings',
+        ],
+        'episode_page_settings' => [
+            'navigation' => 'Episode Page',
+            'title' => 'Episode Page Settings',
+        ],
+        'homepage_settings' => [
+            'navigation' => 'Homepage',
+            'title' => 'Homepage Settings',
+        ],
         'manage_settings_import_locks' => [
             'title' => 'Settings Import Locks',
+        ],
+        'maintenance_settings' => [
+            'navigation' => 'Maintenance',
+            'title' => 'Maintenance Settings',
+        ],
+        'menu_header_settings' => [
+            'navigation' => 'Menu / Header',
+            'title' => 'Menu / Header Settings',
         ],
         'manage_public_forms' => [
             'navigation' => 'Forms',
@@ -1738,6 +1771,10 @@ return [
         'public_content_settings' => [
             'navigation' => 'Public content settings',
             'title' => 'Public Content Settings',
+        ],
+        'podcast_settings' => [
+            'navigation' => 'Podcasts',
+            'title' => 'Podcast Settings',
         ],
     ],
     'settings_import' => [

@@ -1,6 +1,6 @@
 <?php
 
-use App\Filament\Pages\PublicContentSettings as PublicContentSettingsPage;
+use App\Filament\Pages\AboutSettings;
 use App\Models\User;
 use App\Settings\PublicContentSettings;
 use App\Support\PublicFront\About\PublicAboutPageRegistry;
@@ -414,7 +414,7 @@ it('saves about content blocks and team profiles through the admin settings page
     config(['media.picker.driver' => 'file_upload']);
     $this->actingAs(User::factory()->create());
 
-    Livewire::test(PublicContentSettingsPage::class)
+    Livewire::test(AboutSettings::class)
         ->set('data.about_page.enabled', true)
         ->set('data.about_page.title', 'Admin About')
         ->set('data.about_page.kicker', 'Admin Kicker')
@@ -489,7 +489,7 @@ it('configures about and team image uploads with safe public constraints', funct
     config(['media.picker.driver' => 'file_upload']);
     $this->actingAs(User::factory()->create());
 
-    $schema = Livewire::test(PublicContentSettingsPage::class)
+    $schema = Livewire::test(AboutSettings::class)
         ->set('data.about_page.blocks', [
             [
                 'type' => 'image',

@@ -2,7 +2,9 @@
 
 use App\Enums\HomepageSectionType;
 use App\Enums\TranscriptionMode;
-use App\Filament\Pages\PublicContentSettings as PublicContentSettingsPage;
+use App\Filament\Pages\CardTemplateSettings;
+use App\Filament\Pages\ContributorSettings;
+use App\Filament\Pages\PodcastSettings;
 use App\Filament\Resources\HomepageSections\Pages\CreateHomepageSection;
 use App\Livewire\Public\TopTranscribersSection;
 use App\Models\Author;
@@ -481,7 +483,7 @@ it('exposes saved custom templates in family scoped admin selects', function ():
         ],
     ]);
 
-    $settingsPage = Livewire::test(PublicContentSettingsPage::class);
+    $settingsPage = Livewire::test(PodcastSettings::class);
     $podcastItemSelect = step10rB1SelectByStatePath($settingsPage, 'podcasts_page.item_template_key');
     $podcastGroupSelect = step10rB1SelectByStatePath($settingsPage, 'podcasts_page.template_key');
 
@@ -537,22 +539,29 @@ it('exposes saved custom templates in family scoped admin selects', function ():
         ]))->toBeTrue();
 });
 
-it('exposes unsaved same session settings page card templates after safe normalization', function (): void {
+it('exposes saved card templates on the owning podcast settings page after safe normalization', function (): void {
     $this->actingAs(User::factory()->create());
 
-    $settingsPage = Livewire::test(PublicContentSettingsPage::class)
+    Livewire::test(CardTemplateSettings::class)
         ->set('data.card_templates', [
-            makeStep3CardTemplate('content_item', 'same_session_episode_card'),
-            makeStep3CardTemplate('content_group', 'same_session_podcast_card'),
+            [
+                ...makeStep3CardTemplate('content_item', 'same_session_episode_card'),
+                'parts' => [],
+            ],
+            [
+                ...makeStep3CardTemplate('content_group', 'same_session_podcast_card'),
+                'parts' => [],
+            ],
             [
                 ...makeStep3CardTemplate('content_item', 'unsafe_label_card'),
                 'label' => '<script>alert(1)</script>',
+                'parts' => [],
             ],
-            [
-                ...makeStep3CardTemplate('content_item', 'bad_key_card'),
-                'key' => 'bad key',
-            ],
-        ]);
+        ])
+        ->call('save')
+        ->assertHasNoFormErrors();
+
+    $settingsPage = Livewire::test(PodcastSettings::class);
 
     $podcastItemSelect = step10rB1SelectByStatePath($settingsPage, 'podcasts_page.item_template_key');
     $podcastGroupSelect = step10rB1SelectByStatePath($settingsPage, 'podcasts_page.template_key');
@@ -563,7 +572,6 @@ it('exposes unsaved same session settings page card templates after safe normali
             'unsafe_label_card' => 'unsafe_label_card',
         ], [
             'same_session_podcast_card',
-            'bad key',
         ]))->toBeTrue()
         ->and($podcastItemSelect->getOptions())->not->toContain('<script>alert(1)</script>')
         ->and($podcastGroupSelect)->toBeInstanceOf(Select::class)
@@ -572,7 +580,6 @@ it('exposes unsaved same session settings page card templates after safe normali
         ], [
             'same_session_episode_card',
             'unsafe_label_card',
-            'bad key',
         ]))->toBeTrue();
 });
 
@@ -1410,35 +1417,10 @@ it('renders m5 labels and icons on content group and contributor card families',
         ->assertSee('data-card-part-label-position="inline_after"', false);
 });
 
-it('saves a simple card template definition through the public content settings page', function (): void {
+it('saves a simple card template definition through the temporary card templates page', function (): void {
     $this->actingAs(User::factory()->create());
 
-    Livewire::test(PublicContentSettingsPage::class)
-        ->set('data.homepage_item_limit', 9)
-        ->set('data.pinned_item_limit', 4)
-        ->set('data.default_public_sort', 'latest_transcription')
-        ->set('data.default_result_layout', 'cards')
-        ->set('data.show_latest_section', true)
-        ->set('data.item_page_layout', 'standard')
-        ->set('data.homepage_card_image_size', 'medium')
-        ->set('data.homepage_card_density', 'comfortable')
-        ->set('data.homepage_card_title_size', 'base')
-        ->set('data.homepage_show_group_badge', true)
-        ->set('data.homepage_show_authors', true)
-        ->set('data.homepage_show_categories', true)
-        ->set('data.homepage_show_tags', true)
-        ->set('data.homepage_show_duration', true)
-        ->set('data.homepage_show_effective_date', true)
-        ->set('data.homepage_show_description', true)
-        ->set('data.homepage_description_lines', 3)
-        ->set('data.homepage_cards_per_page', 12)
-        ->set('data.menu_config.enabled', false)
-        ->set('data.display_defaults.layout', 'cards')
-        ->set('data.display_defaults.density', 'comfortable')
-        ->set('data.display_defaults.image_size', 'medium')
-        ->set('data.display_defaults.title_size', 'base')
-        ->set('data.display_defaults.page_size', 12)
-        ->set('data.route_labels', [])
+    Livewire::test(CardTemplateSettings::class)
         ->set('data.card_templates', [
             [
                 'key' => 'admin_episode_card',
@@ -1537,7 +1519,7 @@ it('saves a simple card template definition through the public content settings 
 it('keeps contributor card template settings deferred until a later renderer step adds a setting', function (): void {
     $this->actingAs(User::factory()->create());
 
-    $settingsPage = Livewire::test(PublicContentSettingsPage::class);
+    $settingsPage = Livewire::test(ContributorSettings::class);
 
     expect(step10rB1SelectByStatePath($settingsPage, 'contributors_page.template_key'))->toBeNull()
         ->and(step10rB1SelectByStatePath($settingsPage, 'contributors_page.card_template_key'))->toBeNull()
