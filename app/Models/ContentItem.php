@@ -213,11 +213,13 @@ class ContentItem extends Model
 
     public function startFreshWorkspaceTranscription(): Transcription
     {
-        $transcription = $this->transcriptions()->create([
+        $transcription = $this->transcriptions()->make([
             'language_code' => 'he',
             'status' => PublicationStatus::Draft,
             'transcript_markdown' => '',
         ]);
+
+        $transcription->markAsSanctionedWorkspaceReplacement()->save();
 
         return $this->replaceWorkspaceTranscriptionWith($transcription);
     }

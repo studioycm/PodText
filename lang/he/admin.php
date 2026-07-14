@@ -55,6 +55,11 @@ return [
             'navigation' => 'גיבויי הגדרות',
         ],
         'transcription' => [
+            'single' => [
+                'singular' => 'תמלול הפרק',
+                'plural' => 'תמלולי פרקים',
+                'navigation' => 'תמלולי פרקים',
+            ],
             'singular' => 'תמלול',
             'plural' => 'תמלולים',
             'navigation' => 'תמלולים',
@@ -70,6 +75,10 @@ return [
         'plural_label' => 'מדיה',
     ],
     'sections' => [
+        'single' => [
+            'episode_workspace_transcription' => 'תמלול הפרק',
+            'transcript' => 'תמלול הפרק',
+        ],
         'admin_ux' => 'חוויית ניהול',
         'episode_workspace' => 'סביבת עבודה לפרק',
         'episode_workspace_advanced' => 'מטא-דאטה מתקדם',
@@ -148,6 +157,9 @@ return [
         'visibility_order' => 'נראות וסדר',
     ],
     'fields' => [
+        'single' => [
+            'content_item' => 'פרק',
+        ],
         'author_name' => 'שם',
         'authors' => 'מחברים',
         'transcribers' => 'מתמללים',
@@ -544,6 +556,14 @@ return [
         'spotify_overwrite_non_empty_fields' => 'דריסת שדות שאינם ריקים',
     ],
     'helpers' => [
+        'single' => [
+            'transcript_markdown' => 'יש לשמור את תמלול הפרק כ-Markdown בלבד. קבצים מצורפים והטמעות גולמיות מושבתים.',
+            'transcription_content_item' => 'בחרו את הפרק שאליו שייך התמלול.',
+            'transcription_published_at' => 'תאריך ושעת פרסום אופציונליים לתמלול הפרק באזור הזמן הניהולי Asia/Jerusalem.',
+            'transcription_status' => 'טיוטת תמלול הפרק זמינה למנהלים בלבד. תמלול שפורסם יכול להיות ציבורי כשהפרק והפודקאסט מפורסמים.',
+            'transcription_title' => 'כותרת אופציונלית לתמלול הפרק.',
+            'transcription_transcribers' => 'בחרו את המתמללים שיקבלו קרדיט על תמלול הפרק.',
+        ],
         'maintenance_enabled' => 'כשהמצב מופעל, מבקרים שאינם מחוברים רואים תגובת תחזוקה בכל כתובת ציבורית. מנהלים עדיין רואים את האתר האמיתי.',
         'maintenance_warning' => 'אזהרה: הפעלה תחליף את כל האתר הציבורי בתגובת תחזוקה 503 למבקרים.',
         'maintenance_retry_after_hours' => 'קובע את כותרת Retry-After בשעות עבור זחלנים ולקוחות.',
@@ -872,6 +892,12 @@ return [
         'curated_query' => 'שאילתה אצורה',
     ],
     'descriptions' => [
+        'single' => [
+            'episode_workspace_transcription' => 'עריכת התמלול של הפרק יחד עם נתוני הפרק.',
+            'transcript_markdown' => 'Markdown קנוני של תמלול הפרק. התצוגה הציבורית משתמשת במרנדר Markdown בטוח.',
+            'transcription_identity' => 'מטא-דאטה של תמלול הפרק.',
+            'transcription_publication' => 'רק תמלול פרק שפורסם יכול להיות ציבורי. טיוטות נשארות למנהלים בלבד.',
+        ],
         'admin_ux' => 'ברירות מחדל עריכתיות לתהליכי ניהול.',
         'episode_workspace' => 'הגדרות לסביבת עריכת פרק עם תמלול יחיד.',
         'episode_workspace_advanced' => 'מטא-דאטה מספקים, ערכי משך ודריסות תצוגה אופציונליות לפרק.',
@@ -920,6 +946,11 @@ return [
         'transcription_publication' => 'רק תמלולים שפורסמו יכולים להפוך לפעילים. טיוטות נשארות למנהלים בלבד.',
     ],
     'actions' => [
+        'single' => [
+            'add_transcription' => 'הוספת תמלול לפרק',
+            'open_transcription_resource' => 'פתיחת תמלול הפרק',
+            'save_transcription' => 'שמירת תמלול הפרק',
+        ],
         'archive' => 'ארכוב',
         'add_about_page_block' => 'הוספת בלוק',
         'add_public_form_field' => 'הוספת שדה',
@@ -1007,6 +1038,9 @@ return [
         'replace_workspace_transcription' => 'החלפת תמלול סביבת העבודה',
     ],
     'labels' => [
+        'single' => [
+            'visibility_transcription' => 'תמלול הפרק פורסם: :state',
+        ],
         'active' => 'פעיל',
         'featured' => 'נבחר',
         'inactive' => 'לא פעיל',
@@ -1191,6 +1225,9 @@ return [
     ],
     'card_template_attributes' => [
         'author' => [
+            'single' => [
+                'transcription_count' => 'מספר פרקים',
+            ],
             'bio' => 'ביוגרפיה',
             'content_item_count' => 'מספר פרקים',
             'name' => 'שם',
@@ -1202,6 +1239,10 @@ return [
             'names' => 'שמות קטגוריות',
         ],
         'content_group' => [
+            'single' => [
+                'latest_transcription_date' => 'תאריך הפרק האחרון',
+                'transcription_count' => 'מספר פרקים',
+            ],
             'description' => 'תיאור',
             'identity' => 'תגית זהות',
             'image' => 'תמונת שער',
@@ -1216,6 +1257,9 @@ return [
             'url' => 'כתובת פודקאסט',
         ],
         'content_item' => [
+            'single' => [
+                'effective_transcription_title' => 'כותרת תמלול הפרק',
+            ],
             'description' => 'תיאור',
             'duration' => 'משך',
             'effective_date' => 'תאריך תמלול פעיל',
@@ -1234,6 +1278,9 @@ return [
             'url' => 'כתובת פרק',
         ],
         'contributor' => [
+            'single' => [
+                'transcription_count' => 'מספר פרקים',
+            ],
             'bio' => 'ביוגרפיה',
             'name' => 'שם',
             'public_item_count' => 'מספר פרקים ציבוריים',
@@ -1530,6 +1577,11 @@ return [
         'url' => 'כתובת URL',
     ],
     'notifications' => [
+        'single' => [
+            'effective_transcription_saved' => 'תמלול הפרק נשמר.',
+            'first_transcription_featured' => 'תמלול הפרק נבחר אוטומטית.',
+            'transcription_created' => 'תמלול הפרק נוצר.',
+        ],
         'content_group_cover_saved' => 'תמונת השער נשמרה.',
         'content_images_export_failed' => 'ייצוא תמונות התוכן נכשל.',
         'content_images_export_failed_body' => ':reason',
@@ -1825,6 +1877,9 @@ return [
             'contributors' => 'מתמללים',
         ],
     ],
+    'filters' => [
+        'transcription_history' => 'היסטוריית תמלולים',
+    ],
     'import' => [
         'columns' => [
             'author_reference_key' => 'מפתח ייחוס של מחבר',
@@ -2108,6 +2163,7 @@ return [
         ],
     ],
     'validation' => [
+        'transcription_already_exists' => 'לפרק כבר יש תמלול',
         'cannot_demote_last_super_admin' => 'חייב להישאר לפחות סופר-אדמין אחד.',
         'cannot_demote_self' => 'אי אפשר להוריד את התפקיד של חשבון הסופר-אדמין שלך.',
         'media_url_https' => 'כתובת המדיה חייבת להשתמש ב-HTTPS.',

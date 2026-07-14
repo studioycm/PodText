@@ -145,6 +145,12 @@ return [
         ],
     ],
     'labels' => [
+        'single' => [
+            'contributor_transcriptions' => 'Transcribed episodes',
+            'public_group_latest_transcription_date' => 'latest episode :date',
+            'public_transcriptions_count' => '{0} No episodes|{1} 1 episode|[2,*] :count episodes',
+            'public_transcriptions_count_full' => '{0} No transcribed episodes|{1} 1 transcribed episode|[2,*] :count transcribed episodes',
+        ],
         'authors' => 'Authors',
         'breadcrumbs' => 'Breadcrumbs',
         'contributor' => 'Contributor',
@@ -223,6 +229,9 @@ return [
             'kicker' => 'Category',
         ],
         'contributor' => [
+            'single' => [
+                'items_heading' => 'Transcribed episodes',
+            ],
             'items_heading' => 'Public items by this contributor',
             'kicker' => 'Contributor',
         ],

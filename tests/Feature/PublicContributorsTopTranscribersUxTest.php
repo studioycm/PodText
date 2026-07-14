@@ -1,6 +1,7 @@
 <?php
 
 use App\Enums\PublicationStatus;
+use App\Enums\TranscriptionMode;
 use App\Filament\Public\Pages\ShowContentGroup;
 use App\Filament\Public\Pages\ShowContentItem;
 use App\Filament\Public\Pages\ShowContributor;
@@ -27,6 +28,10 @@ use Livewire\Livewire;
 use Spatie\LaravelSettings\SettingsContainer;
 
 uses(RefreshDatabase::class);
+
+beforeEach(function (): void {
+    setTestTranscriptionMode(TranscriptionMode::Multi);
+});
 
 function saveStep10PublicFrontSettings(array $settings): void
 {

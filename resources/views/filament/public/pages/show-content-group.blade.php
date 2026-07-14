@@ -69,7 +69,7 @@
 
                     <div class="rounded-md bg-gray-100 px-2 py-1 dark:bg-gray-800" data-test="content-group-transcription-count">
                         <dt class="sr-only">{{ __('public.labels.transcriptions') }}</dt>
-                        <dd>{{ trans_choice('public.labels.public_transcriptions_count', $publicTranscriptionsCount, ['count' => $publicTranscriptionsCount]) }}</dd>
+                        <dd>{{ \App\Support\Transcriptions\TranscriptionModeLabel::choice('public.labels.public_transcriptions_count', $publicTranscriptionsCount, ['count' => $publicTranscriptionsCount], 'public.labels.single.public_transcriptions_count_full') }}</dd>
                     </div>
 
                     <div class="rounded-md bg-gray-100 px-2 py-1 dark:bg-gray-800" data-test="content-group-transcriber-count">
@@ -80,7 +80,7 @@
                     @if($latestTranscriptionDate)
                         <div class="rounded-md bg-gray-100 px-2 py-1 dark:bg-gray-800" data-test="content-group-latest-transcription-date">
                             <dt class="sr-only">{{ __('public.labels.published_at') }}</dt>
-                            <dd>{{ __('public.labels.public_group_latest_transcription_date', ['date' => $latestTranscriptionDate]) }}</dd>
+                            <dd>{{ \App\Support\Transcriptions\TranscriptionModeLabel::text('public.labels.public_group_latest_transcription_date', ['date' => $latestTranscriptionDate]) }}</dd>
                         </div>
                     @endif
                 </dl>

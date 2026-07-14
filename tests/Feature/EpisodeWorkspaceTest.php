@@ -86,6 +86,8 @@ function setEpisodeWorkspaceTranscriptionMode(TranscriptionMode $mode): void
 }
 
 it('resolves the workspace transcription as featured then latest published then newest draft', function (): void {
+    setEpisodeWorkspaceTranscriptionMode(TranscriptionMode::Multi);
+
     $item = ContentItem::factory()->create();
     $olderPublished = Transcription::factory()
         ->for($item)
@@ -194,13 +196,14 @@ it('replaces the workspace transcription by selecting an existing record or star
 });
 
 it('rejects forged existing workspace replacement while single-transcription mode is active', function (): void {
-    setEpisodeWorkspaceTranscriptionMode(TranscriptionMode::Single);
+    setEpisodeWorkspaceTranscriptionMode(TranscriptionMode::Multi);
 
     $item = ContentItem::factory()->create();
     $first = Transcription::factory()->for($item)->create(['title' => 'First workspace']);
     $second = Transcription::factory()->for($item)->create(['title' => 'Second workspace']);
 
     $item->update(['featured_transcription_id' => $first->id]);
+    setEpisodeWorkspaceTranscriptionMode(TranscriptionMode::Single);
 
     Livewire::test(EditEpisodeWorkspace::class, ['record' => $item->getRouteKey()])
         ->mountAction(TestAction::make('replaceWorkspaceTranscription'))
@@ -252,7 +255,7 @@ it('saves workspace admin ux settings and renders modal and slideover transcript
 
     Livewire::test(EditEpisodeWorkspace::class, ['record' => $item->getRouteKey()])
         ->assertSee('data-transcription-presentation-mode="modal"', false)
-        ->assertSee(__('admin.sections.episode_workspace_transcription'));
+        ->assertSee(__('admin.sections.single.episode_workspace_transcription'));
 });
 
 it('fills blank fields from spotify lookup and extracts iframe src values', function (): void {

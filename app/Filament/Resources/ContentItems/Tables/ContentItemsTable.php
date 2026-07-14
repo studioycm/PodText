@@ -13,6 +13,7 @@ use App\Models\Author;
 use App\Models\ContentItem;
 use App\Models\ContentTag;
 use App\Support\PublicFront\PublicDefaultImageResolver;
+use App\Support\Transcriptions\TranscriptionModeLabel;
 use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
@@ -223,15 +224,16 @@ class ContentItemsTable
     public static function addTranscriptionAction(): Action
     {
         return Action::make('addTranscription')
-            ->label(__('admin.actions.add_transcription'))
+            ->label(TranscriptionModeLabel::text('admin.actions.add_transcription'))
             ->icon(Heroicon::OutlinedDocumentPlus)
             ->schema([
                 RelationshipOptionForms::configureTranscriberOptionsSelect(
                     Select::make('transcriber_ids'),
+                    episodeLanguage: true,
                 ),
                 TextInput::make('title')
                     ->label(__('admin.fields.title'))
-                    ->helperText(__('admin.helpers.transcription_title'))
+                    ->helperText(TranscriptionModeLabel::text('admin.helpers.transcription_title'))
                     ->maxLength(255),
                 TextInput::make('language_code')
                     ->label(__('admin.fields.language_code'))
@@ -241,18 +243,18 @@ class ContentItemsTable
                     ->maxLength(10),
                 Select::make('status')
                     ->label(__('admin.fields.status'))
-                    ->helperText(__('admin.helpers.transcription_status'))
+                    ->helperText(TranscriptionModeLabel::text('admin.helpers.transcription_status'))
                     ->options(PublicationStatus::class)
                     ->default(PublicationStatus::Draft->value)
                     ->required(),
                 DateTimePicker::make('published_at')
                     ->label(__('admin.fields.published_at'))
-                    ->helperText(__('admin.helpers.transcription_published_at'))
+                    ->helperText(TranscriptionModeLabel::text('admin.helpers.transcription_published_at'))
                     ->displayFormat('d/m/Y H:i')
                     ->timezone('Asia/Jerusalem'),
                 MarkdownEditor::make('transcript_markdown')
                     ->label(__('admin.fields.transcript_markdown'))
-                    ->helperText(__('admin.helpers.transcript_markdown'))
+                    ->helperText(TranscriptionModeLabel::text('admin.helpers.transcript_markdown'))
                     ->disableToolbarButtons(['attachFiles'])
                     ->fileAttachments(false)
                     ->required()
@@ -267,8 +269,8 @@ class ContentItemsTable
 
                 Notification::make()
                     ->success()
-                    ->title(__('admin.notifications.transcription_created'))
-                    ->body(__('admin.notifications.first_transcription_featured'))
+                    ->title(TranscriptionModeLabel::text('admin.notifications.transcription_created'))
+                    ->body(TranscriptionModeLabel::text('admin.notifications.first_transcription_featured'))
                     ->send();
             });
     }

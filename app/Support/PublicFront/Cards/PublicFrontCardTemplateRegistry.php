@@ -3,6 +3,7 @@
 namespace App\Support\PublicFront\Cards;
 
 use App\Support\PublicFront\Icons\PublicFrontIconRegistry;
+use App\Support\Transcriptions\TranscriptionModeLabel;
 
 class PublicFrontCardTemplateRegistry
 {
@@ -526,7 +527,9 @@ class PublicFrontCardTemplateRegistry
     public static function translatedOptions(array $values, string $translationGroup): array
     {
         return collect($values)
-            ->mapWithKeys(fn (string $value): array => [$value => __("{$translationGroup}.{$value}")])
+            ->mapWithKeys(fn (string $value): array => [
+                $value => TranscriptionModeLabel::text("{$translationGroup}.{$value}"),
+            ])
             ->all();
     }
 

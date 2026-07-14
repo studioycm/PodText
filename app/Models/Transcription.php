@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\PublicationStatus;
+use App\Support\Transcriptions\SingleTranscriptionLens;
 use Database\Factories\TranscriptionFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
@@ -12,6 +13,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 
 #[Fillable([
     'reference_key',
@@ -35,6 +37,15 @@ class Transcription extends Model
         'language_code' => 'he',
         'status' => 'draft',
     ];
+
+    private bool $isSanctionedWorkspaceReplacement = false;
+
+    public function markAsSanctionedWorkspaceReplacement(): static
+    {
+        $this->isSanctionedWorkspaceReplacement = true;
+
+        return $this;
+    }
 
     public function contentItem(): BelongsTo
     {
@@ -158,6 +169,22 @@ class Transcription extends Model
             $transcription->reference_key ??= (string) Str::ulid();
             $transcription->language_code ??= 'he';
             $transcription->status ??= PublicationStatus::Draft;
+
+            if (
+                $transcription->isSanctionedWorkspaceReplacement
+                || ! app(SingleTranscriptionLens::class)->isActive()
+                || blank($transcription->content_item_id)
+            ) {
+                return;
+            }
+
+            if (Transcription::query()->where('content_item_id', $transcription->content_item_id)->exists()) {
+                $message = __('admin.validation.transcription_already_exists');
+
+                throw ValidationException::withMessages([
+                    'data.content_item_id' => $message,
+                ]);
+            }
         });
 
         static::created(function (Transcription $transcription): void {

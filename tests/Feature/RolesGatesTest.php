@@ -370,6 +370,8 @@ it('filters and save-guards the public card template transcription-count part', 
 });
 
 it('applies the two visibility gates to settings and current admin transcription surfaces', function (): void {
+    roles1SetTranscriptionMode(TranscriptionMode::Multi);
+
     $item = ContentItem::factory()->create();
     $first = Transcription::factory()->for($item)->published()->create(['title' => 'First transcript']);
     $second = Transcription::factory()->for($item)->published()->create(['title' => 'Second transcript']);

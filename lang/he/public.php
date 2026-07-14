@@ -145,6 +145,12 @@ return [
         ],
     ],
     'labels' => [
+        'single' => [
+            'contributor_transcriptions' => 'פרקים שתומללו',
+            'public_group_latest_transcription_date' => 'פרק אחרון :date',
+            'public_transcriptions_count' => '{0} אין פרקים|{1} פרק אחד|[2,*] :count פרקים',
+            'public_transcriptions_count_full' => '{0} אין פרקים מתומללים|{1} פרק מתומלל אחד|[2,*] :count פרקים מתומללים',
+        ],
         'authors' => 'מתמללים',
         'breadcrumbs' => 'פירורי לחם',
         'contributor' => 'מתמלל',
@@ -223,6 +229,9 @@ return [
             'kicker' => 'קטגוריה',
         ],
         'contributor' => [
+            'single' => [
+                'items_heading' => 'פרקים שתומללו',
+            ],
             'items_heading' => 'פרקים של המתמלל',
             'kicker' => 'מתמלל',
         ],

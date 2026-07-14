@@ -1,6 +1,7 @@
 <?php
 
 use App\Enums\PublicationStatus;
+use App\Enums\TranscriptionMode;
 use App\Livewire\Public\ContentItemBrowser;
 use App\Models\ContentGroup;
 use App\Models\ContentItem;
@@ -9,6 +10,10 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 
 uses(RefreshDatabase::class);
+
+beforeEach(function (): void {
+    setTestTranscriptionMode(TranscriptionMode::Multi);
+});
 
 it('public item scope requires an effective published transcription', function (): void {
     $group = ContentGroup::factory()->published()->create();

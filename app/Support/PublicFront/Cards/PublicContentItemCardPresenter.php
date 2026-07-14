@@ -16,6 +16,8 @@ use App\Support\PublicContent\PublicTranscriptionPolicy;
 use App\Support\PublicContent\PublicTranscriptionSelector;
 use App\Support\PublicFront\ContentItemDisplayTitle;
 use App\Support\PublicFront\PublicDefaultImageResolver;
+use App\Support\Transcriptions\MultiTranscriptionSurfaces;
+use App\Support\Transcriptions\TranscriptionModeLabel;
 use Illuminate\Contracts\Pagination\Paginator;
 
 class PublicContentItemCardPresenter
@@ -102,6 +104,7 @@ class PublicContentItemCardPresenter
         $transcribers = $this->transcribers($effectiveTranscription);
         $publicTranscriptionsCount = $this->publicTranscriptionsCount($item);
         $showTranscriptionCount = $options->transcriptionDisplay === 'effective_plus_count'
+            && MultiTranscriptionSurfaces::isMultiMode()
             && $this->policy->countModeCountsAllPublished()
             && $publicTranscriptionsCount > 1;
 
@@ -130,7 +133,11 @@ class PublicContentItemCardPresenter
             'site_published_date' => $sitePublishedDate,
             'original_date' => $originalDate,
             'public_transcriptions_count' => $publicTranscriptionsCount,
-            'public_transcriptions_count_label' => trans_choice('public.labels.public_transcriptions_count', $publicTranscriptionsCount, ['count' => $publicTranscriptionsCount]),
+            'public_transcriptions_count_label' => TranscriptionModeLabel::choice(
+                'public.labels.public_transcriptions_count',
+                $publicTranscriptionsCount,
+                ['count' => $publicTranscriptionsCount],
+            ),
             'show_transcription_count' => $showTranscriptionCount,
             'transcription' => [
                 'title' => $effectiveTranscription?->title,
@@ -521,6 +528,13 @@ class PublicContentItemCardPresenter
      */
     private function textValue(PublicFrontCardPart $part, array $data): ?string
     {
+        if (
+            ! MultiTranscriptionSurfaces::isMultiMode()
+            && "{$part->source}.{$part->attribute}" === 'content_item.transcription_count'
+        ) {
+            return null;
+        }
+
         return match ("{$part->source}.{$part->attribute}") {
             'content_item.title' => $data['title'],
             'content_item.description' => $data['description'],
@@ -577,6 +591,10 @@ class PublicContentItemCardPresenter
 
     private function selectedTranscription(ContentItem $item, ?Author $contributorContext): ?Transcription
     {
+        if (! MultiTranscriptionSurfaces::isMultiMode()) {
+            return $this->selector->effectiveTranscriptionForItem($item);
+        }
+
         if ($contributorContext instanceof Author && $item->relationLoaded('transcriptions')) {
             $matched = $item->transcriptions
                 ->first(function (Transcription $transcription) use ($contributorContext): bool {

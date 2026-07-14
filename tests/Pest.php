@@ -1,8 +1,12 @@
 <?php
 
+use App\Enums\TranscriptionMode;
 use App\Jobs\SettingsBackupSnapshotJob;
+use App\Settings\AdminUxSettings;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Queue;
+use Spatie\LaravelSettings\SettingsContainer;
 use Tests\TestCase;
 
 foreach ([
@@ -67,4 +71,23 @@ function fakeSettingsBackupSnapshotQueue(): void
     Queue::fake([
         SettingsBackupSnapshotJob::class,
     ]);
+}
+
+function setTestTranscriptionMode(TranscriptionMode $mode): void
+{
+    DB::table('settings')->updateOrInsert(
+        [
+            'group' => AdminUxSettings::group(),
+            'name' => 'transcription_mode',
+        ],
+        [
+            'locked' => false,
+            'payload' => json_encode($mode->value),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ],
+    );
+
+    app()->forgetInstance(AdminUxSettings::class);
+    app(SettingsContainer::class)->clearCache();
 }

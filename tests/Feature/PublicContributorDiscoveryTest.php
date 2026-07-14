@@ -2,6 +2,7 @@
 
 use App\Enums\HomepageSectionType;
 use App\Enums\PublicationStatus;
+use App\Enums\TranscriptionMode;
 use App\Filament\Public\Pages\ShowContributor;
 use App\Livewire\Public\ContentItemSearch;
 use App\Livewire\Public\ContributorDirectory;
@@ -15,6 +16,10 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 
 uses(RefreshDatabase::class);
+
+beforeEach(function (): void {
+    setTestTranscriptionMode(TranscriptionMode::Multi);
+});
 
 function createPrompt11BPublicItem(
     Author $author,

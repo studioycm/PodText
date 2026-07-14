@@ -3,11 +3,15 @@
 namespace App\Filament\Resources\Transcriptions\Tables;
 
 use App\Enums\PublicationStatus;
+use App\Enums\UserRole;
 use App\Filament\Exports\TranscriptionExporter;
 use App\Filament\Imports\TranscriptionImporter;
 use App\Models\Author;
 use App\Models\ContentGroup;
 use App\Models\Transcription;
+use App\Support\Transcriptions\MultiTranscriptionSurfaces;
+use App\Support\Transcriptions\SingleTranscriptionLens;
+use App\Support\Transcriptions\TranscriptionModeLabel;
 use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
@@ -18,6 +22,7 @@ use Filament\Actions\ImportAction;
 use Filament\Notifications\Notification;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
@@ -28,10 +33,11 @@ class TranscriptionsTable
     public static function configure(Table $table): Table
     {
         return $table
-            ->modifyQueryUsing(fn (Builder $query): Builder => $query->with('authors'))
+            ->modifyQueryUsing(fn (Builder $query): Builder => app(SingleTranscriptionLens::class)
+                ->applyAdminCurrentScope($query->with('authors')))
             ->columns([
                 TextColumn::make('contentItem.title')
-                    ->label(__('admin.fields.content_item'))
+                    ->label(TranscriptionModeLabel::text('admin.fields.content_item'))
                     ->searchable()
                     ->sortable(),
                 TextColumn::make('transcriber_names')
@@ -71,6 +77,14 @@ class TranscriptionsTable
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
+                Filter::make('history')
+                    ->label(TranscriptionModeLabel::text('admin.filters.transcription_history'))
+                    ->baseQuery(fn (Builder $query): Builder => app(SingleTranscriptionLens::class)
+                        ->removeAdminCurrentScope($query))
+                    ->visible(fn (): bool => MultiTranscriptionSurfaces::currentUserCan(
+                        UserRole::SuperAdmin,
+                        requiresMode: false,
+                    )),
                 SelectFilter::make('status')
                     ->label(__('admin.fields.status'))
                     ->options(PublicationStatus::class),
@@ -111,7 +125,8 @@ class TranscriptionsTable
                     ->label(__('admin.actions.set_featured_transcription'))
                     ->icon(Heroicon::OutlinedStar)
                     ->color('warning')
-                    ->visible(fn (Transcription $record): bool => $record->isPublished())
+                    ->visible(fn (Transcription $record): bool => MultiTranscriptionSurfaces::isMultiMode()
+                        && $record->isPublished())
                     ->action(function (Transcription $record): void {
                         $record->contentItem()->update([
                             'featured_transcription_id' => $record->getKey(),

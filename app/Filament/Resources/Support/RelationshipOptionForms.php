@@ -6,6 +6,7 @@ use App\Filament\Forms\Components\PublicationStatusSelect;
 use App\Filament\Forms\Components\SlugInput;
 use App\Models\Author;
 use App\Models\Transcription;
+use App\Support\Transcriptions\TranscriptionModeLabel;
 use Filament\Actions\Action;
 use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\MarkdownEditor;
@@ -37,12 +38,14 @@ class RelationshipOptionForms
         );
     }
 
-    public static function configureTranscriberRelationshipSelect(Select $select): Select
+    public static function configureTranscriberRelationshipSelect(Select $select, bool $episodeLanguage = false): Select
     {
         return self::configureAuthorSelect(
             $select
                 ->label(__('admin.fields.transcribers'))
-                ->helperText(__('admin.helpers.transcription_transcribers'))
+                ->helperText($episodeLanguage
+                    ? TranscriptionModeLabel::text('admin.helpers.transcription_transcribers')
+                    : __('admin.helpers.transcription_transcribers'))
                 ->relationship('authors', 'name')
                 ->multiple()
                 ->searchable()
@@ -79,12 +82,14 @@ class RelationshipOptionForms
         );
     }
 
-    public static function configureTranscriberOptionsSelect(Select $select): Select
+    public static function configureTranscriberOptionsSelect(Select $select, bool $episodeLanguage = false): Select
     {
         return self::configureCreateOption(
             select: $select
                 ->label(__('admin.fields.transcribers'))
-                ->helperText(__('admin.helpers.transcription_transcribers'))
+                ->helperText($episodeLanguage
+                    ? TranscriptionModeLabel::text('admin.helpers.transcription_transcribers')
+                    : __('admin.helpers.transcription_transcribers'))
                 ->options(fn (): array => Author::query()
                     ->orderBy('name')
                     ->pluck('name', 'id')

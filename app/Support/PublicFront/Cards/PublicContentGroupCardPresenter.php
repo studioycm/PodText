@@ -8,6 +8,7 @@ use App\Models\Category;
 use App\Models\ContentGroup;
 use App\Support\PublicContent\PublicContentCardOptions;
 use App\Support\PublicFront\PublicDefaultImageResolver;
+use App\Support\Transcriptions\TranscriptionModeLabel;
 use Carbon\Carbon;
 use Illuminate\Contracts\Pagination\Paginator;
 
@@ -100,14 +101,18 @@ class PublicContentGroupCardPresenter
                 'label' => $itemLabel,
             ]),
             'public_transcriptions_count' => $publicTranscriptionsCount,
-            'public_transcriptions_count_label' => trans_choice('public.labels.public_transcriptions_count', $publicTranscriptionsCount, ['count' => $publicTranscriptionsCount]),
+            'public_transcriptions_count_label' => TranscriptionModeLabel::choice(
+                'public.labels.public_transcriptions_count',
+                $publicTranscriptionsCount,
+                ['count' => $publicTranscriptionsCount],
+            ),
             'public_transcriber_count' => $publicTranscriberCount,
             'public_transcriber_count_label' => trans_choice('public.labels.public_transcribers_count', $publicTranscriberCount, ['count' => $publicTranscriberCount]),
             'total_reading_minutes' => $totalReadingMinutes,
             'total_reading_minutes_label' => trans_choice('public.labels.public_group_reading_minutes_count', $totalReadingMinutes, ['count' => $totalReadingMinutes]),
             'latest_transcription_date' => $latestTranscriptionDate,
             'latest_transcription_date_label' => $latestTranscriptionDate
-                ? __('public.labels.public_group_latest_transcription_date', ['date' => $latestTranscriptionDate])
+                ? TranscriptionModeLabel::text('public.labels.public_group_latest_transcription_date', ['date' => $latestTranscriptionDate])
                 : null,
             'display' => [
                 'show_description' => $this->boolean($displayConfig['show_description'] ?? null, true),

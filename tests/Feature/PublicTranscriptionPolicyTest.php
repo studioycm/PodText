@@ -1,6 +1,7 @@
 <?php
 
 use App\Enums\PublicationStatus;
+use App\Enums\TranscriptionMode;
 use App\Livewire\Public\ContentItemSearch;
 use App\Models\Author;
 use App\Models\ContentGroup;
@@ -20,6 +21,10 @@ use Livewire\Livewire;
 use Spatie\LaravelSettings\SettingsContainer;
 
 uses(RefreshDatabase::class);
+
+beforeEach(function (): void {
+    setTestTranscriptionMode(TranscriptionMode::Multi);
+});
 
 function saveStep10M3TranscriptionPolicy(array $policy): void
 {

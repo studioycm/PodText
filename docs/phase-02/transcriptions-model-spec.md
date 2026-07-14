@@ -75,6 +75,36 @@ Remaining follow-up requirements:
 - Public vocabulary and count-semantics cleanup belongs to the later LENS1 run;
   this contract only defines mode/role visibility and save enforcement.
 
+### D-LENS1 Single-Mode Ontology Decision
+
+- In single mode a transcription is presented as a property of its episode,
+  never as a per-episode collection. Multi mode retains the record-oriented
+  ontology and its existing strings and behavior.
+- Public contributor and podcast transcription counts are counts of distinct
+  public episodes through each episode's effective transcription. Additional
+  historical rows cannot increase a single-mode number.
+- Episode cards never render their transcription-count template part in single
+  mode, including when a stored template still contains that part.
+- Single-mode cards use the short labels `episodes` / `פרקים`; fuller count
+  surfaces use `transcribed episodes` / `פרקים מתומללים`; the contributor
+  episode-list heading uses `Transcribed episodes` / `פרקים שתומללו`; and the
+  podcast latest date uses `latest episode :date` / `פרק אחרון :date`.
+- Existing multi strings remain unchanged. A mode-aware translation resolver
+  selects single variants and falls back to the base key.
+- The first transcription created for an episode becomes featured on every
+  creation path. Later rows never auto-feature. Single mode rejects a second
+  row at the shared model lifecycle boundary, except for the sanctioned
+  workspace fresh-replacement operation, which creates and then adopts its new
+  current row.
+- The standalone Transcriptions resource remains available to all admin-and-up
+  roles. In single mode it defaults to one current editable row per episode;
+  only super-admins can activate its mode-independent history filter. Admins
+  cannot see that filter.
+- Per the operator's in-run clarification, the episode relation manager and
+  the item/group admin tables intentionally retain their operational
+  featured/count/history columns in single mode. LENS1 does not alter those
+  surfaces.
+
 ## Legacy Transcript Field Policy
 
 - `content_items.transcript_markdown` remains only as a legacy/backfill source.

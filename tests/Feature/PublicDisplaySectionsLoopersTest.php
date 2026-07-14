@@ -2,6 +2,7 @@
 
 use App\Enums\HomepageSectionType;
 use App\Enums\PublicationStatus;
+use App\Enums\TranscriptionMode;
 use App\Filament\Resources\HomepageSections\HomepageSectionResource;
 use App\Filament\Resources\HomepageSections\Pages\CreateHomepageSection;
 use App\Livewire\Public\ContentItemSearch;
@@ -280,6 +281,8 @@ it('supports category descendants enabled tags content groups and manual include
 });
 
 it('renders content group category contributor and top transcriber sources safely', function (): void {
+    setTestTranscriptionMode(TranscriptionMode::Multi);
+
     $category = Category::factory()->create(['name' => 'Step4 Category Source']);
     $categoryItem = createStep4PublicItem(['title' => 'Step4 Category Source Item']);
     $categoryItem->categories()->attach($category);

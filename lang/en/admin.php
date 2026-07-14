@@ -55,6 +55,11 @@ return [
             'navigation' => 'Settings Backups',
         ],
         'transcription' => [
+            'single' => [
+                'singular' => 'Episode transcript',
+                'plural' => 'Episode transcripts',
+                'navigation' => 'Episode transcripts',
+            ],
             'singular' => 'Transcription',
             'plural' => 'Transcriptions',
             'navigation' => 'Transcriptions',
@@ -70,6 +75,10 @@ return [
         'plural_label' => 'Media',
     ],
     'sections' => [
+        'single' => [
+            'episode_workspace_transcription' => 'Episode transcript',
+            'transcript' => 'Episode transcript',
+        ],
         'admin_ux' => 'Admin UX',
         'episode_workspace' => 'Episode workspace',
         'episode_workspace_advanced' => 'Advanced metadata',
@@ -148,6 +157,12 @@ return [
         'visibility_order' => 'Visibility and order',
     ],
     'descriptions' => [
+        'single' => [
+            'episode_workspace_transcription' => 'Edit the episode transcript together with its episode metadata.',
+            'transcript_markdown' => 'Canonical Markdown for the episode transcript. Public rendering uses the safe Markdown renderer.',
+            'transcription_identity' => 'Ownership metadata for the episode transcript.',
+            'transcription_publication' => 'Only a published episode transcript can be public. Drafts remain admin-only.',
+        ],
         'admin_ux' => 'Editor-facing defaults for admin workflows.',
         'episode_workspace' => 'Controls for the single-transcription episode editing workspace.',
         'episode_workspace_advanced' => 'Provider metadata, duration values, and optional display overrides for this item.',
@@ -196,6 +211,9 @@ return [
         'user_role' => 'Only super admins can assign roles. Admin-panel access begins at Admin; multi-transcription controls require the configured role gates and multi mode.',
     ],
     'fields' => [
+        'single' => [
+            'content_item' => 'Episode',
+        ],
         'author' => 'Author',
         'author_name' => 'Name',
         'authors' => 'Authors',
@@ -592,6 +610,14 @@ return [
         'spotify_overwrite_non_empty_fields' => 'Overwrite non-empty fields',
     ],
     'helpers' => [
+        'single' => [
+            'transcript_markdown' => 'Store the episode transcript as Markdown only. Attachments and raw embeds are disabled.',
+            'transcription_content_item' => 'Choose the episode that owns this transcript.',
+            'transcription_published_at' => 'Optional publication date-time for the episode transcript in the Asia/Jerusalem admin timezone.',
+            'transcription_status' => 'Draft episode transcripts are admin-only. A published transcript can be public when the episode and podcast are published.',
+            'transcription_title' => 'Optional title for the episode transcript.',
+            'transcription_transcribers' => 'Choose the transcribers credited for the episode transcript.',
+        ],
         'maintenance_enabled' => 'When enabled, logged-out visitors see the maintenance response on every public URL. Admins still see the real site.',
         'maintenance_warning' => 'Danger: enabling this switches the whole public site to a 503 maintenance response for visitors.',
         'maintenance_retry_after_hours' => 'Sets the Retry-After header in hours for crawlers and clients.',
@@ -936,6 +962,11 @@ return [
         'type_label_singular_override' => 'Leave blank to inherit the group default.',
     ],
     'actions' => [
+        'single' => [
+            'add_transcription' => 'Add episode transcript',
+            'open_transcription_resource' => 'Open episode transcript',
+            'save_transcription' => 'Save episode transcript',
+        ],
         'archive' => 'Archive',
         'add_about_page_block' => 'Add block',
         'add_public_form_field' => 'Add field',
@@ -1023,6 +1054,9 @@ return [
         'replace_workspace_transcription' => 'Replace workspace transcription',
     ],
     'labels' => [
+        'single' => [
+            'visibility_transcription' => 'Published episode transcript: :state',
+        ],
         'active' => 'Active',
         'featured' => 'Featured',
         'inactive' => 'Inactive',
@@ -1400,6 +1434,9 @@ return [
     ],
     'card_template_attributes' => [
         'author' => [
+            'single' => [
+                'transcription_count' => 'Episode count',
+            ],
             'bio' => 'Biography',
             'content_item_count' => 'Public item count',
             'name' => 'Name',
@@ -1411,6 +1448,10 @@ return [
             'names' => 'Category names',
         ],
         'content_group' => [
+            'single' => [
+                'latest_transcription_date' => 'Latest episode date',
+                'transcription_count' => 'Episode count',
+            ],
             'description' => 'Description',
             'identity' => 'Identity badge',
             'image' => 'Cover image',
@@ -1425,6 +1466,9 @@ return [
             'url' => 'Group URL',
         ],
         'content_item' => [
+            'single' => [
+                'effective_transcription_title' => 'Episode transcript title',
+            ],
             'description' => 'Description',
             'duration' => 'Duration',
             'effective_date' => 'Effective transcription date',
@@ -1443,6 +1487,9 @@ return [
             'url' => 'Item URL',
         ],
         'contributor' => [
+            'single' => [
+                'transcription_count' => 'Episode count',
+            ],
             'bio' => 'Biography',
             'name' => 'Name',
             'public_item_count' => 'Public item count',
@@ -1550,6 +1597,11 @@ return [
         'he' => 'Hebrew',
     ],
     'notifications' => [
+        'single' => [
+            'effective_transcription_saved' => 'Episode transcript saved.',
+            'first_transcription_featured' => 'The episode transcript was selected automatically.',
+            'transcription_created' => 'Episode transcript created.',
+        ],
         'content_group_cover_saved' => 'Cover image saved.',
         'content_images_export_failed' => 'Content image export failed.',
         'content_images_export_failed_body' => ':reason',
@@ -1857,6 +1909,9 @@ return [
             'contributors' => 'Contributors',
         ],
     ],
+    'filters' => [
+        'transcription_history' => 'Transcript history',
+    ],
     'import' => [
         'columns' => [
             'author_reference_key' => 'Author reference key',
@@ -2140,6 +2195,7 @@ return [
         ],
     ],
     'validation' => [
+        'transcription_already_exists' => 'This episode already has its transcript',
         'cannot_demote_last_super_admin' => 'At least one super admin must remain.',
         'cannot_demote_self' => 'You cannot demote your own super admin account.',
         'embed_url_host' => 'The embed URL host is not approved.',

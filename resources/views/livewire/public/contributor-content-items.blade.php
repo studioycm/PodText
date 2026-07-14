@@ -2,7 +2,7 @@
     <div class="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
         <div>
             <h2 class="text-xl font-semibold tracking-normal text-gray-950 dark:text-white">
-                {{ __('public.pages.contributor.items_heading') }}
+                {{ \App\Support\Transcriptions\TranscriptionModeLabel::text('public.pages.contributor.items_heading') }}
             </h2>
             <p class="mt-1 text-sm text-gray-600 dark:text-gray-300" data-test="contributor-items-count">
                 {{ trans_choice('public.results.count', $items->total(), ['count' => $items->total()]) }}

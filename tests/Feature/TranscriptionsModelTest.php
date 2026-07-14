@@ -1,6 +1,7 @@
 <?php
 
 use App\Enums\PublicationStatus;
+use App\Enums\TranscriptionMode;
 use App\Models\Author;
 use App\Models\ContentItem;
 use App\Models\Transcription;
@@ -12,6 +13,10 @@ use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 uses(RefreshDatabase::class);
+
+beforeEach(function (): void {
+    setTestTranscriptionMode(TranscriptionMode::Multi);
+});
 
 it('defines transcription relationships and casts', function (): void {
     $author = Author::factory()->create();

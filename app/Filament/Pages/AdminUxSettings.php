@@ -14,6 +14,7 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Toggle;
 use Filament\Pages\SettingsPage;
 use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 
@@ -73,13 +74,15 @@ class AdminUxSettings extends SettingsPage
                                 ->mapWithKeys(fn (TranscriptionMode $mode): array => [$mode->value => $mode->getLabel()])
                                 ->all())
                             ->default(TranscriptionMode::Single->value)
+                            ->live()
                             ->native(false)
                             ->required()
                             ->superAdminOnly(),
                         Toggle::make('show_episode_workspace_hint_line')
                             ->label(__('admin.fields.show_episode_workspace_hint_line'))
                             ->helperText(__('admin.helpers.show_episode_workspace_hint_line'))
-                            ->default(true),
+                            ->default(true)
+                            ->visible(fn (Get $get): bool => $get('transcription_mode') === TranscriptionMode::Multi->value),
                         Toggle::make('show_episode_workspace_language_code')
                             ->label(__('admin.fields.show_episode_workspace_language_code'))
                             ->helperText(__('admin.helpers.show_episode_workspace_language_code'))

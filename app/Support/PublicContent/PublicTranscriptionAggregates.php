@@ -4,6 +4,7 @@ namespace App\Support\PublicContent;
 
 use App\Models\ContentGroup;
 use App\Models\ContentItem;
+use App\Support\Transcriptions\MultiTranscriptionSurfaces;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Query\Builder as QueryBuilder;
 use Illuminate\Support\Facades\DB;
@@ -21,7 +22,11 @@ class PublicTranscriptionAggregates
     public function contentItemAggregateSelects(): array
     {
         return [
-            'public_transcriptions_count' => $this->contentItemTranscriptionsQuery()->selectRaw('count(*)'),
+            'public_transcriptions_count' => $this->contentItemTranscriptionsQuery()->selectRaw(
+                MultiTranscriptionSurfaces::isMultiMode()
+                    ? 'count(*)'
+                    : 'count(distinct transcriptions.content_item_id)',
+            ),
             'public_total_word_count' => $this->contentItemTranscriptionsQuery()->selectRaw('coalesce(sum(coalesce(transcriptions.word_count, 0)), 0)'),
             'public_latest_transcription_published_at' => $this->contentItemTranscriptionsQuery()->selectRaw('max(transcriptions.published_at)'),
             'public_transcriber_count' => $this->contentItemTranscriberRowsQuery()->selectRaw('count(distinct author_transcription.author_id)'),
@@ -34,7 +39,11 @@ class PublicTranscriptionAggregates
     public function contentGroupAggregateSelects(): array
     {
         return [
-            'public_transcriptions_count' => $this->contentGroupTranscriptionsQuery()->selectRaw('count(*)'),
+            'public_transcriptions_count' => $this->contentGroupTranscriptionsQuery()->selectRaw(
+                MultiTranscriptionSurfaces::isMultiMode()
+                    ? 'count(*)'
+                    : 'count(distinct content_items.id)',
+            ),
             'public_total_word_count' => $this->contentGroupTranscriptionsQuery()->selectRaw('coalesce(sum(coalesce(transcriptions.word_count, 0)), 0)'),
             'public_latest_transcription_published_at' => $this->contentGroupTranscriptionsQuery()->selectRaw('max(transcriptions.published_at)'),
             'public_transcriber_count' => $this->contentGroupTranscriberRowsQuery()->selectRaw('count(distinct author_transcription.author_id)'),
@@ -83,7 +92,11 @@ class PublicTranscriptionAggregates
     public function contributorTranscriptionsCountQuery(): QueryBuilder
     {
         return $this->contributorTranscriptionRowsQuery()
-            ->selectRaw('count(distinct transcriptions.id)');
+            ->selectRaw(
+                MultiTranscriptionSurfaces::isMultiMode()
+                    ? 'count(distinct transcriptions.id)'
+                    : 'count(distinct content_items.id)',
+            );
     }
 
     public function contributorContentItemsCountQuery(): QueryBuilder

@@ -9,6 +9,7 @@ use App\Filament\Resources\Transcriptions\Schemas\TranscriptionForm;
 use App\Filament\Resources\Transcriptions\Tables\TranscriptionsTable;
 use App\Filament\Support\Concerns\UsesAdminNavigationOrder;
 use App\Models\Transcription;
+use App\Support\Transcriptions\TranscriptionModeLabel;
 use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
@@ -27,17 +28,17 @@ class TranscriptionResource extends Resource
 
     public static function getModelLabel(): string
     {
-        return __('admin.resources.transcription.singular');
+        return TranscriptionModeLabel::text('admin.resources.transcription.singular');
     }
 
     public static function getPluralModelLabel(): string
     {
-        return __('admin.resources.transcription.plural');
+        return TranscriptionModeLabel::text('admin.resources.transcription.plural');
     }
 
     public static function getNavigationLabel(): string
     {
-        return __('admin.resources.transcription.navigation');
+        return TranscriptionModeLabel::text('admin.resources.transcription.navigation');
     }
 
     public static function form(Schema $schema): Schema

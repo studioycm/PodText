@@ -1,6 +1,7 @@
 <?php
 
 use App\Enums\PublicationStatus;
+use App\Enums\TranscriptionMode;
 use App\Filament\Public\Pages\BrowseCategoryContentItems;
 use App\Filament\Public\Pages\BrowseTagContentItems;
 use App\Filament\Public\Pages\ShowContentGroup;
@@ -26,6 +27,10 @@ use Livewire\Livewire;
 use Spatie\LaravelSettings\SettingsContainer;
 
 uses(RefreshDatabase::class);
+
+beforeEach(function (): void {
+    setTestTranscriptionMode(TranscriptionMode::Multi);
+});
 
 function createPrompt12PublicItem(
     array $itemAttributes = [],

@@ -17,6 +17,7 @@ use App\Support\PublicFront\ItemPage\PublicItemPagePodcastPalette;
 use App\Support\PublicFront\ItemPage\PublicItemPageRegistry;
 use App\Support\PublicFront\PublicDefaultImageResolver;
 use App\Support\PublicFront\PublicFrontRenderContext;
+use App\Support\Transcriptions\TranscriptionModeLabel;
 use Carbon\CarbonInterface;
 use Filament\Pages\Page;
 use Filament\Panel;
@@ -339,7 +340,11 @@ class ShowContentItem extends Page
             return null;
         }
 
-        return trans_choice('public.labels.public_transcriptions_count', $count, ['count' => $count]);
+        return TranscriptionModeLabel::choice(
+            'public.labels.public_transcriptions_count',
+            $count,
+            ['count' => $count],
+        );
     }
 
     private function duration(?int $seconds): ?string

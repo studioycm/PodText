@@ -1,6 +1,7 @@
 <?php
 
 use App\Enums\HomepageSectionType;
+use App\Enums\TranscriptionMode;
 use App\Filament\Pages\PublicContentSettings as PublicContentSettingsPage;
 use App\Filament\Resources\HomepageSections\Pages\CreateHomepageSection;
 use App\Livewire\Public\TopTranscribersSection;
@@ -1175,6 +1176,8 @@ it('renders custom content group templates on podcast index and homepage group s
 });
 
 it('renders custom contributor templates on contributor cards and top transcriber selectors', function (): void {
+    setTestTranscriptionMode(TranscriptionMode::Multi);
+
     $author = Author::factory()->create([
         'name' => 'B3 Template Contributor',
         'slug' => 'b3-template-contributor',

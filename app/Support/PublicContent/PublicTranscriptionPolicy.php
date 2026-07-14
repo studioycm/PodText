@@ -3,6 +3,7 @@
 namespace App\Support\PublicContent;
 
 use App\Support\PublicFront\PublicFrontRenderContext;
+use App\Support\Transcriptions\MultiTranscriptionSurfaces;
 use Throwable;
 
 class PublicTranscriptionPolicy
@@ -76,26 +77,34 @@ class PublicTranscriptionPolicy
 
     public function publicModeCountsAllPublished(): bool
     {
-        return $this->publicMode === self::MODE_ALL_PUBLISHED;
+        return $this->modeForPublicDisplay() === self::MODE_ALL_PUBLISHED;
     }
 
     public function countModeCountsAllPublished(): bool
     {
-        return $this->countMode === self::MODE_ALL_PUBLISHED;
+        return $this->modeForCounts() === self::MODE_ALL_PUBLISHED;
     }
 
     public function countModeCountsFeaturedOnly(): bool
     {
-        return $this->countMode === self::MODE_FEATURED_ONLY;
+        return $this->modeForCounts() === self::MODE_FEATURED_ONLY;
     }
 
     public function modeForPublicDisplay(): string
     {
+        if (! MultiTranscriptionSurfaces::isMultiMode()) {
+            return self::MODE_FEATURED_ONLY;
+        }
+
         return $this->publicMode;
     }
 
     public function modeForCounts(): string
     {
+        if (! MultiTranscriptionSurfaces::isMultiMode()) {
+            return self::MODE_FEATURED_ONLY;
+        }
+
         return $this->countMode;
     }
 

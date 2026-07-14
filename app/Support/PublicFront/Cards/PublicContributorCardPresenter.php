@@ -4,6 +4,7 @@ namespace App\Support\PublicFront\Cards;
 
 use App\Models\Author;
 use App\Support\PublicFront\PublicDefaultImageResolver;
+use App\Support\Transcriptions\TranscriptionModeLabel;
 
 class PublicContributorCardPresenter
 {
@@ -42,7 +43,11 @@ class PublicContributorCardPresenter
             'counts' => [
                 'transcriptions' => $transcriptionsCount,
                 'content_items' => $contentItemsCount,
-                'transcriptions_label' => trans_choice('public.labels.public_transcriptions_count', $transcriptionsCount, ['count' => $transcriptionsCount]),
+                'transcriptions_label' => TranscriptionModeLabel::choice(
+                    'public.labels.public_transcriptions_count',
+                    $transcriptionsCount,
+                    ['count' => $transcriptionsCount],
+                ),
                 'content_items_label' => trans_choice('public.labels.public_content_items_count', $contentItemsCount, ['count' => $contentItemsCount]),
             ],
         ];

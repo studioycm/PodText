@@ -14,7 +14,7 @@
         data-test="contributor-item-transcriptions"
     >
         <p class="font-medium text-gray-900 dark:text-gray-100">
-            {{ __('public.labels.contributor_transcriptions') }}
+            {{ \App\Support\Transcriptions\TranscriptionModeLabel::text('public.labels.contributor_transcriptions') }}
         </p>
 
         <ul class="mt-2 space-y-1">

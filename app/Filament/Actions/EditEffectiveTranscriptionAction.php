@@ -7,6 +7,7 @@ use App\Filament\Resources\Transcriptions\Schemas\TranscriptionForm;
 use App\Filament\Resources\Transcriptions\TranscriptionResource;
 use App\Models\ContentItem;
 use App\Models\Transcription;
+use App\Support\Transcriptions\TranscriptionModeLabel;
 use Filament\Actions\Action;
 use Filament\Notifications\Notification;
 use Filament\Support\Icons\Heroicon;
@@ -26,7 +27,7 @@ class EditEffectiveTranscriptionAction extends Action
             ->label(__('admin.actions.edit_effective_transcription'))
             ->icon(Heroicon::OutlinedPencilSquare)
             ->color('gray')
-            ->modalSubmitActionLabel(__('admin.actions.save_transcription'))
+            ->modalSubmitActionLabel(TranscriptionModeLabel::text('admin.actions.save_transcription'))
             ->modalHeading(fn (ContentItem $record): string => static::modalHeadingFor($record))
             ->modalDescription(__('admin.helpers.edit_effective_transcription_action'))
             ->hidden(fn (ContentItem $record): bool => ! static::recordHasTranscriptions($record))
@@ -137,7 +138,7 @@ class EditEffectiveTranscriptionAction extends Action
 
         return [
             Action::make('openEffectiveTranscriptionResource')
-                ->label(__('admin.actions.open_transcription_resource'))
+                ->label(TranscriptionModeLabel::text('admin.actions.open_transcription_resource'))
                 ->icon(Heroicon::OutlinedArrowTopRightOnSquare)
                 ->url(TranscriptionResource::getUrl('edit', ['record' => $transcription]))
                 ->openUrlInNewTab(false),
@@ -177,7 +178,7 @@ class EditEffectiveTranscriptionAction extends Action
 
         Notification::make()
             ->success()
-            ->title(__('admin.notifications.effective_transcription_saved'))
+            ->title(TranscriptionModeLabel::text('admin.notifications.effective_transcription_saved'))
             ->send();
     }
 

@@ -22,6 +22,8 @@ use App\Support\Media\EpisodeSpotifyLookup;
 use App\Support\Media\ImageFileNamer;
 use App\Support\PublicFront\ContentItemDisplayTitle;
 use App\Support\Slugs\HebrewSlugger;
+use App\Support\Transcriptions\MultiTranscriptionSurfaces;
+use App\Support\Transcriptions\TranscriptionModeLabel;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Checkbox;
 use Filament\Forms\Components\DateTimePicker;
@@ -279,8 +281,8 @@ class EpisodeWorkspaceForm
 
     private static function transcriptionSection(AdminUxSettings $settings): Section
     {
-        $section = Section::make(__('admin.sections.episode_workspace_transcription'))
-            ->description(__('admin.descriptions.episode_workspace_transcription'))
+        $section = Section::make(TranscriptionModeLabel::text('admin.sections.episode_workspace_transcription'))
+            ->description(TranscriptionModeLabel::text('admin.descriptions.episode_workspace_transcription'))
             ->relationship('workspaceTranscription')
             ->mutateRelationshipDataBeforeCreateUsing(fn (array $data): array => self::normalizeTranscriptionData($data))
             ->mutateRelationshipDataBeforeSaveUsing(fn (array $data): array => self::normalizeTranscriptionData($data))
@@ -288,15 +290,17 @@ class EpisodeWorkspaceForm
                 Html::make(fn (?Model $record = null, ?Livewire $livewire = null): Htmlable => self::hiddenTranscriptionsHint(
                     self::parentContentItemFromContext($record, $livewire),
                 ))
-                    ->visible((bool) $settings->show_episode_workspace_hint_line)
+                    ->visible((bool) $settings->show_episode_workspace_hint_line
+                        && MultiTranscriptionSurfaces::isMultiMode())
                     ->columnSpanFull(),
                 RelationshipOptionForms::configureTranscriberRelationshipSelect(
                     Select::make('transcriber_ids'),
+                    episodeLanguage: true,
                 )
                     ->required(false),
                 TextInput::make('title')
                     ->label(__('admin.fields.title'))
-                    ->helperText(__('admin.helpers.transcription_title'))
+                    ->helperText(TranscriptionModeLabel::text('admin.helpers.transcription_title'))
                     ->maxLength(255),
                 TextInput::make('language_code')
                     ->label(__('admin.fields.language_code'))
@@ -307,11 +311,11 @@ class EpisodeWorkspaceForm
                     ->visible((bool) $settings->show_episode_workspace_language_code),
                 PublicationStatusSelect::make('status')
                     ->label(__('admin.fields.status'))
-                    ->helperText(__('admin.helpers.transcription_status'))
+                    ->helperText(TranscriptionModeLabel::text('admin.helpers.transcription_status'))
                     ->required(),
                 DateTimePicker::make('published_at')
                     ->label(__('admin.fields.published_at'))
-                    ->helperText(__('admin.helpers.transcription_published_at'))
+                    ->helperText(TranscriptionModeLabel::text('admin.helpers.transcription_published_at'))
                     ->displayFormat('d/m/Y H:i')
                     ->timezone('Asia/Jerusalem'),
                 MarkdownEditor::make('transcript_markdown')
@@ -414,7 +418,9 @@ class EpisodeWorkspaceForm
         $items = [
             __('admin.labels.visibility_group', ['state' => $groupVisible ? __('admin.labels.active') : __('admin.labels.inactive')]),
             __('admin.labels.visibility_item', ['state' => $itemVisible ? __('admin.labels.active') : __('admin.labels.inactive')]),
-            __('admin.labels.visibility_transcription', ['state' => $transcription?->isPublished() ? __('admin.labels.active') : __('admin.labels.inactive')]),
+            TranscriptionModeLabel::text('admin.labels.visibility_transcription', [
+                'state' => $transcription?->isPublished() ? __('admin.labels.active') : __('admin.labels.inactive'),
+            ]),
         ];
 
         $html = collect($items)

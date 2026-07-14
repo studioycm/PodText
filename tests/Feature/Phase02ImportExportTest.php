@@ -1,6 +1,7 @@
 <?php
 
 use App\Enums\PublicationStatus;
+use App\Enums\TranscriptionMode;
 use App\Filament\Exports\CategoryExporter;
 use App\Filament\Exports\ContentGroupExporter;
 use App\Filament\Exports\ContentItemExporter;
@@ -39,6 +40,7 @@ use Livewire\Livewire;
 uses(RefreshDatabase::class);
 
 beforeEach(function (): void {
+    setTestTranscriptionMode(TranscriptionMode::Multi);
     Filament::setCurrentPanel(Filament::getPanel('admin'));
     Http::preventStrayRequests();
     Mail::fake();
@@ -129,6 +131,32 @@ it('imports transcriptions by reference key and never writes the legacy item tra
         ->transcript_markdown->toBe('Updated body')
         ->status->toBe(PublicationStatus::Draft)
         ->and($item->refresh()->transcript_markdown)->toBeNull();
+});
+
+it('blocks importing a second transcription for an episode in single mode', function (): void {
+    setTestTranscriptionMode(TranscriptionMode::Single);
+    app()->setLocale('en');
+
+    $item = ContentItem::factory()->create();
+    $firstAuthor = Author::factory()->create();
+    $secondAuthor = Author::factory()->create();
+
+    Transcription::factory()
+        ->for($item)
+        ->forAuthor($firstAuthor)
+        ->create();
+
+    expect(fn () => phase02ImportRecord(TranscriptionImporter::class, [
+        'reference_key' => (string) Str::ulid(),
+        'content_item_reference_key' => $item->reference_key,
+        'author_reference_key' => $secondAuthor->reference_key,
+        'title' => 'Blocked imported transcript',
+        'language_code' => 'he',
+        'transcript_markdown' => 'Blocked import body',
+        'status' => PublicationStatus::Draft->value,
+        'published_at' => '',
+    ], options: ['mode' => 'create']))
+        ->toThrow(ValidationException::class, 'This episode already has its transcript');
 });
 
 it('imports transcriptions with multiple transcriber reference keys and names', function (): void {

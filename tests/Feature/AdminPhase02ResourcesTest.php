@@ -78,6 +78,7 @@ use Spatie\LaravelSettings\SettingsContainer;
 uses(RefreshDatabase::class);
 
 beforeEach(function (): void {
+    setTestTranscriptionMode(TranscriptionMode::Multi);
     Filament::setCurrentPanel(Filament::getPanel('admin'));
     fakeSettingsBackupSnapshotQueue();
     Http::preventStrayRequests();

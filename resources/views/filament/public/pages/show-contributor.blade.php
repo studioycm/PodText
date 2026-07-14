@@ -34,7 +34,7 @@
                     </h1>
                     <div class="flex flex-wrap gap-2 text-sm text-gray-600 dark:text-gray-300">
                         <span class="rounded-md bg-gray-100 px-2 py-1 dark:bg-gray-800" data-test="public-transcriptions-count">
-                            {{ trans_choice('public.labels.public_transcriptions_count', (int) $author->public_transcriptions_count, ['count' => (int) $author->public_transcriptions_count]) }}
+                            {{ \App\Support\Transcriptions\TranscriptionModeLabel::choice('public.labels.public_transcriptions_count', (int) $author->public_transcriptions_count, ['count' => (int) $author->public_transcriptions_count], 'public.labels.single.public_transcriptions_count_full') }}
                         </span>
                         <span class="rounded-md bg-gray-100 px-2 py-1 dark:bg-gray-800" data-test="public-content-items-count">
                             {{ trans_choice('public.labels.public_content_items_count', (int) $author->public_content_items_count, ['count' => (int) $author->public_content_items_count]) }}
