@@ -13,7 +13,7 @@ live mail was sent, nothing was pushed, and no production state was touched.
 
 ## Commit hash
 
-Pending implementation commit.
+`650b631 feat: attach email verification inline to the email field`
 
 ## Requirement classification
 
@@ -153,6 +153,6 @@ Pending implementation commit.
 
 ## Current git status
 
-Implementation and documentation are ready for the ordered final gate and the
-implementation commit. The required docs-only hash backfill follows
-immediately. No unrelated working-tree changes are present.
+The implementation is committed as `650b631`. The only follow-up change is the
+required docs-only hash backfill. No unrelated working-tree changes are
+present.
