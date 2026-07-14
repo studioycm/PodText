@@ -8,7 +8,7 @@ Executed only `prompts/pre-13-prompts/settings-sp3a-codex-prompt.md`, prompt ver
 
 ## Commit hash
 
-`PENDING`
+`88fdda2 perf: add settings measurement protocol, lock surface, and import overlay`
 
 ## Requirement classification
 
@@ -132,4 +132,4 @@ Schema inspection confirmed indexed foreign keys and type/status constraints. Hu
 
 ## Current git status
 
-Implementation and docs are uncommitted before the canonical two-commit ending. Preflight had no unrelated dirt.
+The implementation is committed as `88fdda2`. The only follow-up change is the required docs-only hash backfill. Preflight had no unrelated dirt.
