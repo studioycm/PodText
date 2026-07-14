@@ -87,7 +87,8 @@ class ContentGroupsTable
                     ->relationship('categories', 'name')
                     ->multiple()
                     ->searchable()
-                    ->preload(),
+                    ->preload(false)
+                    ->optionsLimit(50),
             ])
             ->headerActions([
                 ImportAction::make()

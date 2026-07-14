@@ -181,6 +181,10 @@ function step10rB1SelectHasOptions(Select $field, array $expected, array $unexpe
 {
     $options = $field->getOptions();
 
+    if ($options === [] && $field->isSearchable()) {
+        $options = $field->getSearchResults('');
+    }
+
     foreach ($expected as $key => $label) {
         if (! array_key_exists($key, $options) || $options[$key] !== $label) {
             return false;

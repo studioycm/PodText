@@ -14,6 +14,7 @@ class PublicationStatusSelect
     {
         return Select::make($name)
             ->options(PublicationStatus::class)
+            ->preload()
             ->default(PublicationStatus::Draft->value)
             ->live()
             ->afterStateUpdated(function (Set $set, Get $get, mixed $state) use ($publishedAtField): void {

@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\MeasureSettingsSp3aResponse;
 use App\Support\PublicFront\Maintenance\MaintenancePageRenderer;
 use App\Support\PublicFront\PublicFrontConfigReader;
 use Illuminate\Foundation\Application;
@@ -18,7 +19,7 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withCommands()
     ->withMiddleware(function (Middleware $middleware): void {
-        //
+        $middleware->append(MeasureSettingsSp3aResponse::class);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $maintenanceCsrfRetryResponse = function (Request $request): ?SymfonyResponse {

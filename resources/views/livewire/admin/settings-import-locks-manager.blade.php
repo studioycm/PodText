@@ -9,6 +9,12 @@
             </div>
         @endif
 
+        @if($retiredLockedPaths !== [])
+            <div class="mb-4 rounded-lg border border-warning-200 bg-warning-50 px-4 py-3 text-sm text-warning-700 dark:border-warning-500/30 dark:bg-warning-500/10 dark:text-warning-300">
+                {{ __('admin.settings_import_locks.retired_report', ['count' => count($retiredLockedPaths)]) }}
+            </div>
+        @endif
+
         <div class="mb-5 flex flex-wrap gap-3">
             <x-filament::button wire:click="saveLocks" icon="heroicon-o-lock-closed">
                 {{ __('admin.actions.save_import_locks') }}

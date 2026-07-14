@@ -40,7 +40,8 @@ class TranscriptionForm
                 ->helperText(TranscriptionModeLabel::singleText('admin.helpers.transcription_content_item'))
                 ->relationship('contentItem', 'title')
                 ->searchable()
-                ->preload()
+                ->preload(false)
+                ->optionsLimit(50)
                 ->required();
         }
 

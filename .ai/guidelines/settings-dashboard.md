@@ -42,6 +42,7 @@ Spatie Settings for global options, normal database records for ordered homepage
 
 - Avoid default polling in widgets unless needed.
 - Use searchable table columns and useful warning filters.
+- Preload bounded Select options (about 20 or fewer) and remove search from tiny sets (10 or fewer). Keep growing or settings-derived Selects searchable without preload, cap results with `optionsLimit()`, constrain the server query, and memoize computed option services per request.
 - Use enum icons instead of string icons.
 - FilaCheck/FilaCheck Pro must pass; do not run `filacheck --fix` unless explicitly approved.
 

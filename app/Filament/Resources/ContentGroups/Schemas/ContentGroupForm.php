@@ -106,7 +106,8 @@ class ContentGroupForm
                                 ->relationship('categories', 'name')
                                 ->multiple()
                                 ->searchable()
-                                ->preload()
+                                ->preload(false)
+                                ->optionsLimit(50)
                                 ->helperText(__('admin.helpers.group_categories')),
                             allowEdit: false,
                         ),

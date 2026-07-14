@@ -68,7 +68,8 @@ class HomepageSectionForm
                                 ->helperText(__('admin.helpers.homepage_category'))
                                 ->relationship('category', 'name')
                                 ->searchable()
-                                ->preload()
+                                ->preload(false)
+                                ->optionsLimit(50)
                                 ->required(fn (Get $get): bool => self::isSectionType($get, HomepageSectionType::Category))
                                 ->visible(fn (Get $get): bool => self::isSectionType($get, HomepageSectionType::Category))
                         ),
@@ -78,7 +79,8 @@ class HomepageSectionForm
                                 ->helperText(__('admin.helpers.homepage_tag'))
                                 ->relationship('tag', 'name')
                                 ->searchable()
-                                ->preload()
+                                ->preload(false)
+                                ->optionsLimit(50)
                                 ->required(fn (Get $get): bool => self::isSectionType($get, HomepageSectionType::Tag))
                                 ->visible(fn (Get $get): bool => self::isSectionType($get, HomepageSectionType::Tag))
                         ),
@@ -88,7 +90,8 @@ class HomepageSectionForm
                                 ->helperText(__('admin.helpers.homepage_content_group'))
                                 ->relationship('contentGroup', 'title')
                                 ->searchable()
-                                ->preload()
+                                ->preload(false)
+                                ->optionsLimit(50)
                                 ->required(fn (Get $get): bool => self::isSectionType($get, HomepageSectionType::ContentGroup))
                                 ->visible(fn (Get $get): bool => self::isSectionType($get, HomepageSectionType::ContentGroup))
                         ),
@@ -127,13 +130,11 @@ class HomepageSectionForm
                             ->helperText(__('admin.helpers.public_display_source_type'))
                             ->options(PublicDisplaySectionRegistry::sourceTypeOptions())
                             ->live()
-                            ->searchable()
                             ->placeholder(__('admin.placeholders.use_legacy_homepage_type')),
                         Select::make('source_config.sort')
                             ->label(__('admin.fields.public_display_sort'))
                             ->helperText(__('admin.helpers.public_display_sort'))
                             ->options(PublicDisplaySectionRegistry::sortOptions())
-                            ->searchable()
                             ->placeholder(__('admin.placeholders.use_source_default')),
                         Select::make('source_config.direction')
                             ->label(__('admin.fields.public_display_direction'))
@@ -164,15 +165,19 @@ class HomepageSectionForm
                             ->helperText(__('admin.helpers.public_display_include_items'))
                             ->multiple()
                             ->searchable()
-                            ->preload()
-                            ->options(fn (): array => self::contentItemOptions()),
+                            ->preload(false)
+                            ->optionsLimit(50)
+                            ->getSearchResultsUsing(fn (?string $search): array => self::contentItemOptions($search))
+                            ->getOptionLabelsUsing(fn (array $values): array => self::contentItemLabels($values)),
                         Select::make('selection_config.exclude_ids')
                             ->label(__('admin.fields.public_display_exclude_items'))
                             ->helperText(__('admin.helpers.public_display_exclude_items'))
                             ->multiple()
                             ->searchable()
-                            ->preload()
-                            ->options(fn (): array => self::contentItemOptions()),
+                            ->preload(false)
+                            ->optionsLimit(50)
+                            ->getSearchResultsUsing(fn (?string $search): array => self::contentItemOptions($search))
+                            ->getOptionLabelsUsing(fn (array $values): array => self::contentItemLabels($values)),
                     ])
                     ->columns(2),
                 Section::make(__('admin.sections.homepage_display_config'))
@@ -207,7 +212,7 @@ class HomepageSectionForm
                             ->label(__('admin.fields.public_display_view_all_route_key'))
                             ->helperText(__('admin.helpers.public_display_view_all_route_key'))
                             ->options(PublicFrontConfigRegistry::routeOptions())
-                            ->searchable(),
+                            ->preload(),
                         TextInput::make('display_config.button_label')
                             ->label(__('admin.fields.public_display_button_label'))
                             ->helperText(__('admin.helpers.public_display_button_label'))
@@ -217,13 +222,14 @@ class HomepageSectionForm
                             ->label(__('admin.fields.public_display_button_route_key'))
                             ->helperText(__('admin.helpers.public_display_button_route_key'))
                             ->options(PublicFrontConfigRegistry::routeOptions())
-                            ->searchable()
                             ->visible(fn (Get $get): bool => self::isSourceType($get, PublicDisplaySectionRegistry::CONTENT_BLOCK)),
                         Select::make('display_config.button_form_key')
                             ->label(__('admin.fields.public_display_button_form_key'))
                             ->helperText(__('admin.helpers.public_display_button_form_key'))
                             ->options(fn (): array => self::publicFormOptions())
                             ->searchable()
+                            ->preload(false)
+                            ->optionsLimit(50)
                             ->visible(fn (Get $get): bool => self::isSourceType($get, PublicDisplaySectionRegistry::CONTENT_BLOCK)),
                         Select::make('display_config.button_display_mode')
                             ->label(__('admin.fields.public_display_button_display_mode'))
@@ -240,8 +246,11 @@ class HomepageSectionForm
                         Select::make('display_config.template_key')
                             ->label(__('admin.fields.card_template_key'))
                             ->helperText(__('admin.helpers.public_display_template_key'))
-                            ->options(fn (Get $get): array => self::cardTemplateOptions($get))
-                            ->searchable(),
+                            ->searchable()
+                            ->preload(false)
+                            ->optionsLimit(50)
+                            ->getSearchResultsUsing(fn (Get $get, ?string $search): array => self::cardTemplateOptions($get, $search))
+                            ->getOptionLabelUsing(fn (Get $get, mixed $value): ?string => self::cardTemplateOptions($get)[$value] ?? null),
                         Select::make('display_config.template_overrides.layout')
                             ->label(__('admin.fields.card_template_layout'))
                             ->helperText(__('admin.helpers.card_template_layout'))
@@ -345,11 +354,23 @@ class HomepageSectionForm
     /**
      * @return array<int, string>
      */
-    private static function contentItemOptions(): array
+    private static function contentItemOptions(?string $search = null): array
     {
         return ContentItem::query()
+            ->when(filled($search), fn ($query) => $query->where('title', 'like', '%'.trim((string) $search).'%'))
             ->orderBy('title')
-            ->limit(100)
+            ->limit(50)
+            ->pluck('title', 'id')
+            ->all();
+    }
+
+    /** @param array<int|string, mixed> $values
+     * @return array<int|string, string>
+     */
+    private static function contentItemLabels(array $values): array
+    {
+        return ContentItem::query()
+            ->whereKey($values)
             ->pluck('title', 'id')
             ->all();
     }
@@ -383,7 +404,7 @@ class HomepageSectionForm
     /**
      * @return array<string, string>
      */
-    private static function cardTemplateOptions(Get $get): array
+    private static function cardTemplateOptions(Get $get, ?string $search = null): array
     {
         $family = self::selectedTemplateFamily($get);
 
@@ -391,7 +412,12 @@ class HomepageSectionForm
             return [];
         }
 
-        return app(PublicFrontCardTemplateResolver::class)->optionsForFamily($family);
+        return collect(app(PublicFrontCardTemplateResolver::class)->optionsForFamily($family))
+            ->when(filled($search), fn ($options) => $options->filter(
+                fn (string $label, string $key): bool => str_contains(mb_strtolower($label.' '.$key), mb_strtolower(trim((string) $search))),
+            ))
+            ->take(50)
+            ->all();
     }
 
     private static function selectedTemplateFamily(Get $get): ?string

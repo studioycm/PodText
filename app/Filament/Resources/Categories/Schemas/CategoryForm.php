@@ -24,7 +24,8 @@ class CategoryForm
                                 ->label(__('admin.fields.parent_category'))
                                 ->relationship('parent', 'name')
                                 ->searchable()
-                                ->preload()
+                                ->preload(false)
+                                ->optionsLimit(50)
                         ),
                         SlugInput::source('name', table: 'categories')
                             ->label(__('admin.fields.name'))

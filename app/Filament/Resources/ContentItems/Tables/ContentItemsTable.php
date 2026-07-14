@@ -11,7 +11,6 @@ use App\Filament\Resources\ContentItems\ContentItemResource;
 use App\Filament\Resources\Support\RelationshipOptionForms;
 use App\Models\Author;
 use App\Models\ContentItem;
-use App\Models\ContentTag;
 use App\Support\PublicFront\PublicDefaultImageResolver;
 use App\Support\Transcriptions\TranscriptionModeLabel;
 use Filament\Actions\Action;
@@ -142,7 +141,8 @@ class ContentItemsTable
                     ->label(__('admin.fields.content_group'))
                     ->relationship('contentGroup', 'title')
                     ->searchable()
-                    ->preload(),
+                    ->preload(false)
+                    ->optionsLimit(50),
                 SelectFilter::make('status')
                     ->label(__('admin.fields.status'))
                     ->options(PublicationStatus::class),
@@ -153,7 +153,8 @@ class ContentItemsTable
                         ->pluck('name', 'id')
                         ->all())
                     ->searchable()
-                    ->preload()
+                    ->preload(false)
+                    ->optionsLimit(50)
                     ->query(fn (Builder $query, array $data): Builder => filled($data['value'] ?? null)
                         ? $query->whereHas('transcriptions.authors', fn (Builder $query): Builder => $query->whereKey($data['value']))
                         : $query),
@@ -162,19 +163,15 @@ class ContentItemsTable
                     ->relationship('categories', 'name')
                     ->multiple()
                     ->searchable()
-                    ->preload(),
+                    ->preload(false)
+                    ->optionsLimit(50),
                 SelectFilter::make('content_tags')
                     ->label(__('admin.fields.tags'))
+                    ->relationship('tags', 'name', modifyQueryUsing: fn (Builder $query): Builder => $query->where('type', 'content'))
                     ->multiple()
-                    ->options(fn (): array => ContentTag::query()
-                        ->content()
-                        ->orderBy('name')
-                        ->get()
-                        ->mapWithKeys(fn (ContentTag $tag): array => [$tag->getKey() => $tag->name])
-                        ->all())
-                    ->query(fn (Builder $query, array $data): Builder => filled($data['values'] ?? [])
-                        ? $query->whereHas('tags', fn (Builder $query): Builder => $query->whereIn('tags.id', $data['values']))
-                        : $query),
+                    ->searchable()
+                    ->preload(false)
+                    ->optionsLimit(50),
                 SelectFilter::make('embed_provider')
                     ->label(__('admin.fields.embed_provider'))
                     ->options(fn (): array => ContentItem::query()

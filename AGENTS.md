@@ -312,7 +312,7 @@ When implemented, a public content item should be visible only when its publicat
 - Do not generate View pages or Infolists unless explicitly required.
 - Keep Resources focused on UI composition.
 - Avoid N+1 queries in table/card closures.
-- Relationship selects should be searchable when datasets can grow.
+- Selects with bounded option sets (about 20 or fewer) should preload; remove search from tiny sets (10 or fewer). Growing relationship or computed selects must be searchable without preload, cap results with `optionsLimit()`, and use a constrained fast server query. Memoize computed option services within the request.
 - FileUpload fields must define accepted file types, max size, disk/visibility, and validation.
 - Custom filters should expose active indicators where appropriate.
 - Widgets should not poll unless there is a clear requirement.
@@ -648,7 +648,7 @@ Filament Table inside a public Livewire component, rendered as item cards or row
 
 - Tables need searchable columns.
 - Custom filters need indicators.
-- Relationship filters should be searchable/preloaded where record count can grow.
+- Growing relationship filters should be searchable without preload and use a capped constrained query; only bounded filters should preload.
 - FilaCheck/FilaCheck Pro must pass; do not run `filacheck --fix` unless explicitly approved.
 
 ## Cross-cutting UI rules
@@ -775,7 +775,7 @@ Custom hierarchical `Category` model plus Spatie Laravel Tags with the Filament 
 
 ## FilaCheck / FilaCheck Pro notes
 
-- Relationship selects should be searchable/preloaded.
+- Relationship selects backed by growing tables should be searchable without preload and must cap results; preload only demonstrably bounded option sets.
 - Category/tag tables need searchable name/slug columns and useful filters.
 - FilaCheck/FilaCheck Pro must pass; do not run `filacheck --fix` unless explicitly approved.
 

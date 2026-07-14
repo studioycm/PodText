@@ -8,7 +8,6 @@ use App\Filament\Actions\EditEffectiveTranscriptionAction;
 use App\Filament\Resources\ContentItems\ContentItemResource;
 use App\Filament\Resources\ContentItems\Tables\ContentItemsTable;
 use App\Models\ContentItem;
-use App\Models\ContentTag;
 use App\Support\PublicFront\PublicDefaultImageResolver;
 use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
@@ -130,19 +129,15 @@ class ContentItemsRelationManager extends RelationManager
                     ->relationship('categories', 'name')
                     ->multiple()
                     ->searchable()
-                    ->preload(),
+                    ->preload(false)
+                    ->optionsLimit(50),
                 SelectFilter::make('content_tags')
                     ->label(__('admin.fields.tags'))
+                    ->relationship('tags', 'name', modifyQueryUsing: fn (Builder $query): Builder => $query->where('type', 'content'))
                     ->multiple()
-                    ->options(fn (): array => ContentTag::query()
-                        ->content()
-                        ->orderBy('name')
-                        ->get()
-                        ->mapWithKeys(fn (ContentTag $tag): array => [$tag->getKey() => $tag->name])
-                        ->all())
-                    ->query(fn (Builder $query, array $data): Builder => filled($data['values'] ?? [])
-                        ? $query->whereHas('tags', fn (Builder $query): Builder => $query->whereIn('tags.id', $data['values']))
-                        : $query),
+                    ->searchable()
+                    ->preload(false)
+                    ->optionsLimit(50),
                 TernaryFilter::make('is_pinned')
                     ->label(__('admin.fields.is_pinned')),
             ])

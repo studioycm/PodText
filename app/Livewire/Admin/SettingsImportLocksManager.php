@@ -4,8 +4,8 @@ namespace App\Livewire\Admin;
 
 use App\Support\SettingsLifecycle\PublicSettingsPackage;
 use App\Support\SettingsLifecycle\SettingsImportLocks;
+use App\Support\SettingsLifecycle\SettingsImportLockSurfaceRegistry;
 use App\Support\SettingsLifecycle\SettingsLifecycleSchema;
-use App\Support\SettingsLifecycle\SettingsLifecycleUnit;
 use Illuminate\Contracts\View\View;
 
 class SettingsImportLocksManager extends SettingsLifecycleSelectionTable
@@ -16,25 +16,29 @@ class SettingsImportLocksManager extends SettingsLifecycleSelectionTable
 
     public ?string $resultMessage = null;
 
+    /** @var array<int, string> */
+    public array $retiredLockedPaths = [];
+
     public function mount(): void
     {
         $schema = app(SettingsLifecycleSchema::class);
         $locks = app(SettingsImportLocks::class);
+        $registry = app(SettingsImportLockSurfaceRegistry::class);
         $payload = $schema->payloadForGroup();
 
-        $this->rows = collect($schema->units($payload))
-            ->map(fn (SettingsLifecycleUnit $unit): array => [
-                'group' => $unit->section,
-                'group_label' => $unit->sectionLabel,
-                'path' => $unit->path,
-                'label' => $unit->label,
-                'label_key' => $unit->labelKey,
-                'structural_type' => $unit->structuralType,
-                'expected_type' => $unit->expectedScalarType,
-                'semantics' => $unit->semantics,
+        $this->rows = collect($registry->surfaces($payload))
+            ->map(fn (array $surface): array => [
+                'group' => $surface['group'],
+                'group_label' => $surface['group_label'],
+                'path' => $surface['id'],
+                'label' => $surface['label'],
+                'label_key' => '',
+                'structural_type' => $surface['type'],
+                'expected_type' => null,
+                'semantics' => [],
                 'state' => 'unchanged',
                 'outcome' => 'lockable',
-                'current_preview' => $this->preview($schema->value($payload, $unit->path), $schema->valueExists($payload, $unit->path)),
+                'current_preview' => __('admin.settings_import_locks.surface_unit_count', ['count' => count($surface['unit_paths'])]),
                 'imported_preview' => '',
                 'selectable' => true,
                 'selected' => false,
@@ -44,7 +48,9 @@ class SettingsImportLocksManager extends SettingsLifecycleSelectionTable
             ->values()
             ->all();
 
-        $this->selectedPaths = $locks->lockedPaths();
+        $lockedPaths = $locks->lockedPaths();
+        $this->selectedPaths = $registry->selectedSurfaceIds($lockedPaths, $payload);
+        $this->retiredLockedPaths = $registry->retiredLockedPaths($lockedPaths, $payload);
     }
 
     public function render(): View
@@ -56,25 +62,30 @@ class SettingsImportLocksManager extends SettingsLifecycleSelectionTable
 
     public function saveLocks(): void
     {
-        $this->selectedPaths = app(SettingsImportLocks::class)->save($this->selectedPaths);
+        $registry = app(SettingsImportLockSurfaceRegistry::class);
+        $lockedPaths = app(SettingsImportLocks::class)->save([
+            ...$registry->unitPathsForSurfaceIds($this->selectedPaths),
+            ...$this->retiredLockedPaths,
+        ]);
+        $this->selectedPaths = $registry->selectedSurfaceIds($lockedPaths);
+        $this->retiredLockedPaths = $registry->retiredLockedPaths($lockedPaths);
         $this->resultMessage = __('admin.messages.settings_import_locks_saved', [
-            'count' => count($this->selectedPaths),
+            'count' => count($lockedPaths),
         ]);
     }
 
     public function lockAllFrontTexts(): void
     {
-        $locks = app(SettingsImportLocks::class);
-
-        $this->selectedPaths = $locks->normalize([
+        $this->selectedPaths = array_values(array_unique([
             ...$this->selectedPaths,
-            ...$locks->frontTextLockPaths(),
-        ]);
+            ...app(SettingsImportLockSurfaceRegistry::class)->surfaceIdsForFrontText(),
+        ]));
     }
 
     public function unlockAll(): void
     {
         $this->selectedPaths = [];
+        $this->retiredLockedPaths = [];
     }
 
     private function preview(mixed $value, bool $exists): string

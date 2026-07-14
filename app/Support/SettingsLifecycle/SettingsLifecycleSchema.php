@@ -11,6 +11,19 @@ use Spatie\LaravelSettings\Settings;
 
 class SettingsLifecycleSchema
 {
+    /** @var array<string, array<string, mixed>> */
+    private array $groupPayloads = [];
+
+    /** @var array<string, array<int, SettingsLifecycleUnit>> */
+    private array $units = [];
+
+    /** @var array<string, array<string, SettingsLifecycleUnit>> */
+    private array $unitsByPath = [];
+
+    private int $derivations = 0;
+
+    private int $cacheHits = 0;
+
     public function __construct(
         private readonly SettingsLifecycleGroups $groups,
     ) {}
@@ -31,8 +44,17 @@ class SettingsLifecycleSchema
     {
         $registration = $this->groups->get($group ?? $this->groups->defaultGroup()->name);
         $payload ??= $this->payloadFor($registration);
+        $cacheKey = $this->cacheKey($registration, $payload);
 
-        return collect($this->deriveUnitPaths($payload, $registration))
+        if (isset($this->units[$cacheKey])) {
+            $this->cacheHits++;
+
+            return $this->units[$cacheKey];
+        }
+
+        $this->derivations++;
+
+        return $this->units[$cacheKey] = collect($this->deriveUnitPaths($payload, $registration))
             ->map(fn (string $path): SettingsLifecycleUnit => new SettingsLifecycleUnit(
                 group: $registration->name,
                 path: $path,
@@ -50,13 +72,7 @@ class SettingsLifecycleSchema
 
     public function unitFor(string $path, ?array $payload = null, ?string $group = null): ?SettingsLifecycleUnit
     {
-        foreach ($this->units($payload, $group) as $unit) {
-            if ($unit->path === $path) {
-                return $unit;
-            }
-        }
-
-        return null;
+        return $this->unitsByPath($payload, $group)[$path] ?? null;
     }
 
     /**
@@ -64,7 +80,11 @@ class SettingsLifecycleSchema
      */
     public function unitsByPath(?array $payload = null, ?string $group = null): array
     {
-        return collect($this->units($payload, $group))
+        $registration = $this->groups->get($group ?? $this->groups->defaultGroup()->name);
+        $payload ??= $this->payloadFor($registration);
+        $cacheKey = $this->cacheKey($registration, $payload);
+
+        return $this->unitsByPath[$cacheKey] ??= collect($this->units($payload, $registration->name))
             ->keyBy('path')
             ->all();
     }
@@ -236,14 +256,39 @@ class SettingsLifecycleSchema
         return $this->payloadFor($this->groups->get($group ?? $this->groups->defaultGroup()->name));
     }
 
+    /**
+     * @return array{derivations: int, cache_hits: int, duplicate_loads: int, group_payload_loads: int}
+     */
+    public function metrics(): array
+    {
+        return [
+            'derivations' => $this->derivations,
+            'cache_hits' => $this->cacheHits,
+            'duplicate_loads' => 0,
+            'group_payload_loads' => count($this->groupPayloads),
+        ];
+    }
+
     private function payloadFor(SettingsLifecycleGroup $group): array
     {
+        if (isset($this->groupPayloads[$group->name])) {
+            return $this->groupPayloads[$group->name];
+        }
+
         $currentPayload = $group->currentPayload();
 
-        return array_replace_recursive(
+        return $this->groupPayloads[$group->name] = array_replace_recursive(
             array_intersect_key(PublicFrontConfigRegistry::defaults(), $currentPayload),
             $currentPayload,
         );
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     */
+    private function cacheKey(SettingsLifecycleGroup $group, array $payload): string
+    {
+        return $group->name.':'.hash('sha256', PublicSettingsPackage::canonicalPayloadJson($payload));
     }
 
     /**

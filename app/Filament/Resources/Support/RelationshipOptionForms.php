@@ -49,7 +49,8 @@ class RelationshipOptionForms
                 ->relationship('authors', 'name')
                 ->multiple()
                 ->searchable()
-                ->preload()
+                ->preload(false)
+                ->optionsLimit(50)
                 ->required()
                 ->loadStateFromRelationshipsUsing(static function (Select $component): void {
                     $record = $component->getRecord();
@@ -90,13 +91,20 @@ class RelationshipOptionForms
                 ->helperText($episodeLanguage
                     ? TranscriptionModeLabel::text('admin.helpers.transcription_transcribers')
                     : __('admin.helpers.transcription_transcribers'))
-                ->options(fn (): array => Author::query()
-                    ->orderBy('name')
-                    ->pluck('name', 'id')
-                    ->all())
                 ->multiple()
                 ->searchable()
-                ->preload()
+                ->preload(false)
+                ->optionsLimit(50)
+                ->getSearchResultsUsing(fn (?string $search): array => Author::query()
+                    ->when(filled($search), fn ($query) => $query->where('name', 'like', '%'.trim((string) $search).'%'))
+                    ->orderBy('name')
+                    ->limit(50)
+                    ->pluck('name', 'id')
+                    ->all())
+                ->getOptionLabelsUsing(fn (array $values): array => Author::query()
+                    ->whereKey($values)
+                    ->pluck('name', 'id')
+                    ->all())
                 ->required()
                 ->createOptionUsing(fn (array $data): int => Author::query()->create($data)->getKey()),
             schema: self::authorForm(),

@@ -17,6 +17,7 @@ use App\Support\PublicFront\PublicFrontConfigReader;
 use App\Support\SettingsLifecycle\PublicSettingsPackage;
 use App\Support\SettingsLifecycle\SettingsBackupManager;
 use App\Support\SettingsLifecycle\SettingsImportLocks;
+use App\Support\SettingsLifecycle\SettingsImportLockSurfaceRegistry;
 use App\Support\SettingsLifecycle\SettingsLifecycleSchema;
 use App\Support\SettingsLifecycle\SettingsLifecycleSelectionState;
 use App\Support\SettingsLifecycle\SettingsPackageImportAnalyzer;
@@ -378,14 +379,17 @@ it('persists import locks and derives the front-text preset from lockable units'
         expect($schema->unitPathsForSemanticPath($path, $payload))->toHaveCount(1, "Front-text path [{$path}] must map to exactly one lockable unit.");
     }
 
+    $registry = app(SettingsImportLockSurfaceRegistry::class);
+    $expectedPaths = $registry->unitPathsForSurfaceIds($registry->surfaceIdsForFrontText());
+
     Livewire::test(SettingsImportLocksManager::class)
         ->call('lockAllFrontTexts')
         ->assertSet('selectedPaths', fn (array $paths): bool => $paths !== [] && count($paths) === count(array_unique($paths)))
         ->call('saveLocks')
-        ->assertSee(__('admin.messages.settings_import_locks_saved', ['count' => count(app(SettingsImportLocks::class)->frontTextLockPaths())]));
+        ->assertSee(__('admin.messages.settings_import_locks_saved', ['count' => count($expectedPaths)]));
 
     expect(app(SettingsImportLocks::class)->lockedPaths())
-        ->toEqualCanonicalizing(app(SettingsImportLocks::class)->frontTextLockPaths());
+        ->toEqualCanonicalizing($expectedPaths);
 });
 
 it('keeps sensitive maintenance units selectable but deselected by default', function (): void {
@@ -434,17 +438,17 @@ it('keeps sensitive maintenance units selectable but deselected by default', fun
 
 it('unions the front-text preset with manually selected import locks', function (): void {
     $manualPath = 'settings_backups.thumbnail_max_width';
+    app(SettingsImportLocks::class)->save([$manualPath]);
+    $registry = app(SettingsImportLockSurfaceRegistry::class);
     $expectedPaths = app(SettingsImportLocks::class)->normalize([
         $manualPath,
-        ...app(SettingsImportLocks::class)->frontTextLockPaths(),
+        ...$registry->unitPathsForSurfaceIds($registry->surfaceIdsForFrontText()),
     ]);
 
     expect(app(SettingsImportLocks::class)->frontTextLockPaths())->not->toContain($manualPath);
 
     Livewire::test(SettingsImportLocksManager::class)
-        ->set('selectedPaths', [$manualPath])
         ->call('lockAllFrontTexts')
-        ->assertSet('selectedPaths', fn (array $paths): bool => $paths === $expectedPaths)
         ->call('saveLocks')
         ->assertSee(__('admin.messages.settings_import_locks_saved', ['count' => count($expectedPaths)]));
 
@@ -853,7 +857,7 @@ it('computes tri-state group toggle semantics', function (): void {
 
 it('toggles import locks from inline section and deep field actions', function (): void {
     $homepageSectionPath = 'public-content-settings-tabs.public-settings-tab-homepage.public-settings-lock-section-homepage-settings';
-    $itemPageDatesFieldPath = 'public-content-settings-tabs.public-settings-tab-item-page.public-settings-lock-section-public-front-item-page-dates.item_page.dates.site_published.label_override';
+    $maintenanceFieldPath = 'public-content-settings-tabs.public-settings-tab-maintenance.public-settings-lock-section-public-front-maintenance.maintenance.enabled';
     $scalarPaths = collect(app(SettingsLifecycleSchema::class)->units())
         ->filter(fn ($unit): bool => $unit->section === '_scalars')
         ->pluck('path')
@@ -864,7 +868,7 @@ it('toggles import locks from inline section and deep field actions', function (
         ->assertActionVisible(TestAction::make('manageImportLocks'))
         ->assertActionHasUrl(TestAction::make('manageImportLocks'), ManageSettingsImportLocks::getUrl())
         ->assertActionExists(TestAction::make('toggleImportLockGroup_homepage_settings')->schemaComponent($homepageSectionPath, 'form'))
-        ->assertActionExists(TestAction::make('toggleImportLockUnit_item_page_dates')->schemaComponent($itemPageDatesFieldPath, 'form'));
+        ->assertActionExists(TestAction::make('toggleImportLockUnit_maintenance_enabled')->schemaComponent($maintenanceFieldPath, 'form'));
 
     expect(str_ends_with(ManageSettingsImportLocks::getUrl(), '/admin/settings-import-locks'))->toBeTrue();
 
@@ -876,9 +880,9 @@ it('toggles import locks from inline section and deep field actions', function (
 
     expect(app(SettingsImportLocks::class)->lockedPaths())->toBe([]);
 
-    $component->callAction(TestAction::make('toggleImportLockUnit_item_page_dates')->schemaComponent($itemPageDatesFieldPath, 'form'));
+    $component->callAction(TestAction::make('toggleImportLockUnit_maintenance_enabled')->schemaComponent($maintenanceFieldPath, 'form'));
 
-    expect(app(SettingsImportLocks::class)->lockedPaths())->toBe(['item_page.dates']);
+    expect(app(SettingsImportLocks::class)->lockedPaths())->toBe(['maintenance.enabled']);
 });
 
 it('lets locked settings remain editable and save normally', function (): void {
@@ -894,23 +898,23 @@ it('lets locked settings remain editable and save normally', function (): void {
 });
 
 it('renders the settings header action and rtl lock hints', function (): void {
-    $homepageLimitFieldPath = 'public-content-settings-tabs.public-settings-tab-homepage.public-settings-lock-section-homepage-settings.homepage_item_limit';
+    $maintenanceFieldPath = 'public-content-settings-tabs.public-settings-tab-maintenance.public-settings-lock-section-public-front-maintenance.maintenance.enabled';
 
     app()->setLocale('he');
-    app(SettingsImportLocks::class)->save(['homepage_item_limit']);
+    app(SettingsImportLocks::class)->save(['maintenance.enabled']);
 
     Livewire::test(PublicContentSettingsPage::class)
         ->assertActionVisible(TestAction::make('manageImportLocks'))
         ->assertActionHasLabel(TestAction::make('manageImportLocks'), __('admin.actions.manage_import_locks'))
-        ->assertActionExists(TestAction::make('toggleImportLockUnit_homepage_item_limit')->schemaComponent($homepageLimitFieldPath, 'form'));
+        ->assertActionExists(TestAction::make('toggleImportLockUnit_maintenance_enabled')->schemaComponent($maintenanceFieldPath, 'form'));
 
     $this->get(PublicContentSettingsPage::getUrl())
         ->assertOk()
         ->assertSee('dir="rtl"', false)
         ->assertSee(__('admin.actions.manage_import_locks'))
         ->assertSee(__('admin.settings_import_locks.inline_field_tooltip.locked', [
-            'unit' => __('admin.fields.homepage_item_limit'),
-            'path' => 'homepage_item_limit',
+            'unit' => __('admin.settings_paths.maintenance.enabled'),
+            'path' => 'maintenance.enabled',
         ]));
 });
 

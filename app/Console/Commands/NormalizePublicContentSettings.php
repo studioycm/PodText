@@ -11,6 +11,7 @@ use App\Support\PublicFront\PublicFrontConfigValidator;
 use App\Support\PublicFront\PublicFrontRenderContext;
 use App\Support\SettingsLifecycle\PublicSettingsPackage;
 use App\Support\SettingsLifecycle\SettingsBackupManager;
+use App\Support\Transcriptions\MultiTranscriptionSurfaces;
 use Illuminate\Console\Command;
 use Spatie\LaravelSettings\SettingsContainer;
 
@@ -54,6 +55,12 @@ class NormalizePublicContentSettings extends Command
 
         $backup = $this->backups->createSystem();
         $settings = app(PublicContentSettings::class);
+
+        $normalizedGroups = MultiTranscriptionSurfaces::overlayUnauthorizedSettings(
+            $normalizedGroups,
+            PublicContentSettings::class,
+            null,
+        );
 
         foreach ($normalizedGroups as $key => $value) {
             if (property_exists($settings, $key)) {

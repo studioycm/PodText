@@ -131,3 +131,26 @@ it('creates a system backup and writes normalized settings when applied', functi
         ])
         ->and($settings->display_defaults)->not->toHaveKey('raw_classes');
 });
+
+it('keeps gated transcription policy bytes unchanged during anonymous normalize apply', function (): void {
+    updateSp2NormalizeSetting('transcription_policy', [
+        'public_mode' => 'forged_mode',
+        'count_mode' => 'forged_count',
+        'show_multiple_transcriptions_on_item_page' => true,
+    ]);
+    updateSp2NormalizeSetting('display_defaults', [
+        'layout' => 'rows',
+        'density' => 'invalid-density',
+    ]);
+
+    expect(Artisan::call('settings:normalize-public-content', ['--apply' => true]))->toBe(0);
+
+    clearSp2NormalizeSettingsState();
+
+    expect(app(PublicContentSettings::class)->transcription_policy)->toBe([
+        'public_mode' => 'forged_mode',
+        'count_mode' => 'forged_count',
+        'show_multiple_transcriptions_on_item_page' => true,
+    ])
+        ->and(app(PublicContentSettings::class)->display_defaults['density'])->toBe('comfortable');
+});

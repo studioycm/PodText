@@ -95,7 +95,8 @@ class TranscriptionsTable
                         ->pluck('name', 'id')
                         ->all())
                     ->searchable()
-                    ->preload()
+                    ->preload(false)
+                    ->optionsLimit(50)
                     ->query(fn (Builder $query, array $data): Builder => filled($data['value'] ?? null)
                         ? $query->whereHas('authors', fn (Builder $query): Builder => $query->whereKey($data['value']))
                         : $query),

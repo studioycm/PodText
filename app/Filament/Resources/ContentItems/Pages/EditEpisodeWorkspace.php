@@ -90,6 +90,8 @@ class EditEpisodeWorkspace extends EditRecord
                     ->label(__('admin.fields.existing_transcription'))
                     ->options(fn (): array => $this->existingTranscriptionOptions())
                     ->searchable()
+                    ->preload(false)
+                    ->optionsLimit(50)
                     ->visible(fn (Get $get): bool => $this->canPickExistingTranscription()
                         && $get('replacement_mode') === 'existing')
                     ->required(fn (Get $get): bool => $get('replacement_mode') === 'existing'),

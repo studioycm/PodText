@@ -22,7 +22,9 @@ use App\Support\PublicFront\PublicFrontConfigReader;
 use App\Support\PublicFront\PublicFrontConfigRegistry;
 use App\Support\PublicFront\PublicFrontConfigValidator;
 use App\Support\Settings\SettingsPageProfiler;
+use App\Support\Settings\SettingsSp3aMeasurementFixture;
 use App\Support\SettingsLifecycle\SettingsImportLocks;
+use App\Support\SettingsLifecycle\SettingsImportLockSurfaceRegistry;
 use App\Support\SettingsLifecycle\SettingsLifecycleSchema;
 use App\Support\SettingsLifecycle\SettingsLifecycleSelectionState;
 use App\Support\SettingsLifecycle\SettingsLifecycleUnit;
@@ -65,6 +67,8 @@ class PublicContentSettings extends SettingsPage
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedCog6Tooth;
 
+    public bool $sp3aMeasurementMode = false;
+
     /**
      * @var array<int, array{group: string, path: string, selectable: bool}>|null
      */
@@ -104,6 +108,8 @@ class PublicContentSettings extends SettingsPage
 
     protected function fillForm(): void
     {
+        $this->sp3aMeasurementMode = app()->environment('local') && request()->boolean('sp3a_measure');
+
         $this->settingsProfiler()->withRequestKind(SettingsPageProfiler::REQUEST_INITIAL_LOAD, function (): void {
             $this->callHook('beforeFill');
 
@@ -117,7 +123,9 @@ class PublicContentSettings extends SettingsPage
                 SettingsPageProfiler::REQUEST_INITIAL_LOAD,
             );
 
-            $this->form->fill($data);
+            $this->form->fill($this->sp3aMeasurementMode
+                ? [...$data, ...app(SettingsSp3aMeasurementFixture::class)->payload()]
+                : $data);
 
             $this->callHook('afterFill');
 
@@ -127,6 +135,10 @@ class PublicContentSettings extends SettingsPage
 
     public function save(): void
     {
+        if ($this->sp3aMeasurementMode) {
+            return;
+        }
+
         $this->settingsProfiler()->withRequestKind(SettingsPageProfiler::REQUEST_SAVE, function (): void {
             $this->settingsProfiler()->measure('save.total', function (): void {
                 if (! $this->canEdit()) {
@@ -819,6 +831,8 @@ class PublicContentSettings extends SettingsPage
                                                                 ->helperText(__('admin.helpers.public_menu_item_form_key'))
                                                                 ->options(fn (): array => $this->publicFormOptions())
                                                                 ->searchable()
+                                                                ->preload(false)
+                                                                ->optionsLimit(50)
                                                                 ->native(false)
                                                                 ->required(fn (Get $get): bool => $get('type') === 'public_form')
                                                                 ->visible(fn (Get $get): bool => $get('type') === 'public_form'),
@@ -940,12 +954,18 @@ class PublicContentSettings extends SettingsPage
                                                 ->label(__('admin.fields.podcasts_page_template_key'))
                                                 ->helperText(__('admin.helpers.podcasts_page_template_key'))
                                                 ->options(fn (Get $get): array => $this->cardTemplateOptions('content_group', $get('card_templates')))
+                                                ->searchable()
+                                                ->preload(false)
+                                                ->optionsLimit(50)
                                                 ->placeholder(__('admin.labels.none'))
                                                 ->native(false),
                                             Select::make('podcasts_page.item_template_key')
                                                 ->label(__('admin.fields.podcasts_page_item_template_key'))
                                                 ->helperText(__('admin.helpers.podcasts_page_item_template_key'))
                                                 ->options(fn (Get $get): array => $this->cardTemplateOptions('content_item', $get('card_templates')))
+                                                ->searchable()
+                                                ->preload(false)
+                                                ->optionsLimit(50)
                                                 ->placeholder(__('admin.labels.none'))
                                                 ->native(false),
                                             Select::make('podcasts_page.image_fit')
@@ -1617,6 +1637,8 @@ class PublicContentSettings extends SettingsPage
                                                 ->options(fn (): array => $this->enabledPublicFormOptions())
                                                 ->native(false)
                                                 ->searchable()
+                                                ->preload(false)
+                                                ->optionsLimit(50)
                                                 ->live(),
                                             Select::make('maintenance.form_location')
                                                 ->label(__('admin.fields.maintenance_form_location'))
@@ -2010,15 +2032,17 @@ class PublicContentSettings extends SettingsPage
             return $this->inlineImportLockRows;
         }
 
-        $schema = app(SettingsLifecycleSchema::class);
-        $payload = $schema->payloadForGroup();
+        $registry = app(SettingsImportLockSurfaceRegistry::class);
 
-        return $this->inlineImportLockRows = collect($schema->units($payload))
-            ->map(fn (SettingsLifecycleUnit $unit): array => [
-                'group' => $unit->section,
-                'path' => $unit->path,
-                'selectable' => true,
-            ])
+        return $this->inlineImportLockRows = collect($registry->surfaces())
+            ->where('type', 'section')
+            ->flatMap(fn (array $surface): array => collect($surface['unit_paths'])
+                ->map(fn (string $path): array => [
+                    'group' => $surface['group'],
+                    'path' => $path,
+                    'selectable' => true,
+                ])
+                ->all())
             ->values()
             ->all();
     }
@@ -2040,12 +2064,9 @@ class PublicContentSettings extends SettingsPage
             return $this->inlineImportLockUnitPathsBySemanticPath[$semanticPath];
         }
 
-        return $this->inlineImportLockUnitPathsBySemanticPath[$semanticPath] = collect($this->inlineImportLockRows())
-            ->filter(fn (array $row): bool => $row['path'] === $semanticPath
-                || str_starts_with($semanticPath, "{$row['path']}."))
-            ->pluck('path')
-            ->values()
-            ->all();
+        $unitPath = app(SettingsImportLockSurfaceRegistry::class)->importantFieldUnitPath($semanticPath);
+
+        return $this->inlineImportLockUnitPathsBySemanticPath[$semanticPath] = $unitPath ? [$unitPath] : [];
     }
 
     private function inlineImportLockActionKey(string $path): string
@@ -2536,6 +2557,8 @@ class PublicContentSettings extends SettingsPage
                 ->helperText(__('admin.helpers.about_block_form_key'))
                 ->options(fn (): array => $this->publicFormOptions())
                 ->searchable()
+                ->preload(false)
+                ->optionsLimit(50)
                 ->native(false)
                 ->required($type === 'form_cta')
                 ->visible($type === 'form_cta'),

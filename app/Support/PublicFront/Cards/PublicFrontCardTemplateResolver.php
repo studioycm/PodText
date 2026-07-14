@@ -7,6 +7,9 @@ use App\Support\PublicFront\PublicFrontRenderContext;
 
 class PublicFrontCardTemplateResolver
 {
+    /** @var array<string, array<string, string>> */
+    private array $optionsByFamily = [];
+
     public function __construct(
         private readonly PublicFrontRenderContext $context,
     ) {}
@@ -66,7 +69,7 @@ class PublicFrontCardTemplateResolver
      */
     public function optionsForFamily(string $family): array
     {
-        return $this->optionsFromTemplates($this->context->cardTemplates(), $family);
+        return $this->optionsByFamily[$family] ??= $this->optionsFromTemplates($this->context->cardTemplates(), $family);
     }
 
     /**

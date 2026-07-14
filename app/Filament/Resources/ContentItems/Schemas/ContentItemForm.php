@@ -48,7 +48,8 @@ class ContentItemForm
                                 ->helperText(__('admin.helpers.content_item_content_group'))
                                 ->relationship('contentGroup', 'title')
                                 ->searchable()
-                                ->preload()
+                                ->preload(false)
+                                ->optionsLimit(50)
                                 ->hiddenOn(ContentItemsRelationManager::class)
                                 ->required()
                         ),
@@ -119,7 +120,8 @@ class ContentItemForm
                                 ->relationship('categories', 'name')
                                 ->multiple()
                                 ->searchable()
-                                ->preload()
+                                ->preload(false)
+                                ->optionsLimit(50)
                                 ->helperText(__('admin.helpers.item_categories')),
                             allowEdit: false,
                         ),

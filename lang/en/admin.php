@@ -1817,7 +1817,7 @@ return [
         ],
     ],
     'settings_import_locks' => [
-        'description' => 'Locked units are visible during import, but cannot be selected or applied. Locks protect settings from imports only; editing on this settings page is unaffected.',
+        'description' => 'Lock whole sections or the approved important fields. Locks protect settings from imports only; editing remains unaffected.',
         'group_summary' => 'Locked: :locked / :total',
         'heading' => 'Manage import locks',
         'inline_field_locked' => 'Protected from import',
@@ -1837,6 +1837,8 @@ return [
             'none' => 'No units in this section are protected from imports. Editing is unaffected. Click to protect them from import.',
         ],
         'locked' => 'Locked',
+        'retired_report' => ':count previously stored unit lock(s) no longer have an individual visible control. They remain enforced until you use Unlock all.',
+        'surface_unit_count' => 'Covers :count lifecycle unit(s).',
         'unlocked' => 'Unlocked',
     ],
     'settings_paths' => [

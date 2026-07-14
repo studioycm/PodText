@@ -13,19 +13,23 @@ use App\Support\Importer\Google\GoogleApiDriveClientFactory;
 use App\Support\Importer\Spotify\SpotifyHttpClientFactory;
 use App\Support\ImportExport\ImportExportQueueTracer;
 use App\Support\PublicContent\PublicTranscriptionPolicy;
+use App\Support\PublicFront\Cards\PublicFrontCardTemplateResolver;
 use App\Support\PublicFront\PublicFrontConfigCache;
 use App\Support\PublicFront\PublicFrontRenderContext;
 use App\Support\PublicFront\PublicFrontRenderContextFactory;
 use App\Support\Settings\SettingsPageProfiler;
 use App\Support\SettingsLifecycle\SettingsBackupManager;
+use App\Support\SettingsLifecycle\SettingsLifecycleSchema;
 use App\Support\Transcriptions\MultiTranscriptionSurfaces;
 use Awcodes\Curator\Models\Media;
 use Filament\Actions\Action;
 use Filament\Facades\Filament;
+use Filament\Forms\Components\Select;
 use Filament\Schemas\Components\Component as SchemaComponent;
 use Filament\Schemas\Components\Section;
 use Filament\Support\Enums\Width;
 use Filament\Tables\Enums\RecordActionsPosition;
+use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Database\Eloquent\Model;
@@ -47,6 +51,8 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(SpotifyClientFactory::class, SpotifyHttpClientFactory::class);
 
         $this->app->scoped(SettingsPageProfiler::class);
+        $this->app->scoped(SettingsLifecycleSchema::class);
+        $this->app->scoped(PublicFrontCardTemplateResolver::class);
 
         $this->app->scoped(
             PublicFrontRenderContext::class,
@@ -69,6 +75,13 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         Model::preventLazyLoading(! $this->app->isProduction());
+
+        Select::configureUsing(fn (Select $select): Select => $select
+            ->preload()
+            ->optionsLimit(50));
+        SelectFilter::configureUsing(fn (SelectFilter $filter): SelectFilter => $filter
+            ->preload()
+            ->optionsLimit(50));
 
         Gate::policy(Media::class, CuratorMediaPolicy::class);
         Gate::define('super-admin', fn (User $user): bool => $user->hasRoleAtLeast(UserRole::SuperAdmin));

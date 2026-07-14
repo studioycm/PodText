@@ -13,6 +13,7 @@ use App\Support\PublicFront\PublicFrontConfigRegistry;
 use App\Support\PublicFront\PublicFrontConfigValidator;
 use App\Support\PublicFront\PublicFrontRenderContext;
 use App\Support\Settings\SettingsPageProfiler;
+use App\Support\Transcriptions\MultiTranscriptionSurfaces;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use RuntimeException;
@@ -118,7 +119,7 @@ class SettingsBackupManager
 
         DB::transaction(function () use ($backup, $package, $user): void {
             $this->createBeforeRestore($backup, $user);
-            $this->applyPayload($package->payload());
+            $this->applyPayload($package->payload(), $user);
         });
 
         $this->forgetPublicFrontState();
@@ -149,7 +150,7 @@ class SettingsBackupManager
 
         DB::transaction(function () use ($analysis, $package, $selectedPaths, $user, $mode, $sourceLabel, &$appliedPaths, &$report): void {
             $beforeImportBackup = $this->createBeforeImport($user);
-            $appliedPaths = $this->applySelectedPayload($package->payload(), $selectedPaths, $mode);
+            $appliedPaths = $this->applySelectedPayload($package->payload(), $selectedPaths, $mode, $user);
             $report = SettingsImportReport::fromAnalysis(
                 analysis: $analysis,
                 selectedPaths: $selectedPaths,
@@ -258,17 +259,24 @@ class SettingsBackupManager
         }
     }
 
-    private function applyPayload(array $payload): void
+    private function applyPayload(array $payload, ?User $user): array
     {
         $settings = app(PublicContentSettings::class);
+        $payload = MultiTranscriptionSurfaces::overlayUnauthorizedSettings(
+            $this->normalizePayloadForApply($payload),
+            PublicContentSettings::class,
+            $user,
+        );
 
-        foreach ($this->normalizePayloadForApply($payload) as $property => $value) {
+        foreach ($payload as $property => $value) {
             if (property_exists($settings, $property)) {
                 $settings->{$property} = $value;
             }
         }
 
         $settings->save();
+
+        return $payload;
     }
 
     /**
@@ -276,9 +284,10 @@ class SettingsBackupManager
      * @param  array<int, string>  $selectedPaths
      * @return array<int, string>
      */
-    private function applySelectedPayload(array $importedPayload, array $selectedPaths, SettingsImportMode $mode): array
+    private function applySelectedPayload(array $importedPayload, array $selectedPaths, SettingsImportMode $mode, ?User $user): array
     {
         $currentPayload = PublicSettingsPackage::fromCurrentSettings()->payload();
+        $originalPayload = $currentPayload;
         $appliedPaths = [];
 
         foreach (array_values(array_unique($selectedPaths)) as $path) {
@@ -306,9 +315,12 @@ class SettingsBackupManager
             }
         }
 
-        $this->applyPayload($currentPayload);
+        $appliedPayload = $this->applyPayload($currentPayload, $user);
 
-        return $appliedPaths;
+        return collect($appliedPaths)
+            ->filter(fn (string $path): bool => $this->schema->value($originalPayload, $path) !== $this->schema->value($appliedPayload, $path))
+            ->values()
+            ->all();
     }
 
     /**
