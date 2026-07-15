@@ -14,7 +14,7 @@ which is left in Hebrew RTL and right in English LTR.
 
 ## Commit hash
 
-Uncommitted for operator review; this task did not request a commit.
+`0394ab5` (`Configure OTP verification policy and copy`).
 
 ## Requirement classification
 
@@ -145,5 +145,4 @@ in this session.
 
 ## Current git status
 
-Expected final state is an uncommitted review diff containing only the files
-listed above. No push or production change was made.
+The implementation was committed as `0394ab5`. No production change was made.
