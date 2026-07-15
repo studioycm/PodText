@@ -19,7 +19,8 @@ class PathCuratorPicker extends CuratorPicker
 
         $this->clearAfterStateUpdatedHooks();
 
-        $this->afterStateHydrated(function (PathCuratorPicker $component, array|int|string|null $state): void {
+        $this->afterStateHydrated(function (PathCuratorPicker $component): void {
+            $state = $component->getRawState();
             $items = $component->itemsForState($state);
 
             if ($items === [] && $component->pathFromScalarState($state) !== null) {
@@ -84,6 +85,10 @@ class PathCuratorPicker extends CuratorPicker
             return [];
         }
 
+        if ($this->isHydratedMediaItemMap($state)) {
+            return $state;
+        }
+
         if (is_string($state) || is_int($state) || $this->isScalarStateArray($state)) {
             $items = $this->itemsForState($state);
 
@@ -97,6 +102,23 @@ class PathCuratorPicker extends CuratorPicker
         }
 
         return is_array($state) ? $state : [];
+    }
+
+    private function isHydratedMediaItemMap(mixed $state): bool
+    {
+        if (! is_array($state) || $state === [] || array_is_list($state) || array_key_exists('id', $state)) {
+            return false;
+        }
+
+        return collect($state)->every(function (mixed $item, mixed $key): bool {
+            $id = is_array($item) ? ($item['id'] ?? null) : null;
+            $path = is_array($item) ? ($item['path'] ?? null) : null;
+
+            return is_string($key)
+                && (is_int($id) || (is_string($id) && ctype_digit($id)))
+                && is_string($path)
+                && filled($path);
+        });
     }
 
     /**

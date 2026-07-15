@@ -5,6 +5,7 @@ use App\Filament\Exports\ContentGroupExporter;
 use App\Filament\Forms\Components\PathCuratorPicker;
 use App\Filament\Forms\MediaPickerField;
 use App\Filament\Pages\AdminUxSettings as AdminUxSettingsPage;
+use App\Filament\Pages\DisplaySettings;
 use App\Filament\Pages\MenuHeaderSettings;
 use App\Filament\Resources\ContentGroups\Pages\EditContentGroup;
 use App\Models\ContentGroup;
@@ -13,6 +14,7 @@ use App\Models\User;
 use App\Settings\AdminUxSettings;
 use App\Settings\PublicContentSettings;
 use App\Support\Media\ImageFileNamer;
+use App\Support\PublicFront\PublicFrontConfigRegistry;
 use Awcodes\Curator\Models\Media;
 use Filament\Facades\Filament;
 use Filament\Forms\Components\FileUpload;
@@ -73,6 +75,22 @@ function imgAMedia(string $path, string $type = 'image/jpeg', string $extension 
     ]);
 }
 
+/**
+ * @return array<string, array<string, mixed>>
+ */
+function imgAHydratedPickerState(object $page, string $statePath): array
+{
+    $field = $page->form->getComponentByStatePath($statePath);
+
+    expect($field)->toBeInstanceOf(PathCuratorPicker::class);
+
+    $state = $field->getState();
+
+    expect($state)->toBeArray()->toHaveCount(1);
+
+    return $state;
+}
+
 it('renders the shared media field in curator and file upload modes', function (): void {
     config(['media.picker.driver' => 'curator']);
 
@@ -119,6 +137,72 @@ it('round trips public settings image paths through the curator picker without c
     clearImgASettingsCache();
 
     expect(app(PublicContentSettings::class)->menu_config['logo']['light_path'])->toBe('header/logo.svg');
+});
+
+it('keeps a registered menu logo selected after saving and remounting the settings page', function (): void {
+    config(['media.picker.driver' => 'curator']);
+    Storage::fake('public');
+    Storage::disk('public')->put('header/logo.svg', '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"></svg>');
+    $media = imgAMedia('header/logo.svg', 'image/svg+xml', 'svg');
+    saveImgAPublicSetting('menu_config', [
+        'logo' => [
+            'light_path' => 'header/logo.svg',
+            'dark_path' => null,
+        ],
+    ]);
+    $this->actingAs(User::factory()->create());
+
+    $page = Livewire::test(MenuHeaderSettings::class)
+        ->assertSee('logo.svg');
+    $state = imgAHydratedPickerState($page->instance(), 'menu_config.logo.light_path');
+    $key = array_key_first($state);
+
+    expect($key)->toBeString()
+        ->and($state[$key]['id'])->toBe($media->getKey())
+        ->and($state[$key]['path'])->toBe('header/logo.svg');
+
+    $page
+        ->call('save')
+        ->assertHasNoFormErrors();
+
+    clearImgASettingsCache();
+
+    expect(app(PublicContentSettings::class)->menu_config['logo']['light_path'])->toBe('header/logo.svg');
+
+    $remounted = Livewire::test(MenuHeaderSettings::class)
+        ->assertSee('logo.svg');
+    $remountedState = imgAHydratedPickerState($remounted->instance(), 'menu_config.logo.light_path');
+    $remountedKey = array_key_first($remountedState);
+
+    expect($remountedKey)->toBeString()
+        ->and($remountedState[$remountedKey]['id'])->toBe($media->getKey())
+        ->and($remountedState[$remountedKey]['path'])->toBe('header/logo.svg');
+});
+
+it('keeps a registered custom default image selected after remounting display settings', function (): void {
+    config(['media.picker.driver' => 'curator']);
+    Storage::fake('public');
+    Storage::disk('public')->put('default-images/fallback.jpg', 'image');
+    $media = imgAMedia('default-images/fallback.jpg');
+    saveImgAPublicSetting('default_images', array_replace_recursive(
+        PublicFrontConfigRegistry::defaults()['default_images'],
+        [
+            'content_item' => [
+                'mode' => 'custom',
+                'path' => 'default-images/fallback.jpg',
+            ],
+        ],
+    ));
+    $this->actingAs(User::factory()->create());
+
+    $page = Livewire::test(DisplaySettings::class)
+        ->assertSee('fallback.jpg');
+    $state = imgAHydratedPickerState($page->instance(), 'default_images.content_item.path');
+    $key = array_key_first($state);
+
+    expect($key)->toBeString()
+        ->and($state[$key]['id'])->toBe($media->getKey())
+        ->and($state[$key]['path'])->toBe('default-images/fallback.jpg');
 });
 
 it('saves the admin ux media naming strategy setting', function (): void {
