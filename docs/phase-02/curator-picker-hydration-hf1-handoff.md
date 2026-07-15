@@ -12,7 +12,7 @@ single-save lifecycle.
 
 ## Commit hash
 
-Pending implementation commit.
+`23a6ce9 fix: preserve curator picker selections on reload`
 
 ## Requirement classification
 
