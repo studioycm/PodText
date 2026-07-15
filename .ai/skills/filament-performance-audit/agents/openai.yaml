@@ -1,0 +1,4 @@
+interface:
+  display_name: "Filament Performance Audit"
+  short_description: "Audit Filament 5 and Livewire 4 performance"
+  default_prompt: "Use $filament-performance-audit to review this Filament and Livewire code for measured performance risks."

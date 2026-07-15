@@ -1,5 +1,11 @@
 # Public Front v2 Step 6 Public Forms and Submissions Handoff
 
+> **Historical shipped-state notice — 2026-07-16:** This handoff remains
+> authoritative for the current feature. ARCH1 now requires Public Form
+> definitions/revisions as Resources and exact submission revision binding;
+> bounded verification policy remains settings. See
+> `docs/research/settings-performance/07-sp3d-pre-research.md`.
+
 ## Purpose
 
 Public Front v2 Step 6 adds safe configurable public forms and durable public form submission records. Form definitions remain JSON-first settings under the Step 1 public-front config architecture, while submissions are transactional database records for admin review.

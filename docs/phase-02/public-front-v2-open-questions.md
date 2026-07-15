@@ -1,5 +1,10 @@
 # Public Front v2 Open Questions
 
+> **ARCH1 routing notice — 2026-07-16:** The old JSON-settings storage decision
+> for Card Templates/Public Forms is superseded by the approved architecture in
+> `docs/research/settings-performance/07-sp3d-pre-research.md`. This file remains
+> historical decision evidence and must not be used to reopen ARCH1-A–S.
+
 ## Resolved User Decisions
 
 These answers were provided after the research pack was created. Implementation agents should follow `docs/phase-02/public-front-v2-execution-plan.md` as the active decision source.

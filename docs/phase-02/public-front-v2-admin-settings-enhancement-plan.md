@@ -1,5 +1,11 @@
 # Public Front v2 Admin and Settings Enhancement Plan
 
+> **Re-research required — 2026-07-16:** Do not execute future
+> `display_templates`/Template/Form storage assumptions from this plan unchanged.
+> ARCH1 in `docs/research/settings-performance/07-sp3d-pre-research.md` now
+> requires independently managed versioned Resources. Reconcile this plan only
+> when its step is selected; do not expand ARCH1 into unrelated future work.
+
 Date: 09/07/2026 (v4 — supersedes v3/v2/v1; v3 added the flip-slider display-type and
 result display-template builder work package, requests 12-17, steps SL1-SL4; v4 adds
 the GSAP motion work package, requests 18-21, steps AX1-AX3, per Yoni's decisions:

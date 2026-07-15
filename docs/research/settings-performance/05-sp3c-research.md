@@ -1,5 +1,12 @@
 # Settings SP3C research
 
+> **Forward-architecture supersession — 2026-07-16:** This remains authoritative
+> evidence for what SP3C researched and shipped. Its migration-free
+> settings-JSON boundary is not the current forward architecture. The
+> operator-approved ARCH1 decisions in `07-sp3d-pre-research.md` require Card
+> Templates and Public Forms to migrate to versioned model/Resource aggregates
+> before SP3D. Existing SP3C measurements remain historical/migration baselines.
+
 Date: 2026-07-15
 
 Prompt contract: `prompts/pre-13-prompts/settings-sp3c-codex-prompt.md`, prompt
@@ -60,7 +67,7 @@ scanner. SP3C needs no migration.
 - The frozen SP3A measurement fixture remains about 37 KB and must not be
   changed or repurposed as the deepest SP3C fixture.
 - The lifecycle output SHA remains
-  `61e551a422280b06ea6a2a66f235da10d1e349c787780f1709369e53c888addc`.
+  `61e551a60016b1ac0c9aa8051463818adf31677bea465ac0e9b269fe3d2386b8`.
 - `SettingsLifecycleSchema` memoizes derivation per request, keyed by group and
   canonical payload. SP3C must consume that shared lifecycle and must not add a
   second derivation path.

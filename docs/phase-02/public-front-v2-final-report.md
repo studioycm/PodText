@@ -1,5 +1,11 @@
 # Public Front v2 JSON Settings Research Final Report
 
+> **Forward-architecture supersession — 2026-07-16:** This report remains
+> historical research evidence. Its JSON-settings boundary no longer governs
+> Card Templates or Public Forms. The operator-approved ARCH1 boundary in
+> `docs/research/settings-performance/07-sp3d-pre-research.md` governs future
+> work: versioned Resources own those entities and their nested JSON revisions.
+
 ## Status
 
 This was a research, blueprint, and planning task only. No application features were implemented. No PHP, Blade, migration, test, config, package, or app code files were edited.

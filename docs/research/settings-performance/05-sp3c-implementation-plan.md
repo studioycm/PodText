@@ -1,5 +1,11 @@
 # Settings SP3C provisional implementation plan
 
+> **Historical implementation notice — 2026-07-16:** This plan describes the
+> completed SP3C implementation and remains evidence for that delivery. It must
+> not be reused as the forward Template architecture. The operator-approved
+> ARCH1 decisions in `07-sp3d-pre-research.md` now place Card Templates and
+> Public Forms in versioned model/Resource aggregates before SP3D.
+
 Date: 2026-07-15
 
 Status: canary-amended and approved for production adoption. This plan is self-contained and

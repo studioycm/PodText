@@ -1,5 +1,10 @@
 # Public Front v2 Implementation Sequence Blueprint
 
+> **Historical sequence notice — 2026-07-16:** This blueprint remains evidence
+> for the shipped Public Front v2 sequence. Its Template/Form settings-only
+> guardrail is superseded by ARCH1 in
+> `docs/research/settings-performance/07-sp3d-pre-research.md`.
+
 Using Filament Blueprint, produce an implementation plan for a Filament v5 application feature: Public Front v2 implementation sequence before Prompt 13.
 
 The plan should:

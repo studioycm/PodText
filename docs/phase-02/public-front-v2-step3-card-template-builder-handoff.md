@@ -1,5 +1,10 @@
 # Public Front v2 Step 3 Card Template Builder Handoff
 
+> **Historical shipped-state notice — 2026-07-16:** This handoff remains
+> authoritative for the shipped Builder/renderer. ARCH1 now requires Card
+> Templates to migrate into versioned Resources before SP3D; see
+> `docs/research/settings-performance/07-sp3d-pre-research.md`.
+
 ## Purpose
 
 This handoff records the Card Template Builder foundation implemented in Public Front v2 Step 3. It is intended for ChatGPT/Yoni review before Step 4 Public Display Sections and Loopers starts.

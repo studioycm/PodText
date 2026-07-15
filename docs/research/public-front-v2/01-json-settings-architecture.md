@@ -1,5 +1,10 @@
 # Public Front v2 Research: JSON Settings Architecture
 
+> **ARCH1 supersession — 2026-07-16:** Keep this as historical evidence for the
+> shipped JSON-first system. Future Card Templates and Public Forms follow the
+> hybrid entity boundary in `../settings-performance/07-sp3d-pre-research.md`:
+> model/Resource parents, immutable revision records, and validated owned JSON.
+
 ## Purpose
 
 Define a project-wide JSON-first configuration architecture for the next public-front work after Prompt 12. This is planning only.

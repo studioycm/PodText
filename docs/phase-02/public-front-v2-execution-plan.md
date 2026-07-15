@@ -1,5 +1,12 @@
 # Public Front v2 Execution Plan
 
+> **Forward-architecture supersession — 2026-07-16:** This remains the record of
+> the Public Front v2 sequence and shipped decisions. Its future storage
+> assumptions are superseded where they conflict with ARCH1 in
+> `docs/research/settings-performance/07-sp3d-pre-research.md`: Card Templates
+> and Public Forms move to versioned Resources before SP3D; Menu and About/Team
+> remain temporary settings as recorded there.
+
 ## Purpose
 
 This is the approved execution plan for implementing Public Front v2 after Prompt 12 and before Prompt 13 dashboard metrics. It resolves the user decisions from `docs/phase-02/public-front-v2-open-questions.md` and sequences the research, blueprints, and blueprint-result plans under:
@@ -34,9 +41,14 @@ The execution plan must not be pasted into Codex as one giant implementation tas
 
 ## Global Guardrails
 
-- Use JSON-first settings and typed readers/registries before rendering.
-- Do not create settings-only models: no `CardTemplate`, `PublicMenu`, `PublicMenuItem`, `AboutPage`, `AboutPageBlock`, `TeamProfile`, `PublicFormDefinition`, `PublicDisplaySection`, or `PublicLooper`.
-- The only approved model exception is `PublicFormSubmission`.
+- Use JSON-first documents and typed readers/registries inside their owning
+  aggregate.
+- ARCH1 now approves `CardTemplate`/revision and `PublicForm`/revision
+  model/Resource aggregates. Menu and About/Team remain temporary settings;
+  future Pages ownership is separately deferred. Do not create other
+  settings-only models by analogy.
+- `PublicFormSubmission` remains the transactional submission model and must be
+  migrated to exact immutable form-revision binding under ARCH1.
 - Do not create `Podcast` or `Episode` models.
 - Do not store raw Tailwind classes, CSS, SQL, PHP class names, Blade paths, iframe HTML, or unsafe HTML in JSON.
 - Keep Prompt 11R custom public Livewire/Blade listings; do not reintroduce public Filament Tables for listing pages.
@@ -223,7 +235,9 @@ Use:
 
 Implement:
 
-- Public form definitions in settings JSON.
+- Historical shipped step: Public form definitions in settings JSON. ARCH1 now
+  migrates definitions into `PublicForm`/immutable revision Resources while
+  bounded verification policy remains settings.
 - Supported fields: text, email, phone, textarea, select, checkbox, toggle, URL.
 - `PublicFormSubmission` model, migration, enum status, and admin Resource.
 - Status transitions: `new`, `reviewed`, `archived`.

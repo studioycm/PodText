@@ -1,5 +1,11 @@
 # SP3 Settings Performance Audit, Prompt Review, and Alternative Architecture
 
+> **Forward-architecture supersession — 2026-07-16:** This remains authoritative
+> evidence for the pre-SP3 diagnosis and alternatives considered at that time.
+> It is not the current forward architecture for Card Templates or Public Forms.
+> The operator-approved ARCH1 decisions in `07-sp3d-pre-research.md` now require
+> both domains to become versioned model/Resource aggregates before SP3D.
+
 Date: 2026-07-14
 
 Reviewed prompt: `settings-lazy-sp3-codex-prompt.md`, prompt version v3

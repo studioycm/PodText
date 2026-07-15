@@ -1,0 +1,4 @@
+interface:
+  display_name: "Filament Forms UX Audit"
+  short_description: "Audit Filament 5 forms for material UX issues"
+  default_prompt: "Use $filament-forms-ux-audit to review this Filament form and report evidence-backed UX findings."

@@ -1,5 +1,11 @@
 # Public Front v2 Research: Card Template Builder
 
+> **ARCH1 supersession — 2026-07-16:** This explains the shipped Builder
+> vocabulary and renderer, but its settings-storage assumptions are historical.
+> Future Card Templates are approved versioned Resources with parts/nested
+> children remaining validated JSON inside immutable revisions. See
+> `../settings-performance/07-sp3d-pre-research.md`.
+
 ## Purpose
 
 Plan a JSON-first card template builder for public content cards, contributor cards, group cards, and section-specific cards.

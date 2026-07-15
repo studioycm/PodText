@@ -1,5 +1,9 @@
 # JSON Settings Architecture Blueprint
 
+> **Historical blueprint notice — 2026-07-16:** This records the shipped
+> architecture. ARCH1 in `docs/research/settings-performance/07-sp3d-pre-research.md`
+> supersedes its settings-only boundary for Card Templates and Public Forms.
+
 Using Filament Blueprint, produce an implementation plan for a Filament v5 application feature: JSON settings/configuration architecture.
 
 The plan should:

@@ -1,5 +1,11 @@
 # Public Front v2 Research: Configurable Public Forms and Submissions
 
+> **ARCH1 supersession — 2026-07-16:** This remains evidence for the shipped
+> form/submission feature, but form definitions no longer have a settings-only
+> future. Approved ARCH1 creates `PublicForm` plus immutable revisions and binds
+> each submission to the exact published revision. See
+> `../settings-performance/07-sp3d-pre-research.md`.
+
 ## Purpose
 
 Plan JSON-first public form definitions and the smallest safe model/table exception for actual submissions.

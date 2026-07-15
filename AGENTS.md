@@ -253,6 +253,29 @@ Use the configured `filament-examples` MCP server when the active prompt request
 - If the MCP exposes a source/read/fetch/details tool, use it. If only `search_examples` exists, record that limitation honestly.
 - Never write MCP token/header values to tracked docs.
 
+### Filament audit skills
+
+Use the repository-owned audit skills from their canonical `.ai/skills/`
+packages as durable review checklists. The `.agents/skills/`,
+`.claude/skills/`, and `.junie/skills/` entries are tracked relative symlinks to
+that single source of truth:
+
+- Activate `filament-forms-ux-audit` whenever creating, changing, or reviewing
+  Filament form schemas, settings forms, resource forms, page forms, or action
+  modal forms. Apply it alongside the installed-version Boost guidance,
+  FilamentExamples protocol when Filament code changes, localization/RTL rules,
+  and the repository's Laravel/Filament conventions.
+- Activate `filament-performance-audit` whenever diagnosing or reviewing
+  Filament/Livewire performance, large forms or Builders, table/query behavior,
+  widgets, global search, hydration/state size, polling, lazy/deferred loading,
+  or browser performance budgets.
+- Keep performance claims within their measured plane. Component HTML, query,
+  response, and serialized-state measurements are not browser DOM, teleported
+  modal, listener, heap, navigation, or TTFB measurements.
+- An audit request authorizes findings and recommendations, not application
+  fixes. Follow the normal prompt/research/plan workflow before implementing
+  any finding.
+
 ### FilaCheck and FilaCheck Pro
 
 FilaCheck is part of the quality gate for Filament work.
@@ -321,7 +344,7 @@ When implemented, a public content item should be visible only when its publicat
 - Do not generate View pages or Infolists unless explicitly required.
 - Keep Resources focused on UI composition.
 - Avoid N+1 queries in table/card closures.
-- Selects with bounded option sets (about 20 or fewer) should preload; remove search from tiny sets (10 or fewer). Growing relationship or computed selects must be searchable without preload, cap results with `optionsLimit()`, and use a constrained fast server query. Memoize computed option services within the request.
+- Selects with bounded option sets (about 20 or fewer) should preload; remove search from tiny sets (10 or fewer). Prefer native controls for tiny finite sets unless required custom/HTML rendering or behavior needs a non-native Select. Growing relationship or computed selects must be searchable without preload, cap results at 50 with `optionsLimit()`, and use a constrained fast server query. Memoize computed option services within the request.
 - FileUpload fields must define accepted file types, max size, disk/visibility, and validation.
 - Custom filters should expose active indicators where appropriate.
 - Widgets should not poll unless there is a clear requirement.
@@ -686,11 +709,14 @@ Define durable rules for global public settings, homepage sections, and editoria
 
 ## Preferred architecture
 
-Spatie Settings for global options, normal database records for ordered homepage sections, simple editorial Filament widgets. Spatie Settings package usage is approved for Phase 02 implementation; do not ask for package approval again when Prompt 08 reaches this work.
+Spatie Settings for bounded global policy, normal database records for independently managed entities and ordered homepage sections, and simple editorial Filament widgets. Card Templates and Public Forms use model/Resource parents with immutable revision-owned JSON; their bounded global policy may remain typed settings. Spatie Settings package usage is approved for Phase 02 implementation; do not ask for package approval again when Prompt 08 reaches this work.
 
 ## Do
 
 - Use typed settings classes.
+- Use model/Resource aggregates for independently listable, editable,
+  referenceable, or auditable Template/Form entities; keep their owned nested
+  Builder documents as validated revision JSON.
 - Use homepage section records for visible ordered sections.
 - Keep dashboard widgets editorial.
 - Link widgets to Filament Resources through Resource URL helpers.
@@ -722,6 +748,10 @@ Spatie Settings for global options, normal database records for ordered homepage
 
 - Avoid default polling in widgets unless needed.
 - Use searchable table columns and useful warning filters.
+- Prefer native controls for tiny finite sets unless required custom/HTML
+  rendering or behavior needs a non-native Select. Preload bounded options,
+  remove search from tiny sets, and keep growing sources searchable without
+  preload with a constrained server query and a 50-result cap.
 - Use enum icons instead of string icons.
 - FilaCheck/FilaCheck Pro must pass; do not run `filacheck --fix` unless explicitly approved.
 

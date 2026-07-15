@@ -1,5 +1,10 @@
 # Public Front v2 Step 1 JSON Settings Handoff
 
+> **Historical shipped-state notice — 2026-07-16:** This handoff remains
+> authoritative for what Step 1 shipped. Its settings-only forward assumption
+> is superseded for Card Templates/Public Forms by ARCH1 in
+> `docs/research/settings-performance/07-sp3d-pre-research.md`.
+
 ## Purpose
 
 This handoff is for ChatGPT/Yoni review before generating Public Front v2 Step 3+ prompts. It describes the JSON Settings Architecture actually implemented in Step 1 and the prompt wording changes future steps should make.

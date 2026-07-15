@@ -1,5 +1,11 @@
 # Public Front v2 Research Index and Agent Usage Guide
 
+> **ARCH1 routing notice — 2026-07-16:** Read
+> `docs/research/settings-performance/07-sp3d-pre-research.md` before using this
+> pack. Its JSON-first rule is superseded for independently managed Card
+> Templates and Public Forms: those are now approved versioned Resources with
+> revision-owned JSON. Bounded singleton policy remains Spatie Settings.
+
 ## Purpose
 
 This index tells future agents how to use the Public Front v2 JSON-settings research pack without starting implementation.
@@ -14,7 +20,10 @@ This index tells future agents how to use the Public Front v2 JSON-settings rese
 
 ## Core Rule
 
-JSON-first configuration is mandatory. New settings-only models are rejected unless a blueprint marks the exception as an explicit user decision point.
+JSON-first configuration remains the default inside an owning aggregate.
+Independently listable, editable, referenceable, or auditable Card Templates and
+Public Forms are approved model/Resource aggregates with immutable
+revision-owned JSON. Bounded global policy remains typed Spatie Settings.
 
 ## Implementation Boundary
 

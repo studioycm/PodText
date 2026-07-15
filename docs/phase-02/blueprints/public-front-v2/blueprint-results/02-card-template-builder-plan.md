@@ -1,5 +1,8 @@
 # Blueprint Result: Card Template Builder
 
+> **Historical result notice — 2026-07-16:** Keep as shipped evidence only.
+> Future Card Templates follow ARCH1 versioned Resources and revision-owned JSON.
+
 Source blueprint: `docs/phase-02/blueprints/public-front-v2/02-card-template-builder-blueprint.md`
 
 Generated with Laravel Boost context and Filament Blueprint planning docs. This plan assumes the JSON settings architecture result has already been implemented.

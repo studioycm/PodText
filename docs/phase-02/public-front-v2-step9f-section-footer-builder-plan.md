@@ -1,5 +1,11 @@
 # Public Front v2 Step 9F / 10F Section and Footer Builder Plan
 
+> **Future ownership notice — 2026-07-16:** Re-research storage before executing
+> this future plan. ARCH1 keeps About/Team temporary but records an eventual
+> Pages records/children direction; this historical footer/settings assumption
+> is not authority to preclude that future architecture. Step 9F remains
+> deferred and is not part of ARCH1/SP3D.
+
 ## Purpose
 
 This plan captures the requested richer homepage section and footer-builder work without implementing it during Step 9R. The goal is to keep Step 9R focused on menu/header repairs while preserving a clear path for a JSON-first section/footer builder before demo seed cleanup.
@@ -24,7 +30,9 @@ Build a foundation prompt rather than a full CMS:
 - Add a constrained `rich_columns` section type.
 - Add a constrained `footer_config` JSON settings group.
 - Render through app-owned Blade components and existing safe Markdown/RichEditor renderers.
-- Do not add public page routing, generic page models, or footer settings-only models.
+- Historical assumption only: do not add public page routing, generic page
+  models, or footer models in this old plan. Re-research against the approved
+  eventual Pages direction before execution.
 
 ## Step 10 Update
 
@@ -69,7 +77,9 @@ Proposed renderer interfaces after Step 10R:
 Schema proposal updates:
 
 - Keep `rich_columns` as a constrained `HomepageSection` source/display type; do not add a generic page builder.
-- Keep `footer_config` inside `PublicContentSettings`; do not add `FooterSection` or `PublicFooter` models.
+- Historical assumption only: `footer_config` was planned inside
+  `PublicContentSettings`. Re-research ownership before execution; no
+  `FooterSection`/`PublicFooter` model is approved by ARCH1 itself.
 - Add optional semantic layout tokens only if Step 10R-B/C has established the shared names:
   - `height_policy`: `content`, `balanced`, `equal_row`
   - `image_ratio`: `square`, `wide`, `portrait`, `none`

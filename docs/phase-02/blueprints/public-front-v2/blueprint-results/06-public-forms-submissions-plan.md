@@ -1,5 +1,9 @@
 # Blueprint Result: Public Forms And Submissions
 
+> **Historical result notice — 2026-07-16:** Keep as shipped evidence only.
+> Future Public Forms follow ARCH1 versioned Resources with exact submission
+> revision binding; bounded verification policy remains settings.
+
 Source blueprint: `docs/phase-02/blueprints/public-front-v2/06-public-forms-submissions-blueprint.md`
 
 Generated with Laravel Boost context and Filament Blueprint planning docs.

@@ -1,5 +1,11 @@
 # SP3C prompt v1 review and corrected execution contract
 
+> **Forward-architecture supersession — 2026-07-16:** The SP3C audit and shipped
+> behavior remain historical evidence. Its no-migration future boundary is
+> superseded by the operator-approved ARCH1 decisions in
+> `07-sp3d-pre-research.md`: versioned Card Template and Public Form Resources
+> must be accepted before SP3D performs legacy cleanup and final enforcement.
+
 > **Historical review notice — 2026-07-15:** This document audits SP3C prompt
 > v1 and remains evidence for that review round. The authoritative execution
 > contract is now

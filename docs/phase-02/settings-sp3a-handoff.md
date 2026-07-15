@@ -1,5 +1,10 @@
 # Settings SP3A Handoff
 
+> **Historical shipped-state notice — 2026-07-16:** This remains authoritative
+> for SP3A measurement, locks, and lifecycle behavior. Forward Template/Form
+> ownership and final SP3D gating now follow ARCH1/E1–E4 in
+> `docs/research/settings-performance/07-sp3d-pre-research.md`.
+
 Date: 2026-07-14
 
 ## Scope

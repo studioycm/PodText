@@ -1,5 +1,9 @@
 # SP3B Settings Subject Pages Research
 
+> **Historical research notice — 2026-07-16:** This remains evidence for SP3B.
+> Its future Template/Form settings boundary is superseded by ARCH1 in
+> `07-sp3d-pre-research.md`; ARCH1 acceptance now precedes SP3D.
+
 Date: 2026-07-14
 
 ## Contract and preflight

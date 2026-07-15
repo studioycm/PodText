@@ -1,5 +1,9 @@
 # SP3B Settings Subject Pages Implementation Plan
 
+> **Historical implementation notice — 2026-07-16:** This plan describes
+> completed SP3B. Do not use its Template/Form settings boundary for future
+> work; ARCH1 in `07-sp3d-pre-research.md` governs before SP3D.
+
 Date: 2026-07-14
 
 ## Scope guard

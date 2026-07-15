@@ -6,11 +6,14 @@ Define durable rules for global public settings, homepage sections, and editoria
 
 ## Preferred architecture
 
-Spatie Settings for global options, normal database records for ordered homepage sections, simple editorial Filament widgets. Spatie Settings package usage is approved for Phase 02 implementation; do not ask for package approval again when Prompt 08 reaches this work.
+Spatie Settings for bounded global policy, normal database records for independently managed entities and ordered homepage sections, and simple editorial Filament widgets. Card Templates and Public Forms use model/Resource parents with immutable revision-owned JSON; their bounded global policy may remain typed settings. Spatie Settings package usage is approved for Phase 02 implementation; do not ask for package approval again when Prompt 08 reaches this work.
 
 ## Do
 
 - Use typed settings classes.
+- Use model/Resource aggregates for independently listable, editable,
+  referenceable, or auditable Template/Form entities; keep their owned nested
+  Builder documents as validated revision JSON.
 - Use homepage section records for visible ordered sections.
 - Keep dashboard widgets editorial.
 - Link widgets to Filament Resources through Resource URL helpers.
@@ -42,7 +45,12 @@ Spatie Settings for global options, normal database records for ordered homepage
 
 - Avoid default polling in widgets unless needed.
 - Use searchable table columns and useful warning filters.
-- Preload bounded Select options (about 20 or fewer) and remove search from tiny sets (10 or fewer). Keep growing or settings-derived Selects searchable without preload, cap results with `optionsLimit()`, constrain the server query, and memoize computed option services per request.
+- Prefer native controls for tiny finite sets unless required custom/HTML
+  rendering or behavior needs a non-native Select. Preload bounded Select
+  options (about 20 or fewer) and remove search from tiny sets (10 or fewer).
+  Keep growing or settings-derived Selects searchable without preload, cap
+  results at 50 with `optionsLimit()`, constrain the server query, and memoize
+  computed option services per request.
 - Use enum icons instead of string icons.
 - FilaCheck/FilaCheck Pro must pass; do not run `filacheck --fix` unless explicitly approved.
 

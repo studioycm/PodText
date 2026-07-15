@@ -1,5 +1,10 @@
 # Public Front v2 Agent Usage Index
 
+> **ARCH1 routing notice — 2026-07-16:** Before planning Template, Form,
+> settings, preview, or SP3D work, read
+> `docs/research/settings-performance/07-sp3d-pre-research.md`. It supersedes the
+> old settings-only storage assumption for Card Templates and Public Forms.
+
 ## Purpose
 
 Use this index when turning the Public Front v2 research into future implementation prompts. This file is not an implementation prompt, and the execution plan is an implementation guide rather than a prompt.
@@ -86,8 +91,11 @@ Public Menu/Header runs after Public Forms, About, and Podcasts so it can safely
 
 ## Non-Negotiable Boundaries
 
-- JSON-first settings/configuration.
-- No settings-only models by default.
+- JSON-first inside the owning aggregate; bounded global policy remains typed
+  settings.
+- Independently managed Card Templates/Public Forms are the approved ARCH1
+  model/Resource exceptions with immutable revision-owned JSON. Do not create
+  other settings-only models by analogy.
 - No raw classes/CSS/SQL/PHP/Blade paths/unsafe HTML in JSON.
 - Preserve existing public visibility constraints.
 - Preserve custom Livewire/Blade public listing from Prompt 11R.

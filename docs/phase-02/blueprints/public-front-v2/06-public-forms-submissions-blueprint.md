@@ -1,5 +1,9 @@
 # Public Forms and Submissions Blueprint
 
+> **Historical blueprint notice — 2026-07-16:** This remains evidence for the
+> shipped feature. ARCH1 now requires versioned Public Form Resources and exact
+> submission revision binding while bounded verification policy stays settings.
+
 Using Filament Blueprint, produce an implementation plan for a Filament v5 application feature: configurable public forms and submissions.
 
 The plan should:

@@ -1,5 +1,9 @@
 # Blueprint Result: JSON Settings Architecture
 
+> **Historical result notice — 2026-07-16:** ARCH1 supersedes the settings-only
+> forward boundary for Card Templates/Public Forms. See
+> `docs/research/settings-performance/07-sp3d-pre-research.md`.
+
 Source blueprint: `docs/phase-02/blueprints/public-front-v2/01-json-settings-architecture-blueprint.md`
 
 Generated with Laravel Boost context and the installed Filament Blueprint planning docs. No Filament Blueprint Artisan command is exposed in this checkout; use this file as the implementation plan.

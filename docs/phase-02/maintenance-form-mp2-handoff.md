@@ -1,5 +1,11 @@
 # MP2 Forms Page and Maintenance Form Handoff
 
+> **Historical shipped-state notice — 2026-07-16:** This handoff remains
+> authoritative for MP2. Future form-definition ownership is superseded by
+> ARCH1's versioned Public Form Resources; maintenance references must migrate
+> from semantic form keys during cutover. See
+> `docs/research/settings-performance/07-sp3d-pre-research.md`.
+
 Date: 2026-07-12
 
 ## Scope

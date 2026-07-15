@@ -1,5 +1,11 @@
 # Settings SP3C Handoff
 
+> **Historical shipped-state notice — 2026-07-16:** This remains authoritative
+> for SP3C behavior and measurements. Its settings-backed Template architecture
+> is now migration-source and rollback evidence. ARCH1 versioned Resources must
+> be accepted before SP3D; see
+> `docs/research/settings-performance/07-sp3d-pre-research.md`.
+
 Date: 2026-07-15
 
 ## Scope

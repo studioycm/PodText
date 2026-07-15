@@ -1,5 +1,10 @@
 # Settings SP3B Handoff
 
+> **Historical shipped-state notice — 2026-07-16:** This remains authoritative
+> for SP3B. Its Template/Form settings ownership is now migration-source and
+> rollback evidence. ARCH1 precedes SP3D and governs the forward architecture;
+> see `docs/research/settings-performance/07-sp3d-pre-research.md`.
+
 Date: 2026-07-14
 
 ## Scope

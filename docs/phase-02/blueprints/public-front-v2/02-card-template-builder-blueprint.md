@@ -1,5 +1,9 @@
 # Card Template Builder Blueprint
 
+> **Historical blueprint notice — 2026-07-16:** This remains evidence for the
+> shipped Builder/renderer. Future Template storage follows ARCH1 versioned
+> Resources; do not execute this settings-storage design again.
+
 Using Filament Blueprint, produce an implementation plan for a Filament v5 application feature: card template builder.
 
 The plan should:
