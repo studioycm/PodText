@@ -1,5 +1,15 @@
 # SP3C prompt v1 review and corrected execution contract
 
+> **Historical review notice — 2026-07-15:** This document audits SP3C prompt
+> v1 and remains evidence for that review round. The authoritative execution
+> contract is now
+> `prompts/pre-13-prompts/settings-sp3c-codex-prompt.md`, prompt version v3.
+> V3 incorporates this report and the later second-order audit, including
+> corrections to route decoding, measurement-state trust, protected-template
+> actions, delete semantics, backup/transaction claims, canonical sibling
+> preservation, reference derivation, virtual-default identity, and canary
+> measurement. If this historical review conflicts with v3, v3 governs.
+
 Date: 2026-07-15
 Reviewed prompt: `prompts/pre-13-prompts/settings-sp3c-codex-prompt.md`
 Prompt version: v1 — 2026-07-14
