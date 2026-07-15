@@ -13,7 +13,7 @@
 <span style="font-size: 28px; font-weight: 700; letter-spacing: 4px;">{{ $code }}</span>
 </x-mail::panel>
 
-{{ __('public.forms.verification.mail.expires', ['minutes' => $expiresAfterMinutes]) }}
+{{ trans_choice('public.forms.verification.mail.expires', $expiresAfterMinutes, ['count' => $expiresAfterMinutes]) }}
 
 {{ __('public.forms.verification.mail.ignore') }}
 

@@ -81,9 +81,10 @@ return [
             'code_label' => 'Verification code',
             'code_placeholder' => '6 digit code',
             'cooldown' => 'Please wait :seconds seconds before requesting another code.',
+            'expires_hint' => '{1} The code is valid for one minute.|[2,*] The code is valid for :count minutes.',
             'hourly_limited' => 'Too many verification codes were requested. Please try again later.',
             'mail' => [
-                'expires' => 'This code expires in :minutes minutes.',
+                'expires' => '{1} This code expires in one minute.|[2,*] This code expires in :count minutes.',
                 'heading' => 'Your verification code',
                 'ignore' => 'If you did not request this code, you can ignore this email.',
                 'intro' => 'Use this code to complete :form.',

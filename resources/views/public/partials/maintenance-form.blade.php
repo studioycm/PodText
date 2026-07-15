@@ -44,7 +44,7 @@
 
     .podtext-maintenance-form__input-action {
         display: flex;
-        flex-direction: row-reverse;
+        flex-direction: row;
         align-items: stretch;
         gap: 0.5rem;
     }
@@ -229,7 +229,7 @@
                                     type="submit"
                                     formaction="{{ $sendCodeActionUrl }}"
                                     data-maintenance-form-send-code
-                                    data-suffix-position="inline-start"
+                                    data-suffix-position="inline-end"
                                 >
                                     {{ __('public.forms.verification.send_code') }}
                                 </button>
@@ -326,6 +326,10 @@
 
                             <div class="podtext-maintenance-form__help">
                                 {{ __('public.forms.verification.maintenance_help') }}
+                            </div>
+
+                            <div class="podtext-maintenance-form__help" data-maintenance-form-code-expiry-hint>
+                                {{ trans_choice('public.forms.verification.expires_hint', $formVerificationExpiresAfterMinutes, ['count' => $formVerificationExpiresAfterMinutes]) }}
                             </div>
                         </div>
                     @endif

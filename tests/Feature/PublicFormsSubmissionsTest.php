@@ -407,6 +407,7 @@ it('validates required email url and select fields before creating submissions',
 
 it('attaches livewire email verification to the email field and resets server authority when the address changes', function (): void {
     app()->setLocale('en');
+    config(['forms.otp.expires_minutes' => 7]);
 
     expect(trans('public.forms.verification.send_code', locale: 'en'))->toBe('Send verification code')
         ->and(trans('public.forms.verification.resend_in', ['seconds' => 42], 'en'))->toBe('Send again in 42')
@@ -430,6 +431,9 @@ it('attaches livewire email verification to the email field and resets server au
             'data-test="public-form-field-email"',
             'data-test="public-form-send-code"',
         ])
+        ->assertSeeHtml('class="flex flex-row items-stretch gap-2"')
+        ->assertSeeHtml('data-suffix-position="inline-end"')
+        ->assertDontSeeHtml('flex-row-reverse')
         ->assertSee('Send verification code')
         ->assertDontSeeHtml('data-test="public-form-code-group"');
 
@@ -462,7 +466,11 @@ it('attaches livewire email verification to the email field and resets server au
         ])
         ->assertSee('Send again in 60')
         ->assertSee('Verify')
+        ->assertSee('The code is valid for 7 minutes.')
+        ->assertSeeHtml('data-test="public-form-code-expiry-hint"')
         ->assertSeeHtml('wire:keydown.enter.prevent="verifyEmailCode"');
+
+    expect(substr_count($component->html(), 'data-suffix-position="inline-end"'))->toBe(2);
 
     expect(mail2PublicFormButtonIsDisabled($component->html(), 'public-form-send-code'))->toBeTrue();
 
@@ -539,7 +547,7 @@ it('renders exhausted livewire verification attempts beside the code input', fun
 
     $component->set('emailVerificationCode', $wrongCode);
 
-    foreach (range(1, FormVerificationManager::MAX_ATTEMPTS) as $attempt) {
+    foreach (range(1, FormVerificationManager::maxAttempts()) as $attempt) {
         $component->call('verifyEmailCode');
     }
 

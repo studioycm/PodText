@@ -92,7 +92,7 @@ class MaintenanceFormVerificationCodeController
             formVerificationToken: $verificationToken,
             formActionUrl: URL::temporarySignedRoute(
                 'public.maintenance-form.submit',
-                now()->addMinutes(FormVerificationManager::EXPIRES_AFTER_MINUTES),
+                now()->addMinutes(FormVerificationManager::expiresAfterMinutes()),
                 ['verification_token' => $verificationToken],
             ),
             formVerificationMessage: __('public.forms.verification.sent'),

@@ -314,6 +314,8 @@ it('returns the maintenance page with inline validation errors for invalid form 
 });
 
 it('enforces email otp verification on the maintenance plain post form flow', function (): void {
+    config(['forms.otp.expires_minutes' => 7]);
+
     step10rMp2SavePublicForms([
         step10rMp2FormDefinition([
             'settings' => [
@@ -346,14 +348,19 @@ it('enforces email otp verification on the maintenance plain post form flow', fu
     $sendCodeResponse = $this->post(route('public.maintenance-form.send-code'), $payload)
         ->assertStatus(503)
         ->assertSee(__('public.forms.verification.sent'))
+        ->assertSee('הקוד תקף ל-7 דקות.')
         ->assertSee('name="verification_token"', false)
-        ->assertSee('data-suffix-position="inline-start"', false)
+        ->assertSee('.podtext-maintenance-form__input-action {', false)
+        ->assertSee('flex-direction: row;', false)
+        ->assertDontSee('flex-direction: row-reverse;', false)
+        ->assertSee('data-suffix-position="inline-end"', false)
         ->assertSeeInOrder([
             'data-maintenance-form-email-verification-group',
             'data-maintenance-form-email',
             'data-maintenance-form-send-code',
             'data-maintenance-form-verification',
             'data-maintenance-form-code',
+            'data-maintenance-form-code-expiry-hint',
             'name="data[message]"',
         ], false);
 

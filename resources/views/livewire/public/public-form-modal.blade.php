@@ -105,7 +105,7 @@
                                     </div>
 
                                     <div
-                                        class="flex flex-row-reverse items-stretch gap-2"
+                                        class="flex flex-row items-stretch gap-2"
                                         x-data="{ remaining: @js($emailVerificationCooldownSeconds) }"
                                         x-init="if (remaining > 0) { const interval = setInterval(() => { remaining = Math.max(0, remaining - 1); if (remaining === 0) clearInterval(interval) }, 1000) }"
                                     >
@@ -127,7 +127,7 @@
                                             @disabled(! $emailVerificationEmailValid || $emailVerificationCooldownSeconds > 0)
                                             class="inline-flex shrink-0 items-center justify-center rounded-md border border-primary-700 bg-primary-700 px-3 py-2 text-sm font-medium text-white transition hover:bg-primary-800 focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:cursor-not-allowed disabled:opacity-60"
                                             data-test="public-form-send-code"
-                                            data-suffix-position="inline-start"
+                                            data-suffix-position="inline-end"
                                         >
                                             <span x-text="remaining > 0 ? @js(__('public.forms.verification.resend_in')).replace(':seconds', remaining) : @js(__('public.forms.verification.send_code'))">
                                                 {{ $emailVerificationCooldownSeconds > 0
@@ -155,7 +155,7 @@
                                                 {{ __('public.forms.verification.code_label') }}
                                             </label>
 
-                                            <div class="flex flex-row-reverse items-stretch gap-2">
+                                            <div class="flex flex-row items-stretch gap-2">
                                                 <input
                                                     id="public-form-email-verification-code"
                                                     type="text"
@@ -177,7 +177,7 @@
                                                     @disabled(blank($emailVerificationCode))
                                                     class="inline-flex shrink-0 items-center justify-center rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:cursor-not-allowed disabled:opacity-60 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200 dark:hover:bg-gray-800"
                                                     data-test="public-form-verify-code"
-                                                    data-suffix-position="inline-start"
+                                                    data-suffix-position="inline-end"
                                                 >
                                                     {{ __('public.forms.verification.verify_code') }}
                                                 </button>
@@ -186,6 +186,10 @@
                                             @error('emailVerificationCode')
                                                 <p class="text-xs text-danger-700 dark:text-danger-300" data-test="public-form-code-error">{{ $message }}</p>
                                             @enderror
+
+                                            <p class="text-xs text-gray-600 dark:text-gray-300" data-test="public-form-code-expiry-hint">
+                                                {{ trans_choice('public.forms.verification.expires_hint', $emailVerificationExpiresAfterMinutes, ['count' => $emailVerificationExpiresAfterMinutes]) }}
+                                            </p>
                                         </div>
                                     @endif
 

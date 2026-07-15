@@ -2,6 +2,7 @@
 
 namespace App\Support\PublicFront\Maintenance;
 
+use App\Support\Forms\Verification\FormVerificationManager;
 use App\Support\PublicFront\Forms\PublicFormSchemaFactory;
 use App\Support\PublicFront\Forms\PublicFormVerificationPolicy;
 use App\Support\PublicFront\PublicFrontConfigReader;
@@ -150,6 +151,7 @@ class MaintenancePageRenderer
                 : null,
             'formVerificationToken' => $formVerificationToken,
             'formVerificationMessage' => $formVerificationMessage,
+            'formVerificationExpiresAfterMinutes' => FormVerificationManager::expiresAfterMinutes(),
             'sourceUrl' => $sourceUrl ?? url()->full(),
             'actionUrl' => $formActionUrl ?? route('public.maintenance-form.submit'),
             'sendCodeActionUrl' => route('public.maintenance-form.send-code'),

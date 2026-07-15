@@ -148,7 +148,7 @@ class PublicFormModal extends Component
 
         $this->emailVerificationVerified = false;
         $this->emailVerificationCodeSent = true;
-        $this->emailVerificationAvailableAt = now()->addSeconds(FormVerificationManager::RESEND_COOLDOWN_SECONDS)->getTimestamp();
+        $this->emailVerificationAvailableAt = now()->addSeconds(FormVerificationManager::resendCooldownSeconds())->getTimestamp();
         $this->emailVerificationCode = '';
         $this->emailVerificationStatus = __('public.forms.verification.sent');
         $this->resetErrorBag('verification');
@@ -210,6 +210,7 @@ class PublicFormModal extends Component
             'emailVerificationFieldKey' => $emailVerificationField['key'] ?? null,
             'emailVerificationEmailValid' => $this->submitterEmailIsValid($emailVerificationField),
             'emailVerificationCooldownSeconds' => max(0, (int) $this->emailVerificationAvailableAt - now()->getTimestamp()),
+            'emailVerificationExpiresAfterMinutes' => FormVerificationManager::expiresAfterMinutes(),
             'emailVerificationVerified' => $this->emailVerificationVerified,
         ]);
     }

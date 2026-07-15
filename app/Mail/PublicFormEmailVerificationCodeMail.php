@@ -39,7 +39,7 @@ class PublicFormEmailVerificationCodeMail extends Mailable implements ShouldQueu
                 'formName' => $this->formName,
                 'locale' => $this->mailLocale,
                 'siteName' => config('app.name'),
-                'expiresAfterMinutes' => FormVerificationManager::EXPIRES_AFTER_MINUTES,
+                'expiresAfterMinutes' => FormVerificationManager::expiresAfterMinutes(),
             ],
         );
     }

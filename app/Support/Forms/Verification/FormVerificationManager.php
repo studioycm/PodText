@@ -12,12 +12,6 @@ use Illuminate\Validation\ValidationException;
 
 class FormVerificationManager
 {
-    public const EXPIRES_AFTER_MINUTES = 10;
-
-    public const MAX_ATTEMPTS = 5;
-
-    public const RESEND_COOLDOWN_SECONDS = 60;
-
     private const ADDRESS_HOURLY_LIMIT = 5;
 
     private const IP_HOURLY_LIMIT = 20;
@@ -55,7 +49,7 @@ class FormVerificationManager
             'code_hash' => $this->hashCode($code),
             'form_key' => $formKey,
             'guest_token_hash' => $guestTokenHash,
-            'expires_at' => now()->addMinutes(self::EXPIRES_AFTER_MINUTES),
+            'expires_at' => now()->addMinutes(self::expiresAfterMinutes()),
             'attempts' => 0,
         ]);
 
@@ -66,7 +60,7 @@ class FormVerificationManager
             locale: $locale ?: app()->getLocale(),
         );
 
-        RateLimiter::hit($this->cooldownKey($channel, $address, $formKey), self::RESEND_COOLDOWN_SECONDS);
+        RateLimiter::hit($this->cooldownKey($channel, $address, $formKey), self::resendCooldownSeconds());
         RateLimiter::hit($this->hourlyAddressKey($channel, $address), 3600);
 
         if (filled($ipAddress)) {
@@ -99,7 +93,7 @@ class FormVerificationManager
             return FormVerificationResult::Expired;
         }
 
-        if ($record->attempts >= self::MAX_ATTEMPTS) {
+        if ($record->attempts >= self::maxAttempts()) {
             $record->update(['consumed_at' => now()]);
 
             return FormVerificationResult::AttemptsExceeded;
@@ -108,7 +102,7 @@ class FormVerificationManager
         if (! hash_equals($record->code_hash, $this->hashCode($code))) {
             $record->increment('attempts');
 
-            if ($record->refresh()->attempts >= self::MAX_ATTEMPTS) {
+            if ($record->refresh()->attempts >= self::maxAttempts()) {
                 $record->update(['consumed_at' => now()]);
 
                 return FormVerificationResult::AttemptsExceeded;
@@ -144,6 +138,21 @@ class FormVerificationManager
     public function hashToken(string $guestToken): string
     {
         return hash_hmac('sha256', $guestToken, $this->hashKey());
+    }
+
+    public static function expiresAfterMinutes(): int
+    {
+        return (int) config('forms.otp.expires_minutes');
+    }
+
+    public static function maxAttempts(): int
+    {
+        return (int) config('forms.otp.max_attempts');
+    }
+
+    public static function resendCooldownSeconds(): int
+    {
+        return (int) config('forms.otp.resend_cooldown_seconds');
     }
 
     private function ensureSendAllowed(

@@ -45,12 +45,26 @@ function mail1SendVerificationCode(string $address = 'submitter@example.com', st
     return (string) $code;
 }
 
+it('uses the documented otp policy config defaults', function (): void {
+    expect(config('forms.otp'))->toBe([
+        'expires_minutes' => 5,
+        'max_attempts' => 5,
+        'resend_cooldown_seconds' => 60,
+    ])->and(file_get_contents(base_path('.env.example')))->toContain(
+        'FORMS_OTP_EXPIRES_MINUTES=5',
+        'FORMS_OTP_MAX_ATTEMPTS=5',
+        'FORMS_OTP_RESEND_COOLDOWN_SECONDS=60',
+    );
+});
+
 it('sends email codes and invalidates previous active codes for the same address and form', function (): void {
+    config(['forms.otp.resend_cooldown_seconds' => 2]);
+
     mail1SendVerificationCode(token: 'first-token');
 
     $first = FormVerificationCode::query()->firstOrFail();
 
-    $this->travel(FormVerificationManager::RESEND_COOLDOWN_SECONDS + 1)->seconds();
+    $this->travel(FormVerificationManager::resendCooldownSeconds() + 1)->seconds();
 
     mail1SendVerificationCode(token: 'second-token');
 
@@ -87,11 +101,13 @@ it('verifies a correct code and consumes it once', function (): void {
         ))->toBeNull();
 });
 
-it('kills a code after five incorrect attempts', function (): void {
+it('kills a code after the configured number of incorrect attempts', function (): void {
+    config(['forms.otp.max_attempts' => 2]);
+
     mail1SendVerificationCode();
     $manager = app(FormVerificationManager::class);
 
-    foreach (range(1, FormVerificationManager::MAX_ATTEMPTS - 1) as $attempt) {
+    foreach (range(1, FormVerificationManager::maxAttempts() - 1) as $attempt) {
         expect($manager->verify(
             FormVerificationChannel::Email,
             'submitter@example.com',
@@ -112,7 +128,14 @@ it('kills a code after five incorrect attempts', function (): void {
 });
 
 it('expires old codes and blocks resend during the cooldown window', function (): void {
+    config(['forms.otp.expires_minutes' => 1]);
+    $this->travelTo(now()->startOfSecond());
+
     mail1SendVerificationCode();
+
+    expect(FormVerificationCode::query()->firstOrFail()->expires_at->equalTo(
+        now()->addMinutes(FormVerificationManager::expiresAfterMinutes()),
+    ))->toBeTrue();
 
     app(FormVerificationManager::class)->send(
         channel: FormVerificationChannel::Email,
@@ -134,7 +157,7 @@ it('expires old codes and blocks resend during the cooldown window', function ()
         locale: 'he',
     ))->toThrow(ValidationException::class);
 
-    $this->travel(FormVerificationManager::EXPIRES_AFTER_MINUTES + 1)->minutes();
+    $this->travel(FormVerificationManager::expiresAfterMinutes() + 1)->minutes();
 
     expect(app(FormVerificationManager::class)->verify(
         FormVerificationChannel::Email,
@@ -143,4 +166,24 @@ it('expires old codes and blocks resend during the cooldown window', function ()
         'guest-token',
         '111111',
     ))->toBe(FormVerificationResult::Expired);
+});
+
+it('renders singular and plural expiry copy in queued email content', function (): void {
+    config(['forms.otp.expires_minutes' => 1]);
+    app()->setLocale('he');
+
+    (new PublicFormEmailVerificationCodeMail(
+        code: '123456',
+        formName: 'טופס בדיקה',
+        mailLocale: 'he',
+    ))->assertSeeInHtml('הקוד תקף לדקה אחת.');
+
+    config(['forms.otp.expires_minutes' => 5]);
+    app()->setLocale('en');
+
+    (new PublicFormEmailVerificationCodeMail(
+        code: '123456',
+        formName: 'Test form',
+        mailLocale: 'en',
+    ))->assertSeeInHtml('This code expires in 5 minutes.');
 });
