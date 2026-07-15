@@ -131,6 +131,52 @@ it('writes named settings profiling phases when the flag is enabled', function (
         ->toContain(SettingsPageProfiler::REQUEST_SAVE);
 });
 
+it('restores nested profiler subjects after exceptions and keeps timer start subjects', function (): void {
+    config(['settings.profiling.enabled' => true]);
+    $contexts = [];
+    $logger = Mockery::mock(LoggerInterface::class);
+    $logger
+        ->shouldReceive('info')
+        ->times(5)
+        ->with('Settings page profile', Mockery::type('array'))
+        ->andReturnUsing(function (string $message, array $context) use (&$contexts): void {
+            $contexts[] = $context;
+        });
+    Log::shouldReceive('channel')
+        ->times(5)
+        ->with('settings_profiling')
+        ->andReturn($logger);
+    $profiler = app(SettingsPageProfiler::class);
+
+    $profiler->withSubject('outer', function () use ($profiler): void {
+        $timer = $profiler->start('timer.started.outer');
+
+        $profiler->withSubject('inner', function () use ($profiler, $timer): void {
+            $profiler->record('inner.record', 1.0);
+            $profiler->stop($timer);
+        });
+
+        try {
+            $profiler->withSubject('throwing', function (): never {
+                throw new RuntimeException('subject test');
+            });
+        } catch (RuntimeException) {
+            $profiler->record('outer.after_exception', 1.0);
+        }
+    });
+
+    $subjectlessTimer = $profiler->start('timer.started.subjectless');
+    $profiler->withSubject('later', fn () => $profiler->stop($subjectlessTimer));
+
+    $profiler->record('unrelated.after_scope', 1.0);
+
+    expect(collect($contexts)->firstWhere('phase', 'inner.record')['subject'])->toBe('inner')
+        ->and(collect($contexts)->firstWhere('phase', 'timer.started.outer')['subject'])->toBe('outer')
+        ->and(collect($contexts)->firstWhere('phase', 'timer.started.subjectless')['subject'])->toBeNull()
+        ->and(collect($contexts)->firstWhere('phase', 'outer.after_exception')['subject'])->toBe('outer')
+        ->and(collect($contexts)->firstWhere('phase', 'unrelated.after_scope')['subject'])->toBeNull();
+});
+
 it('renders the maintenance raw html marker and copies the exact marker payload', function (): void {
     stepSp1SaveMaintenanceMarkerSettings();
 

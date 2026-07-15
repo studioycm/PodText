@@ -294,7 +294,6 @@ it('uses the lazy shared icon picker without preloading the full heroicon enum p
     $episodePage = Livewire::test(EpisodePageSettings::class);
     $cardTemplatePage = Livewire::test(CardTemplateSettings::class);
     $podcastIconSelect = step10V1bSelectByStatePath($episodePage, 'item_page.podcast_identity.icon');
-    $partIconSelect = step10V1bSelectByStatePath($cardTemplatePage, 'card_templates.0.icon');
 
     expect($podcastIconSelect)->toBeInstanceOf(Select::class)
         ->and($podcastIconSelect?->getOptions())->toBe([])
@@ -302,5 +301,6 @@ it('uses the lazy shared icon picker without preloading the full heroicon enum p
         ->and($episodePage->html())->not->toContain('OutlinedArchiveBoxXMark')
         ->and(substr_count($episodePage->html(), 'Outlined'))->toBeLessThan(80);
 
-    expect($partIconSelect === null || $partIconSelect->getOptions() === [])->toBeTrue();
+    expect($cardTemplatePage->html())->not->toContain('OutlinedAcademicCap')
+        ->not->toContain('OutlinedArchiveBoxXMark');
 });

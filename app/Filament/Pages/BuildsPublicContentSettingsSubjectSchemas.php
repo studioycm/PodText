@@ -1977,14 +1977,22 @@ trait BuildsPublicContentSettingsSubjectSchemas
     /**
      * @return array<Block>
      */
-    private function cardTemplatePartBlocks(bool $allowGroups = true): array
+    protected function cardTemplatePartBlocks(bool $allowGroups = true, bool $previews = false): array
     {
         return collect(PublicFrontConfigRegistry::cardPartTypes())
             ->when(! $allowGroups, fn ($types) => $types->reject(fn (string $type): bool => $type === 'part_group'))
-            ->map(fn (string $type): Block => Block::make($type)
-                ->label(__("admin.card_template_part_types.{$type}"))
-                ->schema($this->cardTemplatePartSchema($type))
-                ->columns(3))
+            ->map(function (string $type) use ($previews): Block {
+                $block = Block::make($type)
+                    ->label(__("admin.card_template_part_types.{$type}"))
+                    ->schema($this->cardTemplatePartSchema($type, $previews))
+                    ->columns(3);
+
+                if ($previews) {
+                    $block->preview('filament.card-templates.part-summary');
+                }
+
+                return $block;
+            })
             ->all();
     }
 
@@ -2201,7 +2209,7 @@ trait BuildsPublicContentSettingsSubjectSchemas
     /**
      * @return array<int, mixed>
      */
-    private function cardTemplatePartSchema(string $type): array
+    protected function cardTemplatePartSchema(string $type, bool $previews = false): array
     {
         $requiresSource = ! in_array($type, ['divider', 'spacer', 'part_group'], true);
         $isGroup = $type === 'part_group';
@@ -2313,8 +2321,9 @@ trait BuildsPublicContentSettingsSubjectSchemas
                 Builder::make('children')
                     ->label(__('admin.fields.card_template_part_group_children'))
                     ->helperText(__('admin.helpers.card_template_part_group_children'))
-                    ->blocks($this->cardTemplatePartBlocks(allowGroups: false))
+                    ->blocks($this->cardTemplatePartBlocks(allowGroups: false, previews: $previews))
                     ->blockPickerColumns(2)
+                    ->blockPreviews($previews)
                     ->collapsible()
                     ->collapsed()
                     ->cloneable()
@@ -2329,10 +2338,14 @@ trait BuildsPublicContentSettingsSubjectSchemas
      * @param  array<int, array<string, mixed>>  $templates
      * @return array<int, array<string, mixed>>
      */
-    private function cardTemplatesForBuilder(array $templates): array
+    protected function cardTemplatesForBuilder(array $templates): array
     {
         return collect($templates)
             ->map(function (array $template): array {
+                if (! array_key_exists('parts', $template)) {
+                    return $template;
+                }
+
                 $template['parts'] = collect($template['parts'] ?? [])
                     ->filter(fn (mixed $part): bool => is_array($part))
                     ->map(fn (array $part): array => $this->cardTemplatePartForBuilder($part))
@@ -2349,7 +2362,7 @@ trait BuildsPublicContentSettingsSubjectSchemas
      * @param  array<string, mixed>  $part
      * @return array{type: string, data: array<string, mixed>}
      */
-    private function cardTemplatePartForBuilder(array $part): array
+    protected function cardTemplatePartForBuilder(array $part): array
     {
         $data = Arr::except($part, ['type']);
 

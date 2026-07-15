@@ -50,6 +50,14 @@ return Application::configure(basePath: dirname(__DIR__))
         $exceptions->render(fn (TokenMismatchException $exception, Request $request): ?SymfonyResponse => $maintenanceCsrfRetryResponse($request));
 
         $exceptions->respond(function (SymfonyResponse $response, Throwable $exception, Request $request) use ($maintenanceCsrfRetryResponse): SymfonyResponse {
+            $requestUri = $request->server->get('REQUEST_URI');
+
+            if ($response->getStatusCode() === 400
+                && is_string($requestUri)
+                && str_starts_with($requestUri, '/admin/settings/card-templates/edit/')) {
+                return new SymfonyResponse('', 404);
+            }
+
             if ($response->getStatusCode() !== 419) {
                 return $response;
             }

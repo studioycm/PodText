@@ -9,8 +9,10 @@ use App\Filament\Pages\AdminTools;
 use App\Filament\Pages\AdminUxSettings as AdminUxSettingsPage;
 use App\Filament\Pages\CardTemplateSettings;
 use App\Filament\Pages\ContributorSettings;
+use App\Filament\Pages\CreateCardTemplate;
 use App\Filament\Pages\Dashboard;
 use App\Filament\Pages\DisplaySettings;
+use App\Filament\Pages\EditCardTemplate;
 use App\Filament\Pages\EpisodePageSettings;
 use App\Filament\Pages\HomepageSettings;
 use App\Filament\Pages\ImporterSettings;
@@ -272,6 +274,8 @@ it('orders every registered admin navigation resource and page through the centr
     }
 
     expect(Dashboard::shouldRegisterNavigation())->toBeTrue()
+        ->and(CreateCardTemplate::shouldRegisterNavigation())->toBeFalse()
+        ->and(EditCardTemplate::shouldRegisterNavigation())->toBeFalse()
         ->and(PublicFormSubmissionResource::isNavigationBadgeDeferred())->toBeTrue();
 
     $panel = Filament::getPanel('admin');

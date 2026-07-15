@@ -3,8 +3,9 @@
 use App\Enums\TranscriptionMode;
 use App\Enums\UserRole;
 use App\Filament\Pages\AdminUxSettings as AdminUxSettingsPage;
-use App\Filament\Pages\CardTemplateSettings;
+use App\Filament\Pages\CreateCardTemplate;
 use App\Filament\Pages\DisplaySettings;
+use App\Filament\Pages\EditCardTemplate;
 use App\Filament\Resources\ContentItems\Pages\EditContentItem;
 use App\Filament\Resources\ContentItems\RelationManagers\TranscriptionsRelationManager;
 use App\Filament\Resources\Users\Pages\EditUser;
@@ -333,34 +334,43 @@ it('filters and save-guards the public card template transcription-count part', 
     roles1SaveSetting(PublicContentSettings::class, 'card_templates', [$storedTemplate]);
     $this->actingAs(User::factory()->admin()->create());
 
-    Livewire::test(CardTemplateSettings::class)
-        ->set('data.card_templates', [
-            roles1CardTemplate('stored_count', []),
-            roles1CardTemplate('forged_count', [
-                roles1BuilderCardPart('metadata_row', 'content_item', 'transcription_count'),
-                [
-                    'type' => 'part_group',
-                    'data' => [
-                        'visible' => true,
-                        'order' => 20,
-                        'layout' => 'grid',
-                        'children' => [
-                            roles1BuilderCardPart('metadata_row', 'content_item', 'transcription_count'),
-                            roles1BuilderCardPart('title', 'content_item', 'title'),
-                        ],
+    Livewire::test(EditCardTemplate::class, [
+        'family' => 'content_item',
+        'key' => 'stored_count',
+    ])
+        ->assertSet('restricted', true)
+        ->assertSet('data.parts', null)
+        ->assertDontSee('transcription_count', escape: false);
+
+    $forged = Livewire::withQueryParams(['mode' => 'blank'])
+        ->test(CreateCardTemplate::class)
+        ->set('data.key', 'forged_count')
+        ->set('data.label', 'Forged count')
+        ->set('data.parts', [
+            roles1BuilderCardPart('metadata_row', 'content_item', 'transcription_count'),
+            [
+                'type' => 'part_group',
+                'data' => [
+                    'visible' => true,
+                    'order' => 20,
+                    'layout' => 'grid',
+                    'children' => [
+                        roles1BuilderCardPart('metadata_row', 'content_item', 'transcription_count'),
+                        roles1BuilderCardPart('title', 'content_item', 'title'),
                     ],
                 ],
-            ]),
+            ],
         ])
         ->call('save')
-        ->assertHasNoFormErrors();
+        ->assertHasErrors('data.key');
 
     roles1ClearSettingsCache();
 
     $templates = collect(app(PublicContentSettings::class)->card_templates)->keyBy('key');
 
     expect($templates->get('stored_count')['parts'])->toBe($storedTemplate['parts'])
-        ->and(roles1HasTranscriptionCountPart($templates->get('forged_count')['parts']))->toBeFalse();
+        ->and($templates)->not->toHaveKey('forged_count')
+        ->and($forged->get('protectedForgeryDetected'))->toBeTrue();
 });
 
 it('applies the two visibility gates to settings and current admin transcription surfaces', function (): void {

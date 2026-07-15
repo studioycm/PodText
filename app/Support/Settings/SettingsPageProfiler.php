@@ -16,6 +16,8 @@ class SettingsPageProfiler
 
     private ?string $requestKind = null;
 
+    private ?string $subject = null;
+
     public function isEnabled(): bool
     {
         return (bool) config('settings.profiling.enabled', false);
@@ -36,6 +38,24 @@ class SettingsPageProfiler
             return $callback();
         } finally {
             $this->requestKind = $previousRequestKind;
+        }
+    }
+
+    /**
+     * @template TValue
+     *
+     * @param  Closure(): TValue  $callback
+     * @return TValue
+     */
+    public function withSubject(string $subject, Closure $callback): mixed
+    {
+        $previousSubject = $this->subject;
+        $this->subject = $subject;
+
+        try {
+            return $callback();
+        } finally {
+            $this->subject = $previousSubject;
         }
     }
 
@@ -66,7 +86,7 @@ class SettingsPageProfiler
     }
 
     /**
-     * @return array{phase: string, request_kind: string, started_at: int, payload_bytes: int|null}|null
+     * @return array{phase: string, request_kind: string, subject: string|null, started_at: int, payload_bytes: int|null}|null
      */
     public function start(string $phase, ?string $requestKind = null, ?int $payloadBytes = null): ?array
     {
@@ -77,13 +97,14 @@ class SettingsPageProfiler
         return [
             'phase' => $phase,
             'request_kind' => $requestKind ?? $this->currentRequestKind(),
+            'subject' => $this->subject,
             'started_at' => hrtime(true),
             'payload_bytes' => $payloadBytes,
         ];
     }
 
     /**
-     * @param  array{phase: string, request_kind: string, started_at: int, payload_bytes: int|null}|null  $timer
+     * @param  array{phase: string, request_kind: string, subject: string|null, started_at: int, payload_bytes: int|null}|null  $timer
      */
     public function stop(?array $timer): void
     {
@@ -96,11 +117,19 @@ class SettingsPageProfiler
             milliseconds: $this->millisecondsSince($timer['started_at']),
             requestKind: $timer['request_kind'],
             payloadBytes: $timer['payload_bytes'],
+            subject: $timer['subject'],
+            resolveCurrentSubject: false,
         );
     }
 
-    public function record(string $phase, float $milliseconds, ?string $requestKind = null, ?int $payloadBytes = null): void
-    {
+    public function record(
+        string $phase,
+        float $milliseconds,
+        ?string $requestKind = null,
+        ?int $payloadBytes = null,
+        ?string $subject = null,
+        bool $resolveCurrentSubject = true,
+    ): void {
         if (! $this->isEnabled()) {
             return;
         }
@@ -109,6 +138,7 @@ class SettingsPageProfiler
             'phase' => $phase,
             'milliseconds' => round($milliseconds, 3),
             'request_kind' => $requestKind ?? $this->currentRequestKind(),
+            'subject' => $resolveCurrentSubject ? ($subject ?? $this->subject) : $subject,
         ];
 
         if ($payloadBytes !== null) {

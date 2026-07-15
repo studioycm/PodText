@@ -184,6 +184,15 @@ Before planning or rewriting docs, inspect the existing docs/prompts/guidelines 
 - Follow the active prompt’s commit behavior.
 - If the active prompt does not explicitly request a commit, leave changes uncommitted for human review.
 
+## Commit messages
+
+- Use an imperative subject with one of these prefixes: `feat:`, `fix:`, `perf:`,
+  `refactor:`, `test:`, `docs:`, `build:`, `ci:`, or `chore:`.
+- Keep the subject concise and describe the completed change, not the work session.
+- When the canonical run ending requires a docs-only implementation-hash stamp,
+  use `docs: backfill <step> hash`.
+- These are repository rules only; do not add or require a commit-message hook.
+
 ## Secret and local configuration safety
 
 Never commit or print:

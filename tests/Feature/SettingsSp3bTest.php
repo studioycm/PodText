@@ -55,7 +55,6 @@ function settingsSp3bEditablePages(): array
         AboutSettings::class => SettingsSubjectOwnershipRegistry::ABOUT,
         MaintenanceSettings::class => SettingsSubjectOwnershipRegistry::MAINTENANCE,
         ManagePublicForms::class => SettingsSubjectOwnershipRegistry::PUBLIC_FORMS,
-        CardTemplateSettings::class => SettingsSubjectOwnershipRegistry::CARD_TEMPLATES,
     ];
 }
 

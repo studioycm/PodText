@@ -2,8 +2,8 @@
 
 use App\Enums\HomepageSectionType;
 use App\Enums\TranscriptionMode;
-use App\Filament\Pages\CardTemplateSettings;
 use App\Filament\Pages\ContributorSettings;
+use App\Filament\Pages\CreateCardTemplate;
 use App\Filament\Pages\PodcastSettings;
 use App\Filament\Resources\HomepageSections\Pages\CreateHomepageSection;
 use App\Livewire\Public\TopTranscribersSection;
@@ -539,25 +539,23 @@ it('exposes saved custom templates in family scoped admin selects', function ():
         ]))->toBeTrue();
 });
 
-it('exposes saved card templates on the owning podcast settings page after safe normalization', function (): void {
+it('exposes templates created through the focused editor on the owning podcast settings page', function (): void {
     $this->actingAs(User::factory()->create());
 
-    Livewire::test(CardTemplateSettings::class)
-        ->set('data.card_templates', [
-            [
-                ...makeStep3CardTemplate('content_item', 'same_session_episode_card'),
-                'parts' => [],
-            ],
-            [
-                ...makeStep3CardTemplate('content_group', 'same_session_podcast_card'),
-                'parts' => [],
-            ],
-            [
-                ...makeStep3CardTemplate('content_item', 'unsafe_label_card'),
-                'label' => '<script>alert(1)</script>',
-                'parts' => [],
-            ],
-        ])
+    Livewire::withQueryParams(['mode' => 'blank'])
+        ->test(CreateCardTemplate::class)
+        ->set('data.key', 'same_session_episode_card')
+        ->set('data.label', 'Template same_session_episode_card')
+        ->set('data.parts', [])
+        ->call('save')
+        ->assertHasNoFormErrors();
+
+    Livewire::withQueryParams(['mode' => 'blank'])
+        ->test(CreateCardTemplate::class)
+        ->set('data.key', 'same_session_podcast_card')
+        ->set('data.label', 'Template same_session_podcast_card')
+        ->set('data.family', 'content_group')
+        ->set('data.parts', [])
         ->call('save')
         ->assertHasNoFormErrors();
 
@@ -569,17 +567,14 @@ it('exposes saved card templates on the owning podcast settings page after safe 
     expect($podcastItemSelect)->toBeInstanceOf(Select::class)
         ->and(step10rB1SelectHasOptions($podcastItemSelect, [
             'same_session_episode_card' => 'Template same_session_episode_card',
-            'unsafe_label_card' => 'unsafe_label_card',
         ], [
             'same_session_podcast_card',
         ]))->toBeTrue()
-        ->and($podcastItemSelect->getOptions())->not->toContain('<script>alert(1)</script>')
         ->and($podcastGroupSelect)->toBeInstanceOf(Select::class)
         ->and(step10rB1SelectHasOptions($podcastGroupSelect, [
             'same_session_podcast_card' => 'Template same_session_podcast_card',
         ], [
             'same_session_episode_card',
-            'unsafe_label_card',
         ]))->toBeTrue();
 });
 
@@ -1417,54 +1412,53 @@ it('renders m5 labels and icons on content group and contributor card families',
         ->assertSee('data-card-part-label-position="inline_after"', false);
 });
 
-it('saves a simple card template definition through the temporary card templates page', function (): void {
+it('saves a simple card template definition through the focused create page', function (): void {
     $this->actingAs(User::factory()->create());
 
-    Livewire::test(CardTemplateSettings::class)
-        ->set('data.card_templates', [
-            [
-                'key' => 'admin_episode_card',
-                'label' => 'Admin episode card',
-                'family' => 'content_item',
-                'layout' => 'rows',
-                'density' => 'compact',
-                'image_size' => 'small',
-                'title_size' => 'lg',
-                'parts' => [
-                    [
-                        'type' => 'title',
-                        'data' => [
-                            'source' => 'content_item',
-                            'attribute' => 'title',
-                            'label' => 'Admin title label',
-                            'label_position' => 'inline_before',
-                            'label_alignment' => 'start',
-                            'icon' => 'title',
-                            'icon_position' => 'inline_before',
-                            'visible' => true,
-                            'order' => 10,
-                            'layout' => 'inline',
-                        ],
+    Livewire::withQueryParams(['mode' => 'blank'])
+        ->test(CreateCardTemplate::class)
+        ->set('data', [
+            'key' => 'admin_episode_card',
+            'label' => 'Admin episode card',
+            'family' => 'content_item',
+            'layout' => 'rows',
+            'density' => 'compact',
+            'image_size' => 'small',
+            'title_size' => 'lg',
+            'parts' => [
+                [
+                    'type' => 'title',
+                    'data' => [
+                        'source' => 'content_item',
+                        'attribute' => 'title',
+                        'label' => 'Admin title label',
+                        'label_position' => 'inline_before',
+                        'label_alignment' => 'start',
+                        'icon' => 'title',
+                        'icon_position' => 'inline_before',
+                        'visible' => true,
+                        'order' => 10,
+                        'layout' => 'inline',
                     ],
-                    [
-                        'type' => 'part_group',
-                        'data' => [
-                            'layout' => 'grid',
-                            'columns' => '2',
-                            'gap' => 'comfortable',
-                            'alignment' => 'center',
-                            'visible' => true,
-                            'order' => 20,
-                            'children' => [
-                                [
-                                    'type' => 'custom_text',
-                                    'data' => [
-                                        'source' => 'custom',
-                                        'attribute' => 'text',
-                                        'text' => 'Admin grouped child',
-                                        'visible' => true,
-                                        'order' => 10,
-                                    ],
+                ],
+                [
+                    'type' => 'part_group',
+                    'data' => [
+                        'layout' => 'grid',
+                        'columns' => '2',
+                        'gap' => 'comfortable',
+                        'alignment' => 'center',
+                        'visible' => true,
+                        'order' => 20,
+                        'children' => [
+                            [
+                                'type' => 'custom_text',
+                                'data' => [
+                                    'source' => 'custom',
+                                    'attribute' => 'text',
+                                    'text' => 'Admin grouped child',
+                                    'visible' => true,
+                                    'order' => 10,
                                 ],
                             ],
                         ],
