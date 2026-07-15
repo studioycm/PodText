@@ -304,6 +304,18 @@ it('orders every registered admin navigation resource and page through the centr
         AdminNavigationOrder::groupLabel(AdminNavigationOrder::SITE_MANAGEMENT),
     ]);
 
+    $groupedNavigation = $navigation
+        ->filter(fn ($group): bool => $group->getLabel() !== null);
+
+    foreach ($groupedNavigation as $group) {
+        expect($group->getIcon())->toBeNull()
+            ->and($group->isCollapsible())->toBeTrue();
+
+        foreach ($group->getItems() as $item) {
+            expect($item->getIcon())->not->toBeNull();
+        }
+    }
+
     $itemLabelsFor = fn (?string $groupLabel): array => collect($navigation
         ->first(fn ($group): bool => $group->getLabel() === $groupLabel)
         ->getItems())

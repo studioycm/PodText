@@ -46,24 +46,20 @@ class AdminNavigationOrder
     public const EPISODE_WORKSPACE_CREATE_SORT = 10;
 
     /**
-     * @var array<string, array{label: string, icon: Heroicon}>
+     * @var array<string, array{label: string}>
      */
     private const GROUPS = [
         self::CONTENT_MANAGEMENT => [
             'label' => 'admin.navigation.groups.content_management',
-            'icon' => Heroicon::OutlinedFolderOpen,
         ],
         self::TAXONOMY_MANAGEMENT => [
             'label' => 'admin.navigation.groups.taxonomy_management',
-            'icon' => Heroicon::OutlinedTag,
         ],
         self::SETTINGS => [
             'label' => 'admin.navigation.groups.settings',
-            'icon' => Heroicon::OutlinedAdjustmentsHorizontal,
         ],
         self::SITE_MANAGEMENT => [
             'label' => 'admin.navigation.groups.site_management',
-            'icon' => Heroicon::OutlinedCog6Tooth,
         ],
     ];
 
@@ -218,8 +214,7 @@ class AdminNavigationOrder
         return collect(array_keys(self::GROUPS))
             ->mapWithKeys(fn (string $group): array => [
                 $group => NavigationGroup::make(fn (): string => self::groupLabel($group))
-                    ->icon(self::GROUPS[$group]['icon'])
-                    ->collapsible(false),
+                    ->collapsible(),
             ])
             ->all();
     }
