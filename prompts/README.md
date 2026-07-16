@@ -23,10 +23,10 @@ Historical prompts are under `prompts/archive/` and are not active instructions.
   foundation handoff.
 - `pre-13-prompts/maintenance-livewire-enforcement-audit-codex-prompt.md` v1 is
   complete as a Markdown-only effects audit. It authorized no remediation.
-- `pre-13-prompts/authz1c-analyzer-backfill-codex-prompt.md` v1 is the prepared
-  AUTHZ1-C implementation contract. Planning is accepted and complete;
-  implementation is not started and requires a fresh operator kickoff naming
-  this exact prompt version.
+- `pre-13-prompts/authz1c-analyzer-backfill-codex-prompt.md` v1 was executed as
+  the AUTHZ1-C implementation contract. The implementation and canonical final
+  gate are complete with two-commit closeout pending; AUTHZ1-D–I remain
+  unstarted.
 
 ## Pre-Prompt-08 research note
 

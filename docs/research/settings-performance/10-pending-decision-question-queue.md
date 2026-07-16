@@ -3,8 +3,8 @@
 Date: 2026-07-16
 
 Status: restart-safe index after the completed AUTHZ1 foundation and
-maintenance-effects audit; AUTHZ1-C is planned/prompted but not implemented;
-legacy authorization remains authoritative
+maintenance-effects audit; AUTHZ1-C implementation and final gate are complete
+with commit closeout pending; legacy authorization remains authoritative
 
 ## Restart protocol
 
@@ -34,11 +34,11 @@ the old Groups 16–22.
 ## Single continuation point
 
 The reversible AUTHZ1 foundation and maintenance-effects audit v1 are complete.
-Operator/Fable accepted AUTHZ1-C planning; its audit v1, implementation plan,
-and v1 prompt now exist, but implementation is not started. The next action is
-operator review and an explicit implementation kickoff naming the exact prompt
-version. Do not create package assignments, apply compatibility grants, switch
-policies/Gates, or begin AUTHZ1-D–I without that kickoff.
+AUTHZ1-C is implemented from the accepted v1 prompt with a green canonical
+final gate; its two-commit closeout is pending. The next action is operator review
+of the C handoff; the disposable two-connection MySQL rehearsal remains a
+separately approved future production gate. Do not apply compatibility grants,
+switch policies/Gates, or begin AUTHZ1-D–I without a later exact contract.
 
 `MAINT-LW-UX1` is independently deferred for the medium production stale-tab
 maintenance UX and focused missing regression coverage from report 14. Run it
@@ -85,8 +85,9 @@ Pre-implementation evidence is consolidated in
 AUTHZ1-C audit v1 and executable plan are in the two
 `15-authz1c-analyzer-backfill-*` documents, with the implementation contract at
 `prompts/pre-13-prompts/authz1c-analyzer-backfill-codex-prompt.md` v1.
-AUTHZ1-C is planned/prompted but not started; implementation requires a fresh
-kickoff. AUTHZ1-D–I remain unstarted.
+AUTHZ1-C implementation and final gate are complete with commit closeout
+pending; its detailed evidence is in
+`docs/phase-02/authz1c-analyzer-backfill-handoff.md`. AUTHZ1-D–I remain unstarted.
 
 - The installed exact solve is Shield 4.2.0 + Permission 7.3.0 plus transitive
   Plugin Essentials 1.2.1, with no unrelated update/removal. Shield remains

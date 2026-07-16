@@ -3,7 +3,7 @@
 Date: 2026-07-16
 Task: AUTHZ1-C-PLAN-01
 Audit version: v1
-Status: planning complete; implementation not started
+Status: implementation and canonical final gate complete; commit pending
 Authority boundary: legacy authorization remains authoritative after AUTHZ1-C
 
 ## 1. Accepted planning boundary
@@ -309,3 +309,32 @@ It must run before either (a) any later public Livewire navigation, polling,
 lazy/deferred loading, streaming, or upload expansion, or (b) AUTHZ1 final
 acceptance, whichever occurs first. It is not a prerequisite for AUTHZ1-C, is
 not coupled to its implementation, and has no implementation prompt here.
+
+## 11. Implementation evidence
+
+AUTHZ1-C was implemented from the accepted v1 prompt without changing the
+foundation schema, package configuration, catalog, `User`, `UserRole`, Gates,
+policies, Filament UI, routes, translations, dependencies, or runtime authority.
+The implementation lives under `app/Auth/LegacyRoleBackfill/` with three
+discovered Artisan commands and the focused Pest contract at
+`tests/Feature/AuthzLegacyRoleBackfillTest.php`.
+
+The settled focused evidence is 26 tests / 298 assertions. The combined
+foundation, package, legacy matrix, panel, maintenance, and AUTHZ1-C regression
+is 150 tests / 3,794 assertions. It proves privacy-safe raw analysis, static and
+target drift refusal, independently validated accepted reports, exact
+query-builder projection, transaction rollback and retry recomputation,
+post-commit cache failure recovery, immutable journal/receipt reconciliation,
+true completed no-op, receipt-scoped rollback/reapply, and unchanged five-role
+legacy authority.
+
+The canonical gate passed Pint, FilaCheck with zero issues, the production asset
+build, and the full suite at 711 tests / 8,828 assertions. The first sandboxed
+full-suite attempt could not launch Chromium; the identical escalated command
+passed and the final documented state was confirmed through the full sequence.
+
+This is application-plane SQLite `:memory:` evidence only. The separately
+approved disposable two-connection MySQL rehearsal remains required before any
+production approval and must not be replaced by a development-database probe.
+The detailed disposition and command record is in
+`docs/phase-02/authz1c-analyzer-backfill-handoff.md`.
