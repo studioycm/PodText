@@ -9,7 +9,7 @@ Authority: legacy `users.role` authorization remains authoritative
 
 ## Commit hash
 
-`pending`
+`0cdf8390b67d260ced54a0ca2ad58600bd475da5 fix: remediate authz1c audit findings`
 
 ## Outcome
 
