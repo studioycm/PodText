@@ -3,7 +3,9 @@
 Date: 2026-07-17
 Task: `AUTHZ1-C-REMEDIATION-PLAN-01`
 Research version: v1
-Status: remediation planned and prompted; implementation not started
+Status: implementation and two-commit closeout complete; independent audit
+found one High ownership-substitution gap, one Medium exact-lineage gap, and
+one Low adapter-identity gap; separate follow-up required before AUTHZ1-D–I
 Authority boundary: legacy authorization remains authoritative
 
 ## 1. Scope and controlling finding set

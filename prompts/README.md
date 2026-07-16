@@ -29,8 +29,11 @@ Historical prompts are under `prompts/archive/` and are not active instructions.
   separate remediation contract below.
 - `pre-13-prompts/authz1c-audit-remediation-codex-prompt.md` v1 was executed as
   the R-01–R-05 remediation contract. Local implementation and two-commit
-  closeout are complete; independent remediation review is pending and
-  AUTHZ1-D–I remain blocked and unstarted.
+  closeout are complete. The independent remediation audit is complete with
+  decision **separate follow-up required** for coherent keyed ownership
+  substitution, exact rollback apply-journal lineage, and mixed native adapter
+  identity lookup. No follow-up implementation prompt exists; AUTHZ1-D–I
+  remain blocked and unstarted.
 
 ## Pre-Prompt-08 research note
 

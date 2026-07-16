@@ -4,7 +4,9 @@ Date: 2026-07-17
 Contract: AUTHZ1-C audit remediation prompt v1
 Controlling research: `17-authz1c-audit-remediation-research.md` v1
 Controlling audit: `16-authz1c-independent-analyzer-backfill-audit.md`
-Status: planned and prompted; implementation not started
+Status: implemented and closed out; independent audit found one High ownership-
+substitution gap, one Medium exact-lineage gap, and one Low adapter-identity
+gap; separate follow-up required
 Boundary: remediate R-01 through R-05 only; legacy authority remains active
 
 ## 1. Mandatory preflight and baselines

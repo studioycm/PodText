@@ -2,8 +2,9 @@
 
 Date: 2026-07-17
 
-Status: restart-safe index after local AUTHZ1-C R-01–R-05 remediation;
-independent remediation review is next, AUTHZ1-D remains blocked, and legacy
+Status: independent AUTHZ1-C remediation audit complete; separate follow-up is
+required for coherent keyed ownership substitution, exact rollback lineage,
+and mixed native adapter identity lookup; AUTHZ1-D remains blocked and legacy
 authorization remains authoritative
 
 ## Restart protocol
@@ -30,7 +31,9 @@ On a context reset, read in this order:
 9. `17-authz1c-audit-remediation-research.md`, its paired implementation plan,
    and `prompts/pre-13-prompts/authz1c-audit-remediation-codex-prompt.md` v1 —
    the implemented local remediation contract and evidence boundary.
-10. This file — remaining evidence/approval checkpoints.
+10. `18-authz1c-independent-remediation-audit.md` and its handoff — remediation
+    audit decision, three follow-up gaps, and retained MySQL boundary.
+11. This file — remaining evidence/approval checkpoints.
 
 Do not restart at Group 16. Groups 1–15, BQ1–BQ6, and the audited minor
 defaults are settled. There is no unanswered broad architecture question in
@@ -40,11 +43,14 @@ the old Groups 16–22.
 
 The reversible AUTHZ1 foundation, maintenance-effects audit v1, AUTHZ1-C
 implementation/two-commit closeout, independent C audit, and decision-2
-R-01–R-05 remediation implementation are complete locally. The next action is
-independent remediation review. Do not plan or begin AUTHZ1-D–I until that
-review accepts the remediation. The disposable two-connection MySQL rehearsal
-remains a separately approved future gate; it was not run and does not replace
-review. Do not apply compatibility grants or switch policies/Gates.
+R-01–R-05 remediation implementation and independent remediation audit are
+complete locally. The audit decision is **separate follow-up required** for
+coherent keyed ownership substitution, exact rollback apply-journal lineage,
+and mixed native adapter identity lookup. Do not plan or begin AUTHZ1-D–I until
+those gaps are resolved and independently accepted. The disposable two-
+connection MySQL rehearsal remains a separately approved future gate; it was
+not run and does not replace acceptance. Do not apply compatibility grants or
+switch policies/Gates.
 
 `MAINT-LW-UX1` is independently deferred for the medium production stale-tab
 maintenance UX and focused missing regression coverage from report 14. Run it
@@ -98,8 +104,11 @@ one High, four Medium, and two Low gaps. The controlling remediation contract
 is now `17-authz1c-audit-remediation-research.md`, its paired implementation
 plan, and `prompts/pre-13-prompts/authz1c-audit-remediation-codex-prompt.md` v1.
 It is implemented locally with evidence in
-`docs/phase-02/authz1c-audit-remediation-handoff.md`; independent review is
-pending and AUTHZ1-D–I remain unstarted.
+`docs/phase-02/authz1c-audit-remediation-handoff.md`. Independent remediation
+audit `18-authz1c-independent-remediation-audit.md` found one High ownership-
+substitution gap, one Medium exact-lineage gap, and one Low adapter-identity
+gap and selected **separate follow-up required**. AUTHZ1-D–I remain blocked and
+unstarted.
 
 - The installed exact solve is Shield 4.2.0 + Permission 7.3.0 plus transitive
   Plugin Essentials 1.2.1, with no unrelated update/removal. Shield remains
