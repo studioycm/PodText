@@ -17,8 +17,7 @@ cutover, and role/direct-grant management remain unstarted.
 
 ## Commit hash
 
-Pending implementation commit. The immediate docs-only stamp commit must
-replace this line and the ledger's pending hash.
+`97f88617a26b0494a03efbd0238f50f11f2978d7 feat: add authz package and catalog foundation`
 
 ## Requirement classification
 
@@ -298,7 +297,7 @@ return behavior, though that would restore the proven stale-snapshot bypass.
 - The dedicated maintenance audit prompt is prepared, not executed.
 - AUTHZ1-C analyzer/backfill and all later authority slices require new
   acceptance.
-- Implementation commit hash is pending only until the canonical commit is
-  created; the immediate docs-only stamp leaves no hash debt.
+- The implementation hash above is stamped into this handoff and the ledger;
+  no pending hash debt remains.
 - No production action, local development-database access, push, npm dependency
   change, or secret/local configuration occurred.
