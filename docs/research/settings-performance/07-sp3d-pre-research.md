@@ -49,7 +49,7 @@ with per-user working drafts. Only after both migrations are accepted should
 SP3D delete obsolete settings monolith branches and enforce durable budgets
 against the architecture that will remain.
 
-The approved order, as extended by Groups 13–14, is:
+The approved order, as extended by Groups 13–15, is:
 
 ```text
 AUTHZ1 authorization foundation and verified role migration
@@ -148,7 +148,7 @@ explicit or change/blur based, not every keystroke. Public Form preview is
 non-submittable and must not send mail, issue OTPs, consume rate limits, or
 create submissions.
 
-### Groups 13–14: approved draft and authorization extensions
+### Groups 13–15: approved draft, authorization, and collaboration extensions
 
 The detailed current-package research and risks are recorded in
 `09-arch1-drafts-authorization-research.md`.
@@ -164,6 +164,11 @@ The detailed current-package research and risks are recorded in
 | 14.3 | Role grants plus optional direct grants; no denial layer | Roles are normal bundles; authorized super-admins may add a direct grant. No custom explicit-denial precedence is introduced in v1. |
 | 14.4 | Super-admin authorization bypass with safety invariants | Bypass does not override last-super-admin/self-demotion protection, validation, conflict detection, reference/retention guards, or confirmations. |
 | 14.5 | Grouped meaningful mini-abilities | Keep atomic business/security checks and group them for assignment. Do not permission every UI click. Add sensitive field/area abilities where justified, including protected revisions, policy/security, locks, import/restore, credentials, and PII. |
+| 15.1 | Owner-only working-draft mutation with controlled visibility/adoption | Another user's working draft is read-only only with `view-other-working-drafts`; `adopt-working-draft` copies into the actor's own row. The source is never transferred, edited, or overwritten. |
+| 15.2 | Shared immutable checkpoint history | Explicit Save Draft checkpoints are attributed and visible to authorized collaborators, but change no published/default pointer and no working draft. |
+| 15.3 | Preserve divergent checkpoints and block unsafe publication | A stale-base checkpoint may be created and marked outdated/divergent. Publishing waits for explicit compare and rebase/acceptance; no automatic JSON merge or last-write-wins. |
+| 15.4 | Permission-based publication of immutable checkpoints | An authorized publisher may preview/confirm and publish another author's immutable checkpoint, but never another user's mutable autosave row directly. |
+| 15.5 | Indefinite working-draft preservation with stale hiding | Mark and hide after 90 inactive days; never automatically delete. Authorized restore/checkpoint/adopt/explicit-discard operations remain available. |
 
 Current PodText still uses one enum-cast `users.role`, rank checks, and a small
 set of gates/macros; neither selected package is installed. Spatie's documented
@@ -226,7 +231,7 @@ retention rule likewise requires legal/product evidence; this task did not ask
 or settle it.
 
 This warning applies only to that earlier halted draft. The later, freshly
-researched Groups 13–14 above are approved and controlling.
+researched Groups 13–15 above are approved and controlling.
 
 ## Current code and schema reality
 
@@ -333,7 +338,7 @@ question IDs.
 | INV-WBHF1 | Probe hardening | Active task WB-PROBE-HF1 | Not implemented. | `defer-with-reason` | Approved after SP/minis and before the real probe. |
 | INV-ARCH1 | Versioned Template/Form aggregate architecture | Active task ARCH1-A–S | Fully approved; absent from code/schema. | `approved-prerequisite` | Research/implementation/no-loss acceptance precedes SP3D; individual decisions are recorded above. |
 | INV-AUTHZ1 | Dynamic roles/permissions foundation | Active task 13.2-D and 14.1–14.5 | Shield/Spatie are not installed; PodText uses one enum role/rank plus a few gates. | `approved-prerequisite` | Complete a lossless all-panel authorization migration before ARCH1; owned ability catalog remains the naming/policy authority. |
-| INV-DRAFT1 | Per-user autosave working drafts | Active task 13.1 | No Template/Form working-draft records exist. | `approved-prerequisite` | One mutable row per parent/user, explicit immutable checkpoints, base checksum, no cross-user overwrite. Group 15 still owns collaboration rules. |
+| INV-DRAFT1 | Per-user autosave working drafts and collaboration | Active task 13.1 and 15.1–15.5 | No Template/Form working-draft records exist. | `approved-prerequisite` | One mutable row per parent/user; owner-only mutation; controlled read/adopt-by-copy; shared checkpoints; divergent preservation; authorized checkpoint publication; stale hide without automatic deletion. |
 | INV-FORMREV1 | Mounted Form revision acceptance | Active task 13.3 | Current runtime resolves definitions from settings and has no signed immutable revision mount. | `approved-prerequisite` | ARCH1 must bind the mounted revision and revoke on parent disable/archive; exact token lifetime remains pending. |
 | INV-RET1 | Immutable draft retention | Active task 13.4 | No revision tables/pruner exist. | `approved-prerequisite` | Retain 90 days and latest 20, whichever preserves more; backup/report first. |
 | INV-CLONE1 | Selected-revision clone | Active task 13.5 | Current Template clone semantics operate in settings JSON; Form Resource clone does not exist. | `approved-prerequisite` | New unprotected identity only; no history/default/reference/published/activity inheritance. |
@@ -345,7 +350,7 @@ included because it is now the controlling source for the decisions above.
 
 | Session citation | Operator point | Reconciliation |
 |---|---|---|
-| **“Compile SP3D evidence base”**, 2026-07-15–16, thread `019f66b6-443d-7662-a235-4a1c83b88dfb` | Approved V1–V3, L10N-SET1, E1–E4, P1–P3, WB-PROBE-HF1, U1–U3, A1–A2, S1–S3, D1–D2, ARCH1-A–S, the freshly researched Group 13 draft/clone/retention rules, and Group 14's Shield/Spatie authorization foundation. | This report and `09-arch1-drafts-authorization-research.md` are controlling. Only the earlier context-lost Group 13 draft was discarded; the later Groups 13–14 are approved. |
+| **“Compile SP3D evidence base”**, 2026-07-15–16, thread `019f66b6-443d-7662-a235-4a1c83b88dfb` | Approved V1–V3, L10N-SET1, E1–E4, P1–P3, WB-PROBE-HF1, U1–U3, A1–A2, S1–S3, D1–D2, ARCH1-A–S, Group 13 draft/clone/retention rules, Group 14's Shield/Spatie authorization foundation, and Group 15's per-user collaboration rules. | This report and `09-arch1-drafts-authorization-research.md` are controlling. Only the earlier context-lost Group 13 draft was discarded; the later Groups 13–15 are approved. |
 | **“Initial Settings slowness debug - sp3a-d planned”**, 2026-07-14, thread `019f5e8b-663c-78b1-984c-b708c542e4af` | One section lock plus proposed important locks were “pending your veto”; preview, group reads, hint icons, and simplified Hebrew were queued. | V1, S1/S2, U2, and L10N-SET1 now settle or schedule these points. |
 | **“Implement settings SP3A, plan SP3B v3”**, 2026-07-14, thread `019f5ee1-ba53-71b3-963b-e2db4716ab2a` | Complete Select classification shipped without an operator row-by-row acceptance. | V2 now settles the policy. Re-audit implementation against it; do not reopen the veto. |
 | **“LENS1 step fix - hide multi transcriptions”**, 2026-07-14, thread `019f5e31-2506-7a61-a25b-7e763d25f8b9`, turn `019f5e37-2428-7fd1-af74-46bc0afaafa2` | Preserve relation-manager and item/group featured/count operational columns. | Shipped; V3/U3 define review of the remaining table. |
@@ -447,9 +452,10 @@ fixed-runner gate instead of merely making a historical report look worse.
   Shield-generated names behind the owned ability catalog, and clear permission
   caches/workers before ARCH1 relies on the new policies.
 - **Per-user drafts:** autosave uniqueness is parent plus user. It must never
-  overwrite another user's row or silently publish mutable state. Base
-  revision/checksum, authorship, and later Group 15 collaboration rules remain
-  part of the security boundary.
+  overwrite another user's row or silently publish mutable state. Owner-only
+  mutation, controlled read/adopt-by-copy, shared checkpoints, divergent-base
+  preservation, permission-based immutable publication, and stale hiding
+  without automatic deletion are part of the security boundary.
 - **Submission interpretation and PII:** every submission must remain bound to
   the exact immutable form revision. Configuration portability must not become
   an implicit PII export.

@@ -23,8 +23,10 @@ controls by default unless required custom/HTML rendering or behavior needs a
 non-native Select; growing sources are searchable, non-preloaded, constrained,
 and capped at 50. This is no longer a pending veto.
 
-Groups 13–14 subsequently added a per-user mutable autosave working draft with
-explicit immutable revision checkpoints and selected a complete Shield/Spatie
+Groups 13–15 subsequently added a per-user mutable autosave working draft with
+explicit shared immutable checkpoints, controlled read/adopt-by-copy,
+divergent-base preservation, permission-based immutable publication, and stale
+hiding without automatic deletion. They also selected a complete Shield/Spatie
 authorization migration before ARCH1. Those decisions are researched in
 `09-arch1-drafts-authorization-research.md`; they supersede any assumption that
 one shared draft or the current enum-role gates remain the target.

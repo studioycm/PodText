@@ -2,7 +2,7 @@
 
 Date: 2026-07-16
 
-Status: research and operator-decision record through Group 14; no application
+Status: research and operator-decision record through Group 15; no application
 code, tests, schema, dependency, implementation plan, or prompt
 
 ## Authority and purpose
@@ -28,6 +28,11 @@ Shield.
 | 14.3 | Role bundles plus optional direct user grants; no explicit-denial layer in v1. | Roles provide normal grants. Authorized super-admins may add a direct permission. A custom deny-precedence system is not introduced. |
 | 14.4 | Super-admin global ability bypass with safety invariants. | Last-super-admin and self-demotion protection, data-integrity checks, confirmation requirements, and other non-authorization safety rules still apply. |
 | 14.5 | Mix meaningful mini-abilities with grouped management. | Do not create a permission for every UI click. Keep atomic business/security abilities, group them in Shield for bulk assignment, and allow individual overrides. Field/area abilities are limited to sensitive clusters such as protected revisions, security policy, imports/restores, locks, credentials, and PII. |
+| 15.1 | Private editing with controlled visibility/adoption. | Only the owner edits a mutable working draft. `view-other-working-drafts` grants read-only visibility; `adopt-working-draft` copies it into the acting user's own working draft. Nobody edits or overwrites the original. |
+| 15.2 | Explicit checkpoints join shared immutable history. | Authorized collaborators may view the attributed draft revision. It changes no published/default pointer and does not alter any user's working draft. |
+| 15.3 | Preserve divergent work. | A stale-base working draft may still create an immutable checkpoint, recording its base and an outdated/divergent marker. Publication is blocked until authorized comparison and explicit rebase or acceptance; no automatic JSON merge or last-write-wins publication. |
+| 15.4 | Permission-based publication of saved checkpoints. | A user with the relevant publish ability may preview/confirm and publish any authorized immutable checkpoint regardless of author. Another user's mutable working draft can never be published directly. |
+| 15.5 | Preserve inactive working drafts indefinitely but hide them when stale. | After 90 inactive days, mark/hide the working draft from default lists. Do not automatically delete it. Authorized users may restore, checkpoint, adopt, or explicitly discard it subject to ability checks. |
 
 ## Per-user working-draft boundary
 
@@ -57,10 +62,18 @@ Required invariants already implied by 13.1 and ARCH1-L:
   must distinguish “Save draft and leave” from leaving with the recoverable
   autosaved working copy and no new checkpoint.
 
-Visibility, divergent checkpoint handling, publishing another user's
-checkpoint, adoption/takeover, and inactive working-draft retention remain for
-the paused Group 15 decision set. Nothing in this note authorizes one user to
-edit or overwrite another user's working draft.
+Group 15 fixes the collaboration boundary:
+
+- working drafts are private for mutation; authorized visibility is read-only;
+- adoption clones into the acting user's own working draft and never transfers
+  or overwrites the source;
+- explicit checkpoints are shared immutable history with author/base metadata;
+- a stale-base checkpoint is preserved and marked divergent, while publication
+  waits for explicit compare/rebase/acceptance;
+- an authorized publisher may publish another author's immutable checkpoint
+  after preview/confirmation, but never another user's mutable working row;
+- inactive working drafts are marked stale and hidden after 90 days but are not
+  automatically deleted.
 
 ## Current authorization implementation
 
@@ -186,11 +199,8 @@ finish operator decision groups and reconcile docs
 
 No implementation prompt or file-by-file plan is authorized by this note.
 
-## Still unresolved after Group 14
+## Still unresolved after Group 15
 
-- Group 15 per-user draft collaboration: other-draft visibility/adoption,
-  checkpoint visibility, divergent-base handling, publishing another author's
-  checkpoint, and inactive working-draft retention.
 - Initial role bundles and whether users may hold one or multiple roles.
 - Exact signed Public Form mount-token lifetime and runtime revocation details.
 - Remaining Public Form lifecycle/migration classifications.
