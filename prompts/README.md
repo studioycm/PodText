@@ -18,6 +18,11 @@ Historical prompts are under `prompts/archive/` and are not active instructions.
 
 ## AUTHZ1 pre-Prompt-13 contracts
 
+These contracts are complete historical evidence. The feature-first reset in
+`docs/research/settings-performance/19-authz-complexity-reset-and-feature-first-master-plan.md`
+supersedes their forward AUTHZ1-D–I/ARCH1 sequencing. No active AUTHZ
+implementation prompt exists.
+
 - `pre-13-prompts/authz1-foundation-codex-prompt.md` v3 is complete; its
   canonical implementation and hash-stamp commits are recorded in the AUTHZ1
   foundation handoff.
@@ -32,8 +37,11 @@ Historical prompts are under `prompts/archive/` and are not active instructions.
   closeout are complete. The independent remediation audit is complete with
   decision **separate follow-up required** for coherent keyed ownership
   substitution, exact rollback apply-journal lineage, and mixed native adapter
-  identity lookup. No follow-up implementation prompt exists; AUTHZ1-D–I
-  remain blocked and unstarted.
+  identity lookup. The reset chooses a non-operational boundary instead of
+  another hardening cycle: a later prompt may only withhold the three
+  `authz:roles:*` commands plus focused regressions after operator acceptance.
+  AUTHZ1-D–I, package cutover, ARCH1 coupling, and recursive audit work are not
+  current scope.
 
 ## Pre-Prompt-08 research note
 

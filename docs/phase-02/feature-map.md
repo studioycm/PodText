@@ -16,6 +16,20 @@
 
 For current prompt completion/progress state, see `docs/phase-02/current-project-state.md`.
 
+## Feature-First Restart
+
+The controlling reset is
+`docs/research/settings-performance/19-authz-complexity-reset-and-feature-first-master-plan.md`.
+After operator acceptance, the only next action is to draft one bounded AUTHZ
+command-surface closure prompt. The preferred first visible feature after that
+closure is Card Template preview beside the editor on wide screens and in a
+slide-over on narrower screens, using the existing SP3C storage/writer and
+controlled public card presenters.
+
+AUTHZ1-D–I, multiple roles, direct grants, role UI, extra panels, package
+cutover, ARCH1, and SP3D are deferred/not-current. They do not block ordinary
+settings, import-lock, Card Template, or Public Front feature work.
+
 ## Non-Negotiable Semantics
 
 - Public homepage/search/category/tag listings return `ContentItem` records.
@@ -43,21 +57,12 @@ For current prompt completion/progress state, see `docs/phase-02/current-project
 - Labels, helper text, hints, section headings, validation messages, and sort/date labels should use translation keys.
 - Admin dashboard widgets should show editorial metrics already available from the current schema, and later prompts should extend the widgets as more schema becomes available.
 
-## Future Ability Names
+## Authorization Status
 
-Do not install Shield in Phase 02 planning. Use these names for future authorization planning:
-
-- `manage content groups`
-- `manage content items`
-- `manage transcriptions`
-- `feature transcription`
-- `pin content items`
-- `manage categories`
-- `manage content tags`
-- `manage media metadata`
-- `manage homepage settings`
-- `view editorial dashboard`
-- `run filament security audit`
+Shield/Permission are installed but dormant. Legacy `users.role`, ranks, and
+Gates remain authoritative. Do not expand the dormant ability catalog or plan
+future role/panel governance until a concrete current feature requires it and
+the operator approves a fresh complexity estimate.
 
 ## Main Blueprint Map
 

@@ -92,6 +92,25 @@ For current prompt completion/progress state, see `docs/phase-02/current-project
 - Spatie settings cache toggles must be explicit in `.env.example`, disabled locally by default, covered by save-invalidation tests, and called out in handoff deploy notes when production should enable them.
 - Per-deployment white-labeling is done with mode flags and role gates in one codebase, never forks. Illusion features require server-side save guards against forged or hidden state, not only field visibility.
 
+## Complexity and stage-fit lessons
+
+- A reversible future option is not automatically a present requirement. Keep
+  current product behavior and hypothetical future governance in separate
+  scope columns before accepting architecture.
+- Publish likely task count, elapsed-effort range, dependency changes, and
+  audit burden before approving a “small” feature. The default small-slice
+  budget is at most two logical tasks and four estimated engineering hours;
+  exceeding either requires operator reapproval.
+- Prefer stage-fit reversible choices and reuse working authority, storage, and
+  writers. Do not replace them only to prepare for unrequested roles, panels,
+  collaboration, or migration paths.
+- After one audit/remediation cycle, recheck product value before authorizing a
+  second cycle. Disable or remove an unused destructive surface instead of
+  recursively hardening a hypothetical operation.
+- A code-simplification pass cannot correct excess requirements. Simplify the
+  controlling plan first, then apply code cleanup only inside the accepted
+  bounded feature.
+
 ## Deferred-item handling lessons
 
 - Deferred items must name the owner prompt or future decision point.
