@@ -1,6 +1,6 @@
 # Codex Prompt — AUTHZ1 Foundation: Package, Schema, Catalog, and Compatibility Manifest
 
-Prompt version: v1 — 2026-07-16. (Standing rule: if the committed prompt
+Prompt version: v3 — 2026-07-16. (Standing rule: if the committed prompt
 differs from the version named in the kickoff, stop and ask.)
 
 Work in the current local clone of `studioycm/PodText` on the existing branch.
@@ -15,6 +15,35 @@ authoritative and unchanged, and document every current authorization surface
 for later policy migration.
 
 This is not an authority cutover. Do not begin AUTHZ1-C through AUTHZ1-I.
+
+## Operator-authorized maintenance/Livewire exception
+
+During v2 execution, the required five-role matrix exposed a pre-existing
+maintenance boundary defect: an initial public request by Moderator,
+Transcriber, or User correctly receives the maintenance 503, but a real
+Livewire update using a public component snapshot obtained before maintenance
+activation continues with HTTP 200. Installed Livewire 4 source shows why:
+the persistent-middleware pipeline re-runs `RenderMaintenanceMode`, but discards
+an ordinary non-redirect response returned by that middleware.
+
+On 2026-07-16 the operator explicitly authorized this one scope amendment:
+
+- change `RenderMaintenanceMode` only as needed to terminate an actual Livewire
+  update with its already-rendered maintenance 503 response;
+- preserve the response body, `Retry-After`, enabled/disabled behavior, current
+  Super/Admin bypass, denied Moderator/Transcriber/User audience, public form
+  routes, Admin routes, and every non-Livewire maintenance path;
+- add real initial-page-snapshot to actual-update-endpoint tests for all five
+  roles, plus disabled-mode and response/header regressions;
+- research and record the maintenance-access and broader runtime effects;
+- create, but do not execute in this run, the dedicated audit prompt
+  `prompts/pre-13-prompts/maintenance-livewire-enforcement-audit-codex-prompt.md`
+  at v1 and list it in `prompts/README.md`.
+
+No other access change, Livewire component rewrite, update-route replacement,
+global middleware change, maintenance UI change, AUTHZ1 cutover, or unrelated
+fix is authorized. Treat this exception as preservation of the declared legacy
+maintenance audience, not permission to alter any other authority surface.
 
 ## Approved dependency mutation
 
@@ -61,7 +90,9 @@ The following remain authoritative and behaviorally unchanged:
 - the current `super-admin` and `multi-transcription` Gates/macros;
 - `UserResource`, `EditUser`, the existing role assignment command, and all
   current user assignments;
-- Admin panel admission, Horizon authorization, maintenance bypass behavior,
+- Admin panel admission, Horizon authorization, the declared maintenance
+  bypass audience after closing the specifically authorized persistent-
+  Livewire enforcement defect,
   current Resource/Page/action access, and caller-topology authorization;
 - all feature-mode, validation, conflict, reference, retention, confirmation,
   self-change, and final-Super-Admin safeguards.
@@ -71,8 +102,9 @@ Specifically prohibited in this run:
 - adding `HasRoles` to `User` or introducing `roles()` / `permissions()` on it;
 - renaming/removing `users.role`, backfilling package assignments, or creating
   a universal `user` role;
-- switching policies, Gates, panel admission, Horizon, maintenance bypass, or
-  any writer to package authority;
+- switching policies, Gates, panel admission, Horizon, maintenance bypass
+  audience, or any writer to package authority; the narrow termination fix
+  explicitly authorized above is the only maintenance exception;
 - enabling additive role assignment, direct grants, role management, catalog
   synchronization, or compatibility-grant application;
 - generating policies/permissions from Resource names or UI labels;
@@ -91,20 +123,56 @@ implementation and report the exact contradiction.
 
 ## Standing workflow and coordination
 
-- Follow the complete `AGENTS.md` session-start protocol and verify the exact
-  starting commit `fd39adcafad72a5b9eae90b672f526139ab2eb1b` plus a clean tree.
-- This v1 file is the session's single task contract. Re-read it in full and
-  verify the `Prompt version` line before proceeding.
+- Follow the complete `AGENTS.md` session-start protocol. The operator clarified
+  that provisional v1 was intentionally committed before execution, so verify
+  the exact starting commit `6339e858cced21d4ba13de573802c384d0676383`
+  (`docs: edit authz1 prompt`) plus a clean tree before the original v2 audit
+  patch. Do
+  not reset to the stale pre-prompt commit `fd39adc...`.
+- Before resuming application implementation under v3, create a prompt-only
+  commit containing this v3 amendment, the dedicated v1 audit prompt, and its
+  `prompts/README.md` index entry. Stage no partial implementation files in that
+  commit. Use `docs: authorize maintenance Livewire enforcement`, record its
+  hash, then treat that commit plus the retained partial foundation worktree as
+  the amended execution baseline. This operator-authorized prompt commit is in
+  addition to the two canonical successful-run ending commits.
+- Before repository discovery, run `command -v rg`; use `rg` / `rg --files` for
+  discovery and record any fallback. The main controller itself must read the
+  full session-start set, reports 09/11/12, the pending-decision queue,
+  `prompts/README.md`, multiple recent completed prompt patterns, every relevant
+  active `.ai/guidelines` file, every selected `SKILL.md`, and all routed skill
+  references required for this work.
+- This v3 file is the session's single implementation contract. The dedicated
+  maintenance audit prompt created by this run is a future contract and must
+  not be executed now. Immediately after the
+  last prompt-audit edit, re-read this final file in full, verify the exact
+  `Prompt version: v3` line, re-read the new audit prompt in full and verify its
+  exact `Prompt version: v1` line, and report the amendment checklist in
+  commentary before the prompt-only commit or resumed application work.
 - Before application/package implementation, create both:
   `docs/research/settings-performance/13-authz1-foundation-research.md` and
   `docs/research/settings-performance/13-authz1-foundation-implementation-plan.md`.
-- Use current official primary documentation, installed-version Laravel Boost
-  guidance, and installed vendor source. Use FilamentExamples in decomposed and
-  refined batches before changing Filament panel/plugin code; record honestly
-  whether it exposed search snippets or source/detail access.
-- Apply the repository-owned `filament-security-audit`,
-  `laravel-best-practices`, directly affected `filament-forms-ux-audit`, Pest,
-  and PHP/Laravel style guidance. Do not expand an audit into unrelated fixes.
+- Use Laravel Boost `application-info` and installed-version `search-docs`
+  before code. Use Boost `database-schema` before schema work, explicitly on
+  the isolated `sqlite` connection; never let it default to or probe the local
+  development MySQL database. Record returned versions/guidance separately
+  from source inspection, tests, and controller inference.
+- Use current official primary package documentation and exact tagged or
+  installed vendor source. Use FilamentExamples in decomposed short query
+  batches, refine from returned names/snippets/paths/classes, and inspect
+  source/detail results when the tool exposes them before changing Filament
+  panel/plugin code. Record examples copied, patterns avoided, PodText
+  adaptations, and whether access was search-only, snippet/source, or full
+  detail; if only `search_examples` exists, state that limitation.
+- Activate and faithfully apply the repository-owned
+  `filament-security-audit`, `laravel-best-practices`,
+  `spatie-laravel-php`, `pest-testing`, `filament-forms-ux-audit`, and
+  `configuring-horizon` skills. The v3 exception activates
+  `livewire-development`; read it fully, use installed-version Boost Livewire
+  guidance, and apply it only to the persistent-middleware boundary and real
+  update-endpoint regression. Use performance or Tailwind skills only if their
+  implementation triggers actually enter scope. Do not expand an audit into
+  unrelated fixes.
 - Keep performance claims inside the measured plane. This foundation does not
   justify browser DOM, heap, listener, TTFB, or query-budget claims.
 
@@ -153,6 +221,17 @@ database. If the clean baseline is red for an application reason outside this
 scope, stop before dependency installation. A sandbox-only local-port failure
 may be retried with the approved runner and must be disclosed.
 
+Composer installation is gated on all of the following being true at once:
+final v3 was re-read/version-verified; the controller's complete startup/
+prompt-pattern/guideline/skill sweep is recorded; Boost application/version,
+installed-version docs, isolated SQLite schema evidence, official primary
+package docs, and FilamentExamples access level are recorded; the six original
+mandatory skills and the now-triggered `livewire-development` skill were
+applied; all required delegated research is sufficient; the
+research note and file-specific implementation plan exist; baseline commands
+are green; and the exact dry-run below is accepted. Report this gate explicitly
+in commentary before installation.
+
 Before Composer mutation, repeat the exact dry run from report 12 and verify it
 proposes only the two direct packages plus plugin-essentials 1.2.1, with no
 updates or removals:
@@ -181,6 +260,13 @@ The research note must consolidate rather than repeat report 12. Include:
 - forms/security audit findings that materially affect this foundation,
   including the existing Curator single-vs-bulk delete discrepancy as later
   policy-migration work, not a drive-by fix;
+- explicit later-slice dispositions: importer per-row create/update
+  authorization is AUTHZ1-D work once policies exist; User Resource record
+  action/save authorization must move from Resource `can*()` assumptions into
+  the AUTHZ1-D UserPolicy/transactional boundary; and Curator's current
+  reference-aware individual delete versus unconditional `deleteAny()`
+  discrepancy is an AUTHZ1-D security correction with an individual-record
+  bulk authorization or equivalent, not desired behavior to preserve;
 - coordination task/thread/subagent IDs, material findings, disagreements,
   resolution against primary evidence/report 12, and limitations.
 
@@ -207,7 +293,12 @@ deferred to AUTHZ1-C–I.
    multi-tenant server without changing production state.
 5. Keep the migrations independently reversible. Do not edit third-party
    migration semantics casually; document MySQL index/FK review and prove the
-   actual checked-in schema via SQLite `:memory:` tests.
+   actual checked-in schema via a package-only SQLite `:memory:` up/down/up
+   test. Invoke only the newly published package migration objects, assert the
+   package tables/columns/indexes/FKs after both `up()` passes and their absence
+   after reverse-order `down()`. Never use `migrate:rollback`, `migrate:fresh`,
+   `migrate:refresh`, database-wide rollback helpers, or another broad rollback
+   command for this proof.
 6. Do not run the migrations against the local development database. Migration
    behavior belongs to tests only.
 
@@ -227,8 +318,11 @@ Each Ability entry must expose immutable data for:
 - catalog group and deterministic group/entry order;
 - `label_key` and `description_key`;
 - `sensitive`, `delegable`, and optional `protected_domain` metadata;
-- guard name, fixed to `web`;
-- catalog version and deterministic hash.
+- guard name, fixed to `web`.
+
+Catalog version and deterministic hash belong to the canonical catalog
+envelope, not to individual Ability entries. Entries contain exactly the ten
+canonical fields fixed below.
 
 Grammar is exactly lower-case literal `<domain>.<subject>.<action>`, with every
 segment matching `[a-z0-9]+(?:-[a-z0-9]+)*`. Wildcards and brace shorthand are
@@ -246,6 +340,210 @@ Add complete Hebrew and English group labels plus per-ability labels and
 descriptions. Descriptions must make sensitive/admin/security effects clear;
 all translation keys must exist in both locales and pass the repository's
 duplicate-key check.
+
+### Golden catalog vector and canonical hash
+
+The catalog expectation is independently frozen here, not derived from the
+production catalog class. It contains exactly these 135 ordered literal keys;
+every line is a runtime key and brace/wildcard expansion is forbidden:
+
+```text
+# panel-system
+panel.admin.access
+system.horizon.view
+public.maintenance.bypass
+dashboard.admin.view
+# editorial-records
+content.authors.view
+content.authors.create
+content.authors.update
+content.authors.delete
+content.authors.import
+content.authors.export
+content.categories.view
+content.categories.create
+content.categories.update
+content.categories.delete
+content.categories.import
+content.categories.export
+content.groups.view
+content.groups.create
+content.groups.update
+content.groups.delete
+content.groups.import
+content.groups.export
+content.items.view
+content.items.create
+content.items.update
+content.items.delete
+content.items.import
+content.items.export
+content.transcriptions.view
+content.transcriptions.create
+content.transcriptions.update
+content.transcriptions.delete
+content.transcriptions.import
+content.transcriptions.export
+content.tags.view
+content.tags.create
+content.tags.update
+content.tags.delete
+homepage.sections.view
+homepage.sections.create
+homepage.sections.update
+homepage.sections.delete
+homepage.sections.reorder
+# transcription-policy
+content.transcriptions.history-view
+content.transcriptions.multiple-manage
+content.transcriptions.featured-manage
+# media
+media.library.view
+media.library.create
+media.library.update
+media.library.delete
+media.library.download
+# public-form-submissions
+forms.submissions.view
+forms.submissions.status-update
+forms.submissions.pii-view
+forms.submissions.pii-export
+# settings-subjects
+settings.subjects.view
+settings.subjects.update
+settings.security-policy.update
+settings.trusted-html.update
+# current-template-form-settings
+settings.card-templates.view
+settings.card-templates.create
+settings.card-templates.update
+settings.card-templates.delete
+settings.card-templates.protected-manage
+settings.public-forms.view
+settings.public-forms.create
+settings.public-forms.update
+settings.public-forms.delete
+# settings-lifecycle
+settings.packages.export
+settings.packages.import
+settings.packages.restore
+settings.backups.view
+settings.backups.create
+settings.backups.delete
+settings.backups.download
+settings.backups.compare
+settings.snapshots.view
+settings.snapshots.retry
+settings.snapshots.download
+settings.import-locks.manage
+# workbench-tools
+workbench.connections.view
+workbench.connections.create
+workbench.connections.update
+workbench.connections.delete
+workbench.connections.credentials-manage
+workbench.connections.test
+workbench.connections.oauth
+workbench.spotify.fetch
+workbench.spotify.direct-import
+workbench.probes.run
+tools.admin.use
+# users-security
+users.accounts.view
+users.accounts.update
+users.roles.assign
+users.roles.assign-delegable
+security.roles.view
+security.roles.manage
+security.direct-grants.manage
+security.catalog.sync
+# template-lifecycle
+templates.parents.view
+templates.parents.create
+templates.parents.update
+templates.parents.archive
+templates.parents.restore
+templates.drafts.own-update
+templates.drafts.other-view
+templates.drafts.adopt
+templates.drafts.discard
+templates.revisions.checkpoint
+templates.revisions.view
+templates.revisions.compare
+templates.revisions.publish
+templates.defaults.manage
+templates.protected.view
+templates.protected.export
+templates.protected.activate
+templates.portability.import
+templates.portability.export
+# form-lifecycle
+forms.definitions.view
+forms.definitions.create
+forms.definitions.update
+forms.definitions.archive
+forms.definitions.restore
+forms.drafts.own-update
+forms.drafts.other-view
+forms.drafts.adopt
+forms.drafts.discard
+forms.revisions.checkpoint
+forms.revisions.view
+forms.revisions.compare
+forms.revisions.publish
+forms.revisions.revoke
+forms.availability.manage
+forms.portability.import
+forms.portability.export
+```
+
+The comment headers are not serialized. The contiguous groups above have exact
+IDs/orders/counts: `panel-system` 1/4, `editorial-records` 2/39,
+`transcription-policy` 3/3, `media` 4/5,
+`public-form-submissions` 5/4, `settings-subjects` 6/4,
+`current-template-form-settings` 7/9, `settings-lifecycle` 8/12,
+`workbench-tools` 9/11, `users-security` 10/8,
+`template-lifecycle` 11/19, and `form-lifecycle` 12/17. Entry order is
+one-based within its group.
+
+Canonical full entries use this field insertion order and no other fields:
+`key`, `group`, `group_order`, `entry_order`, `label_key`,
+`description_key`, `sensitive`, `delegable`, `protected_domain`, `guard`.
+`label_key` is exactly `authz.abilities.<literal-key>.label` and
+`description_key` is exactly `authz.abilities.<literal-key>.description`.
+`guard` is always `web`. `sensitive` is true when the action (the third
+segment) is not exactly `view`, and also for these exact view keys:
+`system.horizon.view`, `users.accounts.view`, `security.roles.view`, and
+`templates.protected.view`. `delegable` is exactly the inverse of `sensitive`
+in this foundation fixture.
+
+`protected_domain` is `null` except for this exact map:
+
+```text
+content.transcriptions.multiple-manage = transcription-feature-mode
+media.library.delete = media-reference-integrity
+settings.card-templates.protected-manage = protected-card-template
+users.roles.assign = protected-role-integrity
+users.roles.assign-delegable = protected-role-integrity
+security.roles.manage = protected-role-integrity
+security.direct-grants.manage = direct-grant-audit
+security.catalog.sync = catalog-integrity
+templates.protected.activate = protected-template
+```
+
+Canonical serialization is PHP `json_encode()` of the insertion-ordered
+envelope `['version' => 'AUTHZ1-2026-07-16', 'entries' => $entries]` using
+only `JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR`,
+without whitespace, sorting, pretty printing, or omission of nulls. The
+independently computed expected SHA-256 is exactly:
+
+```text
+fb46f5ef0228c2017e049b13a6f18eb72183a85b89249385828bf5295b9193c7
+```
+
+The committed test fixture must repeat the literal vector and full-entry
+expectations independently; it must not import, reflect, map, or compute its
+expected values from the production catalog implementation.
 
 ## Job 4 — role metadata and compatibility-first grant manifest
 
@@ -273,6 +571,158 @@ The compatibility manifest must encode report 12 §2.2 exactly:
   their role names.
 - No universal `user` role is added, no assignment changes, and no direct grant
   is created.
+
+Freeze an independent five-role grant snapshot. Super Admin's expected grant
+fixture is the full 135-literal vector above. Moderator, Transcriber, and User
+each have an exact empty fixture. Admin has exactly 89 allowed and 46 denied
+keys. Its allowed fixture is:
+
+```text
+panel.admin.access
+system.horizon.view
+public.maintenance.bypass
+dashboard.admin.view
+content.authors.view
+content.authors.create
+content.authors.update
+content.authors.delete
+content.authors.import
+content.authors.export
+content.categories.view
+content.categories.create
+content.categories.update
+content.categories.delete
+content.categories.import
+content.categories.export
+content.groups.view
+content.groups.create
+content.groups.update
+content.groups.delete
+content.groups.import
+content.groups.export
+content.items.view
+content.items.create
+content.items.update
+content.items.delete
+content.items.import
+content.items.export
+content.transcriptions.view
+content.transcriptions.create
+content.transcriptions.update
+content.transcriptions.delete
+content.transcriptions.import
+content.transcriptions.export
+content.tags.view
+content.tags.create
+content.tags.update
+content.tags.delete
+homepage.sections.view
+homepage.sections.create
+homepage.sections.update
+homepage.sections.delete
+homepage.sections.reorder
+content.transcriptions.history-view
+content.transcriptions.multiple-manage
+content.transcriptions.featured-manage
+media.library.view
+media.library.create
+media.library.update
+media.library.delete
+media.library.download
+forms.submissions.view
+forms.submissions.status-update
+forms.submissions.pii-view
+settings.subjects.view
+settings.subjects.update
+settings.security-policy.update
+settings.trusted-html.update
+settings.card-templates.view
+settings.card-templates.create
+settings.card-templates.update
+settings.card-templates.delete
+settings.public-forms.view
+settings.public-forms.create
+settings.public-forms.update
+settings.public-forms.delete
+settings.packages.export
+settings.packages.import
+settings.packages.restore
+settings.backups.view
+settings.backups.create
+settings.backups.delete
+settings.backups.download
+settings.backups.compare
+settings.snapshots.view
+settings.snapshots.retry
+settings.snapshots.download
+settings.import-locks.manage
+workbench.connections.view
+workbench.connections.create
+workbench.connections.update
+workbench.connections.delete
+workbench.connections.credentials-manage
+workbench.connections.test
+workbench.connections.oauth
+workbench.spotify.fetch
+workbench.spotify.direct-import
+workbench.probes.run
+tools.admin.use
+```
+
+Its denied fixture is:
+
+```text
+forms.submissions.pii-export
+settings.card-templates.protected-manage
+users.accounts.view
+users.accounts.update
+users.roles.assign
+users.roles.assign-delegable
+security.roles.view
+security.roles.manage
+security.direct-grants.manage
+security.catalog.sync
+templates.parents.view
+templates.parents.create
+templates.parents.update
+templates.parents.archive
+templates.parents.restore
+templates.drafts.own-update
+templates.drafts.other-view
+templates.drafts.adopt
+templates.drafts.discard
+templates.revisions.checkpoint
+templates.revisions.view
+templates.revisions.compare
+templates.revisions.publish
+templates.defaults.manage
+templates.protected.view
+templates.protected.export
+templates.protected.activate
+templates.portability.import
+templates.portability.export
+forms.definitions.view
+forms.definitions.create
+forms.definitions.update
+forms.definitions.archive
+forms.definitions.restore
+forms.drafts.own-update
+forms.drafts.other-view
+forms.drafts.adopt
+forms.drafts.discard
+forms.revisions.checkpoint
+forms.revisions.view
+forms.revisions.compare
+forms.revisions.publish
+forms.revisions.revoke
+forms.availability.manage
+forms.portability.import
+forms.portability.export
+```
+
+Tests must hold these as independent literal arrays. Do not compute Admin's
+allow fixture as the complement of deny, compute deny from allow, or derive
+either from the production manifest.
 
 Validation must prove all roles are unique/known, metadata is complete, grants
 reference literal catalog keys only, every granted key uses `web`, and the
@@ -303,17 +753,30 @@ installed-source contradiction and stop before changing access behavior.
 
 Use Pest and follow existing test organization. At minimum add/update tests for:
 
-- catalog version/hash determinism and exact literal key set;
-- grammar, wildcard/brace/case/normalization collisions, duplicate keys/order,
-  wrong guard, and unknown grant refusal;
-- Hebrew/English group/label/description completeness and duplicate PHP
-  translation keys;
+- catalog version/hash determinism, exact independent 135-literal key fixture,
+  canonical full-entry serialization, and the exact expected hash above;
+- exact invalid fixtures, including uppercase `Panel.admin.access`, wildcard
+  `panel.*.access`, brace shorthand `content.authors.{view,create}`, underscore
+  `panel_admin_access`, empty segment `panel..access`, a duplicate
+  `panel.admin.access`, the normalized/case pair `panel.admin.access` plus
+  `Panel.Admin.Access`, two entries sharing the same group/entry order, guard
+  `api`, grant `system.unknown.view`, an unknown role `owner`, duplicate
+  `admin` metadata, and a manifest missing `user`; each must fail closed with
+  no partial accepted result;
+- exact Hebrew/English group/label/description key-set parity; every required
+  key must satisfy locale-specific existence with `Lang::hasForLocale()` in
+  both `he` and `en`, trimmed values must be nonempty, a returned value must
+  differ from the lookup key, and fallback-disabled locale lookups must prove
+  neither locale is borrowing the other. Run the existing token-level duplicate
+  PHP-key scan as a separate check;
 - protected/reserved/delegable role metadata integrity;
-- compatibility grant integrity, including Admin exclusions and empty dormant
-  role grants;
+- compatibility grant integrity against independent literal fixtures: Super is
+  all 135, Admin is exactly the 89 allow/46 deny snapshot, and Moderator,
+  Transcriber, and User are exactly empty;
 - Admin-only Shield adapter registration and Public-panel exclusion;
 - published config/schema defaults, table/guard/index/FK expectations, and
-  reversible migration behavior in SQLite `:memory:`;
+  package-only reversible SQLite `:memory:` up/down/up behavior without broad
+  rollback commands;
 - absence of `HasRoles`, `roles()`/`permissions()`, package assignment rows,
   catalog sync/seeding, and authority switches;
 - all five roles' current panel access, Super/Admin Gates, User Resource access,
@@ -322,9 +785,86 @@ Use Pest and follow existing test organization. At minimum add/update tests for:
 - no-regression evidence for self/final-Super-Admin checks and protected
   multi-transcription feature/mode rules.
 
+Drive the legacy-surface proof with a shared exact five-role dataset, in enum
+order `super-admin`, `admin`, `moderator`, `transcriber`, `user`, and cover each
+surface independently:
+
+- Admin panel: allow Super/Admin; deny the other three.
+- Horizon HTTP/direct audience: allow Super/Admin; deny the other three.
+- Maintenance bypass: allow Super/Admin and deny the other three in both the
+  initial HTTP request and the persistent Livewire update path.
+- User Resource: allow only Super; deny Admin and the other three for index and
+  edit direct URLs, List/Edit Livewire mounts, and the existing record-action/
+  save path. Denials must prove the target role and persisted state are
+  unchanged. This is regression evidence only; the UserPolicy/action/save
+  migration remains explicitly deferred to AUTHZ1-D.
+- Legacy `super-admin` Gate: allow only Super.
+- Legacy `multi-transcription` Gate: in single mode deny every role for both
+  Admin and Super minimums; in multi mode allow Super/Admin for Admin minimum,
+  allow only Super for Super minimum, and deny Moderator/Transcriber/User.
+- Representative ordinary Admin Resource: use Author Resource list/direct URL
+  and Livewire page; allow Super/Admin and deny the other three.
+- Representative ordinary Admin Page: use Admin Tools direct URL and Livewire
+  page; allow Super/Admin and deny the other three.
+
+Package-table rows, including deliberately inserted additive role/permission
+rows in isolated tests where safe, must not change any expected result in this
+dataset. Every denied mutation path must assert zero state change.
+
 Tests own their fixtures. HTTP tests use `Http::preventStrayRequests()` and
 committed fixtures; mail tests use `Mail::fake()`. Do not run tests in parallel.
 Do not use the development database.
+
+## Job 6A — narrow maintenance/Livewire enforcement correction
+
+Research before editing:
+
+- use Boost installed-version Livewire 4 and Laravel 13 documentation for
+  persistent middleware, authorization changes after initial page load,
+  request termination, and response exceptions;
+- inspect installed `Livewire\Mechanisms\PersistentMiddleware\PersistentMiddleware`,
+  `Livewire\Drawer\Utils::applyMiddleware()`, Laravel's
+  `HttpResponseException`, the Public panel middleware registration, and
+  `RenderMaintenanceMode` itself;
+- record official guidance, installed source, executed test evidence, and
+  controller inference separately;
+- obtain one bounded read-only security review and one bounded read-only test/
+  effect review of the proposed correction before applying it.
+
+Implementation is limited to making `RenderMaintenanceMode` throw/terminate
+with its already-built maintenance response when it is executing inside an
+actual Livewire update request whose original public route carries the
+persistent middleware. Do not replace Livewire's update route, add global
+middleware, modify Livewire vendor source, change the maintenance renderer,
+change the five-role decision, or alter any component.
+
+The real regression must:
+
+1. load a public page with maintenance disabled and capture its actual child
+   component snapshot;
+2. enable maintenance;
+3. POST that snapshot to the actual installed Livewire update endpoint with
+   the real Livewire request header;
+4. prove Super/Admin still receive a normal 200 component update;
+5. prove Moderator/Transcriber/User receive the exact 503 maintenance body and
+   `Retry-After` header, with no component effects or state mutation;
+6. prove the same update remains 200 for all roles when maintenance is disabled;
+7. preserve the existing initial HTTP, guest/Admin-route, raw override, styled
+   maintenance, public maintenance form, cache invalidation, and Hebrew/RTL
+   coverage.
+
+The research note and handoff must explicitly audit effects on stale snapshots,
+multi-component/bundled updates, lazy/polling requests, public form submissions,
+CSRF/session middleware, Admin panel Livewire, Horizon, status/body/header
+semantics, exception reporting/log noise, and browser error UX. Classify each as
+tested, source-proven, inferred, deferred to the dedicated audit prompt, or not
+applicable. Do not claim browser behavior without a browser observation.
+
+Create the separate v1 audit prompt named in the operator exception. It must be
+an audit/research contract, not an implementation authorization: Markdown-only
+repository outputs, isolated SQLite tests, optional local browser observation,
+no application/package/config/migration changes, no production/dev-database
+access, and a hard stop requiring a new accepted prompt for any remediation.
 
 ## Requirements sweep and final gate
 
@@ -337,6 +877,23 @@ Implemented, Already existed, Deferred, Not applicable, or Blocked. Verify:
 - no prohibited authority/cutover/assignment behavior exists;
 - catalog/role/default-grant/surface-disposition coverage is complete;
 - translations and duplicate-key scan pass;
+- the exact v3 prompt and future v1 maintenance-audit prompt reread/version
+  checks, the prompt-only authorization commit, `command -v rg`, controller-owned
+  prompt-pattern/guideline/skill sweep, Boost `application-info`, Boost
+  installed-version `search-docs`, isolated-SQLite `database-schema`, official
+  primary docs/tagged source, installed vendor source, FilamentExamples query
+  refinement and access-level report, each of the six original mandatory
+  skills, and `livewire-development` has concrete recorded proof rather than a
+  generic claim;
+- docs guidance, installed/tagged source inspection, executed tests, and
+  controller inference are recorded as distinct evidence categories;
+- the independent 135/full-entry/hash fixture, five-role metadata/grants,
+  every required five-role surface dataset, package-only up/down/up proof, and
+  all three AUTHZ1-D dispositions are present and classified;
+- the maintenance correction is limited to the authorized persistent-Livewire
+  termination boundary; the real snapshot/update regression is green for all
+  five roles and disabled mode; all required effect-audit planes have an honest
+  tested/source/inference/deferred classification;
 - `git diff --check` passes and no secret/local config is present.
 
 FINAL GATE ORDER, exactly:
@@ -362,6 +919,8 @@ contain:
 - every command and result, including failures and deviations;
 - research/tool access level and material delegated evidence with task/thread/
   subagent IDs and limitations;
+- the operator-authorized v3 maintenance exception, exact causal source path,
+  before/after five-role results, and maintenance effect-audit classification;
 - gate outcomes;
 - no-production/no-dev-database/no-push confirmation;
 - assumptions, deferrals, blockers, and rollback boundary;

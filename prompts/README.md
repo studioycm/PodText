@@ -16,6 +16,15 @@ For current completion/progress state, see `docs/phase-02/current-project-state.
 
 Historical prompts are under `prompts/archive/` and are not active instructions.
 
+## AUTHZ1 pre-Prompt-13 contracts
+
+- `pre-13-prompts/authz1-foundation-codex-prompt.md` v3 is the active AUTHZ1
+  package/schema/catalog foundation implementation contract.
+- `pre-13-prompts/maintenance-livewire-enforcement-audit-codex-prompt.md` v1 is
+  prepared but not started. Run it only after the AUTHZ1 foundation and its
+  hash-stamp commit are complete; it is a Markdown-only effects audit and does
+  not authorize remediation.
+
 ## Pre-Prompt-08 research note
 
 `prompts/admin-relation-manager-research/00-overview.md` was a docs-only refinement task for Prompt 09 admin Resource and Relation Manager UX. It did not change the active prompt order.
