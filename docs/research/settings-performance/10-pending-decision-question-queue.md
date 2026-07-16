@@ -2,9 +2,9 @@
 
 Date: 2026-07-16
 
-Status: restart-safe index after the completed AUTHZ1 foundation and
-maintenance-effects audit; AUTHZ1-C implementation and final gate are complete
-with commit closeout pending; legacy authorization remains authoritative
+Status: restart-safe index after the independent AUTHZ1-C audit; decision 2
+requires a separate C remediation prompt before AUTHZ1-D planning; legacy
+authorization remains authoritative
 
 ## Restart protocol
 
@@ -25,7 +25,9 @@ On a context reset, read in this order:
    and independent deferred stale-tab UX finding.
 7. `15-authz1c-analyzer-backfill-research.md` and its paired implementation
    plan — accepted AUTHZ1-C planning contract.
-8. This file — remaining evidence/approval checkpoints.
+8. `16-authz1c-independent-analyzer-backfill-audit.md` and the audit handoff —
+   decision 2 and the required C remediation boundary.
+9. This file — remaining evidence/approval checkpoints.
 
 Do not restart at Group 16. Groups 1–15, BQ1–BQ6, and the audited minor
 defaults are settled. There is no unanswered broad architecture question in
@@ -33,12 +35,14 @@ the old Groups 16–22.
 
 ## Single continuation point
 
-The reversible AUTHZ1 foundation and maintenance-effects audit v1 are complete.
-AUTHZ1-C is implemented from the accepted v1 prompt with a green canonical
-final gate; its two-commit closeout is pending. The next action is operator review
-of the C handoff; the disposable two-connection MySQL rehearsal remains a
-separately approved future production gate. Do not apply compatibility grants,
-switch policies/Gates, or begin AUTHZ1-D–I without a later exact contract.
+The reversible AUTHZ1 foundation, maintenance-effects audit v1, AUTHZ1-C
+implementation/two-commit closeout, and independent C audit are complete. The
+audit found one High, four Medium, and two Low gaps and selected decision 2.
+The next action is operator review and separate authorization of a C
+remediation prompt. Do not plan or begin AUTHZ1-D–I until the remediation is
+implemented and accepted. The disposable two-connection MySQL rehearsal
+remains a separately approved future gate; it is not a substitute for the C
+remediation. Do not apply compatibility grants or switch policies/Gates.
 
 `MAINT-LW-UX1` is independently deferred for the medium production stale-tab
 maintenance UX and focused missing regression coverage from report 14. Run it
@@ -85,9 +89,11 @@ Pre-implementation evidence is consolidated in
 AUTHZ1-C audit v1 and executable plan are in the two
 `15-authz1c-analyzer-backfill-*` documents, with the implementation contract at
 `prompts/pre-13-prompts/authz1c-analyzer-backfill-codex-prompt.md` v1.
-AUTHZ1-C implementation and final gate are complete with commit closeout
-pending; its detailed evidence is in
-`docs/phase-02/authz1c-analyzer-backfill-handoff.md`. AUTHZ1-D–I remain unstarted.
+AUTHZ1-C implementation and two-commit closeout are complete; its original
+evidence is in `docs/phase-02/authz1c-analyzer-backfill-handoff.md`. The
+independent audit at `16-authz1c-independent-analyzer-backfill-audit.md` found
+one High, four Medium, and two Low gaps and requires a separate C remediation
+prompt before AUTHZ1-D planning. AUTHZ1-D–I remain unstarted.
 
 - The installed exact solve is Shield 4.2.0 + Permission 7.3.0 plus transitive
   Plugin Essentials 1.2.1, with no unrelated update/removal. Shield remains
