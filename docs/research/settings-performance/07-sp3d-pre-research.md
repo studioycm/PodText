@@ -41,16 +41,19 @@ The installed source of truth is Laravel 13.19.0, Filament 5.6.7, and Livewire
 ## Executive conclusion
 
 SP3D cannot be scoped as a direct cleanup of the current settings monolith.
-The operator approved ARCH1 as a prerequisite architecture step: Card Templates
-and Public Forms first leave `PublicContentSettings` and become normal,
-independently versioned model/Resource aggregates. Only after that migration is
-accepted should SP3D delete the obsolete settings monolith branches and enforce
-durable budgets against the architecture that will remain.
+The operator approved AUTHZ1 first: migrate the full panel from enum/rank roles
+to the owned Ability catalog backed by Spatie Permission and managed through
+Filament Shield. ARCH1 then moves Card Templates and Public Forms out of
+`PublicContentSettings` into independently versioned model/Resource aggregates
+with per-user working drafts. Only after both migrations are accepted should
+SP3D delete obsolete settings monolith branches and enforce durable budgets
+against the architecture that will remain.
 
-The approved order is:
+The approved order, as extended by Groups 13–14, is:
 
 ```text
-ARCH1 research/implementation/acceptance
+AUTHZ1 authorization foundation and verified role migration
+    -> ARCH1 research/implementation/acceptance
     -> SP3D monolith deletion + calibrated durable budgets
     -> SP4 surviving-settings slice reads/change sets + remaining previews
     -> LOG1 activity log consuming safe change sets
@@ -138,12 +141,36 @@ without the old settings policy. The resulting approved boundary is:
 | ARCH1-P | Protected revision data | Unauthorized actors may receive safe parent metadata/preview only if separately allowed; protected revision JSON never hydrates and cannot be edited, cloned, published, or exported. |
 | ARCH1-Q | Uploads | Defer uploads. A later attachment model must define private storage, MIME/size checks, scanning, retention, and authorized download. |
 | ARCH1-R | Retention | Keep published, referenced, and current history. Permit configurable bounded pruning only for unreferenced superseded drafts, after composite backup and report. |
-| ARCH1-S | Sequence | ARCH1 acceptance precedes SP3D enforcement; SP4 follows SP3D; LOG1 follows SP4. |
+| ARCH1-S | Sequence | As extended by 14.2, AUTHZ1 precedes ARCH1; ARCH1 acceptance precedes SP3D enforcement; SP4 follows SP3D; LOG1 follows SP4. |
 
 Owned previews use the real renderer and normalized unsaved state. Refresh is
 explicit or change/blur based, not every keystroke. Public Form preview is
 non-submittable and must not send mail, issue OTPs, consume rate limits, or
 create submissions.
+
+### Groups 13–14: approved draft and authorization extensions
+
+The detailed current-package research and risks are recorded in
+`09-arch1-drafts-authorization-research.md`.
+
+| ID | Approved choice | Durable rule |
+|---|---|---|
+| 13.1 | Per-user mutable autosave plus explicit immutable checkpoints | Every Template/Form parent may have one isolated mutable working draft per user. Autosave updates only that user's row. **Save Draft** creates a new immutable, attributed revision. Dirty-navigation UX offers a checkpoint without pretending the autosaved working copy is lost. |
+| 13.2-D / 14.1 | Spatie Laravel Permission + Filament Shield + owned PodText ability catalog | Spatie stores assignments and integrates Gate; Shield supplies grouped role/permission management; PodText owns stable keys, groups, bilingual labels, default grants, and policies. This package/schema foundation is `AUTHZ1` before ARCH1. |
+| 13.3 | Submit against the exact mounted immutable Form revision | Accept while the parent remains enabled and the signed mount authorization is valid; republishing alone does not discard in-progress visitor work. Exact token lifetime remains pending. |
+| 13.4 | 90-day plus latest-20 immutable-draft retention | Published/referenced/current revisions remain retained. For unreferenced superseded drafts, retain at least 90 days and the latest 20 per parent, whichever preserves more; backup/report before pruning. |
+| 13.5 | Clone selected revision into new unprotected draft identity | New ULID/key; no history, references, default assignment, published state, protection, or activity history is copied. |
+| 14.2 | Complete authorization migration before ARCH1 | Do not operate a Template/Form-only Shield island beside the legacy enum/rank system. Inventory and migrate all existing panel/business authorization first. |
+| 14.3 | Role grants plus optional direct grants; no denial layer | Roles are normal bundles; authorized super-admins may add a direct grant. No custom explicit-denial precedence is introduced in v1. |
+| 14.4 | Super-admin authorization bypass with safety invariants | Bypass does not override last-super-admin/self-demotion protection, validation, conflict detection, reference/retention guards, or confirmations. |
+| 14.5 | Grouped meaningful mini-abilities | Keep atomic business/security checks and group them for assignment. Do not permission every UI click. Add sensitive field/area abilities where justified, including protected revisions, policy/security, locks, import/restore, credentials, and PII. |
+
+Current PodText still uses one enum-cast `users.role`, rank checks, and a small
+set of gates/macros; neither selected package is installed. Spatie's documented
+`role`/`roles` naming constraint makes the existing column a material migration
+risk. AUTHZ1 must preserve every production role assignment, panel-access rule,
+last-super-admin guard, command, factory, and test while making explicit
+abilities—not rank—the final authority.
 
 ### Blank-sheet alternatives considered
 
@@ -187,7 +214,7 @@ Two no-loss limitations require honest migration reporting:
   live versus disabled/draft state, and stop/report duplicate, corrupt, or
   ambiguous identities rather than guessing.
 
-### Discarded, unapproved question draft
+### Earlier discarded, context-lost question draft
 
 The assistant presented a Group 13 question set after losing context. The
 operator stopped it and required the research to restart. The proposed Template
@@ -197,6 +224,9 @@ established standing questionnaire. Fresh ARCH1 research may conclude that
 some are implementation-derived rather than operator choices. Any future PII
 retention rule likewise requires legal/product evidence; this task did not ask
 or settle it.
+
+This warning applies only to that earlier halted draft. The later, freshly
+researched Groups 13–14 above are approved and controlling.
 
 ## Current code and schema reality
 
@@ -302,6 +332,11 @@ question IDs.
 | INV-U3 | Chunked LENS review pack | Active task U3 | Approved, not produced. | `operator-task` | Operator reviews roughly 25–40 entries per page/domain pack. |
 | INV-WBHF1 | Probe hardening | Active task WB-PROBE-HF1 | Not implemented. | `defer-with-reason` | Approved after SP/minis and before the real probe. |
 | INV-ARCH1 | Versioned Template/Form aggregate architecture | Active task ARCH1-A–S | Fully approved; absent from code/schema. | `approved-prerequisite` | Research/implementation/no-loss acceptance precedes SP3D; individual decisions are recorded above. |
+| INV-AUTHZ1 | Dynamic roles/permissions foundation | Active task 13.2-D and 14.1–14.5 | Shield/Spatie are not installed; PodText uses one enum role/rank plus a few gates. | `approved-prerequisite` | Complete a lossless all-panel authorization migration before ARCH1; owned ability catalog remains the naming/policy authority. |
+| INV-DRAFT1 | Per-user autosave working drafts | Active task 13.1 | No Template/Form working-draft records exist. | `approved-prerequisite` | One mutable row per parent/user, explicit immutable checkpoints, base checksum, no cross-user overwrite. Group 15 still owns collaboration rules. |
+| INV-FORMREV1 | Mounted Form revision acceptance | Active task 13.3 | Current runtime resolves definitions from settings and has no signed immutable revision mount. | `approved-prerequisite` | ARCH1 must bind the mounted revision and revoke on parent disable/archive; exact token lifetime remains pending. |
+| INV-RET1 | Immutable draft retention | Active task 13.4 | No revision tables/pruner exist. | `approved-prerequisite` | Retain 90 days and latest 20, whichever preserves more; backup/report first. |
+| INV-CLONE1 | Selected-revision clone | Active task 13.5 | Current Template clone semantics operate in settings JSON; Form Resource clone does not exist. | `approved-prerequisite` | New unprotected identity only; no history/default/reference/published/activity inheritance. |
 
 ## Codex session-history findings
 
@@ -310,7 +345,7 @@ included because it is now the controlling source for the decisions above.
 
 | Session citation | Operator point | Reconciliation |
 |---|---|---|
-| **“Compile SP3D evidence base”**, 2026-07-15–16, thread `019f66b6-443d-7662-a235-4a1c83b88dfb` | Approved V1–V3, L10N-SET1, E1–E4, P1–P3, WB-PROBE-HF1, U1–U3, A1–A2, S1–S3, D1–D2, and ARCH1-A–S; instructed that Templates/Forms become independent storage/Resources and that research be restarted from the session transcript. | This report is the reconciliation. The context-lost Group 13 draft was halted and is neither approved nor a standing questionnaire. |
+| **“Compile SP3D evidence base”**, 2026-07-15–16, thread `019f66b6-443d-7662-a235-4a1c83b88dfb` | Approved V1–V3, L10N-SET1, E1–E4, P1–P3, WB-PROBE-HF1, U1–U3, A1–A2, S1–S3, D1–D2, ARCH1-A–S, the freshly researched Group 13 draft/clone/retention rules, and Group 14's Shield/Spatie authorization foundation. | This report and `09-arch1-drafts-authorization-research.md` are controlling. Only the earlier context-lost Group 13 draft was discarded; the later Groups 13–14 are approved. |
 | **“Initial Settings slowness debug - sp3a-d planned”**, 2026-07-14, thread `019f5e8b-663c-78b1-984c-b708c542e4af` | One section lock plus proposed important locks were “pending your veto”; preview, group reads, hint icons, and simplified Hebrew were queued. | V1, S1/S2, U2, and L10N-SET1 now settle or schedule these points. |
 | **“Implement settings SP3A, plan SP3B v3”**, 2026-07-14, thread `019f5ee1-ba53-71b3-963b-e2db4716ab2a` | Complete Select classification shipped without an operator row-by-row acceptance. | V2 now settles the policy. Re-audit implementation against it; do not reopen the veto. |
 | **“LENS1 step fix - hide multi transcriptions”**, 2026-07-14, thread `019f5e31-2506-7a61-a25b-7e763d25f8b9`, turn `019f5e37-2428-7fd1-af74-46bc0afaafa2` | Preserve relation-manager and item/group featured/count operational columns. | Shipped; V3/U3 define review of the remaining table. |
@@ -331,9 +366,15 @@ PublicContentSettings JSON
   ordinary settings + templates + public forms
                |
                v
+AUTHZ1
+  owned Ability catalog + Spatie assignments + Shield management UI
+  verified migration from enum/rank roles to explicit policies
+               |
+               v
 ARCH1 expand / verify / cut over / contract
   CardTemplate ──> immutable CardTemplateRevision(parts JSON)
   PublicForm ─────> immutable PublicFormRevision(fields JSON)
+  per-user mutable working drafts ──> explicit immutable checkpoints
        |                         |
        |                         v
        |              PublicFormSubmission -> exact revision
@@ -400,6 +441,15 @@ fixed-runner gate instead of merely making a historical report look worse.
 - **Migration integrity:** canonical export/backup, transactional backfill,
   canonical/render comparison, stable identity/reference mapping, rollback
   availability, and no indefinite dual-write are hard ARCH1 gates.
+- **Authorization migration:** the existing singular `users.role` column/rank
+  system conflicts with the selected Spatie role/permission authority. AUTHZ1
+  must preserve all assignments and safety guards, remove dual authority, keep
+  Shield-generated names behind the owned ability catalog, and clear permission
+  caches/workers before ARCH1 relies on the new policies.
+- **Per-user drafts:** autosave uniqueness is parent plus user. It must never
+  overwrite another user's row or silently publish mutable state. Base
+  revision/checksum, authorship, and later Group 15 collaboration rules remain
+  part of the security boundary.
 - **Submission interpretation and PII:** every submission must remain bound to
   the exact immutable form revision. Configuration portability must not become
   an implicit PII export.
@@ -433,9 +483,13 @@ fixed-runner gate instead of merely making a historical report look worse.
 
 ### Prerequisites outside SP3D
 
+- Complete and accept AUTHZ1: owned ability catalog, compatible Shield/Spatie
+  installation, lossless current-role backfill, all-panel policy/action audit,
+  and removal of enum/rank dual authority.
 - Complete and accept ARCH1, including data-preserving migration, Resources,
-  revisions, protected-data policy, exact submission revision binding, owned
-  previews, coordinator, and rollback release.
+  per-user working drafts, immutable revisions/checkpoints, protected-data
+  policy, exact submission revision binding, owned previews, coordinator, and
+  rollback release.
 - Complete ownership-dependent L10N/ADM corrections that would otherwise
   invalidate final settings browser baselines.
 - Ensure the final fixture/authentication prerequisites exist without touching
@@ -463,11 +517,12 @@ fixed-runner gate instead of merely making a historical report look worse.
 
 ### Explicitly outside SP3D
 
-- ARCH1 schema/application implementation itself; SP4; LOG1; ADM/LENS copy
-  review; WB-PROBE-HF1 and the real Google probe; production mutations.
-- Any product choice later re-established by fresh ARCH1 research, same-owner general serialization, automatic
-  semantic-key repointing, template-level reorder, fine node locks/merges,
-  full-remount unsaved recovery, and persistent reference caches without data.
+- AUTHZ1 and ARCH1 application implementation; SP4; LOG1; ADM/LENS copy review;
+  WB-PROBE-HF1 and the real Google probe; production mutations.
+- Any product choice later re-established by fresh ARCH1 research, same-owner
+  general serialization, automatic semantic-key repointing, template-level
+  reorder, fine node locks/merges, full-remount unsaved recovery, and persistent
+  reference caches without data.
 - Label indexes, uploads, ZIP import, `transcript_file`, EP1 preference, paste
   conventions, P2/P3, and post-13 arcs.
 

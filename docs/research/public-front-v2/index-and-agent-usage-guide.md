@@ -4,7 +4,9 @@
 > `docs/research/settings-performance/07-sp3d-pre-research.md` before using this
 > pack. Its JSON-first rule is superseded for independently managed Card
 > Templates and Public Forms: those are now approved versioned Resources with
-> revision-owned JSON. Bounded singleton policy remains Spatie Settings.
+> revision-owned JSON. Bounded singleton policy remains Spatie Settings. Read
+> `../settings-performance/09-arch1-drafts-authorization-research.md` as well:
+> AUTHZ1 precedes ARCH1 and autosave working drafts are per user.
 
 ## Purpose
 

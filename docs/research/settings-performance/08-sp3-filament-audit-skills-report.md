@@ -23,6 +23,12 @@ controls by default unless required custom/HTML rendering or behavior needs a
 non-native Select; growing sources are searchable, non-preloaded, constrained,
 and capped at 50. This is no longer a pending veto.
 
+Groups 13–14 subsequently added a per-user mutable autosave working draft with
+explicit immutable revision checkpoints and selected a complete Shield/Spatie
+authorization migration before ARCH1. Those decisions are researched in
+`09-arch1-drafts-authorization-research.md`; they supersede any assumption that
+one shared draft or the current enum-role gates remain the target.
+
 No application change was made by this audit.
 
 ## Installed-version and current-documentation validation
@@ -156,8 +162,8 @@ otherwise. Validate affected pages in the authenticated browser evidence.
   settings writer/library behavior.
 - Not measured: authenticated browser DOM, modal teleports, listeners, heap,
   total network cost, and fixed-runner TTFB.
-- Approved forward order: ARCH1 acceptance, then SP3D cleanup/calibration, then
-  SP4, then LOG1.
+- Approved forward order: AUTHZ1 acceptance, ARCH1 acceptance, SP3D
+  cleanup/calibration, SP4, then LOG1.
 - No numeric browser cap may be invented. Use the operator-approved two-run
   calibration, deterministic max plus 10%, DOM product target `<3000`, fixed
   warm median TTFB `<800ms`, and advisory heap/listeners until repeatable.

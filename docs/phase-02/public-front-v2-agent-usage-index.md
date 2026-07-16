@@ -4,6 +4,8 @@
 > settings, preview, or SP3D work, read
 > `docs/research/settings-performance/07-sp3d-pre-research.md`. It supersedes the
 > old settings-only storage assumption for Card Templates and Public Forms.
+> Also read `09-arch1-drafts-authorization-research.md`: AUTHZ1 now precedes
+> ARCH1, and Template/Form autosave working drafts are isolated per user.
 
 ## Purpose
 
