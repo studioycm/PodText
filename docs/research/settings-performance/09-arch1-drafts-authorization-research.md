@@ -2,8 +2,9 @@
 
 Date: 2026-07-16
 
-Status: research and operator-decision record through Group 15; no application
-code, tests, schema, dependency, implementation plan, or prompt
+Status: research and operator-decision record through Group 15 and approved
+BQ1–BQ6; no application code, tests, schema, dependency, implementation plan,
+or prompt
 
 ## Authority and purpose
 
@@ -20,12 +21,12 @@ Shield.
 |---|---|---|
 | 13.1 | Hybrid autosave plus immutable checkpoints, refined so autosave is per user. | Each user has an isolated mutable working draft for each Template/Form parent. Autosave updates only that user's row. Explicit **Save Draft** snapshots it into a new immutable revision. A dirty-navigation warning offers a Save Draft checkpoint rather than implying that the autosaved working copy is lost. |
 | 13.2-D | Use the recommended dynamic permission architecture. | PodText adopts Spatie Laravel Permission plus Filament Shield and keeps an application-owned ability catalog as the stable source of permission keys, groups, bilingual labels, and default role grants. |
-| 13.3 | Accept the exact immutable Form revision mounted by the visitor while the parent remains enabled and the signed mount authorization remains valid. | Republishing alone does not destroy a visitor's in-progress form. Disabling/archiving the parent prevents submission. The exact token lifetime remains an operational default to decide later. |
+| 13.3 | Accept the exact immutable Form revision mounted by the visitor while the parent remains enabled and the signed mount authorization remains valid. | Republishing alone does not destroy a visitor's in-progress form. Disabling/archiving the parent prevents submission. The audited initial operational default is a config-backed two hours for verified and unverified Forms; OTP retains its separate five-minute expiry. |
 | 13.4 | Retain unreferenced immutable drafts by age plus count floor. | Keep them for at least 90 days and always keep the latest 20 per parent, whichever preserves more. Pruning requires the approved composite backup and report. Published/referenced/current revisions remain retained. |
 | 13.5 | Clone an explicitly selected revision into a new unprotected draft parent. | The clone receives a new ULID and semantic key. It copies no history, references, default assignment, published pointer/state, protection, or activity history. |
 | 14.1 | Filament Shield + Spatie Permission + owned PodText ability catalog. | Shield is the role/permission management UI; Spatie stores assignments and registers permissions with Laravel Gate; PodText owns names and policies. |
 | 14.2 | Complete the authorization foundation before ARCH1. | `AUTHZ1` becomes a prerequisite. Do not introduce Shield only for Templates/Forms while the existing enum/rank gates remain a competing authority elsewhere. |
-| 14.3 | Role bundles plus optional direct user grants; no explicit-denial layer in v1. | Roles provide normal grants. Authorized super-admins may add a direct permission. A custom deny-precedence system is not introduced. |
+| 14.3 | Role bundles plus optional direct user grants; no explicit-denial layer in v1. | Roles provide normal grants. Direct permissions are exceptional and super-admin-only in v1; their owned mutation boundary records grantor/reason/advisory review/revocation metadata. A custom deny-precedence or automatic-expiry system is not introduced. |
 | 14.4 | Super-admin global ability bypass with safety invariants. | Last-super-admin and self-demotion protection, data-integrity checks, confirmation requirements, and other non-authorization safety rules still apply. |
 | 14.5 | Mix meaningful mini-abilities with grouped management. | Do not create a permission for every UI click. Keep atomic business/security abilities, group them in Shield for bulk assignment, and allow individual overrides. Field/area abilities are limited to sensitive clusters such as protected revisions, security policy, imports/restores, locks, credentials, and PII. |
 | 15.1 | Private editing with controlled visibility/adoption. | Only the owner edits a mutable working draft. `view-other-working-drafts` grants read-only visibility; `adopt-working-draft` copies it into the acting user's own working draft. Nobody edits or overwrites the original. |
@@ -33,6 +34,12 @@ Shield.
 | 15.3 | Preserve divergent work. | A stale-base working draft may still create an immutable checkpoint, recording its base and an outdated/divergent marker. Publication is blocked until authorized comparison and explicit rebase or acceptance; no automatic JSON merge or last-write-wins publication. |
 | 15.4 | Permission-based publication of saved checkpoints. | A user with the relevant publish ability may preview/confirm and publish any authorized immutable checkpoint regardless of author. Another user's mutable working draft can never be published directly. |
 | 15.5 | Preserve inactive working drafts indefinitely but hide them when stale. | After 90 inactive days, mark/hide the working draft from default lists. Do not automatically delete it. Authorized users may restore, checkpoint, adopt, or explicitly discard it subject to ability checks. |
+| BQ1-B | Multiple roles plus exceptional direct grants. | Effective permission is the additive union of role/direct grants. Migration assigns exactly the one role represented by the legacy column; no synthetic highest-role/rank and no automatic universal `user` role. |
+| BQ2-B | Strict delegated role assignment. | The deployed catalog owns ability definitions. Super-admins manage role bundles/assignments. An explicitly authorized admin may assign only existing delegable, non-privileged roles whose complete grant set is within the actor's fresh authority; no self/reserved/super-admin/direct-grant/catalog management. |
+| BQ3-A | Exactly one active published default per registered runtime Template family. | Default replacement is atomic. The current default cannot close/archive without a validated replacement in the same transaction. |
+| BQ4-A | Interim submission-PII deletion freeze. | Separate view/export abilities; no routine hard-delete/prune UI until retention/privacy/anonymization policy exists. Preserve a future legal/privacy erasure boundary. |
+| BQ5-A | Fail-closed AUTHZ1/ARCH1 cutover. | Analyze raw source; report all corrupt/duplicate/unknown/missing/ambiguous/unresolved data; mutate nothing; repair separately and rerun. Never invent identity or historical provenance. |
+| BQ6-A | Separately accepted forward sequence. | AUTHZ1 foundation/cutover, then ARCH1 shared foundation/Templates/Forms/cutover, then L10N/ADM/LENS, SP3D, SP4, and LOG1. Major boundaries stop for operator/Fable acceptance. |
 
 ## Per-user working-draft boundary
 
@@ -74,6 +81,13 @@ Group 15 fixes the collaboration boundary:
   after preview/confirmation, but never another user's mutable working row;
 - inactive working drafts are marked stale and hidden after 90 days but are not
   automatically deleted.
+
+The audited operational defaults are in
+`11-bq-decisions-and-defaults-audit.md`: lazy creation on first material
+mutation; one acknowledged autosave in flight; event/idle coalescing rather
+than every-keystroke writes; server-authoritative offline/failure state; owned
+internal navigation choices plus generic browser-close fallback; logical
+discard tombstones; and stable node IDs for selective compare/copy.
 
 ## Current authorization implementation
 
@@ -140,7 +154,7 @@ must not become an accidental public contract. The owned catalog prevents
 renames, generator defaults, or UI grouping from silently changing application
 authorization.
 
-Recommended ability groups consistent with 14.5 are:
+Approved initial ability groups consistent with 14.5 are:
 
 | Group | Examples of meaningful atomic abilities |
 |---|---|
@@ -168,6 +182,11 @@ presentation, not replacing atomic server-side checks with one broad UI flag.
   seeded Spatie roles. The current `users:assign-role` command, User Resource,
   panel-access rule, last-super-admin guard, factories, and tests need an
   explicit compatibility disposition during later planning.
+- Initial grants are compatibility-first. `admin` and `super-admin` keep their
+  current effective panel audiences; `moderator`, `transcriber`, and `user` do
+  not gain panel access merely from their names. Panel access is the explicit
+  `panel.admin.access` ability. Horizon is the separate
+  `system.horizon.view` ability.
 - Rank inheritance must stop being runtime authority once abilities are live.
   Existing roles may remain named presets, but policies check permissions.
 - Shield permission generation must be constrained by the owned catalog and
@@ -177,7 +196,13 @@ presentation, not replacing atomic server-side checks with one broad UI flag.
   during deployment/backfill. Long-lived workers must not retain stale access.
 - Super-admin bypass applies to authorization only. It cannot bypass data
   validation, revision conflicts, retention/reference protection, confirmation,
-  or last-super-admin safety.
+  last-super-admin safety, or operational feature modes such as
+  `transcription_mode=single`.
+- Every UI/command/import/migration assignment path must use one transactional
+  boundary. With multiple roles, last-super-admin means distinct users holding
+  that protected role. The singular `users:assign-role` command must gain
+  explicit add/remove/replace semantics or be replaced; it cannot silently
+  become `syncRoles()`.
 - Composer installation, package migrations, and role backfill are future
   AUTHZ1 implementation actions. They were not executed by this research task.
 
@@ -186,8 +211,7 @@ presentation, not replacing atomic server-side checks with one broad UI flag.
 The controlling forward order is now:
 
 ```text
-finish operator decision groups and reconcile docs
-    -> operator/Fable scope review
+operator/Fable scope review
     -> AUTHZ1 authorization foundation and verified role migration
     -> ARCH1 versioned Template/Form aggregates and no-loss cutover
     -> ADM/L10N/LENS work that affects final measured surfaces
@@ -199,14 +223,11 @@ finish operator decision groups and reconcile docs
 
 No implementation prompt or file-by-file plan is authorized by this note.
 
-## Still unresolved after Group 15
+## Decision closure and remaining gates
 
-The complete restart-safe question inventory is maintained in
-`10-pending-decision-question-queue.md`. Do not regenerate it from this short
-summary. **Group 16 — AUTHZ1 role model and initial grants** is the exact next
-operator-question group; Groups 1–15 are settled.
-
-The later queue covers AUTHZ1 role/catalog governance, ARCH1 working-draft UX,
-Template and Public Form lifecycles, migration/cutover classifications,
-implementation slicing, and the evidence-dependent ADM/L10N/LENS, SP3D, SP4,
-LOG1, production, and WB-PROBE confirmations.
+Groups 1–15 and BQ1–BQ6 are settled. The detailed audited defaults and
+corrections are controlling in `11-bq-decisions-and-defaults-audit.md`.
+`10-pending-decision-question-queue.md` now indexes only implementation-
+research, evidence, dependency, destructive-action, manual-review, and final
+acceptance checkpoints. Do not restart at Group 16 or reconstruct the former
+minor-question list.

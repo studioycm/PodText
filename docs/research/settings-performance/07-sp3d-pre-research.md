@@ -54,6 +54,7 @@ The approved order, as extended by Groups 13–15, is:
 ```text
 AUTHZ1 authorization foundation and verified role migration
     -> ARCH1 research/implementation/acceptance
+    -> ownership-dependent L10N/ADM/LENS work on surviving surfaces
     -> SP3D monolith deletion + calibrated durable budgets
     -> SP4 surviving-settings slice reads/change sets + remaining previews
     -> LOG1 activity log consuming safe change sets
@@ -72,10 +73,12 @@ LOG1, ADM1, deferral, and ARCH1 questions are no longer open. They are recorded
 below. The context-lost Group 13 draft was interrupted and discarded; it must
 not be treated as approved or as a standing questionnaire.
 
-Detailed AUTHZ1/ARCH1 operating choices and later evidence-gated confirmations
-remain. Their restart-safe index is
-`10-pending-decision-question-queue.md`; Groups 1–15 are settled and **Group
-16** is the exact next operator-question group.
+The remaining big choices were later approved as BQ1–BQ6 and the smaller
+recommendations were audited against current code and package guidance. The
+controlling addendum is `11-bq-decisions-and-defaults-audit.md`;
+`10-pending-decision-question-queue.md` now indexes only later research,
+evidence, dependency, production, manual-review, and acceptance checkpoints.
+Do not restart at Group 16.
 
 ## Decisions made in this task
 
@@ -162,11 +165,11 @@ The detailed current-package research and risks are recorded in
 |---|---|---|
 | 13.1 | Per-user mutable autosave plus explicit immutable checkpoints | Every Template/Form parent may have one isolated mutable working draft per user. Autosave updates only that user's row. **Save Draft** creates a new immutable, attributed revision. Dirty-navigation UX offers a checkpoint without pretending the autosaved working copy is lost. |
 | 13.2-D / 14.1 | Spatie Laravel Permission + Filament Shield + owned PodText ability catalog | Spatie stores assignments and integrates Gate; Shield supplies grouped role/permission management; PodText owns stable keys, groups, bilingual labels, default grants, and policies. This package/schema foundation is `AUTHZ1` before ARCH1. |
-| 13.3 | Submit against the exact mounted immutable Form revision | Accept while the parent remains enabled and the signed mount authorization is valid; republishing alone does not discard in-progress visitor work. Exact token lifetime remains pending. |
+| 13.3 | Submit against the exact mounted immutable Form revision | Accept while the parent remains enabled and the signed mount authorization is valid; republishing alone does not discard in-progress visitor work. Audited initial mount-token lifetime is a config-backed two hours for verified and unverified Forms; OTP remains independently five minutes. |
 | 13.4 | 90-day plus latest-20 immutable-draft retention | Published/referenced/current revisions remain retained. For unreferenced superseded drafts, retain at least 90 days and the latest 20 per parent, whichever preserves more; backup/report before pruning. |
 | 13.5 | Clone selected revision into new unprotected draft identity | New ULID/key; no history, references, default assignment, published state, protection, or activity history is copied. |
 | 14.2 | Complete authorization migration before ARCH1 | Do not operate a Template/Form-only Shield island beside the legacy enum/rank system. Inventory and migrate all existing panel/business authorization first. |
-| 14.3 | Role grants plus optional direct grants; no denial layer | Roles are normal bundles; authorized super-admins may add a direct grant. No custom explicit-denial precedence is introduced in v1. |
+| 14.3 | Role grants plus optional direct grants; no denial layer | Roles are normal bundles; direct grants are exceptional and super-admin-only in v1. Their owned transactional boundary records grantor/reason/advisory review/revocation metadata. No custom explicit-denial or automatic-expiry layer is introduced. |
 | 14.4 | Super-admin authorization bypass with safety invariants | Bypass does not override last-super-admin/self-demotion protection, validation, conflict detection, reference/retention guards, or confirmations. |
 | 14.5 | Grouped meaningful mini-abilities | Keep atomic business/security checks and group them for assignment. Do not permission every UI click. Add sensitive field/area abilities where justified, including protected revisions, policy/security, locks, import/restore, credentials, and PII. |
 | 15.1 | Owner-only working-draft mutation with controlled visibility/adoption | Another user's working draft is read-only only with `view-other-working-drafts`; `adopt-working-draft` copies into the actor's own row. The source is never transferred, edited, or overwritten. |
@@ -174,6 +177,22 @@ The detailed current-package research and risks are recorded in
 | 15.3 | Preserve divergent checkpoints and block unsafe publication | A stale-base checkpoint may be created and marked outdated/divergent. Publishing waits for explicit compare and rebase/acceptance; no automatic JSON merge or last-write-wins. |
 | 15.4 | Permission-based publication of immutable checkpoints | An authorized publisher may preview/confirm and publish another author's immutable checkpoint, but never another user's mutable autosave row directly. |
 | 15.5 | Indefinite working-draft preservation with stale hiding | Mark and hide after 90 inactive days; never automatically delete. Authorized restore/checkpoint/adopt/explicit-discard operations remain available. |
+
+### BQ1–BQ6: approved closure of the remaining big questions
+
+| ID | Approved choice | Durable rule |
+|---|---|---|
+| BQ1-B | Multiple roles plus exceptional direct grants | Abilities are additive; runtime code does not infer a highest role or retain rank authority after cutover. Initial legacy migration assigns exactly the one represented role. |
+| BQ2-B | Strict delegated role assignment | Deployed PodText code owns ability definitions. Super-admins manage role bundles/assignments. A delegated admin may assign only existing safe delegable roles within their fresh effective authority, never catalog keys, direct grants, reserved roles/holders, or themselves. |
+| BQ3-A | One active published default per registered runtime Template family | Replacement is confirmed and atomic. The current default cannot close/archive without its valid replacement. |
+| BQ4-A | Interim PII deletion freeze | Separate submission-PII view/export abilities; no routine hard-delete/prune action until an approved privacy/retention/anonymization policy. This does not prohibit a future legal erasure boundary. |
+| BQ5-A | Fail-closed AUTHZ1/ARCH1 cutover | Analyze raw source; report all corrupt/duplicate/unknown/missing/ambiguous/unresolved data; mutate nothing; repair and rerun. Do not fabricate identities or historical Form revision provenance. |
+| BQ6-A | Separately accepted sequence | AUTHZ1 foundation/cutover → ARCH1 shared foundation/Templates/Forms/cutover → L10N/ADM/LENS → SP3D → SP4 → LOG1, with operator/Fable stops at major boundaries. |
+
+Report 11 corrects three tempting but invalid shortcuts: semantic keys remain
+validated renameable metadata because ULIDs/FKs are authority; publication is
+a revision pointer rather than a duplicate parent-state flag; and LOG1 does
+not inherit the unrelated 90-day draft-retention value.
 
 Current PodText still uses one enum-cast `users.role`, rank checks, and a small
 set of gates/macros; neither selected package is installed. Spatie's documented
@@ -344,7 +363,10 @@ question IDs.
 | INV-ARCH1 | Versioned Template/Form aggregate architecture | Active task ARCH1-A–S | Fully approved; absent from code/schema. | `approved-prerequisite` | Research/implementation/no-loss acceptance precedes SP3D; individual decisions are recorded above. |
 | INV-AUTHZ1 | Dynamic roles/permissions foundation | Active task 13.2-D and 14.1–14.5 | Shield/Spatie are not installed; PodText uses one enum role/rank plus a few gates. | `approved-prerequisite` | Complete a lossless all-panel authorization migration before ARCH1; owned ability catalog remains the naming/policy authority. |
 | INV-DRAFT1 | Per-user autosave working drafts and collaboration | Active task 13.1 and 15.1–15.5 | No Template/Form working-draft records exist. | `approved-prerequisite` | One mutable row per parent/user; owner-only mutation; controlled read/adopt-by-copy; shared checkpoints; divergent preservation; authorized checkpoint publication; stale hide without automatic deletion. |
-| INV-FORMREV1 | Mounted Form revision acceptance | Active task 13.3 | Current runtime resolves definitions from settings and has no signed immutable revision mount. | `approved-prerequisite` | ARCH1 must bind the mounted revision and revoke on parent disable/archive; exact token lifetime remains pending. |
+| INV-FORMREV1 | Mounted Form revision acceptance | Active task 13.3/BQ audit | Current runtime resolves definitions from settings and has no signed immutable revision mount. | `approved-prerequisite` | ARCH1 must bind the mounted revision and revoke on parent disable/archive/revision revocation; initial config-backed token lifetime is two hours, separate from the five-minute OTP. |
+| INV-BQ1-2 | Multi-role and delegated authorization closure | Active task BQ1/BQ2 | Not implemented; current singular role/rank remains authority. | `approved-prerequisite` | Multiple additive roles; compatibility-first grants; strict delegable-role assignment; deployed catalog keys; separate panel/Horizon abilities; one transactional assignment boundary. |
+| INV-BQ3-4 | Template default and submission-PII closure | Active task BQ3/BQ4 | Not implemented. | `approved-prerequisite` | Exactly one active published default per registered runtime family; separate PII view/export; no routine hard-delete/prune until approved policy. |
+| INV-BQ5-6 | Fail-closed cutover and accepted sequence | Active task BQ5/BQ6 | Not implemented. | `approved-prerequisite` | Raw-source cutover blocks on any unresolved classification; separately accepted AUTHZ1/ARCH1/domain/surface/SP boundaries. |
 | INV-RET1 | Immutable draft retention | Active task 13.4 | No revision tables/pruner exist. | `approved-prerequisite` | Retain 90 days and latest 20, whichever preserves more; backup/report first. |
 | INV-CLONE1 | Selected-revision clone | Active task 13.5 | Current Template clone semantics operate in settings JSON; Form Resource clone does not exist. | `approved-prerequisite` | New unprotected identity only; no history/default/reference/published/activity inheritance. |
 
@@ -355,7 +377,7 @@ included because it is now the controlling source for the decisions above.
 
 | Session citation | Operator point | Reconciliation |
 |---|---|---|
-| **“Compile SP3D evidence base”**, 2026-07-15–16, thread `019f66b6-443d-7662-a235-4a1c83b88dfb` | Approved V1–V3, L10N-SET1, E1–E4, P1–P3, WB-PROBE-HF1, U1–U3, A1–A2, S1–S3, D1–D2, ARCH1-A–S, Group 13 draft/clone/retention rules, Group 14's Shield/Spatie authorization foundation, and Group 15's per-user collaboration rules. | This report and `09-arch1-drafts-authorization-research.md` are controlling. Only the earlier context-lost Group 13 draft was discarded; the later Groups 13–15 are approved. |
+| **“Compile SP3D evidence base”**, 2026-07-15–16, thread `019f66b6-443d-7662-a235-4a1c83b88dfb` | Approved V1–V3, L10N-SET1, E1–E4, P1–P3, WB-PROBE-HF1, U1–U3, A1–A2, S1–S3, D1–D2, ARCH1-A–S, Groups 13–15, BQ1-BQ6, and the audited minor defaults. | This report, `09-arch1-drafts-authorization-research.md`, and `11-bq-decisions-and-defaults-audit.md` are controlling. Only the earlier context-lost Group 13 draft was discarded. |
 | **“Initial Settings slowness debug - sp3a-d planned”**, 2026-07-14, thread `019f5e8b-663c-78b1-984c-b708c542e4af` | One section lock plus proposed important locks were “pending your veto”; preview, group reads, hint icons, and simplified Hebrew were queued. | V1, S1/S2, U2, and L10N-SET1 now settle or schedule these points. |
 | **“Implement settings SP3A, plan SP3B v3”**, 2026-07-14, thread `019f5ee1-ba53-71b3-963b-e2db4716ab2a` | Complete Select classification shipped without an operator row-by-row acceptance. | V2 now settles the policy. Re-audit implementation against it; do not reopen the veto. |
 | **“LENS1 step fix - hide multi transcriptions”**, 2026-07-14, thread `019f5e31-2506-7a61-a25b-7e763d25f8b9`, turn `019f5e37-2428-7fd1-af74-46bc0afaafa2` | Preserve relation-manager and item/group featured/count operational columns. | Shipped; V3/U3 define review of the remaining table. |
