@@ -18,12 +18,15 @@ Historical prompts are under `prompts/archive/` and are not active instructions.
 
 ## AUTHZ1 pre-Prompt-13 contracts
 
-- `pre-13-prompts/authz1-foundation-codex-prompt.md` v3 is the active AUTHZ1
-  package/schema/catalog foundation implementation contract.
+- `pre-13-prompts/authz1-foundation-codex-prompt.md` v3 is complete; its
+  canonical implementation and hash-stamp commits are recorded in the AUTHZ1
+  foundation handoff.
 - `pre-13-prompts/maintenance-livewire-enforcement-audit-codex-prompt.md` v1 is
-  prepared but not started. Run it only after the AUTHZ1 foundation and its
-  hash-stamp commit are complete; it is a Markdown-only effects audit and does
-  not authorize remediation.
+  complete as a Markdown-only effects audit. It authorized no remediation.
+- `pre-13-prompts/authz1c-analyzer-backfill-codex-prompt.md` v1 is the prepared
+  AUTHZ1-C implementation contract. Planning is accepted and complete;
+  implementation is not started and requires a fresh operator kickoff naming
+  this exact prompt version.
 
 ## Pre-Prompt-08 research note
 

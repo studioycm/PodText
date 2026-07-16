@@ -2,8 +2,9 @@
 
 Date: 2026-07-16
 
-Status: restart-safe index after the completed reversible AUTHZ1 package/schema/
-catalog foundation; legacy authorization remains authoritative
+Status: restart-safe index after the completed AUTHZ1 foundation and
+maintenance-effects audit; AUTHZ1-C is planned/prompted but not implemented;
+legacy authorization remains authoritative
 
 ## Restart protocol
 
@@ -18,7 +19,13 @@ On a context reset, read in this order:
 4. `12-authz1-pre-implementation-research.md` — exact current surfaces,
    compatible package solve, catalog/role metadata, staged cutover, and
    acceptance evidence.
-5. This file — remaining evidence/approval checkpoints.
+5. `13-authz1-foundation-research.md` and the foundation handoff — shipped
+   package/schema/catalog evidence.
+6. `14-maintenance-livewire-enforcement-effects-audit.md` — completed audit v1
+   and independent deferred stale-tab UX finding.
+7. `15-authz1c-analyzer-backfill-research.md` and its paired implementation
+   plan — accepted AUTHZ1-C planning contract.
+8. This file — remaining evidence/approval checkpoints.
 
 Do not restart at Group 16. Groups 1–15, BQ1–BQ6, and the audited minor
 defaults are settled. There is no unanswered broad architecture question in
@@ -26,12 +33,18 @@ the old Groups 16–22.
 
 ## Single continuation point
 
-The reversible AUTHZ1 foundation is complete and legacy enum/rank/Gate authority
-remains active. The next action is operator/Fable review. Do not start AUTHZ1-C
-analyzer/backfill, apply compatibility grants, create package assignments,
-switch policies/Gates, or begin AUTHZ1-D–I without a new accepted implementation
-slice. The prepared maintenance-effects prompt is a separate audit-only option;
-it cannot remediate or broaden authority.
+The reversible AUTHZ1 foundation and maintenance-effects audit v1 are complete.
+Operator/Fable accepted AUTHZ1-C planning; its audit v1, implementation plan,
+and v1 prompt now exist, but implementation is not started. The next action is
+operator review and an explicit implementation kickoff naming the exact prompt
+version. Do not create package assignments, apply compatibility grants, switch
+policies/Gates, or begin AUTHZ1-D–I without that kickoff.
+
+`MAINT-LW-UX1` is independently deferred for the medium production stale-tab
+maintenance UX and focused missing regression coverage from report 14. Run it
+before the first later public Livewire navigation/polling/lazy/deferred/stream/
+upload expansion or before AUTHZ1 final acceptance, whichever comes first. It
+is not coupled to or a blocker for AUTHZ1-C.
 
 ## Approved big-question checkpoint
 
@@ -67,11 +80,13 @@ questions to ask again unless new evidence exposes a material tradeoff.
 ### AUTHZ1 checkpoint
 
 Pre-implementation evidence is consolidated in
-`12-authz1-pre-implementation-research.md`; the shipped reversible foundation
-evidence is in `13-authz1-foundation-research.md` and
-`docs/phase-02/authz1-foundation-handoff.md`. AUTHZ1-A's accepted package/
-schema/catalog foundation is complete. The next unstarted slice is AUTHZ1-C,
-with a fresh operator/Fable stop before any analyzer/backfill work.
+`12-authz1-pre-implementation-research.md`; shipped foundation evidence is in
+`13-authz1-foundation-research.md` and the foundation handoff. The accepted
+AUTHZ1-C audit v1 and executable plan are in the two
+`15-authz1c-analyzer-backfill-*` documents, with the implementation contract at
+`prompts/pre-13-prompts/authz1c-analyzer-backfill-codex-prompt.md` v1.
+AUTHZ1-C is planned/prompted but not started; implementation requires a fresh
+kickoff. AUTHZ1-D–I remain unstarted.
 
 - The installed exact solve is Shield 4.2.0 + Permission 7.3.0 plus transitive
   Plugin Essentials 1.2.1, with no unrelated update/removal. Shield remains
