@@ -4,12 +4,12 @@ Date: 2026-07-16
 Task: `AUTHZ1-C-EXEC-01`
 Prompt: `prompts/pre-13-prompts/authz1c-analyzer-backfill-codex-prompt.md`
 Prompt version: v1 — 2026-07-16
-Status: implementation and canonical final gate complete; commit pending
+Status: complete
 Authority: legacy `users.role` authorization remains authoritative
 
 ## Commit hash
 
-Pending implementation commit.
+`0147ea83947ccedb1336a71d8eecc887eb8d4e07 feat: add authz legacy role backfill`
 
 ## Outcome
 
