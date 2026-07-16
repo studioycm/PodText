@@ -2,8 +2,9 @@
 
 Date: 2026-07-16
 
-Status: restart-safe index after approved BQ1–BQ6 and audited minor defaults;
-no application code, tests, schema, dependency, implementation plan, or prompt
+Status: restart-safe index after approved BQ1–BQ6, audited minor defaults, and
+completed AUTHZ1 pre-implementation research; no application code, tests,
+schema, dependency, implementation plan, or prompt
 
 ## Restart protocol
 
@@ -15,12 +16,24 @@ On a context reset, read in this order:
    AUTHZ1 boundary.
 3. `11-bq-decisions-and-defaults-audit.md` — approved BQ1–BQ6, corrected
    recommendations, and audited defaults.
-4. This file — remaining evidence/approval checkpoints.
+4. `12-authz1-pre-implementation-research.md` — exact current surfaces,
+   compatible package solve, catalog/role metadata, staged cutover, and
+   acceptance evidence.
+5. This file — remaining evidence/approval checkpoints.
 
 Do not restart at Group 16. Groups 1–15, BQ1–BQ6, and the audited minor
 defaults are settled. There is no unanswered broad architecture question in
-the old Groups 16–22. The next non-implementation action is operator/Fable
-review of the consolidated scope record.
+the old Groups 16–22.
+
+## Single continuation point
+
+The next session does exactly one non-implementation action: operator/Fable
+review and acceptance of AUTHZ1-A in report 12—the exact Shield 4.2.0 plus
+Permission 7.3.0 resolution, literal Ability catalog and HE/EN metadata,
+protected/reserved/delegable role metadata, compatibility-first grants, and
+complete current-surface disposition. Do not install packages, change schema or
+code, or create an implementation prompt until that boundary is explicitly
+accepted.
 
 ## Approved big-question checkpoint
 
@@ -55,8 +68,14 @@ questions to ask again unless new evidence exposes a material tradeoff.
 
 ### AUTHZ1 checkpoint
 
-- Verify exact compatible Composer resolution for Shield/Spatie after explicit
-  dependency approval. Neither package is installed today.
+Pre-implementation evidence is consolidated in
+`12-authz1-pre-implementation-research.md`. Its AUTHZ1-A through AUTHZ1-I
+slices and per-slice operator/Fable stops now control this checkpoint. The next
+stop is AUTHZ1-A only.
+
+- The read-only compatible solve is Shield 4.2.0 + Permission 7.3.0 plus
+  plugin-essentials 1.2.1, with no installed-package updates/removals. Actual
+  installation still requires explicit dependency approval.
 - Inventory every rank/gate/policy/Resource/Page/widget/action/command/writer,
   Workbench, import/restore, and Horizon authorization surface.
 - Produce the compatibility-first current-access matrix. Migration maps each
