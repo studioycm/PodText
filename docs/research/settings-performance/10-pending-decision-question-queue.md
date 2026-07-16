@@ -2,9 +2,9 @@
 
 Date: 2026-07-16
 
-Status: restart-safe index after the independent AUTHZ1-C audit; decision 2
-requires a separate C remediation prompt before AUTHZ1-D planning; legacy
-authorization remains authoritative
+Status: restart-safe index after AUTHZ1-C remediation planning; the exact v1
+remediation prompt is ready but unimplemented; AUTHZ1-D remains blocked and
+legacy authorization remains authoritative
 
 ## Restart protocol
 
@@ -27,7 +27,10 @@ On a context reset, read in this order:
    plan — accepted AUTHZ1-C planning contract.
 8. `16-authz1c-independent-analyzer-backfill-audit.md` and the audit handoff —
    decision 2 and the required C remediation boundary.
-9. This file — remaining evidence/approval checkpoints.
+9. `17-authz1c-audit-remediation-research.md`, its paired implementation plan,
+   and `prompts/pre-13-prompts/authz1c-audit-remediation-codex-prompt.md` v1 —
+   the implementation-ready but unexecuted remediation contract.
+10. This file — remaining evidence/approval checkpoints.
 
 Do not restart at Group 16. Groups 1–15, BQ1–BQ6, and the audited minor
 defaults are settled. There is no unanswered broad architecture question in
@@ -37,10 +40,11 @@ the old Groups 16–22.
 
 The reversible AUTHZ1 foundation, maintenance-effects audit v1, AUTHZ1-C
 implementation/two-commit closeout, and independent C audit are complete. The
-audit found one High, four Medium, and two Low gaps and selected decision 2.
-The next action is operator review and separate authorization of a C
-remediation prompt. Do not plan or begin AUTHZ1-D–I until the remediation is
-implemented and accepted. The disposable two-connection MySQL rehearsal
+audit's decision-2 remediation now has v1 research, implementation plan, and an
+exact implementation prompt. It is not implemented. The next action is
+operator review and exact-version kickoff of that prompt. Do not plan or begin
+AUTHZ1-D–I until the remediation is implemented and accepted. The disposable
+two-connection MySQL rehearsal
 remains a separately approved future gate; it is not a substitute for the C
 remediation. Do not apply compatibility grants or switch policies/Gates.
 
@@ -92,8 +96,10 @@ AUTHZ1-C audit v1 and executable plan are in the two
 AUTHZ1-C implementation and two-commit closeout are complete; its original
 evidence is in `docs/phase-02/authz1c-analyzer-backfill-handoff.md`. The
 independent audit at `16-authz1c-independent-analyzer-backfill-audit.md` found
-one High, four Medium, and two Low gaps and requires a separate C remediation
-prompt before AUTHZ1-D planning. AUTHZ1-D–I remain unstarted.
+one High, four Medium, and two Low gaps. The controlling remediation contract
+is now `17-authz1c-audit-remediation-research.md`, its paired implementation
+plan, and `prompts/pre-13-prompts/authz1c-audit-remediation-codex-prompt.md` v1.
+It is unimplemented; AUTHZ1-D–I remain unstarted.
 
 - The installed exact solve is Shield 4.2.0 + Permission 7.3.0 plus transitive
   Plugin Essentials 1.2.1, with no unrelated update/removal. Shield remains

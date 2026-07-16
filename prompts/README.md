@@ -24,9 +24,11 @@ Historical prompts are under `prompts/archive/` and are not active instructions.
 - `pre-13-prompts/maintenance-livewire-enforcement-audit-codex-prompt.md` v1 is
   complete as a Markdown-only effects audit. It authorized no remediation.
 - `pre-13-prompts/authz1c-analyzer-backfill-codex-prompt.md` v1 was executed as
-  the AUTHZ1-C implementation contract. The implementation and canonical final
-  gate are complete with two-commit closeout pending; AUTHZ1-D–I remain
-  unstarted.
+  the AUTHZ1-C implementation contract. Its implementation and two-commit
+  closeout are complete, but the independent audit requires remediation.
+- `pre-13-prompts/authz1c-audit-remediation-codex-prompt.md` v1 is the planned
+  implementation contract for audit items R-01–R-05. It is not implemented;
+  AUTHZ1-D–I remain blocked and unstarted.
 
 ## Pre-Prompt-08 research note
 
