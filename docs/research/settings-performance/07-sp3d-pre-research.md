@@ -72,6 +72,11 @@ LOG1, ADM1, deferral, and ARCH1 questions are no longer open. They are recorded
 below. The context-lost Group 13 draft was interrupted and discarded; it must
 not be treated as approved or as a standing questionnaire.
 
+Detailed AUTHZ1/ARCH1 operating choices and later evidence-gated confirmations
+remain. Their restart-safe index is
+`10-pending-decision-question-queue.md`; Groups 1–15 are settled and **Group
+16** is the exact next operator-question group.
+
 ## Decisions made in this task
 
 ### Settings, locks, localization, labels, and browser gates

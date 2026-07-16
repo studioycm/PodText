@@ -6,9 +6,11 @@ This ledger controls the post-Step-10 mini-step sequence. Each run implements ex
 
 - Selected research gate: AUTHZ1/ARCH1/SP3D decision reconciliation
 - Status: research/decision documentation complete; awaiting operator and Fable review
-- Next step: continue the remaining operator decision groups. No implementation
-  prompt is selected. AUTHZ1 authorization acceptance precedes ARCH1; ARCH1
-  migration acceptance precedes SP3D.
+- Next step: resume at Group 16 in
+  `docs/research/settings-performance/10-pending-decision-question-queue.md`.
+  Groups 1–15 are settled. No implementation prompt is selected. AUTHZ1
+  authorization acceptance precedes ARCH1; ARCH1 migration acceptance precedes
+  SP3D.
 
 ## Checklist
 

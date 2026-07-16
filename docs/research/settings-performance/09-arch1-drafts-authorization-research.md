@@ -201,7 +201,12 @@ No implementation prompt or file-by-file plan is authorized by this note.
 
 ## Still unresolved after Group 15
 
-- Initial role bundles and whether users may hold one or multiple roles.
-- Exact signed Public Form mount-token lifetime and runtime revocation details.
-- Remaining Public Form lifecycle/migration classifications.
-- Final consolidated mini-task order and acceptance gates.
+The complete restart-safe question inventory is maintained in
+`10-pending-decision-question-queue.md`. Do not regenerate it from this short
+summary. **Group 16 — AUTHZ1 role model and initial grants** is the exact next
+operator-question group; Groups 1–15 are settled.
+
+The later queue covers AUTHZ1 role/catalog governance, ARCH1 working-draft UX,
+Template and Public Form lifecycles, migration/cutover classifications,
+implementation slicing, and the evidence-dependent ADM/L10N/LENS, SP3D, SP4,
+LOG1, production, and WB-PROBE confirmations.
