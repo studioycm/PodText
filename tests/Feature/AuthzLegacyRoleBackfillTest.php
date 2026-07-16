@@ -4,13 +4,18 @@ use App\Auth\CompatibilityGrantManifest;
 use App\Auth\LegacyRoleBackfill\AnalysisReport;
 use App\Auth\LegacyRoleBackfill\AnalysisReportValidator;
 use App\Auth\LegacyRoleBackfill\ArtifactException;
+use App\Auth\LegacyRoleBackfill\ArtifactVersionException;
 use App\Auth\LegacyRoleBackfill\BackfillException;
+use App\Auth\LegacyRoleBackfill\BackfillReceipt;
 use App\Auth\LegacyRoleBackfill\BackfillRefusalException;
 use App\Auth\LegacyRoleBackfill\BackfillResult;
 use App\Auth\LegacyRoleBackfill\CanonicalJson;
 use App\Auth\LegacyRoleBackfill\LegacyRoleBackfillAnalyzer;
 use App\Auth\LegacyRoleBackfill\LegacyRoleBackfillApplier;
 use App\Auth\LegacyRoleBackfill\LegacyRoleBackfillRollback;
+use App\Auth\LegacyRoleBackfill\LegacyRoleBackfillSchemaContract;
+use App\Auth\LegacyRoleBackfill\OperationJournal;
+use App\Auth\LegacyRoleBackfill\PermissionCacheInvalidator;
 use App\Auth\LegacyRoleBackfill\PrivacyHasher;
 use App\Auth\LegacyRoleBackfill\PrivateArtifactRepository;
 use App\Enums\TranscriptionMode;
@@ -20,6 +25,8 @@ use App\Filament\Resources\Authors\AuthorResource;
 use App\Filament\Resources\Users\UserResource;
 use App\Models\User;
 use Filament\Facades\Filament;
+use Illuminate\Cache\CacheManager;
+use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Database\QueryException;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -58,7 +65,7 @@ beforeEach(function (): void {
     $root = sys_get_temp_dir().'/podtext-authz1c-'.Str::ulid();
     File::ensureDirectoryExists($root, 0700);
     test()->artifactRoot = $root;
-    app()->instance(PrivateArtifactRepository::class, new PrivateArtifactRepository($root));
+    app()->instance(PrivateArtifactRepository::class, new PrivateArtifactRepository(app(PrivacyHasher::class), $root));
     Filament::setCurrentPanel(Filament::getPanel('admin'));
 });
 
@@ -96,14 +103,16 @@ function authzRegistrar(bool $result = true): PermissionRegistrar&MockInterface
     return $registrar;
 }
 
-function authzApplier(PermissionRegistrar $registrar, ?Closure $hook = null): LegacyRoleBackfillApplier
+function authzApplier(PermissionRegistrar $registrar, ?Closure $hook = null, ?Closure $postInvalidationHook = null): LegacyRoleBackfillApplier
 {
     return new LegacyRoleBackfillApplier(
         analyzer: authzAnalyzer(),
         validator: app(AnalysisReportValidator::class),
         artifacts: authzArtifactRepository(),
-        registrar: $registrar,
+        cacheInvalidator: new PermissionCacheInvalidator(app('cache'), $registrar),
+        hasher: app(PrivacyHasher::class),
         afterWriteHook: $hook,
+        postInvalidationHook: $postInvalidationHook,
     );
 }
 
@@ -401,7 +410,8 @@ it('serializes concurrent publication and refuses the duplicate artifact name', 
 require $argv[1];
 $payload = json_decode(base64_decode($argv[2], true), true, 512, JSON_THROW_ON_ERROR);
 $report = App\Auth\LegacyRoleBackfill\AnalysisReport::fromArray($payload);
-$repository = new App\Auth\LegacyRoleBackfill\PrivateArtifactRepository($argv[3]);
+$hasher = new App\Auth\LegacyRoleBackfill\PrivacyHasher('base64:'.base64_encode(str_repeat('a', 32)), 'AES-256-CBC');
+$repository = new App\Auth\LegacyRoleBackfill\PrivateArtifactRepository($hasher, $argv[3]);
 try {
     $repository->publishReport($report, 'concurrent.json');
     exit(0);
@@ -526,18 +536,16 @@ it('recomputes locked state from the beginning on a database deadlock retry', fu
     }
 });
 
-it('recovers a post-commit cache failure only from exact prepared planned state', function (): void {
+it('treats a confirmed already absent cache key as successful completion', function (): void {
     authzCreateLegacyUsers();
     $report = authzAnalyzer()->analyze();
 
-    expect(fn () => authzApply($report, authzRegistrar(false)))
-        ->toThrow(BackfillException::class)
+    $result = authzApply($report, authzRegistrar(false));
+
+    expect($result->status)->toBe('applied')
+        ->and($result->cacheOutcome)->toBe('already_absent')
         ->and(DB::table('roles')->count())->toBe(5)
-        ->and(DB::table('model_has_roles')->count())->toBe(5);
-
-    $result = authzApply($report, authzRegistrar(true));
-
-    expect($result->status)->toBe('recovered')
+        ->and(DB::table('model_has_roles')->count())->toBe(5)
         ->and($result->receiptName)->not->toBeNull()
         ->and(authzArtifactRepository()->backfillReceiptExists($result->receiptName))->toBeTrue();
 });
@@ -554,7 +562,9 @@ it('recovers a post-commit cache exception without repeating database writes', f
 
     $result = authzApply($report, authzRegistrar());
 
-    expect($result->status)->toBe('recovered')
+    expect($result->status)->toBe('completed_unowned')
+        ->and($result->ownershipStatus)->toBe('unproven')
+        ->and($result->rollbackCapable)->toBeFalse()
         ->and(DB::table('roles')->count())->toBe(5)
         ->and(DB::table('model_has_roles')->count())->toBe(5);
 });
@@ -563,18 +573,16 @@ it('refuses a recomputed but semantically changed cache journal on completed rer
     authzCreateLegacyUsers();
     $report = authzAnalyzer()->analyze();
     authzApply($report, authzRegistrar());
-    $cacheName = authzArtifactRepository()->operationName($report->reportFingerprint(), 'cache_reset');
+    $cacheName = authzArtifactRepository()->operationName($report->reportFingerprint(), 'cache_invalidated');
     $path = test()->artifactRoot.'/authorization/authz1-c/operations/'.$cacheName;
     $journal = json_decode(file_get_contents($path), true, flags: JSON_THROW_ON_ERROR);
     $journal['state'] = 'complete';
-    unset($journal['journal_fingerprint']);
-    $journal['journal_fingerprint'] = hash('sha256', CanonicalJson::encode($journal));
     file_put_contents($path, CanonicalJson::encode($journal)."\n");
     chmod($path, 0600);
     $registrar = Mockery::mock(PermissionRegistrar::class);
     $registrar->shouldNotReceive('forgetCachedPermissions');
 
-    expect(fn () => authzApply($report, $registrar))->toThrow(BackfillRefusalException::class);
+    expect(fn () => authzApply($report, $registrar))->toThrow(ArtifactException::class);
 });
 
 it('resumes a rolled-back prepared operation and refuses partial planned state', function (): void {
@@ -632,6 +640,8 @@ it('rolls back only receipt-inserted assignments, preserves roles, and supports 
     $report = authzAnalyzer()->analyze();
     $applied = authzApply($report, authzRegistrar());
     $receipt = authzArtifactRepository()->loadBackfillReceipt($applied->receiptName);
+    $cacheKey = (string) config('permission.cache.key');
+    Cache::put($cacheKey, ['must_survive_rollback' => true]);
     $rollback = new LegacyRoleBackfillRollback(authzAnalyzer(), authzArtifactRepository(), app(PrivacyHasher::class));
     $result = $rollback->rollback($receipt, $receipt->afterFingerprint(), 'ROLLBACK-AUTHZ1-C');
 
@@ -639,8 +649,10 @@ it('rolls back only receipt-inserted assignments, preserves roles, and supports 
         ->and($result->deletedAssignments)->toBe(4)
         ->and(DB::table('roles')->count())->toBe(5)
         ->and(DB::table('model_has_roles')->count())->toBe(1)
+        ->and(Cache::get($cacheKey))->toBe(['must_survive_rollback' => true])
         ->and($rollback->rollback($receipt, $receipt->afterFingerprint(), 'ROLLBACK-AUTHZ1-C')->status)->toBe('no_op');
 
+    Cache::forget($cacheKey);
     $reanalysis = authzAnalyzer()->analyze();
     expect($reanalysis->status())->toBe('ready')
         ->and(authzApply($reanalysis, authzRegistrar())->status)->toBe('applied')
@@ -728,7 +740,10 @@ it('executes analyze backfill and rollback only through accepted command fingerp
 
     expect($backfillOutput)->toContain('AUTHZ1-C backfill status: applied')
         ->and($backfillExit)->toBe(0)
-        ->and($backfillOutput)->toContain('receipt: '.$receiptName);
+        ->and($backfillOutput)->toContain('receipt: '.$receiptName)
+        ->toContain('ownership_status: proven')
+        ->toContain('rollback_capable: yes')
+        ->toContain('cache_outcome: deleted');
 
     $receipt = authzArtifactRepository()->loadBackfillReceipt($receiptName);
 
@@ -742,6 +757,445 @@ it('executes analyze backfill and rollback only through accepted command fingerp
         ->and(Artisan::output())->toContain('AUTHZ1-C rollback status: rolled_back')
         ->and(DB::table('roles')->count())->toBe(5)
         ->and(DB::table('model_has_roles')->count())->toBe(0);
+});
+
+it('accepts every installed Laravel cipher key length and provider-compatible base64 parsing', function (string $cipher, int $bytes): void {
+    $material = str_repeat('k', $bytes);
+    $canonical = new PrivacyHasher('base64:'.base64_encode($material), $cipher);
+    $providerCompatible = new PrivacyHasher('base64:'.chunk_split(base64_encode($material), 8, " \n"), $cipher);
+    $literal = new PrivacyHasher($material, $cipher);
+
+    expect($canonical->keyId())->toBe($providerCompatible->keyId())
+        ->and($literal->keyId())->toBe($canonical->keyId());
+})->with([
+    'AES-128-CBC' => ['AES-128-CBC', 16],
+    'AES-256-CBC' => ['AES-256-CBC', 32],
+    'AES-128-GCM' => ['AES-128-GCM', 16],
+    'AES-256-GCM' => ['AES-256-GCM', 32],
+]);
+
+it('refuses malformed unsupported and boundary-invalid privacy keys without exposing material', function (string $key, string $cipher): void {
+    expect(fn () => new PrivacyHasher($key, $cipher))
+        ->toThrow(BackfillException::class, 'The authorization reporting key is unavailable.');
+})->with([
+    'empty' => ['', 'AES-256-CBC'],
+    'malformed base64' => ['base64:not-valid', 'AES-256-CBC'],
+    '15 bytes' => [str_repeat('a', 15), 'AES-128-CBC'],
+    '17 bytes' => [str_repeat('a', 17), 'AES-128-CBC'],
+    '31 bytes' => [str_repeat('a', 31), 'AES-256-CBC'],
+    '33 bytes' => [str_repeat('a', 33), 'AES-256-CBC'],
+    'unsupported cipher' => [str_repeat('a', 32), 'CHACHA20'],
+]);
+
+it('records the complete SQLite schema descriptor and exposes a pure MySQL expectation', function (): void {
+    $report = authzAnalyzer()->analyze()->toArray();
+    $contract = new LegacyRoleBackfillSchemaContract(
+        DB::connection(),
+        config('permission.table_names'),
+        (new User)->getTable(),
+    );
+    $mysql = $contract->expected('mysql');
+    $mysqlRoleId = collect($mysql['tables']['roles']['columns'])->firstWhere('name', 'id');
+    $mysqlUserRole = collect($mysql['tables']['users']['columns'])->firstWhere('name', 'role');
+
+    expect($report['connection']['schema'])->toBe($contract->expected('sqlite'))
+        ->and($report['issue_totals'])->toBe([])
+        ->and($mysqlRoleId)->toMatchArray(['type' => 'integer', 'length' => null, 'unsigned' => true, 'auto_increment' => true])
+        ->and($mysqlUserRole)->toMatchArray(['type' => 'string', 'length' => 32, 'default' => 'user'])
+        ->and($mysql['tables']['model_has_roles']['foreign_keys'][0]['on_delete'])->toBe('cascade');
+});
+
+it('enumerates column property primary unique secondary and foreign-key schema drift together', function (): void {
+    authzCreateLegacyUsers();
+
+    Schema::table('roles', fn (Blueprint $table) => $table->dropUnique(['name', 'guard_name']));
+    Schema::table('users', fn (Blueprint $table) => $table->dropIndex(['role']));
+    Schema::drop('role_has_permissions');
+    Schema::create('role_has_permissions', function (Blueprint $table): void {
+        $table->unsignedBigInteger('permission_id');
+        $table->unsignedBigInteger('role_id');
+        $table->foreign('permission_id')->references('id')->on('permissions')->cascadeOnDelete();
+        $table->foreign('role_id')->references('id')->on('roles')->cascadeOnDelete();
+    });
+    Schema::drop('model_has_roles');
+    Schema::create('model_has_roles', function (Blueprint $table): void {
+        $table->unsignedBigInteger('role_id');
+        $table->string('model_type')->nullable();
+        $table->unsignedBigInteger('model_id');
+        $table->primary(['role_id', 'model_id', 'model_type']);
+    });
+
+    $issues = authzAnalyzer()->analyze()->toArray()['issue_totals'];
+
+    expect($issues)->toHaveKeys([
+        'schema_column_property_drift',
+        'schema_foreign_key_drift',
+        'schema_primary_key_drift',
+        'schema_secondary_index_drift',
+        'schema_unique_index_drift',
+    ]);
+});
+
+it('blocks configured table-name and morph-map drift', function (): void {
+    authzCreateLegacyUsers();
+    config(['permission.table_names.roles' => 'foreign_roles']);
+    $tableIssues = authzAnalyzer()->analyze()->toArray()['issue_totals'];
+    config(['permission.table_names.roles' => 'roles']);
+    Relation::morphMap(['user_alias' => User::class], false);
+
+    try {
+        $morphIssues = authzAnalyzer()->analyze()->toArray()['issue_totals'];
+    } finally {
+        Relation::morphMap([], false);
+    }
+
+    expect($tableIssues)->toHaveKeys(['config_table_drift', 'schema_missing_table'])
+        ->and($morphIssues)->toHaveKey('config_model_type_drift');
+});
+
+it('keeps invalid adapter identity types distinct and blocking', function (): void {
+    $report = authzAnalyzer()->analyzeSourceRows([
+        ['id' => null, 'role' => UserRole::User->value],
+        ['id' => true, 'role' => UserRole::User->value],
+        ['id' => 1.5, 'role' => UserRole::User->value],
+        ['id' => ['value' => 1], 'role' => UserRole::User->value],
+        ['id' => ['value' => 2], 'role' => UserRole::User->value],
+        ['id' => (object) ['value' => 1], 'role' => UserRole::User->value],
+    ])->toArray();
+    $hashes = array_column($report['source']['users'], 'user_hash');
+
+    expect($report['status'])->toBe('blocked')
+        ->and($report['issue_totals']['source_invalid_identity_type'])->toBe(6)
+        ->and($hashes)->toHaveCount(6)
+        ->and(array_unique($hashes))->toHaveCount(6);
+});
+
+it('publishes unowned nonrollback completion for an externally projected exact planned state', function (): void {
+    $users = authzCreateLegacyUsers();
+    $report = authzAnalyzer()->analyze();
+    $registrar = Mockery::mock(PermissionRegistrar::class);
+    $registrar->shouldNotReceive('forgetCachedPermissions');
+
+    expect(fn () => authzApplier($registrar, fn () => throw new BackfillException('induced before commit'))->apply(
+        $report,
+        $report->sourceFingerprint(),
+        $report->reportFingerprint(),
+        'AUTHZ1-C',
+    ))->toThrow(BackfillException::class);
+
+    foreach (UserRole::values() as $role) {
+        DB::table('roles')->insert(['name' => $role, 'guard_name' => 'web', 'created_at' => now(), 'updated_at' => now()]);
+    }
+
+    $roleIds = DB::table('roles')->pluck('id', 'name');
+
+    foreach ($users as $role => $user) {
+        DB::table('model_has_roles')->insert([
+            'role_id' => $roleIds[$role],
+            'model_id' => $user->id,
+            'model_type' => (new User)->getMorphClass(),
+        ]);
+    }
+
+    $result = authzApply($report, authzRegistrar(false));
+    $receipt = authzArtifactRepository()->loadBackfillReceipt($result->receiptName);
+
+    expect($result->status)->toBe('completed_unowned')
+        ->and($result->ownershipStatus)->toBe('unproven')
+        ->and($result->rollbackCapable)->toBeFalse()
+        ->and($receipt->toArray()['owned_assignments'])->toBe([])
+        ->and(fn () => (new LegacyRoleBackfillRollback(authzAnalyzer(), authzArtifactRepository(), app(PrivacyHasher::class)))
+            ->rollback($receipt, $receipt->afterFingerprint(), 'ROLLBACK-AUTHZ1-C'))
+        ->toThrow(BackfillRefusalException::class);
+});
+
+it('binds rollback ownership to actual role IDs and physical tuples', function (): void {
+    authzCreateLegacyUsers();
+    $report = authzAnalyzer()->analyze();
+    $applied = authzApply($report, authzRegistrar(false));
+    $receipt = authzArtifactRepository()->loadBackfillReceipt($applied->receiptName);
+    $owned = $receipt->toArray()['owned_assignments'][0];
+    $replacementId = $owned['role_id'] + 10_000;
+    DB::statement('PRAGMA defer_foreign_keys = ON');
+    DB::table('roles')->where('id', $owned['role_id'])->update(['id' => $replacementId]);
+    DB::table('model_has_roles')->where('role_id', $owned['role_id'])->update(['role_id' => $replacementId]);
+    $before = DB::table('model_has_roles')->count();
+
+    expect(authzAnalyzer()->analyze()->status())->toBe('already_applied')
+        ->and(fn () => (new LegacyRoleBackfillRollback(authzAnalyzer(), authzArtifactRepository(), app(PrivacyHasher::class)))
+            ->rollback($receipt, $receipt->afterFingerprint(), 'ROLLBACK-AUTHZ1-C'))
+        ->toThrow(BackfillRefusalException::class)
+        ->and(DB::table('model_has_roles')->count())->toBe($before);
+});
+
+it('rejects a substituted keyed receipt before rollback mutation', function (): void {
+    authzCreateLegacyUsers();
+    $report = authzAnalyzer()->analyze();
+    $applied = authzApply($report, authzRegistrar(false));
+    $stored = authzArtifactRepository()->loadBackfillReceipt($applied->receiptName);
+    $payload = $stored->toArray();
+    $payload['owned_assignments'][0]['role_id']++;
+    unset($payload['artifact_mac'], $payload['receipt_fingerprint']);
+    $payload['receipt_fingerprint'] = hash('sha256', CanonicalJson::encode($payload));
+    $payload['artifact_mac'] = app(PrivacyHasher::class)->artifactMac('backfill-receipt', $payload);
+    $before = DB::table('model_has_roles')->count();
+
+    expect(fn () => BackfillReceipt::fromArray($payload, app(PrivacyHasher::class)))
+        ->toThrow(ArtifactException::class)
+        ->and(DB::table('model_has_roles')->count())->toBe($before);
+});
+
+it('truthfully deletes a present real permission cache key', function (): void {
+    authzCreateLegacyUsers();
+    $key = (string) config('permission.cache.key');
+    Cache::put($key, ['primed' => true]);
+    $report = authzAnalyzer()->analyze();
+    $result = authzApply($report, app(PermissionRegistrar::class));
+
+    expect($result->cacheOutcome)->toBe('deleted')
+        ->and(Cache::has($key))->toBeFalse();
+});
+
+it('fails operationally when a false cache result leaves the configured key present', function (): void {
+    authzCreateLegacyUsers();
+    $key = (string) config('permission.cache.key');
+    Cache::put($key, ['primed' => true]);
+    $report = authzAnalyzer()->analyze();
+
+    expect(fn () => authzApply($report, authzRegistrar(false)))
+        ->toThrow(BackfillException::class, 'The permission cache key remains after invalidation.')
+        ->and(Cache::has($key))->toBeTrue()
+        ->and(authzArtifactRepository()->operationExists(authzArtifactRepository()->operationName($report->reportFingerprint(), 'cache_invalidation_pending')))->toBeTrue()
+        ->and(authzArtifactRepository()->backfillReceiptExists(authzArtifactRepository()->backfillReceiptName($report->reportFingerprint())))->toBeFalse();
+});
+
+it('repeats invalidation after the success-before-publication crash window', function (): void {
+    authzCreateLegacyUsers();
+    $key = (string) config('permission.cache.key');
+    Cache::put($key, ['primed' => true]);
+    $report = authzAnalyzer()->analyze();
+    $first = authzApplier(
+        app(PermissionRegistrar::class),
+        postInvalidationHook: fn () => throw new RuntimeException('post invalidation crash'),
+    );
+
+    expect(fn () => $first->apply($report, $report->sourceFingerprint(), $report->reportFingerprint(), 'AUTHZ1-C'))
+        ->toThrow(RuntimeException::class)
+        ->and(Cache::has($key))->toBeFalse();
+
+    $retryRegistrar = Mockery::mock(PermissionRegistrar::class);
+    $retryRegistrar->shouldReceive('forgetCachedPermissions')->once()->andReturnFalse();
+    $result = authzApply($report, $retryRegistrar);
+
+    expect($result->status)->toBe('completed_unowned')
+        ->and($result->cacheOutcome)->toBe('already_absent')
+        ->and($result->rollbackCapable)->toBeFalse();
+});
+
+it('recovers rollback after commit without repeating deletes or touching cache', function (): void {
+    authzCreateLegacyUsers();
+    $report = authzAnalyzer()->analyze();
+    $applied = authzApply($report, authzRegistrar(false));
+    $receipt = authzArtifactRepository()->loadBackfillReceipt($applied->receiptName);
+    $crashing = new LegacyRoleBackfillRollback(
+        authzAnalyzer(),
+        authzArtifactRepository(),
+        app(PrivacyHasher::class),
+        fn () => throw new RuntimeException('post rollback commit crash'),
+    );
+
+    expect(fn () => $crashing->rollback($receipt, $receipt->afterFingerprint(), 'ROLLBACK-AUTHZ1-C'))
+        ->toThrow(RuntimeException::class)
+        ->and(DB::table('model_has_roles')->count())->toBe(0);
+
+    $recovered = (new LegacyRoleBackfillRollback(authzAnalyzer(), authzArtifactRepository(), app(PrivacyHasher::class)))
+        ->rollback($receipt, $receipt->afterFingerprint(), 'ROLLBACK-AUTHZ1-C');
+
+    expect($recovered->status)->toBe('recovered')
+        ->and($recovered->deletedAssignments)->toBe(0)
+        ->and(DB::table('roles')->count())->toBe(5)
+        ->and(DB::table('model_has_roles')->count())->toBe(0);
+});
+
+it('refuses a partial rollback target after durable rollback preparation', function (): void {
+    $users = authzCreateLegacyUsers();
+    $report = authzAnalyzer()->analyze();
+    $applied = authzApply($report, authzRegistrar(false));
+    $receipt = authzArtifactRepository()->loadBackfillReceipt($applied->receiptName);
+    $payload = $receipt->toArray();
+    $crashing = new LegacyRoleBackfillRollback(
+        authzAnalyzer(),
+        authzArtifactRepository(),
+        app(PrivacyHasher::class),
+        fn () => throw new RuntimeException('post rollback commit crash'),
+    );
+
+    expect(fn () => $crashing->rollback($receipt, $receipt->afterFingerprint(), 'ROLLBACK-AUTHZ1-C'))
+        ->toThrow(RuntimeException::class);
+
+    $assignment = $payload['owned_assignments'][0];
+    $userId = collect($users)->first(fn (User $user): bool => app(PrivacyHasher::class)->userHash($user->id) === $assignment['user_hash'])->id;
+    DB::table('model_has_roles')->insert([
+        'role_id' => $assignment['role_id'],
+        'model_id' => $userId,
+        'model_type' => $assignment['model_type'],
+    ]);
+
+    expect(fn () => (new LegacyRoleBackfillRollback(authzAnalyzer(), authzArtifactRepository(), app(PrivacyHasher::class)))
+        ->rollback($receipt, $receipt->afterFingerprint(), 'ROLLBACK-AUTHZ1-C'))
+        ->toThrow(BackfillRefusalException::class)
+        ->and(DB::table('model_has_roles')->count())->toBe(1);
+});
+
+it('refuses immutable v1 artifacts with command exit two and no mutation', function (): void {
+    authzCreateLegacyUsers();
+    authzArtifactRepository()->operationExists(authzArtifactRepository()->operationName(str_repeat('a', 64), 'prepared'));
+    $path = test()->artifactRoot.'/authorization/authz1-c/reports/v1-analysis.json';
+    file_put_contents($path, CanonicalJson::encode(['schema' => 'podtext.authz1c.analysis.v1'])."\n");
+    chmod($path, 0600);
+    $exit = Artisan::call('authz:roles:backfill', [
+        'report' => 'v1-analysis.json',
+        '--accept-source' => str_repeat('a', 64),
+        '--accept-report' => str_repeat('b', 64),
+        '--confirm' => 'AUTHZ1-C',
+    ]);
+
+    expect($exit)->toBe(2)
+        ->and(Artisan::output())->toContain('publish and accept a fresh v2 analysis')
+        ->and(DB::table('roles')->count())->toBe(0)
+        ->and(DB::table('model_has_roles')->count())->toBe(0)
+        ->and(fn () => authzArtifactRepository()->loadReport('v1-analysis.json'))->toThrow(ArtifactVersionException::class);
+});
+
+it('deeply rejects nested report journal and receipt type confusion even with recomputed integrity', function (): void {
+    authzCreateLegacyUsers();
+    $report = authzAnalyzer()->analyze();
+    $reportPayload = $report->toArray();
+    $reportPayload['source']['total'] = '5';
+    unset($reportPayload['fingerprints']['report']);
+    $reportPayload['fingerprints']['report'] = hash('sha256', CanonicalJson::encode($reportPayload));
+    expect(fn () => AnalysisReport::fromArray($reportPayload))->toThrow(ArtifactException::class);
+
+    $applied = authzApply($report, authzRegistrar(false));
+    $prepared = authzArtifactRepository()->loadOperation(authzArtifactRepository()->operationName($report->reportFingerprint(), 'prepared'))->toArray();
+    $prepared['planned_roles'] = ['unexpected' => UserRole::Admin->value];
+    $prepared['artifact_mac'] = app(PrivacyHasher::class)->artifactMac('operation-journal', $prepared);
+    expect(fn () => OperationJournal::fromArray($prepared, app(PrivacyHasher::class)))->toThrow(ArtifactException::class);
+
+    $receipt = authzArtifactRepository()->loadBackfillReceipt($applied->receiptName)->toArray();
+    $receipt['counts']['owned_assignments'] = (string) $receipt['counts']['owned_assignments'];
+    unset($receipt['artifact_mac'], $receipt['receipt_fingerprint']);
+    $receipt['receipt_fingerprint'] = hash('sha256', CanonicalJson::encode($receipt));
+    $receipt['artifact_mac'] = app(PrivacyHasher::class)->artifactMac('backfill-receipt', $receipt);
+    expect(fn () => BackfillReceipt::fromArray($receipt, app(PrivacyHasher::class)))->toThrow(ArtifactException::class);
+});
+
+it('supports an empty source without fabricating assignment ownership', function (): void {
+    $report = authzAnalyzer()->analyze();
+    $result = authzApply($report, authzRegistrar(false));
+    $receipt = authzArtifactRepository()->loadBackfillReceipt($result->receiptName);
+
+    expect($report->toArray()['source']['total'])->toBe(0)
+        ->and($result->status)->toBe('applied')
+        ->and($receipt->toArray()['owned_assignments'])->toBe([])
+        ->and($receipt->toArray()['owned_roles'])->toHaveCount(5)
+        ->and((new LegacyRoleBackfillRollback(authzAnalyzer(), authzArtifactRepository(), app(PrivacyHasher::class)))
+            ->rollback($receipt, $receipt->afterFingerprint(), 'ROLLBACK-AUTHZ1-C')->deletedAssignments)->toBe(0)
+        ->and(DB::table('roles')->count())->toBe(5);
+});
+
+it('enforces the inclusive ten MiB payload boundary and publication newline allowance', function (): void {
+    authzArtifactRepository()->operationExists(authzArtifactRepository()->operationName(str_repeat('a', 64), 'prepared'));
+    $directory = test()->artifactRoot.'/authorization/authz1-c/reports';
+    $baseLength = strlen('{"pad":""}');
+    $payload = '{"pad":"'.str_repeat('x', (10 * 1024 * 1024) - $baseLength).'"}';
+    $exactPath = $directory.'/exact-boundary.json';
+    file_put_contents($exactPath, $payload."\n");
+    chmod($exactPath, 0600);
+    expect(strlen($payload))->toBe(10 * 1024 * 1024)
+        ->and(fn () => authzArtifactRepository()->loadReport('exact-boundary.json'))
+        ->toThrow(ArtifactException::class, 'The analysis artifact schema is invalid.');
+
+    $overPath = $directory.'/over-boundary.json';
+    file_put_contents($overPath, $payload." \n");
+    chmod($overPath, 0600);
+    expect(fn () => authzArtifactRepository()->loadReport('over-boundary.json'))
+        ->toThrow(ArtifactException::class, 'The artifact size is invalid.');
+});
+
+it('recomputes every prepared field from the accepted report after keyed validation', function (): void {
+    authzCreateLegacyUsers();
+    $report = authzAnalyzer()->analyze();
+    $registrar = Mockery::mock(PermissionRegistrar::class);
+    $registrar->shouldNotReceive('forgetCachedPermissions');
+
+    expect(fn () => authzApplier($registrar, fn () => throw new BackfillException('induced'))->apply(
+        $report,
+        $report->sourceFingerprint(),
+        $report->reportFingerprint(),
+        'AUTHZ1-C',
+    ))->toThrow(BackfillException::class);
+
+    $name = authzArtifactRepository()->operationName($report->reportFingerprint(), 'prepared');
+    $path = test()->artifactRoot.'/authorization/authz1-c/operations/'.$name;
+    $journal = json_decode(file_get_contents($path), true, flags: JSON_THROW_ON_ERROR);
+    array_pop($journal['planned_roles']);
+    $journal['artifact_mac'] = app(PrivacyHasher::class)->artifactMac('operation-journal', $journal);
+    file_put_contents($path, CanonicalJson::encode($journal)."\n");
+    chmod($path, 0600);
+
+    $retryRegistrar = Mockery::mock(PermissionRegistrar::class);
+    $retryRegistrar->shouldNotReceive('forgetCachedPermissions');
+
+    expect(fn () => authzApplier($retryRegistrar)->apply(
+        $report,
+        $report->sourceFingerprint(),
+        $report->reportFingerprint(),
+        'AUTHZ1-C',
+    ))
+        ->toThrow(BackfillRefusalException::class)
+        ->and(DB::table('roles')->count())->toBe(0)
+        ->and(DB::table('model_has_roles')->count())->toBe(0);
+});
+
+it('leaves pending evidence and no receipt when cache store inspection throws', function (): void {
+    authzCreateLegacyUsers();
+    $report = authzAnalyzer()->analyze();
+    $cacheManager = Mockery::mock(CacheManager::class);
+    $cacheManager->shouldReceive('store')->once()->andThrow(new RuntimeException('store unavailable'));
+    $registrar = Mockery::mock(PermissionRegistrar::class);
+    $registrar->shouldNotReceive('forgetCachedPermissions');
+    $applier = new LegacyRoleBackfillApplier(
+        authzAnalyzer(),
+        app(AnalysisReportValidator::class),
+        authzArtifactRepository(),
+        new PermissionCacheInvalidator($cacheManager, $registrar),
+        app(PrivacyHasher::class),
+    );
+
+    expect(fn () => $applier->apply($report, $report->sourceFingerprint(), $report->reportFingerprint(), 'AUTHZ1-C'))
+        ->toThrow(BackfillException::class, 'The permission cache could not be invalidated.')
+        ->and(authzArtifactRepository()->operationExists(authzArtifactRepository()->operationName($report->reportFingerprint(), 'cache_invalidation_pending')))->toBeTrue()
+        ->and(authzArtifactRepository()->backfillReceiptExists(authzArtifactRepository()->backfillReceiptName($report->reportFingerprint())))->toBeFalse();
+});
+
+it('refuses every retained v1 artifact family without upgrade or adoption', function (): void {
+    authzArtifactRepository()->operationExists(authzArtifactRepository()->operationName(str_repeat('a', 64), 'prepared'));
+    $root = test()->artifactRoot.'/authorization/authz1-c';
+    $cases = [
+        ['reports', 'legacy-analysis.json', 'podtext.authz1c.analysis.v1', fn () => authzArtifactRepository()->loadReport('legacy-analysis.json')],
+        ['operations', 'legacy-operation.json', 'podtext.authz1c.operation.v1', fn () => authzArtifactRepository()->loadOperation('legacy-operation.json')],
+        ['receipts', 'legacy-backfill.json', 'podtext.authz1c.backfill-receipt.v1', fn () => authzArtifactRepository()->loadBackfillReceipt('legacy-backfill.json')],
+        ['receipts', 'legacy-rollback.json', 'podtext.authz1c.rollback-receipt.v1', fn () => authzArtifactRepository()->loadRollbackReceipt('legacy-rollback.json')],
+    ];
+
+    foreach ($cases as [$directory, $name, $schema, $load]) {
+        $path = "{$root}/{$directory}/{$name}";
+        file_put_contents($path, CanonicalJson::encode(['schema' => $schema])."\n");
+        chmod($path, 0600);
+        expect($load)->toThrow(ArtifactVersionException::class);
+        expect(file_exists($path))->toBeTrue();
+    }
 });
 
 it('keeps package assignments dormant and exposes only the three controlled commands', function (): void {

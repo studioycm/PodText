@@ -11,5 +11,8 @@ final readonly class BackfillResult
         public ?string $receiptName,
         public int $insertedRoles,
         public int $insertedAssignments,
+        public string $ownershipStatus,
+        public bool $rollbackCapable,
+        public ?string $cacheOutcome,
     ) {}
 }

@@ -25,15 +25,6 @@ final class LegacyRoleBackfillAnalyzer
         'role_has_permissions',
     ];
 
-    /** @var array<string, list<string>> */
-    private const EXPECTED_COLUMNS = [
-        'roles' => ['id', 'name', 'guard_name', 'created_at', 'updated_at'],
-        'permissions' => ['id', 'name', 'guard_name', 'created_at', 'updated_at'],
-        'model_has_roles' => ['role_id', 'model_type', 'model_id'],
-        'model_has_permissions' => ['permission_id', 'model_type', 'model_id'],
-        'role_has_permissions' => ['permission_id', 'role_id'],
-    ];
-
     public function __construct(private readonly PrivacyHasher $hasher) {}
 
     public function analyze(): AnalysisReport
@@ -59,15 +50,11 @@ final class LegacyRoleBackfillAnalyzer
     {
         $tables = $this->tableNames();
         $columns = $this->columnNames();
-        $schema = [];
-
-        foreach (self::TABLE_KEYS as $key) {
-            $table = $tables[$key];
-            $schema[$key] = Schema::hasTable($table)
-                ? array_values(Schema::getColumnListing($table))
-                : [];
-            sort($schema[$key], SORT_STRING);
-        }
+        $schema = (new LegacyRoleBackfillSchemaContract(
+            DB::connection(),
+            $tables,
+            (new User)->getTable(),
+        ))->inspect();
 
         $rolePayload = array_map(
             fn ($definition): array => $definition->toArray(),
@@ -224,6 +211,7 @@ final class LegacyRoleBackfillAnalyzer
                 'teams' => $contract['teams'],
                 'tables' => $contract['tables'],
                 'columns' => $contract['columns'],
+                'schema' => $contract['schema'],
                 'key_id' => $contract['key_id'],
             ],
             'status' => $status,
@@ -273,6 +261,10 @@ final class LegacyRoleBackfillAnalyzer
             $issues[] = new AnalysisIssue('config_guard_drift');
         }
 
+        if ($contract['model_type'] !== User::class) {
+            $issues[] = new AnalysisIssue(AnalysisIssue::CONFIG_MODEL_TYPE_DRIFT);
+        }
+
         if ($contract['package_version'] !== '7.3.0') {
             $issues[] = new AnalysisIssue('package_version_drift');
         }
@@ -281,17 +273,13 @@ final class LegacyRoleBackfillAnalyzer
             if ($contract['tables'][$key] !== $key) {
                 $issues[] = new AnalysisIssue('config_table_drift');
             }
-
-            $actual = $contract['schema'][$key];
-            $expected = self::EXPECTED_COLUMNS[$key];
-            sort($expected, SORT_STRING);
-
-            if ($actual === []) {
-                $issues[] = new AnalysisIssue('schema_missing_table');
-            } elseif ($actual !== $expected) {
-                $issues[] = new AnalysisIssue(in_array('team_id', $actual, true) ? 'schema_team_column_present' : 'schema_column_drift');
-            }
         }
+
+        array_push($issues, ...(new LegacyRoleBackfillSchemaContract(
+            DB::connection(),
+            $contract['tables'],
+            (new User)->getTable(),
+        ))->issues($contract['schema']));
 
         if (
             $contract['columns']['role_pivot_key'] !== 'role_id'
@@ -319,7 +307,13 @@ final class LegacyRoleBackfillAnalyzer
         foreach ($rows as $row) {
             $id = is_array($row) ? ($row['id'] ?? null) : ($row->id ?? null);
             $rawRole = is_array($row) ? ($row['role'] ?? null) : ($row->role ?? null);
-            $identity = CanonicalJson::encode(['type' => get_debug_type($id), 'value' => $id]);
+            $identity = CanonicalJson::encode([
+                'type' => get_debug_type($id),
+                'value' => is_int($id) || is_string($id) ? $id : $this->hasher->fingerprint('invalid-user-id-value', [
+                    'type' => get_debug_type($id),
+                    'value' => $id,
+                ]),
+            ]);
             $userHash = is_int($id) || is_string($id) ? $this->hasher->userHash($id) : $this->hasher->fingerprint('invalid-user-id', $identity);
             $userIssues = [];
 
@@ -362,12 +356,14 @@ final class LegacyRoleBackfillAnalyzer
                 'planned_assignment_hash' => $plannedHash,
                 'issues' => $userIssues,
             ];
-            $internal[(string) $id] = [
-                'id' => $id,
-                'user_hash' => $userHash,
-                'role' => $validRole,
-                'valid' => $userIssues === [],
-            ];
+            if (is_int($id) || is_string($id)) {
+                $internal[(string) $id] = [
+                    'id' => $id,
+                    'user_hash' => $userHash,
+                    'role' => $validRole,
+                    'valid' => $userIssues === [],
+                ];
+            }
         }
 
         return [$users, $internal, $issues, $perRole];

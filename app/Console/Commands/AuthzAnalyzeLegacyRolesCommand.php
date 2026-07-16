@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Auth\LegacyRoleBackfill\ArtifactVersionException;
 use App\Auth\LegacyRoleBackfill\BackfillException;
 use App\Auth\LegacyRoleBackfill\LegacyRoleBackfillAnalyzer;
 use App\Auth\LegacyRoleBackfill\PrivateArtifactRepository;
@@ -41,6 +42,10 @@ class AuthzAnalyzeLegacyRolesCommand extends Command
             $this->line('report: '.$name);
 
             return $report->isBlocked() ? 2 : self::SUCCESS;
+        } catch (ArtifactVersionException $exception) {
+            $this->components->error($exception->getMessage());
+
+            return 2;
         } catch (BackfillException $exception) {
             $this->components->error($exception->getMessage());
 

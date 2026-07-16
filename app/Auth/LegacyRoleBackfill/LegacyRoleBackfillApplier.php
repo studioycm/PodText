@@ -6,7 +6,6 @@ use App\Enums\UserRole;
 use App\Models\User;
 use Closure;
 use Illuminate\Support\Facades\DB;
-use Spatie\Permission\PermissionRegistrar;
 
 final class LegacyRoleBackfillApplier
 {
@@ -14,8 +13,10 @@ final class LegacyRoleBackfillApplier
         private readonly LegacyRoleBackfillAnalyzer $analyzer,
         private readonly AnalysisReportValidator $validator,
         private readonly PrivateArtifactRepository $artifacts,
-        private readonly PermissionRegistrar $registrar,
+        private readonly PermissionCacheInvalidator $cacheInvalidator,
+        private readonly PrivacyHasher $hasher,
         private readonly ?Closure $afterWriteHook = null,
+        private readonly ?Closure $postInvalidationHook = null,
     ) {}
 
     public function apply(
@@ -24,40 +25,27 @@ final class LegacyRoleBackfillApplier
         string $acceptedReport,
         string $confirmation,
     ): BackfillResult {
-        if ($confirmation !== 'AUTHZ1-C') {
-            throw new BackfillRefusalException('The literal AUTHZ1-C confirmation is required.');
-        }
-
-        if (! hash_equals($report->sourceFingerprint(), $acceptedSource)) {
-            throw new BackfillRefusalException('The accepted source fingerprint does not match.');
-        }
-
-        if (! hash_equals($report->reportFingerprint(), $acceptedReport)) {
-            throw new BackfillRefusalException('The accepted report fingerprint does not match.');
-        }
-
+        $this->assertAcceptance($report, $acceptedSource, $acceptedReport, $confirmation);
         $this->validator->validate($report);
-        $preparedName = $this->artifacts->operationName($report->reportFingerprint(), 'prepared');
-        $cacheResetName = $this->artifacts->operationName($report->reportFingerprint(), 'cache_reset');
-        $completeName = $this->artifacts->operationName($report->reportFingerprint(), 'complete');
-        $receiptName = $this->artifacts->backfillReceiptName($report->reportFingerprint());
+
+        $fingerprint = $report->reportFingerprint();
+        $preparedName = $this->artifacts->operationName($fingerprint, 'prepared');
+        $pendingName = $this->artifacts->operationName($fingerprint, 'cache_invalidation_pending');
+        $cacheName = $this->artifacts->operationName($fingerprint, 'cache_invalidated');
+        $completeName = $this->artifacts->operationName($fingerprint, 'complete');
+        $receiptName = $this->artifacts->backfillReceiptName($fingerprint);
 
         if ($this->artifacts->backfillReceiptExists($receiptName)) {
             $receipt = $this->artifacts->loadBackfillReceipt($receiptName);
-            $prepared = $this->loadPreparedJournal($preparedName, $report);
-            $this->loadStateJournal($cacheResetName, 'cache_reset', $report, $prepared);
-            $current = $this->analyzer->analyze();
-            $this->assertCurrentSourceAndTarget($current, $report, $receipt->afterFingerprint());
+            $prepared = $this->loadPrepared($preparedName, $report);
+            $this->loadCacheTransition($pendingName, 'cache_invalidation_pending', $prepared, null);
+            $this->loadCacheTransition($cacheName, 'cache_invalidated', $prepared, $receipt->toArray()['cache_outcome']);
+            $this->assertCurrentCompletion($report, $receipt);
 
-            if (! $this->artifacts->operationExists($completeName)) {
-                $this->artifacts->publishOperation($completeName, $this->journal(
-                    state: 'complete',
-                    report: $report,
-                    prepared: $prepared,
-                    receiptName: $receiptName,
-                ));
+            if ($this->artifacts->operationExists($completeName)) {
+                $this->assertCompleteJournal($this->artifacts->loadOperation($completeName), $prepared, $receiptName, $receipt);
             } else {
-                $this->loadStateJournal($completeName, 'complete', $report, $prepared, $receiptName);
+                $this->artifacts->publishOperation($completeName, $this->completeJournal($prepared, $receiptName, $receipt));
             }
 
             return $this->resultFromReceipt('no_op', $receiptName, $receipt);
@@ -71,6 +59,9 @@ final class LegacyRoleBackfillApplier
                 receiptName: null,
                 insertedRoles: 0,
                 insertedAssignments: 0,
+                ownershipStatus: 'not_applicable',
+                rollbackCapable: false,
+                cacheOutcome: null,
             );
         }
 
@@ -82,28 +73,38 @@ final class LegacyRoleBackfillApplier
                 throw new BackfillRefusalException('The raw source changed after analysis.');
             }
 
-            $prepared = $this->artifacts->operationExists($preparedName)
-                ? $this->loadPreparedJournal($preparedName, $report)
-                : $this->preparedJournal($report);
+            $preparedExists = $this->artifacts->operationExists($preparedName);
+            $prepared = $preparedExists
+                ? $this->loadPrepared($preparedName, $report)
+                : $this->preparedFromReport($report);
 
-            if (hash_equals($current->targetPlannedFingerprint(), $current->targetBeforeFingerprint())) {
-                if (! $this->artifacts->operationExists($preparedName)) {
+            if (hash_equals($current->targetBeforeFingerprint(), $report->targetPlannedFingerprint())) {
+                if (! $preparedExists) {
                     throw new BackfillRefusalException('A planned target without its prepared journal is not recoverable.');
                 }
 
-                return ['report' => $current, 'prepared' => $prepared, 'changed' => false, 'recovery' => true];
+                return [
+                    'report' => $current,
+                    'prepared' => $prepared,
+                    'ownership_status' => 'unproven',
+                    'rollback_capable' => false,
+                    'owned_roles' => [],
+                    'protected_roles' => [],
+                    'owned_assignments' => [],
+                    'committed_at' => null,
+                ];
             }
 
             if (! hash_equals($current->targetBeforeFingerprint(), $report->targetBeforeFingerprint())) {
                 throw new BackfillRefusalException('The package target changed after analysis.');
             }
 
-            if (! $this->artifacts->operationExists($preparedName)) {
+            if (! $preparedExists) {
                 $this->artifacts->publishOperation($preparedName, $prepared);
             }
 
-            $this->insertMissingRoles();
-            $this->insertMissingAssignments();
+            $ownedRoles = $this->insertMissingRoles();
+            [$protectedRoles, $ownedAssignments] = $this->insertMissingAssignments();
 
             if ($this->afterWriteHook instanceof Closure) {
                 ($this->afterWriteHook)();
@@ -119,132 +120,238 @@ final class LegacyRoleBackfillApplier
                 throw new BackfillException('The transactional authorization projection did not reconcile.');
             }
 
-            return ['report' => $after, 'prepared' => $prepared, 'changed' => true, 'recovery' => false];
+            $this->assertPhysicalProjection($protectedRoles, $ownedAssignments);
+
+            return [
+                'report' => $after,
+                'prepared' => $prepared,
+                'ownership_status' => 'proven',
+                'rollback_capable' => true,
+                'owned_roles' => $ownedRoles,
+                'protected_roles' => $protectedRoles,
+                'owned_assignments' => $ownedAssignments,
+                'committed_at' => 'pending',
+            ];
         }, attempts: 3);
 
+        /** @var OperationJournal $prepared */
         $prepared = $transaction['prepared'];
-        $committedAt = now('UTC')->toIso8601ZuluString();
 
-        if ($this->artifacts->operationExists($cacheResetName)) {
-            $this->loadStateJournal($cacheResetName, 'cache_reset', $report, $prepared);
-        } else {
-            if (! $this->registrar->forgetCachedPermissions()) {
-                throw new BackfillException('The post-commit permission cache reset failed.');
-            }
-
-            $this->artifacts->publishOperation($cacheResetName, $this->journal(
-                state: 'cache_reset',
-                report: $report,
-                prepared: $prepared,
-            ));
+        if ($transaction['ownership_status'] === 'proven') {
+            $transaction['committed_at'] = now('UTC')->toIso8601ZuluString();
         }
 
+        if ($this->artifacts->operationExists($pendingName)) {
+            $this->loadCacheTransition($pendingName, 'cache_invalidation_pending', $prepared, null);
+        } else {
+            $this->artifacts->publishOperation($pendingName, $this->cacheTransition($prepared, 'cache_invalidation_pending', null));
+        }
+
+        if ($this->artifacts->operationExists($cacheName)) {
+            $cacheJournal = $this->artifacts->loadOperation($cacheName);
+            $cacheOutcome = $cacheJournal->toArray()['cache_outcome'];
+            $this->loadCacheTransition($cacheName, 'cache_invalidated', $prepared, $cacheOutcome);
+        } else {
+            $cacheOutcome = $this->cacheInvalidator->invalidate()->value;
+
+            if ($this->postInvalidationHook instanceof Closure) {
+                ($this->postInvalidationHook)();
+            }
+
+            $this->artifacts->publishOperation($cacheName, $this->cacheTransition($prepared, 'cache_invalidated', $cacheOutcome));
+        }
+
+        $preparedPayload = $prepared->toArray();
         $receipt = BackfillReceipt::create([
-            'operation_id' => (string) $prepared['operation_id'],
+            'operation_id' => $preparedPayload['operation_id'],
             'report_fingerprint' => $report->reportFingerprint(),
             'source_fingerprint' => $report->sourceFingerprint(),
             'before_fingerprint' => $report->targetBeforeFingerprint(),
             'planned_fingerprint' => $report->targetPlannedFingerprint(),
             'after_fingerprint' => $transaction['report']->targetBeforeFingerprint(),
-            'inserted_roles' => $prepared['inserted_roles'],
-            'inserted_assignments' => $prepared['inserted_assignments'],
+            'planned_roles' => $preparedPayload['planned_roles'],
+            'planned_assignments' => $preparedPayload['planned_assignments'],
+            'owned_roles' => $transaction['owned_roles'],
+            'protected_roles' => $transaction['protected_roles'],
+            'owned_assignments' => $transaction['owned_assignments'],
             'counts' => [
-                'inserted_roles' => count($prepared['inserted_roles']),
-                'inserted_assignments' => count($prepared['inserted_assignments']),
+                'planned_roles' => count($preparedPayload['planned_roles']),
+                'planned_assignments' => count($preparedPayload['planned_assignments']),
+                'owned_roles' => count($transaction['owned_roles']),
+                'protected_roles' => count($transaction['protected_roles']),
+                'owned_assignments' => count($transaction['owned_assignments']),
             ],
-            'cache_reset_complete' => true,
-            'committed_at' => $committedAt,
+            'ownership_status' => $transaction['ownership_status'],
+            'rollback_capable' => $transaction['rollback_capable'],
+            'cache_semantics' => 'at_least_once_idempotent',
+            'cache_outcome' => $cacheOutcome,
+            'cache_invalidation_complete' => true,
+            'committed_at' => $transaction['committed_at'],
             'completed_at' => now('UTC')->toIso8601ZuluString(),
             'legacy_authority' => true,
-        ]);
+        ], $this->hasher);
 
         $this->artifacts->publishBackfillReceipt($receiptName, $receipt);
-        $this->artifacts->publishOperation($completeName, $this->journal(
-            state: 'complete',
-            report: $report,
-            prepared: $prepared,
-            receiptName: $receiptName,
-        ));
+        $this->artifacts->publishOperation($completeName, $this->completeJournal($prepared, $receiptName, $receipt));
 
-        return $this->resultFromReceipt($transaction['recovery'] ? 'recovered' : 'applied', $receiptName, $receipt);
+        return $this->resultFromReceipt($transaction['ownership_status'] === 'proven' ? 'applied' : 'completed_unowned', $receiptName, $receipt);
     }
 
-    private function insertMissingRoles(): void
+    /** @return list<array{role: string, role_id: int}> */
+    private function insertMissingRoles(): array
     {
         $table = (string) config('permission.table_names.roles');
-        $existing = DB::table($table)
-            ->where('guard_name', 'web')
-            ->pluck('name')
-            ->all();
+        $existing = DB::table($table)->where('guard_name', 'web')->pluck('id', 'name')->all();
+        $owned = [];
         $now = now();
 
         foreach (UserRole::values() as $role) {
-            if (in_array($role, $existing, true)) {
+            if (array_key_exists($role, $existing)) {
                 continue;
             }
 
-            DB::table($table)->insert([
+            $roleId = DB::table($table)->insertGetId([
                 'name' => $role,
                 'guard_name' => 'web',
                 'created_at' => $now,
                 'updated_at' => $now,
             ]);
+            $owned[] = ['role' => $role, 'role_id' => (int) $roleId];
         }
+
+        usort($owned, fn (array $left, array $right): int => $left['role'] <=> $right['role']);
+
+        return $owned;
     }
 
-    private function insertMissingAssignments(): void
+    /** @return array{list<array{role: string, role_id: int}>, list<array<string, int|string>>} */
+    private function insertMissingAssignments(): array
     {
         $roleTable = (string) config('permission.table_names.roles');
         $pivotTable = (string) config('permission.table_names.model_has_roles');
         $roleKey = (string) (config('permission.column_names.role_pivot_key') ?: 'role_id');
         $modelKey = (string) config('permission.column_names.model_morph_key');
         $modelType = (new User)->getMorphClass();
-        $roleIds = DB::table($roleTable)
-            ->where('guard_name', 'web')
-            ->whereIn('name', UserRole::values())
-            ->pluck('id', 'name')
-            ->all();
-        $users = DB::table((new User)->getTable())
-            ->select(['id', 'role'])
-            ->orderBy('id')
-            ->get();
+        $roleIds = DB::table($roleTable)->where('guard_name', 'web')->whereIn('name', UserRole::values())->pluck('id', 'name')->all();
+
+        if (count($roleIds) !== count(UserRole::values())) {
+            throw new BackfillException('The protected role identity map is incomplete.');
+        }
+
+        $protected = [];
+
+        foreach ($roleIds as $role => $roleId) {
+            if (! is_int($roleId) && ! ctype_digit((string) $roleId)) {
+                throw new BackfillException('A protected role identity is invalid.');
+            }
+
+            $protected[] = ['role' => (string) $role, 'role_id' => (int) $roleId];
+        }
+
+        usort($protected, fn (array $left, array $right): int => $left['role'] <=> $right['role']);
+        $owned = [];
+        $users = DB::table((new User)->getTable())->select(['id', 'role'])->orderBy('id')->get();
 
         foreach ($users as $user) {
-            if (! is_string($user->role) || ! array_key_exists($user->role, $roleIds)) {
+            if ((! is_int($user->id) && ! is_string($user->id)) || ! is_string($user->role) || ! array_key_exists($user->role, $roleIds)) {
                 throw new BackfillRefusalException('The raw source became invalid during apply.');
             }
 
+            $roleId = (int) $roleIds[$user->role];
             $exists = DB::table($pivotTable)
-                ->where($roleKey, $roleIds[$user->role])
+                ->where($roleKey, $roleId)
                 ->where($modelKey, $user->id)
                 ->where('model_type', $modelType)
                 ->exists();
 
-            if (! $exists) {
-                DB::table($pivotTable)->insert([
-                    $roleKey => $roleIds[$user->role],
-                    $modelKey => $user->id,
+            if ($exists) {
+                continue;
+            }
+
+            DB::table($pivotTable)->insert([
+                $roleKey => $roleId,
+                $modelKey => $user->id,
+                'model_type' => $modelType,
+            ]);
+            $userHash = $this->hasher->userHash($user->id);
+            $owned[] = [
+                'assignment_hash' => $this->hasher->fingerprint('assignment', [
+                    'user_hash' => $userHash,
+                    'role' => $user->role,
                     'model_type' => $modelType,
-                ]);
+                ]),
+                'user_hash' => $userHash,
+                'role' => $user->role,
+                'role_id' => $roleId,
+                'model_type' => $modelType,
+                'physical_tuple_hash' => $this->hasher->physicalTupleHash($roleId, $user->id, $modelType),
+            ];
+        }
+
+        usort($owned, fn (array $left, array $right): int => $left['assignment_hash'] <=> $right['assignment_hash']);
+
+        return [$protected, $owned];
+    }
+
+    /** @param list<array{role: string, role_id: int}> $protected @param list<array<string, mixed>> $owned */
+    private function assertPhysicalProjection(array $protected, array $owned): void
+    {
+        $roleTable = (string) config('permission.table_names.roles');
+        $pivotTable = (string) config('permission.table_names.model_has_roles');
+        $roleKey = (string) (config('permission.column_names.role_pivot_key') ?: 'role_id');
+        $modelKey = (string) config('permission.column_names.model_morph_key');
+        $roleMap = DB::table($roleTable)->where('guard_name', 'web')->whereIn('name', UserRole::values())->pluck('id', 'name')->all();
+
+        foreach ($protected as $role) {
+            if ((int) ($roleMap[$role['role']] ?? 0) !== $role['role_id']) {
+                throw new BackfillException('The protected role identity changed during apply.');
+            }
+        }
+
+        $usersByHash = $this->usersByHash();
+
+        foreach ($owned as $assignment) {
+            $userId = $usersByHash[$assignment['user_hash']] ?? null;
+
+            if ($userId === null || ! hash_equals($this->hasher->physicalTupleHash($assignment['role_id'], $userId, $assignment['model_type']), $assignment['physical_tuple_hash'])) {
+                throw new BackfillException('The physical assignment evidence did not reconcile.');
+            }
+
+            if (! DB::table($pivotTable)->where($roleKey, $assignment['role_id'])->where($modelKey, $userId)->where('model_type', $assignment['model_type'])->exists()) {
+                throw new BackfillException('The inserted physical assignment could not be re-read.');
             }
         }
     }
 
-    /** @return array<string, mixed> */
-    private function preparedJournal(AnalysisReport $report): array
+    /** @return array<string, int|string> */
+    private function usersByHash(): array
+    {
+        $users = [];
+
+        foreach (DB::table((new User)->getTable())->select('id')->orderBy('id')->get() as $user) {
+            if (! is_int($user->id) && ! is_string($user->id)) {
+                throw new BackfillRefusalException('A source identity type is invalid.');
+            }
+
+            $users[$this->hasher->userHash($user->id)] = $user->id;
+        }
+
+        return $users;
+    }
+
+    private function preparedFromReport(AnalysisReport $report, ?string $preparedAt = null): OperationJournal
     {
         $payload = $report->toArray();
-        $beforeRoles = $payload['target_before']['roles'];
-        $insertedRoles = array_values(array_diff($payload['target_planned']['roles'], $beforeRoles));
-        $beforeAssignments = $payload['target_before']['assignment_hashes'];
-        $insertedHashes = array_fill_keys(array_diff($payload['target_planned']['assignment_hashes'], $beforeAssignments), true);
-        $insertedAssignments = [];
+        $plannedRoles = array_values(array_diff($payload['target_planned']['roles'], $payload['target_before']['roles']));
+        sort($plannedRoles, SORT_STRING);
+        $plannedHashes = array_fill_keys(array_diff($payload['target_planned']['assignment_hashes'], $payload['target_before']['assignment_hashes']), true);
+        $assignments = [];
 
         foreach ($payload['source']['users'] as $user) {
             $hash = $user['planned_assignment_hash'];
 
-            if (is_string($hash) && isset($insertedHashes[$hash])) {
-                $insertedAssignments[] = [
+            if (is_string($hash) && isset($plannedHashes[$hash])) {
+                $assignments[] = [
                     'assignment_hash' => $hash,
                     'user_hash' => $user['user_hash'],
                     'role' => $user['role'],
@@ -253,116 +360,154 @@ final class LegacyRoleBackfillApplier
             }
         }
 
-        usort($insertedAssignments, fn (array $left, array $right): int => $left['assignment_hash'] <=> $right['assignment_hash']);
-        sort($insertedRoles, SORT_STRING);
+        usort($assignments, fn (array $left, array $right): int => $left['assignment_hash'] <=> $right['assignment_hash']);
 
-        return $this->signedJournal([
-            'schema' => 'podtext.authz1c.operation.v1',
+        return OperationJournal::create([
             'state' => 'prepared',
-            'operation_id' => hash('sha256', 'operation\0'.$report->reportFingerprint()),
+            'operation_id' => hash('sha256', "operation\0v2\0".$report->reportFingerprint()),
             'report_fingerprint' => $report->reportFingerprint(),
             'source_fingerprint' => $report->sourceFingerprint(),
             'target_before_fingerprint' => $report->targetBeforeFingerprint(),
             'target_planned_fingerprint' => $report->targetPlannedFingerprint(),
-            'inserted_roles' => $insertedRoles,
-            'inserted_assignments' => $insertedAssignments,
-            'prepared_at' => now('UTC')->toIso8601ZuluString(),
-        ]);
+            'planned_roles' => $plannedRoles,
+            'planned_assignments' => $assignments,
+            'owned_roles' => [],
+            'protected_roles' => [],
+            'owned_assignments' => [],
+            'ownership_status' => null,
+            'rollback_capable' => null,
+            'cache_outcome' => null,
+            'prepared_at' => $preparedAt ?? now('UTC')->toIso8601ZuluString(),
+            'transitioned_at' => null,
+            'receipt' => null,
+        ], $this->hasher);
     }
 
-    /** @return array<string, mixed> */
-    private function loadPreparedJournal(string $name, AnalysisReport $report): array
+    private function loadPrepared(string $name, AnalysisReport $report): OperationJournal
     {
-        $journal = $this->artifacts->loadOperation($name);
-        $this->assertJournal($journal);
-
-        if (
-            ($journal['state'] ?? null) !== 'prepared'
-            || ($journal['report_fingerprint'] ?? null) !== $report->reportFingerprint()
-            || ($journal['source_fingerprint'] ?? null) !== $report->sourceFingerprint()
-            || ($journal['target_before_fingerprint'] ?? null) !== $report->targetBeforeFingerprint()
-            || ($journal['target_planned_fingerprint'] ?? null) !== $report->targetPlannedFingerprint()
-        ) {
-            throw new BackfillRefusalException('The prepared operation journal does not match the accepted report.');
+        if (! $this->artifacts->operationExists($name)) {
+            throw new BackfillRefusalException('The prepared operation journal is missing.');
         }
 
-        return $journal;
+        $stored = $this->artifacts->loadOperation($name);
+        $expected = $this->preparedFromReport($report, $stored->toArray()['prepared_at']);
+
+        if (CanonicalJson::encode($stored->toArray()) !== CanonicalJson::encode($expected->toArray())) {
+            throw new BackfillRefusalException('The prepared operation journal does not exactly match the accepted report.');
+        }
+
+        return $stored;
     }
 
-    /** @return array<string, mixed> */
-    private function loadStateJournal(
-        string $name,
-        string $state,
-        AnalysisReport $report,
-        array $prepared,
-        ?string $receiptName = null,
-    ): array {
+    private function cacheTransition(OperationJournal $prepared, string $state, ?string $outcome): OperationJournal
+    {
+        $payload = $prepared->toArray();
+
+        return OperationJournal::create([
+            ...$this->baseJournalPayload($payload),
+            'state' => $state,
+            'owned_roles' => [],
+            'protected_roles' => [],
+            'owned_assignments' => [],
+            'ownership_status' => null,
+            'rollback_capable' => null,
+            'cache_outcome' => $outcome,
+            'transitioned_at' => now('UTC')->toIso8601ZuluString(),
+            'receipt' => null,
+        ], $this->hasher);
+    }
+
+    private function loadCacheTransition(string $name, string $state, OperationJournal $prepared, ?string $outcome): OperationJournal
+    {
         if (! $this->artifacts->operationExists($name)) {
             throw new BackfillRefusalException("The {$state} operation journal is missing.");
         }
 
-        $journal = $this->artifacts->loadOperation($name);
-        $this->assertJournal($journal);
+        $stored = $this->artifacts->loadOperation($name);
+        $payload = $stored->toArray();
+        $expected = OperationJournal::create([
+            ...$this->baseJournalPayload($prepared->toArray()),
+            'state' => $state,
+            'owned_roles' => [],
+            'protected_roles' => [],
+            'owned_assignments' => [],
+            'ownership_status' => null,
+            'rollback_capable' => null,
+            'cache_outcome' => $outcome,
+            'transitioned_at' => $payload['transitioned_at'],
+            'receipt' => null,
+        ], $this->hasher);
 
-        if (
-            ($journal['state'] ?? null) !== $state
-            || ($journal['operation_id'] ?? null) !== ($prepared['operation_id'] ?? null)
-            || ($journal['report_fingerprint'] ?? null) !== $report->reportFingerprint()
-            || ($journal['source_fingerprint'] ?? null) !== $report->sourceFingerprint()
-            || ($journal['target_before_fingerprint'] ?? null) !== $report->targetBeforeFingerprint()
-            || ($journal['target_planned_fingerprint'] ?? null) !== $report->targetPlannedFingerprint()
-            || CanonicalJson::encode($journal['inserted_roles'] ?? null) !== CanonicalJson::encode($prepared['inserted_roles'] ?? null)
-            || CanonicalJson::encode($journal['inserted_assignments'] ?? null) !== CanonicalJson::encode($prepared['inserted_assignments'] ?? null)
-            || ($journal['prepared_at'] ?? null) !== ($prepared['prepared_at'] ?? null)
-            || ($journal['receipt'] ?? null) !== $receiptName
-        ) {
+        if (CanonicalJson::encode($payload) !== CanonicalJson::encode($expected->toArray())) {
             throw new BackfillRefusalException("The {$state} operation journal does not match the accepted operation.");
         }
 
-        return $journal;
+        return $stored;
     }
 
-    /** @param array<string, mixed> $prepared @return array<string, mixed> */
-    private function journal(string $state, AnalysisReport $report, array $prepared, ?string $receiptName = null): array
+    private function completeJournal(OperationJournal $prepared, string $receiptName, BackfillReceipt $receipt): OperationJournal
     {
-        return $this->signedJournal([
-            'schema' => 'podtext.authz1c.operation.v1',
-            'state' => $state,
-            'operation_id' => $prepared['operation_id'],
-            'report_fingerprint' => $report->reportFingerprint(),
-            'source_fingerprint' => $report->sourceFingerprint(),
-            'target_before_fingerprint' => $report->targetBeforeFingerprint(),
-            'target_planned_fingerprint' => $report->targetPlannedFingerprint(),
-            'inserted_roles' => $prepared['inserted_roles'],
-            'inserted_assignments' => $prepared['inserted_assignments'],
-            'prepared_at' => $prepared['prepared_at'],
-            'transitioned_at' => now('UTC')->toIso8601ZuluString(),
+        $receiptPayload = $receipt->toArray();
+
+        return OperationJournal::create([
+            ...$this->baseJournalPayload($prepared->toArray()),
+            'state' => 'complete',
+            'owned_roles' => $receiptPayload['owned_roles'],
+            'protected_roles' => $receiptPayload['protected_roles'],
+            'owned_assignments' => $receiptPayload['owned_assignments'],
+            'ownership_status' => $receiptPayload['ownership_status'],
+            'rollback_capable' => $receiptPayload['rollback_capable'],
+            'cache_outcome' => $receiptPayload['cache_outcome'],
+            'transitioned_at' => $receiptPayload['completed_at'],
             'receipt' => $receiptName,
-        ]);
+        ], $this->hasher);
     }
 
-    /** @param array<string, mixed> $journal @return array<string, mixed> */
-    private function signedJournal(array $journal): array
+    private function assertCompleteJournal(OperationJournal $journal, OperationJournal $prepared, string $receiptName, BackfillReceipt $receipt): void
     {
-        unset($journal['journal_fingerprint']);
-        $journal['journal_fingerprint'] = hash('sha256', CanonicalJson::encode($journal));
+        $expected = $this->completeJournal($prepared, $receiptName, $receipt);
 
-        return $journal;
+        if (CanonicalJson::encode($journal->toArray()) !== CanonicalJson::encode($expected->toArray())) {
+            throw new BackfillRefusalException('The complete operation journal does not reconcile with the receipt.');
+        }
     }
 
-    /** @param array<string, mixed> $journal */
-    private function assertJournal(array $journal): void
+    /** @param array<string, mixed> $payload @return array<string, mixed> */
+    private function baseJournalPayload(array $payload): array
     {
-        $fingerprint = $journal['journal_fingerprint'] ?? null;
+        return [
+            'operation_id' => $payload['operation_id'],
+            'report_fingerprint' => $payload['report_fingerprint'],
+            'source_fingerprint' => $payload['source_fingerprint'],
+            'target_before_fingerprint' => $payload['target_before_fingerprint'],
+            'target_planned_fingerprint' => $payload['target_planned_fingerprint'],
+            'planned_roles' => $payload['planned_roles'],
+            'planned_assignments' => $payload['planned_assignments'],
+            'prepared_at' => $payload['prepared_at'],
+        ];
+    }
 
-        if (! is_string($fingerprint)) {
-            throw new ArtifactException('The operation journal fingerprint is missing.');
+    private function assertCurrentCompletion(AnalysisReport $accepted, BackfillReceipt $receipt): void
+    {
+        $current = $this->analyzer->analyze();
+
+        if ($current->isBlocked() || ! hash_equals($current->sourceFingerprint(), $accepted->sourceFingerprint()) || ! hash_equals($current->targetBeforeFingerprint(), $receipt->afterFingerprint()) || $current->status() !== 'already_applied') {
+            throw new BackfillRefusalException('The completed operation no longer reconciles with current state.');
+        }
+    }
+
+    private function assertAcceptance(AnalysisReport $report, string $acceptedSource, string $acceptedReport, string $confirmation): void
+    {
+        if ($confirmation !== 'AUTHZ1-C') {
+            throw new BackfillRefusalException('The literal AUTHZ1-C confirmation is required.');
         }
 
-        unset($journal['journal_fingerprint']);
+        if (! hash_equals($report->sourceFingerprint(), $acceptedSource)) {
+            throw new BackfillRefusalException('The accepted source fingerprint does not match.');
+        }
 
-        if (! hash_equals(hash('sha256', CanonicalJson::encode($journal)), $fingerprint)) {
-            throw new ArtifactException('The operation journal fingerprint is invalid.');
+        if (! hash_equals($report->reportFingerprint(), $acceptedReport)) {
+            throw new BackfillRefusalException('The accepted report fingerprint does not match.');
         }
     }
 
@@ -391,29 +536,20 @@ final class LegacyRoleBackfillApplier
         }
     }
 
-    private function assertCurrentSourceAndTarget(AnalysisReport $current, AnalysisReport $accepted, string $after): void
-    {
-        if (
-            $current->isBlocked()
-            || ! hash_equals($current->sourceFingerprint(), $accepted->sourceFingerprint())
-            || ! hash_equals($current->targetBeforeFingerprint(), $after)
-            || $current->status() !== 'already_applied'
-        ) {
-            throw new BackfillRefusalException('The completed operation no longer reconciles with current state.');
-        }
-    }
-
     private function resultFromReceipt(string $status, string $name, BackfillReceipt $receipt): BackfillResult
     {
         $payload = $receipt->toArray();
 
         return new BackfillResult(
             status: $status,
-            sourceFingerprint: (string) $payload['source_fingerprint'],
-            afterFingerprint: (string) $payload['after_fingerprint'],
+            sourceFingerprint: $payload['source_fingerprint'],
+            afterFingerprint: $payload['after_fingerprint'],
             receiptName: $name,
-            insertedRoles: (int) $payload['counts']['inserted_roles'],
-            insertedAssignments: (int) $payload['counts']['inserted_assignments'],
+            insertedRoles: $payload['counts']['owned_roles'],
+            insertedAssignments: $payload['counts']['owned_assignments'],
+            ownershipStatus: $payload['ownership_status'],
+            rollbackCapable: $payload['rollback_capable'],
+            cacheOutcome: $payload['cache_outcome'],
         );
     }
 }

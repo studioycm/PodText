@@ -43,6 +43,7 @@ final class AnalysisReportValidator
             'teams' => [$payload['connection']['teams'] ?? null, false],
             'tables' => [$payload['connection']['tables'] ?? null, $contract['tables']],
             'columns' => [$payload['connection']['columns'] ?? null, $contract['columns']],
+            'schema' => [$payload['connection']['schema'] ?? null, $contract['schema']],
             'key_id' => [$payload['connection']['key_id'] ?? null, $contract['key_id']],
             'legacy_authority' => [$payload['legacy_authority'] ?? null, true],
         ];

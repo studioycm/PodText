@@ -267,3 +267,31 @@ roles, and key material.
 - The maintenance follow-up remains preserved and independent at its original
   deadline: before the first later public Livewire expansion or AUTHZ1 final
   acceptance, whichever comes first.
+
+## Correction — 2026-07-17
+
+This dated correction preserves the original handoff as the historical record
+of commit `0147ea83947ccedb1336a71d8eecc887eb8d4e07` and its then-current command
+counts. The AUTHZ1-C audit-remediation implementation and
+`docs/phase-02/authz1c-audit-remediation-handoff.md` supersede the following
+broad claims:
+
+1. Planned semantic assignment hashes are not physical rollback ownership.
+   Only an uninterrupted v2 transaction result may publish proven ownership;
+   prepared-plus-exact-planned restart completes unowned and cannot roll back.
+2. Cache invalidation is not exactly-once invocation. It is durable
+   at-least-once idempotent invalidation with explicit `deleted` and
+   `already_absent` outcomes, including confirmed absence after a false store
+   return.
+3. The original rollback journal did not cover the commit-to-receipt crash
+   window. V2 publishes rollback-prepared evidence before deletion and recovers
+   exact planned state with zero repeated deletes.
+4. Column-name-only checks were not a complete runtime schema contract. V2
+   validates normalized column properties, primary/unique/secondary indexes,
+   foreign references/actions, and the users `id`/`role` source surface.
+5. The original 26-test / 298-assertion focused result remains historically
+   accurate for that commit but was not exhaustive for the independent audit's
+   R-01–R-05 cases. The remediation handoff records the expanded evidence.
+
+No historical command output above is rewritten, and no MySQL or production
+evidence is retroactively claimed.

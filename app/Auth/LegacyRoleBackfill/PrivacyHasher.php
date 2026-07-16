@@ -2,28 +2,29 @@
 
 namespace App\Auth\LegacyRoleBackfill;
 
+use Illuminate\Encryption\Encrypter;
+
 final class PrivacyHasher
 {
-    private const HKDF_INFO = 'podtext:authz1-c:report:v1';
+    private const HKDF_INFO = 'podtext:authz1-c:report:v2';
 
     private readonly string $key;
 
-    public function __construct(?string $appKey = null)
+    public function __construct(?string $appKey = null, ?string $cipher = null)
     {
         $material = $appKey ?? config('app.key');
+        $cipher ??= config('app.cipher');
 
-        if (! is_string($material) || $material === '') {
+        if (! is_string($material) || $material === '' || ! is_string($cipher) || $cipher === '') {
             throw new PrivacyKeyException('The authorization reporting key is unavailable.');
         }
 
         if (str_starts_with($material, 'base64:')) {
-            $decoded = base64_decode(substr($material, 7), true);
+            $material = base64_decode(substr($material, 7));
+        }
 
-            if (! is_string($decoded) || $decoded === '') {
-                throw new PrivacyKeyException('The authorization reporting key is malformed.');
-            }
-
-            $material = $decoded;
+        if (! is_string($material) || ! Encrypter::supported($material, $cipher)) {
+            throw new PrivacyKeyException('The authorization reporting key is unavailable.');
         }
 
         $key = hash_hkdf('sha256', $material, 32, self::HKDF_INFO);
@@ -63,6 +64,29 @@ final class PrivacyHasher
     public function fingerprint(string $domain, mixed $value): string
     {
         return $this->hmac($domain, CanonicalJson::encode($value));
+    }
+
+    /** @param array<string, mixed> $payload */
+    public function artifactMac(string $domain, array $payload): string
+    {
+        unset($payload['artifact_mac']);
+
+        return $this->hmac('artifact:'.$domain, CanonicalJson::encode($payload));
+    }
+
+    public function physicalTupleHash(
+        int $roleId,
+        int|string $modelId,
+        string $modelType,
+    ): string {
+        return $this->fingerprint('physical-role-tuple', [
+            'role_id' => $roleId,
+            'model_id' => [
+                'type' => is_int($modelId) ? 'integer' : 'string',
+                'value' => (string) $modelId,
+            ],
+            'model_type' => $modelType,
+        ]);
     }
 
     private function hmac(string $domain, string $payload): string

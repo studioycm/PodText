@@ -2,4 +2,4 @@
 
 namespace App\Auth\LegacyRoleBackfill;
 
-final class BackfillRefusalException extends BackfillException {}
+class BackfillRefusalException extends BackfillException {}

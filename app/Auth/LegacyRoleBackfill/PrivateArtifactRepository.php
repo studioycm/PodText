@@ -13,8 +13,10 @@ final class PrivateArtifactRepository
 
     private readonly string $root;
 
-    public function __construct(?string $localRoot = null)
-    {
+    public function __construct(
+        private readonly PrivacyHasher $hasher,
+        ?string $localRoot = null,
+    ) {
         $configuredRoot = $localRoot ?? config('filesystems.disks.local.root');
 
         if (! is_string($configuredRoot) || $configuredRoot === '') {
@@ -38,21 +40,24 @@ final class PrivateArtifactRepository
 
     public function operationName(string $reportFingerprint, string $state): string
     {
-        if (! in_array($state, ['prepared', 'cache_reset', 'complete', 'rolled_back'], true)) {
+        if (! in_array($state, [
+            'prepared', 'cache_invalidation_pending', 'cache_invalidated', 'complete',
+            'rollback_prepared', 'rollback_complete',
+        ], true)) {
             throw new ArtifactException('The operation journal state is invalid.');
         }
 
-        return 'operation-'.$reportFingerprint.'.'.$state.'.json';
+        return 'operation-'.$reportFingerprint.'.v2.'.$state.'.json';
     }
 
     public function backfillReceiptName(string $reportFingerprint): string
     {
-        return 'backfill-'.$reportFingerprint.'.json';
+        return 'backfill-'.$reportFingerprint.'.v2.json';
     }
 
     public function rollbackReceiptName(string $receiptFingerprint): string
     {
-        return 'rollback-'.$receiptFingerprint.'.json';
+        return 'rollback-'.$receiptFingerprint.'.v2.json';
     }
 
     public function publishReport(AnalysisReport $report, ?string $name = null): string
@@ -68,16 +73,24 @@ final class PrivateArtifactRepository
         return AnalysisReport::fromArray($this->load('reports', $name));
     }
 
-    /** @param array<string, mixed> $journal */
-    public function publishOperation(string $name, array $journal): void
+    public function publishOperation(string $name, OperationJournal $journal): void
     {
-        $this->publish('operations', $name, $journal);
+        $this->publish('operations', $name, $journal->toArray());
     }
 
-    /** @return array<string, mixed> */
-    public function loadOperation(string $name): array
+    public function loadOperation(string $name): OperationJournal
     {
-        return $this->load('operations', $name);
+        return OperationJournal::fromArray($this->load('operations', $name), $this->hasher);
+    }
+
+    public function publishRollbackOperation(string $name, RollbackOperationJournal $journal): void
+    {
+        $this->publish('operations', $name, $journal->toArray());
+    }
+
+    public function loadRollbackOperation(string $name): RollbackOperationJournal
+    {
+        return RollbackOperationJournal::fromArray($this->load('operations', $name), $this->hasher);
     }
 
     public function operationExists(string $name): bool
@@ -92,7 +105,7 @@ final class PrivateArtifactRepository
 
     public function loadBackfillReceipt(string $name): BackfillReceipt
     {
-        return BackfillReceipt::fromArray($this->load('receipts', $name));
+        return BackfillReceipt::fromArray($this->load('receipts', $name), $this->hasher);
     }
 
     public function backfillReceiptExists(string $name): bool
@@ -107,7 +120,7 @@ final class PrivateArtifactRepository
 
     public function loadRollbackReceipt(string $name): RollbackReceipt
     {
-        return RollbackReceipt::fromArray($this->load('receipts', $name));
+        return RollbackReceipt::fromArray($this->load('receipts', $name), $this->hasher);
     }
 
     public function rollbackReceiptExists(string $name): bool
@@ -140,11 +153,13 @@ final class PrivateArtifactRepository
                 throw new ArtifactException('The immutable artifact destination already exists.');
             }
 
-            $json = CanonicalJson::encode($payload)."\n";
+            $json = CanonicalJson::encode($payload);
 
             if (strlen($json) > self::MAX_BYTES) {
                 throw new ArtifactException('The artifact exceeds the maximum allowed size.');
             }
+
+            $json .= "\n";
 
             $temporary = $target.'.'.Str::ulid().'.tmp';
             $handle = fopen($temporary, 'x+b');
@@ -189,7 +204,7 @@ final class PrivateArtifactRepository
 
         $size = filesize($path);
 
-        if (! is_int($size) || $size < 1 || $size > self::MAX_BYTES) {
+        if (! is_int($size) || $size < 1 || $size > self::MAX_BYTES + 1) {
             throw new ArtifactException('The artifact size is invalid.');
         }
 
@@ -199,14 +214,29 @@ final class PrivateArtifactRepository
             throw new ArtifactException('The artifact could not be read.');
         }
 
+        $payloadBytes = str_ends_with($contents, "\n") ? substr($contents, 0, -1) : $contents;
+
+        if (strlen($payloadBytes) > self::MAX_BYTES) {
+            throw new ArtifactException('The artifact size is invalid.');
+        }
+
         try {
-            $payload = json_decode($contents, true, 512, JSON_THROW_ON_ERROR);
+            $payload = json_decode($payloadBytes, true, 512, JSON_THROW_ON_ERROR);
         } catch (JsonException) {
             throw new ArtifactException('The artifact JSON is invalid.');
         }
 
         if (! is_array($payload) || array_is_list($payload)) {
             throw new ArtifactException('The artifact payload is invalid.');
+        }
+
+        if (in_array($payload['schema'] ?? null, [
+            'podtext.authz1c.analysis.v1',
+            'podtext.authz1c.operation.v1',
+            'podtext.authz1c.backfill-receipt.v1',
+            'podtext.authz1c.rollback-receipt.v1',
+        ], true)) {
+            throw ArtifactVersionException::v1();
         }
 
         return $payload;

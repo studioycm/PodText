@@ -301,3 +301,47 @@ AUTHZ1-D–I remain blocked until remediation implementation, independent review
 and the separately gated MySQL rehearsal/production approval sequence. Legacy
 authority, no `HasRoles`, no grants/cutover/UI/policies, and MAINT-LW-UX1's
 existing independent deadline are unchanged.
+
+## 11. Implementation evidence — 2026-07-17
+
+The v1 remediation contract was implemented locally against Laravel 13.19.0,
+Permission 7.3.0, Pest 4.7.4, and SQLite `:memory:`. Installed-source checks
+confirmed Laravel's non-strict `base64:` key parsing, `Encrypter::supported()`
+length contract, Permission's configured cache store/key resolution, and the
+registrar's false return when an already-absent key is forgotten.
+
+The implementation writes only v2 artifacts. Prepared, cache-transition,
+complete, rollback-prepared, rollback-complete, backfill-receipt, and
+rollback-receipt evidence is HMAC-authenticated and deeply validated. V1
+analysis, operation, backfill-receipt, and rollback-receipt artifacts are
+retained but refused with a fresh-v2 instruction; no upgrade or adoption path
+was added.
+
+Normal uninterrupted apply records actual inserted role IDs, the five-role
+protected ID map, and physical pivot HMACs over role ID, typed raw model ID,
+and model type. Restart from only prepared evidence plus exact planned state
+performs no write and completes as `completed_unowned`, with empty owned
+vectors and rollback disabled. Cache invalidation now has durable pending and
+success states, reports `deleted` or `already_absent`, treats a remaining key
+or store exception as an operational failure, and deliberately repeats after
+the success-before-publication crash window.
+
+Rollback accepts only the canonical stored proven receipt, validates exact
+role ID/slug/guard and physical tuple identity, publishes prepared evidence
+before deletion, recovers an exact planned state with zero repeated deletes,
+refuses partial state, preserves role rows and pre-existing pivots, and never
+invalidates cache.
+
+The analyzer now fingerprints a normalized SQLite/MySQL runtime schema
+descriptor built from Laravel schema-builder column/index/foreign-key APIs.
+Focused SQLite tests directly cover column-property, primary, unique,
+secondary-index, foreign-key/reference/action, and users-source drift. The
+MySQL descriptor has pure expectation coverage only; no MySQL connection,
+locking, or concurrency evidence was produced.
+
+The focused test file settles at 56 tests / 555 assertions and directly covers
+R-01–R-05, including four supported cipher pairs, short/long/malformed keys,
+type confusion with recomputed integrity, invalid adapter identity types,
+empty source, configured table/morph drift, and the inclusive 10 MiB payload
+boundary. Final gate evidence and command history are recorded in
+`docs/phase-02/authz1c-audit-remediation-handoff.md`.

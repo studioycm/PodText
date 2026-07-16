@@ -35,6 +35,9 @@ class AuthzBackfillLegacyRolesCommand extends Command
             $this->line('after_fingerprint: '.$result->afterFingerprint);
             $this->line('inserted_roles: '.$result->insertedRoles);
             $this->line('inserted_assignments: '.$result->insertedAssignments);
+            $this->line('ownership_status: '.$result->ownershipStatus);
+            $this->line('rollback_capable: '.($result->rollbackCapable ? 'yes' : 'no'));
+            $this->line('cache_outcome: '.($result->cacheOutcome ?? 'not_applicable'));
 
             if ($result->receiptName !== null) {
                 $this->line('receipt: '.$result->receiptName);
