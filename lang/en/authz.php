@@ -1,0 +1,173 @@
+<?php
+
+$subjects = [
+    'panel.admin' => 'the Admin panel',
+    'system.horizon' => 'the Horizon dashboard',
+    'public.maintenance' => 'public maintenance mode',
+    'dashboard.admin' => 'the admin dashboard',
+    'content.authors' => 'authors',
+    'content.categories' => 'categories',
+    'content.groups' => 'content groups',
+    'content.items' => 'content items',
+    'content.transcriptions' => 'transcriptions',
+    'content.tags' => 'tags',
+    'homepage.sections' => 'homepage sections',
+    'media.library' => 'the media library',
+    'forms.submissions' => 'public form submissions',
+    'settings.subjects' => 'global settings subjects',
+    'settings.security-policy' => 'security policy settings',
+    'settings.trusted-html' => 'trusted HTML settings',
+    'settings.card-templates' => 'card template settings',
+    'settings.public-forms' => 'public form settings',
+    'settings.packages' => 'settings packages',
+    'settings.backups' => 'settings backups',
+    'settings.snapshots' => 'settings snapshots',
+    'settings.import-locks' => 'settings import locks',
+    'workbench.connections' => 'Workbench connections',
+    'workbench.spotify' => 'Spotify Workbench data',
+    'workbench.probes' => 'Workbench probes',
+    'tools.admin' => 'admin tools',
+    'users.accounts' => 'user accounts',
+    'users.roles' => 'user role assignments',
+    'security.roles' => 'authorization roles',
+    'security.direct-grants' => 'direct permission grants',
+    'security.catalog' => 'the authorization catalog',
+    'templates.parents' => 'template parents',
+    'templates.drafts' => 'template drafts',
+    'templates.revisions' => 'template revisions',
+    'templates.defaults' => 'default templates',
+    'templates.protected' => 'protected templates',
+    'templates.portability' => 'template portability',
+    'forms.definitions' => 'form definitions',
+    'forms.drafts' => 'form drafts',
+    'forms.revisions' => 'form revisions',
+    'forms.availability' => 'form availability',
+    'forms.portability' => 'form portability',
+];
+
+$actions = [
+    'access' => 'Access',
+    'view' => 'View',
+    'bypass' => 'Bypass',
+    'create' => 'Create',
+    'update' => 'Update',
+    'delete' => 'Delete',
+    'import' => 'Import',
+    'export' => 'Export',
+    'reorder' => 'Reorder',
+    'history-view' => 'View history for',
+    'multiple-manage' => 'Manage multiple',
+    'featured-manage' => 'Manage featured',
+    'download' => 'Download from',
+    'status-update' => 'Update status for',
+    'pii-view' => 'View personal data in',
+    'pii-export' => 'Export personal data from',
+    'protected-manage' => 'Manage protected',
+    'restore' => 'Restore',
+    'compare' => 'Compare',
+    'retry' => 'Retry',
+    'run' => 'Run',
+    'manage' => 'Manage',
+    'credentials-manage' => 'Manage credentials for',
+    'test' => 'Test',
+    'oauth' => 'Authorize OAuth for',
+    'fetch' => 'Fetch',
+    'direct-import' => 'Directly import',
+    'use' => 'Use',
+    'assign' => 'Assign',
+    'assign-delegable' => 'Assign delegable',
+    'sync' => 'Synchronize',
+    'archive' => 'Archive',
+    'own-update' => 'Update own',
+    'other-view' => 'View others’',
+    'adopt' => 'Adopt',
+    'discard' => 'Discard',
+    'checkpoint' => 'Checkpoint',
+    'publish' => 'Publish',
+    'activate' => 'Activate',
+    'revoke' => 'Revoke',
+];
+
+$abilityActions = [
+    'panel.admin' => ['access'],
+    'system.horizon' => ['view'],
+    'public.maintenance' => ['bypass'],
+    'dashboard.admin' => ['view'],
+    'content.authors' => ['view', 'create', 'update', 'delete', 'import', 'export'],
+    'content.categories' => ['view', 'create', 'update', 'delete', 'import', 'export'],
+    'content.groups' => ['view', 'create', 'update', 'delete', 'import', 'export'],
+    'content.items' => ['view', 'create', 'update', 'delete', 'import', 'export'],
+    'content.transcriptions' => ['view', 'create', 'update', 'delete', 'import', 'export', 'history-view', 'multiple-manage', 'featured-manage'],
+    'content.tags' => ['view', 'create', 'update', 'delete'],
+    'homepage.sections' => ['view', 'create', 'update', 'delete', 'reorder'],
+    'media.library' => ['view', 'create', 'update', 'delete', 'download'],
+    'forms.submissions' => ['view', 'status-update', 'pii-view', 'pii-export'],
+    'settings.subjects' => ['view', 'update'],
+    'settings.security-policy' => ['update'],
+    'settings.trusted-html' => ['update'],
+    'settings.card-templates' => ['view', 'create', 'update', 'delete', 'protected-manage'],
+    'settings.public-forms' => ['view', 'create', 'update', 'delete'],
+    'settings.packages' => ['export', 'import', 'restore'],
+    'settings.backups' => ['view', 'create', 'delete', 'download', 'compare'],
+    'settings.snapshots' => ['view', 'retry', 'download'],
+    'settings.import-locks' => ['manage'],
+    'workbench.connections' => ['view', 'create', 'update', 'delete', 'credentials-manage', 'test', 'oauth'],
+    'workbench.spotify' => ['fetch', 'direct-import'],
+    'workbench.probes' => ['run'],
+    'tools.admin' => ['use'],
+    'users.accounts' => ['view', 'update'],
+    'users.roles' => ['assign', 'assign-delegable'],
+    'security.roles' => ['view', 'manage'],
+    'security.direct-grants' => ['manage'],
+    'security.catalog' => ['sync'],
+    'templates.parents' => ['view', 'create', 'update', 'archive', 'restore'],
+    'templates.drafts' => ['own-update', 'other-view', 'adopt', 'discard'],
+    'templates.revisions' => ['checkpoint', 'view', 'compare', 'publish'],
+    'templates.defaults' => ['manage'],
+    'templates.protected' => ['view', 'export', 'activate'],
+    'templates.portability' => ['import', 'export'],
+    'forms.definitions' => ['view', 'create', 'update', 'archive', 'restore'],
+    'forms.drafts' => ['own-update', 'other-view', 'adopt', 'discard'],
+    'forms.revisions' => ['checkpoint', 'view', 'compare', 'publish', 'revoke'],
+    'forms.availability' => ['manage'],
+    'forms.portability' => ['import', 'export'],
+];
+
+$abilities = [];
+$sensitiveViews = ['system.horizon.view', 'users.accounts.view', 'security.roles.view', 'templates.protected.view'];
+
+foreach ($abilityActions as $subjectKey => $subjectActions) {
+    [$domain, $subject] = explode('.', $subjectKey);
+
+    foreach ($subjectActions as $action) {
+        $abilityKey = "{$subjectKey}.{$action}";
+        $sensitive = $action !== 'view' || in_array($abilityKey, $sensitiveViews, true);
+        $label = "{$actions[$action]} {$subjects[$subjectKey]}";
+        $description = $sensitive
+            ? "Allows an authorized administrator to {$label}; this changes or exposes protected administrative data and remains subject to domain safeguards."
+            : "Allows an authorized administrator to {$label} within the existing access boundary.";
+
+        $abilities[$domain][$subject][$action] = [
+            'label' => $label,
+            'description' => $description,
+        ];
+    }
+}
+
+return [
+    'groups' => [
+        'panel-system' => 'Panel and system access',
+        'editorial-records' => 'Editorial records',
+        'transcription-policy' => 'Transcription policy',
+        'media' => 'Media',
+        'public-form-submissions' => 'Public form submissions',
+        'settings-subjects' => 'Settings subjects',
+        'current-template-form-settings' => 'Current template and form settings',
+        'settings-lifecycle' => 'Settings lifecycle',
+        'workbench-tools' => 'Workbench and tools',
+        'users-security' => 'Users and security',
+        'template-lifecycle' => 'Template lifecycle',
+        'form-lifecycle' => 'Form lifecycle',
+    ],
+    'abilities' => $abilities,
+];

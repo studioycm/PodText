@@ -1,12 +1,15 @@
 <?php
 
 use App\Enums\TranscriptionMode;
+use App\Enums\UserRole;
 use App\Jobs\SettingsBackupSnapshotJob;
 use App\Settings\AdminUxSettings;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Queue;
 use Spatie\LaravelSettings\SettingsContainer;
+use Spatie\Permission\Models\Permission;
+use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 foreach ([
@@ -39,6 +42,19 @@ pest()->extend(TestCase::class)
     ->in('Feature', 'Browser');
 
 pest()->browser()->timeout(30000);
+
+dataset('authz five roles', [
+    'super-admin' => [UserRole::SuperAdmin],
+    'admin' => [UserRole::Admin],
+    'moderator' => [UserRole::Moderator],
+    'transcriber' => [UserRole::Transcriber],
+    'user' => [UserRole::User],
+]);
+
+dataset('authz package definition states', [
+    'legacy-only' => [false],
+    'additive-package-definitions' => [true],
+]);
 
 /*
 |--------------------------------------------------------------------------
@@ -90,4 +106,31 @@ function setTestTranscriptionMode(TranscriptionMode $mode): void
 
     app()->forgetInstance(AdminUxSettings::class);
     app(SettingsContainer::class)->clearCache();
+}
+
+function seedAuthzPackageDefinitions(bool $enabled): void
+{
+    if (! $enabled) {
+        return;
+    }
+
+    $role = Role::query()->create([
+        'name' => 'additive-admin',
+        'guard_name' => 'web',
+    ]);
+    $permission = Permission::query()->create([
+        'name' => 'panel.admin.access',
+        'guard_name' => 'web',
+    ]);
+
+    DB::table('role_has_permissions')->insert([
+        'permission_id' => $permission->getKey(),
+        'role_id' => $role->getKey(),
+    ]);
+}
+
+function expectAuthzPackageAssignmentsEmpty(): void
+{
+    expect(DB::table('model_has_roles')->count())->toBe(0)
+        ->and(DB::table('model_has_permissions')->count())->toBe(0);
 }

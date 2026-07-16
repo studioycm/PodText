@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Observers\CuratorMediaObserver;
 use App\Policies\CuratorMediaPolicy;
 use App\Settings\PublicContentSettings;
+use App\Support\Authorization\PackageMutationCommandGuard;
 use App\Support\Importer\Contracts\GoogleDriveClientFactory;
 use App\Support\Importer\Contracts\SpotifyClientFactory;
 use App\Support\Importer\Google\GoogleApiDriveClientFactory;
@@ -22,6 +23,8 @@ use App\Support\SettingsLifecycle\SettingsBackupManager;
 use App\Support\SettingsLifecycle\SettingsLifecycleSchema;
 use App\Support\Transcriptions\MultiTranscriptionSurfaces;
 use Awcodes\Curator\Models\Media;
+use BezhanSalleh\FilamentShield\Commands\TranslationCommand;
+use BezhanSalleh\FilamentShield\Facades\FilamentShield;
 use Filament\Actions\Action;
 use Filament\Facades\Filament;
 use Filament\Forms\Components\Select;
@@ -74,6 +77,12 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        $production = $this->app->isProduction();
+
+        FilamentShield::prohibitDestructiveCommands($production);
+        TranslationCommand::prohibit($production);
+        PackageMutationCommandGuard::register();
+
         Model::preventLazyLoading(! $this->app->isProduction());
 
         Select::configureUsing(fn (Select $select): Select => $select

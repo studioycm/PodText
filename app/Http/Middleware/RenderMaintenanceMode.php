@@ -7,6 +7,7 @@ use App\Support\PublicFront\PublicFrontConfigReader;
 use Closure;
 use Filament\Facades\Filament;
 use Filament\Models\Contracts\FilamentUser;
+use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Symfony\Component\HttpFoundation\Response;
@@ -32,10 +33,16 @@ class RenderMaintenanceMode
 
         $retryAfter = max(1, (int) ($maintenance['retry_after_hours'] ?? 24)) * 3600;
 
-        return $this->maintenancePageRenderer->response(
+        $response = $this->maintenancePageRenderer->response(
             maintenance: $maintenance,
             retryAfter: $retryAfter,
         );
+
+        if ($request->hasHeader('X-Livewire')) {
+            throw new HttpResponseException($response);
+        }
+
+        return $response;
     }
 
     private function adminCanBypass(): bool

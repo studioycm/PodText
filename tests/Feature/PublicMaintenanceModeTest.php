@@ -1,7 +1,7 @@
 <?php
 
 use App\Enums\FormVerificationChannel;
-use App\Livewire\Public\ContentItemBrowser;
+use App\Enums\UserRole;
 use App\Mail\PublicFormEmailVerificationCodeMail;
 use App\Models\ContentGroup;
 use App\Models\ContentItem;
@@ -21,7 +21,6 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Route;
-use Livewire\Livewire;
 use Spatie\LaravelSettings\SettingsContainer;
 
 uses(RefreshDatabase::class);
@@ -138,6 +137,27 @@ function step10rMp1PublicContent(): array
     return [$group, $item];
 }
 
+function step10rMp1ComponentSnapshot(string $html, string $componentName): string
+{
+    preg_match_all('/wire:snapshot="([^"]+)"/u', $html, $matches);
+
+    foreach ($matches[1] ?? [] as $encodedSnapshot) {
+        $snapshot = htmlspecialchars_decode($encodedSnapshot, ENT_QUOTES);
+        $payload = json_decode($snapshot, true, flags: JSON_THROW_ON_ERROR);
+
+        if (($payload['memo']['name'] ?? null) === $componentName) {
+            return $snapshot;
+        }
+    }
+
+    throw new RuntimeException("The {$componentName} snapshot was not found.");
+}
+
+function step10rMp1BrowserSnapshot(string $html): string
+{
+    return step10rMp1ComponentSnapshot($html, 'public.content-item-browser');
+}
+
 it('serves public urls as maintenance responses with retry-after when enabled', function (): void {
     [$group, $item] = step10rMp1PublicContent();
 
@@ -168,42 +188,228 @@ it('serves public urls as maintenance responses with retry-after when enabled', 
     }
 });
 
-it('lets admin users bypass maintenance while admin routes remain reachable for guests', function (): void {
+it('applies the exact five-role maintenance bypass on initial HTTP requests', function (UserRole $role, bool $withPackageDefinitions): void {
+    seedAuthzPackageDefinitions($withPackageDefinitions);
+
     [$group, $item] = step10rMp1PublicContent();
+    $allowed = $role->isAtLeast(UserRole::Admin);
 
     step10rMp1SaveMaintenance([
         'enabled' => true,
         'rich_html' => '<p data-maintenance-marker="mp1">Hidden from admins</p>',
     ]);
 
-    $this->get('/admin')
-        ->assertRedirect('/admin/login');
+    $response = $this->actingAs(User::factory()->role($role)->create())
+        ->get("/items/{$group->slug}/{$item->slug}");
+
+    if ($allowed) {
+        $response
+            ->assertOk()
+            ->assertSee($item->title)
+            ->assertDontSee('data-maintenance-marker="mp1"', false);
+
+        expectAuthzPackageAssignmentsEmpty();
+
+        return;
+    }
+
+    $response
+        ->assertStatus(503)
+        ->assertSee('data-maintenance-marker="mp1"', false)
+        ->assertDontSee($item->title);
+
+    expectAuthzPackageAssignmentsEmpty();
+})->with('authz five roles')->with('authz package definition states');
+
+it('keeps admin routes reachable while public maintenance is enabled', function (): void {
+    step10rMp1SaveMaintenance([
+        'enabled' => true,
+        'rich_html' => '<p data-maintenance-marker="mp1">Hidden from admin routes</p>',
+    ]);
+
+    $this->get('/admin')->assertRedirect('/admin/login');
 
     $this->get('/admin/login')
         ->assertOk()
         ->assertDontSee('data-maintenance-marker="mp1"', false);
-
-    $this->actingAs(User::factory()->create())
-        ->get("/items/{$group->slug}/{$item->slug}")
-        ->assertOk()
-        ->assertSee($item->title)
-        ->assertDontSee('data-maintenance-marker="mp1"', false);
 });
 
-it('lets admin users bypass maintenance during a livewire interaction', function (): void {
+it('applies the exact five-role maintenance bypass during persistent Livewire updates', function (UserRole $role, bool $withPackageDefinitions): void {
+    seedAuthzPackageDefinitions($withPackageDefinitions);
+
     [$group, $item] = step10rMp1PublicContent();
+    $allowed = $role->isAtLeast(UserRole::Admin);
+
+    $this->actingAs(User::factory()->role($role)->create());
+    $itemUpdatedAt = $item->updated_at;
+
+    $initialResponse = $this->get("/podcasts/{$group->slug}")
+        ->assertOk()
+        ->assertSee($item->title);
+    $snapshot = step10rMp1BrowserSnapshot($initialResponse->getContent());
 
     step10rMp1SaveMaintenance([
         'enabled' => true,
         'rich_html' => '<p data-maintenance-marker="mp1-livewire">Hidden from admin Livewire requests</p>',
+        'retry_after_hours' => 6,
     ]);
 
-    $this->actingAs(User::factory()->create());
+    $ordinaryMaintenanceResponse = $allowed
+        ? null
+        : $this->get("/podcasts/{$group->slug}")
+            ->assertStatus(503)
+            ->assertHeader('Retry-After', '21600');
 
-    Livewire::test(ContentItemBrowser::class, ['contentGroup' => $group])
-        ->set('search', 'MP1')
-        ->assertSee($item->title)
-        ->assertDontSee('data-maintenance-marker="mp1-livewire"', false);
+    $response = $this
+        ->withHeader('X-Livewire', 'true')
+        ->postJson(app('livewire')->getUpdateUri(), [
+            'components' => [[
+                'snapshot' => $snapshot,
+                'updates' => ['search' => 'MP1'],
+                'calls' => [],
+            ]],
+        ]);
+
+    if ($allowed) {
+        $response->assertOk();
+
+        expect($response->headers->get('content-type'))->toContain('application/json')
+            ->and($response->json('components.0.effects'))->toBeArray()
+            ->and($response->json('components.0.effects.html'))->toContain($item->title)
+            ->not->toContain('data-maintenance-marker="mp1-livewire"');
+
+        expectAuthzPackageAssignmentsEmpty();
+
+        return;
+    }
+
+    $response
+        ->assertStatus(503)
+        ->assertHeader('Retry-After', '21600')
+        ->assertSee('data-maintenance-marker="mp1-livewire"', false)
+        ->assertDontSee($item->title)
+        ->assertDontSee('"components"', false)
+        ->assertDontSee('"effects"', false);
+
+    expect($response->headers->get('content-type'))->toContain('text/html')
+        ->and($ordinaryMaintenanceResponse)->not->toBeNull()
+        ->and($response->getContent())->toBe($ordinaryMaintenanceResponse->getContent())
+        ->and(PublicFormSubmission::query()->count())->toBe(0)
+        ->and($item->refresh()->updated_at->equalTo($itemUpdatedAt))->toBeTrue();
+
+    Mail::assertNothingQueued();
+
+    expectAuthzPackageAssignmentsEmpty();
+})->with('authz five roles')->with('authz package definition states');
+
+it('keeps real persistent Livewire updates available for all five roles when maintenance is disabled', function (UserRole $role, bool $withPackageDefinitions): void {
+    seedAuthzPackageDefinitions($withPackageDefinitions);
+
+    [$group, $item] = step10rMp1PublicContent();
+
+    $this->actingAs(User::factory()->role($role)->create());
+
+    step10rMp1SaveMaintenance([
+        'enabled' => false,
+        'rich_html' => '<p data-maintenance-marker="mp1-livewire-disabled">Disabled maintenance</p>',
+    ]);
+
+    $initialResponse = $this->get("/podcasts/{$group->slug}")
+        ->assertOk()
+        ->assertSee($item->title);
+
+    $response = $this
+        ->withHeader('X-Livewire', 'true')
+        ->postJson(app('livewire')->getUpdateUri(), [
+            'components' => [[
+                'snapshot' => step10rMp1BrowserSnapshot($initialResponse->getContent()),
+                'updates' => ['search' => 'MP1'],
+                'calls' => [],
+            ]],
+        ])
+        ->assertOk();
+
+    expect($response->headers->get('content-type'))->toContain('application/json')
+        ->and($response->json('components.0.effects'))->toBeArray()
+        ->and($response->json('components.0.effects.html'))->toContain($item->title)
+        ->not->toContain('data-maintenance-marker="mp1-livewire-disabled"');
+
+    expectAuthzPackageAssignmentsEmpty();
+})->with('authz five roles')->with('authz package definition states');
+
+it('terminates a denied stale public form Livewire update before component side effects', function (): void {
+    $settings = app(PublicContentSettings::class);
+    $settings->public_forms = [
+        'require_email_verification' => false,
+        'definitions' => [
+            step10rMp2FormDefinition([
+                'settings' => [
+                    'rate_limit_attempts' => 5,
+                    'rate_limit_decay_seconds' => 600,
+                    'submitter_email_verification' => 'email_otp',
+                ],
+            ]),
+        ],
+    ];
+    $settings->menu_config = [
+        ...PublicFrontConfigRegistry::defaults()['menu_config'],
+        'enabled' => true,
+        'items' => [
+            [
+                'key' => 'maintenance-contact',
+                'type' => 'public_form',
+                'form_key' => 'maintenance_contact',
+                'label' => 'Maintenance contact',
+                'display_mode' => 'modal',
+                'visible' => true,
+                'sort' => 10,
+            ],
+        ],
+    ];
+    $settings->save();
+    step10rMp1ForgetPublicFrontState();
+
+    $this->actingAs(User::factory()->role(UserRole::Moderator)->create());
+
+    $initialResponse = $this->get('/')->assertOk();
+    $snapshot = step10rMp1ComponentSnapshot($initialResponse->getContent(), 'public.public-form-modal');
+
+    step10rMp1SaveMaintenance([
+        'enabled' => true,
+        'rich_html' => '<p data-maintenance-marker="mp1-form-livewire">Maintenance form boundary</p>',
+        'retry_after_hours' => 6,
+    ]);
+
+    $ordinaryMaintenanceResponse = $this->get('/')
+        ->assertStatus(503)
+        ->assertHeader('Retry-After', '21600');
+
+    $response = $this
+        ->withHeader('X-Livewire', 'true')
+        ->postJson(app('livewire')->getUpdateUri(), [
+            'components' => [[
+                'snapshot' => $snapshot,
+                'updates' => [
+                    'data.email' => 'blocked@example.com',
+                    'data.message' => 'This must not be persisted.',
+                ],
+                'calls' => [
+                    ['method' => 'sendEmailVerificationCode', 'params' => []],
+                    ['method' => 'submit', 'params' => []],
+                ],
+            ]],
+        ])
+        ->assertStatus(503)
+        ->assertHeader('Retry-After', '21600')
+        ->assertSee('data-maintenance-marker="mp1-form-livewire"', false)
+        ->assertDontSee('"components"', false)
+        ->assertDontSee('"effects"', false);
+
+    expect($response->headers->get('content-type'))->toContain('text/html')
+        ->and($response->getContent())->toBe($ordinaryMaintenanceResponse->getContent())
+        ->and(PublicFormSubmission::query()->count())->toBe(0);
+
+    Mail::assertNothingQueued();
 });
 
 it('leaves public routes normal when maintenance is disabled', function (): void {

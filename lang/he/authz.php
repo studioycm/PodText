@@ -1,0 +1,173 @@
+<?php
+
+$subjects = [
+    'panel.admin' => 'פאנל הניהול',
+    'system.horizon' => 'לוח Horizon',
+    'public.maintenance' => 'מצב התחזוקה הציבורי',
+    'dashboard.admin' => 'לוח הבקרה למנהלים',
+    'content.authors' => 'יוצרים',
+    'content.categories' => 'קטגוריות',
+    'content.groups' => 'קבוצות תוכן',
+    'content.items' => 'פריטי תוכן',
+    'content.transcriptions' => 'תמלולים',
+    'content.tags' => 'תגיות',
+    'homepage.sections' => 'מקטעי דף הבית',
+    'media.library' => 'ספריית המדיה',
+    'forms.submissions' => 'פניות מטפסים ציבוריים',
+    'settings.subjects' => 'נושאי הגדרות כלליים',
+    'settings.security-policy' => 'הגדרות מדיניות האבטחה',
+    'settings.trusted-html' => 'הגדרות HTML מהימן',
+    'settings.card-templates' => 'הגדרות תבניות כרטיס',
+    'settings.public-forms' => 'הגדרות טפסים ציבוריים',
+    'settings.packages' => 'חבילות הגדרות',
+    'settings.backups' => 'גיבויי הגדרות',
+    'settings.snapshots' => 'תצלומי מצב של הגדרות',
+    'settings.import-locks' => 'נעילות ייבוא הגדרות',
+    'workbench.connections' => 'חיבורי שולחן העבודה',
+    'workbench.spotify' => 'נתוני Spotify בשולחן העבודה',
+    'workbench.probes' => 'בדיקות שולחן העבודה',
+    'tools.admin' => 'כלי מנהלים',
+    'users.accounts' => 'חשבונות משתמשים',
+    'users.roles' => 'הקצאות תפקיד למשתמשים',
+    'security.roles' => 'תפקידי הרשאה',
+    'security.direct-grants' => 'הרשאות ישירות',
+    'security.catalog' => 'קטלוג ההרשאות',
+    'templates.parents' => 'תבניות אב',
+    'templates.drafts' => 'טיוטות תבנית',
+    'templates.revisions' => 'גרסאות תבנית',
+    'templates.defaults' => 'תבניות ברירת מחדל',
+    'templates.protected' => 'תבניות מוגנות',
+    'templates.portability' => 'ניידות תבניות',
+    'forms.definitions' => 'הגדרות טופס',
+    'forms.drafts' => 'טיוטות טופס',
+    'forms.revisions' => 'גרסאות טופס',
+    'forms.availability' => 'זמינות טפסים',
+    'forms.portability' => 'ניידות טפסים',
+];
+
+$actions = [
+    'access' => 'גישה אל',
+    'view' => 'צפייה ב',
+    'bypass' => 'עקיפת',
+    'create' => 'יצירת',
+    'update' => 'עדכון',
+    'delete' => 'מחיקת',
+    'import' => 'ייבוא',
+    'export' => 'ייצוא',
+    'reorder' => 'שינוי סדר של',
+    'history-view' => 'צפייה בהיסטוריה של',
+    'multiple-manage' => 'ניהול ריבוי',
+    'featured-manage' => 'ניהול תמלולים נבחרים עבור',
+    'download' => 'הורדה מתוך',
+    'status-update' => 'עדכון מצב של',
+    'pii-view' => 'צפייה במידע אישי בתוך',
+    'pii-export' => 'ייצוא מידע אישי מתוך',
+    'protected-manage' => 'ניהול מוגן של',
+    'restore' => 'שחזור',
+    'compare' => 'השוואת',
+    'retry' => 'ניסיון חוזר עבור',
+    'run' => 'הרצת',
+    'manage' => 'ניהול',
+    'credentials-manage' => 'ניהול פרטי גישה עבור',
+    'test' => 'בדיקת',
+    'oauth' => 'אישור OAuth עבור',
+    'fetch' => 'משיכת',
+    'direct-import' => 'ייבוא ישיר של',
+    'use' => 'שימוש ב',
+    'assign' => 'הקצאת',
+    'assign-delegable' => 'הקצאת תפקידים הניתנים להאצלה מתוך',
+    'sync' => 'סנכרון',
+    'archive' => 'העברת',
+    'own-update' => 'עדכון טיוטות עצמיות של',
+    'other-view' => 'צפייה בטיוטות של אחרים מתוך',
+    'adopt' => 'אימוץ',
+    'discard' => 'ביטול',
+    'checkpoint' => 'יצירת נקודת ביקורת עבור',
+    'publish' => 'פרסום',
+    'activate' => 'הפעלת',
+    'revoke' => 'ביטול',
+];
+
+$abilityActions = [
+    'panel.admin' => ['access'],
+    'system.horizon' => ['view'],
+    'public.maintenance' => ['bypass'],
+    'dashboard.admin' => ['view'],
+    'content.authors' => ['view', 'create', 'update', 'delete', 'import', 'export'],
+    'content.categories' => ['view', 'create', 'update', 'delete', 'import', 'export'],
+    'content.groups' => ['view', 'create', 'update', 'delete', 'import', 'export'],
+    'content.items' => ['view', 'create', 'update', 'delete', 'import', 'export'],
+    'content.transcriptions' => ['view', 'create', 'update', 'delete', 'import', 'export', 'history-view', 'multiple-manage', 'featured-manage'],
+    'content.tags' => ['view', 'create', 'update', 'delete'],
+    'homepage.sections' => ['view', 'create', 'update', 'delete', 'reorder'],
+    'media.library' => ['view', 'create', 'update', 'delete', 'download'],
+    'forms.submissions' => ['view', 'status-update', 'pii-view', 'pii-export'],
+    'settings.subjects' => ['view', 'update'],
+    'settings.security-policy' => ['update'],
+    'settings.trusted-html' => ['update'],
+    'settings.card-templates' => ['view', 'create', 'update', 'delete', 'protected-manage'],
+    'settings.public-forms' => ['view', 'create', 'update', 'delete'],
+    'settings.packages' => ['export', 'import', 'restore'],
+    'settings.backups' => ['view', 'create', 'delete', 'download', 'compare'],
+    'settings.snapshots' => ['view', 'retry', 'download'],
+    'settings.import-locks' => ['manage'],
+    'workbench.connections' => ['view', 'create', 'update', 'delete', 'credentials-manage', 'test', 'oauth'],
+    'workbench.spotify' => ['fetch', 'direct-import'],
+    'workbench.probes' => ['run'],
+    'tools.admin' => ['use'],
+    'users.accounts' => ['view', 'update'],
+    'users.roles' => ['assign', 'assign-delegable'],
+    'security.roles' => ['view', 'manage'],
+    'security.direct-grants' => ['manage'],
+    'security.catalog' => ['sync'],
+    'templates.parents' => ['view', 'create', 'update', 'archive', 'restore'],
+    'templates.drafts' => ['own-update', 'other-view', 'adopt', 'discard'],
+    'templates.revisions' => ['checkpoint', 'view', 'compare', 'publish'],
+    'templates.defaults' => ['manage'],
+    'templates.protected' => ['view', 'export', 'activate'],
+    'templates.portability' => ['import', 'export'],
+    'forms.definitions' => ['view', 'create', 'update', 'archive', 'restore'],
+    'forms.drafts' => ['own-update', 'other-view', 'adopt', 'discard'],
+    'forms.revisions' => ['checkpoint', 'view', 'compare', 'publish', 'revoke'],
+    'forms.availability' => ['manage'],
+    'forms.portability' => ['import', 'export'],
+];
+
+$abilities = [];
+$sensitiveViews = ['system.horizon.view', 'users.accounts.view', 'security.roles.view', 'templates.protected.view'];
+
+foreach ($abilityActions as $subjectKey => $subjectActions) {
+    [$domain, $subject] = explode('.', $subjectKey);
+
+    foreach ($subjectActions as $action) {
+        $abilityKey = "{$subjectKey}.{$action}";
+        $sensitive = $action !== 'view' || in_array($abilityKey, $sensitiveViews, true);
+        $label = "{$actions[$action]} {$subjects[$subjectKey]}";
+        $description = $sensitive
+            ? "מאפשר למנהל מורשה לבצע {$label}; הפעולה משנה או חושפת מידע מנהלי מוגן וכפופה להגנות התחום."
+            : "מאפשר למנהל מורשה לבצע {$label} בתוך גבולות הגישה הקיימים.";
+
+        $abilities[$domain][$subject][$action] = [
+            'label' => $label,
+            'description' => $description,
+        ];
+    }
+}
+
+return [
+    'groups' => [
+        'panel-system' => 'גישה לפאנל ולמערכת',
+        'editorial-records' => 'רשומות עריכה',
+        'transcription-policy' => 'מדיניות תמלול',
+        'media' => 'מדיה',
+        'public-form-submissions' => 'פניות מטפסים ציבוריים',
+        'settings-subjects' => 'נושאי הגדרות',
+        'current-template-form-settings' => 'הגדרות תבניות וטפסים נוכחיות',
+        'settings-lifecycle' => 'מחזור חיי הגדרות',
+        'workbench-tools' => 'שולחן עבודה וכלים',
+        'users-security' => 'משתמשים ואבטחה',
+        'template-lifecycle' => 'מחזור חיי תבניות',
+        'form-lifecycle' => 'מחזור חיי טפסים',
+    ],
+    'abilities' => $abilities,
+];

@@ -2,9 +2,8 @@
 
 Date: 2026-07-16
 
-Status: restart-safe index after approved BQ1–BQ6, audited minor defaults, and
-completed AUTHZ1 pre-implementation research; no application code, tests,
-schema, dependency, implementation plan, or prompt
+Status: restart-safe index after the completed reversible AUTHZ1 package/schema/
+catalog foundation; legacy authorization remains authoritative
 
 ## Restart protocol
 
@@ -27,13 +26,12 @@ the old Groups 16–22.
 
 ## Single continuation point
 
-The next session does exactly one non-implementation action: operator/Fable
-review and acceptance of AUTHZ1-A in report 12—the exact Shield 4.2.0 plus
-Permission 7.3.0 resolution, literal Ability catalog and HE/EN metadata,
-protected/reserved/delegable role metadata, compatibility-first grants, and
-complete current-surface disposition. Do not install packages, change schema or
-code, or create an implementation prompt until that boundary is explicitly
-accepted.
+The reversible AUTHZ1 foundation is complete and legacy enum/rank/Gate authority
+remains active. The next action is operator/Fable review. Do not start AUTHZ1-C
+analyzer/backfill, apply compatibility grants, create package assignments,
+switch policies/Gates, or begin AUTHZ1-D–I without a new accepted implementation
+slice. The prepared maintenance-effects prompt is a separate audit-only option;
+it cannot remediate or broaden authority.
 
 ## Approved big-question checkpoint
 
@@ -69,13 +67,15 @@ questions to ask again unless new evidence exposes a material tradeoff.
 ### AUTHZ1 checkpoint
 
 Pre-implementation evidence is consolidated in
-`12-authz1-pre-implementation-research.md`. Its AUTHZ1-A through AUTHZ1-I
-slices and per-slice operator/Fable stops now control this checkpoint. The next
-stop is AUTHZ1-A only.
+`12-authz1-pre-implementation-research.md`; the shipped reversible foundation
+evidence is in `13-authz1-foundation-research.md` and
+`docs/phase-02/authz1-foundation-handoff.md`. AUTHZ1-A's accepted package/
+schema/catalog foundation is complete. The next unstarted slice is AUTHZ1-C,
+with a fresh operator/Fable stop before any analyzer/backfill work.
 
-- The read-only compatible solve is Shield 4.2.0 + Permission 7.3.0 plus
-  plugin-essentials 1.2.1, with no installed-package updates/removals. Actual
-  installation still requires explicit dependency approval.
+- The installed exact solve is Shield 4.2.0 + Permission 7.3.0 plus transitive
+  Plugin Essentials 1.2.1, with no unrelated update/removal. Shield remains
+  configured but unregistered; no package assignment or runtime cutover exists.
 - Inventory every rank/gate/policy/Resource/Page/widget/action/command/writer,
   Workbench, import/restore, and Horizon authorization surface.
 - Produce the compatibility-first current-access matrix. Migration maps each
