@@ -276,20 +276,6 @@ that single source of truth:
   fixes. Follow the normal prompt/research/plan workflow before implementing
   any finding.
 
-### Laravel Simplifier skill
-
-Activate the repository-owned `laravel-simplifier` skill (canonical
-`.ai/skills/laravel-simplifier`, same tracked symlink layout as the audit
-skills) before any Laravel/PHP implementation or refactor task.
-
-- Stage 1 always runs first, even when the request says "implement": a
-  read-only dry-run audit that reports the smallest behavior-preserving
-  approach with a projected change surface and task/hour estimate.
-- Stage 1 never edits or creates files and never runs generators, formatters,
-  migrations, package commands, or database writes.
-- Implementation requires a new operator message approving the audited scope.
-  A stale audit or expanded scope returns to Stage 1.
-
 ### FilaCheck and FilaCheck Pro
 
 FilaCheck is part of the quality gate for Filament work.
