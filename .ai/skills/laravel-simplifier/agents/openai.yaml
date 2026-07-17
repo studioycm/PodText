@@ -1,0 +1,4 @@
+interface:
+  display_name: "Laravel Simplifier"
+  short_description: "Two-stage Laravel simplification: dry-run audit first, implement only after approval"
+  default_prompt: "Use $laravel-simplifier to run the Stage 1 dry-run audit and report the smallest behavior-preserving approach with a projected change surface. Do not implement without explicit post-audit approval."
