@@ -146,4 +146,4 @@ attempt above is the only failure.
 
 ## Commit hash
 
-pending
+`0be807051a3e43d08b57bd214278ce95c42bda1b`
