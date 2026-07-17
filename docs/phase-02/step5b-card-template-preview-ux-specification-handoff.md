@@ -28,13 +28,17 @@ The recommended required slice is:
   activity;
 - inert preview links/actions, HE/EN and RTL/LTR behavior, focus/keyboard
   requirements, and honest component-versus-browser measurement boundaries;
+- a bounded transient sample selector, localized freshness/sample details, and
+  recorded browser DOM/focusable/network/listener/heap/timing observations;
 - preservation of the SP3C writer, one draft, protected-state rules, Builder
   previews, dirty navigation, and all settings lifecycle paths.
 
-An optional sample selector and additional browser instrumentation are
-droppable. Persistence, autosave/collaboration/revisions, synthetic samples,
-general preview infrastructure, permissions, AUTHZ/ARCH1/SP3D, and unrelated
-queue work remain deferred/out of scope.
+The previously optional selector, freshness details, and browser evidence are
+required by operator revision. Persistence, autosave/collaboration/revisions,
+synthetic samples, general preview infrastructure, permissions,
+AUTHZ/ARCH1/SP3D, and unrelated queue work remain deferred/out of scope because
+they require separate storage, lifecycle, authorization, or acceptance
+contracts and are not necessary for a read-only unsaved preview.
 
 ## Files changed
 
@@ -66,6 +70,8 @@ All changed files are Markdown.
   before commit; the post-commit status is recorded in the final report.
 - Markdown-only changed-path audit using `git status --porcelain=v1`: passed;
   every changed/untracked path ended in `.md`.
+- Post-operator revision `git diff --check`: passed after making all previously
+  optional items required and clarifying the effort breakdown.
 - No PHP tests, Pint, FilaCheck, npm, Composer, Artisan/database commands,
   browser writes, or generators were run because the prompt permits docs checks
   only.
@@ -86,11 +92,12 @@ All changed files are Markdown.
 ## Budget result
 
 This completed Mini-task 2 as the controller's second and final docs-only task.
-The controller remains within the two-task/four-hour stop rule. The specified
-later feature is forecast at no more than two logical implementation tasks and
-approximately 2.5–3.5 engineering hours, with no dependency change and one
-integrated review. Scope drift beyond those bounds requires a new operator
-decision.
+The revised specification remains within the two-task/four-hour stop rule with
+little margin. The specified later feature is forecast at no more than two
+logical implementation tasks: approximately 1.5–2.5 hours of coding plus
+1–1.5 hours for focused tests, browser evidence, and ordered verification,
+3–4 hours total. There is no dependency change and only one integrated review.
+Scope drift beyond those bounds requires a new operator decision.
 
 ## Operator decision
 

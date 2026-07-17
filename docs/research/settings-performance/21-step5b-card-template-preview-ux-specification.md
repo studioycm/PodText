@@ -5,9 +5,12 @@
 - This is one logical docs-only specification task, Mini-task 2 and the final
   task in the Step 5B controller's two-task sequence.
 - Remaining implementation-facing effort forecast: one later bounded feature,
-  no more than two logical implementation tasks and approximately 2.5–3.5
-  engineering hours. Including the controller's prompt-preparation task, the
-  sequence remains within four engineering hours.
+  no more than two logical implementation tasks and approximately 3–4
+  engineering hours now that the previously optional selector, freshness
+  details, and browser measurements are required. The expected coding portion
+  is approximately 1.5–2.5 hours; focused tests, browser evidence, and the
+  repository's ordered verification account for the balance. The sequence
+  remains within the four-hour stop limit, but with little scope margin.
 - Dependency changes: none.
 - Review model: one integrated specification review. There is no independent
   audit/remediation chain.
@@ -92,6 +95,21 @@ collaboration, simultaneous editing, sample management, generalized preview
 infrastructure, roles/permissions/panels, a public-page preview, a second
 settings reader/writer, or any AUTHZ/ARCH1/SP3D/Public Front queue work.
 
+These exclusions are deliberate boundaries, not missing preview polish:
+
+- Autosave changes the existing explicit Save, dirty-navigation, validation,
+  stale-write, backup, and cache lifecycle; preview only reads the draft.
+- Persisted preview state, revisions, and collaboration require new storage,
+  recovery, conflict-resolution, and authorization contracts. A transient
+  sample selector does not need any of them.
+- Existing Admin/Super Admin access already governs the editor, so a new
+  preview permission would add policy complexity without protecting a new
+  data boundary.
+- A generalized preview platform would introduce abstractions for hypothetical
+  consumers. Step 5B has one proven consumer and should use a focused adapter.
+- Unrelated queue work has different requirements, evidence, and acceptance
+  gates; combining it would make preview harder to estimate and verify.
+
 ## 2. Required-versus-optional classification
 
 | Element | Classification | Reason |
@@ -104,15 +122,16 @@ settings reader/writer, or any AUTHZ/ARCH1/SP3D/Public Front queue work.
 | Loading, no-sample, invalid-draft, sample-error, and restricted states | **Required for Step 5B** | Prevents silent saved-template fallback or blank UI. |
 | Preview links/buttons inert, with visible parity retained | **Required for Step 5B** | Prevents navigation away from a dirty editor. |
 | HE/EN, RTL/LTR, keyboard/focus, and error semantics | **Required for Step 5B** | Existing application and Filament requirements. |
-| A bounded sample selector | **Optional if it fits the same bounded implementation** | Automatic selection is sufficient. Drop first if it adds query/state/UI cost. |
-| “Last refreshed” relative copy or sample metadata beyond title/type | **Optional if it fits the same bounded implementation** | Polish only; must not poll or add date/time ambiguity. |
-| Browser DOM/listener/heap instrumentation beyond manual acceptance | **Optional if it fits the same bounded implementation** | Current runner does not establish numeric browser caps. |
+| A bounded sample selector | **Required for Step 5B** | Operator-requested control for checking more than the automatic sample; it remains transient and public-safe. |
+| “Last refreshed” copy and bounded sample identity details | **Required for Step 5B** | Makes explicit-refresh freshness and the selected sample unambiguous without polling. |
+| Browser DOM/listener/heap/network evidence in addition to manual acceptance | **Required for Step 5B** | Operator-requested evidence for the responsive/teleported surface; record observed deltas without inventing unsupported caps. |
 | Saved preview preferences, sample tables/settings, synthetic persisted samples, remote fetching | **Deferred/out of scope** | New persistence and lifecycle are prohibited. |
 | Live/debounced per-field preview, autosave, collaboration, revisions, generalized preview platform | **Deferred/out of scope** | Exceeds the stop rule and current architecture. |
 
-The required slice is one later prompt, at most two logical tasks, 2.5–3.5
-hours, with no dependency change. Optional work is accepted only if the same
-implementation stays inside those bounds.
+The required slice is one later prompt, at most two logical tasks, 3–4 hours,
+with no dependency change. Stop for operator reapproval rather than dropping
+the selector, freshness details, or browser evidence if implementation cannot
+stay inside those bounds.
 
 ## 3. Unsaved-state-to-presenter contract
 
@@ -189,7 +208,7 @@ Save-field errors or mutate the one draft.
 
 - Only `content_item`, `content_group`, and `contributor` are supported.
 - Load one bounded record only when the editor initially establishes preview,
-  the family changes, an optional sample selection changes, or the user
+  the family changes, the sample selection changes, or the user
   explicitly refreshes after the sample became unavailable. Draft-field
   keystrokes never reload a sample.
 - Retain only a locked scalar family/sample identity plus a compact presented
@@ -211,9 +230,11 @@ effective public transcription, disabled tags, and contributors without public
 work are never preview samples. Presenter-required data must be eager-loaded or
 selected before rendering; lazy loading is a test failure.
 
-Automatic selection is required. A selector is optional only if it uses the
-same public-safe query, caps results at 50, is searchable without preload, and
-stores one scalar ID. It must be dropped if it pushes the feature over budget.
+Automatic selection and a selector are required. The selector uses the same
+public-safe family query, caps results at 50, is searchable without preload,
+and stores one transient scalar ID. Its visible option includes the minimum
+bounded identity needed to distinguish records (title/name plus stable public
+context); it does not persist a preference or preload full models.
 
 Changing `data.family` clears the transient sample identity and preview result,
 then performs one explicit family-change refresh after the select change—not a
@@ -290,8 +311,9 @@ normalization/query/presenter work, and makes the preview's freshness legible.
 
 - **Loading:** retain region dimensions, show labelled busy state, disable only
   Preview/Refresh, and leave editor/save controls available.
-- **Ready:** show family, bounded sample identity, and whether it is current or
-  stale relative to the draft.
+- **Ready:** show family, bounded sample identity, a localized last-refreshed
+  time, and whether it is current or stale relative to the draft. The timestamp
+  updates only after an accepted refresh and never polls.
 - **Invalid draft:** show concise preview error plus a link/button that focuses
   the existing first relevant editor field. Keep the slide-over open and the
   unsaved draft intact. Do not display a stored-template fallback.
@@ -366,8 +388,8 @@ protected-state sanitation are not replaced.
 - On draft-only refresh: zero settings reads, reference scans, writer calls,
   lifecycle derivations, settings saves, `SettingsSaved` events, backups, and
   cache invalidations.
-- Sample query occurs only on initial preview establishment, family change, an
-  optional sample change, or re-fetch after invalidation. A refresh using a
+- Sample query occurs only on initial preview establishment, family change, a
+  sample change, or re-fetch after invalidation. A refresh using a
   still-valid locked scalar sample ID may re-fetch exactly that one sample;
   this is one bounded family query, never a search/list query.
 - Sample query count is constant for one sample and all presenter relations and
@@ -409,12 +431,18 @@ model graph; query count is constant by family; and hostile fixture text is
 escaped. Do not alter SP3C's frozen numbers.
 
 Server response headers, query logs, component HTML, and serialized state are
-not browser DOM/listener/heap/network/TTFB evidence. Required manual acceptance
-must verify in a real authenticated browser: `xl` resize transition,
-teleported slide-over single mount, focus trap/Escape/restoration, independent
-scroll, inert links, Hebrew/English layout, dirty Back/navigation protection,
-and no duplicate preview DOM. Browser instrumentation beyond that is optional;
-no numeric browser cap is invented here.
+not browser DOM/listener/heap/network/TTFB evidence. Required real authenticated
+browser acceptance must verify: `xl` resize transition, teleported slide-over
+single mount, focus trap/Escape/restoration, independent scroll, inert links,
+Hebrew/English layout, dirty Back/navigation protection, and no duplicate
+preview DOM. The same run must record before/after observations for DOM element
+count, active preview-root count, interactive/focusable element count, refresh
+network requests, Livewire listener observations available from the runner,
+heap snapshot/used-heap observation where supported, and refresh/navigation
+timings. These are recorded evidence, not pass/fail numeric ceilings, until the
+same runner produces a repeatable baseline. Unsupported metrics must be named
+explicitly; they may not be relabelled from component tests or silently
+omitted.
 
 ## 9. Preservation matrix
 
@@ -475,8 +503,10 @@ browser behavior.
       controls/wire models.
 - [ ] Three-run component/state/query delta procedure passes without changing
       SP3C frozen ceilings.
-- [ ] Real authenticated browser manual acceptance covers responsive resize,
-      teleported slide-over, focus, scroll, inert links, locales, and Back.
+- [ ] Real authenticated browser acceptance covers responsive resize,
+      teleported slide-over, focus, scroll, inert links, locales, and Back, and
+      records the required DOM/focusable/network/listener/heap/timing evidence
+      or explicitly identifies a runner limitation.
 - [ ] Existing writer stale/collision/reference/default/sibling/lifecycle tests
       remain green.
 
@@ -493,24 +523,25 @@ browser behavior.
 | `tests/Feature/SettingsSp3cTest.php` | Test-only | Unsaved parity, zero lifecycle/writer/settings/reference effects, protected state, error retention, family refresh, preservation regressions. |
 | `tests/Feature/PublicFrontCardTemplateBuilderTest.php` | Test-only | Presenter/component parity and inert preview links for all families. |
 | SP3C canary support/test files | Test-only | Deepest-fixture component/state/query deltas using existing parser/encoding contract. |
-| Real-browser operator procedure in the eventual implementation handoff | Test/manual only | Responsive/focus/teleport/RTL/LTR/Back evidence; no fabricated numeric browser claim. |
+| Real-browser measurement and operator procedure in the eventual implementation handoff | Test/manual only | Responsive/focus/teleport/RTL/LTR/Back acceptance plus recorded DOM/focusable/network/listener/heap/timing observations; no fabricated numeric cap. |
 
 Likely implementation split: Task 1 extracts the shared read-only normalization
 seam and adds sample/presenter tests; Task 2 adds editor interaction/components,
-translations, component budgets, and manual acceptance instructions. Forecast:
-2.5–3.5 hours, no migration, dependency, configuration, or data work, followed
-by the repository's normal single integrated review and final gate. Stop for an
-amended audit if the candidate needs more than two tasks/four hours, new
-persistence, a generalized platform, presenter rewrites, sample management,
-new permissions, or any lifecycle/ownership change.
+the bounded selector, freshness details, translations, component budgets, and
+browser measurements. Forecast: 1.5–2.5 hours of coding and 1–1.5 hours of
+focused tests/browser evidence/ordered verification, 3–4 hours total, with no
+migration, dependency, configuration, or data work. Stop for an amended audit
+if the candidate needs more than two tasks/four hours, new persistence, a
+generalized platform, presenter rewrites, persisted sample management, new
+permissions, or any lifecycle/ownership change.
 
 ## 11. Open decision and recommendation
 
-Current evidence resolves the core design: explicit refresh, automatic bounded
-public-safe sample, `xl` adjacent layout, sub-`xl` slide-over, shared writer
-transport cleanup, in-memory default render context, existing presenters and
-components, and structurally inert preview interactions. The optional sample
-selector and extra browser instrumentation are droppable polish.
+Current evidence resolves the design: explicit refresh, automatic and
+user-selectable bounded public-safe samples, localized freshness details, `xl`
+adjacent layout, sub-`xl` slide-over, shared writer transport cleanup,
+in-memory default render context, existing presenters and components,
+structurally inert preview interactions, and recorded real-browser evidence.
 
 **Accept the v1 specification or request revisions before any Laravel
 Simplifier implementation audit.**
