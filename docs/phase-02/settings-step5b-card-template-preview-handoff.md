@@ -351,5 +351,4 @@ The documented closure requirements sweep above passed before this sequence.
 
 ## Restricted selector closure commit hash
 
-Pending implementation commit; the immediate docs-only backfill will stamp
-the full hash here and in the ledger.
+`69813dbd4002ed8e7c3e42e640f7d48085e275da`
