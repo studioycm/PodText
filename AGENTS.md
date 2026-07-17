@@ -276,6 +276,22 @@ that single source of truth:
   fixes. Follow the normal prompt/research/plan workflow before implementing
   any finding.
 
+### Laravel Simplifier skill
+
+Activate the repository-owned `laravel-simplifier` skill before every
+Laravel/PHP implementation or refactor task. Its canonical package is
+`.ai/skills/laravel-simplifier`; the `.agents/skills/`, `.claude/skills/`, and
+`.junie/skills/` entries are tracked relative symlinks to that source of truth.
+
+- Every new or materially changed scope starts with a read-only Stage 1 audit
+  that produces an Audit ID, stable Option IDs, a bounded forecast, and exact
+  approval wording, then stops without editing files.
+- Stage 2 requires a new operator message that explicitly references the
+  current Audit ID and approved Option ID. Existing plans, earlier audits, and
+  initial implementation or execution requests do not satisfy this gate.
+- Material scope, baseline, security-boundary, dependency, migration, task, or
+  effort drift returns to Stage 1 for an amended audit and new approval.
+
 ### FilaCheck and FilaCheck Pro
 
 FilaCheck is part of the quality gate for Filament work.
