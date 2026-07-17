@@ -88,11 +88,12 @@ Recorded after the Markdown-only post-Prompt-10 prompt-progress centralization c
   prerequisites for Card Template preview/side-panel UX or other bounded
   feature work. Existing Card Template/Public Form storage and writers remain
   authoritative until a separately approved present requirement changes them.
-- Step 5B Card Template Preview UX specification control is selected as the
-  next run. The v1 controller prompt opens one docs-only prompt-writer task,
-  then a separate docs-only specification task after the checkout is clean.
-  It stops for operator review before any Simplifier implementation audit or
-  PHP change.
+- Step 5B Card Template Preview UX specification control is selected. Mini-task
+  1 prepared
+  `prompts/pre-13-prompts/step5b-card-template-preview-ux-specification-codex-prompt.md`
+  v1. After its clean docs-only commit, the controller's separate Mini-task 2
+  runs that prompt and stops for operator accept/revise before any Simplifier
+  implementation audit or PHP change.
 - CURATOR-HF1 is an in-between Curator picker hydration repair: registered
   header-logo and custom default-image selections now hydrate from raw path
   state exactly once and retain Curator's UUID-keyed item map for rendering and
@@ -189,7 +190,7 @@ Recorded after the Markdown-only post-Prompt-10 prompt-progress centralization c
 | AUTHZ1 - Dormant package foundation and legacy migration utility | Complete / done for now; command closure implemented | `docs/phase-02/authz-command-closure-handoff.md`; reset master plan; plan 20; historical reports 12–18 | The three `authz:roles:*` commands are withheld and the retained migration namespace is application-isolated. Legacy enum/rank/Gates remain authoritative. Shield stays unregistered with no `HasRoles`, grants, cutover, or role UI. AUTHZ1-D–I and recursive remediation are stopped. |
 | MAINT-LW-UX1 - Stale-tab maintenance UX and regressions | Named deferred; not implemented or prompted | `docs/research/settings-performance/14-maintenance-livewire-enforcement-effects-audit.md` | Independent medium UX/test follow-up due before the first later public Livewire navigation/polling/lazy/deferred/stream/upload expansion. |
 | ARCH1 - Versioned Card Template and Public Form aggregates | Deferred / not current | Historical reports 07, 09, and 11; reset master plan controls | No present feature requires the migration. Current SP3C/Step 6 storage and writers remain authoritative. ARCH1 does not depend on completing AUTHZ1 and is not a prerequisite for Card Template preview/side-panel UX. |
-| Step 5B - Card Template Admin Preview UX | Selected for docs-only specification; not implemented or audited | Reset master plan; recovered checkpoint queue; `prompts/pre-13-prompts/step5b-feature-first-controller-codex-prompt.md` v1 | Controller runs a prompt-writer mini-task, then a separate specification mini-task. Use current SP3C storage/writer and controlled presenters for an adjacent wide-screen preview and narrower-screen slide-over. Stop for review before any implementation audit. No ARCH1, new persistence, generalized revisions, or collaboration scope. |
+| Step 5B - Card Template Admin Preview UX | Specification prompt prepared; specification not yet run, implemented, or audited | Reset master plan; recovered checkpoint queue; controller v1; `prompts/pre-13-prompts/step5b-card-template-preview-ux-specification-codex-prompt.md` v1 | Mini-task 1 is complete after its docs-only commit. Run the prompt in a separate Mini-task 2 from a clean checkout. Use current SP3C storage/writer and controlled presenters for an adjacent wide-screen preview and narrower-screen slide-over. Stop for accept/revise before any implementation audit. No ARCH1, new persistence, generalized revisions, or collaboration scope. |
 | WB-PROBE-HF1 and Google format probe | Conditional Later checkpoint; not implemented or run | Report 07 and recovered checkpoint queue | If Workbench resumes, first harden connection selection, refresh, output privacy, and partial-failure resume behavior; then run the private 20-document probe before WB2/WB4 or paste-cleanup planning. |
 | LENS1 review packs | Pending operator review; not implementation scope | Report 07 and recovered checkpoint queue | Review roughly 25–40 rows per page/domain pack with key, HE, EN, context, and decision. Do not restore wholesale approval of the old 269-row table. |
 | SP3 browser acceptance evidence | Conditional Later evidence; not a feature blocker | Report 07 and recovered checkpoint queue | Authenticated in-app, serial browser, and external Playwright evidence remain due only when settings performance work or touched UX needs measured acceptance. SP3D is not a prerequisite. |
@@ -203,9 +204,9 @@ Recorded after the Markdown-only post-Prompt-10 prompt-progress centralization c
 
 - The accepted feature-first reset supersedes the old AUTHZ1-D–I/ARCH1 sequence
   and the old automatic P2-first continuation. The bounded v1 closure is
-  complete. Step 5B docs-only specification control is selected next: write its
-  thorough prompt in one mini-task, run the specification in a second, and stop
-  for operator review before any Laravel Simplifier implementation audit.
+  complete. Step 5B Mini-task 1 has prepared its thorough v1 specification
+  prompt. Run that prompt in the controller's separate Mini-task 2 and stop for
+  operator accept/revise before any Laravel Simplifier implementation audit.
 
 - The active surviving-work and deferred-work registers are in
   `docs/research/settings-performance/10-pending-decision-question-queue.md`.

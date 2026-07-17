@@ -24,6 +24,12 @@ Historical prompts are under `prompts/archive/` and are not active instructions.
   handoff—opens a separate task to execute that prompt and prepare the small
   Card Template Preview UX specification. It authorizes no PHP implementation,
   Laravel Simplifier implementation audit, ARCH1/SP3D work, or push.
+- `pre-13-prompts/step5b-card-template-preview-ux-specification-codex-prompt.md`
+  v1 is the completed Mini-task 1 contract. The controller's separate
+  Mini-task 2 must execute it from the clean prompt commit to prepare
+  `docs/research/settings-performance/21-step5b-card-template-preview-ux-specification.md`
+  and a concise docs-only handoff, then stop for operator accept/revise before
+  any implementation audit.
 
 ## AUTHZ1 pre-Prompt-13 contracts
 
