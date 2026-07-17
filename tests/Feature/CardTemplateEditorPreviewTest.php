@@ -3,6 +3,7 @@
 use App\Enums\TranscriptionMode;
 use App\Filament\Pages\CreateCardTemplate;
 use App\Filament\Pages\EditCardTemplate;
+use App\Models\Author;
 use App\Models\ContentGroup;
 use App\Models\ContentItem;
 use App\Models\Transcription;
@@ -14,6 +15,7 @@ use App\Support\Settings\CardTemplates\CardTemplateFocusedWriter;
 use App\Support\Settings\CardTemplates\CardTemplatePreviewer;
 use App\Support\Settings\CardTemplates\CardTemplateReferenceScanner;
 use Filament\Facades\Filament;
+use Filament\Forms\Components\Select;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
@@ -65,14 +67,27 @@ function step5bEditorSaveSetting(string $settingsClass, string $name, mixed $val
     app(SettingsContainer::class)->clearCache();
 }
 
-function step5bEditorPublicItem(string $title, ?ContentGroup $group = null): ContentItem
-{
+function step5bEditorPublicItem(
+    string $title,
+    ?ContentGroup $group = null,
+    ?Author $author = null,
+): ContentItem {
     $group ??= ContentGroup::factory()->published()->create();
     $item = ContentItem::factory()->for($group)->published()->create(['title' => $title]);
-    $transcription = Transcription::factory()
+    $transcriptionFactory = Transcription::factory()
         ->for($item)
-        ->published(now()->subMinute())
-        ->create(['title' => $title]);
+        ->published(now()->subMinute());
+
+    if ($author) {
+        $transcriptionFactory->forAuthor($author);
+    }
+
+    $transcription = $transcriptionFactory->create(['title' => $title]);
+
+    if ($author) {
+        $transcription->syncTranscribers([$author]);
+    }
+
     $item->update(['featured_transcription_id' => $transcription->getKey()]);
 
     return $item->refresh();
@@ -187,6 +202,9 @@ it('shows invalid and family-specific empty states without falling back to a sto
 });
 
 it('never fetches or serializes protected parts for a restricted preview shell', function (): void {
+    $author = Author::factory()->create(['name' => 'Restricted Preview Contributor']);
+    $group = ContentGroup::factory()->published()->create(['title' => 'Restricted Preview Group']);
+    step5bEditorPublicItem('Restricted Preview Item', $group, $author);
     $template = step5bEditorTemplate();
     $template['parts'] = [[
         'type' => 'metadata_row',
@@ -214,7 +232,100 @@ it('never fetches or serializes protected parts for a restricted preview shell',
 
     $state = json_encode($component->get('data'), JSON_THROW_ON_ERROR);
 
+    $queries = [];
+
+    $component
+        ->assertActionHidden('choosePreviewSample')
+        ->assertActionDisabled('choosePreviewSample')
+        ->assertDontSee(__('admin.settings_sp3c.preview.choose_sample'))
+        ->call('mountAction', 'choosePreviewSample')
+        ->assertSet('mountedActions', [])
+        ->call('callSchemaComponentMethod', 'mountedActionSchema0.sample_id', 'getSearchResultsForJs', ['Restricted'])
+        ->call('callSchemaComponentMethod', 'mountedActionSchema0.sample_id', 'getOptionLabel');
+
     expect($state)->not->toContain('STEP5B-PROTECTED-SECRET')
         ->and(collect($queries)->contains(fn (string $sql): bool => str_contains($sql, 'from "content_items"')))->toBeFalse()
+        ->and(collect($queries)->contains(fn (string $sql): bool => str_contains($sql, 'from "content_groups"')))->toBeFalse()
         ->and(collect($queries)->contains(fn (string $sql): bool => str_contains($sql, 'from "authors"')))->toBeFalse();
+});
+
+it('keeps authorized sample selector search label selection and refresh working for every family', function (): void {
+    $author = Author::factory()->create(['name' => 'Authorized Preview Contributor']);
+    $group = ContentGroup::factory()->published()->create(['title' => 'Authorized Preview Group']);
+    $item = step5bEditorPublicItem('Authorized Preview Item', $group, $author);
+    $samples = [
+        'content_item' => [
+            'id' => $item->getKey(),
+            'search' => 'Authorized Preview Item',
+            'label' => __('admin.settings_sp3c.preview.sample_item_label', [
+                'title' => $item->title,
+                'group' => $group->title,
+            ]),
+        ],
+        'content_group' => [
+            'id' => $group->getKey(),
+            'search' => 'Authorized Preview Group',
+            'label' => $group->title,
+        ],
+        'contributor' => [
+            'id' => $author->getKey(),
+            'search' => 'Authorized Preview Contributor',
+            'label' => $author->name,
+        ],
+    ];
+
+    foreach ($samples as $family => $sample) {
+        $template = step5bEditorTemplate($family, "preview_{$family}");
+        step5bEditorSaveSetting(PublicContentSettings::class, 'card_templates', [$template]);
+
+        $component = Livewire::test(EditCardTemplate::class, [
+            'family' => $family,
+            'key' => "preview_{$family}",
+        ])
+            ->assertSet('previewStatus', 'ready')
+            ->assertActionVisible('choosePreviewSample')
+            ->assertActionEnabled('choosePreviewSample')
+            ->mountAction('choosePreviewSample')
+            ->assertSet('mountedActions.0.name', 'choosePreviewSample');
+
+        $select = $component->instance()->getSchemaComponent('mountedActionSchema0.sample_id');
+
+        expect($select)->toBeInstanceOf(Select::class)
+            ->and($select->getOptionsLimit())->toBe(CardTemplatePreviewer::SAMPLE_LIMIT)
+            ->and($select->getSearchResults($sample['search']))->toHaveKey($sample['id']);
+
+        $component->fillForm(['sample_id' => $sample['id']]);
+        $select = $component->instance()->getSchemaComponent('mountedActionSchema0.sample_id');
+
+        expect($select)->toBeInstanceOf(Select::class)
+            ->and($select->getOptionLabel())->toBe($sample['label']);
+
+        $component
+            ->callMountedAction()
+            ->assertSet('previewStatus', 'ready')
+            ->assertSet('previewFamily', $family)
+            ->assertSet('previewSampleId', $sample['id']);
+    }
+});
+
+it('caps authorized sample selector searches at fifty results', function (): void {
+    foreach (range(1, 51) as $index) {
+        $group = ContentGroup::factory()->published()->create([
+            'title' => sprintf('Authorized Selector Group %02d', $index),
+        ]);
+        step5bEditorPublicItem("Authorized Selector Item {$index}", $group);
+    }
+
+    $template = step5bEditorTemplate('content_group', 'preview_content_group');
+    step5bEditorSaveSetting(PublicContentSettings::class, 'card_templates', [$template]);
+
+    $component = Livewire::test(EditCardTemplate::class, [
+        'family' => 'content_group',
+        'key' => 'preview_content_group',
+    ])->mountAction('choosePreviewSample');
+    $select = $component->instance()->getSchemaComponent('mountedActionSchema0.sample_id');
+
+    expect($select)->toBeInstanceOf(Select::class)
+        ->and($select->getOptionsLimit())->toBe(CardTemplatePreviewer::SAMPLE_LIMIT)
+        ->and($select->getSearchResults('Authorized Selector Group'))->toHaveCount(CardTemplatePreviewer::SAMPLE_LIMIT);
 });

@@ -353,6 +353,8 @@ abstract class CardTemplateEditorPage extends SettingsPage
             ->label(__('admin.settings_sp3c.preview.choose_sample'))
             ->icon(Heroicon::OutlinedMagnifyingGlass)
             ->color('gray')
+            ->visible(fn (): bool => $this->canChoosePreviewSample())
+            ->disabled(fn (): bool => ! $this->canChoosePreviewSample())
             ->modalHeading(__('admin.settings_sp3c.preview.choose_sample_heading'))
             ->modalSubmitActionLabel(__('admin.settings_sp3c.preview.choose'))
             ->modalCancelActionLabel(__('admin.actions.cancel'))
@@ -367,10 +369,16 @@ abstract class CardTemplateEditorPage extends SettingsPage
                     ->searchable()
                     ->preload(false)
                     ->optionsLimit(CardTemplatePreviewer::SAMPLE_LIMIT)
-                    ->getSearchResultsUsing(fn (string $search): array => app(CardTemplatePreviewer::class)
-                        ->sampleOptions($this->currentPreviewFamily(), $search))
+                    ->getSearchResultsUsing(function (string $search): array {
+                        if (! $this->canChoosePreviewSample()) {
+                            return [];
+                        }
+
+                        return app(CardTemplatePreviewer::class)
+                            ->sampleOptions($this->currentPreviewFamily(), $search);
+                    })
                     ->getOptionLabelUsing(function (mixed $value): ?string {
-                        if (! is_numeric($value)) {
+                        if (! $this->canChoosePreviewSample() || ! is_numeric($value)) {
                             return null;
                         }
 
@@ -382,6 +390,10 @@ abstract class CardTemplateEditorPage extends SettingsPage
                     ->required(),
             ])
             ->action(function (array $data): void {
+                if (! $this->canChoosePreviewSample()) {
+                    return;
+                }
+
                 $sampleId = $data['sample_id'] ?? null;
 
                 if (! is_numeric($sampleId)) {
@@ -578,6 +590,19 @@ abstract class CardTemplateEditorPage extends SettingsPage
         return $this->previewFamily
             ?? $this->familyFromDraft(is_array($this->data) ? $this->data : [])
             ?? PublicFrontCardTemplateRegistry::CONTENT_ITEM_FAMILY;
+    }
+
+    private function canChoosePreviewSample(): bool
+    {
+        if ($this->restricted || $this->previewStatus === 'restricted') {
+            return false;
+        }
+
+        if ($this->templateProtectedAtMount && ! $this->capable) {
+            return false;
+        }
+
+        return in_array($this->currentPreviewFamily(), PublicFrontCardTemplateRegistry::families(), true);
     }
 
     /**

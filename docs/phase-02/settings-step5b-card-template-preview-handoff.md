@@ -40,6 +40,28 @@ Public card components accept an explicit `previewMode`. It preserves visible
 content while removing `href`, `target`, `wire:click`, button submission, and
 keyboard tab stops. Ordinary public calls retain their existing defaults.
 
+## Restricted sample-selector closure
+
+The later Laravel Simplifier audit `LS-20260717-STEP5B-CLOSURE-01` confirmed a
+restricted-shell contract gap, not a protected-data disclosure. A protected
+template's preview already stopped before rendering protected parts, but its
+retained valid family could still offer the transient public-safe sample
+selector.
+
+The approved `STEP5B-CLOSURE-O1` repair now:
+
+- omits Choose sample from a restricted preview shell;
+- hides and disables the Filament action using the existing restricted/current
+  capability state, so a forged `mountAction()` stops before its schema mounts;
+- returns before `sampleOptions()`, `sampleLabel()`, or a selection refresh if
+  the state becomes restricted; and
+- proves that mount, a forged action request, and forged schema-component
+  lookup cannot query `content_items`, `content_groups`, or `authors`.
+
+This preserves the authorized selector's existing public-safe semantics,
+three-family support, transient state, and 50-result cap. It does not add a
+permission, alter public sample eligibility/order, or expose protected parts.
+
 ## Requirement classification
 
 | Requirement | Classification | Evidence |
@@ -57,7 +79,7 @@ keyboard tab stops. Ordinary public calls retain their existing defaults.
 | HE/EN, RTL/LTR, logical end, independent scroll | Implemented | Authenticated Chromium verifies Hebrew RTL and English LTR; CSS uses logical layout and both editor/preview scroll containers remain independent. |
 | Keyboard, focus trap, Escape, resize restoration | Implemented | Native slide-over trap plus explicit heading/open-button focus targets are covered in Chromium. |
 | Inert public interactions | Implemented | Feature and browser assertions find no public-card `href`, `wire:click`, buttons, or other public interactions in either preview mode. |
-| Protected state remains absent | Implemented | Restricted-shell tests assert no sample query and no protected sentinel in HTML or serialized draft state. |
+| Protected state and restricted selector boundary remain absent | Implemented | Restricted interaction coverage proves Choose sample is hidden/disabled, forged action/schema requests issue no item/group/author sample query, and the protected sentinel remains absent from HTML and serialized draft state. |
 | One draft/no model graph/no added editor controls | Implemented | Preview-aware canary adds zero wrappers, editor controls, or wire-model paths; preview state contains compact scalars/presented HTML only. |
 | Three-run component delta and frozen SP3C preservation | Implemented | Three identical unselected/selected/nested runs pass without changing the SP3C ceilings. |
 | Real-browser DOM/network/listener/heap/timing evidence | Implemented with runner limitation | Chromium records DOM, roots, focusables, one refresh request, heap observation, and timings. The runner exposes Livewire component count but not listener enumeration; no listener value was fabricated. |
@@ -127,6 +149,13 @@ These browser numbers are recorded observations, not new pass/fail ceilings.
 - Planning/state:
   `docs/research/settings-performance/22-step5b-card-template-preview-implementation-plan.md`,
   this handoff, current project state, and the mini-step ledger.
+- Restricted-selector closure:
+  `docs/research/settings-performance/23-step5b-restricted-preview-closure-research.md`,
+  `docs/research/settings-performance/24-step5b-restricted-preview-closure-implementation-plan.md`,
+  `docs/research/settings-performance/10-pending-decision-question-queue.md`,
+  `app/Filament/Pages/CardTemplateEditorPage.php`,
+  `resources/views/filament/pages/card-template-preview.blade.php`, and
+  `tests/Feature/CardTemplateEditorPreviewTest.php`.
 
 ## Tests added or updated
 
@@ -140,6 +169,10 @@ These browser numbers are recorded observations, not new pass/fail ceilings.
 - Added authenticated Chromium coverage for responsive roots, native
   slide-over focus/trap/Escape/restoration, scroll, inert cards, refresh
   network/DOM/heap timing, dirty `beforeunload`, and HE/EN directions.
+- Added restricted interaction coverage for selector absence/disablement,
+  forged action/schema requests, all three sample-query tables, protected
+  sentinel absence, authorized search/selected-label/selection/refresh for all
+  three families, and the 50-result selector bound.
 
 ## Commands and results
 
@@ -179,9 +212,50 @@ These browser numbers are recorded observations, not new pass/fail ceilings.
 - Final long-content/technical-key browser rerun: 2 tests / 28 assertions
   passed.
 
+### Restricted selector closure checks
+
+- Stage 2 preflight confirmed clean `main` at
+  `2861c320bbeb1091e57b436623241feea039f64a`, both required Step 5B commits,
+  the scoped source baseline, and the exact approved audit/option IDs.
+- Laravel Boost installed-version and action/select/Livewire testing research:
+  completed. FilamentExamples completed two search/snippet passes; no
+  source/detail endpoint was available.
+- `php artisan test --compact tests/Feature/CardTemplateEditorPreviewTest.php`:
+  passed 6 tests / 94 assertions.
+- `php artisan test --compact tests/Feature/CardTemplatePreviewerTest.php`:
+  passed 8 tests / 42 assertions.
+- `php artisan test --compact tests/Feature/SettingsSp3cCanaryTest.php`:
+  passed 10 tests / 388 assertions; frozen SP3C ceilings remain unchanged.
+- Sandboxed `php artisan test --compact tests/Browser/CardTemplatePreviewBrowserTest.php`:
+  failed 2 browser cases before assertions because Chromium was denied its
+  macOS rendezvous port. No files changed. The permitted external retry of the
+  same command passed 2 tests / 28 assertions.
+
 ### Ordered final gate
 
 Requirements sweep passed before the gate.
+
+#### Restricted selector closure requirements sweep
+
+- Implemented: restricted preview shells do not render or offer Choose sample;
+  the page action is also disabled before Filament can mount its schema.
+- Implemented: search, selected-label, and selection callbacks return before
+  preview sample services in a restricted/current-capability state; Refresh
+  keeps its existing restricted-safe branch.
+- Implemented: focused restricted interaction coverage proves no
+  `content_items`, `content_groups`, or `authors` sample query after the
+  initial shell mount, including forged action/schema attempts.
+- Implemented: authorized item, group, and contributor selectors retain their
+  real search, selected-label, selection, refresh, transient state, and
+  50-result behavior.
+- Implemented: protected parts remain absent from HTML/editor state; the
+  Step 5B browser and SP3C canary preservation suites remain unchanged.
+- Implemented: the handoff wording and pending-decision queue are synchronized;
+  the ledger/current state retain the rule that no next implementation is
+  automatically selected.
+- Not applicable: persistence, migration, dependency, capability architecture,
+  sample eligibility/order changes, public-card redesign, and all excluded
+  roadmap work.
 
 1. `vendor/bin/pint --test`: passed.
 2. `vendor/bin/filacheck`: passed with 0 issues.
@@ -198,6 +272,22 @@ same ordered commands on the final documented tree: Pint passed, FilaCheck
 reported 0 issues, Vite built successfully, and the external full suite passed
 755 tests / 9,476 assertions.
 
+### Restricted selector closure final gate
+
+The documented closure requirements sweep above passed before this sequence.
+
+1. Initial `vendor/bin/pint --test`: failed only on
+   `CardTemplateEditorPreviewTest.php` `braces_position`. The multiline helper
+   signature was corrected manually; no behavior changed.
+2. `php artisan test --compact tests/Feature/CardTemplateEditorPreviewTest.php`:
+   passed 6 tests / 94 assertions after that formatting-only correction.
+3. Restarted `vendor/bin/pint --test`: passed.
+4. `vendor/bin/filacheck`: passed with 0 issues.
+5. `npm run build`: passed with Vite 8.1.0.
+6. `php artisan test`: passed as the full-suite final command. The local runner
+   did not emit an aggregate summary after completion; the successful exit is
+   the recorded result.
+
 ## Assumptions, limitations, and deferrals
 
 - The approved zero-preview-settings-read interpretation applies to preview
@@ -210,6 +300,11 @@ reported 0 issues, Vite built successfully, and the external full suite passed
   heap snapshots.
 - Browser observations are not substituted for component HTML/state/query
   metrics or promoted to numeric ceilings.
+- The closure relies on the existing restricted/current-capability state; it
+  deliberately adds no general permission or preview-authorization system.
+- The audit found no protected-data confidentiality exposure. The repair is
+  authorization-contract enforcement, unnecessary public-sample query
+  suppression, and test/handoff correction.
 - No live network, mail, development database, migration, dependency install,
   production action, push, or remote publication occurred.
 
@@ -242,12 +337,19 @@ reported 0 issues, Vite built successfully, and the external full suite passed
 10. Repeat the wide/narrow flow in Hebrew and English. Expect Hebrew RTL,
     English LTR, preview placement at logical end, independent editor/preview
     scrolling, wrapped long sample labels, and no horizontal page overflow.
-11. Edit a protected template as an actor without its current capability.
-    Expect a restricted preview, no protected part values in page source, and
-    unchanged existing Save protection.
+11. Edit a protected template as an actor without its current capability. At
+    both wide layout and in the narrow Preview slide-over, expect a restricted
+    preview with no Choose sample action or searchable sample control. Expect
+    no protected part values in page source and unchanged existing Save
+    protection.
 12. Make an unsaved edit and use Back or close the tab. Expect the existing
     unsaved-changes warning to remain authoritative.
 
 ## Commit hash
 
 `c75d0f2b2d476c58d12c16610ea97ba4088c5e79`
+
+## Restricted selector closure commit hash
+
+Pending implementation commit; the immediate docs-only backfill will stamp
+the full hash here and in the ledger.

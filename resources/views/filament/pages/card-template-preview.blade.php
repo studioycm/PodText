@@ -37,7 +37,7 @@
             </div>
 
             <div class="flex shrink-0 flex-wrap items-center gap-2">
-                @if(in_array($previewFamily, \App\Support\PublicFront\Cards\PublicFrontCardTemplateRegistry::families(), true))
+                @if($previewStatus !== 'restricted' && in_array($previewFamily, \App\Support\PublicFront\Cards\PublicFrontCardTemplateRegistry::families(), true))
                     {{ $this->choosePreviewSampleAction }}
                 @endif
 

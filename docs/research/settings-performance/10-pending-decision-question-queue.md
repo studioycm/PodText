@@ -2,8 +2,9 @@
 
 Date: 2026-07-17
 
-Status: feature-first roadmap recovered; bounded AUTHZ command closure complete;
-Step 5B docs-only specification control selected
+Status: feature-first roadmap recovered; bounded AUTHZ command closure
+complete; Step 5B specification, audit, implementation, and restricted
+sample-selector closure complete. No implementation is automatically selected.
 
 Controlling plan:
 `19-authz-complexity-reset-and-feature-first-master-plan.md`.
@@ -40,7 +41,7 @@ chain. AUTHZ1-D–I remains cancelled.
 
 | ID / work | Status | Trigger or next preparation | Boundary |
 |---|---|---|---|
-| Step 5B Card Template Admin Preview UX | Selected for docs-only specification; not authorized for implementation | Run the v1 feature-first controller: prompt-writer mini-task first, specification mini-task second; review the result before any implementation audit | Use current SP3C storage/writer and controlled presenters; adjacent panel on wide screens and slide-over on narrower screens; no ARCH1 or new persistence |
+| Step 5B Card Template Admin Preview UX | Complete, including restricted sample-selector closure | No next preparation is implied; the operator selects any later work separately | Current SP3C storage/writer and controlled presenters remain authoritative. The closure hides and server-blocks sample lookup for restricted previews; no ARCH1, persistence, or new permission was added. |
 | Settings import locks | Implemented; preserve | Add a lock only when a concrete workflow proves it necessary | Keep the six approved important fields, section locks, import-only semantics, and no record/Builder/nested-child lock system |
 | Filament Select policy | Accepted durable rule | Recheck touched forms during ordinary UX work; use browser evidence where custom controls matter | Tiny finite sets prefer native controls unless required behavior needs custom rendering; growing sources stay async, constrained, and capped |
 | `MAINT-LW-UX1` | Pending independent medium UX task | Must run before a later public Livewire navigation, polling, lazy/deferred, stream, or upload expansion | Preserve the committed server `503` enforcement; improve stale-tab maintenance message/retry UX and add report-14 focused regressions |
@@ -79,16 +80,14 @@ chain. AUTHZ1-D–I remains cancelled.
 
 ## Recovered sequence
 
-1. Treat the roadmap recovery and bounded AUTHZ command closure as complete.
-2. Run the Step 5B feature-first controller.
-3. In one mini-task, write the thorough v1 specification prompt; after its
-   clean docs-only commit, run it in a separate mini-task to prepare the
-   bounded Step 5B preview specification.
-4. Review the specification. Only a later implementation selection starts its
-   own Simplifier Stage 1 audit and ID-bound approval.
-5. Select one Later item at a time from the surviving register. Apply
+1. Treat the roadmap recovery, bounded AUTHZ command closure, and Step 5B v1
+   specification as complete.
+2. The Step 5B Laravel Simplifier audit, approved implementation, and
+   restricted sample-selector closure are complete. They do not select or
+   authorize another feature.
+3. Select one Later item at a time from the surviving register. Apply
    `MAINT-LW-UX1` before its named public Livewire trigger.
-6. Run `SIMPLIFY-REVIEW1` only if explicitly selected; its suggestions do not
+4. Run `SIMPLIFY-REVIEW1` only if explicitly selected; its suggestions do not
    interrupt the feature-first sequence or authorize cleanup.
 
 No broad architecture question is pending, and no erased checkpoint is an
