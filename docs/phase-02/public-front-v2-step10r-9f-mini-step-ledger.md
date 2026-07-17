@@ -4,15 +4,14 @@ This ledger controls the post-Step-10 mini-step sequence. Each run implements ex
 
 ## Current Run
 
-- Selected step: AUTHZ command closure
-- Status: complete; implementation hash
-  `0be807051a3e43d08b57bd214278ce95c42bda1b`. The three dormant migration
-  commands are withheld while legacy authority and dormant support assets stay
-  unchanged.
-- Next step: explicitly select a new bounded task. The preferred preparation is
-  a small Step 5B Card Template preview/side-panel specification followed by its
-  own Laravel Simplifier audit. Do not start it automatically. AUTHZ1-D–I,
-  ARCH1, SP3D, SP4, LOG1, and MySQL rehearsal are not current work.
+- Selected step: Step 5B Card Template Preview UX specification control
+- Status: selected; the v1 controller prompt coordinates two sequential
+  docs-only mini-tasks and authorizes no implementation.
+- Next step: run
+  `prompts/pre-13-prompts/step5b-feature-first-controller-codex-prompt.md` v1.
+  Its first mini-task writes the thorough specification prompt; its second runs
+  that prompt and returns the specification for review. AUTHZ1-D–I, ARCH1,
+  SP3D, SP4, LOG1, and MySQL rehearsal are not current work.
 
 ## Checklist
 
@@ -70,7 +69,7 @@ This ledger controls the post-Step-10 mini-step sequence. Each run implements ex
 | OTP-POLICY1 - OTP policy config and expiry copy | complete | `0394ab5` | `config/forms.php`; `.env.example`; OTP manager/mailable/maintenance/Livewire consumers; mail/Livewire/maintenance Blade; he/en public translations; OTP/public-form/maintenance tests; research/handoff/current-state docs; this ledger | Focused OTP regression passed 37 tests / 338 assertions after the inline-end review correction; final ordered gate is recorded in the handoff. | Default expiry is 5 minutes; max attempts remains 5; cooldown remains 60 seconds. Actions now render at logical inline-end. Mechanics and dependencies are unchanged. |
 | SP3B - Settings subject pages and fresh owned-path saves | complete | `dedca88 perf: split settings into subject pages with fresh owned-path saves`; `docs/phase-02/settings-sp3b-handoff.md` | Eight focused settings pages, temporary Card Templates, upgraded Manage Public Forms, hidden legacy redirect, complete ownership registry, fresh owned-path save contract, local-only subject canaries, translations, tests, research/plan/state docs, and this ledger | Required focused regression passed 169 tests / 1,877 assertions; final ordered gate is recorded in the handoff | Preserves sequential stale disjoint-owner saves only. No migrations, dependencies, locks, lifecycle-byte changes, import/restore/normalize/import-lock/backup/Admin UX rewrites, or simultaneous-request serialization claim. Browser metric samples are blocked by the local in-app browser runtime and remain a manual follow-up. |
 | SP3C - Template library and one-template editor | complete | `4cb70f2 feat: add template library and one-template editor`; `docs/phase-02/settings-sp3c-handoff.md` | read-only unpaginated Card Templates library; hidden create/edit pages; Builder preview canary and frozen budgets; safe projection/reference scanner; one focused fresh-snapshot writer; protected-state authorization; profiler subjects; translations; tests; research/plan/state docs; this ledger | Exact baseline passed 191 tests / 2,289 assertions; settled affected regression passed 231 tests / 2,649 assertions; final ordered gate is recorded in the handoff | Preserves the ownership root, SP3A fixture/SHA, lifecycle/import-lock/import/restore/normalize/backup paths, strict sibling and foreign-root values, and sequential stale detection. Adds no dependency, migration, lock, or simultaneous-request serialization claim and does not promise literal database-payload bytes. Browser metrics remain a numbered pending operator check. |
-| Step 5B - Card Template Admin Preview UX | preferred first visible feature after AUTHZ closure; not yet specified or audited | reset master plan; recovered checkpoint queue | Future bounded preview spec and Laravel Simplifier audit | None | Use current SP3C storage/writer and controlled presenters; adjacent preview on wide screens and slide-over on narrower screens; no ARCH1 or new persistence. |
+| Step 5B - Card Template Admin Preview UX | selected for docs-only specification; not implemented or audited | reset master plan; recovered checkpoint queue; `prompts/pre-13-prompts/step5b-feature-first-controller-codex-prompt.md` v1 | Prompt-writer mini-task, then separate specification mini-task; implementation audit only after operator review | None | Use current SP3C storage/writer and controlled presenters; adjacent preview on wide screens and slide-over on narrower screens; no ARCH1 or new persistence. |
 | AUTHZ1 - Dormant package foundation and migration utility | complete / done for now | `0be807051a3e43d08b57bd214278ce95c42bda1b`; `docs/phase-02/authz-command-closure-handoff.md` | Deleted the three auto-discovered command classes; updated command-absence coverage; added the dormant-namespace architecture guard; minimum closeout docs | Baseline: 56 tests / 555 assertions and 109 / 949; focused final: 55 / 528 and 109 / 949; canonical final gate recorded in the handoff | Shield remains unregistered; no `HasRoles`, grants, cutover, role UI, AUTHZ1-D–I, production migration, MySQL rehearsal, or recursive audit. Legacy authority and dormant services remain unchanged. |
 | MAINT-LW-UX1 - Stale-tab maintenance UX and focused regressions | named deferred; not implemented or prompted | `docs/research/settings-performance/14-maintenance-livewire-enforcement-effects-audit.md` | Future mini-task only: improve the medium production stale-tab notification/body/retry UX and close focused report-14 regression gaps | None in this planning task | Run before any later public Livewire navigation/polling/lazy/deferred/stream/upload expansion. |
 | ARCH1 - Versioned Card Template and Public Form aggregates | deferred / not current | historical reports 07, 09, and 11; reset master plan controls | Reopen only for a concrete present requirement with a fresh estimate and operator approval | None | Current storage/writers remain authoritative. No AUTHZ dependency and no block on Card Template preview/side-panel UX. |

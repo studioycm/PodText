@@ -3,7 +3,7 @@
 Date: 2026-07-17
 
 Status: feature-first roadmap recovered; bounded AUTHZ command closure complete;
-next work requires explicit selection
+Step 5B docs-only specification control selected
 
 Controlling plan:
 `19-authz-complexity-reset-and-feature-first-master-plan.md`.
@@ -26,9 +26,9 @@ chain. AUTHZ1-D–I remains cancelled.
   and Users Resource restrictions remain authoritative.
 - Shield stays unregistered; `User` stays without `HasRoles`; no compatibility
   grants, package cutover, or role UI.
-- Plan 20 and the v1 closure prompt may only remove the three auto-discovered
-  `authz:roles:*` command classes, add focused closure/legacy-authority
-  regressions, and update minimum docs.
+- Plan 20 and the v1 closure prompt removed the three auto-discovered
+  `authz:roles:*` command classes, added focused closure/legacy-authority
+  regressions, and updated minimum docs.
 - H-01/M-01/L-01 are outside the narrowed non-operational threat boundary once
   those commands are unreachable. They reopen if migration capability returns.
 - Existing settings import locks and Card Template storage/writer remain in
@@ -40,7 +40,7 @@ chain. AUTHZ1-D–I remains cancelled.
 
 | ID / work | Status | Trigger or next preparation | Boundary |
 |---|---|---|---|
-| Step 5B Card Template Admin Preview UX | Preferred first visible feature after AUTHZ closure | Write a small preview specification, then run its own Laravel Simplifier audit before implementation | Use current SP3C storage/writer and controlled presenters; adjacent panel on wide screens and slide-over on narrower screens; no ARCH1 or new persistence |
+| Step 5B Card Template Admin Preview UX | Selected for docs-only specification; not authorized for implementation | Run the v1 feature-first controller: prompt-writer mini-task first, specification mini-task second; review the result before any implementation audit | Use current SP3C storage/writer and controlled presenters; adjacent panel on wide screens and slide-over on narrower screens; no ARCH1 or new persistence |
 | Settings import locks | Implemented; preserve | Add a lock only when a concrete workflow proves it necessary | Keep the six approved important fields, section locks, import-only semantics, and no record/Builder/nested-child lock system |
 | Filament Select policy | Accepted durable rule | Recheck touched forms during ordinary UX work; use browser evidence where custom controls matter | Tiny finite sets prefer native controls unless required behavior needs custom rendering; growing sources stay async, constrained, and capped |
 | `MAINT-LW-UX1` | Pending independent medium UX task | Must run before a later public Livewire navigation, polling, lazy/deferred, stream, or upload expansion | Preserve the committed server `503` enforcement; improve stale-tab maintenance message/retry UX and add report-14 focused regressions |
@@ -79,13 +79,16 @@ chain. AUTHZ1-D–I remains cancelled.
 
 ## Recovered sequence
 
-1. Complete this Markdown-only roadmap recovery.
-2. Treat the bounded AUTHZ command closure as complete and stop AUTHZ for now.
-3. Prepare the bounded Step 5B preview specification and its Simplifier audit;
-   implement only after its separate approval.
-4. Select one Later item at a time from the surviving register. Apply
+1. Treat the roadmap recovery and bounded AUTHZ command closure as complete.
+2. Run the Step 5B feature-first controller.
+3. In one mini-task, write the thorough v1 specification prompt; after its
+   clean docs-only commit, run it in a separate mini-task to prepare the
+   bounded Step 5B preview specification.
+4. Review the specification. Only a later implementation selection starts its
+   own Simplifier Stage 1 audit and ID-bound approval.
+5. Select one Later item at a time from the surviving register. Apply
    `MAINT-LW-UX1` before its named public Livewire trigger.
-5. Run `SIMPLIFY-REVIEW1` only if explicitly selected; its suggestions do not
+6. Run `SIMPLIFY-REVIEW1` only if explicitly selected; its suggestions do not
    interrupt the feature-first sequence or authorize cleanup.
 
 No broad architecture question is pending, and no erased checkpoint is an

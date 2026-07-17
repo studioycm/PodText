@@ -16,15 +16,24 @@ For current completion/progress state, see `docs/phase-02/current-project-state.
 
 Historical prompts are under `prompts/archive/` and are not active instructions.
 
+## Current feature-first controller
+
+- `pre-13-prompts/step5b-feature-first-controller-codex-prompt.md` v1 is the
+  selected docs-only controller. It opens one task to write and commit the
+  thorough Step 5B specification prompt, then—only after a clean-checkout
+  handoff—opens a separate task to execute that prompt and prepare the small
+  Card Template Preview UX specification. It authorizes no PHP implementation,
+  Laravel Simplifier implementation audit, ARCH1/SP3D work, or push.
+
 ## AUTHZ1 pre-Prompt-13 contracts
 
-The older contracts are complete historical evidence. The feature-first reset in
+The contracts below are complete historical evidence. The feature-first reset in
 `docs/research/settings-performance/19-authz-complexity-reset-and-feature-first-master-plan.md`
-supersedes their forward AUTHZ1-D–I/ARCH1 sequencing. One bounded active prompt
+supersedes their forward AUTHZ1-D–I/ARCH1 sequencing. One bounded closure prompt
 was audited, approved, and executed as the done-for-now command closure:
 
-- `pre-13-prompts/authz-command-closure-codex-prompt.md` v1 removes only the
-  three auto-discovered `authz:roles:*` command classes, adds focused command
+- `pre-13-prompts/authz-command-closure-codex-prompt.md` v1 removed only the
+  three auto-discovered `authz:roles:*` command classes, added focused command
   closure/application-caller/legacy-authority regressions, preserves every
   dormant support asset, and stops. It was executed under Simplifier audit
   `LS-20260717-AUTHZ-01`, Option `AUTHZ-CLOSE-O1-DELETE-3`; its two-commit
@@ -47,12 +56,10 @@ was audited, approved, and executed as the done-for-now command closure:
   closeout are complete. The independent remediation audit is complete with
   decision **separate follow-up required** for coherent keyed ownership
   substitution, exact rollback apply-journal lineage, and mixed native adapter
-  identity lookup. The reset chooses a non-operational boundary instead of
-  another hardening cycle: a later prompt may only withhold the three
-  `authz:roles:*` commands plus focused regressions after operator acceptance.
-  AUTHZ1-D–I, package cutover, ARCH1 coupling, and recursive audit work are not
-  current scope. Plan 20 and the bounded v1 prompt above are the only permitted
-  closure path.
+  identity lookup. The reset chose a non-operational boundary instead of
+  another hardening cycle; the bounded v1 closure removed the three reachable
+  commands and added focused regressions. AUTHZ1-D–I, package cutover, ARCH1
+  coupling, and recursive audit work are not current scope.
 
 ## Pre-Prompt-08 research note
 

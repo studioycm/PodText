@@ -20,13 +20,19 @@ For current prompt completion/progress state, see `docs/phase-02/current-project
 
 The controlling reset is
 `docs/research/settings-performance/19-authz-complexity-reset-and-feature-first-master-plan.md`.
-The bounded AUTHZ command-surface closure prompt was already drafted in planning
-commit `97627b0`. The next step is its fresh read-only Laravel Simplifier Stage
-1 audit. Implementation requires a later operator message approving the
-reported Audit ID and Option ID. The preferred first visible feature after that
-closure is Card Template preview beside the editor on wide screens and in a
-slide-over on narrower screens, using the existing SP3C storage/writer and
-controlled public card presenters.
+The bounded AUTHZ command-surface closure is complete in `0be8070`; no further
+AUTHZ audit or remediation is pending. The selected next work is docs-only Step
+5B planning through
+`prompts/pre-13-prompts/step5b-feature-first-controller-codex-prompt.md` v1.
+It first delegates a thorough specification-prompt mini-task, then runs that
+prompt in a separate mini-task to prepare Card Template preview beside the
+editor on wide screens and in a slide-over on narrower screens, using the
+existing SP3C storage/writer and controlled public card presenters.
+
+The specification returns for operator review. A later PHP implementation, if
+selected, begins with its own Laravel Simplifier Stage 1 audit and ID-bound
+approval; the current controller does not run that audit or write application
+code.
 
 AUTHZ1-D–I, multiple roles, direct grants, role UI, extra panels, package
 cutover, ARCH1, and SP3D are deferred/not-current. They do not block ordinary

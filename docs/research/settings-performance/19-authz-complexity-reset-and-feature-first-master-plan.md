@@ -2,8 +2,8 @@
 
 Date: 2026-07-17
 
-Status: accepted by the operator; the one bounded v1 closure prompt is drafted,
-but implementation is not authorized
+Status: accepted and complete for AUTHZ; the bounded command closure shipped in
+`0be807051a3e43d08b57bd214278ce95c42bda1b`
 
 This document supersedes active instructions that require AUTHZ1-D–I, an
 AUTHZ1-to-ARCH1 cutover sequence, or ARCH1 before ordinary Card Template UX
@@ -88,9 +88,9 @@ auto-discovered commands:
 - `authz:roles:backfill`
 - `authz:roles:rollback`
 
-The future closure slice should remove or unregister those three commands and
-assert that they are absent from the Artisan command surface. It should not
-repair, redesign, or replace their migration machinery.
+The accepted closure deleted those three auto-discovered command classes and
+asserted that they are absent from the Artisan command surface. It did not
+repair, redesign, or replace their retained migration machinery.
 
 ### Audit findings H-01, M-01, and L-01
 
@@ -147,7 +147,7 @@ AUTHZ is done for now when all of the following are true:
 
 | Horizon | Work |
 |---|---|
-| Now | The reset is accepted and the bounded closure prompt is already drafted. Run a fresh read-only Laravel Simplifier Stage 1 audit for that closure; implementation requires a later message approving its Audit ID and Option ID. After the closure, select Step 5B Card Template preview/side-panel UX using the current SP3C writer and public card presenters. |
+| Now | AUTHZ is done for now. Run the versioned Step 5B feature-first controller: first create a thorough docs-only specification prompt in one mini-task, then run that prompt in a separate mini-task to prepare the small Card Template preview/side-panel UX specification. |
 | Later | Small Public Front improvements selected one at a time; measured P2/P3 work; `MAINT-LW-UX1` before its qualifying public Livewire trigger; `WB-PROBE-HF1` plus the private Google probe if Workbench resumes; LENS review packs; conditional SP3 browser evidence; production settings/cache/mail verification; an optional suggestions-only project simplification audit; dashboard or other visible features at operator choice. |
 | Not now | AUTHZ1-D–I, multiple-role/direct-grant governance, role UI, extra panels, package cutover, production backfill/rollback/MySQL rehearsal, ARCH1 migration, SP3D calibration, SP4/LOG1, broad WB2–WB7 construction, or a large replacement architecture. |
 
@@ -161,28 +161,17 @@ The complete surviving-work and deferred-work tracking registers live in
 `10-pending-decision-question-queue.md`. That register preserves non-AUTHZ
 checkpoints without restoring their old automatic sequencing.
 
-## Why the Laravel Simplifier requires a fresh approval
+## Laravel Simplifier closure record
 
-Plan 20 and the v1 prompt define the accepted product boundary. The Simplifier
-audit has a different purpose: it verifies the smallest current implementation
-against the current checkout, classifies required versus optional/future work,
-forecasts the actual change surface, and gives the selected option durable IDs.
+The required Stage 1 audit ran as `LS-20260717-AUTHZ-01`; the operator then
+approved Option `AUTHZ-CLOSE-O1-DELETE-3` in a new message. The bounded closure
+shipped and passed its canonical gate. No further AUTHZ Simplifier audit,
+remediation cycle, or approval is pending.
 
-No Simplifier audit is needed to cancel AUTHZ1-D–I; that work is already
-cancelled. The audit is required only if PodText changes PHP/tests to complete
-the accepted exit by making the three risky commands unreachable. If the
-operator instead accepts those commands remaining registered, no closure
-implementation or audit is needed, but the accepted AUTHZ done-for-now safety
-boundary would remain incomplete. The recommended compact audit therefore asks
-only “what is the smallest safe exit?” and must not reconsider the cancelled
-authorization architecture.
-
-An earlier plan or an initial “execute” request cannot approve that unseen
-audit. The audit therefore ends a read-only turn, and implementation begins only
-after a new operator message names both its Audit ID and Option ID. This is a
-scope-drift guard, not permission to reopen AUTHZ architecture. For this closure
-the audit must remain compact and must not invent alternatives outside the
-accepted three-command boundary.
+The two-stage rule still applies to a later Step 5B **implementation**, but not
+to the docs-only specification now selected. After the specification is
+reviewed, any PHP implementation starts with a fresh read-only Stage 1 audit
+for that exact scope and stops for ID-bound operator approval.
 
 A separate project-wide simplification-opportunities audit may be selected
 later. It is read-only and suggestions-only: findings must be classified as
@@ -212,46 +201,39 @@ task count, elapsed-effort range, dependencies, and audit burden.
 
 ## One next action
 
-Operator acceptance authorized one small AUTHZ closure implementation prompt,
-now drafted as
-`prompts/pre-13-prompts/authz-command-closure-codex-prompt.md` v1. Do not
-implement it until a fresh Laravel Simplifier Stage 1 audit is followed by a
-new operator approval naming that audit's Audit ID and Option ID. Maximum scope:
+Run `prompts/pre-13-prompts/step5b-feature-first-controller-codex-prompt.md`
+v1. The controller has exactly two sequential docs-only mini-tasks:
 
-1. remove or unregister only the three `authz:roles:*` commands;
-2. add focused tests proving the commands are unavailable, Shield remains
-   unregistered, `HasRoles` remains absent, and the current legacy
-   authorization matrix remains unchanged;
-3. update the minimum state/handoff documentation; and
-4. run the normal final gate once on the final code state.
+1. open a task that writes and commits one thorough v1 prompt for preparing the
+   Step 5B Card Template Preview UX specification; then
+2. after that task leaves a clean checkout, open a separate task that executes
+   the new prompt and prepares the specification.
 
-The prompt must not change dependencies, schema, package configuration,
-catalogs, roles, grants, policies, Gates, panel access, production data, or the
-dormant services. It must not start AUTHZ1-D–I, ARCH1, SP3D, a MySQL rehearsal,
-or a recursive independent-audit chain. Independent review is added only if the
-closure diff exposes a concrete code risk.
+Neither task may change application code, start a Simplifier implementation
+audit, or absorb ARCH1, SP3D, `MAINT-LW-UX1`, persistence, autosave, revisions,
+permissions, or generalized preview architecture. The controller stops after
+the specification and returns it for operator review.
 
 ## Acceptance checklist
 
 - [x] Reports and handoffs 12–18 remain unchanged as historical evidence.
 - [x] Legacy authorization remains the active authority.
 - [x] Shield remains dormant; no role UI or package cutover is planned.
-- [x] The future closure is limited to withholding the three runtime commands
-  plus focused regression tests and minimum docs.
+- [x] The closure withheld the three runtime commands with focused regressions
+  and minimum docs.
 - [x] H-01/M-01/L-01 are accepted only inside the narrowed non-operational
   boundary and reopen if migration capability returns.
 - [x] BQ1/BQ2 are future options, not current requirements.
 - [x] AUTHZ1-D–I and AUTHZ-to-ARCH1 sequencing are no longer active.
-- [x] Card Template preview/side-panel UX may proceed on current storage after
-  the closure.
+- [x] Card Template preview/side-panel UX may proceed on current storage.
 - [x] The two-task/four-hour complexity stop rule is accepted.
-- [x] No implementation prompt was created before the operator accepted this
-  plan.
+- [x] The AUTHZ closure passed its approved Simplifier audit and canonical gate.
+- [x] Step 5B begins with a docs-only specification, not implementation.
 
 ## Decision record and next authorization
 
-The operator chose **accept**. That decision authorized only the v1 prompt and
-plan 20. Implementation still requires the current Laravel Simplifier audit,
-post-audit ID-bound approval, and a kickoff naming the exact prompt/version and
-accepted baseline. It does not authorize operational AUTHZ commands, database
+The operator accepted and completed the bounded AUTHZ exit, then selected the
+Step 5B specification as the next work. The current authorization is docs-only:
+run the v1 controller, produce the specification, and stop for review. It does
+not authorize Step 5B PHP implementation, operational AUTHZ commands, database
 work, dependency changes, or any AUTHZ1-D–I/ARCH1/SP3D work.
