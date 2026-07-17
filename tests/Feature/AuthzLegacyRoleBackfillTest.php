@@ -714,51 +714,6 @@ it('keeps the complete five-role legacy authority matrix unchanged after apply a
     expect($snapshot())->toBe($expected);
 })->with('authz five roles');
 
-it('executes analyze backfill and rollback only through accepted command fingerprints', function (): void {
-    $users = authzCreateLegacyUsers();
-
-    $analyzeExit = Artisan::call('authz:roles:analyze', ['--report' => 'command-analysis.json']);
-    $analyzeOutput = Artisan::output();
-    $report = authzArtifactRepository()->loadReport('command-analysis.json');
-
-    expect($analyzeExit)->toBe(0)
-        ->and($analyzeOutput)->toContain('source_fingerprint: '.$report->sourceFingerprint())
-        ->toContain('report_fingerprint: '.$report->reportFingerprint())
-        ->not->toContain($users[UserRole::Admin->value]->email)
-        ->not->toContain((string) $users[UserRole::Admin->value]->id);
-
-    Cache::put((string) config('permission.cache.key'), ['primed' => true]);
-
-    $backfillExit = Artisan::call('authz:roles:backfill', [
-        'report' => 'command-analysis.json',
-        '--accept-source' => $report->sourceFingerprint(),
-        '--accept-report' => $report->reportFingerprint(),
-        '--confirm' => 'AUTHZ1-C',
-    ]);
-    $backfillOutput = Artisan::output();
-    $receiptName = authzArtifactRepository()->backfillReceiptName($report->reportFingerprint());
-
-    expect($backfillOutput)->toContain('AUTHZ1-C backfill status: applied')
-        ->and($backfillExit)->toBe(0)
-        ->and($backfillOutput)->toContain('receipt: '.$receiptName)
-        ->toContain('ownership_status: proven')
-        ->toContain('rollback_capable: yes')
-        ->toContain('cache_outcome: deleted');
-
-    $receipt = authzArtifactRepository()->loadBackfillReceipt($receiptName);
-
-    $rollbackExit = Artisan::call('authz:roles:rollback', [
-        'receipt' => $receiptName,
-        '--accept-after' => $receipt->afterFingerprint(),
-        '--confirm' => 'ROLLBACK-AUTHZ1-C',
-    ]);
-
-    expect($rollbackExit)->toBe(0)
-        ->and(Artisan::output())->toContain('AUTHZ1-C rollback status: rolled_back')
-        ->and(DB::table('roles')->count())->toBe(5)
-        ->and(DB::table('model_has_roles')->count())->toBe(0);
-});
-
 it('accepts every installed Laravel cipher key length and provider-compatible base64 parsing', function (string $cipher, int $bytes): void {
     $material = str_repeat('k', $bytes);
     $canonical = new PrivacyHasher('base64:'.base64_encode($material), $cipher);
@@ -1047,26 +1002,6 @@ it('refuses a partial rollback target after durable rollback preparation', funct
         ->and(DB::table('model_has_roles')->count())->toBe(1);
 });
 
-it('refuses immutable v1 artifacts with command exit two and no mutation', function (): void {
-    authzCreateLegacyUsers();
-    authzArtifactRepository()->operationExists(authzArtifactRepository()->operationName(str_repeat('a', 64), 'prepared'));
-    $path = test()->artifactRoot.'/authorization/authz1-c/reports/v1-analysis.json';
-    file_put_contents($path, CanonicalJson::encode(['schema' => 'podtext.authz1c.analysis.v1'])."\n");
-    chmod($path, 0600);
-    $exit = Artisan::call('authz:roles:backfill', [
-        'report' => 'v1-analysis.json',
-        '--accept-source' => str_repeat('a', 64),
-        '--accept-report' => str_repeat('b', 64),
-        '--confirm' => 'AUTHZ1-C',
-    ]);
-
-    expect($exit)->toBe(2)
-        ->and(Artisan::output())->toContain('publish and accept a fresh v2 analysis')
-        ->and(DB::table('roles')->count())->toBe(0)
-        ->and(DB::table('model_has_roles')->count())->toBe(0)
-        ->and(fn () => authzArtifactRepository()->loadReport('v1-analysis.json'))->toThrow(ArtifactVersionException::class);
-});
-
 it('deeply rejects nested report journal and receipt type confusion even with recomputed integrity', function (): void {
     authzCreateLegacyUsers();
     $report = authzAnalyzer()->analyze();
@@ -1198,13 +1133,13 @@ it('refuses every retained v1 artifact family without upgrade or adoption', func
     }
 });
 
-it('keeps package assignments dormant and exposes only the three controlled commands', function (): void {
+it('keeps package assignments dormant and withholds the migration commands', function (): void {
     expect(class_uses_recursive(User::class))->not->toContain(HasRoles::class)
         ->and(method_exists(User::class, 'roles'))->toBeFalse()
-        ->and(config('permission.register_permission_check_method'))->toBeFalse()
-        ->and(Artisan::all())->toHaveKeys([
-            'authz:roles:analyze',
-            'authz:roles:backfill',
-            'authz:roles:rollback',
-        ]);
+        ->and(config('permission.register_permission_check_method'))->toBeFalse();
+
+    expect(Artisan::all())
+        ->not->toHaveKey('authz:roles:analyze')
+        ->not->toHaveKey('authz:roles:backfill')
+        ->not->toHaveKey('authz:roles:rollback');
 });

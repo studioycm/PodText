@@ -69,16 +69,17 @@ Recorded after the Markdown-only post-Prompt-10 prompt-progress centralization c
   assignments or compatibility grants are active, and no role-management UI
   exists. Legacy `users.role`, ranks, Gates/macros, panel/Horizon/maintenance
   admission, Users Resource restrictions, and callers remain authoritative.
-  The frozen catalog and reports remain historical foundation evidence, not an
-  active cutover queue.
+  The three dormant legacy-role migration commands are now withheld from
+  Artisan discovery. The migration services, frozen catalog, and reports remain
+  isolated historical foundation evidence, not an active cutover queue.
 - The maintenance Livewire enforcement effects audit v1 is complete in `docs/research/settings-performance/14-maintenance-livewire-enforcement-effects-audit.md`. Its server correction is accepted. The medium production stale-tab notification/body/retry UX and focused missing regression coverage are named `MAINT-LW-UX1`, deferred independently, and due before the first later public Livewire navigation/polling/lazy/deferred/stream/upload expansion.
 - AUTHZ1-C and remediation/audit reports 15–18 are complete historical
   evidence. H-01, M-01, and L-01 remain real findings on the unused migration
   utility, but the feature-first reset narrows them to a non-operational threat
-  boundary. The operator accepted the reset, and the only planned closure is
-  `prompts/pre-13-prompts/authz-command-closure-codex-prompt.md` v1: remove the
-  three auto-discovered command classes and add focused regressions. Drafting is
-  complete; implementation is not authorized. AUTHZ1-D–I, package cutover,
+  boundary. The operator-approved v1 command closure is complete: the three
+  auto-discovered command classes are deleted, their names are absent from
+  Artisan, and an architecture test prevents application callers from reaching
+  the retained migration namespace. AUTHZ1-D–I, package cutover,
   production migration, and MySQL rehearsal are stopped as current work.
 - The controlling reset is
   `docs/research/settings-performance/19-authz-complexity-reset-and-feature-first-master-plan.md`.
@@ -180,7 +181,7 @@ Recorded after the Markdown-only post-Prompt-10 prompt-progress centralization c
 | OTP-POLICY1 - OTP policy config and expiry copy | Complete (`0394ab5`) | `docs/phase-02/forms-otp-policy-config-handoff.md` | Moves expiry, attempt ceiling, and resend cooldown to env-backed config; changes the default expiry from 10 to 5 minutes; pluralizes mail copy; adds config-fed expiry hints; and places adjacent actions at logical inline-end on both verification surfaces. No dependency or OTP-mechanics changes. |
 | SP3B - Settings subject pages and fresh owned-path saves | Complete | `docs/phase-02/settings-sp3b-handoff.md` | Replaces the public-settings monolith UI with eight focused owner pages, temporary Card Templates, and upgraded Manage Public Forms; uses a complete ownership registry plus fresh canonical snapshot, owner-only validation/overlay, and one existing lifecycle save to preserve sequential stale disjoint-page changes. Legacy URLs redirect safely; SP3A fixture/lifecycle SHA and operational writers remain unchanged. No Composer/npm changes; browser performance samples are blocked by the local browser runtime and explicitly deferred. |
 | SP3C - Template library and one-template editor | Complete | `docs/phase-02/settings-sp3c-handoff.md` | Replaces the temporary whole-list editor with a read-only custom-data library and hidden create/edit pages. The selected Builder-preview mechanism mounts controls only for the chosen top-level/nested part; one focused fresh-snapshot writer guards create/edit/allowed rename/clone/delete with sequential fingerprints, references, defaults, current capability, and preservation boundaries. No migration, dependency, lock, import, or lifecycle rewrite; no simultaneous-request serialization or literal database-payload-byte claim. |
-| AUTHZ1 - Dormant package foundation and legacy migration utility | Done for now; bounded command-closure v1 awaits Laravel Simplifier Stage 1 audit and post-audit approval | Reset master plan; plan 20; historical reports 12–18 | Legacy enum/rank/Gates remain authoritative. Shield stays unregistered with no `HasRoles`, grants, cutover, or role UI. The exact v1 prompt already exists and only removes the three command classes plus focused regressions. AUTHZ1-D–I and recursive remediation are stopped. |
+| AUTHZ1 - Dormant package foundation and legacy migration utility | Complete / done for now; command closure implemented | `docs/phase-02/authz-command-closure-handoff.md`; reset master plan; plan 20; historical reports 12–18 | The three `authz:roles:*` commands are withheld and the retained migration namespace is application-isolated. Legacy enum/rank/Gates remain authoritative. Shield stays unregistered with no `HasRoles`, grants, cutover, or role UI. AUTHZ1-D–I and recursive remediation are stopped. |
 | MAINT-LW-UX1 - Stale-tab maintenance UX and regressions | Named deferred; not implemented or prompted | `docs/research/settings-performance/14-maintenance-livewire-enforcement-effects-audit.md` | Independent medium UX/test follow-up due before the first later public Livewire navigation/polling/lazy/deferred/stream/upload expansion. |
 | ARCH1 - Versioned Card Template and Public Form aggregates | Deferred / not current | Historical reports 07, 09, and 11; reset master plan controls | No present feature requires the migration. Current SP3C/Step 6 storage and writers remain authoritative. ARCH1 does not depend on completing AUTHZ1 and is not a prerequisite for Card Template preview/side-panel UX. |
 | Step 5B - Card Template Admin Preview UX | Preferred first visible feature after AUTHZ closure; not yet specified or audited | Reset master plan and recovered checkpoint queue | Use current SP3C storage/writer and controlled presenters for an adjacent wide-screen preview and narrower-screen slide-over. No ARCH1, new persistence, generalized revisions, or collaboration scope. |
@@ -196,12 +197,10 @@ Recorded after the Markdown-only post-Prompt-10 prompt-progress centralization c
 ## Known Blockers and Historical Queue Context
 
 - The accepted feature-first reset supersedes the old AUTHZ1-D–I/ARCH1 sequence
-  and the old automatic P2-first continuation. The bounded v1 closure prompt was
-  already drafted in planning commit `97627b0`; do not draft it again. The next
-  step is a fresh read-only Laravel Simplifier Stage 1 audit. Implementation
-  requires a later operator message naming its Audit ID and Option ID. Later
-  feature selection remains explicit; Step 5B Card Template preview/side-panel
-  UX is the preferred first visible feature after closure.
+  and the old automatic P2-first continuation. The bounded v1 closure is
+  complete. Later feature selection remains explicit; the preferred next
+  preparation is a small Step 5B Card Template preview/side-panel specification
+  followed by its own Laravel Simplifier audit.
 
 - The active surviving-work and deferred-work registers are in
   `docs/research/settings-performance/10-pending-decision-question-queue.md`.

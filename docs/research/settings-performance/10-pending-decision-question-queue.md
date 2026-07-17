@@ -2,8 +2,8 @@
 
 Date: 2026-07-17
 
-Status: feature-first roadmap recovered; bounded AUTHZ closure prompt drafted;
-Laravel Simplifier Stage 1 audit and post-audit approval still required
+Status: feature-first roadmap recovered; bounded AUTHZ command closure complete;
+next work requires explicit selection
 
 Controlling plan:
 `19-authz-complexity-reset-and-feature-first-master-plan.md`.
@@ -14,19 +14,11 @@ Read the controlling plan, current project state, and the ledger. Reports 12–1
 and their handoffs are historical AUTHZ evidence, not an active remediation
 queue. Do not restart at AUTHZ1-D, ARCH1, SP3D, or former Groups 16–29.
 
-The v1 closure prompt and plan already exist in planning commit `97627b0`.
-Do not draft them again. The repository-owned Laravel Simplifier now requires a
-fresh read-only Stage 1 audit against the current checkout. That audit must
-publish an Audit ID, an Option ID, projected scope, and exact approval wording.
-Only a later operator message naming both IDs may authorize implementation.
-
-This is not a new AUTHZ design decision. It is a current-baseline safety gate
-that prevents an old plan or initial execution request from approving unseen
-scope. AUTHZ1-D–I needs no new audit because it is cancelled. Keep the closure
-audit compact and limited to answering whether removing the three reachable
-commands remains the smallest safe exit. If no PHP/test closure is performed,
-the audit is unnecessary, but the commands and their narrowed findings remain
-operationally reachable.
+The v1 closure prompt and plan from planning commit `97627b0` were audited as
+`LS-20260717-AUTHZ-01`, approved as `AUTHZ-CLOSE-O1-DELETE-3`, and implemented
+on the operator-approved descendant baseline. The three reachable commands are
+withheld. Do not draft or run another AUTHZ closure, remediation, or audit
+chain. AUTHZ1-D–I remains cancelled.
 
 ## Accepted AUTHZ boundary
 
@@ -88,15 +80,12 @@ operationally reachable.
 ## Recovered sequence
 
 1. Complete this Markdown-only roadmap recovery.
-2. Run one read-only Laravel Simplifier Stage 1 audit for the bounded AUTHZ
-   command closure.
-3. After a new message approving the reported Audit ID and Option ID, implement
-   the closure once and stop AUTHZ for now.
-4. Prepare the bounded Step 5B preview specification and its Simplifier audit;
+2. Treat the bounded AUTHZ command closure as complete and stop AUTHZ for now.
+3. Prepare the bounded Step 5B preview specification and its Simplifier audit;
    implement only after its separate approval.
-5. Select one Later item at a time from the surviving register. Apply
+4. Select one Later item at a time from the surviving register. Apply
    `MAINT-LW-UX1` before its named public Livewire trigger.
-6. Run `SIMPLIFY-REVIEW1` only if explicitly selected; its suggestions do not
+5. Run `SIMPLIFY-REVIEW1` only if explicitly selected; its suggestions do not
    interrupt the feature-first sequence or authorize cleanup.
 
 No broad architecture question is pending, and no erased checkpoint is an

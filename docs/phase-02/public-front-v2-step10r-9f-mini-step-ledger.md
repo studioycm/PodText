@@ -4,14 +4,14 @@ This ledger controls the post-Step-10 mini-step sequence. Each run implements ex
 
 ## Current Run
 
-- Selected step: feature-first roadmap recovery before AUTHZ command closure
-- Status: recovered non-AUTHZ checkpoints are active in the decision queue; the
-  v1 closure plan and prompt already exist; implementation is not authorized.
-- Next step: run one read-only Laravel Simplifier Stage 1 audit for the bounded
-  closure. A later operator message must approve its Audit ID and Option ID
-  before the v1 prompt may execute. AUTHZ1-D–I, ARCH1, SP3D, SP4, LOG1, and
-  MySQL rehearsal are not current work. Step 5B Card Template preview/side-panel
-  UX remains the preferred visible feature after closure.
+- Selected step: AUTHZ command closure
+- Status: complete; implementation hash `pending`. The three dormant migration
+  commands are withheld while legacy authority and dormant support assets stay
+  unchanged.
+- Next step: explicitly select a new bounded task. The preferred preparation is
+  a small Step 5B Card Template preview/side-panel specification followed by its
+  own Laravel Simplifier audit. Do not start it automatically. AUTHZ1-D–I,
+  ARCH1, SP3D, SP4, LOG1, and MySQL rehearsal are not current work.
 
 ## Checklist
 
@@ -70,7 +70,7 @@ This ledger controls the post-Step-10 mini-step sequence. Each run implements ex
 | SP3B - Settings subject pages and fresh owned-path saves | complete | `dedca88 perf: split settings into subject pages with fresh owned-path saves`; `docs/phase-02/settings-sp3b-handoff.md` | Eight focused settings pages, temporary Card Templates, upgraded Manage Public Forms, hidden legacy redirect, complete ownership registry, fresh owned-path save contract, local-only subject canaries, translations, tests, research/plan/state docs, and this ledger | Required focused regression passed 169 tests / 1,877 assertions; final ordered gate is recorded in the handoff | Preserves sequential stale disjoint-owner saves only. No migrations, dependencies, locks, lifecycle-byte changes, import/restore/normalize/import-lock/backup/Admin UX rewrites, or simultaneous-request serialization claim. Browser metric samples are blocked by the local in-app browser runtime and remain a manual follow-up. |
 | SP3C - Template library and one-template editor | complete | `4cb70f2 feat: add template library and one-template editor`; `docs/phase-02/settings-sp3c-handoff.md` | read-only unpaginated Card Templates library; hidden create/edit pages; Builder preview canary and frozen budgets; safe projection/reference scanner; one focused fresh-snapshot writer; protected-state authorization; profiler subjects; translations; tests; research/plan/state docs; this ledger | Exact baseline passed 191 tests / 2,289 assertions; settled affected regression passed 231 tests / 2,649 assertions; final ordered gate is recorded in the handoff | Preserves the ownership root, SP3A fixture/SHA, lifecycle/import-lock/import/restore/normalize/backup paths, strict sibling and foreign-root values, and sequential stale detection. Adds no dependency, migration, lock, or simultaneous-request serialization claim and does not promise literal database-payload bytes. Browser metrics remain a numbered pending operator check. |
 | Step 5B - Card Template Admin Preview UX | preferred first visible feature after AUTHZ closure; not yet specified or audited | reset master plan; recovered checkpoint queue | Future bounded preview spec and Laravel Simplifier audit | None | Use current SP3C storage/writer and controlled presenters; adjacent preview on wide screens and slide-over on narrower screens; no ARCH1 or new persistence. |
-| AUTHZ1 - Dormant package foundation and migration utility | done for now; bounded command-closure v1 awaits Laravel Simplifier audit and post-audit approval | reset master plan; plan 20; historical reports 12–18 | Exact v1 prompt deletes only the three auto-discovered command classes and adds focused closure/legacy regressions | No tests in this planning task | Shield remains unregistered; no `HasRoles`, grants, cutover, role UI, AUTHZ1-D–I, production migration, MySQL rehearsal, or recursive audit. |
+| AUTHZ1 - Dormant package foundation and migration utility | complete / done for now | `pending`; `docs/phase-02/authz-command-closure-handoff.md` | Deleted the three auto-discovered command classes; updated command-absence coverage; added the dormant-namespace architecture guard; minimum closeout docs | Baseline: 56 tests / 555 assertions and 109 / 949; focused final: 55 / 528 and 109 / 949; canonical final gate recorded in the handoff | Shield remains unregistered; no `HasRoles`, grants, cutover, role UI, AUTHZ1-D–I, production migration, MySQL rehearsal, or recursive audit. Legacy authority and dormant services remain unchanged. |
 | MAINT-LW-UX1 - Stale-tab maintenance UX and focused regressions | named deferred; not implemented or prompted | `docs/research/settings-performance/14-maintenance-livewire-enforcement-effects-audit.md` | Future mini-task only: improve the medium production stale-tab notification/body/retry UX and close focused report-14 regression gaps | None in this planning task | Run before any later public Livewire navigation/polling/lazy/deferred/stream/upload expansion. |
 | ARCH1 - Versioned Card Template and Public Form aggregates | deferred / not current | historical reports 07, 09, and 11; reset master plan controls | Reopen only for a concrete present requirement with a fresh estimate and operator approval | None | Current storage/writers remain authoritative. No AUTHZ dependency and no block on Card Template preview/side-panel UX. |
 | LENS1-REVIEW - Chunked terminology/copy review | pending operator review | report 07; recovered checkpoint queue | Prepare page/domain packs of roughly 25–40 rows with key, HE, EN, context, and decision | None | Preserve corrected operational columns; do not approve the old 269-row table wholesale. |

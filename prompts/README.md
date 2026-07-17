@@ -21,17 +21,15 @@ Historical prompts are under `prompts/archive/` and are not active instructions.
 The older contracts are complete historical evidence. The feature-first reset in
 `docs/research/settings-performance/19-authz-complexity-reset-and-feature-first-master-plan.md`
 supersedes their forward AUTHZ1-D–I/ARCH1 sequencing. One bounded active prompt
-now exists but has not been authorized or executed. Before it can run, the
-repository-owned Laravel Simplifier requires a fresh read-only Stage 1 audit and
-a later operator message approving the resulting Audit ID and Option ID:
+was audited, approved, and executed as the done-for-now command closure:
 
 - `pre-13-prompts/authz-command-closure-codex-prompt.md` v1 removes only the
   three auto-discovered `authz:roles:*` command classes, adds focused command
   closure/application-caller/legacy-authority regressions, preserves every
-  dormant support asset, and stops. It may start only from the accepted clean
-  baseline named after the Simplifier audit. The initial execution request and
-  planning commit `97627b0` do not substitute for post-audit approval. It does
-  not authorize operational
+  dormant support asset, and stops. It was executed under Simplifier audit
+  `LS-20260717-AUTHZ-01`, Option `AUTHZ-CLOSE-O1-DELETE-3`; its two-commit
+  closeout is recorded in `docs/phase-02/authz-command-closure-handoff.md`. It
+  did not authorize operational
   commands, database/MySQL work, AUTHZ1-D–I, ARCH1, SP3D, MAINT-LW-UX1, or a
   recursive audit chain.
 
