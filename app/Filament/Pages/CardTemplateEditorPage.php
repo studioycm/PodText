@@ -9,6 +9,7 @@ use App\Support\PublicFront\Cards\PublicFrontCardTemplateRegistry;
 use App\Support\PublicFront\PublicFrontConfigRegistry;
 use App\Support\Settings\CardTemplates\CardTemplateAccessPolicy;
 use App\Support\Settings\CardTemplates\CardTemplateIdentity;
+use App\Support\Settings\CardTemplates\CardTemplatePreviewer;
 use App\Support\Settings\CardTemplates\CardTemplateWriteException;
 use App\Support\Settings\CardTemplates\CardTemplateWriteResult;
 use App\Support\Settings\SettingsPageProfiler;
@@ -23,8 +24,10 @@ use Filament\Pages\SettingsPage;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Text;
 use Filament\Schemas\Schema;
+use Filament\Support\Enums\Width;
 use Filament\Support\Facades\FilamentView;
 use Filament\Support\Icons\Heroicon;
+use Illuminate\Contracts\View\View;
 use Livewire\Attributes\Locked;
 use Throwable;
 
@@ -88,6 +91,27 @@ abstract class CardTemplateEditorPage extends SettingsPage
     #[Locked]
     public bool $familyImportLocked = false;
 
+    #[Locked]
+    public string $previewStatus = 'idle';
+
+    #[Locked]
+    public ?string $previewFamily = null;
+
+    #[Locked]
+    public ?int $previewSampleId = null;
+
+    #[Locked]
+    public ?string $previewSampleLabel = null;
+
+    #[Locked]
+    public ?string $previewHtml = null;
+
+    #[Locked]
+    public ?string $previewRefreshedAt = null;
+
+    #[Locked]
+    public ?string $previewDraftHash = null;
+
     public static function canAccess(): bool
     {
         $user = auth()->user();
@@ -115,6 +139,11 @@ abstract class CardTemplateEditorPage extends SettingsPage
     {
         parent::updatedInteractsWithSchemas($statePath);
         $this->enforceCurrentCapability();
+
+        if ($statePath === 'data.family') {
+            $this->previewSampleId = null;
+            $this->refreshPreview();
+        }
     }
 
     public function form(Schema $schema): Schema
@@ -124,6 +153,7 @@ abstract class CardTemplateEditorPage extends SettingsPage
             TextInput::make('key')
                 ->label(__('admin.fields.card_template_key'))
                 ->helperText(__('admin.helpers.card_template_key'))
+                ->extraInputAttributes(['dir' => 'ltr'])
                 ->required()
                 ->maxLength(CardTemplateIdentity::KEY_MAX_LENGTH)
                 ->rules(['regex:'.CardTemplateIdentity::KEY_PATTERN])
@@ -139,6 +169,7 @@ abstract class CardTemplateEditorPage extends SettingsPage
                 ->helperText(__('admin.helpers.card_template_family'))
                 ->options(PublicFrontConfigRegistry::cardFamilyOptions())
                 ->native(false)
+                ->live()
                 ->required()
                 ->disabled($identityLocked)
                 ->dehydrated(),
@@ -282,11 +313,152 @@ abstract class CardTemplateEditorPage extends SettingsPage
     protected function getHeaderActions(): array
     {
         return [
+            Action::make('previewPanel')
+                ->label(__('admin.settings_sp3c.preview.open'))
+                ->icon(Heroicon::OutlinedEye)
+                ->color('gray')
+                ->extraAttributes([
+                    'class' => 'xl:hidden',
+                    'data-test' => 'card-template-preview-open',
+                ])
+                ->mountUsing(function (): void {
+                    if ($this->previewStatus !== 'ready' || $this->previewHtml === null) {
+                        $this->refreshPreview();
+                    }
+                })
+                ->slideOver()
+                ->stickyModalHeader()
+                ->modalWidth(Width::TwoExtraLarge)
+                ->modalHeading(__('admin.settings_sp3c.preview.title'))
+                ->modalSubmitAction(false)
+                ->modalCancelActionLabel(__('admin.settings_sp3c.preview.close'))
+                ->modalContent(fn (): View => view('filament.pages.card-template-preview', [
+                    'modal' => true,
+                    'previewStatus' => $this->previewStatus,
+                    'previewFamily' => $this->previewFamily,
+                    'previewSampleLabel' => $this->previewSampleLabel,
+                    'previewHtml' => $this->previewHtml,
+                    'previewRefreshedAt' => $this->previewRefreshedAt,
+                ])),
             Action::make('cancel')
                 ->label(__('admin.actions.cancel'))
                 ->color('gray')
                 ->url(CardTemplateSettings::getUrl()),
         ];
+    }
+
+    public function choosePreviewSampleAction(): Action
+    {
+        return Action::make('choosePreviewSample')
+            ->label(__('admin.settings_sp3c.preview.choose_sample'))
+            ->icon(Heroicon::OutlinedMagnifyingGlass)
+            ->color('gray')
+            ->modalHeading(__('admin.settings_sp3c.preview.choose_sample_heading'))
+            ->modalSubmitActionLabel(__('admin.settings_sp3c.preview.choose'))
+            ->modalCancelActionLabel(__('admin.actions.cancel'))
+            ->modalWidth(Width::Large)
+            ->fillForm(fn (): array => [
+                'sample_id' => $this->previewSampleId,
+            ])
+            ->schema([
+                Select::make('sample_id')
+                    ->label(__('admin.settings_sp3c.preview.choose_sample'))
+                    ->placeholder(__('admin.settings_sp3c.preview.sample_placeholder'))
+                    ->searchable()
+                    ->preload(false)
+                    ->optionsLimit(CardTemplatePreviewer::SAMPLE_LIMIT)
+                    ->getSearchResultsUsing(fn (string $search): array => app(CardTemplatePreviewer::class)
+                        ->sampleOptions($this->currentPreviewFamily(), $search))
+                    ->getOptionLabelUsing(function (mixed $value): ?string {
+                        if (! is_numeric($value)) {
+                            return null;
+                        }
+
+                        return app(CardTemplatePreviewer::class)->sampleLabel(
+                            $this->currentPreviewFamily(),
+                            (int) $value,
+                        );
+                    })
+                    ->required(),
+            ])
+            ->action(function (array $data): void {
+                $sampleId = $data['sample_id'] ?? null;
+
+                if (! is_numeric($sampleId)) {
+                    return;
+                }
+
+                $this->refreshPreview((int) $sampleId);
+            });
+    }
+
+    public function refreshPreview(?int $sampleId = null): void
+    {
+        abort_unless(static::canAccess(), 403);
+        $draft = is_array($this->data) ? $this->data : [];
+        $this->previewFamily = $this->familyFromDraft($draft);
+        $this->previewDraftHash = $this->draftHash($draft);
+
+        if ($this->sp3aMeasurementMode) {
+            $this->clearPreview('idle');
+
+            return;
+        }
+
+        if ($this->restricted) {
+            $this->clearPreview('restricted');
+
+            return;
+        }
+
+        try {
+            $preview = app(CardTemplatePreviewer::class)->preview(
+                $draft,
+                $sampleId ?? $this->previewSampleId,
+            );
+        } catch (CardTemplateWriteException $exception) {
+            $status = $exception->getMessage() === 'preview_sample_missing'
+                ? 'no_sample'
+                : 'invalid_draft';
+            $this->clearPreview($status);
+
+            return;
+        } catch (Throwable $exception) {
+            report($exception);
+            $this->clearPreview('sample_error');
+
+            return;
+        }
+
+        $this->previewStatus = 'ready';
+        $this->previewFamily = $preview['family'];
+        $this->previewSampleId = $preview['sample_id'];
+        $this->previewSampleLabel = $preview['sample_label'];
+        $this->previewHtml = $preview['html'];
+        $this->previewRefreshedAt = now()->timezone('Asia/Jerusalem')->format('d/m/Y H:i:s');
+    }
+
+    public function previewIsStale(): bool
+    {
+        if ($this->previewDraftHash === null || ! is_array($this->data)) {
+            return false;
+        }
+
+        return ! hash_equals($this->previewDraftHash, $this->draftHash($this->data));
+    }
+
+    public function previewEmptyMessage(): string
+    {
+        $family = in_array($this->previewFamily, PublicFrontCardTemplateRegistry::families(), true)
+            ? $this->previewFamily
+            : PublicFrontCardTemplateRegistry::CONTENT_ITEM_FAMILY;
+
+        return __("admin.settings_sp3c.preview.empty_{$family}");
+    }
+
+    protected function initializePreview(): void
+    {
+        $this->refreshPreview();
     }
 
     /**
@@ -389,5 +561,42 @@ abstract class CardTemplateEditorPage extends SettingsPage
         if (app()->environment('local') && $this->profilingMode) {
             config()->set('settings.profiling.enabled', true);
         }
+    }
+
+    /**
+     * @param  array<string, mixed>  $draft
+     */
+    private function familyFromDraft(array $draft): ?string
+    {
+        $family = $draft['family'] ?? null;
+
+        return is_string($family) ? $family : null;
+    }
+
+    private function currentPreviewFamily(): string
+    {
+        return $this->previewFamily
+            ?? $this->familyFromDraft(is_array($this->data) ? $this->data : [])
+            ?? PublicFrontCardTemplateRegistry::CONTENT_ITEM_FAMILY;
+    }
+
+    /**
+     * @param  array<string, mixed>  $draft
+     */
+    private function draftHash(array $draft): string
+    {
+        return hash('sha256', json_encode(
+            $draft,
+            JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE,
+        ));
+    }
+
+    private function clearPreview(string $status): void
+    {
+        $this->previewStatus = $status;
+        $this->previewSampleId = null;
+        $this->previewSampleLabel = null;
+        $this->previewHtml = null;
+        $this->previewRefreshedAt = null;
     }
 }

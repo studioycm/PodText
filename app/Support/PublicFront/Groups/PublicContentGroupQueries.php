@@ -10,8 +10,10 @@ use Illuminate\Support\Collection;
 
 class PublicContentGroupQueries
 {
-    public static function base(): Builder
+    public static function base(?PublicTranscriptionAggregates $aggregates = null): Builder
     {
+        $aggregates ??= app(PublicTranscriptionAggregates::class);
+
         return ContentGroup::query()
             ->published()
             ->whereHas('contentItems', fn (Builder $query): Builder => $query->published())
@@ -19,7 +21,7 @@ class PublicContentGroupQueries
             ->withCount([
                 'contentItems as public_content_items_count' => fn (Builder $query): Builder => $query->published(),
             ])
-            ->addSelect(app(PublicTranscriptionAggregates::class)->contentGroupAggregateSelects());
+            ->addSelect($aggregates->contentGroupAggregateSelects());
     }
 
     public static function applySearch(Builder $query, string $search): Builder

@@ -67,6 +67,7 @@ class CreateCardTemplate extends CardTemplateEditorPage
         $builderDraft = $this->cardTemplatesForBuilder([$draft])[0];
         $this->setFamilyImportLock($snapshot, (string) $builderDraft['family']);
         $this->form->fill($builderDraft);
+        $this->initializePreview();
     }
 
     public function getTitle(): string

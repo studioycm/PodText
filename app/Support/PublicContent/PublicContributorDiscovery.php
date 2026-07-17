@@ -11,9 +11,12 @@ use Illuminate\Support\Collection;
 
 class PublicContributorDiscovery
 {
-    public static function contributors(?string $search = null, string $sort = 'count_desc'): Builder
-    {
-        $aggregates = app(PublicTranscriptionAggregates::class);
+    public static function contributors(
+        ?string $search = null,
+        string $sort = 'count_desc',
+        ?PublicTranscriptionAggregates $aggregates = null,
+    ): Builder {
+        $aggregates ??= app(PublicTranscriptionAggregates::class);
 
         $query = Author::query()
             ->select('authors.*')

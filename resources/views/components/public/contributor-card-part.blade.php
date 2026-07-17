@@ -2,6 +2,7 @@
     'part',
     'presentation',
     'compact' => false,
+    'previewMode' => false,
 ])
 
 @switch($part['type'])
@@ -15,7 +16,7 @@
                 data-card-part-group-alignment="{{ $part['alignment'] }}"
             >
                 @foreach($part['children'] as $child)
-                    <x-public.contributor-card-part :part="$child" :presentation="$presentation" :compact="$compact" />
+                    <x-public.contributor-card-part :part="$child" :presentation="$presentation" :compact="$compact" :preview-mode="$previewMode" />
                 @endforeach
             </div>
         </x-public.card-part-shell>
@@ -64,10 +65,12 @@
                     @endif
 
                     <h3 class="{{ $part['class'] }}" data-test="contributor-name">
-                        @if($part['url'])
+                        @if($part['url'] && ! $previewMode)
                             <a href="{{ $part['url'] }}">{{ $part['text'] }}</a>
                         @else
-                            {{ $part['text'] }}
+                            <span @if($previewMode) aria-description="{{ __('admin.settings_sp3c.preview.link_disabled') }}" @endif>
+                                {{ $part['text'] }}
+                            </span>
                         @endif
                     </h3>
                 </div>
@@ -119,14 +122,24 @@
 
     @case('action_link')
         <x-public.card-part-shell :part="$part" class="{{ $part['class'] }}">
-            <a
-                href="{{ $part['url'] }}"
-                @if($part['target']) target="{{ $part['target'] }}" rel="noopener noreferrer" @endif
-                class="inline-flex text-sm font-medium text-primary-700 hover:text-primary-900 dark:text-primary-300 dark:hover:text-primary-100"
-                data-test="contributor-link"
-            >
-                {{ $part['text'] }}
-            </a>
+            @if($previewMode)
+                <span
+                    class="inline-flex text-sm font-medium text-primary-700 dark:text-primary-300"
+                    data-test="contributor-link"
+                    aria-description="{{ __('admin.settings_sp3c.preview.link_disabled') }}"
+                >
+                    {{ $part['text'] }}
+                </span>
+            @else
+                <a
+                    href="{{ $part['url'] }}"
+                    @if($part['target']) target="{{ $part['target'] }}" rel="noopener noreferrer" @endif
+                    class="inline-flex text-sm font-medium text-primary-700 hover:text-primary-900 dark:text-primary-300 dark:hover:text-primary-100"
+                    data-test="contributor-link"
+                >
+                    {{ $part['text'] }}
+                </a>
+            @endif
         </x-public.card-part-shell>
         @break
 

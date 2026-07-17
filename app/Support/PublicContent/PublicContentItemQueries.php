@@ -9,8 +9,13 @@ use Illuminate\Database\Eloquent\Builder;
 
 class PublicContentItemQueries
 {
-    public static function base(): Builder
-    {
+    public static function base(
+        ?PublicTranscriptionAggregates $aggregates = null,
+        ?PublicTranscriptionSelector $selector = null,
+    ): Builder {
+        $aggregates ??= app(PublicTranscriptionAggregates::class);
+        $selector ??= app(PublicTranscriptionSelector::class);
+
         $query = ContentItem::query()
             ->published()
             ->with([
@@ -18,10 +23,10 @@ class PublicContentItemQueries
                 'contentGroup.categories',
                 'enabledContentTags',
             ])
-            ->addSelect(app(PublicTranscriptionAggregates::class)->contentItemAggregateSelects())
+            ->addSelect($aggregates->contentItemAggregateSelects())
             ->withEffectiveTranscriptionPublishedAt();
 
-        return app(PublicTranscriptionSelector::class)->withPublicTranscriptionRelations($query);
+        return $selector->withPublicTranscriptionRelations($query);
     }
 
     public static function pinnedFirst(Builder $query): Builder

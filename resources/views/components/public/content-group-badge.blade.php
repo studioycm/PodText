@@ -4,6 +4,7 @@
     'mode' => 'name_only',
     'mainImageSource' => 'fallback',
     'allowDuplicateThumbnail' => false,
+    'previewMode' => false,
 ])
 
 @php
@@ -17,8 +18,9 @@
 @endphp
 
 <a
-    href="{{ $url }}"
+    @unless($previewMode) href="{{ $url }}" @endunless
     {{ $attributes->merge(['class' => 'inline-flex max-w-full items-center gap-2 rounded-md bg-transparent px-0 py-0 text-sm font-medium text-primary-700 hover:text-primary-900 dark:text-primary-300 dark:hover:text-primary-100']) }}
+    @if($previewMode) aria-description="{{ __('admin.settings_sp3c.preview.link_disabled') }}" @endif
     data-test="group-badge"
     data-group-badge-mode="{{ $mode }}"
     data-group-badge-thumbnail="{{ $showThumbnail ? 'true' : 'false' }}"

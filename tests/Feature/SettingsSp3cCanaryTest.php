@@ -1,5 +1,11 @@
 <?php
 
+use App\Models\Author;
+use App\Models\ContentGroup;
+use App\Models\ContentItem;
+use App\Models\Transcription;
+use App\Support\PublicFront\Cards\PublicFrontCardTemplateRegistry;
+use App\Support\Settings\CardTemplates\CardTemplatePreviewer;
 use Filament\Actions\Testing\TestAction;
 use Filament\Facades\Filament;
 use Filament\Forms\Components\Builder;
@@ -389,6 +395,138 @@ it('measures a deterministic wrapper and control reduction against the same surf
             ->and(1 - ($nestedControls / $controlControls))->toBeGreaterThanOrEqual(0.70)
             ->and($samples->pluck('library.elements')->unique())->toHaveCount(1)
             ->and($samples->pluck('library.serialized_state_bytes')->unique())->toHaveCount(1);
+    } finally {
+        $restoreBuilderFake();
+    }
+});
+
+it('measures a deterministic bounded preview delta across editor states and families', function (): void {
+    $restoreBuilderFake = Builder::fake();
+
+    try {
+        $fixture = app(SettingsSp3cDeepestFixture::class);
+        $measure = app(SettingsSp3cCanaryMeasurement::class);
+        $author = Author::factory()->create(['name' => 'SP3C Preview Contributor']);
+        $group = ContentGroup::factory()->published()->create(['title' => 'SP3C Preview Group']);
+        $item = ContentItem::factory()->for($group)->published()->create(['title' => 'SP3C Preview Item']);
+        $transcription = Transcription::factory()
+            ->for($item)
+            ->forAuthor($author)
+            ->published(now()->subMinute())
+            ->create(['title' => 'SP3C Preview Transcription']);
+        $transcription->syncTranscribers([$author]);
+        $item->update(['featured_transcription_id' => $transcription->getKey()]);
+
+        $previewer = app(CardTemplatePreviewer::class);
+        $previews = collect(PublicFrontCardTemplateRegistry::families())
+            ->mapWithKeys(function (string $family) use ($previewer): array {
+                $draft = PublicFrontCardTemplateRegistry::defaultTemplateForFamily($family);
+                $draft['label'] = "SP3C {$family} preview";
+
+                return [$family => $previewer->preview($draft)];
+            });
+        $groupIndex = collect($fixture->template()['parts'])
+            ->search(fn (array $part): bool => $part['type'] === 'part_group');
+        expect($groupIndex)->toBeInt();
+
+        $samples = collect(range(1, 3))->map(function () use ($fixture, $groupIndex, $measure, $previews): array {
+            $states = [
+                'unselected' => [],
+                'selected' => ['selectedPartIndex' => 0],
+                'nested' => [
+                    'selectedPartIndex' => $groupIndex,
+                    'selectedChildIndex' => 0,
+                ],
+            ];
+
+            return collect($states)->mapWithKeys(function (array $selection, string $state) use ($fixture, $measure, $previews): array {
+                $editor = Livewire::test(SettingsSp3cCanaryPage::class, [
+                    'previews' => true,
+                    'capable' => true,
+                    ...$selection,
+                ]);
+                $baseHtml = $editor->html();
+                $baseState = $editor->instance()->sp3cMeasurementState();
+                $baseMetrics = $measure->measure($editor);
+                $basePaths = $measure->wireModelPaths($baseHtml);
+                $familyMetrics = $previews->map(function (array $preview, string $family) use ($baseHtml, $baseMetrics, $basePaths, $baseState, $fixture, $measure): array {
+                    $previewState = [
+                        'status' => 'ready',
+                        'family' => $family,
+                        'sample_id' => $preview['sample_id'],
+                        'sample_label' => $preview['sample_label'],
+                        'html' => $preview['html'],
+                    ];
+                    $readyHtml = $baseHtml.'<section data-card-template-preview-root>'.$preview['html'].'</section>';
+                    $readyMetrics = $measure->measureHtml($readyHtml, [
+                        ...$baseState,
+                        'preview' => $previewState,
+                    ]);
+                    $staleMetrics = $measure->measureHtml(
+                        $baseHtml.'<section data-card-template-preview-root data-preview-status="stale"></section>',
+                        [
+                            ...$baseState,
+                            'preview' => [...$previewState, 'status' => 'stale', 'html' => null],
+                        ],
+                    );
+                    $delta = collect($readyMetrics)
+                        ->map(fn (int $value, string $metric): int => $value - ($baseMetrics[$metric] ?? 0))
+                        ->all();
+                    $serializedPreview = json_encode(
+                        $previewState,
+                        JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE,
+                    );
+
+                    expect($readyMetrics['field_wrappers'])->toBe($baseMetrics['field_wrappers'])
+                        ->and($readyMetrics['editor_controls'])->toBe($baseMetrics['editor_controls'])
+                        ->and($measure->wireModelPaths($readyHtml))->toBe($basePaths)
+                        ->and($staleMetrics['field_wrappers'])->toBe($baseMetrics['field_wrappers'])
+                        ->and($staleMetrics['editor_controls'])->toBe($baseMetrics['editor_controls'])
+                        ->and($serializedPreview)->not->toContain('data.parts')
+                        ->not->toContain('relations')
+                        ->not->toContain('original')
+                        ->and($readyHtml)->not->toContain('<script data-sp3c-hostile=')
+                        ->and($readyHtml)->not->toContain('href=')
+                        ->and($fixture->template())->toHaveKey('parts');
+
+                    return [
+                        'base' => $baseMetrics,
+                        'stale' => $staleMetrics,
+                        'ready' => $readyMetrics,
+                        'delta' => $delta,
+                    ];
+                });
+
+                return [$state => $familyMetrics->all()];
+            })->all();
+        });
+
+        $flattened = $samples->flatMap(fn (array $states): array => collect($states)
+            ->flatMap(fn (array $families): array => array_values($families))
+            ->all());
+        $maxDelta = collect(array_keys($flattened->first()['delta']))
+            ->mapWithKeys(fn (string $metric): array => [
+                $metric => $flattened->max("delta.{$metric}"),
+            ]);
+
+        if (getenv('STEP5B_CANARY_REPORT') === '1') {
+            fwrite(STDERR, json_encode([
+                'samples' => $samples->all(),
+                'max_preview_delta' => $maxDelta->all(),
+                'candidate_plus_20_percent' => $maxDelta
+                    ->map(fn (int $value): int => (int) ceil($value * 1.2))
+                    ->all(),
+            ], JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES).PHP_EOL);
+        }
+
+        expect($samples)->toHaveCount(3)
+            ->and($samples->unique()->count())->toBe(1)
+            ->and($maxDelta['field_wrappers'])->toBe(0)
+            ->and($maxDelta['editor_controls'])->toBe(0)
+            ->and($maxDelta['wire_models'])->toBe(0)
+            ->and($maxDelta['elements'])->toBeLessThanOrEqual(41)
+            ->and($maxDelta['html_bytes'])->toBeLessThanOrEqual(8739)
+            ->and($maxDelta['serialized_state_bytes'])->toBeLessThanOrEqual(9299);
     } finally {
         $restoreBuilderFake();
     }

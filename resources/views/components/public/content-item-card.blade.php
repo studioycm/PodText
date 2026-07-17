@@ -2,6 +2,7 @@
     'card',
     'options',
     'cardTemplate' => null,
+    'previewMode' => false,
 ])
 
 @php
@@ -29,9 +30,10 @@
 >
     @foreach($card['media_parts'] as $part)
         <a
-            href="{{ $part['url'] }}"
+            @unless($previewMode) href="{{ $part['url'] }}" @endunless
             class="block min-w-0 overflow-hidden bg-gray-100 dark:bg-gray-800 {{ $presentation['image'] }} {{ $part['image']['radius_class'] }}"
             aria-label="{{ $part['title'] }}"
+            @if($previewMode) aria-description="{{ __('admin.settings_sp3c.preview.link_disabled') }}" @endif
             data-test="content-item-image"
             data-card-part="{{ $part['type'] }}"
             data-card-part-source="{{ $part['source'] }}"
@@ -57,7 +59,7 @@
     @if($card['body_parts'] !== [])
         <div class="{{ $presentation['body'] }}">
             @foreach($card['body_parts'] as $part)
-                <x-public.content-item-card-part :part="$part" />
+                <x-public.content-item-card-part :part="$part" :preview-mode="$previewMode" />
             @endforeach
         </div>
     @endif

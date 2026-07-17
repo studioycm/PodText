@@ -16,6 +16,7 @@ class PublicTranscriptionPolicy
         public readonly string $publicMode = self::MODE_FEATURED_ONLY,
         public readonly string $countMode = self::MODE_FEATURED_ONLY,
         public readonly bool $showMultipleTranscriptionsOnItemPage = false,
+        private readonly ?bool $multiMode = null,
     ) {}
 
     /**
@@ -55,12 +56,13 @@ class PublicTranscriptionPolicy
     /**
      * @param  array<string, mixed>  $config
      */
-    public static function fromConfig(array $config): self
+    public static function fromConfig(array $config, ?bool $multiMode = null): self
     {
         return new self(
             publicMode: self::mode($config['public_mode'] ?? null),
             countMode: self::mode($config['count_mode'] ?? null),
             showMultipleTranscriptionsOnItemPage: (bool) ($config['show_multiple_transcriptions_on_item_page'] ?? false),
+            multiMode: $multiMode,
         );
     }
 
@@ -92,7 +94,7 @@ class PublicTranscriptionPolicy
 
     public function modeForPublicDisplay(): string
     {
-        if (! MultiTranscriptionSurfaces::isMultiMode()) {
+        if (! $this->isMultiMode()) {
             return self::MODE_FEATURED_ONLY;
         }
 
@@ -101,7 +103,7 @@ class PublicTranscriptionPolicy
 
     public function modeForCounts(): string
     {
-        if (! MultiTranscriptionSurfaces::isMultiMode()) {
+        if (! $this->isMultiMode()) {
             return self::MODE_FEATURED_ONLY;
         }
 
@@ -113,5 +115,10 @@ class PublicTranscriptionPolicy
         return is_string($mode) && in_array($mode, self::modes(), true)
             ? $mode
             : self::MODE_FEATURED_ONLY;
+    }
+
+    private function isMultiMode(): bool
+    {
+        return $this->multiMode ?? MultiTranscriptionSurfaces::isMultiMode();
     }
 }

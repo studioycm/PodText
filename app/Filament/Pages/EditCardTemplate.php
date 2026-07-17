@@ -83,6 +83,7 @@ class EditCardTemplate extends CardTemplateEditorPage
         $this->setFamilyImportLock($snapshot, $family);
         $safeTemplate = $policy->readSafeTemplate($template, $this->capable);
         $this->form->fill($this->cardTemplatesForBuilder([$safeTemplate])[0]);
+        $this->initializePreview();
     }
 
     public function getTitle(): string
