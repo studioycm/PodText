@@ -180,9 +180,14 @@ Recorded after the Markdown-only post-Prompt-10 prompt-progress centralization c
 | OTP-POLICY1 - OTP policy config and expiry copy | Complete (`0394ab5`) | `docs/phase-02/forms-otp-policy-config-handoff.md` | Moves expiry, attempt ceiling, and resend cooldown to env-backed config; changes the default expiry from 10 to 5 minutes; pluralizes mail copy; adds config-fed expiry hints; and places adjacent actions at logical inline-end on both verification surfaces. No dependency or OTP-mechanics changes. |
 | SP3B - Settings subject pages and fresh owned-path saves | Complete | `docs/phase-02/settings-sp3b-handoff.md` | Replaces the public-settings monolith UI with eight focused owner pages, temporary Card Templates, and upgraded Manage Public Forms; uses a complete ownership registry plus fresh canonical snapshot, owner-only validation/overlay, and one existing lifecycle save to preserve sequential stale disjoint-page changes. Legacy URLs redirect safely; SP3A fixture/lifecycle SHA and operational writers remain unchanged. No Composer/npm changes; browser performance samples are blocked by the local browser runtime and explicitly deferred. |
 | SP3C - Template library and one-template editor | Complete | `docs/phase-02/settings-sp3c-handoff.md` | Replaces the temporary whole-list editor with a read-only custom-data library and hidden create/edit pages. The selected Builder-preview mechanism mounts controls only for the chosen top-level/nested part; one focused fresh-snapshot writer guards create/edit/allowed rename/clone/delete with sequential fingerprints, references, defaults, current capability, and preservation boundaries. No migration, dependency, lock, import, or lifecycle rewrite; no simultaneous-request serialization or literal database-payload-byte claim. |
-| AUTHZ1 - Dormant package foundation and legacy migration utility | Done for now; bounded command-closure v1 planned but not authorized for implementation | Reset master plan; plan 20; historical reports 12–18 | Legacy enum/rank/Gates remain authoritative. Shield stays unregistered with no `HasRoles`, grants, cutover, or role UI. The exact v1 prompt only removes the three command classes and proves the legacy matrix remains unchanged. AUTHZ1-D–I and recursive remediation are stopped. |
+| AUTHZ1 - Dormant package foundation and legacy migration utility | Done for now; bounded command-closure v1 awaits Laravel Simplifier Stage 1 audit and post-audit approval | Reset master plan; plan 20; historical reports 12–18 | Legacy enum/rank/Gates remain authoritative. Shield stays unregistered with no `HasRoles`, grants, cutover, or role UI. The exact v1 prompt already exists and only removes the three command classes plus focused regressions. AUTHZ1-D–I and recursive remediation are stopped. |
 | MAINT-LW-UX1 - Stale-tab maintenance UX and regressions | Named deferred; not implemented or prompted | `docs/research/settings-performance/14-maintenance-livewire-enforcement-effects-audit.md` | Independent medium UX/test follow-up due before the first later public Livewire navigation/polling/lazy/deferred/stream/upload expansion. |
 | ARCH1 - Versioned Card Template and Public Form aggregates | Deferred / not current | Historical reports 07, 09, and 11; reset master plan controls | No present feature requires the migration. Current SP3C/Step 6 storage and writers remain authoritative. ARCH1 does not depend on completing AUTHZ1 and is not a prerequisite for Card Template preview/side-panel UX. |
+| Step 5B - Card Template Admin Preview UX | Preferred first visible feature after AUTHZ closure; not yet specified or audited | Reset master plan and recovered checkpoint queue | Use current SP3C storage/writer and controlled presenters for an adjacent wide-screen preview and narrower-screen slide-over. No ARCH1, new persistence, generalized revisions, or collaboration scope. |
+| WB-PROBE-HF1 and Google format probe | Conditional Later checkpoint; not implemented or run | Report 07 and recovered checkpoint queue | If Workbench resumes, first harden connection selection, refresh, output privacy, and partial-failure resume behavior; then run the private 20-document probe before WB2/WB4 or paste-cleanup planning. |
+| LENS1 review packs | Pending operator review; not implementation scope | Report 07 and recovered checkpoint queue | Review roughly 25–40 rows per page/domain pack with key, HE, EN, context, and decision. Do not restore wholesale approval of the old 269-row table. |
+| SP3 browser acceptance evidence | Conditional Later evidence; not a feature blocker | Report 07 and recovered checkpoint queue | Authenticated in-app, serial browser, and external Playwright evidence remain due only when settings performance work or touched UX needs measured acceptance. SP3D is not a prerequisite. |
+| SIMPLIFY-REVIEW1 - Project simplification opportunities audit | Optional Later; suggestions only; not started | Recovered checkpoint queue | Read-only inventory of possible deletion, consolidation, and reuse. It does not block AUTHZ closure or Step 5B, and no finding authorizes implementation without separate review, estimate, and approval. |
 | CURATOR-HF1 - Curator picker hydration repair | Complete | `23a6ce9 fix: preserve curator picker selections on reload`; `docs/phase-02/curator-picker-hydration-hf1-handoff.md` | Repairs `PathCuratorPicker` raw-state hydration and UUID-keyed state handling so registered Menu/Header logos and Display default images remain visibly selected after reload. The storage contract, legacy-path preservation, and SP3B lifecycle remain unchanged. |
 | Prompt 13 dashboard metrics | Not started / blocked unless explicitly chosen by user | Active prompt/blueprint | Owns editorial dashboard widgets after Public Front v2 Step 12 readiness or an explicit dashboard-first decision. |
 | Prompt 14 viewer/studio future plan | Future planning after Prompt 13 | Active prompt/blueprint | Documentation/planning only. |
@@ -191,12 +196,18 @@ Recorded after the Markdown-only post-Prompt-10 prompt-progress centralization c
 ## Known Blockers and Historical Queue Context
 
 - The accepted feature-first reset supersedes the old AUTHZ1-D–I/ARCH1 sequence
-  and the old automatic P2-first continuation. The only next action is an
-  explicit operator kickoff of
-  `prompts/pre-13-prompts/authz-command-closure-codex-prompt.md` v1 from its
-  exact clean planning commit. Drafting does not authorize implementation.
-  Later feature selection remains explicit; Card Template preview/side-panel UX
-  is the preferred first visible feature after closure.
+  and the old automatic P2-first continuation. The bounded v1 closure prompt was
+  already drafted in planning commit `97627b0`; do not draft it again. The next
+  step is a fresh read-only Laravel Simplifier Stage 1 audit. Implementation
+  requires a later operator message naming its Audit ID and Option ID. Later
+  feature selection remains explicit; Step 5B Card Template preview/side-panel
+  UX is the preferred first visible feature after closure.
+
+- The active surviving-work and deferred-work registers are in
+  `docs/research/settings-performance/10-pending-decision-question-queue.md`.
+  They restore `WB-PROBE-HF1`, the Google probe gate, LENS review packs,
+  production settings/cache/mail checks, and conditional SP3 browser evidence
+  without reactivating ARCH1, SP3D, SP4, LOG1, or automatic P2-first execution.
 
 - Prompt 13 dashboard metrics has not started and is intentionally blocked until Public Front v2 reaches the approved post-B3 readiness point or the user explicitly chooses dashboard metrics first.
 - The `model:show` baseline issue below remains unresolved and should be avoided until investigated.

@@ -20,8 +20,10 @@ For current prompt completion/progress state, see `docs/phase-02/current-project
 
 The controlling reset is
 `docs/research/settings-performance/19-authz-complexity-reset-and-feature-first-master-plan.md`.
-After operator acceptance, the only next action is to draft one bounded AUTHZ
-command-surface closure prompt. The preferred first visible feature after that
+The bounded AUTHZ command-surface closure prompt was already drafted in planning
+commit `97627b0`. The next step is its fresh read-only Laravel Simplifier Stage
+1 audit. Implementation requires a later operator message approving the
+reported Audit ID and Option ID. The preferred first visible feature after that
 closure is Card Template preview beside the editor on wide screens and in a
 slide-over on narrower screens, using the existing SP3C storage/writer and
 controlled public card presenters.
@@ -29,6 +31,13 @@ controlled public card presenters.
 AUTHZ1-D–I, multiple roles, direct grants, role UI, extra panels, package
 cutover, ARCH1, and SP3D are deferred/not-current. They do not block ordinary
 settings, import-lock, Card Template, or Public Front feature work.
+
+The surviving and deferred tracking registers are maintained in
+`docs/research/settings-performance/10-pending-decision-question-queue.md`.
+They preserve P2/P3, `MAINT-LW-UX1`, `WB-PROBE-HF1`, the Google probe, LENS
+review packs, production settings/cache/mail checks, conditional SP3 browser
+evidence, and the existing optional Public Front queue without making any of
+them automatic next work.
 
 ## Non-Negotiable Semantics
 

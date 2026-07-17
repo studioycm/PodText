@@ -2,8 +2,8 @@
 
 Date: 2026-07-17
 
-Status: AUTHZ complexity reset accepted; bounded v1 closure prompt drafted,
-implementation not authorized
+Status: feature-first roadmap recovered; bounded AUTHZ closure prompt drafted;
+Laravel Simplifier Stage 1 audit and post-audit approval still required
 
 Controlling plan:
 `19-authz-complexity-reset-and-feature-first-master-plan.md`.
@@ -14,14 +14,21 @@ Read the controlling plan, current project state, and the ledger. Reports 12–1
 and their handoffs are historical AUTHZ evidence, not an active remediation
 queue. Do not restart at AUTHZ1-D, ARCH1, SP3D, or former Groups 16–29.
 
-## One pending decision
+The v1 closure prompt and plan already exist in planning commit `97627b0`.
+Do not draft them again. The repository-owned Laravel Simplifier now requires a
+fresh read-only Stage 1 audit against the current checkout. That audit must
+publish an Audit ID, an Option ID, projected scope, and exact approval wording.
+Only a later operator message naming both IDs may authorize implementation.
 
-Operator chooses whether to explicitly start
-`prompts/pre-13-prompts/authz-command-closure-codex-prompt.md` v1 from the exact
-clean planning commit. The accepted reset authorized drafting only; it did not
-authorize implementation or operational commands.
+This is not a new AUTHZ design decision. It is a current-baseline safety gate
+that prevents an old plan or initial execution request from approving unseen
+scope. AUTHZ1-D–I needs no new audit because it is cancelled. Keep the closure
+audit compact and limited to answering whether removing the three reachable
+commands remains the smallest safe exit. If no PHP/test closure is performed,
+the audit is unnecessary, but the commands and their narrowed findings remain
+operationally reachable.
 
-## Accepted for now
+## Accepted AUTHZ boundary
 
 - Legacy `users.role`, ranks, Gates/macros, panel/Horizon/maintenance admission,
   and Users Resource restrictions remain authoritative.
@@ -37,22 +44,60 @@ authorize implementation or operational commands.
 - A small slice is capped at two logical tasks and four estimated engineering
   hours; exceeding either requires operator reapproval.
 
+## Non-AUTHZ work that survives
+
+| ID / work | Status | Trigger or next preparation | Boundary |
+|---|---|---|---|
+| Step 5B Card Template Admin Preview UX | Preferred first visible feature after AUTHZ closure | Write a small preview specification, then run its own Laravel Simplifier audit before implementation | Use current SP3C storage/writer and controlled presenters; adjacent panel on wide screens and slide-over on narrower screens; no ARCH1 or new persistence |
+| Settings import locks | Implemented; preserve | Add a lock only when a concrete workflow proves it necessary | Keep the six approved important fields, section locks, import-only semantics, and no record/Builder/nested-child lock system |
+| Filament Select policy | Accepted durable rule | Recheck touched forms during ordinary UX work; use browser evidence where custom controls matter | Tiny finite sets prefer native controls unless required behavior needs custom rendering; growing sources stay async, constrained, and capped |
+| `MAINT-LW-UX1` | Pending independent medium UX task | Must run before a later public Livewire navigation, polling, lazy/deferred, stream, or upload expansion | Preserve the committed server `503` enforcement; improve stale-tab maintenance message/retry UX and add report-14 focused regressions |
+| Step 10R-P2 | Pending; explicit selection only | Select when listing measurements or a dependent visible feature justify it | Bound fetch windows, lazy option/form-definition loading, and opt-in aggregate subselects |
+| Step 10R-P3 | Pending; explicit selection only | Select when transcript-viewer measurements justify it | Derived transcript segments and word-count/render economy with safe fallback; no speculative backfill machinery |
+| `WB-PROBE-HF1` | Approved conditional mini-step | Run before the private 20-document Google probe if Workbench resumes | Operator-friendly connection selection, refresh, sanitized tracked output/private excerpts, and partial-failure resume reporting |
+| Google 20-document probe | Pending operator/external gate | Configure the existing service-account connection privately after `WB-PROBE-HF1`, then run and accept the probe | No credentials or private excerpts in tracked files; probe evidence precedes WB2/WB4 or paste-cleanup planning |
+| LENS1 review packs | Pending operator review | Prepare page/domain packs of roughly 25–40 rows with key, HE, EN, context, and decision | Do not treat the old 269-row table as wholesale approved; preserve already-corrected operational columns |
+| Production settings/cache/mail checks | Pending status confirmation, not automatic mutation | Read current production state first; request per-action approval only for work still needed | Check legacy role assignment, `transcription_mode=single`, normalize dry-run, Redis/settings-cache scoping, `FORMS_OTP_*`, Resend/DNS, and mail verification; remove AUTHZ package cutover/backfill from this checklist |
+| SP3 browser acceptance evidence | Pending conditional evidence | Resume only when settings performance work or a touched UX needs measured acceptance | Authenticated in-app, serial browser, and external Playwright evidence remain distinct; no fabricated DOM/TTFB ceilings and no SP3D architecture prerequisite |
+| Existing Public Front queue | Preserved, not automatic | Operator selects one bounded step at a time | P2, P3, AX1, SL1–SL4, AX2, AX3, B4, C2, and 9F-A–9F-C remain recorded; none is implied by finishing AUTHZ |
+| ADM1-B presentation rule | Surviving UX rule, not a standalone automatic project | Apply when a touched form needs copy/hint cleanup | Use accessible `?` hints for secondary help; keep destructive, security, required-format, validation, and irreversible warnings visible; maintain HE/EN semantic parity |
+| `SIMPLIFY-REVIEW1` | Optional Later audit; suggestions only | Select when the operator wants a current-state simplification inventory; never as a prerequisite for feature work | Read-only review of opportunities to delete, consolidate, or reuse; classify findings and estimate value/cost; no finding authorizes implementation without separate analysis and approval |
+
 ## Deferred / not current
 
-- BQ1 multiple roles and direct grants.
-- BQ2 catalog governance, role bundles, delegated assignment, and role UI.
-- AUTHZ1-D–I, production backfill/cutover/rollback, MySQL rehearsal, extra
-  panels, and speculative role/panel design.
-- ARCH1, SP3D, SP4, LOG1, and any sequencing dependency from AUTHZ into them.
-- WB2–WB7 until a concrete near-term importer need is selected.
+- AUTHZ1-D–I; multiple roles; direct grants; role-management UI; delegated
+  assignment; extra panels; dynamic catalog governance; package authority
+  cutover; compatibility grants; production backfill/rollback; and MySQL
+  migration rehearsal.
+- ARCH1 model/Resource/revision migration, per-user working drafts, autosave,
+  immutable checkpoints, generalized publication workflow, and collaboration
+  machinery.
+- SP3D monolith deletion/calibration, SP4 generalized slice/change-set
+  coordinator work, and LOG1/activity-log package adoption.
+- L10N-SET1 and ADM1-A as architecture-sequenced projects. Reconsider only from
+  a concrete current copy/layout problem; do not restore their old ARCH1 chain.
+- Broad WB2–WB7 construction without a selected near-term importer need.
+- Same-owner serialization, database/advisory locks, template or part locks,
+  template-level reorder, automatic semantic-key repointing, full-remount dirty
+  recovery, and fine-grained protected-node merge.
+- ZIP import packages, `transcript_file` imports, EP1 per-user presentation
+  preference, and paste-cleanup/`[]` conventions before real probe evidence.
+- Public Form uploads/notifications, generalized result-preview architecture,
+  and other post-13 work until explicitly selected.
 
-## Roadmap pointer
+## Recovered sequence
 
-- **Now:** explicitly start or leave pending the one bounded AUTHZ closure; after
-  closure, select Card Template preview/side-panel UX on the current SP3C
-  foundation.
-- **Later:** small Public Front or settings UX slices, measured P2/P3 work,
-  MAINT-LW-UX1 at its qualifying trigger, and WB2 only on concrete demand.
-- **Not now:** generalized authorization or replacement architecture.
+1. Complete this Markdown-only roadmap recovery.
+2. Run one read-only Laravel Simplifier Stage 1 audit for the bounded AUTHZ
+   command closure.
+3. After a new message approving the reported Audit ID and Option ID, implement
+   the closure once and stop AUTHZ for now.
+4. Prepare the bounded Step 5B preview specification and its Simplifier audit;
+   implement only after its separate approval.
+5. Select one Later item at a time from the surviving register. Apply
+   `MAINT-LW-UX1` before its named public Livewire trigger.
+6. Run `SIMPLIFY-REVIEW1` only if explicitly selected; its suggestions do not
+   interrupt the feature-first sequence or authorize cleanup.
 
-No other broad architecture question is pending.
+No broad architecture question is pending, and no erased checkpoint is an
+automatic implementation instruction.
