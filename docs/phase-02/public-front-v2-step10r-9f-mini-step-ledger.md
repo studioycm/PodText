@@ -4,14 +4,15 @@ This ledger controls the post-Step-10 mini-step sequence. Each run implements ex
 
 ## Current Run
 
-- Selected step: AUTHZ complexity reset and feature-first master plan
-- Status: docs-only reset complete; operator acceptance required.
-- Next step: after acceptance, draft one bounded AUTHZ closure prompt that only
-  removes or unregisters the three `authz:roles:*` commands, adds focused
-  legacy-authority regressions, and updates minimum docs. Do not implement it
-  from this ledger. AUTHZ1-D–I, ARCH1, SP3D, and MySQL rehearsal are not current
-  work. Card Template preview/side-panel UX is the preferred visible feature
-  after closure.
+- Selected step: AUTHZ command-closure v1 planning
+- Status: docs-only plan and prompt drafted after reset acceptance;
+  implementation is not authorized.
+- Next step: operator may explicitly start
+  `prompts/pre-13-prompts/authz-command-closure-codex-prompt.md` v1 from the
+  exact clean planning commit. Do not implement it from this ledger. AUTHZ1-D–I,
+  ARCH1, SP3D, MAINT-LW-UX1, and MySQL rehearsal are not current work. Card
+  Template preview/side-panel UX remains the preferred visible feature after
+  closure.
 
 ## Checklist
 
@@ -69,7 +70,7 @@ This ledger controls the post-Step-10 mini-step sequence. Each run implements ex
 | OTP-POLICY1 - OTP policy config and expiry copy | complete | `0394ab5` | `config/forms.php`; `.env.example`; OTP manager/mailable/maintenance/Livewire consumers; mail/Livewire/maintenance Blade; he/en public translations; OTP/public-form/maintenance tests; research/handoff/current-state docs; this ledger | Focused OTP regression passed 37 tests / 338 assertions after the inline-end review correction; final ordered gate is recorded in the handoff. | Default expiry is 5 minutes; max attempts remains 5; cooldown remains 60 seconds. Actions now render at logical inline-end. Mechanics and dependencies are unchanged. |
 | SP3B - Settings subject pages and fresh owned-path saves | complete | `dedca88 perf: split settings into subject pages with fresh owned-path saves`; `docs/phase-02/settings-sp3b-handoff.md` | Eight focused settings pages, temporary Card Templates, upgraded Manage Public Forms, hidden legacy redirect, complete ownership registry, fresh owned-path save contract, local-only subject canaries, translations, tests, research/plan/state docs, and this ledger | Required focused regression passed 169 tests / 1,877 assertions; final ordered gate is recorded in the handoff | Preserves sequential stale disjoint-owner saves only. No migrations, dependencies, locks, lifecycle-byte changes, import/restore/normalize/import-lock/backup/Admin UX rewrites, or simultaneous-request serialization claim. Browser metric samples are blocked by the local in-app browser runtime and remain a manual follow-up. |
 | SP3C - Template library and one-template editor | complete | `4cb70f2 feat: add template library and one-template editor`; `docs/phase-02/settings-sp3c-handoff.md` | read-only unpaginated Card Templates library; hidden create/edit pages; Builder preview canary and frozen budgets; safe projection/reference scanner; one focused fresh-snapshot writer; protected-state authorization; profiler subjects; translations; tests; research/plan/state docs; this ledger | Exact baseline passed 191 tests / 2,289 assertions; settled affected regression passed 231 tests / 2,649 assertions; final ordered gate is recorded in the handoff | Preserves the ownership root, SP3A fixture/SHA, lifecycle/import-lock/import/restore/normalize/backup paths, strict sibling and foreign-root values, and sequential stale detection. Adds no dependency, migration, lock, or simultaneous-request serialization claim and does not promise literal database-payload bytes. Browser metrics remain a numbered pending operator check. |
-| AUTHZ1 - Dormant package foundation and migration utility | done for now; one bounded command-surface closure pending operator acceptance | reset master plan; historical reports 12–18 | Keep legacy authority; withhold the three unused `authz:roles:*` commands instead of hardening H-01/M-01/L-01 recursively | No tests in this docs reset | Shield remains unregistered; no `HasRoles`, grants, cutover, role UI, AUTHZ1-D–I, production migration, or MySQL rehearsal. |
+| AUTHZ1 - Dormant package foundation and migration utility | done for now; bounded command-closure v1 planned, implementation not authorized | reset master plan; plan 20; historical reports 12–18 | Exact v1 prompt deletes only the three auto-discovered command classes and adds focused closure/legacy regressions | No tests in this planning task | Shield remains unregistered; no `HasRoles`, grants, cutover, role UI, AUTHZ1-D–I, production migration, MySQL rehearsal, or recursive audit. |
 | MAINT-LW-UX1 - Stale-tab maintenance UX and focused regressions | named deferred; not implemented or prompted | `docs/research/settings-performance/14-maintenance-livewire-enforcement-effects-audit.md` | Future mini-task only: improve the medium production stale-tab notification/body/retry UX and close focused report-14 regression gaps | None in this planning task | Run before any later public Livewire navigation/polling/lazy/deferred/stream/upload expansion. |
 | ARCH1 - Versioned Card Template and Public Form aggregates | deferred / not current | historical reports 07, 09, and 11; reset master plan controls | Reopen only for a concrete present requirement with a fresh estimate and operator approval | None | Current storage/writers remain authoritative. No AUTHZ dependency and no block on Card Template preview/side-panel UX. |
 | CURATOR-HF1 - Curator picker hydration repair | complete | `23a6ce9 fix: preserve curator picker selections on reload` | `PathCuratorPicker`; `ImageMediaCuratorTest`; CURATOR-HF1 handoff; current state; this ledger | Targeted Curator regression suite and the final sequential gate are recorded in the handoff. | Repairs double normalization during picker hydration: hydration reads raw persisted path state, while validated UUID-keyed Curator item maps survive rendering and picker actions. Registered header/logo and Display custom-default selections remain visible after remount; plain-path storage and missing-row preservation remain unchanged. SP3B's save lifecycle is untouched. |

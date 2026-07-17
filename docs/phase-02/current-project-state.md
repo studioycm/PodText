@@ -75,10 +75,11 @@ Recorded after the Markdown-only post-Prompt-10 prompt-progress centralization c
 - AUTHZ1-C and remediation/audit reports 15–18 are complete historical
   evidence. H-01, M-01, and L-01 remain real findings on the unused migration
   utility, but the feature-first reset narrows them to a non-operational threat
-  boundary: one future closure slice will remove or unregister the only runtime
-  callers, `authz:roles:analyze`, `authz:roles:backfill`, and
-  `authz:roles:rollback`. AUTHZ1-D–I, package cutover, production migration, and
-  MySQL rehearsal are stopped as current work.
+  boundary. The operator accepted the reset, and the only planned closure is
+  `prompts/pre-13-prompts/authz-command-closure-codex-prompt.md` v1: remove the
+  three auto-discovered command classes and add focused regressions. Drafting is
+  complete; implementation is not authorized. AUTHZ1-D–I, package cutover,
+  production migration, and MySQL rehearsal are stopped as current work.
 - The controlling reset is
   `docs/research/settings-performance/19-authz-complexity-reset-and-feature-first-master-plan.md`.
   BQ1/BQ2 multiple roles, direct grants, catalog governance, and role UI are
@@ -179,7 +180,7 @@ Recorded after the Markdown-only post-Prompt-10 prompt-progress centralization c
 | OTP-POLICY1 - OTP policy config and expiry copy | Complete (`0394ab5`) | `docs/phase-02/forms-otp-policy-config-handoff.md` | Moves expiry, attempt ceiling, and resend cooldown to env-backed config; changes the default expiry from 10 to 5 minutes; pluralizes mail copy; adds config-fed expiry hints; and places adjacent actions at logical inline-end on both verification surfaces. No dependency or OTP-mechanics changes. |
 | SP3B - Settings subject pages and fresh owned-path saves | Complete | `docs/phase-02/settings-sp3b-handoff.md` | Replaces the public-settings monolith UI with eight focused owner pages, temporary Card Templates, and upgraded Manage Public Forms; uses a complete ownership registry plus fresh canonical snapshot, owner-only validation/overlay, and one existing lifecycle save to preserve sequential stale disjoint-page changes. Legacy URLs redirect safely; SP3A fixture/lifecycle SHA and operational writers remain unchanged. No Composer/npm changes; browser performance samples are blocked by the local browser runtime and explicitly deferred. |
 | SP3C - Template library and one-template editor | Complete | `docs/phase-02/settings-sp3c-handoff.md` | Replaces the temporary whole-list editor with a read-only custom-data library and hidden create/edit pages. The selected Builder-preview mechanism mounts controls only for the chosen top-level/nested part; one focused fresh-snapshot writer guards create/edit/allowed rename/clone/delete with sequential fingerprints, references, defaults, current capability, and preservation boundaries. No migration, dependency, lock, import, or lifecycle rewrite; no simultaneous-request serialization or literal database-payload-byte claim. |
-| AUTHZ1 - Dormant package foundation and legacy migration utility | Done for now pending one bounded command-surface closure | Reset master plan; historical reports 12–18 | Legacy enum/rank/Gates remain authoritative. Shield stays unregistered with no `HasRoles`, grants, cutover, or role UI. Future closure only withholds the three `authz:roles:*` commands and proves the legacy matrix remains unchanged. AUTHZ1-D–I and recursive remediation are stopped. |
+| AUTHZ1 - Dormant package foundation and legacy migration utility | Done for now; bounded command-closure v1 planned but not authorized for implementation | Reset master plan; plan 20; historical reports 12–18 | Legacy enum/rank/Gates remain authoritative. Shield stays unregistered with no `HasRoles`, grants, cutover, or role UI. The exact v1 prompt only removes the three command classes and proves the legacy matrix remains unchanged. AUTHZ1-D–I and recursive remediation are stopped. |
 | MAINT-LW-UX1 - Stale-tab maintenance UX and regressions | Named deferred; not implemented or prompted | `docs/research/settings-performance/14-maintenance-livewire-enforcement-effects-audit.md` | Independent medium UX/test follow-up due before the first later public Livewire navigation/polling/lazy/deferred/stream/upload expansion. |
 | ARCH1 - Versioned Card Template and Public Form aggregates | Deferred / not current | Historical reports 07, 09, and 11; reset master plan controls | No present feature requires the migration. Current SP3C/Step 6 storage and writers remain authoritative. ARCH1 does not depend on completing AUTHZ1 and is not a prerequisite for Card Template preview/side-panel UX. |
 | CURATOR-HF1 - Curator picker hydration repair | Complete | `23a6ce9 fix: preserve curator picker selections on reload`; `docs/phase-02/curator-picker-hydration-hf1-handoff.md` | Repairs `PathCuratorPicker` raw-state hydration and UUID-keyed state handling so registered Menu/Header logos and Display default images remain visibly selected after reload. The storage contract, legacy-path preservation, and SP3B lifecycle remain unchanged. |
@@ -189,11 +190,13 @@ Recorded after the Markdown-only post-Prompt-10 prompt-progress centralization c
 
 ## Known Blockers and Historical Queue Context
 
-- The feature-first reset supersedes the old AUTHZ1-D–I/ARCH1 sequence and the
-  old automatic P2-first continuation. The only next action is operator
-  acceptance followed by drafting one bounded AUTHZ command-surface closure
-  prompt. Later feature selection is explicit; Card Template preview/side-panel
-  UX is the preferred first visible feature after closure.
+- The accepted feature-first reset supersedes the old AUTHZ1-D–I/ARCH1 sequence
+  and the old automatic P2-first continuation. The only next action is an
+  explicit operator kickoff of
+  `prompts/pre-13-prompts/authz-command-closure-codex-prompt.md` v1 from its
+  exact clean planning commit. Drafting does not authorize implementation.
+  Later feature selection remains explicit; Card Template preview/side-panel UX
+  is the preferred first visible feature after closure.
 
 - Prompt 13 dashboard metrics has not started and is intentionally blocked until Public Front v2 reaches the approved post-B3 readiness point or the user explicitly chooses dashboard metrics first.
 - The `model:show` baseline issue below remains unresolved and should be avoided until investigated.

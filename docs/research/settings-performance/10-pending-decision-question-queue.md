@@ -2,7 +2,8 @@
 
 Date: 2026-07-17
 
-Status: AUTHZ complexity reset proposed; operator acceptance required
+Status: AUTHZ complexity reset accepted; bounded v1 closure prompt drafted,
+implementation not authorized
 
 Controlling plan:
 `19-authz-complexity-reset-and-feature-first-master-plan.md`.
@@ -15,9 +16,10 @@ queue. Do not restart at AUTHZ1-D, ARCH1, SP3D, or former Groups 16–29.
 
 ## One pending decision
 
-Operator chooses **accept** or **revise** for the master reset. Acceptance
-authorizes drafting only one bounded AUTHZ closure prompt. It does not authorize
-implementation or operational commands.
+Operator chooses whether to explicitly start
+`prompts/pre-13-prompts/authz-command-closure-codex-prompt.md` v1 from the exact
+clean planning commit. The accepted reset authorized drafting only; it did not
+authorize implementation or operational commands.
 
 ## Accepted for now
 
@@ -25,9 +27,9 @@ implementation or operational commands.
   and Users Resource restrictions remain authoritative.
 - Shield stays unregistered; `User` stays without `HasRoles`; no compatibility
   grants, package cutover, or role UI.
-- A future closure prompt may only remove/unregister the three
-  `authz:roles:*` commands, add focused legacy-authority regressions, and update
-  minimum docs.
+- Plan 20 and the v1 closure prompt may only remove the three auto-discovered
+  `authz:roles:*` command classes, add focused closure/legacy-authority
+  regressions, and update minimum docs.
 - H-01/M-01/L-01 are outside the narrowed non-operational threat boundary once
   those commands are unreachable. They reopen if migration capability returns.
 - Existing settings import locks and Card Template storage/writer remain in
@@ -46,8 +48,9 @@ implementation or operational commands.
 
 ## Roadmap pointer
 
-- **Now:** accept the reset; then one bounded AUTHZ closure; then select Card
-  Template preview/side-panel UX on the current SP3C foundation.
+- **Now:** explicitly start or leave pending the one bounded AUTHZ closure; after
+  closure, select Card Template preview/side-panel UX on the current SP3C
+  foundation.
 - **Later:** small Public Front or settings UX slices, measured P2/P3 work,
   MAINT-LW-UX1 at its qualifying trigger, and WB2 only on concrete demand.
 - **Not now:** generalized authorization or replacement architecture.

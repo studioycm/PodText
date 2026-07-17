@@ -2,8 +2,8 @@
 
 Date: 2026-07-17
 
-Status: proposed controlling reset; operator acceptance required before the one
-next action
+Status: accepted by the operator; the one bounded v1 closure prompt is drafted,
+but implementation is not authorized
 
 This document supersedes active instructions that require AUTHZ1-D–I, an
 AUTHZ1-to-ARCH1 cutover sequence, or ARCH1 before ordinary Card Template UX
@@ -179,8 +179,10 @@ task count, elapsed-effort range, dependencies, and audit burden.
 
 ## One next action
 
-After operator acceptance, write one small AUTHZ closure implementation prompt;
-do not implement it as part of this reset. Maximum scope:
+Operator acceptance authorized one small AUTHZ closure implementation prompt,
+now drafted as
+`prompts/pre-13-prompts/authz-command-closure-codex-prompt.md` v1. Do not
+implement it without a separate exact kickoff. Maximum scope:
 
 1. remove or unregister only the three `authz:roles:*` commands;
 2. add focused tests proving the commands are unavailable, Shield remains
@@ -197,23 +199,25 @@ closure diff exposes a concrete code risk.
 
 ## Acceptance checklist
 
-- [ ] Reports and handoffs 12–18 remain unchanged as historical evidence.
-- [ ] Legacy authorization remains the active authority.
-- [ ] Shield remains dormant; no role UI or package cutover is planned.
-- [ ] The future closure is limited to withholding the three runtime commands
+- [x] Reports and handoffs 12–18 remain unchanged as historical evidence.
+- [x] Legacy authorization remains the active authority.
+- [x] Shield remains dormant; no role UI or package cutover is planned.
+- [x] The future closure is limited to withholding the three runtime commands
   plus focused regression tests and minimum docs.
-- [ ] H-01/M-01/L-01 are accepted only inside the narrowed non-operational
+- [x] H-01/M-01/L-01 are accepted only inside the narrowed non-operational
   boundary and reopen if migration capability returns.
-- [ ] BQ1/BQ2 are future options, not current requirements.
-- [ ] AUTHZ1-D–I and AUTHZ-to-ARCH1 sequencing are no longer active.
-- [ ] Card Template preview/side-panel UX may proceed on current storage after
+- [x] BQ1/BQ2 are future options, not current requirements.
+- [x] AUTHZ1-D–I and AUTHZ-to-ARCH1 sequencing are no longer active.
+- [x] Card Template preview/side-panel UX may proceed on current storage after
   the closure.
-- [ ] The two-task/four-hour complexity stop rule is accepted.
-- [ ] No implementation prompt is created until the operator accepts this plan.
+- [x] The two-task/four-hour complexity stop rule is accepted.
+- [x] No implementation prompt was created before the operator accepted this
+  plan.
 
-## Exact operator decision needed
+## Decision record and next authorization
 
-Choose **accept** or **revise** this reset. “Accept” authorizes only drafting the
-single bounded AUTHZ closure prompt described above; it does not authorize
-implementation, operational AUTHZ commands, database work, dependency changes,
-or any AUTHZ1-D–I/ARCH1/SP3D work.
+The operator chose **accept**. That decision authorized only the v1 prompt and
+plan 20. Implementation still requires a separate kickoff naming the exact
+prompt/version and clean planning commit. It does not authorize operational
+AUTHZ commands, database work, dependency changes, or any
+AUTHZ1-D–I/ARCH1/SP3D work.

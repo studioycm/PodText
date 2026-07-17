@@ -18,10 +18,18 @@ Historical prompts are under `prompts/archive/` and are not active instructions.
 
 ## AUTHZ1 pre-Prompt-13 contracts
 
-These contracts are complete historical evidence. The feature-first reset in
+The older contracts are complete historical evidence. The feature-first reset in
 `docs/research/settings-performance/19-authz-complexity-reset-and-feature-first-master-plan.md`
-supersedes their forward AUTHZ1-D–I/ARCH1 sequencing. No active AUTHZ
-implementation prompt exists.
+supersedes their forward AUTHZ1-D–I/ARCH1 sequencing. One bounded active prompt
+now exists but has not been authorized or executed:
+
+- `pre-13-prompts/authz-command-closure-codex-prompt.md` v1 removes only the
+  three auto-discovered `authz:roles:*` command classes, adds focused command
+  closure/application-caller/legacy-authority regressions, preserves every
+  dormant support asset, and stops. It may start only from the exact clean
+  planning commit named by the operator. It does not authorize operational
+  commands, database/MySQL work, AUTHZ1-D–I, ARCH1, SP3D, MAINT-LW-UX1, or a
+  recursive audit chain.
 
 - `pre-13-prompts/authz1-foundation-codex-prompt.md` v3 is complete; its
   canonical implementation and hash-stamp commits are recorded in the AUTHZ1
@@ -41,7 +49,8 @@ implementation prompt exists.
   another hardening cycle: a later prompt may only withhold the three
   `authz:roles:*` commands plus focused regressions after operator acceptance.
   AUTHZ1-D–I, package cutover, ARCH1 coupling, and recursive audit work are not
-  current scope.
+  current scope. Plan 20 and the bounded v1 prompt above are the only permitted
+  closure path.
 
 ## Pre-Prompt-08 research note
 
