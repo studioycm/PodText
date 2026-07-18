@@ -504,4 +504,4 @@ the full-suite result is the final result reported for the committed tree.
 
 ## Template-parts auto-refresh correction commit hash
 
-Pending implementation commit hash.
+`cdf0e89789c0c987abc0f577ea74d6c8303afa4b`
