@@ -981,6 +981,7 @@ return [
         'create_content_group' => 'Create content group',
         'create_content_tag' => 'Create content tag',
         'create_backup' => 'Create backup',
+        'cancel' => 'Cancel',
         'close' => 'Close',
         'compare' => 'Compare',
         'compare_backup' => 'Compare backup',

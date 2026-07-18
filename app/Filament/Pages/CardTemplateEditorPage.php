@@ -143,6 +143,12 @@ abstract class CardTemplateEditorPage extends SettingsPage
         if ($statePath === 'data.family') {
             $this->previewSampleId = null;
             $this->refreshPreview();
+
+            return;
+        }
+
+        if ($statePath === 'data.parts' || str_starts_with($statePath, 'data.parts.')) {
+            $this->refreshPreview();
         }
     }
 
@@ -227,6 +233,10 @@ abstract class CardTemplateEditorPage extends SettingsPage
                 ->cloneable()
                 ->reorderable()
                 ->deletable()
+                ->live(debounce: 500)
+                ->afterStateUpdated(function (): void {
+                    $this->refreshPreview();
+                })
                 ->default([])
                 ->addActionLabel(__('admin.actions.add_card_template_part'))
                 ->extraAttributes(['data-sp3c-template-parts' => 'true'])
@@ -310,6 +320,20 @@ abstract class CardTemplateEditorPage extends SettingsPage
     /**
      * @return array<Action>
      */
+    public function getFormActions(): array
+    {
+        return [
+            $this->getSaveFormAction(),
+            Action::make('cancel')
+                ->label(__('admin.actions.cancel'))
+                ->color('gray')
+                ->url(CardTemplateSettings::getUrl()),
+        ];
+    }
+
+    /**
+     * @return array<Action>
+     */
     protected function getHeaderActions(): array
     {
         return [
@@ -340,10 +364,6 @@ abstract class CardTemplateEditorPage extends SettingsPage
                     'previewHtml' => $this->previewHtml,
                     'previewRefreshedAt' => $this->previewRefreshedAt,
                 ])),
-            Action::make('cancel')
-                ->label(__('admin.actions.cancel'))
-                ->color('gray')
-                ->url(CardTemplateSettings::getUrl()),
         ];
     }
 

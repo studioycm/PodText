@@ -42,7 +42,7 @@
             </div>
 
             <template x-if="wide">
-                <aside class="sticky top-6 max-h-[calc(100vh-3rem)] min-w-0 overflow-y-auto" data-card-template-preview-wide-shell>
+                <aside class="sticky top-[5.5rem] max-h-[calc(100vh-5.5rem)] min-w-0 overflow-y-auto" data-card-template-preview-wide-shell>
                     @include('filament.pages.card-template-preview', ['modal' => false])
                 </aside>
             </template>

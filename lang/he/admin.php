@@ -965,6 +965,7 @@ return [
         'create_content_group' => 'יצירת פודקאסט',
         'create_content_tag' => 'יצירת תגית',
         'create_backup' => 'יצירת גיבוי',
+        'cancel' => 'ביטול',
         'regenerate_slug' => 'יצירת מזהה מחדש',
         'clear_slug' => 'ניקוי מזהה',
         'create_episode_workspace' => 'פרק חדש',

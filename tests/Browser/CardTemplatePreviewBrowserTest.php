@@ -1,5 +1,6 @@
 <?php
 
+use App\Filament\Pages\CardTemplateSettings;
 use App\Filament\Pages\EditCardTemplate;
 use App\Models\ContentGroup;
 use App\Models\ContentItem;
@@ -21,6 +22,15 @@ beforeEach(function (): void {
     $template = PublicFrontCardTemplateRegistry::defaultTemplateForFamily('content_item');
     $template['key'] = 'preview_browser';
     $template['label'] = 'Browser preview template';
+    $template['parts'][] = [
+        'type' => 'custom_text',
+        'source' => 'custom',
+        'attribute' => 'text',
+        'text' => 'STEP5B BROWSER PART BEFORE',
+        'visible' => true,
+        'order' => 100,
+        'layout' => 'inline',
+    ];
     DB::table('settings')->updateOrInsert(
         [
             'group' => PublicContentSettings::group(),
@@ -239,4 +249,109 @@ it('renders the focused preview shell in English LTR', function (): void {
         ->assertCount('[data-card-template-preview-root]', 1)
         ->assertNoSmoke()
         ->assertNoJavaScriptErrors();
+});
+
+it('refreshes a changed template part and keeps the wide preview below the topbar', function (): void {
+    app()->setLocale('he');
+    $page = visit(EditCardTemplate::getUrl([
+        'family' => 'content_item',
+        'key' => 'preview_browser',
+    ]))->resize(1440, 900);
+    $cancelUrl = json_encode(CardTemplateSettings::getUrl(), JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES);
+    $layoutScript = str_replace('__CANCEL_URL__', $cancelUrl, <<<'JS'
+        async () => {
+            await new Promise((resolve) => setTimeout(resolve, 250));
+            window.scrollTo({ top: 400, behavior: 'instant' });
+            await new Promise((resolve) => setTimeout(resolve, 150));
+            const topbar = document.querySelector('.fi-topbar');
+            const shell = document.querySelector('[data-card-template-preview-wide-shell]');
+            const cancelUrl = __CANCEL_URL__;
+            const form = document.querySelector('form#form');
+            const pageHeader = document.querySelector('.fi-header');
+
+            return {
+                scroll_y: window.scrollY,
+                shell_top: shell?.getBoundingClientRect().top ?? null,
+                topbar_bottom: topbar?.getBoundingClientRect().bottom ?? null,
+                cancel_in_form: Boolean(form?.querySelector(`a[href="${cancelUrl}"]`)),
+                cancel_in_header: Boolean(pageHeader?.querySelector(`a[href="${cancelUrl}"]`)),
+                raw_cancel_key: document.body.innerText.includes('admin.actions.cancel'),
+            };
+        }
+        JS);
+    $layout = $page->script($layoutScript);
+
+    expect($layout['scroll_y'])->toBeGreaterThan(0)
+        ->and($layout['shell_top'])->toBeGreaterThanOrEqual($layout['topbar_bottom'])
+        ->and($layout['cancel_in_form'])->toBeTrue()
+        ->and($layout['cancel_in_header'])->toBeFalse()
+        ->and($layout['raw_cancel_key'])->toBeFalse();
+
+    $interaction = $page->script(<<<'JS'
+        async () => {
+            const summary = Array.from(document.querySelectorAll('[data-sp3c-part-summary]'))
+                .find((candidate) => candidate.textContent.includes('STEP5B BROWSER PART BEFORE'));
+            const item = summary?.closest('.fi-fo-builder-item');
+            const edit = item?.querySelector('.fi-fo-builder-item-preview-edit-overlay');
+            edit?.click();
+
+            const started = performance.now();
+            while (document.querySelector('.fi-modal.fi-modal-open') === null && performance.now() - started < 5000) {
+                await new Promise((resolve) => setTimeout(resolve, 25));
+            }
+
+            let modal = document.querySelector('.fi-modal.fi-modal-open');
+            const textInput = Array.from(modal?.querySelectorAll('input') ?? []).find((candidate) =>
+                Array.from(candidate.attributes).some((attribute) =>
+                    attribute.name.startsWith('wire:model') && attribute.value.endsWith('.text'),
+                ),
+            );
+            const binding = Array.from(textInput?.attributes ?? [])
+                .find((attribute) => attribute.name.startsWith('wire:model'))?.name ?? null;
+            const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set;
+            setter.call(textInput, 'STEP5B BROWSER PART AFTER');
+            textInput.dispatchEvent(new Event('input', { bubbles: true }));
+            await new Promise((resolve) => setTimeout(resolve, 700));
+
+            performance.clearResourceTimings();
+            const originalFetch = window.fetch;
+            const requestUrls = [];
+            window.fetch = (...arguments_) => {
+                requestUrls.push(String(arguments_[0]?.url ?? arguments_[0]));
+
+                return originalFetch(...arguments_);
+            };
+            modal = document.querySelector('.fi-modal.fi-modal-open');
+            const submit = modal?.querySelector('form.fi-modal-window');
+            submit?.requestSubmit();
+
+            const submitted = performance.now();
+            while (document.querySelector('.fi-modal.fi-modal-open') !== null && performance.now() - submitted < 5000) {
+                await new Promise((resolve) => setTimeout(resolve, 25));
+            }
+            await new Promise((resolve) => setTimeout(resolve, 150));
+            window.fetch = originalFetch;
+
+            return {
+                binding,
+                edit_found: Boolean(edit),
+                input_found: Boolean(textInput),
+                submit_found: Boolean(submit),
+                network_requests: requestUrls.filter((url) => url.includes('/livewire')).length,
+                preview_updated: document.querySelector('[data-test="card-template-preview-ready"]')
+                    ?.textContent.includes('STEP5B BROWSER PART AFTER') ?? false,
+                preview_roots: document.querySelectorAll('[data-card-template-preview-root]').length,
+            };
+        }
+        JS);
+
+    expect($interaction['edit_found'])->toBeTrue(json_encode($interaction, JSON_THROW_ON_ERROR))
+        ->and($interaction['input_found'])->toBeTrue(json_encode($interaction, JSON_THROW_ON_ERROR))
+        ->and($interaction['submit_found'])->toBeTrue(json_encode($interaction, JSON_THROW_ON_ERROR))
+        ->and($interaction['binding'])->toStartWith('wire:model')
+        ->and($interaction['network_requests'])->toBe(1, json_encode($interaction, JSON_THROW_ON_ERROR))
+        ->and($interaction['preview_updated'])->toBeTrue(json_encode($interaction, JSON_THROW_ON_ERROR))
+        ->and($interaction['preview_roots'])->toBe(1);
+
+    $page->assertNoSmoke()->assertNoJavaScriptErrors();
 });

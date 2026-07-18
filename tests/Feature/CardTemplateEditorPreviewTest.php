@@ -1,6 +1,7 @@
 <?php
 
 use App\Enums\TranscriptionMode;
+use App\Filament\Pages\CardTemplateSettings;
 use App\Filament\Pages\CreateCardTemplate;
 use App\Filament\Pages\EditCardTemplate;
 use App\Models\Author;
@@ -14,7 +15,9 @@ use App\Support\PublicFront\Cards\PublicFrontCardTemplateRegistry;
 use App\Support\Settings\CardTemplates\CardTemplateFocusedWriter;
 use App\Support\Settings\CardTemplates\CardTemplatePreviewer;
 use App\Support\Settings\CardTemplates\CardTemplateReferenceScanner;
+use Filament\Actions\Testing\TestAction;
 use Filament\Facades\Filament;
+use Filament\Forms\Components\Builder;
 use Filament\Forms\Components\Select;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -180,6 +183,85 @@ it('refreshes once at the family change boundary and keeps sample selection tran
         ->and($component->get('previewFamily'))->toBe('content_group')
         ->and($component->get('previewSampleId'))->toBe($group->getKey())
         ->and($component->get('previewHtml'))->toContain('data-card-template-family="content_group"');
+});
+
+it('auto refreshes part field and structural edits without persisting settings', function (): void {
+    $template = step5bEditorTemplate();
+    $template['parts'][] = [
+        'type' => 'custom_text',
+        'source' => 'custom',
+        'attribute' => 'text',
+        'text' => 'STEP5B PART BEFORE',
+        'visible' => true,
+        'order' => 100,
+        'layout' => 'inline',
+    ];
+    step5bEditorSaveSetting(PublicContentSettings::class, 'card_templates', [$template]);
+    $item = step5bEditorPublicItem('Parts Auto Refresh Episode');
+    $component = Livewire::test(EditCardTemplate::class, [
+        'family' => 'content_item',
+        'key' => 'preview_target',
+    ]);
+    $parts = $component->instance()->form->getRawState()['parts'];
+    $customTextKey = collect($parts)->search(fn (array $part): bool => $part['type'] === 'custom_text');
+    $builder = $component->instance()->getSchemaComponent('form.parts');
+    $titleSize = $component->instance()->getSchemaComponent('form.title_size');
+
+    expect($customTextKey)->not->toBeFalse()
+        ->and($builder)->toBeInstanceOf(Builder::class)
+        ->and($builder->getStateBindingModifiers())->toBe(['live', 'debounce', 500])
+        ->and($titleSize->getStateBindingModifiers())->toBe([])
+        ->and($component->get('previewHtml'))->toContain('STEP5B PART BEFORE');
+
+    Event::fake([SettingsSaved::class]);
+    $writer = Mockery::mock(CardTemplateFocusedWriter::class);
+    $writer->shouldNotReceive('create', 'edit', 'delete');
+    app()->instance(CardTemplateFocusedWriter::class, $writer);
+    $scanner = Mockery::mock(CardTemplateReferenceScanner::class);
+    $scanner->shouldNotReceive('scan');
+    app()->instance(CardTemplateReferenceScanner::class, $scanner);
+
+    $component
+        ->set("data.parts.{$customTextKey}.data.text", 'STEP5B PART AFTER')
+        ->assertSet('previewStatus', 'ready')
+        ->assertSet('previewSampleId', $item->getKey());
+
+    expect($component->get('previewHtml'))
+        ->toContain('STEP5B PART AFTER')
+        ->not->toContain('STEP5B PART BEFORE')
+        ->and($component->instance()->previewIsStale())->toBeFalse();
+
+    $component->callAction(
+        TestAction::make('delete')->schemaComponent('parts', 'form'),
+        arguments: ['item' => $customTextKey],
+    );
+
+    expect($component->get('previewHtml'))->not->toContain('STEP5B PART AFTER')
+        ->and($component->get('previewSampleId'))->toBe($item->getKey())
+        ->and($component->instance()->previewIsStale())->toBeFalse();
+    Event::assertNotDispatched(SettingsSaved::class);
+});
+
+it('places localized cancel beside save instead of in the header', function (): void {
+    $template = step5bEditorTemplate();
+    step5bEditorSaveSetting(PublicContentSettings::class, 'card_templates', [$template]);
+
+    foreach (['he' => 'ביטול', 'en' => 'Cancel'] as $locale => $expectedLabel) {
+        app()->setLocale($locale);
+        $page = Livewire::test(EditCardTemplate::class, [
+            'family' => 'content_item',
+            'key' => 'preview_target',
+        ])->instance();
+        $formActions = collect($page->getFormActions());
+        $headerActions = collect($page->getCachedHeaderActions());
+
+        expect($formActions->map->getName()->all())->toBe(['save', 'cancel'])
+            ->and($headerActions->map->getName()->all())->toBe(['previewPanel', 'deleteTemplate'])
+            ->and($formActions->first(fn ($action): bool => $action->getName() === 'cancel')->getLabel())
+            ->toBe($expectedLabel)
+            ->and($formActions->first(fn ($action): bool => $action->getName() === 'cancel')->getUrl())
+            ->toBe(CardTemplateSettings::getUrl());
+    }
 });
 
 it('shows invalid and family-specific empty states without falling back to a stored template', function (): void {

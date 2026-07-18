@@ -62,6 +62,35 @@ This preserves the authorized selector's existing public-safe semantics,
 three-family support, transient state, and 50-result cap. It does not add a
 permission, alter public sample eligibility/order, or expose protected parts.
 
+## Template-parts auto-refresh and editor UX correction
+
+Laravel Simplifier audit `LS-20260718-STEP5B-PARTS-AUTOREFRESH-01` and approved
+option `STEP5B-PARTS-AUTOREFRESH-O1` add the smallest post-closeout correction
+for the editor behavior observed by the operator.
+
+- The top-level `parts` Builder now owns `live(debounce: 500)` state binding.
+  Direct `data.parts...` updates refresh the existing transient preview after
+  capability enforcement without saving settings.
+- Builder edit/add/delete/clone/reorder mutations use the Builder's existing
+  state-updated callback to refresh. Because block previews edit their cloned
+  action schema in a modal, those modal inputs remain deferred until the
+  operator accepts the part edit; the accepted edit then refreshes the preview
+  automatically in one Livewire request.
+- Family changes retain their existing automatic refresh and sample reset.
+  Ordinary root fields such as label, layout, density, image size, and title
+  size remain explicit-refresh inputs by design.
+- The wide preview now clears the sticky 4rem Filament topbar with a 5.5rem
+  logical viewport offset and matching maximum height. Its internal preview
+  header remains sticky at `top-0` inside the preview scroll box.
+- Cancel now has English and Hebrew strings and is rendered beside Save in the
+  form actions. Preview and Delete remain header actions.
+
+The correction retains the restricted selector boundary, protected-part
+absence, all three preview families, transient sample identity, deterministic
+public-safe sample behavior, and the 50-result selector-search cap. It adds no
+permission, persistence, dependency, migration, or generalized preview
+infrastructure.
+
 ## Requirement classification
 
 | Requirement | Classification | Evidence |
@@ -74,7 +103,10 @@ permission, alter public sample eligibility/order, or expose protected parts.
 | Deterministic public-safe sample and bounded selector | Implemented | Family queries use existing public scopes/aggregates, deterministic ordering, one-record fetches, and server search capped at 50. |
 | Eager-loaded/constant query plane | Implemented | Three identical family query runs are constant and lazy-loading prevention remains green. |
 | Family-specific empty/error/restricted/loading/stale states | Implemented | HE/EN copy and focused component coverage exercise no-sample, invalid, restricted, current/stale, and modal response states. |
-| Family change is the only automatic refresh | Implemented | The live family select clears sample identity and refreshes once; other fields use explicit Refresh. Opening a current slide-over does not recompute preview. |
+| Family and template-part automatic refresh boundaries | Implemented | The live family select clears sample identity and refreshes once. Direct `data.parts...` updates use the Builder's 500ms binding, while accepted Builder modal/structural mutations refresh through one Builder callback. Ordinary root fields remain explicit-refresh inputs, and opening a current slide-over does not recompute preview. |
+| Automatic refresh has no settings persistence/lifecycle effect | Implemented | Focused writer/scanner mocks and the `SettingsSaved` event fake remain untouched while direct and structural part updates refresh the preview. |
+| Wide preview clears the sticky Filament topbar | Implemented | The aside uses a 5.5rem top offset and matching viewport-height bound; authenticated Chromium verifies its top edge remains at or below the topbar bottom after scrolling. |
+| Cancel is translated and placed beside Save | Implemented | English `Cancel` and Hebrew `ביטול` keys are covered in the form-action order; Chromium verifies the settings URL action is in the form and absent from the header. Delete remains a header action. |
 | Responsive adjacent/slide-over single mount | Implemented | Authenticated Chromium verifies one active root at 1440 and 1024 CSS px and no duplicate root after both resize directions. |
 | HE/EN, RTL/LTR, logical end, independent scroll | Implemented | Authenticated Chromium verifies Hebrew RTL and English LTR; CSS uses logical layout and both editor/preview scroll containers remain independent. |
 | Keyboard, focus trap, Escape, resize restoration | Implemented | Native slide-over trap plus explicit heading/open-button focus targets are covered in Chromium. |
@@ -85,6 +117,7 @@ permission, alter public sample eligibility/order, or expose protected parts.
 | Real-browser DOM/network/listener/heap/timing evidence | Implemented with runner limitation | Chromium records DOM, roots, focusables, one refresh request, heap observation, and timings. The runner exposes Livewire component count but not listener enumeration; no listener value was fabricated. |
 | Existing writer/public/settings regressions | Already existed and verified | Focused writer/public/SP3C suites and the full suite remain green. |
 | Saved preview preferences, autosave, revisions, collaboration, synthetic/persisted samples | Deferred by specification | No persistence or generalized preview architecture was added. |
+| Automatic preview for ordinary root fields | Deferred by approved correction boundary | Label, layout, density, image size, and title size retain explicit Refresh. Only family and accepted Builder part changes auto-refresh. |
 | New permission, ARCH1/AUTHZ/SP3D, migration, dependency | Not applicable/out of scope | None was needed. |
 
 ## Performance evidence
@@ -156,6 +189,14 @@ These browser numbers are recorded observations, not new pass/fail ceilings.
   `app/Filament/Pages/CardTemplateEditorPage.php`,
   `resources/views/filament/pages/card-template-preview.blade.php`, and
   `tests/Feature/CardTemplateEditorPreviewTest.php`.
+- Template-parts/editor UX correction:
+  `docs/research/settings-performance/25-step5b-parts-autorefresh-research.md`,
+  `docs/research/settings-performance/26-step5b-parts-autorefresh-implementation-plan.md`,
+  `app/Filament/Pages/CardTemplateEditorPage.php`,
+  `resources/views/filament/pages/card-template-editor.blade.php`,
+  `lang/en/admin.php`, `lang/he/admin.php`,
+  `tests/Feature/CardTemplateEditorPreviewTest.php`, and
+  `tests/Browser/CardTemplatePreviewBrowserTest.php`.
 
 ## Tests added or updated
 
@@ -173,6 +214,14 @@ These browser numbers are recorded observations, not new pass/fail ceilings.
   forged action/schema requests, all three sample-query tables, protected
   sentinel absence, authorized search/selected-label/selection/refresh for all
   three families, and the 50-result selector bound.
+- Added direct part-state and actual Builder delete-action regressions proving
+  automatic refresh, retained sample identity/current status, a 500ms Builder
+  binding, an unchanged deferred root field, and no settings writer/scanner or
+  `SettingsSaved` event.
+- Added bilingual form-action placement coverage and authenticated Chromium
+  coverage for the actual Builder modal-save refresh, one Livewire request,
+  one preview root, sticky topbar clearance, translated Cancel placement, and
+  no JavaScript errors.
 
 ## Commands and results
 
@@ -231,6 +280,48 @@ These browser numbers are recorded observations, not new pass/fail ceilings.
   macOS rendezvous port. No files changed. The permitted external retry of the
   same command passed 2 tests / 28 assertions.
 
+### Template-parts auto-refresh correction checks
+
+- Stage 2 preflight confirmed clean `main` at
+  `911f707ae691f0ee49ab4e640b579b1ffd077fa8`, the original and restricted
+  closure Step 5B commits, unchanged scoped source, and exact audit/option IDs.
+- Laravel Boost `application_info` plus version-aware Filament/Livewire/Pest/
+  Tailwind searches completed. FilamentExamples completed two refined
+  search/snippet batches; no full-source/detail endpoint was available.
+- Initial
+  `php artisan test --compact tests/Feature/CardTemplateEditorPreviewTest.php`:
+  failed before tests because a `void` arrow callback returned the
+  `refreshPreview()` expression. Replaced it with an explicit `void` closure.
+- Retry of that command: passed 6 tests / 94 assertions.
+- After adding regressions, the same command failed with 7 tests passing and
+  one error because this SettingsPage does not expose
+  `getCachedFormActions()`. The test now uses its public `getFormActions()`
+  contract; retry passed 8 tests / 120 assertions.
+- Initial sandboxed
+  `php artisan test --compact tests/Browser/CardTemplatePreviewBrowserTest.php`:
+  all 3 cases failed before assertions because Chromium was denied its macOS
+  rendezvous port.
+- Permitted external retries exposed test-only assumptions in sequence: the
+  unbuilt sticky utility (2 passed / 1 failed, 31 assertions), an excessive
+  scroll endpoint (2 / 1, 31), an overbroad header selector (2 / 1, 33), the
+  Builder action modal's intentionally deferred `wire:model` binding (2 / 1,
+  38), and a hidden-modal selector which counted 11 requests and did not
+  observe the preview result (2 / 1, 39; single-test retry 0 / 1, 11).
+- Iteration `npm run build`: passed with Vite 8.1.0 and made the new Tailwind
+  utility available to Chromium.
+- The browser test now targets the open Filament modal and submits its real
+  action form. Single-test retry passed 1 test / 16 assertions; full focused
+  file retry passed 3 tests / 44 assertions.
+- `git diff --check`: passed.
+- Focused `vendor/bin/pint` over the changed PHP/test/locale files: passed.
+- Final focused
+  `php artisan test --compact tests/Feature/CardTemplateEditorPreviewTest.php`:
+  passed 8 tests / 120 assertions.
+- `php artisan test --compact tests/Feature/CardTemplatePreviewerTest.php`:
+  passed 8 tests / 42 assertions.
+- `php artisan test --compact tests/Feature/SettingsSp3cCanaryTest.php`:
+  passed 10 tests / 388 assertions; frozen SP3C ceilings are unchanged.
+
 ### Ordered final gate
 
 Requirements sweep passed before the gate.
@@ -288,6 +379,48 @@ The documented closure requirements sweep above passed before this sequence.
    did not emit an aggregate summary after completion; the successful exit is
    the recorded result.
 
+### Template-parts auto-refresh correction final gate
+
+The requirements sweep passed before this sequence:
+
+- Implemented: direct `data.parts...` updates and accepted Builder modal/
+  structural mutations refresh through the existing transient preview without
+  calling the settings writer, reference scanner, or settings lifecycle.
+- Implemented: the Builder owns a 500ms live modifier; its cloned block-preview
+  edit modal remains deferred until its real Save action, which refreshes the
+  authoritative Builder draft in one Livewire request.
+- Implemented: family/sample behavior, all three preview families, authorized
+  selector search/label/selection, the 50-result cap, restricted query
+  suppression, and protected sentinel absence remain unchanged.
+- Implemented: the wide preview clears the Filament topbar and retains one
+  independently scrolling preview root.
+- Implemented: English and Hebrew Cancel labels render beside Save; Delete and
+  Preview remain header actions.
+- Deferred by the approved boundary: ordinary root fields remain explicit-
+  refresh inputs. No generalized per-keystroke preview was added.
+- Not applicable/out of scope: permissions, persistence, migrations, models,
+  dependencies, sample semantics, public-card redesign, generalized preview
+  infrastructure, production/database actions, and another roadmap item.
+- Documentation synchronized: the handoff, current state, active pending queue,
+  and ledger record completion while retaining that no next implementation is
+  automatically selected.
+
+1. Requirements/scope sweep using `git diff --check`, scoped changed-file and
+   implementation-marker inspection, translation inspection, and roadmap-rule
+   inspection: passed.
+2. `vendor/bin/pint --test`: passed.
+3. `vendor/bin/filacheck`: passed with 0 issues.
+4. `npm run build`: passed with Vite 8.1.0.
+5. `php artisan test`: passed 760 tests / 9,573 assertions in 350.988 seconds.
+   The full command used the permitted external runner because the sandboxed
+   Chromium launch is known to fail on its macOS rendezvous port; the suite was
+   not parallelized or interrupted.
+
+After this result section was written, the requirements sweep and the same
+canonical Pint → FilaCheck → build → full-suite sequence were repeated on the
+final documented implementation tree. The repeated results remained green;
+the full-suite result is the final result reported for the committed tree.
+
 ## Assumptions, limitations, and deferrals
 
 - The approved zero-preview-settings-read interpretation applies to preview
@@ -305,44 +438,60 @@ The documented closure requirements sweep above passed before this sequence.
 - The audit found no protected-data confidentiality exposure. The repair is
   authorization-contract enforcement, unnecessary public-sample query
   suppression, and test/handoff correction.
+- Builder block-preview inputs are edited in Filament's cloned action schema
+  and therefore remain deferred while the modal is open. Accepting that edit
+  updates the authoritative Builder state and automatically refreshes the
+  preview. The change does not attempt a second preview draft inside the modal.
+- Root template fields other than family remain explicit-refresh inputs. This
+  correction is intentionally limited to template parts.
 - No live network, mail, development database, migration, dependency install,
   production action, push, or remote publication occurred.
 
 ## Local Front Check Report
 
 1. Open Admin > Settings > Card Templates and edit a content-item template.
-   Expect the existing import-lock badge, Builder, Save/Cancel behavior, and a
-   preview at logical end on a window at least 1280 CSS pixels wide.
-2. Change the label, title size, and one Builder part without saving. Expect
-   “Changes not yet previewed” while the last preview remains visible.
-3. Click Refresh preview. Expect the unsaved changes to render, the freshness
-   status and Jerusalem day-first timestamp to update, and no template save or
-   settings notification to occur.
-4. Click Choose sample, search for another published episode, and select it.
+   Expect Delete and Preview in the page header, and expect translated Save and
+   Cancel actions together below the form.
+2. At a window at least 1280 CSS pixels wide, scroll the editor. Expect the
+   preview to remain sticky below the Filament topbar, never beneath it, with
+   its own internal scrolling.
+3. Open a Builder part, change a visible setting such as custom text, and
+   accept the part edit. Expect the adjacent preview to update automatically
+   without clicking Refresh and without saving the template.
+4. Add, clone, reorder, and delete a part. After each accepted Builder action,
+   expect the preview to update automatically and keep the selected sample.
+5. Change the root template label or title size. Expect “Changes not yet
+   previewed” while the last preview remains visible; these root fields remain
+   explicit-refresh inputs.
+6. Click Refresh preview. Expect the root-field changes to render, the
+   freshness status and Jerusalem day-first timestamp to update, and no
+   template save or settings notification to occur.
+7. Click Choose sample, search for another published episode, and select it.
    Expect no more than 50 server results and the selected sample to remain
    transient after leaving the editor.
-5. Change the family. Expect the old sample to clear and one automatic preview
+8. Change the family. Expect the old sample to clear and one automatic preview
    refresh to render the matching podcast or contributor card.
-6. Narrow the window below 1280 CSS pixels. Expect the adjacent preview to
+9. Narrow the window below 1280 CSS pixels. Expect the adjacent preview to
    disappear and the Preview header action to appear.
-7. Open Preview, press Tab repeatedly, and then press Escape. Expect focus to
+10. Open Preview, press Tab repeatedly, and then press Escape. Expect focus to
    stay inside the slide-over while open and return to the Preview action when
    it closes; expect unsaved editor changes to remain.
-8. Reopen Preview and widen the window past 1280 CSS pixels. Expect one
+11. Reopen Preview and widen the window past 1280 CSS pixels. Expect one
    adjacent preview, no duplicate slide-over DOM, and focus on the adjacent
    preview heading.
-9. Try every visible card title, image, category/tag, contributor, and action
+12. Try every visible card title, image, category/tag, contributor, and action
    affordance inside the preview. Expect none to navigate, submit, or activate
    Livewire behavior.
-10. Repeat the wide/narrow flow in Hebrew and English. Expect Hebrew RTL,
+13. Repeat the wide/narrow flow in Hebrew and English. Expect Hebrew RTL,
     English LTR, preview placement at logical end, independent editor/preview
-    scrolling, wrapped long sample labels, and no horizontal page overflow.
-11. Edit a protected template as an actor without its current capability. At
+    scrolling, translated Cancel text instead of `admin.actions.cancel`,
+    wrapped long sample labels, and no horizontal page overflow.
+14. Edit a protected template as an actor without its current capability. At
     both wide layout and in the narrow Preview slide-over, expect a restricted
     preview with no Choose sample action or searchable sample control. Expect
     no protected part values in page source and unchanged existing Save
     protection.
-12. Make an unsaved edit and use Back or close the tab. Expect the existing
+15. Make an unsaved edit and use Back or close the tab. Expect the existing
     unsaved-changes warning to remain authoritative.
 
 ## Commit hash
@@ -352,3 +501,7 @@ The documented closure requirements sweep above passed before this sequence.
 ## Restricted selector closure commit hash
 
 `69813dbd4002ed8e7c3e42e640f7d48085e275da`
+
+## Template-parts auto-refresh correction commit hash
+
+Pending implementation commit hash.
