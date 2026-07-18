@@ -164,18 +164,83 @@ it('selects the deterministic newest public item and rejects a forged sample ide
 });
 
 it('caps public sample search results at fifty in deterministic order', function (): void {
+    $groups = collect();
+
     foreach (range(1, 51) as $index) {
         $group = ContentGroup::factory()->published()->create([
             'title' => sprintf('Preview Group %02d', $index),
         ]);
         step5bCreatePublicItem("Preview Group Episode {$index}", group: $group);
+        $groups->push($group);
     }
+
+    $groups->last()->update(['cover_path' => 'preview/group-51.jpg']);
 
     $options = app(CardTemplatePreviewer::class)->sampleOptions('content_group', 'Preview Group');
 
     expect($options)->toHaveCount(50)
-        ->and(array_values($options)[0])->toBe('Preview Group 01')
-        ->and(array_values($options)[49])->toBe('Preview Group 50');
+        ->and(array_values($options)[0])->toBe('Preview Group 51')
+        ->and(array_values($options)[49])->toBe('Preview Group 49');
+});
+
+it('preloads ten image-first public samples independently from the fifty-result search cap', function (): void {
+    foreach (range(1, 11) as $index) {
+        $group = ContentGroup::factory()->published()->create([
+            'title' => sprintf('Preload Group %02d', $index),
+            'cover_path' => $index === 11 ? 'preview/preload-11.jpg' : null,
+        ]);
+        step5bCreatePublicItem("Preload Group Episode {$index}", group: $group);
+    }
+
+    $options = app(CardTemplatePreviewer::class)->initialSampleOptions('content_group');
+
+    expect($options)->toHaveCount(CardTemplatePreviewer::SAMPLE_PRELOAD_LIMIT)
+        ->and(array_values($options)[0])->toBe('Preload Group 11')
+        ->and($options)->not->toHaveKey(
+            ContentGroup::query()->where('title', 'Preload Group 10')->value('id'),
+        );
+});
+
+it('orders episodes by their own image without treating inherited podcast covers as their own', function (): void {
+    $inheritedGroup = ContentGroup::factory()->published()->create([
+        'title' => 'Ordering Inherited Podcast',
+        'cover_path' => 'preview/inherited-podcast.jpg',
+    ]);
+    step5bCreatePublicItem(
+        'Ordering Episode With Inherited Cover',
+        group: $inheritedGroup,
+        transcriptionPublishedAt: now(),
+    );
+    $ownImage = step5bCreatePublicItem(
+        'Ordering Episode With Own Image',
+        transcriptionPublishedAt: now()->subDay(),
+    );
+    $ownImage->update(['external_thumbnail_url' => 'https://example.test/own-image.jpg']);
+
+    $options = app(CardTemplatePreviewer::class)->sampleOptions('content_item', 'Ordering Episode');
+
+    expect(array_values($options)[0])->toBe(__('admin.settings_sp3c.preview.sample_item_label', [
+        'title' => $ownImage->title,
+        'group' => $ownImage->contentGroup->title,
+    ]));
+});
+
+it('uses the existing missing-image fallback for an image-less episode preview', function (): void {
+    $group = ContentGroup::factory()->published()->create([
+        'title' => 'Preview Placeholder Podcast',
+        'cover_path' => 'preview/podcast-cover.jpg',
+    ]);
+    $item = step5bCreatePublicItem('Preview Placeholder Episode', group: $group);
+
+    $preview = app(CardTemplatePreviewer::class)->preview(
+        step5bPreviewDraft('content_item'),
+        $item->getKey(),
+    );
+
+    expect($preview['html'])
+        ->toContain('data-card-image-source="fallback"')
+        ->not->toContain('data-card-image-source="group"')
+        ->toContain($item->effectiveTypeLabelSingular());
 });
 
 it('rejects an invalid unsaved draft without a configured-template fallback', function (): void {

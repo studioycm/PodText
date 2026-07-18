@@ -12,13 +12,17 @@ use App\Models\User;
 use App\Settings\AdminUxSettings;
 use App\Settings\PublicContentSettings;
 use App\Support\PublicFront\Cards\PublicFrontCardTemplateRegistry;
+use App\Support\PublicFront\PublicFrontConfigRegistry;
 use App\Support\Settings\CardTemplates\CardTemplateFocusedWriter;
+use App\Support\Settings\CardTemplates\CardTemplatePartSummaryFormatter;
 use App\Support\Settings\CardTemplates\CardTemplatePreviewer;
 use App\Support\Settings\CardTemplates\CardTemplateReferenceScanner;
 use Filament\Actions\Testing\TestAction;
 use Filament\Facades\Filament;
 use Filament\Forms\Components\Builder;
 use Filament\Forms\Components\Select;
+use Filament\Support\Enums\SlideOverPosition;
+use Filament\Support\Enums\Width;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
@@ -110,7 +114,7 @@ it('previews the current single draft explicitly without settings or mutation se
         ->and($component->get('previewHtml'))->toContain('data-card-template-family="content_item"')
         ->and($component->instance()->previewIsStale())->toBeFalse();
 
-    $component->set('data.title_size', 'lg');
+    $component->set('data.label', 'Identity-only label change');
     expect($component->instance()->previewIsStale())->toBeTrue();
 
     Event::fake([SettingsSaved::class]);
@@ -124,7 +128,7 @@ it('previews the current single draft explicitly without settings or mutation se
     app()->bind(PublicContentSettings::class, fn (): never => throw new RuntimeException('Preview refresh read configured settings.'));
 
     $component
-        ->call('refreshPreview')
+        ->set('data.title_size', 'lg')
         ->assertSet('previewStatus', 'ready')
         ->assertSet('previewSampleId', $item->getKey());
 
@@ -139,6 +143,10 @@ it('previews the current single draft explicitly without settings or mutation se
 
     $previewer = Mockery::mock(CardTemplatePreviewer::class);
     $previewer->shouldNotReceive('preview');
+    $previewer->shouldReceive('sampleLabel')->andReturn('Editor Preview Episode');
+    $previewer->shouldReceive('initialSampleOptions')->andReturn([
+        $item->getKey() => 'Editor Preview Episode',
+    ]);
     app()->instance(CardTemplatePreviewer::class, $previewer);
 
     $component
@@ -205,12 +213,17 @@ it('auto refreshes part field and structural edits without persisting settings',
     $parts = $component->instance()->form->getRawState()['parts'];
     $customTextKey = collect($parts)->search(fn (array $part): bool => $part['type'] === 'custom_text');
     $builder = $component->instance()->getSchemaComponent('form.parts');
-    $titleSize = $component->instance()->getSchemaComponent('form.title_size');
+    $presentationFields = collect(['layout', 'density', 'image_size', 'title_size'])
+        ->mapWithKeys(fn (string $field): array => [
+            $field => $component->instance()->getSchemaComponent("form.{$field}"),
+        ]);
 
     expect($customTextKey)->not->toBeFalse()
         ->and($builder)->toBeInstanceOf(Builder::class)
         ->and($builder->getStateBindingModifiers())->toBe(['live', 'debounce', 500])
-        ->and($titleSize->getStateBindingModifiers())->toBe([])
+        ->and($presentationFields->every(
+            fn ($field): bool => $field instanceof Select && $field->getStateBindingModifiers() === ['live'],
+        ))->toBeTrue()
         ->and($component->get('previewHtml'))->toContain('STEP5B PART BEFORE');
 
     Event::fake([SettingsSaved::class]);
@@ -239,6 +252,110 @@ it('auto refreshes part field and structural edits without persisting settings',
     expect($component->get('previewHtml'))->not->toContain('STEP5B PART AFTER')
         ->and($component->get('previewSampleId'))->toBe($item->getKey())
         ->and($component->instance()->previewIsStale())->toBeFalse();
+    Event::assertNotDispatched(SettingsSaved::class);
+});
+
+it('auto refreshes rendered presentation fields but leaves identity-only fields stale', function (): void {
+    $template = step5bEditorTemplate();
+    step5bEditorSaveSetting(PublicContentSettings::class, 'card_templates', [$template]);
+    step5bEditorPublicItem('Presentation Refresh Episode');
+    $component = Livewire::test(EditCardTemplate::class, [
+        'family' => 'content_item',
+        'key' => 'preview_target',
+    ]);
+
+    Event::fake([SettingsSaved::class]);
+    $writer = Mockery::mock(CardTemplateFocusedWriter::class);
+    $writer->shouldNotReceive('create', 'edit', 'delete');
+    app()->instance(CardTemplateFocusedWriter::class, $writer);
+    $scanner = Mockery::mock(CardTemplateReferenceScanner::class);
+    $scanner->shouldNotReceive('scan');
+    app()->instance(CardTemplateReferenceScanner::class, $scanner);
+
+    $component
+        ->set('data.layout', 'rows')
+        ->set('data.density', 'compact')
+        ->set('data.image_size', 'small')
+        ->set('data.title_size', 'lg');
+
+    expect($component->get('previewHtml'))
+        ->toContain('data-result-layout="rows"')
+        ->toContain('data-card-density="compact"')
+        ->toContain('data-card-image-size="small"')
+        ->toContain('data-card-title-size="lg"')
+        ->and($component->instance()->previewIsStale())->toBeFalse();
+
+    $freshHash = $component->get('previewDraftHash');
+    $component
+        ->set('data.key', 'identity_only_key')
+        ->set('data.label', 'Identity-only label');
+
+    expect($component->get('previewDraftHash'))->toBe($freshHash)
+        ->and($component->instance()->previewIsStale())->toBeTrue();
+    Event::assertNotDispatched(SettingsSaved::class);
+});
+
+it('configures remembered builder modes without server persistence and keeps native slide-over apply timing', function (): void {
+    $template = step5bEditorTemplate();
+    $template['parts'][] = [
+        'type' => 'part_group',
+        'visible' => true,
+        'order' => 100,
+        'layout' => 'stacked',
+        'children' => [[
+            'type' => 'custom_text',
+            'source' => 'custom',
+            'attribute' => 'text',
+            'text' => 'Nested mode state',
+            'visible' => true,
+            'order' => 0,
+            'layout' => 'inline',
+        ]],
+    ];
+    step5bEditorSaveSetting(PublicContentSettings::class, 'card_templates', [$template]);
+    step5bEditorPublicItem('Builder Mode Episode');
+    $component = Livewire::test(EditCardTemplate::class, [
+        'family' => 'content_item',
+        'key' => 'preview_target',
+    ]);
+    $builder = $component->instance()->getSchemaComponent('form.parts');
+    $groupKey = collect($builder->getRawState())
+        ->search(fn (array $part): bool => $part['type'] === 'part_group');
+    $nestedBuilder = collect($builder->getChildSchema($groupKey)->getComponents())
+        ->first(fn ($field): bool => $field instanceof Builder && $field->getName() === 'children');
+    $editAction = $builder->getEditAction();
+
+    expect($component->get('builderDisplayMode'))->toBe('slide_over')
+        ->and($builder)->toBeInstanceOf(Builder::class)
+        ->and($builder->hasBlockPreviews())->toBeTrue()
+        ->and($builder->getBlock('custom_text')->getColumns())->toBe(['default' => 1, 'lg' => 2])
+        ->and($nestedBuilder)->toBeInstanceOf(Builder::class)
+        ->and($nestedBuilder->hasBlockPreviews())->toBeTrue()
+        ->and($nestedBuilder->getEditAction()->isModalSlideOver())->toBeTrue()
+        ->and($nestedBuilder->getEditAction()->getModalSlideOverPosition())->toBe(SlideOverPosition::Start)
+        ->and($editAction->isModalSlideOver())->toBeTrue()
+        ->and($editAction->getModalSlideOverPosition())->toBe(SlideOverPosition::Start)
+        ->and($editAction->getModalWidth())->toBe(Width::ThreeExtraLarge)
+        ->and($editAction->isModalHeaderSticky())->toBeTrue()
+        ->and($editAction->isModalFooterSticky())->toBeTrue();
+
+    Event::fake([SettingsSaved::class]);
+    $component->call('setBuilderDisplayMode', 'inline');
+    $builder = $component->instance()->getSchemaComponent('form.parts');
+    $groupKey = collect($builder->getRawState())
+        ->search(fn (array $part): bool => $part['type'] === 'part_group');
+    $nestedBuilder = collect($builder->getChildSchema($groupKey)->getComponents())
+        ->first(fn ($field): bool => $field instanceof Builder && $field->getName() === 'children');
+
+    expect($component->get('builderDisplayMode'))->toBe('inline')
+        ->and($builder->hasBlockPreviews())->toBeFalse()
+        ->and($nestedBuilder->hasBlockPreviews())->toBeFalse();
+
+    $component->call('setBuilderDisplayMode', 'forged');
+    $builder = $component->instance()->getSchemaComponent('form.parts');
+
+    expect($component->get('builderDisplayMode'))->toBe('slide_over')
+        ->and($builder->hasBlockPreviews())->toBeTrue();
     Event::assertNotDispatched(SettingsSaved::class);
 });
 
@@ -286,7 +403,7 @@ it('shows invalid and family-specific empty states without falling back to a sto
 it('never fetches or serializes protected parts for a restricted preview shell', function (): void {
     $author = Author::factory()->create(['name' => 'Restricted Preview Contributor']);
     $group = ContentGroup::factory()->published()->create(['title' => 'Restricted Preview Group']);
-    step5bEditorPublicItem('Restricted Preview Item', $group, $author);
+    $item = step5bEditorPublicItem('Restricted Preview Item', $group, $author);
     $template = step5bEditorTemplate();
     $template['parts'] = [[
         'type' => 'metadata_row',
@@ -312,20 +429,23 @@ it('never fetches or serializes protected parts for a restricted preview shell',
         ->assertSet('previewHtml', null)
         ->assertDontSee('STEP5B-PROTECTED-SECRET', escape: false);
 
-    $state = json_encode($component->get('data'), JSON_THROW_ON_ERROR);
+    $state = json_encode([
+        'data' => $component->get('data'),
+        'preview_controls' => $component->get('previewControls'),
+    ], JSON_THROW_ON_ERROR);
 
     $queries = [];
 
     $component
-        ->assertActionHidden('choosePreviewSample')
-        ->assertActionDisabled('choosePreviewSample')
         ->assertDontSee(__('admin.settings_sp3c.preview.choose_sample'))
-        ->call('mountAction', 'choosePreviewSample')
-        ->assertSet('mountedActions', [])
-        ->call('callSchemaComponentMethod', 'mountedActionSchema0.sample_id', 'getSearchResultsForJs', ['Restricted'])
-        ->call('callSchemaComponentMethod', 'mountedActionSchema0.sample_id', 'getOptionLabel');
+        ->assertDontSeeHtml('data-card-template-preview-sample-select')
+        ->call('selectPreviewSample', $item->getKey())
+        ->assertSet('previewControls.sample_id', null)
+        ->call('callSchemaComponentMethod', 'previewSampleForm.sample_id', 'getSearchResultsForJs', ['Restricted'])
+        ->call('callSchemaComponentMethod', 'previewSampleForm.sample_id', 'getOptionLabel');
 
     expect($state)->not->toContain('STEP5B-PROTECTED-SECRET')
+        ->and($component->instance()->getSchema('previewSampleForm')->getComponents())->toBe([])
         ->and(collect($queries)->contains(fn (string $sql): bool => str_contains($sql, 'from "content_items"')))->toBeFalse()
         ->and(collect($queries)->contains(fn (string $sql): bool => str_contains($sql, 'from "content_groups"')))->toBeFalse()
         ->and(collect($queries)->contains(fn (string $sql): bool => str_contains($sql, 'from "authors"')))->toBeFalse();
@@ -365,25 +485,27 @@ it('keeps authorized sample selector search label selection and refresh working 
             'key' => "preview_{$family}",
         ])
             ->assertSet('previewStatus', 'ready')
-            ->assertActionVisible('choosePreviewSample')
-            ->assertActionEnabled('choosePreviewSample')
-            ->mountAction('choosePreviewSample')
-            ->assertSet('mountedActions.0.name', 'choosePreviewSample');
+            ->assertSeeHtml('data-card-template-preview-sample-select');
 
-        $select = $component->instance()->getSchemaComponent('mountedActionSchema0.sample_id');
+        $select = $component->instance()->getSchemaComponent('previewSampleForm.sample_id');
 
         expect($select)->toBeInstanceOf(Select::class)
             ->and($select->getOptionsLimit())->toBe(CardTemplatePreviewer::SAMPLE_LIMIT)
+            ->and($select->getOptions())->toHaveKey($sample['id'])
             ->and($select->getSearchResults($sample['search']))->toHaveKey($sample['id']);
 
-        $component->fillForm(['sample_id' => $sample['id']]);
-        $select = $component->instance()->getSchemaComponent('mountedActionSchema0.sample_id');
+        $component->set('previewControls.sample_id', $sample['id']);
+        $select = $component->instance()->getSchemaComponent('previewSampleForm.sample_id');
+        DB::enableQueryLog();
+        DB::flushQueryLog();
+        $selectedLabel = $select->getOptionLabel();
+        $selectedLabelQueryCount = count(DB::getQueryLog());
 
         expect($select)->toBeInstanceOf(Select::class)
-            ->and($select->getOptionLabel())->toBe($sample['label']);
+            ->and($selectedLabel)->toBe($sample['label'])
+            ->and($selectedLabelQueryCount)->toBe(0);
 
         $component
-            ->callMountedAction()
             ->assertSet('previewStatus', 'ready')
             ->assertSet('previewFamily', $family)
             ->assertSet('previewSampleId', $sample['id']);
@@ -404,10 +526,56 @@ it('caps authorized sample selector searches at fifty results', function (): voi
     $component = Livewire::test(EditCardTemplate::class, [
         'family' => 'content_group',
         'key' => 'preview_content_group',
-    ])->mountAction('choosePreviewSample');
-    $select = $component->instance()->getSchemaComponent('mountedActionSchema0.sample_id');
+    ]);
+    $select = $component->instance()->getSchemaComponent('previewSampleForm.sample_id');
+
+    DB::enableQueryLog();
+    DB::flushQueryLog();
+    $preloaded = $select->getOptions();
+    $preloadQueryCount = count(DB::getQueryLog());
+    DB::flushQueryLog();
+    $searched = $select->getSearchResults('Authorized Selector Group');
+    $searchQueryCount = count(DB::getQueryLog());
 
     expect($select)->toBeInstanceOf(Select::class)
         ->and($select->getOptionsLimit())->toBe(CardTemplatePreviewer::SAMPLE_LIMIT)
-        ->and($select->getSearchResults('Authorized Selector Group'))->toHaveCount(CardTemplatePreviewer::SAMPLE_LIMIT);
+        ->and($preloaded)->toHaveCount(CardTemplatePreviewer::SAMPLE_PRELOAD_LIMIT)
+        ->and($searched)->toHaveCount(CardTemplatePreviewer::SAMPLE_LIMIT)
+        ->and($preloadQueryCount)->toBe(2)
+        ->and($searchQueryCount)->toBe(2);
+});
+
+it('localizes builder summaries and preserves escaped diagnostics for unknown values', function (): void {
+    $formatter = app(CardTemplatePartSummaryFormatter::class);
+
+    foreach (['en', 'he'] as $locale) {
+        app()->setLocale($locale);
+        $known = $formatter->summarize([
+            'source' => 'content_item',
+            'attribute' => 'title',
+        ]);
+        $unknown = $formatter->summarize([
+            'source' => '<legacy-source>',
+            'attribute' => '<legacy-attribute>',
+        ]);
+
+        expect($known['title'])->toBe(__('admin.settings_sp3c.editor.unlabelled_part'))
+            ->and($known['title'])->not->toContain($locale === 'he' ? 'חלק' : 'Part')
+            ->and($known['context'])->toBe(__('admin.settings_sp3c.editor.part_source', [
+                'source' => PublicFrontConfigRegistry::cardSourceOptions()['content_item'],
+                'attribute' => PublicFrontConfigRegistry::cardAttributeOptions('content_item')['title'],
+            ]))
+            ->and($unknown['context'])->toContain('<legacy-source>')
+            ->toContain('<legacy-attribute>');
+    }
+
+    $html = view('filament.card-templates.part-summary', [
+        'source' => '<script>alert(1)</script>',
+        'attribute' => '<img src=x onerror=alert(1)>',
+    ])->render();
+
+    expect($html)
+        ->not->toContain('<script>alert(1)</script>')
+        ->not->toContain('<img src=x onerror=alert(1)>')
+        ->toContain('&lt;script&gt;alert(1)&lt;/script&gt;');
 });

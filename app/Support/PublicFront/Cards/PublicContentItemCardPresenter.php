@@ -39,10 +39,18 @@ class PublicContentItemCardPresenter
         PublicFrontCardTemplate $template,
         string $layout = 'cards',
         ?Author $contributorContext = null,
+        bool $inheritGroupCover = true,
     ): array {
         $presentation = $this->renderer->contentItemPresentation($template, $layout);
 
-        return $this->presentWithPresentation($item, $options, $template, $presentation, $contributorContext);
+        return $this->presentWithPresentation(
+            $item,
+            $options,
+            $template,
+            $presentation,
+            $contributorContext,
+            $inheritGroupCover,
+        );
     }
 
     /**
@@ -82,6 +90,7 @@ class PublicContentItemCardPresenter
         PublicFrontCardTemplate $template,
         array $presentation,
         ?Author $contributorContext = null,
+        bool $inheritGroupCover = true,
     ): array {
         $itemUrl = ShowContentItem::getUrl([
             'contentGroupSlug' => $item->contentGroup->slug,
@@ -95,7 +104,7 @@ class PublicContentItemCardPresenter
         $sitePublishedDate = $item->published_at?->timezone('Asia/Jerusalem')->format('d/m/Y');
         $originalDate = $item->original_published_at?->timezone('Asia/Jerusalem')->format('d/m/Y');
         $duration = $this->duration($item->duration_seconds);
-        $image = $this->defaultImages->contentItemImage($item);
+        $image = $this->defaultImages->contentItemImage($item, $inheritGroupCover);
         $titleText = $options->groupBadgeMode === 'combined_title'
             ? $this->displayTitle->combined($item, $options->groupTitleSeparator)
             : $item->title;

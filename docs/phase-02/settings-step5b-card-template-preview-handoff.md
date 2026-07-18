@@ -14,6 +14,14 @@
   Card Template list or settings-backed render context.
 - No migration, dependency, persistence, permission, lifecycle, ownership, or
   generalized preview-platform change was authorized or added.
+- Expanded editor UX closure audit:
+  `LS-20260718-STEP5B-CARD-TEMPLATE-UX-01`; approved option:
+  `STEP5B-CARD-UX-O1`; clean implementation baseline:
+  `e31118f1c9f0fa5b2494d72fa0dc2097f6dc9d07`.
+- Research and the consulted implementation plan are recorded in
+  `docs/research/settings-performance/27-step5b-card-template-editor-ux-research.md`
+  and
+  `docs/research/settings-performance/28-step5b-card-template-editor-ux-implementation-plan.md`.
 
 ## Outcome
 
@@ -50,13 +58,13 @@ selector.
 
 The approved `STEP5B-CLOSURE-O1` repair now:
 
-- omits Choose sample from a restricted preview shell;
-- hides and disables the Filament action using the existing restricted/current
-  capability state, so a forged `mountAction()` stops before its schema mounts;
-- returns before `sampleOptions()`, `sampleLabel()`, or a selection refresh if
-  the state becomes restricted; and
-- proves that mount, a forged action request, and forged schema-component
-  lookup cannot query `content_items`, `content_groups`, or `authors`.
+- omits the sample control from a restricted preview shell;
+- returns an empty inline Select schema using the existing restricted/current
+  capability state, so no preload/search/selected-label component mounts;
+- returns before direct selection, `sampleOptions()`, `sampleLabel()`, or a
+  selection refresh if the state becomes restricted; and
+- proves that direct selection and forged schema-component lookup cannot query
+  `content_items`, `content_groups`, or `authors`.
 
 This preserves the authorized selector's existing public-safe semantics,
 three-family support, transient state, and 50-result cap. It does not add a
@@ -76,9 +84,10 @@ for the editor behavior observed by the operator.
   action schema in a modal, those modal inputs remain deferred until the
   operator accepts the part edit; the accepted edit then refreshes the preview
   automatically in one Livewire request.
-- Family changes retain their existing automatic refresh and sample reset.
-  Ordinary root fields such as label, layout, density, image size, and title
-  size remain explicit-refresh inputs by design.
+- Family changes retain their existing automatic refresh and sample reset. At
+  this correction boundary, ordinary root fields still required explicit
+  Refresh; the expanded approved closure below supersedes that boundary for
+  finite rendered presentation Selects while leaving key/label identity-only.
 - The wide preview now clears the sticky 4rem Filament topbar with a 5.5rem
   logical viewport offset and matching maximum height. Its internal preview
   header remains sticky at `top-0` inside the preview scroll box.
@@ -91,6 +100,61 @@ public-safe sample behavior, and the 50-result selector-search cap. It adds no
 permission, persistence, dependency, migration, or generalized preview
 infrastructure.
 
+## Expanded Card Template editor UX closure
+
+The approved `STEP5B-CARD-UX-O1` closure keeps the rendered preview at the top
+of its own responsive logical-end column while making the editor draft the
+first section of the form column. Import-lock metadata now uses the page
+subheading: a short localized label, the current lock badge, and a localized
+`?` tooltip for the long explanation.
+
+The preview shell now has a compact collapsible controls toolbar. The card
+canvas remains mounted and visible when the toolbar is collapsed. Page-local
+zoom uses grouped minus/reset/plus controls, 10% steps, a 50%–150% clamp, and
+100% reset. It participates in the existing overflow plane and is not stored
+or remembered.
+
+Choose Sample is now an inline searchable Filament Select. It:
+
+- preloads exactly 10 public-safe options and independently caps server search
+  at 50;
+- orders episodes with their own `image_path` or
+  `external_thumbnail_url`, and podcasts with their own `cover_path`, before
+  image-less records while keeping deterministic ordering within each tier;
+- does not treat an inherited podcast cover as an episode's own image;
+- keeps contributors unchanged, resolves the selected label without a
+  redundant query when the current locked label is available, and retains
+  three-family/transient/no-settings-persistence behavior; and
+- is not constructed, rendered, queried, or accepted through direct/forged
+  interactions in restricted state.
+
+For preview rendering only, image-less episodes opt out of podcast-cover
+inheritance and use the existing card missing-image fallback. Public cards and
+item pages keep their current resolver behavior; no asset or default-image
+setting was added.
+
+Part editing now offers two modes:
+
+- `inline` renders authoritative Builder state and keeps its 500ms live
+  preview refresh; and
+- `slide_over` uses the native cloned Builder action, opens from logical start
+  at a bounded `3xl` width, uses one column on narrow and two at `lg`, and
+  refreshes only after Apply.
+
+The mode alone is remembered in browser `localStorage`. Invalid server input
+normalizes to `slide_over`. No `AdminUxSettings` field, migration, setting,
+backup/import ownership, or true per-user server preference was added. The
+native overlay and focus trap leave the preview visible and geometrically
+uncovered, but not interactive while the slide-over is open. Top-level and
+nested Builders share these rules.
+
+The finite presentation Selects `layout`, `density`, `image_size`, and
+`title_size` now refresh automatically once per discrete change. `key` and
+`label` remain identity-only and do not trigger preview work. Builder summaries
+now use `Unlabelled` / `ללא תווית`, display the same localized source and
+attribute option labels as the form, and retain escaped diagnostic raw values
+for unknown legacy/corrupt tokens.
+
 ## Requirement classification
 
 | Requirement | Classification | Evidence |
@@ -100,24 +164,32 @@ infrastructure.
 | Shared Builder transport cleanup | Implemented | `CardTemplateDraftNormalizer` owns the former writer cleanup and is used by writer and previewer. |
 | Exactly one normalized candidate; no saved fallback | Implemented | Invalid-draft tests reject malformed drafts and leave preview HTML empty. |
 | Existing value object/renderer/presenters/public components | Implemented | All three families use `PublicFrontCardTemplate`, existing presenters, renderer, and card/part views. |
-| Deterministic public-safe sample and bounded selector | Implemented | Family queries use existing public scopes/aggregates, deterministic ordering, one-record fetches, and server search capped at 50. |
+| Deterministic public-safe sample and bounded selector | Implemented | Family queries use existing public scopes/aggregates. Automatic sample selection keeps its prior deterministic order; the inline selector uses image-first tiers, exactly 10 preloaded options, and an independent 50-result server-search cap. |
 | Eager-loaded/constant query plane | Implemented | Three identical family query runs are constant and lazy-loading prevention remains green. |
 | Family-specific empty/error/restricted/loading/stale states | Implemented | HE/EN copy and focused component coverage exercise no-sample, invalid, restricted, current/stale, and modal response states. |
-| Family and template-part automatic refresh boundaries | Implemented | The live family select clears sample identity and refreshes once. Direct `data.parts...` updates use the Builder's 500ms binding, while accepted Builder modal/structural mutations refresh through one Builder callback. Ordinary root fields remain explicit-refresh inputs, and opening a current slide-over does not recompute preview. |
+| Family, presentation-field, and template-part automatic refresh boundaries | Implemented | Family clears sample identity; `layout`, `density`, `image_size`, and `title_size` refresh once per discrete change; inline `data.parts...` uses the Builder's 500ms binding; accepted slide-over/structural mutations refresh after Apply. `key` and `label` do not trigger preview work. |
 | Automatic refresh has no settings persistence/lifecycle effect | Implemented | Focused writer/scanner mocks and the `SettingsSaved` event fake remain untouched while direct and structural part updates refresh the preview. |
 | Wide preview clears the sticky Filament topbar | Implemented | The aside uses a 5.5rem top offset and matching viewport-height bound; authenticated Chromium verifies its top edge remains at or below the topbar bottom after scrolling. |
 | Cancel is translated and placed beside Save | Implemented | English `Cancel` and Hebrew `ביטול` keys are covered in the form-action order; Chromium verifies the settings URL action is in the form and absent from the header. Delete remains a header action. |
+| Compact header metadata and draft-first editor column | Implemented | Import-lock label/badge/help are rendered in the Filament page subheading; the dedicated section is removed, and Chromium verifies the draft is the first editor section in both logical layouts. |
+| Collapsible preview toolbar and transient bounded zoom | Implemented | The toolbar alone collapses; authenticated Chromium verifies the canvas remains visible, 10% controls clamp at 50%/150%, reset to 100%, stay inside the scroll plane, and reset on reload. |
+| Inline sample Select, 10 preload, 50 search, and image-first order | Implemented | Focused tests independently assert both caps and two-query bounded planes, all-family search/label/selection, item/group own-image semantics, contributor continuity, transient reload, and no settings payload change. |
+| Preview missing-image behavior | Implemented | Preview-only presenter/resolver input disables inherited podcast cover for image-less episodes; the existing `fallback` card treatment renders. Ordinary public resolver defaults remain unchanged and existing image suites are green. |
+| Remembered Builder display mode | Implemented | Browser `localStorage` remembers only `inline`/`slide_over`; server validation normalizes forged values, no settings event fires, and reload acceptance restores inline mode without changing the settings payload. |
+| Logical-start native Builder slide-over | Implemented | Top-level and nested edit actions use native logical-start `3xl` slide-overs with sticky chrome and responsive one/two-column schemas. Browser geometry proves the panel does not cover the logical-end preview; overlay/focus evidence distinguishes visible from non-interactive. |
+| Native Apply-time versus inline live timing | Implemented | Browser evidence proves cloned slide-over edits do not alter preview before Apply and do so in one request after Apply; authoritative inline input refreshes live in one debounced request without opening a modal. No custom mounted-action bridge exists. |
+| Localized Builder summaries and legacy diagnostics | Implemented | Formatter tests cover HE/EN no-prefix fallback, registry source/attribute labels, escaped unknown raw values, and nested/top-level preview continuity. |
 | Responsive adjacent/slide-over single mount | Implemented | Authenticated Chromium verifies one active root at 1440 and 1024 CSS px and no duplicate root after both resize directions. |
 | HE/EN, RTL/LTR, logical end, independent scroll | Implemented | Authenticated Chromium verifies Hebrew RTL and English LTR; CSS uses logical layout and both editor/preview scroll containers remain independent. |
 | Keyboard, focus trap, Escape, resize restoration | Implemented | Native slide-over trap plus explicit heading/open-button focus targets are covered in Chromium. |
 | Inert public interactions | Implemented | Feature and browser assertions find no public-card `href`, `wire:click`, buttons, or other public interactions in either preview mode. |
-| Protected state and restricted selector boundary remain absent | Implemented | Restricted interaction coverage proves Choose sample is hidden/disabled, forged action/schema requests issue no item/group/author sample query, and the protected sentinel remains absent from HTML and serialized draft state. |
+| Protected state and restricted selector boundary remain absent | Implemented | Restricted interaction coverage proves the inline Select schema has no components, forged direct/schema requests issue no item/group/author sample query, and the protected sentinel remains absent from HTML and serialized draft/control state. |
 | One draft/no model graph/no added editor controls | Implemented | Preview-aware canary adds zero wrappers, editor controls, or wire-model paths; preview state contains compact scalars/presented HTML only. |
 | Three-run component delta and frozen SP3C preservation | Implemented | Three identical unselected/selected/nested runs pass without changing the SP3C ceilings. |
 | Real-browser DOM/network/listener/heap/timing evidence | Implemented with runner limitation | Chromium records DOM, roots, focusables, one refresh request, heap observation, and timings. The runner exposes Livewire component count but not listener enumeration; no listener value was fabricated. |
 | Existing writer/public/settings regressions | Already existed and verified | Focused writer/public/SP3C suites and the full suite remain green. |
-| Saved preview preferences, autosave, revisions, collaboration, synthetic/persisted samples | Deferred by specification | No persistence or generalized preview architecture was added. |
-| Automatic preview for ordinary root fields | Deferred by approved correction boundary | Label, layout, density, image size, and title size retain explicit Refresh. Only family and accepted Builder part changes auto-refresh. |
+| Saved zoom/sample preferences, autosave, revisions, collaboration, synthetic/persisted samples | Deferred by specification | Zoom and sample remain page-transient; no server persistence or generalized preview architecture was added. |
+| Server-persisted Builder display preference or live-in-slide-over bridge | Deferred by approved option | Only browser-local mode memory was added. `AdminUxSettings`, per-user persistence, and mounted-action draft synchronization remain excluded. |
 | New permission, ARCH1/AUTHZ/SP3D, migration, dependency | Not applicable/out of scope | None was needed. |
 
 ## Performance evidence
@@ -153,6 +225,24 @@ and retained zero public-card interactions. Escape and the resize-to-wide path
 both restored focus to the appropriate preview control/heading.
 
 These browser numbers are recorded observations, not new pass/fail ceilings.
+
+The expanded UX closure preserves the existing synthetic Step 5B/SP3C
+component ceilings. The actual inline content-group Select performs two
+bounded queries for its 10-option preload and two bounded queries for a
+50-result server search; current selected-label resolution performs zero
+queries by reusing the locked current label. Restricted render/direct/forged
+paths perform zero item/group/author selector queries. Presentation Selects
+issue one Livewire preview refresh per discrete change, and inline Builder text
+uses its existing 500ms debounce.
+
+Final authenticated Chromium acceptance at 1440 × 900 passed five cases / 98
+assertions. It observed one preview root, no page-level horizontal overflow,
+logical-end preview placement in HE/RTL and EN/LTR, a scroll-contained 50%–150%
+zoom plane, transient sample/zoom reload reset, a logical-start non-overlapping
+Builder slide-over, a visible but overlay-blocked preview, focus inside the
+slide-over, no preview update before Apply, one Apply request, and one debounced
+inline update request. These remain browser observations rather than new
+numeric production ceilings.
 
 ## Files changed
 
@@ -197,6 +287,13 @@ These browser numbers are recorded observations, not new pass/fail ceilings.
   `lang/en/admin.php`, `lang/he/admin.php`,
   `tests/Feature/CardTemplateEditorPreviewTest.php`, and
   `tests/Browser/CardTemplatePreviewBrowserTest.php`.
+- Expanded editor UX closure:
+  research notes 27–28; `CardTemplateEditorPage` and its shared Builder schema
+  trait; the previewer, part-summary formatter, content-item presenter, and
+  default-image resolver; the editor/preview, import-lock metadata,
+  Builder-mode, and part-summary views; both admin locale files; focused
+  editor/previewer and browser tests; this handoff; current state; and the
+  mini-step ledger.
 
 ## Tests added or updated
 
@@ -222,6 +319,14 @@ These browser numbers are recorded observations, not new pass/fail ceilings.
   coverage for the actual Builder modal-save refresh, one Livewire request,
   one preview root, sticky topbar clearance, translated Cancel placement, and
   no JavaScript errors.
+- Added expanded closure coverage for discrete presentation refresh versus
+  identity-only staleness, browser-only Builder mode validation/memory,
+  top-level/nested Builder preview switching and action configuration,
+  one/two-column schemas, native Apply timing, inline live timing, localized
+  summaries with escaped unknown diagnostics, own-image ordering, exact
+  10-option preload versus 50-result search, query counts, preview-only missing
+  image fallback, restricted empty-schema/direct/forged paths, and complete
+  HE/EN browser geometry/zoom/select/overlay evidence.
 
 ## Commands and results
 
@@ -322,14 +427,63 @@ These browser numbers are recorded observations, not new pass/fail ceilings.
 - `php artisan test --compact tests/Feature/SettingsSp3cCanaryTest.php`:
   passed 10 tests / 388 assertions; frozen SP3C ceilings are unchanged.
 
+### Expanded editor UX closure checks
+
+- Stage 2 preflight confirmed clean `main` at
+  `e31118f1c9f0fa5b2494d72fa0dc2097f6dc9d07`, all three prior Step 5B
+  implementation commits, unchanged scoped source, and exact approval for
+  `LS-20260718-STEP5B-CARD-TEMPLATE-UX-01` /
+  `STEP5B-CARD-UX-O1`.
+- Laravel Boost installed-version research covered custom Select preload/search/
+  selected-label callbacks, Builder `blockPreviews()`/`editAction()`, native
+  slide-overs, responsive columns, page subheadings, and Livewire/Alpine state.
+  FilamentExamples completed the required direct and refined search/snippet
+  passes; no full-source/detail endpoint was available.
+- Research note 27 and implementation plan 28 were created, read back, and
+  consulted before application code was changed.
+- Initial combined editor/previewer focused run: 11 tests passed and five
+  failed, with one reported render error. All failures were stale modal/
+  explicit-refresh expectations after the intentional inline Select and
+  presentation-refresh changes. Updated interaction tests then passed 22 tests
+  / 192 assertions.
+- Related SP3C, canary, public-image, and public-card regression run: passed 70
+  tests / 1,091 assertions.
+- Initial sandboxed browser run: all three then-existing cases failed at
+  Chromium launch because macOS denied the rendezvous port. No application
+  files changed for that environmental failure.
+- Permitted external browser iteration exposed and corrected one Alpine
+  expression, focus restoration across the nested preview Alpine scope, test
+  timing around Livewire morphs, and the missing action-schema column override.
+  Intermediate browser results included 1/5, 3/5, and focused 1/2 passes before
+  the corrected focused zoom case passed 1 test / 22 assertions.
+- Final focused browser file before closeout: passed 5 tests / 98 assertions.
+- Combined focused implementation regression after browser completion passed
+  91 of 92 tests / 1,290 assertions; the single failure documented the actual
+  two-query preload plane rather than the provisional one-query expectation.
+  The corrected exact query-count case passed 1 test / 6 assertions.
+- A closeout-focused command named two nonexistent public regression files and
+  stopped before running tests. The command was corrected to the repository's
+  owned test filenames; no application state changed.
+- Corrected consolidated closeout regression passed 62 tests / 1,010
+  assertions across the editor, previewer, SP3C canary, public default-image,
+  and public card-template suites.
+- The first staged `git diff --cached --check` exposed Markdown hard-break
+  trailing spaces in the two new research documents that the earlier
+  untracked-file diff check could not inspect. Those six markers were removed;
+  no content or application behavior changed.
+- `vendor/bin/pint --dirty`: formatted the previewer only; no behavior changed.
+- `git diff --check` and PHP syntax checks over all affected PHP/locale files:
+  passed during iteration.
+
 ### Ordered final gate
 
 Requirements sweep passed before the gate.
 
 #### Restricted selector closure requirements sweep
 
-- Implemented: restricted preview shells do not render or offer Choose sample;
-  the page action is also disabled before Filament can mount its schema.
+- Implemented: restricted preview shells do not render or offer sample choice;
+  the then-current action was disabled before schema mount. The expanded
+  closure preserves this with an empty inline Select schema and direct guards.
 - Implemented: search, selected-label, and selection callbacks return before
   preview sample services in a restricted/current-capability state; Refresh
   keeps its existing restricted-safe branch.
@@ -396,8 +550,10 @@ The requirements sweep passed before this sequence:
   independently scrolling preview root.
 - Implemented: English and Hebrew Cancel labels render beside Save; Delete and
   Preview remain header actions.
-- Deferred by the approved boundary: ordinary root fields remain explicit-
-  refresh inputs. No generalized per-keystroke preview was added.
+- Deferred at that correction boundary: ordinary root fields remained
+  explicit-refresh inputs. The later expanded closure now refreshes the four
+  finite rendered presentation Selects, without generalized text-per-keystroke
+  preview or identity-field refresh.
 - Not applicable/out of scope: permissions, persistence, migrations, models,
   dependencies, sample semantics, public-card redesign, generalized preview
   infrastructure, production/database actions, and another roadmap item.
@@ -421,6 +577,66 @@ canonical Pint → FilaCheck → build → full-suite sequence were repeated on 
 final documented implementation tree. The repeated results remained green;
 the full-suite result is the final result reported for the committed tree.
 
+### Expanded editor UX closure final gate
+
+The requirements sweep passed before this sequence:
+
+- Implemented: preview stays first in its own logical-end responsive column;
+  the draft is the first editor section; compact import-lock metadata is in the
+  page header with localized badge/help; HE/RTL and EN/LTR geometry are covered.
+- Implemented: only the compact toolbar collapses; the canvas stays visible;
+  transient zoom uses 10% steps, 50%–150% bounds, 100% reset, and an intact
+  browser scroll plane.
+- Implemented: the inline searchable Select has exactly 10 initial options,
+  independently capped 50-result search, item/group own-image-first order,
+  unchanged contributor semantics, selected-label resolution, transient state,
+  all-family operation, and no settings persistence.
+- Implemented: image-less episode preview uses the existing missing-image
+  fallback without inherited podcast cover; ordinary public image behavior is
+  unchanged.
+- Implemented: browser-local Builder mode memory; authoritative inline live
+  refresh; native logical-start non-overlapping slide-over; visible but
+  non-interactive overlay state; Apply-time refresh; responsive one/two-column
+  top-level and nested schemas; no custom live action-state bridge.
+- Implemented: finite rendered presentation fields auto-refresh; `key` and
+  `label` remain non-rendered/identity-only; no unnecessary text-per-keystroke
+  query path was added.
+- Implemented: unlabelled summaries lose the Part prefix, source/attribute
+  tokens use form option labels, and escaped unknown diagnostics remain visible.
+- Preserved: protected values are absent from HTML/serialized state; restricted
+  state neither renders nor queries the selector through preload/search/label/
+  direct/forged paths; all preview interactions avoid writers, settings events,
+  lifecycle, backup, cache, reference scans, and persistence.
+- Preserved: Step 5B/SP3C canaries and public card/image regressions; no
+  permission, migration, dependency, model/settings ownership, generalized
+  preview platform, production/local-development-database action, or next
+  roadmap selection.
+- Documentation synchronized: research/plan, handoff, current state, ledger,
+  and pending-decision queue all record the expanded closure and retain no
+  automatically selected next step.
+
+1. `vendor/bin/pint --test`: passed.
+2. `vendor/bin/filacheck`: passed with 0 issues.
+3. `npm run build`: passed with Vite 8.1.0.
+4. `php artisan test`: passed as the full-suite final command using the
+   permitted external runner for bundled Chromium: 768 tests / 9,668
+   assertions in 356.261 seconds. The suite was not parallelized or
+   interrupted.
+5. After stamping the measured full-suite evidence above, the documentation
+   change restarted the final gate: `vendor/bin/pint --test` passed.
+6. Restarted `vendor/bin/filacheck`: passed with 0 issues.
+7. Restarted `npm run build`: passed with Vite 8.1.0.
+8. Restarted `php artisan test`: passed as the full-suite final command using
+   the permitted external runner for bundled Chromium: 768 tests / 9,668
+   assertions. The suite was not parallelized or interrupted.
+9. After the staged Markdown whitespace correction, the ordered gate restarted
+   again: `vendor/bin/pint --test` passed.
+10. Second restarted `vendor/bin/filacheck`: passed with 0 issues.
+11. Second restarted `npm run build`: passed with Vite 8.1.0.
+12. Second restarted `php artisan test`: passed as the full-suite final command
+    using the permitted external runner for bundled Chromium: 768 tests / 9,668
+    assertions. The suite was not parallelized or interrupted.
+
 ## Assumptions, limitations, and deferrals
 
 - The approved zero-preview-settings-read interpretation applies to preview
@@ -439,60 +655,81 @@ the full-suite result is the final result reported for the committed tree.
   authorization-contract enforcement, unnecessary public-sample query
   suppression, and test/handoff correction.
 - Builder block-preview inputs are edited in Filament's cloned action schema
-  and therefore remain deferred while the modal is open. Accepting that edit
-  updates the authoritative Builder state and automatically refreshes the
-  preview. The change does not attempt a second preview draft inside the modal.
-- Root template fields other than family remain explicit-refresh inputs. This
-  correction is intentionally limited to template parts.
+  and therefore remain deferred while the slide-over is open. Applying that
+  edit updates the authoritative Builder state and automatically refreshes the
+  preview. Inline mode edits authoritative state live. No second preview draft
+  or mounted-action synchronization bridge exists.
+- `layout`, `density`, `image_size`, and `title_size` are finite Selects and now
+  refresh once per discrete change. `key` and `label` remain identity-only and
+  intentionally do not refresh preview.
+- Builder display-mode memory is browser-local to that browser/profile, not a
+  true user preference shared across browsers. Zoom/sample remain page-local.
 - No live network, mail, development database, migration, dependency install,
   production action, push, or remote publication occurred.
 
 ## Local Front Check Report
 
 1. Open Admin > Settings > Card Templates and edit a content-item template.
-   Expect Delete and Preview in the page header, and expect translated Save and
-   Cancel actions together below the form.
-2. At a window at least 1280 CSS pixels wide, scroll the editor. Expect the
-   preview to remain sticky below the Filament topbar, never beneath it, with
-   its own internal scrolling.
-3. Open a Builder part, change a visible setting such as custom text, and
-   accept the part edit. Expect the adjacent preview to update automatically
-   without clicking Refresh and without saving the template.
-4. Add, clone, reorder, and delete a part. After each accepted Builder action,
-   expect the preview to update automatically and keep the selected sample.
-5. Change the root template label or title size. Expect “Changes not yet
-   previewed” while the last preview remains visible; these root fields remain
-   explicit-refresh inputs.
-6. Click Refresh preview. Expect the root-field changes to render, the
-   freshness status and Jerusalem day-first timestamp to update, and no
-   template save or settings notification to occur.
-7. Click Choose sample, search for another published episode, and select it.
-   Expect no more than 50 server results and the selected sample to remain
-   transient after leaving the editor.
-8. Change the family. Expect the old sample to clear and one automatic preview
-   refresh to render the matching podcast or contributor card.
-9. Narrow the window below 1280 CSS pixels. Expect the adjacent preview to
-   disappear and the Preview header action to appear.
-10. Open Preview, press Tab repeatedly, and then press Escape. Expect focus to
-   stay inside the slide-over while open and return to the Preview action when
-   it closes; expect unsaved editor changes to remain.
-11. Reopen Preview and widen the window past 1280 CSS pixels. Expect one
-   adjacent preview, no duplicate slide-over DOM, and focus on the adjacent
-   preview heading.
-12. Try every visible card title, image, category/tag, contributor, and action
-   affordance inside the preview. Expect none to navigate, submit, or activate
-   Livewire behavior.
-13. Repeat the wide/narrow flow in Hebrew and English. Expect Hebrew RTL,
-    English LTR, preview placement at logical end, independent editor/preview
-    scrolling, translated Cancel text instead of `admin.actions.cancel`,
-    wrapped long sample labels, and no horizontal page overflow.
-14. Edit a protected template as an actor without its current capability. At
-    both wide layout and in the narrow Preview slide-over, expect a restricted
-    preview with no Choose sample action or searchable sample control. Expect
-    no protected part values in page source and unchanged existing Save
-    protection.
-15. Make an unsaved edit and use Back or close the tab. Expect the existing
-    unsaved-changes warning to remain authoritative.
+   Expect the template draft to be the first editor section and the preview to
+   be the first surface in its own wide-screen column.
+2. Inspect the page header. Expect a short localized family import-lock label,
+   its current badge, and a `?` help control; hover or focus the control and
+   expect the long localized import-only explanation.
+3. Repeat at 1440 CSS pixels in English and Hebrew. Expect the preview at
+   logical end: right in English and left in Hebrew, with no horizontal page
+   overflow.
+4. Collapse the preview controls. Expect the sample/zoom/refresh toolbar to
+   collapse while the rendered card canvas remains visible.
+5. Reopen the controls and press zoom minus/plus. Expect 10% steps, disabled
+   controls at 50% and 150%, no clipped card or corrupted scroll plane, and the
+   reset control to restore 100%.
+6. Reload the editor. Expect zoom to return to 100%; it must not be remembered
+   or written to settings.
+7. Open the inline sample Select. Expect 10 initial public-safe options; search
+   for a published episode, podcast, and contributor and expect server results
+   capped at 50 with the selected label resolved.
+8. Compare image-bearing and image-less episode/podcast results. Expect records
+   with their own image first. Do not count a podcast cover inherited by an
+   episode as that episode's own image.
+9. Select an image-less episode whose podcast has a cover. Expect the existing
+   missing-image placeholder in preview, not the inherited cover or a blank
+   image area. Reload and expect the sample choice to reset transiently.
+10. Change layout, density, image size, and title size. Expect one automatic
+    preview refresh after each discrete Select change, without saving settings.
+11. Change only template key or label. Expect the preview to become stale and
+    remain unchanged until another rendered field changes or Refresh is used.
+12. Choose inline Part editing mode. Edit custom text directly and expect the
+    authoritative preview to refresh after the existing debounce without an
+    Apply action.
+13. Reload the page. Expect inline mode to be remembered in this browser only;
+    inspect settings in another browser/profile if desired and expect no
+    server-side user/default preference.
+14. Choose slide-over Part editing mode and open a top-level and nested part.
+    Expect each large panel to enter from logical start—left in English and
+    right in Hebrew—without covering the preview column.
+15. While the slide-over is open, expect the preview to remain visible behind
+    the native overlay but not interactive, and expect keyboard focus to remain
+    trapped inside the panel.
+16. Change a slide-over field without applying it. Expect the preview not to
+    change. Apply the edit and expect one refresh with the new value; cancel a
+    later edit and expect the authoritative draft to remain unchanged.
+17. Inspect Builder summary rows in English and Hebrew. Expect `Unlabelled` /
+    `ללא תווית` without a Part prefix and localized source/attribute labels;
+    legacy unknown tokens should remain visible as escaped diagnostics.
+18. Add, clone, reorder, and delete parts in both display modes. Expect nested
+    state, validation, sample identity, and automatic refresh timing to remain
+    correct.
+19. Narrow below 1280 CSS pixels. Expect the adjacent preview to unmount and
+    the Preview header action to open exactly one focus-trapped preview
+    slide-over; Escape should restore focus to the trigger.
+20. Edit a protected template without its current capability. Expect no sample
+    Select, no sample preload/search, no protected part values in HTML or
+    Livewire state, and unchanged Save protection.
+21. Exercise preview zoom, sample, Refresh, and Builder mode controls, then
+    verify no settings notification, backup, import-lock, reference-scan,
+    cache-invalidation, or persisted settings change occurred.
+22. Make an unsaved draft edit and use Back or close the tab. Expect the
+    existing unsaved-changes warning to remain authoritative.
 
 ## Commit hash
 
@@ -505,3 +742,7 @@ the full-suite result is the final result reported for the committed tree.
 ## Template-parts auto-refresh correction commit hash
 
 `cdf0e89789c0c987abc0f577ea74d6c8303afa4b`
+
+## Expanded editor UX closure commit hash
+
+`PENDING`

@@ -42,7 +42,7 @@ chain. AUTHZ1-D–I remains cancelled.
 
 | ID / work | Status | Trigger or next preparation | Boundary |
 |---|---|---|---|
-| Step 5B Card Template Admin Preview UX | Complete, including restricted sample-selector and template-parts auto-refresh closures | No next preparation is implied; the operator selects any later work separately | Current SP3C storage/writer and controlled presenters remain authoritative. Restricted previews hide and server-block sample lookup; accepted Builder part edits refresh automatically while ordinary root fields remain explicit-refresh. Sticky preview and bilingual Cancel placement are corrected. No ARCH1, persistence, or new permission was added. |
+| Step 5B Card Template Admin Preview UX | Complete, including restricted sample-selector, template-parts auto-refresh, and Card Template editor UX closures | No next preparation is implied; the operator selects any later work separately | Current SP3C storage/writer and controlled presenters remain authoritative. Restricted previews hide and server-block sample lookup; accepted slide-over Builder part edits refresh after Apply, inline Builder edits and rendered presentation fields refresh automatically, and preview-only zoom/sample interactions remain transient. Sticky preview, logical-start Builder slide-over, compact header metadata, inline capped sample selection, bilingual summaries, and bilingual Cancel placement are corrected. The remembered Builder display-mode choice is browser-local only. No ARCH1, settings persistence, migration, new permission, or live-in-slide-over bridge was added. |
 | Settings import locks | Implemented; preserve | Add a lock only when a concrete workflow proves it necessary | Keep the six approved important fields, section locks, import-only semantics, and no record/Builder/nested-child lock system |
 | Filament Select policy | Accepted durable rule | Recheck touched forms during ordinary UX work; use browser evidence where custom controls matter | Tiny finite sets prefer native controls unless required behavior needs custom rendering; growing sources stay async, constrained, and capped |
 | `MAINT-LW-UX1` | Pending independent medium UX task | Must run before a later public Livewire navigation, polling, lazy/deferred, stream, or upload expansion | Preserve the committed server `503` enforcement; improve stale-tab maintenance message/retry UX and add report-14 focused regressions |
@@ -84,8 +84,9 @@ chain. AUTHZ1-D–I remains cancelled.
 1. Treat the roadmap recovery, bounded AUTHZ command closure, and Step 5B v1
    specification as complete.
 2. The Step 5B Laravel Simplifier audits, approved implementation, restricted
-   sample-selector closure, and template-parts auto-refresh/editor UX
-   correction are complete. They do not select or authorize another feature.
+   sample-selector closure, template-parts auto-refresh, and Card Template
+   editor UX correction are complete. They do not select or authorize another
+   feature.
 3. Select one Later item at a time from the surviving register. Apply
    `MAINT-LW-UX1` before its named public Livewire trigger.
 4. Run `SIMPLIFY-REVIEW1` only if explicitly selected; its suggestions do not

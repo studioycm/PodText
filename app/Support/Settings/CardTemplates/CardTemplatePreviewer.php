@@ -29,6 +29,8 @@ use Illuminate\View\ComponentAttributeBag;
 
 class CardTemplatePreviewer
 {
+    public const SAMPLE_PRELOAD_LIMIT = 10;
+
     public const SAMPLE_LIMIT = 50;
 
     public function __construct(
@@ -67,11 +69,23 @@ class CardTemplatePreviewer
     /**
      * @return array<int, string>
      */
+    public function initialSampleOptions(string $family): array
+    {
+        return $this->sampleOptionsQuery($family)
+            ->limit(self::SAMPLE_PRELOAD_LIMIT)
+            ->get()
+            ->mapWithKeys(fn (Author|ContentGroup|ContentItem $sample): array => [
+                (int) $sample->getKey() => $this->label($sample),
+            ])
+            ->all();
+    }
+
+    /**
+     * @return array<int, string>
+     */
     public function sampleOptions(string $family, string $search): array
     {
-        $services = $this->queryServices();
-
-        return $this->sampleQuery($family, $services['aggregates'], $services['selector'], $search)
+        return $this->sampleOptionsQuery($family, $search)
             ->limit(self::SAMPLE_LIMIT)
             ->get()
             ->mapWithKeys(fn (Author|ContentGroup|ContentItem $sample): array => [
@@ -157,6 +171,7 @@ class CardTemplatePreviewer
         PublicTranscriptionAggregates $aggregates,
         PublicTranscriptionSelector $selector,
         string $search = '',
+        bool $imageFirst = false,
     ): Builder {
         $search = trim($search);
 
@@ -165,10 +180,12 @@ class CardTemplatePreviewer
                 $aggregates,
                 $selector,
                 $search,
+                $imageFirst,
             ),
             PublicFrontCardTemplateRegistry::CONTENT_GROUP_FAMILY => $this->contentGroupQuery(
                 $aggregates,
                 $search,
+                $imageFirst,
             ),
             PublicFrontCardTemplateRegistry::CONTRIBUTOR_FAMILY => PublicContributorDiscovery::contributors(
                 search: $search,
@@ -182,6 +199,7 @@ class CardTemplatePreviewer
         PublicTranscriptionAggregates $aggregates,
         PublicTranscriptionSelector $selector,
         string $search,
+        bool $imageFirst,
     ): Builder {
         $query = PublicContentItemQueries::base($aggregates, $selector);
 
@@ -194,18 +212,44 @@ class CardTemplatePreviewer
             });
         }
 
+        if ($imageFirst) {
+            $query->orderByRaw(
+                "CASE WHEN NULLIF(TRIM(image_path), '') IS NOT NULL OR NULLIF(TRIM(external_thumbnail_url), '') IS NOT NULL THEN 0 ELSE 1 END",
+            );
+        }
+
         return $query->orderByEffectiveTranscriptionPublishedAt();
     }
 
-    private function contentGroupQuery(PublicTranscriptionAggregates $aggregates, string $search): Builder
-    {
+    private function contentGroupQuery(
+        PublicTranscriptionAggregates $aggregates,
+        string $search,
+        bool $imageFirst,
+    ): Builder {
         $query = PublicContentGroupQueries::base($aggregates);
 
         if ($search !== '') {
             PublicContentGroupQueries::applySearch($query, $search);
         }
 
+        if ($imageFirst) {
+            $query->orderByRaw("CASE WHEN NULLIF(TRIM(cover_path), '') IS NOT NULL THEN 0 ELSE 1 END");
+        }
+
         return $query->orderBy('title')->orderBy('id');
+    }
+
+    private function sampleOptionsQuery(string $family, string $search = ''): Builder
+    {
+        $services = $this->queryServices();
+
+        return $this->sampleQuery(
+            $family,
+            $services['aggregates'],
+            $services['selector'],
+            $search,
+            imageFirst: true,
+        );
     }
 
     private function label(Author|ContentGroup|ContentItem $sample): string
@@ -257,7 +301,12 @@ class CardTemplatePreviewer
             $services['default_images'],
             $this->displayTitle,
         );
-        $card = $presenter->present($item, $options, $template);
+        $card = $presenter->present(
+            $item,
+            $options,
+            $template,
+            inheritGroupCover: false,
+        );
 
         return view('components.public.content-item-card', [
             'card' => $card,

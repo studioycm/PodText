@@ -18,6 +18,7 @@ use App\Support\PublicFront\PublicFrontConfigReader;
 use App\Support\PublicFront\PublicFrontConfigRegistry;
 use App\Support\PublicFront\PublicFrontConfigValidator;
 use App\Support\Transcriptions\MultiTranscriptionSurfaces;
+use Filament\Actions\Action;
 use Filament\Forms\Components\Builder;
 use Filament\Forms\Components\Builder\Block;
 use Filament\Forms\Components\ColorPicker;
@@ -1985,7 +1986,7 @@ trait BuildsPublicContentSettingsSubjectSchemas
                 $block = Block::make($type)
                     ->label(__("admin.card_template_part_types.{$type}"))
                     ->schema($this->cardTemplatePartSchema($type, $previews))
-                    ->columns(3);
+                    ->columns($previews ? ['default' => 1, 'lg' => 2] : 3);
 
                 if ($previews) {
                     $block->preview('filament.card-templates.part-summary');
@@ -2323,7 +2324,8 @@ trait BuildsPublicContentSettingsSubjectSchemas
                     ->helperText(__('admin.helpers.card_template_part_group_children'))
                     ->blocks($this->cardTemplatePartBlocks(allowGroups: false, previews: $previews))
                     ->blockPickerColumns(2)
-                    ->blockPreviews($previews)
+                    ->blockPreviews(fn (): bool => $this->cardTemplatePartPreviewsEnabled($previews))
+                    ->editAction(fn (Action $action): Action => $this->configureCardTemplatePartEditAction($action))
                     ->collapsible()
                     ->collapsed()
                     ->cloneable()
@@ -2332,6 +2334,16 @@ trait BuildsPublicContentSettingsSubjectSchemas
                     ->columnSpanFull(),
             ] : []),
         ];
+    }
+
+    protected function cardTemplatePartPreviewsEnabled(bool $previews): bool
+    {
+        return $previews;
+    }
+
+    protected function configureCardTemplatePartEditAction(Action $action): Action
+    {
+        return $action;
     }
 
     /**

@@ -16,7 +16,7 @@ class PublicDefaultImageResolver
     /**
      * @return array{url: string|null, source: string, path: string|null, alt: string|null}
      */
-    public function contentItemImage(ContentItem $item): array
+    public function contentItemImage(ContentItem $item, bool $inheritGroupCover = true): array
     {
         if (filled($item->image_path)) {
             return $this->publicDiskImage((string) $item->image_path, 'item', (string) $item->title);
@@ -31,7 +31,7 @@ class PublicDefaultImageResolver
             ];
         }
 
-        if ($this->mode('content_item') !== 'none' && filled($item->contentGroup?->cover_path)) {
+        if ($inheritGroupCover && $this->mode('content_item') !== 'none' && filled($item->contentGroup?->cover_path)) {
             return $this->publicDiskImage(
                 (string) $item->contentGroup->cover_path,
                 'group',

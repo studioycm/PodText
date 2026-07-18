@@ -23,10 +23,13 @@ use Filament\Notifications\Notification;
 use Filament\Pages\SettingsPage;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Text;
+use Filament\Schemas\Components\View as SchemaView;
 use Filament\Schemas\Schema;
+use Filament\Support\Enums\SlideOverPosition;
 use Filament\Support\Enums\Width;
 use Filament\Support\Facades\FilamentView;
 use Filament\Support\Icons\Heroicon;
+use Illuminate\Contracts\Support\Htmlable;
 use Illuminate\Contracts\View\View;
 use Livewire\Attributes\Locked;
 use Throwable;
@@ -34,6 +37,10 @@ use Throwable;
 abstract class CardTemplateEditorPage extends SettingsPage
 {
     use BuildsPublicContentSettingsSubjectSchemas;
+
+    public const BUILDER_DISPLAY_INLINE = 'inline';
+
+    public const BUILDER_DISPLAY_SLIDE_OVER = 'slide_over';
 
     protected static string $settings = PublicContentSettings::class;
 
@@ -112,6 +119,11 @@ abstract class CardTemplateEditorPage extends SettingsPage
     #[Locked]
     public ?string $previewDraftHash = null;
 
+    /** @var array{sample_id: int|null} */
+    public array $previewControls = ['sample_id' => null];
+
+    public string $builderDisplayMode = self::BUILDER_DISPLAY_SLIDE_OVER;
+
     public static function canAccess(): bool
     {
         $user = auth()->user();
@@ -131,6 +143,7 @@ abstract class CardTemplateEditorPage extends SettingsPage
 
     public function hydrate(): void
     {
+        $this->normalizeBuilderDisplayMode();
         $this->restoreProfilingConfiguration();
         $this->enforceCurrentCapability();
     }
@@ -142,6 +155,18 @@ abstract class CardTemplateEditorPage extends SettingsPage
 
         if ($statePath === 'data.family') {
             $this->previewSampleId = null;
+            $this->previewControls['sample_id'] = null;
+            $this->refreshPreview();
+
+            return;
+        }
+
+        if (in_array($statePath, [
+            'data.layout',
+            'data.density',
+            'data.image_size',
+            'data.title_size',
+        ], true)) {
             $this->refreshPreview();
 
             return;
@@ -187,6 +212,7 @@ abstract class CardTemplateEditorPage extends SettingsPage
                     'rows' => __('admin.layouts.rows'),
                 ])
                 ->native(false)
+                ->live()
                 ->required(),
             Select::make('density')
                 ->label(__('admin.fields.card_template_density'))
@@ -196,6 +222,7 @@ abstract class CardTemplateEditorPage extends SettingsPage
                     'comfortable' => __('admin.card_density.comfortable'),
                 ])
                 ->native(false)
+                ->live()
                 ->required(),
             Select::make('image_size')
                 ->label(__('admin.fields.card_template_image_size'))
@@ -207,6 +234,7 @@ abstract class CardTemplateEditorPage extends SettingsPage
                     'large' => __('admin.card_image_size.large'),
                 ])
                 ->native(false)
+                ->live()
                 ->required(),
             Select::make('title_size')
                 ->label(__('admin.fields.card_template_title_size'))
@@ -217,6 +245,7 @@ abstract class CardTemplateEditorPage extends SettingsPage
                     'lg' => __('admin.card_title_size.lg'),
                 ])
                 ->native(false)
+                ->live()
                 ->required(),
         ];
 
@@ -224,12 +253,18 @@ abstract class CardTemplateEditorPage extends SettingsPage
             $fields[] = Text::make(__('admin.settings_sp3c.editor.restricted_copy'))
                 ->extraAttributes(['data-sp3c-restricted-shell' => 'true']);
         } else {
+            $fields[] = SchemaView::make('filament.card-templates.builder-display-mode')
+                ->viewData(fn (): array => [
+                    'builderDisplayMode' => $this->builderDisplayMode,
+                ])
+                ->columnSpanFull();
             $fields[] = Builder::make('parts')
                 ->label(__('admin.fields.card_template_parts'))
                 ->helperText(__('admin.helpers.card_template_parts'))
                 ->blocks($this->cardTemplatePartBlocks(previews: true))
                 ->blockPickerColumns(2)
-                ->blockPreviews()
+                ->blockPreviews(fn (): bool => $this->cardTemplatePartPreviewsEnabled(true))
+                ->editAction(fn (Action $action): Action => $this->configureCardTemplatePartEditAction($action))
                 ->cloneable()
                 ->reorderable()
                 ->deletable()
@@ -317,6 +352,13 @@ abstract class CardTemplateEditorPage extends SettingsPage
         return __('admin.settings_sp3c.editor.title');
     }
 
+    public function getSubheading(): string|Htmlable|null
+    {
+        return view('filament.pages.card-template-import-lock-metadata', [
+            'familyImportLocked' => $this->familyImportLocked,
+        ]);
+    }
+
     /**
      * @return array<Action>
      */
@@ -367,27 +409,19 @@ abstract class CardTemplateEditorPage extends SettingsPage
         ];
     }
 
-    public function choosePreviewSampleAction(): Action
+    public function previewSampleForm(Schema $schema): Schema
     {
-        return Action::make('choosePreviewSample')
-            ->label(__('admin.settings_sp3c.preview.choose_sample'))
-            ->icon(Heroicon::OutlinedMagnifyingGlass)
-            ->color('gray')
-            ->visible(fn (): bool => $this->canChoosePreviewSample())
-            ->disabled(fn (): bool => ! $this->canChoosePreviewSample())
-            ->modalHeading(__('admin.settings_sp3c.preview.choose_sample_heading'))
-            ->modalSubmitActionLabel(__('admin.settings_sp3c.preview.choose'))
-            ->modalCancelActionLabel(__('admin.actions.cancel'))
-            ->modalWidth(Width::Large)
-            ->fillForm(fn (): array => [
-                'sample_id' => $this->previewSampleId,
-            ])
-            ->schema([
+        $components = $this->canChoosePreviewSample()
+            ? [
                 Select::make('sample_id')
                     ->label(__('admin.settings_sp3c.preview.choose_sample'))
                     ->placeholder(__('admin.settings_sp3c.preview.sample_placeholder'))
+                    ->options(fn (): array => $this->canChoosePreviewSample()
+                        ? app(CardTemplatePreviewer::class)->initialSampleOptions($this->currentPreviewFamily())
+                        : [])
                     ->searchable()
-                    ->preload(false)
+                    ->preload()
+                    ->native(false)
                     ->optionsLimit(CardTemplatePreviewer::SAMPLE_LIMIT)
                     ->getSearchResultsUsing(function (string $search): array {
                         if (! $this->canChoosePreviewSample()) {
@@ -402,26 +436,45 @@ abstract class CardTemplateEditorPage extends SettingsPage
                             return null;
                         }
 
+                        if ((int) $value === $this->previewSampleId && $this->previewSampleLabel !== null) {
+                            return $this->previewSampleLabel;
+                        }
+
                         return app(CardTemplatePreviewer::class)->sampleLabel(
                             $this->currentPreviewFamily(),
                             (int) $value,
                         );
                     })
-                    ->required(),
-            ])
-            ->action(function (array $data): void {
-                if (! $this->canChoosePreviewSample()) {
-                    return;
-                }
+                    ->live()
+                    ->afterStateUpdated(function (mixed $state): void {
+                        $this->selectPreviewSample($state);
+                    }),
+            ]
+            : [];
 
-                $sampleId = $data['sample_id'] ?? null;
+        return $schema
+            ->components($components)
+            ->statePath('previewControls');
+    }
 
-                if (! is_numeric($sampleId)) {
-                    return;
-                }
+    public function selectPreviewSample(mixed $sampleId): void
+    {
+        abort_unless(static::canAccess(), 403);
 
-                $this->refreshPreview((int) $sampleId);
-            });
+        if (! $this->canChoosePreviewSample() || ! is_numeric($sampleId)) {
+            $this->previewControls['sample_id'] = null;
+
+            return;
+        }
+
+        $this->refreshPreview((int) $sampleId);
+    }
+
+    public function setBuilderDisplayMode(string $mode): void
+    {
+        abort_unless(static::canAccess(), 403);
+        $this->builderDisplayMode = $mode;
+        $this->normalizeBuilderDisplayMode();
     }
 
     public function refreshPreview(?int $sampleId = null): void
@@ -465,6 +518,7 @@ abstract class CardTemplateEditorPage extends SettingsPage
         $this->previewStatus = 'ready';
         $this->previewFamily = $preview['family'];
         $this->previewSampleId = $preview['sample_id'];
+        $this->previewControls['sample_id'] = $preview['sample_id'];
         $this->previewSampleLabel = $preview['sample_label'];
         $this->previewHtml = $preview['html'];
         $this->previewRefreshedAt = now()->timezone('Asia/Jerusalem')->format('d/m/Y H:i:s');
@@ -612,7 +666,7 @@ abstract class CardTemplateEditorPage extends SettingsPage
             ?? PublicFrontCardTemplateRegistry::CONTENT_ITEM_FAMILY;
     }
 
-    private function canChoosePreviewSample(): bool
+    public function canChoosePreviewSample(): bool
     {
         if ($this->restricted || $this->previewStatus === 'restricted') {
             return false;
@@ -623,6 +677,30 @@ abstract class CardTemplateEditorPage extends SettingsPage
         }
 
         return in_array($this->currentPreviewFamily(), PublicFrontCardTemplateRegistry::families(), true);
+    }
+
+    protected function cardTemplatePartPreviewsEnabled(bool $previews): bool
+    {
+        return $previews && $this->builderDisplayMode === self::BUILDER_DISPLAY_SLIDE_OVER;
+    }
+
+    protected function configureCardTemplatePartEditAction(Action $action): Action
+    {
+        return $action
+            ->schema(function (array $arguments, Builder $component, Schema $schema): Schema {
+                return $schema
+                    ->components(
+                        $component->getChildSchema($arguments['item'])
+                            ->getClone()
+                            ->getComponents(withHidden: true),
+                    )
+                    ->columns(['default' => 1, 'lg' => 2]);
+            })
+            ->slideOver()
+            ->slideOverPosition(SlideOverPosition::Start)
+            ->modalWidth(Width::ThreeExtraLarge)
+            ->stickyModalHeader()
+            ->stickyModalFooter();
     }
 
     /**
@@ -640,8 +718,19 @@ abstract class CardTemplateEditorPage extends SettingsPage
     {
         $this->previewStatus = $status;
         $this->previewSampleId = null;
+        $this->previewControls['sample_id'] = null;
         $this->previewSampleLabel = null;
         $this->previewHtml = null;
         $this->previewRefreshedAt = null;
+    }
+
+    private function normalizeBuilderDisplayMode(): void
+    {
+        if (! in_array($this->builderDisplayMode, [
+            self::BUILDER_DISPLAY_INLINE,
+            self::BUILDER_DISPLAY_SLIDE_OVER,
+        ], true)) {
+            $this->builderDisplayMode = self::BUILDER_DISPLAY_SLIDE_OVER;
+        }
     }
 }

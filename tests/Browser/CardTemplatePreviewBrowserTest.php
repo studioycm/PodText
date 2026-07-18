@@ -55,6 +55,15 @@ beforeEach(function (): void {
         ->published(now()->subMinute())
         ->create(['title' => 'Browser Preview Transcription']);
     $item->update(['featured_transcription_id' => $transcription->getKey()]);
+
+    $alternate = ContentItem::factory()->for($group)->published()->create([
+        'title' => 'Alternate Browser Sample',
+    ]);
+    $alternateTranscription = Transcription::factory()
+        ->for($alternate)
+        ->published(now()->subDay())
+        ->create(['title' => 'Alternate Browser Transcription']);
+    $alternate->update(['featured_transcription_id' => $alternateTranscription->getKey()]);
 });
 
 it('keeps one inert responsive preview root with focus and dirty navigation protection', function (): void {
@@ -69,6 +78,13 @@ it('keeps one inert responsive preview root with focus and dirty navigation prot
             await new Promise((resolve) => setTimeout(resolve, 250));
             const root = document.querySelector('[data-card-template-preview-root]');
             const ready = root?.querySelector('[data-test="card-template-preview-ready"]');
+            const previewColumn = document.querySelector('[data-card-template-preview-column]');
+            const editorColumn = document.querySelector('[data-card-template-editor-column]');
+            const previewRect = previewColumn?.getBoundingClientRect();
+            const editorRect = editorColumn?.getBoundingClientRect();
+            const draftSection = editorColumn?.querySelector('[data-sp3c-template-editor]');
+            const draftRect = draftSection?.getBoundingClientRect();
+            const headerMetadata = document.querySelector('.fi-header [data-card-template-import-lock-metadata]');
             const focusableSelector = 'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
             return {
@@ -81,6 +97,10 @@ it('keeps one inert responsive preview root with focus and dirty navigation prot
                 horizontal_overflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
                 shell_overflow: getComputedStyle(document.querySelector('[data-card-template-preview-wide-shell]')).overflowY,
                 preview_overflow: getComputedStyle(document.querySelector('[data-card-template-preview-scroll]')).overflowY,
+                preview_is_logical_end: previewRect?.right <= editorRect?.left,
+                draft_is_first_editor_section: Math.abs((draftRect?.top ?? -1) - (editorRect?.top ?? -3)) < 2,
+                import_metadata_in_header: Boolean(headerMetadata),
+                import_metadata_in_editor: Boolean(editorColumn?.querySelector('[data-card-template-import-lock-metadata]')),
                 livewire_components: window.Livewire?.all?.().length ?? null,
                 used_js_heap_size: performance.memory?.usedJSHeapSize ?? null,
             };
@@ -93,7 +113,11 @@ it('keeps one inert responsive preview root with focus and dirty navigation prot
         ->and($wide['key_direction'])->toBe('ltr')
         ->and($wide['horizontal_overflow'])->toBeFalse()
         ->and($wide['shell_overflow'])->toBe('auto')
-        ->and($wide['preview_overflow'])->toBe('auto');
+        ->and($wide['preview_overflow'])->toBe('auto')
+        ->and($wide['preview_is_logical_end'])->toBeTrue(json_encode($wide, JSON_THROW_ON_ERROR))
+        ->and($wide['draft_is_first_editor_section'])->toBeTrue()
+        ->and($wide['import_metadata_in_header'])->toBeTrue()
+        ->and($wide['import_metadata_in_editor'])->toBeFalse();
 
     $refresh = $page->script(<<<'JS'
         async () => {
@@ -244,11 +268,159 @@ it('renders the focused preview shell in English LTR', function (): void {
         'key' => 'preview_browser',
     ]))->resize(1440, 900);
 
+    $geometry = $page->script(<<<'JS'
+        async () => {
+            await new Promise((resolve) => setTimeout(resolve, 250));
+            const previewRect = document.querySelector('[data-card-template-preview-column]')?.getBoundingClientRect();
+            const editorRect = document.querySelector('[data-card-template-editor-column]')?.getBoundingClientRect();
+
+            return {
+                preview_is_logical_end: editorRect?.right <= previewRect?.left,
+                header_metadata: Boolean(document.querySelector('.fi-header [data-card-template-import-lock-metadata]')),
+            };
+        }
+        JS);
+
     $page->assertScript('document.documentElement.dir', 'ltr')
         ->assertSee(__('admin.settings_sp3c.preview.title'))
         ->assertCount('[data-card-template-preview-root]', 1)
         ->assertNoSmoke()
         ->assertNoJavaScriptErrors();
+
+    expect($geometry['preview_is_logical_end'])->toBeTrue(json_encode($geometry, JSON_THROW_ON_ERROR))
+        ->and($geometry['header_metadata'])->toBeTrue();
+});
+
+it('keeps zoom and sample choice transient inside the compact preview controls', function (): void {
+    app()->setLocale('en');
+    $settingsBefore = DB::table('settings')
+        ->where('group', PublicContentSettings::group())
+        ->where('name', 'card_templates')
+        ->value('payload');
+    $page = visit(EditCardTemplate::getUrl([
+        'family' => 'content_item',
+        'key' => 'preview_browser',
+    ]))->resize(1440, 900);
+
+    $interaction = $page->script(<<<'JS'
+        async () => {
+            await new Promise((resolve) => setTimeout(resolve, 250));
+            const plus = document.querySelector('[data-test="card-template-preview-zoom-in"]');
+            const minus = document.querySelector('[data-test="card-template-preview-zoom-out"]');
+            const reset = document.querySelector('[data-test="card-template-preview-zoom-reset"]');
+            const scroll = document.querySelector('[data-card-template-preview-scroll]');
+            const plane = document.querySelector('[data-card-template-preview-zoom-plane]');
+
+            for (let index = 0; index < 6; index++) plus?.click();
+            await new Promise((resolve) => setTimeout(resolve, 50));
+            const maximum = {
+                label: reset?.textContent.trim(),
+                zoom: getComputedStyle(plane).zoom,
+                plus_disabled: plus?.disabled ?? false,
+                scroll_plane_contains_zoom: scroll.scrollWidth + 1 >= plane.getBoundingClientRect().width,
+            };
+
+            reset?.click();
+            await new Promise((resolve) => setTimeout(resolve, 50));
+            const resetLabel = reset?.textContent.trim();
+            for (let index = 0; index < 6; index++) minus?.click();
+            await new Promise((resolve) => setTimeout(resolve, 50));
+            const minimum = {
+                label: reset?.textContent.trim(),
+                zoom: getComputedStyle(plane).zoom,
+                minus_disabled: minus?.disabled ?? false,
+            };
+            reset?.click();
+
+            const selectShell = document.querySelector('[data-card-template-preview-sample-select]');
+            selectShell?.querySelector('.fi-select-input-btn')?.click();
+            const searchInput = selectShell?.querySelector('.fi-select-input-search-ctn input');
+            const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set;
+            setter.call(searchInput, 'Alternate Browser Sample');
+            searchInput.dispatchEvent(new Event('input', { bubbles: true }));
+            await new Promise((resolve) => setTimeout(resolve, 1200));
+
+            const searchStarted = performance.now();
+            let option = null;
+            while (option === null && performance.now() - searchStarted < 5000) {
+                option = Array.from(selectShell?.querySelectorAll('.fi-select-input-option') ?? [])
+                    .find((candidate) => candidate.textContent.includes('Alternate Browser Sample')) ?? null;
+                await new Promise((resolve) => setTimeout(resolve, 50));
+            }
+            option?.click();
+
+            const selectionStarted = performance.now();
+            while (! selectShell?.querySelector('.fi-select-input-value-label')?.textContent.includes('Alternate Browser Sample') && performance.now() - selectionStarted < 5000) {
+                await new Promise((resolve) => setTimeout(resolve, 50));
+            }
+
+            while (! document.querySelector('[data-test="card-template-preview-ready"]')?.textContent.includes('Alternate Browser Sample') && performance.now() - selectionStarted < 5000) {
+                await new Promise((resolve) => setTimeout(resolve, 50));
+            }
+
+            const toggle = document.querySelector('[data-test="card-template-preview-controls-toggle"]');
+            toggle?.click();
+            await new Promise((resolve) => setTimeout(resolve, 500));
+            const controls = document.querySelector('[data-card-template-preview-controls]');
+            const ready = document.querySelector('[data-test="card-template-preview-ready"]');
+
+            return {
+                maximum,
+                reset_label: resetLabel,
+                minimum,
+                search_input_found: Boolean(searchInput),
+                option_found: Boolean(option),
+                selected_alternate: selectShell?.querySelector('.fi-select-input-value-label')?.textContent.includes('Alternate Browser Sample') ?? false,
+                preview_updated: ready?.textContent.includes('Alternate Browser Sample') ?? false,
+                controls_collapsed: toggle?.getAttribute('aria-expanded') === 'false'
+                    && (getComputedStyle(controls).display === 'none' || controls.getBoundingClientRect().height <= 1),
+                controls_display: getComputedStyle(controls).display,
+                controls_height: controls.getBoundingClientRect().height,
+                controls_expanded: toggle?.getAttribute('aria-expanded'),
+                canvas_visible: getComputedStyle(ready).display !== 'none',
+                preview_roots: document.querySelectorAll('[data-card-template-preview-root]').length,
+                horizontal_overflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
+            };
+        }
+        JS);
+
+    expect($interaction['maximum']['label'])->toBe('150%')
+        ->and((float) $interaction['maximum']['zoom'])->toBe(1.5)
+        ->and($interaction['maximum']['plus_disabled'])->toBeTrue()
+        ->and($interaction['maximum']['scroll_plane_contains_zoom'])->toBeTrue()
+        ->and($interaction['reset_label'])->toBe('100%')
+        ->and($interaction['minimum']['label'])->toBe('50%')
+        ->and((float) $interaction['minimum']['zoom'])->toBe(0.5)
+        ->and($interaction['minimum']['minus_disabled'])->toBeTrue()
+        ->and($interaction['search_input_found'])->toBeTrue()
+        ->and($interaction['option_found'])->toBeTrue(json_encode($interaction, JSON_THROW_ON_ERROR))
+        ->and($interaction['selected_alternate'])->toBeTrue(json_encode($interaction, JSON_THROW_ON_ERROR))
+        ->and($interaction['preview_updated'])->toBeTrue()
+        ->and($interaction['controls_collapsed'])->toBeTrue(json_encode($interaction, JSON_THROW_ON_ERROR))
+        ->and($interaction['canvas_visible'])->toBeTrue()
+        ->and($interaction['preview_roots'])->toBe(1)
+        ->and($interaction['horizontal_overflow'])->toBeFalse();
+
+    $page->refresh();
+    $transient = $page->script(<<<'JS'
+        async () => {
+            await new Promise((resolve) => setTimeout(resolve, 300));
+
+            return {
+                sample_reset: ! document.querySelector('[data-card-template-preview-sample-select] .fi-select-input-value-label')?.textContent.includes('Alternate Browser Sample'),
+                zoom_reset: document.querySelector('[data-test="card-template-preview-zoom-reset"]')?.textContent.trim() === '100%',
+            };
+        }
+        JS);
+
+    expect($transient['sample_reset'])->toBeTrue()
+        ->and($transient['zoom_reset'])->toBeTrue()
+        ->and(DB::table('settings')
+            ->where('group', PublicContentSettings::group())
+            ->where('name', 'card_templates')
+            ->value('payload'))->toBe($settingsBefore);
+
+    $page->assertNoSmoke()->assertNoJavaScriptErrors();
 });
 
 it('refreshes a changed template part and keeps the wide preview below the topbar', function (): void {
@@ -299,8 +471,31 @@ it('refreshes a changed template part and keeps the wide preview below the topba
             while (document.querySelector('.fi-modal.fi-modal-open') === null && performance.now() - started < 5000) {
                 await new Promise((resolve) => setTimeout(resolve, 25));
             }
+            await new Promise((resolve) => setTimeout(resolve, 350));
 
             let modal = document.querySelector('.fi-modal.fi-modal-open');
+            const panel = modal?.querySelector('form.fi-modal-window');
+            const preview = document.querySelector('[data-card-template-preview-wide-shell]');
+            const panelRect = panel?.getBoundingClientRect();
+            const previewRect = preview?.getBoundingClientRect();
+            const previewCenter = previewRect
+                ? { x: previewRect.left + (previewRect.width / 2), y: previewRect.top + Math.min(100, previewRect.height / 2) }
+                : null;
+            const maxGridColumns = Math.max(0, ...Array.from(panel?.querySelectorAll('.fi-grid') ?? [])
+                .map((grid) => getComputedStyle(grid).gridTemplateColumns.split(' ').length));
+            const hasTwoColumnGrid = Array.from(panel?.querySelectorAll('.fi-grid') ?? [])
+                .some((grid) => getComputedStyle(grid).gridTemplateColumns.split(' ').length === 2);
+            const slideOverAtLogicalStart = panelRect?.left >= previewRect?.right;
+            const slideOverOverlapsPreview = ! (
+                panelRect?.right <= previewRect?.left
+                || panelRect?.left >= previewRect?.right
+                || panelRect?.bottom <= previewRect?.top
+                || panelRect?.top >= previewRect?.bottom
+            );
+            const previewInteractiveBehindOverlay = previewCenter
+                ? preview.contains(document.elementFromPoint(previewCenter.x, previewCenter.y))
+                : null;
+            const activeInsideSlideOver = Boolean(panel?.contains(document.activeElement));
             const textInput = Array.from(modal?.querySelectorAll('input') ?? []).find((candidate) =>
                 Array.from(candidate.attributes).some((attribute) =>
                     attribute.name.startsWith('wire:model') && attribute.value.endsWith('.text'),
@@ -312,6 +507,8 @@ it('refreshes a changed template part and keeps the wide preview below the topba
             setter.call(textInput, 'STEP5B BROWSER PART AFTER');
             textInput.dispatchEvent(new Event('input', { bubbles: true }));
             await new Promise((resolve) => setTimeout(resolve, 700));
+            const previewUpdatedBeforeApply = document.querySelector('[data-test="card-template-preview-ready"]')
+                ?.textContent.includes('STEP5B BROWSER PART AFTER') ?? false;
 
             performance.clearResourceTimings();
             const originalFetch = window.fetch;
@@ -337,6 +534,19 @@ it('refreshes a changed template part and keeps the wide preview below the topba
                 edit_found: Boolean(edit),
                 input_found: Boolean(textInput),
                 submit_found: Boolean(submit),
+                slide_over_start_class: modal?.classList.contains('fi-modal-slide-over-from-start') ?? false,
+                slide_over_at_logical_start: slideOverAtLogicalStart,
+                slide_over_overlaps_preview: slideOverOverlapsPreview,
+                panel_left: panelRect?.left,
+                panel_right: panelRect?.right,
+                preview_left: previewRect?.left,
+                preview_right: previewRect?.right,
+                preview_visible_behind_overlay: Boolean(previewRect && previewRect.width > 0 && previewRect.height > 0),
+                preview_interactive_behind_overlay: previewInteractiveBehindOverlay,
+                active_inside_slide_over: activeInsideSlideOver,
+                max_grid_columns: maxGridColumns,
+                has_two_column_grid: hasTwoColumnGrid,
+                preview_updated_before_apply: previewUpdatedBeforeApply,
                 network_requests: requestUrls.filter((url) => url.includes('/livewire')).length,
                 preview_updated: document.querySelector('[data-test="card-template-preview-ready"]')
                     ?.textContent.includes('STEP5B BROWSER PART AFTER') ?? false,
@@ -349,9 +559,112 @@ it('refreshes a changed template part and keeps the wide preview below the topba
         ->and($interaction['input_found'])->toBeTrue(json_encode($interaction, JSON_THROW_ON_ERROR))
         ->and($interaction['submit_found'])->toBeTrue(json_encode($interaction, JSON_THROW_ON_ERROR))
         ->and($interaction['binding'])->toStartWith('wire:model')
+        ->and($interaction['slide_over_start_class'])->toBeTrue()
+        ->and($interaction['slide_over_at_logical_start'])->toBeTrue(json_encode($interaction, JSON_THROW_ON_ERROR))
+        ->and($interaction['slide_over_overlaps_preview'])->toBeFalse(json_encode($interaction, JSON_THROW_ON_ERROR))
+        ->and($interaction['preview_visible_behind_overlay'])->toBeTrue()
+        ->and($interaction['preview_interactive_behind_overlay'])->toBeFalse()
+        ->and($interaction['active_inside_slide_over'])->toBeTrue()
+        ->and($interaction['max_grid_columns'])->toBeGreaterThanOrEqual(2)
+        ->and($interaction['has_two_column_grid'])->toBeTrue()
+        ->and($interaction['preview_updated_before_apply'])->toBeFalse()
         ->and($interaction['network_requests'])->toBe(1, json_encode($interaction, JSON_THROW_ON_ERROR))
         ->and($interaction['preview_updated'])->toBeTrue(json_encode($interaction, JSON_THROW_ON_ERROR))
         ->and($interaction['preview_roots'])->toBe(1);
+
+    $page->assertNoSmoke()->assertNoJavaScriptErrors();
+});
+
+it('remembers inline Builder mode locally and live refreshes authoritative part state', function (): void {
+    app()->setLocale('en');
+    $settingsBefore = DB::table('settings')
+        ->where('group', PublicContentSettings::group())
+        ->where('name', 'card_templates')
+        ->value('payload');
+    $page = visit(EditCardTemplate::getUrl([
+        'family' => 'content_item',
+        'key' => 'preview_browser',
+    ]))->resize(1440, 900);
+
+    $selected = $page->script(<<<'JS'
+        async () => {
+            document.querySelector('[data-test="card-template-builder-mode-inline"]')?.click();
+            const started = performance.now();
+
+            while (document.querySelectorAll('[data-sp3c-part-summary]').length > 0 && performance.now() - started < 5000) {
+                await new Promise((resolve) => setTimeout(resolve, 50));
+            }
+
+            return {
+                remembered: window.localStorage.getItem('podtext.card-template-builder-display-mode'),
+                inline_pressed: document.querySelector('[data-test="card-template-builder-mode-inline"]')?.getAttribute('aria-pressed'),
+                summaries: document.querySelectorAll('[data-sp3c-part-summary]').length,
+                modal_open: Boolean(document.querySelector('.fi-modal.fi-modal-open')),
+            };
+        }
+        JS);
+
+    expect($selected['remembered'])->toBe('inline')
+        ->and($selected['inline_pressed'])->toBe('true')
+        ->and($selected['summaries'])->toBe(0)
+        ->and($selected['modal_open'])->toBeFalse();
+
+    $page->refresh();
+    $interaction = $page->script(<<<'JS'
+        async () => {
+            const restoreStarted = performance.now();
+            while (document.querySelectorAll('[data-sp3c-part-summary]').length > 0 && performance.now() - restoreStarted < 5000) {
+                await new Promise((resolve) => setTimeout(resolve, 50));
+            }
+
+            const textInput = Array.from(document.querySelectorAll('[data-sp3c-template-parts] input'))
+                .find((candidate) => candidate.value === 'STEP5B BROWSER PART BEFORE');
+            const binding = Array.from(textInput?.attributes ?? [])
+                .find((attribute) => attribute.name.startsWith('wire:model'))?.name ?? null;
+            performance.clearResourceTimings();
+            const originalFetch = window.fetch;
+            const requestUrls = [];
+            window.fetch = (...arguments_) => {
+                requestUrls.push(String(arguments_[0]?.url ?? arguments_[0]));
+
+                return originalFetch(...arguments_);
+            };
+            const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set;
+            setter.call(textInput, 'STEP5B INLINE PART AFTER');
+            textInput.dispatchEvent(new Event('input', { bubbles: true }));
+
+            const updateStarted = performance.now();
+            while (! document.querySelector('[data-test="card-template-preview-ready"]')?.textContent.includes('STEP5B INLINE PART AFTER') && performance.now() - updateStarted < 5000) {
+                await new Promise((resolve) => setTimeout(resolve, 50));
+            }
+            window.fetch = originalFetch;
+
+            return {
+                restored_inline: document.querySelector('[data-test="card-template-builder-mode-inline"]')?.getAttribute('aria-pressed'),
+                summaries: document.querySelectorAll('[data-sp3c-part-summary]').length,
+                input_found: Boolean(textInput),
+                binding,
+                network_requests: requestUrls.filter((url) => url.includes('/livewire')).length,
+                preview_updated: document.querySelector('[data-test="card-template-preview-ready"]')
+                    ?.textContent.includes('STEP5B INLINE PART AFTER') ?? false,
+                modal_open: Boolean(document.querySelector('.fi-modal.fi-modal-open')),
+                remembered: window.localStorage.getItem('podtext.card-template-builder-display-mode'),
+            };
+        }
+        JS);
+
+    expect($interaction['restored_inline'])->toBe('true')
+        ->and($interaction['summaries'])->toBe(0)
+        ->and($interaction['input_found'])->toBeTrue(json_encode($interaction, JSON_THROW_ON_ERROR))
+        ->and($interaction['binding'])->toStartWith('wire:model.live')
+        ->and($interaction['network_requests'])->toBe(1, json_encode($interaction, JSON_THROW_ON_ERROR))
+        ->and($interaction['preview_updated'])->toBeTrue(json_encode($interaction, JSON_THROW_ON_ERROR))
+        ->and($interaction['modal_open'])->toBeFalse()
+        ->and($interaction['remembered'])->toBe('inline')
+        ->and(DB::table('settings')
+            ->where('group', PublicContentSettings::group())
+            ->where('name', 'card_templates')
+            ->value('payload'))->toBe($settingsBefore);
 
     $page->assertNoSmoke()->assertNoJavaScriptErrors();
 });
