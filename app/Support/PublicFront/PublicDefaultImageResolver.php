@@ -62,6 +62,28 @@ class PublicDefaultImageResolver
         return $this->familyImage('contributor', 'contributor_default', (string) $author->name);
     }
 
+    public function allowsContentItemGroupCover(): bool
+    {
+        return $this->mode('content_item') !== 'none';
+    }
+
+    public function hasConfiguredDefault(string $family): bool
+    {
+        $config = $this->familyConfig($family);
+
+        if ($config['mode'] === 'custom' && filled($config['path'])) {
+            return true;
+        }
+
+        if ($config['mode'] === 'none') {
+            return false;
+        }
+
+        $global = $this->familyConfig('global');
+
+        return $global['mode'] === 'custom' && filled($global['path']);
+    }
+
     /**
      * @return array{mode: string, path: string|null}
      */

@@ -1,6 +1,7 @@
 <?php
 
 use App\Enums\HomepageSectionType;
+use App\Enums\TranscriptionMode;
 use App\Filament\Pages\CardTemplateSettings;
 use App\Filament\Pages\EditCardTemplate;
 use App\Models\ContentGroup;
@@ -8,15 +9,19 @@ use App\Models\ContentItem;
 use App\Models\HomepageSection;
 use App\Models\Transcription;
 use App\Models\User;
+use App\Settings\AdminUxSettings;
 use App\Settings\PublicContentSettings;
 use App\Support\PublicFront\Cards\PublicFrontCardTemplateRegistry;
 use App\Support\PublicFront\Cards\PublicFrontCardTemplateResolver;
 use App\Support\PublicFront\PublicDefaultImageResolver;
 use App\Support\PublicFront\PublicFrontConfigCache;
+use App\Support\PublicFront\PublicFrontConfigRegistry;
 use App\Support\PublicFront\PublicFrontRenderContext;
 use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 use Spatie\LaravelSettings\SettingsContainer;
 
@@ -24,6 +29,8 @@ uses(RefreshDatabase::class);
 
 beforeEach(function (): void {
     Filament::setCurrentPanel(Filament::getPanel('admin'));
+    Http::preventStrayRequests();
+    Mail::fake();
     $this->actingAs(User::factory()->admin()->create());
 
     $template = PublicFrontCardTemplateRegistry::defaultTemplateForFamily('content_item');
@@ -79,6 +86,10 @@ afterEach(function (): void {
     Storage::disk('public')->delete([
         'default-images/o2-item-default.jpg',
         'default-images/o2-group-default.jpg',
+        'content-items/images/fu02-local.jpg',
+        'content-groups/covers/fu02-inherited.jpg',
+        'default-images/fu02-family.jpg',
+        'default-images/fu02-global.jpg',
     ]);
 });
 
@@ -188,6 +199,146 @@ function step5bO2BrowserSurfaces(): array
     app(SettingsContainer::class)->clearCache();
 
     return compact('item', 'group');
+}
+
+function step5bFu02BrowserSaveSetting(string $settingsClass, string $name, mixed $value): void
+{
+    DB::table('settings')->updateOrInsert(
+        [
+            'group' => $settingsClass::group(),
+            'name' => $name,
+        ],
+        [
+            'locked' => false,
+            'payload' => json_encode($value, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ],
+    );
+
+    app()->forgetScopedInstances();
+    app()->forgetInstance($settingsClass);
+    app()->forgetInstance(PublicFrontRenderContext::class);
+    app(PublicFrontConfigCache::class)->forget();
+    app(SettingsContainer::class)->clearCache();
+}
+
+/**
+ * @param  array<string, array{mode: string, path: string|null}>  $overrides
+ */
+function step5bFu02BrowserSaveDefaultImages(array $overrides): void
+{
+    step5bFu02BrowserSaveSetting(
+        PublicContentSettings::class,
+        'default_images',
+        array_replace(PublicFrontConfigRegistry::defaults()['default_images'], $overrides),
+    );
+}
+
+/**
+ * @param  array<string, mixed>  $attributes
+ */
+function step5bFu02BrowserPublicItem(
+    string $title,
+    ?ContentGroup $group = null,
+    ?DateTimeInterface $transcriptionPublishedAt = null,
+    array $attributes = [],
+): ContentItem {
+    $group ??= ContentGroup::factory()->published()->create([
+        'title' => "{$title} Group",
+    ]);
+    $item = ContentItem::factory()
+        ->for($group)
+        ->published($transcriptionPublishedAt ?? now()->subMinute())
+        ->create([
+            ...$attributes,
+            'title' => $title,
+        ]);
+    $transcription = Transcription::factory()
+        ->for($item)
+        ->published($transcriptionPublishedAt ?? now()->subMinute())
+        ->create(['title' => "{$title} Transcription"]);
+    $item->update(['featured_transcription_id' => $transcription->getKey()]);
+
+    return $item->refresh();
+}
+
+/**
+ * @return array{
+ *     external: ContentItem,
+ *     local: ContentItem,
+ *     inherited: ContentItem,
+ *     configured: ContentItem,
+ *     preload_titles: array<int, string>,
+ *     search_titles: array<int, string>
+ * }
+ */
+function step5bFu02BrowserSamples(): array
+{
+    ContentItem::query()->update(['published_at' => now()->addDay()]);
+    config()->set('filesystems.disks.public.url', '/storage');
+    Storage::forgetDisk('public');
+
+    $imageFixture = file_get_contents(public_path('images/podtext-logo.jpg'));
+    Storage::disk('public')->put('content-items/images/fu02-local.jpg', $imageFixture);
+    Storage::disk('public')->put('content-groups/covers/fu02-inherited.jpg', $imageFixture);
+    Storage::disk('public')->put('default-images/fu02-family.jpg', $imageFixture);
+    Storage::disk('public')->put('default-images/fu02-global.jpg', $imageFixture);
+
+    step5bFu02BrowserSaveDefaultImages([
+        'content_item' => ['mode' => 'custom', 'path' => 'default-images/fu02-family.jpg'],
+    ]);
+
+    $external = step5bFu02BrowserPublicItem(
+        'FU02 Browser External',
+        transcriptionPublishedAt: now()->subDays(2),
+        attributes: ['external_thumbnail_url' => '/images/podtext-logo.jpg'],
+    );
+    $local = step5bFu02BrowserPublicItem(
+        'FU02 Browser Local',
+        transcriptionPublishedAt: now()->subDays(3),
+        attributes: ['image_path' => 'content-items/images/fu02-local.jpg'],
+    );
+    $inheritedGroup = ContentGroup::factory()->published()->create([
+        'title' => 'FU02 Browser Inherited Group',
+        'cover_path' => 'content-groups/covers/fu02-inherited.jpg',
+    ]);
+    $inherited = step5bFu02BrowserPublicItem(
+        'FU02 Browser Inherited',
+        group: $inheritedGroup,
+        transcriptionPublishedAt: now()->subMinute(),
+    );
+    $configured = step5bFu02BrowserPublicItem(
+        'FU02 Browser Configured Default',
+        transcriptionPublishedAt: now()->subDay(),
+    );
+
+    foreach (range(1, 52) as $index) {
+        step5bFu02BrowserPublicItem(
+            sprintf('FU02 Browser Filler %02d', $index),
+            transcriptionPublishedAt: now()->subDays(10 + $index),
+        );
+    }
+
+    $rankedTitles = [
+        $external->title,
+        $local->title,
+        $inherited->title,
+        $configured->title,
+        ...array_map(
+            fn (int $index): string => sprintf('FU02 Browser Filler %02d', $index),
+            range(1, 52),
+        ),
+    ];
+
+    return [
+        'external' => $external,
+        'local' => $local,
+        'inherited' => $inherited,
+        'configured' => $configured,
+        'preload_titles' => array_slice($rankedTitles, 0, 10),
+        'search_titles' => array_slice($rankedTitles, 0, 50),
+    ];
 }
 
 it('renders content-aware public item and group geometry in both directions', function (string $locale, string $direction): void {
@@ -330,6 +481,8 @@ it('renders every ordered-flow preview variant responsively for item and group',
     ];
 
     foreach (['item' => 'content_item', 'group' => 'content_group'] as $prefix => $family) {
+        $expectedImageSource = "{$family}_default";
+
         foreach ($expectations as $variant => $expected) {
             $page = visit(EditCardTemplate::getUrl([
                 'family' => $family,
@@ -422,7 +575,7 @@ it('renders every ordered-flow preview variant responsively for item and group',
                 if ($variant === 'leading') {
                     expect($measurement['display'])->toBe('grid')
                         ->and($measurement['columns'])->toBe($width >= 768 ? 2 : 1)
-                        ->and($measurement['image_source'])->toBe('fallback');
+                        ->and($measurement['image_source'])->toBe($expectedImageSource);
                 }
 
                 if ($variant === 'body') {
@@ -435,13 +588,13 @@ it('renders every ordered-flow preview variant responsively for item and group',
 
                 if ($variant === 'ordered') {
                     expect($measurement['display'])->toBe('flex')
-                        ->and($measurement['image_source'])->toBe('fallback')
+                        ->and($measurement['image_source'])->toBe($expectedImageSource)
                         ->and($measurement['full_bleed'])->toBeTrue(json_encode($measurement, JSON_THROW_ON_ERROR));
                 }
 
                 if ($variant === 'card') {
                     expect($measurement['display'])->toBe('flex')
-                        ->and($measurement['image_source'])->toBe('fallback');
+                        ->and($measurement['image_source'])->toBe($expectedImageSource);
                 }
 
                 if ($width < 1024) {
@@ -1334,6 +1487,321 @@ it('keeps card width and sample choice transient inside the compact preview cont
             ->where('group', PublicContentSettings::group())
             ->where('name', 'card_templates')
             ->value('payload'))->toBe($settingsBefore);
+
+    $page->assertNoSmoke()->assertNoJavaScriptErrors();
+});
+
+it('keeps automatic preload search and effective image ranking aligned in the authenticated selector', function (): void {
+    app()->setLocale('en');
+    $samples = step5bFu02BrowserSamples();
+    $page = visit(EditCardTemplate::getUrl([
+        'family' => 'content_item',
+        'key' => 'preview_browser',
+    ]))->resize(1440, 900);
+
+    $interaction = $page->script(<<<'JS'
+        async () => {
+            const sleep = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds));
+            const waitFor = async (callback, timeout = 7000) => {
+                const started = performance.now();
+                let value = callback();
+
+                while (! value && performance.now() - started < timeout) {
+                    await sleep(50);
+                    value = callback();
+                }
+
+                return value;
+            };
+            const currentShell = () => document.querySelector('[data-card-template-preview-sample-select]');
+            await waitFor(currentShell);
+            const titleFromLabel = (label) => label.trim().replace(/\s+/g, ' ').split(' — ')[0];
+            const selectedTitle = () => titleFromLabel(currentShell()?.querySelector('.fi-select-input-value-label')?.textContent ?? '');
+            const ready = () => document.querySelector('[data-test="card-template-preview-ready"]');
+            const imageSource = () => ready()?.querySelector('[data-card-image-source]')?.dataset.cardImageSource ?? null;
+            const optionElements = () => Array.from(currentShell()?.querySelectorAll('.fi-select-input-option') ?? []);
+            const optionTitles = () => optionElements().map((option) => titleFromLabel(option.textContent));
+            const inputSetter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set;
+            const selectInstance = () => Alpine.$data(currentShell()?.querySelector('.fi-select-input'))?.select;
+            const openSearch = async () => {
+                const select = await waitFor(selectInstance);
+
+                if (! select?.isOpen) {
+                    await select?.openDropdown();
+                }
+
+                const input = select?.searchInput ?? null;
+                input?.focus();
+
+                return input;
+            };
+            const searchFor = async (search, expectedCount = null) => {
+                const input = await openSearch();
+
+                if (! input) {
+                    return null;
+                }
+
+                input.focus();
+                inputSetter.call(input, search);
+                input.dispatchEvent(new Event('input', { bubbles: true }));
+
+                if (expectedCount !== null) {
+                    await waitFor(() => optionElements().length === expectedCount);
+                }
+
+                return input;
+            };
+            const choose = async (title) => {
+                await searchFor(title);
+                const option = await waitFor(() => optionElements().find((candidate) => titleFromLabel(candidate.textContent) === title));
+                option?.click();
+                await waitFor(() => selectedTitle() === title && ready()?.textContent.includes(title));
+
+                return imageSource();
+            };
+            let livewireRequests = 0;
+            const stopObservingLivewireRequests = Livewire.interceptRequest(() => {
+                livewireRequests += 1;
+            });
+
+            await sleep(300);
+            const automatic = {
+                title: selectedTitle(),
+                source: imageSource(),
+            };
+            const initialInput = await openSearch();
+            await waitFor(() => optionElements().length === 10);
+            const preloadTitles = optionTitles();
+
+            await searchFor('FU02 Browser', 50);
+            const searchTitles = optionTitles();
+            const sources = {
+                external: automatic.source,
+                local: await choose('FU02 Browser Local'),
+                inherited: await choose('FU02 Browser Inherited'),
+                configured: await choose('FU02 Browser Configured Default'),
+            };
+            const keyboardInput = await openSearch();
+            keyboardInput?.focus();
+            const inputInitiallyFocused = document.activeElement === keyboardInput;
+            keyboardInput?.dispatchEvent(new KeyboardEvent('keydown', {
+                key: 'ArrowDown',
+                code: 'ArrowDown',
+                bubbles: true,
+            }));
+            await sleep(100);
+            const keyboardNavigated = Boolean(document.activeElement?.closest('.fi-select-input-option'))
+                || Boolean(keyboardInput?.getAttribute('aria-activedescendant'));
+            keyboardInput?.dispatchEvent(new KeyboardEvent('keydown', {
+                key: 'Escape',
+                code: 'Escape',
+                bubbles: true,
+            }));
+            await waitFor(() => ! currentShell()?.querySelector('.fi-select-input-search-ctn input'));
+            const escapeReturnedFocus = Boolean(document.activeElement?.closest('.fi-select-input-btn'));
+            const testImageResources = performance.getEntriesByType('resource')
+                .map((entry) => entry.name)
+                .filter((url) => url.includes('fu02-') || url.includes('/images/podtext-logo.jpg'));
+            const remoteTestImageResources = testImageResources.filter((url) => {
+                try {
+                    return new URL(url, window.location.href).origin !== window.location.origin;
+                } catch (error) {
+                    return true;
+                }
+            });
+            stopObservingLivewireRequests();
+
+            return {
+                automatic,
+                preload_titles: preloadTitles,
+                preload_count: preloadTitles.length,
+                search_titles: searchTitles,
+                search_count: searchTitles.length,
+                sources,
+                selected_final: selectedTitle(),
+                input_initially_focused: inputInitiallyFocused,
+                keyboard_navigated: keyboardNavigated,
+                escape_returned_focus: escapeReturnedFocus,
+                livewire_requests: livewireRequests,
+                remote_test_image_resources: remoteTestImageResources,
+                locale: document.documentElement.lang,
+                direction: document.documentElement.dir,
+                viewport_width: window.innerWidth,
+                preview_roots: document.querySelectorAll('[data-card-template-preview-root]').length,
+                horizontal_overflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
+            };
+        }
+        JS);
+
+    expect($interaction['automatic']['title'])->toBe('FU02 Browser External')
+        ->and($interaction['automatic']['source'])->toBe('item_external')
+        ->and($interaction['preload_count'])->toBe(10)
+        ->and($interaction['preload_titles'])->toBe($samples['preload_titles'])
+        ->and($interaction['search_count'])->toBe(50, json_encode($interaction, JSON_THROW_ON_ERROR))
+        ->and($interaction['search_titles'])->toBe($samples['search_titles'])
+        ->and($interaction['sources'])->toBe([
+            'external' => 'item_external',
+            'local' => 'item',
+            'inherited' => 'group',
+            'configured' => 'content_item_default',
+        ])
+        ->and($interaction['selected_final'])->toBe('FU02 Browser Configured Default')
+        ->and($interaction['input_initially_focused'])->toBeTrue(json_encode($interaction, JSON_THROW_ON_ERROR))
+        ->and($interaction['keyboard_navigated'])->toBeTrue(json_encode($interaction, JSON_THROW_ON_ERROR))
+        ->and($interaction['escape_returned_focus'])->toBeTrue(json_encode($interaction, JSON_THROW_ON_ERROR))
+        ->and($interaction['livewire_requests'])->toBeGreaterThanOrEqual(4)
+        ->and($interaction['remote_test_image_resources'])->toBe([])
+        ->and($interaction['locale'])->toBe('en')
+        ->and($interaction['direction'])->toBe('ltr')
+        ->and($interaction['viewport_width'])->toBe(1440)
+        ->and($interaction['preview_roots'])->toBe(1)
+        ->and($interaction['horizontal_overflow'])->toBeFalse();
+
+    $page->assertNoSmoke()->assertNoJavaScriptErrors();
+
+    step5bFu02BrowserSaveDefaultImages([
+        'global' => ['mode' => 'custom', 'path' => 'default-images/fu02-global.jpg'],
+        'content_item' => ['mode' => 'inherit', 'path' => null],
+    ]);
+    $page->refresh();
+    $globalFallback = $page->script(<<<'JS'
+        async () => {
+            const sleep = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds));
+            const started = performance.now();
+            let shell = document.querySelector('[data-card-template-preview-sample-select]');
+
+            while (! shell && performance.now() - started < 7000) {
+                await sleep(50);
+                shell = document.querySelector('[data-card-template-preview-sample-select]');
+            }
+
+            const select = Alpine.$data(shell?.querySelector('.fi-select-input'))?.select;
+            await select?.openDropdown();
+            const input = select?.searchInput;
+            const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set;
+            setter.call(input, 'FU02 Browser Configured Default');
+            input.dispatchEvent(new Event('input', { bubbles: true }));
+            let option = null;
+            while (! option && performance.now() - started < 7000) {
+                await sleep(50);
+                option = Array.from(shell?.querySelectorAll('.fi-select-input-option') ?? [])
+                    .find((candidate) => candidate.textContent.includes('FU02 Browser Configured Default'));
+            }
+            option?.click();
+            let source = null;
+            let selected = false;
+            while (! source && performance.now() - started < 7000) {
+                await sleep(50);
+                const ready = document.querySelector('[data-test="card-template-preview-ready"]');
+                selected = shell?.querySelector('.fi-select-input-value-label')?.textContent.includes('FU02 Browser Configured Default') ?? false;
+
+                if (selected && ready?.textContent.includes('FU02 Browser Configured Default')) {
+                    source = ready.querySelector('[data-card-image-source]')?.dataset.cardImageSource ?? null;
+                }
+            }
+
+            return {
+                source,
+                selected,
+            };
+        }
+        JS);
+
+    expect($globalFallback['selected'])->toBeTrue(json_encode($globalFallback, JSON_THROW_ON_ERROR))
+        ->and($globalFallback['source'])->toBe('global_default');
+    $page->assertNoSmoke()->assertNoJavaScriptErrors();
+
+    step5bFu02BrowserSaveDefaultImages([
+        'global' => ['mode' => 'custom', 'path' => 'default-images/fu02-global.jpg'],
+        'content_item' => ['mode' => 'none', 'path' => null],
+    ]);
+    $page->refresh();
+    $noEffectiveImage = $page->script(<<<'JS'
+        async () => {
+            const sleep = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds));
+            const started = performance.now();
+            let shell = document.querySelector('[data-card-template-preview-sample-select]');
+
+            while (! shell && performance.now() - started < 7000) {
+                await sleep(50);
+                shell = document.querySelector('[data-card-template-preview-sample-select]');
+            }
+
+            const select = Alpine.$data(shell?.querySelector('.fi-select-input'))?.select;
+            await select?.openDropdown();
+            const input = select?.searchInput;
+            const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set;
+            setter.call(input, 'FU02 Browser Inherited');
+            input.dispatchEvent(new Event('input', { bubbles: true }));
+            let option = null;
+            while (! option && performance.now() - started < 7000) {
+                await sleep(50);
+                option = Array.from(shell?.querySelectorAll('.fi-select-input-option') ?? [])
+                    .find((candidate) => candidate.textContent.includes('FU02 Browser Inherited'));
+            }
+            option?.click();
+            let source = null;
+            let selected = false;
+            while (! source && performance.now() - started < 7000) {
+                await sleep(50);
+                const ready = document.querySelector('[data-test="card-template-preview-ready"]');
+                selected = shell?.querySelector('.fi-select-input-value-label')?.textContent.includes('FU02 Browser Inherited') ?? false;
+
+                if (selected && ready?.textContent.includes('FU02 Browser Inherited')) {
+                    source = ready.querySelector('[data-card-image-source]')?.dataset.cardImageSource ?? null;
+                }
+            }
+
+            return {
+                source,
+                selected,
+            };
+        }
+        JS);
+
+    expect($noEffectiveImage['selected'])->toBeTrue(json_encode($noEffectiveImage, JSON_THROW_ON_ERROR))
+        ->and($noEffectiveImage['source'])->toBe('fallback');
+    $page->assertNoSmoke()->assertNoJavaScriptErrors();
+
+    $restrictedTemplate = PublicFrontCardTemplateRegistry::defaultTemplateForFamily('content_item');
+    $restrictedTemplate['key'] = 'preview_browser';
+    $restrictedTemplate['label'] = 'FU02 restricted browser template';
+    $restrictedTemplate['parts'] = [[
+        'type' => 'metadata_row',
+        'source' => 'content_item',
+        'attribute' => 'transcription_count',
+        'label' => 'FU02-PROTECTED-BROWSER-SECRET',
+        'visible' => true,
+        'order' => 10,
+        'layout' => 'badge',
+    ]];
+    step5bFu02BrowserSaveSetting(PublicContentSettings::class, 'card_templates', [$restrictedTemplate]);
+    step5bFu02BrowserSaveSetting(AdminUxSettings::class, 'transcription_mode', TranscriptionMode::Multi->value);
+    $page->refresh();
+    $restricted = $page->script(<<<'JS'
+        async () => {
+            await new Promise((resolve) => setTimeout(resolve, 400));
+
+            return {
+                restricted: Boolean(document.querySelector('[data-test="card-template-preview-restricted"]')),
+                selector_count: document.querySelectorAll('[data-card-template-preview-sample-select]').length,
+                secret_visible: document.body.innerText.includes('FU02-PROTECTED-BROWSER-SECRET'),
+                preview_roots: document.querySelectorAll('[data-card-template-preview-root]').length,
+                direction: document.documentElement.dir,
+                viewport_width: window.innerWidth,
+                horizontal_overflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
+            };
+        }
+        JS);
+
+    expect($restricted['restricted'])->toBeTrue(json_encode($restricted, JSON_THROW_ON_ERROR))
+        ->and($restricted['selector_count'])->toBe(0)
+        ->and($restricted['secret_visible'])->toBeFalse()
+        ->and($restricted['preview_roots'])->toBe(1)
+        ->and($restricted['direction'])->toBe('ltr')
+        ->and($restricted['viewport_width'])->toBe(1440)
+        ->and($restricted['horizontal_overflow'])->toBeFalse();
 
     $page->assertNoSmoke()->assertNoJavaScriptErrors();
 });

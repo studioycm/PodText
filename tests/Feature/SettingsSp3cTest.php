@@ -1034,6 +1034,9 @@ it('runs one save event one backup attempt and one cache invalidation for a succ
     $backup->shouldReceive('createSystem')->once()->andReturnNull();
     app()->instance(SettingsBackupManager::class, $backup);
     $cache = Mockery::mock(PublicFrontConfigCache::class);
+    $cache->shouldReceive('remember')
+        ->once()
+        ->andReturnUsing(fn (callable $resolver): mixed => $resolver());
     $cache->shouldReceive('forget')->once();
     app()->instance(PublicFrontConfigCache::class, $cache);
     $events = 0;

@@ -4,9 +4,10 @@ use App\Models\Author;
 use App\Models\ContentGroup;
 use App\Models\ContentItem;
 use App\Models\Transcription;
-use App\Settings\AdminUxSettings;
-use App\Settings\PublicContentSettings;
 use App\Support\PublicFront\Cards\PublicFrontCardTemplateRegistry;
+use App\Support\PublicFront\PublicFrontConfigReader;
+use App\Support\PublicFront\PublicFrontConfigRegistry;
+use App\Support\PublicFront\PublicFrontRenderContext;
 use App\Support\Settings\CardTemplates\CardTemplateDraftNormalizer;
 use App\Support\Settings\CardTemplates\CardTemplatePreviewer;
 use App\Support\Settings\CardTemplates\CardTemplateWriteException;
@@ -71,6 +72,22 @@ function step5bCreatePublicItem(
     return $item->refresh();
 }
 
+/**
+ * @param  array<string, array{mode: string, path: string|null}>  $overrides
+ */
+function step5bBindPreviewDefaultImages(array $overrides = []): void
+{
+    $config = PublicFrontConfigRegistry::defaults();
+    $config['default_images'] = array_replace($config['default_images'], $overrides);
+    $context = new PublicFrontRenderContext(
+        app(PublicFrontConfigReader::class)->fromArray($config),
+    );
+
+    app()->forgetInstance(CardTemplatePreviewer::class);
+    app()->forgetInstance(PublicFrontRenderContext::class);
+    app()->instance(PublicFrontRenderContext::class, $context);
+}
+
 it('shares exact builder transport cleanup between preview and persistence', function (): void {
     $candidate = app(CardTemplateDraftNormalizer::class)->candidate([
         ...step5bPreviewDraft('content_item'),
@@ -131,14 +148,14 @@ it('shares exact builder transport cleanup between preview and persistence', fun
         ->not->toHaveKeys(['children', '_show_label', '_show_icon']);
 });
 
-it('renders a public safe inert preview without resolving configured settings', function (string $family): void {
+it('renders a public safe inert preview from the current validated image context', function (string $family, string $sourceAttribute): void {
+    step5bBindPreviewDefaultImages([
+        'content_item' => ['mode' => 'custom', 'path' => 'default-images/preview-item.jpg'],
+        'content_group' => ['mode' => 'custom', 'path' => 'default-images/preview-group.jpg'],
+        'contributor' => ['mode' => 'custom', 'path' => 'default-images/preview-contributor.jpg'],
+    ]);
     $author = Author::factory()->create(['name' => 'Preview Contributor']);
     $item = step5bCreatePublicItem('Preview Episode', $author);
-
-    app()->forgetInstance(PublicContentSettings::class);
-    app()->bind(PublicContentSettings::class, fn (): never => throw new RuntimeException('Preview resolved configured settings.'));
-    app()->forgetInstance(AdminUxSettings::class);
-    app()->bind(AdminUxSettings::class, fn (): never => throw new RuntimeException('Preview resolved configured admin settings.'));
 
     $preview = app(CardTemplatePreviewer::class)->preview(step5bPreviewDraft($family));
 
@@ -149,23 +166,96 @@ it('renders a public safe inert preview without resolving configured settings', 
             default => $author->getKey(),
         })
         ->and($preview['html'])->toContain('data-card-template-family="'.$family.'"')
+        ->and($preview['html'])->toContain($sourceAttribute)
         ->and($preview['html'])->toContain(__('admin.settings_sp3c.preview.link_disabled'))
         ->and($preview['html'])->not->toContain('href=')
         ->and($preview['html'])->not->toContain('wire:click');
 })->with([
-    'content item' => ['content_item'],
-    'content group' => ['content_group'],
-    'contributor' => ['contributor'],
+    'content item' => ['content_item', 'data-card-image-source="content_item_default"'],
+    'content group' => ['content_group', 'data-card-image-source="content_group_default"'],
+    'contributor' => ['contributor', 'data-contributor-image-source="contributor_default"'],
 ]);
 
-it('selects the deterministic newest public item and rejects a forged sample identity', function (): void {
-    step5bCreatePublicItem('Older Preview Episode', transcriptionPublishedAt: now()->subDays(2));
-    $newer = step5bCreatePublicItem('Newer Preview Episode', transcriptionPublishedAt: now()->subDay());
+it('keeps automatic preload and search item ranking in effective image parity', function (): void {
+    step5bBindPreviewDefaultImages([
+        'content_item' => ['mode' => 'custom', 'path' => 'default-images/ranking-item.jpg'],
+    ]);
+
+    $ownImageTie = now()->subDays(2);
+    $external = step5bCreatePublicItem(
+        'Ranking Parity External',
+        transcriptionPublishedAt: $ownImageTie,
+    );
+    $external->update(['external_thumbnail_url' => 'https://example.test/ranking-external.jpg']);
+    $local = step5bCreatePublicItem(
+        'Ranking Parity Local',
+        transcriptionPublishedAt: $ownImageTie,
+    );
+    $local->update(['image_path' => 'content-items/images/ranking-local.jpg']);
+    $inheritedGroup = ContentGroup::factory()->published()->create([
+        'title' => 'Ranking Parity Inherited Group',
+        'cover_path' => 'content-groups/covers/ranking-inherited.jpg',
+    ]);
+    $inherited = step5bCreatePublicItem(
+        'Ranking Parity Inherited',
+        group: $inheritedGroup,
+        transcriptionPublishedAt: now()->subMinute(),
+    );
+    $configuredDefault = step5bCreatePublicItem(
+        'Ranking Parity Configured Default',
+        transcriptionPublishedAt: now()->subSeconds(30),
+    );
+
+    $draft = ContentItem::factory()->for($external->contentGroup)->create([
+        'title' => 'Ranking Parity Draft',
+        'image_path' => 'content-items/images/ranking-draft.jpg',
+    ]);
+    $withoutTranscription = ContentItem::factory()
+        ->for($external->contentGroup)
+        ->published()
+        ->create([
+            'title' => 'Ranking Parity Without Transcription',
+            'image_path' => 'content-items/images/ranking-without-transcription.jpg',
+        ]);
+    $future = ContentItem::factory()
+        ->for($external->contentGroup)
+        ->published(now()->addDay())
+        ->create([
+            'title' => 'Ranking Parity Future',
+            'image_path' => 'content-items/images/ranking-future.jpg',
+        ]);
+    $futureTranscription = Transcription::factory()->for($future)->published()->create();
+    $future->update(['featured_transcription_id' => $futureTranscription->getKey()]);
+
+    $expectedIds = [
+        $local->getKey(),
+        $external->getKey(),
+        $inherited->getKey(),
+        $configuredDefault->getKey(),
+    ];
 
     $previewer = app(CardTemplatePreviewer::class);
-    $preview = $previewer->preview(step5bPreviewDraft('content_item'));
+    $automatic = $previewer->preview(step5bPreviewDraft('content_item'));
+    $preloaded = $previewer->initialSampleOptions('content_item');
+    $searched = $previewer->sampleOptions('content_item', 'Ranking Parity');
 
-    expect($preview['sample_id'])->toBe($newer->getKey())
+    expect($local->getKey())->toBeGreaterThan($external->getKey())
+        ->and($automatic['sample_id'])->toBe($local->getKey())
+        ->and($automatic['html'])->toContain('data-card-image-source="item"')
+        ->and(array_keys($preloaded))->toBe($expectedIds)
+        ->and(array_keys($searched))->toBe($expectedIds)
+        ->and($searched)->not->toHaveKeys([
+            $draft->getKey(),
+            $withoutTranscription->getKey(),
+            $future->getKey(),
+        ])
+        ->and($previewer->preview(step5bPreviewDraft('content_item'), $external->getKey())['html'])
+        ->toContain('data-card-image-source="item_external"')
+        ->and($previewer->preview(step5bPreviewDraft('content_item'), $inherited->getKey())['html'])
+        ->toContain('data-card-image-source="group"')
+        ->and($previewer->preview(step5bPreviewDraft('content_item'), $configuredDefault->getKey())['html'])
+        ->toContain('data-card-image-source="content_item_default"')
+        ->and($previewer->sampleLabel('content_item', $withoutTranscription->getKey()))->toBeNull()
         ->and(fn () => $previewer->preview(step5bPreviewDraft('content_item'), PHP_INT_MAX))
         ->toThrow(CardTemplateWriteException::class, 'preview_sample_missing');
 });
@@ -208,46 +298,106 @@ it('preloads ten image-first public samples independently from the fifty-result 
         );
 });
 
-it('orders episodes by their own image without treating inherited podcast covers as their own', function (): void {
-    $inheritedGroup = ContentGroup::factory()->published()->create([
-        'title' => 'Ordering Inherited Podcast',
-        'cover_path' => 'preview/inherited-podcast.jpg',
+it('uses validated global and none modes for item ranking and rendering', function (): void {
+    $globalItem = step5bCreatePublicItem('Mode Ranking Global Item');
+    step5bBindPreviewDefaultImages([
+        'global' => ['mode' => 'custom', 'path' => 'default-images/ranking-global.jpg'],
+        'content_item' => ['mode' => 'custom', 'path' => null],
     ]);
-    step5bCreatePublicItem(
-        'Ordering Episode With Inherited Cover',
-        group: $inheritedGroup,
-        transcriptionPublishedAt: now(),
-    );
-    $ownImage = step5bCreatePublicItem(
-        'Ordering Episode With Own Image',
-        transcriptionPublishedAt: now()->subDay(),
-    );
-    $ownImage->update(['external_thumbnail_url' => 'https://example.test/own-image.jpg']);
 
-    $options = app(CardTemplatePreviewer::class)->sampleOptions('content_item', 'Ordering Episode');
-
-    expect(array_values($options)[0])->toBe(__('admin.settings_sp3c.preview.sample_item_label', [
-        'title' => $ownImage->title,
-        'group' => $ownImage->contentGroup->title,
-    ]));
-});
-
-it('uses the existing missing-image fallback for an image-less episode preview', function (): void {
-    $group = ContentGroup::factory()->published()->create([
-        'title' => 'Preview Placeholder Podcast',
-        'cover_path' => 'preview/podcast-cover.jpg',
-    ]);
-    $item = step5bCreatePublicItem('Preview Placeholder Episode', group: $group);
-
-    $preview = app(CardTemplatePreviewer::class)->preview(
+    $globalPreview = app(CardTemplatePreviewer::class)->preview(
         step5bPreviewDraft('content_item'),
-        $item->getKey(),
+        $globalItem->getKey(),
     );
 
-    expect($preview['html'])
+    $coveredGroup = ContentGroup::factory()->published()->create([
+        'title' => 'Mode Ranking Covered Group',
+        'cover_path' => 'content-groups/covers/ranking-covered.jpg',
+    ]);
+    $noneItem = step5bCreatePublicItem('Mode Ranking None Item', group: $coveredGroup);
+    step5bBindPreviewDefaultImages([
+        'global' => ['mode' => 'custom', 'path' => 'default-images/ranking-hidden-global.jpg'],
+        'content_item' => ['mode' => 'none', 'path' => null],
+    ]);
+
+    $previewer = app(CardTemplatePreviewer::class);
+    $nonePreview = $previewer->preview(step5bPreviewDraft('content_item'), $noneItem->getKey());
+
+    expect($globalPreview['html'])->toContain('data-card-image-source="global_default"')
+        ->and($nonePreview['html'])
         ->toContain('data-card-image-source="fallback"')
         ->not->toContain('data-card-image-source="group"')
-        ->toContain($item->effectiveTypeLabelSingular());
+        ->not->toContain('data-card-image-source="global_default"')
+        ->and(array_keys($previewer->sampleOptions('content_item', 'Mode Ranking')))
+        ->toBe([$noneItem->getKey(), $globalItem->getKey()]);
+});
+
+it('keeps automatic preload and search group ranking in effective image parity', function (): void {
+    step5bBindPreviewDefaultImages([
+        'content_group' => ['mode' => 'custom', 'path' => 'default-images/ranking-group.jpg'],
+    ]);
+
+    $ownGroup = ContentGroup::factory()->published()->create([
+        'title' => 'Group Ranking Z Own',
+        'cover_path' => 'content-groups/covers/ranking-own-group.jpg',
+    ]);
+    step5bCreatePublicItem('Group Ranking Own Episode', group: $ownGroup);
+    $defaultGroup = ContentGroup::factory()->published()->create([
+        'title' => 'Group Ranking A Default',
+    ]);
+    step5bCreatePublicItem('Group Ranking Default Episode', group: $defaultGroup);
+
+    $previewer = app(CardTemplatePreviewer::class);
+    $automatic = $previewer->preview(step5bPreviewDraft('content_group'));
+    $expectedIds = [$ownGroup->getKey(), $defaultGroup->getKey()];
+
+    expect($automatic['sample_id'])->toBe($ownGroup->getKey())
+        ->and($automatic['html'])->toContain('data-card-image-source="group"')
+        ->and(array_keys($previewer->initialSampleOptions('content_group')))->toBe($expectedIds)
+        ->and(array_keys($previewer->sampleOptions('content_group', 'Group Ranking')))->toBe($expectedIds)
+        ->and($previewer->preview(step5bPreviewDraft('content_group'), $defaultGroup->getKey())['html'])
+        ->toContain('data-card-image-source="content_group_default"');
+
+    step5bBindPreviewDefaultImages([
+        'global' => ['mode' => 'custom', 'path' => 'default-images/ranking-global-group.jpg'],
+        'content_group' => ['mode' => 'inherit', 'path' => null],
+    ]);
+    $globalHtml = app(CardTemplatePreviewer::class)
+        ->preview(step5bPreviewDraft('content_group'), $defaultGroup->getKey())['html'];
+
+    step5bBindPreviewDefaultImages([
+        'global' => ['mode' => 'custom', 'path' => 'default-images/ranking-hidden-group.jpg'],
+        'content_group' => ['mode' => 'none', 'path' => null],
+    ]);
+    $noneHtml = app(CardTemplatePreviewer::class)
+        ->preview(step5bPreviewDraft('content_group'), $defaultGroup->getKey())['html'];
+
+    expect($globalHtml)->toContain('data-card-image-source="global_default"')
+        ->and($noneHtml)
+        ->toContain('data-card-image-source="fallback"')
+        ->not->toContain('data-card-image-source="global_default"');
+});
+
+it('preserves contributor ordering while rendering its configured default', function (): void {
+    step5bBindPreviewDefaultImages([
+        'contributor' => ['mode' => 'custom', 'path' => 'default-images/ranking-contributor.jpg'],
+    ]);
+
+    $leader = Author::factory()->create(['name' => 'Contributor Ranking Leader']);
+    step5bCreatePublicItem('Contributor Ranking Leader One', $leader);
+    step5bCreatePublicItem('Contributor Ranking Leader Two', $leader);
+    $follower = Author::factory()->create(['name' => 'Contributor Ranking Follower']);
+    step5bCreatePublicItem('Contributor Ranking Follower One', $follower);
+
+    $previewer = app(CardTemplatePreviewer::class);
+
+    expect($previewer->preview(step5bPreviewDraft('contributor'))['sample_id'])->toBe($leader->getKey())
+        ->and(array_keys($previewer->initialSampleOptions('contributor')))
+        ->toBe([$leader->getKey(), $follower->getKey()])
+        ->and(array_keys($previewer->sampleOptions('contributor', 'Contributor Ranking')))
+        ->toBe([$leader->getKey(), $follower->getKey()])
+        ->and($previewer->preview(step5bPreviewDraft('contributor'), $follower->getKey())['html'])
+        ->toContain('data-contributor-image-source="contributor_default"');
 });
 
 it('finalizes a body-only row preview without media geometry', function (): void {

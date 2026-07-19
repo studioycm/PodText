@@ -158,7 +158,8 @@ Recorded after the Markdown-only post-Prompt-10 prompt-progress centralization c
 - Step 5B's ordered-flow O2 foundation is complete in the current run under
   `LS-20260719-STEP5B-CARD-RENDER-O2-ORDERED-FLOW-01` /
   `STEP5B-CARD-RENDER-OVERHAUL-O2-ORDERED-FLOW-FOUNDATION`; its implementation
-  hash is pending the canonical implementation-plus-hash-stamp closeout in
+  commit is `f56ef36983a8813a1ebe18b1087864c626a4c8f5` and its docs-only
+  hash-stamp commit is `27f38aeaebc8ab2ff4279abd2a905efdce82b495` in
   `docs/phase-02/settings-step5b-card-template-ordered-flow-foundation-handoff.md`.
   Item and group presenters now select geometry from each record's actual
   filtered part sequence. A real leading image plus body may retain row
@@ -167,10 +168,24 @@ Recorded after the Markdown-only post-Prompt-10 prompt-progress centralization c
   track. Repeated top-level images render once each in order, group geometry
   lives on the article without a whole-card anchor, and both Filament themes
   scan the renderer's finite Tailwind classes. O1's 1024px shell/focus/root
-  contract and `d8f42da` navigation remain unchanged. FU02–FU06, global order
+  contract and `d8f42da` navigation remain unchanged. FU03–FU06, global order
   cutover, nested images, contributor redesign, production normalization,
   persistence, permissions, lifecycle, migrations, dependencies, and another
   roadmap selection remain deferred.
+- Step 5B FU02 sample-ranking parity is complete in the current run under
+  `LS-20260719-STEP5B-CARD-UX2-FU02-SAMPLE-RANKING-01` /
+  `STEP5B-CARD-UX2-FU02-SAMPLE-RANKING-PARITY`; its implementation hash is
+  pending canonical implementation-plus-hash-stamp closeout in
+  `docs/phase-02/settings-step5b-card-template-sample-ranking-parity-handoff.md`.
+  Automatic selection, exactly ten preloaded options, capped fifty-result
+  search, selected labels, and preview rendering now share the current
+  validated request context and effective-image tiers: own local/external,
+  permitted inherited group cover, configured family/global default, then no
+  effective image. Public eligibility, contributor ordering, restricted
+  zero-render/zero-query/forged guards, request-scoped bounded queries, O1/O2
+  UI/rendering contracts, and `d8f42da` navigation remain unchanged. FU03–FU06
+  and every wider renderer, persistence, lifecycle, permission, migration,
+  dependency, production, or next-roadmap change remain deferred.
 - CURATOR-HF1 is an in-between Curator picker hydration repair: registered
   header-logo and custom default-image selections now hydrate from raw path
   state exactly once and retain Curator's UUID-keyed item map for rendering and
@@ -267,7 +282,7 @@ Recorded after the Markdown-only post-Prompt-10 prompt-progress centralization c
 | AUTHZ1 - Dormant package foundation and legacy migration utility | Complete / done for now; command closure implemented | `docs/phase-02/authz-command-closure-handoff.md`; reset master plan; plan 20; historical reports 12–18 | The three `authz:roles:*` commands are withheld and the retained migration namespace is application-isolated. Legacy enum/rank/Gates remain authoritative. Shield stays unregistered with no `HasRoles`, grants, cutover, or role UI. AUTHZ1-D–I and recursive remediation are stopped. |
 | MAINT-LW-UX1 - Stale-tab maintenance UX and regressions | Named deferred; not implemented or prompted | `docs/research/settings-performance/14-maintenance-livewire-enforcement-effects-audit.md` | Independent medium UX/test follow-up due before the first later public Livewire navigation/polling/lazy/deferred/stream/upload expansion. |
 | ARCH1 - Versioned Card Template and Public Form aggregates | Deferred / not current | Historical reports 07, 09, and 11; reset master plan controls | No present feature requires the migration. Current SP3C/Step 6 storage and writers remain authoritative. ARCH1 does not depend on completing AUTHZ1 and is not a prerequisite for Card Template preview/side-panel UX. |
-| Step 5B - Card Template Admin Preview UX | Complete through ordered-flow O2 | Preview `c75d0f2b`; restricted `69813dbd`; auto-refresh `cdf0e897`; editor UX `d889d4f6`; UX2 `82e639d0`; FU01 `2d028255`; O1 `215340d3`; O2 implementation pending closeout stamp; research/plans 21–36 and dedicated handoffs | Preserves the O1 1024px single-root preview shell, position-canonical editing, restricted/query boundaries, and global order compatibility. O2 makes actual item/group parts authoritative for geometry, removes phantom no-media rows, renders ordered/repeated top-level images exactly once and full bleed, reconciles diagnostics and group links, and compiles the finite row utilities in both themes. FU02–FU06, nested images, production normalization, persistence, migrations, dependencies, lifecycle, permissions, generalized renderer work, and next-roadmap selection remain deferred. |
+| Step 5B - Card Template Admin Preview UX | Complete through FU02 sample-ranking parity | Preview `c75d0f2b`; restricted `69813dbd`; auto-refresh `cdf0e897`; editor UX `d889d4f6`; UX2 `82e639d0`; FU01 `2d028255`; O1 `215340d3`; O2 `f56ef369` + stamp `27f38aea`; FU02 implementation pending hash; research/plans 21–38 and dedicated handoffs | Preserves the O1 1024px single-root preview shell, position-canonical editing, restricted/query boundaries, global order compatibility, and O2 actual-part geometry. FU02 gives automatic choice, 10-option preload, 50-result search, labels, and rendering one current-context effective-image rank while retaining public eligibility, contributor order, and bounded SQL. FU03–FU06, nested images, production normalization, persistence, migrations, dependencies, lifecycle, permissions, generalized renderer work, and next-roadmap selection remain deferred. |
 | WB-PROBE-HF1 and Google format probe | Conditional Later checkpoint; not implemented or run | Report 07 and recovered checkpoint queue | If Workbench resumes, first harden connection selection, refresh, output privacy, and partial-failure resume behavior; then run the private 20-document probe before WB2/WB4 or paste-cleanup planning. |
 | LENS1 review packs | Pending operator review; not implementation scope | Report 07 and recovered checkpoint queue | Review roughly 25–40 rows per page/domain pack with key, HE, EN, context, and decision. Do not restore wholesale approval of the old 269-row table. |
 | SP3 browser acceptance evidence | Conditional Later evidence; not a feature blocker | Report 07 and recovered checkpoint queue | Authenticated in-app, serial browser, and external Playwright evidence remain due only when settings performance work or touched UX needs measured acceptance. SP3D is not a prerequisite. |
@@ -305,14 +320,14 @@ Recorded after the Markdown-only post-Prompt-10 prompt-progress centralization c
   generalized preview infrastructure remain deferred. Finite rendered
   presentation Selects and authoritative inline Builder state now refresh;
   key/label identity fields intentionally do not.
-- Step 5B FU01 strict top-level item/group image ordering is complete. FU02
-  sample ranking, FU03/O4 path-aware invalid-field navigation, nested image
+- Step 5B FU01 strict top-level item/group image ordering and FU02 effective
+  sample-ranking parity are complete. FU03/O4 path-aware invalid-field navigation, nested image
   blocks, O2 inline header editing, O3 global explicit-order cutover, and the
   remaining research-31 corrections/evidence gaps remain unimplemented. O4 is
   an internal Step 5B validation bug, not a GitHub issue. Existing global
   explicit-order validation/import/restore compatibility remains authoritative;
-  no production normalization is selected or prescribed. A fresh read-only
-  Simplifier audit is requested after FU01, but no option is preselected.
+  no production normalization is selected or prescribed. No later option is
+  preselected.
 - Footer-builder v2 and nested/dropdown public menu editing remain deferred beyond Step 10. Step 9F/10F foundation should wait until Step 10R-M1 through Step 10R-M6, Step 10R-IP1 through Step 10R-IP3, Step 10R-P1 through Step 10R-P3, Step 10R-B4, and Step 10R-C2 are complete and should still run before Step 11 seeders if footer/rich-section demo content is required. The post-M6 UX/V/S settings enhancement mini-steps run before or around P1-P3 as recorded in the central ledger.
 - Public form email notifications remain deferred.
 - Public form file uploads remain deferred.

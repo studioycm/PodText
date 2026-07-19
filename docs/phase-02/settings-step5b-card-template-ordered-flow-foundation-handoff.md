@@ -2,8 +2,9 @@
 
 ## Status
 
-Implementation, canonical final gate, and implementation commit are complete;
-docs-only hash-stamp closeout is pending.
+Implementation, canonical final gate, implementation commit
+`f56ef36983a8813a1ebe18b1087864c626a4c8f5`, and docs-only hash-stamp commit
+`27f38aeaebc8ab2ff4279abd2a905efdce82b495` are complete.
 
 - Audit: `LS-20260719-STEP5B-CARD-RENDER-O2-ORDERED-FLOW-01`
 - Option: `STEP5B-CARD-RENDER-OVERHAUL-O2-ORDERED-FLOW-FOUNDATION`

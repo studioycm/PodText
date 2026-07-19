@@ -12,7 +12,9 @@ use App\Models\User;
 use App\Settings\AdminUxSettings;
 use App\Settings\PublicContentSettings;
 use App\Support\PublicFront\Cards\PublicFrontCardTemplateRegistry;
+use App\Support\PublicFront\PublicFrontConfigCache;
 use App\Support\PublicFront\PublicFrontConfigRegistry;
+use App\Support\PublicFront\PublicFrontRenderContext;
 use App\Support\Settings\CardTemplates\CardTemplateDraftNormalizer;
 use App\Support\Settings\CardTemplates\CardTemplateFocusedWriter;
 use App\Support\Settings\CardTemplates\CardTemplatePartSummaryFormatter;
@@ -74,6 +76,9 @@ function step5bEditorSaveSetting(string $settingsClass, string $name, mixed $val
     );
 
     app()->forgetInstance($settingsClass);
+    app()->forgetInstance(CardTemplatePreviewer::class);
+    app()->forgetInstance(PublicFrontRenderContext::class);
+    app(PublicFrontConfigCache::class)->forget();
     app(SettingsContainer::class)->clearCache();
 }
 
@@ -103,7 +108,7 @@ function step5bEditorPublicItem(
     return $item->refresh();
 }
 
-it('previews the current single draft explicitly without settings or mutation services', function (): void {
+it('previews the current single draft from its validated request context without mutation services', function (): void {
     $template = step5bEditorTemplate();
     step5bEditorSaveSetting(PublicContentSettings::class, 'card_templates', [$template]);
     $item = step5bEditorPublicItem('Editor Preview Episode');
@@ -139,7 +144,7 @@ it('previews the current single draft explicitly without settings or mutation se
     $scanner->shouldNotReceive('scan');
     app()->instance(CardTemplateReferenceScanner::class, $scanner);
     app()->forgetInstance(PublicContentSettings::class);
-    app()->bind(PublicContentSettings::class, fn (): never => throw new RuntimeException('Preview refresh read configured settings.'));
+    app()->bind(PublicContentSettings::class, fn (): never => throw new RuntimeException('Preview refresh repeated its configured settings read.'));
 
     $component
         ->set('data.title_size', 'lg')
@@ -874,6 +879,50 @@ it('keeps authorized sample selector search label selection and refresh working 
             ->assertSet('previewFamily', $family)
             ->assertSet('previewSampleId', $sample['id']);
     }
+});
+
+it('shows the same effective image ranking in automatic preload and searched item samples', function (): void {
+    $template = step5bEditorTemplate('content_item', 'preview_content_item');
+    step5bEditorSaveSetting(PublicContentSettings::class, 'card_templates', [$template]);
+    step5bEditorSaveSetting(PublicContentSettings::class, 'default_images', [
+        ...PublicFrontConfigRegistry::defaults()['default_images'],
+        'content_item' => ['mode' => 'custom', 'path' => 'default-images/editor-ranking.jpg'],
+    ]);
+
+    $direct = step5bEditorPublicItem('Editor Ranking Direct');
+    $direct->update(['external_thumbnail_url' => 'https://example.test/editor-ranking.jpg']);
+    $direct->featuredTranscription->update(['published_at' => now()->subDays(2)]);
+    $inheritedGroup = ContentGroup::factory()->published()->create([
+        'title' => 'Editor Ranking Inherited Group',
+        'cover_path' => 'content-groups/covers/editor-ranking.jpg',
+    ]);
+    $inherited = step5bEditorPublicItem('Editor Ranking Inherited', $inheritedGroup);
+    $inherited->featuredTranscription->update(['published_at' => now()->subDay()]);
+    $configuredDefault = step5bEditorPublicItem('Editor Ranking Configured Default');
+
+    $component = Livewire::test(EditCardTemplate::class, [
+        'family' => 'content_item',
+        'key' => 'preview_content_item',
+    ])
+        ->assertSet('previewStatus', 'ready')
+        ->assertSet('previewSampleId', $direct->getKey());
+    $select = $component->instance()->getSchemaComponent('previewSampleForm.sample_id');
+    $expectedIds = [
+        $direct->getKey(),
+        $inherited->getKey(),
+        $configuredDefault->getKey(),
+    ];
+
+    expect($component->get('previewHtml'))->toContain('data-card-image-source="item_external"')
+        ->and($select)->toBeInstanceOf(Select::class)
+        ->and(array_keys($select->getOptions()))->toBe($expectedIds)
+        ->and(array_keys($select->getSearchResults('Editor Ranking')))->toBe($expectedIds);
+
+    $component
+        ->set('previewControls.sample_id', $configuredDefault->getKey())
+        ->assertSet('previewSampleId', $configuredDefault->getKey());
+
+    expect($component->get('previewHtml'))->toContain('data-card-image-source="content_item_default"');
 });
 
 it('caps authorized sample selector searches at fifty results', function (): void {

@@ -146,20 +146,23 @@ Choose Sample is now an inline searchable Filament Select. It:
 
 - preloads exactly 10 public-safe options and independently caps server search
   at 50;
-- orders episodes with their own `image_path` or
-  `external_thumbnail_url`, and podcasts with their own `cover_path`, before
-  image-less records while keeping deterministic ordering within each tier;
-- does not treat an inherited podcast cover as an episode's own image;
+- after FU02, orders episodes by effective image: own `image_path` or
+  `external_thumbnail_url`, permitted inherited podcast cover, configured
+  episode/global default, then no effective image; podcasts use own cover,
+  configured podcast/global default, then none;
+- uses the same rank and existing deterministic family ties for automatic
+  choice, preload, search, and selected-label lookup;
 - keeps contributors unchanged, resolves the selected label without a
   redundant query when the current locked label is available, and retains
   three-family/transient/no-settings-persistence behavior; and
 - is not constructed, rendered, queried, or accepted through direct/forged
   interactions in restricted state.
 
-For preview rendering only, image-less episodes opt out of podcast-cover
-inheritance and use the existing card missing-image fallback. Public cards and
-item pages keep their current resolver behavior; no asset or default-image
-setting was added.
+FU02 supersedes the original preview-only no-inheritance behavior. Preview now
+uses the current validated public render context and the existing resolver, so
+the selected sample renders its inherited cover, configured family/global
+default, or existing no-image fallback exactly as ranked. No asset or
+default-image setting was added.
 
 Part editing now offers two modes:
 
@@ -277,7 +280,7 @@ settings-lifecycle, persistence, database, or production change was made.
 | Shared Builder transport cleanup | Implemented | `CardTemplateDraftNormalizer` owns the former writer cleanup and is used by writer and previewer. |
 | Exactly one normalized candidate; no saved fallback | Implemented | Invalid-draft tests reject malformed drafts and leave preview HTML empty. |
 | Existing value object/renderer/presenters/public components | Implemented | All three families use `PublicFrontCardTemplate`, existing presenters, renderer, and card/part views. |
-| Deterministic public-safe sample and bounded selector | Implemented | Family queries use existing public scopes/aggregates. Automatic sample selection keeps its prior deterministic order; the inline selector uses image-first tiers, exactly 10 preloaded options, and an independent 50-result server-search cap. |
+| Deterministic public-safe sample and bounded selector | Implemented; extended by FU02 | Family queries retain existing public scopes/aggregates. Automatic selection, exactly 10 preloaded options, independent 50-result search, and labels share effective-image tiers plus the existing item publication/ID, group title/ID, and contributor ties. |
 | Eager-loaded/constant query plane | Implemented | Three identical family query runs are constant and lazy-loading prevention remains green. |
 | Family-specific empty/error/restricted/loading/stale states | Implemented | HE/EN copy and focused component coverage exercise no-sample, invalid, restricted, current/stale, and modal response states. |
 | Family, presentation-field, and template-part automatic refresh boundaries | Implemented | Family clears sample identity; `layout`, `density`, `image_size`, and `title_size` refresh once per discrete change; inline `data.parts...` uses the Builder's 500ms binding; accepted slide-over/structural mutations refresh after Apply. `key` and `label` do not trigger preview work. |
@@ -286,14 +289,15 @@ settings-lifecycle, persistence, database, or production change was made.
 | Cancel is translated and placed beside Save | Implemented | English `Cancel` and Hebrew `ביטול` keys are covered in the form-action order; Chromium verifies the settings URL action is in the form and absent from the header. Delete remains a header action. |
 | Compact header metadata and draft-first editor column | Implemented | Import-lock label/badge/help are rendered in the Filament page subheading; the dedicated section is removed, and Chromium verifies the draft is the first editor section in both logical layouts. |
 | Collapsible preview toolbar and transient bounded zoom | Implemented | The toolbar alone collapses; authenticated Chromium verifies the canvas remains visible, 10% controls clamp at 50%/150%, reset to 100%, stay inside the scroll plane, and reset on reload. |
-| Inline sample Select, 10 preload, 50 search, and image-first order | Implemented | Focused tests independently assert both caps and two-query bounded planes, all-family search/label/selection, item/group own-image semantics, contributor continuity, transient reload, and no settings payload change. |
-| Preview missing-image behavior | Implemented | Preview-only presenter/resolver input disables inherited podcast cover for image-less episodes; the existing `fallback` card treatment renders. Ordinary public resolver defaults remain unchanged and existing image suites are green. |
+| Inline sample Select, 10 preload, 50 search, and effective-image order | Implemented; extended by FU02 | Focused and authenticated-browser tests assert both exact caps, bounded query/request planes, all-family search/label/selection, item local/external/inherited/family/global/none semantics, contributor continuity, transient reload, and no settings payload change. |
+| Preview effective/missing-image behavior | Implemented in FU02 | Preview uses the same current validated resolver context as ranking. Permitted inherited covers and configured family/global defaults render; mode `none` retains the existing `fallback` treatment. |
 | Remembered Builder display mode | Implemented | Browser `localStorage` remembers only `inline`/`slide_over`; server validation normalizes forged values, no settings event fires, and reload acceptance restores inline mode without changing the settings payload. |
 | Logical-start native Builder slide-over | Implemented | Top-level and nested edit actions use native logical-start `3xl` slide-overs with sticky chrome and responsive one/two-column schemas. Overlay/focus evidence distinguishes mounted from interactive; at the new constrained `lg` boundary the existing panel may overlap part of the preview and remains outside O1. |
 | Native Apply-time versus inline live timing | Implemented | Browser evidence proves cloned slide-over edits do not alter preview before Apply and do so in one request after Apply; authoritative inline input refreshes live in one debounced request without opening a modal. No custom mounted-action bridge exists. |
 | Strict item/group image order | Implemented in FU01 | Leading images retain existing geometry; interleaved images render through one ordered stacked `parts` stream in preview and public output. |
 | Native image movement reaches the preview position | Implemented in FU01 | Livewire and Chromium move the image through the owning-Builder modal and prove exact rendered order without settings persistence. |
-| FU02 sample ranking and FU03/O4 error targeting | Deferred by FU01 approval | Neither query ranking nor validation-path behavior changed; both remain in the research 31 follow-up audit inventory. |
+| FU02 sample ranking | Implemented in FU02 | Automatic, preload, search, labels, and rendered source share own local/external, permitted inherited cover, configured family/global default, then none; exact ties/caps are pinned. |
+| FU03/O4 error targeting | Deferred | Validation-path behavior is unchanged and remains an internal Step 5B bug in the research-31 follow-up inventory. |
 | Localized Builder summaries and legacy diagnostics | Implemented | Formatter tests cover HE/EN no-prefix fallback, registry source/attribute labels, escaped unknown raw values, and nested/top-level preview continuity. |
 | Responsive adjacent/slide-over single mount | Implemented | Authenticated Chromium verifies the exact 767/768/1023 slide-over and 1024/1279/1280 adjacent matrix; mutation-record transition instrumentation records a peak of one root, including rapid resize-back. |
 | HE/EN, RTL/LTR, logical end, independent scroll | Implemented | Authenticated Chromium verifies Hebrew RTL and English LTR at the 1023/1024 boundary; exact-width CSS geometry keeps both surfaces at logical end and the settled document overflow-free. |
@@ -826,12 +830,15 @@ The requirements sweep passed before this sequence:
 7. Open the inline sample Select. Expect 10 initial public-safe options; search
    for a published episode, podcast, and contributor and expect server results
    capped at 50 with the selected label resolved.
-8. Compare image-bearing and image-less episode/podcast results. Expect records
-   with their own image first. Do not count a podcast cover inherited by an
-   episode as that episode's own image.
-9. Select an image-less episode whose podcast has a cover. Expect the existing
-   missing-image placeholder in preview, not the inherited cover or a blank
-   image area. Reload and expect the sample choice to reset transiently.
+8. Compare episode results with own local/external images, inherited podcast
+   covers, configured episode/global defaults, and no effective image. Expect
+   that visible tier order, then the existing publication-date/ID ties; expect
+   exactly 10 initial options and no more than 50 searched results.
+9. Select one sample from each tier. Expect source markers and visible media to
+   match the selected record: own image, inherited cover, configured default,
+   then the existing missing-image fallback. Set episode mode to `none` in a
+   test environment and expect inherited/global media to be suppressed. Reload
+   and expect the sample choice to reset transiently.
 10. Change layout, density, image size, and title size. Expect one automatic
     preview refresh after each discrete Select change, without saving settings.
 11. Change only template key or label. Expect the preview to become stale and
@@ -929,3 +936,22 @@ deferred inventory, final gates, and implementation hash are canonical in
 `docs/phase-02/settings-step5b-card-template-ordered-flow-foundation-handoff.md`.
 O1's 1024px single-root/focus/dirty-state contract remains unchanged and passed
 the combined O1+O2 browser regression.
+
+## FU02 sample-ranking parity continuation
+
+The directly approved `STEP5B-CARD-UX2-FU02-SAMPLE-RANKING-PARITY`
+continuation is complete in the current run under audit
+`LS-20260719-STEP5B-CARD-UX2-FU02-SAMPLE-RANKING-01`. Automatic selection,
+exactly ten preloaded options, capped fifty-result search, selected-label
+lookup, and rendered preview now share the request-scoped validated context and
+one SQL-ranked effective-image contract. Item ranking is own local/external,
+permitted inherited group cover, configured family/global default, then none;
+group ranking is own cover, configured family/global default, then none.
+Existing family ties and contributor ordering remain authoritative.
+
+The complete contract, browser/request/query evidence, command history, review
+dispositions, deferred inventory, final gates, and pending implementation hash
+are canonical in
+`docs/phase-02/settings-step5b-card-template-sample-ranking-parity-handoff.md`.
+O1/O2 shell, focus, single-root, geometry, diagnostics, theme-source, and
+navigation contracts remain unchanged and passed the combined regression.

@@ -22,7 +22,6 @@ use App\Support\PublicFront\ContentItemDisplayTitle;
 use App\Support\PublicFront\Groups\PublicContentGroupQueries;
 use App\Support\PublicFront\PublicDefaultImageResolver;
 use App\Support\PublicFront\PublicFrontConfigRegistry;
-use App\Support\PublicFront\PublicFrontConfigResult;
 use App\Support\PublicFront\PublicFrontRenderContext;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\View\ComponentAttributeBag;
@@ -36,6 +35,7 @@ class CardTemplatePreviewer
     public function __construct(
         private readonly CardTemplateDraftNormalizer $normalizer,
         private readonly ContentItemDisplayTitle $displayTitle,
+        private readonly PublicFrontRenderContext $context,
     ) {}
 
     /**
@@ -52,6 +52,7 @@ class CardTemplatePreviewer
             $sampleId,
             $services['aggregates'],
             $services['selector'],
+            $services['default_images'],
         );
 
         if (! $sample) {
@@ -97,7 +98,12 @@ class CardTemplatePreviewer
     public function sampleLabel(string $family, int $sampleId): ?string
     {
         $services = $this->queryServices();
-        $sample = $this->sampleQuery($family, $services['aggregates'], $services['selector'])
+        $sample = $this->sampleQuery(
+            $family,
+            $services['aggregates'],
+            $services['selector'],
+            $services['default_images'],
+        )
             ->whereKey($sampleId)
             ->first();
 
@@ -116,16 +122,12 @@ class CardTemplatePreviewer
      */
     private function services(): array
     {
-        $context = new PublicFrontRenderContext(
-            new PublicFrontConfigResult(PublicFrontConfigRegistry::defaults()),
-        );
         $queryServices = $this->queryServices();
 
         return [
-            'renderer' => new PublicFrontCardTemplateRenderer(new PublicFrontCardTemplateResolver($context)),
-            'context' => $context,
+            'renderer' => new PublicFrontCardTemplateRenderer(new PublicFrontCardTemplateResolver($this->context)),
+            'context' => $this->context,
             ...$queryServices,
-            'default_images' => new PublicDefaultImageResolver($context),
         ];
     }
 
@@ -133,13 +135,14 @@ class CardTemplatePreviewer
      * @return array{
      *     selector: PublicTranscriptionSelector,
      *     policy: PublicTranscriptionPolicy,
-     *     aggregates: PublicTranscriptionAggregates
+     *     aggregates: PublicTranscriptionAggregates,
+     *     default_images: PublicDefaultImageResolver
      * }
      */
     private function queryServices(): array
     {
         $policy = PublicTranscriptionPolicy::fromConfig(
-            PublicFrontConfigRegistry::defaults()['transcription_policy'],
+            $this->context->transcriptionPolicy(),
             multiMode: false,
         );
         $selector = new PublicTranscriptionSelector($policy);
@@ -148,6 +151,7 @@ class CardTemplatePreviewer
             'selector' => $selector,
             'policy' => $policy,
             'aggregates' => new PublicTranscriptionAggregates($policy, $selector),
+            'default_images' => new PublicDefaultImageResolver($this->context),
         ];
     }
 
@@ -156,8 +160,9 @@ class CardTemplatePreviewer
         ?int $sampleId,
         PublicTranscriptionAggregates $aggregates,
         PublicTranscriptionSelector $selector,
+        PublicDefaultImageResolver $defaultImages,
     ): Author|ContentGroup|ContentItem|null {
-        $query = $this->sampleQuery($family, $aggregates, $selector);
+        $query = $this->sampleQuery($family, $aggregates, $selector, $defaultImages);
 
         if ($sampleId !== null) {
             return $query->whereKey($sampleId)->first();
@@ -170,8 +175,8 @@ class CardTemplatePreviewer
         string $family,
         PublicTranscriptionAggregates $aggregates,
         PublicTranscriptionSelector $selector,
+        PublicDefaultImageResolver $defaultImages,
         string $search = '',
-        bool $imageFirst = false,
     ): Builder {
         $search = trim($search);
 
@@ -179,13 +184,13 @@ class CardTemplatePreviewer
             PublicFrontCardTemplateRegistry::CONTENT_ITEM_FAMILY => $this->contentItemQuery(
                 $aggregates,
                 $selector,
+                $defaultImages,
                 $search,
-                $imageFirst,
             ),
             PublicFrontCardTemplateRegistry::CONTENT_GROUP_FAMILY => $this->contentGroupQuery(
                 $aggregates,
+                $defaultImages,
                 $search,
-                $imageFirst,
             ),
             PublicFrontCardTemplateRegistry::CONTRIBUTOR_FAMILY => PublicContributorDiscovery::contributors(
                 search: $search,
@@ -198,8 +203,8 @@ class CardTemplatePreviewer
     private function contentItemQuery(
         PublicTranscriptionAggregates $aggregates,
         PublicTranscriptionSelector $selector,
+        PublicDefaultImageResolver $defaultImages,
         string $search,
-        bool $imageFirst,
     ): Builder {
         $query = PublicContentItemQueries::base($aggregates, $selector);
 
@@ -212,19 +217,34 @@ class CardTemplatePreviewer
             });
         }
 
-        if ($imageFirst) {
-            $query->orderByRaw(
-                "CASE WHEN NULLIF(TRIM(image_path), '') IS NOT NULL OR NULLIF(TRIM(external_thumbnail_url), '') IS NOT NULL THEN 0 ELSE 1 END",
-            );
-        }
+        $contentItemsTable = (new ContentItem)->getTable();
+        $contentGroupsTable = (new ContentGroup)->getTable();
+        $query->orderByRaw(
+            "CASE
+                WHEN NULLIF(TRIM({$contentItemsTable}.image_path), '') IS NOT NULL
+                    OR NULLIF(TRIM({$contentItemsTable}.external_thumbnail_url), '') IS NOT NULL THEN 0
+                WHEN ? = 1 AND EXISTS (
+                    SELECT 1
+                    FROM {$contentGroupsTable}
+                    WHERE {$contentGroupsTable}.id = {$contentItemsTable}.content_group_id
+                        AND NULLIF(TRIM({$contentGroupsTable}.cover_path), '') IS NOT NULL
+                ) THEN 1
+                WHEN ? = 1 THEN 2
+                ELSE 3
+            END",
+            [
+                (int) $defaultImages->allowsContentItemGroupCover(),
+                (int) $defaultImages->hasConfiguredDefault(PublicFrontCardTemplateRegistry::CONTENT_ITEM_FAMILY),
+            ],
+        );
 
         return $query->orderByEffectiveTranscriptionPublishedAt();
     }
 
     private function contentGroupQuery(
         PublicTranscriptionAggregates $aggregates,
+        PublicDefaultImageResolver $defaultImages,
         string $search,
-        bool $imageFirst,
     ): Builder {
         $query = PublicContentGroupQueries::base($aggregates);
 
@@ -232,9 +252,15 @@ class CardTemplatePreviewer
             PublicContentGroupQueries::applySearch($query, $search);
         }
 
-        if ($imageFirst) {
-            $query->orderByRaw("CASE WHEN NULLIF(TRIM(cover_path), '') IS NOT NULL THEN 0 ELSE 1 END");
-        }
+        $contentGroupsTable = (new ContentGroup)->getTable();
+        $query->orderByRaw(
+            "CASE
+                WHEN NULLIF(TRIM({$contentGroupsTable}.cover_path), '') IS NOT NULL THEN 0
+                WHEN ? = 1 THEN 2
+                ELSE 3
+            END",
+            [(int) $defaultImages->hasConfiguredDefault(PublicFrontCardTemplateRegistry::CONTENT_GROUP_FAMILY)],
+        );
 
         return $query->orderBy('title')->orderBy('id');
     }
@@ -247,8 +273,8 @@ class CardTemplatePreviewer
             $family,
             $services['aggregates'],
             $services['selector'],
+            $services['default_images'],
             $search,
-            imageFirst: true,
         );
     }
 
@@ -301,12 +327,7 @@ class CardTemplatePreviewer
             $services['default_images'],
             $this->displayTitle,
         );
-        $card = $presenter->present(
-            $item,
-            $options,
-            $template,
-            inheritGroupCover: false,
-        );
+        $card = $presenter->present($item, $options, $template);
 
         return view('components.public.content-item-card', [
             'card' => $card,
