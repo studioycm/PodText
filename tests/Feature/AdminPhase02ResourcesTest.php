@@ -185,73 +185,65 @@ it('orders every registered admin navigation resource and page through the centr
             'sort' => 220,
             'group' => AdminNavigationOrder::TAXONOMY_MANAGEMENT,
         ],
-        HomepageSectionResource::class => [
-            'sort' => 300,
-            'group' => AdminNavigationOrder::SITE_MANAGEMENT,
-        ],
         HomepageSettings::class => [
             'sort' => 300,
             'group' => AdminNavigationOrder::SETTINGS,
         ],
-        DisplaySettings::class => [
+        HomepageSectionResource::class => [
             'sort' => 310,
             'group' => AdminNavigationOrder::SETTINGS,
         ],
-        EpisodePageSettings::class => [
+        PodcastSettings::class => [
             'sort' => 320,
             'group' => AdminNavigationOrder::SETTINGS,
         ],
-        MenuHeaderSettings::class => [
+        EpisodePageSettings::class => [
             'sort' => 330,
             'group' => AdminNavigationOrder::SETTINGS,
         ],
-        PodcastSettings::class => [
-            'sort' => 340,
-            'group' => AdminNavigationOrder::SETTINGS,
-        ],
         ContributorSettings::class => [
-            'sort' => 350,
+            'sort' => 340,
             'group' => AdminNavigationOrder::SETTINGS,
         ],
         AboutSettings::class => [
+            'sort' => 350,
+            'group' => AdminNavigationOrder::SETTINGS,
+        ],
+        DisplaySettings::class => [
             'sort' => 360,
             'group' => AdminNavigationOrder::SETTINGS,
         ],
-        MaintenanceSettings::class => [
+        MenuHeaderSettings::class => [
             'sort' => 370,
             'group' => AdminNavigationOrder::SETTINGS,
         ],
-        ManagePublicForms::class => [
-            'sort' => 380,
-            'group' => AdminNavigationOrder::SETTINGS,
-        ],
-        CardTemplateSettings::class => [
-            'sort' => 390,
-            'group' => AdminNavigationOrder::SETTINGS,
-        ],
-        AdminUxSettingsPage::class => [
-            'sort' => 400,
-            'group' => AdminNavigationOrder::SETTINGS,
-        ],
-        SettingsBackupResource::class => [
-            'sort' => 410,
-            'group' => AdminNavigationOrder::SETTINGS,
+        MaintenanceSettings::class => [
+            'sort' => 300,
+            'group' => AdminNavigationOrder::SYSTEM_MANAGEMENT,
         ],
         UserResource::class => [
-            'sort' => 325,
-            'group' => AdminNavigationOrder::SITE_MANAGEMENT,
-        ],
-        AdminTools::class => [
-            'sort' => 335,
-            'group' => AdminNavigationOrder::SITE_MANAGEMENT,
+            'sort' => 310,
+            'group' => AdminNavigationOrder::SYSTEM_MANAGEMENT,
         ],
         ImporterSettings::class => [
-            'sort' => 340,
-            'group' => AdminNavigationOrder::SITE_MANAGEMENT,
+            'sort' => 320,
+            'group' => AdminNavigationOrder::SYSTEM_MANAGEMENT,
         ],
-        SpotifyLinksFetcher::class => [
-            'sort' => 345,
-            'group' => AdminNavigationOrder::SITE_MANAGEMENT,
+        ManagePublicForms::class => [
+            'sort' => 330,
+            'group' => AdminNavigationOrder::SYSTEM_MANAGEMENT,
+        ],
+        CardTemplateSettings::class => [
+            'sort' => 340,
+            'group' => AdminNavigationOrder::SYSTEM_MANAGEMENT,
+        ],
+        SettingsBackupResource::class => [
+            'sort' => 350,
+            'group' => AdminNavigationOrder::SYSTEM_MANAGEMENT,
+        ],
+        AdminUxSettingsPage::class => [
+            'sort' => 360,
+            'group' => AdminNavigationOrder::SYSTEM_MANAGEMENT,
         ],
         PublicFormSubmissionResource::class => [
             'sort' => 20,
@@ -260,6 +252,14 @@ it('orders every registered admin navigation resource and page through the centr
         ],
         MediaResource::class => [
             'sort' => 30,
+            'group' => null,
+        ],
+        AdminTools::class => [
+            'sort' => 40,
+            'group' => null,
+        ],
+        SpotifyLinksFetcher::class => [
+            'sort' => 50,
             'group' => null,
         ],
     ];
@@ -305,7 +305,7 @@ it('orders every registered admin navigation resource and page through the centr
         AdminNavigationOrder::groupLabel(AdminNavigationOrder::CONTENT_MANAGEMENT),
         AdminNavigationOrder::groupLabel(AdminNavigationOrder::TAXONOMY_MANAGEMENT),
         AdminNavigationOrder::groupLabel(AdminNavigationOrder::SETTINGS),
-        AdminNavigationOrder::groupLabel(AdminNavigationOrder::SITE_MANAGEMENT),
+        AdminNavigationOrder::groupLabel(AdminNavigationOrder::SYSTEM_MANAGEMENT),
     ]);
 
     $groupedNavigation = $navigation
@@ -332,6 +332,9 @@ it('orders every registered admin navigation resource and page through the centr
         __('admin.resources.content_item.workspace_navigation'),
         __('admin.resources.public_form_submission.navigation'),
         __('admin.curator.plural_label'),
+        __('admin.tools.pages.tools.navigation'),
+        __('admin.spotify_fetcher.pages.navigation'),
+        __('admin.navigation.public_homepage'),
     ])
         ->and($itemLabelsFor(AdminNavigationOrder::groupLabel(AdminNavigationOrder::CONTENT_MANAGEMENT)))->toBe([
             __('admin.resources.content_group.navigation'),
@@ -345,35 +348,40 @@ it('orders every registered admin navigation resource and page through the centr
         ])
         ->and($itemLabelsFor(AdminNavigationOrder::groupLabel(AdminNavigationOrder::SETTINGS)))->toBe([
             HomepageSettings::getNavigationLabel(),
-            DisplaySettings::getNavigationLabel(),
-            EpisodePageSettings::getNavigationLabel(),
-            MenuHeaderSettings::getNavigationLabel(),
+            __('admin.resources.homepage_section.navigation'),
             PodcastSettings::getNavigationLabel(),
+            EpisodePageSettings::getNavigationLabel(),
             ContributorSettings::getNavigationLabel(),
             AboutSettings::getNavigationLabel(),
+            DisplaySettings::getNavigationLabel(),
+            MenuHeaderSettings::getNavigationLabel(),
+        ])
+        ->and($itemLabelsFor(AdminNavigationOrder::groupLabel(AdminNavigationOrder::SYSTEM_MANAGEMENT)))->toBe([
             MaintenanceSettings::getNavigationLabel(),
+            __('admin.importer.pages.settings.navigation'),
             ManagePublicForms::getNavigationLabel(),
             CardTemplateSettings::getNavigationLabel(),
-            AdminUxSettingsPage::getNavigationLabel(),
             __('admin.resources.settings_backup.navigation'),
-        ])
-        ->and($itemLabelsFor(AdminNavigationOrder::groupLabel(AdminNavigationOrder::SITE_MANAGEMENT)))->toBe([
-            __('admin.resources.homepage_section.navigation'),
-            __('admin.tools.pages.tools.navigation'),
-            __('admin.importer.pages.settings.navigation'),
-            __('admin.spotify_fetcher.pages.navigation'),
-            __('admin.navigation.public_homepage'),
+            AdminUxSettingsPage::getNavigationLabel(),
         ]);
 
-    $siteItems = collect($navigation
-        ->first(fn ($group): bool => $group->getLabel() === AdminNavigationOrder::groupLabel(AdminNavigationOrder::SITE_MANAGEMENT))
+    $ungroupedItems = collect($navigation
+        ->first(fn ($group): bool => $group->getLabel() === null)
         ->getItems());
-    $publicHomepageItem = $siteItems->last();
+    $publicHomepageItem = $ungroupedItems->last();
 
     expect($publicHomepageItem->getLabel())->toBe(__('admin.navigation.public_homepage'))
         ->and($publicHomepageItem->getUrl())->toBe(BrowseContentGroups::getUrl(panel: 'public'))
         ->and($publicHomepageItem->shouldOpenUrlInNewTab())->toBeTrue()
         ->and($publicHomepageItem->getIcon())->toBe(Heroicon::OutlinedArrowTopRightOnSquare);
+
+    app()->setLocale('en');
+
+    expect(AdminNavigationOrder::groupLabel(AdminNavigationOrder::SYSTEM_MANAGEMENT))->toBe('System management');
+
+    app()->setLocale('he');
+
+    expect(AdminNavigationOrder::groupLabel(AdminNavigationOrder::SYSTEM_MANAGEMENT))->toBe('ניהול מערכת');
 });
 
 it('defers the public form submission navigation badge query until badge evaluation', function (): void {

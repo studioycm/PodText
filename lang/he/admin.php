@@ -9,7 +9,7 @@ return [
             'content_management' => 'ניהול תוכן',
             'taxonomy_management' => 'ניהול סיווג',
             'settings' => 'הגדרות',
-            'site_management' => 'ניהול אתר',
+            'system_management' => 'ניהול מערכת',
         ],
     ],
     'resources' => [

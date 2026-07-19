@@ -9,7 +9,7 @@ return [
             'content_management' => 'Content management',
             'taxonomy_management' => 'Taxonomy management',
             'settings' => 'Settings',
-            'site_management' => 'Site management',
+            'system_management' => 'System management',
         ],
     ],
     'resources' => [

@@ -41,7 +41,7 @@ class AdminNavigationOrder
 
     public const SETTINGS = 'settings';
 
-    public const SITE_MANAGEMENT = 'site_management';
+    public const SYSTEM_MANAGEMENT = 'system_management';
 
     public const EPISODE_WORKSPACE_CREATE_SORT = 10;
 
@@ -58,8 +58,8 @@ class AdminNavigationOrder
         self::SETTINGS => [
             'label' => 'admin.navigation.groups.settings',
         ],
-        self::SITE_MANAGEMENT => [
-            'label' => 'admin.navigation.groups.site_management',
+        self::SYSTEM_MANAGEMENT => [
+            'label' => 'admin.navigation.groups.system_management',
         ],
     ];
 
@@ -95,73 +95,65 @@ class AdminNavigationOrder
             'sort' => 220,
             'group' => self::TAXONOMY_MANAGEMENT,
         ],
-        HomepageSectionResource::class => [
-            'sort' => 300,
-            'group' => self::SITE_MANAGEMENT,
-        ],
         HomepageSettings::class => [
             'sort' => 300,
             'group' => self::SETTINGS,
         ],
-        DisplaySettings::class => [
+        HomepageSectionResource::class => [
             'sort' => 310,
             'group' => self::SETTINGS,
         ],
-        EpisodePageSettings::class => [
+        PodcastSettings::class => [
             'sort' => 320,
             'group' => self::SETTINGS,
         ],
-        MenuHeaderSettings::class => [
+        EpisodePageSettings::class => [
             'sort' => 330,
             'group' => self::SETTINGS,
         ],
-        PodcastSettings::class => [
-            'sort' => 340,
-            'group' => self::SETTINGS,
-        ],
         ContributorSettings::class => [
-            'sort' => 350,
+            'sort' => 340,
             'group' => self::SETTINGS,
         ],
         AboutSettings::class => [
+            'sort' => 350,
+            'group' => self::SETTINGS,
+        ],
+        DisplaySettings::class => [
             'sort' => 360,
             'group' => self::SETTINGS,
         ],
-        MaintenanceSettings::class => [
+        MenuHeaderSettings::class => [
             'sort' => 370,
             'group' => self::SETTINGS,
         ],
-        ManagePublicForms::class => [
-            'sort' => 380,
-            'group' => self::SETTINGS,
-        ],
-        CardTemplateSettings::class => [
-            'sort' => 390,
-            'group' => self::SETTINGS,
-        ],
-        AdminUxSettings::class => [
-            'sort' => 400,
-            'group' => self::SETTINGS,
-        ],
-        SettingsBackupResource::class => [
-            'sort' => 410,
-            'group' => self::SETTINGS,
+        MaintenanceSettings::class => [
+            'sort' => 300,
+            'group' => self::SYSTEM_MANAGEMENT,
         ],
         UserResource::class => [
-            'sort' => 325,
-            'group' => self::SITE_MANAGEMENT,
-        ],
-        AdminTools::class => [
-            'sort' => 335,
-            'group' => self::SITE_MANAGEMENT,
+            'sort' => 310,
+            'group' => self::SYSTEM_MANAGEMENT,
         ],
         ImporterSettings::class => [
-            'sort' => 340,
-            'group' => self::SITE_MANAGEMENT,
+            'sort' => 320,
+            'group' => self::SYSTEM_MANAGEMENT,
         ],
-        SpotifyLinksFetcher::class => [
-            'sort' => 345,
-            'group' => self::SITE_MANAGEMENT,
+        ManagePublicForms::class => [
+            'sort' => 330,
+            'group' => self::SYSTEM_MANAGEMENT,
+        ],
+        CardTemplateSettings::class => [
+            'sort' => 340,
+            'group' => self::SYSTEM_MANAGEMENT,
+        ],
+        SettingsBackupResource::class => [
+            'sort' => 350,
+            'group' => self::SYSTEM_MANAGEMENT,
+        ],
+        AdminUxSettings::class => [
+            'sort' => 360,
+            'group' => self::SYSTEM_MANAGEMENT,
         ],
         PublicFormSubmissionResource::class => [
             'sort' => 20,
@@ -170,6 +162,14 @@ class AdminNavigationOrder
         ],
         MediaResource::class => [
             'sort' => 30,
+            'group' => null,
+        ],
+        AdminTools::class => [
+            'sort' => 40,
+            'group' => null,
+        ],
+        SpotifyLinksFetcher::class => [
+            'sort' => 50,
             'group' => null,
         ],
     ];
@@ -226,9 +226,8 @@ class AdminNavigationOrder
     {
         return [
             NavigationItem::make(fn (): string => __('admin.navigation.public_homepage'))
-                ->group(fn (): string => self::groupLabel(self::SITE_MANAGEMENT))
                 ->icon(Heroicon::OutlinedArrowTopRightOnSquare)
-                ->sort(999)
+                ->sort(60)
                 ->url(fn (): string => BrowseContentGroups::getUrl(panel: 'public'), shouldOpenInNewTab: true),
         ];
     }
