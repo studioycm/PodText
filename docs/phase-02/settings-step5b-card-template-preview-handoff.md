@@ -950,8 +950,8 @@ group ranking is own cover, configured family/global default, then none.
 Existing family ties and contributor ordering remain authoritative.
 
 The complete contract, browser/request/query evidence, command history, review
-dispositions, deferred inventory, final gates, and pending implementation hash
-are canonical in
+dispositions, deferred inventory, final gates, and implementation hash
+`a8be0aa4e7d89d8f70276ff497ee7b54a63d20df` are canonical in
 `docs/phase-02/settings-step5b-card-template-sample-ranking-parity-handoff.md`.
 O1/O2 shell, focus, single-root, geometry, diagnostics, theme-source, and
 navigation contracts remain unchanged and passed the combined regression.

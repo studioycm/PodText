@@ -4,13 +4,13 @@
 
 Implementation, focused verification, authenticated browser verification,
 independent review, and the canonical final gate are complete. The
-implementation commit is pending.
+implementation commit and canonical docs-only hash stamp are complete.
 
 - Audit: `LS-20260719-STEP5B-CARD-UX2-FU02-SAMPLE-RANKING-01`
 - Option: `STEP5B-CARD-UX2-FU02-SAMPLE-RANKING-PARITY`
 - Starting HEAD: `27f38aeaebc8ab2ff4279abd2a905efdce82b495`
 - Starting branch: `main`, four commits ahead of `origin/main`
-- Implementation hash: pending
+- Implementation hash: `a8be0aa4e7d89d8f70276ff497ee7b54a63d20df`
 - Push/PR/production: forbidden and not performed
 
 ## Contract and provenance
@@ -287,6 +287,14 @@ Documentation-record restart after adding the results above:
    tests / 11,578 assertions. No file changed afterward before the
    implementation commit.
 
+Post-hash-stamp final-tree restart:
+
+1. `vendor/bin/pint --test` — passed.
+2. `vendor/bin/filacheck` — passed with 0 issues.
+3. `npm run build` — passed with Vite 8.1.0.
+4. Full serial `php artisan test` last with the permitted runner — passed 793
+   tests / 11,578 assertions. No file changed afterward.
+
 ## Assumptions and limits
 
 - Stored nonblank image/default paths indicate effective configured candidates;
@@ -357,4 +365,6 @@ Documentation-record restart after adding the results above:
 
 ## Commit hash
 
-Pending canonical implementation commit and immediate docs-only hash stamp.
+Implementation commit:
+`a8be0aa4e7d89d8f70276ff497ee7b54a63d20df`. This handoff and the canonical
+state/ledger records stamp that hash in the immediate docs-only closeout.
