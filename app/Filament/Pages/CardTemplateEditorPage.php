@@ -390,7 +390,7 @@ abstract class CardTemplateEditorPage extends SettingsPage
                 ->icon(Heroicon::OutlinedEye)
                 ->color('gray')
                 ->extraAttributes([
-                    'class' => 'xl:hidden',
+                    'class' => 'lg:hidden',
                     'data-test' => 'card-template-preview-open',
                 ])
                 ->mountUsing(function (): void {

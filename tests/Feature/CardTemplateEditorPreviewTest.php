@@ -116,7 +116,12 @@ it('previews the current single draft explicitly without settings or mutation se
         ->and($component->get('previewSampleId'))->toBe($item->getKey())
         ->and($component->get('previewHtml'))->toContain('data-card-template-family="content_item"')
         ->and($component->get('previewRefreshedAt'))->toMatch('/^\d{2}\/\d{2} \d{2}:\d{2}$/')
-        ->and($component->instance()->previewIsStale())->toBeFalse();
+        ->and($component->instance()->previewIsStale())->toBeFalse()
+        ->and(substr_count($component->html(), '(min-width: 1024px)'))->toBe(2)
+        ->and($component->html())->toContain('lg:grid-cols-[minmax(0,1fr)_minmax(16rem,20rem)]')
+        ->and($component->html())->toContain('xl:grid-cols-[minmax(0,1fr)_minmax(20rem,26rem)]')
+        ->and($component->html())->not->toContain('(min-width: 1280px)')
+        ->and($component->html())->not->toContain('lg:grid-cols-[minmax(0,1fr)_minmax(20rem,26rem)]');
 
     $component
         ->assertSeeHtml('data-card-template-preview-width')
@@ -727,9 +732,12 @@ it('places localized cancel beside save instead of in the header', function (): 
         ])->instance();
         $formActions = collect($page->getFormActions());
         $headerActions = collect($page->getCachedHeaderActions());
+        $previewAction = $headerActions->first(fn ($action): bool => $action->getName() === 'previewPanel');
 
         expect($formActions->map->getName()->all())->toBe(['save', 'cancel'])
             ->and($headerActions->map->getName()->all())->toBe(['previewPanel', 'deleteTemplate'])
+            ->and($previewAction->getExtraAttributes()['class'] ?? null)->toBe('lg:hidden')
+            ->and($previewAction->isModalSlideOver())->toBeTrue()
             ->and($formActions->first(fn ($action): bool => $action->getName() === 'cancel')->getLabel())
             ->toBe($expectedLabel)
             ->and($formActions->first(fn ($action): bool => $action->getName() === 'cancel')->getUrl())

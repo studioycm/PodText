@@ -41,12 +41,21 @@
   `docs/research/settings-performance/32-step5b-card-template-image-order-followup-implementation-plan.md`,
   and
   `docs/phase-02/settings-step5b-card-template-image-order-followup-handoff.md`.
+- LG preview-shell audit:
+  `LS-20260719-STEP5B-CARD-RENDER-O1-LG-PREVIEW-SHELL-01`; approved option:
+  `STEP5B-CARD-RENDER-OVERHAUL-O1-LG-PREVIEW-SHELL`; clean implementation
+  baseline: `d8f42da32eafe03c18862bbf7a08421b581ab0bb`.
+- Its new research, consulted plan, and dedicated handoff are recorded in
+  `docs/research/settings-performance/33-step5b-card-template-renderer-overhaul-research.md`,
+  `docs/research/settings-performance/34-step5b-card-template-renderer-overhaul-implementation-plan.md`,
+  and
+  `docs/phase-02/settings-step5b-card-template-preview-lg-column-handoff.md`.
 
 ## Outcome
 
 Create and Edit Card Template pages now preview the current unsaved single
-`data` draft. At `xl` and wider, one independently scrolling preview is mounted
-at logical end. Below `xl`, the adjacent DOM is unmounted and the existing
+`data` draft. At `lg` and wider, one independently scrolling preview is mounted
+at logical end. Below `lg`, the adjacent DOM is unmounted and the existing
 server preview result opens in a native read-only Filament slide-over.
 
 Preview establishment and explicit refresh:
@@ -163,9 +172,10 @@ Part editing now offers two modes:
 The mode alone is remembered in browser `localStorage`. Invalid server input
 normalizes to `slide_over`. No `AdminUxSettings` field, migration, setting,
 backup/import ownership, or true per-user server preference was added. The
-native overlay and focus trap leave the preview visible and geometrically
-uncovered, but not interactive while the slide-over is open. Top-level and
-nested Builders share these rules.
+native overlay and focus trap leave the preview mounted but not interactive
+while the slide-over is open. At the later `lg` preview boundary, its existing
+`3xl` width can overlap part of the preview at constrained widths; O1 does not
+redesign that Builder modal. Top-level and nested Builders share these rules.
 
 The finite presentation Selects `layout`, `density`, `image_size`, and
 `title_size` now refresh automatically once per discrete change. `key` and
@@ -229,6 +239,35 @@ FU03/O4 path-corrected validation remain separate follow-ups. O4 is an internal
 Step 5B bug, not a GitHub issue. The complete future audit inventory is retained
 in research 31; no production normalization was run or prescribed.
 
+## LG preview-shell O1
+
+The approved `STEP5B-CARD-RENDER-OVERHAUL-O1-LG-PREVIEW-SHELL` correction
+synchronizes the editor shell at one exact responsive boundary.
+
+- Below `lg` (0–1023px), the adjacent root is unmounted and the native Preview
+  slide-over is available. At `lg+` (1024px and wider), exactly one adjacent
+  logical-end root is mounted and the Preview action is hidden.
+- Both Alpine media queries, Tailwind action visibility, grid classes, and
+  render state use the same 1024px boundary. The grid uses a measured
+  16rem–20rem preview track from `lg` and restores the established 20rem–26rem
+  track from `xl`.
+- An open modal is unmounted before the adjacent root mounts. A current-query
+  recheck prevents stale wide state after rapid resize-back. Focus restores to
+  the adjacent heading on narrow-to-wide and to the opener on wide-to-narrow;
+  the existing media-query listener cleanup remains intact.
+- Exact browser coverage at 767, 768, 1023, 1024, 1279, and 1280 verifies HE
+  RTL and EN LTR logical end, focus trap/Escape/resize restoration, settled
+  overflow, dirty-state retention, preview inertness, both Builder modes, and
+  a mutation-record peak of one preview root.
+- Renderer part flow, renderer CSS source, sample ranking, validation
+  targeting, explicit-order compatibility, modal refresh behavior, and copy
+  are unchanged and remain deferred to their separately approvable options.
+
+The complete seven-option program and deep-renderer deferred inventory are
+preserved in research 33, plan 34, and the dedicated O1 handoff. No navigation,
+translation, renderer, public-card, migration, dependency, permission,
+settings-lifecycle, persistence, database, or production change was made.
+
 ## Requirement classification
 
 | Requirement | Classification | Evidence |
@@ -250,15 +289,16 @@ in research 31; no production normalization was run or prescribed.
 | Inline sample Select, 10 preload, 50 search, and image-first order | Implemented | Focused tests independently assert both caps and two-query bounded planes, all-family search/label/selection, item/group own-image semantics, contributor continuity, transient reload, and no settings payload change. |
 | Preview missing-image behavior | Implemented | Preview-only presenter/resolver input disables inherited podcast cover for image-less episodes; the existing `fallback` card treatment renders. Ordinary public resolver defaults remain unchanged and existing image suites are green. |
 | Remembered Builder display mode | Implemented | Browser `localStorage` remembers only `inline`/`slide_over`; server validation normalizes forged values, no settings event fires, and reload acceptance restores inline mode without changing the settings payload. |
-| Logical-start native Builder slide-over | Implemented | Top-level and nested edit actions use native logical-start `3xl` slide-overs with sticky chrome and responsive one/two-column schemas. Browser geometry proves the panel does not cover the logical-end preview; overlay/focus evidence distinguishes visible from non-interactive. |
+| Logical-start native Builder slide-over | Implemented | Top-level and nested edit actions use native logical-start `3xl` slide-overs with sticky chrome and responsive one/two-column schemas. Overlay/focus evidence distinguishes mounted from interactive; at the new constrained `lg` boundary the existing panel may overlap part of the preview and remains outside O1. |
 | Native Apply-time versus inline live timing | Implemented | Browser evidence proves cloned slide-over edits do not alter preview before Apply and do so in one request after Apply; authoritative inline input refreshes live in one debounced request without opening a modal. No custom mounted-action bridge exists. |
 | Strict item/group image order | Implemented in FU01 | Leading images retain existing geometry; interleaved images render through one ordered stacked `parts` stream in preview and public output. |
 | Native image movement reaches the preview position | Implemented in FU01 | Livewire and Chromium move the image through the owning-Builder modal and prove exact rendered order without settings persistence. |
 | FU02 sample ranking and FU03/O4 error targeting | Deferred by FU01 approval | Neither query ranking nor validation-path behavior changed; both remain in the research 31 follow-up audit inventory. |
 | Localized Builder summaries and legacy diagnostics | Implemented | Formatter tests cover HE/EN no-prefix fallback, registry source/attribute labels, escaped unknown raw values, and nested/top-level preview continuity. |
-| Responsive adjacent/slide-over single mount | Implemented | Authenticated Chromium verifies one active root at 1440 and 1024 CSS px and no duplicate root after both resize directions. |
-| HE/EN, RTL/LTR, logical end, independent scroll | Implemented | Authenticated Chromium verifies Hebrew RTL and English LTR; CSS uses logical layout and both editor/preview scroll containers remain independent. |
-| Keyboard, focus trap, Escape, resize restoration | Implemented | Native slide-over trap plus explicit heading/open-button focus targets are covered in Chromium. |
+| Responsive adjacent/slide-over single mount | Implemented | Authenticated Chromium verifies the exact 767/768/1023 slide-over and 1024/1279/1280 adjacent matrix; mutation-record transition instrumentation records a peak of one root, including rapid resize-back. |
+| HE/EN, RTL/LTR, logical end, independent scroll | Implemented | Authenticated Chromium verifies Hebrew RTL and English LTR at the 1023/1024 boundary; exact-width CSS geometry keeps both surfaces at logical end and the settled document overflow-free. |
+| Keyboard, focus trap, Escape, resize restoration | Implemented | Native slide-over trap and Escape-to-opener are covered below `lg`; explicit heading/opener restoration is covered in both resize directions and during rapid resize-back. |
+| Unsaved draft and overflow across the `lg` boundary | Implemented | The exact dirty label and `beforeunload` protection survive 1023→1024; settled horizontal overflow is absent at all six required widths. |
 | Inert public interactions | Implemented | Feature and browser assertions find no public-card `href`, `wire:click`, buttons, or other public interactions in either preview mode. |
 | Protected state and restricted selector boundary remain absent | Implemented | Restricted interaction coverage proves the inline Select schema has no components, forged direct/schema requests issue no item/group/author sample query, and the protected sentinel remains absent from HTML and serialized draft/control state. |
 | One draft/no model graph/no added editor controls | Implemented | Preview-aware canary adds zero wrappers, editor controls, or wire-model paths; preview state contains compact scalars/presented HTML only. |
@@ -714,6 +754,27 @@ The requirements sweep passed before this sequence:
     using the permitted external runner for bundled Chromium: 768 tests / 9,668
     assertions. The suite was not parallelized or interrupted.
 
+### LG preview-shell O1 checks
+
+- Research 33 and implementation plan 34 passed `git diff --check` before
+  application code changed.
+- `CardTemplateEditorPreviewTest` passed 14 tests / 251 assertions; focused
+  previewer/public-renderer compatibility passed 40 tests / 394 assertions.
+- The first sandbox browser command failed before assertions with the known
+  macOS Chromium rendezvous/bootstrap permission error. The identical permitted
+  retry reached the app, exposed the stale pre-build asset boundary, and was
+  rerun after `npm run build` without an application workaround.
+- Final focused Hebrew coverage passed 1 test / 147 assertions and English
+  coverage passed 1 test / 26 assertions. The full browser file passed 6 tests
+  / 261 assertions. Exact ResizeObserver artifacts are classified in the
+  dedicated handoff; every unexpected browser message still fails.
+- `vendor/bin/filacheck --dirty` passed with 0 issues. Independent architecture
+  and test/performance/security reviews found no high or medium issue; the one
+  low MutationObserver hardening finding was resolved and reverified.
+- The exhaustive command chronology, exact signed-in measurements, final gate
+  outcomes, limitations, and deferred inventory are canonical in
+  `settings-step5b-card-template-preview-lg-column-handoff.md`.
+
 ## Assumptions, limitations, and deferrals
 
 - The approved zero-preview-settings-read interpretation applies to preview
@@ -807,9 +868,13 @@ The requirements sweep passed before this sequence:
 22. Add, clone, reorder, and delete parts in both display modes. Expect nested
     state, validation, sample identity, and automatic refresh timing to remain
     correct.
-23. Narrow below 1280 CSS pixels. Expect the adjacent preview to unmount and
-    the Preview header action to open exactly one focus-trapped preview
-    slide-over; Escape should restore focus to the trigger.
+23. Check 767, 768, and 1023 CSS pixels. Expect no adjacent root and the Preview
+    header action to open exactly one logical-end, focus-trapped slide-over;
+    press Escape and expect focus to return to the trigger. Then check 1024,
+    1279, and 1280 CSS pixels. Expect the action hidden and exactly one adjacent
+    logical-end root. Resize an open 1023px preview to 1024px and back rapidly;
+    expect no duplicate root, correct heading/opener focus, no settled overflow,
+    and retention of an unsaved draft value.
 24. Edit a protected template without its current capability. Expect no sample
     Select, no sample preload/search, no protected part values in HTML or
     Livewire state, and unchanged Save protection.
@@ -841,3 +906,8 @@ The requirements sweep passed before this sequence:
 ## UX2 position-canonical editor closure commit hash
 
 `82e639d0fd22c06c52a70acec7c26ee9e2d8c72a`
+
+## LG preview-shell O1 commit
+
+See `docs/phase-02/settings-step5b-card-template-preview-lg-column-handoff.md`
+for the canonical O1 implementation hash and final gate evidence.
