@@ -250,6 +250,99 @@ it('uses the existing missing-image fallback for an image-less episode preview',
         ->toContain($item->effectiveTypeLabelSingular());
 });
 
+it('finalizes a body-only row preview without media geometry', function (): void {
+    $item = step5bCreatePublicItem('Body-only Preview Episode');
+    $draft = step5bPreviewDraft('content_item');
+    $draft['layout'] = 'rows';
+    $draft['image_size'] = 'small';
+    $draft['parts'] = [
+        [
+            'type' => 'custom_text',
+            'data' => [
+                'source' => 'custom',
+                'attribute' => 'text',
+                'text' => 'Preview body before title',
+                'visible' => true,
+                'order' => 10,
+            ],
+        ],
+        [
+            'type' => 'title',
+            'data' => [
+                'source' => 'content_item',
+                'attribute' => 'title',
+                'visible' => true,
+                'order' => 20,
+            ],
+        ],
+    ];
+
+    $html = app(CardTemplatePreviewer::class)->preview($draft, $item->getKey())['html'];
+
+    expect($html)
+        ->toContain('data-card-template-layout="rows"')
+        ->toContain('data-result-layout="cards"')
+        ->toContain('data-card-part-flow="body-only"')
+        ->toContain('data-card-renderer-parts="custom_text,title"')
+        ->not->toContain('md:grid-cols-[minmax(8rem,12rem)_minmax(0,1fr)]')
+        ->not->toContain('data-test="content-item-image"');
+});
+
+it('renders every repeated top-level image once in an inert ordered preview', function (): void {
+    $item = step5bCreatePublicItem('Multiple-image Preview Episode');
+    $draft = step5bPreviewDraft('content_item');
+    $draft['layout'] = 'rows';
+    $draft['image_size'] = 'small';
+    $draft['parts'] = [
+        [
+            'type' => 'image',
+            'data' => [
+                'source' => 'content_item',
+                'attribute' => 'image',
+                'visible' => true,
+                'order' => 10,
+            ],
+        ],
+        [
+            'type' => 'custom_text',
+            'data' => [
+                'source' => 'custom',
+                'attribute' => 'text',
+                'text' => 'Preview between images',
+                'visible' => true,
+                'order' => 20,
+            ],
+        ],
+        [
+            'type' => 'image',
+            'data' => [
+                'source' => 'content_item',
+                'attribute' => 'image',
+                'visible' => true,
+                'order' => 30,
+            ],
+        ],
+        [
+            'type' => 'title',
+            'data' => [
+                'source' => 'content_item',
+                'attribute' => 'title',
+                'visible' => true,
+                'order' => 40,
+            ],
+        ],
+    ];
+
+    $html = app(CardTemplatePreviewer::class)->preview($draft, $item->getKey())['html'];
+
+    expect(substr_count($html, 'data-test="content-item-image"'))->toBe(2)
+        ->and($html)
+        ->toContain('data-result-layout="cards"')
+        ->toContain('data-card-part-flow="ordered-stack"')
+        ->toContain('data-card-renderer-parts="image,custom_text,image,title"')
+        ->not->toContain('href=');
+});
+
 it('rejects an invalid unsaved draft without a configured-template fallback', function (): void {
     $draft = step5bPreviewDraft('content_item');
     $draft['family'] = 'episode';
@@ -291,4 +384,97 @@ it('keeps one sample query plane constant by family without lazy loading', funct
         ->and($counts->pluck('content_item')->unique())->toHaveCount(1)
         ->and($counts->pluck('content_group')->unique())->toHaveCount(1)
         ->and($counts->pluck('contributor')->unique())->toHaveCount(1);
+});
+
+it('keeps ordered-flow preview variants query-neutral and free of lazy loading', function (): void {
+    $item = step5bCreatePublicItem('Ordered-flow Query Preview Episode');
+    $item->update(['description_markdown' => null]);
+    $item->contentGroup->update(['description_markdown' => null]);
+    $sampleIds = [
+        'content_item' => $item->getKey(),
+        'content_group' => $item->content_group_id,
+    ];
+    $draftsByFamily = collect($sampleIds)->mapWithKeys(function (int $sampleId, string $family): array {
+        $base = [
+            ...step5bPreviewDraft($family),
+            'layout' => 'rows',
+            'image_size' => 'small',
+        ];
+        $part = fn (string $type, string $source, string $attribute, int $order, array $extra = []): array => [
+            'type' => $type,
+            'data' => [
+                'source' => $source,
+                'attribute' => $attribute,
+                'visible' => true,
+                'order' => $order,
+                ...$extra,
+            ],
+        ];
+        $image = fn (int $order): array => $part('image', $family, 'image', $order);
+        $title = fn (int $order): array => $part('title', $family, 'title', $order);
+
+        return [$family => [
+            'sample_id' => $sampleId,
+            'drafts' => [
+                'leading' => [...$base, 'parts' => [$image(10), $title(20)]],
+                'body_only' => [...$base, 'parts' => [$title(10)]],
+                'media_only' => [
+                    ...$base,
+                    'parts' => [
+                        $part('description', $family, 'description', 10),
+                        $image(20),
+                    ],
+                ],
+                'hidden' => [
+                    ...$base,
+                    'image_size' => 'hidden',
+                    'parts' => [$image(10), $title(20)],
+                ],
+                'ordered' => [
+                    ...$base,
+                    'parts' => [
+                        $part('custom_text', 'custom', 'text', 10, ['text' => 'Query-neutral body']),
+                        $image(20),
+                        $title(30),
+                        $image(40),
+                    ],
+                ],
+            ],
+        ]];
+    });
+    $previewer = app(CardTemplatePreviewer::class);
+    $queryCounts = $draftsByFamily->map(function (array $case) use ($previewer): array {
+        return collect($case['drafts'])->map(function (array $draft) use ($case, $previewer): int {
+            DB::enableQueryLog();
+            DB::flushQueryLog();
+            $previewer->preview($draft, $case['sample_id']);
+
+            return count(DB::getQueryLog());
+        })->all();
+    });
+
+    Model::preventLazyLoading();
+
+    try {
+        foreach ($draftsByFamily as $case) {
+            foreach ($case['drafts'] as $draft) {
+                $previewer->preview($draft, $case['sample_id']);
+            }
+        }
+    } finally {
+        Model::preventLazyLoading(false);
+    }
+
+    foreach ($queryCounts as $family => $counts) {
+        $baseline = $counts['leading'];
+        $deltas = collect($counts)->map(fn (int $count): int => $count - $baseline)->all();
+
+        expect($deltas, $family)->toBe([
+            'leading' => 0,
+            'body_only' => 0,
+            'media_only' => 0,
+            'hidden' => 0,
+            'ordered' => 0,
+        ]);
+    }
 });

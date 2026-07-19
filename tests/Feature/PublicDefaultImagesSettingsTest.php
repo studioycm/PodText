@@ -218,7 +218,8 @@ it('renders content item custom inherit and none fallbacks on cards and item pag
     $this->get('/search?q=V1A%20Item%20Custom')
         ->assertSuccessful()
         ->assertSee('/storage/default-images/item-custom.jpg', false)
-        ->assertSee('data-card-image-source="content_item_default"', false);
+        ->assertSee('data-card-image-source="content_item_default"', false)
+        ->assertSee('data-card-part-flow="media-leading"', false);
     $this->get("/items/{$custom['group']->slug}/{$custom['item']->slug}")
         ->assertSuccessful()
         ->assertSee('/storage/default-images/item-custom.jpg', false)
@@ -254,6 +255,7 @@ it('renders content item custom inherit and none fallbacks on cards and item pag
     $this->get('/search?q=V1A%20Item%20None')
         ->assertSuccessful()
         ->assertSee('data-card-image-source="fallback"', false)
+        ->assertSee('data-card-part-flow="media-leading"', false)
         ->assertDontSee('content-groups/covers/should-not-render.jpg', false)
         ->assertDontSee('default-images/global-hidden.jpg', false);
     $this->get("/items/{$none['group']->slug}/{$none['item']->slug}")
@@ -329,7 +331,8 @@ it('renders content group custom inherit and none fallbacks on cards and detail 
     $this->get('/podcasts')
         ->assertSuccessful()
         ->assertSee('/storage/default-images/group-custom.jpg', false)
-        ->assertSee('data-card-image-source="content_group_default"', false);
+        ->assertSee('data-card-image-source="content_group_default"', false)
+        ->assertSee('data-card-part-flow="media-leading"', false);
     $this->get("/podcasts/{$custom['group']->slug}")
         ->assertSuccessful()
         ->assertSee('/storage/default-images/group-custom.jpg', false)
@@ -364,6 +367,7 @@ it('renders content group custom inherit and none fallbacks on cards and detail 
     $this->get('/podcasts')
         ->assertSuccessful()
         ->assertSee('data-test="content-group-fallback"', false)
+        ->assertSee('data-card-part-flow="media-leading"', false)
         ->assertDontSee('default-images/group-hidden.jpg', false);
     $this->get("/podcasts/{$none['group']->slug}")
         ->assertSuccessful()

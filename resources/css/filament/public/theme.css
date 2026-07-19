@@ -3,6 +3,7 @@
 @source '../../../../app/Filament/Public/**/*';
 @source '../../../../app/Livewire/Public/**/*';
 @source '../../../../app/Support/PublicContent/**/*';
+@source '../../../../app/Support/PublicFront/Cards/**/*';
 @source '../../../../resources/views/components/public/**/*';
 @source '../../../../resources/views/filament/public/**/*';
 @source '../../../../resources/views/filament/tables/**/*';

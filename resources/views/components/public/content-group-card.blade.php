@@ -25,25 +25,19 @@
     data-card-renderer-parts="{{ implode(',', $presentation['controlled_parts']) }}"
     data-card-title-clamp="{{ $presentation['title_clamp'] }}"
     data-card-description-clamp="{{ $presentation['description_clamp'] }}"
-    data-card-part-flow="{{ $presentation['ordered_stack'] ? 'ordered-stack' : 'media-leading' }}"
+    data-card-part-flow="{{ $presentation['part_flow'] }}"
 >
-    @if($presentation['ordered_stack'])
-        <div class="{{ $presentation['body'] }}">
-            @foreach($card['parts'] as $part)
-                <x-public.content-group-card-part :part="$part" :presentation="$presentation" :preview-mode="$previewMode" />
-            @endforeach
-        </div>
-    @else
-        @foreach($card['media_parts'] as $part)
-            <x-public.content-group-card-image-part :part="$part" :presentation="$presentation" :preview-mode="$previewMode" />
-        @endforeach
-
-        @if($card['body_parts'] !== [])
+    @foreach($card['part_runs'] as $run)
+        @if($run['region'] === 'body')
             <div class="{{ $presentation['body'] }}">
-                @foreach($card['body_parts'] as $part)
+                @foreach($run['parts'] as $part)
                     <x-public.content-group-card-part :part="$part" :presentation="$presentation" :preview-mode="$previewMode" />
                 @endforeach
             </div>
+        @else
+            @foreach($run['parts'] as $part)
+                <x-public.content-group-card-image-part :part="$part" :presentation="$presentation" :preview-mode="$previewMode" />
+            @endforeach
         @endif
-    @endif
+    @endforeach
 </article>

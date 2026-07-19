@@ -86,6 +86,7 @@ class PublicFrontCardTemplateRenderer
      *     description: string,
      *     title_clamp: int,
      *     description_clamp: int,
+     *     part_flow: string,
      *     ordered_stack: bool,
      *     controlled_parts: array<int, string>
      * }
@@ -93,9 +94,8 @@ class PublicFrontCardTemplateRenderer
     public function contentItemPresentation(PublicFrontCardTemplate $template, string $fallbackLayout = 'cards'): array
     {
         $layout = $template->layout === 'rows' ? 'rows' : $fallbackLayout;
-        $orderedStack = $this->hasInterleavedImage($this->contentItemParts($template));
 
-        if ($template->imageSize === 'large' || $orderedStack) {
+        if ($template->imageSize === 'large') {
             $layout = 'cards';
         }
 
@@ -120,8 +120,9 @@ class PublicFrontCardTemplateRenderer
             'description' => 'text-sm leading-6 text-gray-600 dark:text-gray-300 '.$this->lineClampClass($descriptionClamp),
             'title_clamp' => $titleClamp,
             'description_clamp' => $descriptionClamp,
-            'ordered_stack' => $orderedStack,
-            'controlled_parts' => $this->controlledContentItemParts($template),
+            'part_flow' => 'empty',
+            'ordered_stack' => false,
+            'controlled_parts' => [],
         ];
     }
 
@@ -132,13 +133,13 @@ class PublicFrontCardTemplateRenderer
      *     image_size: string,
      *     title_size: string,
      *     article: string,
-     *     link: string,
      *     image: string,
      *     body: string,
      *     title: string,
      *     description: string,
      *     title_clamp: int,
      *     description_clamp: int,
+     *     part_flow: string,
      *     ordered_stack: bool,
      *     controlled_parts: array<int, string>
      * }
@@ -146,12 +147,6 @@ class PublicFrontCardTemplateRenderer
     public function contentGroupPresentation(PublicFrontCardTemplate $template): array
     {
         $layout = $template->layout === 'rows' ? 'rows' : 'cards';
-        $orderedStack = $this->hasInterleavedImage($this->contentGroupParts($template));
-
-        if ($orderedStack) {
-            $layout = 'cards';
-        }
-
         $padding = $template->density === 'compact' ? 'p-3' : 'p-4';
         $titleClamp = $this->lineClamp($template, 'title', 2);
         $descriptionClamp = $this->lineClamp($template, 'description', 3);
@@ -166,21 +161,55 @@ class PublicFrontCardTemplateRenderer
             'density' => $template->density,
             'image_size' => $template->imageSize,
             'title_size' => $template->titleSize,
-            'article' => 'group h-full overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm transition hover:border-primary-300 hover:shadow-md dark:border-gray-800 dark:bg-gray-900 dark:hover:border-primary-500',
-            'link' => $layout === 'rows'
-                ? 'grid h-full min-w-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-600 md:grid-cols-[minmax(8rem,12rem)_minmax(0,1fr)]'
-                : 'flex h-full min-w-0 flex-col focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-600',
-            'image' => $layout === 'rows'
-                ? 'aspect-square w-full shrink-0 md:h-full md:w-auto'
-                : 'aspect-square w-full',
+            'article' => $this->contentGroupArticleClasses($layout, $padding),
+            'image' => $this->imageClasses($layout),
             'body' => "flex min-w-0 flex-1 flex-col gap-3 {$padding}",
             'title' => trim('font-semibold leading-snug text-gray-950 group-hover:text-primary-800 dark:text-white dark:group-hover:text-primary-200 '.$titleClass.' '.$this->lineClampClass($titleClamp)),
             'description' => 'text-sm leading-6 text-gray-600 dark:text-gray-300 '.$this->lineClampClass($descriptionClamp),
             'title_clamp' => $titleClamp,
             'description_clamp' => $descriptionClamp,
-            'ordered_stack' => $orderedStack,
-            'controlled_parts' => $this->controlledContentGroupParts($template),
+            'part_flow' => 'empty',
+            'ordered_stack' => false,
+            'controlled_parts' => [],
         ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $presentation
+     * @param  array<int, array<string, mixed>>  $parts
+     * @return array{
+     *     presentation: array<string, mixed>,
+     *     media_parts: array<int, array<string, mixed>>,
+     *     body_parts: array<int, array<string, mixed>>,
+     *     part_runs: array<int, array{region: string, parts: array<int, array<string, mixed>>}>
+     * }
+     */
+    public function finalizeContentItemPresentation(array $presentation, array $parts): array
+    {
+        return $this->finalizeContentPresentation(
+            $presentation,
+            $parts,
+            fn (string $layout, string $padding): string => $this->articleClasses($layout, $padding),
+        );
+    }
+
+    /**
+     * @param  array<string, mixed>  $presentation
+     * @param  array<int, array<string, mixed>>  $parts
+     * @return array{
+     *     presentation: array<string, mixed>,
+     *     media_parts: array<int, array<string, mixed>>,
+     *     body_parts: array<int, array<string, mixed>>,
+     *     part_runs: array<int, array{region: string, parts: array<int, array<string, mixed>>}>
+     * }
+     */
+    public function finalizeContentGroupPresentation(array $presentation, array $parts): array
+    {
+        return $this->finalizeContentPresentation(
+            $presentation,
+            $parts,
+            fn (string $layout, string $padding): string => $this->contentGroupArticleClasses($layout, $padding),
+        );
     }
 
     /**
@@ -285,12 +314,111 @@ class PublicFrontCardTemplateRenderer
     }
 
     /**
-     * @param  array<int, PublicFrontCardPart>  $parts
+     * @param  array<string, mixed>  $presentation
+     * @param  array<int, array<string, mixed>>  $parts
+     * @param  callable(string, string): string  $articleClasses
+     * @return array{
+     *     presentation: array<string, mixed>,
+     *     media_parts: array<int, array<string, mixed>>,
+     *     body_parts: array<int, array<string, mixed>>,
+     *     part_runs: array<int, array{region: string, parts: array<int, array<string, mixed>>}>
+     * }
      */
-    private function hasInterleavedImage(array $parts): bool
+    private function finalizeContentPresentation(array $presentation, array $parts, callable $articleClasses): array
     {
-        return collect($parts)
-            ->contains(fn (PublicFrontCardPart $part, int $index): bool => $index > 0 && $part->type === 'image');
+        $mediaParts = collect($parts)->where('region', 'media')->values()->all();
+        $bodyParts = collect($parts)->where('region', 'body')->values()->all();
+        $partFlow = $this->partFlow($parts, $mediaParts, $bodyParts);
+        $layout = $presentation['layout'];
+
+        if ($partFlow !== 'media-leading') {
+            $layout = 'cards';
+        }
+
+        $padding = $presentation['density'] === 'compact' ? 'p-3' : 'p-4';
+
+        $presentation = [
+            ...$presentation,
+            'layout' => $layout,
+            'article' => $articleClasses($layout, $padding),
+            'image' => $this->imageClasses($layout),
+            'part_flow' => $partFlow,
+            'ordered_stack' => $partFlow === 'ordered-stack',
+            'controlled_parts' => collect($parts)
+                ->pluck('type')
+                ->filter(fn (mixed $type): bool => is_string($type))
+                ->values()
+                ->all(),
+        ];
+
+        return [
+            'presentation' => $presentation,
+            'media_parts' => $mediaParts,
+            'body_parts' => $bodyParts,
+            'part_runs' => $this->partRuns($parts),
+        ];
+    }
+
+    /**
+     * @param  array<int, array<string, mixed>>  $parts
+     * @param  array<int, array<string, mixed>>  $mediaParts
+     * @param  array<int, array<string, mixed>>  $bodyParts
+     */
+    private function partFlow(array $parts, array $mediaParts, array $bodyParts): string
+    {
+        if ($parts === []) {
+            return 'empty';
+        }
+
+        if ($mediaParts === []) {
+            return 'body-only';
+        }
+
+        if (count($mediaParts) > 1 || ($parts[0]['region'] ?? null) !== 'media') {
+            return 'ordered-stack';
+        }
+
+        if ($bodyParts === []) {
+            return 'media-only';
+        }
+
+        return 'media-leading';
+    }
+
+    /**
+     * @param  array<int, array<string, mixed>>  $parts
+     * @return array<int, array{region: string, parts: array<int, array<string, mixed>>}>
+     */
+    private function partRuns(array $parts): array
+    {
+        $runs = [];
+
+        foreach ($parts as $part) {
+            $region = ($part['region'] ?? null) === 'media' ? 'media' : 'body';
+            $lastRun = array_key_last($runs);
+
+            if ($region === 'body' && $lastRun !== null && $runs[$lastRun]['region'] === 'body') {
+                $runs[$lastRun]['parts'][] = $part;
+
+                continue;
+            }
+
+            $runs[] = [
+                'region' => $region,
+                'parts' => [$part],
+            ];
+        }
+
+        return $runs;
+    }
+
+    private function contentGroupArticleClasses(string $layout, string $padding): string
+    {
+        if ($layout === 'rows') {
+            return "group grid h-full min-w-0 gap-4 overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm transition hover:border-primary-300 hover:shadow-md dark:border-gray-800 dark:bg-gray-900 dark:hover:border-primary-500 md:grid-cols-[minmax(8rem,12rem)_minmax(0,1fr)] {$padding}";
+        }
+
+        return 'group flex h-full min-w-0 flex-col overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm transition hover:border-primary-300 hover:shadow-md dark:border-gray-800 dark:bg-gray-900 dark:hover:border-primary-500';
     }
 
     private function lineClamp(PublicFrontCardTemplate $template, string $type, int $fallback): int
@@ -313,32 +441,6 @@ class PublicFrontCardTemplateRenderer
             5 => 'line-clamp-5',
             default => 'line-clamp-3',
         };
-    }
-
-    /**
-     * @return array<int, string>
-     */
-    private function controlledContentItemParts(PublicFrontCardTemplate $template): array
-    {
-        return collect($this->contentItemParts($template))
-            ->map(fn (PublicFrontCardPart $part): string => $part->type)
-            ->intersect(self::CONTROLLED_CONTENT_ITEM_PARTS)
-            ->unique()
-            ->values()
-            ->all();
-    }
-
-    /**
-     * @return array<int, string>
-     */
-    private function controlledContentGroupParts(PublicFrontCardTemplate $template): array
-    {
-        return collect($this->contentGroupParts($template))
-            ->map(fn (PublicFrontCardPart $part): string => $part->type)
-            ->intersect(self::CONTROLLED_CONTENT_GROUP_PARTS)
-            ->unique()
-            ->values()
-            ->all();
     }
 
     /**

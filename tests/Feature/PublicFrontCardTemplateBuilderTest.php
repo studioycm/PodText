@@ -744,40 +744,80 @@ it('renders homepage content item template parts in configured order and hides d
         ->assertDontSee('B2 hidden description text.');
 });
 
-it('preserves row presentation when the configured image is leading', function (string $family): void {
-    $source = $family === 'content_group' ? 'content_group' : 'content_item';
-    $template = PublicFrontCardTemplate::fromArray([
-        'key' => "fu01_leading_{$family}",
-        'label' => 'FU01 leading image',
-        'family' => $family,
-        'layout' => 'rows',
-        'density' => 'compact',
-        'image_size' => 'small',
-        'title_size' => 'base',
+it('finalizes item and group geometry from actual presented parts', function (string $family): void {
+    $template = PublicFrontCardTemplate::fromArray(makeStep3CardTemplate($family, "o2_actual_{$family}"));
+    $renderer = app(PublicFrontCardTemplateRenderer::class);
+    $basePresentation = $family === 'content_group'
+        ? $renderer->contentGroupPresentation($template)
+        : $renderer->contentItemPresentation($template);
+    $finalize = $family === 'content_group'
+        ? fn (array $parts): array => $renderer->finalizeContentGroupPresentation($basePresentation, $parts)
+        : fn (array $parts): array => $renderer->finalizeContentItemPresentation($basePresentation, $parts);
+    $image = ['type' => 'image', 'region' => 'media'];
+    $title = ['type' => 'title', 'region' => 'body'];
+    $description = ['type' => 'description', 'region' => 'body'];
+    $customText = ['type' => 'custom_text', 'region' => 'body'];
+
+    $leading = $finalize([$image, $title]);
+    $bodyOnly = $finalize([$title, $description]);
+    $mediaOnly = $finalize([$image]);
+    $ordered = $finalize([$image, $customText, $title, $image, $description]);
+    $empty = $finalize([]);
+    $hiddenTemplate = PublicFrontCardTemplate::fromArray([
+        ...makeStep3CardTemplate($family, "o2_hidden_{$family}"),
+        'image_size' => 'hidden',
         'parts' => [
             [
                 'type' => 'image',
-                'source' => $source,
+                'source' => $family,
                 'attribute' => 'image',
                 'visible' => true,
                 'order' => 10,
             ],
             [
                 'type' => 'title',
-                'source' => $source,
+                'source' => $family,
                 'attribute' => 'title',
                 'visible' => true,
                 'order' => 20,
             ],
         ],
     ]);
-    $renderer = app(PublicFrontCardTemplateRenderer::class);
-    $presentation = $family === 'content_group'
-        ? $renderer->contentGroupPresentation($template)
-        : $renderer->contentItemPresentation($template);
+    $hiddenParts = $family === 'content_group'
+        ? $renderer->contentGroupParts($hiddenTemplate)
+        : $renderer->contentItemParts($hiddenTemplate);
 
-    expect($presentation['ordered_stack'])->toBeFalse()
-        ->and($presentation['layout'])->toBe('rows');
+    expect($leading['presentation'])
+        ->part_flow->toBe('media-leading')
+        ->layout->toBe('rows')
+        ->ordered_stack->toBeFalse()
+        ->controlled_parts->toBe(['image', 'title'])
+        ->and($leading['presentation'])->not->toHaveKey('link')
+        ->and($leading['presentation']['article'])->toContain('md:grid-cols-[minmax(8rem,12rem)_minmax(0,1fr)]')
+        ->and($bodyOnly['presentation'])
+        ->part_flow->toBe('body-only')
+        ->layout->toBe('cards')
+        ->and($bodyOnly['presentation']['article'])
+        ->not->toContain('grid')
+        ->not->toContain('gap-4')
+        ->not->toContain(' p-3')
+        ->and($bodyOnly['part_runs'])->toBe([
+            ['region' => 'body', 'parts' => [$title, $description]],
+        ])
+        ->and($mediaOnly['presentation'])
+        ->part_flow->toBe('media-only')
+        ->layout->toBe('cards')
+        ->and($ordered['presentation'])
+        ->part_flow->toBe('ordered-stack')
+        ->layout->toBe('cards')
+        ->ordered_stack->toBeTrue()
+        ->controlled_parts->toBe(['image', 'custom_text', 'title', 'image', 'description'])
+        ->and(array_column($ordered['part_runs'], 'region'))->toBe(['media', 'body', 'media', 'body'])
+        ->and($ordered['part_runs'][1]['parts'])->toBe([$customText, $title])
+        ->and($empty['presentation'])
+        ->part_flow->toBe('empty')
+        ->layout->toBe('cards')
+        ->and(array_map(fn ($part): string => $part->type, $hiddenParts))->toBe(['title']);
 })->with([
     'content item' => ['content_item'],
     'content group' => ['content_group'],
@@ -835,11 +875,375 @@ it('renders an interleaved content item image in its configured public position'
         ->assertSee('data-card-template-layout="rows"', false)
         ->assertSee('data-result-layout="cards"', false)
         ->assertSee('data-card-part-flow="ordered-stack"', false)
+        ->assertSee('data-card-renderer-parts="custom_text,image,title"', false)
         ->assertSeeInOrder([
             'FU01 item before image',
             'data-test="content-item-image"',
             'data-card-part="title"',
         ], false);
+});
+
+it('renders body-only item and group rows without a phantom media geometry', function (): void {
+    $group = ContentGroup::factory()->published()->create([
+        'title' => 'O2 Body Only Group',
+        'slug' => 'o2-body-only-group',
+    ]);
+    $item = createStep3PublicItem(['title' => 'O2 Body Only Item'], $group);
+
+    saveStep3PublicFrontConfig([
+        'card_templates' => [
+            makeStep10rB2ContentItemTemplate('o2_body_only_item', [
+                [
+                    'type' => 'part_group',
+                    'layout' => 'stacked',
+                    'visible' => true,
+                    'order' => 10,
+                    'children' => [
+                        [
+                            'type' => 'image',
+                            'source' => 'content_item',
+                            'attribute' => 'image',
+                            'visible' => true,
+                            'order' => 10,
+                        ],
+                        [
+                            'type' => 'custom_text',
+                            'source' => 'custom',
+                            'attribute' => 'text',
+                            'text' => 'O2 item body only',
+                            'visible' => true,
+                            'order' => 20,
+                        ],
+                    ],
+                ],
+                [
+                    'type' => 'title',
+                    'source' => 'content_item',
+                    'attribute' => 'title',
+                    'visible' => true,
+                    'order' => 20,
+                ],
+            ], [
+                'layout' => 'rows',
+                'image_size' => 'small',
+            ]),
+            makeStep10rB3ContentGroupTemplate('o2_body_only_group', [
+                [
+                    'type' => 'part_group',
+                    'layout' => 'stacked',
+                    'visible' => true,
+                    'order' => 10,
+                    'children' => [
+                        [
+                            'type' => 'image',
+                            'source' => 'content_group',
+                            'attribute' => 'image',
+                            'visible' => true,
+                            'order' => 10,
+                        ],
+                        [
+                            'type' => 'custom_text',
+                            'source' => 'custom',
+                            'attribute' => 'text',
+                            'text' => 'O2 group body only',
+                            'visible' => true,
+                            'order' => 20,
+                        ],
+                    ],
+                ],
+                [
+                    'type' => 'title',
+                    'source' => 'content_group',
+                    'attribute' => 'title',
+                    'visible' => true,
+                    'order' => 20,
+                ],
+            ], [
+                'layout' => 'rows',
+                'image_size' => 'small',
+            ]),
+        ],
+        'podcasts_page' => [
+            'template_key' => 'o2_body_only_group',
+        ],
+    ]);
+
+    HomepageSection::factory()->create([
+        'name' => 'O2 body-only item section',
+        'type' => HomepageSectionType::Latest,
+        'source_config' => ['source_type' => 'manual_content_items'],
+        'selection_config' => ['include_ids' => [$item->id]],
+        'display_config' => [
+            'template_family' => 'content_item',
+            'template_key' => 'o2_body_only_item',
+        ],
+    ]);
+
+    $this->get('/')
+        ->assertSuccessful()
+        ->assertSee('data-card-template-layout="rows"', false)
+        ->assertSee('data-result-layout="cards"', false)
+        ->assertSee('data-card-part-flow="body-only"', false)
+        ->assertSee('data-card-renderer-parts="part_group,title"', false)
+        ->assertSee('O2 item body only')
+        ->assertDontSee('data-test="content-item-image"', false)
+        ->assertDontSee('md:grid-cols-[minmax(8rem,12rem)_minmax(0,1fr)]', false);
+
+    $this->get('/podcasts')
+        ->assertSuccessful()
+        ->assertSee('data-card-template-layout="rows"', false)
+        ->assertSee('data-result-layout="cards"', false)
+        ->assertSee('data-card-part-flow="body-only"', false)
+        ->assertSee('data-card-renderer-parts="part_group,title"', false)
+        ->assertSee('O2 group body only')
+        ->assertDontSee('data-card-part="image"', false)
+        ->assertDontSee('md:grid-cols-[minmax(8rem,12rem)_minmax(0,1fr)]', false);
+});
+
+it('finalizes heterogeneous item records independently after blank parts are removed', function (): void {
+    $group = ContentGroup::factory()->published()->create();
+    $orderedItem = createStep3PublicItem([
+        'title' => 'O2 Ordered Record',
+        'description_markdown' => 'Visible description before media.',
+    ], $group);
+    $leadingItem = createStep3PublicItem([
+        'title' => 'O2 Leading Record',
+        'description_markdown' => null,
+    ], $group);
+
+    saveStep3PublicFrontConfig([
+        'card_templates' => [
+            makeStep10rB2ContentItemTemplate('o2_per_record_flow', [
+                [
+                    'type' => 'description',
+                    'source' => 'content_item',
+                    'attribute' => 'description',
+                    'visible' => true,
+                    'order' => 10,
+                ],
+                [
+                    'type' => 'image',
+                    'source' => 'content_item',
+                    'attribute' => 'image',
+                    'visible' => true,
+                    'order' => 20,
+                ],
+                [
+                    'type' => 'title',
+                    'source' => 'content_item',
+                    'attribute' => 'title',
+                    'visible' => true,
+                    'order' => 30,
+                ],
+            ], [
+                'layout' => 'rows',
+                'image_size' => 'small',
+            ]),
+        ],
+    ]);
+
+    HomepageSection::factory()->create([
+        'name' => 'O2 per-record flow section',
+        'type' => HomepageSectionType::Latest,
+        'source_config' => ['source_type' => 'manual_content_items'],
+        'selection_config' => ['include_ids' => [$orderedItem->id, $leadingItem->id]],
+        'display_config' => [
+            'template_family' => 'content_item',
+            'template_key' => 'o2_per_record_flow',
+        ],
+    ]);
+
+    $html = $this->get('/')->assertSuccessful()->getContent();
+
+    expect(substr_count($html, 'data-card-part-flow="ordered-stack"'))->toBe(1)
+        ->and(substr_count($html, 'data-card-part-flow="media-leading"'))->toBe(1)
+        ->and($html)->toContain('data-card-renderer-parts="description,image,title"')
+        ->toContain('data-card-renderer-parts="image,title"');
+});
+
+it('renders media-only and globally hidden item and group rows from actual presenter parts', function (): void {
+    $group = ContentGroup::factory()->published()->create([
+        'title' => 'O2 Presenter Flow Group',
+        'description_markdown' => null,
+    ]);
+    $item = createStep3PublicItem([
+        'title' => 'O2 Presenter Flow Item',
+        'description_markdown' => null,
+    ], $group);
+
+    saveStep3PublicFrontConfig([
+        'card_templates' => [
+            makeStep10rB2ContentItemTemplate('o2_media_only_item', [
+                ['type' => 'description', 'source' => 'content_item', 'attribute' => 'description', 'visible' => true, 'order' => 10],
+                ['type' => 'image', 'source' => 'content_item', 'attribute' => 'image', 'visible' => true, 'order' => 20],
+            ], ['layout' => 'rows', 'image_size' => 'small']),
+            makeStep10rB2ContentItemTemplate('o2_hidden_item', [
+                ['type' => 'image', 'source' => 'content_item', 'attribute' => 'image', 'visible' => true, 'order' => 10],
+                ['type' => 'title', 'source' => 'content_item', 'attribute' => 'title', 'visible' => true, 'order' => 20],
+            ], ['layout' => 'rows', 'image_size' => 'hidden']),
+            makeStep10rB3ContentGroupTemplate('o2_media_only_group', [
+                ['type' => 'description', 'source' => 'content_group', 'attribute' => 'description', 'visible' => true, 'order' => 10],
+                ['type' => 'image', 'source' => 'content_group', 'attribute' => 'image', 'visible' => true, 'order' => 20],
+            ], ['layout' => 'rows', 'image_size' => 'small']),
+            makeStep10rB3ContentGroupTemplate('o2_hidden_group', [
+                ['type' => 'image', 'source' => 'content_group', 'attribute' => 'image', 'visible' => true, 'order' => 10],
+                ['type' => 'title', 'source' => 'content_group', 'attribute' => 'title', 'visible' => true, 'order' => 20],
+            ], ['layout' => 'rows', 'image_size' => 'hidden']),
+        ],
+    ]);
+
+    foreach ([
+        ['item media', 'manual_content_items', [$item->getKey()], 'content_item', 'o2_media_only_item'],
+        ['item hidden', 'manual_content_items', [$item->getKey()], 'content_item', 'o2_hidden_item'],
+        ['group media', 'content_groups', [$group->getKey()], 'content_group', 'o2_media_only_group'],
+        ['group hidden', 'content_groups', [$group->getKey()], 'content_group', 'o2_hidden_group'],
+    ] as [$name, $sourceType, $includeIds, $family, $key]) {
+        HomepageSection::factory()->create([
+            'name' => "O2 presenter {$name}",
+            'type' => HomepageSectionType::Latest,
+            'source_config' => ['source_type' => $sourceType],
+            'selection_config' => ['include_ids' => $includeIds],
+            'display_config' => [
+                'template_family' => $family,
+                'template_key' => $key,
+            ],
+        ]);
+    }
+
+    $html = $this->get('/')->assertSuccessful()->getContent();
+    $cardHtml = function (string $key) use ($html): string {
+        preg_match(
+            '~<article\b(?=[^>]*data-card-template-key="'.preg_quote($key, '~').'"[^>]*>)[\s\S]*?</article>~',
+            $html,
+            $matches,
+        );
+
+        expect($matches)->toHaveKey(0);
+
+        return $matches[0];
+    };
+
+    foreach (['o2_media_only_item', 'o2_media_only_group'] as $key) {
+        $card = $cardHtml($key);
+
+        expect($card)
+            ->toContain('data-result-layout="cards"')
+            ->toContain('data-card-part-flow="media-only"')
+            ->toContain('data-card-renderer-parts="image"')
+            ->and(substr_count($card, 'data-card-part="image"'))->toBe(1);
+    }
+
+    foreach (['o2_hidden_item', 'o2_hidden_group'] as $key) {
+        $card = $cardHtml($key);
+
+        expect($card)
+            ->toContain('data-result-layout="cards"')
+            ->toContain('data-card-part-flow="body-only"')
+            ->toContain('data-card-renderer-parts="title"')
+            ->not->toContain('data-card-part="image"')
+            ->not->toContain('md:grid-cols-[minmax(8rem,12rem)_minmax(0,1fr)]');
+    }
+});
+
+it('finalizes heterogeneous group records independently after blank parts are removed', function (): void {
+    $orderedGroup = ContentGroup::factory()->published()->create([
+        'title' => 'O2 Ordered Group Record',
+        'description_markdown' => 'Visible group description before media.',
+    ]);
+    $leadingGroup = ContentGroup::factory()->published()->create([
+        'title' => 'O2 Leading Group Record',
+        'description_markdown' => null,
+    ]);
+    createStep3PublicItem(['title' => 'O2 Ordered Group Episode'], $orderedGroup);
+    createStep3PublicItem(['title' => 'O2 Leading Group Episode'], $leadingGroup);
+
+    saveStep3PublicFrontConfig([
+        'card_templates' => [
+            makeStep10rB3ContentGroupTemplate('o2_per_group_flow', [
+                ['type' => 'description', 'source' => 'content_group', 'attribute' => 'description', 'visible' => true, 'order' => 10],
+                ['type' => 'image', 'source' => 'content_group', 'attribute' => 'image', 'visible' => true, 'order' => 20],
+                ['type' => 'title', 'source' => 'content_group', 'attribute' => 'title', 'visible' => true, 'order' => 30],
+            ], ['layout' => 'rows', 'image_size' => 'small']),
+        ],
+    ]);
+
+    HomepageSection::factory()->create([
+        'name' => 'O2 per-group flow section',
+        'type' => HomepageSectionType::Latest,
+        'source_config' => ['source_type' => 'content_groups'],
+        'selection_config' => ['include_ids' => [$orderedGroup->getKey(), $leadingGroup->getKey()]],
+        'display_config' => [
+            'template_family' => 'content_group',
+            'template_key' => 'o2_per_group_flow',
+        ],
+    ]);
+
+    $html = $this->get('/')->assertSuccessful()->getContent();
+
+    expect(substr_count($html, 'data-card-part-flow="ordered-stack"'))->toBe(1)
+        ->and(substr_count($html, 'data-card-part-flow="media-leading"'))->toBe(1)
+        ->and($html)->toContain('data-card-renderer-parts="description,image,title"')
+        ->toContain('data-card-renderer-parts="image,title"');
+});
+
+it('renders every repeated top-level item image once in ordered full-bleed flow', function (): void {
+    $item = createStep3PublicItem(['title' => 'O2 Multiple Image Item']);
+
+    saveStep3PublicFrontConfig([
+        'card_templates' => [
+            makeStep10rB2ContentItemTemplate('o2_multiple_item_images', [
+                [
+                    'type' => 'image',
+                    'source' => 'content_item',
+                    'attribute' => 'image',
+                    'visible' => true,
+                    'order' => 10,
+                ],
+                [
+                    'type' => 'image',
+                    'source' => 'content_item',
+                    'attribute' => 'image',
+                    'visible' => true,
+                    'order' => 20,
+                ],
+                [
+                    'type' => 'custom_text',
+                    'source' => 'custom',
+                    'attribute' => 'text',
+                    'text' => 'O2 after consecutive item images',
+                    'visible' => true,
+                    'order' => 30,
+                ],
+                [
+                    'type' => 'title',
+                    'source' => 'content_item',
+                    'attribute' => 'title',
+                    'visible' => true,
+                    'order' => 40,
+                ],
+            ], [
+                'layout' => 'rows',
+                'image_size' => 'small',
+            ]),
+        ],
+    ]);
+
+    HomepageSection::factory()->create([
+        'name' => 'O2 multiple item image section',
+        'type' => HomepageSectionType::Latest,
+        'source_config' => ['source_type' => 'manual_content_items'],
+        'selection_config' => ['include_ids' => [$item->id]],
+        'display_config' => [
+            'template_family' => 'content_item',
+            'template_key' => 'o2_multiple_item_images',
+        ],
+    ]);
+
+    $html = $this->get('/')->assertSuccessful()->getContent();
+
+    expect(substr_count($html, 'data-test="content-item-image"'))->toBe(2)
+        ->and($html)->toContain('data-card-part-flow="ordered-stack"')
+        ->toContain('data-card-renderer-parts="image,image,custom_text,title"');
 });
 
 it('renders m5 labels icons and grouped parts on content item cards', function (): void {
@@ -982,7 +1386,7 @@ it('renders m5 labels icons and grouped parts on content item cards', function (
     $this->get('/')
         ->assertSuccessful()
         ->assertSee('data-card-template-key="m5_item_card"', false)
-        ->assertSee('data-card-renderer-parts="title,metadata_row,custom_text,part_group"', false)
+        ->assertSee('data-card-renderer-parts="title,metadata_row,custom_text,custom_text,custom_text,part_group,part_group"', false)
         ->assertSee('Above title label')
         ->assertSee('Below duration label')
         ->assertSee('Inline before label')
@@ -1370,11 +1774,69 @@ it('renders an interleaved content group image in its configured public position
         ->assertSee('data-card-template-layout="rows"', false)
         ->assertSee('data-result-layout="cards"', false)
         ->assertSee('data-card-part-flow="ordered-stack"', false)
+        ->assertSee('data-card-renderer-parts="custom_text,image,title"', false)
         ->assertSeeInOrder([
             'FU01 group before image',
             'data-card-part="image"',
             'data-card-part="title"',
         ], false);
+});
+
+it('renders every repeated top-level group image once without a whole-card link contract', function (): void {
+    $group = ContentGroup::factory()->published()->create([
+        'title' => 'O2 Multiple Image Group',
+        'slug' => 'o2-multiple-image-group',
+    ]);
+    createStep3PublicItem(['title' => 'O2 Multiple Image Group Episode'], $group);
+
+    saveStep3PublicFrontConfig([
+        'card_templates' => [
+            makeStep10rB3ContentGroupTemplate('o2_multiple_group_images', [
+                [
+                    'type' => 'image',
+                    'source' => 'content_group',
+                    'attribute' => 'image',
+                    'visible' => true,
+                    'order' => 10,
+                ],
+                [
+                    'type' => 'image',
+                    'source' => 'content_group',
+                    'attribute' => 'image',
+                    'visible' => true,
+                    'order' => 20,
+                ],
+                [
+                    'type' => 'custom_text',
+                    'source' => 'custom',
+                    'attribute' => 'text',
+                    'text' => 'O2 after consecutive group images',
+                    'visible' => true,
+                    'order' => 30,
+                ],
+                [
+                    'type' => 'title',
+                    'source' => 'content_group',
+                    'attribute' => 'title',
+                    'visible' => true,
+                    'order' => 40,
+                ],
+            ], [
+                'layout' => 'rows',
+                'image_size' => 'small',
+            ]),
+        ],
+        'podcasts_page' => [
+            'template_key' => 'o2_multiple_group_images',
+        ],
+    ]);
+
+    $html = $this->get('/podcasts')->assertSuccessful()->getContent();
+
+    expect(substr_count($html, 'data-card-part="image"'))->toBe(2)
+        ->and($html)->toContain('data-card-part-flow="ordered-stack"')
+        ->toContain('data-card-renderer-parts="image,image,custom_text,title"')
+        ->toContain('<article');
 });
 
 it('renders custom contributor templates on contributor cards and top transcriber selectors', function (): void {

@@ -263,7 +263,7 @@ it('uses deterministic card layout classes and stacks large image templates safe
         ->assertSee($item->title)
         ->assertSee('data-card-image-size="large"', false)
         ->assertSee('data-result-layout="cards"', false)
-        ->assertSee('data-card-renderer-parts="image,group_identity,title,description,transcriber_line,date_read_time,metadata_row,taxonomy"', false)
+        ->assertSee('data-card-renderer-parts="image,group_identity,title,description,date_read_time,metadata_row"', false)
         ->assertSee('data-card-title-clamp="2"', false)
         ->assertSee('data-card-description-clamp="3"', false)
         ->assertSee('aspect-square', false)

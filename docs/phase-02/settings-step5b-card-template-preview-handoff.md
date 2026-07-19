@@ -911,3 +911,21 @@ The requirements sweep passed before this sequence:
 
 See `docs/phase-02/settings-step5b-card-template-preview-lg-column-handoff.md`
 for the canonical O1 implementation hash and final gate evidence.
+
+## Ordered-flow O2 continuation
+
+The directly approved
+`STEP5B-CARD-RENDER-OVERHAUL-O2-ORDERED-FLOW-FOUNDATION` continuation is
+complete in the current run under audit
+`LS-20260719-STEP5B-CARD-RENDER-O2-ORDERED-FLOW-01`. Item and group cards now
+finalize geometry from actual presenter parts, remove phantom no-media row
+tracks, preserve real leading-image rows, render interleaved and repeated
+top-level images in exact full-bleed order, and expose configured/effective
+diagnostics separately. Group row geometry now belongs to the article without a
+whole-card anchor, and both themes scan the renderer's finite Tailwind classes.
+
+The complete contract, browser matrix, command history, review dispositions,
+deferred inventory, final gates, and implementation hash are canonical in
+`docs/phase-02/settings-step5b-card-template-ordered-flow-foundation-handoff.md`.
+O1's 1024px single-root/focus/dirty-state contract remains unchanged and passed
+the combined O1+O2 browser regression.

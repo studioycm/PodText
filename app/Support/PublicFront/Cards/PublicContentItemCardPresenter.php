@@ -166,14 +166,16 @@ class PublicContentItemCardPresenter
         ];
 
         $parts = $this->parts($template, $data, $options, $presentation);
+        $finalized = $this->renderer->finalizeContentItemPresentation($presentation, $parts);
 
         return [
             ...$data,
-            'presentation' => $presentation,
+            'presentation' => $finalized['presentation'],
             'template_attributes' => $this->renderer->compatibilityAttributes($template),
             'parts' => $parts,
-            'media_parts' => collect($parts)->where('region', 'media')->values()->all(),
-            'body_parts' => collect($parts)->where('region', 'body')->values()->all(),
+            'media_parts' => $finalized['media_parts'],
+            'body_parts' => $finalized['body_parts'],
+            'part_runs' => $finalized['part_runs'],
         ];
     }
 

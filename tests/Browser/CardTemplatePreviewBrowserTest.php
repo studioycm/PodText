@@ -1,16 +1,23 @@
 <?php
 
+use App\Enums\HomepageSectionType;
 use App\Filament\Pages\CardTemplateSettings;
 use App\Filament\Pages\EditCardTemplate;
 use App\Models\ContentGroup;
 use App\Models\ContentItem;
+use App\Models\HomepageSection;
 use App\Models\Transcription;
 use App\Models\User;
 use App\Settings\PublicContentSettings;
 use App\Support\PublicFront\Cards\PublicFrontCardTemplateRegistry;
+use App\Support\PublicFront\Cards\PublicFrontCardTemplateResolver;
+use App\Support\PublicFront\PublicDefaultImageResolver;
+use App\Support\PublicFront\PublicFrontConfigCache;
+use App\Support\PublicFront\PublicFrontRenderContext;
 use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Spatie\LaravelSettings\SettingsContainer;
 
 uses(RefreshDatabase::class);
@@ -44,6 +51,8 @@ beforeEach(function (): void {
         ],
     );
     app()->forgetInstance(PublicContentSettings::class);
+    app()->forgetInstance(PublicFrontRenderContext::class);
+    app(PublicFrontConfigCache::class)->forget();
     app(SettingsContainer::class)->clearCache();
 
     $group = ContentGroup::factory()->published()->create(['title' => 'Browser Preview Group']);
@@ -65,6 +74,410 @@ beforeEach(function (): void {
         ->create(['title' => 'Alternate Browser Transcription']);
     $alternate->update(['featured_transcription_id' => $alternateTranscription->getKey()]);
 });
+
+afterEach(function (): void {
+    Storage::disk('public')->delete([
+        'default-images/o2-item-default.jpg',
+        'default-images/o2-group-default.jpg',
+    ]);
+});
+
+/**
+ * @param  array<int, array<string, mixed>>  $parts
+ * @return array<string, mixed>
+ */
+function step5bO2BrowserTemplate(string $family, string $key, string $layout, array $parts): array
+{
+    return [
+        'key' => $key,
+        'label' => "O2 browser {$key}",
+        'family' => $family,
+        'layout' => $layout,
+        'density' => 'compact',
+        'image_size' => 'small',
+        'title_size' => 'base',
+        'parts' => $parts,
+    ];
+}
+
+/**
+ * @return array{item: ContentItem, group: ContentGroup}
+ */
+function step5bO2BrowserSurfaces(): array
+{
+    $item = ContentItem::query()->where('title', 'like', 'Browser Preview Item%')->firstOrFail();
+    $group = $item->contentGroup;
+    $templates = [];
+
+    foreach (['content_item', 'content_group'] as $family) {
+        $source = $family;
+        $prefix = $family === 'content_item' ? 'item' : 'group';
+        $templates[] = step5bO2BrowserTemplate($family, "o2_browser_{$prefix}_leading", 'rows', [
+            ['type' => 'image', 'source' => $source, 'attribute' => 'image', 'visible' => true, 'order' => 10],
+            ['type' => 'title', 'source' => $source, 'attribute' => 'title', 'visible' => true, 'order' => 20],
+        ]);
+        $templates[] = step5bO2BrowserTemplate($family, "o2_browser_{$prefix}_body", 'rows', [
+            ['type' => 'custom_text', 'source' => 'custom', 'attribute' => 'text', 'text' => "O2 {$prefix} body only", 'visible' => true, 'order' => 10],
+            ['type' => 'title', 'source' => $source, 'attribute' => 'title', 'visible' => true, 'order' => 20],
+        ]);
+        $templates[] = step5bO2BrowserTemplate($family, "o2_browser_{$prefix}_ordered", 'rows', [
+            ['type' => 'custom_text', 'source' => 'custom', 'attribute' => 'text', 'text' => "O2 {$prefix} before image", 'visible' => true, 'order' => 10],
+            ['type' => 'image', 'source' => $source, 'attribute' => 'image', 'visible' => true, 'order' => 20],
+            ['type' => 'title', 'source' => $source, 'attribute' => 'title', 'visible' => true, 'order' => 30],
+            ['type' => 'image', 'source' => $source, 'attribute' => 'image', 'visible' => true, 'order' => 40],
+        ]);
+        $templates[] = step5bO2BrowserTemplate($family, "o2_browser_{$prefix}_card", 'cards', [
+            ['type' => 'image', 'source' => $source, 'attribute' => 'image', 'visible' => true, 'order' => 10],
+            ['type' => 'title', 'source' => $source, 'attribute' => 'title', 'visible' => true, 'order' => 20],
+        ]);
+    }
+
+    foreach ([
+        'card_templates' => $templates,
+        'default_images' => [
+            'global' => ['mode' => 'inherit', 'path' => null],
+            'content_item' => ['mode' => 'custom', 'path' => 'default-images/o2-item-default.jpg'],
+            'content_group' => ['mode' => 'custom', 'path' => 'default-images/o2-group-default.jpg'],
+            'contributor' => ['mode' => 'inherit', 'path' => null],
+        ],
+    ] as $name => $payload) {
+        DB::table('settings')->updateOrInsert(
+            ['group' => PublicContentSettings::group(), 'name' => $name],
+            [
+                'locked' => false,
+                'payload' => json_encode($payload, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE),
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+        );
+    }
+
+    $defaultImageFixture = file_get_contents(public_path('images/podtext-logo.jpg'));
+    Storage::disk('public')->put('default-images/o2-item-default.jpg', $defaultImageFixture);
+    Storage::disk('public')->put('default-images/o2-group-default.jpg', $defaultImageFixture);
+
+    foreach (['leading', 'body', 'ordered', 'card'] as $index => $variant) {
+        HomepageSection::factory()->create([
+            'name' => "O2 browser item {$variant}",
+            'type' => HomepageSectionType::Latest,
+            'sort_order' => ($index * 2) + 1,
+            'source_config' => ['source_type' => 'manual_content_items'],
+            'selection_config' => ['include_ids' => [$item->getKey()]],
+            'display_config' => [
+                'template_family' => 'content_item',
+                'template_key' => "o2_browser_item_{$variant}",
+            ],
+        ]);
+        HomepageSection::factory()->create([
+            'name' => "O2 browser group {$variant}",
+            'type' => HomepageSectionType::Latest,
+            'sort_order' => ($index * 2) + 2,
+            'source_config' => ['source_type' => 'content_groups'],
+            'selection_config' => ['include_ids' => [$group->getKey()]],
+            'display_config' => [
+                'template_family' => 'content_group',
+                'template_key' => "o2_browser_group_{$variant}",
+            ],
+        ]);
+    }
+
+    app()->forgetScopedInstances();
+    app()->forgetInstance(PublicContentSettings::class);
+    app()->forgetInstance(PublicFrontRenderContext::class);
+    app(PublicFrontConfigCache::class)->forget();
+    app(SettingsContainer::class)->clearCache();
+
+    return compact('item', 'group');
+}
+
+it('renders content-aware public item and group geometry in both directions', function (string $locale, string $direction): void {
+    app()->setLocale($locale);
+    $surfaces = step5bO2BrowserSurfaces();
+    $renderContext = app(PublicFrontRenderContext::class);
+    $resolver = app(PublicFrontCardTemplateResolver::class);
+
+    expect($renderContext->cardTemplates())->toHaveCount(8)
+        ->and($renderContext->defaultImages()['content_item']['mode'])->toBe('custom')
+        ->and($renderContext->defaultImages()['content_group']['mode'])->toBe('custom')
+        ->and(app(PublicDefaultImageResolver::class)->contentItemImage($surfaces['item'])['source'])->toBe('content_item_default')
+        ->and(app(PublicDefaultImageResolver::class)->contentGroupImage($surfaces['group'])['source'])->toBe('content_group_default')
+        ->and($resolver->resolve('content_item', 'o2_browser_item_leading')->key)->toBe('o2_browser_item_leading')
+        ->and($resolver->resolve('content_group', 'o2_browser_group_leading')->key)->toBe('o2_browser_group_leading');
+
+    $page = visit('/')->resize(1280, 1100);
+    $matrix = [];
+
+    foreach ([767, 768, 1024, 1280] as $width) {
+        $page->resize($width, 1100);
+        $measurement = $page->script(<<<'JS'
+            async () => {
+                await new Promise((resolve) => setTimeout(resolve, 250));
+                const knownResizeObserverMessage = 'ResizeObserver loop completed with undelivered notifications.';
+                const browserErrors = window.__pestBrowser?.jsErrors ?? [];
+                window.__pestBrowser.jsErrors = browserErrors.filter((error) => error.message !== knownResizeObserverMessage);
+                const card = (key) => document.querySelector(`[data-card-template-key="${key}"]`);
+                const measure = (prefix) => {
+                    const leading = card(`o2_browser_${prefix}_leading`);
+                    const body = card(`o2_browser_${prefix}_body`);
+                    const ordered = card(`o2_browser_${prefix}_ordered`);
+                    const cardMode = card(`o2_browser_${prefix}_card`);
+                    const leadingStyle = leading ? getComputedStyle(leading) : null;
+                    const bodyStyle = body ? getComputedStyle(body) : null;
+                    const leadingImage = leading?.querySelector('img');
+                    const orderedImages = Array.from(ordered?.querySelectorAll('[data-card-part="image"]') ?? []);
+                    const orderedRect = ordered?.getBoundingClientRect();
+                    const fullBleed = orderedImages.every((image) => {
+                        const rect = image.getBoundingClientRect();
+
+                        return Math.abs(rect.left - orderedRect.left) <= 2
+                            && Math.abs(rect.right - orderedRect.right) <= 2;
+                    });
+
+                    return {
+                        found: [leading, body, ordered, cardMode].every(Boolean),
+                        leading_flow: leading?.dataset.cardPartFlow,
+                        leading_display: leadingStyle?.display,
+                        leading_columns: leadingStyle?.gridTemplateColumns?.split(' ').length ?? 0,
+                        leading_image_source: leading?.querySelector('[data-card-part="image"]')?.dataset.cardImageSource,
+                        leading_image_loaded: Boolean(leadingImage?.complete && leadingImage.naturalWidth > 0),
+                        body_flow: body?.dataset.cardPartFlow,
+                        body_display: bodyStyle?.display,
+                        body_grid: bodyStyle?.gridTemplateColumns,
+                        body_gap: bodyStyle?.gap,
+                        body_padding: bodyStyle?.padding,
+                        body_images: body?.querySelectorAll('[data-card-part="image"]').length ?? -1,
+                        ordered_flow: ordered?.dataset.cardPartFlow,
+                        ordered_parts: ordered?.dataset.cardRendererParts,
+                        ordered_images: orderedImages.length,
+                        ordered_full_bleed: fullBleed,
+                        card_mode_display: cardMode ? getComputedStyle(cardMode).display : null,
+                        card_mode_layout: cardMode?.dataset.resultLayout,
+                        nested_anchors: Array.from(ordered?.querySelectorAll('a') ?? []).some((anchor) => anchor.querySelector('a')),
+                        public_hrefs: ordered?.querySelectorAll('a[href]').length ?? 0,
+                    };
+                };
+
+                return {
+                    viewport_width: window.innerWidth,
+                    direction: document.documentElement.dir,
+                    horizontal_overflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
+                    item: measure('item'),
+                    group: measure('group'),
+                    resize_observer_errors: browserErrors.filter((error) => error.message === knownResizeObserverMessage).length,
+                    js_errors: browserErrors
+                        .map((error) => error.message)
+                        .filter((message) => message !== knownResizeObserverMessage),
+                };
+            }
+            JS);
+        $matrix[$width] = $measurement;
+
+        expect($measurement['viewport_width'])->toBe($width)
+            ->and($measurement['direction'])->toBe($direction)
+            ->and($measurement['horizontal_overflow'])->toBeFalse()
+            ->and($measurement['js_errors'])->toBe([]);
+
+        foreach (['item', 'group'] as $family) {
+            $card = $measurement[$family];
+
+            expect($card['found'])->toBeTrue(json_encode($measurement, JSON_THROW_ON_ERROR))
+                ->and($card['leading_flow'])->toBe('media-leading')
+                ->and($card['leading_display'])->toBe('grid')
+                ->and($card['leading_columns'])->toBe($width >= 768 ? 2 : 1)
+                ->and($card['leading_image_source'])->toBe($family === 'item' ? 'content_item_default' : 'content_group_default')
+                ->and($card['leading_image_loaded'])->toBeTrue(json_encode($measurement, JSON_THROW_ON_ERROR))
+                ->and($card['body_flow'])->toBe('body-only')
+                ->and($card['body_display'])->toBe('flex')
+                ->and($card['body_grid'])->toBe('none')
+                ->and($card['body_gap'])->toBe('normal')
+                ->and($card['body_padding'])->toBe('0px')
+                ->and($card['body_images'])->toBe(0)
+                ->and($card['ordered_flow'])->toBe('ordered-stack')
+                ->and($card['ordered_parts'])->toBe('custom_text,image,title,image')
+                ->and($card['ordered_images'])->toBe(2)
+                ->and($card['ordered_full_bleed'])->toBeTrue(json_encode($measurement, JSON_THROW_ON_ERROR))
+                ->and($card['card_mode_display'])->toBe('flex')
+                ->and($card['card_mode_layout'])->toBe('cards')
+                ->and($card['nested_anchors'])->toBeFalse()
+                ->and($card['public_hrefs'])->toBeGreaterThan(0);
+        }
+    }
+
+    if (getenv('STEP5B_O2_BROWSER_REPORT') === '1') {
+        fwrite(STDERR, json_encode([
+            'locale' => $locale,
+            'direction' => $direction,
+            'public_matrix' => $matrix,
+            'measurement_plane' => 'Chromium DOM and computed style after fixture-backed server rendering.',
+        ], JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES).PHP_EOL);
+    }
+
+    $page->assertNoSmoke()->assertNoJavaScriptErrors();
+})->with([
+    'Hebrew RTL' => ['he', 'rtl'],
+    'English LTR' => ['en', 'ltr'],
+]);
+
+it('renders every ordered-flow preview variant responsively for item and group', function (string $locale, string $direction): void {
+    app()->setLocale($locale);
+    step5bO2BrowserSurfaces();
+    $matrix = [];
+    $expectations = [
+        'leading' => ['flow' => 'media-leading', 'parts' => 'image,title', 'layout' => 'rows', 'images' => 1],
+        'body' => ['flow' => 'body-only', 'parts' => 'custom_text,title', 'layout' => 'cards', 'images' => 0],
+        'ordered' => ['flow' => 'ordered-stack', 'parts' => 'custom_text,image,title,image', 'layout' => 'cards', 'images' => 2],
+        'card' => ['flow' => 'media-leading', 'parts' => 'image,title', 'layout' => 'cards', 'images' => 1],
+    ];
+
+    foreach (['item' => 'content_item', 'group' => 'content_group'] as $prefix => $family) {
+        foreach ($expectations as $variant => $expected) {
+            $page = visit(EditCardTemplate::getUrl([
+                'family' => $family,
+                'key' => "o2_browser_{$prefix}_{$variant}",
+            ]))->resize(1280, 900);
+
+            foreach ([1280, 1024, 768, 767] as $width) {
+                $page->resize($width, 900);
+                $measurement = $page->script(<<<'JS'
+                    async () => {
+                        const isNarrow = window.innerWidth < 1024;
+                        let started = performance.now();
+
+                        if (isNarrow) {
+                            while (document.querySelector('[data-card-template-preview-root]') !== null && performance.now() - started < 5000) {
+                                await new Promise((resolve) => setTimeout(resolve, 25));
+                            }
+
+                            const trigger = document.querySelector('[data-test="card-template-preview-open"]');
+                            trigger?.focus();
+                            trigger?.click();
+                            started = performance.now();
+
+                            while (document.querySelector('[data-card-template-preview-modal]') === null && performance.now() - started < 5000) {
+                                await new Promise((resolve) => setTimeout(resolve, 25));
+                            }
+                        } else {
+                            while (document.querySelector('[data-card-template-preview-adjacent]') === null && performance.now() - started < 5000) {
+                                await new Promise((resolve) => setTimeout(resolve, 25));
+                            }
+                        }
+
+                        await new Promise((resolve) => setTimeout(resolve, 250));
+                        const knownResizeObserverMessage = 'ResizeObserver loop completed with undelivered notifications.';
+                        const browserErrors = window.__pestBrowser?.jsErrors ?? [];
+                        window.__pestBrowser.jsErrors = browserErrors.filter((error) => error.message !== knownResizeObserverMessage);
+                        const root = document.querySelector('[data-card-template-preview-root]');
+                        const ready = root?.querySelector('[data-test="card-template-preview-ready"]');
+                        const card = ready?.querySelector('[data-card-template-key]');
+                        const style = card ? getComputedStyle(card) : null;
+                        const images = Array.from(card?.querySelectorAll('[data-card-part="image"]') ?? []);
+                        const rect = card?.getBoundingClientRect();
+
+                        return {
+                            viewport_width: window.innerWidth,
+                            direction: document.documentElement.dir,
+                            preview_roots: document.querySelectorAll('[data-card-template-preview-root]').length,
+                            adjacent_roots: document.querySelectorAll('[data-card-template-preview-adjacent]').length,
+                            modal_roots: document.querySelectorAll('[data-card-template-preview-modal]').length,
+                            flow: card?.dataset.cardPartFlow,
+                            parts: card?.dataset.cardRendererParts,
+                            layout: card?.dataset.resultLayout,
+                            display: style?.display,
+                            columns: style?.gridTemplateColumns?.split(' ').length ?? 0,
+                            grid: style?.gridTemplateColumns,
+                            gap: style?.gap,
+                            padding: style?.padding,
+                            image_source: images[0]?.dataset.cardImageSource ?? null,
+                            images: images.length,
+                            full_bleed: images.every((image) => {
+                                const imageRect = image.getBoundingClientRect();
+
+                                return Math.abs(imageRect.left - rect.left) <= 2
+                                    && Math.abs(imageRect.right - rect.right) <= 2;
+                            }),
+                            interactions: ready?.querySelectorAll('a[href], [wire\\:click], button, input, select, textarea').length ?? -1,
+                            horizontal_overflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
+                            resize_observer_errors: browserErrors.filter((error) => error.message === knownResizeObserverMessage).length,
+                            js_errors: browserErrors
+                                .map((error) => error.message)
+                                .filter((message) => message !== knownResizeObserverMessage),
+                        };
+                    }
+                    JS);
+                $matrix[$prefix][$variant][$width] = $measurement;
+
+                expect($measurement['viewport_width'])->toBe($width)
+                    ->and($measurement['direction'])->toBe($direction)
+                    ->and($measurement['preview_roots'])->toBe(1)
+                    ->and($measurement['adjacent_roots'])->toBe($width >= 1024 ? 1 : 0)
+                    ->and($measurement['modal_roots'])->toBe($width < 1024 ? 1 : 0)
+                    ->and($measurement['flow'])->toBe($expected['flow'])
+                    ->and($measurement['parts'])->toBe($expected['parts'])
+                    ->and($measurement['layout'])->toBe($expected['layout'])
+                    ->and($measurement['images'])->toBe($expected['images'])
+                    ->and($measurement['interactions'])->toBe(0)
+                    ->and($measurement['horizontal_overflow'])->toBeFalse()
+                    ->and($measurement['js_errors'])->toBe([]);
+
+                if ($variant === 'leading') {
+                    expect($measurement['display'])->toBe('grid')
+                        ->and($measurement['columns'])->toBe($width >= 768 ? 2 : 1)
+                        ->and($measurement['image_source'])->toBe('fallback');
+                }
+
+                if ($variant === 'body') {
+                    expect($measurement['display'])->toBe('flex')
+                        ->and($measurement['grid'])->toBe('none')
+                        ->and($measurement['gap'])->toBe('normal')
+                        ->and($measurement['padding'])->toBe('0px')
+                        ->and($measurement['image_source'])->toBeNull();
+                }
+
+                if ($variant === 'ordered') {
+                    expect($measurement['display'])->toBe('flex')
+                        ->and($measurement['image_source'])->toBe('fallback')
+                        ->and($measurement['full_bleed'])->toBeTrue(json_encode($measurement, JSON_THROW_ON_ERROR));
+                }
+
+                if ($variant === 'card') {
+                    expect($measurement['display'])->toBe('flex')
+                        ->and($measurement['image_source'])->toBe('fallback');
+                }
+
+                if ($width < 1024) {
+                    $closed = $page->script(<<<'JS'
+                        async () => {
+                            window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+                            const started = performance.now();
+
+                            while (document.querySelector('[data-card-template-preview-modal]') !== null && performance.now() - started < 5000) {
+                                await new Promise((resolve) => setTimeout(resolve, 25));
+                            }
+
+                            return document.querySelectorAll('[data-card-template-preview-root]').length;
+                        }
+                        JS);
+
+                    expect($closed)->toBe(0);
+                }
+            }
+
+            $page->assertNoSmoke()->assertNoJavaScriptErrors();
+        }
+    }
+
+    if (getenv('STEP5B_O2_BROWSER_REPORT') === '1') {
+        fwrite(STDERR, json_encode([
+            'locale' => $locale,
+            'direction' => $direction,
+            'preview_matrix' => $matrix,
+            'measurement_plane' => 'Authenticated Chromium preview DOM and computed style at 767, 768, 1024, and 1280px.',
+        ], JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES).PHP_EOL);
+    }
+})->with([
+    'Hebrew RTL' => ['he', 'rtl'],
+    'English LTR' => ['en', 'ltr'],
+]);
 
 it('keeps one inert responsive preview root with focus and dirty navigation protection', function (): void {
     app()->setLocale('he');
