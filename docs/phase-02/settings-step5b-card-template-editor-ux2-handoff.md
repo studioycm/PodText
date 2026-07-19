@@ -13,7 +13,7 @@
   `docs/research/settings-performance/29-step5b-card-template-editor-ux2-research.md`
   and
   `docs/research/settings-performance/30-step5b-card-template-editor-ux2-implementation-plan.md`.
-- Implementation commit: `PENDING`.
+- Implementation commit: `82e639d0fd22c06c52a70acec7c26ee9e2d8c72a`.
 - No branch, worktree, push, remote publication, production action, production
   probe, or production normalization occurred.
 
@@ -294,4 +294,4 @@ documentation listed above; no unrelated pre-existing change is present.
 
 ## Commit hash
 
-`PENDING`
+`82e639d0fd22c06c52a70acec7c26ee9e2d8c72a`

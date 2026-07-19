@@ -803,4 +803,4 @@ The requirements sweep passed before this sequence:
 
 ## UX2 position-canonical editor closure commit hash
 
-`PENDING`
+`82e639d0fd22c06c52a70acec7c26ee9e2d8c72a`
