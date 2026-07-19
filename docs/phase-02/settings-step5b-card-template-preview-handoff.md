@@ -308,7 +308,7 @@ settings-lifecycle, persistence, database, or production change was made.
 | Strict item/group image order | Implemented in FU01 | Leading images retain existing geometry; interleaved images render through one ordered stacked `parts` stream in preview and public output. |
 | Native image movement reaches the preview position | Implemented in FU01 | Livewire and Chromium move the image through the owning-Builder modal and prove exact rendered order without settings persistence. |
 | FU02 sample ranking | Implemented in FU02 | Automatic, preload, search, labels, and rendered source share own local/external, permitted inherited cover, configured family/global default, then none; exact ties/caps are pinned. |
-| FU03/O4 error targeting | Implemented in FU03 | Structured issues map strict root/top/nested positional paths to current UUID-owned inline or mounted native Builder state, with transient reveal, exact focus, verified fallback, one request, restricted safety, and no key/slug mis-target. |
+| FU03/O4 error targeting | Implemented in FU03 | Structured issues map strict root/top/nested positional paths to current UUID-owned inline or mounted native Builder state, with transient reveal, exact focus, verified fallback only for a recognized owner, notification-only rejection for invalid singleton prefixes, one request, restricted safety, and no key/slug/value-based mis-target. |
 | Localized Builder summaries and legacy diagnostics | Implemented | Formatter tests cover HE/EN no-prefix fallback, registry source/attribute labels, escaped unknown raw values, and nested/top-level preview continuity. |
 | Responsive adjacent/slide-over single mount | Implemented | Authenticated Chromium verifies the exact 767/768/1023 slide-over and 1024/1279/1280 adjacent matrix; mutation-record transition instrumentation records a peak of one root, including rapid resize-back. |
 | HE/EN, RTL/LTR, logical end, independent scroll | Implemented | Authenticated Chromium verifies Hebrew RTL and English LTR at the 1023/1024 boundary; exact-width CSS geometry keeps both surfaces at logical end and the settled document overflow-free. |
@@ -979,9 +979,12 @@ issues now survive the draft normalizer and write exception. Strict root,
 top-level, and one-level nested positional paths resolve against current
 UUID-owned Builder state after hydration and reordering. Inline targets expand
 and focus exactly; slide-over targets mount their verified native owner actions
-before error placement. Only necessary transient label/icon controls reveal,
-and malformed, stale, unmountable, or focus-impossible targets use deterministic
-verified-Builder or visible-control fallback without key/slug targeting.
+before error placement. Only necessary transient label/icon controls reveal.
+Recognized root/parts paths use deterministic verified-Builder or
+visible-control fallback for malformed positions/depths, stale or unsupported
+descendants, and action/focus failures. Invalid singleton prefixes are rejected
+without an owner and terminate at the danger notification; no rejected path is
+converted into a key, slug, label, or value-based target.
 
 The complete contract, mapping semantics, authenticated Hebrew RTL and English
 LTR browser evidence, one-request/restricted/no-persistence budgets, command

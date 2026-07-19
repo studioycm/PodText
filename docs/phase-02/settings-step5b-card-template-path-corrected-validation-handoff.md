@@ -43,9 +43,12 @@ accepts no client path or UUID, recomputes validation from the current draft,
 and applies the same routing as save. Only `_show_label` or `_show_icon` may be
 revealed transiently when the verified field requires it. Installed
 `form-validation-error` and `focus-input` behavior expands, exposes, scrolls,
-and focuses the target. If exact targeting or action mounting is impossible,
-the editor uses a deterministic verified owning-Builder or stable visible-focus
-fallback; a part issue never mis-targets `data.key`.
+and focuses the target. For a recognized `card_templates.0` root or part path,
+failed exact targeting or action mounting uses a deterministic verified
+owning-Builder or stable visible-focus fallback. An unrecognized or invalid
+singleton prefix is rejected without inventing an owner and terminates safely
+with the danger notification. No rejected path is converted into a key, slug,
+label, or value-based target.
 
 ## Structured path mapping semantics
 
@@ -63,12 +66,18 @@ and `valuePreview` are never parsed or used as identity.
 | `card_templates.0.parts.<p>.data.children.<c>.data.<field>` | `data.parts.<top-uuid>.data.children.<child-uuid>.data.<field>` | Mount parent then child before `addError()`, then target the final mounted action data field. |
 
 Every mapped UUID is re-read from current state and verified against expected
-part type, data shape, owning Builder, and schema component. Malformed prefix,
-depth, position, owner, type, component, or field data degrades without
-inventing an identity. For a nested slide-over field whose child action cannot
-be mounted, the verified parent action remains open with the error on
-`mountedActions.0.data.children`; if the parent action cannot mount, the target
-degrades to visible `data.parts`.
+part type, data shape, owning Builder, and schema component. Once a recognized
+`card_templates.0.parts` path establishes a Builder owner, malformed positions
+or depths and stale, unsupported, or unmountable descendants may degrade to the
+nearest verified owning Builder. For a nested slide-over field whose child
+action cannot be mounted, the verified parent action remains open with the
+error on `mountedActions.0.data.children`; if the parent action cannot mount,
+the target degrades to visible `data.parts`.
+
+An unrecognized or invalid singleton prefix is rejected before any Builder
+owner lookup. It receives no field or owning-Builder fallback and terminates
+safely with the danger notification. No rejected path is converted into a key,
+slug, label, or value-based target.
 
 ## Requirement classification
 
@@ -80,7 +89,8 @@ degrades to visible `data.parts`.
 | Target the actual invalid field in slide-over mode | Implemented | Native owning Builder actions mount before `addError()`; top and nested mounted action state paths are verified. |
 | Reveal only necessary subordinate controls | Implemented | Only transient `_show_label` and `_show_icon` state is revealed; persistent draft values and positions are not changed. |
 | Dispatch narrow installed-version events and restore safe focus | Implemented | One page-root listener dispatches Filament's installed `focus-input`; native/modal Escape and explicit safe restoration cover inline, wide slide-over, and narrow preview entry. |
-| Deterministic fallback for mapping, action mounting, or focus failure | Implemented | Nearest verified Builder paths, verified-parent nested fallback, top Builder fallback, visible modal Close, Preview opener, and stable editor controls are bounded in that order. |
+| Deterministic fallback for recognized root/part paths when mapping, action mounting, or focus fails | Implemented | Nearest verified Builder paths, verified-parent nested fallback, top Builder fallback, visible modal Close, Preview opener, and stable editor controls are bounded in that order. |
+| Reject unrecognized or invalid singleton prefixes without inventing an owner | Implemented | Prefix rejection occurs before Builder lookup; the path receives no owner fallback and terminates safely with the danger notification. |
 | Prove top-level, nested, reordered UUIDs, collapsed fields, slide-over, restricted, fallback, and no key/slug mis-target | Implemented | Focused component tests and authenticated Chromium scenarios cover each case, including two-child reorder and forced action-mount failure. |
 | Restricted/forged safety and query/state budgets | Implemented | Authorization precedes routing; restricted surfaces expose no Builder/action and add no sample/domain query, settings write, or protected-state serialization. One activation remains one Livewire request. |
 | O1 responsive shell/focus/single-root contract | Already existed | Preserved and covered by the combined browser file. |
@@ -123,8 +133,9 @@ lockfile, or production file changed.
 - exact top and nested native action paths and mount-before-error ordering;
 - verified-parent nested fallback and forced top-action mount failure;
 - deterministic preference for an actionable issue over an earlier fallback;
-- malformed prefix/depth, stale/out-of-range position, wrong owner/type, and
-  unsupported/forged field fallback;
+- malformed positions and nested depths, stale/out-of-range positions, wrong
+  owner/type, and unsupported/forged field fallback after a recognized parts
+  owner;
 - structured save failure without `data.key` targeting; and
 - restricted/forged zero-action, zero-protected-state, and zero-query behavior.
 
@@ -275,6 +286,10 @@ Final-tree requirements sweep and canonical gate results are recorded below.
   historic explicit `order` value or persistent part identity.
 - The accepted grammar intentionally stops at one nested `part_group` level,
   matching the current Builder and validator contract.
+- Plan 40 forecast no new class, while Research 39 explicitly allowed one tiny
+  focused value object for readability. `CardTemplateValidationTarget` is a
+  23-line readonly transport object. This is a non-material forecast variance,
+  not a generalized validation platform or scope expansion.
 - Installed Filament 5.6.7 source and authenticated behavior are authoritative
   for native action mounting, mounted schema paths, expansion, focus, and
   Escape behavior.
