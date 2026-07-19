@@ -986,7 +986,8 @@ verified-Builder or visible-control fallback without key/slug targeting.
 The complete contract, mapping semantics, authenticated Hebrew RTL and English
 LTR browser evidence, one-request/restricted/no-persistence budgets, command
 history, review dispositions, deferred inventory, final serial gate of 809
-tests / 11,807 assertions, and pending implementation hash are canonical in
+tests / 11,807 assertions, and implementation hash
+`659762f931a01626237a91de27a873e423c0713c` are canonical in
 `docs/phase-02/settings-step5b-card-template-path-corrected-validation-handoff.md`.
 O1/O2/FU02 and `d8f42da` navigation remain unchanged. FU04 order-compatibility
 closure is the next sequential action and remains unapproved; FU05–FU06 remain

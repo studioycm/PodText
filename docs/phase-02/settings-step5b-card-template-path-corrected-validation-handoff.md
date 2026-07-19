@@ -10,8 +10,8 @@ application code changed.
 - Option: `STEP5B-CARD-UX2-FU03-PATH-CORRECTED-CLOSURE`
 - Starting HEAD: `206963998b9513ea345ef657df7697b2901a7af3`
 - Starting branch: `main`, zero behind and seven commits ahead of `origin/main`
-- Implementation hash: pending
-- Docs-only hash stamp: pending
+- Implementation hash: `659762f931a01626237a91de27a873e423c0713c`
+- Docs-only hash stamp: this immediate documentation-only follow-up commit
 - Push, PR, production, branch, and worktree actions: not performed
 
 ## Contract and provenance
@@ -369,4 +369,4 @@ issues, `npm run build`, then full serial `php artisan test` last with 809 tests
 
 ## Commit hash
 
-Pending implementation commit.
+`659762f931a01626237a91de27a873e423c0713c`

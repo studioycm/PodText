@@ -192,8 +192,9 @@ Recorded after the Markdown-only post-Prompt-10 prompt-progress centralization c
   production change remains deferred.
 - Step 5B FU03 path-corrected validation is complete in the current run under
   `LS-20260719-STEP5B-CARD-UX2-FU03-PATH-CORRECTED-01` /
-  `STEP5B-CARD-UX2-FU03-PATH-CORRECTED-CLOSURE`; its implementation and
-  docs-only hash-stamp commits are pending canonical closeout in
+  `STEP5B-CARD-UX2-FU03-PATH-CORRECTED-CLOSURE`; implementation
+  `659762f931a01626237a91de27a873e423c0713c` is closed by this immediate
+  documentation-only hash-stamp follow-up in
   `docs/phase-02/settings-step5b-card-template-path-corrected-validation-handoff.md`.
   Structured validator issues now retain typed provenance through the draft
   normalizer and write exception. Strict root, top-level, and one-level nested
@@ -207,9 +208,8 @@ Recorded after the Markdown-only post-Prompt-10 prompt-progress centralization c
   collapsed, inline, wide and 1023px slide-over, Escape/restoration,
   restricted, one-request, and no-persistence behavior. O1/O2/FU02 and
   `d8f42da` navigation remain unchanged. The complete serial gate passes 809
-  tests / 11,807 assertions; implementation and hash-stamp commits remain
-  pending. FU04 order-compatibility closure is next and unapproved; FU05–FU06
-  remain later and unapproved.
+  tests / 11,807 assertions. FU04 order-compatibility closure is next and
+  unapproved; FU05–FU06 remain later and unapproved.
 - CURATOR-HF1 is an in-between Curator picker hydration repair: registered
   header-logo and custom default-image selections now hydrate from raw path
   state exactly once and retain Curator's UUID-keyed item map for rendering and
@@ -306,7 +306,7 @@ Recorded after the Markdown-only post-Prompt-10 prompt-progress centralization c
 | AUTHZ1 - Dormant package foundation and legacy migration utility | Complete / done for now; command closure implemented | `docs/phase-02/authz-command-closure-handoff.md`; reset master plan; plan 20; historical reports 12–18 | The three `authz:roles:*` commands are withheld and the retained migration namespace is application-isolated. Legacy enum/rank/Gates remain authoritative. Shield stays unregistered with no `HasRoles`, grants, cutover, or role UI. AUTHZ1-D–I and recursive remediation are stopped. |
 | MAINT-LW-UX1 - Stale-tab maintenance UX and regressions | Named deferred; not implemented or prompted | `docs/research/settings-performance/14-maintenance-livewire-enforcement-effects-audit.md` | Independent medium UX/test follow-up due before the first later public Livewire navigation/polling/lazy/deferred/stream/upload expansion. |
 | ARCH1 - Versioned Card Template and Public Form aggregates | Deferred / not current | Historical reports 07, 09, and 11; reset master plan controls | No present feature requires the migration. Current SP3C/Step 6 storage and writers remain authoritative. ARCH1 does not depend on completing AUTHZ1 and is not a prerequisite for Card Template preview/side-panel UX. |
-| Step 5B - Card Template Admin Preview UX | Complete through FU03 path-corrected validation | Preview `c75d0f2b`; restricted `69813dbd`; auto-refresh `cdf0e897`; editor UX `d889d4f6`; UX2 `82e639d0`; FU01 `2d028255`; O1 `215340d3`; O2 `f56ef369` + stamp `27f38aea`; FU02 `a8be0aa4` + stamp `23c3ac9`; FU03 implementation/stamp pending; research/plans 21–40 and dedicated handoffs | Preserves the O1 1024px single-root shell/focus contract, position-canonical editing, O2 actual-part geometry, FU02 effective-image ranking, restricted/query boundaries, and global order compatibility. FU03 preserves structured validator issues and maps positional root/top/nested paths to current UUID-owned inline or native slide-over Builder state, with transient reveal, exact focus, safe fallback, one-request routing, and no persistence or key/slug mis-target. Final serial gate: 809 tests / 11,807 assertions. FU04 order-compatibility closure is next and unapproved; FU05–FU06 remain later and unapproved. Nested images, production normalization, persistence, migrations, dependencies, lifecycle, permissions, and generalized renderer work remain deferred. |
+| Step 5B - Card Template Admin Preview UX | Complete through FU03 path-corrected validation | Preview `c75d0f2b`; restricted `69813dbd`; auto-refresh `cdf0e897`; editor UX `d889d4f6`; UX2 `82e639d0`; FU01 `2d028255`; O1 `215340d3`; O2 `f56ef369` + stamp `27f38aea`; FU02 `a8be0aa4` + stamp `23c3ac9`; FU03 `659762f9` + this hash-stamp follow-up; research/plans 21–40 and dedicated handoffs | Preserves the O1 1024px single-root shell/focus contract, position-canonical editing, O2 actual-part geometry, FU02 effective-image ranking, restricted/query boundaries, and global order compatibility. FU03 preserves structured validator issues and maps positional root/top/nested paths to current UUID-owned inline or native slide-over Builder state, with transient reveal, exact focus, safe fallback, one-request routing, and no persistence or key/slug mis-target. Final serial gate: 809 tests / 11,807 assertions. FU04 order-compatibility closure is next and unapproved; FU05–FU06 remain later and unapproved. Nested images, production normalization, persistence, migrations, dependencies, lifecycle, permissions, and generalized renderer work remain deferred. |
 | WB-PROBE-HF1 and Google format probe | Conditional Later checkpoint; not implemented or run | Report 07 and recovered checkpoint queue | If Workbench resumes, first harden connection selection, refresh, output privacy, and partial-failure resume behavior; then run the private 20-document probe before WB2/WB4 or paste-cleanup planning. |
 | LENS1 review packs | Pending operator review; not implementation scope | Report 07 and recovered checkpoint queue | Review roughly 25–40 rows per page/domain pack with key, HE, EN, context, and decision. Do not restore wholesale approval of the old 269-row table. |
 | SP3 browser acceptance evidence | Conditional Later evidence; not a feature blocker | Report 07 and recovered checkpoint queue | Authenticated in-app, serial browser, and external Playwright evidence remain due only when settings performance work or touched UX needs measured acceptance. SP3D is not a prerequisite. |
