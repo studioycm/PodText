@@ -10,7 +10,8 @@
 - Starting and observed implementation baseline:
   `d8f42da32eafe03c18862bbf7a08421b581ab0bb` on `main`, tracking
   `origin/main`, with a clean worktree.
-- Implementation status: complete and verified; implementation commit pending.
+- Implementation status: complete and verified; implementation commit
+  `215340d3b155232bba0dcf4644f9c360917d9d22`.
 - Push, publication, pull request, production action, migration, dependency,
   and local-development-database work: none.
 
@@ -374,6 +375,13 @@ repeat passed Pint, FilaCheck with 0 issues, Vite 8.1.0, and 777 tests / 9,953
 assertions. This statement was verified before the implementation commit; any
 different result would require a handoff correction and another restart.
 
+After the implementation hash was stamped into this handoff and the ledger,
+the same required sequence was repeated once more on the final two-document
+stamp tree. It passed Pint, FilaCheck with 0 issues, Vite 8.1.0, and the full
+serial permitted suite with 777 tests / 9,953 assertions. This statement was
+verified before the docs-only hash-stamp commit; any different result would
+require a handoff correction and another restart.
+
 ## Numbered Local Front Check
 
 1. Open Admin > System Management > Card Templates and edit a content-item
@@ -425,4 +433,4 @@ different result would require a handoff correction and another restart.
 
 ## Implementation commit hash
 
-`pending`
+`215340d3b155232bba0dcf4644f9c360917d9d22`
