@@ -548,6 +548,69 @@ it('moves top-level and nested parts through their owning native builder actions
     Event::assertNotDispatched(SettingsSaved::class);
 });
 
+it('renders a natively moved image at its exact preview position', function (): void {
+    $template = step5bEditorTemplate();
+    $template['layout'] = 'rows';
+    $template['image_size'] = 'small';
+    $template['parts'] = [
+        [
+            'type' => 'image',
+            'source' => 'content_item',
+            'attribute' => 'image',
+            'visible' => true,
+            'order' => 10,
+        ],
+        [
+            'type' => 'custom_text',
+            'source' => 'custom',
+            'attribute' => 'text',
+            'text' => 'FU01 preview before image',
+            'visible' => true,
+            'order' => 20,
+        ],
+        [
+            'type' => 'title',
+            'source' => 'content_item',
+            'attribute' => 'title',
+            'visible' => true,
+            'order' => 30,
+        ],
+    ];
+    step5bEditorSaveSetting(PublicContentSettings::class, 'card_templates', [$template]);
+    step5bEditorPublicItem('FU01 Preview Ordered Item');
+    $component = Livewire::test(EditCardTemplate::class, [
+        'family' => 'content_item',
+        'key' => 'preview_target',
+    ]);
+    $builder = $component->instance()->getSchemaComponent('form.parts');
+    $parts = $builder->getRawState();
+    $imageKey = collect($parts)->search(fn (array $part): bool => $part['type'] === 'image');
+
+    expect($imageKey)->not->toBeFalse();
+
+    $component->callAction(
+        TestAction::make('moveToPosition')->schemaComponent('parts', 'form'),
+        data: ['position' => 2],
+        arguments: ['item' => $imageKey],
+    );
+
+    $html = $component->get('previewHtml');
+    $beforePosition = strpos($html, 'FU01 preview before image');
+    $imagePosition = strpos($html, 'data-test="content-item-image"');
+    $titlePosition = strpos($html, 'data-card-part="title"');
+
+    expect($html)
+        ->toContain('data-card-template-layout="rows"')
+        ->toContain('data-result-layout="cards"')
+        ->toContain('data-card-part-flow="ordered-stack"')
+        ->toContain('data-card-image-source="fallback"')
+        ->and($beforePosition)->not->toBeFalse()
+        ->and($imagePosition)->not->toBeFalse()
+        ->and($titlePosition)->not->toBeFalse()
+        ->and($beforePosition)->toBeLessThan($imagePosition)
+        ->and($imagePosition)->toBeLessThan($titlePosition);
+});
+
 it('auto refreshes rendered presentation fields but leaves identity-only fields stale', function (): void {
     $template = step5bEditorTemplate();
     step5bEditorSaveSetting(PublicContentSettings::class, 'card_templates', [$template]);

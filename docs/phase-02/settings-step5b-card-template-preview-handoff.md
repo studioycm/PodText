@@ -32,6 +32,15 @@
   `docs/research/settings-performance/30-step5b-card-template-editor-ux2-implementation-plan.md`,
   and
   `docs/phase-02/settings-step5b-card-template-editor-ux2-handoff.md`.
+- Strict image-order follow-up audit:
+  `LS-20260719-STEP5B-CARD-UX2-FOLLOWUP-01`; approved option:
+  `STEP5B-CARD-UX2-FU01-STRICT-IMAGE-ORDER`; clean implementation baseline:
+  `4999b960188ebc1b563f135c8ce07d745a969242`.
+- Its new research, consulted plan, and dedicated handoff are recorded in
+  `docs/research/settings-performance/31-step5b-card-template-image-order-followup-research.md`,
+  `docs/research/settings-performance/32-step5b-card-template-image-order-followup-implementation-plan.md`,
+  and
+  `docs/phase-02/settings-step5b-card-template-image-order-followup-handoff.md`.
 
 ## Outcome
 
@@ -195,6 +204,31 @@ No production normalization was run or prescribed. O2 inline heading editing,
 O3 global explicit-order cutover, and O4 path-aware invalid-field navigation
 remain unimplemented.
 
+## FU01 strict image-order follow-up
+
+The approved `STEP5B-CARD-UX2-FU01-STRICT-IMAGE-ORDER` follow-up repairs the
+shared content-item and content-group output that previously sorted parts and
+then rendered all `media_parts` before every `body_part`.
+
+- A single leading image retains the existing media/body path and row/card
+  geometry.
+- An image configured after another top-level part uses effective stacked/card
+  presentation and renders the canonical `parts` stream once, so the image
+  remains at its exact configured preview and public position.
+- Configured rows metadata remains intact while effective result layout reports
+  cards for the interleaved stack.
+- Family-specific image components preserve the existing preview-disabled
+  links, fallbacks, source/fit/radius diagnostics, loading, and accessibility.
+- Contributor cards, global order compatibility, native scoped movement,
+  sample queries, error targeting, lifecycle, and persistence are unchanged.
+
+Git history shows the media-first split began with the original dynamic item
+renderer `e3c81de` and group renderer `f712791` on 2026-07-07; it was not
+introduced by the last one or two editor revisions. FU02 sample ranking and
+FU03/O4 path-corrected validation remain separate follow-ups. O4 is an internal
+Step 5B bug, not a GitHub issue. The complete future audit inventory is retained
+in research 31; no production normalization was run or prescribed.
+
 ## Requirement classification
 
 | Requirement | Classification | Evidence |
@@ -218,6 +252,9 @@ remain unimplemented.
 | Remembered Builder display mode | Implemented | Browser `localStorage` remembers only `inline`/`slide_over`; server validation normalizes forged values, no settings event fires, and reload acceptance restores inline mode without changing the settings payload. |
 | Logical-start native Builder slide-over | Implemented | Top-level and nested edit actions use native logical-start `3xl` slide-overs with sticky chrome and responsive one/two-column schemas. Browser geometry proves the panel does not cover the logical-end preview; overlay/focus evidence distinguishes visible from non-interactive. |
 | Native Apply-time versus inline live timing | Implemented | Browser evidence proves cloned slide-over edits do not alter preview before Apply and do so in one request after Apply; authoritative inline input refreshes live in one debounced request without opening a modal. No custom mounted-action bridge exists. |
+| Strict item/group image order | Implemented in FU01 | Leading images retain existing geometry; interleaved images render through one ordered stacked `parts` stream in preview and public output. |
+| Native image movement reaches the preview position | Implemented in FU01 | Livewire and Chromium move the image through the owning-Builder modal and prove exact rendered order without settings persistence. |
+| FU02 sample ranking and FU03/O4 error targeting | Deferred by FU01 approval | Neither query ranking nor validation-path behavior changed; both remain in the research 31 follow-up audit inventory. |
 | Localized Builder summaries and legacy diagnostics | Implemented | Formatter tests cover HE/EN no-prefix fallback, registry source/attribute labels, escaped unknown raw values, and nested/top-level preview continuity. |
 | Responsive adjacent/slide-over single mount | Implemented | Authenticated Chromium verifies one active root at 1440 and 1024 CSS px and no duplicate root after both resize directions. |
 | HE/EN, RTL/LTR, logical end, independent scroll | Implemented | Authenticated Chromium verifies Hebrew RTL and English LTR; CSS uses logical layout and both editor/preview scroll containers remain independent. |

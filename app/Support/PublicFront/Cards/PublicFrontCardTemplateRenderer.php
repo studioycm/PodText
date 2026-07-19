@@ -86,14 +86,16 @@ class PublicFrontCardTemplateRenderer
      *     description: string,
      *     title_clamp: int,
      *     description_clamp: int,
+     *     ordered_stack: bool,
      *     controlled_parts: array<int, string>
      * }
      */
     public function contentItemPresentation(PublicFrontCardTemplate $template, string $fallbackLayout = 'cards'): array
     {
         $layout = $template->layout === 'rows' ? 'rows' : $fallbackLayout;
+        $orderedStack = $this->hasInterleavedImage($this->contentItemParts($template));
 
-        if ($template->imageSize === 'large') {
+        if ($template->imageSize === 'large' || $orderedStack) {
             $layout = 'cards';
         }
 
@@ -118,6 +120,7 @@ class PublicFrontCardTemplateRenderer
             'description' => 'text-sm leading-6 text-gray-600 dark:text-gray-300 '.$this->lineClampClass($descriptionClamp),
             'title_clamp' => $titleClamp,
             'description_clamp' => $descriptionClamp,
+            'ordered_stack' => $orderedStack,
             'controlled_parts' => $this->controlledContentItemParts($template),
         ];
     }
@@ -136,12 +139,19 @@ class PublicFrontCardTemplateRenderer
      *     description: string,
      *     title_clamp: int,
      *     description_clamp: int,
+     *     ordered_stack: bool,
      *     controlled_parts: array<int, string>
      * }
      */
     public function contentGroupPresentation(PublicFrontCardTemplate $template): array
     {
         $layout = $template->layout === 'rows' ? 'rows' : 'cards';
+        $orderedStack = $this->hasInterleavedImage($this->contentGroupParts($template));
+
+        if ($orderedStack) {
+            $layout = 'cards';
+        }
+
         $padding = $template->density === 'compact' ? 'p-3' : 'p-4';
         $titleClamp = $this->lineClamp($template, 'title', 2);
         $descriptionClamp = $this->lineClamp($template, 'description', 3);
@@ -168,6 +178,7 @@ class PublicFrontCardTemplateRenderer
             'description' => 'text-sm leading-6 text-gray-600 dark:text-gray-300 '.$this->lineClampClass($descriptionClamp),
             'title_clamp' => $titleClamp,
             'description_clamp' => $descriptionClamp,
+            'ordered_stack' => $orderedStack,
             'controlled_parts' => $this->controlledContentGroupParts($template),
         ];
     }
@@ -271,6 +282,15 @@ class PublicFrontCardTemplateRenderer
         }
 
         return 'aspect-square w-full';
+    }
+
+    /**
+     * @param  array<int, PublicFrontCardPart>  $parts
+     */
+    private function hasInterleavedImage(array $parts): bool
+    {
+        return collect($parts)
+            ->contains(fn (PublicFrontCardPart $part, int $index): bool => $index > 0 && $part->type === 'image');
     }
 
     private function lineClamp(PublicFrontCardTemplate $template, string $type, int $fallback): int

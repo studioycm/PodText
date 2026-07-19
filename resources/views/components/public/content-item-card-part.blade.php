@@ -1,9 +1,14 @@
 @props([
     'part',
+    'presentation',
     'previewMode' => false,
 ])
 
 @switch($part['type'])
+    @case('image')
+        <x-public.content-item-card-image-part :part="$part" :presentation="$presentation" :preview-mode="$previewMode" />
+        @break
+
     @case('part_group')
         <x-public.card-part-shell :part="$part" class="{{ $part['class'] }}">
             <div
@@ -14,7 +19,7 @@
                 data-card-part-group-alignment="{{ $part['alignment'] }}"
             >
                 @foreach($part['children'] as $child)
-                    <x-public.content-item-card-part :part="$child" :preview-mode="$previewMode" />
+                    <x-public.content-item-card-part :part="$child" :presentation="$presentation" :preview-mode="$previewMode" />
                 @endforeach
             </div>
         </x-public.card-part-shell>

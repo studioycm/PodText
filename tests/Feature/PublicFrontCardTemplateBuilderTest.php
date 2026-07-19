@@ -16,6 +16,8 @@ use App\Models\HomepageSection;
 use App\Models\Transcription;
 use App\Models\User;
 use App\Settings\PublicContentSettings;
+use App\Support\PublicFront\Cards\PublicFrontCardTemplate;
+use App\Support\PublicFront\Cards\PublicFrontCardTemplateRenderer;
 use App\Support\PublicFront\Cards\PublicFrontCardTemplateResolver;
 use App\Support\PublicFront\PublicFrontConfigReader;
 use App\Support\PublicFront\PublicFrontConfigValidator;
@@ -742,6 +744,104 @@ it('renders homepage content item template parts in configured order and hides d
         ->assertDontSee('B2 hidden description text.');
 });
 
+it('preserves row presentation when the configured image is leading', function (string $family): void {
+    $source = $family === 'content_group' ? 'content_group' : 'content_item';
+    $template = PublicFrontCardTemplate::fromArray([
+        'key' => "fu01_leading_{$family}",
+        'label' => 'FU01 leading image',
+        'family' => $family,
+        'layout' => 'rows',
+        'density' => 'compact',
+        'image_size' => 'small',
+        'title_size' => 'base',
+        'parts' => [
+            [
+                'type' => 'image',
+                'source' => $source,
+                'attribute' => 'image',
+                'visible' => true,
+                'order' => 10,
+            ],
+            [
+                'type' => 'title',
+                'source' => $source,
+                'attribute' => 'title',
+                'visible' => true,
+                'order' => 20,
+            ],
+        ],
+    ]);
+    $renderer = app(PublicFrontCardTemplateRenderer::class);
+    $presentation = $family === 'content_group'
+        ? $renderer->contentGroupPresentation($template)
+        : $renderer->contentItemPresentation($template);
+
+    expect($presentation['ordered_stack'])->toBeFalse()
+        ->and($presentation['layout'])->toBe('rows');
+})->with([
+    'content item' => ['content_item'],
+    'content group' => ['content_group'],
+]);
+
+it('renders an interleaved content item image in its configured public position', function (): void {
+    $item = createStep3PublicItem(['title' => 'FU01 Ordered Item']);
+
+    saveStep3PublicFrontConfig([
+        'card_templates' => [
+            makeStep10rB2ContentItemTemplate('fu01_ordered_item', [
+                [
+                    'type' => 'custom_text',
+                    'source' => 'custom',
+                    'attribute' => 'text',
+                    'text' => 'FU01 item before image',
+                    'visible' => true,
+                    'order' => 10,
+                ],
+                [
+                    'type' => 'image',
+                    'source' => 'content_item',
+                    'attribute' => 'image',
+                    'visible' => true,
+                    'order' => 20,
+                ],
+                [
+                    'type' => 'title',
+                    'source' => 'content_item',
+                    'attribute' => 'title',
+                    'visible' => true,
+                    'order' => 30,
+                ],
+            ], [
+                'layout' => 'rows',
+                'image_size' => 'small',
+            ]),
+        ],
+    ]);
+
+    HomepageSection::factory()->create([
+        'name' => 'FU01 ordered item section',
+        'type' => HomepageSectionType::Latest,
+        'source_config' => ['source_type' => 'manual_content_items'],
+        'selection_config' => ['include_ids' => [$item->id]],
+        'display_config' => [
+            'template_family' => 'content_item',
+            'template_key' => 'fu01_ordered_item',
+        ],
+    ]);
+
+    $this->get('/')
+        ->assertSuccessful()
+        ->assertSee('data-card-template-key="fu01_ordered_item"', false)
+        ->assertSee('data-card-template-layout="rows"', false)
+        ->assertSee('data-result-layout="cards"', false)
+        ->assertSee('data-card-part-flow="ordered-stack"', false)
+        ->assertSeeInOrder([
+            'FU01 item before image',
+            'data-test="content-item-image"',
+            'data-card-part="title"',
+        ], false);
+});
+
 it('renders m5 labels icons and grouped parts on content item cards', function (): void {
     $item = createStep3PublicItem([
         'title' => 'M5 Label Icon Episode',
@@ -1220,6 +1320,61 @@ it('renders custom content group templates on podcast index and homepage group s
             'B3 Template Podcast',
         ])
         ->assertDontSee('fi-ta-table', false);
+});
+
+it('renders an interleaved content group image in its configured public position', function (): void {
+    $group = ContentGroup::factory()->published()->create([
+        'title' => 'FU01 Ordered Group',
+        'slug' => 'fu01-ordered-group',
+    ]);
+    createStep3PublicItem(['title' => 'FU01 Ordered Group Episode'], $group);
+
+    saveStep3PublicFrontConfig([
+        'card_templates' => [
+            makeStep10rB3ContentGroupTemplate('fu01_ordered_group', [
+                [
+                    'type' => 'custom_text',
+                    'source' => 'custom',
+                    'attribute' => 'text',
+                    'text' => 'FU01 group before image',
+                    'visible' => true,
+                    'order' => 10,
+                ],
+                [
+                    'type' => 'image',
+                    'source' => 'content_group',
+                    'attribute' => 'image',
+                    'visible' => true,
+                    'order' => 20,
+                ],
+                [
+                    'type' => 'title',
+                    'source' => 'content_group',
+                    'attribute' => 'title',
+                    'visible' => true,
+                    'order' => 30,
+                ],
+            ], [
+                'layout' => 'rows',
+                'image_size' => 'small',
+            ]),
+        ],
+        'podcasts_page' => [
+            'template_key' => 'fu01_ordered_group',
+        ],
+    ]);
+
+    $this->get('/podcasts')
+        ->assertSuccessful()
+        ->assertSee('data-card-template-key="fu01_ordered_group"', false)
+        ->assertSee('data-card-template-layout="rows"', false)
+        ->assertSee('data-result-layout="cards"', false)
+        ->assertSee('data-card-part-flow="ordered-stack"', false)
+        ->assertSeeInOrder([
+            'FU01 group before image',
+            'data-card-part="image"',
+            'data-card-part="title"',
+        ], false);
 });
 
 it('renders custom contributor templates on contributor cards and top transcriber selectors', function (): void {

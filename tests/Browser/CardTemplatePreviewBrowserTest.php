@@ -741,3 +741,95 @@ it('remembers inline Builder mode locally and live refreshes authoritative part 
 
     $page->assertNoSmoke()->assertNoJavaScriptErrors();
 });
+
+it('renders an image at the position selected through the native move modal', function (): void {
+    app()->setLocale('en');
+    $settingsBefore = DB::table('settings')
+        ->where('group', PublicContentSettings::group())
+        ->where('name', 'card_templates')
+        ->value('payload');
+    $page = visit(EditCardTemplate::getUrl([
+        'family' => 'content_item',
+        'key' => 'preview_browser',
+    ]))->resize(1440, 900);
+
+    $result = $page->script(<<<'JS'
+        async () => {
+            document.querySelector('[data-test="card-template-builder-mode-inline"]')?.click();
+            const inlineStarted = performance.now();
+
+            while (document.querySelectorAll('[data-sp3c-part-summary]').length > 0 && performance.now() - inlineStarted < 5000) {
+                await new Promise((resolve) => setTimeout(resolve, 50));
+            }
+
+            const imageItem = Array.from(document.querySelectorAll('[data-sp3c-template-parts] .fi-fo-builder-item'))
+                .find((item) => item.querySelector('[data-sp3c-part-heading]')?.textContent.includes('Image'));
+            imageItem?.querySelector('[data-test="card-template-part-move"]')?.click();
+
+            const modalStarted = performance.now();
+            while (document.querySelector('.fi-modal.fi-modal-open') === null && performance.now() - modalStarted < 5000) {
+                await new Promise((resolve) => setTimeout(resolve, 25));
+            }
+
+            const modal = document.querySelector('.fi-modal.fi-modal-open');
+            const input = modal?.querySelector('input');
+            const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set;
+            input?.focus();
+
+            if (input) {
+                setter.call(input, '10');
+                input.dispatchEvent(new Event('input', { bubbles: true }));
+            }
+
+            modal?.querySelector('form.fi-modal-window')?.requestSubmit();
+
+            const movedStarted = performance.now();
+            while (
+                document.querySelector('.fi-modal.fi-modal-open') !== null
+                && performance.now() - movedStarted < 5000
+            ) {
+                await new Promise((resolve) => setTimeout(resolve, 25));
+            }
+
+            const previewStarted = performance.now();
+            let ready = document.querySelector('[data-test="card-template-preview-ready"]');
+            while (ready?.querySelector('[data-card-part-flow="ordered-stack"]') === null && performance.now() - previewStarted < 5000) {
+                await new Promise((resolve) => setTimeout(resolve, 50));
+                ready = document.querySelector('[data-test="card-template-preview-ready"]');
+            }
+
+            const image = ready?.querySelector('[data-card-part="image"]');
+            const title = ready?.querySelector('[data-card-part="title"]');
+            const custom = Array.from(ready?.querySelectorAll('[data-card-part="custom_text"]') ?? [])
+                .find((part) => part.textContent.includes('STEP5B BROWSER PART BEFORE'));
+            const movedImageItem = Array.from(document.querySelectorAll('[data-sp3c-template-parts] .fi-fo-builder-item'))
+                .find((item) => item.querySelector('[data-sp3c-part-heading]')?.textContent.includes('Image'));
+
+            return {
+                image_item_found: Boolean(imageItem),
+                modal_found: Boolean(modal),
+                input_found: Boolean(input),
+                ordered_stack: ready?.querySelector('[data-card-part-flow="ordered-stack"]') !== null,
+                title_before_image: Boolean(title && image && (title.compareDocumentPosition(image) & Node.DOCUMENT_POSITION_FOLLOWING)),
+                custom_before_image: Boolean(custom && image && (custom.compareDocumentPosition(image) & Node.DOCUMENT_POSITION_FOLLOWING)),
+                image_position_badge: movedImageItem?.querySelector('[data-sp3c-part-position-badge]')?.textContent.trim() ?? null,
+                modal_open: Boolean(document.querySelector('.fi-modal.fi-modal-open')),
+            };
+        }
+        JS);
+
+    expect($result['image_item_found'])->toBeTrue(json_encode($result, JSON_THROW_ON_ERROR))
+        ->and($result['modal_found'])->toBeTrue(json_encode($result, JSON_THROW_ON_ERROR))
+        ->and($result['input_found'])->toBeTrue(json_encode($result, JSON_THROW_ON_ERROR))
+        ->and($result['ordered_stack'])->toBeTrue(json_encode($result, JSON_THROW_ON_ERROR))
+        ->and($result['title_before_image'])->toBeTrue(json_encode($result, JSON_THROW_ON_ERROR))
+        ->and($result['custom_before_image'])->toBeTrue(json_encode($result, JSON_THROW_ON_ERROR))
+        ->and($result['image_position_badge'])->toBe('10')
+        ->and($result['modal_open'])->toBeFalse()
+        ->and(DB::table('settings')
+            ->where('group', PublicContentSettings::group())
+            ->where('name', 'card_templates')
+            ->value('payload'))->toBe($settingsBefore);
+
+    $page->assertNoSmoke()->assertNoJavaScriptErrors();
+});
