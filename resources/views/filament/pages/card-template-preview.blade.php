@@ -146,27 +146,18 @@
             @elseif($previewStatus === 'invalid_draft')
                 <div class="rounded-lg bg-danger-50 p-4 text-sm text-danger-800 dark:bg-danger-950 dark:text-danger-200" role="alert" data-test="card-template-preview-invalid">
                     <p>{{ __('admin.settings_sp3c.preview.invalid_draft') }}</p>
-                    @if($modal)
-                        <x-filament::button
-                            type="button"
-                            color="danger"
-                            size="sm"
-                            class="mt-3"
-                            x-on:click="$wire.unmountAction().then(() => setTimeout(() => document.querySelector('[data-sp3c-template-editor] input, [data-sp3c-template-editor] select, [data-sp3c-template-editor] button')?.focus(), 0))"
-                        >
-                            {{ __('admin.settings_sp3c.preview.focus_invalid_field') }}
-                        </x-filament::button>
-                    @else
-                        <x-filament::button
-                            type="button"
-                            color="danger"
-                            size="sm"
-                            class="mt-3"
-                            x-on:click="document.querySelector('[data-sp3c-template-editor] input, [data-sp3c-template-editor] select, [data-sp3c-template-editor] button')?.focus()"
-                        >
-                            {{ __('admin.settings_sp3c.preview.focus_invalid_field') }}
-                        </x-filament::button>
-                    @endif
+                    <x-filament::button
+                        type="button"
+                        color="danger"
+                        size="sm"
+                        class="mt-3"
+                        wire:click="focusInvalidDraftField"
+                        wire:loading.attr="disabled"
+                        wire:target="focusInvalidDraftField"
+                        data-test="card-template-preview-focus-invalid"
+                    >
+                        {{ __('admin.settings_sp3c.preview.focus_invalid_field') }}
+                    </x-filament::button>
                 </div>
             @elseif($previewStatus === 'no_sample')
                 <p class="rounded-lg bg-gray-50 p-4 text-sm text-gray-700 dark:bg-white/5 dark:text-gray-200" data-test="card-template-preview-empty">

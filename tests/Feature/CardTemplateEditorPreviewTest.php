@@ -14,12 +14,15 @@ use App\Settings\PublicContentSettings;
 use App\Support\PublicFront\Cards\PublicFrontCardTemplateRegistry;
 use App\Support\PublicFront\PublicFrontConfigCache;
 use App\Support\PublicFront\PublicFrontConfigRegistry;
+use App\Support\PublicFront\PublicFrontInvalidConfig;
 use App\Support\PublicFront\PublicFrontRenderContext;
 use App\Support\Settings\CardTemplates\CardTemplateDraftNormalizer;
 use App\Support\Settings\CardTemplates\CardTemplateFocusedWriter;
+use App\Support\Settings\CardTemplates\CardTemplateIdentity;
 use App\Support\Settings\CardTemplates\CardTemplatePartSummaryFormatter;
 use App\Support\Settings\CardTemplates\CardTemplatePreviewer;
 use App\Support\Settings\CardTemplates\CardTemplateReferenceScanner;
+use App\Support\Settings\CardTemplates\CardTemplateWriteException;
 use Filament\Actions\Testing\TestAction;
 use Filament\Facades\Filament;
 use Filament\Forms\Components\Builder;
@@ -37,6 +40,14 @@ use Livewire\Livewire;
 use Spatie\LaravelSettings\Events\SettingsSaved;
 use Spatie\LaravelSettings\SettingsContainer;
 use Tests\Support\SettingsSp3cCanaryMeasurement;
+
+class Fu03UnresolvableEditCardTemplate extends EditCardTemplate
+{
+    protected function mountBuilderEditAction(Builder $builder, string $uuid): ?int
+    {
+        return null;
+    }
+}
 
 uses(RefreshDatabase::class);
 
@@ -56,6 +67,54 @@ function step5bEditorTemplate(string $family = 'content_item', string $key = 'pr
     $template = PublicFrontCardTemplateRegistry::defaultTemplateForFamily($family);
     $template['key'] = $key;
     $template['label'] = 'Step 5B preview target';
+
+    return $template;
+}
+
+/**
+ * @return array<string, mixed>
+ */
+function step5bPathCorrectedTemplate(): array
+{
+    $template = step5bEditorTemplate();
+    $template['parts'] = [
+        [
+            'type' => 'custom_text',
+            'source' => 'custom',
+            'attribute' => 'text',
+            'text' => 'Top path target',
+            'label_position' => 'hidden',
+            'visible' => true,
+            'order' => 10,
+            'layout' => 'inline',
+        ],
+        [
+            'type' => 'part_group',
+            'visible' => true,
+            'order' => 20,
+            'layout' => 'stacked',
+            'children' => [
+                [
+                    'type' => 'custom_text',
+                    'source' => 'custom',
+                    'attribute' => 'text',
+                    'text' => 'Nested path other',
+                    'visible' => true,
+                    'order' => 10,
+                    'layout' => 'inline',
+                ],
+                [
+                    'type' => 'custom_text',
+                    'source' => 'custom',
+                    'attribute' => 'text',
+                    'text' => 'Nested path target',
+                    'visible' => true,
+                    'order' => 20,
+                    'layout' => 'inline',
+                ],
+            ],
+        ],
+    ];
 
     return $template;
 }
@@ -769,6 +828,363 @@ it('shows invalid and family-specific empty states without falling back to a sto
         ->assertSet('previewHtml', null);
 });
 
+it('preserves structured validator issues separately from compatibility details', function (): void {
+    $draft = step5bPathCorrectedTemplate();
+    $draft['parts'] = [[
+        'type' => 'custom_text',
+        'data' => [
+            'source' => 'custom',
+            'attribute' => 'text',
+            'text' => 'FU03-PRIVATE-VALUE-'.str_repeat('x', 500),
+            'visible' => true,
+            'layout' => 'inline',
+        ],
+    ]];
+
+    try {
+        app(CardTemplateDraftNormalizer::class)->normalizeCandidate(
+            app(CardTemplateDraftNormalizer::class)->candidate($draft),
+        );
+        $this->fail('Expected structured card-template validation to fail.');
+    } catch (CardTemplateWriteException $exception) {
+        expect($exception->details)->toBe([])
+            ->and($exception->issues)->toHaveCount(1)
+            ->and($exception->issues[0])->toBeInstanceOf(PublicFrontInvalidConfig::class)
+            ->and($exception->issues[0]->path)->toBe('card_templates.0.parts.0.data.text')
+            ->and($exception->issues[0]->reason)->toBe('string_too_long')
+            ->and($exception->issues[0]->valuePreview)->toStartWith('FU03-PRIVATE-VALUE-');
+    }
+});
+
+it('maps reordered top and nested validator positions to current inline builder uuids', function (): void {
+    step5bEditorSaveSetting(PublicContentSettings::class, 'card_templates', [step5bPathCorrectedTemplate()]);
+    $component = Livewire::test(EditCardTemplate::class, [
+        'family' => 'content_item',
+        'key' => 'preview_target',
+    ])->call('setBuilderDisplayMode', 'inline');
+    $builder = $component->instance()->getSchemaComponent('form.parts');
+    $parts = $builder->getRawState();
+    $customTextUuid = collect($parts)->search(fn (array $part): bool => $part['type'] === 'custom_text');
+    $groupUuid = collect($parts)->search(fn (array $part): bool => $part['type'] === 'part_group');
+
+    expect($customTextUuid)->toBeString()
+        ->and($groupUuid)->toBeString();
+
+    $component->set('data.parts', [
+        $groupUuid => $parts[$groupUuid],
+        $customTextUuid => $parts[$customTextUuid],
+    ]);
+    $component
+        ->set("data.parts.{$customTextUuid}.data._show_label", false)
+        ->set("data.parts.{$customTextUuid}.data.label_position", 'hidden')
+        ->set("data.parts.{$customTextUuid}.data.label", str_repeat('L', 81))
+        ->call('focusInvalidDraftField');
+
+    $topStatePath = "data.parts.{$customTextUuid}.data.label";
+    $component
+        ->assertHasErrors($topStatePath)
+        ->assertSet("data.parts.{$customTextUuid}.data._show_label", true)
+        ->assertSet("data.parts.{$customTextUuid}.data.label_position", 'hidden')
+        ->assertSet('mountedActions', [])
+        ->assertDispatched('form-validation-error')
+        ->assertDispatched('card-template-validation-target', statePath: $topStatePath);
+
+    expect($component->instance()->getErrorBag()->has('data.key'))->toBeFalse();
+
+    $component->set("data.parts.{$customTextUuid}.data.label", null);
+    $builder = $component->instance()->getSchemaComponent('form.parts');
+    $groupSchema = $builder->getChildSchema($groupUuid);
+    $childrenBuilder = collect($groupSchema->getFlatComponents(withHidden: true))
+        ->first(fn ($field): bool => $field instanceof Builder && $field->getName() === 'children');
+    $children = $childrenBuilder->getRawState();
+    [$firstChildUuid, $secondChildUuid] = array_keys($children);
+    $component
+        ->set("data.parts.{$groupUuid}.data.children", [
+            $secondChildUuid => $children[$secondChildUuid],
+            $firstChildUuid => $children[$firstChildUuid],
+        ])
+        ->set("data.parts.{$groupUuid}.data.children.{$firstChildUuid}.data.text", str_repeat('N', 501));
+
+    try {
+        $normalizer = app(CardTemplateDraftNormalizer::class);
+        $normalizer->normalizeCandidate($normalizer->candidate($component->get('data')));
+        $this->fail('Expected reordered nested validation to fail.');
+    } catch (CardTemplateWriteException $exception) {
+        expect($exception->issues[0]->path)
+            ->toBe('card_templates.0.parts.0.data.children.1.data.text');
+    }
+
+    $component
+        ->call('focusInvalidDraftField');
+
+    $nestedStatePath = "data.parts.{$groupUuid}.data.children.{$firstChildUuid}.data.text";
+    $component
+        ->assertHasErrors($nestedStatePath)
+        ->assertHasNoErrors("data.parts.{$groupUuid}.data.children.{$secondChildUuid}.data.text")
+        ->assertSet('mountedActions', [])
+        ->assertDispatched('card-template-validation-target', statePath: $nestedStatePath);
+
+    expect($component->instance()->getErrorBag()->has('data.key'))->toBeFalse();
+});
+
+it('mounts exact top and nested native builder actions before slide-over errors', function (): void {
+    step5bEditorSaveSetting(PublicContentSettings::class, 'card_templates', [step5bPathCorrectedTemplate()]);
+    $component = Livewire::test(EditCardTemplate::class, [
+        'family' => 'content_item',
+        'key' => 'preview_target',
+    ]);
+    $builder = $component->instance()->getSchemaComponent('form.parts');
+    $parts = $builder->getRawState();
+    $customTextUuid = collect($parts)->search(fn (array $part): bool => $part['type'] === 'custom_text');
+    $groupUuid = collect($parts)->search(fn (array $part): bool => $part['type'] === 'part_group');
+
+    $component
+        ->set("data.parts.{$customTextUuid}.data._show_label", false)
+        ->set("data.parts.{$customTextUuid}.data.label_position", 'hidden')
+        ->set("data.parts.{$customTextUuid}.data.label", str_repeat('T', 81))
+        ->call('focusInvalidDraftField')
+        ->assertHasErrors('mountedActions.0.data.label')
+        ->assertSet('mountedActions.0.name', 'edit')
+        ->assertSet('mountedActions.0.arguments.item', $customTextUuid)
+        ->assertSet('mountedActions.0.context.schemaComponent', 'form.parts')
+        ->assertSet('mountedActions.0.data._show_label', true)
+        ->assertSet("data.parts.{$customTextUuid}.data._show_label", false)
+        ->assertSet("data.parts.{$customTextUuid}.data.label_position", 'hidden')
+        ->assertDispatched(
+            'card-template-validation-target',
+            statePath: 'mountedActions.0.data.label',
+        );
+
+    expect($component->instance()->getErrorBag()->has('data.key'))->toBeFalse();
+
+    $component->unmountAction();
+    $component
+        ->set("data.parts.{$customTextUuid}.data.label", null)
+        ->assertSet('mountedActions', []);
+    $builder = $component->instance()->getSchemaComponent('form.parts');
+    $groupSchema = $builder->getChildSchema($groupUuid);
+    $childrenBuilder = collect($groupSchema->getFlatComponents(withHidden: true))
+        ->first(fn ($field): bool => $field instanceof Builder && $field->getName() === 'children');
+    $inlineChildUuid = array_key_first($childrenBuilder->getRawState());
+    $component
+        ->set("data.parts.{$groupUuid}.data.children.{$inlineChildUuid}.data.text", str_repeat('C', 501))
+        ->call('focusInvalidDraftField')
+        ->assertSet('mountedActions.0.name', 'edit')
+        ->assertSet('mountedActions.0.arguments.item', $groupUuid)
+        ->assertSet('mountedActions.0.context.schemaComponent', 'form.parts')
+        ->assertSet('mountedActions.1.name', 'edit')
+        ->assertHasErrors('mountedActions.1.data.text')
+        ->assertDispatched(
+            'card-template-validation-target',
+            statePath: 'mountedActions.1.data.text',
+        );
+
+    $parentSchema = $component->instance()->getSchema('mountedActionSchema0');
+    $mountedChildrenBuilder = $parentSchema->getComponentByStatePath(
+        'mountedActions.0.data.children',
+        withHidden: true,
+        withAbsoluteStatePath: true,
+    );
+    $mountedChildUuid = array_key_first($mountedChildrenBuilder->getRawState());
+
+    expect($component->get('mountedActions.1.arguments.item'))->toBe($mountedChildUuid)
+        ->and($component->get('mountedActions.1.context.schemaComponent'))
+        ->toBe($mountedChildrenBuilder->getKey())
+        ->and($component->instance()->getErrorBag()->has('data.key'))->toBeFalse();
+
+    $component->unmountAction()->unmountAction()->assertSet('mountedActions', []);
+});
+
+it('mounts the verified parent action for a nested slide-over fallback', function (): void {
+    step5bEditorSaveSetting(PublicContentSettings::class, 'card_templates', [step5bPathCorrectedTemplate()]);
+    $component = Livewire::test(EditCardTemplate::class, [
+        'family' => 'content_item',
+        'key' => 'preview_target',
+    ]);
+    $builder = $component->instance()->getSchemaComponent('form.parts');
+    $groupUuid = collect($builder->getRawState())
+        ->search(fn (array $part): bool => $part['type'] === 'part_group');
+    $writer = Mockery::mock(CardTemplateFocusedWriter::class);
+    $writer->shouldReceive('edit')
+        ->once()
+        ->andThrow(CardTemplateWriteException::validation([
+            PublicFrontInvalidConfig::make(
+                'card_templates.0.parts.1.data.children.99.data.text',
+                'forged_issue',
+                'FU03-NESTED-FALLBACK-VALUE',
+            ),
+        ]));
+    app()->instance(CardTemplateFocusedWriter::class, $writer);
+
+    $component
+        ->call('save')
+        ->assertSet('mountedActions.0.name', 'edit')
+        ->assertSet('mountedActions.0.arguments.item', $groupUuid)
+        ->assertHasErrors('mountedActions.0.data.children')
+        ->assertDispatched(
+            'card-template-validation-target',
+            statePath: 'mountedActions.0.data.children',
+        );
+
+    expect($component->instance()->getErrorBag()->has('data.key'))->toBeFalse()
+        ->and($component->instance()->getErrorBag()->first('mountedActions.0.data.children'))
+        ->not->toContain('FU03-NESTED-FALLBACK-VALUE');
+});
+
+it('degrades to the visible top builder when a slide-over action cannot mount', function (): void {
+    step5bEditorSaveSetting(PublicContentSettings::class, 'card_templates', [step5bPathCorrectedTemplate()]);
+    $component = Livewire::test(Fu03UnresolvableEditCardTemplate::class, [
+        'family' => 'content_item',
+        'key' => 'preview_target',
+    ]);
+    $builder = $component->instance()->getSchemaComponent('form.parts');
+    $customTextUuid = collect($builder->getRawState())
+        ->search(fn (array $part): bool => $part['type'] === 'custom_text');
+
+    $component
+        ->set("data.parts.{$customTextUuid}.data.text", str_repeat('F', 501))
+        ->call('focusInvalidDraftField')
+        ->assertSet('mountedActions', [])
+        ->assertHasErrors('data.parts')
+        ->assertDispatched('card-template-validation-target', statePath: 'data.parts');
+
+    expect($component->instance()->getErrorBag()->has('data.key'))->toBeFalse();
+});
+
+it('prefers an exact structured target over an earlier safe fallback', function (): void {
+    step5bEditorSaveSetting(PublicContentSettings::class, 'card_templates', [step5bPathCorrectedTemplate()]);
+    $component = Livewire::test(EditCardTemplate::class, [
+        'family' => 'content_item',
+        'key' => 'preview_target',
+    ])->call('setBuilderDisplayMode', 'inline');
+    $writer = Mockery::mock(CardTemplateFocusedWriter::class);
+    $writer->shouldReceive('edit')
+        ->once()
+        ->andThrow(CardTemplateWriteException::validation([
+            PublicFrontInvalidConfig::make('card_templates.0.parts.99.data.text', 'stale_position'),
+            PublicFrontInvalidConfig::make('card_templates.0.label', 'string_too_long'),
+        ]));
+    app()->instance(CardTemplateFocusedWriter::class, $writer);
+
+    $component
+        ->call('save')
+        ->assertHasErrors('data.label')
+        ->assertHasNoErrors('data.parts')
+        ->assertHasNoErrors('data.key')
+        ->assertDispatched('card-template-validation-target', statePath: 'data.label');
+});
+
+it('falls back to the verified owning builder for an unsupported forged field path', function (): void {
+    step5bEditorSaveSetting(PublicContentSettings::class, 'card_templates', [step5bPathCorrectedTemplate()]);
+    $component = Livewire::test(EditCardTemplate::class, [
+        'family' => 'content_item',
+        'key' => 'preview_target',
+    ]);
+    $builder = $component->instance()->getSchemaComponent('form.parts');
+    $uuid = array_key_first($builder->getRawState());
+    $data = $component->get('data');
+    $data['parts'][$uuid]['data']['evil\"] [data-test="forged'] = 'FU03-VALUE-MUST-NOT-BECOME-A-TARGET';
+
+    $component
+        ->set('data', $data)
+        ->call('focusInvalidDraftField')
+        ->assertHasErrors('data.parts')
+        ->assertSet('mountedActions', [])
+        ->assertDispatched('card-template-validation-target', statePath: 'data.parts');
+
+    expect($component->instance()->getErrorBag()->has('data.key'))->toBeFalse()
+        ->and($component->instance()->getErrorBag()->first('data.parts'))
+        ->not->toContain('FU03-VALUE-MUST-NOT-BECOME-A-TARGET');
+});
+
+it('routes a root issue to its real field without mounting a builder action', function (): void {
+    step5bEditorSaveSetting(PublicContentSettings::class, 'card_templates', [step5bPathCorrectedTemplate()]);
+    $component = Livewire::test(EditCardTemplate::class, [
+        'family' => 'content_item',
+        'key' => 'preview_target',
+    ])
+        ->set('data.label', str_repeat('R', CardTemplateIdentity::LABEL_MAX_LENGTH + 1))
+        ->call('focusInvalidDraftField')
+        ->assertHasErrors('data.label')
+        ->assertSet('mountedActions', [])
+        ->assertDispatched('card-template-validation-target', statePath: 'data.label');
+
+    expect($component->instance()->getErrorBag()->has('data.key'))->toBeFalse();
+});
+
+it('uses deterministic builder fallback for malformed stale and unsupported issue paths', function (
+    string $issuePath,
+    string $fallbackOwner,
+): void {
+    step5bEditorSaveSetting(PublicContentSettings::class, 'card_templates', [step5bPathCorrectedTemplate()]);
+    $component = Livewire::test(EditCardTemplate::class, [
+        'family' => 'content_item',
+        'key' => 'preview_target',
+    ])->call('setBuilderDisplayMode', 'inline');
+    $builder = $component->instance()->getSchemaComponent('form.parts');
+    $parts = $builder->getRawState();
+    $groupUuid = collect($parts)->search(fn (array $part): bool => $part['type'] === 'part_group');
+    $groupSchema = $builder->getChildSchema($groupUuid);
+    $childrenBuilder = collect($groupSchema->getFlatComponents(withHidden: true))
+        ->first(fn ($field): bool => $field instanceof Builder && $field->getName() === 'children');
+    $expectedStatePath = $fallbackOwner === 'children'
+        ? "data.parts.{$groupUuid}.data.children"
+        : 'data.parts';
+    $writer = Mockery::mock(CardTemplateFocusedWriter::class);
+    $writer->shouldReceive('edit')
+        ->once()
+        ->andThrow(CardTemplateWriteException::validation([
+            PublicFrontInvalidConfig::make($issuePath, 'forged_issue', 'FU03-FORGED-VALUE'),
+        ]));
+    app()->instance(CardTemplateFocusedWriter::class, $writer);
+
+    $component
+        ->call('save')
+        ->assertHasErrors($expectedStatePath)
+        ->assertSet('mountedActions', [])
+        ->assertDispatched('card-template-validation-target', statePath: $expectedStatePath);
+
+    expect($component->instance()->getErrorBag()->has('data.key'))->toBeFalse()
+        ->and($component->instance()->getErrorBag()->first($expectedStatePath))
+        ->not->toContain('FU03-FORGED-VALUE')
+        ->and($childrenBuilder)->toBeInstanceOf(Builder::class);
+})->with([
+    'malformed top position' => ['card_templates.0.parts.not-a-position.data.text', 'parts'],
+    'out of range top position' => ['card_templates.0.parts.99.data.text', 'parts'],
+    'children on the wrong owner type' => ['card_templates.0.parts.0.data.children.0.data.text', 'parts'],
+    'unsupported nested depth' => ['card_templates.0.parts.1.data.children.0.data.children.0.data.text', 'children'],
+]);
+
+it('routes structured save failures without targeting the template key', function (): void {
+    step5bEditorSaveSetting(PublicContentSettings::class, 'card_templates', [step5bPathCorrectedTemplate()]);
+    $component = Livewire::test(EditCardTemplate::class, [
+        'family' => 'content_item',
+        'key' => 'preview_target',
+    ])->call('setBuilderDisplayMode', 'inline');
+    $builder = $component->instance()->getSchemaComponent('form.parts');
+    $uuid = array_key_first($builder->getRawState());
+    $writer = Mockery::mock(CardTemplateFocusedWriter::class);
+    $writer->shouldReceive('edit')
+        ->once()
+        ->andThrow(CardTemplateWriteException::validation([
+            PublicFrontInvalidConfig::make(
+                'card_templates.0.parts.0.data.text',
+                'string_too_long',
+                'FU03-SAVE-VALUE',
+            ),
+        ]));
+    app()->instance(CardTemplateFocusedWriter::class, $writer);
+
+    $statePath = "data.parts.{$uuid}.data.text";
+    $component
+        ->call('save')
+        ->assertHasErrors($statePath)
+        ->assertDispatched('card-template-validation-target', statePath: $statePath);
+
+    expect($component->instance()->getErrorBag()->has('data.key'))->toBeFalse()
+        ->and($component->instance()->getErrorBag()->first($statePath))->not->toContain('FU03-SAVE-VALUE');
+});
+
 it('never fetches or serializes protected parts for a restricted preview shell', function (): void {
     $author = Author::factory()->create(['name' => 'Restricted Preview Contributor']);
     $group = ContentGroup::factory()->published()->create(['title' => 'Restricted Preview Group']);
@@ -808,6 +1224,8 @@ it('never fetches or serializes protected parts for a restricted preview shell',
     $component
         ->assertDontSee(__('admin.settings_sp3c.preview.choose_sample'))
         ->assertDontSeeHtml('data-card-template-preview-sample-select')
+        ->call('focusInvalidDraftField')
+        ->assertSet('mountedActions', [])
         ->call('selectPreviewSample', $item->getKey())
         ->assertSet('previewControls.sample_id', null)
         ->call('callSchemaComponentMethod', 'previewSampleForm.sample_id', 'getSearchResultsForJs', ['Restricted'])

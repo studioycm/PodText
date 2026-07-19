@@ -3,6 +3,7 @@
 namespace App\Support\Settings\CardTemplates;
 
 use App\Support\PublicFront\PublicFrontConfigValidator;
+use App\Support\PublicFront\PublicFrontInvalidConfig;
 
 class CardTemplateDraftNormalizer
 {
@@ -37,7 +38,13 @@ class CardTemplateDraftNormalizer
         $label = $candidate['label'] ?? null;
 
         if (! is_string($label) || mb_strlen($label) > CardTemplateIdentity::LABEL_MAX_LENGTH) {
-            throw CardTemplateWriteException::named('validation');
+            throw CardTemplateWriteException::validation([
+                PublicFrontInvalidConfig::make(
+                    'card_templates.0.label',
+                    is_string($label) ? 'string_too_long' : 'expected_string',
+                    $label,
+                ),
+            ]);
         }
 
         $result = $this->validator->validateGroups([
@@ -46,12 +53,7 @@ class CardTemplateDraftNormalizer
         $templates = $result->group('card_templates');
 
         if ($result->hasInvalidConfig() || count($templates) !== 1) {
-            throw CardTemplateWriteException::named(
-                'validation',
-                collect($result->invalidConfigArray())
-                    ->map(fn (array $issue): string => "{$issue['path']}: {$issue['reason']}")
-                    ->all(),
-            );
+            throw CardTemplateWriteException::validation($result->invalidConfig());
         }
 
         return $templates[0];

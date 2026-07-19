@@ -50,6 +50,15 @@
   `docs/research/settings-performance/34-step5b-card-template-renderer-overhaul-implementation-plan.md`,
   and
   `docs/phase-02/settings-step5b-card-template-preview-lg-column-handoff.md`.
+- FU03 path-corrected validation audit:
+  `LS-20260719-STEP5B-CARD-UX2-FU03-PATH-CORRECTED-01`; approved option:
+  `STEP5B-CARD-UX2-FU03-PATH-CORRECTED-CLOSURE`; clean implementation baseline:
+  `206963998b9513ea345ef657df7697b2901a7af3`.
+- Its research, consulted plan, and dedicated handoff are recorded in
+  `docs/research/settings-performance/39-step5b-card-template-path-corrected-validation-research.md`,
+  `docs/research/settings-performance/40-step5b-card-template-path-corrected-validation-implementation-plan.md`,
+  and
+  `docs/phase-02/settings-step5b-card-template-path-corrected-validation-handoff.md`.
 
 ## Outcome
 
@@ -237,12 +246,12 @@ then rendered all `media_parts` before every `body_part`.
 
 Git history shows the media-first split began with the original dynamic item
 renderer `e3c81de` and group renderer `f712791` on 2026-07-07; it was not
-introduced by the last one or two editor revisions. FU02 sample ranking is now
-complete. A fresh read-only Mini 4 FU03/O4 path-corrected audit is the next
-program action; its implementation is unapproved, and FU04–FU06 remain
-sequentially later and unapproved. O4 is an internal Step 5B bug, not a GitHub
-issue. The complete future audit inventory is retained in research 31; no
-production normalization was run or prescribed.
+introduced by the last one or two editor revisions. FU02 sample ranking and
+FU03/O4 path-corrected validation are now complete. FU04 order compatibility is
+the next sequential program action and remains unapproved; FU05–FU06 remain
+later and unapproved. FU03/O4 was an internal Step 5B bug, not a GitHub issue.
+The complete future audit inventory is retained in research 31; no production
+normalization was run or prescribed.
 
 ## LG preview-shell O1
 
@@ -299,7 +308,7 @@ settings-lifecycle, persistence, database, or production change was made.
 | Strict item/group image order | Implemented in FU01 | Leading images retain existing geometry; interleaved images render through one ordered stacked `parts` stream in preview and public output. |
 | Native image movement reaches the preview position | Implemented in FU01 | Livewire and Chromium move the image through the owning-Builder modal and prove exact rendered order without settings persistence. |
 | FU02 sample ranking | Implemented in FU02 | Automatic, preload, search, labels, and rendered source share own local/external, permitted inherited cover, configured family/global default, then none; exact ties/caps are pinned. |
-| FU03/O4 error targeting | Deferred | Validation-path behavior is unchanged and remains an internal Step 5B bug in the research-31 follow-up inventory. |
+| FU03/O4 error targeting | Implemented in FU03 | Structured issues map strict root/top/nested positional paths to current UUID-owned inline or mounted native Builder state, with transient reveal, exact focus, verified fallback, one request, restricted safety, and no key/slug mis-target. |
 | Localized Builder summaries and legacy diagnostics | Implemented | Formatter tests cover HE/EN no-prefix fallback, registry source/attribute labels, escaped unknown raw values, and nested/top-level preview continuity. |
 | Responsive adjacent/slide-over single mount | Implemented | Authenticated Chromium verifies the exact 767/768/1023 slide-over and 1024/1279/1280 adjacent matrix; mutation-record transition instrumentation records a peak of one root, including rapid resize-back. |
 | HE/EN, RTL/LTR, logical end, independent scroll | Implemented | Authenticated Chromium verifies Hebrew RTL and English LTR at the 1023/1024 boundary; exact-width CSS geometry keeps both surfaces at logical end and the settled document overflow-free. |
@@ -957,8 +966,28 @@ dispositions, deferred inventory, final gates, and implementation hash
 `23c3ac9e9c780e3f2b8882d5f9c4770f3cbb7f1e` are canonical in
 `docs/phase-02/settings-step5b-card-template-sample-ranking-parity-handoff.md`.
 O1/O2 shell, focus, single-root, geometry, diagnostics, theme-source, and
-navigation contracts remain unchanged and passed the combined regression. The
-next program action is the fresh read-only Mini 4 FU03 audit
-`LS-20260719-STEP5B-CARD-UX2-FU03-PATH-CORRECTED-01`, with stable option ID
-`STEP5B-CARD-UX2-FU03-PATH-CORRECTED-CLOSURE`; no FU03 implementation approval
-has been given, and FU04–FU06 remain sequentially later and unapproved.
+navigation contracts remain unchanged and passed the combined regression.
+FU03 is now complete; FU04–FU06 remain sequentially later and unapproved.
+
+## FU03 path-corrected validation continuation
+
+The directly approved
+`STEP5B-CARD-UX2-FU03-PATH-CORRECTED-CLOSURE` continuation is complete in the
+current run under audit
+`LS-20260719-STEP5B-CARD-UX2-FU03-PATH-CORRECTED-01`. Structured validator
+issues now survive the draft normalizer and write exception. Strict root,
+top-level, and one-level nested positional paths resolve against current
+UUID-owned Builder state after hydration and reordering. Inline targets expand
+and focus exactly; slide-over targets mount their verified native owner actions
+before error placement. Only necessary transient label/icon controls reveal,
+and malformed, stale, unmountable, or focus-impossible targets use deterministic
+verified-Builder or visible-control fallback without key/slug targeting.
+
+The complete contract, mapping semantics, authenticated Hebrew RTL and English
+LTR browser evidence, one-request/restricted/no-persistence budgets, command
+history, review dispositions, deferred inventory, final serial gate of 809
+tests / 11,807 assertions, and pending implementation hash are canonical in
+`docs/phase-02/settings-step5b-card-template-path-corrected-validation-handoff.md`.
+O1/O2/FU02 and `d8f42da` navigation remain unchanged. FU04 order-compatibility
+closure is the next sequential action and remains unapproved; FU05–FU06 remain
+later and unapproved.

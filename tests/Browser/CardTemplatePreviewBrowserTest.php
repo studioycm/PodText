@@ -112,6 +112,48 @@ function step5bO2BrowserTemplate(string $family, string $key, string $layout, ar
 }
 
 /**
+ * @return array<string, mixed>
+ */
+function step5bFu03BrowserTemplate(): array
+{
+    return [
+        'key' => 'preview_browser',
+        'label' => 'FU03 browser template',
+        'family' => 'content_item',
+        'layout' => 'cards',
+        'density' => 'comfortable',
+        'image_size' => 'medium',
+        'title_size' => 'base',
+        'parts' => [
+            [
+                'type' => 'custom_text',
+                'source' => 'custom',
+                'attribute' => 'text',
+                'text' => 'FU03 TOP BROWSER TARGET',
+                'visible' => true,
+                'order' => 10,
+                'layout' => 'inline',
+            ],
+            [
+                'type' => 'part_group',
+                'visible' => true,
+                'order' => 20,
+                'layout' => 'stacked',
+                'children' => [[
+                    'type' => 'custom_text',
+                    'source' => 'custom',
+                    'attribute' => 'text',
+                    'text' => 'FU03 NESTED BROWSER TARGET',
+                    'visible' => true,
+                    'order' => 10,
+                    'layout' => 'inline',
+                ]],
+            ],
+        ],
+    ];
+}
+
+/**
  * @return array{item: ContentItem, group: ContentGroup}
  */
 function step5bO2BrowserSurfaces(): array
@@ -1786,6 +1828,9 @@ it('keeps automatic preload search and effective image ranking aligned in the au
             return {
                 restricted: Boolean(document.querySelector('[data-test="card-template-preview-restricted"]')),
                 selector_count: document.querySelectorAll('[data-card-template-preview-sample-select]').length,
+                builder_count: document.querySelectorAll('[data-sp3c-template-parts]').length,
+                focus_invalid_count: document.querySelectorAll('[data-test="card-template-preview-focus-invalid"]').length,
+                open_modals: document.querySelectorAll('.fi-modal.fi-modal-open').length,
                 secret_visible: document.body.innerText.includes('FU02-PROTECTED-BROWSER-SECRET'),
                 preview_roots: document.querySelectorAll('[data-card-template-preview-root]').length,
                 direction: document.documentElement.dir,
@@ -1797,6 +1842,9 @@ it('keeps automatic preload search and effective image ranking aligned in the au
 
     expect($restricted['restricted'])->toBeTrue(json_encode($restricted, JSON_THROW_ON_ERROR))
         ->and($restricted['selector_count'])->toBe(0)
+        ->and($restricted['builder_count'])->toBe(0)
+        ->and($restricted['focus_invalid_count'])->toBe(0)
+        ->and($restricted['open_modals'])->toBe(0)
         ->and($restricted['secret_visible'])->toBeFalse()
         ->and($restricted['preview_roots'])->toBe(1)
         ->and($restricted['direction'])->toBe('ltr')
@@ -2198,6 +2246,622 @@ it('renders an image at the position selected through the native move modal', fu
         ->and($result['custom_before_image'])->toBeTrue(json_encode($result, JSON_THROW_ON_ERROR))
         ->and($result['image_position_badge'])->toBe('10')
         ->and($result['modal_open'])->toBeFalse()
+        ->and(DB::table('settings')
+            ->where('group', PublicContentSettings::group())
+            ->where('name', 'card_templates')
+            ->value('payload'))->toBe($settingsBefore);
+
+    $page->assertNoSmoke()->assertNoJavaScriptErrors();
+});
+
+it('focuses reordered and collapsed inline top nested and fallback validation owners', function (): void {
+    app()->setLocale('he');
+    step5bFu02BrowserSaveSetting(
+        PublicContentSettings::class,
+        'card_templates',
+        [step5bFu03BrowserTemplate()],
+    );
+    $settingsBefore = DB::table('settings')
+        ->where('group', PublicContentSettings::group())
+        ->where('name', 'card_templates')
+        ->value('payload');
+    $page = visit(EditCardTemplate::getUrl([
+        'family' => 'content_item',
+        'key' => 'preview_browser',
+    ]))->resize(1440, 900);
+
+    $evidence = $page->script(<<<'JS'
+        async () => {
+            const sleep = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds));
+            const waitFor = async (callback, timeout = 7000) => {
+                const started = performance.now();
+                let result = callback();
+
+                while (! result && performance.now() - started < timeout) {
+                    await sleep(50);
+                    result = callback();
+                }
+
+                return result;
+            };
+            const bindingFor = (element) => Array.from(element?.attributes ?? [])
+                .find((attribute) => attribute.name.startsWith('wire:model'))?.value ?? null;
+            const setInput = (input, value) => {
+                const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set;
+                setter.call(input, value);
+                input.dispatchEvent(new Event('input', { bubbles: true }));
+            };
+            const statePathForWrapper = (wrapper) => {
+                const schemaComponent = wrapper?.closest('[x-data]');
+
+                return schemaComponent ? Alpine.$data(schemaComponent)?.$statePath ?? null : null;
+            };
+            const focusedStatePath = () => statePathForWrapper(document.activeElement?.closest('[data-field-wrapper]'));
+            const errorForStatePath = (statePath) => Array.from(document.querySelectorAll('[data-validation-error]'))
+                .find((error) => statePathForWrapper(error.closest('[data-field-wrapper]')) === statePath);
+            const countFocusRequests = async (activate, ready) => {
+                const originalFetch = window.fetch;
+                const requestUrls = [];
+                window.fetch = (...arguments_) => {
+                    requestUrls.push(String(arguments_[0]?.url ?? arguments_[0]));
+
+                    return originalFetch(...arguments_);
+                };
+                activate();
+                await waitFor(ready);
+                await sleep(100);
+                window.fetch = originalFetch;
+
+                return requestUrls.filter((url) => url.includes('/livewire')).length;
+            };
+
+            document.querySelector('[data-test="card-template-builder-mode-inline"]')?.click();
+            await waitFor(() => document.querySelectorAll('[data-sp3c-part-summary]').length === 0);
+
+            let topInput = Array.from(document.querySelectorAll('[data-sp3c-template-parts] input'))
+                .find((input) => input.value === 'FU03 TOP BROWSER TARGET');
+            let topItem = topInput?.closest('.fi-fo-builder-item');
+            topItem?.querySelector('[data-test="card-template-part-move"]')?.click();
+            const moveModal = await waitFor(() => document.querySelector('.fi-modal.fi-modal-open'));
+            const moveInput = moveModal?.querySelector('input');
+
+            if (moveInput) {
+                setInput(moveInput, '2');
+                moveModal.querySelector('form.fi-modal-window')?.requestSubmit();
+            }
+
+            await waitFor(() => document.querySelector('.fi-modal.fi-modal-open') === null);
+            topInput = Array.from(document.querySelectorAll('[data-sp3c-template-parts] input'))
+                .find((input) => input.value === 'FU03 TOP BROWSER TARGET');
+            topItem = topInput?.closest('.fi-fo-builder-item');
+            const topBinding = bindingFor(topInput);
+            const topUuid = topBinding?.split('.')[2] ?? null;
+            const topPosition = topItem?.querySelector('[data-sp3c-part-position-badge]')?.textContent.trim() ?? null;
+
+            if (topItem && ! topItem.classList.contains('fi-collapsed')) {
+                topItem.querySelector(':scope > .fi-fo-builder-item-header')?.click();
+            }
+
+            setInput(topInput, 'T'.repeat(501));
+            await waitFor(() => document.querySelector('[data-card-template-preview-invalid]'));
+            const topFocusRequests = await countFocusRequests(
+                () => document.querySelector('[data-test="card-template-preview-focus-invalid"]')?.click(),
+                () => errorForStatePath(topBinding) && focusedStatePath() === topBinding,
+            );
+            topItem = Array.from(document.querySelectorAll('[data-sp3c-template-parts] input'))
+                .find((input) => bindingFor(input) === topBinding)
+                ?.closest('.fi-fo-builder-item');
+            const topError = errorForStatePath(topBinding);
+            const topEvidence = {
+                validator_path: 'card_templates.0.parts.1.data.text',
+                state_path: topBinding,
+                uuid: topUuid,
+                position_badge: topPosition,
+                expanded: ! (topItem?.classList.contains('fi-collapsed') ?? true),
+                error_visible: Boolean(topError && topError.getClientRects().length),
+                focused_state_path: focusedStatePath(),
+                focused_tag: document.activeElement?.tagName ?? null,
+                requests: topFocusRequests,
+                modal_open: Boolean(document.querySelector('.fi-modal.fi-modal-open')),
+            };
+
+            topInput = Array.from(document.querySelectorAll('[data-sp3c-template-parts] input'))
+                .find((input) => bindingFor(input) === topBinding);
+            setInput(topInput, 'FU03 TOP BROWSER TARGET');
+            await waitFor(() => document.querySelector('[data-test="card-template-preview-ready"]'));
+
+            let nestedInput = Array.from(document.querySelectorAll('[data-sp3c-template-parts] input'))
+                .find((input) => input.value === 'FU03 NESTED BROWSER TARGET');
+            const nestedBinding = bindingFor(nestedInput);
+            const nestedUuid = nestedBinding?.split('.')[5] ?? null;
+            let nestedItem = nestedInput?.closest('.fi-fo-builder-item');
+            let groupItem = nestedItem?.parentElement?.closest('.fi-fo-builder-item');
+
+            if (nestedItem && ! nestedItem.classList.contains('fi-collapsed')) {
+                nestedItem.querySelector(':scope > .fi-fo-builder-item-header')?.click();
+            }
+
+            if (groupItem && ! groupItem.classList.contains('fi-collapsed')) {
+                groupItem.querySelector(':scope > .fi-fo-builder-item-header')?.click();
+            }
+
+            setInput(nestedInput, 'N'.repeat(501));
+            await waitFor(() => document.querySelector('[data-card-template-preview-invalid]'));
+            const nestedFocusRequests = await countFocusRequests(
+                () => document.querySelector('[data-test="card-template-preview-focus-invalid"]')?.click(),
+                () => errorForStatePath(nestedBinding) && focusedStatePath() === nestedBinding,
+            );
+            nestedInput = Array.from(document.querySelectorAll('[data-sp3c-template-parts] input'))
+                .find((input) => bindingFor(input) === nestedBinding);
+            nestedItem = nestedInput?.closest('.fi-fo-builder-item');
+            groupItem = nestedItem?.parentElement?.closest('.fi-fo-builder-item');
+            const nestedError = errorForStatePath(nestedBinding);
+            const nestedEvidence = {
+                validator_path: 'card_templates.0.parts.0.data.children.0.data.text',
+                state_path: nestedBinding,
+                uuid: nestedUuid,
+                child_expanded: ! (nestedItem?.classList.contains('fi-collapsed') ?? true),
+                parent_expanded: ! (groupItem?.classList.contains('fi-collapsed') ?? true),
+                error_visible: Boolean(nestedError && nestedError.getClientRects().length),
+                focused_state_path: focusedStatePath(),
+                requests: nestedFocusRequests,
+                modal_open: Boolean(document.querySelector('.fi-modal.fi-modal-open')),
+            };
+
+            setInput(nestedInput, 'FU03 NESTED BROWSER TARGET');
+            await waitFor(() => document.querySelector('[data-test="card-template-preview-ready"]'));
+            const componentRoot = document.querySelector('[data-sp3c-template-editor-page]')?.closest('[wire\\:id]');
+            const livewire = componentRoot ? Livewire.find(componentRoot.getAttribute('wire:id')) : null;
+            const forgedPath = `data.parts.${topUuid}.data.forged_field`;
+            await livewire?.set(forgedPath, 'FU03-FORGED-BROWSER-VALUE', true);
+            await waitFor(() => document.querySelector('[data-card-template-preview-invalid]'));
+            const fallbackFocusRequests = await countFocusRequests(
+                () => document.querySelector('[data-test="card-template-preview-focus-invalid"]')?.click(),
+                () => errorForStatePath('data.parts')
+                    && statePathForWrapper(document.activeElement?.closest('[data-field-wrapper]')) === 'data.parts',
+            );
+            const fallbackError = errorForStatePath('data.parts');
+            const fallbackEvidence = {
+                forged_path: forgedPath,
+                state_path: 'data.parts',
+                error_visible: Boolean(fallbackError && fallbackError.getClientRects().length),
+                focused_state_path: focusedStatePath(),
+                requests: fallbackFocusRequests,
+                modal_open: Boolean(document.querySelector('.fi-modal.fi-modal-open')),
+                value_leaked_in_error: fallbackError?.textContent.includes('FU03-FORGED-BROWSER-VALUE') ?? false,
+            };
+            window.dispatchEvent(new CustomEvent('card-template-validation-target', {
+                detail: { statePath: 'data.parts.missing-safe-focus-target' },
+            }));
+            await waitFor(
+                () => document.activeElement?.getAttribute('data-test') === 'card-template-preview-focus-invalid',
+                2500,
+            );
+            fallbackEvidence.focus_after_missing_target = document.activeElement?.getAttribute('data-test') ?? null;
+
+            return {
+                locale: document.documentElement.lang,
+                direction: document.documentElement.dir,
+                viewport: [window.innerWidth, window.innerHeight],
+                preview_roots: document.querySelectorAll('[data-card-template-preview-root]').length,
+                top: topEvidence,
+                nested: nestedEvidence,
+                fallback: fallbackEvidence,
+            };
+        }
+        JS);
+
+    expect($evidence['locale'])->toBe('he')
+        ->and($evidence['direction'])->toBe('rtl')
+        ->and($evidence['viewport'])->toBe([1440, 900])
+        ->and($evidence['preview_roots'])->toBe(1)
+        ->and($evidence['top']['validator_path'])->toBe('card_templates.0.parts.1.data.text')
+        ->and($evidence['top']['uuid'])->toBeString()
+        ->and($evidence['top']['position_badge'])->toBe('2')
+        ->and($evidence['top']['state_path'])->toContain($evidence['top']['uuid'])
+        ->and($evidence['top']['expanded'])->toBeTrue(json_encode($evidence, JSON_THROW_ON_ERROR))
+        ->and($evidence['top']['error_visible'])->toBeTrue(json_encode($evidence, JSON_THROW_ON_ERROR))
+        ->and($evidence['top']['focused_state_path'])->toBe($evidence['top']['state_path'])
+        ->and($evidence['top']['focused_tag'])->toBe('INPUT')
+        ->and($evidence['top']['requests'])->toBe(1, json_encode($evidence, JSON_THROW_ON_ERROR))
+        ->and($evidence['top']['modal_open'])->toBeFalse()
+        ->and($evidence['nested']['validator_path'])->toBe('card_templates.0.parts.0.data.children.0.data.text')
+        ->and($evidence['nested']['uuid'])->toBeString()
+        ->and($evidence['nested']['state_path'])->toContain($evidence['nested']['uuid'])
+        ->and($evidence['nested']['child_expanded'])->toBeTrue(json_encode($evidence, JSON_THROW_ON_ERROR))
+        ->and($evidence['nested']['parent_expanded'])->toBeTrue(json_encode($evidence, JSON_THROW_ON_ERROR))
+        ->and($evidence['nested']['error_visible'])->toBeTrue(json_encode($evidence, JSON_THROW_ON_ERROR))
+        ->and($evidence['nested']['focused_state_path'])->toBe($evidence['nested']['state_path'])
+        ->and($evidence['nested']['requests'])->toBe(1, json_encode($evidence, JSON_THROW_ON_ERROR))
+        ->and($evidence['nested']['modal_open'])->toBeFalse()
+        ->and($evidence['fallback']['state_path'])->toBe('data.parts')
+        ->and($evidence['fallback']['error_visible'])->toBeTrue(json_encode($evidence, JSON_THROW_ON_ERROR))
+        ->and($evidence['fallback']['focused_state_path'])->toBe('data.parts')
+        ->and($evidence['fallback']['requests'])->toBe(1, json_encode($evidence, JSON_THROW_ON_ERROR))
+        ->and($evidence['fallback']['modal_open'])->toBeFalse()
+        ->and($evidence['fallback']['value_leaked_in_error'])->toBeFalse()
+        ->and($evidence['fallback']['focus_after_missing_target'])->toBe('card-template-preview-focus-invalid')
+        ->and(DB::table('settings')
+            ->where('group', PublicContentSettings::group())
+            ->where('name', 'card_templates')
+            ->value('payload'))->toBe($settingsBefore);
+
+    $page->assertNoSmoke()->assertNoJavaScriptErrors();
+});
+
+it('opens exact native slide-over owners and restores safe focus after cancel', function (): void {
+    app()->setLocale('en');
+    step5bFu02BrowserSaveSetting(
+        PublicContentSettings::class,
+        'card_templates',
+        [step5bFu03BrowserTemplate()],
+    );
+    $settingsBefore = DB::table('settings')
+        ->where('group', PublicContentSettings::group())
+        ->where('name', 'card_templates')
+        ->value('payload');
+    $page = visit(EditCardTemplate::getUrl([
+        'family' => 'content_item',
+        'key' => 'preview_browser',
+    ]))->resize(1440, 900);
+
+    $evidence = $page->script(<<<'JS'
+        async () => {
+            const sleep = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds));
+            const waitFor = async (callback, timeout = 7000) => {
+                const started = performance.now();
+                let result = callback();
+
+                while (! result && performance.now() - started < timeout) {
+                    await sleep(50);
+                    result = callback();
+                }
+
+                return result;
+            };
+            const bindingFor = (element) => Array.from(element?.attributes ?? [])
+                .find((attribute) => attribute.name.startsWith('wire:model'))?.value ?? null;
+            const setInput = (input, value) => {
+                const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set;
+                setter.call(input, value);
+                input.dispatchEvent(new Event('input', { bubbles: true }));
+            };
+            const statePathForWrapper = (wrapper) => {
+                const schemaComponent = wrapper?.closest('[x-data]');
+
+                return schemaComponent ? Alpine.$data(schemaComponent)?.$statePath ?? null : null;
+            };
+            const focusedStatePath = () => statePathForWrapper(document.activeElement?.closest('[data-field-wrapper]'));
+            const errorForStatePath = (statePath) => Array.from(document.querySelectorAll('[data-validation-error]'))
+                .find((error) => statePathForWrapper(error.closest('[data-field-wrapper]')) === statePath);
+            const countFocusRequests = async (statePath) => {
+                const originalFetch = window.fetch;
+                const requestUrls = [];
+                window.fetch = (...arguments_) => {
+                    requestUrls.push(String(arguments_[0]?.url ?? arguments_[0]));
+
+                    return originalFetch(...arguments_);
+                };
+                document.querySelector('[data-test="card-template-preview-focus-invalid"]')?.click();
+                await waitFor(() => errorForStatePath(statePath) && focusedStatePath() === statePath);
+                await sleep(100);
+                window.fetch = originalFetch;
+
+                return requestUrls.filter((url) => url.includes('/livewire')).length;
+            };
+            const chooseMode = async (mode) => {
+                document.querySelector(`[data-test="card-template-builder-mode-${mode}"]`)?.click();
+                await waitFor(() => mode === 'inline'
+                    ? document.querySelectorAll('[data-sp3c-part-summary]').length === 0
+                    : document.querySelectorAll('[data-sp3c-part-summary]').length > 0);
+            };
+
+            await chooseMode('inline');
+            let topInput = Array.from(document.querySelectorAll('[data-sp3c-template-parts] input'))
+                .find((input) => input.value === 'FU03 TOP BROWSER TARGET');
+            let topItem = topInput?.closest('.fi-fo-builder-item');
+            topItem?.querySelector('[data-test="card-template-part-move"]')?.click();
+            const moveModal = await waitFor(() => document.querySelector('.fi-modal.fi-modal-open'));
+            const moveInput = moveModal?.querySelector('input');
+
+            if (moveInput) {
+                setInput(moveInput, '2');
+                moveModal.querySelector('form.fi-modal-window')?.requestSubmit();
+            }
+
+            await waitFor(() => document.querySelector('.fi-modal.fi-modal-open') === null);
+            topInput = Array.from(document.querySelectorAll('[data-sp3c-template-parts] input'))
+                .find((input) => input.value === 'FU03 TOP BROWSER TARGET');
+            const topInlineBinding = bindingFor(topInput);
+            const topUuid = topInlineBinding?.split('.')[2] ?? null;
+            topItem = topInput?.closest('.fi-fo-builder-item');
+            const topPosition = topItem?.querySelector('[data-sp3c-part-position-badge]')?.textContent.trim() ?? null;
+            setInput(topInput, 'S'.repeat(501));
+            await waitFor(() => document.querySelector('[data-card-template-preview-invalid]'));
+            await chooseMode('slide-over');
+
+            const topMountedPath = 'mountedActions.0.data.text';
+            const topFocusRequests = await countFocusRequests(topMountedPath);
+            const topError = errorForStatePath(topMountedPath);
+            const topModal = topError?.closest('.fi-modal.fi-modal-open');
+            const topEvidence = {
+                validator_path: 'card_templates.0.parts.1.data.text',
+                inline_state_path: topInlineBinding,
+                uuid: topUuid,
+                position_badge: topPosition,
+                mounted_state_path: topMountedPath,
+                focused_state_path: focusedStatePath(),
+                error_visible: Boolean(topError && topError.getClientRects().length),
+                modal_id: topModal?.id ?? null,
+                native_slide_over_start: topModal?.classList.contains('fi-modal-slide-over-from-start') ?? false,
+                requests: topFocusRequests,
+                open_modals: document.querySelectorAll('.fi-modal.fi-modal-open').length,
+            };
+
+            window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+            await waitFor(() => document.querySelector('.fi-modal.fi-modal-open') === null);
+            await waitFor(() => document.activeElement?.getAttribute('data-test') === 'card-template-preview-focus-invalid');
+            topEvidence.focus_after_cancel = document.activeElement?.getAttribute('data-test') ?? null;
+
+            document.querySelector('[data-test="card-template-preview-focus-invalid"]')?.click();
+            const retryModal = await waitFor(() => document.querySelector('.fi-modal.fi-modal-open'));
+            const retryInput = Array.from(retryModal?.querySelectorAll('input') ?? [])
+                .find((input) => bindingFor(input) === topMountedPath);
+            setInput(retryInput, 'FU03 TOP BROWSER TARGET');
+            retryModal?.querySelector('form.fi-modal-window')?.requestSubmit();
+            await waitFor(() => document.querySelector('.fi-modal.fi-modal-open') === null);
+            await waitFor(() => document.querySelector('[data-test="card-template-preview-ready"]'));
+            const editorRoot = document.querySelector('[data-sp3c-template-editor-page]');
+            topEvidence.action_identity_after_apply = Alpine.$data(editorRoot)?.validationRootActionModalId ?? null;
+
+            await chooseMode('inline');
+            let nestedInput = Array.from(document.querySelectorAll('[data-sp3c-template-parts] input'))
+                .find((input) => input.value === 'FU03 NESTED BROWSER TARGET');
+            const nestedInlineBinding = bindingFor(nestedInput);
+            const nestedUuid = nestedInlineBinding?.split('.')[5] ?? null;
+            setInput(nestedInput, 'D'.repeat(501));
+            await waitFor(() => document.querySelector('[data-card-template-preview-invalid]'));
+            await chooseMode('slide-over');
+
+            const nestedMountedPath = 'mountedActions.1.data.text';
+            const nestedFocusRequests = await countFocusRequests(nestedMountedPath);
+            await sleep(400);
+            const nestedError = errorForStatePath(nestedMountedPath);
+            const nestedModal = nestedError?.closest('.fi-modal.fi-modal-open');
+            const nestedEvidence = {
+                validator_path: 'card_templates.0.parts.0.data.children.0.data.text',
+                inline_state_path: nestedInlineBinding,
+                uuid: nestedUuid,
+                mounted_state_path: nestedMountedPath,
+                focused_state_path: focusedStatePath(),
+                error_visible: Boolean(nestedError && nestedError.getClientRects().length),
+                modal_id: nestedModal?.id ?? null,
+                native_slide_over_start: nestedModal?.classList.contains('fi-modal-slide-over-from-start') ?? false,
+                requests: nestedFocusRequests,
+                open_modals: document.querySelectorAll('.fi-modal.fi-modal-open').length,
+                open_modal_ids: Array.from(document.querySelectorAll('.fi-modal.fi-modal-open'))
+                    .map((modal) => modal.id),
+            };
+
+            window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+            const parentModal = await waitFor(() => {
+                const open = document.querySelector('.fi-modal.fi-modal-open');
+
+                return open && open.id.endsWith('-action-0') ? open : null;
+            });
+            nestedEvidence.parent_modal_after_child_cancel = parentModal?.id ?? null;
+            nestedEvidence.open_modals_after_child_cancel = document.querySelectorAll('.fi-modal.fi-modal-open').length;
+            window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+            await waitFor(() => document.querySelector('.fi-modal.fi-modal-open') === null);
+            await waitFor(() => document.activeElement?.getAttribute('data-test') === 'card-template-preview-focus-invalid');
+            nestedEvidence.focus_after_parent_cancel = document.activeElement?.getAttribute('data-test') ?? null;
+
+            await chooseMode('inline');
+            const componentRoot = document.querySelector('[data-sp3c-template-editor-page]')?.closest('[wire\\:id]');
+            const livewire = componentRoot ? Livewire.find(componentRoot.getAttribute('wire:id')) : null;
+            nestedEvidence.draft_state_path_after_cancel = nestedInlineBinding;
+            nestedEvidence.draft_value_preserved_after_cancel = livewire?.get(nestedInlineBinding) === 'D'.repeat(501);
+
+            return {
+                locale: document.documentElement.lang,
+                direction: document.documentElement.dir,
+                viewport: [window.innerWidth, window.innerHeight],
+                preview_roots: document.querySelectorAll('[data-card-template-preview-root]').length,
+                top: topEvidence,
+                nested: nestedEvidence,
+            };
+        }
+        JS);
+
+    expect($evidence['locale'])->toBe('en')
+        ->and($evidence['direction'])->toBe('ltr')
+        ->and($evidence['viewport'])->toBe([1440, 900])
+        ->and($evidence['preview_roots'])->toBe(1)
+        ->and($evidence['top']['validator_path'])->toBe('card_templates.0.parts.1.data.text')
+        ->and($evidence['top']['uuid'])->toBeString()
+        ->and($evidence['top']['position_badge'])->toBe('2')
+        ->and($evidence['top']['inline_state_path'])->toContain($evidence['top']['uuid'])
+        ->and($evidence['top']['mounted_state_path'])->toBe('mountedActions.0.data.text')
+        ->and($evidence['top']['focused_state_path'])->toBe('mountedActions.0.data.text')
+        ->and($evidence['top']['error_visible'])->toBeTrue(json_encode($evidence, JSON_THROW_ON_ERROR))
+        ->and($evidence['top']['modal_id'])->toEndWith('-action-0')
+        ->and($evidence['top']['native_slide_over_start'])->toBeTrue(json_encode($evidence, JSON_THROW_ON_ERROR))
+        ->and($evidence['top']['requests'])->toBe(1, json_encode($evidence, JSON_THROW_ON_ERROR))
+        ->and($evidence['top']['open_modals'])->toBe(1)
+        ->and($evidence['top']['focus_after_cancel'])->toBe('card-template-preview-focus-invalid')
+        ->and($evidence['top']['action_identity_after_apply'])->toBeNull()
+        ->and($evidence['nested']['validator_path'])->toBe('card_templates.0.parts.0.data.children.0.data.text')
+        ->and($evidence['nested']['uuid'])->toBeString()
+        ->and($evidence['nested']['inline_state_path'])->toContain($evidence['nested']['uuid'])
+        ->and($evidence['nested']['mounted_state_path'])->toBe('mountedActions.1.data.text')
+        ->and($evidence['nested']['focused_state_path'])->toBe('mountedActions.1.data.text')
+        ->and($evidence['nested']['error_visible'])->toBeTrue(json_encode($evidence, JSON_THROW_ON_ERROR))
+        ->and($evidence['nested']['modal_id'])->toEndWith('-action-1')
+        ->and($evidence['nested']['native_slide_over_start'])->toBeTrue(json_encode($evidence, JSON_THROW_ON_ERROR))
+        ->and($evidence['nested']['requests'])->toBe(1, json_encode($evidence, JSON_THROW_ON_ERROR))
+        ->and($evidence['nested']['open_modals'])->toBe(2)
+        ->and($evidence['nested']['open_modal_ids'])->toHaveCount(2)
+        ->and($evidence['nested']['parent_modal_after_child_cancel'])->toEndWith('-action-0')
+        ->and($evidence['nested']['open_modals_after_child_cancel'])->toBe(1)
+        ->and($evidence['nested']['focus_after_parent_cancel'])->toBe('card-template-preview-focus-invalid')
+        ->and($evidence['nested']['draft_state_path_after_cancel'])->toBe($evidence['nested']['inline_state_path'])
+        ->and($evidence['nested']['draft_value_preserved_after_cancel'])->toBeTrue(json_encode($evidence, JSON_THROW_ON_ERROR))
+        ->and(DB::table('settings')
+            ->where('group', PublicContentSettings::group())
+            ->where('name', 'card_templates')
+            ->value('payload'))->toBe($settingsBefore);
+
+    expect(collect($evidence['nested']['open_modal_ids'])
+        ->contains(fn (string $id): bool => str_ends_with($id, '-action-0')))->toBeTrue()
+        ->and(collect($evidence['nested']['open_modal_ids'])
+            ->contains(fn (string $id): bool => str_ends_with($id, '-action-1')))->toBeTrue();
+
+    $page->assertNoSmoke()->assertNoJavaScriptErrors();
+});
+
+it('mounts a visible nested fallback and restores the narrow preview opener', function (): void {
+    app()->setLocale('he');
+    step5bFu02BrowserSaveSetting(
+        PublicContentSettings::class,
+        'card_templates',
+        [step5bFu03BrowserTemplate()],
+    );
+    $settingsBefore = DB::table('settings')
+        ->where('group', PublicContentSettings::group())
+        ->where('name', 'card_templates')
+        ->value('payload');
+    $page = visit(EditCardTemplate::getUrl([
+        'family' => 'content_item',
+        'key' => 'preview_browser',
+    ]))->resize(1023, 900);
+
+    $evidence = $page->script(<<<'JS'
+        async () => {
+            const sleep = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds));
+            const waitFor = async (callback, timeout = 7000) => {
+                const started = performance.now();
+                let result = callback();
+
+                while (! result && performance.now() - started < timeout) {
+                    await sleep(50);
+                    result = callback();
+                }
+
+                return result;
+            };
+            const bindingFor = (element) => Array.from(element?.attributes ?? [])
+                .find((attribute) => attribute.name.startsWith('wire:model'))?.value ?? null;
+            const statePathForWrapper = (wrapper) => {
+                const schemaComponent = wrapper?.closest('[x-data]');
+
+                return schemaComponent ? Alpine.$data(schemaComponent)?.$statePath ?? null : null;
+            };
+            const focusedStatePath = () => statePathForWrapper(document.activeElement?.closest('[data-field-wrapper]'));
+            const errorForStatePath = (statePath) => Array.from(document.querySelectorAll('[data-validation-error]'))
+                .find((error) => statePathForWrapper(error.closest('[data-field-wrapper]')) === statePath);
+
+            await waitFor(() => window.innerWidth === 1023
+                && document.querySelectorAll('[data-card-template-preview-root]').length === 0
+                && document.querySelector('[data-test="card-template-preview-open"]'));
+            document.querySelector('[data-test="card-template-builder-mode-inline"]')?.click();
+            await waitFor(() => document.querySelectorAll('[data-sp3c-part-summary]').length === 0);
+
+            const nestedInput = Array.from(document.querySelectorAll('[data-sp3c-template-parts] input'))
+                .find((input) => input.value === 'FU03 NESTED BROWSER TARGET');
+            const nestedBinding = bindingFor(nestedInput);
+            const groupUuid = nestedBinding?.split('.')[2] ?? null;
+            const childUuid = nestedBinding?.split('.')[5] ?? null;
+            const forgedPath = nestedBinding?.replace(/\.text$/, '.forged_field') ?? null;
+            const componentRoot = document.querySelector('[data-sp3c-template-editor-page]')?.closest('[wire\\:id]');
+            const livewire = componentRoot ? Livewire.find(componentRoot.getAttribute('wire:id')) : null;
+            await livewire?.set(forgedPath, 'FU03-NARROW-FALLBACK-VALUE', true);
+            await waitFor(() => livewire?.get('previewStatus') === 'invalid_draft');
+            document.querySelector('[data-test="card-template-builder-mode-slide-over"]')?.click();
+            await waitFor(() => document.querySelectorAll('[data-sp3c-part-summary]').length > 0);
+            document.querySelector('[data-test="card-template-preview-open"]')?.click();
+            const previewModal = await waitFor(() => Array.from(document.querySelectorAll('.fi-modal.fi-modal-open'))
+                .find((modal) => modal.querySelector('[data-test="card-template-preview-focus-invalid"]')));
+
+            const originalFetch = window.fetch;
+            const requestUrls = [];
+            window.fetch = (...arguments_) => {
+                requestUrls.push(String(arguments_[0]?.url ?? arguments_[0]));
+
+                return originalFetch(...arguments_);
+            };
+            previewModal?.querySelector('[data-test="card-template-preview-focus-invalid"]')?.click();
+            const fallbackStatePath = 'mountedActions.0.data.children';
+            await waitFor(() => errorForStatePath(fallbackStatePath)
+                && focusedStatePath() === fallbackStatePath);
+            await sleep(100);
+            window.fetch = originalFetch;
+
+            const fallbackError = errorForStatePath(fallbackStatePath);
+            const fallbackModal = fallbackError?.closest('.fi-modal.fi-modal-open');
+            const beforeCancel = {
+                state_path: fallbackStatePath,
+                focused_state_path: focusedStatePath(),
+                error_visible: Boolean(fallbackError && fallbackError.getClientRects().length),
+                modal_id: fallbackModal?.id ?? null,
+                open_modals: document.querySelectorAll('.fi-modal.fi-modal-open').length,
+                preview_roots: document.querySelectorAll('[data-card-template-preview-root]').length,
+                requests: requestUrls.filter((url) => url.includes('/livewire')).length,
+                value_leaked_in_error: fallbackError?.textContent.includes('FU03-NARROW-FALLBACK-VALUE') ?? false,
+            };
+            const editorRoot = document.querySelector('[data-sp3c-template-editor-page]');
+            const editorData = Alpine.$data(editorRoot);
+            editorData.validationRootActionModalId = null;
+            window.dispatchEvent(new CustomEvent('card-template-validation-target', {
+                detail: { statePath: 'mountedActions.0.data.missing-safe-focus-target' },
+            }));
+            await waitFor(
+                () => document.activeElement?.classList.contains('fi-modal-close-btn'),
+                2500,
+            );
+            beforeCancel.missing_target_focus = document.activeElement?.classList.contains('fi-modal-close-btn') ?? false;
+            beforeCancel.missing_target_identity = editorData.validationRootActionModalId;
+
+            window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+            await waitFor(() => document.querySelector('.fi-modal.fi-modal-open') === null);
+            await waitFor(() => document.activeElement?.getAttribute('data-test') === 'card-template-preview-open');
+
+            return {
+                locale: document.documentElement.lang,
+                direction: document.documentElement.dir,
+                viewport: [window.innerWidth, window.innerHeight],
+                group_uuid: groupUuid,
+                child_uuid: childUuid,
+                forged_path: forgedPath,
+                before_cancel: beforeCancel,
+                focus_after_cancel: document.activeElement?.getAttribute('data-test') ?? null,
+                open_modals_after_cancel: document.querySelectorAll('.fi-modal.fi-modal-open').length,
+                preview_roots_after_cancel: document.querySelectorAll('[data-card-template-preview-root]').length,
+                preview_openers_after_cancel: document.querySelectorAll('[data-test="card-template-preview-open"]').length,
+            };
+        }
+        JS);
+
+    expect($evidence['locale'])->toBe('he')
+        ->and($evidence['direction'])->toBe('rtl')
+        ->and($evidence['viewport'])->toBe([1023, 900])
+        ->and($evidence['group_uuid'])->toBeString()
+        ->and($evidence['child_uuid'])->toBeString()
+        ->and($evidence['forged_path'])->toContain($evidence['group_uuid'])
+        ->and($evidence['forged_path'])->toContain($evidence['child_uuid'])
+        ->and($evidence['before_cancel']['state_path'])->toBe('mountedActions.0.data.children')
+        ->and($evidence['before_cancel']['focused_state_path'])->toBe('mountedActions.0.data.children')
+        ->and($evidence['before_cancel']['error_visible'])->toBeTrue(json_encode($evidence, JSON_THROW_ON_ERROR))
+        ->and($evidence['before_cancel']['modal_id'])->toEndWith('-action-0')
+        ->and($evidence['before_cancel']['open_modals'])->toBe(1)
+        ->and($evidence['before_cancel']['preview_roots'])->toBe(0)
+        ->and($evidence['before_cancel']['requests'])->toBe(1, json_encode($evidence, JSON_THROW_ON_ERROR))
+        ->and($evidence['before_cancel']['value_leaked_in_error'])->toBeFalse()
+        ->and($evidence['before_cancel']['missing_target_focus'])->toBeTrue(json_encode($evidence, JSON_THROW_ON_ERROR))
+        ->and($evidence['before_cancel']['missing_target_identity'])->toEndWith('-action-0')
+        ->and($evidence['focus_after_cancel'])->toBe('card-template-preview-open')
+        ->and($evidence['open_modals_after_cancel'])->toBe(0)
+        ->and($evidence['preview_roots_after_cancel'])->toBe(0)
+        ->and($evidence['preview_openers_after_cancel'])->toBe(1)
         ->and(DB::table('settings')
             ->where('group', PublicContentSettings::group())
             ->where('name', 'card_templates')

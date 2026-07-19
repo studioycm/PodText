@@ -3,11 +3,14 @@
 namespace App\Filament\Pages;
 
 use App\Enums\UserRole;
+use App\Filament\Support\CardTemplateValidationTarget;
 use App\Models\User;
 use App\Settings\PublicContentSettings;
 use App\Support\PublicFront\Cards\PublicFrontCardTemplateRegistry;
 use App\Support\PublicFront\PublicFrontConfigRegistry;
+use App\Support\PublicFront\PublicFrontInvalidConfig;
 use App\Support\Settings\CardTemplates\CardTemplateAccessPolicy;
+use App\Support\Settings\CardTemplates\CardTemplateDraftNormalizer;
 use App\Support\Settings\CardTemplates\CardTemplateIdentity;
 use App\Support\Settings\CardTemplates\CardTemplatePreviewer;
 use App\Support\Settings\CardTemplates\CardTemplateWriteException;
@@ -17,6 +20,7 @@ use BackedEnum;
 use Closure;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Builder;
+use Filament\Forms\Components\Field;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
@@ -32,6 +36,7 @@ use Filament\Support\Facades\FilamentView;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Contracts\Support\Htmlable;
 use Illuminate\Contracts\View\View;
+use Illuminate\Support\Str;
 use Livewire\Attributes\Locked;
 use Throwable;
 
@@ -42,6 +47,27 @@ abstract class CardTemplateEditorPage extends SettingsPage
     public const BUILDER_DISPLAY_INLINE = 'inline';
 
     public const BUILDER_DISPLAY_SLIDE_OVER = 'slide_over';
+
+    private const ROOT_VALIDATION_FIELDS = [
+        'key',
+        'family',
+        'label',
+        'layout',
+        'density',
+        'image_size',
+        'title_size',
+    ];
+
+    private const LABEL_REVEAL_FIELDS = [
+        'label',
+        'label_position',
+        'label_alignment',
+    ];
+
+    private const ICON_REVEAL_FIELDS = [
+        'icon',
+        'icon_position',
+    ];
 
     protected static string $settings = PublicContentSettings::class;
 
@@ -531,6 +557,38 @@ abstract class CardTemplateEditorPage extends SettingsPage
         $this->previewRefreshedAt = now()->timezone('Asia/Jerusalem')->format('d/m H:i');
     }
 
+    public function focusInvalidDraftField(): void
+    {
+        abort_unless(static::canAccess(), 403);
+        $this->restoreProfilingConfiguration();
+        $this->enforceCurrentCapability();
+
+        if ($this->sp3aMeasurementMode
+            || $this->restricted
+            || $this->protectedForgeryDetected
+            || ($this->templateProtectedAtMount && ! $this->capable)) {
+            return;
+        }
+
+        $draft = is_array($this->data) ? $this->data : [];
+        $normalizer = app(CardTemplateDraftNormalizer::class);
+
+        try {
+            $normalizer->normalizeCandidate($normalizer->candidate($draft));
+        } catch (CardTemplateWriteException $exception) {
+            $message = $this->writeFailureMessage($exception);
+
+            if ($exception->issues !== [] && $this->navigateToValidationIssues($exception->issues, $message)) {
+                return;
+            }
+
+            Notification::make()
+                ->danger()
+                ->title($message)
+                ->send();
+        }
+    }
+
     public function previewIsStale(): bool
     {
         if ($this->previewDraftHash === null || ! is_array($this->data)) {
@@ -591,6 +649,30 @@ abstract class CardTemplateEditorPage extends SettingsPage
 
     protected function reportWriteFailure(CardTemplateWriteException $exception): void
     {
+        $message = $this->writeFailureMessage($exception);
+
+        if ($exception->issues !== []) {
+            $this->navigateToValidationIssues($exception->issues, $message);
+            $issueSummary = collect($exception->issues)
+                ->filter(fn (mixed $issue): bool => $issue instanceof PublicFrontInvalidConfig)
+                ->map(fn (PublicFrontInvalidConfig $issue): string => "{$issue->path}: {$issue->reason}")
+                ->implode(', ');
+
+            if ($issueSummary !== '') {
+                $message .= ' '.$issueSummary;
+            }
+        } else {
+            $this->addError('data.key', $message);
+        }
+
+        Notification::make()
+            ->danger()
+            ->title($message)
+            ->send();
+    }
+
+    private function writeFailureMessage(CardTemplateWriteException $exception): string
+    {
         $reason = $exception->getMessage();
         $translationKey = "admin.settings_sp3c.errors.{$reason}";
         $message = __($translationKey);
@@ -603,11 +685,505 @@ abstract class CardTemplateEditorPage extends SettingsPage
             $message .= ' '.implode(', ', $exception->details);
         }
 
-        $this->addError('data.key', $message);
-        Notification::make()
-            ->danger()
-            ->title($message)
-            ->send();
+        return $message;
+    }
+
+    /**
+     * @param  array<int, PublicFrontInvalidConfig>  $issues
+     */
+    private function navigateToValidationIssues(array $issues, string $message): bool
+    {
+        if ($this->restricted
+            || $this->protectedForgeryDetected
+            || ($this->templateProtectedAtMount && ! $this->capable)) {
+            return false;
+        }
+
+        $fallback = null;
+
+        foreach ($issues as $issue) {
+            if (! $issue instanceof PublicFrontInvalidConfig) {
+                continue;
+            }
+
+            $target = $this->resolveValidationTarget($issue);
+
+            if ($target === null) {
+                continue;
+            }
+
+            if ($target->exact) {
+                if ($this->displayValidationTarget($target, $message)) {
+                    return true;
+                }
+
+                continue;
+            }
+
+            $fallback ??= $target;
+        }
+
+        return $fallback !== null && $this->displayValidationTarget($fallback, $message);
+    }
+
+    private function resolveValidationTarget(PublicFrontInvalidConfig $issue): ?CardTemplateValidationTarget
+    {
+        $segments = explode('.', $issue->path);
+
+        if (($segments[0] ?? null) !== 'card_templates' || ($segments[1] ?? null) !== '0') {
+            return null;
+        }
+
+        if (count($segments) === 3 && in_array($segments[2], self::ROOT_VALIDATION_FIELDS, true)) {
+            $statePath = "data.{$segments[2]}";
+            $component = $this->getSchemaComponent("form.{$segments[2]}", withHidden: true);
+
+            if (! $component instanceof Field || $component->getStatePath() !== $statePath) {
+                return null;
+            }
+
+            return new CardTemplateValidationTarget(
+                exact: true,
+                component: $component,
+                statePath: $statePath,
+                field: $segments[2],
+            );
+        }
+
+        if (($segments[2] ?? null) !== 'parts') {
+            return null;
+        }
+
+        $builder = $this->getSchemaComponent('form.parts', withHidden: true);
+
+        if (! $builder instanceof Builder || $builder->getStatePath() !== 'data.parts') {
+            return null;
+        }
+
+        $topFallback = new CardTemplateValidationTarget(
+            exact: count($segments) === 3,
+            component: $builder,
+            statePath: 'data.parts',
+            topBuilder: $builder,
+        );
+
+        if (count($segments) === 3) {
+            return $topFallback;
+        }
+
+        $topPosition = $this->validationPosition($segments[3] ?? null);
+
+        if ($topPosition === null || ! ($topUuid = $this->builderItemUuidAt($builder, $topPosition))) {
+            return $topFallback;
+        }
+
+        $topSchema = $builder->getChildSchema($topUuid);
+
+        if ($topSchema === null) {
+            return $topFallback;
+        }
+
+        if (count($segments) === 6 && ($segments[4] ?? null) === 'data') {
+            $field = $segments[5];
+            $statePath = "data.parts.{$topUuid}.data.{$field}";
+            $component = $this->fieldForStatePath($topSchema, $statePath);
+
+            if ($component === null) {
+                return $topFallback;
+            }
+
+            $reveal = $this->validationRevealForField($field);
+
+            if ($reveal === null && ! $component->isVisible()) {
+                return $topFallback;
+            }
+
+            return new CardTemplateValidationTarget(
+                exact: true,
+                component: $component,
+                statePath: $statePath,
+                fallbackComponent: $builder,
+                fallbackStatePath: 'data.parts',
+                topBuilder: $builder,
+                topUuid: $topUuid,
+                field: $field,
+                reveal: $reveal,
+            );
+        }
+
+        if (($segments[4] ?? null) !== 'data' || ($segments[5] ?? null) !== 'children') {
+            return $topFallback;
+        }
+
+        $childrenStatePath = "data.parts.{$topUuid}.data.children";
+        $childrenBuilder = $this->fieldForStatePath($topSchema, $childrenStatePath);
+
+        if (! $childrenBuilder instanceof Builder) {
+            return $topFallback;
+        }
+
+        $childrenFallback = new CardTemplateValidationTarget(
+            exact: false,
+            component: $childrenBuilder,
+            statePath: $childrenStatePath,
+            fallbackComponent: $builder,
+            fallbackStatePath: 'data.parts',
+            topBuilder: $builder,
+            topUuid: $topUuid,
+            field: 'children',
+        );
+        $childPosition = $this->validationPosition($segments[6] ?? null);
+
+        if ($childPosition === null || ! ($childUuid = $this->builderItemUuidAt($childrenBuilder, $childPosition))) {
+            return $childrenFallback;
+        }
+
+        if (count($segments) !== 9 || ($segments[7] ?? null) !== 'data') {
+            return $childrenFallback;
+        }
+
+        $childSchema = $childrenBuilder->getChildSchema($childUuid);
+
+        if ($childSchema === null) {
+            return $childrenFallback;
+        }
+
+        $field = $segments[8];
+        $statePath = "{$childrenStatePath}.{$childUuid}.data.{$field}";
+        $component = $this->fieldForStatePath($childSchema, $statePath);
+
+        if ($component === null) {
+            return $childrenFallback;
+        }
+
+        $reveal = $this->validationRevealForField($field);
+
+        if ($reveal === null && ! $component->isVisible()) {
+            return $childrenFallback;
+        }
+
+        return new CardTemplateValidationTarget(
+            exact: true,
+            component: $component,
+            statePath: $statePath,
+            fallbackComponent: $childrenBuilder,
+            fallbackStatePath: $childrenStatePath,
+            topBuilder: $builder,
+            topUuid: $topUuid,
+            childUuid: $childUuid,
+            childPosition: $childPosition,
+            field: $field,
+            reveal: $reveal,
+        );
+    }
+
+    private function validationPosition(mixed $segment): ?int
+    {
+        if (! is_string($segment) || preg_match('/^(0|[1-9][0-9]*)$/', $segment) !== 1) {
+            return null;
+        }
+
+        return (int) $segment;
+    }
+
+    private function builderItemUuidAt(Builder $builder, int $position): ?string
+    {
+        $state = $builder->getRawState();
+
+        if (! is_array($state)) {
+            return null;
+        }
+
+        $items = array_filter($state, fn (mixed $item): bool => is_array($item));
+        $uuid = array_keys($items)[$position] ?? null;
+        $item = $uuid !== null ? ($items[$uuid] ?? null) : null;
+
+        if (! is_string($uuid)
+            || ! Str::isUuid($uuid)
+            || ! is_array($item)
+            || ! is_string($item['type'] ?? null)
+            || ! is_array($item['data'] ?? null)
+            || ! $builder->hasBlock($item['type'])) {
+            return null;
+        }
+
+        return $uuid;
+    }
+
+    private function fieldForStatePath(Schema $schema, string $statePath): ?Field
+    {
+        $component = $schema->getComponentByStatePath(
+            $statePath,
+            withHidden: true,
+            withAbsoluteStatePath: true,
+        );
+
+        if (! $component instanceof Field || $component->getStatePath() !== $statePath) {
+            return null;
+        }
+
+        return $component;
+    }
+
+    private function validationRevealForField(string $field): ?string
+    {
+        if (in_array($field, self::LABEL_REVEAL_FIELDS, true)) {
+            return '_show_label';
+        }
+
+        if (in_array($field, self::ICON_REVEAL_FIELDS, true)) {
+            return '_show_icon';
+        }
+
+        return null;
+    }
+
+    private function displayValidationTarget(CardTemplateValidationTarget $target, string $message): bool
+    {
+        $this->clearMountedValidationActions();
+        $this->resetErrorBag();
+
+        if ($this->builderDisplayMode !== self::BUILDER_DISPLAY_SLIDE_OVER
+            || ! $target->topBuilder instanceof Builder) {
+            return $this->displayInlineValidationTarget($target, $message);
+        }
+
+        if ($target->exact && $target->topUuid !== null && $target->field !== null) {
+            if ($this->displayMountedValidationTarget($target, $message)) {
+                return true;
+            }
+
+            $this->clearMountedValidationActions();
+            $this->resetErrorBag();
+        }
+
+        if ($this->displayMountedBuilderFallback($target, $message)) {
+            return true;
+        }
+
+        $this->clearMountedValidationActions();
+        $this->resetErrorBag();
+
+        return $this->displayTopBuilderFallback($target, $message);
+    }
+
+    private function displayInlineValidationTarget(CardTemplateValidationTarget $target, string $message): bool
+    {
+        $component = $target->component;
+        $statePath = $target->statePath;
+
+        if ($target->exact
+            && $target->reveal !== null
+            && ! $this->revealInlineValidationTarget($target)) {
+            $component = $target->fallbackComponent;
+            $statePath = $target->fallbackStatePath;
+        }
+
+        if ($target->exact && ! $component?->isVisible()) {
+            $component = $target->fallbackComponent;
+            $statePath = $target->fallbackStatePath;
+        }
+
+        if (! $component instanceof Field || ! is_string($statePath) || ! $component->isVisible()) {
+            return false;
+        }
+
+        return $this->placeValidationError($component, $statePath, $message);
+    }
+
+    private function displayMountedValidationTarget(CardTemplateValidationTarget $target, string $message): bool
+    {
+        $topBuilder = $target->topBuilder;
+        $topUuid = $target->topUuid;
+        $field = $target->field;
+
+        if (! $topBuilder instanceof Builder || $topUuid === null || $field === null) {
+            return false;
+        }
+
+        $topActionIndex = $this->mountBuilderEditAction($topBuilder, $topUuid);
+
+        if ($topActionIndex === null) {
+            return false;
+        }
+
+        $topActionSchema = $this->getSchema("mountedActionSchema{$topActionIndex}");
+
+        if ($topActionSchema === null) {
+            return false;
+        }
+
+        if ($target->childPosition !== null) {
+            $childrenStatePath = "mountedActions.{$topActionIndex}.data.children";
+            $childrenBuilder = $this->fieldForStatePath($topActionSchema, $childrenStatePath);
+
+            if (! $childrenBuilder instanceof Builder
+                || ! ($childUuid = $this->builderItemUuidAt($childrenBuilder, $target->childPosition))) {
+                return false;
+            }
+
+            $childActionIndex = $this->mountBuilderEditAction($childrenBuilder, $childUuid);
+
+            if ($childActionIndex === null) {
+                return false;
+            }
+
+            if ($target->reveal !== null
+                && ! $this->revealMountedValidationTarget($childActionIndex, $target->reveal)) {
+                return false;
+            }
+
+            $childActionSchema = $this->getSchema("mountedActionSchema{$childActionIndex}");
+
+            if ($childActionSchema === null) {
+                return false;
+            }
+
+            $statePath = "mountedActions.{$childActionIndex}.data.{$field}";
+            $component = $this->fieldForStatePath($childActionSchema, $statePath);
+        } else {
+            if ($target->reveal !== null
+                && ! $this->revealMountedValidationTarget($topActionIndex, $target->reveal)) {
+                return false;
+            }
+
+            $statePath = "mountedActions.{$topActionIndex}.data.{$field}";
+            $component = $this->fieldForStatePath($topActionSchema, $statePath);
+        }
+
+        if ($component === null || ! $component->isVisible()) {
+            return false;
+        }
+
+        return $this->placeValidationError($component, $statePath, $message);
+    }
+
+    private function displayMountedBuilderFallback(CardTemplateValidationTarget $target, string $message): bool
+    {
+        $topBuilder = $target->topBuilder;
+        $fallbackStatePath = $target->exact ? $target->fallbackStatePath : $target->statePath;
+
+        if (! $topBuilder instanceof Builder
+            || $target->topUuid === null
+            || ! is_string($fallbackStatePath)
+            || ! str_ends_with($fallbackStatePath, '.data.children')) {
+            return false;
+        }
+
+        $topActionIndex = $this->mountBuilderEditAction($topBuilder, $target->topUuid);
+
+        if ($topActionIndex === null) {
+            return false;
+        }
+
+        $topActionSchema = $this->getSchema("mountedActionSchema{$topActionIndex}");
+        $statePath = "mountedActions.{$topActionIndex}.data.children";
+        $component = $topActionSchema?->getComponentByStatePath(
+            $statePath,
+            withHidden: true,
+            withAbsoluteStatePath: true,
+        );
+
+        if (! $component instanceof Builder || $component->getStatePath() !== $statePath || ! $component->isVisible()) {
+            return false;
+        }
+
+        return $this->placeValidationError($component, $statePath, $message);
+    }
+
+    private function displayTopBuilderFallback(CardTemplateValidationTarget $target, string $message): bool
+    {
+        $builder = $target->topBuilder;
+
+        if (! $builder instanceof Builder || $builder->getStatePath() !== 'data.parts' || ! $builder->isVisible()) {
+            return false;
+        }
+
+        return $this->placeValidationError($builder, 'data.parts', $message);
+    }
+
+    protected function mountBuilderEditAction(Builder $builder, string $uuid): ?int
+    {
+        $componentKey = $builder->getKey();
+
+        if (! is_string($componentKey) || $componentKey === '') {
+            return null;
+        }
+
+        $actionIndex = count($this->mountedActions);
+        $this->mountAction('edit', ['item' => $uuid], ['schemaComponent' => $componentKey]);
+
+        if (count($this->mountedActions) !== $actionIndex + 1
+            || ($this->mountedActions[$actionIndex]['name'] ?? null) !== 'edit'
+            || ($this->mountedActions[$actionIndex]['arguments']['item'] ?? null) !== $uuid
+            || ($this->mountedActions[$actionIndex]['context']['schemaComponent'] ?? null) !== $componentKey
+            || $this->getMountedAction($actionIndex)?->getName() !== 'edit') {
+            return null;
+        }
+
+        return $actionIndex;
+    }
+
+    private function revealInlineValidationTarget(CardTemplateValidationTarget $target): bool
+    {
+        $topUuid = $target->topUuid;
+        $reveal = $target->reveal;
+
+        if ($topUuid === null || $reveal === null || ! is_array($this->data['parts'][$topUuid]['data'] ?? null)) {
+            return false;
+        }
+
+        if ($target->childUuid !== null) {
+            $childUuid = $target->childUuid;
+
+            if (! is_array($this->data['parts'][$topUuid]['data']['children'][$childUuid]['data'] ?? null)) {
+                return false;
+            }
+
+            $this->data['parts'][$topUuid]['data']['children'][$childUuid]['data'][$reveal] = true;
+
+            return true;
+        }
+
+        $this->data['parts'][$topUuid]['data'][$reveal] = true;
+
+        return true;
+    }
+
+    private function revealMountedValidationTarget(int $actionIndex, string $reveal): bool
+    {
+        if (! is_array($this->mountedActions[$actionIndex]['data'] ?? null)) {
+            return false;
+        }
+
+        $this->mountedActions[$actionIndex]['data'][$reveal] = true;
+
+        return true;
+    }
+
+    private function placeValidationError(Field $component, string $statePath, string $message): bool
+    {
+        if ($component->getStatePath() !== $statePath) {
+            return false;
+        }
+
+        $this->addError($statePath, $message);
+        $this->dispatch('form-validation-error', livewireId: $this->getId());
+        $this->dispatch('card-template-validation-target', statePath: $statePath);
+
+        return true;
+    }
+
+    private function clearMountedValidationActions(): void
+    {
+        for ($remaining = count($this->mountedActions); $remaining > 0; $remaining--) {
+            $before = count($this->mountedActions);
+            $this->unmountAction(canCancelParentActions: false);
+
+            if (count($this->mountedActions) >= $before) {
+                break;
+            }
+        }
     }
 
     protected function enforceCurrentCapability(): void
