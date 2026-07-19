@@ -19,6 +19,7 @@ Thumbs.db
 .phpunit.result.cache
 
 /.ai/mcp
+/.mcp.json
 /.codex
 /.cursor
 /.idea

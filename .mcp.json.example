@@ -10,7 +10,9 @@
         "filament-examples": {
             "type": "http",
             "url": "https://filamentexamples.com/mcp",
-            "headers": { "Authorization": "Bearer ${FILAMENT_EXAMPLES_TOKEN}" }
+            "headers": {
+                "Authorization": "Bearer ${FILAMENT_EXAMPLES_TOKEN}"
+            }
         }
     }
 }
