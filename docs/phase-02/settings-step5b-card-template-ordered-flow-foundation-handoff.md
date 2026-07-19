@@ -2,7 +2,8 @@
 
 ## Status
 
-Implementation and canonical final gate complete; commit closeout pending.
+Implementation, canonical final gate, and implementation commit are complete;
+docs-only hash-stamp closeout is pending.
 
 - Audit: `LS-20260719-STEP5B-CARD-RENDER-O2-ORDERED-FLOW-01`
 - Option: `STEP5B-CARD-RENDER-OVERHAUL-O2-ORDERED-FLOW-FOUNDATION`
@@ -282,6 +283,12 @@ and full serial suite were run in the same order and passed; the full suite
 again passed 790 tests / 11,500 assertions. No file changed afterward before
 the implementation commit.
 
+Post-hash-stamp restart, required because the implementation hash below and
+the ledger stamp changed after the green gate: the same requirements sweep,
+Pint, FilaCheck, Vite build, and full serial suite were run in the same order
+and passed; the full suite again passed 790 tests / 11,500 assertions. No file
+changed afterward.
+
 ## Numbered Local Front Check
 
 1. Open the Card Template editor for an item row template at 1280px in Hebrew.
@@ -323,4 +330,4 @@ the implementation commit.
 
 ## Implementation commit hash
 
-Pending implementation commit.
+`f56ef36983a8813a1ebe18b1087864c626a4c8f5`
