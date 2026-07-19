@@ -237,10 +237,12 @@ then rendered all `media_parts` before every `body_part`.
 
 Git history shows the media-first split began with the original dynamic item
 renderer `e3c81de` and group renderer `f712791` on 2026-07-07; it was not
-introduced by the last one or two editor revisions. FU02 sample ranking and
-FU03/O4 path-corrected validation remain separate follow-ups. O4 is an internal
-Step 5B bug, not a GitHub issue. The complete future audit inventory is retained
-in research 31; no production normalization was run or prescribed.
+introduced by the last one or two editor revisions. FU02 sample ranking is now
+complete. A fresh read-only Mini 4 FU03/O4 path-corrected audit is the next
+program action; its implementation is unapproved, and FU04–FU06 remain
+sequentially later and unapproved. O4 is an internal Step 5B bug, not a GitHub
+issue. The complete future audit inventory is retained in research 31; no
+production normalization was run or prescribed.
 
 ## LG preview-shell O1
 
@@ -951,7 +953,12 @@ Existing family ties and contributor ordering remain authoritative.
 
 The complete contract, browser/request/query evidence, command history, review
 dispositions, deferred inventory, final gates, and implementation hash
-`a8be0aa4e7d89d8f70276ff497ee7b54a63d20df` are canonical in
+`a8be0aa4e7d89d8f70276ff497ee7b54a63d20df` plus docs-only hash stamp
+`23c3ac9e9c780e3f2b8882d5f9c4770f3cbb7f1e` are canonical in
 `docs/phase-02/settings-step5b-card-template-sample-ranking-parity-handoff.md`.
 O1/O2 shell, focus, single-root, geometry, diagnostics, theme-source, and
-navigation contracts remain unchanged and passed the combined regression.
+navigation contracts remain unchanged and passed the combined regression. The
+next program action is the fresh read-only Mini 4 FU03 audit
+`LS-20260719-STEP5B-CARD-UX2-FU03-PATH-CORRECTED-01`, with stable option ID
+`STEP5B-CARD-UX2-FU03-PATH-CORRECTED-CLOSURE`; no FU03 implementation approval
+has been given, and FU04–FU06 remain sequentially later and unapproved.

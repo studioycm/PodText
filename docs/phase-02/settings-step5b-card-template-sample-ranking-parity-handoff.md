@@ -11,6 +11,7 @@ implementation commit and canonical docs-only hash stamp are complete.
 - Starting HEAD: `27f38aeaebc8ab2ff4279abd2a905efdce82b495`
 - Starting branch: `main`, four commits ahead of `origin/main`
 - Implementation hash: `a8be0aa4e7d89d8f70276ff497ee7b54a63d20df`
+- Docs-only hash stamp: `23c3ac9e9c780e3f2b8882d5f9c4770f3cbb7f1e`
 - Push/PR/production: forbidden and not performed
 
 ## Contract and provenance
@@ -293,7 +294,24 @@ Post-hash-stamp final-tree restart:
 2. `vendor/bin/filacheck` — passed with 0 issues.
 3. `npm run build` — passed with Vite 8.1.0.
 4. Full serial `php artisan test` last with the permitted runner — passed 793
-   tests / 11,578 assertions. No file changed afterward.
+   tests / 11,578 assertions. No file changed afterward before this
+   documentation-only closeout correction.
+
+### Documentation-only closeout correction
+
+- Verified clean baseline
+  `23c3ac9e9c780e3f2b8882d5f9c4770f3cbb7f1e` on `main`, six commits ahead of
+  `origin/main`.
+- Swept active Step 5B state, ledger, cumulative handoff, and FU02 handoff
+  wording. Historical O1/FU01 handoffs retain their run-scoped deferred status.
+- Changed Markdown only; application code, tests, configuration, dependencies,
+  migrations, translations, and production state were untouched.
+- Requirements sweep and `git diff --check` passed.
+- `vendor/bin/pint --test` passed.
+- `vendor/bin/filacheck` passed with 0 issues.
+- `npm run build` passed with Vite 8.1.0.
+- Full serial `php artisan test` ran last with the permitted runner and passed
+  793 tests / 11,578 assertions. No file changed afterward.
 
 ## Assumptions and limits
 
@@ -313,10 +331,10 @@ Post-hash-stamp final-tree restart:
 ## Full deferred inventory
 
 - FU03/O4 validation-path correction; O4 remains an internal bug, not a GitHub
-  issue.
-- FU04 order-compatibility closure.
-- FU05 interaction and duplicate-refresh closure.
-- FU06 copy cleanup.
+  issue. A fresh read-only Mini 4 audit is the next program action; no FU03
+  implementation is approved.
+- FU04 order-compatibility closure, FU05 interaction and duplicate-refresh
+  closure, and FU06 copy cleanup remain sequentially later and unapproved.
 - Legacy UX2 O2 inline-header editing.
 - UX2 O3 global explicit-order cutover.
 - Production normalization and every production action.
@@ -366,5 +384,5 @@ Post-hash-stamp final-tree restart:
 ## Commit hash
 
 Implementation commit:
-`a8be0aa4e7d89d8f70276ff497ee7b54a63d20df`. This handoff and the canonical
-state/ledger records stamp that hash in the immediate docs-only closeout.
+`a8be0aa4e7d89d8f70276ff497ee7b54a63d20df`. Canonical docs-only hash stamp:
+`23c3ac9e9c780e3f2b8882d5f9c4770f3cbb7f1e`.
