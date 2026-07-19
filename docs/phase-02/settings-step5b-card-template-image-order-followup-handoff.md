@@ -247,4 +247,4 @@ closeout documentation. No unrelated pre-existing change is present.
 
 ## Commit hash
 
-Pending implementation commit.
+`2d028255e416399d9b167b2ca9a091e2eec852f5`
