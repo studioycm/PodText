@@ -65,9 +65,12 @@ class CardTemplateDraftNormalizer
     {
         return collect($parts)
             ->filter(fn (mixed $part): bool => is_array($part))
-            ->map(function (array $part): array {
+            ->values()
+            ->map(function (array $part, int $position): array {
                 $type = $part['type'] ?? null;
                 $data = is_array($part['data'] ?? null) ? $part['data'] : $part;
+
+                unset($data['order'], $data['_show_label'], $data['_show_icon']);
 
                 if ($type !== 'part_group') {
                     foreach (['columns', 'gap', 'alignment', 'children'] as $groupOnlyField) {
@@ -78,12 +81,12 @@ class CardTemplateDraftNormalizer
                 }
 
                 $data = array_filter($data, fn (mixed $value): bool => $value !== null);
+                $data['order'] = ($position + 1) * 10;
 
                 return is_array($part['data'] ?? null)
                     ? ['type' => $type, 'data' => $data]
                     : $data;
             })
-            ->values()
             ->all();
     }
 }

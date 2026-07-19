@@ -231,7 +231,6 @@ class SettingsSp3cCanaryPage extends Page
                     ? PublicFrontCardTemplateRegistry::groupLayoutOptions()
                     : PublicFrontCardTemplateRegistry::partLayoutOptions())
                 ->native(false),
-            TextInput::make('order')->integer()->minValue(0)->maxValue(1000),
             TextInput::make('text')->maxLength(1000),
         ];
 
@@ -289,7 +288,6 @@ class SettingsSp3cCanaryPage extends Page
                     ...PublicFrontCardTemplateRegistry::groupLayoutOptions(),
                 ])
                 ->native(false),
-            TextInput::make("{$prefix}.order")->integer()->minValue(0)->maxValue(1000),
             TextInput::make("{$prefix}.text")->maxLength(1000),
         ];
     }

@@ -257,6 +257,47 @@ it('accepts and normalizes valid card templates for every supported family', fun
     'contributor' => ['contributor'],
 ]);
 
+it('preserves explicit order compatibility in the global validator', function (): void {
+    $template = makeStep3CardTemplate('content_item', 'explicit_order_compatibility');
+    $template['parts'] = [
+        [
+            'type' => 'title',
+            'source' => 'content_item',
+            'attribute' => 'title',
+            'visible' => true,
+            'order' => 30,
+            'layout' => 'inline',
+        ],
+        [
+            'type' => 'description',
+            'source' => 'content_item',
+            'attribute' => 'description',
+            'visible' => true,
+            'order' => 20,
+            'layout' => 'stacked',
+        ],
+        [
+            'type' => 'custom_text',
+            'source' => 'custom',
+            'attribute' => 'text',
+            'text' => 'Explicit order remains authoritative globally',
+            'visible' => true,
+            'order' => 10,
+            'layout' => 'inline',
+        ],
+    ];
+
+    $result = app(PublicFrontConfigValidator::class)->validate([
+        'card_templates' => [$template],
+    ]);
+
+    expect($result->hasInvalidConfig())->toBeFalse()
+        ->and(array_column($result->group('card_templates')[0]['parts'], 'type'))
+        ->toBe(['custom_text', 'description', 'title'])
+        ->and(array_column($result->group('card_templates')[0]['parts'], 'order'))
+        ->toBe([10, 20, 30]);
+});
+
 it('reports invalid family and falls back to the family default template', function (): void {
     $result = app(PublicFrontConfigValidator::class)->validate([
         'card_templates' => [
@@ -1432,9 +1473,11 @@ it('saves a simple card template definition through the focused create page', fu
                         'source' => 'content_item',
                         'attribute' => 'title',
                         'label' => 'Admin title label',
+                        '_show_label' => true,
                         'label_position' => 'inline_before',
                         'label_alignment' => 'start',
                         'icon' => 'title',
+                        '_show_icon' => true,
                         'icon_position' => 'inline_before',
                         'visible' => true,
                         'order' => 10,

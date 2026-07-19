@@ -291,7 +291,7 @@ it('renders the focused preview shell in English LTR', function (): void {
         ->and($geometry['header_metadata'])->toBeTrue();
 });
 
-it('keeps zoom and sample choice transient inside the compact preview controls', function (): void {
+it('keeps card width and sample choice transient inside the compact preview controls', function (): void {
     app()->setLocale('en');
     $settingsBefore = DB::table('settings')
         ->where('group', PublicContentSettings::group())
@@ -305,32 +305,28 @@ it('keeps zoom and sample choice transient inside the compact preview controls',
     $interaction = $page->script(<<<'JS'
         async () => {
             await new Promise((resolve) => setTimeout(resolve, 250));
-            const plus = document.querySelector('[data-test="card-template-preview-zoom-in"]');
-            const minus = document.querySelector('[data-test="card-template-preview-zoom-out"]');
-            const reset = document.querySelector('[data-test="card-template-preview-zoom-reset"]');
-            const scroll = document.querySelector('[data-card-template-preview-scroll]');
-            const plane = document.querySelector('[data-card-template-preview-zoom-plane]');
-
-            for (let index = 0; index < 6; index++) plus?.click();
-            await new Promise((resolve) => setTimeout(resolve, 50));
-            const maximum = {
-                label: reset?.textContent.trim(),
-                zoom: getComputedStyle(plane).zoom,
-                plus_disabled: plus?.disabled ?? false,
-                scroll_plane_contains_zoom: scroll.scrollWidth + 1 >= plane.getBoundingClientRect().width,
+            const width = document.querySelector('[data-test="card-template-preview-width"]');
+            const plane = document.querySelector('[data-card-template-preview-width-plane]');
+            const parentRect = plane?.parentElement?.getBoundingClientRect();
+            const beforeRect = plane?.getBoundingClientRect();
+            const title = plane?.querySelector('[data-card-part="title"]');
+            const fontBefore = title ? getComputedStyle(title).fontSize : null;
+            const widthSetter = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set;
+            widthSetter.call(width, '60');
+            width.dispatchEvent(new Event('change', { bubbles: true }));
+            await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+            const afterRect = plane?.getBoundingClientRect();
+            const leftGap = afterRect && parentRect ? afterRect.left - parentRect.left : null;
+            const rightGap = afterRect && parentRect ? parentRect.right - afterRect.right : null;
+            const widthState = {
+                value: width?.value,
+                options: Array.from(width?.options ?? []).map((option) => option.value),
+                ratio: beforeRect && afterRect ? afterRect.width / beforeRect.width : null,
+                centered_delta: leftGap === null || rightGap === null ? null : Math.abs(leftGap - rightGap),
+                zoom: plane ? getComputedStyle(plane).zoom : null,
+                transform: plane ? getComputedStyle(plane).transform : null,
+                font_unchanged: title ? getComputedStyle(title).fontSize === fontBefore : false,
             };
-
-            reset?.click();
-            await new Promise((resolve) => setTimeout(resolve, 50));
-            const resetLabel = reset?.textContent.trim();
-            for (let index = 0; index < 6; index++) minus?.click();
-            await new Promise((resolve) => setTimeout(resolve, 50));
-            const minimum = {
-                label: reset?.textContent.trim(),
-                zoom: getComputedStyle(plane).zoom,
-                minus_disabled: minus?.disabled ?? false,
-            };
-            reset?.click();
 
             const selectShell = document.querySelector('[data-card-template-preview-sample-select]');
             selectShell?.querySelector('.fi-select-input-btn')?.click();
@@ -358,6 +354,11 @@ it('keeps zoom and sample choice transient inside the compact preview controls',
                 await new Promise((resolve) => setTimeout(resolve, 50));
             }
 
+            const controlsRow = document.querySelector('[data-card-template-preview-controls-row]');
+            const controlsChildren = Array.from(controlsRow?.children ?? []).map((child) => child.getBoundingClientRect());
+            const refresh = document.querySelector('[data-test="card-template-preview-refresh"]');
+            const statusRow = document.querySelector('[data-card-template-preview-status-row]');
+            const refreshed = document.querySelector('[data-test="card-template-preview-refreshed"]');
             const toggle = document.querySelector('[data-test="card-template-preview-controls-toggle"]');
             toggle?.click();
             await new Promise((resolve) => setTimeout(resolve, 500));
@@ -365,9 +366,7 @@ it('keeps zoom and sample choice transient inside the compact preview controls',
             const ready = document.querySelector('[data-test="card-template-preview-ready"]');
 
             return {
-                maximum,
-                reset_label: resetLabel,
-                minimum,
+                width: widthState,
                 search_input_found: Boolean(searchInput),
                 option_found: Boolean(option),
                 selected_alternate: selectShell?.querySelector('.fi-select-input-value-label')?.textContent.includes('Alternate Browser Sample') ?? false,
@@ -380,18 +379,25 @@ it('keeps zoom and sample choice transient inside the compact preview controls',
                 canvas_visible: getComputedStyle(ready).display !== 'none',
                 preview_roots: document.querySelectorAll('[data-card-template-preview-root]').length,
                 horizontal_overflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
+                controls_share_row: controlsChildren.length === 3
+                    && Math.max(...controlsChildren.map((rect) => rect.top + (rect.height / 2)))
+                        - Math.min(...controlsChildren.map((rect) => rect.top + (rect.height / 2))) < 4,
+                refresh_icon_only: refresh?.textContent.trim() === '',
+                refresh_label: refresh?.getAttribute('aria-label'),
+                status_one_row: statusRow?.getBoundingClientRect().height < 24,
+                refreshed_direction: refreshed?.dir,
             };
         }
         JS);
 
-    expect($interaction['maximum']['label'])->toBe('150%')
-        ->and((float) $interaction['maximum']['zoom'])->toBe(1.5)
-        ->and($interaction['maximum']['plus_disabled'])->toBeTrue()
-        ->and($interaction['maximum']['scroll_plane_contains_zoom'])->toBeTrue()
-        ->and($interaction['reset_label'])->toBe('100%')
-        ->and($interaction['minimum']['label'])->toBe('50%')
-        ->and((float) $interaction['minimum']['zoom'])->toBe(0.5)
-        ->and($interaction['minimum']['minus_disabled'])->toBeTrue()
+    expect($interaction['width']['value'])->toBe('60')
+        ->and($interaction['width']['options'])->toBe(['100', '90', '80', '70', '60'])
+        ->and($interaction['width']['ratio'])->toBeGreaterThan(0.59)
+        ->and($interaction['width']['ratio'])->toBeLessThan(0.61)
+        ->and($interaction['width']['centered_delta'])->toBeLessThan(2)
+        ->and((float) $interaction['width']['zoom'])->toBe(1.0)
+        ->and($interaction['width']['transform'])->toBe('none')
+        ->and($interaction['width']['font_unchanged'])->toBeTrue()
         ->and($interaction['search_input_found'])->toBeTrue()
         ->and($interaction['option_found'])->toBeTrue(json_encode($interaction, JSON_THROW_ON_ERROR))
         ->and($interaction['selected_alternate'])->toBeTrue(json_encode($interaction, JSON_THROW_ON_ERROR))
@@ -399,7 +405,12 @@ it('keeps zoom and sample choice transient inside the compact preview controls',
         ->and($interaction['controls_collapsed'])->toBeTrue(json_encode($interaction, JSON_THROW_ON_ERROR))
         ->and($interaction['canvas_visible'])->toBeTrue()
         ->and($interaction['preview_roots'])->toBe(1)
-        ->and($interaction['horizontal_overflow'])->toBeFalse();
+        ->and($interaction['horizontal_overflow'])->toBeFalse()
+        ->and($interaction['controls_share_row'])->toBeTrue(json_encode($interaction, JSON_THROW_ON_ERROR))
+        ->and($interaction['refresh_icon_only'])->toBeTrue()
+        ->and($interaction['refresh_label'])->toBe(__('admin.settings_sp3c.preview.refresh'))
+        ->and($interaction['status_one_row'])->toBeTrue()
+        ->and($interaction['refreshed_direction'])->toBe('ltr');
 
     $page->refresh();
     $transient = $page->script(<<<'JS'
@@ -408,13 +419,13 @@ it('keeps zoom and sample choice transient inside the compact preview controls',
 
             return {
                 sample_reset: ! document.querySelector('[data-card-template-preview-sample-select] .fi-select-input-value-label')?.textContent.includes('Alternate Browser Sample'),
-                zoom_reset: document.querySelector('[data-test="card-template-preview-zoom-reset"]')?.textContent.trim() === '100%',
+                width_reset: document.querySelector('[data-test="card-template-preview-width"]')?.value === '100',
             };
         }
         JS);
 
     expect($transient['sample_reset'])->toBeTrue()
-        ->and($transient['zoom_reset'])->toBeTrue()
+        ->and($transient['width_reset'])->toBeTrue()
         ->and(DB::table('settings')
             ->where('group', PublicContentSettings::group())
             ->where('name', 'card_templates')
@@ -617,6 +628,54 @@ it('remembers inline Builder mode locally and live refreshes authoritative part 
                 await new Promise((resolve) => setTimeout(resolve, 50));
             }
 
+            const findCustomItem = () => Array.from(document.querySelectorAll('[data-sp3c-template-parts] input'))
+                .find((candidate) => candidate.value === 'STEP5B BROWSER PART BEFORE')
+                ?.closest('.fi-fo-builder-item');
+            let customItem = findCustomItem();
+            const header = customItem?.querySelector('.fi-fo-builder-item-header');
+            header?.click();
+            await new Promise((resolve) => setTimeout(resolve, 50));
+            const headerCollapsed = customItem?.classList.contains('fi-collapsed') ?? false;
+            header?.click();
+            await new Promise((resolve) => setTimeout(resolve, 50));
+            const headerExpanded = ! (customItem?.classList.contains('fi-collapsed') ?? true);
+            customItem?.querySelector('[data-test="card-template-part-move"]')?.click();
+
+            const modalStarted = performance.now();
+            while (document.querySelector('.fi-modal.fi-modal-open') === null && performance.now() - modalStarted < 5000) {
+                await new Promise((resolve) => setTimeout(resolve, 25));
+            }
+            const moveModalOpened = document.querySelector('.fi-modal.fi-modal-open') !== null;
+            const actionKeptExpanded = ! (customItem?.classList.contains('fi-collapsed') ?? true);
+            window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+            await new Promise((resolve) => setTimeout(resolve, 300));
+
+            customItem = findCustomItem();
+            let showLabel = customItem?.querySelector('[data-test="card-template-part-show-label"]');
+            showLabel?.click();
+            const labelStarted = performance.now();
+            let labelInput = null;
+            while (labelInput === null && performance.now() - labelStarted < 5000) {
+                customItem = findCustomItem();
+                labelInput = Array.from(customItem?.querySelectorAll('input') ?? []).find((candidate) =>
+                    Array.from(candidate.attributes).some((attribute) =>
+                        attribute.name.startsWith('wire:model') && attribute.value.endsWith('.label'),
+                    ),
+                ) ?? null;
+                await new Promise((resolve) => setTimeout(resolve, 50));
+            }
+            customItem = findCustomItem();
+            showLabel = customItem?.querySelector('[data-test="card-template-part-show-label"]');
+            showLabel?.click();
+            await new Promise((resolve) => setTimeout(resolve, 500));
+            customItem = findCustomItem();
+            const toggleReachableAfterOff = Boolean(customItem?.querySelector('[data-test="card-template-part-show-label"]'));
+            const labelHiddenAfterOff = ! Array.from(customItem?.querySelectorAll('input') ?? []).some((candidate) =>
+                Array.from(candidate.attributes).some((attribute) =>
+                    attribute.name.startsWith('wire:model') && attribute.value.endsWith('.label'),
+                ),
+            );
+
             const textInput = Array.from(document.querySelectorAll('[data-sp3c-template-parts] input'))
                 .find((candidate) => candidate.value === 'STEP5B BROWSER PART BEFORE');
             const binding = Array.from(textInput?.attributes ?? [])
@@ -642,6 +701,13 @@ it('remembers inline Builder mode locally and live refreshes authoritative part 
             return {
                 restored_inline: document.querySelector('[data-test="card-template-builder-mode-inline"]')?.getAttribute('aria-pressed'),
                 summaries: document.querySelectorAll('[data-sp3c-part-summary]').length,
+                header_collapsed: headerCollapsed,
+                header_expanded: headerExpanded,
+                move_modal_opened: moveModalOpened,
+                action_kept_expanded: actionKeptExpanded,
+                label_input_revealed: Boolean(labelInput),
+                toggle_reachable_after_off: toggleReachableAfterOff,
+                label_hidden_after_off: labelHiddenAfterOff,
                 input_found: Boolean(textInput),
                 binding,
                 network_requests: requestUrls.filter((url) => url.includes('/livewire')).length,
@@ -655,6 +721,13 @@ it('remembers inline Builder mode locally and live refreshes authoritative part 
 
     expect($interaction['restored_inline'])->toBe('true')
         ->and($interaction['summaries'])->toBe(0)
+        ->and($interaction['header_collapsed'])->toBeTrue(json_encode($interaction, JSON_THROW_ON_ERROR))
+        ->and($interaction['header_expanded'])->toBeTrue(json_encode($interaction, JSON_THROW_ON_ERROR))
+        ->and($interaction['move_modal_opened'])->toBeTrue(json_encode($interaction, JSON_THROW_ON_ERROR))
+        ->and($interaction['action_kept_expanded'])->toBeTrue(json_encode($interaction, JSON_THROW_ON_ERROR))
+        ->and($interaction['label_input_revealed'])->toBeTrue(json_encode($interaction, JSON_THROW_ON_ERROR))
+        ->and($interaction['toggle_reachable_after_off'])->toBeTrue(json_encode($interaction, JSON_THROW_ON_ERROR))
+        ->and($interaction['label_hidden_after_off'])->toBeTrue(json_encode($interaction, JSON_THROW_ON_ERROR))
         ->and($interaction['input_found'])->toBeTrue(json_encode($interaction, JSON_THROW_ON_ERROR))
         ->and($interaction['binding'])->toStartWith('wire:model.live')
         ->and($interaction['network_requests'])->toBe(1, json_encode($interaction, JSON_THROW_ON_ERROR))

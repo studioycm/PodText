@@ -34,6 +34,9 @@ use Filament\Schemas\Components\Fieldset;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Tabs\Tab;
 use Filament\Schemas\Components\Utilities\Get;
+use Filament\Schemas\Components\Utilities\Set;
+use Filament\Support\Enums\Width;
+use Filament\Support\Icons\Heroicon;
 use Illuminate\Support\Arr;
 
 trait BuildsPublicContentSettingsSubjectSchemas
@@ -1612,16 +1615,10 @@ trait BuildsPublicContentSettingsSubjectSchemas
                                         ->native(false)
                                         ->default('base')
                                         ->required(),
-                                    Builder::make('parts')
+                                    $this->configureCardTemplatePartsBuilder(Builder::make('parts'))
                                         ->label(__('admin.fields.card_template_parts'))
                                         ->helperText(__('admin.helpers.card_template_parts'))
-                                        ->blocks($this->cardTemplatePartBlocks())
-                                        ->blockPickerColumns(2)
-                                        ->collapsible()
                                         ->collapsed()
-                                        ->cloneable()
-                                        ->default([])
-                                        ->addActionLabel(__('admin.actions.add_card_template_part'))
                                         ->columnSpanFull(),
                                 ])
                                 ->itemLabel(fn (array $state): ?string => $state['label'] ?? $state['key'] ?? __('admin.labels.untitled'))
@@ -1984,7 +1981,18 @@ trait BuildsPublicContentSettingsSubjectSchemas
             ->when(! $allowGroups, fn ($types) => $types->reject(fn (string $type): bool => $type === 'part_group'))
             ->map(function (string $type) use ($previews): Block {
                 $block = Block::make($type)
-                    ->label(__("admin.card_template_part_types.{$type}"))
+                    ->label(function (?int $index) use ($type): mixed {
+                        $typeLabel = __("admin.card_template_part_types.{$type}");
+
+                        if ($index === null) {
+                            return $typeLabel;
+                        }
+
+                        return view('filament.card-templates.part-heading', [
+                            'position' => $index + 1,
+                            'typeLabel' => $typeLabel,
+                        ]);
+                    })
                     ->schema($this->cardTemplatePartSchema($type, $previews))
                     ->columns($previews ? ['default' => 1, 'lg' => 2] : 3);
 
@@ -2242,28 +2250,72 @@ trait BuildsPublicContentSettingsSubjectSchemas
                 ->native(false)
                 ->required($requiresSource)
                 ->visible($requiresSource),
-            TextInput::make('label')
-                ->label(__('admin.fields.card_template_part_label'))
-                ->helperText(__('admin.helpers.card_template_part_label'))
-                ->maxLength(80),
-            Select::make('label_position')
-                ->label(__('admin.fields.card_template_part_label_position'))
-                ->options(fn (): array => PublicFrontCardTemplateRegistry::labelPositionOptions())
-                ->native(false),
-            Select::make('label_alignment')
-                ->label(__('admin.fields.card_template_part_label_alignment'))
-                ->helperText(__('admin.helpers.card_template_part_label_alignment'))
-                ->options(fn (): array => PublicFrontCardTemplateRegistry::labelAlignmentOptions())
-                ->default('start')
-                ->native(false),
-            IconSelect::make('icon')
-                ->label(__('admin.fields.card_template_part_icon'))
-                ->helperText(__('admin.helpers.card_template_part_icon'))
-                ->default(PublicFrontIconRegistry::NONE),
-            Select::make('icon_position')
-                ->label(__('admin.fields.card_template_part_icon_position'))
-                ->options(fn (): array => PublicFrontCardTemplateRegistry::iconPositionOptions())
-                ->native(false),
+            Fieldset::make(__('admin.settings_sp3c.editor.label_icon_group'))
+                ->schema([
+                    Toggle::make('_show_label')
+                        ->label(__('admin.fields.card_template_part_show_label'))
+                        ->extraAttributes(['data-test' => 'card-template-part-show-label'])
+                        ->default(false)
+                        ->live()
+                        ->dehydrated(false)
+                        ->afterStateUpdated(function (mixed $state, Get $get, Set $set): void {
+                            if (! $state) {
+                                $set('label_position', 'hidden');
+
+                                return;
+                            }
+
+                            if (($get('label_position') ?? 'hidden') === 'hidden') {
+                                $set('label_position', 'inline_before');
+                            }
+                        }),
+                    Toggle::make('_show_icon')
+                        ->label(__('admin.fields.card_template_part_show_icon'))
+                        ->extraAttributes(['data-test' => 'card-template-part-show-icon'])
+                        ->default(false)
+                        ->live()
+                        ->dehydrated(false)
+                        ->afterStateUpdated(function (mixed $state, Get $get, Set $set): void {
+                            if (! $state) {
+                                $set('icon_position', 'hidden');
+
+                                return;
+                            }
+
+                            if (($get('icon_position') ?? 'hidden') === 'hidden') {
+                                $set('icon_position', 'inline_before');
+                            }
+                        }),
+                    TextInput::make('label')
+                        ->label(__('admin.fields.card_template_part_label'))
+                        ->helperText(__('admin.helpers.card_template_part_label'))
+                        ->maxLength(80)
+                        ->visible(fn (Get $get): bool => (bool) $get('_show_label')),
+                    Select::make('label_position')
+                        ->label(__('admin.fields.card_template_part_label_position'))
+                        ->options(fn (): array => PublicFrontCardTemplateRegistry::labelPositionOptions())
+                        ->native(false)
+                        ->visible(fn (Get $get): bool => (bool) $get('_show_label')),
+                    Select::make('label_alignment')
+                        ->label(__('admin.fields.card_template_part_label_alignment'))
+                        ->helperText(__('admin.helpers.card_template_part_label_alignment'))
+                        ->options(fn (): array => PublicFrontCardTemplateRegistry::labelAlignmentOptions())
+                        ->default('start')
+                        ->native(false)
+                        ->visible(fn (Get $get): bool => (bool) $get('_show_label')),
+                    IconSelect::make('icon')
+                        ->label(__('admin.fields.card_template_part_icon'))
+                        ->helperText(__('admin.helpers.card_template_part_icon'))
+                        ->default(PublicFrontIconRegistry::NONE)
+                        ->visible(fn (Get $get): bool => (bool) $get('_show_icon')),
+                    Select::make('icon_position')
+                        ->label(__('admin.fields.card_template_part_icon_position'))
+                        ->options(fn (): array => PublicFrontCardTemplateRegistry::iconPositionOptions())
+                        ->native(false)
+                        ->visible(fn (Get $get): bool => (bool) $get('_show_icon')),
+                ])
+                ->columns(2)
+                ->columnSpanFull(),
             Select::make('layout')
                 ->label(__('admin.fields.card_template_part_layout'))
                 ->helperText(__('admin.helpers.card_template_part_layout'))
@@ -2293,13 +2345,6 @@ trait BuildsPublicContentSettingsSubjectSchemas
                 ->default('start')
                 ->native(false)
                 ->visible($isGroup),
-            TextInput::make('order')
-                ->label(__('admin.fields.card_template_part_order'))
-                ->helperText(__('admin.helpers.card_template_part_order'))
-                ->numeric()
-                ->integer()
-                ->minValue(0)
-                ->maxValue(1000),
             Select::make('line_clamp')
                 ->label(__('admin.fields.card_template_part_line_clamp'))
                 ->helperText(__('admin.helpers.card_template_part_line_clamp'))
@@ -2319,21 +2364,98 @@ trait BuildsPublicContentSettingsSubjectSchemas
                 ->maxLength(500)
                 ->visible($type === 'custom_text'),
             ...($isGroup ? [
-                Builder::make('children')
+                $this->configureCardTemplatePartsBuilder(
+                    Builder::make('children'),
+                    allowGroups: false,
+                    previews: $previews,
+                )
                     ->label(__('admin.fields.card_template_part_group_children'))
                     ->helperText(__('admin.helpers.card_template_part_group_children'))
-                    ->blocks($this->cardTemplatePartBlocks(allowGroups: false, previews: $previews))
-                    ->blockPickerColumns(2)
-                    ->blockPreviews(fn (): bool => $this->cardTemplatePartPreviewsEnabled($previews))
-                    ->editAction(fn (Action $action): Action => $this->configureCardTemplatePartEditAction($action))
-                    ->collapsible()
                     ->collapsed()
-                    ->cloneable()
-                    ->default([])
-                    ->addActionLabel(__('admin.actions.add_card_template_part'))
                     ->columnSpanFull(),
             ] : []),
         ];
+    }
+
+    protected function configureCardTemplatePartsBuilder(
+        Builder $builder,
+        bool $allowGroups = true,
+        bool $previews = false,
+    ): Builder {
+        return $builder
+            ->blocks($this->cardTemplatePartBlocks($allowGroups, $previews))
+            ->blockPickerColumns(2)
+            ->blockNumbers(false)
+            ->truncateBlockLabel(false)
+            ->blockPreviews(fn (): bool => $this->cardTemplatePartPreviewsEnabled($previews))
+            ->editAction(fn (Action $action): Action => $this->configureCardTemplatePartEditAction($action))
+            ->collapsible(fn (): bool => ! $this->cardTemplatePartPreviewsEnabled($previews))
+            ->cloneable()
+            ->reorderable()
+            ->deletable()
+            ->extraItemActions([$this->cardTemplatePartMoveAction()])
+            ->labelBetweenItems(view('filament.card-templates.part-separator'))
+            ->default([])
+            ->addActionLabel(__('admin.actions.add_card_template_part'));
+    }
+
+    protected function cardTemplatePartMoveAction(): Action
+    {
+        return Action::make('moveToPosition')
+            ->label(__('admin.actions.card_template_part_move'))
+            ->icon(Heroicon::OutlinedArrowsUpDown)
+            ->extraAttributes(['data-test' => 'card-template-part-move'])
+            ->modalHeading(__('admin.settings_sp3c.editor.move_part_heading'))
+            ->modalWidth(Width::ExtraSmall)
+            ->schema(function (Builder $component): array {
+                $maximum = max(1, count($component->getRawState() ?? []));
+
+                return [
+                    TextInput::make('position')
+                        ->label(__('admin.fields.card_template_part_position'))
+                        ->helperText(__('admin.helpers.card_template_part_position', ['max' => $maximum]))
+                        ->required()
+                        ->numeric()
+                        ->integer()
+                        ->autofocus()
+                        ->extraInputAttributes(['onfocus' => 'this.select()']),
+                ];
+            })
+            ->fillForm(function (array $arguments, Builder $component): array {
+                $position = array_search($arguments['item'] ?? null, array_keys($component->getRawState() ?? []), true);
+
+                return ['position' => $position === false ? 1 : $position + 1];
+            })
+            ->action(function (array $arguments, array $data, Builder $component): void {
+                $items = $component->getRawState() ?? [];
+                $itemKey = $arguments['item'] ?? null;
+                $keys = array_keys($items);
+                $currentPosition = array_search($itemKey, $keys, true);
+
+                if ($currentPosition === false || $items === []) {
+                    return;
+                }
+
+                $targetPosition = max(1, min((int) ($data['position'] ?? 1), count($items)));
+
+                if ($targetPosition === $currentPosition + 1) {
+                    return;
+                }
+
+                $item = [$itemKey => $items[$itemKey]];
+                unset($items[$itemKey]);
+                $insertionOffset = $targetPosition - 1;
+                $items = array_slice($items, 0, $insertionOffset, true)
+                    + $item
+                    + array_slice($items, $insertionOffset, null, true);
+
+                $component->rawState($items);
+                $component->callAfterStateUpdated();
+
+                if ($component->shouldPartiallyRenderAfterActionsCalled()) {
+                    $component->partiallyRender();
+                }
+            });
     }
 
     protected function cardTemplatePartPreviewsEnabled(bool $previews): bool
@@ -2358,11 +2480,7 @@ trait BuildsPublicContentSettingsSubjectSchemas
                     return $template;
                 }
 
-                $template['parts'] = collect($template['parts'] ?? [])
-                    ->filter(fn (mixed $part): bool => is_array($part))
-                    ->map(fn (array $part): array => $this->cardTemplatePartForBuilder($part))
-                    ->values()
-                    ->all();
+                $template['parts'] = $this->cardTemplatePartsForBuilder($template['parts'] ?? []);
 
                 return $template;
             })
@@ -2376,20 +2494,51 @@ trait BuildsPublicContentSettingsSubjectSchemas
      */
     protected function cardTemplatePartForBuilder(array $part): array
     {
-        $data = Arr::except($part, ['type']);
+        $data = Arr::except($part, ['type', 'order']);
+        $data['_show_label'] = array_key_exists('label_position', $part)
+            && $part['label_position'] !== 'hidden';
+        $data['_show_icon'] = array_key_exists('icon_position', $part)
+            && $part['icon_position'] !== 'hidden';
 
         if (isset($data['children']) && is_array($data['children'])) {
-            $data['children'] = collect($data['children'])
-                ->filter(fn (mixed $child): bool => is_array($child))
-                ->map(fn (array $child): array => $this->cardTemplatePartForBuilder($child))
-                ->values()
-                ->all();
+            $data['children'] = $this->cardTemplatePartsForBuilder($data['children']);
         }
 
         return [
             'type' => $part['type'] ?? 'custom_text',
             'data' => $data,
         ];
+    }
+
+    /**
+     * @param  array<int|string, mixed>  $parts
+     * @return array<int, array{type: string, data: array<string, mixed>}>
+     */
+    protected function cardTemplatePartsForBuilder(array $parts): array
+    {
+        return collect($parts)
+            ->filter(fn (mixed $part): bool => is_array($part))
+            ->values()
+            ->map(function (array $part, int $position): array {
+                $fallbackOrder = ($position + 1) * 10;
+                $order = $part['order'] ?? null;
+                $effectiveOrder = is_numeric($order) && (int) $order >= 0 && (int) $order <= 1000
+                    ? (int) $order
+                    : $fallbackOrder;
+
+                return [
+                    'part' => $part,
+                    'position' => $position,
+                    'effective_order' => $effectiveOrder,
+                ];
+            })
+            ->sortBy([
+                ['effective_order', 'asc'],
+                ['position', 'asc'],
+            ])
+            ->map(fn (array $entry): array => $this->cardTemplatePartForBuilder($entry['part']))
+            ->values()
+            ->all();
     }
 
     /**

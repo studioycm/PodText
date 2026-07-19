@@ -21,6 +21,7 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Pages\SettingsPage;
+use Filament\Schemas\Components\Group;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Text;
 use Filament\Schemas\Components\View as SchemaView;
@@ -180,7 +181,7 @@ abstract class CardTemplateEditorPage extends SettingsPage
     public function form(Schema $schema): Schema
     {
         $identityLocked = $this->defaultIdentity || $this->operationMode === 'override';
-        $fields = [
+        $settingsFields = [
             TextInput::make('key')
                 ->label(__('admin.fields.card_template_key'))
                 ->helperText(__('admin.helpers.card_template_key'))
@@ -250,41 +251,46 @@ abstract class CardTemplateEditorPage extends SettingsPage
         ];
 
         if ($this->restricted) {
-            $fields[] = Text::make(__('admin.settings_sp3c.editor.restricted_copy'))
+            $settingsFields[] = Text::make(__('admin.settings_sp3c.editor.restricted_copy'))
                 ->extraAttributes(['data-sp3c-restricted-shell' => 'true']);
-        } else {
-            $fields[] = SchemaView::make('filament.card-templates.builder-display-mode')
-                ->viewData(fn (): array => [
-                    'builderDisplayMode' => $this->builderDisplayMode,
+        }
+
+        $sections = [
+            Section::make(__('admin.settings_sp3c.editor.template_settings_heading'))
+                ->schema($settingsFields)
+                ->columns(3)
+                ->collapsible(),
+        ];
+
+        if (! $this->restricted) {
+            $sections[] = Section::make(__('admin.settings_sp3c.editor.parts_heading'))
+                ->schema([
+                    SchemaView::make('filament.card-templates.builder-display-mode')
+                        ->viewData(fn (): array => [
+                            'builderDisplayMode' => $this->builderDisplayMode,
+                        ])
+                        ->columnSpanFull(),
+                    $this->configureCardTemplatePartsBuilder(
+                        Builder::make('parts'),
+                        previews: true,
+                    )
+                        ->label(__('admin.fields.card_template_parts'))
+                        ->helperText(__('admin.helpers.card_template_parts'))
+                        ->live(debounce: 500)
+                        ->afterStateUpdated(function (): void {
+                            $this->refreshPreview();
+                        })
+                        ->extraAttributes(['data-sp3c-template-parts' => 'true'])
+                        ->columnSpanFull(),
                 ])
-                ->columnSpanFull();
-            $fields[] = Builder::make('parts')
-                ->label(__('admin.fields.card_template_parts'))
-                ->helperText(__('admin.helpers.card_template_parts'))
-                ->blocks($this->cardTemplatePartBlocks(previews: true))
-                ->blockPickerColumns(2)
-                ->blockPreviews(fn (): bool => $this->cardTemplatePartPreviewsEnabled(true))
-                ->editAction(fn (Action $action): Action => $this->configureCardTemplatePartEditAction($action))
-                ->cloneable()
-                ->reorderable()
-                ->deletable()
-                ->live(debounce: 500)
-                ->afterStateUpdated(function (): void {
-                    $this->refreshPreview();
-                })
-                ->default([])
-                ->addActionLabel(__('admin.actions.add_card_template_part'))
-                ->extraAttributes(['data-sp3c-template-parts' => 'true'])
-                ->columnSpanFull();
+                ->collapsible();
         }
 
         return $schema
             ->components([
-                Section::make(__('admin.settings_sp3c.editor.draft_heading'))
-                    ->description(__('admin.settings_sp3c.editor.draft_description'))
-                    ->schema($fields)
+                Group::make($sections)
                     ->extraAttributes(['data-sp3c-template-editor' => 'true'])
-                    ->columns(3),
+                    ->columnSpanFull(),
             ])
             ->statePath('data');
     }
@@ -415,6 +421,7 @@ abstract class CardTemplateEditorPage extends SettingsPage
             ? [
                 Select::make('sample_id')
                     ->label(__('admin.settings_sp3c.preview.choose_sample'))
+                    ->hiddenLabel()
                     ->placeholder(__('admin.settings_sp3c.preview.sample_placeholder'))
                     ->options(fn (): array => $this->canChoosePreviewSample()
                         ? app(CardTemplatePreviewer::class)->initialSampleOptions($this->currentPreviewFamily())
@@ -521,7 +528,7 @@ abstract class CardTemplateEditorPage extends SettingsPage
         $this->previewControls['sample_id'] = $preview['sample_id'];
         $this->previewSampleLabel = $preview['sample_label'];
         $this->previewHtml = $preview['html'];
-        $this->previewRefreshedAt = now()->timezone('Asia/Jerusalem')->format('d/m/Y H:i:s');
+        $this->previewRefreshedAt = now()->timezone('Asia/Jerusalem')->format('d/m H:i');
     }
 
     public function previewIsStale(): bool

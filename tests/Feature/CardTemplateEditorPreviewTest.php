@@ -13,6 +13,7 @@ use App\Settings\AdminUxSettings;
 use App\Settings\PublicContentSettings;
 use App\Support\PublicFront\Cards\PublicFrontCardTemplateRegistry;
 use App\Support\PublicFront\PublicFrontConfigRegistry;
+use App\Support\Settings\CardTemplates\CardTemplateDraftNormalizer;
 use App\Support\Settings\CardTemplates\CardTemplateFocusedWriter;
 use App\Support\Settings\CardTemplates\CardTemplatePartSummaryFormatter;
 use App\Support\Settings\CardTemplates\CardTemplatePreviewer;
@@ -21,6 +22,8 @@ use Filament\Actions\Testing\TestAction;
 use Filament\Facades\Filament;
 use Filament\Forms\Components\Builder;
 use Filament\Forms\Components\Select;
+use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Toggle;
 use Filament\Support\Enums\SlideOverPosition;
 use Filament\Support\Enums\Width;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -112,7 +115,13 @@ it('previews the current single draft explicitly without settings or mutation se
     expect($component->get('previewStatus'))->toBe('ready')
         ->and($component->get('previewSampleId'))->toBe($item->getKey())
         ->and($component->get('previewHtml'))->toContain('data-card-template-family="content_item"')
+        ->and($component->get('previewRefreshedAt'))->toMatch('/^\d{2}\/\d{2} \d{2}:\d{2}$/')
         ->and($component->instance()->previewIsStale())->toBeFalse();
+
+    $component
+        ->assertSeeHtml('data-card-template-preview-width')
+        ->assertSeeHtml('data-card-template-preview-width-plane')
+        ->assertDontSeeHtml('data-card-template-preview-zoom-plane');
 
     $component->set('data.label', 'Identity-only label change');
     expect($component->instance()->previewIsStale())->toBeTrue();
@@ -252,6 +261,290 @@ it('auto refreshes part field and structural edits without persisting settings',
     expect($component->get('previewHtml'))->not->toContain('STEP5B PART AFTER')
         ->and($component->get('previewSampleId'))->toBe($item->getKey())
         ->and($component->instance()->previewIsStale())->toBeFalse();
+    Event::assertNotDispatched(SettingsSaved::class);
+});
+
+it('hydrates legacy order into position canonical builders with compact native controls', function (): void {
+    $template = step5bEditorTemplate();
+    $template['parts'] = [
+        [
+            'type' => 'title',
+            'source' => 'content_item',
+            'attribute' => 'title',
+            'label' => 'Retained title label',
+            'label_position' => 'inline_after',
+            'icon' => 'title',
+            'icon_position' => 'inline_after',
+            'visible' => true,
+            'order' => 30,
+            'layout' => 'inline',
+        ],
+        [
+            'type' => 'custom_text',
+            'source' => 'custom',
+            'attribute' => 'text',
+            'text' => 'Legacy first',
+            'visible' => true,
+            'order' => 10,
+            'layout' => 'inline',
+        ],
+        [
+            'type' => 'description',
+            'source' => 'content_item',
+            'attribute' => 'description',
+            'visible' => true,
+            'order' => 20,
+            'layout' => 'stacked',
+        ],
+        [
+            'type' => 'part_group',
+            'visible' => true,
+            'order' => 40,
+            'layout' => 'stacked',
+            'children' => [
+                [
+                    'type' => 'custom_text',
+                    'source' => 'custom',
+                    'attribute' => 'text',
+                    'text' => 'Nested second',
+                    'visible' => true,
+                    'order' => 20,
+                    'layout' => 'inline',
+                ],
+                [
+                    'type' => 'custom_text',
+                    'source' => 'custom',
+                    'attribute' => 'text',
+                    'text' => 'Nested first',
+                    'visible' => true,
+                    'order' => 10,
+                    'layout' => 'inline',
+                ],
+            ],
+        ],
+    ];
+    step5bEditorSaveSetting(PublicContentSettings::class, 'card_templates', [$template]);
+    step5bEditorPublicItem('Canonical Builder Episode');
+
+    $component = Livewire::test(EditCardTemplate::class, [
+        'family' => 'content_item',
+        'key' => 'preview_target',
+    ]);
+    $builder = $component->instance()->getSchemaComponent('form.parts');
+    $parts = $builder->getRawState();
+    $customTextKey = collect($parts)->search(fn (array $part): bool => $part['type'] === 'custom_text');
+    $titleKey = collect($parts)->search(fn (array $part): bool => $part['type'] === 'title');
+    $groupKey = collect($parts)->search(fn (array $part): bool => $part['type'] === 'part_group');
+    $titleComponents = collect($builder->getChildSchema($titleKey)->getFlatComponents(withHidden: true));
+    $showLabel = $titleComponents->first(fn ($field): bool => $field instanceof Toggle && $field->getName() === '_show_label');
+    $showIcon = $titleComponents->first(fn ($field): bool => $field instanceof Toggle && $field->getName() === '_show_icon');
+    $labelField = $titleComponents->first(fn ($field): bool => $field instanceof TextInput && $field->getName() === 'label');
+    $iconField = $titleComponents->first(fn ($field): bool => method_exists($field, 'getName') && $field->getName() === 'icon');
+    $compactComponents = collect($builder->getChildSchema($customTextKey)->getFlatComponents(withHidden: true));
+    $compactShowLabel = $compactComponents->first(fn ($field): bool => $field instanceof Toggle && $field->getName() === '_show_label');
+    $compactShowIcon = $compactComponents->first(fn ($field): bool => $field instanceof Toggle && $field->getName() === '_show_icon');
+    $compactLabelField = $compactComponents->first(fn ($field): bool => $field instanceof TextInput && $field->getName() === 'label');
+    $compactIconField = $compactComponents->first(fn ($field): bool => method_exists($field, 'getName') && $field->getName() === 'icon');
+    $nestedBuilder = collect($builder->getChildSchema($groupKey)->getFlatComponents(withHidden: true))
+        ->first(fn ($field): bool => $field instanceof Builder && $field->getName() === 'children');
+    $moveAction = $builder->getExtraItemActions()['moveToPosition'] ?? null;
+
+    expect(array_column(array_values($parts), 'type'))
+        ->toBe(['custom_text', 'description', 'title', 'part_group'])
+        ->and(collect($parts)->every(fn (array $part): bool => ! array_key_exists('order', $part['data'])))->toBeTrue()
+        ->and(array_column(array_values($nestedBuilder->getRawState()), 'type'))
+        ->toBe(['custom_text', 'custom_text'])
+        ->and(array_values($nestedBuilder->getRawState())[0]['data']['text'])->toBe('Nested first')
+        ->and($builder->hasBlockNumbers())->toBeFalse()
+        ->and($nestedBuilder->hasBlockNumbers())->toBeFalse()
+        ->and($builder->isCollapsible())->toBeFalse()
+        ->and($moveAction)->not->toBeNull()
+        ->and($moveAction->getModalWidth())->toBe(Width::ExtraSmall)
+        ->and($titleComponents->contains(fn ($field): bool => method_exists($field, 'getName') && $field->getName() === 'order'))->toBeFalse()
+        ->and($showLabel)->toBeInstanceOf(Toggle::class)
+        ->and($showLabel->isLive())->toBeTrue()
+        ->and($showLabel->isDehydrated())->toBeFalse()
+        ->and($showIcon)->toBeInstanceOf(Toggle::class)
+        ->and($showIcon->isLive())->toBeTrue()
+        ->and($showIcon->isDehydrated())->toBeFalse()
+        ->and($labelField->isVisible())->toBeTrue()
+        ->and($iconField->isVisible())->toBeTrue()
+        ->and($compactShowLabel)->toBeInstanceOf(Toggle::class)
+        ->and($compactShowIcon)->toBeInstanceOf(Toggle::class)
+        ->and($compactLabelField->isVisible())->toBeFalse()
+        ->and($compactIconField->isVisible())->toBeFalse();
+
+    $component
+        ->assertSee(__('admin.settings_sp3c.editor.template_settings_heading'))
+        ->assertSee(__('admin.settings_sp3c.editor.parts_heading'))
+        ->assertSeeHtml('data-sp3c-part-position-badge')
+        ->set("data.parts.{$titleKey}.data._show_label", false)
+        ->assertSet("data.parts.{$titleKey}.data.label", 'Retained title label')
+        ->assertSet("data.parts.{$titleKey}.data.label_position", 'hidden')
+        ->set("data.parts.{$titleKey}.data._show_icon", false)
+        ->assertSet("data.parts.{$titleKey}.data.icon", 'title')
+        ->assertSet("data.parts.{$titleKey}.data.icon_position", 'hidden');
+
+    $builder = $component->instance()->getSchemaComponent('form.parts');
+    $titleComponents = collect($builder->getChildSchema($titleKey)->getFlatComponents(withHidden: true));
+    $labelField = $titleComponents->first(fn ($field): bool => $field instanceof TextInput && $field->getName() === 'label');
+    $iconField = $titleComponents->first(fn ($field): bool => method_exists($field, 'getName') && $field->getName() === 'icon');
+    expect($labelField->isVisible())->toBeFalse()
+        ->and($iconField->isVisible())->toBeFalse();
+
+    $component
+        ->set("data.parts.{$titleKey}.data._show_label", true)
+        ->assertSet("data.parts.{$titleKey}.data.label", 'Retained title label')
+        ->assertSet("data.parts.{$titleKey}.data.label_position", 'inline_before')
+        ->set("data.parts.{$titleKey}.data._show_icon", true)
+        ->assertSet("data.parts.{$titleKey}.data.icon", 'title')
+        ->assertSet("data.parts.{$titleKey}.data.icon_position", 'inline_before')
+        ->call('setBuilderDisplayMode', 'inline');
+
+    $builder = $component->instance()->getSchemaComponent('form.parts');
+    $groupKey = collect($builder->getRawState())->search(fn (array $part): bool => $part['type'] === 'part_group');
+    $nestedBuilder = collect($builder->getChildSchema($groupKey)->getFlatComponents(withHidden: true))
+        ->first(fn ($field): bool => $field instanceof Builder && $field->getName() === 'children');
+
+    expect($builder->isCollapsible())->toBeTrue()
+        ->and($nestedBuilder->isCollapsible())->toBeTrue();
+});
+
+it('moves top-level and nested parts through their owning native builder actions', function (): void {
+    $template = step5bEditorTemplate();
+    $template['parts'] = [
+        [
+            'type' => 'custom_text',
+            'source' => 'custom',
+            'attribute' => 'text',
+            'text' => 'Move A',
+            'visible' => true,
+            'order' => 10,
+            'layout' => 'inline',
+        ],
+        [
+            'type' => 'custom_text',
+            'source' => 'custom',
+            'attribute' => 'text',
+            'text' => 'Move B',
+            'visible' => true,
+            'order' => 20,
+            'layout' => 'inline',
+        ],
+        [
+            'type' => 'part_group',
+            'visible' => true,
+            'order' => 30,
+            'layout' => 'stacked',
+            'children' => [
+                [
+                    'type' => 'custom_text',
+                    'source' => 'custom',
+                    'attribute' => 'text',
+                    'text' => 'Child A',
+                    'visible' => true,
+                    'order' => 10,
+                    'layout' => 'inline',
+                ],
+                [
+                    'type' => 'custom_text',
+                    'source' => 'custom',
+                    'attribute' => 'text',
+                    'text' => 'Child B',
+                    'visible' => true,
+                    'order' => 20,
+                    'layout' => 'inline',
+                ],
+            ],
+        ],
+    ];
+    step5bEditorSaveSetting(PublicContentSettings::class, 'card_templates', [$template]);
+    $item = step5bEditorPublicItem('Scoped Move Episode');
+    $component = Livewire::test(EditCardTemplate::class, [
+        'family' => 'content_item',
+        'key' => 'preview_target',
+    ]);
+    $builder = $component->instance()->getSchemaComponent('form.parts');
+    $originalKeys = array_keys($builder->getRawState());
+    $move = TestAction::make('moveToPosition')->schemaComponent('parts', 'form');
+    $preview = [
+        'family' => $component->get('previewFamily'),
+        'sample_id' => $component->get('previewSampleId'),
+        'sample_label' => $component->get('previewSampleLabel'),
+        'html' => $component->get('previewHtml'),
+    ];
+    $previewer = Mockery::mock(CardTemplatePreviewer::class);
+    $previewer->shouldReceive('preview')
+        ->once()
+        ->with(Mockery::type('array'), $item->getKey())
+        ->andReturn($preview);
+    $previewer->shouldReceive('initialSampleOptions')
+        ->andReturn([$item->getKey() => $component->get('previewSampleLabel')]);
+    app()->instance(CardTemplatePreviewer::class, $previewer);
+
+    Event::fake([SettingsSaved::class]);
+    $component
+        ->mountAction($move, ['item' => $originalKeys[0]])
+        ->assertSchemaStateSet(['position' => 1])
+        ->fillForm(['position' => 3])
+        ->callMountedAction();
+
+    $builder = $component->instance()->getSchemaComponent('form.parts');
+    expect(array_keys($builder->getRawState()))
+        ->toBe([$originalKeys[1], $originalKeys[2], $originalKeys[0]])
+        ->and(array_diff($originalKeys, array_keys($builder->getRawState())))->toBe([]);
+    Event::assertNotDispatched(SettingsSaved::class);
+    app()->forgetInstance(CardTemplatePreviewer::class);
+
+    $component->callAction($move, data: ['position' => 99], arguments: ['item' => $originalKeys[1]]);
+    $builder = $component->instance()->getSchemaComponent('form.parts');
+    expect(array_keys($builder->getRawState()))
+        ->toBe([$originalKeys[2], $originalKeys[0], $originalKeys[1]]);
+
+    $component->callAction($move, data: ['position' => -5], arguments: ['item' => $originalKeys[1]]);
+    $builder = $component->instance()->getSchemaComponent('form.parts');
+    expect(array_keys($builder->getRawState()))
+        ->toBe([$originalKeys[1], $originalKeys[2], $originalKeys[0]]);
+
+    $groupKey = collect($builder->getRawState())->search(fn (array $part): bool => $part['type'] === 'part_group');
+    $nestedBuilder = collect($builder->getChildSchema($groupKey)->getFlatComponents(withHidden: true))
+        ->first(fn ($field): bool => $field instanceof Builder && $field->getName() === 'children');
+    $childKeys = array_keys($nestedBuilder->getRawState());
+    $nestedMove = TestAction::make('moveToPosition')->schemaComponent(
+        str($nestedBuilder->getKey())->after('form.')->toString(),
+        'form',
+    );
+
+    $component->callAction($nestedMove, data: ['position' => 2], arguments: ['item' => $childKeys[0]]);
+
+    $builder = $component->instance()->getSchemaComponent('form.parts');
+    $groupKey = collect($builder->getRawState())->search(fn (array $part): bool => $part['type'] === 'part_group');
+    $nestedBuilder = collect($builder->getChildSchema($groupKey)->getFlatComponents(withHidden: true))
+        ->first(fn ($field): bool => $field instanceof Builder && $field->getName() === 'children');
+
+    $noOpPreviewer = Mockery::mock(CardTemplatePreviewer::class);
+    $noOpPreviewer->shouldNotReceive('preview');
+    $noOpPreviewer->shouldReceive('initialSampleOptions')
+        ->andReturn([$item->getKey() => $component->get('previewSampleLabel')]);
+    app()->instance(CardTemplatePreviewer::class, $noOpPreviewer);
+    $component->callAction($move, data: ['position' => 1], arguments: ['item' => $originalKeys[1]]);
+    app()->forgetInstance(CardTemplatePreviewer::class);
+
+    $component
+        ->callAction($move, data: ['position' => 'not-a-number'], arguments: ['item' => $originalKeys[1]])
+        ->assertHasFormErrors(['position' => 'numeric'])
+        ->unmountAction();
+
+    $candidate = app(CardTemplateDraftNormalizer::class)->candidate($component->get('data'));
+
+    expect(array_keys($nestedBuilder->getRawState()))->toBe([$childKeys[1], $childKeys[0]])
+        ->and(array_keys($builder->getRawState()))->toBe([$originalKeys[1], $originalKeys[2], $originalKeys[0]])
+        ->and(array_column(array_map(fn (array $part): array => $part['data'], $candidate['parts']), 'order'))
+        ->toBe([10, 20, 30])
+        ->and(array_column(array_map(
+            fn (array $part): array => $part['data'],
+            $candidate['parts'][1]['data']['children'],
+        ), 'order'))->toBe([10, 20]);
     Event::assertNotDispatched(SettingsSaved::class);
 });
 

@@ -88,8 +88,11 @@ it('shares exact builder transport cleanup between preview and persistence', fun
                     'alignment' => 'between',
                     'children' => [],
                     'icon' => null,
+                    '_show_label' => true,
+                    '_show_icon' => false,
                 ],
             ],
+            'discarded-non-array-part',
             [
                 'type' => 'part_group',
                 'data' => [
@@ -103,7 +106,9 @@ it('shares exact builder transport cleanup between preview and persistence', fun
                                 'attribute' => 'text',
                                 'text' => 'Nested',
                                 'visible' => true,
-                                'order' => 0,
+                                'order' => '',
+                                '_show_label' => false,
+                                '_show_icon' => true,
                                 'children' => [],
                             ],
                         ],
@@ -116,12 +121,14 @@ it('shares exact builder transport cleanup between preview and persistence', fun
     expect($candidate['parts'][0]['data'])
         ->toMatchArray([
             'visible' => false,
-            'order' => 0,
+            'order' => 10,
             'label' => '',
         ])
-        ->not->toHaveKeys(['columns', 'gap', 'alignment', 'children', 'icon'])
+        ->not->toHaveKeys(['columns', 'gap', 'alignment', 'children', 'icon', '_show_label', '_show_icon'])
+        ->and($candidate['parts'][1]['data']['order'])->toBe(20)
         ->and($candidate['parts'][1]['data']['children'][0]['data'])
-        ->not->toHaveKey('children');
+        ->toHaveKey('order', 10)
+        ->not->toHaveKeys(['children', '_show_label', '_show_icon']);
 });
 
 it('renders a public safe inert preview without resolving configured settings', function (string $family): void {

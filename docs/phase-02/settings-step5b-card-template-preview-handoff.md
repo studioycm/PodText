@@ -22,6 +22,16 @@
   `docs/research/settings-performance/27-step5b-card-template-editor-ux-research.md`
   and
   `docs/research/settings-performance/28-step5b-card-template-editor-ux-implementation-plan.md`.
+- UX2 compatibility-modal closure audit:
+  `LS-20260719-STEP5B-CARD-TEMPLATE-UX2-01`; approved option:
+  `STEP5B-CARD-UX2-O1-COMPAT-MODAL`; clean implementation baseline:
+  `8b3b5b06cedea984ffd277fbf29d8c3f3268e3da`.
+- UX2 research, its consulted implementation plan, and the dedicated handoff
+  are recorded in
+  `docs/research/settings-performance/29-step5b-card-template-editor-ux2-research.md`,
+  `docs/research/settings-performance/30-step5b-card-template-editor-ux2-implementation-plan.md`,
+  and
+  `docs/phase-02/settings-step5b-card-template-editor-ux2-handoff.md`.
 
 ## Outcome
 
@@ -154,6 +164,36 @@ The finite presentation Selects `layout`, `density`, `image_size`, and
 now use `Unlabelled` / `ללא תווית`, display the same localized source and
 attribute option labels as the form, and retain escaped diagnostic raw values
 for unknown legacy/corrupt tokens.
+
+## UX2 position-canonical compatibility-modal closure
+
+The approved `STEP5B-CARD-UX2-O1-COMPAT-MODAL` closure supersedes the focused
+editor's transient zoom control with a centered 100/90/80/70/60 card-width
+control. Width changes reflow the real card container without scaling its text,
+images, or controls, and reset to 100% on reload. Sample, width, and icon-only
+Refresh controls share one compact row; current/stale state uses short
+localized copy and a short `Asia/Jerusalem` timestamp.
+
+The focused top-level and nested Builders now:
+
+- consume legacy explicit sibling `order` only to establish initial position,
+  remove it from focused Builder state, and synthesize contiguous x10 order for
+  preview/save after filtering non-array entries;
+- display a localized position badge, separator, and translated type in a
+  compact escaped heading, with consistently separated compact summaries;
+- use native inline Builder collapse and the native owning-Builder extra-item
+  action for an icon-only move-to-position modal;
+- clamp the requested position on the server and use take-the-slot semantics
+  while preserving UUID keys, nested boundaries, and one refresh callback; and
+- group label/icon controls compactly, keep transient switches reachable, hide
+  their subordinate fields conditionally, and preserve entered label/icon
+  values while the corresponding switch is off.
+
+The global `PublicFrontConfigValidator`, `PublicFrontCardTemplate`, import,
+restore, backup, and lifecycle paths retain their explicit-order compatibility.
+No production normalization was run or prescribed. O2 inline heading editing,
+O3 global explicit-order cutover, and O4 path-aware invalid-field navigation
+remain unimplemented.
 
 ## Requirement classification
 
@@ -678,13 +718,13 @@ The requirements sweep passed before this sequence:
 3. Repeat at 1440 CSS pixels in English and Hebrew. Expect the preview at
    logical end: right in English and left in Hebrew, with no horizontal page
    overflow.
-4. Collapse the preview controls. Expect the sample/zoom/refresh toolbar to
+4. Collapse the preview controls. Expect the sample/width/refresh toolbar to
    collapse while the rendered card canvas remains visible.
-5. Reopen the controls and press zoom minus/plus. Expect 10% steps, disabled
-   controls at 50% and 150%, no clipped card or corrupted scroll plane, and the
-   reset control to restore 100%.
-6. Reload the editor. Expect zoom to return to 100%; it must not be remembered
-   or written to settings.
+5. Reopen the controls and select 60% card width. Expect the real card box to
+   reflow to approximately 60%, stay centered, and retain unchanged text and
+   image scale; restore 100% and expect full preview-plane width.
+6. Reload the editor. Expect card width to return to 100%; it must not be
+   remembered or written to settings.
 7. Open the inline sample Select. Expect 10 initial public-safe options; search
    for a published episode, podcast, and contributor and expect server results
    capped at 50 with the selected label resolved.
@@ -713,22 +753,36 @@ The requirements sweep passed before this sequence:
 16. Change a slide-over field without applying it. Expect the preview not to
     change. Apply the edit and expect one refresh with the new value; cancel a
     later edit and expect the authoritative draft to remain unchanged.
-17. Inspect Builder summary rows in English and Hebrew. Expect `Unlabelled` /
-    `ללא תווית` without a Part prefix and localized source/attribute labels;
-    legacy unknown tokens should remain visible as escaped diagnostics.
-18. Add, clone, reorder, and delete parts in both display modes. Expect nested
+17. Expand the Template settings and Template parts sections. Expect both to be
+    open initially and independently collapsible without losing draft state.
+18. Inspect Builder rows in English and Hebrew. Expect a position badge,
+    translated type, escaped compact summary separators, and native inline
+    collapse; legacy unknown tokens should remain escaped diagnostics.
+19. Open a top-level row's icon-only move action. Enter a valid, zero, negative,
+    and over-limit position in turn. Expect owning-sibling take-the-slot moves,
+    server clamping, stable UUID identity, and no cross-parent movement.
+20. Repeat the move action for a nested row, then drag a sibling to the same
+    target position. Expect equivalent sibling order and contiguous x10 order
+    only when the draft is previewed or saved.
+21. Toggle Show label and Show icon off and on. Expect both switches to remain
+    reachable, their subordinate fields to hide while off, entered label/icon
+    values to remain, and position to return as inline-before when re-enabled.
+22. Add, clone, reorder, and delete parts in both display modes. Expect nested
     state, validation, sample identity, and automatic refresh timing to remain
     correct.
-19. Narrow below 1280 CSS pixels. Expect the adjacent preview to unmount and
+23. Narrow below 1280 CSS pixels. Expect the adjacent preview to unmount and
     the Preview header action to open exactly one focus-trapped preview
     slide-over; Escape should restore focus to the trigger.
-20. Edit a protected template without its current capability. Expect no sample
+24. Edit a protected template without its current capability. Expect no sample
     Select, no sample preload/search, no protected part values in HTML or
     Livewire state, and unchanged Save protection.
-21. Exercise preview zoom, sample, Refresh, and Builder mode controls, then
+25. Exercise preview width, sample, Refresh, and Builder mode controls, then
     verify no settings notification, backup, import-lock, reference-scan,
     cache-invalidation, or persisted settings change occurred.
-22. Make an unsaved draft edit and use Back or close the tab. Expect the
+26. In automated tests, exercise a valid explicit-order import and restore.
+    Expect the unchanged global compatibility path to accept it. Do not run or
+    prescribe production normalization for this closure.
+27. Make an unsaved draft edit and use Back or close the tab. Expect the
     existing unsaved-changes warning to remain authoritative.
 
 ## Commit hash
@@ -746,3 +800,7 @@ The requirements sweep passed before this sequence:
 ## Expanded editor UX closure commit hash
 
 `d889d4f6fca521616e148890502b038a113dff9c`
+
+## UX2 position-canonical editor closure commit hash
+
+`PENDING`
