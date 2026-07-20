@@ -13,7 +13,7 @@ touched.
 - Starting HEAD: `7c55dca4012ce48779b32b2e3c4d2076d9198807`
 - Starting `main` / `origin/main`: equal
 - Starting worktree: clean
-- Implementation hash: `Pending`
+- Implementation hash: `fa5b57c8dfa327cdbfd03267c94c6cd21f6a10f0`
 - Docs-only hash stamp: this immediate follow-up commit after the
   implementation commit
 - Push, PR, branch, worktree, dependency, production, and local-development
@@ -642,9 +642,9 @@ The canonical closeout is:
 
 1. one implementation commit containing code, tests, research, plan, runbooks,
    state, ledger, and this handoff with the implementation hash pending;
-2. one immediate docs-only commit replacing `Pending` in this handoff and the
-   ledger with the full implementation hash; and
+2. one immediate docs-only commit stamping the full implementation hash in
+   this handoff and the ledger; and
 3. no push, with `main` clean afterward.
 
-Final Git status is pending the canonical two-commit closeout and will be
-verified after the docs-only stamp.
+Final Git status after this docs-only stamp: `## main...origin/main [ahead 2]`
+with no changed paths. No push was performed.
