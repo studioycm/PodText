@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\ImageUploadPurpose;
 use App\Enums\PublicationStatus;
 use App\Filament\Resources\Authors\AuthorResource;
 use App\Filament\Resources\Authors\Pages\CreateAuthor;
@@ -18,6 +19,7 @@ use App\Models\ContentGroup;
 use App\Models\ContentItem;
 use App\Models\Transcription;
 use App\Models\User;
+use App\Support\Media\MediaFilesystemMutationCoordinator;
 use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -162,16 +164,22 @@ it('renders content group resource pages', function (): void {
         ]);
 });
 
-it('creates and edits content groups with defaults, cover upload, and publication enum', function (): void {
-    config(['media.picker.driver' => 'file_upload']);
+it('creates and edits content groups with defaults, cover library attachment, and publication enum', function (): void {
     Storage::fake('public');
+    Storage::fake('local');
+    $actor = User::query()->whereKey(auth()->id())->firstOrFail();
+    $cover = app(MediaFilesystemMutationCoordinator::class)->createFromUpload(
+        UploadedFile::fake()->image('cover.jpg'),
+        ImageUploadPurpose::ContentGroupCover,
+        $actor,
+    );
 
     Livewire::test(CreateContentGroup::class)
         ->fillForm([
             'title' => 'Hebrew Podcast',
             'slug' => 'hebrew-podcast',
             'description_markdown' => 'תיאור **בעברית**',
-            'cover_path' => UploadedFile::fake()->image('cover.jpg'),
+            'cover_media_reference_key' => $cover->reference_key,
             'original_language_code' => 'he',
             'status' => PublicationStatus::Published,
             'published_at' => now()->subMinute(),
@@ -186,7 +194,8 @@ it('creates and edits content groups with defaults, cover upload, and publicatio
         ->and($group->default_item_type_label_singular)->toBe(__('public.labels.item'))
         ->and($group->default_item_type_label_plural)->toBe(__('public.labels.items'))
         ->and($group->status)->toBe(PublicationStatus::Published)
-        ->and($group->cover_path)->toStartWith('content-groups/covers/');
+        ->and($group->cover_path)->toBe($cover->path)
+        ->and($group->coverMediaAttachment()->firstOrFail()->media_id)->toBe($cover->getKey());
 
     Storage::disk('public')->assertExists($group->cover_path);
 

@@ -17,7 +17,7 @@ class PublicContentGroupQueries
         return ContentGroup::query()
             ->published()
             ->whereHas('contentItems', fn (Builder $query): Builder => $query->published())
-            ->with(['categories'])
+            ->with(['categories', 'coverMediaAttachment.media'])
             ->withCount([
                 'contentItems as public_content_items_count' => fn (Builder $query): Builder => $query->published(),
             ])

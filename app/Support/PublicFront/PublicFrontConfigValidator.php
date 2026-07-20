@@ -564,6 +564,8 @@ class PublicFrontConfigValidator
         $this->reportUnknownKeys($logo, [
             'light_path',
             'dark_path',
+            'light_media_reference_key',
+            'dark_media_reference_key',
             'alt_text',
             'display_mode',
             'size',
@@ -576,6 +578,16 @@ class PublicFrontConfigValidator
             'dark_path' => array_key_exists('dark_path', $logo)
                 ? $this->publicLogoPath($logo['dark_path'], 'menu_config.logo.dark_path', $invalidConfig)
                 : ($defaults['dark_path'] ?? null),
+            'light_media_reference_key' => $this->mediaReferenceKey(
+                $logo['light_media_reference_key'] ?? null,
+                'menu_config.logo.light_media_reference_key',
+                $invalidConfig,
+            ),
+            'dark_media_reference_key' => $this->mediaReferenceKey(
+                $logo['dark_media_reference_key'] ?? null,
+                'menu_config.logo.dark_media_reference_key',
+                $invalidConfig,
+            ),
             'alt_text' => $this->plainString($logo['alt_text'] ?? null, 'menu_config.logo.alt_text', $invalidConfig, maxLength: 120, nullable: true)
                 ?? (string) ($defaults['alt_text'] ?? __('app.name')),
             'display_mode' => $this->finiteString($logo['display_mode'] ?? null, ['image', 'image_text', 'text'], 'menu_config.logo.display_mode', $invalidConfig, (string) ($defaults['display_mode'] ?? 'image')),
@@ -702,6 +714,7 @@ class PublicFrontConfigValidator
             'content',
             'rich_content',
             'image_path',
+            'image_media_reference_key',
             'image_alt',
             'image_fit',
             'image_radius',
@@ -765,6 +778,11 @@ class PublicFrontConfigValidator
 
             return $normalized + [
                 'image_path' => $imagePath,
+                'image_media_reference_key' => $this->mediaReferenceKey(
+                    $block['image_media_reference_key'] ?? null,
+                    "{$blockPath}.image_media_reference_key",
+                    $invalidConfig,
+                ),
                 'image_alt' => $this->plainString($block['image_alt'] ?? null, "{$blockPath}.image_alt", $invalidConfig, maxLength: 160, nullable: true),
                 'image_fit' => $this->finiteString($block['image_fit'] ?? null, PublicFrontConfigRegistry::imageFits(), "{$blockPath}.image_fit", $invalidConfig, 'cover'),
                 'image_radius' => $this->finiteString($block['image_radius'] ?? null, PublicFrontConfigRegistry::imageRadii(), "{$blockPath}.image_radius", $invalidConfig, 'mid_rounded'),
@@ -880,6 +898,7 @@ class PublicFrontConfigValidator
             'visible',
             'sort',
             'image_path',
+            'image_media_reference_key',
             'title',
             'name',
             'description',
@@ -907,6 +926,11 @@ class PublicFrontConfigValidator
             'image_path' => array_key_exists('image_path', $item)
                 ? $this->publicImagePath($item['image_path'], "{$path}.image_path", $invalidConfig, ['team'])
                 : null,
+            'image_media_reference_key' => $this->mediaReferenceKey(
+                $item['image_media_reference_key'] ?? null,
+                "{$path}.image_media_reference_key",
+                $invalidConfig,
+            ),
             'title' => $this->plainString($item['title'] ?? null, "{$path}.title", $invalidConfig, maxLength: 120, nullable: true),
             'name' => $name,
             'description' => $this->plainString($item['description'] ?? null, "{$path}.description", $invalidConfig, maxLength: 1000, nullable: true),
@@ -1395,7 +1419,7 @@ class PublicFrontConfigValidator
 
         foreach (PublicFrontConfigRegistry::defaultImageFamilies() as $family) {
             $familyPath = "default_images.{$family}";
-            $familyDefaults = $defaults[$family] ?? ['mode' => 'inherit', 'path' => null];
+            $familyDefaults = $defaults[$family] ?? ['mode' => 'inherit', 'path' => null, 'media_reference_key' => null];
             $familyConfig = $defaultImages[$family] ?? [];
 
             if (is_object($familyConfig)) {
@@ -1407,7 +1431,7 @@ class PublicFrontConfigValidator
                 $familyConfig = [];
             }
 
-            $this->reportUnknownKeys($familyConfig, ['mode', 'path'], $familyPath, $invalidConfig);
+            $this->reportUnknownKeys($familyConfig, ['mode', 'path', 'media_reference_key'], $familyPath, $invalidConfig);
 
             $normalized[$family] = [
                 'mode' => $this->finiteString(
@@ -1425,6 +1449,11 @@ class PublicFrontConfigValidator
                         [PublicFrontConfigRegistry::defaultImageDirectory()],
                     )
                     : ($familyDefaults['path'] ?? null),
+                'media_reference_key' => $this->mediaReferenceKey(
+                    $familyConfig['media_reference_key'] ?? null,
+                    "{$familyPath}.media_reference_key",
+                    $invalidConfig,
+                ),
             ];
         }
 
@@ -2900,6 +2929,28 @@ class PublicFrontConfigValidator
 
         if (str_contains($value, '../') || str_contains($value, '//') || str_starts_with($value, '/')) {
             $invalidConfig[] = PublicFrontInvalidConfig::make($path, 'invalid_public_logo_path', $value);
+
+            return null;
+        }
+
+        return $value;
+    }
+
+    /**
+     * @param  array<PublicFrontInvalidConfig>  $invalidConfig
+     */
+    private function mediaReferenceKey(mixed $value, string $path, array &$invalidConfig): ?string
+    {
+        $value = $this->plainString($value, $path, $invalidConfig, maxLength: 26, nullable: true);
+
+        if ($value === null) {
+            return null;
+        }
+
+        $value = mb_strtoupper($value);
+
+        if (! preg_match('/^[0-9A-HJKMNP-TV-Z]{26}$/', $value)) {
+            $invalidConfig[] = PublicFrontInvalidConfig::make($path, 'invalid_media_reference_key', $value);
 
             return null;
         }

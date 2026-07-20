@@ -6,6 +6,8 @@ use App\Enums\PublicationStatus;
 use App\Filament\Actions\ContentImageActions;
 use App\Filament\Exports\ContentGroupExporter;
 use App\Filament\Imports\ContentGroupImporter;
+use App\Models\ContentGroup;
+use App\Support\PublicFront\PublicDefaultImageResolver;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
@@ -16,6 +18,7 @@ use Filament\Tables\Columns\ImageColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Validation\Rules\File;
 
 class ContentGroupsTable
@@ -23,11 +26,11 @@ class ContentGroupsTable
     public static function configure(Table $table): Table
     {
         return $table
+            ->modifyQueryUsing(fn (Builder $query): Builder => $query->with('coverMediaAttachment.media'))
             ->columns([
-                ImageColumn::make('cover_path')
+                ImageColumn::make('effective_cover')
                     ->label(__('admin.fields.cover_path'))
-                    ->disk('public')
-                    ->visibility('public')
+                    ->state(fn (ContentGroup $record): ?string => app(PublicDefaultImageResolver::class)->contentGroupImage($record)['url'])
                     ->square(),
                 TextColumn::make('title')
                     ->label(__('admin.fields.title'))

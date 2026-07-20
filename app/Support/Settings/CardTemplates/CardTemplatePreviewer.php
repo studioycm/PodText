@@ -2,10 +2,15 @@
 
 namespace App\Support\Settings\CardTemplates;
 
+use App\Enums\ImageUploadPurpose;
+use App\Enums\MediaAttachmentRole;
 use App\Filament\Public\Pages\ShowContributor;
 use App\Models\Author;
 use App\Models\ContentGroup;
 use App\Models\ContentItem;
+use App\Support\Media\MediaAttachmentIdentityResolver;
+use App\Support\Media\MediaIdentityResolver;
+use App\Support\Media\MediaRecordScope;
 use App\Support\PublicContent\PublicContentItemQueries;
 use App\Support\PublicContent\PublicContributorDiscovery;
 use App\Support\PublicContent\PublicTranscriptionAggregates;
@@ -24,6 +29,7 @@ use App\Support\PublicFront\PublicDefaultImageResolver;
 use App\Support\PublicFront\PublicFrontConfigRegistry;
 use App\Support\PublicFront\PublicFrontRenderContext;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\DB;
 use Illuminate\View\ComponentAttributeBag;
 
 class CardTemplatePreviewer
@@ -36,6 +42,7 @@ class CardTemplatePreviewer
         private readonly CardTemplateDraftNormalizer $normalizer,
         private readonly ContentItemDisplayTitle $displayTitle,
         private readonly PublicFrontRenderContext $context,
+        private readonly MediaRecordScope $mediaRecordScope,
     ) {}
 
     /**
@@ -151,7 +158,11 @@ class CardTemplatePreviewer
             'selector' => $selector,
             'policy' => $policy,
             'aggregates' => new PublicTranscriptionAggregates($policy, $selector),
-            'default_images' => new PublicDefaultImageResolver($this->context),
+            'default_images' => new PublicDefaultImageResolver(
+                $this->context,
+                app(MediaIdentityResolver::class),
+                app(MediaAttachmentIdentityResolver::class),
+            ),
         ];
     }
 
@@ -219,15 +230,130 @@ class CardTemplatePreviewer
 
         $contentItemsTable = (new ContentItem)->getTable();
         $contentGroupsTable = (new ContentGroup)->getTable();
+        $itemAttachment = 'preview_item_attachment';
+        $groupAttachment = 'preview_group_attachment';
+        $previewGroup = 'preview_content_group';
+        $itemLegacyValidity = $this->legacyPathValiditySql(
+            "{$contentItemsTable}.image_path",
+            ImageUploadPurpose::ContentItemPrimaryImage,
+        );
+        $groupLegacyValidity = $this->legacyPathValiditySql(
+            "{$previewGroup}.cover_path",
+            ImageUploadPurpose::ContentGroupCover,
+        );
+
+        $query
+            ->selectSub(
+                DB::table('media_attachments')
+                    ->selectRaw('1')
+                    ->where('attachable_type', 'content_item')
+                    ->where('role', MediaAttachmentRole::PrimaryImage->value)
+                    ->whereColumn('attachable_id', "{$contentItemsTable}.id")
+                    ->limit(1),
+                'preview_item_attachment_exists',
+            )
+            ->selectSub(
+                $this->mediaRecordScope
+                    ->query(ImageUploadPurpose::ContentItemPrimaryImage)
+                    ->selectRaw('1')
+                    ->join("media_attachments as {$itemAttachment}", "{$itemAttachment}.media_id", '=', 'curator.id')
+                    ->where("{$itemAttachment}.attachable_type", 'content_item')
+                    ->where("{$itemAttachment}.role", MediaAttachmentRole::PrimaryImage->value)
+                    ->whereColumn("{$itemAttachment}.attachable_id", "{$contentItemsTable}.id")
+                    ->whereColumn('curator.path', "{$contentItemsTable}.image_path")
+                    ->limit(1),
+                'preview_item_trusted_attachment_exists',
+            )
+            ->selectSub(
+                $this->mediaRecordScope
+                    ->query(ImageUploadPurpose::ContentItemPrimaryImage)
+                    ->selectRaw('count(*)')
+                    ->whereColumn('curator.path', "{$contentItemsTable}.image_path"),
+                'preview_item_legacy_count',
+            )
+            ->selectSub(
+                DB::table('curator')
+                    ->selectRaw('count(*)')
+                    ->whereColumn('curator.path', "{$contentItemsTable}.image_path"),
+                'preview_item_raw_legacy_count',
+            )
+            ->selectRaw(
+                "CASE WHEN {$itemLegacyValidity['sql']} THEN 1 ELSE 0 END as preview_item_legacy_path_valid",
+                $itemLegacyValidity['bindings'],
+            )
+            ->selectSub(
+                DB::table('media_attachments')
+                    ->selectRaw('1')
+                    ->where('attachable_type', 'content_group')
+                    ->where('role', MediaAttachmentRole::Cover->value)
+                    ->whereColumn('attachable_id', "{$contentItemsTable}.content_group_id")
+                    ->limit(1),
+                'preview_group_attachment_exists',
+            )
+            ->selectSub(
+                $this->mediaRecordScope
+                    ->query(ImageUploadPurpose::ContentGroupCover)
+                    ->selectRaw('1')
+                    ->join("media_attachments as {$groupAttachment}", "{$groupAttachment}.media_id", '=', 'curator.id')
+                    ->join("{$contentGroupsTable} as {$previewGroup}", "{$previewGroup}.id", '=', "{$groupAttachment}.attachable_id")
+                    ->where("{$groupAttachment}.attachable_type", 'content_group')
+                    ->where("{$groupAttachment}.role", MediaAttachmentRole::Cover->value)
+                    ->whereColumn("{$previewGroup}.id", "{$contentItemsTable}.content_group_id")
+                    ->whereColumn('curator.path', "{$previewGroup}.cover_path")
+                    ->limit(1),
+                'preview_group_trusted_attachment_exists',
+            )
+            ->selectSub(
+                $this->mediaRecordScope
+                    ->query(ImageUploadPurpose::ContentGroupCover)
+                    ->selectRaw('count(*)')
+                    ->join("{$contentGroupsTable} as {$previewGroup}", function ($join) use ($contentItemsTable, $previewGroup): void {
+                        $join->whereColumn("{$previewGroup}.id", "{$contentItemsTable}.content_group_id");
+                    })
+                    ->whereColumn('curator.path', "{$previewGroup}.cover_path"),
+                'preview_group_legacy_count',
+            )
+            ->selectSub(
+                DB::table('curator')
+                    ->selectRaw('count(*)')
+                    ->join("{$contentGroupsTable} as {$previewGroup}", function ($join) use ($contentItemsTable, $previewGroup): void {
+                        $join->whereColumn("{$previewGroup}.id", "{$contentItemsTable}.content_group_id");
+                    })
+                    ->whereColumn('curator.path', "{$previewGroup}.cover_path"),
+                'preview_group_raw_legacy_count',
+            )
+            ->selectSub(
+                DB::table("{$contentGroupsTable} as {$previewGroup}")
+                    ->selectRaw(
+                        "CASE WHEN {$groupLegacyValidity['sql']} THEN 1 ELSE 0 END",
+                        $groupLegacyValidity['bindings'],
+                    )
+                    ->whereColumn("{$previewGroup}.id", "{$contentItemsTable}.content_group_id")
+                    ->limit(1),
+                'preview_group_legacy_path_valid',
+            );
         $query->orderByRaw(
             "CASE
-                WHEN NULLIF(TRIM({$contentItemsTable}.image_path), '') IS NOT NULL
+                WHEN preview_item_trusted_attachment_exists = 1
+                    OR (
+                        COALESCE(preview_item_attachment_exists, 0) = 0
+                        AND preview_item_legacy_path_valid = 1
+                        AND (
+                            preview_item_raw_legacy_count = 0
+                            OR (preview_item_raw_legacy_count = 1 AND preview_item_legacy_count = 1)
+                        )
+                    )
                     OR NULLIF(TRIM({$contentItemsTable}.external_thumbnail_url), '') IS NOT NULL THEN 0
-                WHEN ? = 1 AND EXISTS (
-                    SELECT 1
-                    FROM {$contentGroupsTable}
-                    WHERE {$contentGroupsTable}.id = {$contentItemsTable}.content_group_id
-                        AND NULLIF(TRIM({$contentGroupsTable}.cover_path), '') IS NOT NULL
+                WHEN ? = 1 AND (
+                    preview_group_trusted_attachment_exists = 1
+                    OR (
+                        COALESCE(preview_group_attachment_exists, 0) = 0
+                        AND preview_group_legacy_path_valid = 1
+                        AND (
+                            preview_group_raw_legacy_count = 0
+                            OR (preview_group_raw_legacy_count = 1 AND preview_group_legacy_count = 1)
+                        )
+                    )
                 ) THEN 1
                 WHEN ? = 1 THEN 2
                 ELSE 3
@@ -253,29 +379,114 @@ class CardTemplatePreviewer
         }
 
         $contentGroupsTable = (new ContentGroup)->getTable();
+        $attachment = 'preview_group_attachment';
+        $legacyValidity = $this->legacyPathValiditySql(
+            "{$contentGroupsTable}.cover_path",
+            ImageUploadPurpose::ContentGroupCover,
+        );
+        $query
+            ->selectSub(
+                DB::table('media_attachments')
+                    ->selectRaw('1')
+                    ->where('attachable_type', 'content_group')
+                    ->where('role', MediaAttachmentRole::Cover->value)
+                    ->whereColumn('attachable_id', "{$contentGroupsTable}.id")
+                    ->limit(1),
+                'preview_group_attachment_exists',
+            )
+            ->selectSub(
+                $this->mediaRecordScope
+                    ->query(ImageUploadPurpose::ContentGroupCover)
+                    ->selectRaw('1')
+                    ->join("media_attachments as {$attachment}", "{$attachment}.media_id", '=', 'curator.id')
+                    ->where("{$attachment}.attachable_type", 'content_group')
+                    ->where("{$attachment}.role", MediaAttachmentRole::Cover->value)
+                    ->whereColumn("{$attachment}.attachable_id", "{$contentGroupsTable}.id")
+                    ->whereColumn('curator.path', "{$contentGroupsTable}.cover_path")
+                    ->limit(1),
+                'preview_group_trusted_attachment_exists',
+            )
+            ->selectSub(
+                $this->mediaRecordScope
+                    ->query(ImageUploadPurpose::ContentGroupCover)
+                    ->selectRaw('count(*)')
+                    ->whereColumn('curator.path', "{$contentGroupsTable}.cover_path"),
+                'preview_group_legacy_count',
+            )
+            ->selectSub(
+                DB::table('curator')
+                    ->selectRaw('count(*)')
+                    ->whereColumn('curator.path', "{$contentGroupsTable}.cover_path"),
+                'preview_group_raw_legacy_count',
+            )
+            ->selectRaw(
+                "CASE WHEN {$legacyValidity['sql']} THEN 1 ELSE 0 END as preview_group_legacy_path_valid",
+                $legacyValidity['bindings'],
+            );
         $query->orderByRaw(
-            "CASE
-                WHEN NULLIF(TRIM({$contentGroupsTable}.cover_path), '') IS NOT NULL THEN 0
+            'CASE
+                WHEN preview_group_trusted_attachment_exists = 1
+                    OR (
+                        COALESCE(preview_group_attachment_exists, 0) = 0
+                        AND preview_group_legacy_path_valid = 1
+                        AND (
+                            preview_group_raw_legacy_count = 0
+                            OR (preview_group_raw_legacy_count = 1 AND preview_group_legacy_count = 1)
+                        )
+                    ) THEN 0
                 WHEN ? = 1 THEN 2
                 ELSE 3
-            END",
+            END',
             [(int) $defaultImages->hasConfiguredDefault(PublicFrontCardTemplateRegistry::CONTENT_GROUP_FAMILY)],
         );
 
         return $query->orderBy('title')->orderBy('id');
     }
 
+    /**
+     * @return array{sql: string, bindings: array<int, string>}
+     */
+    private function legacyPathValiditySql(string $column, ImageUploadPurpose $purpose): array
+    {
+        return [
+            'sql' => "NULLIF(TRIM({$column}), '') IS NOT NULL
+                AND {$column} LIKE ?
+                AND {$column} NOT LIKE ?
+                AND INSTR({$column}, ?) = 0
+                AND INSTR({$column}, ?) = 0
+                AND INSTR({$column}, '..') = 0
+                AND INSTR({$column}, '//') = 0
+                AND (
+                    LOWER({$column}) LIKE '%.jpg'
+                    OR LOWER({$column}) LIKE '%.png'
+                    OR LOWER({$column}) LIKE '%.webp'
+                )",
+            'bindings' => [
+                $purpose->root().'/%',
+                $purpose->root().'/%/%',
+                '\\',
+                '%',
+            ],
+        ];
+    }
+
     private function sampleOptionsQuery(string $family, string $search = ''): Builder
     {
         $services = $this->queryServices();
 
-        return $this->sampleQuery(
+        $query = $this->sampleQuery(
             $family,
             $services['aggregates'],
             $services['selector'],
             $services['default_images'],
             $search,
         );
+
+        if ($family === PublicFrontCardTemplateRegistry::CONTENT_GROUP_FAMILY) {
+            $query->without(['coverMediaAttachment', 'coverMediaAttachment.media']);
+        }
+
+        return $query;
     }
 
     private function label(Author|ContentGroup|ContentItem $sample): string

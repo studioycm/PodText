@@ -2,6 +2,7 @@
 
 namespace App\Filament\Actions;
 
+use App\Enums\MediaAttachmentRole;
 use App\Enums\MediaNamingStrategy;
 use App\Enums\Tb1PickerContainer;
 use App\Filament\Forms\MediaPickerField;
@@ -12,11 +13,11 @@ use App\Models\ContentItem;
 use App\Models\User;
 use App\Settings\AdminUxSettings;
 use App\Support\Media\ImageFileNamer;
+use App\Support\Media\MediaAttachmentFormState;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Select;
 use Filament\Notifications\Notification;
 use Filament\Support\Icons\Heroicon;
-use Illuminate\Database\Eloquent\Model;
 
 class ContentImageActions
 {
@@ -24,8 +25,9 @@ class ContentImageActions
     {
         return self::imagePickerAction(
             name: 'chooseContentGroupCover',
-            field: 'cover_path',
+            field: 'cover_media_reference_key',
             family: ImageFileNamer::CONTENT_GROUP_COVER,
+            role: MediaAttachmentRole::Cover,
             label: __('admin.actions.choose_cover_image'),
             helper: __('admin.helpers.cover_path'),
             successTitle: __('admin.notifications.content_group_cover_saved'),
@@ -36,8 +38,9 @@ class ContentImageActions
     {
         return self::imagePickerAction(
             name: 'chooseContentItemImage',
-            field: 'image_path',
+            field: 'primary_image_media_reference_key',
             family: ImageFileNamer::CONTENT_ITEM_IMAGE,
+            role: MediaAttachmentRole::PrimaryImage,
             label: __('admin.actions.choose_episode_image'),
             helper: __('admin.helpers.content_item_image_path'),
             successTitle: __('admin.notifications.content_item_image_saved'),
@@ -65,6 +68,7 @@ class ContentImageActions
                     contentItemId: (int) $record->getKey(),
                     userId: (int) $user->getKey(),
                     overwrite: $overwrite,
+                    expectedUrl: (string) $record->external_thumbnail_url,
                 );
 
                 Notification::make()
@@ -93,6 +97,7 @@ class ContentImageActions
         string $name,
         string $field,
         string $family,
+        MediaAttachmentRole $role,
         string $label,
         string $helper,
         string $successTitle,
@@ -102,8 +107,8 @@ class ContentImageActions
             ->icon(Heroicon::OutlinedPhoto)
             ->modalHeading($label)
             ->modalSubmitActionLabel(__('admin.actions.save'))
-            ->fillForm(fn (Model $record): array => [
-                $field => $record->getAttribute($field),
+            ->fillForm(fn (ContentGroup|ContentItem $record): array => [
+                $field => app(MediaAttachmentFormState::class)->referenceKey($record, $role),
             ])
             ->schema([
                 MediaPickerField::make($field, $family)
@@ -111,10 +116,11 @@ class ContentImageActions
                     ->helperText($helper)
                     ->columnSpanFull(),
             ])
-            ->action(function (Model $record, array $data) use ($field, $successTitle): void {
-                $record->update([
-                    $field => $data[$field] ?? null,
-                ]);
+            ->action(function (ContentGroup|ContentItem $record, array $data) use ($field, $role, $successTitle): void {
+                $actor = auth()->user();
+                abort_unless($actor instanceof User, 403);
+                $referenceKey = is_string($data[$field] ?? null) ? $data[$field] : null;
+                app(MediaAttachmentFormState::class)->persist($record, $referenceKey, $role, $actor);
 
                 Notification::make()
                     ->success()

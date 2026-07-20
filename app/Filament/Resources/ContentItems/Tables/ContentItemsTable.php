@@ -41,9 +41,10 @@ class ContentItemsTable
         return $table
             ->modifyQueryUsing(fn (Builder $query): Builder => $query
                 ->with([
-                    'contentGroup',
+                    'contentGroup.coverMediaAttachment.media',
                     'featuredTranscription.authors',
                     'latestPublishedTranscription.authors',
+                    'primaryImageMediaAttachment.media',
                 ])
                 ->withCount('transcriptions'))
             ->columns([

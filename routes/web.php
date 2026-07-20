@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AdminMediaFileController;
 use App\Http\Controllers\ContentImagesExportDownloadController;
 use App\Http\Controllers\ImporterGoogleOAuthController;
 use App\Http\Controllers\MaintenanceFormSubmissionController;
@@ -36,4 +37,12 @@ Route::middleware(Authenticate::class)->group(function (): void {
 
     Route::get('/admin/content-images-exports/{token}.zip', ContentImagesExportDownloadController::class)
         ->name('admin.content-images-exports.download');
+
+    Route::get('/admin/media-files/{media}/view', [AdminMediaFileController::class, 'view'])
+        ->whereNumber('media')
+        ->name('admin.media-files.view');
+
+    Route::get('/admin/media-files/{media}/download', [AdminMediaFileController::class, 'download'])
+        ->whereNumber('media')
+        ->name('admin.media-files.download');
 });

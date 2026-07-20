@@ -553,6 +553,7 @@ class SpotifyLinksFetcher extends Page
             'pin_order' => '',
             'pinned_at' => '',
             'pinned_until' => '',
+            'primary_image_media_reference_key' => '',
             'published_at' => '',
             'reference_key' => $row['reference_key'] ?? '',
             'slug' => '',

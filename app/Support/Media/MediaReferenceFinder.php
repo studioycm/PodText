@@ -4,13 +4,19 @@ namespace App\Support\Media;
 
 use App\Models\ContentGroup;
 use App\Models\ContentItem;
+use App\Models\Media;
 use App\Settings\PublicContentSettings;
-use Awcodes\Curator\Models\Media;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 class MediaReferenceFinder
 {
+    /** @var array<int, array<int, string>>|null */
+    private ?array $primedReferences = null;
+
+    /** @var array<int, array<int, string>>|null */
+    private ?array $primedLegacyReferences = null;
+
     /**
      * @return array<int, string>
      */
@@ -20,7 +26,120 @@ class MediaReferenceFinder
             return [];
         }
 
+        if (is_array($this->primedReferences) && array_key_exists((int) $media->getKey(), $this->primedReferences)) {
+            return $this->primedReferences[(int) $media->getKey()];
+        }
+
+        $attachmentReferences = Schema::hasTable('media_attachments')
+            ? DB::table('media_attachments')
+                ->where('media_id', $media->getKey())
+                ->get(['attachable_type', 'attachable_id', 'role'])
+                ->map(fn (object $attachment): string => __('admin.media_references.attachment', [
+                    'type' => (string) $attachment->attachable_type,
+                    'id' => (int) $attachment->attachable_id,
+                    'role' => (string) $attachment->role,
+                ]))
+            : collect();
+
+        return collect($this->referencesForPath((string) $media->path))
+            ->merge($attachmentReferences)
+            ->merge($this->settingsReferenceKeyReferences($media->reference_key))
+            ->unique()
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    public function legacyReferencesForMedia(Media $media): array
+    {
+        if ($media->disk !== 'public') {
+            return [];
+        }
+
+        if (is_array($this->primedLegacyReferences) && array_key_exists((int) $media->getKey(), $this->primedLegacyReferences)) {
+            return $this->primedLegacyReferences[(int) $media->getKey()];
+        }
+
         return $this->referencesForPath((string) $media->path);
+    }
+
+    /**
+     * @param  iterable<int, Media>  $media
+     */
+    public function prime(iterable $media): void
+    {
+        $records = collect($media)
+            ->filter(fn (mixed $record): bool => $record instanceof Media && $record->disk === 'public')
+            ->keyBy(fn (Media $record): int => (int) $record->getKey());
+        $references = $records->map(fn (): array => [])->all();
+        $legacyReferences = $records->map(fn (): array => [])->all();
+        $recordsByPath = $records->groupBy(fn (Media $record): string => (string) $record->path);
+        $ids = $records->keys()->all();
+        $paths = $records->pluck('path')->filter()->unique()->values()->all();
+
+        if ($ids !== [] && Schema::hasTable('media_attachments')) {
+            DB::table('media_attachments')
+                ->whereIn('media_id', $ids)
+                ->get(['media_id', 'attachable_type', 'attachable_id', 'role'])
+                ->each(function (object $attachment) use (&$references): void {
+                    $references[(int) $attachment->media_id][] = __('admin.media_references.attachment', [
+                        'type' => (string) $attachment->attachable_type,
+                        'id' => (int) $attachment->attachable_id,
+                        'role' => (string) $attachment->role,
+                    ]);
+                });
+        }
+
+        if ($paths !== [] && Schema::hasTable('content_groups')) {
+            ContentGroup::query()
+                ->whereIn('cover_path', $paths)
+                ->get(['title', 'cover_path'])
+                ->each(function (ContentGroup $group) use ($recordsByPath, &$legacyReferences, &$references): void {
+                    $recordsByPath->get((string) $group->cover_path, collect())->each(function (Media $media) use ($group, &$legacyReferences, &$references): void {
+                        $reference = __('admin.media_references.content_group_cover', ['title' => $group->title]);
+                        $references[(int) $media->getKey()][] = $reference;
+                        $legacyReferences[(int) $media->getKey()][] = $reference;
+                    });
+                });
+        }
+
+        if ($paths !== [] && Schema::hasTable('content_items') && Schema::hasColumn('content_items', 'image_path')) {
+            ContentItem::query()
+                ->whereIn('image_path', $paths)
+                ->get(['title', 'image_path'])
+                ->each(function (ContentItem $item) use ($recordsByPath, &$legacyReferences, &$references): void {
+                    $recordsByPath->get((string) $item->image_path, collect())->each(function (Media $media) use ($item, &$legacyReferences, &$references): void {
+                        $reference = __('admin.media_references.content_item_image', ['title' => $item->title]);
+                        $references[(int) $media->getKey()][] = $reference;
+                        $legacyReferences[(int) $media->getKey()][] = $reference;
+                    });
+                });
+        }
+
+        $settings = $this->settingsPayloads();
+        $records->each(function (Media $media) use ($settings, &$legacyReferences, &$references): void {
+            $references[(int) $media->getKey()] = collect($references[(int) $media->getKey()])
+                ->merge($this->settingsIdentityReferences((string) $media->path, $media->reference_key, $settings))
+                ->unique()
+                ->values()
+                ->all();
+            $legacyReferences[(int) $media->getKey()] = collect($legacyReferences[(int) $media->getKey()])
+                ->merge($this->settingsIdentityReferences((string) $media->path, null, $settings))
+                ->unique()
+                ->values()
+                ->all();
+        });
+
+        $this->primedReferences = $references;
+        $this->primedLegacyReferences = $legacyReferences;
+    }
+
+    public function clearPrime(): void
+    {
+        $this->primedReferences = null;
+        $this->primedLegacyReferences = null;
     }
 
     /**
@@ -99,24 +218,49 @@ class MediaReferenceFinder
      */
     private function settingsReferences(string $path): array
     {
-        if (! Schema::hasTable('settings')) {
+        return $this->settingsIdentityReferences($path, null, $this->settingsPayloads());
+    }
+
+    /** @return array<int, string> */
+    private function settingsReferenceKeyReferences(?string $referenceKey): array
+    {
+        if (blank($referenceKey)) {
             return [];
         }
 
-        $settings = DB::table('settings')
-            ->where('group', PublicContentSettings::group())
-            ->whereIn('name', ['menu_config', 'about_page', 'default_images'])
-            ->pluck('payload', 'name');
+        return $this->settingsIdentityReferences(null, $referenceKey, $this->settingsPayloads());
+    }
 
-        return $settings
-            ->flatMap(fn (mixed $payload, string $name): array => match ($name) {
-                'menu_config' => $this->menuConfigReferences($path, $this->decodePayload($payload)),
-                'about_page' => $this->aboutPageReferences($path, $this->decodePayload($payload)),
-                'default_images' => $this->defaultImageReferences($path, $this->decodePayload($payload)),
+    /**
+     * @param  array<string, array<string, mixed>>  $settings
+     * @return array<int, string>
+     */
+    private function settingsIdentityReferences(?string $path, ?string $referenceKey, array $settings): array
+    {
+        return collect($settings)
+            ->flatMap(fn (array $payload, string $name): array => match ($name) {
+                'menu_config' => $this->menuConfigIdentityReferences($path, $referenceKey, $payload),
+                'about_page' => $this->aboutPageIdentityReferences($path, $referenceKey, $payload),
+                'default_images' => $this->defaultImageIdentityReferences($path, $referenceKey, $payload),
                 default => [],
             })
             ->unique()
             ->values()
+            ->all();
+    }
+
+    /** @return array<string, array<string, mixed>> */
+    private function settingsPayloads(): array
+    {
+        if (! Schema::hasTable('settings')) {
+            return [];
+        }
+
+        return DB::table('settings')
+            ->where('group', PublicContentSettings::group())
+            ->whereIn('name', ['menu_config', 'about_page', 'default_images'])
+            ->pluck('payload', 'name')
+            ->map(fn (mixed $payload): array => $this->decodePayload($payload))
             ->all();
     }
 
@@ -131,6 +275,19 @@ class MediaReferenceFinder
             'dark_path' => data_get($menuConfig, 'logo.dark_path'),
         ])
             ->filter(fn (mixed $value): bool => $this->normalize(is_string($value) ? $value : null) === $path)
+            ->keys()
+            ->map(fn (string $key): string => __("admin.media_references.menu_logo_{$key}"))
+            ->all();
+    }
+
+    /** @return array<int, string> */
+    private function menuConfigIdentityReferences(?string $path, ?string $referenceKey, array $menuConfig): array
+    {
+        return collect([
+            'light_path' => [data_get($menuConfig, 'logo.light_path'), data_get($menuConfig, 'logo.light_media_reference_key')],
+            'dark_path' => [data_get($menuConfig, 'logo.dark_path'), data_get($menuConfig, 'logo.dark_media_reference_key')],
+        ])
+            ->filter(fn (array $identity): bool => $this->identityMatches($identity[0] ?? null, $identity[1] ?? null, $path, $referenceKey))
             ->keys()
             ->map(fn (string $key): string => __("admin.media_references.menu_logo_{$key}"))
             ->all();
@@ -175,6 +332,44 @@ class MediaReferenceFinder
         return $references;
     }
 
+    /** @return array<int, string> */
+    private function aboutPageIdentityReferences(?string $path, ?string $referenceKey, array $aboutPage): array
+    {
+        $references = [];
+
+        foreach (($aboutPage['blocks'] ?? []) as $block) {
+            if (! is_array($block)) {
+                continue;
+            }
+
+            if ($this->identityMatches(
+                $block['image_path'] ?? data_get($block, 'data.image_path'),
+                $block['image_media_reference_key'] ?? data_get($block, 'data.image_media_reference_key'),
+                $path,
+                $referenceKey,
+            )) {
+                $references[] = __('admin.media_references.about_page_image');
+            }
+        }
+
+        foreach (($aboutPage['team_profiles'] ?? []) as $profile) {
+            if (! is_array($profile) || ! $this->identityMatches(
+                $profile['image_path'] ?? null,
+                $profile['image_media_reference_key'] ?? null,
+                $path,
+                $referenceKey,
+            )) {
+                continue;
+            }
+
+            $references[] = __('admin.media_references.team_profile_image', [
+                'name' => filled($profile['name'] ?? null) ? $profile['name'] : __('admin.labels.untitled'),
+            ]);
+        }
+
+        return $references;
+    }
+
     /**
      * @param  array<string, mixed>  $defaultImages
      * @return array<int, string>
@@ -200,6 +395,40 @@ class MediaReferenceFinder
         }
 
         return $references;
+    }
+
+    /** @return array<int, string> */
+    private function defaultImageIdentityReferences(?string $path, ?string $referenceKey, array $defaultImages): array
+    {
+        $references = [];
+
+        foreach ($defaultImages as $family => $config) {
+            if (! is_array($config) || ! $this->identityMatches(
+                $config['path'] ?? null,
+                $config['media_reference_key'] ?? null,
+                $path,
+                $referenceKey,
+            )) {
+                continue;
+            }
+
+            $references[] = __('admin.media_references.default_image', [
+                'family' => __("admin.default_image_families.{$family}"),
+            ]);
+        }
+
+        return $references;
+    }
+
+    private function identityMatches(mixed $storedPath, mixed $storedReferenceKey, ?string $path, ?string $referenceKey): bool
+    {
+        $matchesPath = filled($path)
+            && $this->normalize(is_string($storedPath) ? $storedPath : null) === $path;
+        $matchesReferenceKey = filled($referenceKey)
+            && is_string($storedReferenceKey)
+            && mb_strtoupper($storedReferenceKey) === mb_strtoupper((string) $referenceKey);
+
+        return $matchesPath || $matchesReferenceKey;
     }
 
     /**

@@ -53,6 +53,8 @@ class PublicFrontConfigRegistry
                 'logo' => [
                     'light_path' => null,
                     'dark_path' => null,
+                    'light_media_reference_key' => null,
+                    'dark_media_reference_key' => null,
                     'alt_text' => __('app.name'),
                     'display_mode' => 'image',
                     'size' => 'medium',
@@ -112,18 +114,22 @@ class PublicFrontConfigRegistry
                 'global' => [
                     'mode' => 'inherit',
                     'path' => null,
+                    'media_reference_key' => null,
                 ],
                 'content_item' => [
                     'mode' => 'inherit',
                     'path' => null,
+                    'media_reference_key' => null,
                 ],
                 'content_group' => [
                     'mode' => 'inherit',
                     'path' => null,
+                    'media_reference_key' => null,
                 ],
                 'contributor' => [
                     'mode' => 'inherit',
                     'path' => null,
+                    'media_reference_key' => null,
                 ],
             ],
             'transcription_policy' => PublicTranscriptionPolicy::defaults(),

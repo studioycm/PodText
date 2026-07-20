@@ -3,9 +3,9 @@
 namespace App\Providers\Filament;
 
 use App\Filament\Pages\Dashboard;
+use App\Filament\Resources\Media\MediaResource;
 use App\Filament\Support\AdminNavigationOrder;
 use Awcodes\Curator\CuratorPlugin;
-use Awcodes\Curator\Resources\Media\MediaResource;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
@@ -43,6 +43,7 @@ class AdminPanelProvider extends PanelProvider
                     ->navigationGroup(fn (): ?string => AdminNavigationOrder::group(MediaResource::class))
                     ->navigationIcon(Heroicon::OutlinedPhoto)
                     ->navigationSort(fn (): int => AdminNavigationOrder::sort(MediaResource::class) ?? 20)
+                    ->curations(false)
                     ->showBadge(false),
             )
             ->brandLogo(fn (): string => asset('images/podtext-logo.svg'))

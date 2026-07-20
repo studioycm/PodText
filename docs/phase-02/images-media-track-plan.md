@@ -56,7 +56,9 @@ Final IMG-A decision: harden existing group covers and add content group cover a
 
 Options:
 
-- C1 partially implemented: `content_groups.cover_path` remains the canonical cover path and was hardened through the app-owned picker factory.
+- C1 superseded by CURATOR-G1: `content_groups.cover_path` remains a reversible
+  compatibility mirror, while the typed `cover` attachment and immutable Media
+  reference key are canonical for new writes and portable identity.
 - C2 dead: do not build author/contributor avatars.
 - C3 implemented: `content_groups.cover_alt_text` is shipped and public group images use it with group-title fallback.
 - C4: add category images later if category landing pages need them.
@@ -68,20 +70,35 @@ Implements R4, R5, and R6.
 
 - The only root Composer dependency added is `awcodes/filament-curator`.
 - `App\Settings\AdminUxSettings` started with `media_naming_strategy`; EP1 extended it with workspace/TB1 controls.
-- Settings-page image assets now use the app-owned media picker factory and continue storing plain path strings in JSON.
-- SVG remains allowed only for menu logos; Curator mode relies on Curator's SVG sanitizer, while content/default/about/team images remain JPEG/PNG/WebP.
-- Existing `cover_path`, `header`, `team`, `about`, and `default-images` files can be registered in Curator with `php artisan media:register-existing-curator-assets` without moving or renaming files.
-- The command was run locally during IMG-A and reported 11 created, 0 existing, 0 missing, and 0 skipped.
-- EXIF stripping is deferred until a future image re-encoding step; IMG-A records the validation cap only.
+- At IMG-A time, settings assets stored plain paths, vendor Curator sanitation
+  handled SVG, and `media:register-existing-curator-assets` registered legacy
+  files in place. Its recorded local result was 11 created, 0 existing, 0
+  missing, and 0 skipped.
+- CURATOR-G1 supersedes those security and identity assumptions. Settings now
+  retain immutable media keys beside compatibility paths, new SVG uploads use
+  private app-owned sanitation, raster uploads are re-encoded/normalized, and
+  the legacy-named registration command is dry-run-only by default. Its
+  one-exact-path/Admin-actor apply mode uses private quarantine/staging,
+  normalized generated storage, an immutable key/checksum journal, and one
+  locked owner/settings switch; it never creates a row over the old bytes.
+- Eligible unregistered legacy assets use that app-owned journaled registration
+  during a separately approved production cutover. Existing Curator rows gain
+  keys only when their raster bytes are already canonical and receive an atomic
+  checksum-proof journal; noncanonical/disallowed rows remain reported.
+  Existing SVG Media IDs 6 and 7 remain untouched pending their separate
+  checksum/backup/visual-verification approval runbook.
 
 ### IMG-B Implementation Outcomes
 
 - `content_items.image_path` stores local episode images, with the public resolver preference order: local episode image, external thumbnail URL, group cover when mode allows, then configured defaults/fallback.
 - The episode workspace and episode table surfaces expose image picker actions and queued external-thumbnail download actions; podcast tables expose cover picker actions.
 - Episode tables include an effective-image thumbnail column using `PublicDefaultImageResolver`.
-- Curator media referenced by group covers, item images, or settings assets cannot be deleted until references are removed.
+- Curator Media referenced by typed attachments, owner compatibility paths, or
+  settings identities cannot be renamed, swapped, or deleted until references
+  are removed.
 - Content-images export queues on `imports-exports`, writes a private ZIP under `content-images-exports/user-{id}`, and deletes the user's prior ZIPs before creating a new one.
-- CSV import/export of `image_path` remains deferred to future import/export/package work.
+- ContentGroup/ContentItem portable import/export now uses immutable media
+  reference keys and never mutable paths or numeric media IDs.
 
 ### D-IMG-D - Image Packages In Import/Export
 
@@ -90,7 +107,9 @@ Decision after IMG-B: export-only content-images ZIP is shipped for editorial do
 Options:
 
 - D1 still applies to import packages: keep image zip imports deferred; use WB7 for bulk image ingestion.
-- D2 implemented in a bounded form: export-only content image ZIP without an import manifest.
+- D2 extended by CURATOR-G1: the export-only content-image ZIP now includes a
+  manifest with media key, owner key/role, archive filename, validated type,
+  and SHA-256. ZIP import remains deferred.
 - D3: build full import/export zip package support with manifest, zip-slip protection, caps, image validation, private scratch storage, cleanup, and missing-file warnings.
 
 Implements the export portion of R7; import package work remains deferred.
@@ -255,8 +274,11 @@ Research decisions: R3 and R7.
 
 - Composer/package changes.
 - Plugin installation.
-- New image migrations.
-- Zip image import/export implementation.
+- Image schema changes beyond the four migrations approved by CURATOR-G1.
+- Media ZIP import implementation; CURATOR-G1 already implements the bounded
+  image ZIP export manifest.
 - S3 or remote filesystem migration.
-- Rewriting current `cover_path`, `header`, `team`, `about`, or `default-images` files.
+- Broad or in-place rewrites of current `cover_path`, `header`, `team`,
+  `about`, or `default-images` files outside CURATOR-G1's separately approved,
+  exact-path journaled registration runbook.
 - Prompt 13 dashboard metrics.

@@ -2,17 +2,28 @@
 
 namespace App\Support\Media;
 
+use App\Enums\ImageUploadPurpose;
+use App\Enums\MediaAttachmentRole;
 use App\Enums\MediaNamingStrategy;
 use App\Models\ContentGroup;
 use App\Models\ContentItem;
+use App\Models\Media;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use JsonException;
 use RuntimeException;
+use Throwable;
 use ZipArchive;
 
 class ContentImagesExportManager
 {
     private const ROOT = 'content-images-exports';
+
+    public function __construct(
+        private readonly MediaAttachmentIdentityResolver $attachmentIdentityResolver,
+        private readonly MediaRecordScope $mediaRecordScope,
+        private readonly ImageUploadValidator $validator,
+    ) {}
 
     /**
      * @return array{token: string, path: string, included: int, skipped: array<int, string>}
@@ -29,57 +40,114 @@ class ContentImagesExportManager
             throw new RuntimeException('Unable to create a temporary content images zip.');
         }
 
-        $zip = new ZipArchive;
-
-        if ($zip->open($temporaryPath, ZipArchive::OVERWRITE) !== true) {
-            throw new RuntimeException('Unable to open the temporary content images zip.');
-        }
-
         $included = 0;
         $skipped = [];
+        $manifest = [];
+        $zip = new ZipArchive;
 
-        $groups = ContentGroup::query()
-            ->with(['contentItems' => fn ($query): mixed => $query
-                ->orderBy('published_at')
-                ->orderBy('id')])
-            ->when($contentGroupId, fn ($query): mixed => $query->whereKey($contentGroupId))
-            ->orderBy('title')
-            ->orderBy('id')
-            ->get();
-
-        foreach ($groups as $group) {
-            $podcastStem = ImageFileNamer::storageStem($group->slug, $group->reference_key, $strategy);
-
-            if (filled($group->cover_path)) {
-                $entryName = "podcasts/{$podcastStem}/cover.".$this->extensionForPath((string) $group->cover_path);
-
-                $this->addPublicFile($zip, (string) $group->cover_path, $entryName, $included, $skipped);
+        try {
+            if ($zip->open($temporaryPath, ZipArchive::OVERWRITE) !== true) {
+                throw new RuntimeException('Unable to open the temporary content images zip.');
             }
 
-            foreach ($group->contentItems as $item) {
-                if (! $item instanceof ContentItem || blank($item->image_path)) {
-                    continue;
+            $groups = ContentGroup::query()
+                ->with([
+                    'coverMediaAttachment.media',
+                    'contentItems' => fn ($query): mixed => $query
+                        ->with('primaryImageMediaAttachment.media')
+                        ->orderBy('published_at')
+                        ->orderBy('id'),
+                ])
+                ->when($contentGroupId, fn ($query): mixed => $query->whereKey($contentGroupId))
+                ->orderBy('title')
+                ->orderBy('id')
+                ->lazy(100);
+
+            foreach ($groups as $group) {
+                $podcastStem = ImageFileNamer::storageStem($group->slug, $group->reference_key, $strategy);
+                $coverMedia = $group->coverMediaAttachment === null
+                    ? null
+                    : $this->attachmentIdentityResolver->resolve($group, MediaAttachmentRole::Cover)['media'];
+
+                if ($coverMedia instanceof Media) {
+                    $this->addMedia(
+                        $zip,
+                        $coverMedia,
+                        ImageUploadPurpose::ContentGroupCover,
+                        (string) $group->reference_key,
+                        MediaAttachmentRole::Cover,
+                        "podcasts/{$podcastStem}/cover.{$coverMedia->ext}",
+                        $included,
+                        $skipped,
+                        $manifest,
+                    );
+                } elseif (filled($group->cover_path)) {
+                    $skipped[] = "content_group:{$group->reference_key}:cover:legacy-only";
                 }
 
-                $episodeFileName = ImageFileNamer::exportFileName(
-                    $item->slug,
-                    $item->reference_key,
-                    $this->mimeTypeForPath((string) $item->image_path),
-                    $strategy,
-                );
+                foreach ($group->contentItems as $item) {
+                    if (! $item instanceof ContentItem) {
+                        continue;
+                    }
 
-                $entryName = "podcasts/{$podcastStem}/episodes/{$episodeFileName}";
+                    $media = $item->primaryImageMediaAttachment === null
+                        ? null
+                        : $this->attachmentIdentityResolver->resolve($item, MediaAttachmentRole::PrimaryImage)['media'];
 
-                $this->addPublicFile($zip, (string) $item->image_path, $entryName, $included, $skipped);
+                    if (! $media instanceof Media) {
+                        if (filled($item->image_path)) {
+                            $skipped[] = "content_item:{$item->reference_key}:primary_image:legacy-only";
+                        }
+
+                        continue;
+                    }
+
+                    $episodeFileName = ImageFileNamer::exportFileName(
+                        $item->slug,
+                        $item->reference_key,
+                        (string) $media->type,
+                        $strategy,
+                    );
+
+                    $this->addMedia(
+                        $zip,
+                        $media,
+                        ImageUploadPurpose::ContentItemPrimaryImage,
+                        (string) $item->reference_key,
+                        MediaAttachmentRole::PrimaryImage,
+                        "podcasts/{$podcastStem}/episodes/{$episodeFileName}",
+                        $included,
+                        $skipped,
+                        $manifest,
+                    );
+                }
+            }
+
+            $zip->addFromString('manifest.json', $this->manifestJson($manifest));
+
+            if (! $zip->close()) {
+                throw new RuntimeException('Unable to finalize the content images zip.');
+            }
+
+            Storage::disk('local')->makeDirectory(dirname($path));
+            $archive = fopen($temporaryPath, 'rb');
+
+            if (! is_resource($archive)) {
+                throw new RuntimeException('Unable to persist the content images zip.');
+            }
+
+            try {
+                if (! Storage::disk('local')->writeStream($path, $archive)) {
+                    throw new RuntimeException('Unable to persist the content images zip.');
+                }
+            } finally {
+                fclose($archive);
+            }
+        } finally {
+            if (is_file($temporaryPath)) {
+                @unlink($temporaryPath);
             }
         }
-
-        $zip->close();
-
-        Storage::disk('local')->makeDirectory(dirname($path));
-        Storage::disk('local')->put($path, file_get_contents($temporaryPath) ?: '');
-
-        @unlink($temporaryPath);
 
         return [
             'token' => $token,
@@ -121,86 +189,86 @@ class ContentImagesExportManager
 
     /**
      * @param  array<int, string>  $skipped
+     * @param  array<int, array<string, string>>  $manifest
      */
-    private function addPublicFile(ZipArchive $zip, string $path, string $entryName, int &$included, array &$skipped): void
-    {
-        $path = $this->normalize($path);
+    private function addMedia(
+        ZipArchive $zip,
+        Media $media,
+        ImageUploadPurpose $purpose,
+        string $ownerReferenceKey,
+        MediaAttachmentRole $role,
+        string $entryName,
+        int &$included,
+        array &$skipped,
+        array &$manifest,
+    ): void {
+        $skipKey = "{$role->ownerAlias()}:{$ownerReferenceKey}:{$role->value}";
 
-        if ($path === null || ! Storage::disk('public')->exists($path)) {
-            $skipped[] = $path ?? __('admin.labels.none');
+        if (
+            blank($media->reference_key)
+            || blank($ownerReferenceKey)
+            || ! $this->mediaRecordScope->allows($media, $purpose)
+            || ! Storage::disk('public')->exists((string) $media->path)
+        ) {
+            $skipped[] = $skipKey;
 
             return;
         }
 
-        $contents = Storage::disk('public')->get($path);
+        $contents = Storage::disk('public')->get((string) $media->path);
 
         if (! is_string($contents) || $contents === '') {
-            $skipped[] = $path;
+            $skipped[] = $skipKey;
 
             return;
         }
 
-        $zip->addFromString($entryName, $contents);
+        try {
+            $validated = $this->validator->validateBytes(
+                $contents,
+                basename((string) $media->path),
+                $purpose,
+            );
+        } catch (Throwable) {
+            $skipped[] = $skipKey;
+
+            return;
+        }
+
+        if ($validated->mimeType !== $media->type || $validated->extension !== $media->ext) {
+            $skipped[] = $skipKey;
+
+            return;
+        }
+
+        if (! $zip->addFromString($entryName, $contents)) {
+            $skipped[] = $skipKey;
+
+            return;
+        }
+
+        $manifest[] = [
+            'media_reference_key' => (string) $media->reference_key,
+            'owner_reference_key' => $ownerReferenceKey,
+            'role' => $role->value,
+            'archive_filename' => $entryName,
+            'validated_type' => $validated->mimeType,
+            'extension' => $validated->extension,
+            'sha256' => hash('sha256', $contents),
+        ];
         $included++;
     }
 
-    private function mimeTypeForPath(string $path): string
+    /**
+     * @param  array<int, array<string, string>>  $manifest
+     *
+     * @throws JsonException
+     */
+    private function manifestJson(array $manifest): string
     {
-        $path = $this->normalize($path);
-
-        if ($path === null) {
-            return 'image/jpeg';
-        }
-
-        $mimeType = Storage::disk('public')->mimeType($path);
-
-        if (is_string($mimeType)) {
-            try {
-                ImageFileNamer::extensionForMimeType($mimeType);
-
-                return $mimeType;
-            } catch (\InvalidArgumentException) {
-                // Fall back to the stored extension when the adapter reports a generic MIME type.
-            }
-        }
-
-        return $this->mimeTypeForExtension($this->extensionForPath($path));
-    }
-
-    private function extensionForPath(string $path): string
-    {
-        $extension = mb_strtolower(pathinfo($path, PATHINFO_EXTENSION));
-
-        return match ($extension) {
-            'jpeg' => 'jpg',
-            'jpg', 'png', 'webp', 'svg' => $extension,
-            default => 'jpg',
-        };
-    }
-
-    private function mimeTypeForExtension(string $extension): string
-    {
-        return match ($extension) {
-            'png' => 'image/png',
-            'webp' => 'image/webp',
-            'svg' => 'image/svg+xml',
-            default => 'image/jpeg',
-        };
-    }
-
-    private function normalize(?string $path): ?string
-    {
-        if (blank($path)) {
-            return null;
-        }
-
-        $path = str_replace('\\', '/', trim((string) $path));
-        $path = preg_replace('#/+#', '/', $path) ?: '';
-
-        if (str_contains($path, '../') || str_starts_with($path, '/')) {
-            return null;
-        }
-
-        return $path;
+        return json_encode([
+            'schema_version' => 1,
+            'media' => $manifest,
+        ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR);
     }
 }

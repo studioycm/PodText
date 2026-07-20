@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\MediaAttachmentRole;
 use App\Enums\PublicationStatus;
 use App\Observers\ContentItemObserver;
 use App\Support\Media\ContentItemMediaRules;
@@ -106,6 +107,22 @@ class ContentItem extends Model
     public function transcriptions(): HasMany
     {
         return $this->hasMany(Transcription::class);
+    }
+
+    public function mediaAttachments(): HasMany
+    {
+        return $this->hasMany(MediaAttachment::class, 'attachable_id')
+            ->where('attachable_type', 'content_item')
+            ->orderBy('role')
+            ->orderBy('position')
+            ->orderBy('id');
+    }
+
+    public function primaryImageMediaAttachment(): HasOne
+    {
+        return $this->hasOne(MediaAttachment::class, 'attachable_id')
+            ->where('attachable_type', 'content_item')
+            ->where('role', MediaAttachmentRole::PrimaryImage->value);
     }
 
     public function featuredTranscription(): BelongsTo

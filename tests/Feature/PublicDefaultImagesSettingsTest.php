@@ -157,15 +157,19 @@ it('normalizes default image settings and backfills the settings row', function 
     expect($defaultImages['content_item'])->toBe([
         'mode' => 'custom',
         'path' => 'default-images/item.webp',
+        'media_reference_key' => null,
     ])->and($defaultImages['content_group'])->toBe([
         'mode' => 'inherit',
         'path' => null,
+        'media_reference_key' => null,
     ])->and($defaultImages['contributor'])->toBe([
         'mode' => 'inherit',
         'path' => null,
+        'media_reference_key' => null,
     ])->and($defaultImages['global'])->toBe([
         'mode' => 'none',
         'path' => null,
+        'media_reference_key' => null,
     ])->and($paths)->toContain(
         'default_images.content_item.class',
         'default_images.content_group.mode',
@@ -205,6 +209,102 @@ it('saves no-image mode through the public settings page', function (): void {
     clearStep10V1aPublicFrontSettingsCache();
 
     expect(app(PublicContentSettings::class)->default_images['content_item']['mode'])->toBe('none');
+});
+
+it('preserves nested settings values while adding and removing media reference keys', function (): void {
+    saveStep10V1aPublicFrontSettings([
+        'menu_config' => [
+            'enabled' => true,
+            'logo' => [
+                'light_path' => 'header/light.svg',
+                'dark_path' => 'header/dark.svg',
+                'alt_text' => 'Custom logo',
+                'display_mode' => 'image',
+                'size' => 'large',
+            ],
+        ],
+        'about_page' => [
+            'blocks' => [
+                [
+                    'type' => 'image',
+                    'image_path' => 'about/outer.jpg',
+                    'caption' => 'Outer image',
+                ],
+                [
+                    'type' => 'image',
+                    'data' => [
+                        'image_path' => 'about/nested.jpg',
+                        'caption' => 'Nested image',
+                    ],
+                ],
+            ],
+            'team_profiles' => [[
+                'name' => 'Team member',
+                'image_path' => 'team/member.jpg',
+            ]],
+        ],
+        'default_images' => [
+            'global' => [
+                'mode' => 'custom',
+                'path' => 'default-images/global.jpg',
+                'caption' => 'Keep me',
+            ],
+        ],
+    ]);
+
+    $migration = include base_path('database/settings/2026_07_20_000000_add_public_media_reference_keys.php');
+    $migration->up();
+
+    $payloads = DB::table('settings')
+        ->where('group', PublicContentSettings::group())
+        ->whereIn('name', ['menu_config', 'about_page', 'default_images'])
+        ->pluck('payload', 'name')
+        ->map(fn (string $payload): array => json_decode($payload, true, flags: JSON_THROW_ON_ERROR));
+
+    expect($payloads['menu_config']['logo'])->toMatchArray([
+        'light_path' => 'header/light.svg',
+        'dark_path' => 'header/dark.svg',
+        'alt_text' => 'Custom logo',
+        'display_mode' => 'image',
+        'size' => 'large',
+        'light_media_reference_key' => null,
+        'dark_media_reference_key' => null,
+    ])->and($payloads['about_page']['blocks'][0])->toMatchArray([
+        'image_path' => 'about/outer.jpg',
+        'caption' => 'Outer image',
+        'image_media_reference_key' => null,
+    ])->and($payloads['about_page']['blocks'][1]['data'])->toMatchArray([
+        'image_path' => 'about/nested.jpg',
+        'caption' => 'Nested image',
+        'image_media_reference_key' => null,
+    ])->and($payloads['about_page']['team_profiles'][0])->toMatchArray([
+        'name' => 'Team member',
+        'image_path' => 'team/member.jpg',
+        'image_media_reference_key' => null,
+    ])->and($payloads['default_images']['global'])->toMatchArray([
+        'mode' => 'custom',
+        'path' => 'default-images/global.jpg',
+        'caption' => 'Keep me',
+        'media_reference_key' => null,
+    ]);
+
+    $migration->down();
+
+    $rolledBack = DB::table('settings')
+        ->where('group', PublicContentSettings::group())
+        ->whereIn('name', ['menu_config', 'about_page', 'default_images'])
+        ->pluck('payload', 'name')
+        ->map(fn (string $payload): array => json_decode($payload, true, flags: JSON_THROW_ON_ERROR));
+
+    expect($rolledBack['menu_config']['logo'])->not->toHaveKeys([
+        'light_media_reference_key',
+        'dark_media_reference_key',
+    ])->and($rolledBack['menu_config']['logo']['alt_text'])->toBe('Custom logo')
+        ->and($rolledBack['about_page']['blocks'][0])->not->toHaveKey('image_media_reference_key')
+        ->and($rolledBack['about_page']['blocks'][1]['data'])->not->toHaveKey('image_media_reference_key')
+        ->and($rolledBack['about_page']['team_profiles'][0])->not->toHaveKey('image_media_reference_key')
+        ->and($rolledBack['default_images']['global'])->not->toHaveKey('media_reference_key')
+        ->and($rolledBack['default_images']['global']['caption'])->toBe('Keep me');
 });
 
 it('renders content item custom inherit and none fallbacks on cards and item pages', function (): void {

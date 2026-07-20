@@ -123,7 +123,7 @@ class EpisodeWorkspaceForm
                             ->disableToolbarButtons(['attachFiles'])
                             ->fileAttachments(false)
                             ->columnSpanFull(),
-                        MediaPickerField::make('image_path', ImageFileNamer::CONTENT_ITEM_IMAGE)
+                        MediaPickerField::make('primary_image_media_reference_key', ImageFileNamer::CONTENT_ITEM_IMAGE)
                             ->label(__('admin.fields.image_path'))
                             ->helperText(__('admin.helpers.content_item_image_path'))
                             ->columnSpanFull(),

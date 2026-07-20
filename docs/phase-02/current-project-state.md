@@ -220,6 +220,20 @@ Recorded after the Markdown-only post-Prompt-10 prompt-progress centralization c
   legacy paths with no Curator row remain safe. It does not change SP3B's
   focused settings schemas or fresh owned-path save lifecycle. Handoff:
   `docs/phase-02/curator-picker-hydration-hf1-handoff.md`.
+- CURATOR-G1 Stage 2 is complete locally under audit
+  `LS-20260720-CURATOR-G1-IMAGE-LIBRARY-01`, option
+  `CURATOR-G1-O2-FULL-APP-OWNED-CURATOR-SURFACE`. It replaces the vendor
+  gallery/picker boundaries with one Admin-or-higher app surface; adds the
+  finite image validator, private SVG/raster normalization, immutable
+  checksum-journaled Media identities, typed shared attachments, portable
+  import/export keys, journaled registration/mutations/repair, and bounded
+  query/state behavior. This supersedes CURATOR-HF1's path-only settings
+  contract and IMG-A's in-place registration behavior while retaining legacy
+  paths as reversible mirrors. Production deployment, migrations, backfills,
+  one-path registration applies, repair/cache actions, disallowed-media
+  disposition, SVG IDs 6/7, legacy-path retirement/non-null proof, and measured
+  curation dimensions remain separately approval-gated and were not executed.
+  Handoff: `docs/phase-02/curator-g1-image-library-o2-handoff.md`.
 
 ## Prompt Progress
 
@@ -315,6 +329,7 @@ Recorded after the Markdown-only post-Prompt-10 prompt-progress centralization c
 | SP3 browser acceptance evidence | Conditional Later evidence; not a feature blocker | Report 07 and recovered checkpoint queue | Authenticated in-app, serial browser, and external Playwright evidence remain due only when settings performance work or touched UX needs measured acceptance. SP3D is not a prerequisite. |
 | SIMPLIFY-REVIEW1 - Project simplification opportunities audit | Optional Later; suggestions only; not started | Recovered checkpoint queue | Read-only inventory of possible deletion, consolidation, and reuse. It does not block AUTHZ closure or Step 5B, and no finding authorizes implementation without separate review, estimate, and approval. |
 | CURATOR-HF1 - Curator picker hydration repair | Complete | `23a6ce9 fix: preserve curator picker selections on reload`; `docs/phase-02/curator-picker-hydration-hf1-handoff.md` | Repairs `PathCuratorPicker` raw-state hydration and UUID-keyed state handling so registered Menu/Header logos and Display default images remain visibly selected after reload. The storage contract, legacy-path preservation, and SP3B lifecycle remain unchanged. |
+| CURATOR-G1 - Full app-owned Curator image library | Complete locally; production cutover gated | Canonical implementation hash is recorded in `docs/phase-02/curator-g1-image-library-o2-handoff.md` and the mini-step ledger | Completes all seven O2 minis: positive validation, app Resource/picker, explicit abilities, immutable journal-backed keys, shared typed attachments, compatibility/settings/import-export cutover, full legacy registration, fenced mutations/repair, SSRF controls, query budgets, translations, and runbooks. Four additive/reversible migrations are prepared but were not applied to the local development database or production. |
 | Prompt 13 dashboard metrics | Not started / blocked unless explicitly chosen by user | Active prompt/blueprint | Owns editorial dashboard widgets after Public Front v2 Step 12 readiness or an explicit dashboard-first decision. |
 | Prompt 14 viewer/studio future plan | Future planning after Prompt 13 | Active prompt/blueprint | Documentation/planning only. |
 | Prompt 15 Filament Blueprint security audit | Audit after Prompt 14 | Active prompt/blueprint | Audit-only unless fixes are explicitly approved. |
@@ -409,6 +424,11 @@ Laravel Boost MCP tools were exposed and usable during Prompt 10.
 - Prompt 12 FilamentExamples research returned snippet/source examples for custom public page and Livewire-rendered page content; snippets were used as reference only.
 - Public Front v2 Step 1 used Boost `application_info`, `database_schema`, and `search_docs` for installed Laravel 13.18.0, Filament 5.6.7, Pest 4.7.4, Spatie Settings storage, settings-page save/fill hooks, and array validation behavior before code changes.
 - Public Front v2 Step 1 FilamentExamples research returned snippet-level settings/form examples only; no full source/detail fetch tool was exposed.
+- CURATOR-G1 used Boost version-aware application/package guidance for Laravel
+  13.19.0, Filament 5.6.7, Livewire 4.3.3, and Pest 4.7.4. Refined
+  FilamentExamples searches returned snippet-only picker/resource/upload/card
+  patterns; installed Curator 5.1.2 source
+  `2a79bf031099d2d75351377eae15322fb590ab43` remained authoritative.
 - Public Front v2 Step 4 used Boost `application_info`, `database_schema`, and `search_docs` before changing migrations, casts, Filament form fields, Livewire rendering, and tests.
 - Public Front v2 Step 4 FilamentExamples research returned snippet/source-level examples for dynamic homepage sections, section manager patterns, looper/query display concepts, and admin selection/table-selection patterns; no parallel agents or worktrees were used.
 - Public Front v2 Step 5 used Boost `application_info`, `database_schema`, and `search_docs` before changing Livewire URL state, pagination, Alpine drawer behavior, Blade rendering, card template rendering, and tests.
@@ -660,6 +680,15 @@ Current physical schema verified through Boost `database_schema`:
 - `settings` exists for Spatie Settings.
 - `homepage_sections` exists with section target fields for category, tag, and content group plus Step 4 JSON config columns: `source_config`, `selection_config`, `display_config`, and `pagination_config`.
 - `public_form_submissions` exists with Step 6 submission review fields: `form_key`, `form_name_snapshot`, `payload`, `status`, `submitted_at`, `source_url`, hashed submitter fingerprints, and `metadata`.
+
+CURATOR-G1 prepares but did not apply these additive/reversible migrations to
+the local development database or production:
+
+- `2026_07_20_000001_add_reference_key_to_curator_table`;
+- `2026_07_20_000002_create_media_attachments_table`;
+- `2026_07_20_000003_create_media_mutation_operations_table`;
+- `2026_07_20_000000_add_public_media_reference_keys` (settings shape only;
+  identity population remains in separate commands).
 
 ## Prompt 07 Implementation Notes
 

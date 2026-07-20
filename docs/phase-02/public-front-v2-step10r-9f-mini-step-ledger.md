@@ -4,18 +4,15 @@ This ledger controls the post-Step-10 mini-step sequence. Each run implements ex
 
 ## Current Run
 
-- Selected step: Step 5B FU03 Card Template path-corrected validation
-- Status: complete under Laravel Simplifier audit
-  `LS-20260719-STEP5B-CARD-UX2-FU03-PATH-CORRECTED-01`, option
-  `STEP5B-CARD-UX2-FU03-PATH-CORRECTED-CLOSURE`; implementation
-  `659762f931a01626237a91de27a873e423c0713c` is closed by this immediate
-  documentation-only hash-stamp follow-up. FU02 remains closed by implementation
-  `a8be0aa4...` and stamp `23c3ac9...`; O2 remains closed by implementation
-  `f56ef369...` and stamp `27f38aea...`.
-- The current corrective closeout clarifies that only recognized root/parts
-  paths receive verified fallback, while invalid singleton prefixes terminate
-  notification-only without an invented owner; it also records the
-  non-material 23-line transport-object forecast variance. No FU04 work began.
+- Selected ad-hoc step: CURATOR-G1 Stage 2 full app-owned image library.
+- Status: all seven minis complete locally under Laravel Simplifier audit
+  `LS-20260720-CURATOR-G1-IMAGE-LIBRARY-01`, option
+  `CURATOR-G1-O2-FULL-APP-OWNED-CURATOR-SURFACE`; implementation hash
+  `Pending` until the canonical implementation commit and immediate docs-only
+  stamp.
+- The complete local release includes journaled one-path legacy registration;
+  no production registration, deployment, migration, backfill, repair, cache,
+  sanitizer, export/import, or SVG operation ran. No FU04 work began.
 - Next step: FU04 order-compatibility closure is the next sequential program
   action and remains unapproved. FU05–FU06 remain later and unapproved; nested
   images, AUTHZ1-D–I, ARCH1, SP3D, SP4, LOG1, and MySQL rehearsal remain
@@ -86,6 +83,7 @@ This ledger controls the post-Step-10 mini-step sequence. Each run implements ex
 | SP3-BROWSER - Settings browser acceptance evidence | conditional Later evidence | report 07; recovered checkpoint queue | Resume only for settings performance work or touched UX requiring measured acceptance | None | Keep authenticated in-app, serial browser, and external Playwright evidence distinct. No SP3D prerequisite or fabricated ceilings. |
 | SIMPLIFY-REVIEW1 - Project simplification opportunities audit | optional Later; suggestions only; not started | recovered checkpoint queue | Read-only inventory of deletion, consolidation, and reuse opportunities | None | Does not block AUTHZ closure or Step 5B. Findings require separate review, bounded estimate, and approval before implementation. |
 | CURATOR-HF1 - Curator picker hydration repair | complete | `23a6ce9 fix: preserve curator picker selections on reload` | `PathCuratorPicker`; `ImageMediaCuratorTest`; CURATOR-HF1 handoff; current state; this ledger | Targeted Curator regression suite and the final sequential gate are recorded in the handoff. | Repairs double normalization during picker hydration: hydration reads raw persisted path state, while validated UUID-keyed Curator item maps survive rendering and picker actions. Registered header/logo and Display custom-default selections remain visible after remount; plain-path storage and missing-row preservation remain unchanged. SP3B's save lifecycle is untouched. |
+| CURATOR-G1 - Full app-owned Curator image library | complete locally; production cutover gated | `Pending` | App-owned Media Resource/picker/controller; centralized validation/SSRF policy; Media/attachment/journal schema and APIs; backfill/report/registration/repair commands; settings/content import-export/public resolver cutover; translations/tests/research/plan/runbooks/handoff/current state; this ledger | Focused and final gate outcomes are recorded in `docs/phase-02/curator-g1-image-library-o2-handoff.md`. | Completes all seven approved O2 minis without dependency or security-boundary drift. Registration apply is fully implemented locally but unexecuted outside isolated tests. Four migrations, production backfills/repairs/cache actions, disallowed-media disposition, SVG IDs 6/7, path retirement/non-null proof, and measured curation dimensions remain separately gated. FU04 remains the next unapproved main-roadmap action. |
 | UI-HF1 - Logo SVG normalization and adaptive favicon | complete | `9d8296f feat: normalize logo svg coordinates and add theme-adaptive favicon` | normalized light/dark public logo SVGs; retained original logo assets; adaptive public favicon; admin/public panel favicon registration; focused panel favicon test | Focused favicon test passed in the implementation session. | Compact shipped UI correction recorded without duplicating Curator or OTP status. |
 | UI-HF2 - Collapsible admin navigation groups | complete | `d128cfd feat: make admin navigation groups collapsible` | central admin navigation order; admin navigation regression test | Focused navigation regression passed in the implementation session. | Restores Filament group collapse behavior while preserving the central navigation order. |
 | Step 10R-P2 - Public listing fetch-window and lazy options | pending |  |  |  | Bound listing fetch windows, lazy filter options/form definitions, and make unconsumed aggregate subselects opt-in per surface. |

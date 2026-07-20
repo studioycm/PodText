@@ -46,10 +46,11 @@ class ContentItemsRelationManager extends RelationManager
             ->modifyQueryUsing(fn (Builder $query): Builder => $query
                 ->with([
                     'categories',
-                    'contentGroup',
+                    'contentGroup.coverMediaAttachment.media',
                     'tags',
                     'featuredTranscription.authors',
                     'latestPublishedTranscription.authors',
+                    'primaryImageMediaAttachment.media',
                 ])
                 ->withCount('transcriptions')
                 ->latest('published_at')

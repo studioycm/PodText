@@ -2,10 +2,13 @@
 
 namespace App\Support\PublicFront\About;
 
+use App\Enums\ImageUploadPurpose;
 use App\Support\Markdown\SafeMarkdownRenderer;
+use App\Support\Media\MediaIdentityResolver;
 use App\Support\PublicFront\PublicFrontRenderContext;
 use Filament\Forms\Components\RichEditor\RichContentRenderer;
 use Illuminate\Support\Facades\Storage;
+use InvalidArgumentException;
 use Symfony\Component\HtmlSanitizer\HtmlSanitizer;
 use Symfony\Component\HtmlSanitizer\HtmlSanitizerConfig;
 use Throwable;
@@ -15,6 +18,7 @@ class PublicAboutPageRenderer
     public function __construct(
         private readonly SafeMarkdownRenderer $markdownRenderer,
         private readonly PublicFrontRenderContext $context,
+        private readonly MediaIdentityResolver $mediaIdentityResolver,
     ) {}
 
     public function renderMarkdown(?string $markdown): string
@@ -45,13 +49,38 @@ class PublicAboutPageRenderer
         return $this->sanitizer()->sanitize($html);
     }
 
-    public function imageUrl(?string $path): ?string
-    {
-        if (! $this->isAllowedPublicImagePath($path)) {
+    public function imageUrl(
+        ?string $path,
+        ?string $referenceKey = null,
+        ImageUploadPurpose $purpose = ImageUploadPurpose::AboutImage,
+    ): ?string {
+        try {
+            $path = $this->mediaIdentityResolver->path($referenceKey, $path, $purpose);
+        } catch (InvalidArgumentException $exception) {
+            report($exception);
+
+            return null;
+        }
+
+        if (! $this->isAllowedPublicImagePath($path, $purpose)) {
             return null;
         }
 
         return Storage::disk('public')->url($path);
+    }
+
+    /** @param iterable<int, array<string, mixed>> $records */
+    public function primeImageIdentities(iterable $records, ImageUploadPurpose $purpose): void
+    {
+        $records = collect($records);
+        $this->mediaIdentityResolver->primeReferenceKeys(
+            $records->pluck('image_media_reference_key'),
+            $purpose,
+        );
+        $this->mediaIdentityResolver->primeLegacyPaths(
+            $records->pluck('image_path'),
+            $purpose,
+        );
     }
 
     /**
@@ -97,7 +126,7 @@ class PublicAboutPageRenderer
             ->all();
     }
 
-    private function isAllowedPublicImagePath(?string $path): bool
+    private function isAllowedPublicImagePath(?string $path, ImageUploadPurpose $purpose): bool
     {
         if (! is_string($path) || $path === '') {
             return false;
@@ -107,9 +136,9 @@ class PublicAboutPageRenderer
             return false;
         }
 
-        $directories = implode('|', PublicAboutPageRegistry::imageDirectories());
+        $directory = preg_quote($purpose->root(), '/');
 
-        return (bool) preg_match("/^(?:{$directories})\/[A-Za-z0-9][A-Za-z0-9._\/-]*\.(?:jpe?g|png|webp)$/i", $path);
+        return (bool) preg_match("/^{$directory}\/[A-Za-z0-9][A-Za-z0-9._-]*\.(?:jpg|png|webp)$/i", $path);
     }
 
     private function sanitizer(): HtmlSanitizer

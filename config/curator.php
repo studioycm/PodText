@@ -1,26 +1,25 @@
 <?php
 
 declare(strict_types=1);
+use App\Filament\Resources\Media\MediaResource;
+use App\Filament\Resources\Media\Pages\CreateMedia;
+use App\Filament\Resources\Media\Pages\EditMedia;
+use App\Filament\Resources\Media\Pages\ListMedia;
+use App\Filament\Resources\Media\Schemas\MediaForm;
+use App\Filament\Resources\Media\Tables\MediaTable;
+use App\Models\Media;
 use App\Support\Media\CuratorPathGenerator;
-use Awcodes\Curator\Enums\PreviewableExtensions;
-use Awcodes\Curator\Models\Media;
 use Awcodes\Curator\Providers\GlideUrlProvider;
-use Awcodes\Curator\Resources\Media\MediaResource;
-use Awcodes\Curator\Resources\Media\Pages\CreateMedia;
-use Awcodes\Curator\Resources\Media\Pages\EditMedia;
-use Awcodes\Curator\Resources\Media\Pages\ListMedia;
-use Awcodes\Curator\Resources\Media\Schemas\MediaForm;
-use Awcodes\Curator\Resources\Media\Tables\MediaTable;
 
 return [
-    'curation_formats' => PreviewableExtensions::toArray(),
-    'default_disk' => env('CURATOR_DEFAULT_DISK', 'public'),
+    'curation_formats' => ['jpg', 'png', 'webp'],
+    'default_disk' => 'public',
     'default_directory' => null,
     'default_visibility' => 'public',
     'features' => [
-        'curations' => true,
-        'file_swap' => true,
-        'directory_restriction' => false,
+        'curations' => false,
+        'file_swap' => false,
+        'directory_restriction' => true,
         'preserve_file_names' => false,
         'tenancy' => [
             'enabled' => false,

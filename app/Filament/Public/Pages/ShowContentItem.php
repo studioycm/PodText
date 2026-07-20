@@ -56,6 +56,7 @@ class ShowContentItem extends Page
     {
         $this->contentGroup = ContentGroup::query()
             ->published()
+            ->with('coverMediaAttachment.media')
             ->where('slug', $contentGroupSlug)
             ->firstOrFail();
 
@@ -435,6 +436,6 @@ class ShowContentItem extends Page
     private function podcastImagePalette(): array
     {
         return $this->podcastImagePalette ??= app(PublicItemPagePodcastPalette::class)
-            ->colors($this->contentGroup->cover_path);
+            ->colors(app(PublicDefaultImageResolver::class)->contentGroupCoverPath($this->contentGroup));
     }
 }

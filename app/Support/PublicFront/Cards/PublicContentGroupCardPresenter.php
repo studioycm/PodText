@@ -40,6 +40,7 @@ class PublicContentGroupCardPresenter
         $presentation = $this->renderer->contentGroupPresentation($template);
 
         $groups = $groups instanceof Paginator ? $groups->getCollection() : collect($groups);
+        $this->defaultImages->primeContentGroups($groups);
 
         return $groups
             ->map(fn (ContentGroup $group): array => $this->presentWithPresentation($group, $template, $displayConfig, $presentation))

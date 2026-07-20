@@ -119,7 +119,7 @@ class SettingsBackupManager
 
         DB::transaction(function () use ($backup, $package, $user): void {
             $this->createBeforeRestore($backup, $user);
-            $this->applyPayload($package->payload(), $user);
+            $this->applyPayload($package->payloadForApplication(), $user);
         });
 
         $this->forgetPublicFrontState();
@@ -144,13 +144,14 @@ class SettingsBackupManager
         }
 
         $allowedPaths = $analysis->selectablePaths();
+        $selectedPaths = app(SettingsMediaIdentityProjector::class)->expandSelectedPaths($selectedPaths);
         $selectedPaths = array_values(array_intersect($selectedPaths, $allowedPaths));
         $appliedPaths = [];
         $report = null;
 
         DB::transaction(function () use ($analysis, $package, $selectedPaths, $user, $mode, $sourceLabel, &$appliedPaths, &$report): void {
             $beforeImportBackup = $this->createBeforeImport($user);
-            $appliedPaths = $this->applySelectedPayload($package->payload(), $selectedPaths, $mode, $user);
+            $appliedPaths = $this->applySelectedPayload($package->payloadForApplication(), $selectedPaths, $mode, $user);
             $report = SettingsImportReport::fromAnalysis(
                 analysis: $analysis,
                 selectedPaths: $selectedPaths,

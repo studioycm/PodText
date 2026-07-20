@@ -26,6 +26,11 @@ class SettingsPackageUpgradePipeline
             return $package;
         }
 
+        if ($schemaVersion === 1) {
+            $package['schema_version'] = PublicSettingsPackage::SCHEMA_VERSION;
+            $package['portable'] = false;
+        }
+
         return $package;
     }
 }

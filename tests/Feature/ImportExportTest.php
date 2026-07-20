@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\MediaAttachmentRole;
 use App\Enums\PublicationStatus;
 use App\Filament\Exports\AuthorExporter;
 use App\Filament\Exports\CategoryExporter;
@@ -14,8 +15,10 @@ use App\Models\Category;
 use App\Models\ContentGroup;
 use App\Models\ContentItem;
 use App\Models\ContentTag;
+use App\Models\Media;
 use App\Models\Transcription;
 use App\Models\User;
+use App\Support\Media\MediaAttachmentManager;
 use Filament\Actions\Exports\ExportColumn;
 use Filament\Actions\Exports\Models\Export;
 use Filament\Actions\Imports\Exceptions\RowImportFailedException;
@@ -23,12 +26,13 @@ use Filament\Actions\Imports\Jobs\ImportCsv;
 use Filament\Actions\Imports\Models\Import;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 uses(RefreshDatabase::class);
 
-function importRecord(string $importerClass, array $row, ?array $columnMap = null, array $options = []): Import
+function importRecord(string $importerClass, array $row, ?array $columnMap = null, array $options = [], ?User $user = null): Import
 {
     $import = Import::query()->create([
         'file_name' => 'test.csv',
@@ -37,7 +41,7 @@ function importRecord(string $importerClass, array $row, ?array $columnMap = nul
         'processed_rows' => 0,
         'total_rows' => 1,
         'successful_rows' => 0,
-        'user_id' => User::factory()->create()->id,
+        'user_id' => ($user ?? User::factory()->create())->id,
     ]);
 
     $importer = $import->getImporter(
@@ -207,6 +211,136 @@ it('imports content items with group relationships', function (): void {
         ->status->toBe(PublicationStatus::Published);
 });
 
+it('round trips group and item image attachments through portable media reference keys', function (): void {
+    $admin = User::factory()->admin()->create();
+    $cover = Media::factory()->create();
+    $primaryName = (string) Str::ulid();
+    $primary = Media::factory()->create([
+        'directory' => MediaAttachmentRole::PrimaryImage->purpose()->root(),
+        'name' => $primaryName,
+        'path' => MediaAttachmentRole::PrimaryImage->purpose()->root()."/{$primaryName}.jpg",
+    ]);
+    $groupReference = (string) Str::ulid();
+    $itemReference = (string) Str::ulid();
+
+    importRecord(ContentGroupImporter::class, [
+        'reference_key' => $groupReference,
+        'title' => 'Portable Group',
+        'cover_media_reference_key' => $cover->reference_key,
+    ], options: [], user: $admin);
+    $group = ContentGroup::query()->where('reference_key', $groupReference)->firstOrFail();
+
+    importRecord(ContentItemImporter::class, [
+        'reference_key' => $itemReference,
+        'content_group_reference_key' => $group->reference_key,
+        'title' => 'Portable Item',
+        'media_url' => 'https://example.com/portable-item',
+        'primary_image_media_reference_key' => $primary->reference_key,
+    ], options: [], user: $admin);
+    $item = ContentItem::query()->where('reference_key', $itemReference)->firstOrFail();
+
+    expect($group->coverMediaAttachment()->firstOrFail()->media_id)->toBe($cover->getKey())
+        ->and($group->refresh()->cover_path)->toBe($cover->path)
+        ->and($item->primaryImageMediaAttachment()->firstOrFail()->media_id)->toBe($primary->getKey())
+        ->and($item->refresh()->image_path)->toBe($primary->path);
+
+    $exportedGroup = exportRecord(
+        ContentGroupExporter::class,
+        ContentGroupExporter::modifyQuery(ContentGroup::query())->findOrFail($group->getKey()),
+        ['cover_media_reference_key' => 'cover_media_reference_key'],
+    );
+    $exportedItem = exportRecord(
+        ContentItemExporter::class,
+        ContentItemExporter::modifyQuery(ContentItem::query())->findOrFail($item->getKey()),
+        ['primary_image_media_reference_key' => 'primary_image_media_reference_key'],
+    );
+
+    expect($exportedGroup)->toBe([$cover->reference_key])
+        ->and($exportedItem)->toBe([$primary->reference_key])
+        ->and($exportedGroup)->not->toContain($cover->path, $cover->getKey())
+        ->and($exportedItem)->not->toContain($primary->path, $primary->getKey());
+
+    importRecord(ContentGroupImporter::class, [
+        'reference_key' => $group->reference_key,
+        'title' => 'Preserved Portable Group',
+        'cover_media_reference_key' => '',
+    ], options: ['blank_update_behavior' => 'preserve'], user: $admin);
+
+    expect($group->refresh()->coverMediaAttachment()->firstOrFail()->media_id)->toBe($cover->getKey());
+
+    importRecord(ContentGroupImporter::class, [
+        'reference_key' => $group->reference_key,
+        'title' => 'Detached Portable Group',
+        'cover_media_reference_key' => '',
+    ], options: ['blank_update_behavior' => 'overwrite'], user: $admin);
+
+    expect($group->refresh()->coverMediaAttachment()->exists())->toBeFalse()
+        ->and($group->cover_path)->toBeNull();
+});
+
+it('rejects unresolved wrong-purpose and disallowed portable media identities', function (): void {
+    $admin = User::factory()->admin()->create();
+    $wrongName = (string) Str::ulid();
+    $wrongPurpose = Media::factory()->create([
+        'directory' => MediaAttachmentRole::PrimaryImage->purpose()->root(),
+        'name' => $wrongName,
+        'path' => MediaAttachmentRole::PrimaryImage->purpose()->root()."/{$wrongName}.jpg",
+    ]);
+    $disallowed = Media::factory()->create(['visibility' => 'private']);
+
+    foreach ([(string) Str::ulid(), $wrongPurpose->reference_key, $disallowed->reference_key] as $referenceKey) {
+        expect(fn () => importRecord(ContentGroupImporter::class, [
+            'reference_key' => (string) Str::ulid(),
+            'title' => 'Rejected portable group',
+            'cover_media_reference_key' => $referenceKey,
+        ], options: [], user: $admin))->toThrow(ValidationException::class);
+    }
+
+    expect(ContentGroup::query()->where('title', 'Rejected portable group')->exists())->toBeFalse();
+});
+
+it('fails portable exports for null-key or mismatched legacy identity', function (): void {
+    $admin = User::factory()->admin()->create();
+    $media = Media::factory()->create();
+    $group = ContentGroup::factory()->create();
+    app(MediaAttachmentManager::class)->attach($group, $media, MediaAttachmentRole::Cover, $admin);
+    $group->forceFill(['cover_path' => 'content-groups/covers/mismatch.jpg'])->saveQuietly();
+
+    expect(fn () => exportRecord(
+        ContentGroupExporter::class,
+        $group->load('coverMediaAttachment.media'),
+        ['cover_media_reference_key' => 'cover_media_reference_key'],
+    ))->toThrow(InvalidArgumentException::class, 'disagree');
+
+    $legacy = Media::factory()->create();
+    DB::table('curator')->where('id', $legacy->getKey())->update(['reference_key' => null]);
+    $legacyGroup = ContentGroup::factory()->create(['cover_path' => $legacy->path]);
+
+    expect(fn () => exportRecord(
+        ContentGroupExporter::class,
+        $legacyGroup,
+        ['cover_media_reference_key' => 'cover_media_reference_key'],
+    ))->toThrow(InvalidArgumentException::class);
+});
+
+it('rolls back owner changes when a post-validation media attachment write fails', function (): void {
+    $admin = User::factory()->admin()->create();
+    $group = ContentGroup::factory()->create(['title' => 'Before race']);
+    $media = Media::factory()->create();
+    $manager = Mockery::mock(MediaAttachmentManager::class);
+    $manager->shouldReceive('attachByReferenceKey')->once()->andThrow(new RuntimeException('simulated media race'));
+    app()->instance(MediaAttachmentManager::class, $manager);
+
+    expect(fn () => importRecord(ContentGroupImporter::class, [
+        'reference_key' => $group->reference_key,
+        'title' => 'After race',
+        'cover_media_reference_key' => $media->reference_key,
+    ], options: [], user: $admin))->toThrow(RuntimeException::class, 'simulated media race');
+
+    expect($group->refresh()->title)->toBe('Before race')
+        ->and($group->coverMediaAttachment()->exists())->toBeFalse();
+});
+
 it('updates content items while ignoring removed item author columns', function (): void {
     $group = ContentGroup::factory()->create();
     $item = ContentItem::factory()->for($group)->create([
@@ -328,9 +462,11 @@ it('defines expected export columns and disables large optional content by defau
         'created_at',
         'updated_at',
     ])
-        ->and($groupColumns->map->getName()->all())->toContain('description_markdown', 'cover_path')
+        ->and($groupColumns->map->getName()->all())->toContain('description_markdown', 'cover_media_reference_key')
+        ->and($groupColumns->map->getName()->all())->not->toContain('cover_path')
         ->and($descriptionMarkdownColumn->isEnabledByDefault())->toBeFalse()
-        ->and($itemColumns->map->getName()->all())->toContain('content_group_reference_key')
+        ->and($itemColumns->map->getName()->all())->toContain('content_group_reference_key', 'primary_image_media_reference_key')
+        ->and($itemColumns->map->getName()->all())->not->toContain('primary_image_path')
         ->and($itemColumns->map->getName()->all())->not->toContain('author_reference_keys')
         ->and($itemColumns->map->getName()->all())->not->toContain('transcript_markdown');
 });

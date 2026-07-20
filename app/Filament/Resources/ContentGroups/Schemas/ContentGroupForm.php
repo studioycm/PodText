@@ -87,7 +87,7 @@ class ContentGroupForm
                             ->disableToolbarButtons(['attachFiles'])
                             ->fileAttachments(false)
                             ->columnSpanFull(),
-                        MediaPickerField::make('cover_path', ImageFileNamer::CONTENT_GROUP_COVER)
+                        MediaPickerField::make('cover_media_reference_key', ImageFileNamer::CONTENT_GROUP_COVER)
                             ->label(__('admin.fields.cover_path'))
                             ->helperText(__('admin.helpers.cover_path'))
                             ->hintAction(

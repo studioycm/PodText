@@ -2,15 +2,26 @@
 
 namespace App\Support\PublicFront;
 
+use App\Enums\ImageUploadPurpose;
+use App\Enums\MediaAttachmentRole;
 use App\Models\Author;
 use App\Models\ContentGroup;
 use App\Models\ContentItem;
+use App\Support\Media\MediaAttachmentIdentityResolver;
+use App\Support\Media\MediaIdentityResolver;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Support\Facades\Storage;
+use InvalidArgumentException;
 
 class PublicDefaultImageResolver
 {
+    /** @var array<string, array{mode: string, path: string|null, media_reference_key: string|null}> */
+    private array $familyConfigs = [];
+
     public function __construct(
         private readonly PublicFrontRenderContext $context,
+        private readonly MediaIdentityResolver $mediaIdentityResolver,
+        private readonly MediaAttachmentIdentityResolver $attachmentIdentityResolver,
     ) {}
 
     /**
@@ -18,8 +29,17 @@ class PublicDefaultImageResolver
      */
     public function contentItemImage(ContentItem $item, bool $inheritGroupCover = true): array
     {
-        if (filled($item->image_path)) {
-            return $this->publicDiskImage((string) $item->image_path, 'item', (string) $item->title);
+        [$hasPrimaryAttachment, $primaryPath] = $this->ownerImage(
+            $item,
+            MediaAttachmentRole::PrimaryImage,
+        );
+
+        if ($hasPrimaryAttachment && filled($primaryPath)) {
+            return $this->publicDiskImage($primaryPath, 'item', (string) $item->title);
+        }
+
+        if (! $hasPrimaryAttachment && filled($primaryPath)) {
+            return $this->publicDiskImage($primaryPath, 'item', (string) $item->title);
         }
 
         if (filled($item->external_thumbnail_url)) {
@@ -31,12 +51,12 @@ class PublicDefaultImageResolver
             ];
         }
 
-        if ($inheritGroupCover && $this->mode('content_item') !== 'none' && filled($item->contentGroup?->cover_path)) {
-            return $this->publicDiskImage(
-                (string) $item->contentGroup->cover_path,
-                'group',
-                $this->groupCoverAlt($item->contentGroup),
-            );
+        if ($inheritGroupCover && $this->mode('content_item') !== 'none' && $item->contentGroup instanceof ContentGroup) {
+            $groupPath = $this->contentGroupCoverPath($item->contentGroup);
+
+            if (filled($groupPath)) {
+                return $this->publicDiskImage($groupPath, 'group', $this->groupCoverAlt($item->contentGroup));
+            }
         }
 
         return $this->familyImage('content_item', 'content_item_default', (string) $item->title);
@@ -47,11 +67,24 @@ class PublicDefaultImageResolver
      */
     public function contentGroupImage(ContentGroup $group): array
     {
-        if (filled($group->cover_path)) {
-            return $this->publicDiskImage((string) $group->cover_path, 'group', $this->groupCoverAlt($group));
+        $path = $this->contentGroupCoverPath($group);
+
+        if (filled($path)) {
+            return $this->publicDiskImage($path, 'group', $this->groupCoverAlt($group));
         }
 
         return $this->familyImage('content_group', 'content_group_default', (string) $group->title);
+    }
+
+    public function contentGroupCoverPath(ContentGroup $group): ?string
+    {
+        [$hasAttachment, $path] = $this->ownerImage($group, MediaAttachmentRole::Cover);
+
+        if ($hasAttachment) {
+            return $path;
+        }
+
+        return $path;
     }
 
     /**
@@ -65,6 +98,26 @@ class PublicDefaultImageResolver
     public function allowsContentItemGroupCover(): bool
     {
         return $this->mode('content_item') !== 'none';
+    }
+
+    /** @param iterable<int, ContentItem> $items */
+    public function primeContentItems(iterable $items): void
+    {
+        $items = collect($items);
+        (new EloquentCollection($items->all()))->loadMissing('contentGroup.coverMediaAttachment.media');
+        $this->attachmentIdentityResolver->prime($items, MediaAttachmentRole::PrimaryImage);
+        $groups = $items
+            ->map(fn (ContentItem $item): ?ContentGroup => $item->contentGroup)
+            ->filter(fn (?ContentGroup $group): bool => $group instanceof ContentGroup)
+            ->unique(fn (ContentGroup $group): int => (int) $group->getKey())
+            ->values();
+        $this->attachmentIdentityResolver->prime($groups, MediaAttachmentRole::Cover);
+    }
+
+    /** @param iterable<int, ContentGroup> $groups */
+    public function primeContentGroups(iterable $groups): void
+    {
+        $this->attachmentIdentityResolver->prime($groups, MediaAttachmentRole::Cover);
     }
 
     public function hasConfiguredDefault(string $family): bool
@@ -85,13 +138,18 @@ class PublicDefaultImageResolver
     }
 
     /**
-     * @return array{mode: string, path: string|null}
+     * @return array{mode: string, path: string|null, media_reference_key: string|null}
      */
     private function familyConfig(string $family): array
     {
+        if (array_key_exists($family, $this->familyConfigs)) {
+            return $this->familyConfigs[$family];
+        }
+
         $defaults = PublicFrontConfigRegistry::defaults()['default_images'][$family] ?? [
             'mode' => 'inherit',
             'path' => null,
+            'media_reference_key' => null,
         ];
         $config = $this->context->defaultImages()[$family] ?? [];
 
@@ -99,9 +157,28 @@ class PublicDefaultImageResolver
             $config = [];
         }
 
-        return [
+        $referenceKey = is_string($config['media_reference_key'] ?? null)
+            ? $config['media_reference_key']
+            : null;
+        $legacyPath = is_string($config['path'] ?? null) && filled($config['path'])
+            ? $config['path']
+            : null;
+
+        try {
+            $path = $this->mediaIdentityResolver->path(
+                $referenceKey,
+                $legacyPath,
+                ImageUploadPurpose::DefaultImage,
+            );
+        } catch (InvalidArgumentException $exception) {
+            report($exception);
+            $path = null;
+        }
+
+        return $this->familyConfigs[$family] = [
             'mode' => is_string($config['mode'] ?? null) ? $config['mode'] : $defaults['mode'],
-            'path' => is_string($config['path'] ?? null) && filled($config['path']) ? $config['path'] : null,
+            'path' => $path,
+            'media_reference_key' => $referenceKey,
         ];
     }
 
@@ -165,5 +242,23 @@ class PublicDefaultImageResolver
         return filled($group->cover_alt_text)
             ? (string) $group->cover_alt_text
             : (string) $group->title;
+    }
+
+    /**
+     * @return array{bool, string|null}
+     */
+    private function ownerImage(
+        ContentGroup|ContentItem $owner,
+        MediaAttachmentRole $role,
+    ): array {
+        try {
+            $identity = $this->attachmentIdentityResolver->resolve($owner, $role);
+        } catch (InvalidArgumentException $exception) {
+            report($exception);
+
+            return [true, null];
+        }
+
+        return [$identity['has_attachment'], $identity['path']];
     }
 }

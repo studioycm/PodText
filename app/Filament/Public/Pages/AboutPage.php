@@ -2,6 +2,7 @@
 
 namespace App\Filament\Public\Pages;
 
+use App\Enums\ImageUploadPurpose;
 use App\Filament\Public\Pages\Concerns\HidesPublicPageHeader;
 use App\Support\PublicFront\About\PublicAboutPageRenderer;
 use App\Support\PublicFront\PublicFrontRenderContext;
@@ -53,14 +54,30 @@ class AboutPage extends Page
             ->values()
             ->all();
 
+        $renderer->primeImageIdentities(
+            collect($visibleBlocks)->where('type', 'image'),
+            ImageUploadPurpose::AboutImage,
+        );
+
         $this->blocks = collect($visibleBlocks)
             ->map(fn (array $block): array => $this->viewReadyBlock($block, $renderer))
             ->values()
             ->all();
 
-        $this->teamProfiles = collect($aboutPage['team_profiles'] ?? [])
+        $teamProfiles = collect($aboutPage['team_profiles'] ?? [])
             ->filter(fn (mixed $profile): bool => is_array($profile) && ($profile['visible'] ?? true) === true)
             ->values()
+            ->all();
+        $renderer->primeImageIdentities($teamProfiles, ImageUploadPurpose::TeamImage);
+        $this->teamProfiles = collect($teamProfiles)
+            ->map(fn (array $profile): array => [
+                ...$profile,
+                'image_url' => $renderer->imageUrl(
+                    $profile['image_path'] ?? null,
+                    $profile['image_media_reference_key'] ?? null,
+                    ImageUploadPurpose::TeamImage,
+                ),
+            ])
             ->all();
 
         $this->formCtas = $renderer->formCtas($visibleBlocks);
@@ -103,6 +120,14 @@ class AboutPage extends Page
             unset($block['body'], $block['content']);
 
             return $block;
+        }
+
+        if (($block['type'] ?? null) === 'image') {
+            $block['image_url'] = $renderer->imageUrl(
+                $block['image_path'] ?? null,
+                $block['image_media_reference_key'] ?? null,
+                ImageUploadPurpose::AboutImage,
+            );
         }
 
         return $block;

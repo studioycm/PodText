@@ -2,9 +2,12 @@
 
 namespace App\Support\PublicFront\Menu;
 
+use App\Enums\ImageUploadPurpose;
 use App\Enums\PublicMenuItemType;
+use App\Support\Media\MediaIdentityResolver;
 use App\Support\PublicFront\PublicFrontRenderContext;
 use Illuminate\Support\Facades\Storage;
+use InvalidArgumentException;
 
 class PublicMenuConfigReader
 {
@@ -12,6 +15,7 @@ class PublicMenuConfigReader
         private readonly PublicFrontRenderContext $context,
         private readonly PublicRouteRegistry $routeRegistry,
         private readonly PublicUrlSanitizer $urlSanitizer,
+        private readonly MediaIdentityResolver $mediaIdentityResolver,
     ) {}
 
     /**
@@ -174,8 +178,10 @@ class PublicMenuConfigReader
      */
     private function resolveLogo(array $logo): array
     {
-        $lightPath = is_string($logo['light_path'] ?? null) ? $logo['light_path'] : null;
-        $darkPath = is_string($logo['dark_path'] ?? null) ? $logo['dark_path'] : null;
+        $lightReferenceKey = is_string($logo['light_media_reference_key'] ?? null) ? $logo['light_media_reference_key'] : null;
+        $darkReferenceKey = is_string($logo['dark_media_reference_key'] ?? null) ? $logo['dark_media_reference_key'] : null;
+        $lightPath = $this->resolvedLogoPath($lightReferenceKey, $logo['light_path'] ?? null);
+        $darkPath = $this->resolvedLogoPath($darkReferenceKey, $logo['dark_path'] ?? null);
 
         $lightUrl = $lightPath
             ? Storage::disk('public')->url($lightPath)
@@ -187,6 +193,8 @@ class PublicMenuConfigReader
         return [
             'light_path' => $lightPath,
             'dark_path' => $darkPath,
+            'light_media_reference_key' => $lightReferenceKey,
+            'dark_media_reference_key' => $darkReferenceKey,
             'light_url' => $lightUrl,
             'dark_url' => $darkUrl,
             'alt_text' => (string) ($logo['alt_text'] ?? __('app.name')),
@@ -198,6 +206,21 @@ class PublicMenuConfigReader
                 : 'medium',
             'fallback' => $lightPath === null,
         ];
+    }
+
+    private function resolvedLogoPath(?string $referenceKey, mixed $legacyPath): ?string
+    {
+        try {
+            return $this->mediaIdentityResolver->path(
+                $referenceKey,
+                is_string($legacyPath) ? $legacyPath : null,
+                ImageUploadPurpose::HeaderLogo,
+            );
+        } catch (InvalidArgumentException $exception) {
+            report($exception);
+
+            return null;
+        }
     }
 
     /**

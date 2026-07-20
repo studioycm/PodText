@@ -3,9 +3,11 @@
 namespace App\Filament\Exports;
 
 use App\Enums\ContentItemTagExportScope;
+use App\Enums\MediaAttachmentRole;
 use App\Filament\Exports\Concerns\EscapesSpreadsheetFormulae;
 use App\Filament\Exports\Concerns\TracksExportLifecycle;
 use App\Models\ContentItem;
+use App\Support\Media\MediaAttachmentIdentityResolver;
 use Filament\Actions\Exports\ExportColumn;
 use Filament\Actions\Exports\Exporter;
 use Filament\Forms\Components\Select;
@@ -55,6 +57,10 @@ class ContentItemExporter extends Exporter
                 ->label(__('admin.fields.description_markdown'))
                 ->enabledByDefault(false)
                 ->formatStateUsing(fn (mixed $state): ?string => self::safeSpreadsheetText($state)),
+            ExportColumn::make('primary_image_media_reference_key')
+                ->label(__('admin.import.columns.primary_image_media_reference_key'))
+                ->state(fn (ContentItem $record): ?string => app(MediaAttachmentIdentityResolver::class)
+                    ->portableReferenceKey($record, MediaAttachmentRole::PrimaryImage)),
             ExportColumn::make('media_url')
                 ->label(__('admin.fields.media_url'))
                 ->formatStateUsing(fn (mixed $state): ?string => self::safeSpreadsheetText($state)),
@@ -139,6 +145,7 @@ class ContentItemExporter extends Exporter
             'contentTags',
             'enabledContentTags',
             'featuredTranscription',
+            'primaryImageMediaAttachment.media',
         ]);
     }
 

@@ -1,16 +1,18 @@
 <?php
 
+use App\Enums\ImageUploadPurpose;
+use App\Filament\Forms\Components\PathCuratorPicker;
 use App\Filament\Pages\AboutSettings;
+use App\Models\Media;
 use App\Models\User;
 use App\Settings\PublicContentSettings;
-use App\Support\PublicFront\About\PublicAboutPageRegistry;
 use App\Support\PublicFront\PublicFrontConfigReader;
 use App\Support\PublicFront\PublicFrontConfigValidator;
 use App\Support\PublicFront\PublicFrontRenderContext;
 use Filament\Facades\Filament;
-use Filament\Forms\Components\FileUpload;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 use Livewire\Livewire;
 use Spatie\LaravelSettings\SettingsContainer;
 
@@ -19,6 +21,7 @@ uses(RefreshDatabase::class);
 beforeEach(function (): void {
     Filament::setCurrentPanel(Filament::getPanel('admin'));
     fakeSettingsBackupSnapshotQueue();
+    Http::preventStrayRequests();
 });
 
 function clearStep7PublicFrontSettingsCache(): void
@@ -411,8 +414,14 @@ it('renders enabled about page content team profiles safe images and enabled for
 });
 
 it('saves about content blocks and team profiles through the admin settings page', function (): void {
-    config(['media.picker.driver' => 'file_upload']);
     $this->actingAs(User::factory()->create());
+    $media = Media::factory()->create([
+        'directory' => ImageUploadPurpose::TeamImage->root(),
+        'name' => 'admin-profile',
+        'path' => ImageUploadPurpose::TeamImage->root().'/admin-profile.png',
+        'type' => 'image/png',
+        'ext' => 'png',
+    ]);
 
     Livewire::test(AboutSettings::class)
         ->set('data.about_page.enabled', true)
@@ -449,7 +458,7 @@ it('saves about content blocks and team profiles through the admin settings page
                 'key' => 'admin_profile',
                 'visible' => true,
                 'sort' => 10,
-                'image_path' => ['team/admin-profile.png'],
+                'image_media_reference_key' => $media->getKey(),
                 'name' => 'Admin Profile',
                 'title' => 'Maintainer',
                 'description' => 'Maintains settings.',
@@ -481,12 +490,12 @@ it('saves about content blocks and team profiles through the admin settings page
         ->and($aboutPage['team_profiles'][0])->toMatchArray([
             'key' => 'admin_profile',
             'image_path' => 'team/admin-profile.png',
+            'image_media_reference_key' => $media->reference_key,
             'name' => 'Admin Profile',
         ]);
 });
 
 it('configures about and team image uploads with safe public constraints', function (): void {
-    config(['media.picker.driver' => 'file_upload']);
     $this->actingAs(User::factory()->create());
 
     $schema = Livewire::test(AboutSettings::class)
@@ -513,28 +522,20 @@ it('configures about and team image uploads with safe public constraints', funct
         ->instance()
         ->getSchema('form');
 
-    $uploads = collect($schema->getFlatComponents(withActions: false, withHidden: true, withAbsoluteKeys: true))
-        ->filter(fn (mixed $component): bool => $component instanceof FileUpload);
+    $pickers = collect($schema->getFlatComponents(withActions: false, withHidden: true, withAbsoluteKeys: true))
+        ->filter(fn (mixed $component): bool => $component instanceof PathCuratorPicker);
 
-    $aboutImageUpload = $uploads->first(
-        fn (FileUpload $component): bool => $component->getDirectory() === 'about',
+    $aboutImagePicker = $pickers->first(
+        fn (PathCuratorPicker $component): bool => $component->getUploadPurpose() === ImageUploadPurpose::AboutImage,
     );
-    $teamImageUpload = $uploads->first(
-        fn (FileUpload $component): bool => $component->getDirectory() === 'team',
+    $teamImagePicker = $pickers->first(
+        fn (PathCuratorPicker $component): bool => $component->getUploadPurpose() === ImageUploadPurpose::TeamImage,
     );
 
-    expect($aboutImageUpload)->toBeInstanceOf(FileUpload::class)
-        ->and($aboutImageUpload->getDiskName())->toBe('public')
-        ->and($aboutImageUpload->getDirectory())->toBe('about')
-        ->and($aboutImageUpload->getVisibility())->toBe('public')
-        ->and($aboutImageUpload->getAcceptedFileTypes())->toBe(PublicAboutPageRegistry::acceptedImageTypes())
-        ->and($aboutImageUpload->getMaxSize())->toBe(PublicAboutPageRegistry::maxImageSize())
-        ->and($teamImageUpload)->toBeInstanceOf(FileUpload::class)
-        ->and($teamImageUpload->getDiskName())->toBe('public')
-        ->and($teamImageUpload->getDirectory())->toBe('team')
-        ->and($teamImageUpload->getVisibility())->toBe('public')
-        ->and($teamImageUpload->getAcceptedFileTypes())->toBe(PublicAboutPageRegistry::acceptedImageTypes())
-        ->and($teamImageUpload->getMaxSize())->toBe(PublicAboutPageRegistry::maxImageSize());
+    expect($aboutImagePicker)->toBeInstanceOf(PathCuratorPicker::class)
+        ->and($aboutImagePicker->getUploadPurpose())->toBe(ImageUploadPurpose::AboutImage)
+        ->and($teamImagePicker)->toBeInstanceOf(PathCuratorPicker::class)
+        ->and($teamImagePicker->getUploadPurpose())->toBe(ImageUploadPurpose::TeamImage);
 });
 
 it('keeps about page and team content as settings rather than models', function (): void {

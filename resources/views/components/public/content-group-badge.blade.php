@@ -4,6 +4,8 @@
     'mode' => 'name_only',
     'mainImageSource' => 'fallback',
     'allowDuplicateThumbnail' => false,
+    'coverUrl' => null,
+    'coverAlt' => null,
     'previewMode' => false,
 ])
 
@@ -11,7 +13,6 @@
     $url ??= \App\Filament\Public\Pages\ShowContentGroup::getUrl([
         'contentGroupSlug' => $group->slug,
     ], panel: 'public');
-    $coverUrl = $group->cover_path ? \Illuminate\Support\Facades\Storage::disk('public')->url($group->cover_path) : null;
     $showThumbnail = $mode === 'thumbnail_name'
         && $coverUrl
         && ($mainImageSource !== 'group' || $allowDuplicateThumbnail);
@@ -28,7 +29,7 @@
     @if($showThumbnail)
         <img
             src="{{ $coverUrl }}"
-            alt="{{ $group->cover_alt_text ?: $group->title }}"
+            alt="{{ $coverAlt ?: $group->title }}"
             class="h-6 w-6 shrink-0 rounded-sm object-cover"
             loading="lazy"
         >

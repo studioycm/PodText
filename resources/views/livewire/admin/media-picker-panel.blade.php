@@ -1,0 +1,95 @@
+<div class="flex h-full min-h-[70vh] flex-col">
+    <div class="flex items-center justify-between gap-4 border-b border-gray-200 px-4 py-3 dark:border-gray-800">
+        <div class="flex items-center gap-2">
+            @if ($currentPage > 1 && blank($search))
+                <x-filament::button size="xs" color="gray" wire:click="loadPreviousFiles">
+                    {{ __('admin.media_library.previous_page') }}
+                </x-filament::button>
+            @endif
+            @if ($currentPage < $lastPage && blank($search))
+                <x-filament::button size="xs" color="gray" wire:click="loadMoreFiles">
+                    {{ __('admin.media_library.next_page') }}
+                </x-filament::button>
+            @endif
+            @if ($lastPage > 1 && blank($search))
+                <span class="text-sm text-gray-500">{{ __('admin.media_library.page_count', ['current' => $currentPage, 'last' => $lastPage]) }}</span>
+            @endif
+            <span class="text-sm text-gray-500">{{ __('admin.media_library.selected_count', ['count' => count($selectedIds)]) }}</span>
+        </div>
+
+        <div class="flex items-center gap-3">
+            <x-filament::input.wrapper prefix-icon="heroicon-s-magnifying-glass">
+                <x-filament::input
+                    type="search"
+                    :placeholder="__('admin.media_library.search')"
+                    wire:model.live.debounce.400ms="search"
+                />
+            </x-filament::input.wrapper>
+            <x-filament::icon-button x-on:click="close()" icon="heroicon-o-x-mark" color="gray" :label="__('admin.actions.close')" />
+        </div>
+    </div>
+
+    <div class="grid min-h-0 flex-1 lg:grid-cols-[minmax(0,1fr)_20rem]">
+        <div class="overflow-auto p-4">
+            <ul class="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-6">
+                @forelse ($files as $file)
+                    <li wire:key="media-picker-{{ $file['id'] }}" class="group relative aspect-square overflow-hidden rounded-md border border-gray-300 bg-gray-100 dark:border-gray-700 dark:bg-gray-900">
+                        <button type="button" wire:click="toggleSelection({{ $file['id'] }})" class="block h-full w-full">
+                            <x-curator::display
+                                :item="$file"
+                                :src="$file['preview_url']"
+                                :alt="$file['alt'] ?? ''"
+                                :lazy="true"
+                                class="h-full w-full object-cover"
+                            />
+                            @if (in_array($file['id'], $selectedIds, true))
+                                <span class="absolute inset-0 grid place-items-center bg-primary-500/20 ring-2 ring-inset ring-primary-500">
+                                    <x-filament::icon icon="heroicon-s-check-circle" class="h-9 w-9 text-primary-600" />
+                                </span>
+                            @endif
+                        </button>
+
+                        <div class="absolute end-1 top-1 opacity-0 transition group-focus-within:opacity-100 group-hover:opacity-100">
+                            <x-filament-actions::group
+                                :actions="[
+                                    ($this->viewItemAction)(['id' => $file['id']]),
+                                    ($this->downloadItemAction)(['id' => $file['id']]),
+                                    ($this->editItemAction)(['id' => $file['id']]),
+                                    ($this->renameItemAction)(['id' => $file['id']]),
+                                    ($this->swapItemAction)(['id' => $file['id']]),
+                                    ($this->destroyItemAction)(['id' => $file['id']]),
+                                ]"
+                                color="gray"
+                                size="xs"
+                            />
+                        </div>
+
+                        <p class="pointer-events-none absolute inset-x-0 bottom-0 truncate bg-gradient-to-t from-black/80 px-2 pb-1 pt-6 text-xs text-white">
+                            {{ $file['pretty_name'] }}
+                        </p>
+                    </li>
+                @empty
+                    <li class="col-span-full py-12 text-center text-sm text-gray-500">
+                        {{ __('admin.media_library.empty') }}
+                    </li>
+                @endforelse
+            </ul>
+        </div>
+
+        <aside class="overflow-auto border-t border-gray-200 p-4 dark:border-gray-800 lg:border-s lg:border-t-0">
+            <h3 class="mb-3 font-semibold">{{ __('admin.media_library.upload_heading') }}</h3>
+            {{ $this->form }}
+            <div class="mt-3">{{ $this->uploadFilesAction }}</div>
+        </aside>
+    </div>
+
+    <div class="flex flex-wrap items-center justify-end gap-3 border-t border-gray-200 px-4 py-3 dark:border-gray-800">
+        <x-filament::button color="gray" wire:click="clearSelection">
+            {{ __('admin.media_library.clear_selection') }}
+        </x-filament::button>
+        {{ $this->destroySelectedAction }}
+        {{ $this->insertMediaAction }}
+    </div>
+
+    <x-filament-actions::modals />
+</div>

@@ -76,7 +76,7 @@
 
                     @case('image')
                         @php
-                            $imageUrl = $renderer->imageUrl($block['image_path'] ?? null);
+                            $imageUrl = $block['image_url'] ?? null;
                             $imageFit = in_array($block['image_fit'] ?? null, ['cover', 'contain'], true) ? $block['image_fit'] : 'cover';
                             $imageFitClass = $imageFit === 'contain' ? 'object-contain' : 'object-cover';
                             $imageRadius = in_array($block['image_radius'] ?? null, ['sharp', 'low_rounded', 'mid_rounded', 'high_rounded', 'round', 'circle'], true)

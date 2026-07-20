@@ -2,8 +2,11 @@
 
 namespace App\Filament\Resources\ContentItems\Pages;
 
+use App\Enums\MediaAttachmentRole;
 use App\Filament\Resources\ContentItems\ContentItemResource;
 use App\Filament\Resources\ContentItems\Schemas\EpisodeWorkspaceForm;
+use App\Models\User;
+use App\Support\Media\MediaAttachmentFormState;
 use Filament\Actions\Action;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\CreateRecord;
@@ -21,6 +24,14 @@ class CreateEpisodeWorkspace extends CreateRecord
 
     protected function afterCreate(): void
     {
+        $actor = auth()->user();
+        abort_unless($actor instanceof User, 403);
+        app(MediaAttachmentFormState::class)->persist(
+            $this->getRecord(),
+            $this->pendingPrimaryImageMediaReferenceKey,
+            MediaAttachmentRole::PrimaryImage,
+            $actor,
+        );
         $this->getRecord()->refresh()->adoptWorkspaceTranscription();
     }
 
@@ -58,5 +69,19 @@ class CreateEpisodeWorkspace extends CreateRecord
         return Notification::make()
             ->success()
             ->title(__('admin.notifications.episode_workspace_created'));
+    }
+
+    private ?string $pendingPrimaryImageMediaReferenceKey = null;
+
+    protected function mutateFormDataBeforeCreate(array $data): array
+    {
+        [$data, $this->pendingPrimaryImageMediaReferenceKey] = app(MediaAttachmentFormState::class)->prepare(
+            $data,
+            'primary_image_media_reference_key',
+            null,
+            MediaAttachmentRole::PrimaryImage,
+        );
+
+        return $data;
     }
 }

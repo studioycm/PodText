@@ -19,6 +19,7 @@ use App\Support\PublicFront\PublicDefaultImageResolver;
 use App\Support\Transcriptions\MultiTranscriptionSurfaces;
 use App\Support\Transcriptions\TranscriptionModeLabel;
 use Illuminate\Contracts\Pagination\Paginator;
+use Illuminate\Support\Facades\Storage;
 
 class PublicContentItemCardPresenter
 {
@@ -67,6 +68,7 @@ class PublicContentItemCardPresenter
         $presentation = $this->renderer->contentItemPresentation($template, $layout);
 
         $items = $items instanceof Paginator ? $items->getCollection() : collect($items);
+        $this->defaultImages->primeContentItems($items);
 
         return $items
             ->map(fn (ContentItem $item): array => $this->presentWithPresentation(
@@ -105,6 +107,7 @@ class PublicContentItemCardPresenter
         $originalDate = $item->original_published_at?->timezone('Asia/Jerusalem')->format('d/m/Y');
         $duration = $this->duration($item->duration_seconds);
         $image = $this->defaultImages->contentItemImage($item, $inheritGroupCover);
+        $groupCoverPath = $this->defaultImages->contentGroupCoverPath($item->contentGroup);
         $titleText = $options->groupBadgeMode === 'combined_title'
             ? $this->displayTitle->combined($item, $options->groupTitleSeparator)
             : $item->title;
@@ -123,6 +126,12 @@ class PublicContentItemCardPresenter
             'group' => $item->contentGroup,
             'url' => $itemUrl,
             'group_url' => $groupUrl,
+            'group_cover' => [
+                'url' => filled($groupCoverPath) ? Storage::disk('public')->url($groupCoverPath) : null,
+                'alt' => filled($item->contentGroup->cover_alt_text)
+                    ? (string) $item->contentGroup->cover_alt_text
+                    : (string) $item->contentGroup->title,
+            ],
             'title' => $titleText,
             'description' => $this->plainText($item->description_markdown),
             'type_label' => $item->effectiveTypeLabelSingular(),
@@ -357,6 +366,8 @@ class PublicContentItemCardPresenter
             'mode' => $options->groupBadgeMode,
             'main_image_source' => $data['image']['source'],
             'allow_duplicate_thumbnail' => $options->groupBadgeDuplicateThumbnail,
+            'cover_url' => $data['group_cover']['url'],
+            'cover_alt' => $data['group_cover']['alt'],
         ];
     }
 

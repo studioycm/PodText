@@ -6,12 +6,16 @@ use Awcodes\Curator\PathGenerators\Contracts\PathGenerator;
 
 class CuratorPathGenerator implements PathGenerator
 {
+    public function __construct(
+        private readonly CuratorImageUploadPolicy $policy,
+    ) {}
+
     public function getPath(?string $baseDir = null): string
     {
         if (blank($baseDir)) {
-            return '';
+            throw new \InvalidArgumentException('A finite app-owned media root is required.');
         }
 
-        return trim((string) $baseDir, '/');
+        return $this->policy->normalizeRoot((string) $baseDir);
     }
 }

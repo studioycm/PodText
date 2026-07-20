@@ -271,7 +271,7 @@ it('caps public sample search results at fifty in deterministic order', function
         $groups->push($group);
     }
 
-    $groups->last()->update(['cover_path' => 'preview/group-51.jpg']);
+    $groups->last()->update(['cover_path' => 'content-groups/covers/group-51.jpg']);
 
     $options = app(CardTemplatePreviewer::class)->sampleOptions('content_group', 'Preview Group');
 
@@ -284,7 +284,7 @@ it('preloads ten image-first public samples independently from the fifty-result 
     foreach (range(1, 11) as $index) {
         $group = ContentGroup::factory()->published()->create([
             'title' => sprintf('Preload Group %02d', $index),
-            'cover_path' => $index === 11 ? 'preview/preload-11.jpg' : null,
+            'cover_path' => $index === 11 ? 'content-groups/covers/preload-11.jpg' : null,
         ]);
         step5bCreatePublicItem("Preload Group Episode {$index}", group: $group);
     }

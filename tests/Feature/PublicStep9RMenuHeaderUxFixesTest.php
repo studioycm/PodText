@@ -276,7 +276,7 @@ it('suppresses homepage discovery chrome when root query parameters are present 
 it('uses group image fallback and finite badge title image styling settings on item cards', function (): void {
     $group = ContentGroup::factory()->published()->create([
         'title' => 'Fallback Group',
-        'cover_path' => 'groups/fallback-cover.jpg',
+        'cover_path' => 'content-groups/covers/fallback-cover.jpg',
     ]);
 
     createStep9RPublicItem('Fallback Episode', $group);
@@ -293,7 +293,7 @@ it('uses group image fallback and finite badge title image styling settings on i
         ->assertSee('data-card-image-fit="contain"', false)
         ->assertSee('data-card-image-radius="high_rounded"', false)
         ->assertSee('data-card-image-source="group"', false)
-        ->assertSee('/storage/groups/fallback-cover.jpg', false)
+        ->assertSee('/storage/content-groups/covers/fallback-cover.jpg', false)
         ->assertSee('data-group-badge-mode="thumbnail_name"', false)
         ->assertSee('data-group-badge-thumbnail="false"', false);
 

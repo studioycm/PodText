@@ -2,11 +2,13 @@
 
 namespace App\Filament\Pages;
 
+use App\Enums\ImageUploadPurpose;
 use App\Enums\UserRole;
 use App\Filament\Forms\Components\IconSelect;
 use App\Filament\Forms\Components\TrustedHtmlCodeEditor;
 use App\Filament\Forms\MediaPickerField;
 use App\Support\Media\ImageFileNamer;
+use App\Support\Media\MediaIdentityResolver;
 use App\Support\PublicContent\PublicTranscriptionPolicy;
 use App\Support\PublicFront\Cards\PublicFrontCardTemplateRegistry;
 use App\Support\PublicFront\Cards\PublicFrontCardTemplateResolver;
@@ -541,10 +543,10 @@ trait BuildsPublicContentSettingsSubjectSchemas
                                 ->required(),
                             Fieldset::make(__('admin.sections.public_menu_logo'))
                                 ->schema([
-                                    MediaPickerField::make('menu_config.logo.light_path', ImageFileNamer::HEADER, allowSvg: true)
+                                    MediaPickerField::make('menu_config.logo.light_media_reference_key', ImageFileNamer::HEADER, allowSvg: true)
                                         ->label(__('admin.fields.public_menu_logo_light_path'))
                                         ->helperText(__('admin.helpers.public_menu_logo_light_path')),
-                                    MediaPickerField::make('menu_config.logo.dark_path', ImageFileNamer::HEADER, allowSvg: true)
+                                    MediaPickerField::make('menu_config.logo.dark_media_reference_key', ImageFileNamer::HEADER, allowSvg: true)
                                         ->label(__('admin.fields.public_menu_logo_dark_path'))
                                         ->helperText(__('admin.helpers.public_menu_logo_dark_path')),
                                     TextInput::make('menu_config.logo.alt_text')
@@ -1397,7 +1399,7 @@ trait BuildsPublicContentSettingsSubjectSchemas
                                         ->integer()
                                         ->minValue(0)
                                         ->maxValue(1000),
-                                    MediaPickerField::make('image_path', ImageFileNamer::TEAM)
+                                    MediaPickerField::make('image_media_reference_key', ImageFileNamer::TEAM)
                                         ->label(__('admin.fields.about_team_profile_image'))
                                         ->helperText(__('admin.helpers.about_team_profile_image')),
                                     TextInput::make('name')
@@ -1754,7 +1756,7 @@ trait BuildsPublicContentSettingsSubjectSchemas
                         ->native(false)
                         ->live()
                         ->required(),
-                    MediaPickerField::make("default_images.{$family}.path", ImageFileNamer::DEFAULT_IMAGES)
+                    MediaPickerField::make("default_images.{$family}.media_reference_key", ImageFileNamer::DEFAULT_IMAGES)
                         ->label(__('admin.fields.default_image_path'))
                         ->helperText(__('admin.helpers.default_image_path'))
                         ->visible(fn (Get $get): bool => $get("default_images.{$family}.mode") === 'custom')
@@ -1823,6 +1825,8 @@ trait BuildsPublicContentSettingsSubjectSchemas
             $owned[$group] = $publicFrontConfig[$group] ?? [];
         }
 
+        $owned = $this->hydrateMediaIdentityState($owned);
+
         return match ($this->settingsSubject()) {
             SettingsSubjectOwnershipRegistry::ABOUT => [
                 ...$owned,
@@ -1844,11 +1848,24 @@ trait BuildsPublicContentSettingsSubjectSchemas
     protected function normalizeOwnedFormData(array $data, array $stored): array
     {
         if ($this->settingsSubject() === SettingsSubjectOwnershipRegistry::ABOUT) {
-            $data['about_page'] = $this->normalizeAboutPageUploadState($data['about_page'] ?? []);
+            $data['about_page'] = $this->normalizeAboutPageMediaState(
+                $data['about_page'] ?? [],
+                $stored['about_page'] ?? [],
+            );
         }
 
         if ($this->settingsSubject() === SettingsSubjectOwnershipRegistry::MENU_HEADER) {
-            $data['menu_config'] = $this->normalizeMenuUploadState($data['menu_config'] ?? []);
+            $data['menu_config'] = $this->normalizeMenuMediaState(
+                $data['menu_config'] ?? [],
+                $stored['menu_config'] ?? [],
+            );
+        }
+
+        if ($this->settingsSubject() === SettingsSubjectOwnershipRegistry::DISPLAY) {
+            $data['default_images'] = $this->normalizeDefaultImageMediaState(
+                $data['default_images'] ?? [],
+                $stored['default_images'] ?? [],
+            );
         }
 
         if ($this->settingsSubject() !== SettingsSubjectOwnershipRegistry::MAINTENANCE) {
@@ -1900,35 +1917,143 @@ trait BuildsPublicContentSettingsSubjectSchemas
      * @param  array<string, mixed>|mixed  $aboutPage
      * @return array<string, mixed>
      */
-    private function normalizeAboutPageUploadState(mixed $aboutPage): array
+    private function hydrateMediaIdentityState(array $owned): array
+    {
+        if ($this->settingsSubject() === SettingsSubjectOwnershipRegistry::MENU_HEADER) {
+            $logo = data_get($owned, 'menu_config.logo', []);
+
+            if (is_array($logo)) {
+                $owned['menu_config']['logo'] = $this->hydrateMediaPair($logo, 'light_media_reference_key', 'light_path', ImageUploadPurpose::HeaderLogo);
+                $owned['menu_config']['logo'] = $this->hydrateMediaPair($owned['menu_config']['logo'], 'dark_media_reference_key', 'dark_path', ImageUploadPurpose::HeaderLogo);
+            }
+        }
+
+        if ($this->settingsSubject() === SettingsSubjectOwnershipRegistry::DISPLAY) {
+            foreach (array_keys($owned['default_images'] ?? []) as $family) {
+                if (is_array($owned['default_images'][$family] ?? null)) {
+                    $owned['default_images'][$family] = $this->hydrateMediaPair(
+                        $owned['default_images'][$family],
+                        'media_reference_key',
+                        'path',
+                        ImageUploadPurpose::DefaultImage,
+                    );
+                }
+            }
+        }
+
+        if ($this->settingsSubject() !== SettingsSubjectOwnershipRegistry::ABOUT) {
+            return $owned;
+        }
+
+        $aboutPage = is_array($owned['about_page'] ?? null) ? $owned['about_page'] : [];
+        $aboutPage['blocks'] = collect($aboutPage['blocks'] ?? [])
+            ->filter(fn (mixed $block): bool => is_array($block))
+            ->map(fn (array $block): array => $this->hydrateMediaPair(
+                $block,
+                'image_media_reference_key',
+                'image_path',
+                ImageUploadPurpose::AboutImage,
+            ))
+            ->values()
+            ->all();
+        $aboutPage['team_profiles'] = collect($aboutPage['team_profiles'] ?? [])
+            ->filter(fn (mixed $profile): bool => is_array($profile))
+            ->map(fn (array $profile): array => $this->hydrateMediaPair(
+                $profile,
+                'image_media_reference_key',
+                'image_path',
+                ImageUploadPurpose::TeamImage,
+            ))
+            ->values()
+            ->all();
+        $owned['about_page'] = $aboutPage;
+
+        return $owned;
+    }
+
+    /**
+     * @param  array<string, mixed>  $state
+     * @return array<string, mixed>
+     */
+    private function hydrateMediaPair(
+        array $state,
+        string $referenceField,
+        string $pathField,
+        ImageUploadPurpose $purpose,
+    ): array {
+        $referenceKey = is_string($state[$referenceField] ?? null) ? $state[$referenceField] : null;
+        $legacyPath = is_string($state[$pathField] ?? null) ? $state[$pathField] : null;
+        $media = app(MediaIdentityResolver::class)->resolve($referenceKey, $legacyPath, $purpose);
+
+        if ($media !== null) {
+            $state[$referenceField] = $media->reference_key;
+        }
+
+        return $state;
+    }
+
+    /**
+     * @param  array<string, mixed>|mixed  $aboutPage
+     * @param  array<string, mixed>|mixed  $storedAboutPage
+     * @return array<string, mixed>
+     */
+    private function normalizeAboutPageMediaState(mixed $aboutPage, mixed $storedAboutPage): array
     {
         if (! is_array($aboutPage)) {
             return [];
         }
 
+        $storedAboutPage = is_array($storedAboutPage) ? $storedAboutPage : [];
+        $storedBlocks = collect($storedAboutPage['blocks'] ?? [])
+            ->filter(fn (mixed $block): bool => is_array($block) && filled($block['key'] ?? null))
+            ->keyBy(fn (array $block): string => (string) $block['key']);
+
         $aboutPage['blocks'] = collect($aboutPage['blocks'] ?? [])
             ->filter(fn (mixed $block): bool => is_array($block))
-            ->map(function (array $block): array {
+            ->map(function (array $block) use ($storedBlocks): array {
                 if (array_key_exists('data', $block) && is_array($block['data'])) {
-                    $block['data']['image_path'] = $this->singleFileUploadPath($block['data']['image_path'] ?? null);
+                    $stored = $storedBlocks->get((string) ($block['data']['key'] ?? ''), []);
+                    $block['data'] = $this->normalizeMediaPair(
+                        $block['data'],
+                        is_array($stored) ? $stored : [],
+                        'image_media_reference_key',
+                        'image_path',
+                        ImageUploadPurpose::AboutImage,
+                    );
 
                     return $block;
                 }
 
-                $block['image_path'] = $this->singleFileUploadPath($block['image_path'] ?? null);
+                $stored = $storedBlocks->get((string) ($block['key'] ?? ''), []);
+
+                $block = $this->normalizeMediaPair(
+                    $block,
+                    is_array($stored) ? $stored : [],
+                    'image_media_reference_key',
+                    'image_path',
+                    ImageUploadPurpose::AboutImage,
+                );
 
                 return $block;
             })
             ->values()
             ->all();
 
+        $storedProfiles = collect($storedAboutPage['team_profiles'] ?? [])
+            ->filter(fn (mixed $profile): bool => is_array($profile) && filled($profile['key'] ?? null))
+            ->keyBy(fn (array $profile): string => (string) $profile['key']);
+
         $aboutPage['team_profiles'] = collect($aboutPage['team_profiles'] ?? [])
             ->filter(fn (mixed $profile): bool => is_array($profile))
-            ->map(function (array $profile): array {
-                $profile['image_path'] = $this->singleFileUploadPath($profile['image_path'] ?? null);
-
-                return $profile;
-            })
+            ->map(fn (array $profile): array => $this->normalizeMediaPair(
+                $profile,
+                is_array($storedProfiles->get((string) ($profile['key'] ?? ''), []))
+                    ? $storedProfiles->get((string) ($profile['key'] ?? ''), [])
+                    : [],
+                'image_media_reference_key',
+                'image_path',
+                ImageUploadPurpose::TeamImage,
+            ))
             ->values()
             ->all();
 
@@ -1939,37 +2064,117 @@ trait BuildsPublicContentSettingsSubjectSchemas
      * @param  array<string, mixed>|mixed  $menuConfig
      * @return array<string, mixed>
      */
-    private function normalizeMenuUploadState(mixed $menuConfig): array
+    private function normalizeMenuMediaState(mixed $menuConfig, mixed $storedMenuConfig): array
     {
         if (! is_array($menuConfig)) {
             return [];
         }
 
         if (is_array($menuConfig['logo'] ?? null)) {
-            $menuConfig['logo']['light_path'] = $this->singleFileUploadPath($menuConfig['logo']['light_path'] ?? null);
-            $menuConfig['logo']['dark_path'] = $this->singleFileUploadPath($menuConfig['logo']['dark_path'] ?? null);
+            $storedLogo = is_array(data_get($storedMenuConfig, 'logo')) ? data_get($storedMenuConfig, 'logo') : [];
+            $menuConfig['logo'] = $this->normalizeMediaPair(
+                $menuConfig['logo'],
+                $storedLogo,
+                'light_media_reference_key',
+                'light_path',
+                ImageUploadPurpose::HeaderLogo,
+            );
+            $menuConfig['logo'] = $this->normalizeMediaPair(
+                $menuConfig['logo'],
+                $storedLogo,
+                'dark_media_reference_key',
+                'dark_path',
+                ImageUploadPurpose::HeaderLogo,
+            );
         }
 
         return $menuConfig;
     }
 
-    private function singleFileUploadPath(mixed $value): ?string
+    /**
+     * @param  array<string, mixed>|mixed  $defaultImages
+     * @param  array<string, mixed>|mixed  $storedDefaultImages
+     * @return array<string, mixed>
+     */
+    private function normalizeDefaultImageMediaState(mixed $defaultImages, mixed $storedDefaultImages): array
     {
-        if (is_string($value)) {
-            return $value;
+        if (! is_array($defaultImages)) {
+            return [];
         }
 
-        if (! is_array($value)) {
-            return null;
-        }
+        $storedDefaultImages = is_array($storedDefaultImages) ? $storedDefaultImages : [];
 
-        foreach ($value as $path) {
-            if (is_string($path) && filled($path)) {
-                return $path;
+        foreach (array_keys($defaultImages) as $family) {
+            if (! is_array($defaultImages[$family] ?? null)) {
+                continue;
             }
+
+            $defaultImages[$family] = $this->normalizeMediaPair(
+                $defaultImages[$family],
+                is_array($storedDefaultImages[$family] ?? null) ? $storedDefaultImages[$family] : [],
+                'media_reference_key',
+                'path',
+                ImageUploadPurpose::DefaultImage,
+            );
         }
 
-        return null;
+        return $defaultImages;
+    }
+
+    /**
+     * @param  array<string, mixed>  $incoming
+     * @param  array<string, mixed>  $stored
+     * @return array<string, mixed>
+     */
+    private function normalizeMediaPair(
+        array $incoming,
+        array $stored,
+        string $referenceField,
+        string $pathField,
+        ImageUploadPurpose $purpose,
+    ): array {
+        $storedReferenceKey = is_string($stored[$referenceField] ?? null) ? $stored[$referenceField] : null;
+        $storedPath = is_string($stored[$pathField] ?? null) ? $stored[$pathField] : null;
+        $resolver = app(MediaIdentityResolver::class);
+
+        if (filled($storedReferenceKey)) {
+            $resolver->resolve($storedReferenceKey, $storedPath, $purpose);
+        }
+
+        if (! array_key_exists($referenceField, $incoming)) {
+            $incoming[$referenceField] = $storedReferenceKey;
+            $incoming[$pathField] = $storedPath;
+
+            return $incoming;
+        }
+
+        $incomingReferenceKey = is_string($incoming[$referenceField] ?? null)
+            ? mb_strtoupper(trim($incoming[$referenceField]))
+            : null;
+
+        if (filled($incomingReferenceKey)) {
+            $media = $resolver->resolve($incomingReferenceKey, null, $purpose);
+            $incoming[$referenceField] = $media?->reference_key;
+            $incoming[$pathField] = $media?->path;
+
+            return $incoming;
+        }
+
+        $legacyMedia = filled($storedPath) && blank($storedReferenceKey)
+            ? $resolver->resolve(null, $storedPath, $purpose)
+            : null;
+
+        if ($legacyMedia === null && filled($storedPath) && blank($storedReferenceKey)) {
+            $incoming[$referenceField] = null;
+            $incoming[$pathField] = $storedPath;
+
+            return $incoming;
+        }
+
+        $incoming[$referenceField] = null;
+        $incoming[$pathField] = null;
+
+        return $incoming;
     }
 
     /**
@@ -2089,7 +2294,7 @@ trait BuildsPublicContentSettingsSubjectSchemas
                 ->required($type === 'rich_content')
                 ->visible($type === 'rich_content')
                 ->columnSpanFull(),
-            MediaPickerField::make('image_path', ImageFileNamer::ABOUT)
+            MediaPickerField::make('image_media_reference_key', ImageFileNamer::ABOUT)
                 ->label(__('admin.fields.about_block_image'))
                 ->helperText(__('admin.helpers.about_block_image'))
                 ->required($type === 'image')

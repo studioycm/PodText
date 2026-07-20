@@ -3,27 +3,27 @@
 namespace App\Observers;
 
 use App\Models\ContentGroup;
-use App\Support\Media\AppOwnedMediaFileCleaner;
+use App\Models\ContentItem;
+use App\Models\MediaAttachment;
 
 class ContentGroupObserver
 {
-    public function updated(ContentGroup $contentGroup): void
+    public function deleting(ContentGroup $contentGroup): void
     {
-        if (! $contentGroup->wasChanged('cover_path')) {
-            return;
+        MediaAttachment::query()
+            ->where('attachable_type', 'content_group')
+            ->where('attachable_id', $contentGroup->getKey())
+            ->delete();
+
+        $itemIds = ContentItem::query()
+            ->where('content_group_id', $contentGroup->getKey())
+            ->pluck('id');
+
+        if ($itemIds->isNotEmpty()) {
+            MediaAttachment::query()
+                ->where('attachable_type', 'content_item')
+                ->whereIn('attachable_id', $itemIds)
+                ->delete();
         }
-
-        app(AppOwnedMediaFileCleaner::class)->deleteUnusedContentGroupCover(
-            $contentGroup->getOriginal('cover_path'),
-            $contentGroup,
-        );
-    }
-
-    public function deleted(ContentGroup $contentGroup): void
-    {
-        app(AppOwnedMediaFileCleaner::class)->deleteUnusedContentGroupCover(
-            $contentGroup->cover_path,
-            $contentGroup,
-        );
     }
 }

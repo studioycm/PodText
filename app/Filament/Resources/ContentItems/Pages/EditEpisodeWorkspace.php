@@ -2,12 +2,15 @@
 
 namespace App\Filament\Resources\ContentItems\Pages;
 
+use App\Enums\MediaAttachmentRole;
 use App\Enums\UserRole;
 use App\Filament\Actions\ContentImageActions;
 use App\Filament\Resources\ContentItems\ContentItemResource;
 use App\Filament\Resources\ContentItems\Schemas\EpisodeWorkspaceForm;
 use App\Models\ContentItem;
 use App\Models\Transcription;
+use App\Models\User;
+use App\Support\Media\MediaAttachmentFormState;
 use App\Support\Transcriptions\MultiTranscriptionSurfaces;
 use Filament\Actions\Action;
 use Filament\Actions\DeleteAction;
@@ -32,6 +35,14 @@ class EditEpisodeWorkspace extends EditRecord
 
     protected function afterSave(): void
     {
+        $actor = auth()->user();
+        abort_unless($actor instanceof User, 403);
+        app(MediaAttachmentFormState::class)->persist(
+            $this->getRecord(),
+            $this->pendingPrimaryImageMediaReferenceKey,
+            MediaAttachmentRole::PrimaryImage,
+            $actor,
+        );
         $this->getRecord()->refresh()->adoptWorkspaceTranscription();
     }
 
@@ -163,5 +174,29 @@ class EditEpisodeWorkspace extends EditRecord
     private function canPickExistingTranscription(): bool
     {
         return MultiTranscriptionSurfaces::currentUserCan(UserRole::Admin);
+    }
+
+    private ?string $pendingPrimaryImageMediaReferenceKey = null;
+
+    protected function mutateFormDataBeforeFill(array $data): array
+    {
+        $data['primary_image_media_reference_key'] = app(MediaAttachmentFormState::class)->referenceKey(
+            $this->getRecord(),
+            MediaAttachmentRole::PrimaryImage,
+        );
+
+        return $data;
+    }
+
+    protected function mutateFormDataBeforeSave(array $data): array
+    {
+        [$data, $this->pendingPrimaryImageMediaReferenceKey] = app(MediaAttachmentFormState::class)->prepare(
+            $data,
+            'primary_image_media_reference_key',
+            $this->getRecord(),
+            MediaAttachmentRole::PrimaryImage,
+        );
+
+        return $data;
     }
 }

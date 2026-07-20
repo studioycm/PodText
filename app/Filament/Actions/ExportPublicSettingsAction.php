@@ -24,7 +24,7 @@ class ExportPublicSettingsAction extends Action
             ->color('gray')
             ->action(fn () => response()->streamDownload(
                 function (): void {
-                    echo PublicSettingsPackage::fromCurrentSettings()->toJson();
+                    echo PublicSettingsPackage::portableFromCurrentSettings()->toJson();
                 },
                 $this->downloadFilename(),
                 ['Content-Type' => 'application/json; charset=UTF-8'],

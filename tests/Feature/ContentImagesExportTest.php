@@ -1,14 +1,18 @@
 <?php
 
+use App\Enums\MediaAttachmentRole;
 use App\Enums\MediaNamingStrategy;
 use App\Filament\Resources\ContentGroups\Pages\ListContentGroups;
 use App\Jobs\DownloadExternalContentItemImage;
 use App\Jobs\ExportContentImagesZip;
 use App\Models\ContentGroup;
 use App\Models\ContentItem;
+use App\Models\Media;
+use App\Models\MediaAttachment;
 use App\Models\User;
 use App\Support\Media\ContentImagesExportManager;
-use Awcodes\Curator\Models\Media;
+use App\Support\Media\ExternalImageDnsResolver;
+use App\Support\Media\SafeExternalImageFetcher;
 use Filament\Actions\Testing\TestAction;
 use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -22,6 +26,10 @@ uses(RefreshDatabase::class);
 
 beforeEach(function (): void {
     Filament::setCurrentPanel(Filament::getPanel('admin'));
+    Http::preventStrayRequests();
+    $this->mock(ExternalImageDnsResolver::class)
+        ->shouldReceive('addresses')
+        ->andReturn(['93.184.216.34']);
 });
 
 function imgbStoreImage(string $path): void
@@ -34,7 +42,7 @@ function imgbStoreImage(string $path): void
 function imgbPngBytes(): string
 {
     return base64_decode(
-        trim(file_get_contents(base_path('tests/Fixtures/content-images/one-pixel.png.base64')) ?: ''),
+        trim(file_get_contents(base_path('tests/Fixtures/media/valid.png.base64')) ?: ''),
         true,
     ) ?: '';
 }
@@ -57,7 +65,7 @@ it('builds content image zip files with egress naming and skipped-file reporting
         'slug' => 'alpha-podcast',
         'cover_path' => 'content-groups/covers/cover.jpg',
     ]);
-    ContentItem::factory()->for($group)->create([
+    $item = ContentItem::factory()->for($group)->create([
         'reference_key' => '01J0000000000000000000002',
         'title' => 'Episode One',
         'slug' => 'episode-one',
@@ -69,6 +77,44 @@ it('builds content image zip files with egress naming and skipped-file reporting
         'slug' => 'missing-episode',
         'image_path' => 'content-items/images/missing.jpg',
     ]);
+    $coverMedia = Media::factory()->create([
+        'disk' => 'public',
+        'directory' => 'content-groups/covers',
+        'visibility' => 'public',
+        'name' => 'cover',
+        'path' => 'content-groups/covers/cover.jpg',
+        'width' => 40,
+        'height' => 40,
+        'size' => Storage::disk('public')->size('content-groups/covers/cover.jpg'),
+        'type' => 'image/jpeg',
+        'ext' => 'jpg',
+    ]);
+    $itemMedia = Media::factory()->create([
+        'disk' => 'public',
+        'directory' => 'content-items/images',
+        'visibility' => 'public',
+        'name' => 'episode',
+        'path' => 'content-items/images/episode.jpg',
+        'width' => 40,
+        'height' => 40,
+        'size' => Storage::disk('public')->size('content-items/images/episode.jpg'),
+        'type' => 'image/jpeg',
+        'ext' => 'jpg',
+    ]);
+    MediaAttachment::query()->create([
+        'media_id' => $coverMedia->getKey(),
+        'attachable_type' => 'content_group',
+        'attachable_id' => $group->getKey(),
+        'role' => MediaAttachmentRole::Cover,
+        'position' => 0,
+    ]);
+    MediaAttachment::query()->create([
+        'media_id' => $itemMedia->getKey(),
+        'attachable_type' => 'content_item',
+        'attachable_id' => $item->getKey(),
+        'role' => MediaAttachmentRole::PrimaryImage,
+        'position' => 0,
+    ]);
 
     $result = app(ContentImagesExportManager::class)->build(
         (int) $user->getKey(),
@@ -79,11 +125,37 @@ it('builds content image zip files with egress naming and skipped-file reporting
     Storage::disk('local')->assertExists($result['path']);
 
     $zip = new ZipArchive;
+    $coverEntry = 'podcasts/alpha-podcast--01j0000000000000000000001/cover.jpg';
+    $itemEntry = 'podcasts/alpha-podcast--01j0000000000000000000001/episodes/episode-one--01j0000000000000000000002.jpg';
     expect($zip->open(Storage::disk('local')->path($result['path'])))->toBeTrue()
-        ->and($zip->getFromName('podcasts/alpha-podcast--01j0000000000000000000001/cover.jpg'))->toBeString()
-        ->and($zip->getFromName('podcasts/alpha-podcast--01j0000000000000000000001/episodes/episode-one--01j0000000000000000000002.jpg'))->toBeString()
+        ->and($zip->getFromName($coverEntry))->toBeString()
+        ->and($zip->getFromName($itemEntry))->toBeString()
         ->and($result['included'])->toBe(2)
-        ->and($result['skipped'])->toContain('content-items/images/missing.jpg');
+        ->and($result['skipped'])->toContain('content_item:01J0000000000000000000003:primary_image:legacy-only');
+    $manifest = json_decode((string) $zip->getFromName('manifest.json'), true, flags: JSON_THROW_ON_ERROR);
+    $coverManifest = collect($manifest['media'])->firstWhere('role', MediaAttachmentRole::Cover->value);
+    $itemManifest = collect($manifest['media'])->firstWhere('role', MediaAttachmentRole::PrimaryImage->value);
+
+    expect($manifest['schema_version'])->toBe(1)
+        ->and($manifest['media'])->toHaveCount(2)
+        ->and($coverManifest)->toMatchArray([
+            'media_reference_key' => $coverMedia->reference_key,
+            'owner_reference_key' => $group->reference_key,
+            'role' => MediaAttachmentRole::Cover->value,
+            'archive_filename' => $coverEntry,
+            'validated_type' => 'image/jpeg',
+            'extension' => 'jpg',
+            'sha256' => hash('sha256', (string) $zip->getFromName($coverEntry)),
+        ])
+        ->and($itemManifest)->toMatchArray([
+            'media_reference_key' => $itemMedia->reference_key,
+            'owner_reference_key' => $item->reference_key,
+            'role' => MediaAttachmentRole::PrimaryImage->value,
+            'archive_filename' => $itemEntry,
+            'validated_type' => 'image/jpeg',
+            'extension' => 'jpg',
+            'sha256' => hash('sha256', (string) $zip->getFromName($itemEntry)),
+        ]);
 
     $zip->close();
 });
@@ -166,12 +238,12 @@ it('blocks guests and non owners from content image export downloads', function 
 
 it('downloads valid HTTPS external item images into local episode images', function (): void {
     Storage::fake('public');
-    Http::preventStrayRequests();
-    Http::fake([
-        'https://cdn.example.test/episode.png' => Http::response(imgbPngBytes(), 200, [
-            'Content-Type' => 'image/png',
-        ]),
-    ]);
+    $fetcher = Mockery::mock(SafeExternalImageFetcher::class);
+    $fetcher->shouldReceive('fetch')
+        ->once()
+        ->with('https://cdn.example.test/episode.png')
+        ->andReturn(imgbPngBytes());
+    app()->instance(SafeExternalImageFetcher::class, $fetcher);
 
     $user = User::factory()->create();
     $item = ContentItem::factory()->create([
@@ -180,28 +252,32 @@ it('downloads valid HTTPS external item images into local episode images', funct
         'external_thumbnail_url' => 'https://cdn.example.test/episode.png',
     ]);
 
-    (new DownloadExternalContentItemImage(
+    $job = new DownloadExternalContentItemImage(
         contentItemId: (int) $item->getKey(),
         userId: (int) $user->getKey(),
-    ))->handle();
+        expectedUrl: (string) $item->external_thumbnail_url,
+    );
+    app()->call([$job, 'handle']);
 
-    expect($item->refresh()->image_path)->toBe('content-items/images/remote-episode.png')
-        ->and(Media::query()->where('path', 'content-items/images/remote-episode.png')->exists())->toBeTrue()
+    $path = $item->refresh()->image_path;
+
+    expect($path)->toStartWith('content-items/images/')
+        ->and(Media::query()->where('path', $path)->exists())->toBeTrue()
+        ->and($item->primaryImageMediaAttachment?->media?->path)->toBe($path)
         ->and($user->notifications()->count())->toBe(1);
-    Storage::disk('public')->assertExists('content-items/images/remote-episode.png');
+    Storage::disk('public')->assertExists($path);
 });
 
 it('rejects non-HTTPS oversized and non-raster external image downloads', function (): void {
     Storage::fake('public');
-    Http::preventStrayRequests();
-    Http::fake([
-        'https://cdn.example.test/not-image.txt' => Http::response(imgbFixture('not-image.txt'), 200, [
-            'Content-Type' => 'text/plain',
-        ]),
-        'https://cdn.example.test/too-large.png' => Http::response(str_repeat(imgbFixture('too-large-seed.txt'), 2048 * 1024 + 1), 200, [
-            'Content-Type' => 'image/png',
-        ]),
-    ]);
+    $fetcher = Mockery::mock(SafeExternalImageFetcher::class);
+    $fetcher->shouldReceive('fetch')->once()->with('http://cdn.example.test/episode.png')
+        ->andThrow(new InvalidArgumentException('HTTPS is required.'));
+    $fetcher->shouldReceive('fetch')->once()->with('https://cdn.example.test/not-image.txt')
+        ->andReturn(imgbFixture('not-image.txt'));
+    $fetcher->shouldReceive('fetch')->once()->with('https://cdn.example.test/too-large.png')
+        ->andReturn(str_repeat(imgbFixture('too-large-seed.txt'), 2048 * 1024 + 1));
+    app()->instance(SafeExternalImageFetcher::class, $fetcher);
 
     $user = User::factory()->create();
     $httpItem = ContentItem::factory()->create([
@@ -214,18 +290,13 @@ it('rejects non-HTTPS oversized and non-raster external image downloads', functi
         'external_thumbnail_url' => 'https://cdn.example.test/too-large.png',
     ]);
 
-    (new DownloadExternalContentItemImage(
-        contentItemId: (int) $httpItem->getKey(),
-        userId: (int) $user->getKey(),
-    ))->handle();
-    (new DownloadExternalContentItemImage(
-        contentItemId: (int) $textItem->getKey(),
-        userId: (int) $user->getKey(),
-    ))->handle();
-    (new DownloadExternalContentItemImage(
-        contentItemId: (int) $oversizedItem->getKey(),
-        userId: (int) $user->getKey(),
-    ))->handle();
+    foreach ([$httpItem, $textItem, $oversizedItem] as $item) {
+        app()->call([(new DownloadExternalContentItemImage(
+            contentItemId: (int) $item->getKey(),
+            userId: (int) $user->getKey(),
+            expectedUrl: (string) $item->external_thumbnail_url,
+        )), 'handle']);
+    }
 
     expect($httpItem->refresh()->image_path)->toBeNull()
         ->and($textItem->refresh()->image_path)->toBeNull()

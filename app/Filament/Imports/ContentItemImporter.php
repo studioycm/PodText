@@ -2,6 +2,7 @@
 
 namespace App\Filament\Imports;
 
+use App\Enums\MediaAttachmentRole;
 use App\Enums\PublicationStatus;
 use App\Enums\RelationImportMode;
 use App\Filament\Imports\Concerns\ConfiguresContentImports;
@@ -9,16 +10,28 @@ use App\Models\Category;
 use App\Models\ContentGroup;
 use App\Models\ContentItem;
 use App\Models\ContentTag;
+use App\Models\Media;
 use App\Models\Transcription;
+use App\Models\User;
 use App\Rules\ApprovedEmbedUrl;
+use App\Support\Media\MediaAttachmentManager;
+use App\Support\Media\MediaRecordScope;
 use Filament\Actions\Imports\Exceptions\RowImportFailedException;
 use Filament\Actions\Imports\ImportColumn;
 use Filament\Actions\Imports\Importer;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 
 class ContentItemImporter extends Importer
 {
     use ConfiguresContentImports;
+
+    public function __invoke(array $data): void
+    {
+        DB::transaction(function () use ($data): void {
+            parent::__invoke($data);
+        });
+    }
 
     protected static ?string $model = ContentItem::class;
 
@@ -83,6 +96,52 @@ class ContentItemImporter extends Importer
                 ->label(__('admin.fields.description_markdown'))
                 ->example('תיאור הפרק עם **Markdown**.')
                 ->ignoreBlankState(fn (?ContentItem $record, array $options): bool => static::shouldIgnoreBlankForUpdate($record, $options)),
+            ImportColumn::make('primary_image_media_reference_key')
+                ->label(__('admin.import.columns.primary_image_media_reference_key'))
+                ->example('01JMEDIA000000000000000001')
+                ->rules([
+                    'nullable',
+                    'ulid',
+                    'max:26',
+                    function (string $attribute, mixed $state, \Closure $fail): void {
+                        if (blank($state)) {
+                            return;
+                        }
+
+                        $media = app(MediaRecordScope::class)->findByReferenceKey(
+                            (string) $state,
+                            MediaAttachmentRole::PrimaryImage->purpose(),
+                        );
+
+                        if (! $media instanceof Media) {
+                            $fail(__('admin.import.failures.unresolved_media_reference_key', [
+                                'reference_key' => $state,
+                            ]));
+                        }
+                    },
+                ])
+                ->ignoreBlankState(fn (?ContentItem $record, array $options): bool => static::shouldIgnoreBlankForUpdate($record, $options))
+                ->fillRecordUsing(fn (): null => null)
+                ->saveRelationshipsUsing(function (ContentItem $record, ?string $state, Importer $importer): void {
+                    $actor = $importer->getImport()->user;
+
+                    if (! $actor instanceof User) {
+                        throw new RowImportFailedException(__('admin.import.failures.unresolved_media_actor'));
+                    }
+
+                    if (blank($state)) {
+                        app(MediaAttachmentManager::class)->detach($record, MediaAttachmentRole::PrimaryImage, $actor);
+
+                        return;
+                    }
+
+                    app(MediaAttachmentManager::class)->attachByReferenceKey(
+                        $record,
+                        (string) $state,
+                        MediaAttachmentRole::PrimaryImage,
+                        $actor,
+                    );
+                }),
             ImportColumn::make('media_url')
                 ->label(__('admin.fields.media_url'))
                 ->requiredMapping()

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\MediaAttachmentRole;
 use App\Enums\PublicationStatus;
 use App\Observers\ContentGroupObserver;
 use App\Support\Slugs\HebrewSlugger;
@@ -13,6 +14,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Str;
 
 #[Fillable([
@@ -49,6 +51,22 @@ class ContentGroup extends Model
     public function contentItems(): HasMany
     {
         return $this->hasMany(ContentItem::class);
+    }
+
+    public function mediaAttachments(): HasMany
+    {
+        return $this->hasMany(MediaAttachment::class, 'attachable_id')
+            ->where('attachable_type', 'content_group')
+            ->orderBy('role')
+            ->orderBy('position')
+            ->orderBy('id');
+    }
+
+    public function coverMediaAttachment(): HasOne
+    {
+        return $this->hasOne(MediaAttachment::class, 'attachable_id')
+            ->where('attachable_type', 'content_group')
+            ->where('role', MediaAttachmentRole::Cover->value);
     }
 
     public function categories(): BelongsToMany

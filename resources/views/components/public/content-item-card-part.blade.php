@@ -32,6 +32,8 @@
                 :mode="$part['mode']"
                 :main-image-source="$part['main_image_source']"
                 :allow-duplicate-thumbnail="$part['allow_duplicate_thumbnail']"
+                :cover-url="$part['cover_url']"
+                :cover-alt="$part['cover_alt']"
                 :preview-mode="$previewMode"
             />
         </x-public.card-part-shell>

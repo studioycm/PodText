@@ -21,7 +21,9 @@ class PublicContentItemQueries
             ->with([
                 'categories',
                 'contentGroup.categories',
+                'contentGroup.coverMediaAttachment.media',
                 'enabledContentTags',
+                'primaryImageMediaAttachment.media',
             ])
             ->addSelect($aggregates->contentItemAggregateSelects())
             ->withEffectiveTranscriptionPublishedAt();

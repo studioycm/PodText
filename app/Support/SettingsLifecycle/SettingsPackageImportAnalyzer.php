@@ -57,8 +57,12 @@ class SettingsPackageImportAnalyzer
             return new SettingsPackageImportAnalysis($package, rows: [], errors: $errors);
         }
 
-        $currentPayload = PublicSettingsPackage::fromCurrentSettings()->payload();
-        $importedPayload = $package->payload();
+        $currentPayload = PublicSettingsPackage::fromCurrentSettings()->payloadForApplication();
+        try {
+            $importedPayload = $package->payloadForApplication();
+        } catch (Throwable $exception) {
+            return new SettingsPackageImportAnalysis($package, rows: [], errors: [$exception->getMessage()]);
+        }
         $schemaPayload = array_replace_recursive($currentPayload, $importedPayload);
         $warnings = $this->packageWarnings($package, $importedPayload);
         $rows = $this->rows($currentPayload, $importedPayload, $schemaPayload, $package->settingsGroup(), $mode);

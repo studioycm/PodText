@@ -48,6 +48,11 @@ class ImageFileNamer
         };
     }
 
+    public static function generatedStorageFileName(string $mimeType): string
+    {
+        return Str::ulid().'.'.self::extensionForMimeType($mimeType);
+    }
+
     public static function storageFileName(
         ?string $slug,
         string $referenceKey,

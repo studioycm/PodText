@@ -513,6 +513,7 @@ it('shows TB1 image actions and queues external image downloads from episode tab
         fn (DownloadExternalContentItemImage $job): bool => $job->contentItemId === $withoutLocal->id
             && $job->userId === auth()->id()
             && $job->overwrite === false
+            && $job->expectedUrl === $withoutLocal->external_thumbnail_url
             && $job->queue === 'imports-exports',
     );
 });

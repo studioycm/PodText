@@ -10,20 +10,20 @@ use App\Filament\Pages\MenuHeaderSettings;
 use App\Filament\Resources\ContentGroups\Pages\EditContentGroup;
 use App\Models\ContentGroup;
 use App\Models\ContentItem;
+use App\Models\Media;
 use App\Models\User;
 use App\Settings\AdminUxSettings;
 use App\Settings\PublicContentSettings;
 use App\Support\Media\ImageFileNamer;
+use App\Support\Media\MediaFilesystemMutationCoordinator;
 use App\Support\PublicFront\PublicFrontConfigRegistry;
-use Awcodes\Curator\Models\Media;
 use Filament\Facades\Filament;
-use Filament\Forms\Components\FileUpload;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Validation\ValidationException;
 use Livewire\Livewire;
 use Spatie\LaravelSettings\SettingsContainer;
 
@@ -61,7 +61,7 @@ function saveImgAPublicSetting(string $name, array $payload): void
 
 function imgAMedia(string $path, string $type = 'image/jpeg', string $extension = 'jpg'): Media
 {
-    return Media::query()->create([
+    return Media::factory()->create([
         'disk' => 'public',
         'directory' => trim(dirname($path), '.'),
         'visibility' => 'public',
@@ -75,10 +75,7 @@ function imgAMedia(string $path, string $type = 'image/jpeg', string $extension 
     ]);
 }
 
-/**
- * @return array<string, array<string, mixed>>
- */
-function imgAHydratedPickerState(object $page, string $statePath): array
+function imgAHydratedPickerId(object $page, string $statePath): int
 {
     $field = $page->form->getComponentByStatePath($statePath);
 
@@ -86,12 +83,12 @@ function imgAHydratedPickerState(object $page, string $statePath): array
 
     $state = $field->getState();
 
-    expect($state)->toBeArray()->toHaveCount(1);
+    expect($state)->toBeInt();
 
     return $state;
 }
 
-it('renders the shared media field in curator and file upload modes', function (): void {
+it('always renders the app owned media picker despite the legacy driver setting', function (): void {
     config(['media.picker.driver' => 'curator']);
 
     expect(MediaPickerField::make('cover_path', ImageFileNamer::CONTENT_GROUP_COVER))
@@ -100,43 +97,46 @@ it('renders the shared media field in curator and file upload modes', function (
     config(['media.picker.driver' => 'file_upload']);
 
     expect(MediaPickerField::make('cover_path', ImageFileNamer::CONTENT_GROUP_COVER))
-        ->toBeInstanceOf(FileUpload::class);
+        ->toBeInstanceOf(PathCuratorPicker::class);
 });
 
 it('resolves a non empty curator glide token fallback', function (): void {
     expect(config('curator.glide_token'))->not->toBeEmpty();
 });
 
-it('persists curator picker selections as plain cover path strings', function (): void {
+it('persists curator picker selections as attachments with a legacy cover path', function (): void {
     config(['media.picker.driver' => 'curator']);
+    $this->actingAs(User::factory()->admin()->create());
     Storage::fake('public');
     UploadedFile::fake()->image('library.jpg')->storeAs('content-groups/covers', 'library.jpg', 'public');
-    imgAMedia('content-groups/covers/library.jpg');
+    $media = imgAMedia('content-groups/covers/library.jpg');
     $group = ContentGroup::factory()->create();
 
     Livewire::test(EditContentGroup::class, ['record' => $group->getRouteKey()])
-        ->set('data.cover_path', 'content-groups/covers/library.jpg')
+        ->set('data.cover_media_reference_key', $media->reference_key)
         ->call('save')
         ->assertHasNoFormErrors();
 
-    expect($group->refresh()->cover_path)->toBe('content-groups/covers/library.jpg');
+    expect($group->refresh()->cover_path)->toBe('content-groups/covers/library.jpg')
+        ->and($group->coverMediaAttachment?->media_id)->toBe($media->getKey());
 });
 
 it('round trips public settings image paths through the curator picker without changing bytes', function (): void {
     config(['media.picker.driver' => 'curator']);
     Storage::fake('public');
     Storage::disk('public')->put('header/logo.svg', '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"></svg>');
-    imgAMedia('header/logo.svg', 'image/svg+xml', 'svg');
+    $media = imgAMedia('header/logo.svg', 'image/svg+xml', 'svg');
     $this->actingAs(User::factory()->create());
 
     Livewire::test(MenuHeaderSettings::class)
-        ->set('data.menu_config.logo.light_path', 'header/logo.svg')
+        ->set('data.menu_config.logo.light_media_reference_key', $media->reference_key)
         ->call('save')
         ->assertHasNoFormErrors();
 
     clearImgASettingsCache();
 
-    expect(app(PublicContentSettings::class)->menu_config['logo']['light_path'])->toBe('header/logo.svg');
+    expect(app(PublicContentSettings::class)->menu_config['logo']['light_path'])->toBe('header/logo.svg')
+        ->and(app(PublicContentSettings::class)->menu_config['logo']['light_media_reference_key'])->toBe($media->reference_key);
 });
 
 it('keeps a registered menu logo selected after saving and remounting the settings page', function (): void {
@@ -154,12 +154,8 @@ it('keeps a registered menu logo selected after saving and remounting the settin
 
     $page = Livewire::test(MenuHeaderSettings::class)
         ->assertSee('logo.svg');
-    $state = imgAHydratedPickerState($page->instance(), 'menu_config.logo.light_path');
-    $key = array_key_first($state);
-
-    expect($key)->toBeString()
-        ->and($state[$key]['id'])->toBe($media->getKey())
-        ->and($state[$key]['path'])->toBe('header/logo.svg');
+    expect(imgAHydratedPickerId($page->instance(), 'menu_config.logo.light_media_reference_key'))
+        ->toBe($media->getKey());
 
     $page
         ->call('save')
@@ -171,12 +167,8 @@ it('keeps a registered menu logo selected after saving and remounting the settin
 
     $remounted = Livewire::test(MenuHeaderSettings::class)
         ->assertSee('logo.svg');
-    $remountedState = imgAHydratedPickerState($remounted->instance(), 'menu_config.logo.light_path');
-    $remountedKey = array_key_first($remountedState);
-
-    expect($remountedKey)->toBeString()
-        ->and($remountedState[$remountedKey]['id'])->toBe($media->getKey())
-        ->and($remountedState[$remountedKey]['path'])->toBe('header/logo.svg');
+    expect(imgAHydratedPickerId($remounted->instance(), 'menu_config.logo.light_media_reference_key'))
+        ->toBe($media->getKey());
 });
 
 it('keeps a registered custom default image selected after remounting display settings', function (): void {
@@ -197,12 +189,8 @@ it('keeps a registered custom default image selected after remounting display se
 
     $page = Livewire::test(DisplaySettings::class)
         ->assertSee('fallback.jpg');
-    $state = imgAHydratedPickerState($page->instance(), 'default_images.content_item.path');
-    $key = array_key_first($state);
-
-    expect($key)->toBeString()
-        ->and($state[$key]['id'])->toBe($media->getKey())
-        ->and($state[$key]['path'])->toBe('default-images/fallback.jpg');
+    expect(imgAHydratedPickerId($page->instance(), 'default_images.content_item.media_reference_key'))
+        ->toBe($media->getKey());
 });
 
 it('saves the admin ux media naming strategy setting', function (): void {
@@ -218,7 +206,7 @@ it('saves the admin ux media naming strategy setting', function (): void {
     expect(app(AdminUxSettings::class)->media_naming_strategy)->toBe(MediaNamingStrategy::SlugKey->value);
 });
 
-it('deletes only unused app-owned cover files on replace and record delete', function (): void {
+it('preserves app-owned cover files when legacy path references change', function (): void {
     Storage::fake('public');
     Storage::disk('public')->put('content-groups/covers/shared.jpg', 'old');
     Storage::disk('public')->put('content-groups/covers/delete-me.jpg', 'old');
@@ -235,11 +223,11 @@ it('deletes only unused app-owned cover files on replace and record delete', fun
     $legacy->delete();
 
     Storage::disk('public')->assertExists('content-groups/covers/shared.jpg');
-    Storage::disk('public')->assertMissing('content-groups/covers/delete-me.jpg');
+    Storage::disk('public')->assertExists('content-groups/covers/delete-me.jpg');
     Storage::disk('public')->assertExists('legacy/outside.jpg');
 });
 
-it('keeps library registered cover files while deleting only no-row strays', function (): void {
+it('never infers file deletion from legacy cover path changes', function (): void {
     Storage::fake('public');
     Storage::disk('public')->put('content-groups/covers/library.jpg', 'library');
     Storage::disk('public')->put('content-groups/covers/stray.jpg', 'stray');
@@ -252,7 +240,7 @@ it('keeps library registered cover files while deleting only no-row strays', fun
     $stray->update(['cover_path' => null]);
 
     Storage::disk('public')->assertExists('content-groups/covers/library.jpg');
-    Storage::disk('public')->assertMissing('content-groups/covers/stray.jpg');
+    Storage::disk('public')->assertExists('content-groups/covers/stray.jpg');
     expect(Media::query()->where('path', 'content-groups/covers/library.jpg')->exists())->toBeTrue();
 });
 
@@ -264,30 +252,36 @@ it('blocks deleting curator media that is still referenced by app surfaces', fun
         'title' => 'Referenced Podcast',
         'cover_path' => 'content-groups/covers/referenced.jpg',
     ]);
+    $actor = User::factory()->admin()->create();
+    $coordinator = app(MediaFilesystemMutationCoordinator::class);
 
-    expect(fn () => $media->delete())->toThrow(ValidationException::class);
+    expect(fn () => $media->delete())->toThrow(LogicException::class)
+        ->and(fn () => $coordinator->delete($media, $actor))->toThrow(AuthorizationException::class);
     expect(Media::query()->whereKey($media->getKey())->exists())->toBeTrue();
 
     $group->update(['cover_path' => null]);
 
-    expect($media->refresh()->delete())->toBeTrue();
+    $coordinator->delete($media->refresh(), $actor);
+
+    expect(Media::query()->whereKey($media->getKey())->exists())->toBeFalse();
+    Storage::disk('public')->assertMissing('content-groups/covers/referenced.jpg');
 });
 
 it('preserves legacy paths without curator rows when the admin form is saved untouched', function (): void {
     config(['media.picker.driver' => 'curator']);
     $this->actingAs(User::factory()->create());
     $group = ContentGroup::factory()->create([
-        'cover_path' => 'legacy/outside.jpg',
+        'cover_path' => 'content-groups/covers/legacy-outside.jpg',
     ]);
 
     Livewire::test(EditContentGroup::class, ['record' => $group->getRouteKey()])
         ->call('save')
         ->assertHasNoFormErrors();
 
-    expect($group->refresh()->cover_path)->toBe('legacy/outside.jpg');
+    expect($group->refresh()->cover_path)->toBe('content-groups/covers/legacy-outside.jpg');
 });
 
-it('cleans only unregistered local episode image strays when item image paths change', function (): void {
+it('never infers file deletion from legacy episode image path changes', function (): void {
     Storage::fake('public');
     Storage::disk('public')->put('content-items/images/library.jpg', 'library');
     Storage::disk('public')->put('content-items/images/stray.jpg', 'stray');
@@ -304,11 +298,11 @@ it('cleans only unregistered local episode image strays when item image paths ch
     $shared->update(['image_path' => null]);
 
     Storage::disk('public')->assertExists('content-items/images/library.jpg');
-    Storage::disk('public')->assertMissing('content-items/images/stray.jpg');
+    Storage::disk('public')->assertExists('content-items/images/stray.jpg');
     Storage::disk('public')->assertExists('content-items/images/shared.jpg');
 });
 
-it('registers existing cover and settings asset files as curator media idempotently', function (): void {
+it('reports existing cover and settings assets without registering or mutating them', function (): void {
     Storage::fake('public');
     UploadedFile::fake()->image('legacy.jpg', 120, 80)->storeAs('content-groups/covers', 'legacy.jpg', 'public');
     UploadedFile::fake()->image('fallback.jpg', 80, 80)->storeAs('default-images', 'fallback.jpg', 'public');
@@ -327,12 +321,14 @@ it('registers existing cover and settings asset files as curator media idempoten
         ],
     ]);
 
-    $this->artisan('media:register-existing-curator-assets')->assertExitCode(0);
-    $this->artisan('media:register-existing-curator-assets')->assertExitCode(0);
+    $this->artisan('media:register-existing-curator-assets')
+        ->expectsOutputToContain('Dry run:')
+        ->assertExitCode(0);
 
-    expect(Media::query()->where('path', 'content-groups/covers/legacy.jpg')->count())->toBe(1)
-        ->and(Media::query()->where('path', 'header/logo.svg')->count())->toBe(1)
-        ->and(Media::query()->where('path', 'default-images/fallback.jpg')->count())->toBe(1);
+    expect(Media::query()->count())->toBe(0);
+    Storage::disk('public')->assertExists('content-groups/covers/legacy.jpg');
+    Storage::disk('public')->assertExists('header/logo.svg');
+    Storage::disk('public')->assertExists('default-images/fallback.jpg');
 });
 
 it('renders content group cover alt text on public images and badge thumbnails', function (): void {
@@ -355,17 +351,23 @@ it('renders content group cover alt text on public images and badge thumbnails',
         ->assertSee('alt="Editorial cover alt"', false);
 
     $badge = Blade::render(
-        '<x-public.content-group-badge :group="$group" mode="thumbnail_name" />',
-        ['group' => $group],
+        '<x-public.content-group-badge :group="$group" mode="thumbnail_name" :cover-url="$coverUrl" :cover-alt="$coverAlt" />',
+        [
+            'group' => $group,
+            'coverUrl' => Storage::disk('public')->url((string) $group->cover_path),
+            'coverAlt' => $group->cover_alt_text,
+        ],
     );
 
     expect($badge)->toContain('alt="Editorial cover alt"');
 });
 
-it('keeps the cover export column path output disabled by default', function (): void {
-    $column = collect(ContentGroupExporter::getColumns())
-        ->first(fn ($column): bool => $column->getName() === 'cover_path');
+it('exports portable cover identity without a mutable path column', function (): void {
+    $columns = collect(ContentGroupExporter::getColumns());
+    $column = $columns
+        ->first(fn ($column): bool => $column->getName() === 'cover_media_reference_key');
 
     expect($column)->not->toBeNull()
-        ->and($column->isEnabledByDefault())->toBeFalse();
+        ->and($column->isEnabledByDefault())->toBeTrue()
+        ->and($columns->contains(fn ($candidate): bool => $candidate->getName() === 'cover_path'))->toBeFalse();
 });

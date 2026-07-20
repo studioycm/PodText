@@ -1,9 +1,7 @@
 @props(['profile', 'settings' => [], 'layout' => 'grid'])
 
-@inject('renderer', 'App\Support\PublicFront\About\PublicAboutPageRenderer')
-
 @php
-    $imageUrl = $renderer->imageUrl($profile['image_path'] ?? null);
+    $imageUrl = $profile['image_url'] ?? null;
     $showImage = ($settings['show_image'] ?? true) === true;
     $showTitle = ($settings['show_title'] ?? true) === true;
     $showDescription = ($settings['show_description'] ?? true) === true;

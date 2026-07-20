@@ -3,6 +3,11 @@
 namespace App\Providers;
 
 use App\Enums\UserRole;
+use App\Livewire\Admin\DisabledVendorCuratorSurface;
+use App\Livewire\Admin\MediaPickerPanel;
+use App\Models\ContentGroup;
+use App\Models\ContentItem;
+use App\Models\Media;
 use App\Models\User;
 use App\Observers\CuratorMediaObserver;
 use App\Policies\CuratorMediaPolicy;
@@ -13,6 +18,9 @@ use App\Support\Importer\Contracts\SpotifyClientFactory;
 use App\Support\Importer\Google\GoogleApiDriveClientFactory;
 use App\Support\Importer\Spotify\SpotifyHttpClientFactory;
 use App\Support\ImportExport\ImportExportQueueTracer;
+use App\Support\Media\CuratorImageUploadPolicy;
+use App\Support\Media\MediaMutationLease;
+use App\Support\Media\MediaReferenceFinder;
 use App\Support\PublicContent\PublicTranscriptionPolicy;
 use App\Support\PublicFront\Cards\PublicFrontCardTemplateResolver;
 use App\Support\PublicFront\PublicFrontConfigCache;
@@ -22,7 +30,7 @@ use App\Support\Settings\SettingsPageProfiler;
 use App\Support\SettingsLifecycle\SettingsBackupManager;
 use App\Support\SettingsLifecycle\SettingsLifecycleSchema;
 use App\Support\Transcriptions\MultiTranscriptionSurfaces;
-use Awcodes\Curator\Models\Media;
+use Awcodes\Curator\Facades\Curator;
 use BezhanSalleh\FilamentShield\Commands\TranslationCommand;
 use BezhanSalleh\FilamentShield\Facades\FilamentShield;
 use Filament\Actions\Action;
@@ -36,11 +44,13 @@ use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
+use Livewire\Livewire;
 use Spatie\LaravelSettings\Events\SettingsSaved;
 
 class AppServiceProvider extends ServiceProvider
@@ -50,12 +60,16 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
+        config()->set('livewire.temporary_file_upload.disk', 'local');
+
         $this->app->bind(GoogleDriveClientFactory::class, GoogleApiDriveClientFactory::class);
         $this->app->bind(SpotifyClientFactory::class, SpotifyHttpClientFactory::class);
 
         $this->app->scoped(SettingsPageProfiler::class);
         $this->app->scoped(SettingsLifecycleSchema::class);
         $this->app->scoped(PublicFrontCardTemplateResolver::class);
+        $this->app->scoped(MediaReferenceFinder::class);
+        $this->app->scoped(MediaMutationLease::class);
 
         $this->app->scoped(
             PublicFrontRenderContext::class,
@@ -84,6 +98,19 @@ class AppServiceProvider extends ServiceProvider
         PackageMutationCommandGuard::register();
 
         Model::preventLazyLoading(! $this->app->isProduction());
+
+        Relation::morphMap([
+            ContentGroup::class => ContentGroup::class,
+            ContentItem::class => ContentItem::class,
+            'content_group' => ContentGroup::class,
+            'content_item' => ContentItem::class,
+        ]);
+
+        Curator::acceptedFileTypes(app(CuratorImageUploadPolicy::class)->globalMimeTypes())
+            ->maxSize(CuratorImageUploadPolicy::MAX_KILOBYTES)
+            ->disk('public')
+            ->visibility('public')
+            ->preserveFilenames(false);
 
         Select::configureUsing(fn (Select $select): Select => $select
             ->preload()
@@ -123,6 +150,9 @@ class AppServiceProvider extends ServiceProvider
         });
 
         Media::observe(CuratorMediaObserver::class);
+        Livewire::component('admin.media-picker-panel', MediaPickerPanel::class);
+        Livewire::component('curator-panel', DisabledVendorCuratorSurface::class);
+        Livewire::component('curator-curation', DisabledVendorCuratorSurface::class);
 
         $this->app->make(ImportExportQueueTracer::class)->register();
 
@@ -179,6 +209,9 @@ class AppServiceProvider extends ServiceProvider
         RateLimiter::for('public-form-verification-codes', function (Request $request): Limit {
             return Limit::perMinute(5)->by('code:'.$this->publicFormThrottleKey($request));
         });
+
+        RateLimiter::for('external-image-downloads', fn (): Limit => Limit::perMinute(10)
+            ->by('external-image-downloads'));
     }
 
     private function publicFormThrottleKey(Request $request): string

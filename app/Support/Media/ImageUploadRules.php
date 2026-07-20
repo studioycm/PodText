@@ -7,16 +7,16 @@ use Illuminate\Validation\Rules\File;
 
 class ImageUploadRules
 {
-    public const MAX_KILOBYTES = 2048;
+    public const MAX_KILOBYTES = CuratorImageUploadPolicy::MAX_KILOBYTES;
 
-    public const MAX_DIMENSION_PIXELS = 3000;
+    public const MAX_DIMENSION_PIXELS = CuratorImageUploadPolicy::MAX_DIMENSION_PIXELS;
 
     /**
      * @return array<int, string>
      */
     public static function rasterMimeTypes(): array
     {
-        return ['image/jpeg', 'image/png', 'image/webp'];
+        return app(CuratorImageUploadPolicy::class)->rasterMimeTypes();
     }
 
     /**
@@ -24,7 +24,7 @@ class ImageUploadRules
      */
     public static function logoMimeTypes(): array
     {
-        return [...self::rasterMimeTypes(), 'image/svg+xml'];
+        return app(CuratorImageUploadPolicy::class)->globalMimeTypes();
     }
 
     public static function rasterImage(): File

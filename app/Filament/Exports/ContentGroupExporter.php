@@ -2,9 +2,11 @@
 
 namespace App\Filament\Exports;
 
+use App\Enums\MediaAttachmentRole;
 use App\Filament\Exports\Concerns\EscapesSpreadsheetFormulae;
 use App\Filament\Exports\Concerns\TracksExportLifecycle;
 use App\Models\ContentGroup;
+use App\Support\Media\MediaAttachmentIdentityResolver;
 use Filament\Actions\Exports\ExportColumn;
 use Filament\Actions\Exports\Exporter;
 use Illuminate\Database\Eloquent\Builder;
@@ -43,10 +45,10 @@ class ContentGroupExporter extends Exporter
                 ->label(__('admin.fields.description_markdown'))
                 ->enabledByDefault(false)
                 ->formatStateUsing(fn (mixed $state): ?string => self::safeSpreadsheetText($state)),
-            ExportColumn::make('cover_path')
-                ->label(__('admin.fields.cover_path'))
-                ->enabledByDefault(false)
-                ->formatStateUsing(fn (mixed $state): ?string => self::safeSpreadsheetText($state)),
+            ExportColumn::make('cover_media_reference_key')
+                ->label(__('admin.import.columns.cover_media_reference_key'))
+                ->state(fn (ContentGroup $record): ?string => app(MediaAttachmentIdentityResolver::class)
+                    ->portableReferenceKey($record, MediaAttachmentRole::Cover)),
             ExportColumn::make('original_language_code')
                 ->label(__('admin.fields.original_language_code')),
             ExportColumn::make('status')
@@ -72,6 +74,6 @@ class ContentGroupExporter extends Exporter
 
     public static function modifyQuery(Builder $query): Builder
     {
-        return $query->with('categories.parent');
+        return $query->with(['categories.parent', 'coverMediaAttachment.media']);
     }
 }

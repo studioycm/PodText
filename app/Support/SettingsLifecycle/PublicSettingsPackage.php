@@ -9,7 +9,7 @@ use JsonException;
 
 class PublicSettingsPackage
 {
-    public const SCHEMA_VERSION = 1;
+    public const SCHEMA_VERSION = 2;
 
     public function __construct(
         private readonly int $schemaVersion,
@@ -19,12 +19,18 @@ class PublicSettingsPackage
         private readonly string $settingsMigrationWatermark,
         private readonly array $payload,
         private readonly string $checksum,
+        private readonly bool $portable = false,
     ) {}
 
-    public static function fromCurrentSettings(): self
+    public static function fromCurrentSettings(bool $portable = false): self
     {
         $settings = app(PublicContentSettings::class);
         $payload = $settings->getRepository()->getPropertiesInGroup(PublicContentSettings::group());
+
+        if ($portable) {
+            $payload = app(SettingsMediaIdentityProjector::class)->portable($payload);
+        }
+
         $checksum = self::payloadChecksum($payload);
 
         return new self(
@@ -35,7 +41,13 @@ class PublicSettingsPackage
             settingsMigrationWatermark: app(PublicFrontConfigCache::class)->settingsMigrationWatermark(),
             payload: $payload,
             checksum: $checksum,
+            portable: $portable,
         );
+    }
+
+    public static function portableFromCurrentSettings(): self
+    {
+        return self::fromCurrentSettings(portable: true);
     }
 
     public static function fromArray(array $package): self
@@ -54,6 +66,7 @@ class PublicSettingsPackage
             settingsMigrationWatermark: (string) ($package['settings_migration_watermark'] ?? ''),
             payload: $package['payload'],
             checksum: (string) ($package['checksum'] ?? ''),
+            portable: (bool) ($package['portable'] ?? false),
         );
     }
 
@@ -75,6 +88,16 @@ class PublicSettingsPackage
     public function payload(): array
     {
         return $this->payload;
+    }
+
+    public function payloadForApplication(): array
+    {
+        return app(SettingsMediaIdentityProjector::class)->localize($this->payload, $this->portable);
+    }
+
+    public function isPortable(): bool
+    {
+        return $this->portable;
     }
 
     public function checksum(): string
@@ -100,6 +123,7 @@ class PublicSettingsPackage
             'app_version' => $this->appVersion,
             'settings_group' => $this->settingsGroup,
             'settings_migration_watermark' => $this->settingsMigrationWatermark,
+            'portable' => $this->portable,
             'payload' => $this->payload,
             'checksum' => $this->checksum,
         ];
