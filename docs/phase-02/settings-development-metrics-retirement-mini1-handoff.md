@@ -127,7 +127,8 @@ reader. No secret-bearing value was printed.
 | `vendor/bin/pint --test` | PASS on the closeout state. |
 | `vendor/bin/filacheck` | PASS with 0 issues on the closeout state. |
 | `npm run build` | PASS with Vite 8.1.5. The Laravel font plugin repeated the existing optional `fontaine` warning; all configured assets built. |
-| Full `php artisan test` last, serial, and uninterrupted | PASS outside the macOS browser sandbox: 997 tests / 13,555 assertions in 472.566s. |
+| First closeout `php artisan test` last, serial, and uninterrupted | PASS outside the macOS browser sandbox: 997 tests / 13,555 assertions in 472.566s. |
+| Post-documentation final proof `php artisan test` last, serial, and uninterrupted | PASS outside the macOS browser sandbox on the exact implementation-commit state: 997 tests / 13,555 assertions in 491.584s. |
 
 All tests used the test environment. The local development database and
 storage were not probed. Browser and full-suite commands were not parallelized.
@@ -177,4 +178,4 @@ the known macOS Chromium bootstrap restriction.
 
 ## Commit hash
 
-Pending
+`3e5c411777994c431417dfd823576286d12d5c29`
