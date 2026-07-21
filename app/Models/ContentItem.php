@@ -125,6 +125,12 @@ class ContentItem extends Model
             ->where('role', MediaAttachmentRole::PrimaryImage->value);
     }
 
+    /** Raw legacy lookup for admin diagnostics only; never a usable-media relation. */
+    public function legacyPrimaryImageMediaRows(): HasMany
+    {
+        return $this->hasMany(Media::class, 'path', 'image_path')->orderBy('id');
+    }
+
     public function featuredTranscription(): BelongsTo
     {
         return $this->belongsTo(Transcription::class, 'featured_transcription_id');

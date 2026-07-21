@@ -69,6 +69,12 @@ class ContentGroup extends Model
             ->where('role', MediaAttachmentRole::Cover->value);
     }
 
+    /** Raw legacy lookup for admin diagnostics only; never a usable-media relation. */
+    public function legacyCoverMediaRows(): HasMany
+    {
+        return $this->hasMany(Media::class, 'path', 'cover_path')->orderBy('id');
+    }
+
     public function categories(): BelongsToMany
     {
         return $this->belongsToMany(Category::class);

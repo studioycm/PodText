@@ -2,42 +2,64 @@
 
 namespace App\Console\Commands;
 
+use App\Enums\ImageUploadPurpose;
 use App\Enums\MediaAttachmentRole;
 use App\Models\ContentGroup;
 use App\Models\ContentItem;
 use App\Models\Media;
 use App\Models\MediaAttachment;
-use App\Support\Media\CuratorImageUploadPolicy;
+use App\Support\Media\LegacyMediaTransitionPlanner;
 use App\Support\Media\MediaRecordScope;
 use Illuminate\Console\Command;
-use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\Collection;
-use InvalidArgumentException;
+use Illuminate\Support\Facades\DB;
+use RuntimeException;
+use Throwable;
 
 class BackfillMediaAttachments extends Command
 {
-    protected $signature = 'media:backfill-attachments {--apply : Persist unambiguous attachment rows}';
+    protected $signature = 'media:backfill-attachments {--apply : Persist unambiguous attachment rows} {--digest= : Exact reviewed transition manifest digest required for apply}';
 
-    protected $description = 'Report or idempotently backfill media attachments from legacy owner paths.';
+    protected $description = 'Report or atomically backfill media attachments from reviewed legacy owner paths.';
 
-    public function handle(
-        CuratorImageUploadPolicy $policy,
-        MediaRecordScope $scope,
-    ): int {
-        $counts = [
-            'eligible' => 0,
-            'created' => 0,
-            'existing' => 0,
-            'missing' => 0,
-            'missing_reference_key' => 0,
-            'duplicate' => 0,
-            'disallowed' => 0,
-            'invalid_path' => 0,
-            'conflict' => 0,
-        ];
+    public function handle(LegacyMediaTransitionPlanner $planner, MediaRecordScope $scope): int
+    {
+        $manifest = $planner->manifest();
+        $planner->assertClosed($manifest);
 
-        $this->processOwners(ContentGroup::query(), 'cover_path', 'content_group', MediaAttachmentRole::Cover, $policy, $scope, $counts);
-        $this->processOwners(ContentItem::query(), 'image_path', 'content_item', MediaAttachmentRole::PrimaryImage, $policy, $scope, $counts);
+        if ($this->option('apply') && (! is_string($this->option('digest')) || ! hash_equals((string) $this->option('digest'), $manifest->digest()))) {
+            $this->components->error('Apply requires the exact reviewed transition manifest --digest.');
+
+            return self::FAILURE;
+        }
+
+        $counts = array_fill_keys(['eligible', 'created', 'existing', 'missing', 'missing_reference_key', 'duplicate', 'disallowed', 'invalid_path', 'conflict'], 0);
+        $counts['transition_pending'] = collect($manifest->entries)
+            ->whereIn('disposition', ['key_only', 'normalize_existing', 'sanitize_svg', 'import_exact_path'])
+            ->count();
+        $counts['detach_to_default'] = collect($manifest->entries)->where('disposition', 'detach_to_default')->count();
+        $counts['blocked'] = collect($manifest->entries)->where('disposition', 'blocked')->count();
+
+        foreach ($manifest->entries as $entry) {
+            $mediaId = (int) ($entry['media_id'] ?? 0);
+            if ($mediaId < 1 || ($entry['active_references'] ?? []) === []) {
+                continue;
+            }
+
+            $result = $this->review($entry, $scope);
+            $counts[$result]++;
+
+            if (! $this->option('apply') || $result !== 'eligible') {
+                continue;
+            }
+
+            try {
+                $created = DB::transaction(fn (): int => $this->commit($entry, $planner, $scope));
+                $counts[$created > 0 ? 'created' : 'existing']++;
+            } catch (Throwable $exception) {
+                $counts['conflict']++;
+                $this->components->warn("Media {$mediaId}: {$exception->getMessage()}");
+            }
+        }
 
         $mode = $this->option('apply') ? 'Apply' : 'Dry run';
         $this->components->info($mode.': '.collect($counts)->map(fn (int $count, string $key): string => "{$key}={$count}")->implode(', '));
@@ -45,130 +67,120 @@ class BackfillMediaAttachments extends Command
         return self::SUCCESS;
     }
 
-    /**
-     * @param  array<string, int>  $counts
-     */
-    private function processOwners(
-        Builder $query,
-        string $pathColumn,
-        string $alias,
-        MediaAttachmentRole $role,
-        CuratorImageUploadPolicy $policy,
-        MediaRecordScope $scope,
-        array &$counts,
-    ): void {
-        $query
-            ->whereNotNull($pathColumn)
-            ->where($pathColumn, '!=', '')
-            ->select(['id', $pathColumn])
-            ->chunkById(100, function (Collection $owners) use (
-                $pathColumn,
-                $alias,
-                $role,
-                $policy,
-                $scope,
-                &$counts,
-            ): void {
-                $paths = [];
+    /** @param array<string, mixed> $entry */
+    private function review(array $entry, MediaRecordScope $scope): string
+    {
+        if (($entry['reason'] ?? null) === 'duplicate_storage_identity') {
+            return 'duplicate';
+        }
+        $media = Media::query()->find((int) $entry['media_id']);
+        if (! $media instanceof Media) {
+            return 'missing';
+        }
+        if (blank($media->reference_key)) {
+            return $scope->allowsForBackfill($media, $this->purposeForEntry($entry)) ? 'missing_reference_key' : 'disallowed';
+        }
+        if (! $scope->allows($media, $this->purposeForEntry($entry))) {
+            return 'disallowed';
+        }
 
-                foreach ($owners as $owner) {
-                    try {
-                        $path = $policy->normalizePath((string) $owner->getAttribute($pathColumn));
+        return $this->ownersForEntry($entry) === [] ? 'missing' : 'eligible';
+    }
 
-                        if ($policy->purposeForPath($path) !== $role->purpose()) {
-                            throw new InvalidArgumentException('The path purpose is incompatible.');
-                        }
+    /** @param array<string, mixed> $entry */
+    private function commit(array $entry, LegacyMediaTransitionPlanner $planner, MediaRecordScope $scope): int
+    {
+        $mediaId = (int) $entry['media_id'];
+        /** @var Media|null $media */
+        $media = Media::query()->whereKey($mediaId)->lockForUpdate()->first();
+        if (! $media instanceof Media) {
+            throw new RuntimeException('The reviewed media row disappeared.');
+        }
 
-                        $paths[(int) $owner->getKey()] = $path;
-                    } catch (InvalidArgumentException) {
-                        $counts['invalid_path']++;
-                    }
+        $owners = $this->lockOwners($entry);
+        if ($owners === []) {
+            throw new RuntimeException('The reviewed owners no longer hold the reviewed path.');
+        }
+        $planner->assertEntryCurrent($entry);
+
+        if (blank($media->reference_key) || ! $scope->allows($media, $this->purposeForEntry($entry))) {
+            throw new RuntimeException('The reviewed media is no longer attachment-eligible.');
+        }
+
+        $types = collect($owners)->pluck('type')->unique()->all();
+        $ids = collect($owners)->pluck('id')->all();
+        $existing = MediaAttachment::query()
+            ->whereIn('attachable_type', $types)
+            ->whereIn('attachable_id', $ids)
+            ->lockForUpdate()
+            ->get()
+            ->keyBy(fn (MediaAttachment $attachment): string => "{$attachment->attachable_type}:{$attachment->attachable_id}:{$attachment->role->value}:{$attachment->position}");
+
+        $created = 0;
+        foreach ($owners as $owner) {
+            $key = "{$owner['type']}:{$owner['id']}:{$owner['role']->value}:0";
+            $attachment = $existing->get($key);
+            if ($attachment instanceof MediaAttachment) {
+                if ((int) $attachment->media_id !== $mediaId) {
+                    throw new RuntimeException('A matching owner role already points to another media row.');
                 }
 
-                $mediaByPath = Media::query()
-                    ->whereIn('path', array_values(array_unique($paths)))
-                    ->get()
-                    ->groupBy(fn (Media $media): string => (string) $media->path);
-                $existingByOwner = MediaAttachment::query()
-                    ->where('attachable_type', $alias)
-                    ->where('role', $role->value)
-                    ->whereIn('attachable_id', array_keys($paths))
-                    ->get()
-                    ->keyBy(fn (MediaAttachment $attachment): int => (int) $attachment->attachable_id);
+                continue;
+            }
+            // Any other role/position for this owner is a concurrent or
+            // malformed shape; do not silently add a second relationship.
+            if ($existing->contains(fn (MediaAttachment $item): bool => $item->attachable_type === $owner['type'] && (int) $item->attachable_id === $owner['id'])) {
+                throw new RuntimeException('The owner attachment shape changed before commit.');
+            }
+            MediaAttachment::query()->create([
+                'media_id' => $mediaId,
+                'attachable_type' => $owner['type'],
+                'attachable_id' => $owner['id'],
+                'role' => $owner['role']->value,
+                'position' => 0,
+            ]);
+            $created++;
+        }
 
-                foreach ($owners as $owner) {
-                    $ownerId = (int) $owner->getKey();
-                    $path = $paths[$ownerId] ?? null;
+        return $created;
+    }
 
-                    if (! is_string($path)) {
-                        continue;
-                    }
+    /** @param array<string, mixed> $entry @return array<int, array{type: string, id: int, role: MediaAttachmentRole, path: string}> */
+    private function ownersForEntry(array $entry): array
+    {
+        $path = (string) ($entry['path'] ?? '');
+        $owners = [];
+        foreach (($entry['active_references'] ?? []) as $token) {
+            if (preg_match('/^content_group:(\d+):cover$/', (string) $token, $matches) === 1) {
+                $owners[] = ['type' => 'content_group', 'id' => (int) $matches[1], 'role' => MediaAttachmentRole::Cover, 'path' => $path];
+            }
+            if (preg_match('/^content_item:(\d+):primary_image$/', (string) $token, $matches) === 1) {
+                $owners[] = ['type' => 'content_item', 'id' => (int) $matches[1], 'role' => MediaAttachmentRole::PrimaryImage, 'path' => $path];
+            }
+        }
 
-                    $matches = $mediaByPath->get($path, collect());
+        return $owners;
+    }
 
-                    if ($matches->isEmpty()) {
-                        $counts['missing']++;
+    /** @param array<string, mixed> $entry @return array<int, array{type: string, id: int, role: MediaAttachmentRole, path: string}> */
+    private function lockOwners(array $entry): array
+    {
+        $owners = $this->ownersForEntry($entry);
+        $groupIds = collect($owners)->where('type', 'content_group')->pluck('id')->all();
+        $itemIds = collect($owners)->where('type', 'content_item')->pluck('id')->all();
+        $path = (string) $entry['path'];
+        $groups = ContentGroup::query()->whereKey($groupIds)->where('cover_path', $path)->lockForUpdate()->pluck('id')->map(fn (mixed $id): int => (int) $id)->all();
+        $items = ContentItem::query()->whereKey($itemIds)->where('image_path', $path)->lockForUpdate()->pluck('id')->map(fn (mixed $id): int => (int) $id)->all();
+        if (count($groups) !== count($groupIds) || count($items) !== count($itemIds)) {
+            throw new RuntimeException('An owner path changed before attachment commit.');
+        }
 
-                        continue;
-                    }
+        return $owners;
+    }
 
-                    if ($matches->count() !== 1) {
-                        $counts['duplicate']++;
-
-                        continue;
-                    }
-
-                    /** @var Media $media */
-                    $media = $matches->first();
-
-                    if (blank($media->reference_key)) {
-                        $counts[$scope->allowsForBackfill($media, $role->purpose())
-                            ? 'missing_reference_key'
-                            : 'disallowed']++;
-
-                        continue;
-                    }
-
-                    if (! $scope->allows($media, $role->purpose())) {
-                        $counts['disallowed']++;
-
-                        continue;
-                    }
-
-                    $existing = $existingByOwner->get($ownerId);
-
-                    if ($existing instanceof MediaAttachment) {
-                        $counts[(int) $existing->media_id === (int) $media->getKey() ? 'existing' : 'conflict']++;
-
-                        continue;
-                    }
-
-                    $counts['eligible']++;
-
-                    if (! $this->option('apply')) {
-                        continue;
-                    }
-
-                    $attachment = MediaAttachment::query()->firstOrCreate(
-                        [
-                            'attachable_type' => $alias,
-                            'attachable_id' => $ownerId,
-                            'role' => $role->value,
-                        ],
-                        [
-                            'media_id' => $media->getKey(),
-                            'position' => 0,
-                        ],
-                    );
-
-                    if (! $attachment->wasRecentlyCreated && (int) $attachment->media_id !== (int) $media->getKey()) {
-                        $counts['conflict']++;
-
-                        continue;
-                    }
-
-                    $counts[$attachment->wasRecentlyCreated ? 'created' : 'existing']++;
-                }
-            });
+    /** @param array<string, mixed> $entry */
+    private function purposeForEntry(array $entry): ImageUploadPurpose
+    {
+        return ImageUploadPurpose::from((string) ($entry['purpose'] ?? throw new RuntimeException('The reviewed media has no upload purpose.')));
     }
 }

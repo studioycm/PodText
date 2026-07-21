@@ -9,9 +9,9 @@ use App\Models\ContentGroup;
 use App\Models\ContentItem;
 use App\Support\Media\MediaAttachmentIdentityResolver;
 use App\Support\Media\MediaIdentityResolver;
+use App\Support\Media\UnsafeLegacyOwnerMediaException;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Support\Facades\Storage;
-use InvalidArgumentException;
 
 class PublicDefaultImageResolver
 {
@@ -170,7 +170,7 @@ class PublicDefaultImageResolver
                 $legacyPath,
                 ImageUploadPurpose::DefaultImage,
             );
-        } catch (InvalidArgumentException $exception) {
+        } catch (UnsafeLegacyOwnerMediaException $exception) {
             report($exception);
             $path = null;
         }
@@ -253,9 +253,7 @@ class PublicDefaultImageResolver
     ): array {
         try {
             $identity = $this->attachmentIdentityResolver->resolve($owner, $role);
-        } catch (InvalidArgumentException $exception) {
-            report($exception);
-
+        } catch (UnsafeLegacyOwnerMediaException) {
             return [true, null];
         }
 

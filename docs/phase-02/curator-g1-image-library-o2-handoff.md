@@ -180,6 +180,12 @@ limits redirects and response bytes, and then uses the same content validator
 and mutation coordinator. Tests never perform live HTTP and call
 `Http::preventStrayRequests()`.
 
+The three relational G1 migrations are additive and data-free. The fourth G1
+migration is a Spatie settings-shape migration: it rewrites
+`public_content.menu_config`, `public_content.about_page`, and
+`public_content.default_images` to add nullable adjacent media reference-key
+fields; it does not populate keys or attachments.
+
 ## Schema and model changes
 
 | File | Schema effect | Rollback |
@@ -191,9 +197,11 @@ and mutation coordinator. Tests never perform live HTTP and call
 
 `App\Models\Media` extends Curator's Media model. New records receive a ULID
 inside the coordinator creation lease and cannot change it. Existing records
-are populated only by `media:backfill-reference-keys --apply`, which creates a
-completed checksum-proof journal in the same transaction. A later proof-gated
-migration may make the key non-null.
+receive a first key only through the later LMTC exact-ID/digest transition
+boundary (the `media:backfill-reference-keys` compatibility command also needs
+one `--media`, `--actor`, and `--digest`). It creates a checksum-proof journal
+in the same transaction. A later proof-gated migration may make the key
+non-null.
 
 `App\Models\MediaAttachment` uses the stable `content_group` and
 `content_item` morph aliases. One Media can be attached to multiple owners.
@@ -218,10 +226,10 @@ deterministic ordering, and no owner gallery was invented.
 | Shared typed ordered attachments with singleton current roles | Implemented | Attachment table/API/relationships and shared-owner, ordering, duplicate, cardinality tests. |
 | Settings key-first dual read, mismatch failure, and path compatibility | Implemented | Settings schema, projector, forms, public readers, exports/import analysis, mismatch tests, and cache invalidation. |
 | Portable content import/export and image ZIP manifest | Implemented | Reference-key import/export and owner-role/type/SHA manifest tests; no remote import fetch. |
-| Data-free reversible DDL and separate idempotent backfills/reports | Implemented | Four focused migrations plus three backfills, integrity report, registration, and repair commands. |
+| Reversible schema/settings migrations and separate idempotent backfills/reports | Implemented | Three relational migrations are additive and data-free. The fourth is a reversible Spatie settings migration that rewrites three payload shapes with nullable adjacent key fields. Three backfills, integrity report, registration, and repair commands remain separate. |
 | Journaled copy/verify/commit/cleanup with compensation and repair | Implemented | Failure, rollback, crash recovery, missing source, collision, retry, cleanup pending, invalid journal, foreign/stale/expired lease tests. |
 | Do not rely on Curator destructive observers | Implemented | Vendor observation is disabled for the app model; the app observer denies unleased storage mutation/delete. |
-| Registration of compatible legacy rows and references | Implemented locally; production gated | Full exact-path journaled apply is tested, documented, and not executed against real data. |
+| Registration of a rowless exact-path legacy file and its references | Implemented locally; production gated | Exact-path journaled registration creates a new Media row only when no Curator row already owns the path. The later LMTC correction closes the existing noncanonical null-key-row path with a same-ID transition. Nothing was executed against real data. |
 | Harden `DownloadExternalContentItemImage` against SSRF and reuse policy/coordinator | Implemented | DNS-pinned transport, redirect and range validation, size/content checks, retry semantics, and fixture-backed tests. |
 | Eager loading, projected payloads, batch reference checks, measured indexes, and 1/10/50 budgets | Implemented | Relationship/settings/bulk-delete query tests and SQLite `EXPLAIN QUERY PLAN` index assertions pass. |
 | Raster-only square WebP candidate at installed quality 60 without invented dimensions | Implemented as configuration foundation | Format/quality are pinned; no dimensions are registered until consumer/DPR measurement. Original/Glider fallback remains. |
@@ -554,16 +562,18 @@ registration apply, or cache mutation command was run.
 
 ## Production and deployment gates
 
-The following remain separately approved production operations:
+The following remain separately approved production operations. The later
+LMTC runbook is authoritative for exact commands and order:
 
 1. deploy the canonical two commits and verify the target release/topology;
 2. back up the database, public media, private staging/quarantine, and settings;
-3. run the four migrations;
-4. run dry reports for integrity, key/attachment/settings backfills, and legacy
-   registration;
-5. review and separately approve exact-path registration applies, including
-   environment, path, SHA-256, purpose, references, and Admin actor;
-6. execute idempotent backfills and registration during one maintenance window;
+3. run only the exact four-file migration allowlist;
+4. run transition preflight plus integrity/key/attachment/settings/registration
+   and repair dry reports;
+5. review and separately approve one exact ID/path and current manifest digest
+   per transition;
+6. execute one transition at a time, then attachment and settings backfills in
+   that order with fresh digests;
 7. verify owners, settings identities, manifests, public/admin visuals, queues,
    Glide/curations/caches, reports, and cleanup journals;
 8. separately approve any exact-operation repair, disallowed-media quarantine
@@ -580,8 +590,9 @@ sanitize, rewrite, or delete them.
 
 ## Rollback
 
-- Before production apply, roll back the additive migrations in reverse order
-  only after proving no new key/attachment/journal/settings identity is needed.
+- Before any production schema rollback, prove old-release compatibility and
+  name one exact migration under separate approval. Never use a broad or mixed
+  batch rollback; the dormant permission migration may share the batch.
 - After registration or mutation commit, preserve the journal. Restore the old
   source only from checksum-verified quarantine/backup, restore owner/settings
   compatibility identities transactionally, clear settings/public/Glide

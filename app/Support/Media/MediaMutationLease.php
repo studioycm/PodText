@@ -12,6 +12,8 @@ class MediaMutationLease
 
     private int $creationDepth = 0;
 
+    private int $referenceKeyIssuanceDepth = 0;
+
     public function allowsCreation(): bool
     {
         return $this->creationDepth > 0;
@@ -20,6 +22,22 @@ class MediaMutationLease
     public function allows(Media $media): bool
     {
         return ($this->mediaIds[(int) $media->getKey()] ?? 0) > 0;
+    }
+
+    public function allowsReferenceKeyIssuance(): bool
+    {
+        return $this->referenceKeyIssuanceDepth > 0;
+    }
+
+    public function runReferenceKeyIssuance(Closure $callback): mixed
+    {
+        $this->referenceKeyIssuanceDepth++;
+
+        try {
+            return $callback();
+        } finally {
+            $this->referenceKeyIssuanceDepth--;
+        }
     }
 
     public function run(Media|int $media, Closure $callback): mixed

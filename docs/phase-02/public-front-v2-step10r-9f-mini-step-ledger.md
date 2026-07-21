@@ -4,19 +4,23 @@ This ledger controls the post-Step-10 mini-step sequence. Each run implements ex
 
 ## Current Run
 
-- Selected ad-hoc step: CURATOR-G1 Stage 2 full app-owned image library.
-- Status: all seven minis complete locally under Laravel Simplifier audit
-  `LS-20260720-CURATOR-G1-IMAGE-LIBRARY-01`, option
-  `CURATOR-G1-O2-FULL-APP-OWNED-CURATOR-SURFACE`; implementation hash
-  `fa5b57c8dfa327cdbfd03267c94c6cd21f6a10f0`, stamped by the immediate
-  docs-only follow-up commit.
-- The complete local release includes journaled one-path legacy registration;
-  no production registration, deployment, migration, backfill, repair, cache,
-  sanitizer, export/import, or SVG operation ran. No FU04 work began.
-- Next step: FU04 order-compatibility closure is the next sequential program
-  action and remains unapproved. FU05–FU06 remain later and unapproved; nested
-  images, AUTHZ1-D–I, ARCH1, SP3D, SP4, LOG1, and MySQL rehearsal remain
-  non-current.
+- Selected ad-hoc correction: CURATOR-G1 LMTC under audit
+  `LS-20260721-CURATOR-G1-LEGACY-MEDIA-TRANSITION-CORRECTION-03`, option
+  `CURATOR-G1-LMTC-O1-IN-PLACE-JOURNALED-TRANSITION-DEFAULT-FALLBACK`.
+- Status: all five packages are implemented locally; implementation hash is
+  pending the canonical implementation commit and immediate documentation-only
+  stamp.
+- The correction adds exact-digest same-ID legacy transition, reusable SVG
+  sanitation machinery, exact-path import, ordered backfills/integrity, typed
+  owner repair/default fallback, and corrected cutover gates. It adds no schema
+  or dependency and preserves the strict G1 gallery.
+- No local development or production migration, transition, backfill, repair,
+  sanitizer apply, storage/cache/process action, deployment, export/import,
+  push, or real Media IDs 6/7 action ran.
+- After canonical closeout, FU04 remains the next unapproved main-roadmap
+  action. Actual production cutover/IDs 6/7, root-level ID disposition,
+  recovery gallery, dependency upgrades, and permission-schema cleanup remain
+  separately gated.
 
 ## Checklist
 
@@ -84,6 +88,7 @@ This ledger controls the post-Step-10 mini-step sequence. Each run implements ex
 | SIMPLIFY-REVIEW1 - Project simplification opportunities audit | optional Later; suggestions only; not started | recovered checkpoint queue | Read-only inventory of deletion, consolidation, and reuse opportunities | None | Does not block AUTHZ closure or Step 5B. Findings require separate review, bounded estimate, and approval before implementation. |
 | CURATOR-HF1 - Curator picker hydration repair | complete | `23a6ce9 fix: preserve curator picker selections on reload` | `PathCuratorPicker`; `ImageMediaCuratorTest`; CURATOR-HF1 handoff; current state; this ledger | Targeted Curator regression suite and the final sequential gate are recorded in the handoff. | Repairs double normalization during picker hydration: hydration reads raw persisted path state, while validated UUID-keyed Curator item maps survive rendering and picker actions. Registered header/logo and Display custom-default selections remain visible after remount; plain-path storage and missing-row preservation remain unchanged. SP3B's save lifecycle is untouched. |
 | CURATOR-G1 - Full app-owned Curator image library | complete locally; production cutover gated | `fa5b57c8dfa327cdbfd03267c94c6cd21f6a10f0` | App-owned Media Resource/picker/controller; centralized validation/SSRF policy; Media/attachment/journal schema and APIs; backfill/report/registration/repair commands; settings/content import-export/public resolver cutover; translations/tests/research/plan/runbooks/handoff/current state; this ledger | Focused and final gate outcomes are recorded in `docs/phase-02/curator-g1-image-library-o2-handoff.md`. | Completes all seven approved O2 minis without dependency or security-boundary drift. Registration apply is fully implemented locally but unexecuted outside isolated tests. Four migrations, production backfills/repairs/cache actions, disallowed-media disposition, SVG IDs 6/7, path retirement/non-null proof, and measured curation dimensions remain separately gated. FU04 remains the next unapproved main-roadmap action. |
+| CURATOR-G1 LMTC - Legacy media transition correction | complete locally; canonical closeout pending | pending | Transition manifest/digest and exact command; same-ID raster/reusable SVG executor; exact-path import; ordered backfills/integrity; typed owner diagnostics and repair/default UX; production-shaped and Filament/Livewire/performance tests; durable research/plan; reconciled runbooks/state/handoff; this ledger | Package 2 focused matrix: 47 tests / 354 assertions. Package 3 matrix: 55 / 396. Package 4 matrix: 93 / 956. Final repository gates are recorded in `docs/phase-02/curator-g1-legacy-media-transition-correction-handoff.md`. | Implements the approved O1 correction with no schema/dependency drift and no environment mutation. Actual IDs 6/7 sanitation, production cutover, root IDs 12-15 disposition, recovery gallery, upgrades, and permission-schema cleanup remain separately gated. FU04 is unchanged. |
 | UI-HF1 - Logo SVG normalization and adaptive favicon | complete | `9d8296f feat: normalize logo svg coordinates and add theme-adaptive favicon` | normalized light/dark public logo SVGs; retained original logo assets; adaptive public favicon; admin/public panel favicon registration; focused panel favicon test | Focused favicon test passed in the implementation session. | Compact shipped UI correction recorded without duplicating Curator or OTP status. |
 | UI-HF2 - Collapsible admin navigation groups | complete | `d128cfd feat: make admin navigation groups collapsible` | central admin navigation order; admin navigation regression test | Focused navigation regression passed in the implementation session. | Restores Filament group collapse behavior while preserving the central navigation order. |
 | Step 10R-P2 - Public listing fetch-window and lazy options | pending |  |  |  | Bound listing fetch windows, lazy filter options/form definitions, and make unconsumed aggregate subselects opt-in per surface. |

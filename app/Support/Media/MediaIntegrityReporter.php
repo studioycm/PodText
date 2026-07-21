@@ -23,6 +23,7 @@ class MediaIntegrityReporter
         private readonly MediaRecordScope $scope,
         private readonly MediaReferenceFinder $references,
         private readonly StoredMediaValidator $storedMediaValidator,
+        private readonly LegacyMediaTransitionPlanner $transitionPlanner,
     ) {}
 
     /**
@@ -37,6 +38,8 @@ class MediaIntegrityReporter
      */
     public function report(): array
     {
+        $manifest = $this->transitionPlanner->manifest();
+        $manifestById = collect($manifest->entries)->filter(fn (array $entry): bool => (int) ($entry['media_id'] ?? 0) > 0)->keyBy('media_id');
         $media = Media::query()->orderBy('id')->get();
         $mediaById = $media->keyBy(fn (Media $record): int => (int) $record->getKey());
         $attachments = $this->attachmentRows();
@@ -56,6 +59,7 @@ class MediaIntegrityReporter
                     $attachmentsByMedia->get((int) $record->getKey(), collect()),
                     $duplicateLocationKeys->has($this->locationKey((string) $record->disk, (string) $record->path)),
                     $attachmentIssueIds,
+                    $manifestById->get((int) $record->getKey()),
                 ))
                 ->all();
         } finally {
@@ -76,6 +80,7 @@ class MediaIntegrityReporter
                 ->all(),
             'settings_identity_issues' => $this->settingsIdentityIssues($media),
             'incomplete_mutations' => $this->incompleteMutations(),
+            'rowless_transition_candidates' => collect($manifest->entries)->filter(fn (array $entry): bool => (int) ($entry['media_id'] ?? 0) === 0 && in_array($entry['disposition'] ?? null, ['import_exact_path', 'detach_to_default', 'blocked'], true))->values()->all(),
         ];
 
         $report['summary'] = collect($report)
@@ -95,6 +100,7 @@ class MediaIntegrityReporter
         Collection $attachments,
         bool $duplicateLocation,
         Collection $attachmentIssueIds,
+        ?array $transitionEntry,
     ): array {
         $metadataAllowed = $this->scope->allowsForBackfill($media);
         $browseEligible = $this->scope->allows($media);
@@ -150,7 +156,12 @@ class MediaIntegrityReporter
             'legacy_references' => $legacyReferences,
             'attachment_references' => $attachmentReferences,
             'allowed' => $allowed,
+            'transition_disposition' => $transitionEntry['disposition'] ?? null,
+            'transition_reason' => $transitionEntry['reason'] ?? null,
             'recommended_disposition' => match (true) {
+                in_array($transitionEntry['disposition'] ?? null, ['key_only', 'normalize_existing', 'sanitize_svg', 'import_exact_path'], true) => $transitionEntry['disposition'],
+                ($transitionEntry['disposition'] ?? null) === 'detach_to_default' => 'detach_to_default',
+                ($transitionEntry['disposition'] ?? null) === 'blocked' => 'blocked:'.($transitionEntry['reason'] ?? 'review_required'),
                 in_array($filesystem['state'], ['unsafe_path', 'wrong_disk', 'read_error'], true) => 'manual_filesystem_review',
                 $filesystem['state'] === 'missing' => 'recover_or_detach_missing_file',
                 $pendingSvgSanitation && $metadataAllowed => 'pending_svg_sanitation',

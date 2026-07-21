@@ -55,7 +55,15 @@ class Media extends \Awcodes\Curator\Models\Media
         });
 
         static::updating(function (Media $media): void {
-            if ($media->isDirty('reference_key')) {
+            if (
+                $media->isDirty('reference_key')
+                && ! (
+                    $media->getOriginal('reference_key') === null
+                    && is_string($media->reference_key)
+                    && app(MediaMutationLease::class)->allows($media)
+                    && app(MediaMutationLease::class)->allowsReferenceKeyIssuance()
+                )
+            ) {
                 throw new LogicException('A media reference key is immutable after creation.');
             }
         });

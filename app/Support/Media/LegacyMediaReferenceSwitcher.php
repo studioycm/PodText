@@ -20,7 +20,7 @@ class LegacyMediaReferenceSwitcher
         private readonly SettingsMediaIdentityProjector $settingsProjector,
     ) {}
 
-    public function switch(LegacyMediaRegistrationPlan $plan, Media $media): void
+    public function switch(LegacyMediaRegistrationPlan $plan, Media $media, bool $inPlaceTransition = false, array $reviewedEntry = []): void
     {
         if (DB::transactionLevel() < 1) {
             throw new \LogicException('Legacy media references may only be switched inside a database transaction.');
@@ -43,7 +43,7 @@ class LegacyMediaReferenceSwitcher
             throw new RuntimeException('The legacy media owner references changed after review.');
         }
 
-        $attachments = ($groupIds !== [] || $itemIds !== []) && MediaAttachment::query()
+        $attachments = ($groupIds !== [] || $itemIds !== []) ? MediaAttachment::query()
             ->where(function ($query) use ($groupIds, $itemIds): void {
                 if ($groupIds !== []) {
                     $query->orWhere(function ($query) use ($groupIds): void {
@@ -58,10 +58,25 @@ class LegacyMediaReferenceSwitcher
                 }
             })
             ->lockForUpdate()
-            ->exists();
+            ->get()
+            : collect();
 
-        if ($attachments) {
-            throw new RuntimeException('A legacy media owner gained an attachment after review.');
+        foreach ($attachments as $attachment) {
+            $expectedRole = $attachment->attachable_type === 'content_group' ? MediaAttachmentRole::Cover->value : MediaAttachmentRole::PrimaryImage->value;
+            if ((int) $attachment->media_id !== (int) $media->getKey() || $attachment->role->value !== $expectedRole || (int) $attachment->position !== 0) {
+                throw new RuntimeException('A legacy media owner has a conflicting attachment after review.');
+            }
+        }
+        if ($reviewedEntry !== []) {
+            $expected = collect(data_get($reviewedEntry, 'review_state.attachments', []))->map(fn (array $row): array => [
+                'media_id' => (int) $row['media_id'], 'attachable_type' => $row['attachable_type'], 'attachable_id' => (int) $row['attachable_id'], 'role' => $row['role'], 'position' => (int) $row['position'],
+            ])->sort()->values()->all();
+            $actual = MediaAttachment::query()->where('media_id', $media->getKey())->lockForUpdate()->get(['media_id', 'attachable_type', 'attachable_id', 'role', 'position'])->map(fn (MediaAttachment $row): array => [
+                'media_id' => (int) $row->media_id, 'attachable_type' => $row->attachable_type, 'attachable_id' => (int) $row->attachable_id, 'role' => $row->role->value, 'position' => (int) $row->position,
+            ])->sort()->values()->all();
+            if ($expected !== $actual) {
+                throw new RuntimeException('The legacy media attachment snapshot changed after review.');
+            }
         }
 
         $properties = SettingsProperty::query()
@@ -70,32 +85,41 @@ class LegacyMediaReferenceSwitcher
             ->orderBy('name')
             ->lockForUpdate()
             ->get();
-        $fresh = $this->planner->plan($plan->sourcePath);
+        // For a new registration the source still has no Curator row and may
+        // be re-planned here. For an in-place transition the row has already
+        // moved to its verified destination before owner references are
+        // switched, so re-planning the old path would incorrectly demand a
+        // row that no longer owns it. The coordinator re-plans while the raw
+        // row is still locked immediately before that move.
+        foreach ($properties as $property) {
+            $snapshot = $plan->settingsSnapshots[(string) $property->name] ?? null;
+            if (is_array($snapshot) && ! hash_equals($snapshot['sha256'], hash('sha256', (string) $property->payload))) {
+                throw new RuntimeException('The legacy settings payload changed after review.');
+            }
+        }
 
-        if (! hash_equals($plan->fingerprint(), $fresh->fingerprint())) {
-            throw new RuntimeException('The legacy media registration plan changed after review.');
+        if (! $inPlaceTransition) {
+            $fresh = $this->planner->plan($plan->sourcePath);
+
+            if (! hash_equals($plan->fingerprint(), $fresh->fingerprint())) {
+                throw new RuntimeException('The legacy media registration plan changed after review.');
+            }
         }
 
         foreach ($groups as $group) {
-            MediaAttachment::query()->create([
-                'media_id' => $media->getKey(),
-                'attachable_type' => 'content_group',
-                'attachable_id' => $group->getKey(),
-                'role' => MediaAttachmentRole::Cover,
-                'position' => 0,
-            ]);
-            $group->forceFill(['cover_path' => $media->path])->saveQuietly();
+            MediaAttachment::query()->firstOrCreate([
+                'media_id' => $media->getKey(), 'attachable_type' => 'content_group',
+                'attachable_id' => $group->getKey(), 'role' => MediaAttachmentRole::Cover,
+            ], ['position' => 0]);
+            $group->forceFill(['cover_path' => $media->path])->save();
         }
 
         foreach ($items as $item) {
-            MediaAttachment::query()->create([
-                'media_id' => $media->getKey(),
-                'attachable_type' => 'content_item',
-                'attachable_id' => $item->getKey(),
-                'role' => MediaAttachmentRole::PrimaryImage,
-                'position' => 0,
-            ]);
-            $item->forceFill(['image_path' => $media->path])->saveQuietly();
+            MediaAttachment::query()->firstOrCreate([
+                'media_id' => $media->getKey(), 'attachable_type' => 'content_item',
+                'attachable_id' => $item->getKey(), 'role' => MediaAttachmentRole::PrimaryImage,
+            ], ['position' => 0]);
+            $item->forceFill(['image_path' => $media->path])->save();
         }
 
         if ($plan->settingsSnapshots !== []) {

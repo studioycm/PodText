@@ -2,12 +2,14 @@
 
 namespace App\Filament\Resources\ContentGroups\RelationManagers;
 
+use App\Enums\MediaAttachmentRole;
 use App\Enums\PublicationStatus;
 use App\Filament\Actions\ContentImageActions;
 use App\Filament\Actions\EditEffectiveTranscriptionAction;
 use App\Filament\Resources\ContentItems\ContentItemResource;
 use App\Filament\Resources\ContentItems\Tables\ContentItemsTable;
 use App\Models\ContentItem;
+use App\Support\Media\LegacyOwnerMediaDiagnosticProjector;
 use App\Support\PublicFront\PublicDefaultImageResolver;
 use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
@@ -47,10 +49,12 @@ class ContentItemsRelationManager extends RelationManager
                 ->with([
                     'categories',
                     'contentGroup.coverMediaAttachment.media',
+                    'contentGroup.legacyCoverMediaRows',
                     'tags',
                     'featuredTranscription.authors',
                     'latestPublishedTranscription.authors',
                     'primaryImageMediaAttachment.media',
+                    'legacyPrimaryImageMediaRows',
                 ])
                 ->withCount('transcriptions')
                 ->latest('published_at')
@@ -65,6 +69,12 @@ class ContentItemsRelationManager extends RelationManager
                     ->label(__('admin.fields.title'))
                     ->searchable()
                     ->sortable(),
+                TextColumn::make('legacy_media_warning')
+                    ->label(__('admin.labels.media'))
+                    ->state(fn (ContentItem $record): ?string => app(LegacyOwnerMediaDiagnosticProjector::class)->hasUnsafe($record, MediaAttachmentRole::PrimaryImage) ? __('admin.labels.unsafe_legacy_media') : null)
+                    ->badge()
+                    ->color('warning')
+                    ->toggleable(),
                 TextColumn::make('effective_type_label')
                     ->label(__('admin.fields.effective_type_label'))
                     ->state(fn (ContentItem $record): string => $record->effectiveTypeLabelSingular())
@@ -150,6 +160,7 @@ class ContentItemsRelationManager extends RelationManager
             ])
             ->recordUrl(fn (ContentItem $record): string => ContentItemResource::getUrl('workspace', ['record' => $record]))
             ->recordActions([
+                ContentImageActions::detachUnsafeOwnerImage(MediaAttachmentRole::PrimaryImage),
                 Action::make('openEpisodeWorkspace')
                     ->label(__('admin.actions.open_episode_workspace'))
                     ->icon(Heroicon::OutlinedPencilSquare)

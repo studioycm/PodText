@@ -2,109 +2,61 @@
 
 namespace App\Console\Commands;
 
-use App\Enums\MediaMutationOperationType;
-use App\Enums\MediaMutationStatus;
-use App\Models\Media;
-use App\Models\MediaMutationOperation;
-use App\Support\Media\StoredMediaValidator;
+use App\Models\User;
+use App\Support\Media\LegacyMediaTransitionExecutor;
+use App\Support\Media\LegacyMediaTransitionPlanner;
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
-use Throwable;
+use RuntimeException;
 
 class BackfillMediaReferenceKeys extends Command
 {
-    protected $signature = 'media:backfill-reference-keys {--apply : Persist generated reference keys}';
+    protected $signature = 'media:backfill-reference-keys
+        {--apply : Persist one proof-backed reference key}
+        {--media= : One exact Curator media ID for apply}
+        {--actor= : Admin user ID for apply}
+        {--digest= : Exact reviewed transition manifest digest for apply}';
 
-    protected $description = 'Report or idempotently populate missing Curator media reference keys.';
+    protected $description = 'Report key-only transition candidates or execute one exact-digest key-only transition.';
 
-    public function handle(StoredMediaValidator $validator): int
+    public function handle(LegacyMediaTransitionPlanner $planner, LegacyMediaTransitionExecutor $executor): int
     {
-        $counts = [
-            'eligible' => 0,
-            'updated' => 0,
-            'disallowed' => 0,
-            'pending_svg_sanitation' => 0,
-        ];
+        try {
+            $manifest = $planner->manifest();
+            $planner->assertClosed($manifest);
+            $entries = collect($manifest->entries);
+            $counts = [
+                'eligible' => $entries->where('disposition', 'key_only')->count(),
+                'transition_pending' => $entries->where('disposition', 'normalize_existing')->count(),
+                'pending_svg_sanitation' => $entries->where('disposition', 'sanitize_svg')->count(),
+                'detach_to_default' => $entries->where('disposition', 'detach_to_default')->count(),
+                'blocked' => $entries->where('disposition', 'blocked')->count(),
+            ];
+            if (! $this->option('apply')) {
+                $this->components->info('Dry run: '.collect($counts)->map(fn (int $count, string $name): string => "{$name}={$count}")->implode(', ').". Digest={$manifest->digest()}. No rows or files were changed.");
 
-        Media::query()
-            ->whereNull('reference_key')
-            ->select('id')
-            ->chunkById(100, function ($rows) use ($validator, &$counts): void {
-                foreach ($rows as $row) {
-                    DB::transaction(function () use ($row, $validator, &$counts): void {
-                        $media = Media::query()
-                            ->whereKey($row->getKey())
-                            ->whereNull('reference_key')
-                            ->lockForUpdate()
-                            ->first();
-
-                        if (! $media instanceof Media) {
-                            return;
-                        }
-
-                        if ($media->type === 'image/svg+xml') {
-                            $counts['pending_svg_sanitation']++;
-
-                            return;
-                        }
-
-                        try {
-                            $validated = $validator->validateForReferenceKeyBackfill($media);
-                        } catch (Throwable) {
-                            $counts['disallowed']++;
-
-                            return;
-                        }
-
-                        $counts['eligible']++;
-
-                        if (! $this->option('apply')) {
-                            return;
-                        }
-
-                        $referenceKey = (string) Str::ulid();
-                        $updated = Media::query()
-                            ->whereKey($media->getKey())
-                            ->whereNull('reference_key')
-                            ->update(['reference_key' => $referenceKey]);
-
-                        if ($updated !== 1) {
-                            return;
-                        }
-
-                        $now = now();
-                        MediaMutationOperation::query()->create([
-                            'operation_key' => (string) Str::ulid(),
-                            'media_id' => $media->getKey(),
-                            'media_id_snapshot' => $media->getKey(),
-                            'media_reference_key' => $referenceKey,
-                            'operation' => MediaMutationOperationType::ReferenceKeyBackfill,
-                            'status' => MediaMutationStatus::Completed,
-                            'purpose' => $validated->purpose->value,
-                            'destination_disk' => 'public',
-                            'destination_path' => $media->path,
-                            'destination_sha256' => $validated->sha256,
-                            'context' => ['proof' => 'exact_normalized_bytes'],
-                            'attempts' => 1,
-                            'started_at' => $now,
-                            'committed_at' => $now,
-                            'cleanup_completed_at' => $now,
-                            'completed_at' => $now,
-                        ]);
-                        $counts['updated']++;
-                    });
-                }
-            });
-
-        if (! $this->option('apply')) {
-            $this->components->info("Dry run: eligible={$counts['eligible']}, disallowed={$counts['disallowed']}, pending_svg_sanitation={$counts['pending_svg_sanitation']}. Re-run with --apply to persist content-proven keys.");
+                return self::SUCCESS;
+            }
+            $id = $this->option('media');
+            $actorId = $this->option('actor');
+            if (! is_string($id) || ! ctype_digit($id) || ! is_string($actorId) || ! ctype_digit($actorId) || blank($this->option('digest'))) {
+                throw new RuntimeException('Apply requires exactly one --media, --actor, and reviewed --digest.');
+            }
+            $entry = $entries->firstWhere('media_id', (int) $id);
+            if (! is_array($entry) || ! in_array($entry['disposition'] ?? null, ['key_only', 'blocked'], true)) {
+                throw new RuntimeException('The selected media is not a key-only transition candidate; run media:transition-legacy for its reviewed disposition.');
+            }
+            $actor = User::query()->find((int) $actorId);
+            if (! $actor instanceof User) {
+                throw new RuntimeException('The requested actor does not exist.');
+            }
+            $result = $executor->apply([(int) $id], (string) $this->option('digest'), $actor);
+            $this->components->info(implode(', ', $result));
 
             return self::SUCCESS;
+        } catch (\Throwable $exception) {
+            $this->components->error($exception->getMessage());
+
+            return self::FAILURE;
         }
-
-        $this->components->info("Media reference-key backfill complete: updated={$counts['updated']}, disallowed={$counts['disallowed']}, pending_svg_sanitation={$counts['pending_svg_sanitation']}.");
-
-        return self::SUCCESS;
     }
 }

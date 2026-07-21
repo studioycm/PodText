@@ -54,6 +54,11 @@ For current prompt completion/progress state, see `docs/phase-02/current-project
 ## Testing lessons
 
 - Tests must prove behavior, not only class existence or static registration.
+- Separate tests for transition states A, B, and C do not prove the combined
+  A+B+C production transition. Migration and cutover work must add a
+  production-shaped combined fixture plus an executable-disposition closure
+  gate that fails when any active reference has no reviewed transition,
+  detach, or explicit blocked outcome.
 - Livewire and Filament tests should prove actions, forms, relation managers, tables, filters, imports, and exports.
 - Public tests should prove visibility constraints, URL-backed state, sorting, filters, RTL markers where practical, and draft exclusion.
 - Browser tests are appropriate when a workflow can pass component tests while failing visibly in a real page.

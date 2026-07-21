@@ -380,13 +380,18 @@ mutating production-gated operation.
 
 ## Schema and index evidence
 
-The approved DDL is additive, data-free, and reversible:
+The approved relational DDL is additive, data-free, and reversible:
 
 - nullable unique `curator.reference_key` (`char(26)`);
 - `media_attachments` with a restrictive Media foreign key, singleton unique
   owner/type/role constraint, and reverse media/role index;
 - `media_mutation_operations` with nullable Media/user foreign keys,
   unique operation key, status/update repair index, and media/status index.
+
+The separate Spatie settings migration is not data-free: it rewrites the
+`public_content.menu_config`, `public_content.about_page`, and
+`public_content.default_images` payload shapes to add nullable adjacent media
+reference-key fields. It does not assign keys or create attachment rows.
 
 No broad browse/search index is added speculatively. Attachment and journal
 indexes correspond directly to singleton writes, reverse reference checks, and
@@ -533,8 +538,10 @@ material conflict:
   measurements, not browser DOM, heap, listener, navigation, modal, or TTFB
   claims.
 - `media:register-existing-curator-assets` is dry-run-only by default and has a
-  bounded `--apply --actor=<admin-id> --path=<one-exact-path>` mode. Apply
-  re-plans the path, purpose, SHA-256, owners, and raw settings references;
+  bounded
+  `--apply --actor=<admin-id> --path=<one-exact-path> --digest=<manifest>`
+  mode after the LMTC correction. Apply re-plans the path, purpose, SHA-256,
+  owners, and raw settings references;
   retains the source in checksum-verified private quarantine; stages normalized
   bytes privately; promotes to a generated public destination; and atomically
   creates Media/attachments plus owner/settings compatibility identities.

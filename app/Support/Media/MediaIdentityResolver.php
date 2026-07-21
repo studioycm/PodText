@@ -3,6 +3,8 @@
 namespace App\Support\Media;
 
 use App\Enums\ImageUploadPurpose;
+use App\Enums\LegacyOwnerMediaDiagnosticCode;
+use App\Enums\MediaAttachmentRole;
 use App\Models\Media;
 use Illuminate\Support\Collection;
 use InvalidArgumentException;
@@ -158,14 +160,25 @@ class MediaIdentityResolver
                 ->get();
 
         if ($matches->count() > 1) {
-            throw new InvalidArgumentException('The legacy media path matches duplicate media rows.');
+            throw new UnsafeLegacyOwnerMediaException(new LegacyOwnerMediaDiagnostic(
+                LegacyOwnerMediaDiagnosticCode::DuplicateLegacyRows,
+                'unknown', 0,
+                $purpose === ImageUploadPurpose::ContentGroupCover ? MediaAttachmentRole::Cover : MediaAttachmentRole::PrimaryImage,
+                hash('sha256', 'legacy-duplicate-path\0'.$path.'\0'.implode(',', $matches->pluck('id')->sort()->all())),
+            ), 'The legacy media path matches duplicate media rows.');
         }
 
         /** @var Media|null $media */
         $media = $matches->first();
 
         if ($media instanceof Media && ! $this->scope->allows($media, $purpose)) {
-            throw new InvalidArgumentException('The legacy media path belongs to a disallowed media row.');
+            throw new UnsafeLegacyOwnerMediaException(new LegacyOwnerMediaDiagnostic(
+                LegacyOwnerMediaDiagnosticCode::DisallowedLegacyPath,
+                'unknown',
+                0,
+                $purpose === ImageUploadPurpose::ContentGroupCover ? MediaAttachmentRole::Cover : MediaAttachmentRole::PrimaryImage,
+                hash('sha256', "legacy-path\0{$path}\0{$media->getKey()}"),
+            ), 'The legacy media path belongs to a disallowed media row.');
         }
 
         return $media;

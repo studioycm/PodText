@@ -15,6 +15,7 @@ class MediaAttachmentIdentityResolver
     public function __construct(
         private readonly MediaIdentityResolver $mediaIdentityResolver,
         private readonly MediaRecordScope $mediaRecordScope,
+        private readonly LegacyOwnerMediaDiagnostics $diagnostics,
     ) {}
 
     /**
@@ -37,15 +38,29 @@ class MediaAttachmentIdentityResolver
                 : $attachment->media()->first();
 
             if (! $media instanceof Media) {
+                $diagnostic = $this->diagnosticFor($owner, $role, $attachment);
+                if ($diagnostic !== null) {
+                    throw new UnsafeLegacyOwnerMediaException(
+                        $diagnostic,
+                        'The media attachment references a missing media record.',
+                    );
+                }
+
                 throw new InvalidArgumentException('The media attachment references a missing media record.');
             }
 
             if (! $this->mediaRecordScope->allows($media, $role->purpose())) {
-                throw new InvalidArgumentException('The attached media record is unavailable for this attachment role.');
+                throw new UnsafeLegacyOwnerMediaException(
+                    $this->diagnosticFor($owner, $role, $attachment) ?? throw new InvalidArgumentException('The attached media record is unavailable.'),
+                    'The attached media record is unavailable for this attachment role.',
+                );
             }
 
             if ($legacyPath !== $media->path) {
-                throw new InvalidArgumentException('The media attachment and legacy path disagree.');
+                throw new UnsafeLegacyOwnerMediaException(
+                    $this->diagnosticFor($owner, $role, $attachment) ?? throw new InvalidArgumentException('The media attachment and legacy path disagree.'),
+                    'The media attachment and legacy path disagree.',
+                );
             }
 
             return [
@@ -55,7 +70,31 @@ class MediaAttachmentIdentityResolver
             ];
         }
 
-        $media = $this->mediaIdentityResolver->resolve(null, $legacyPath, $role->purpose());
+        $rawRelation = $owner instanceof ContentGroup ? 'legacyCoverMediaRows' : 'legacyPrimaryImageMediaRows';
+        $media = null;
+        if ($owner->relationLoaded($rawRelation)) {
+            $rows = $owner->getRelation($rawRelation);
+            $diagnostic = $this->diagnostics->make($owner, $role, null, $rows);
+            if ($diagnostic !== null) {
+                throw new UnsafeLegacyOwnerMediaException($diagnostic);
+            }
+
+            $media = $rows->count() === 1 ? $rows->sole() : null;
+            if ($media instanceof Media) {
+                return ['has_attachment' => false, 'media' => $media, 'path' => $media->path];
+            }
+        } else {
+            try {
+                $media = $this->mediaIdentityResolver->resolve(null, $legacyPath, $role->purpose());
+            } catch (UnsafeLegacyOwnerMediaException $exception) {
+                $diagnostic = $this->diagnosticFor($owner, $role, null);
+                if ($diagnostic !== null) {
+                    throw new UnsafeLegacyOwnerMediaException($diagnostic, $exception->getMessage());
+                }
+
+                throw new InvalidArgumentException('The legacy media path belongs to an unsafe media row.');
+            }
+        }
 
         return [
             'has_attachment' => false,
@@ -76,14 +115,9 @@ class MediaAttachmentIdentityResolver
             return;
         }
 
-        [$relation, $legacyColumn] = $this->ownerContract($owners->first(), $role);
+        [$relation] = $this->ownerContract($owners->first(), $role);
         $owners->loadMissing("{$relation}.media");
-        $this->mediaIdentityResolver->primeLegacyPaths(
-            $owners
-                ->filter(fn (ContentGroup|ContentItem $owner): bool => ! ($owner->getRelation($relation) instanceof MediaAttachment))
-                ->map(fn (ContentGroup|ContentItem $owner): mixed => $owner->getAttribute($legacyColumn)),
-            $role->purpose(),
-        );
+        $owners->loadMissing($owners->first() instanceof ContentGroup ? 'legacyCoverMediaRows' : 'legacyPrimaryImageMediaRows');
     }
 
     public function referenceKey(ContentGroup|ContentItem $owner, MediaAttachmentRole $role): ?string
@@ -122,5 +156,13 @@ class MediaAttachmentIdentityResolver
             ],
             default => throw new InvalidArgumentException('The media attachment role is incompatible with this owner.'),
         };
+    }
+
+    private function diagnosticFor(ContentGroup|ContentItem $owner, MediaAttachmentRole $role, ?MediaAttachment $attachment): ?LegacyOwnerMediaDiagnostic
+    {
+        $rawRelation = $owner instanceof ContentGroup ? 'legacyCoverMediaRows' : 'legacyPrimaryImageMediaRows';
+        $rows = $owner->relationLoaded($rawRelation) ? $owner->getRelation($rawRelation) : $owner->{$rawRelation}()->get();
+
+        return $this->diagnostics->make($owner, $role, $attachment, $rows);
     }
 }

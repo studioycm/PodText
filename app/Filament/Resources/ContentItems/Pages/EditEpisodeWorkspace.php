@@ -42,6 +42,7 @@ class EditEpisodeWorkspace extends EditRecord
             $this->pendingPrimaryImageMediaReferenceKey,
             MediaAttachmentRole::PrimaryImage,
             $actor,
+            $this->pendingUnsafePrimaryImageFingerprint,
         );
         $this->getRecord()->refresh()->adoptWorkspaceTranscription();
     }
@@ -49,6 +50,7 @@ class EditEpisodeWorkspace extends EditRecord
     protected function getHeaderActions(): array
     {
         return [
+            ContentImageActions::detachUnsafeOwnerImage(MediaAttachmentRole::PrimaryImage),
             ContentImageActions::downloadExternalImage(),
             ContentImageActions::downloadExternalImage(overwrite: true),
             $this->replaceWorkspaceTranscriptionAction(),
@@ -178,6 +180,8 @@ class EditEpisodeWorkspace extends EditRecord
 
     private ?string $pendingPrimaryImageMediaReferenceKey = null;
 
+    private ?string $pendingUnsafePrimaryImageFingerprint = null;
+
     protected function mutateFormDataBeforeFill(array $data): array
     {
         $data['primary_image_media_reference_key'] = app(MediaAttachmentFormState::class)->referenceKey(
@@ -190,7 +194,7 @@ class EditEpisodeWorkspace extends EditRecord
 
     protected function mutateFormDataBeforeSave(array $data): array
     {
-        [$data, $this->pendingPrimaryImageMediaReferenceKey] = app(MediaAttachmentFormState::class)->prepare(
+        [$data, $this->pendingPrimaryImageMediaReferenceKey, $this->pendingUnsafePrimaryImageFingerprint] = app(MediaAttachmentFormState::class)->prepare(
             $data,
             'primary_image_media_reference_key',
             $this->getRecord(),

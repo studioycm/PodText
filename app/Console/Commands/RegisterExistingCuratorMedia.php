@@ -11,7 +11,8 @@ use App\Models\MediaMutationOperation;
 use App\Models\User;
 use App\Settings\PublicContentSettings;
 use App\Support\Media\LegacyMediaRegistrationPlanner;
-use App\Support\Media\MediaFilesystemMutationCoordinator;
+use App\Support\Media\LegacyMediaTransitionExecutor;
+use App\Support\Media\LegacyMediaTransitionPlanner;
 use Illuminate\Console\Command;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
@@ -24,13 +25,15 @@ class RegisterExistingCuratorMedia extends Command
     protected $signature = 'media:register-existing-curator-assets
         {--apply : Register one explicitly reviewed legacy path}
         {--actor= : Admin-or-higher user ID required for apply}
-        {--path=* : Exact normalized legacy path; apply requires exactly one}';
+        {--path=* : Exact normalized legacy path; apply requires exactly one}
+        {--digest= : Exact reviewed transition manifest digest required for apply}';
 
     protected $description = 'Report or journal-register referenced legacy public images through the app-owned media boundary.';
 
     public function handle(
         LegacyMediaRegistrationPlanner $planner,
-        MediaFilesystemMutationCoordinator $coordinator,
+        LegacyMediaTransitionPlanner $transitionPlanner,
+        LegacyMediaTransitionExecutor $executor,
     ): int {
         if (
             ! Schema::hasTable('curator')
@@ -49,7 +52,32 @@ class RegisterExistingCuratorMedia extends Command
             ->all();
 
         if ($this->option('apply')) {
-            return $this->applyRegistration($requestedPaths, $planner, $coordinator);
+            if (count($requestedPaths) !== 1) {
+                $this->components->error('Apply requires exactly one --path and the reviewed transition --digest.');
+
+                return self::FAILURE;
+            }
+            $actorId = $this->option('actor');
+            $actor = is_string($actorId) && ctype_digit($actorId) ? User::query()->find((int) $actorId) : null;
+            if (! $actor instanceof User) {
+                $this->components->error('Apply requires a valid --actor Admin-or-higher user ID.');
+
+                return self::FAILURE;
+            }
+            if (blank($this->option('digest'))) {
+                $this->components->error('Apply requires the reviewed transition --digest.');
+
+                return self::FAILURE;
+            }
+            try {
+                $this->components->info($executor->applyPath($requestedPaths[0], (string) $this->option('digest'), $actor));
+
+                return self::SUCCESS;
+            } catch (Throwable $exception) {
+                $this->components->error($exception->getMessage());
+
+                return self::FAILURE;
+            }
         }
 
         $paths = $requestedPaths !== [] ? $requestedPaths : $this->candidatePaths();
@@ -61,9 +89,11 @@ class RegisterExistingCuratorMedia extends Command
         $rows = [];
 
         foreach ($paths as $path) {
-            if (Media::query()->where('disk', 'public')->where('path', $path)->exists()) {
+            $existingRow = Media::query()->where('disk', 'public')->where('path', $path)->first();
+            if ($existingRow instanceof Media) {
                 $existing++;
-                $rows[] = [$path, '-', '-', '-', 'existing_media'];
+                $entry = collect($transitionPlanner->manifest()->entries)->firstWhere('media_id', $existingRow->getKey());
+                $rows[] = [$path, '-', '-', '-', is_array($entry) ? ($entry['disposition'] ?? 'existing_media') : 'existing_media'];
 
                 continue;
             }
@@ -115,67 +145,6 @@ class RegisterExistingCuratorMedia extends Command
         $this->components->info(
             "Dry run: {$eligible} eligible, {$existing} existing media, {$registered} already registered, {$missing} missing, {$skipped} disallowed. No rows or files were changed.",
         );
-
-        return self::SUCCESS;
-    }
-
-    /**
-     * @param  array<int, string>  $paths
-     */
-    private function applyRegistration(
-        array $paths,
-        LegacyMediaRegistrationPlanner $planner,
-        MediaFilesystemMutationCoordinator $coordinator,
-    ): int {
-        if (count($paths) !== 1) {
-            $this->components->error('Apply requires exactly one --path value reviewed in the dry-run report.');
-
-            return self::FAILURE;
-        }
-
-        $actorId = $this->option('actor');
-
-        if (! is_string($actorId) || ! ctype_digit($actorId) || (int) $actorId < 1) {
-            $this->components->error('Apply requires a valid --actor Admin-or-higher user ID.');
-
-            return self::FAILURE;
-        }
-
-        $actor = User::query()->find((int) $actorId);
-
-        if (! $actor instanceof User) {
-            $this->components->error('The registration actor does not exist.');
-
-            return self::FAILURE;
-        }
-
-        $path = $paths[0];
-        $completed = $this->completedRegistration($path);
-
-        if (
-            $completed instanceof MediaMutationOperation
-            && $this->registrationIsCurrent($completed, $path)
-        ) {
-            if ($completed->status !== MediaMutationStatus::Completed) {
-                $this->components->error("Media {$completed->media_id} is committed, but operation {$completed->operation_key} still requires media:repair-mutations.");
-
-                return self::FAILURE;
-            }
-
-            $this->components->info("Already registered as media {$completed->media_id} ({$completed->media_reference_key}).");
-
-            return self::SUCCESS;
-        }
-
-        try {
-            $media = $coordinator->registerExistingPublicAsset($planner->plan($path), $actor);
-        } catch (Throwable $exception) {
-            $this->components->error($exception->getMessage());
-
-            return self::FAILURE;
-        }
-
-        $this->components->info("Registered media {$media->getKey()} ({$media->reference_key}) at {$media->path}.");
 
         return self::SUCCESS;
     }

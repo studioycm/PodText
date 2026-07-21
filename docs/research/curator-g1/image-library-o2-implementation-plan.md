@@ -205,10 +205,11 @@ the type/role combination, reloads Media through `MediaRecordScope`, authorizes
 the actor, performs the singleton write transactionally, and dual-writes the
 legacy owner path as a compatibility mirror. It preserves old bytes and leaves
 retirement to report/proof rather than observer deletion.
-`LegacyMediaReferenceSwitcher` is the exceptional registration writer: under
-locked/fingerprinted owner and raw-settings state, it creates the reviewed
-attachments and switches compatibility identities in the same transaction as
-the new Media row.
+`LegacyMediaReferenceSwitcher` is the exceptional rowless-registration writer:
+under locked/fingerprinted owner and raw-settings state, it creates the
+reviewed attachments and switches compatibility identities in the same
+transaction as the new Media row. It does not transition a path already owned
+by an existing Curator row.
 
 ## Authorization enforcement points
 
@@ -318,7 +319,12 @@ lease in a short transaction, then deletes the public source, invalidates
 caches, and marks complete. Quarantine is retained for separately approved
 recovery/retention handling. Attached/referenced/disallowed rows are denied.
 
-### Existing legacy-path registration
+### Rowless exact-path legacy registration
+
+This flow applies only when no Curator row already owns the reviewed source
+path. An existing null-key Curator row whose valid bytes require normalization
+is not compatible with this flow; its transition belongs to the later approved
+LMTC correction.
 
 1. The command is dry-run-only by default. Apply requires one exact normalized
    `--path` and one existing Admin-or-higher `--actor` ID.
@@ -521,7 +527,7 @@ Front Check steps, and final Git status.
 | Bounded gallery/picker payloads | Resource and picker tests |
 | Forged Livewire/action inputs | `AppOwnedMediaPickerTest` / `AppOwnedMediaResourceTest` |
 | Full ability matrix and mixed bulk denial | policy/Resource/picker tests |
-| Immutable key and data-free migration | identity tests |
+| Immutable key and data-free relational migrations | identity tests |
 | Shared attachment/singleton/order/duplicate | attachment tests |
 | Backfill idempotence/orphan/duplicate report | backfill/report tests |
 | Stored-byte normalization and checksum-backed key issuance | backfill/report and coordinator tests |
@@ -642,16 +648,19 @@ the actual classes and schema. Additional implemented outcomes are:
   remains unchanged, and source-wide regressions keep every Filament
   RichEditor/MarkdownEditor attachment surface disabled;
 - `media:register-existing-curator-assets` is dry-run-only by default and has a
-  one-exact-path/Admin-actor apply mode. Its registration planner, private
-  quarantine/staging, generated destination, checksum journal, locked
-  owner/settings switch, cache-before-source cleanup, and idempotent completed
-  state implement the full local conversion path. Only executing it against
-  staging/production remains separately approval-gated.
+  one-exact-path/Admin-actor apply mode. For a rowless exact path, its
+  registration planner, private quarantine/staging, generated destination,
+  checksum journal, locked owner/settings switch, cache-before-source cleanup,
+  and idempotent completed state implement that rowless conversion path. It
+  does not implement conversion of a path already owned by a Curator row.
+  Production execution remains separately approval-gated.
 - `StoredMediaValidator` and `reference_key_backfill` proof operations prevent
   a metadata-only or fresh lossy re-encode guess from minting/retaining a
   trusted key. Null-key legacy raster is eligible only when already canonical;
-  otherwise it uses the registration flow. Existing SVG is always deferred to
-  the exact IDs 6/7 runbook.
+  an existing-row noncanonical raster was not supported by O2 registration.
+  The LMTC correction now implements the same-ID journaled transition and a
+  reusable SVG sanitation mechanism. Applying either to real data, including
+  exact IDs 6/7, remains separately environment-approved.
 - `MediaMutationFence` is separate from the observer lease. It owns database
   identity locks, open-operation exclusion, commit state/token checks, cleanup
   ownership, and terminal repair-token rechecks.

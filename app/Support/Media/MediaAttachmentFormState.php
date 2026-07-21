@@ -20,12 +20,16 @@ class MediaAttachmentFormState
 
     public function referenceKey(ContentGroup|ContentItem $owner, MediaAttachmentRole $role): ?string
     {
-        return $this->identityResolver->referenceKey($owner, $role);
+        try {
+            return $this->identityResolver->referenceKey($owner, $role);
+        } catch (UnsafeLegacyOwnerMediaException) {
+            return null;
+        }
     }
 
     /**
      * @param  array<string, mixed>  $data
-     * @return array{array<string, mixed>, string|null}
+     * @return array{array<string, mixed>, string|null, string|null}
      */
     public function prepare(
         array $data,
@@ -44,7 +48,11 @@ class MediaAttachmentFormState
             : ($role === MediaAttachmentRole::Cover ? 'cover_path' : 'image_path');
 
         if ($owner !== null) {
-            $this->identityResolver->resolve($owner, $role);
+            try {
+                $this->identityResolver->resolve($owner, $role);
+            } catch (UnsafeLegacyOwnerMediaException) {
+                // An unrelated form save must leave the unsafe legacy identity intact.
+            }
         }
 
         if ($referenceKey === null) {
@@ -54,7 +62,7 @@ class MediaAttachmentFormState
                 $data[$legacyColumn] = null;
             }
 
-            return [$data, null];
+            return [$data, null, $owner !== null ? $this->diagnostic($owner, $role)?->fingerprint : null];
         }
 
         $media = $this->mediaRecordScope->findByReferenceKey($referenceKey, $role->purpose());
@@ -65,9 +73,11 @@ class MediaAttachmentFormState
             ]);
         }
 
-        $data[$legacyColumn] = $media->path;
+        $fingerprint = $owner !== null ? $this->diagnostic($owner, $role)?->fingerprint : null;
+        // The repairer, not the ordinary record save, changes an unsafe path.
+        $data[$legacyColumn] = $fingerprint !== null && $owner !== null ? $owner->getAttribute($legacyColumn) : $media->path;
 
-        return [$data, $media->reference_key];
+        return [$data, $media->reference_key, $fingerprint];
     }
 
     public function persist(
@@ -75,16 +85,53 @@ class MediaAttachmentFormState
         ?string $referenceKey,
         MediaAttachmentRole $role,
         User $actor,
+        ?string $unsafeFingerprint = null,
     ): void {
         if (filled($referenceKey)) {
+            if ($unsafeFingerprint !== null) {
+                app(LegacyOwnerMediaRepairer::class)->replace($owner, $role, $referenceKey, $unsafeFingerprint, $actor);
+
+                return;
+            }
+            try {
+                $this->identityResolver->resolve($owner, $role);
+            } catch (UnsafeLegacyOwnerMediaException) {
+                $field = $role === MediaAttachmentRole::Cover
+                    ? 'cover_media_reference_key'
+                    : 'primary_image_media_reference_key';
+
+                throw ValidationException::withMessages([
+                    $field => __('admin.validation.media_reference_key'),
+                ]);
+            }
             $this->attachmentManager->attachByReferenceKey($owner, $referenceKey, $role, $actor);
 
+            return;
+        }
+
+        if ($unsafeFingerprint !== null) {
             return;
         }
 
         if ($this->attachment($owner, $role) instanceof MediaAttachment) {
             $this->attachmentManager->detach($owner, $role, $actor);
         }
+    }
+
+    public function diagnostic(ContentGroup|ContentItem $owner, MediaAttachmentRole $role): ?LegacyOwnerMediaDiagnostic
+    {
+        try {
+            $this->identityResolver->resolve($owner, $role);
+        } catch (UnsafeLegacyOwnerMediaException $exception) {
+            return $exception->diagnostic;
+        }
+
+        return null;
+    }
+
+    public function detachUnsafe(ContentGroup|ContentItem $owner, MediaAttachmentRole $role, string $fingerprint, User $actor): void
+    {
+        app(LegacyOwnerMediaRepairer::class)->detach($owner, $role, $fingerprint, $actor);
     }
 
     private function attachment(ContentGroup|ContentItem $owner, MediaAttachmentRole $role): ?MediaAttachment

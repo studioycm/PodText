@@ -15,6 +15,7 @@ use App\Settings\AdminUxSettings;
 use App\Support\Media\ImageFileNamer;
 use App\Support\Media\MediaAttachmentFormState;
 use Filament\Actions\Action;
+use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Select;
 use Filament\Notifications\Notification;
 use Filament\Support\Icons\Heroicon;
@@ -109,18 +110,23 @@ class ContentImageActions
             ->modalSubmitActionLabel(__('admin.actions.save'))
             ->fillForm(fn (ContentGroup|ContentItem $record): array => [
                 $field => app(MediaAttachmentFormState::class)->referenceKey($record, $role),
+                'legacy_media_repair_fingerprint' => app(MediaAttachmentFormState::class)->diagnostic($record, $role)?->fingerprint,
             ])
             ->schema([
+                Hidden::make('legacy_media_repair_fingerprint'),
                 MediaPickerField::make($field, $family)
                     ->label($label)
-                    ->helperText($helper)
+                    ->helperText(fn (ContentGroup|ContentItem $record): string => app(MediaAttachmentFormState::class)->diagnostic($record, $role) !== null
+                        ? __('admin.helpers.unsafe_legacy_media_repair')
+                        : $helper)
                     ->columnSpanFull(),
             ])
             ->action(function (ContentGroup|ContentItem $record, array $data) use ($field, $role, $successTitle): void {
                 $actor = auth()->user();
                 abort_unless($actor instanceof User, 403);
                 $referenceKey = is_string($data[$field] ?? null) ? $data[$field] : null;
-                app(MediaAttachmentFormState::class)->persist($record, $referenceKey, $role, $actor);
+                $fingerprint = is_string($data['legacy_media_repair_fingerprint'] ?? null) ? $data['legacy_media_repair_fingerprint'] : null;
+                app(MediaAttachmentFormState::class)->persist($record, $referenceKey, $role, $actor, $fingerprint);
 
                 Notification::make()
                     ->success()
@@ -129,6 +135,27 @@ class ContentImageActions
             });
 
         return self::applyConfiguredContainer($action);
+    }
+
+    public static function detachUnsafeOwnerImage(MediaAttachmentRole $role): Action
+    {
+        return Action::make($role === MediaAttachmentRole::Cover ? 'detachUnsafeCoverToDefault' : 'detachUnsafePrimaryImageToDefault')
+            ->label(__('admin.actions.detach_unsafe_media_to_default'))
+            ->color('warning')
+            ->requiresConfirmation()
+            ->fillForm(fn (ContentGroup|ContentItem $record): array => [
+                'legacy_media_repair_fingerprint' => app(MediaAttachmentFormState::class)->diagnostic($record, $role)?->fingerprint,
+            ])
+            ->schema([Hidden::make('legacy_media_repair_fingerprint')])
+            ->visible(fn (ContentGroup|ContentItem $record): bool => app(MediaAttachmentFormState::class)->diagnostic($record, $role) !== null)
+            ->action(function (ContentGroup|ContentItem $record, array $data) use ($role): void {
+                $actor = auth()->user();
+                abort_unless($actor instanceof User, 403);
+                $fingerprint = $data['legacy_media_repair_fingerprint'] ?? null;
+                abort_unless(is_string($fingerprint) && filled($fingerprint), 409);
+                app(MediaAttachmentFormState::class)->detachUnsafe($record, $role, $fingerprint, $actor);
+                Notification::make()->success()->title(__('admin.notifications.unsafe_media_detached_to_default'))->send();
+            });
     }
 
     private static function exportContentImagesAction(string $name, ?\Closure $contentGroupId): Action

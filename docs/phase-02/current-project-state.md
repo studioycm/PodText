@@ -234,6 +234,18 @@ Recorded after the Markdown-only post-Prompt-10 prompt-progress centralization c
   disposition, SVG IDs 6/7, legacy-path retirement/non-null proof, and measured
   curation dimensions remain separately approval-gated and were not executed.
   Handoff: `docs/phase-02/curator-g1-image-library-o2-handoff.md`.
+- CURATOR-G1 LMTC closes the existing-row transition gap locally under audit
+  `LS-20260721-CURATOR-G1-LEGACY-MEDIA-TRANSITION-CORRECTION-03`, option
+  `CURATOR-G1-LMTC-O1-IN-PLACE-JOURNALED-TRANSITION-DEFAULT-FALLBACK`.
+  It adds a deterministic schema-aware manifest/digest, exact one-ID/path
+  same-ID raster and reusable SVG transition, exact-path rowless import,
+  ordered backfill/integrity classifications, typed owner diagnostics, safe
+  ContentGroup/ContentItem replacement or detach-to-default, and strict
+  production cutover instructions. It adds no schema or dependency and does
+  not weaken the app-owned gallery. Local development/production migrations,
+  transitions, backfills, repairs, sanitation, cache/process actions, and real
+  IDs 6/7 remain unexecuted. Handoff:
+  `docs/phase-02/curator-g1-legacy-media-transition-correction-handoff.md`.
 
 ## Prompt Progress
 
@@ -329,7 +341,8 @@ Recorded after the Markdown-only post-Prompt-10 prompt-progress centralization c
 | SP3 browser acceptance evidence | Conditional Later evidence; not a feature blocker | Report 07 and recovered checkpoint queue | Authenticated in-app, serial browser, and external Playwright evidence remain due only when settings performance work or touched UX needs measured acceptance. SP3D is not a prerequisite. |
 | SIMPLIFY-REVIEW1 - Project simplification opportunities audit | Optional Later; suggestions only; not started | Recovered checkpoint queue | Read-only inventory of possible deletion, consolidation, and reuse. It does not block AUTHZ closure or Step 5B, and no finding authorizes implementation without separate review, estimate, and approval. |
 | CURATOR-HF1 - Curator picker hydration repair | Complete | `23a6ce9 fix: preserve curator picker selections on reload`; `docs/phase-02/curator-picker-hydration-hf1-handoff.md` | Repairs `PathCuratorPicker` raw-state hydration and UUID-keyed state handling so registered Menu/Header logos and Display default images remain visibly selected after reload. The storage contract, legacy-path preservation, and SP3B lifecycle remain unchanged. |
-| CURATOR-G1 - Full app-owned Curator image library | Complete locally; production cutover gated | Canonical implementation hash is recorded in `docs/phase-02/curator-g1-image-library-o2-handoff.md` and the mini-step ledger | Completes all seven O2 minis: positive validation, app Resource/picker, explicit abilities, immutable journal-backed keys, shared typed attachments, compatibility/settings/import-export cutover, full legacy registration, fenced mutations/repair, SSRF controls, query budgets, translations, and runbooks. Four additive/reversible migrations are prepared but were not applied to the local development database or production. |
+| CURATOR-G1 - Full app-owned Curator image library | Complete locally; production cutover gated | Canonical implementation hash is recorded in `docs/phase-02/curator-g1-image-library-o2-handoff.md` and the mini-step ledger | Completes all seven O2 minis: positive validation, app Resource/picker, explicit abilities, immutable journal-backed keys, shared typed attachments, compatibility/settings/import-export cutover, rowless legacy registration, fenced mutations/repair, SSRF controls, query budgets, translations, and runbooks. Three additive data-free relational migrations and one reversible settings-shape migration are prepared but were not applied to the local development database or production. |
+| CURATOR-G1 LMTC - Legacy media transition correction | Complete locally; canonical closeout pending | `docs/phase-02/curator-g1-legacy-media-transition-correction-handoff.md`; implementation hash pending | Closes the existing noncanonical null-key row gap with exact-digest same-ID raster/SVG transition, rowless fixed-root import, ordered backfills/integrity, production-shaped closure tests, and safe owner repair/default fallback. No schema/dependency change or real environment mutation; IDs 6/7, production cutover, root-level dispositions, recovery gallery, dependency upgrades, and empty permission-schema cleanup remain separately gated. |
 | Prompt 13 dashboard metrics | Not started / blocked unless explicitly chosen by user | Active prompt/blueprint | Owns editorial dashboard widgets after Public Front v2 Step 12 readiness or an explicit dashboard-first decision. |
 | Prompt 14 viewer/studio future plan | Future planning after Prompt 13 | Active prompt/blueprint | Documentation/planning only. |
 | Prompt 15 Filament Blueprint security audit | Audit after Prompt 14 | Active prompt/blueprint | Audit-only unless fixes are explicitly approved. |
@@ -388,7 +401,7 @@ Recorded after the Markdown-only post-Prompt-10 prompt-progress centralization c
 
 ## Tooling State
 
-- Laravel: 13.18.0.
+- Laravel: 13.19.0.
 - PHP: 8.4.22 from `php artisan about`; Laravel Boost reports PHP 8.4.
 - Filament: 5.6.7.
 - Livewire: 4.3.3.

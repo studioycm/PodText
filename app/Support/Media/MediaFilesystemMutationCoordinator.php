@@ -118,6 +118,7 @@ class MediaFilesystemMutationCoordinator
     public function registerExistingPublicAsset(
         LegacyMediaRegistrationPlan $plan,
         User $actor,
+        ?string $reviewedManifestDigest = null,
     ): Media {
         Gate::forUser($actor)->authorize('create', $this->mediaModel());
         $fresh = $this->registrationPlanner->plan($plan->sourcePath);
@@ -160,6 +161,7 @@ class MediaFilesystemMutationCoordinator
                 'source_directory' => dirname($plan->sourcePath),
                 'source_name' => pathinfo($plan->sourcePath, PATHINFO_FILENAME),
                 'source_last_modified' => $this->lastModified('public', $plan->sourcePath),
+                'reviewed_manifest_digest' => $reviewedManifestDigest,
             ],
             'attempts' => 1,
             'lease_token' => (string) Str::ulid(),
@@ -231,6 +233,97 @@ class MediaFilesystemMutationCoordinator
     public function rename(Media $media, User $actor): Media
     {
         return $this->mutateExisting($media, $actor, MediaMutationOperationType::Rename);
+    }
+
+    /**
+     * Transition one reviewed, currently unscoped Curator row in-place.
+     * Filesystem handling intentionally uses the same fenced journal and
+     * compensation/repair machinery as normal mutations.
+     */
+    public function transitionLegacyExisting(
+        LegacyMediaRegistrationPlan $reviewedPlan,
+        array $reviewedEntry,
+        User $actor,
+    ): Media {
+        $mediaId = $reviewedPlan->existingMediaId
+            ?? throw new RuntimeException('The reviewed transition plan does not name an existing Curator row.');
+        $current = Media::query()->findOrFail($mediaId);
+        $identity = ['disk' => (string) $current->disk, 'path' => (string) $current->path, 'reference_key' => $current->reference_key];
+
+        if (filled($identity['reference_key'])) {
+            throw new RuntimeException('The legacy media row is already trusted.');
+        }
+
+        $operationKey = (string) Str::ulid();
+        $stagingPath = "media-staging/{$operationKey}/normalized.{$reviewedPlan->validatedImage->extension}";
+        $quarantinePath = "media-quarantine/{$operationKey}/".basename($reviewedPlan->sourcePath);
+        $operation = $this->fence->beginLegacyTransition($mediaId, $identity, $actor, [
+            'operation_key' => $operationKey,
+            'operation' => MediaMutationOperationType::LegacyTransition,
+            'status' => MediaMutationStatus::Staged,
+            'purpose' => $reviewedPlan->purpose->value,
+            'idempotency_key' => hash('sha256', "legacy-transition\0{$mediaId}\0{$reviewedPlan->sourceSha256}"),
+            'source_disk' => 'public', 'source_path' => $reviewedPlan->sourcePath, 'source_sha256' => $reviewedPlan->sourceSha256,
+            'destination_disk' => 'public', 'destination_sha256' => $reviewedPlan->validatedImage->sha256,
+            'staging_disk' => 'local', 'staging_path' => $stagingPath, 'staging_sha256' => $reviewedPlan->validatedImage->sha256,
+            'quarantine_disk' => 'local', 'quarantine_path' => $quarantinePath, 'quarantine_sha256' => $reviewedPlan->sourceSha256,
+            'context' => array_merge(['plan_fingerprint' => $reviewedPlan->fingerprint(), 'legacy_transition' => true], $this->sourceContext($current)),
+            'attempts' => 1, 'lease_token' => (string) Str::ulid(), 'lease_expires_at' => now()->addMinutes(5), 'started_at' => now(),
+        ]);
+        $committed = false;
+
+        try {
+            $freshPlan = $this->registrationPlanner->plan($reviewedPlan->sourcePath, expectedExistingMediaId: $mediaId);
+            if (! hash_equals($reviewedPlan->fingerprint(), $freshPlan->fingerprint()) || $freshPlan->existingMediaId !== $mediaId) {
+                throw new RuntimeException('The reviewed legacy transition plan changed before staging.');
+            }
+            $this->putVerified('local', $quarantinePath, $freshPlan->sourceContents, $freshPlan->sourceSha256);
+            $this->putVerified('local', $stagingPath, $freshPlan->validatedImage->contents, $freshPlan->validatedImage->sha256);
+            $destinationPath = $this->allocateDestination($freshPlan->purpose, $freshPlan->validatedImage->mimeType);
+            $this->fence->updateStaged($operation, ['destination_path' => $destinationPath]);
+            $this->putVerified('public', $destinationPath, Storage::disk('local')->get($stagingPath), $freshPlan->validatedImage->sha256, 'public');
+            $this->fence->markCopied($operation);
+
+            $updated = DB::transaction(function () use ($mediaId, $identity, $actor, $freshPlan, $reviewedEntry, $destinationPath, $operation): Media {
+                $locked = Media::query()->whereKey($mediaId)->lockForUpdate()->firstOrFail();
+                $lockedOperation = $this->fence->lockForCommit($operation);
+                Gate::forUser($actor)->authorize('transitionLegacy', $locked);
+                if ($locked->disk !== $identity['disk'] || $locked->path !== $identity['path'] || $locked->reference_key !== null) {
+                    throw new RuntimeException('The legacy media row changed before commit.');
+                }
+                app(LegacyMediaTransitionPlanner::class)->assertEntryCurrent($reviewedEntry, ignoreOwnOpenJournal: true);
+                $replanned = $this->registrationPlanner->plan($freshPlan->sourcePath, expectedExistingMediaId: $mediaId);
+                if (! hash_equals($freshPlan->fingerprint(), $replanned->fingerprint()) || $replanned->existingMediaId !== $mediaId) {
+                    throw new RuntimeException('The legacy media owner or settings references changed before commit.');
+                }
+                $key = (string) Str::ulid();
+                $this->lease->run($locked, function () use ($locked, $freshPlan, $destinationPath, $key): void {
+                    $this->lease->runReferenceKeyIssuance(function () use ($locked, $freshPlan, $destinationPath, $key): void {
+                        $locked->forceFill([
+                            'reference_key' => $key, 'disk' => 'public', 'directory' => $freshPlan->purpose->root(),
+                            'visibility' => 'public', 'name' => pathinfo($destinationPath, PATHINFO_FILENAME), 'path' => $destinationPath,
+                            'width' => $freshPlan->validatedImage->width, 'height' => $freshPlan->validatedImage->height,
+                            'size' => $freshPlan->validatedImage->size, 'type' => $freshPlan->validatedImage->mimeType,
+                            'ext' => $freshPlan->validatedImage->extension, 'curations' => null,
+                        ])->save();
+                    });
+                });
+                $this->registrationSwitcher->switch($replanned, $locked, inPlaceTransition: true, reviewedEntry: $reviewedEntry);
+                $lockedOperation->update(['media_reference_key' => $key, 'status' => MediaMutationStatus::Committed, 'committed_at' => now()]);
+
+                return $locked->refresh();
+            });
+            $committed = true;
+        } catch (Throwable $exception) {
+            if (! $committed) {
+                $this->compensateUncommitted($operation, $exception);
+            }
+            throw $exception;
+        }
+
+        $this->completeCommittedCleanup($operation);
+
+        return $updated;
     }
 
     public function swap(
@@ -661,7 +754,7 @@ class MediaFilesystemMutationCoordinator
             $this->assertOperationShape($operation);
             $this->assertCommittedState($operation);
 
-            if (in_array($operation->operation, [MediaMutationOperationType::Rename, MediaMutationOperationType::Swap, MediaMutationOperationType::Delete, MediaMutationOperationType::Registration], true)) {
+            if (in_array($operation->operation, [MediaMutationOperationType::Rename, MediaMutationOperationType::Swap, MediaMutationOperationType::Delete, MediaMutationOperationType::Registration, MediaMutationOperationType::LegacyTransition], true)) {
                 $context = is_array($operation->context) ? $operation->context : [];
 
                 if (! (bool) ($context['source_missing'] ?? false)) {
@@ -674,11 +767,11 @@ class MediaFilesystemMutationCoordinator
                 }
             }
 
-            if ($operation->operation === MediaMutationOperationType::Registration) {
+            if (in_array($operation->operation, [MediaMutationOperationType::Registration, MediaMutationOperationType::LegacyTransition], true)) {
                 $this->forgetRegistrationSettingsCaches();
             }
 
-            if (in_array($operation->operation, [MediaMutationOperationType::Rename, MediaMutationOperationType::Swap, MediaMutationOperationType::Delete, MediaMutationOperationType::Registration], true)) {
+            if (in_array($operation->operation, [MediaMutationOperationType::Rename, MediaMutationOperationType::Swap, MediaMutationOperationType::Delete, MediaMutationOperationType::Registration, MediaMutationOperationType::LegacyTransition], true)) {
                 $this->cleanupCommittedSource($operation);
             }
 
@@ -907,7 +1000,7 @@ class MediaFilesystemMutationCoordinator
         $path = (string) $operation->source_path;
 
         if (
-            $operation->operation === MediaMutationOperationType::Registration
+            in_array($operation->operation, [MediaMutationOperationType::Registration, MediaMutationOperationType::LegacyTransition], true)
             && $this->references->referencesForPath($path) !== []
         ) {
             throw new RuntimeException('The registered legacy source still has application references.');
@@ -1282,7 +1375,7 @@ class MediaFilesystemMutationCoordinator
         ], true)
             ? match ($operationType) {
                 MediaMutationOperationType::Delete => ['source_path', 'quarantine_path'],
-                MediaMutationOperationType::Rename, MediaMutationOperationType::Swap, MediaMutationOperationType::Registration => [
+                MediaMutationOperationType::Rename, MediaMutationOperationType::Swap, MediaMutationOperationType::Registration, MediaMutationOperationType::LegacyTransition => [
                     'source_path',
                     'destination_path',
                     'staging_path',

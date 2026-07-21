@@ -8,8 +8,10 @@ use App\Models\ContentGroup;
 use App\Models\Media;
 use App\Models\MediaAttachment;
 use App\Models\MediaMutationOperation;
+use App\Models\User;
 use App\Settings\PublicContentSettings;
 use App\Support\Media\ImageUploadValidator;
+use App\Support\Media\LegacyMediaTransitionPlanner;
 use App\Support\Media\MediaIntegrityReporter;
 use App\Support\PublicFront\PublicFrontConfigRegistry;
 use App\Support\SettingsLifecycle\PublicSettingsPackage;
@@ -47,6 +49,11 @@ function saveCuratorG1Setting(string $name, array $payload): void
 
     app()->forgetInstance(PublicContentSettings::class);
     app(SettingsContainer::class)->clearCache();
+}
+
+function mediaTransitionDigest(): string
+{
+    return app(LegacyMediaTransitionPlanner::class)->manifest()->digest();
 }
 
 it('treats settings media reference keys and legacy paths as atomic selection pairs', function (): void {
@@ -88,14 +95,15 @@ it('backfills media reference keys and owner attachments idempotently outside sc
     $group = ContentGroup::factory()->create(['cover_path' => $media->path]);
 
     $this->artisan('media:backfill-reference-keys')
-        ->expectsOutputToContain('eligible=1, disallowed=0')
+        ->expectsOutputToContain('eligible=1')
         ->assertSuccessful();
     expect(Media::query()->findOrFail($media->getKey())->reference_key)->toBeNull();
     expect(collect(app(MediaIntegrityReporter::class)->report()['media'])
-        ->firstWhere('media_id', $media->getKey())['recommended_disposition'])->toBe('backfill_reference_key');
+        ->firstWhere('media_id', $media->getKey())['recommended_disposition'])->toBe('key_only');
 
-    $this->artisan('media:backfill-reference-keys', ['--apply' => true])
-        ->expectsOutputToContain('updated=1, disallowed=0')
+    $actor = User::factory()->admin()->create();
+    $this->artisan('media:backfill-reference-keys', ['--apply' => true, '--media' => (string) $media->getKey(), '--actor' => (string) $actor->getKey(), '--digest' => mediaTransitionDigest()])
+        ->expectsOutputToContain('key_only_completed')
         ->assertSuccessful();
     $referenceKey = Media::query()->findOrFail($media->getKey())->reference_key;
     $proof = MediaMutationOperation::query()->sole();
@@ -104,8 +112,8 @@ it('backfills media reference keys and owner attachments idempotently outside sc
         ->and($proof->status)->toBe(MediaMutationStatus::Completed)
         ->and($proof->destination_sha256)->toBe(hash('sha256', $contents));
 
-    $this->artisan('media:backfill-reference-keys', ['--apply' => true])
-        ->expectsOutputToContain('updated=0, disallowed=0')
+    $this->artisan('media:backfill-reference-keys', ['--apply' => true, '--media' => (string) $media->getKey(), '--actor' => (string) $actor->getKey(), '--digest' => mediaTransitionDigest()])
+        ->expectsOutputToContain('already_transitioned')
         ->assertSuccessful();
     expect(Media::query()->findOrFail($media->getKey())->reference_key)->toBe($referenceKey);
     expect(MediaMutationOperation::query()->count())->toBe(1);
@@ -115,10 +123,10 @@ it('backfills media reference keys and owner attachments idempotently outside sc
         ->assertSuccessful();
     expect(MediaAttachment::query()->count())->toBe(0);
 
-    $this->artisan('media:backfill-attachments', ['--apply' => true])
+    $this->artisan('media:backfill-attachments', ['--apply' => true, '--digest' => mediaTransitionDigest()])
         ->expectsOutputToContain('created=1')
         ->assertSuccessful();
-    $this->artisan('media:backfill-attachments', ['--apply' => true])
+    $this->artisan('media:backfill-attachments', ['--apply' => true, '--digest' => mediaTransitionDigest()])
         ->expectsOutputToContain('existing=1')
         ->assertSuccessful();
 
@@ -153,7 +161,7 @@ it('keeps invalid bytes and existing svg rows unkeyed and explicitly reportable'
     DB::table('curator')->where('id', $nonCanonical->getKey())->update(['reference_key' => null]);
     Storage::disk('public')->put($nonCanonical->path, $nonCanonicalBytes, 'public');
 
-    $svgRows = collect([6, 7])->map(function (int $id): Media {
+    $svgRows = collect([601, 602])->map(function (int $id): Media {
         $contents = "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 10 10\"><path d=\"M0 0h10v10z\" /></svg>\n";
         $name = "legacy-header-{$id}";
         $media = Media::factory()->create([
@@ -176,16 +184,16 @@ it('keeps invalid bytes and existing svg rows unkeyed and explicitly reportable'
         $media->getKey() => hash('sha256', Storage::disk('public')->get($media->path)),
     ]);
 
-    $this->artisan('media:backfill-reference-keys', ['--apply' => true])
-        ->expectsOutputToContain('updated=0, disallowed=2, pending_svg_sanitation=2')
+    $this->artisan('media:backfill-reference-keys')
+        ->expectsOutputToContain('transition_pending=1')
         ->assertSuccessful();
 
-    expect(Media::query()->whereIn('id', [$invalid->getKey(), $nonCanonical->getKey(), 6, 7])->whereNull('reference_key')->count())->toBe(4);
+    expect(Media::query()->whereIn('id', [$invalid->getKey(), $nonCanonical->getKey(), 601, 602])->whereNull('reference_key')->count())->toBe(4);
     $report = collect(app(MediaIntegrityReporter::class)->report()['media'])->keyBy('media_id');
-    expect($report[$invalid->getKey()]['recommended_disposition'])->toBe('review_and_quarantine')
-        ->and($report[$nonCanonical->getKey()]['recommended_disposition'])->toBe('review_and_quarantine')
-        ->and($report[6]['recommended_disposition'])->toBe('pending_svg_sanitation')
-        ->and($report[7]['recommended_disposition'])->toBe('pending_svg_sanitation');
+    expect($report[$invalid->getKey()]['recommended_disposition'])->toStartWith('blocked:')
+        ->and($report[$nonCanonical->getKey()]['recommended_disposition'])->toBe('normalize_existing')
+        ->and($report[601]['recommended_disposition'])->toBe('sanitize_svg')
+        ->and($report[602]['recommended_disposition'])->toBe('sanitize_svg');
 
     foreach ($svgRows as $media) {
         expect(hash('sha256', Storage::disk('public')->get($media->path)))->toBe($checksums[$media->getKey()]);
@@ -212,7 +220,7 @@ it('refuses ambiguous disallowed and conflicting attachment backfill candidates'
         'position' => 0,
     ]);
 
-    $this->artisan('media:backfill-attachments', ['--apply' => true])
+    $this->artisan('media:backfill-attachments', ['--apply' => true, '--digest' => mediaTransitionDigest()])
         ->expectsOutputToContain('duplicate=2')
         ->assertSuccessful();
 
@@ -240,13 +248,13 @@ it('backfills settings reference keys alongside paths and fails closed on identi
         ->assertSuccessful();
     expect(json_decode(DB::table('settings')->where('group', PublicContentSettings::group())->where('name', 'default_images')->value('payload'), true)['global']['media_reference_key'])->toBeNull();
 
-    $this->artisan('media:backfill-settings-reference-keys', ['--apply' => true])
+    $this->artisan('media:backfill-settings-reference-keys', ['--apply' => true, '--digest' => mediaTransitionDigest()])
         ->assertSuccessful();
     $stored = json_decode(DB::table('settings')->where('group', PublicContentSettings::group())->where('name', 'default_images')->value('payload'), true);
     expect($stored['global']['media_reference_key'])->toBe($media->reference_key)
         ->and($stored['global']['path'])->toBe($media->path);
 
-    $this->artisan('media:backfill-settings-reference-keys', ['--apply' => true])
+    $this->artisan('media:backfill-settings-reference-keys', ['--apply' => true, '--digest' => mediaTransitionDigest()])
         ->expectsOutputToContain('already reconciled')
         ->assertSuccessful();
 
@@ -259,9 +267,40 @@ it('backfills settings reference keys alongside paths and fails closed on identi
     $defaults['global']['path'] = $other->path;
     saveCuratorG1Setting('default_images', $defaults);
 
-    $this->artisan('media:backfill-settings-reference-keys', ['--apply' => true])
+    $this->artisan('media:backfill-settings-reference-keys', ['--apply' => true, '--digest' => mediaTransitionDigest()])
         ->expectsOutputToContain('disagree')
         ->assertFailed();
+});
+
+it('reports a settings-owned null-key media row as transition pending without invoking the unsafe projector', function (): void {
+    $name = (string) Str::ulid();
+    $path = ImageUploadPurpose::DefaultImage->root()."/{$name}.png";
+    $source = base64_decode(trim((string) file_get_contents(base_path('tests/Fixtures/media/valid.png.base64'))), true);
+    $validated = app(ImageUploadValidator::class)->validateBytes($source, 'fixture.png', ImageUploadPurpose::DefaultImage);
+    $media = Media::factory()->create([
+        'reference_key' => null,
+        'directory' => ImageUploadPurpose::DefaultImage->root(),
+        'name' => $name,
+        'path' => $path,
+        'type' => $validated->mimeType,
+        'ext' => $validated->extension,
+        'size' => $validated->size,
+        'width' => $validated->width,
+        'height' => $validated->height,
+    ]);
+    DB::table('curator')->where('id', $media->getKey())->update(['reference_key' => null]);
+    Storage::disk('public')->put($path, $validated->contents, 'public');
+    $defaults = PublicFrontConfigRegistry::defaults()['default_images'];
+    $defaults['global'] = ['mode' => 'custom', 'path' => $path, 'media_reference_key' => null];
+    saveCuratorG1Setting('default_images', $defaults);
+
+    $this->artisan('media:backfill-settings-reference-keys')
+        ->expectsOutputToContain('transition_pending')
+        ->assertSuccessful();
+    $this->artisan('media:backfill-settings-reference-keys', ['--apply' => true, '--digest' => mediaTransitionDigest()])
+        ->expectsOutputToContain('ordered after')
+        ->assertFailed();
+    expect(data_get(json_decode((string) DB::table('settings')->where('group', PublicContentSettings::group())->where('name', 'default_images')->value('payload'), true), 'global.media_reference_key'))->toBeNull();
 });
 
 it('backfills nested settings identities atomically while preserving non-image blocks', function (): void {
@@ -329,7 +368,7 @@ it('backfills nested settings identities atomically while preserving non-image b
         ->where('name', 'menu_config')
         ->update(['locked' => true]);
 
-    $this->artisan('media:backfill-settings-reference-keys', ['--apply' => true])
+    $this->artisan('media:backfill-settings-reference-keys', ['--apply' => true, '--digest' => mediaTransitionDigest()])
         ->expectsOutputToContain('locked')
         ->assertFailed();
 
@@ -344,7 +383,7 @@ it('backfills nested settings identities atomically while preserving non-image b
         ->where('name', 'menu_config')
         ->update(['locked' => false]);
 
-    $this->artisan('media:backfill-settings-reference-keys', ['--apply' => true])
+    $this->artisan('media:backfill-settings-reference-keys', ['--apply' => true, '--digest' => mediaTransitionDigest()])
         ->assertSuccessful();
 
     $storedMenu = json_decode(DB::table('settings')->where('group', PublicContentSettings::group())->where('name', 'menu_config')->value('payload'), true);
@@ -416,7 +455,7 @@ it('refuses ambiguous nested about image identity without modifying settings', f
         ->where('name', 'about_page')
         ->value('payload');
 
-    $this->artisan('media:backfill-settings-reference-keys', ['--apply' => true])
+    $this->artisan('media:backfill-settings-reference-keys', ['--apply' => true, '--digest' => mediaTransitionDigest()])
         ->expectsOutputToContain('ambiguous')
         ->assertFailed();
 

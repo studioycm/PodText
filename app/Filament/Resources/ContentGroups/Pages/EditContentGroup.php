@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\ContentGroups\Pages;
 
 use App\Enums\MediaAttachmentRole;
+use App\Filament\Actions\ContentImageActions;
 use App\Filament\Resources\ContentGroups\ContentGroupResource;
 use App\Models\User;
 use App\Support\Media\MediaAttachmentFormState;
@@ -17,6 +18,7 @@ class EditContentGroup extends EditRecord
     protected function getHeaderActions(): array
     {
         return [
+            ContentImageActions::detachUnsafeOwnerImage(MediaAttachmentRole::Cover),
             DeleteAction::make(),
         ];
     }
@@ -38,6 +40,8 @@ class EditContentGroup extends EditRecord
 
     private ?string $pendingCoverMediaReferenceKey = null;
 
+    private ?string $pendingUnsafeCoverFingerprint = null;
+
     protected function mutateFormDataBeforeFill(array $data): array
     {
         $data['cover_media_reference_key'] = app(MediaAttachmentFormState::class)->referenceKey(
@@ -50,7 +54,7 @@ class EditContentGroup extends EditRecord
 
     protected function mutateFormDataBeforeSave(array $data): array
     {
-        [$data, $this->pendingCoverMediaReferenceKey] = app(MediaAttachmentFormState::class)->prepare(
+        [$data, $this->pendingCoverMediaReferenceKey, $this->pendingUnsafeCoverFingerprint] = app(MediaAttachmentFormState::class)->prepare(
             $data,
             'cover_media_reference_key',
             $this->getRecord(),
@@ -70,6 +74,7 @@ class EditContentGroup extends EditRecord
             $this->pendingCoverMediaReferenceKey,
             MediaAttachmentRole::Cover,
             $actor,
+            $this->pendingUnsafeCoverFingerprint,
         );
     }
 }

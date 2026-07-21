@@ -1,366 +1,364 @@
-# CURATOR-G1 Full Image Library Production Cutover Runbook
+# CURATOR-G1 Image Library and Legacy Transition Production Cutover Runbook
 
-Date: 2026-07-20
+Date: 2026-07-21
 
-Audit: `LS-20260720-CURATOR-G1-IMAGE-LIBRARY-01`
+Controlling audits and options:
 
-Approved implementation option:
-`CURATOR-G1-O2-FULL-APP-OWNED-CURATOR-SURFACE`
+- `LS-20260720-CURATOR-G1-IMAGE-LIBRARY-01` /
+  `CURATOR-G1-O2-FULL-APP-OWNED-CURATOR-SURFACE`
+- `LS-20260721-CURATOR-G1-LEGACY-MEDIA-TRANSITION-CORRECTION-03` /
+  `CURATOR-G1-LMTC-O1-IN-PLACE-JOURNALED-TRANSITION-DEFAULT-FALLBACK`
 
-Status: procedure only. Nothing in this runbook was executed against the local
-development database, staging, or production during Stage 2.
+Status: implementation-reconciled future procedure. This document does not
+authorize a deployment, migration, transition, backfill, repair, sanitation,
+cache/process action, export/import, or traffic change. None of those actions
+ran against the local development database, staging, or production while this
+correction was implemented.
 
-## Authority boundary
+## Authority and release boundary
 
-This is a one-maintenance-window cutover for the complete Curator G1 release.
-Do not deploy only a subset of its code, migrations, settings shape, commands,
-or UI surfaces.
+Use one complete release containing both controlling implementations. Never
+deploy only the strict gallery without the legacy-transition correction. Every
+production mutation requires fresh environment-specific approval naming the
+exact action. Stage 2 approval is code authority only.
 
-Every production mutation requires explicit approval in the session that will
-run it. Approval of Stage 2 implementation is not approval to:
+Do not:
 
-- deploy or activate a release;
-- enable maintenance mode;
-- migrate a database or settings payload;
-- create a database or storage backup;
-- apply a backfill or repair;
-- create a production export or run any production import;
-- upload, move, replace, quarantine, or delete media;
-- clear caches or reload/restart processes; or
-- perform the separate SVG operation for Media IDs 6 and 7.
+- use broad `php artisan migrate --force`;
+- run a broad migration rollback or mixed-batch rollback;
+- bulk-apply transitions, repairs, registrations, or SVG sanitation;
+- run `curator:sanitize-svgs` without `--dry-run`;
+- weaken fixed roots, MIME/extension allowlists, raster normalization, SVG
+  sanitation, visibility, reference-key proof, or normal gallery scope;
+- delete or expose a disallowed row/file to make a report green;
+- sanitize real Media IDs 6 or 7 without their separate exact approval;
+- auto-disposition root-level IDs 12-15;
+- remove dormant permission tables during this media cutover; or
+- affect another tenant on the host.
 
-Read-only status, report, checksum, and dry-run commands may be used only after
-the operator confirms the exact environment and release. Never print `.env`,
-credentials, tokens, license data, Composer authentication, or secrets.
+Keep an operator-owned private evidence bundle outside the release and public
+storage. Record environment, UTC and Asia/Jerusalem timestamps, release hash,
+database backup ID, storage snapshot ID, migration status, manifest JSON and
+digest, every command/exit code, journal operation keys, before/after
+checksums, integrity reports, smoke checks, and the final go/rollback decision.
 
-## Non-negotiable exclusions
+## Phase 0 - Read-only release and tenant preflight
 
-This cutover does not authorize:
+1. Resolve the `current` symlink and record the immutable release directory.
+2. Confirm the shell is in this application's release, not a shared host root
+   or another tenant.
+3. Record `git rev-parse HEAD`; require the canonical LMTC implementation hash
+   from its committed handoff and ledger.
+4. Require `git status --short --branch` to show no unexplained release edits.
+5. Verify this application's shared public storage and `public/storage`
+   symlink without following a path into another tenant.
+6. Before any process action, prove ownership with
+   `ls -l /proc/<pid>/cwd` and the matching application environment. Request
+   separate approval for the exact reload/restart.
+7. Confirm a rollback release exists. Never edit an active/old release as a
+   production fix.
 
-- deletion or quarantine of disallowed existing rows/files;
-- in-place registration of unvalidated legacy bytes;
-- `curator:sanitize-svgs` without `--dry-run`;
-- sanitation of Media IDs 6 and 7;
-- legacy-path column/key retirement;
-- a non-null `curator.reference_key` migration;
-- Media ZIP import or remote-media fetching during import;
-- dependency changes, `vendor:publish`, or Spatie Media Library;
-- a partial rollout; or
-- changes to any other tenant on the multi-tenant host.
+Stop on uncertain release, tenant, storage, process, or hash identity.
 
-## Required inputs and evidence bundle
+## Phase 1 - Backups and pre-schema transition manifest
 
-Before requesting a mutation approval, create an operator-controlled evidence
-bundle outside the release and outside publicly served storage containing:
+After separate approval for each backup and maintenance action:
 
-1. environment name and UTC/Asia-Jerusalem timestamps;
-2. resolved `current` release path and deployed Git hash;
-3. database backup identifier, completion state, size, and provider checksum;
-4. shared `storage/app/public` snapshot identifier and completion state;
-5. SHA-256 inventory for these exact roots:
-   `content-groups/covers`, `content-items/images`, `header`, `team`, `about`,
-   and `default-images`;
-6. `migrate:status` before and after;
-7. every report/dry-run/apply command and complete exit status;
-8. pre/post media-integrity JSON;
-9. pre/post portable settings and native content export evidence;
-10. image ZIP `manifest.json` verification evidence;
-11. smoke-check and Local Front Check results; and
-12. rollback decision, if any.
-
-Keep the bundle private. Reports can contain record IDs, storage paths, and
-editorial references.
-
-## Multi-tenant and release preflight
-
-Perform these read-only checks before any process or write action:
-
-1. Resolve the site's `current` symlink and record the immutable release path.
-2. Confirm the shell working directory is that release, not the shared host
-   root or another tenant.
-3. Record `git rev-parse HEAD` and require the canonical CURATOR-G1
-   implementation hash recorded in its handoff/ledger.
-4. Run `git status --short --branch` and require the deployed release checkout
-   to have no unexplained changes.
-5. If any process action is proposed, identify every target with
-   `ls -l /proc/<pid>/cwd` and verify both this release path and this
-   application's environment before requesting approval.
-6. Confirm the public disk points at this application's shared storage and that
-   the storage symlink is valid.
-7. Confirm a rollback release artifact exists. Never edit files inside an old
-   or current release as a production fix.
-
-Stop if release identity, tenant ownership, shared-storage ownership, or the
-deployed hash is uncertain.
-
-## Phase 1 - Backup and pre-cutover read-only evidence
-
-After separate approval for each backup action:
-
-1. Put the public site into the operator-approved maintenance boundary while
-   retaining authorized Admin access needed for the cutover.
-2. Create and verify a database backup using the hosting provider's supported
-   mechanism.
-3. Snapshot this application's shared public storage and the private local disk
-   locations used by `media-staging` and `media-quarantine`.
-4. Generate the six-root SHA-256 inventory without following symlinks outside
-   this application's storage.
-5. Record current row counts for `curator`, `content_groups`, `content_items`,
-   `settings`, and, if already present, `media_attachments` and
-   `media_mutation_operations`.
-
-Then run only read-only framework checks:
+1. Enter the approved maintenance boundary before activating the new normal
+   media write surface.
+2. Create and verify a database backup.
+3. Snapshot this application's shared public storage and the private
+   `media-staging` and `media-quarantine` areas.
+4. Inventory SHA-256, size, and path without following symlinks for the fixed
+   roots `content-groups/covers`, `content-items/images`, `header`, `team`,
+   `about`, and `default-images`.
+5. Record counts for Curator, ContentGroup, ContentItem, settings, attachment,
+   and mutation rows where those tables exist.
+6. Run the new release's schema-independent preflight read-only:
 
 ```text
 php artisan migrate:status
+php artisan media:preflight-legacy-transition --json
 ```
 
-Do not run `media:register-existing-curator-assets` before the four G1
-migrations. The command intentionally fails if the app-owned media schema is
-incomplete.
+Retain the complete JSON and digest. This first manifest is evidence of the
+pre-migration state; it is not the digest to reuse after migrations. Stop if
+Curator schema is incomplete, an active reference has no known disposition, a
+blocked row has no reason, or the observed inventory differs materially from
+the reviewed cutover scope.
 
-## Phase 2 - Activate the complete release and apply additive schema
+## Phase 2 - Exact additive migration allowlist
 
-Request explicit approval for the exact deploy/activation and migration
-actions. The new release must not serve normal traffic until the additive
-schema and settings-shape migration are complete.
-
-The approved migration command is the repository's normal production migration
-entry point:
+Request approval that names these exact four files. Apply them as independent
+steps while normal traffic remains closed:
 
 ```text
-php artisan migrate --force
+php artisan migrate --path=database/settings/2026_07_20_000000_add_public_media_reference_keys.php --path=database/migrations/2026_07_20_000001_add_reference_key_to_curator_table.php --path=database/migrations/2026_07_20_000002_create_media_attachments_table.php --path=database/migrations/2026_07_20_000003_create_media_mutation_operations_table.php --step --force
 ```
 
-It discovers both the three relational migrations and the Spatie settings
-migration:
+The three relational migrations are additive and data-free. The Spatie
+settings migration is reversible but not data-free: it rewrites
+`menu_config`, `about_page`, and `default_images` payload shapes with nullable
+adjacent reference-key fields.
 
-- `2026_07_20_000001_add_reference_key_to_curator_table`
-- `2026_07_20_000002_create_media_attachments_table`
-- `2026_07_20_000003_create_media_mutation_operations_table`
-- `2026_07_20_000000_add_public_media_reference_keys`
+Never replace the allowlist with broad `migrate --force`; that can also run the
+dormant permission migration. Rerun `migrate:status` and prove the four named
+files ran. On failure, preserve maintenance mode, logs, backups, and current
+state. Do not improvise SQL or a broad rollback.
 
-After migration, rerun `php artisan migrate:status` and confirm the expected
-four entries only. On failure, keep maintenance mode active, preserve logs and
-backups, and follow the rollback section. Do not improvise a manual schema
-change.
+If empty permission tables already exist, leave them. A targeted future
+cleanup needs its own audit and is safer than rolling back the observed mixed
+batch.
 
-## Phase 3 - Dry-run inventory and stop/go decision
+## Phase 3 - Post-schema read-only closure gate
 
-Run these commands without `--apply`:
+Run only commands without `--apply`:
 
 ```text
+php artisan media:preflight-legacy-transition --json
 php artisan media:backfill-reference-keys
 php artisan media:backfill-attachments
 php artisan media:backfill-settings-reference-keys
-php artisan media:report-integrity --json
-php artisan media:repair-mutations
 php artisan media:register-existing-curator-assets
-```
-
-Stop the cutover if any of the following is unresolved:
-
-- duplicate disk/path locations;
-- invalid attachment type, role, owner, media, position, or purpose;
-- attachment/legacy-path disagreement;
-- settings key/path disagreement or ambiguous nested identity;
-- an unexpected disallowed row needed by a current public/admin consumer;
-- missing source files required by a current reference;
-- incomplete mutation operations;
-- a backfill conflict or locked settings property;
-- an unexpected number of eligible unregistered paths; or
-- any candidate outside the six fixed roots or exact MIME/extension contract.
-
-Disallowed and orphaned rows may remain reported and excluded; do not delete or
-quarantine them in this run. Record their separately reviewed disposition.
-
-### Eligible unregistered legacy paths
-
-Never create a Curator row pointing at the existing public bytes and never
-rename the source in place. For every reviewed eligible path, first retain its
-dry-run row and obtain exact per-path mutation approval. Required approval text:
-
-> Approve CURATOR-G1 legacy registration on `<environment>` for exact path
-> `<normalized-path>`, source SHA-256 `<sha256>`, purpose `<purpose>`,
-> `<reference-count>` reviewed app references, using Admin actor ID
-> `<admin-user-id>`. This approves private quarantine/staging, generated public
-> destination creation, atomic owner/settings switching, settings-cache
-> invalidation, and removal of the old public source after zero old references.
-
-Then run, for that one approved path only:
-
-```text
-php artisan media:register-existing-curator-assets --path=<exact-normalized-path>
-php artisan media:register-existing-curator-assets --apply --actor=<admin-user-id> --path=<exact-normalized-path>
-php artisan media:register-existing-curator-assets --path=<same-old-path>
-```
-
-The first dry run must exactly match the approved path, purpose, SHA-256, and
-reference count. Apply privately quarantines the original, privately stages
-normalized/sanitized bytes, writes a generated destination, creates one
-immutable Media identity, and atomically switches every reviewed owner and raw
-settings reference. No UI re-selection is required. Successful cleanup removes
-the old public source only after references switch; the checksum-verified
-private quarantine remains.
-
-The final exact-path dry run must report `already_registered`. If it reports
-`registration_cleanup_pending`, stop and request approval for the exact journal
-operation before running `media:repair-mutations`; do not reapply registration.
-If the source path reappeared with new references, the command must present a
-new eligible plan instead of treating the prior operation as current.
-
-If the number of assets cannot be reviewed and switched within the approved
-window, roll back or extend the window through fresh operator direction. Do not
-open normal traffic with a knowingly partial UI write cutover.
-
-## Phase 4 - Register legacy paths, then apply identity backfills
-
-Complete every approved exact-path registration from Phase 3 first. Then
-request explicit approval for these exact mutations and run them in order:
-
-```text
-php artisan media:backfill-reference-keys --apply
-php artisan media:backfill-attachments --apply
-php artisan media:backfill-settings-reference-keys --apply
-```
-
-Rerun the three dry runs immediately. Require zero remaining eligible updates
-and zero conflict/failure result. Then run:
-
-```text
 php artisan media:report-integrity --json
 php artisan media:repair-mutations
 ```
+
+Save the new canonical manifest and digest. The manifest has exactly these
+dispositions:
+
+- `key_only`: current raster bytes already equal canonical output;
+- `normalize_existing`: valid existing raster needs same-ID normalization;
+- `sanitize_svg`: valid existing SVG needs the reusable staged sanitizer;
+- `import_exact_path`: one referenced fixed-root file has no Curator row;
+- `detach_to_default`: an owner reference is unusable and needs explicit
+  authorized detach/replacement; and
+- `blocked`: no safe automatic action; the reason is evidence, not permission
+  to guess.
+
+Stop for duplicate identities, unexpected roots/purposes, missing or changed
+sources, conflicting attachments, locked/drifted settings, incomplete
+journals, or unreviewed active references. Do not turn a block into an allow by
+editing metadata or relaxing policy.
+
+The preflight is deterministic only while decision-bearing database and file
+state is unchanged. Any transition, repair, owner edit, attachment write,
+settings write, migration, or source-byte change invalidates the retained
+digest. Rerun preflight and review a fresh digest after every such change.
+
+## Phase 4 - One exact transition at a time
+
+### Existing row: `key_only`, `normalize_existing`, or `sanitize_svg`
+
+For each exact row, retain its manifest entry including ID, path, purpose,
+source SHA-256, normalized/sanitized SHA-256, active references, disposition,
+fingerprint, and current digest. Obtain this approval:
+
+> APPROVE CURATOR-G1 LMTC ON `<environment>` FOR MEDIA ID `<id>` WITH
+> DISPOSITION `<disposition>`, PATH `<path>`, SOURCE SHA-256 `<sha256>`,
+> MANIFEST DIGEST `<digest>`, AND ADMIN ACTOR ID `<actor-id>`. Apply only this
+> reviewed row through the journaled transition; preserve its numeric ID;
+> reject any drift; and stop on cleanup-pending.
+
+Apply exactly one ID:
+
+```text
+php artisan media:transition-legacy <id> --actor=<admin-user-id> --digest=<reviewed-digest> --apply
+```
+
+For `key_only`, the compatibility wrapper is also available, but it remains
+one-row and exact-digest only:
+
+```text
+php artisan media:backfill-reference-keys --media=<id> --actor=<admin-user-id> --digest=<reviewed-digest> --apply
+```
+
+Successful outcomes are `key_only_completed`,
+`normalize_existing_completed`, or `sanitize_svg_completed`. O1 preserves the
+numeric Curator ID. It copies the original to checksum-verified private
+quarantine, writes verified normalized/sanitized bytes to a generated public
+destination, switches the row and reviewed references in one fenced database
+commit, issues the immutable key only with proof, invalidates known old/new
+cache identities, removes the old public source only after zero references,
+and retains the quarantine evidence.
+
+Do not use `sanitize_svg` on actual IDs 6 or 7 in this general phase; follow the
+separate SVG runbook and exact approval contract.
+
+### Rowless fixed-root file: `import_exact_path`
+
+Retain the exact path entry and obtain this approval:
+
+> APPROVE CURATOR-G1 LMTC ON `<environment>` FOR EXACT ROWLESS PATH `<path>`,
+> PURPOSE `<purpose>`, SOURCE SHA-256 `<sha256>`, MANIFEST DIGEST `<digest>`,
+> AND ADMIN ACTOR ID `<actor-id>`. Import only this reviewed path through the
+> journaled proof boundary; reject a row, symlink, root, byte, reference, or
+> digest change; and stop on cleanup-pending.
+
+Then run:
+
+```text
+php artisan media:transition-legacy --path=<exact-normalized-path> --actor=<admin-user-id> --digest=<reviewed-digest> --apply
+```
+
+`media:register-existing-curator-assets` exposes the same bounded executor:
+
+```text
+php artisan media:register-existing-curator-assets --apply --actor=<admin-user-id> --path=<exact-normalized-path> --digest=<reviewed-digest>
+```
+
+Use one interface for a reviewed operation, not both. A successful first apply
+returns `import_exact_path_completed:<media-id>`. An exact retry with the
+original digest returns `already_registered` only after actor authorization,
+journal/digest match, current row identity, destination existence, and
+checksum proof.
+
+### After every apply
+
+Immediately run:
+
+```text
+php artisan media:preflight-legacy-transition --json
+php artisan media:report-integrity --json
+php artisan media:repair-mutations
+```
+
+Review and retain the fresh digest before the next row. Never reuse the prior
+digest for another candidate.
+
+If apply reports `cleanup_pending`, the database commit is authoritative and
+the journal owns cleanup. Do not reapply, restore paths manually, or delete an
+artifact. Review the exact operation:
+
+```text
+php artisan media:repair-mutations --operation-key=<operation-ulid>
+```
+
+Only after separate exact-operation approval run:
+
+```text
+php artisan media:repair-mutations --apply --operation-key=<operation-ulid>
+```
+
+Before commit, a failed operation leaves the old row/path/source active and
+repair can remove only checksum-owned artifacts. After commit, repair verifies
+the committed row/destination and resumes cleanup; it does not roll back a
+trusted committed identity.
+
+## Phase 5 - Owner repair and default fallback
+
+An unsafe legacy owner row remains invisible to ordinary browse, search,
+selection, view, download, rename, swap, and delete. It must not make the
+ContentGroup or ContentItem page fail.
+
+For an affected record, an Admin may:
+
+1. leave the typed warning unchanged while a reviewed transition is pending;
+2. choose an allowed keyed gallery image through the record repair action; or
+3. explicitly confirm detach-to-default.
+
+The repair action carries an opaque server-derived fingerprint, locks and
+rechecks the exact owner/role/attachment/path evidence, rejects forged or stale
+state, and writes a completed database-only `legacy_owner_repair` journal. It
+does not view, trust, mutate, or delete the unsafe old file/row. Detach clears
+the owner path/attachment so the normal configured family/global/system
+default image chain applies. Public reads also treat the typed unsafe state as
+absent without mutating it.
+
+Owner repair is not a bulk transition tool. Review each warning and record its
+result. Settings-owned valid rows use the transition engine; do not clear a
+settings identity merely to bypass sanitation or proof.
+
+## Phase 6 - Ordered attachment and settings reconciliation
+
+After all executable media transitions/imports are complete and the current
+manifest is reviewed:
+
+1. Run `media:backfill-attachments` dry. It may create only unambiguous
+   singleton owner-role relationships for already keyed/allowed rows.
+2. Obtain approval for attachment backfill with the current digest.
+3. Apply and rerun dry:
+
+```text
+php artisan media:backfill-attachments --digest=<current-digest> --apply
+php artisan media:backfill-attachments
+```
+
+4. Rerun preflight; attachment writes changed the digest.
+5. Run `media:backfill-settings-reference-keys` dry. It must report no
+   transition-pending, detach-to-default, or blocked settings identity.
+6. Obtain approval with the fresh digest, apply, and rerun dry:
+
+```text
+php artisan media:backfill-settings-reference-keys --digest=<fresh-digest> --apply
+php artisan media:backfill-settings-reference-keys
+```
+
+7. Rerun preflight, integrity JSON, and mutation-repair dry run.
+
+Settings are last because they resolve immutable key first while retaining the
+matching path only as compatibility fallback. A locked setting, path/key
+disagreement, stale digest, or changed payload stops the transaction.
+
+## Phase 7 - Explicit blocks and dormant schema
+
+- Root-level IDs 12-15 stay outside fixed roots. Keep them blocked/reportable
+  until a later disposition names each row/path and proves move, owner, and
+  rollback behavior. Never widen the root policy.
+- Missing/corrupt owner media may use explicit record repair/detach; do not
+  relabel it as an ordinary orphan candidate.
+- Unreferenced disallowed rows remain excluded evidence. Deletion/quarantine
+  is a separate approved operation.
+- Existing empty permission tables may remain. Their presence does not activate
+  Shield or replace legacy authorization. Cleanup is unrelated and must not use
+  a broad rollback.
+
+## Phase 8 - Final closure and UI verification
 
 Require:
 
-- every normal gallery/picker row to have a valid immutable key;
-- every keyed row to have a matching current destination SHA-256 journal proof;
-- every current ContentGroup cover and ContentItem primary image with a trusted
-  Media row to have exactly one typed singleton attachment;
-- settings identities to resolve key first with matching compatibility path;
-- no incomplete operation requiring repair; and
-- all disallowed rows to remain excluded and unchanged.
+- no active reference lacking an executable or explicit blocked disposition;
+- no unexpected `detach_to_default` item;
+- no incomplete mutation;
+- every normal gallery row keyed, allowed, public, fixed-root, and backed by
+  current destination checksum proof;
+- exactly one compatible attachment for each trusted owner role;
+- settings key/path pairs reconciled;
+- disallowed rows still absent from every ordinary media operation; and
+- pre/post row counts, checksums, journal keys, and integrity reports retained.
 
-`media:backfill-reference-keys` keys only content-proven raster whose current
-bytes already equal the canonical normalized output; it writes a completed
-`reference_key_backfill` checksum-proof operation atomically. Invalid,
-missing, private, duplicate, metadata-mismatched, or noncanonical rows remain
-unkeyed and reported. Every existing SVG row remains unkeyed pending the
-separate SVG runbook. Explicitly verify Media IDs 6 and 7 are still unchanged,
-unkeyed/excluded, and SHA-256-identical to the pre-cutover inventory.
+While still in maintenance, use an Admin account and perform the numbered Local
+Front Check from the LMTC handoff. Verify ContentGroup and ContentItem list,
+relation, edit, replacement, detach/default, gallery exclusion, settings
+defaults, header logos, and public rendering. Do not use IDs 6/7 as a generic
+smoke mutation.
 
-Do not run `media:repair-mutations --apply` unless the dry-run identifies exact
-operation keys and the operator separately approves those keys. Prefer:
+Any export/import, broader cache clear, PHP-FPM reload, Horizon/queue restart,
+or traffic activation needs separate exact approval. Before reopening traffic,
+verify the active release and storage symlink again and obtain the operator go
+decision.
 
-```text
-php artisan media:repair-mutations --apply --operation-key=<approved-ulid>
-```
+## Rollback and recovery rules
 
-over a broad repair.
+1. Keep maintenance active and stop new media writes.
+2. Record the exact phase, command, exit code, operation key, manifest digest,
+   current row/reference state, and integrity report.
+3. For an uncommitted journal, run exact-operation repair dry and request exact
+   approval. The old database identity/public source remains authoritative.
+4. For committed/cleanup-pending state, finish journal cleanup. Do not manually
+   restore the old path over a trusted destination.
+5. A business rollback after commit requires separate approval and the verified
+   database/storage backup plus quarantine checksum. Preserve the journal.
+6. Reactivating the previous release does not reverse database or filesystem
+   effects. First prove compatibility with the current additive schema,
+   settings shape, paths, and storage.
+7. Do not roll down migrations with the new release active. Never use a broad
+   batch rollback; the batch may include the dormant permission migration.
+8. Never assume a database restore alone reverses files, or a file restore
+   alone reverses owner/settings identity.
 
-## Phase 5 - Dual-read and UI write verification
-
-While maintenance mode remains active, use an Admin-or-higher account:
-
-1. Open the Media Resource and confirm only public, allowed, keyed records from
-   fixed roots appear, 25 per page.
-2. Search for a known image and confirm no more than 50 projected results.
-3. Open one ContentGroup and one ContentItem with existing images. Confirm the
-   picker resolves the immutable key and shows the same image/path.
-4. Save each unchanged. Confirm the attachment remains singleton and its
-   compatibility path still matches.
-5. Upload one temporary approved raster through a finite purpose, attach it to
-   a disposable test owner, detach it, and use the app-owned delete action only
-   after the report shows no references. Retain the journal evidence.
-6. Confirm referenced records cannot be renamed, swapped, or deleted.
-7. Verify light/dark menu logos, about images, team images, defaults, group
-   covers, and item primary images through their real consumers.
-8. Confirm RichEditor/MarkdownEditor attachments remain unavailable.
-
-Do not use Media IDs 6 or 7 for a mutation check.
-
-## Phase 6 - Portable export/import and image ZIP evidence
-
-The portable identity order is Media rows first, then owner/settings data.
-Imports never fetch remote media and fail when a referenced key is unavailable.
-Before creating any production export or running any production import in this
-phase, request fresh approval naming the environment, exact action, selected
-record/package scope, output location, and rollback/retention plan. Stage 2
-approval does not authorize these actions.
-
-1. Export ContentGroups and ContentItems through the native Filament export
-   actions. Confirm the files contain `cover_media_reference_key` and
-   `primary_image_media_reference_key`, not mutable media paths or numeric Media
-   IDs.
-2. Export public settings through its portable package action. Confirm every
-   configured image has a media reference key and no portable legacy path.
-3. Run the content-images ZIP export action for a bounded reviewed selection.
-   Confirm `manifest.json` maps media reference key, owner reference key, role,
-   archive filename, validated MIME/extension, and SHA-256.
-4. Verify each archive byte checksum against the manifest in private scratch
-   storage. Do not serve or import the ZIP directly.
-5. Rehearse any import on staging or the isolated test environment first. On
-   production, import only after confirming every referenced Media key already
-   exists and is allowed for its role. A missing, wrong-purpose, private, or
-   disallowed key must fail the row.
-6. Keep ZIP media import deferred; this release implements export manifest
-   evidence, not a Media ZIP importer.
-
-## Phase 7 - Cache, process, and traffic activation
-
-The coordinator invalidates old/new mutation cache identities. If a broader
-application cache clear, PHP-FPM reload, Horizon restart, or queue restart is
-still needed, name the exact action and obtain separate approval first. Verify
-the process belongs to this release/application before acting.
-
-Do not register raster curation dimensions in this cutover. Curations remain
-disabled because no rendered-width/DPR measurement was approved.
-
-Before reopening traffic:
-
-1. rerun the integrity JSON report and retain it;
-2. require zero unresolved key/path, attachment, duplicate, or mutation issue;
-3. run the numbered Local Front Check from the CURATOR-G1 handoff;
-4. confirm queues have no failed image-download job from the cutover;
-5. verify the active release and storage symlink again; and
-6. obtain the operator's go decision.
-
-## Rollback
-
-If a stop condition occurs:
-
-1. Keep maintenance mode active and stop further Curator writes.
-2. Record the exact failed phase, command, exit code, journal operation keys,
-   and current integrity report.
-3. If only application activation failed, reactivate the preceding release.
-   The additive tables/nullable column can remain because old code ignores them
-   and continues reading compatibility paths.
-4. Restore settings payloads from the verified pre-cutover backup if a settings
-   backfill or registration switch must be reversed.
-5. For a registration rollback, restore the exact old owner/settings
-   identities from the reviewed fingerprint/backup and restore the old public
-   source from its checksum-verified private quarantine or storage snapshot.
-   Obtain separate approval before disposing of the generated Media row or
-   destination, and preserve the registration journal permanently.
-6. Restore or remove newly created attachment rows only from the verified
-   backup/diff and only under a separately approved rollback action.
-7. Restore any other file from private quarantine/snapshot only after matching its
-   recorded SHA-256 and proving that the target path is not owned by another
-   Media row.
-8. Do not roll down migrations while the new release is active. Roll them down
-   in reverse order only after old-code stability, export of attachment/journal
-   evidence, and explicit approval for data removal.
-9. Never assume a database rollback reverses filesystem effects. Use the
-   mutation journal, storage snapshot, and checksum inventory.
-10. Leave IDs 6 and 7 unchanged; their rollback belongs to the separate SVG
-   runbook.
-
-## Completion record
-
-The cutover is complete only when the evidence bundle contains the approved
-release hash, backups, pre/post reports, zero applicable dry-run work, portable
-export/manifest verification, smoke checks, operator go decision, and final
-traffic state. Record any disallowed/orphan disposition as a future separately
-approved task. Do not mark legacy paths retired or `reference_key` proven
-non-null in this release.
+The cutover is complete only after the evidence bundle, closure gate, Local
+Front Check, operator go decision, and final traffic state are all recorded.
+Legacy path retirement, a non-null schema constraint, IDs 6/7 sanitation,
+root-level disposition, recovery gallery, dependency upgrades, and permission
+schema cleanup remain outside this cutover unless separately approved.

@@ -20,6 +20,7 @@ readonly class LegacyMediaRegistrationPlan
         public array $contentGroupIds,
         public array $contentItemIds,
         public array $settingsSnapshots,
+        public ?int $existingMediaId = null,
     ) {}
 
     /** @return array<int, string> */
@@ -48,6 +49,7 @@ readonly class LegacyMediaRegistrationPlan
             'content_group_ids' => $this->contentGroupIds,
             'content_item_ids' => $this->contentItemIds,
             'settings' => $this->settingsSnapshots,
+            'existing_media_id' => $this->existingMediaId,
         ], JSON_THROW_ON_ERROR));
     }
 }

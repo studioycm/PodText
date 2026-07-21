@@ -47,6 +47,49 @@ class MediaMutationFence
         });
     }
 
+    /**
+     * Lock a raw, intentionally out-of-scope Curator row for the one
+     * transition operation that may make it trusted. Nothing using this path
+     * gains ordinary media access.
+     *
+     * @param  array{disk: string, path: string, reference_key: string|null}  $identity
+     * @param  array<string, mixed>  $attributes
+     */
+    public function beginLegacyTransition(
+        int $mediaId,
+        array $identity,
+        User $actor,
+        array $attributes,
+    ): MediaMutationOperation {
+        return DB::transaction(function () use ($mediaId, $identity, $actor, $attributes): MediaMutationOperation {
+            /** @var Media|null $locked */
+            $locked = Media::query()->whereKey($mediaId)->lockForUpdate()->first();
+
+            if (! $locked instanceof Media) {
+                throw new RuntimeException('The legacy media row disappeared before the mutation journal was created.');
+            }
+
+            Gate::forUser($actor)->authorize('transitionLegacy', $locked);
+
+            if (
+                $locked->disk !== $identity['disk']
+                || $locked->path !== $identity['path']
+                || $locked->reference_key !== $identity['reference_key']
+            ) {
+                throw new RuntimeException('The legacy media row changed before the mutation journal was created.');
+            }
+
+            $this->assertNoOpenMutation([$mediaId]);
+
+            return MediaMutationOperation::query()->create(array_merge($attributes, [
+                'media_id' => $mediaId,
+                'media_id_snapshot' => $mediaId,
+                'user_id' => $actor->getKey(),
+                'media_reference_key' => $locked->reference_key,
+            ]));
+        });
+    }
+
     /** @param iterable<int, int> $mediaIds */
     public function assertAttachmentAvailable(iterable $mediaIds): void
     {
@@ -63,6 +106,7 @@ class MediaMutationFence
                 MediaMutationOperationType::Rename->value,
                 MediaMutationOperationType::Swap->value,
                 MediaMutationOperationType::Delete->value,
+                MediaMutationOperationType::LegacyTransition->value,
             ])
             ->whereIn('status', [
                 MediaMutationStatus::Staged->value,
@@ -73,6 +117,16 @@ class MediaMutationFence
 
         if ($active) {
             throw new RuntimeException('The media record has an active filesystem mutation.');
+        }
+    }
+
+    /** Database-only owner repair must not race any unfinished media journal. */
+    public function assertNoUnfinishedMutation(iterable $mediaIds): void
+    {
+        $this->assertTransaction();
+        $ids = collect($mediaIds)->map(fn (mixed $id): int => (int) $id)->filter()->unique()->values()->all();
+        if ($ids !== [] && MediaMutationOperation::query()->whereIn('media_id', $ids)->whereNotIn('status', [MediaMutationStatus::Completed->value, MediaMutationStatus::Failed->value])->lockForUpdate()->exists()) {
+            throw new RuntimeException('The media record has an unfinished mutation.');
         }
     }
 

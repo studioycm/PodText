@@ -2,11 +2,13 @@
 
 namespace App\Filament\Resources\ContentGroups\Tables;
 
+use App\Enums\MediaAttachmentRole;
 use App\Enums\PublicationStatus;
 use App\Filament\Actions\ContentImageActions;
 use App\Filament\Exports\ContentGroupExporter;
 use App\Filament\Imports\ContentGroupImporter;
 use App\Models\ContentGroup;
+use App\Support\Media\LegacyOwnerMediaDiagnosticProjector;
 use App\Support\PublicFront\PublicDefaultImageResolver;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
@@ -26,7 +28,7 @@ class ContentGroupsTable
     public static function configure(Table $table): Table
     {
         return $table
-            ->modifyQueryUsing(fn (Builder $query): Builder => $query->with('coverMediaAttachment.media'))
+            ->modifyQueryUsing(fn (Builder $query): Builder => $query->with(['coverMediaAttachment.media', 'legacyCoverMediaRows']))
             ->columns([
                 ImageColumn::make('effective_cover')
                     ->label(__('admin.fields.cover_path'))
@@ -36,6 +38,12 @@ class ContentGroupsTable
                     ->label(__('admin.fields.title'))
                     ->searchable()
                     ->sortable(),
+                TextColumn::make('legacy_media_warning')
+                    ->label(__('admin.labels.media'))
+                    ->state(fn (ContentGroup $record): ?string => app(LegacyOwnerMediaDiagnosticProjector::class)->hasUnsafe($record, MediaAttachmentRole::Cover) ? __('admin.labels.unsafe_legacy_media') : null)
+                    ->badge()
+                    ->color('warning')
+                    ->toggleable(),
                 TextColumn::make('group_type_label_singular')
                     ->label(__('admin.fields.group_type_label_singular'))
                     ->badge()
@@ -106,6 +114,7 @@ class ContentGroupsTable
             ])
             ->recordActions([
                 ContentImageActions::contentGroupCover(),
+                ContentImageActions::detachUnsafeOwnerImage(MediaAttachmentRole::Cover),
                 ContentImageActions::exportContentImagesRecord(),
                 EditAction::make(),
             ])

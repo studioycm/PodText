@@ -23,7 +23,7 @@ class LegacyMediaRegistrationPlanner
         private readonly SettingsMediaIdentityProjector $settingsProjector,
     ) {}
 
-    public function plan(string $sourcePath): LegacyMediaRegistrationPlan
+    public function plan(string $sourcePath, ?int $expectedExistingMediaId = null): LegacyMediaRegistrationPlan
     {
         $normalized = $this->policy->normalizePath($sourcePath);
 
@@ -31,11 +31,19 @@ class LegacyMediaRegistrationPlanner
             throw new InvalidArgumentException('The legacy media path is not already normalized.');
         }
 
-        if (Media::query()->where('disk', 'public')->where('path', $sourcePath)->exists()) {
+        $existing = Media::query()->where('disk', 'public')->where('path', $sourcePath)->orderBy('id')->get();
+
+        if ($expectedExistingMediaId === null && $existing->isNotEmpty()) {
             throw new InvalidArgumentException('The legacy path already has a Curator media record.');
         }
 
+        if ($expectedExistingMediaId !== null && ($existing->count() !== 1 || (int) $existing->sole()->getKey() !== $expectedExistingMediaId)) {
+            throw new InvalidArgumentException('The legacy path must have exactly one Curator media record for an in-place transition.');
+        }
+
         try {
+            $this->assertCanonicalPublicSource($sourcePath);
+
             if (! Storage::disk('public')->exists($sourcePath)) {
                 throw new InvalidArgumentException('The legacy media source is missing.');
             }
@@ -86,9 +94,10 @@ class LegacyMediaRegistrationPlanner
             contentGroupIds: $contentGroupIds,
             contentItemIds: $contentItemIds,
             settingsSnapshots: $settingsSnapshots,
+            existingMediaId: $expectedExistingMediaId,
         );
 
-        if ($plan->referenceCount() < 1) {
+        if ($expectedExistingMediaId === null && $plan->referenceCount() < 1) {
             throw new InvalidArgumentException('The legacy media source has no app-owned owner or settings reference.');
         }
 
@@ -179,6 +188,38 @@ class LegacyMediaRegistrationPlanner
             return $contents;
         } finally {
             fclose($stream);
+        }
+    }
+
+    /**
+     * A registration candidate is an exact path on the local public disk, not
+     * merely a Flysystem-readable stream.  In particular, do not follow a
+     * symlink out of the fixed public root: a successful image decode is not
+     * proof that the bytes are an app-owned public asset.
+     */
+    private function assertCanonicalPublicSource(string $path): void
+    {
+        try {
+            $disk = Storage::disk('public');
+            $root = realpath($disk->path(''));
+            $candidate = $disk->path($path);
+        } catch (Throwable $exception) {
+            throw new InvalidArgumentException('The legacy media source cannot be proven to be on the canonical public root.', previous: $exception);
+        }
+
+        if (! is_string($root) || $root === '' || ! is_string($candidate) || $candidate === '') {
+            throw new InvalidArgumentException('The legacy media source cannot be proven to be on the canonical public root.');
+        }
+
+        if (is_link($candidate)) {
+            throw new InvalidArgumentException('The legacy media source may not be a symlink.');
+        }
+
+        $resolved = realpath($candidate);
+        $rootPrefix = rtrim($root, DIRECTORY_SEPARATOR).DIRECTORY_SEPARATOR;
+
+        if (! is_string($resolved) || ! str_starts_with($resolved, $rootPrefix)) {
+            throw new InvalidArgumentException('The legacy media source is outside the canonical public root.');
         }
     }
 }

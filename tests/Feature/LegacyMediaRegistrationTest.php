@@ -10,6 +10,8 @@ use App\Models\MediaAttachment;
 use App\Models\MediaMutationOperation;
 use App\Models\User;
 use App\Settings\PublicContentSettings;
+use App\Support\Media\LegacyMediaRegistrationPlanner;
+use App\Support\Media\LegacyMediaTransitionPlanner;
 use App\Support\PublicFront\PublicFrontConfigRegistry;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -46,6 +48,11 @@ function saveCuratorG1RegistrationSetting(string $name, array $payload, bool $lo
     );
 }
 
+function curatorG1TransitionDigest(): string
+{
+    return app(LegacyMediaTransitionPlanner::class)->manifest()->digest();
+}
+
 it('dry-runs then atomically registers one reviewed legacy asset for shared owners', function (): void {
     $actor = User::factory()->admin()->create();
     $sourcePath = 'content-groups/covers/editorial-cover.png';
@@ -53,6 +60,7 @@ it('dry-runs then atomically registers one reviewed legacy asset for shared owne
     Storage::disk('public')->put($sourcePath, $source, 'public');
     $first = ContentGroup::factory()->create(['cover_path' => $sourcePath]);
     $second = ContentGroup::factory()->create(['cover_path' => $sourcePath]);
+    $reviewedDigest = curatorG1TransitionDigest();
 
     $this->artisan('media:register-existing-curator-assets', ['--path' => [$sourcePath]])
         ->expectsOutputToContain('1 eligible')
@@ -66,7 +74,8 @@ it('dry-runs then atomically registers one reviewed legacy asset for shared owne
         '--apply' => true,
         '--actor' => (string) $actor->getKey(),
         '--path' => [$sourcePath],
-    ])->expectsOutputToContain('Registered media')->assertSuccessful();
+        '--digest' => $reviewedDigest,
+    ])->expectsOutputToContain('import_exact_path_completed')->assertSuccessful();
 
     $media = Media::query()->sole();
     $operation = MediaMutationOperation::query()->sole();
@@ -83,16 +92,37 @@ it('dry-runs then atomically registers one reviewed legacy asset for shared owne
         ->and($operation->destination_sha256)->toBe(hash('sha256', Storage::disk('public')->get($media->path)));
     Storage::disk('public')->assertMissing($sourcePath);
     Storage::disk('public')->assertExists($media->path);
+    expect(data_get($operation->context, 'reviewed_manifest_digest'))->toBeString();
     Storage::disk('local')->assertExists((string) $operation->quarantine_path);
 
     $this->artisan('media:register-existing-curator-assets', [
         '--apply' => true,
         '--actor' => (string) $actor->getKey(),
         '--path' => [$sourcePath],
-    ])->expectsOutputToContain('Already registered')->assertSuccessful();
+        '--digest' => $reviewedDigest,
+    ])->expectsOutputToContain('already_registered')->assertSuccessful();
     expect(Media::query()->count())->toBe(1)
         ->and(MediaAttachment::query()->count())->toBe(2)
         ->and(MediaMutationOperation::query()->count())->toBe(1);
+
+    $destinationPath = $media->path;
+    $destinationBytes = Storage::disk('public')->get($destinationPath);
+    $moderator = User::factory()->moderator()->create();
+    $this->artisan('media:register-existing-curator-assets', [
+        '--apply' => true, '--actor' => (string) $actor->getKey(), '--path' => [$sourcePath], '--digest' => str_repeat('a', 64),
+    ])->expectsOutputToContain('manifest changed')->assertFailed();
+    $this->artisan('media:register-existing-curator-assets', [
+        '--apply' => true, '--actor' => (string) $moderator->getKey(), '--path' => [$sourcePath], '--digest' => $reviewedDigest,
+    ])->assertFailed();
+    Storage::disk('public')->delete($destinationPath);
+    $this->artisan('media:register-existing-curator-assets', [
+        '--apply' => true, '--actor' => (string) $actor->getKey(), '--path' => [$sourcePath], '--digest' => $reviewedDigest,
+    ])->expectsOutputToContain('manifest changed')->assertFailed();
+    Storage::disk('public')->put($destinationPath, 'corrupt destination', 'public');
+    $this->artisan('media:register-existing-curator-assets', [
+        '--apply' => true, '--actor' => (string) $actor->getKey(), '--path' => [$sourcePath], '--digest' => $reviewedDigest,
+    ])->expectsOutputToContain('manifest changed')->assertFailed();
+    Storage::disk('public')->put($destinationPath, $destinationBytes, 'public');
 
     Storage::disk('public')->put($sourcePath, $source, 'public');
     $laterOwner = ContentGroup::factory()->create(['cover_path' => $sourcePath]);
@@ -103,7 +133,8 @@ it('dry-runs then atomically registers one reviewed legacy asset for shared owne
         '--apply' => true,
         '--actor' => (string) $actor->getKey(),
         '--path' => [$sourcePath],
-    ])->expectsOutputToContain('Registered media')->assertSuccessful();
+        '--digest' => curatorG1TransitionDigest(),
+    ])->expectsOutputToContain('import_exact_path_completed')->assertSuccessful();
 
     expect(Media::query()->count())->toBe(2)
         ->and(MediaMutationOperation::query()->where('operation', MediaMutationOperationType::Registration)->count())->toBe(2)
@@ -130,6 +161,7 @@ it('switches settings identity to the immutable key and generated path in the sa
         '--apply' => true,
         '--actor' => (string) $actor->getKey(),
         '--path' => [$sourcePath],
+        '--digest' => curatorG1TransitionDigest(),
     ])->assertSuccessful();
 
     $media = Media::query()->sole();
@@ -174,10 +206,27 @@ it('requires one exact path and an authorized actor and compensates locked setti
         '--apply' => true,
         '--actor' => (string) $admin->getKey(),
         '--path' => [$sourcePath],
-    ])->expectsOutputToContain('locked')->assertFailed();
+        '--digest' => curatorG1TransitionDigest(),
+    ])->expectsOutputToContain('not an importable')->assertFailed();
 
     expect(Media::query()->count())->toBe(0)
         ->and(MediaAttachment::query()->count())->toBe(0)
         ->and(MediaMutationOperation::query()->count())->toBe(0);
     Storage::disk('public')->assertExists($sourcePath);
+});
+
+it('rejects a rowless public-disk symlink even when the target is a valid image', function (): void {
+    $path = 'content-groups/covers/symlinked.png';
+    $outside = Storage::disk('local')->path('outside.png');
+    Storage::disk('local')->put('outside.png', curatorG1LegacyPng());
+    $candidate = Storage::disk('public')->path($path);
+    @mkdir(dirname($candidate), 0777, true);
+    symlink($outside, $candidate);
+    ContentGroup::factory()->create(['cover_path' => $path]);
+
+    expect(fn () => app(LegacyMediaRegistrationPlanner::class)->plan($path))
+        ->toThrow(InvalidArgumentException::class, 'may not be a symlink');
+    expect(Media::query()->count())->toBe(0);
+
+    @unlink($candidate);
 });

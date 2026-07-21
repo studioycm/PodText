@@ -13,6 +13,8 @@ enum MediaMutationOperationType: string implements HasLabel
     case ExternalImport = 'external_import';
     case Registration = 'registration';
     case ReferenceKeyBackfill = 'reference_key_backfill';
+    case LegacyTransition = 'legacy_transition';
+    case LegacyOwnerRepair = 'legacy_owner_repair';
 
     public function getLabel(): string
     {
