@@ -896,12 +896,20 @@ it('keeps one inert responsive preview root with focus and dirty navigation prot
             async () => {
                 const started = performance.now();
                 window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+                await new Promise((resolve) => setTimeout(resolve, 100));
+
+                if (document.querySelector('[data-card-template-preview-modal]') !== null) {
+                    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+                }
 
                 while (document.querySelector('[data-card-template-preview-modal]') !== null && performance.now() - started < 5000) {
                     await new Promise((resolve) => setTimeout(resolve, 25));
                 }
 
-                await new Promise((resolve) => setTimeout(resolve, 50));
+                while (! document.activeElement?.closest('[data-test="card-template-preview-open"]')
+                    && performance.now() - started < 5000) {
+                    await new Promise((resolve) => setTimeout(resolve, 25));
+                }
 
                 return document.querySelector('[data-card-template-preview-modal]') === null
                     && Boolean(document.activeElement?.closest('[data-test="card-template-preview-open"]'));

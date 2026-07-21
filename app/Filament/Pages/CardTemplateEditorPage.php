@@ -1178,7 +1178,7 @@ abstract class CardTemplateEditorPage extends SettingsPage
     {
         for ($remaining = count($this->mountedActions); $remaining > 0; $remaining--) {
             $before = count($this->mountedActions);
-            $this->unmountAction(canCancelParentActions: false);
+            $this->unmountAction(false);
 
             if (count($this->mountedActions) >= $before) {
                 break;
