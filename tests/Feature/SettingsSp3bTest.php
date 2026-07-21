@@ -19,7 +19,6 @@ use App\Settings\AdminUxSettings;
 use App\Settings\PublicContentSettings;
 use App\Support\PublicFront\PublicFrontConfigCache;
 use App\Support\PublicFront\PublicFrontConfigReader;
-use App\Support\Settings\SettingsSp3bSubjectFixture;
 use Filament\Actions\Testing\TestAction;
 use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -248,7 +247,7 @@ it('redirects every legacy settings tab to its focused page', function (?string 
     'unknown' => ['unknown', HomepageSettings::class],
 ]);
 
-it('forwards only approved legacy measurement query parameters and rejects unauthorized saves before persistence', function (): void {
+it('discards retired settings measurement parameters during legacy redirects', function (): void {
     $this->get(LegacyPublicContentSettings::getUrl([
         'public-content-tab' => 'display',
         'sp3a_measure' => '1',
@@ -256,11 +255,10 @@ it('forwards only approved legacy measurement query parameters and rejects unaut
         'sp3b_subject_fixture' => 'item-page',
         'unapproved' => 'discard-me',
     ]))
-        ->assertRedirect(DisplaySettings::getUrl([
-            'sp3a_measure' => '1',
-            'sp3b_subject_fixture' => 'item-page',
-        ]));
+        ->assertRedirect(DisplaySettings::getUrl());
+});
 
+it('rejects unauthorized focused-page saves before persistence', function (): void {
     $component = Livewire::test(HomepageSettings::class)
         ->set('data.homepage_item_limit', 99);
 
@@ -283,21 +281,7 @@ it('keeps the relocated public forms lock surfaces available at their focused co
             ->schemaComponent('public-settings-lock-section-public-front-forms.public_forms.require_email_verification', 'form'));
 });
 
-it('provides keyed canaries only for the four measured subject pages', function (): void {
-    $fixture = app(SettingsSp3bSubjectFixture::class);
-
-    expect($fixture->payload(SettingsSubjectOwnershipRegistry::EPISODE_PAGE, SettingsSubjectOwnershipRegistry::EPISODE_PAGE))
-        ->toHaveKey('item_page')
-        ->and($fixture->payload(SettingsSubjectOwnershipRegistry::MENU_HEADER, SettingsSubjectOwnershipRegistry::MENU_HEADER))
-        ->toHaveKey('menu_config')
-        ->and($fixture->payload(SettingsSubjectOwnershipRegistry::ABOUT, SettingsSubjectOwnershipRegistry::ABOUT))
-        ->toHaveKey('about_page')
-        ->and($fixture->payload(SettingsSubjectOwnershipRegistry::PUBLIC_FORMS, SettingsSubjectOwnershipRegistry::PUBLIC_FORMS))
-        ->toHaveKey('public_forms')
-        ->and($fixture->payload(SettingsSubjectOwnershipRegistry::DISPLAY, 'unknown'))->toBe([]);
-});
-
-it('refuses measured subject-page saves without changing stored settings', function (): void {
+it('ignores retired settings measurement parameters during focused-page saves', function (): void {
     $environment = app()->environment();
     $settings = app(PublicContentSettings::class);
     $settings->item_page_layout = 'standard';
@@ -307,20 +291,6 @@ it('refuses measured subject-page saves without changing stored settings', funct
     app()->detectEnvironment(fn (): string => 'local');
 
     try {
-        foreach ([
-            EpisodePageSettings::class => SettingsSubjectOwnershipRegistry::EPISODE_PAGE,
-            MenuHeaderSettings::class => SettingsSubjectOwnershipRegistry::MENU_HEADER,
-            AboutSettings::class => SettingsSubjectOwnershipRegistry::ABOUT,
-            ManagePublicForms::class => SettingsSubjectOwnershipRegistry::PUBLIC_FORMS,
-        ] as $page => $subject) {
-            Livewire::withQueryParams([
-                'sp3a_measure' => '1',
-                'sp3b_subject_fixture' => $subject,
-            ])
-                ->test($page)
-                ->assertOk();
-        }
-
         Livewire::withQueryParams([
             'sp3a_measure' => '1',
             'sp3b_subject_fixture' => SettingsSubjectOwnershipRegistry::EPISODE_PAGE,
@@ -335,5 +305,5 @@ it('refuses measured subject-page saves without changing stored settings', funct
 
     clearSettingsSp3bState();
 
-    expect(app(PublicContentSettings::class)->item_page_layout)->toBe('standard');
+    expect(app(PublicContentSettings::class)->item_page_layout)->toBe('media_first');
 });

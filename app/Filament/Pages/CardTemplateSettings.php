@@ -8,8 +8,6 @@ use App\Models\User;
 use App\Settings\PublicContentSettings;
 use App\Support\Settings\CardTemplates\CardTemplateLibraryProjection;
 use App\Support\Settings\CardTemplates\CardTemplateLibraryProjector;
-use App\Support\Settings\SettingsPageProfiler;
-use App\Support\Settings\SettingsSp3aMeasurementFixture;
 use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Pages\Page;
@@ -21,7 +19,6 @@ use Filament\Tables\Contracts\HasTable;
 use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Table;
 use Illuminate\Support\Str;
-use Livewire\Attributes\Locked;
 
 class CardTemplateSettings extends Page implements HasTable
 {
@@ -35,15 +32,6 @@ class CardTemplateSettings extends Page implements HasTable
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;
 
     protected string $view = 'filament.pages.card-template-settings';
-
-    #[Locked]
-    public bool $sp3aMeasurementMode = false;
-
-    #[Locked]
-    public bool $profilingMode = false;
-
-    #[Locked]
-    public ?string $measurementFixtureIdentity = null;
 
     private ?CardTemplateLibraryProjection $requestProjection = null;
 
@@ -67,19 +55,10 @@ class CardTemplateSettings extends Page implements HasTable
         return $user instanceof User && $user->hasRoleAtLeast(UserRole::Admin);
     }
 
-    public function mount(): void
-    {
-        $this->sp3aMeasurementMode = app()->environment('local') && request()->boolean('sp3a_measure');
-        $this->profilingMode = $this->sp3aMeasurementMode && request()->boolean('sp3a_profile');
-        $this->measurementFixtureIdentity = $this->sp3aMeasurementMode ? 'sp3a-library' : null;
-        $this->restoreProfilingConfiguration();
-    }
-
     public function hydrate(): void
     {
         $this->requestProjection = null;
         $this->requestSnapshot = null;
-        $this->restoreProfilingConfiguration();
     }
 
     public function table(Table $table): Table
@@ -202,24 +181,10 @@ class CardTemplateSettings extends Page implements HasTable
         ];
     }
 
-    /**
-     * @return array<string, mixed>
-     */
-    public function sp3cMeasurementState(): array
-    {
-        return [
-            'rows' => $this->projection()->records,
-            'mounted_actions' => $this->mountedActions,
-        ];
-    }
-
     private function projection(): CardTemplateLibraryProjection
     {
-        return $this->requestProjection ??= app(SettingsPageProfiler::class)->withSubject(
-            'card-template-library',
-            fn (): CardTemplateLibraryProjection => app(CardTemplateLibraryProjector::class)
-                ->project($this->snapshot()),
-        );
+        return $this->requestProjection ??= app(CardTemplateLibraryProjector::class)
+            ->project($this->snapshot());
     }
 
     /**
@@ -231,20 +196,9 @@ class CardTemplateSettings extends Page implements HasTable
             return $this->requestSnapshot;
         }
 
-        if ($this->sp3aMeasurementMode) {
-            return $this->requestSnapshot = app(SettingsSp3aMeasurementFixture::class)->payload();
-        }
-
         $settings = app(PublicContentSettings::class);
         $settings->refresh();
 
         return $this->requestSnapshot = $settings->toArray();
-    }
-
-    private function restoreProfilingConfiguration(): void
-    {
-        if (app()->environment('local') && $this->profilingMode) {
-            config()->set('settings.profiling.enabled', true);
-        }
     }
 }

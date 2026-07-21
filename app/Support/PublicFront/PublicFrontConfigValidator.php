@@ -11,7 +11,6 @@ use App\Support\PublicFront\Forms\PublicFormDefinitionRegistry;
 use App\Support\PublicFront\Icons\PublicFrontIconRegistry;
 use App\Support\PublicFront\ItemPage\PublicItemPageRegistry;
 use App\Support\PublicFront\Maintenance\MaintenanceForm;
-use App\Support\Settings\SettingsPageProfiler;
 use App\Support\SettingsLifecycle\SettingsLifecycleSchema;
 
 class PublicFrontConfigValidator
@@ -27,11 +26,7 @@ class PublicFrontConfigValidator
      */
     public function validateGroups(array $config, ?array $only = null): PublicFrontConfigResult
     {
-        $profiler = app(SettingsPageProfiler::class);
-        $defaults = $profiler->measure(
-            'registry.defaults_build',
-            fn (): array => PublicFrontConfigRegistry::defaults(),
-        );
+        $defaults = PublicFrontConfigRegistry::defaults();
         $settingsKeys = PublicFrontConfigRegistry::settingsKeys();
         $onlyLookup = $only === null ? null : array_flip(array_values(array_unique($only)));
         $normalized = $only === null
@@ -56,12 +51,7 @@ class PublicFrontConfigValidator
                 continue;
             }
 
-            $normalized[$key] = $profiler->measure(
-                "validator.group.{$key}",
-                function () use ($key, $value, $defaults, &$invalidConfig): array {
-                    return $this->normalizeGroup($key, $value, $defaults, $invalidConfig);
-                },
-            );
+            $normalized[$key] = $this->normalizeGroup($key, $value, $defaults, $invalidConfig);
         }
 
         return new PublicFrontConfigResult($normalized, $invalidConfig);

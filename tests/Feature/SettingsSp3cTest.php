@@ -26,10 +26,8 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Livewire\Livewire;
-use Psr\Log\LoggerInterface;
 use Spatie\LaravelSettings\Events\SettingsSaved;
 use Spatie\LaravelSettings\SettingsContainer;
 use Tests\Support\SettingsSp3cCanaryMeasurement;
@@ -297,6 +295,7 @@ it('scans every homepage section in one projected query with fallback ambiguity 
         'display_config' => [],
     ]);
 
+    $initialRows = HomepageSection::query()->count();
     $queries = [];
     DB::listen(function (QueryExecuted $query) use (&$queries): void {
         if (str_starts_with(strtolower(ltrim($query->sql)), 'select')
@@ -322,21 +321,19 @@ it('scans every homepage section in one projected query with fallback ambiguity 
         ->and($references->for('content_group:default_content_group')['implicit'])->toBe(1)
         ->and($references->for('contributor:default_contributor')['implicit'])->toBe(1)
         ->and($references->ambiguousKeys)->toHaveKey('ambiguous_key')
-        ->and($references->sectionRows)->toBe(9);
+        ->and($initialRows)->toBe(9);
 
     HomepageSection::factory()->count(40)->create();
     $queries = [];
-    $scaledReferences = app(CardTemplateReferenceScanner::class)->scan(settingsSp3cSnapshot());
+    app(CardTemplateReferenceScanner::class)->scan(settingsSp3cSnapshot());
 
     expect($queries)->toHaveCount(1);
 
     if (getenv('SP3C_PRODUCTION_REPORT') === '1') {
         fwrite(STDOUT, json_encode([
             'reference_scan' => [
-                'initial_rows' => $references->sectionRows,
-                'initial_milliseconds' => round($references->milliseconds, 3),
-                'scaled_rows' => $scaledReferences->sectionRows,
-                'scaled_milliseconds' => round($scaledReferences->milliseconds, 3),
+                'initial_rows' => $initialRows,
+                'scaled_rows' => $initialRows + 40,
                 'queries_at_each_scale' => count($queries),
             ],
         ], JSON_THROW_ON_ERROR).PHP_EOL);
@@ -1055,194 +1052,65 @@ it('runs one save event one backup attempt and one cache invalidation for a succ
     expect($events)->toBe(1);
 });
 
-it('keeps profiler subject on editor saves including the synchronous listener', function (): void {
-    $target = settingsSp3cTemplate('profiled');
+it('ignores retired settings measurement flags and enforces stored-template validation', function (): void {
+    $target = settingsSp3cTemplate('stored-only');
     settingsSp3cSave(PublicContentSettings::class, 'card_templates', [$target]);
-    config()->set('settings.profiling.enabled', true);
-    $contexts = [];
-    $logger = Mockery::mock(LoggerInterface::class);
-    $logger->shouldReceive('info')
-        ->zeroOrMoreTimes()
-        ->with('Settings page profile', Mockery::type('array'))
-        ->andReturnUsing(function (string $message, array $context) use (&$contexts): void {
-            $contexts[] = $context;
-        });
-    Log::shouldReceive('channel')
-        ->zeroOrMoreTimes()
-        ->with('settings_profiling')
-        ->andReturn($logger);
-
-    Livewire::test(EditCardTemplate::class, [
-        'family' => 'content_item',
-        'key' => 'profiled',
-    ])
-        ->set('data.label', 'Profiled save')
-        ->call('save')
-        ->assertHasNoErrors();
-
-    expect(collect($contexts)->where('phase', 'save.settings_persist')->pluck('subject')->unique()->all())
-        ->toBe(['card-template-editor'])
-        ->and(collect($contexts)->where('phase', 'settings_saved.listener.total')->pluck('subject')->unique()->all())
-        ->toBe(['card-template-editor']);
-    config()->set('settings.profiling.enabled', false);
-});
-
-it('measures local library and unselected editor responses without ordinary leakage', function (): void {
     $environment = app()->environment();
     app()->detectEnvironment(fn (): string => 'local');
 
     try {
-        $measured = $this->get(CardTemplateSettings::getUrl([
+        $libraryResponse = $this->get(CardTemplateSettings::getUrl([
             'sp3a_measure' => '1',
+            'sp3a_profile' => '1',
+            'sp3b_subject_fixture' => 'item-page',
         ]));
-        $measured->assertOk()
-            ->assertHeader('X-SP3A-Uncompressed-Bytes')
-            ->assertHeader('X-SP3A-Total-Queries')
-            ->assertHeader('X-SP3A-Settings-Reads');
-        settingsSp3cForgetState();
-        $editorInitial = $this->get(EditCardTemplate::getUrl([
+        $libraryResponse->assertOk()
+            ->assertHeaderMissing('X-SP3A-Uncompressed-Bytes')
+            ->assertHeaderMissing('X-SP3A-Total-Queries')
+            ->assertHeaderMissing('X-SP3A-Settings-Reads')
+            ->assertDontSee('sp3a_content_item_1');
+
+        $this->get(EditCardTemplate::getUrl([
             'family' => 'content_item',
             'key' => 'sp3a_content_item_1',
             'sp3a_measure' => '1',
-        ]));
-        $editorInitial->assertOk()
-            ->assertHeader('X-SP3A-Uncompressed-Bytes')
-            ->assertHeader('X-SP3A-Total-Queries')
-            ->assertHeader('X-SP3A-Settings-Reads');
-        $measure = app(SettingsSp3cCanaryMeasurement::class);
-        $libraryInitialMetrics = $measure->measureHtml($measured->getContent(), []);
-        $editorInitialMetrics = $measure->measureHtml($editorInitial->getContent(), []);
+        ]))->assertNotFound();
 
-        $ordinary = $this->get(CardTemplateSettings::getUrl());
-        $ordinary->assertOk();
-        expect($ordinary->headers->has('X-SP3A-Uncompressed-Bytes'))->toBeFalse()
-            ->and($ordinary->getContent())->not->toContain('sp3a_content_item_1');
-
-        $library = Livewire::withQueryParams([
+        $editorResponse = $this->get(EditCardTemplate::getUrl([
+            'family' => 'content_item',
+            'key' => 'stored-only',
             'sp3a_measure' => '1',
-        ])->test(CardTemplateSettings::class);
-        $libraryMetrics = $measure->measure($library);
-
-        expect($libraryMetrics['field_wrappers'])->toBeLessThanOrEqual(2)
-            ->and($libraryMetrics['editor_controls'])->toBeLessThanOrEqual(2)
-            ->and($libraryMetrics['elements'])->toBeLessThanOrEqual(1262)
-            ->and($libraryMetrics['html_bytes'])->toBeLessThanOrEqual(575913)
-            ->and($libraryMetrics['serialized_state_bytes'])->toBeLessThanOrEqual(13973);
+            'sp3a_profile' => '1',
+        ]));
+        $editorResponse->assertOk();
 
         $editor = Livewire::withQueryParams([
             'sp3a_measure' => '1',
+            'sp3a_profile' => '1',
         ])->test(EditCardTemplate::class, [
             'family' => 'content_item',
-            'key' => 'sp3a_content_item_1',
-        ]);
-        $metrics = $measure->measure($editor);
+            'key' => 'stored-only',
+        ])
+            ->set('data.label', 'Flags ignored')
+            ->call('save')
+            ->assertHasNoErrors();
 
-        expect($metrics['field_wrappers'])->toBeLessThanOrEqual(10)
-            ->and($metrics['editor_controls'])->toBeLessThanOrEqual(3)
-            ->and($metrics['wire_models'])->toBeLessThanOrEqual(3)
-            ->and($metrics['elements'])->toBeLessThanOrEqual(4212);
+        expect(collect(settingsSp3cSnapshot()['card_templates'])->firstWhere('key', 'stored-only')['label'])
+            ->toBe('Flags ignored');
 
         if (getenv('SP3C_PRODUCTION_REPORT') === '1') {
+            $measure = app(SettingsSp3cCanaryMeasurement::class);
+            $library = Livewire::withQueryParams([
+                'sp3a_measure' => '1',
+            ])->test(CardTemplateSettings::class);
+
             fwrite(STDOUT, json_encode([
-                'initial_get' => [
-                    'library' => [
-                        'headers' => collect([
-                            'X-SP3A-Uncompressed-Bytes',
-                            'X-SP3A-Total-Queries',
-                            'X-SP3A-Settings-Reads',
-                            'X-SP3A-Lifecycle-Derivations',
-                            'X-SP3A-Duplicate-Lifecycle-Loads',
-                        ])->mapWithKeys(fn (string $header): array => [$header => $measured->headers->get($header)])->all(),
-                        'html' => $libraryInitialMetrics,
-                    ],
-                    'editor' => [
-                        'headers' => collect([
-                            'X-SP3A-Uncompressed-Bytes',
-                            'X-SP3A-Total-Queries',
-                            'X-SP3A-Settings-Reads',
-                            'X-SP3A-Lifecycle-Derivations',
-                            'X-SP3A-Duplicate-Lifecycle-Loads',
-                        ])->mapWithKeys(fn (string $header): array => [$header => $editorInitial->headers->get($header)])->all(),
-                        'html' => $editorInitialMetrics,
-                    ],
-                ],
-                'library' => $libraryMetrics,
-                'editor_unselected' => $metrics,
+                'retired_flags_ignored' => true,
+                'library' => $measure->measure($library),
+                'editor' => $measure->measure($editor),
             ], JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES).PHP_EOL);
         }
     } finally {
         app()->detectEnvironment(fn (): string => $environment);
-    }
-});
-
-it('keeps local measurement state locked read-only and uses the frozen SP3A editor identity', function (): void {
-    $environment = app()->environment();
-    app()->detectEnvironment(fn (): string => 'local');
-
-    try {
-        $component = Livewire::withQueryParams([
-            'sp3a_measure' => '1',
-            'sp3a_profile' => '1',
-        ])->test(EditCardTemplate::class, [
-            'family' => 'content_item',
-            'key' => 'sp3a_content_item_1',
-        ]);
-
-        expect($component->get('measurementFixtureIdentity'))->toBe('content_item:sp3a_content_item_1');
-
-        expect(fn () => $component->set('sp3aMeasurementMode', false))
-            ->toThrow(Exception::class, 'Cannot update locked property');
-        expect(fn () => $component->set('profilingMode', false))
-            ->toThrow(Exception::class, 'Cannot update locked property');
-        expect(fn () => $component->set('measurementFixtureIdentity', 'forged'))
-            ->toThrow(Exception::class, 'Cannot update locked property');
-
-        $library = Livewire::withQueryParams([
-            'sp3a_measure' => '1',
-            'sp3a_profile' => '1',
-        ])->test(CardTemplateSettings::class);
-
-        expect($library->get('measurementFixtureIdentity'))->toBe('sp3a-library');
-        expect(fn () => $library->set('sp3aMeasurementMode', false))
-            ->toThrow(Exception::class, 'Cannot update locked property');
-
-        Livewire::withQueryParams([
-            'sp3a_measure' => '1',
-        ])->test(EditCardTemplate::class, [
-            'family' => 'content_item',
-            'key' => 'sp3a_content_item_1',
-        ])
-            ->call('save')
-            ->assertHasErrors('data.key');
-
-        Event::fake([SettingsSaved::class]);
-        Livewire::withQueryParams([
-            'sp3a_measure' => '1',
-        ])->test(CreateCardTemplate::class)
-            ->call('save')
-            ->assertHasErrors('data.key');
-
-        Livewire::withQueryParams([
-            'sp3a_measure' => '1',
-            'mode' => 'clone',
-            'family' => 'content_item',
-            'key' => 'sp3a_content_item_1',
-        ])->test(CreateCardTemplate::class)
-            ->call('save')
-            ->assertHasErrors('data.key');
-
-        Livewire::withQueryParams([
-            'sp3a_measure' => '1',
-        ])->test(EditCardTemplate::class, [
-            'family' => 'content_item',
-            'key' => 'sp3a_content_item_1',
-        ])
-            ->call('deleteTemplate')
-            ->assertHasErrors('data.key');
-
-        Event::assertNotDispatched(SettingsSaved::class);
-    } finally {
-        app()->detectEnvironment(fn (): string => $environment);
-        config()->set('settings.profiling.enabled', false);
     }
 });

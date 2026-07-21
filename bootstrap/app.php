@@ -1,11 +1,9 @@
 <?php
 
-use App\Http\Middleware\MeasureSettingsSp3aResponse;
 use App\Support\PublicFront\Maintenance\MaintenancePageRenderer;
 use App\Support\PublicFront\PublicFrontConfigReader;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
-use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Request;
 use Illuminate\Session\TokenMismatchException;
 use Illuminate\Support\MessageBag;
@@ -18,9 +16,7 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withCommands()
-    ->withMiddleware(function (Middleware $middleware): void {
-        $middleware->append(MeasureSettingsSp3aResponse::class);
-    })
+    ->withMiddleware()
     ->withExceptions(function (Exceptions $exceptions): void {
         $maintenanceCsrfRetryResponse = function (Request $request): ?SymfonyResponse {
             if (! $request->routeIs('public.maintenance-form.submit') && ! $request->is('maintenance/form')) {

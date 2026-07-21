@@ -10,7 +10,6 @@ use App\Support\Settings\CardTemplates\CardTemplateDraftFactory;
 use App\Support\Settings\CardTemplates\CardTemplateFocusedWriter;
 use App\Support\Settings\CardTemplates\CardTemplateIdentity;
 use App\Support\Settings\CardTemplates\CardTemplateWriteResult;
-use App\Support\Settings\SettingsSp3aMeasurementFixture;
 use Closure;
 
 class CreateCardTemplate extends CardTemplateEditorPage
@@ -20,7 +19,6 @@ class CreateCardTemplate extends CardTemplateEditorPage
     public function mount(): void
     {
         abort_unless(static::canAccess(), 403);
-        $this->initializeMeasurementMode();
         $mode = request()->query('mode', 'blank');
         abort_unless(is_string($mode) && in_array($mode, ['blank', 'clone', 'override'], true), 404);
         $this->operationMode = $mode;
@@ -46,7 +44,7 @@ class CreateCardTemplate extends CardTemplateEditorPage
                 $matches = $identity->locate($templates, $family, $key);
                 abort_unless(count($matches) === 1, 404);
                 $source = $matches[0]['template'];
-                abort_unless($this->sp3aMeasurementMode || $this->validStoredTemplate($source), 404);
+                abort_unless($this->validStoredTemplate($source), 404);
                 abort_if($policy->isProtected($source) && ! $this->capable, 403);
                 $this->sourceFingerprint = $identity->fingerprint($source);
                 $this->templateProtectedAtMount = $policy->isProtected($source);
@@ -99,10 +97,6 @@ class CreateCardTemplate extends CardTemplateEditorPage
      */
     private function freshMountSnapshot(): array
     {
-        if ($this->sp3aMeasurementMode) {
-            return app(SettingsSp3aMeasurementFixture::class)->payload();
-        }
-
         $settings = app(PublicContentSettings::class);
         $settings->refresh();
 

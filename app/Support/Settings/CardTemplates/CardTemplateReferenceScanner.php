@@ -18,7 +18,6 @@ class CardTemplateReferenceScanner
      */
     public function scan(array $settingsSnapshot): CardTemplateReferences
     {
-        $startedAt = hrtime(true);
         $references = [];
         $ambiguous = [];
 
@@ -94,8 +93,6 @@ class CardTemplateReferenceScanner
         return new CardTemplateReferences(
             references: $references,
             ambiguousKeys: $ambiguous,
-            sectionRows: $sections->count(),
-            milliseconds: (hrtime(true) - $startedAt) / 1_000_000,
         );
     }
 

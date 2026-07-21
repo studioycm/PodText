@@ -134,6 +134,7 @@ it('normalizes default image settings and backfills the settings row', function 
             'content_item' => [
                 'mode' => 'custom',
                 'path' => 'default-images/item.webp',
+                'media_reference_key' => 'malformed-reference-key',
                 'class' => 'rounded-full',
             ],
             'content_group' => [
@@ -150,7 +151,8 @@ it('normalizes default image settings and backfills the settings row', function 
     ]);
 
     $defaultImages = $result->group('default_images');
-    $paths = collect($result->invalidConfig())
+    $invalidConfig = collect($result->invalidConfig());
+    $paths = $invalidConfig
         ->map(fn ($invalidConfig): string => $invalidConfig->path)
         ->all();
 
@@ -172,12 +174,15 @@ it('normalizes default image settings and backfills the settings row', function 
         'media_reference_key' => null,
     ])->and($paths)->toContain(
         'default_images.content_item.class',
+        'default_images.content_item.media_reference_key',
         'default_images.content_group.mode',
         'default_images.content_group.path',
         'default_images.contributor',
         'default_images.global.path',
         'default_images.unexpected',
     );
+    expect($invalidConfig->firstWhere('path', 'default_images.content_item.media_reference_key')->reason)
+        ->toBe('invalid_media_reference_key');
 
     DB::table('settings')
         ->where('group', PublicContentSettings::group())

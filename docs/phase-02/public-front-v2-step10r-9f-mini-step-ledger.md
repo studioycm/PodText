@@ -4,23 +4,21 @@ This ledger controls the post-Step-10 mini-step sequence. Each run implements ex
 
 ## Current Run
 
-- Selected ad-hoc maintenance: bounded dependency refresh under audit
-  `LS-20260721-DEPENDENCY-REFRESH-01`, option
-  `DEP-UPGRADE-O1-BOUNDED-FULL-REFRESH`.
-- Status: implementation and verification are complete locally. Canonical
-  implementation hash: `4d2a063954975fa07dde43f6113a97c671fc5724`.
-- Composer and npm lock graphs were refreshed only within unchanged manifest
-  constraints. The result includes Laravel 13.21.1, Filament 5.7.1, Horizon
-  5.48.1, Tailwind 4.3.3, and Vite 8.1.5, plus directly required Filament
-  action and browser-test compatibility corrections.
-- No manifest, migration, schema, security-boundary, production, worker,
-  deployment, or local-development database action occurred. Composer's normal
-  local Filament hook refreshed registered assets and cleared local framework
-  caches; 18 tracked core outputs changed and match Filament 5.7.1 exactly.
-- After canonical closeout, FU04 remains the next unapproved main-roadmap
-  action. Production cutover/IDs 6/7, root-level ID disposition, recovery
-  gallery, permission-schema cleanup, and future major dependency upgrades
-  remain separately gated.
+- Selected ad-hoc maintenance: settings development metrics retirement
+  Mini-task 1 under audit `LS-20260721-SETTINGS-DEV-METRICS-03`, option
+  `SETTINGS-METRICS-O1-FULL-RETIREMENT`.
+- Status: implementation and the final serial gate are complete locally;
+  canonical implementation hash is pending closeout.
+- The temporary profiler, response middleware, SP3A/SP3B runtime fixtures,
+  query-driven measurement branches, headers, counters/timing DTOs, config/log
+  channel, and browser harness are removed. Functional lifecycle memoization,
+  focused saves, Card Template protections, Curator identity behavior, and the
+  Filament 5.7.1 stack are preserved.
+- Mini-task 2 was not started. Isolated SP3C/Step 5B canaries, test fixtures,
+  report switches/blocks, selectors, and broader historical documentation
+  retirement remain separately audit/approval-gated.
+- No dependency, migration, schema, production, deployment, worker, local
+  development database/storage, branch, worktree, or push action occurred.
 
 ## Checklist
 
@@ -90,6 +88,7 @@ This ledger controls the post-Step-10 mini-step sequence. Each run implements ex
 | CURATOR-G1 - Full app-owned Curator image library | complete locally; production cutover gated | `fa5b57c8dfa327cdbfd03267c94c6cd21f6a10f0` | App-owned Media Resource/picker/controller; centralized validation/SSRF policy; Media/attachment/journal schema and APIs; backfill/report/registration/repair commands; settings/content import-export/public resolver cutover; translations/tests/research/plan/runbooks/handoff/current state; this ledger | Focused and final gate outcomes are recorded in `docs/phase-02/curator-g1-image-library-o2-handoff.md`. | Completes all seven approved O2 minis without dependency or security-boundary drift. Registration apply is fully implemented locally but unexecuted outside isolated tests. Four migrations, production backfills/repairs/cache actions, disallowed-media disposition, SVG IDs 6/7, path retirement/non-null proof, and measured curation dimensions remain separately gated. FU04 remains the next unapproved main-roadmap action. |
 | CURATOR-G1 LMTC - Legacy media transition correction | complete locally; production cutover gated | `f73be008b3dbc49e09f01b645327b4083d8f70f8` | Transition manifest/digest and exact command; same-ID raster/reusable SVG executor; exact-path import; ordered backfills/integrity; typed owner diagnostics and repair/default UX; production-shaped and Filament/Livewire/performance tests; durable research/plan; reconciled runbooks/state/handoff; this ledger | Package 2 focused matrix: 47 tests / 354 assertions. Package 3 matrix: 55 / 396. Package 4 matrix: 93 / 956. Final repository gates are recorded in `docs/phase-02/curator-g1-legacy-media-transition-correction-handoff.md`. | Implements the approved O1 correction with no schema/dependency drift and no environment mutation. Actual IDs 6/7 sanitation, production cutover, root IDs 12-15 disposition, recovery gallery, upgrades, and permission-schema cleanup remain separately gated. FU04 is unchanged. |
 | DEP-UPGRADE-O1 - Bounded full dependency refresh | complete locally | `4d2a063954975fa07dde43f6113a97c671fc5724`; `docs/phase-02/dependency-refresh-handoff.md` | Composer/npm lockfiles; Filament compatibility call; Card Template browser compatibility expectation; 18 tracked Filament assets; tooling-state docs; research/plan/handoff; this ledger | Focused feature: 28 tests / 387 assertions. Focused browser: 14 tests / 1,832 assertions. Final serial suite: 1,001 tests / 13,635 assertions. Pint, FilaCheck, and Vite build passed. | Manifests remain unchanged; no major, schema, migration, production, worker, or local-development database change. Livewire 4.3.3 and Curator 5.1.2 remain unchanged. FU04 remains next and unapproved. |
+| SETTINGS-METRICS-O1 Mini-task 1 - Runtime retirement | complete locally; Mini-task 2 unapproved | Pending canonical implementation hash; `docs/phase-02/settings-development-metrics-retirement-mini1-handoff.md` | Runtime profiler/middleware/fixtures/flags/headers/counters/config/logging/browser harness; settings/Card Template unwraps; functional regression rewrites; Curator identity-pair additions; research/plan/handoff/state; this ledger | TDD retirement RED then focused green; settings/media matrix 122 / 1,195; Curator preservation 71 / 778; deferred canary/preview 38 / 775; browser 14 / 1,832; current SP3A/SP3B/SP3C 59 / 495. Final serial suite: 997 / 13,555; Pint, FilaCheck, and Vite build passed. | Preserves Filament 5.7.1, Curator G1/LMTC, functional settings lifecycle/saves, Card Template protection/preview, isolated canary/report artifacts, and historical provenance. No dependency/schema/data/environment action. Stop before Mini-task 2. |
 | UI-HF1 - Logo SVG normalization and adaptive favicon | complete | `9d8296f feat: normalize logo svg coordinates and add theme-adaptive favicon` | normalized light/dark public logo SVGs; retained original logo assets; adaptive public favicon; admin/public panel favicon registration; focused panel favicon test | Focused favicon test passed in the implementation session. | Compact shipped UI correction recorded without duplicating Curator or OTP status. |
 | UI-HF2 - Collapsible admin navigation groups | complete | `d128cfd feat: make admin navigation groups collapsible` | central admin navigation order; admin navigation regression test | Focused navigation regression passed in the implementation session. | Restores Filament group collapse behavior while preserving the central navigation order. |
 | Step 10R-P2 - Public listing fetch-window and lazy options | pending |  |  |  | Bound listing fetch windows, lazy filter options/form definitions, and make unconsumed aggregate subselects opt-in per surface. |

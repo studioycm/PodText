@@ -2306,7 +2306,6 @@ return [
             'invalid_mode' => 'The requested create mode is invalid.',
             'invalid_override' => 'The override identity no longer matches the registry default.',
             'invalid_source' => 'The clone source is invalid.',
-            'measurement' => 'Measurement mode is read-only.',
             'missing' => 'The target template no longer exists.',
             'protected' => 'This operation would expose or modify a protected template part.',
             'referenced' => 'This template is referenced and cannot be renamed or deleted.',

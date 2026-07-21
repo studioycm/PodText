@@ -8,9 +8,6 @@ use App\Filament\Support\Concerns\UsesAdminNavigationOrder;
 use App\Models\User;
 use App\Settings\PublicContentSettings as PublicContentSettingsData;
 use App\Support\PublicFront\PublicFrontConfigValidator;
-use App\Support\Settings\SettingsPageProfiler;
-use App\Support\Settings\SettingsSp3aMeasurementFixture;
-use App\Support\Settings\SettingsSp3bSubjectFixture;
 use App\Support\SettingsLifecycle\SettingsImportLocks;
 use App\Support\SettingsLifecycle\SettingsImportLockSurfaceRegistry;
 use App\Support\SettingsLifecycle\SettingsLifecycleSchema;
@@ -18,7 +15,6 @@ use App\Support\SettingsLifecycle\SettingsLifecycleSelectionState;
 use App\Support\SettingsLifecycle\SettingsLifecycleUnit;
 use App\Support\Transcriptions\MultiTranscriptionSurfaces;
 use BackedEnum;
-use Closure;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Field;
 use Filament\Pages\SettingsPage;
@@ -41,8 +37,6 @@ abstract class PublicContentSettingsSubjectPage extends SettingsPage
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedCog6Tooth;
 
     protected static bool $shouldRegisterNavigation = false;
-
-    public bool $sp3aMeasurementMode = false;
 
     /**
      * @var array<int, array{group: string, path: string, selectable: bool}>|null
@@ -105,189 +99,105 @@ abstract class PublicContentSettingsSubjectPage extends SettingsPage
 
     protected function fillForm(): void
     {
-        $this->sp3aMeasurementMode = app()->environment('local') && request()->boolean('sp3a_measure');
+        $this->callHook('beforeFill');
 
-        $this->settingsProfiler()->withRequestKind(SettingsPageProfiler::REQUEST_INITIAL_LOAD, function (): void {
-            $this->callHook('beforeFill');
+        $settings = app(static::getSettings());
+        $data = $this->mutateFormDataBeforeFill($settings->toArray());
 
-            $data = $this->settingsProfiler()->measure(
-                'settings.read_hydrate',
-                function (): array {
-                    $settings = app(static::getSettings());
+        $this->form->fill($data);
 
-                    return $this->mutateFormDataBeforeFill($settings->toArray());
-                },
-                SettingsPageProfiler::REQUEST_INITIAL_LOAD,
-            );
-
-            if ($this->sp3aMeasurementMode) {
-                $data = SettingsSubjectOwnershipRegistry::overlayOwned(
-                    $data,
-                    app(SettingsSp3aMeasurementFixture::class)->payload(),
-                    $this->settingsSubject(),
-                );
-                $data = SettingsSubjectOwnershipRegistry::overlayOwned(
-                    $data,
-                    app(SettingsSp3bSubjectFixture::class)->payload(
-                        $this->settingsSubject(),
-                        request()->query('sp3b_subject_fixture'),
-                    ),
-                    $this->settingsSubject(),
-                );
-            }
-
-            $this->form->fill($data);
-
-            $this->callHook('afterFill');
-
-            $this->recordPayloadSnapshot('payload.load', SettingsPageProfiler::REQUEST_INITIAL_LOAD);
-        });
+        $this->callHook('afterFill');
     }
 
     public function save(): void
     {
         abort_unless($this->canEdit(), 403);
 
-        if ($this->sp3aMeasurementMode) {
-            return;
-        }
+        try {
+            $this->beginDatabaseTransaction();
 
-        $this->settingsProfiler()->withRequestKind(SettingsPageProfiler::REQUEST_SAVE, function (): void {
-            $this->settingsProfiler()->measure('save.total', function (): void {
-                try {
-                    $this->beginDatabaseTransaction();
+            $this->callHook('beforeValidate');
 
-                    $this->callHook('beforeValidate');
+            $data = $this->form->getState();
 
-                    $data = $this->settingsProfiler()->measure(
-                        'save.validation.total',
-                        fn (): array => $this->form->getState(),
-                        SettingsPageProfiler::REQUEST_SAVE,
-                        $this->currentPayloadBytes(),
-                    );
+            $this->callHook('afterValidate');
 
-                    $this->callHook('afterValidate');
-
-                    $data = $this->settingsProfiler()->measure(
-                        'save.mutate_normalize',
-                        function () use ($data): array {
-                            $settings = app(static::getSettings());
-                            $settings->refresh();
-                            $stored = $settings->toArray();
-                            $owned = SettingsSubjectOwnershipRegistry::extractOwned($data, $this->settingsSubject());
-                            $owned = $this->normalizeOwnedFormData($owned, $stored);
-                            $candidate = SettingsSubjectOwnershipRegistry::overlayOwned(
-                                $stored,
-                                $owned,
-                                $this->settingsSubject(),
-                            );
-                            $candidate = MultiTranscriptionSurfaces::overlayUnauthorizedSettings(
-                                $candidate,
-                                PublicContentSettingsData::class,
-                                storedSnapshot: $stored,
-                            );
-                            $validated = app(PublicFrontConfigValidator::class)
-                                ->validateGroups(
-                                    $candidate,
-                                    SettingsSubjectOwnershipRegistry::validatorGroups($this->settingsSubject()),
-                                )
-                                ->config();
-                            $owned = SettingsSubjectOwnershipRegistry::overlayOwned(
-                                $owned,
-                                $validated,
-                                $this->settingsSubject(),
-                            );
-
-                            return [
-                                'settings' => $settings,
-                                'data' => MultiTranscriptionSurfaces::overlayUnauthorizedSettings(
-                                    SettingsSubjectOwnershipRegistry::overlayOwned(
-                                        $stored,
-                                        $owned,
-                                        $this->settingsSubject(),
-                                    ),
-                                    PublicContentSettingsData::class,
-                                    storedSnapshot: $stored,
-                                ),
-                            ];
-                        },
-                        SettingsPageProfiler::REQUEST_SAVE,
-                        $this->settingsProfiler()->payloadBytes($data),
-                    );
-
-                    $this->callHook('beforeSave');
-
-                    $this->settingsProfiler()->measure(
-                        'save.settings_persist',
-                        function () use ($data): void {
-                            $data['settings']->fill($data['data']);
-                            $data['settings']->save();
-                        },
-                        SettingsPageProfiler::REQUEST_SAVE,
-                        $this->settingsProfiler()->payloadBytes($data),
-                    );
-
-                    $this->callHook('afterSave');
-                } catch (Halt $exception) {
-                    $exception->shouldRollbackDatabaseTransaction() ?
-                        $this->rollBackDatabaseTransaction() :
-                        $this->commitDatabaseTransaction();
-
-                    return;
-                } catch (Throwable $exception) {
-                    $this->rollBackDatabaseTransaction();
-
-                    throw $exception;
-                }
-
-                $this->commitDatabaseTransaction();
-
-                $this->rememberData();
-
-                $this->getSavedNotification()?->send();
-
-                if ($redirectUrl = $this->getRedirectUrl()) {
-                    $this->redirect($redirectUrl, navigate: FilamentView::hasSpaMode($redirectUrl));
-                }
-            }, SettingsPageProfiler::REQUEST_SAVE, $this->currentPayloadBytes());
-        });
-    }
-
-    public function updatedInteractsWithSchemas(string $statePath): void
-    {
-        $this->settingsProfiler()->withRequestKind(SettingsPageProfiler::REQUEST_LIVEWIRE_UPDATE, function () use ($statePath): void {
-            $this->settingsProfiler()->measure(
-                'livewire_update.total',
-                fn (): mixed => parent::updatedInteractsWithSchemas($statePath),
-                SettingsPageProfiler::REQUEST_LIVEWIRE_UPDATE,
-                $this->currentPayloadBytes(),
+            $settings = app(static::getSettings());
+            $settings->refresh();
+            $stored = $settings->toArray();
+            $owned = SettingsSubjectOwnershipRegistry::extractOwned($data, $this->settingsSubject());
+            $owned = $this->normalizeOwnedFormData($owned, $stored);
+            $candidate = SettingsSubjectOwnershipRegistry::overlayOwned(
+                $stored,
+                $owned,
+                $this->settingsSubject(),
+            );
+            $candidate = MultiTranscriptionSurfaces::overlayUnauthorizedSettings(
+                $candidate,
+                PublicContentSettingsData::class,
+                storedSnapshot: $stored,
+            );
+            $validated = app(PublicFrontConfigValidator::class)
+                ->validateGroups(
+                    $candidate,
+                    SettingsSubjectOwnershipRegistry::validatorGroups($this->settingsSubject()),
+                )
+                ->config();
+            $owned = SettingsSubjectOwnershipRegistry::overlayOwned(
+                $owned,
+                $validated,
+                $this->settingsSubject(),
+            );
+            $data = MultiTranscriptionSurfaces::overlayUnauthorizedSettings(
+                SettingsSubjectOwnershipRegistry::overlayOwned(
+                    $stored,
+                    $owned,
+                    $this->settingsSubject(),
+                ),
+                PublicContentSettingsData::class,
+                storedSnapshot: $stored,
             );
 
-            $this->recordPayloadSnapshot('payload.livewire_update', SettingsPageProfiler::REQUEST_LIVEWIRE_UPDATE);
-        });
+            $this->callHook('beforeSave');
+
+            $settings->fill($data);
+            $settings->save();
+
+            $this->callHook('afterSave');
+        } catch (Halt $exception) {
+            $exception->shouldRollbackDatabaseTransaction() ?
+                $this->rollBackDatabaseTransaction() :
+                $this->commitDatabaseTransaction();
+
+            return;
+        } catch (Throwable $exception) {
+            $this->rollBackDatabaseTransaction();
+
+            throw $exception;
+        }
+
+        $this->commitDatabaseTransaction();
+
+        $this->rememberData();
+
+        $this->getSavedNotification()?->send();
+
+        if ($redirectUrl = $this->getRedirectUrl()) {
+            $this->redirect($redirectUrl, navigate: FilamentView::hasSpaMode($redirectUrl));
+        }
     }
 
     public function form(Schema $schema): Schema
     {
-        $formBuildTimer = $this->settingsProfiler()->start('form.total_build', SettingsPageProfiler::REQUEST_INITIAL_LOAD);
+        $components = $this->subjectSchema()
+            ->container($schema)
+            ->getChildComponents();
 
-        try {
-            $components = $this->subjectSchema()
-                ->container($schema)
-                ->getChildComponents();
+        $schema = $schema->components($components);
 
-            $schema = $schema->components($components);
+        $this->applyInlineImportLockHints($schema->getComponents());
 
-            $this->settingsProfiler()->measure(
-                'form.inline_import_lock_hints',
-                fn (): mixed => $this->applyInlineImportLockHints($schema->getComponents()),
-                SettingsPageProfiler::REQUEST_INITIAL_LOAD,
-            );
-
-            return $schema;
-        } finally {
-            $this->settingsProfiler()->stop($formBuildTimer);
-        }
+        return $schema;
     }
 
     protected function subjectSchema(): Tab
@@ -297,71 +207,11 @@ abstract class PublicContentSettingsSubjectPage extends SettingsPage
 
     protected function withImportLockSection(Section $section, string $group, string $key): Section
     {
-        $sectionBuildTimer = $this->settingsProfiler()->start(
-            "schema.section.{$key}",
-            SettingsPageProfiler::REQUEST_INITIAL_LOAD,
-        );
-
-        try {
-            return $section
-                ->key("public-settings-lock-section-{$key}")
-                ->headerActions([
-                    $this->inlineImportLockGroupAction($group, $key),
-                ]);
-        } finally {
-            $this->settingsProfiler()->stop($sectionBuildTimer);
-        }
-    }
-
-    /**
-     * @template TValue
-     *
-     * @param  Closure(): TValue  $callback
-     * @return TValue
-     */
-    private function profileSchemaBuild(string $phase, Closure $callback): mixed
-    {
-        return $this->settingsProfiler()->measure(
-            "schema.{$phase}",
-            $callback,
-            SettingsPageProfiler::REQUEST_INITIAL_LOAD,
-        );
-    }
-
-    private function settingsProfiler(): SettingsPageProfiler
-    {
-        return app(SettingsPageProfiler::class);
-    }
-
-    private function recordPayloadSnapshot(string $phase, string $requestKind): void
-    {
-        $profiler = $this->settingsProfiler();
-
-        if (! $profiler->isEnabled()) {
-            return;
-        }
-
-        $profiler->record(
-            phase: $phase,
-            milliseconds: 0.0,
-            requestKind: $requestKind,
-            payloadBytes: $this->currentPayloadBytes(),
-        );
-    }
-
-    private function currentPayloadBytes(): int
-    {
-        $profiler = $this->settingsProfiler();
-
-        if (! $profiler->isEnabled()) {
-            return 0;
-        }
-
-        try {
-            return $profiler->payloadBytes($this->form->getStateSnapshot());
-        } catch (Throwable) {
-            return 0;
-        }
+        return $section
+            ->key("public-settings-lock-section-{$key}")
+            ->headerActions([
+                $this->inlineImportLockGroupAction($group, $key),
+            ]);
     }
 
     /**

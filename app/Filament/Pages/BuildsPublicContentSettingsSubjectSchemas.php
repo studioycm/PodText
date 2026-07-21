@@ -48,7 +48,7 @@ trait BuildsPublicContentSettingsSubjectSchemas
         return Tab::make(__('admin.tabs.public_content_settings.homepage'))
             ->id('homepage')
             ->key('public-settings-tab-homepage')
-            ->schema($this->profileSchemaBuild('tab.homepage', fn (): array => [
+            ->schema([
                 $this->withImportLockSection(
                     Section::make(__('admin.sections.homepage_settings'))
                         ->description(__('admin.descriptions.public_content_settings_homepage'))
@@ -77,7 +77,7 @@ trait BuildsPublicContentSettingsSubjectSchemas
                     '_scalars',
                     'homepage-settings',
                 ),
-            ]));
+            ]);
     }
 
     protected function displayTab(): Tab
@@ -85,7 +85,7 @@ trait BuildsPublicContentSettingsSubjectSchemas
         return Tab::make(__('admin.tabs.public_content_settings.display'))
             ->id('display')
             ->key('public-settings-tab-display')
-            ->schema($this->profileSchemaBuild('tab.display', fn (): array => [
+            ->schema([
                 $this->withImportLockSection(
                     Section::make(__('admin.sections.public_display'))
                         ->description(__('admin.descriptions.public_content_settings_display'))
@@ -333,7 +333,7 @@ trait BuildsPublicContentSettingsSubjectSchemas
                     'transcription_policy',
                     'public-transcription-policy',
                 ),
-            ]));
+            ]);
     }
 
     protected function episodePageTab(): Tab
@@ -341,7 +341,7 @@ trait BuildsPublicContentSettingsSubjectSchemas
         return Tab::make(__('admin.tabs.public_content_settings.item_page'))
             ->id('item-page')
             ->key('public-settings-tab-item-page')
-            ->schema($this->profileSchemaBuild('tab.item_page', fn (): array => [
+            ->schema([
                 $this->withImportLockSection(
                     Section::make(__('admin.sections.public_front_item_page_layout'))
                         ->description(__('admin.descriptions.public_front_item_page_layout'))
@@ -518,7 +518,7 @@ trait BuildsPublicContentSettingsSubjectSchemas
                     'item_page',
                     'public-front-item-page-info-fields',
                 ),
-            ]));
+            ]);
     }
 
     protected function menuHeaderTab(): Tab
@@ -526,7 +526,7 @@ trait BuildsPublicContentSettingsSubjectSchemas
         return Tab::make(__('admin.tabs.public_content_settings.menu_header'))
             ->id('menu-header')
             ->key('public-settings-tab-menu-header')
-            ->schema($this->profileSchemaBuild('tab.menu_header', fn (): array => [
+            ->schema([
                 $this->withImportLockSection(
                     Section::make(__('admin.sections.public_front_menu_header'))
                         ->description(__('admin.descriptions.public_front_menu_header'))
@@ -729,7 +729,7 @@ trait BuildsPublicContentSettingsSubjectSchemas
                     'menu_config',
                     'public-front-menu-header',
                 ),
-            ]));
+            ]);
     }
 
     protected function podcastsTab(): Tab
@@ -737,7 +737,7 @@ trait BuildsPublicContentSettingsSubjectSchemas
         return Tab::make(__('admin.tabs.public_content_settings.podcasts'))
             ->id('podcasts')
             ->key('public-settings-tab-podcasts')
-            ->schema($this->profileSchemaBuild('tab.podcasts', fn (): array => [
+            ->schema([
                 $this->withImportLockSection(
                     Section::make(__('admin.sections.public_front_podcasts_page'))
                         ->description(__('admin.descriptions.public_front_podcasts_page'))
@@ -999,7 +999,7 @@ trait BuildsPublicContentSettingsSubjectSchemas
                     'podcasts_page',
                     'public-front-podcasts-page',
                 ),
-            ]));
+            ]);
     }
 
     protected function contributorsTab(): Tab
@@ -1007,7 +1007,7 @@ trait BuildsPublicContentSettingsSubjectSchemas
         return Tab::make(__('admin.tabs.public_content_settings.contributors'))
             ->id('contributors')
             ->key('public-settings-tab-contributors')
-            ->schema($this->profileSchemaBuild('tab.contributors', fn (): array => [
+            ->schema([
                 $this->withImportLockSection(
                     Section::make(__('admin.sections.public_front_contributors_page'))
                         ->description(__('admin.descriptions.public_front_contributors_page'))
@@ -1257,7 +1257,7 @@ trait BuildsPublicContentSettingsSubjectSchemas
                     'contributors_page',
                     'public-front-contributors-page',
                 ),
-            ]));
+            ]);
     }
 
     protected function aboutTab(): Tab
@@ -1265,7 +1265,7 @@ trait BuildsPublicContentSettingsSubjectSchemas
         return Tab::make(__('admin.tabs.public_content_settings.about'))
             ->id('about')
             ->key('public-settings-tab-about')
-            ->schema($this->profileSchemaBuild('tab.about', fn (): array => [
+            ->schema([
                 $this->withImportLockSection(
                     Section::make(__('admin.sections.public_front_about_page'))
                         ->description(__('admin.descriptions.public_front_about_page'))
@@ -1432,7 +1432,7 @@ trait BuildsPublicContentSettingsSubjectSchemas
                     'about_page',
                     'public-front-about-page',
                 ),
-            ]));
+            ]);
     }
 
     protected function maintenanceTab(): Tab
@@ -1440,7 +1440,7 @@ trait BuildsPublicContentSettingsSubjectSchemas
         return Tab::make(__('admin.tabs.public_content_settings.maintenance'))
             ->id('maintenance')
             ->key('public-settings-tab-maintenance')
-            ->schema($this->profileSchemaBuild('tab.maintenance', fn (): array => [
+            ->schema([
                 $this->withImportLockSection(
                     Section::make(__('admin.sections.public_front_maintenance'))
                         ->description(__('admin.descriptions.public_front_maintenance'))
@@ -1539,7 +1539,7 @@ trait BuildsPublicContentSettingsSubjectSchemas
                     'maintenance',
                     'public-front-maintenance-raw-override',
                 ),
-            ]));
+            ]);
     }
 
     protected function cardTemplatesTab(): Tab
@@ -1547,7 +1547,7 @@ trait BuildsPublicContentSettingsSubjectSchemas
         return Tab::make(__('admin.tabs.public_content_settings.advanced'))
             ->id('advanced')
             ->key('public-settings-tab-advanced')
-            ->schema($this->profileSchemaBuild('tab.advanced', fn (): array => [
+            ->schema([
                 $this->withImportLockSection(
                     Section::make(__('admin.sections.public_front_card_templates'))
                         ->description(__('admin.descriptions.public_front_card_templates'))
@@ -1637,7 +1637,7 @@ trait BuildsPublicContentSettingsSubjectSchemas
                     'card_templates',
                     'public-front-card-templates',
                 ),
-            ]));
+            ]);
     }
 
     private function maintenanceFieldsVisible(Get $get): bool

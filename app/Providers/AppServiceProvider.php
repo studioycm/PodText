@@ -26,7 +26,6 @@ use App\Support\PublicFront\Cards\PublicFrontCardTemplateResolver;
 use App\Support\PublicFront\PublicFrontConfigCache;
 use App\Support\PublicFront\PublicFrontRenderContext;
 use App\Support\PublicFront\PublicFrontRenderContextFactory;
-use App\Support\Settings\SettingsPageProfiler;
 use App\Support\SettingsLifecycle\SettingsBackupManager;
 use App\Support\SettingsLifecycle\SettingsLifecycleSchema;
 use App\Support\Transcriptions\MultiTranscriptionSurfaces;
@@ -65,7 +64,6 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(GoogleDriveClientFactory::class, GoogleApiDriveClientFactory::class);
         $this->app->bind(SpotifyClientFactory::class, SpotifyHttpClientFactory::class);
 
-        $this->app->scoped(SettingsPageProfiler::class);
         $this->app->scoped(SettingsLifecycleSchema::class);
         $this->app->scoped(PublicFrontCardTemplateResolver::class);
         $this->app->scoped(MediaReferenceFinder::class);
@@ -187,19 +185,10 @@ class AppServiceProvider extends ServiceProvider
                 return;
             }
 
-            $profiler = $this->app->make(SettingsPageProfiler::class);
-
-            $profiler->withRequestKind(SettingsPageProfiler::REQUEST_SAVE, function () use ($profiler): void {
-                $profiler->measure('settings_saved.listener.total', function () use ($profiler): void {
-                    $this->app->make(PublicFrontConfigCache::class)->forget();
-                    $profiler->measure(
-                        'settings_saved.backup_creation',
-                        fn () => $this->app->make(SettingsBackupManager::class)->createSystem(),
-                    );
-                    $this->app->forgetInstance(PublicFrontRenderContext::class);
-                    $this->app->forgetInstance(PublicTranscriptionPolicy::class);
-                });
-            });
+            $this->app->make(PublicFrontConfigCache::class)->forget();
+            $this->app->make(SettingsBackupManager::class)->createSystem();
+            $this->app->forgetInstance(PublicFrontRenderContext::class);
+            $this->app->forgetInstance(PublicTranscriptionPolicy::class);
         });
 
         RateLimiter::for('public-form-submissions', function (Request $request): Limit {

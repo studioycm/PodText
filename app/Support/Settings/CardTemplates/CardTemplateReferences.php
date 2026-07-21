@@ -11,8 +11,6 @@ class CardTemplateReferences
     public function __construct(
         public readonly array $references,
         public readonly array $ambiguousKeys,
-        public readonly int $sectionRows,
-        public readonly float $milliseconds,
     ) {}
 
     /**

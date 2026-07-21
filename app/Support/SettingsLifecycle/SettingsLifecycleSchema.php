@@ -20,10 +20,6 @@ class SettingsLifecycleSchema
     /** @var array<string, array<string, SettingsLifecycleUnit>> */
     private array $unitsByPath = [];
 
-    private int $derivations = 0;
-
-    private int $cacheHits = 0;
-
     public function __construct(
         private readonly SettingsLifecycleGroups $groups,
     ) {}
@@ -47,12 +43,8 @@ class SettingsLifecycleSchema
         $cacheKey = $this->cacheKey($registration, $payload);
 
         if (isset($this->units[$cacheKey])) {
-            $this->cacheHits++;
-
             return $this->units[$cacheKey];
         }
-
-        $this->derivations++;
 
         return $this->units[$cacheKey] = collect($this->deriveUnitPaths($payload, $registration))
             ->map(fn (string $path): SettingsLifecycleUnit => new SettingsLifecycleUnit(
@@ -254,19 +246,6 @@ class SettingsLifecycleSchema
     public function payloadForGroup(?string $group = null): array
     {
         return $this->payloadFor($this->groups->get($group ?? $this->groups->defaultGroup()->name));
-    }
-
-    /**
-     * @return array{derivations: int, cache_hits: int, duplicate_loads: int, group_payload_loads: int}
-     */
-    public function metrics(): array
-    {
-        return [
-            'derivations' => $this->derivations,
-            'cache_hits' => $this->cacheHits,
-            'duplicate_loads' => 0,
-            'group_payload_loads' => count($this->groupPayloads),
-        ];
     }
 
     private function payloadFor(SettingsLifecycleGroup $group): array

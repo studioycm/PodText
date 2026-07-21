@@ -9,8 +9,6 @@ use App\Support\Settings\CardTemplates\CardTemplateFocusedWriter;
 use App\Support\Settings\CardTemplates\CardTemplateIdentity;
 use App\Support\Settings\CardTemplates\CardTemplateWriteException;
 use App\Support\Settings\CardTemplates\CardTemplateWriteResult;
-use App\Support\Settings\SettingsPageProfiler;
-use App\Support\Settings\SettingsSp3aMeasurementFixture;
 use Closure;
 use Filament\Actions\Action;
 use Filament\Notifications\Notification;
@@ -49,28 +47,22 @@ class EditCardTemplate extends CardTemplateEditorPage
     public function mount(?string $family = null, ?string $key = null): void
     {
         abort_unless(static::canAccess(), 403);
-        $this->initializeMeasurementMode();
         $family ??= request()->route('family');
         $key ??= request()->route('key');
         abort_unless(is_string($family) && is_string($key), 404);
         $identity = app(CardTemplateIdentity::class);
         abort_unless($identity->valid($family, $key), 404);
 
-        if ($this->sp3aMeasurementMode) {
-            abort_unless("{$family}:{$key}" === $this->measurementFixtureIdentity, 404);
-            $snapshot = app(SettingsSp3aMeasurementFixture::class)->payload();
-        } else {
-            $settings = app(PublicContentSettings::class);
-            $settings->refresh();
-            $snapshot = $settings->toArray();
-        }
+        $settings = app(PublicContentSettings::class);
+        $settings->refresh();
+        $snapshot = $settings->toArray();
 
         $templates = $snapshot['card_templates'] ?? null;
         abort_unless(is_array($templates) && array_is_list($templates), 404);
         $matches = $identity->locate($templates, $family, $key);
         abort_unless(count($matches) === 1, 404);
         $template = $matches[0]['template'];
-        abort_unless($this->sp3aMeasurementMode || $this->validStoredTemplate($template), 404);
+        abort_unless($this->validStoredTemplate($template), 404);
 
         $policy = app(CardTemplateAccessPolicy::class);
         $this->capable = $policy->currentActorCanManageProtectedTemplates();
@@ -94,7 +86,6 @@ class EditCardTemplate extends CardTemplateEditorPage
     public function deleteTemplate(): void
     {
         abort_unless(static::canAccess(), 403);
-        $this->restoreProfilingConfiguration();
         $this->enforceCurrentCapability();
 
         if ($this->refuseMutationBeforeDehydration()) {
@@ -107,46 +98,40 @@ class EditCardTemplate extends CardTemplateEditorPage
             abort(403);
         }
 
-        $profiler = app(SettingsPageProfiler::class);
-        $profiler->withSubject('card-template-editor', function () use ($profiler): void {
-            $profiler->withRequestKind(SettingsPageProfiler::REQUEST_SAVE, function () use ($profiler): void {
-                try {
-                    $this->beginDatabaseTransaction();
-                    $profiler->measure('save.settings_persist', function (): void {
-                        if (! is_string($this->originalFamily)
-                            || ! is_string($this->originalKey)
-                            || ! is_string($this->targetFingerprint)) {
-                            throw CardTemplateWriteException::named('invalid_identity');
-                        }
+        try {
+            $this->beginDatabaseTransaction();
 
-                        app(CardTemplateFocusedWriter::class)->delete(
-                            $this->originalFamily,
-                            $this->originalKey,
-                            $this->targetFingerprint,
-                            beforePersist: fn () => $this->callHook('beforeSave'),
-                            afterPersist: fn () => $this->callHook('afterSave'),
-                        );
-                    }, SettingsPageProfiler::REQUEST_SAVE);
-                } catch (CardTemplateWriteException $exception) {
-                    $this->rollBackDatabaseTransaction();
-                    $this->reportWriteFailure($exception);
+            if (! is_string($this->originalFamily)
+                || ! is_string($this->originalKey)
+                || ! is_string($this->targetFingerprint)) {
+                throw CardTemplateWriteException::named('invalid_identity');
+            }
 
-                    return;
-                } catch (Throwable $exception) {
-                    $this->rollBackDatabaseTransaction();
+            app(CardTemplateFocusedWriter::class)->delete(
+                $this->originalFamily,
+                $this->originalKey,
+                $this->targetFingerprint,
+                beforePersist: fn () => $this->callHook('beforeSave'),
+                afterPersist: fn () => $this->callHook('afterSave'),
+            );
+        } catch (CardTemplateWriteException $exception) {
+            $this->rollBackDatabaseTransaction();
+            $this->reportWriteFailure($exception);
 
-                    throw $exception;
-                }
+            return;
+        } catch (Throwable $exception) {
+            $this->rollBackDatabaseTransaction();
 
-                $this->commitDatabaseTransaction();
-                Notification::make()
-                    ->success()
-                    ->title(__('admin.settings_sp3c.notifications.deleted'))
-                    ->send();
-                $redirectUrl = CardTemplateSettings::getUrl();
-                $this->redirect($redirectUrl, navigate: FilamentView::hasSpaMode($redirectUrl));
-            });
-        });
+            throw $exception;
+        }
+
+        $this->commitDatabaseTransaction();
+        Notification::make()
+            ->success()
+            ->title(__('admin.settings_sp3c.notifications.deleted'))
+            ->send();
+        $redirectUrl = CardTemplateSettings::getUrl();
+        $this->redirect($redirectUrl, navigate: FilamentView::hasSpaMode($redirectUrl));
     }
 
     /**

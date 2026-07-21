@@ -2,6 +2,7 @@
 
 use App\Enums\FormVerificationChannel;
 use App\Enums\UserRole;
+use App\Filament\Pages\MaintenanceSettings;
 use App\Mail\PublicFormEmailVerificationCodeMail;
 use App\Models\ContentGroup;
 use App\Models\ContentItem;
@@ -13,6 +14,8 @@ use App\Support\PublicFront\PublicFrontConfigCache;
 use App\Support\PublicFront\PublicFrontConfigReader;
 use App\Support\PublicFront\PublicFrontConfigRegistry;
 use App\Support\PublicFront\PublicFrontRenderContext;
+use Filament\Facades\Filament;
+use Filament\Forms\Components\TextInput;
 use Illuminate\Contracts\Debug\ExceptionHandler;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
@@ -21,6 +24,8 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Js;
+use Livewire\Livewire;
 use Spatie\LaravelSettings\SettingsContainer;
 
 uses(RefreshDatabase::class);
@@ -624,6 +629,39 @@ it('injects the maintenance form at the raw html marker and falls back when the 
         ->assertSee('data-podtext-maintenance-form-fallback-container', false)
         ->assertSee('data-podtext-maintenance-form-marker-missing', false)
         ->assertSee('data-maintenance-form', false);
+});
+
+it('renders the maintenance marker field and copies its exact payload', function (): void {
+    Filament::setCurrentPanel(Filament::getPanel('admin'));
+    $this->actingAs(User::factory()->admin()->create());
+    step10rMp2SavePublicForms([
+        step10rMp2FormDefinition(),
+    ]);
+    step10rMp1SaveMaintenance([
+        'form_key' => 'maintenance_contact',
+        'form_location' => MaintenanceForm::LOCATION_RAW_HTML,
+        'raw_html_override' => '<main>'.MaintenanceForm::MARKER.'</main>',
+    ]);
+    step10rMp1ForgetPublicFrontState();
+
+    $component = Livewire::test(MaintenanceSettings::class);
+
+    expect($component->html())->toContain('data-podtext-maintenance-form');
+
+    $markerField = collect($component->instance()->form->getFlatComponents(withHidden: true))
+        ->first(fn (mixed $component): bool => $component instanceof TextInput
+            && $component->getStatePath(isAbsolute: false) === 'maintenance_form_marker');
+
+    expect($markerField)->toBeInstanceOf(TextInput::class)
+        ->and($markerField->getState())->toBe(MaintenanceForm::MARKER);
+
+    $copyAction = $markerField->getSuffixActions()['copy'] ?? null;
+    $expectedPayload = Js::from(MaintenanceForm::MARKER)->toHtml();
+
+    expect($copyAction)->not->toBeNull()
+        ->and($copyAction->getAlpineClickHandler())
+        ->toContain("window.navigator.clipboard.writeText({$expectedPayload})")
+        ->not->toContain('null');
 });
 
 it('keeps the maintenance form submission route unavailable when maintenance or the form is disabled', function (): void {

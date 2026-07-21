@@ -246,6 +246,16 @@ Recorded after the Markdown-only post-Prompt-10 prompt-progress centralization c
   transitions, backfills, repairs, sanitation, cache/process actions, and real
   IDs 6/7 remain unexecuted. Handoff:
   `docs/phase-02/curator-g1-legacy-media-transition-correction-handoff.md`.
+- Settings development metrics retirement Mini-task 1 is complete locally under
+  audit `LS-20260721-SETTINGS-DEV-METRICS-03`, option
+  `SETTINGS-METRICS-O1-FULL-RETIREMENT`. The SP1/SP3A/SP3B/SP3C runtime profiler,
+  middleware, fixtures, alternate query-driven state, response headers,
+  lifecycle/reference counters, config/log channel, and browser harness are
+  removed while functional settings saves, lifecycle memoization, Card Template
+  protections, Curator media identity, and Filament 5.7.1 behavior remain.
+  Isolated canaries/report artifacts and their broader historical-doc retirement
+  remain Mini-task 2, separately audit/approval-gated and unstarted. Handoff:
+  `docs/phase-02/settings-development-metrics-retirement-mini1-handoff.md`.
 
 ## Prompt Progress
 
@@ -344,6 +354,7 @@ Recorded after the Markdown-only post-Prompt-10 prompt-progress centralization c
 | CURATOR-G1 - Full app-owned Curator image library | Complete locally; production cutover gated | Canonical implementation hash is recorded in `docs/phase-02/curator-g1-image-library-o2-handoff.md` and the mini-step ledger | Completes all seven O2 minis: positive validation, app Resource/picker, explicit abilities, immutable journal-backed keys, shared typed attachments, compatibility/settings/import-export cutover, rowless legacy registration, fenced mutations/repair, SSRF controls, query budgets, translations, and runbooks. Three additive data-free relational migrations and one reversible settings-shape migration are prepared but were not applied to the local development database or production. |
 | CURATOR-G1 LMTC - Legacy media transition correction | Complete locally; production cutover gated | `f73be008b3dbc49e09f01b645327b4083d8f70f8`; `docs/phase-02/curator-g1-legacy-media-transition-correction-handoff.md` | Closes the existing noncanonical null-key row gap with exact-digest same-ID raster/SVG transition, rowless fixed-root import, ordered backfills/integrity, production-shaped closure tests, and safe owner repair/default fallback. No schema/dependency change or real environment mutation; IDs 6/7, production cutover, root-level dispositions, recovery gallery, dependency upgrades, and empty permission-schema cleanup remain separately gated. |
 | DEP-UPGRADE-O1 - Bounded full dependency refresh | Complete locally | `4d2a063954975fa07dde43f6113a97c671fc5724`; `docs/phase-02/dependency-refresh-handoff.md`; `docs/research/dependency-refresh/` | Refreshes Composer and npm lock graphs within unchanged manifest constraints; moves Laravel to 13.21.1, Filament and its Spatie plugins to 5.7.1, Horizon to 5.48.1, Pest to 4.7.5, Boost to 2.4.13, Tailwind to 4.3.3, Vite to 8.1.5, and Laravel Vite plugin to 3.1.3. Preserves Livewire 4.3.3 and Curator 5.1.2, corrects one Filament action API call and one tooltip-first Escape browser expectation, and records 18 byte-attributable tracked Filament asset changes. No manifest, schema, migration, production, worker, or local-development database change. |
+| SETTINGS-METRICS-O1 Mini-task 1 - Runtime retirement | Complete locally; Mini-task 2 unapproved | Pending canonical implementation hash; `docs/phase-02/settings-development-metrics-retirement-mini1-handoff.md`; research/plans 41-42 | Removes the temporary settings profiler, middleware, runtime fixtures, flags/headers, counters, config/logging, and browser harness. Preserves functional settings/Card Template/Curator behavior and all Filament 5.7.1 stack work. Isolated SP3C/Step 5B canaries, fixtures, report switches/blocks, selectors, and historical-document retirement remain separately gated Mini-task 2 scope. |
 | Prompt 13 dashboard metrics | Not started / blocked unless explicitly chosen by user | Active prompt/blueprint | Owns editorial dashboard widgets after Public Front v2 Step 12 readiness or an explicit dashboard-first decision. |
 | Prompt 14 viewer/studio future plan | Future planning after Prompt 13 | Active prompt/blueprint | Documentation/planning only. |
 | Prompt 15 Filament Blueprint security audit | Audit after Prompt 14 | Active prompt/blueprint | Audit-only unless fixes are explicitly approved. |

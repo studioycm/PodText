@@ -15,6 +15,7 @@ use App\Support\Media\LegacyMediaTransitionPlanner;
 use App\Support\Media\MediaIntegrityReporter;
 use App\Support\PublicFront\PublicFrontConfigRegistry;
 use App\Support\SettingsLifecycle\PublicSettingsPackage;
+use App\Support\SettingsLifecycle\SettingsBackupManager;
 use App\Support\SettingsLifecycle\SettingsMediaIdentityProjector;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Artisan;
@@ -69,6 +70,46 @@ it('treats settings media reference keys and legacy paths as atomic selection pa
             'about_page.blocks.hero.image_media_reference_key',
             'about_page.blocks.hero.image_path',
         ]);
+});
+
+it('imports a selected settings media identity as one atomic reference and path pair', function (): void {
+    fakeSettingsBackupSnapshotQueue();
+    $current = Media::factory()->create([
+        'directory' => ImageUploadPurpose::DefaultImage->root(),
+        'name' => 'current-import-default',
+        'path' => ImageUploadPurpose::DefaultImage->root().'/current-import-default.jpg',
+    ]);
+    $imported = Media::factory()->create([
+        'directory' => ImageUploadPurpose::DefaultImage->root(),
+        'name' => 'imported-default',
+        'path' => ImageUploadPurpose::DefaultImage->root().'/imported-default.jpg',
+    ]);
+    $defaults = PublicFrontConfigRegistry::defaults()['default_images'];
+    $defaults['global'] = [
+        'mode' => 'custom',
+        'path' => $current->path,
+        'media_reference_key' => $current->reference_key,
+    ];
+    saveCuratorG1Setting('default_images', $defaults);
+
+    $package = PublicSettingsPackage::fromCurrentSettings()->toArray();
+    $package['payload']['default_images']['global'] = [
+        'mode' => 'custom',
+        'path' => $imported->path,
+        'media_reference_key' => $imported->reference_key,
+    ];
+    $package['checksum'] = PublicSettingsPackage::payloadChecksum($package['payload']);
+
+    $report = app(SettingsBackupManager::class)->import(
+        PublicSettingsPackage::fromArray($package),
+        ['default_images.global'],
+        User::factory()->admin()->create(),
+    );
+    $stored = app(PublicContentSettings::class)->default_images['global'];
+
+    expect($report->appliedPaths())->toBe(['default_images.global'])
+        ->and($stored['media_reference_key'])->toBe($imported->reference_key)
+        ->and($stored['path'])->toBe($imported->path);
 });
 
 it('backfills media reference keys and owner attachments idempotently outside schema migrations', function (): void {

@@ -15,7 +15,6 @@ use App\Support\Settings\CardTemplates\CardTemplateIdentity;
 use App\Support\Settings\CardTemplates\CardTemplatePreviewer;
 use App\Support\Settings\CardTemplates\CardTemplateWriteException;
 use App\Support\Settings\CardTemplates\CardTemplateWriteResult;
-use App\Support\Settings\SettingsPageProfiler;
 use BackedEnum;
 use Closure;
 use Filament\Actions\Action;
@@ -99,15 +98,6 @@ abstract class CardTemplateEditorPage extends SettingsPage
     public ?string $sourceFingerprint = null;
 
     #[Locked]
-    public bool $sp3aMeasurementMode = false;
-
-    #[Locked]
-    public bool $profilingMode = false;
-
-    #[Locked]
-    public ?string $measurementFixtureIdentity = null;
-
-    #[Locked]
     public bool $capable = false;
 
     #[Locked]
@@ -171,7 +161,6 @@ abstract class CardTemplateEditorPage extends SettingsPage
     public function hydrate(): void
     {
         $this->normalizeBuilderDisplayMode();
-        $this->restoreProfilingConfiguration();
         $this->enforceCurrentCapability();
     }
 
@@ -324,59 +313,41 @@ abstract class CardTemplateEditorPage extends SettingsPage
     public function save(): void
     {
         abort_unless(static::canAccess(), 403);
-        $this->restoreProfilingConfiguration();
         $this->enforceCurrentCapability();
 
         if ($this->refuseMutationBeforeDehydration()) {
             return;
         }
 
-        $profiler = app(SettingsPageProfiler::class);
+        try {
+            $this->beginDatabaseTransaction();
+            $this->callHook('beforeValidate');
+            $draft = $this->form->getState();
+            $this->callHook('afterValidate');
+            $result = $this->writeDraft(
+                $draft,
+                fn () => $this->callHook('beforeSave'),
+                fn () => $this->callHook('afterSave'),
+            );
+        } catch (CardTemplateWriteException $exception) {
+            $this->rollBackDatabaseTransaction();
+            $this->reportWriteFailure($exception);
 
-        $profiler->withSubject('card-template-editor', function () use ($profiler): void {
-            $profiler->withRequestKind(SettingsPageProfiler::REQUEST_SAVE, function () use ($profiler): void {
-                $profiler->measure('save.total', function (): void {
-                    try {
-                        $this->beginDatabaseTransaction();
-                        $this->callHook('beforeValidate');
-                        $draft = app(SettingsPageProfiler::class)->measure(
-                            'save.validation.total',
-                            fn (): array => $this->form->getState(),
-                            SettingsPageProfiler::REQUEST_SAVE,
-                        );
-                        $this->callHook('afterValidate');
-                        $result = app(SettingsPageProfiler::class)->measure(
-                            'save.settings_persist',
-                            fn (): CardTemplateWriteResult => $this->writeDraft(
-                                $draft,
-                                fn () => $this->callHook('beforeSave'),
-                                fn () => $this->callHook('afterSave'),
-                            ),
-                            SettingsPageProfiler::REQUEST_SAVE,
-                            app(SettingsPageProfiler::class)->payloadBytes($draft),
-                        );
-                    } catch (CardTemplateWriteException $exception) {
-                        $this->rollBackDatabaseTransaction();
-                        $this->reportWriteFailure($exception);
+            return;
+        } catch (Throwable $exception) {
+            $this->rollBackDatabaseTransaction();
 
-                        return;
-                    } catch (Throwable $exception) {
-                        $this->rollBackDatabaseTransaction();
+            throw $exception;
+        }
 
-                        throw $exception;
-                    }
-
-                    $this->commitDatabaseTransaction();
-                    $this->rememberData();
-                    $this->getSavedNotification()?->send();
-                    $redirectUrl = EditCardTemplate::getUrl([
-                        'family' => $result->family,
-                        'key' => $result->key,
-                    ]);
-                    $this->redirect($redirectUrl, navigate: FilamentView::hasSpaMode($redirectUrl));
-                }, SettingsPageProfiler::REQUEST_SAVE);
-            });
-        });
+        $this->commitDatabaseTransaction();
+        $this->rememberData();
+        $this->getSavedNotification()?->send();
+        $redirectUrl = EditCardTemplate::getUrl([
+            'family' => $result->family,
+            'key' => $result->key,
+        ]);
+        $this->redirect($redirectUrl, navigate: FilamentView::hasSpaMode($redirectUrl));
     }
 
     public function getTitle(): string
@@ -517,12 +488,6 @@ abstract class CardTemplateEditorPage extends SettingsPage
         $this->previewFamily = $this->familyFromDraft($draft);
         $this->previewDraftHash = $this->draftHash($draft);
 
-        if ($this->sp3aMeasurementMode) {
-            $this->clearPreview('idle');
-
-            return;
-        }
-
         if ($this->restricted) {
             $this->clearPreview('restricted');
 
@@ -560,11 +525,9 @@ abstract class CardTemplateEditorPage extends SettingsPage
     public function focusInvalidDraftField(): void
     {
         abort_unless(static::canAccess(), 403);
-        $this->restoreProfilingConfiguration();
         $this->enforceCurrentCapability();
 
-        if ($this->sp3aMeasurementMode
-            || $this->restricted
+        if ($this->restricted
             || $this->protectedForgeryDetected
             || ($this->templateProtectedAtMount && ! $this->capable)) {
             return;
@@ -620,16 +583,6 @@ abstract class CardTemplateEditorPage extends SettingsPage
         Closure $beforePersist,
         Closure $afterPersist,
     ): CardTemplateWriteResult;
-
-    protected function initializeMeasurementMode(): void
-    {
-        $this->sp3aMeasurementMode = app()->environment('local') && request()->boolean('sp3a_measure');
-        $this->profilingMode = $this->sp3aMeasurementMode && request()->boolean('sp3a_profile');
-        $this->measurementFixtureIdentity = $this->sp3aMeasurementMode
-            ? 'content_item:sp3a_content_item_1'
-            : null;
-        $this->restoreProfilingConfiguration();
-    }
 
     /**
      * @param  array<string, mixed>  $snapshot
@@ -1210,12 +1163,6 @@ abstract class CardTemplateEditorPage extends SettingsPage
 
     protected function refuseMutationBeforeDehydration(): bool
     {
-        if ($this->sp3aMeasurementMode) {
-            $this->reportWriteFailure(CardTemplateWriteException::named('measurement'));
-
-            return true;
-        }
-
         if ($this->protectedForgeryDetected) {
             $this->reportWriteFailure(CardTemplateWriteException::named('protected'));
 
@@ -1223,13 +1170,6 @@ abstract class CardTemplateEditorPage extends SettingsPage
         }
 
         return false;
-    }
-
-    protected function restoreProfilingConfiguration(): void
-    {
-        if (app()->environment('local') && $this->profilingMode) {
-            config()->set('settings.profiling.enabled', true);
-        }
     }
 
     /**

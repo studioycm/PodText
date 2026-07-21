@@ -23,20 +23,6 @@ class PublicContentSettings extends Page
     {
         abort_unless(static::canAccess(), 403);
 
-        $parameters = [];
-
-        foreach (['sp3a_measure', 'sp3a_profile'] as $parameter) {
-            if (request()->boolean($parameter)) {
-                $parameters[$parameter] = '1';
-            }
-        }
-
-        $fixture = request()->query('sp3b_subject_fixture');
-
-        if (is_string($fixture) && filled($fixture)) {
-            $parameters['sp3b_subject_fixture'] = $fixture;
-        }
-
         $page = match (request()->query('public-content-tab')) {
             SettingsSubjectOwnershipRegistry::DISPLAY => DisplaySettings::class,
             'item-page' => EpisodePageSettings::class,
@@ -49,7 +35,7 @@ class PublicContentSettings extends Page
             default => HomepageSettings::class,
         };
 
-        $this->redirect($page::getUrl($parameters));
+        $this->redirect($page::getUrl());
     }
 
     public function getTitle(): string

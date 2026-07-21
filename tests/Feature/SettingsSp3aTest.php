@@ -11,7 +11,6 @@ use App\Settings\PublicContentSettings;
 use App\Support\PublicFront\Cards\PublicFrontCardTemplateResolver;
 use App\Support\PublicFront\PublicFrontConfigCache;
 use App\Support\PublicFront\PublicFrontRenderContext;
-use App\Support\Settings\SettingsSp3aMeasurementFixture;
 use App\Support\SettingsLifecycle\PublicSettingsPackage;
 use App\Support\SettingsLifecycle\SettingsBackupManager;
 use App\Support\SettingsLifecycle\SettingsImportLocks;
@@ -48,47 +47,47 @@ function setSp3aMode(TranscriptionMode $mode): void
     clearSp3aSettingsState();
 }
 
-it('keeps the committed measurement payload deterministic and near 37 KB', function (): void {
-    $fixture = app(SettingsSp3aMeasurementFixture::class);
-    $payload = $fixture->payload();
-
-    expect($payload['card_templates'])->toHaveCount(9)
-        ->and(collect($payload['card_templates'])->pluck('parts')->flatten(1))->toHaveCount(54)
-        ->and($fixture->bytes())->toBeBetween(37_000, 39_000)
-        ->and($fixture->payload())->toBe($payload);
+it('does not expose the retired settings development metrics runtime', function (): void {
+    expect(file_exists(app_path('Support/Settings/SettingsPageProfiler.php')))->toBeFalse()
+        ->and(file_exists(app_path('Support/Settings/SettingsSp3aMeasurementFixture.php')))->toBeFalse()
+        ->and(file_exists(app_path('Support/Settings/SettingsSp3bSubjectFixture.php')))->toBeFalse()
+        ->and(file_exists(app_path('Http/Middleware/MeasureSettingsSp3aResponse.php')))->toBeFalse()
+        ->and(config('settings.profiling'))->toBeNull()
+        ->and(config('logging.channels.settings_profiling'))->toBeNull();
 });
 
-it('memoizes lifecycle derivation by group and payload without changing unit bytes', function (): void {
+it('keeps lifecycle unit bytes stable across repeated and fresh derivations', function (): void {
     $schema = app(SettingsLifecycleSchema::class);
     $payload = $schema->payloadForGroup();
-    $firstJson = json_encode($schema->units($payload), JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-    $secondJson = json_encode($schema->units($payload), JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-    $freshJson = json_encode((new SettingsLifecycleSchema(app(SettingsLifecycleGroups::class)))->units($payload), JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    $firstUnits = $schema->units($payload);
+    $secondUnits = $schema->units($payload);
+    $freshUnits = (new SettingsLifecycleSchema(app(SettingsLifecycleGroups::class)))->units($payload);
+    $firstJson = json_encode($firstUnits, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    $secondJson = json_encode($secondUnits, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    $freshJson = json_encode($freshUnits, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 
     expect(hash('sha256', $firstJson))->toBe('61e551a60016b1ac0c9aa8051463818adf31677bea465ac0e9b269fe3d2386b8')
         ->and($secondJson)->toBe($firstJson)
         ->and($freshJson)->toBe($firstJson)
-        ->and($schema->metrics())->toMatchArray([
-            'derivations' => 1,
-            'duplicate_loads' => 0,
-            'group_payload_loads' => 1,
-        ]);
+        ->and($secondUnits[0])->toBe($firstUnits[0])
+        ->and($freshUnits[0])->not->toBe($firstUnits[0]);
 });
 
-it('separates lifecycle memo entries for different payloads and application scopes', function (): void {
+it('separates lifecycle results for different payloads and application scopes', function (): void {
     $schema = app(SettingsLifecycleSchema::class);
     $current = $schema->payloadForGroup();
     $imported = $current;
     $imported['route_labels'][] = ['route_key' => 'home', 'label' => 'Imported home'];
+    $currentUnits = $schema->units($current);
 
-    expect($schema->units($current))->not->toBe($schema->units($imported))
-        ->and($schema->metrics()['derivations'])->toBe(2);
+    expect($currentUnits)->not->toBe($schema->units($imported));
 
     app()->forgetScopedInstances();
     $nextRequestSchema = app(SettingsLifecycleSchema::class);
 
     expect($nextRequestSchema)->not->toBe($schema)
-        ->and($nextRequestSchema->metrics()['derivations'])->toBe(0);
+        ->and(json_encode($nextRequestSchema->units($current), JSON_THROW_ON_ERROR))
+        ->toBe(json_encode($currentUnits, JSON_THROW_ON_ERROR));
 });
 
 it('maps visible lock surfaces onto unchanged units and reports retired locks', function (): void {
