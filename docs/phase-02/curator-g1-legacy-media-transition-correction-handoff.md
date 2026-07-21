@@ -301,7 +301,7 @@ header was opened or printed.
 | Next restarted `vendor/bin/pint --test` | FAIL: constructor brace placement in `UnsafeLegacyOwnerMediaException`; corrected mechanically and restarted from Pint |
 | Second `php artisan test` | FAIL: all 979 non-browser tests passed with 11,742 assertions; Chromium again failed macOS `MachPortRendezvousServer` bootstrap permission and the same 22 browser tests failed/cascaded |
 | Browser infrastructure response | Made no browser-tested application change; restarted the exact gate and requested an unsandboxed run because the fatal error is the host sandbox permission boundary |
-| `php artisan test` | PASS last, serial, and uninterrupted on final code state |
+| `php artisan test` | PASS last, serial, and uninterrupted outside the macOS browser sandbox: 1,001 tests / 13,635 assertions |
 | final `git diff --check` | PASS |
 
 Focused TDD runs used the isolated test database and Laravel storage fakes.
@@ -397,4 +397,4 @@ fakes. Existing G1 commits were preserved.
 
 ## Commit hash
 
-Pending canonical implementation commit.
+`f73be008b3dbc49e09f01b645327b4083d8f70f8`
