@@ -6,6 +6,10 @@ Recorded after the Markdown-only post-Prompt-10 prompt-progress centralization c
 
 ## Git State
 
+- MediaAsset Stage 2 Gate 0 began from clean `main` at
+  `5ba687eff92878f18e9e19e807944a2d39b63372`, 11 commits ahead of
+  `origin/main`, under audit `LS-20260722-PODTEXT-MEDIA-ASSET-PROGRAM-06` and
+  option `MEDIA-CUTOVER-O1-DIRECT-ASSET-HYBRID-ROOT-MAINTENANCE`.
 - Current branch at cleanup preflight: `main` tracking `origin/main`.
 - Branch tracking state at cleanup preflight: no ahead/behind marker reported by `git status --short --branch`.
 - Working tree at cleanup preflight: clean.
@@ -242,10 +246,25 @@ Recorded after the Markdown-only post-Prompt-10 prompt-progress centralization c
   ordered backfill/integrity classifications, typed owner diagnostics, safe
   ContentGroup/ContentItem replacement or detach-to-default, and strict
   production cutover instructions. It adds no schema or dependency and does
-  not weaken the app-owned gallery. Local development/production migrations,
-  transitions, backfills, repairs, sanitation, cache/process actions, and real
-  IDs 6/7 remain unexecuted. Handoff:
+  not weaken the app-owned gallery. LMTC itself did not run any environment
+  action; the local incident had already applied the four G1 media migrations
+  and dormant permission migration in batch 8, while production remained
+  pre-G1. No local/production transition, backfill, repair, sanitation,
+  cache/process action, or real IDs 6/7 action ran. Handoff:
   `docs/phase-02/curator-g1-legacy-media-transition-correction-handoff.md`.
+- The approved MediaAsset program is now the active forward media route under
+  audit `LS-20260722-PODTEXT-MEDIA-ASSET-PROGRAM-06`, option
+  `MEDIA-CUTOVER-O1-DIRECT-ASSET-HYBRID-ROOT-MAINTENANCE`. PodText will own a
+  minimal canonical MediaAsset kernel with Curator as its only initial
+  provider; preserve one asset per Curator row, Curator numeric provider IDs,
+  one immutable portable key, owner/settings/import-export relationships,
+  hybrid initial physical roots, separate logical folders, Needs Repair,
+  configured fallback, and 90-day private quarantine; then deliver unified
+  acquisition/picker, owner image UX, Files Discovery and journaled lifecycle
+  in five sequential packages. Gate 0 controlling docs begin at
+  `docs/phase-02/media-program-context.md`. No real local/production schema,
+  conversion, file, cache, deploy, process, SVG sanitation, dependency, or push
+  action is authorized in this implementation run.
 - Settings development metrics retirement Mini-task 1 is complete as
   `3e5c411777994c431417dfd823576286d12d5c29` under audit
   `LS-20260721-SETTINGS-DEV-METRICS-03`, option
@@ -360,8 +379,9 @@ Recorded after the Markdown-only post-Prompt-10 prompt-progress centralization c
 | SP3 browser acceptance evidence | Retired by settings metrics Mini-task 2 | `docs/phase-02/settings-development-metrics-retirement-mini2-handoff.md` | Historical evidence remains provenance only. Do not reactivate or generalize the bespoke helper; future observability starts with a fresh audit defining a concrete consumer and measurement plane. |
 | SIMPLIFY-REVIEW1 - Project simplification opportunities audit | Optional Later; suggestions only; not started | Recovered checkpoint queue | Read-only inventory of possible deletion, consolidation, and reuse. It does not block AUTHZ closure or Step 5B, and no finding authorizes implementation without separate review, estimate, and approval. |
 | CURATOR-HF1 - Curator picker hydration repair | Complete | `23a6ce9 fix: preserve curator picker selections on reload`; `docs/phase-02/curator-picker-hydration-hf1-handoff.md` | Repairs `PathCuratorPicker` raw-state hydration and UUID-keyed state handling so registered Menu/Header logos and Display default images remain visibly selected after reload. The storage contract, legacy-path preservation, and SP3B lifecycle remain unchanged. |
-| CURATOR-G1 - Full app-owned Curator image library | Complete locally; production cutover gated | Canonical implementation hash is recorded in `docs/phase-02/curator-g1-image-library-o2-handoff.md` and the mini-step ledger | Completes all seven O2 minis: positive validation, app Resource/picker, explicit abilities, immutable journal-backed keys, shared typed attachments, compatibility/settings/import-export cutover, rowless legacy registration, fenced mutations/repair, SSRF controls, query budgets, translations, and runbooks. Three additive data-free relational migrations and one reversible settings-shape migration are prepared but were not applied to the local development database or production. |
+| CURATOR-G1 - Full app-owned Curator image library | Complete locally; historical compatibility baseline | Canonical implementation hash is recorded in `docs/phase-02/curator-g1-image-library-o2-handoff.md` and the mini-step ledger | Completes all seven O2 minis: positive validation, app Resource/picker, explicit abilities, immutable journal-backed keys, shared typed attachments, compatibility/settings/import-export cutover, rowless legacy registration, fenced mutations/repair, SSRF controls, query budgets, translations, and runbooks. The local incident later applied the three relational migrations and the settings-shape migration in batch 8; production did not. G1 remains compatibility evidence, while the approved MediaAsset program controls forward architecture. |
 | CURATOR-G1 LMTC - Legacy media transition correction | Complete locally; production cutover gated | `f73be008b3dbc49e09f01b645327b4083d8f70f8`; `docs/phase-02/curator-g1-legacy-media-transition-correction-handoff.md` | Closes the existing noncanonical null-key row gap with exact-digest same-ID raster/SVG transition, rowless fixed-root import, ordered backfills/integrity, production-shaped closure tests, and safe owner repair/default fallback. No schema/dependency change or real environment mutation; IDs 6/7, production cutover, root-level dispositions, recovery gallery, dependency upgrades, and empty permission-schema cleanup remain separately gated. |
+| PODTEXT MEDIA ASSET PROGRAM - direct asset cutover | Gate 0 in progress; Package 1 next | `docs/phase-02/media-program-context.md`; `docs/research/media-program/` | Approved five-package route: app-owned MediaAsset kernel and full Curator-row conversion; trusted gallery/logical folders/Needs Repair/normalization/SVG; four-source picker and unified acquisition including podcast/episode Spotify; owner hover/detail/change UX; Files Discovery and journaled lifecycle. No dependency or real environment action is authorized. |
 | DEP-UPGRADE-O1 - Bounded full dependency refresh | Complete locally | `4d2a063954975fa07dde43f6113a97c671fc5724`; `docs/phase-02/dependency-refresh-handoff.md`; `docs/research/dependency-refresh/` | Refreshes Composer and npm lock graphs within unchanged manifest constraints; moves Laravel to 13.21.1, Filament and its Spatie plugins to 5.7.1, Horizon to 5.48.1, Pest to 4.7.5, Boost to 2.4.13, Tailwind to 4.3.3, Vite to 8.1.5, and Laravel Vite plugin to 3.1.3. Preserves Livewire 4.3.3 and Curator 5.1.2, corrects one Filament action API call and one tooltip-first Escape browser expectation, and records 18 byte-attributable tracked Filament asset changes. No manifest, schema, migration, production, worker, or local-development database change. |
 | SETTINGS-METRICS-O1 Mini-task 1 - Runtime retirement | Complete | `3e5c411777994c431417dfd823576286d12d5c29`; `docs/phase-02/settings-development-metrics-retirement-mini1-handoff.md`; research/plans 41-42 | Removed the temporary settings profiler, middleware, runtime fixtures, flags/headers, counters, config/logging, and browser harness. Functional settings/Card Template/Curator behavior and Filament 5.7.1 remain preserved; Mini-task 2 completes the separately audited test-only retirement. |
 | SETTINGS-METRICS-M2-O1 Mini-task 2 - Test-only retirement | Complete | `c37bcf7f5cd7ea0408623218edeee4842d8e6592`; `docs/phase-02/settings-development-metrics-retirement-mini2-handoff.md`; research/plans 43-44 | Deletes only the eight-file synthetic canary graph; removes five switches/eight report blocks and their exclusive metrics; removes the bilingual canary-only subtree; migrates six consumed hooks to durable Card Template names; removes four unused markers; supersedes active routing while retaining historical provenance. Preserves all functional, security, exact-query, browser-interaction/deadline, Filament 5.7.1, and Curator G1/LMTC invariants. No dependency/schema/data/environment action; no later mini-task selected. |
@@ -720,14 +740,25 @@ Current physical schema verified through Boost `database_schema`:
 - `homepage_sections` exists with section target fields for category, tag, and content group plus Step 4 JSON config columns: `source_config`, `selection_config`, `display_config`, and `pagination_config`.
 - `public_form_submissions` exists with Step 6 submission review fields: `form_key`, `form_name_snapshot`, `payload`, `status`, `submitted_at`, `source_url`, hashed submitter fingerprints, and `metadata`.
 
-CURATOR-G1 prepares but did not apply these additive/reversible migrations to
-the local development database or production:
+The local incident applied these G1 migrations in batch 8. Production did not
+apply them in the dated read-only snapshot:
 
 - `2026_07_20_000001_add_reference_key_to_curator_table`;
 - `2026_07_20_000002_create_media_attachments_table`;
 - `2026_07_20_000003_create_media_mutation_operations_table`;
 - `2026_07_20_000000_add_public_media_reference_keys` (settings shape only;
   identity population remains in separate commands).
+
+Fresh 2026-07-22 Boost schema inspection confirms local
+`curator.reference_key`, `media_attachments`, and
+`media_mutation_operations`. Separately, the already-verified 2026-07-21
+incident snapshot recorded 15 unconverted Curator rows with null keys, five
+group covers matching IDs 1-5, no episode image, header SVG IDs 6-7, default
+settings backed by ID 9, and empty attachment/journal tables. Gate 0 did not
+freshly probe those data/filesystem counts. The approved MediaAsset program
+records the complete local and production profiles in
+`docs/research/media-program/03-local-production-baselines.md` and does not run
+real migrations or conversion in this task.
 
 ## Prompt 07 Implementation Notes
 

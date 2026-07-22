@@ -1,5 +1,12 @@
 # CURATOR-G1 Image Library and Legacy Transition Production Cutover Runbook
 
+> **Superseded for execution on 2026-07-22. Do not run this G1/LMTC-only
+> cutover for the approved MediaAsset program.** Preserve this body as
+> historical, unexecuted evidence. The active route is
+> `docs/phase-02/media-program-context.md`; Package 5 will reconcile a new
+> exact MediaAsset migration/conversion runbook. Every real production action
+> still requires separate exact approval.
+
 Date: 2026-07-21
 
 Controlling audits and options:

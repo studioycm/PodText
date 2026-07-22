@@ -16,6 +16,20 @@ For current completion/progress state, see `docs/phase-02/current-project-state.
 
 Historical prompts are under `prompts/archive/` and are not active instructions.
 
+## Active ad-hoc MediaAsset program
+
+The current media work is not controlled by a file under
+`prompts/pre-13-prompts/`. It is an explicitly approved ad-hoc Stage 2 program:
+
+- Audit: `LS-20260722-PODTEXT-MEDIA-ASSET-PROGRAM-06`
+- Option: `MEDIA-CUTOVER-O1-DIRECT-ASSET-HYBRID-ROOT-MAINTENANCE`
+- Resume helper: `docs/phase-02/media-program-context.md`
+- Requirements and package route: `docs/research/media-program/`
+
+The program runs documentation Gate 0 and five sequential MediaAsset packages
+without changing the main prompt sequence above. Current status remains in the
+project-state document and mini-step ledger.
+
 ## Historical feature-first controller
 
 - `pre-13-prompts/step5b-feature-first-controller-codex-prompt.md` v1 is the

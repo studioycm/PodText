@@ -1,5 +1,13 @@
 # CURATOR-G1 Existing Header SVG Sanitation Runbook
 
+> **Superseded now for all future execution by the approved reusable MediaAsset
+> SVG sanitation route. Do not run this Curator-only procedure.** This document
+> is historical evidence only and proves that real Curator IDs 6 and 7 were not
+> sanitized. Future instructions belong in
+> `docs/phase-02/media-asset-svg-sanitation-runbook.md`; every real SVG action
+> still requires a fresh manifest and separate exact approval. The current
+> Stage 2 task authorizes no real sanitation.
+
 Date: 2026-07-21
 
 Controlling audits and options:

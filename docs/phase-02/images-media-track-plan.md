@@ -4,6 +4,32 @@ Date: 2026-07-12
 
 This plan follows IMG-R research in `docs/research/images-media/00-images-media-research.md`. IMG-A implemented the approved IMG-1 + IMG-2 merge on 2026-07-12. IMG-B implements the local episode-image, TB1 table-action, media-guard, and export-only content-images ZIP scope.
 
+## Forward-route supersession (2026-07-22)
+
+IMG-A, IMG-B, IE1, Curator G1 and LMTC remain implemented historical evidence.
+Their Curator-canonical, path/root-selection, and G1-only schema decisions no
+longer control future media work.
+
+The approved forward route is audit
+`LS-20260722-PODTEXT-MEDIA-ASSET-PROGRAM-06`, option
+`MEDIA-CUTOVER-O1-DIRECT-ASSET-HYBRID-ROOT-MAINTENANCE`:
+
+- PodText `MediaAsset` is canonical; Curator is the only initial provider;
+- one asset is preserved per Curator row, with Curator numeric ID in its
+  provider binding and one immutable portable asset key;
+- physical hybrid roots are server placement only; flat logical folders are
+  independent admin organization/default picker filters;
+- Needs Repair, unified four-source acquisition/picker, owner image UX, Files
+  Discovery and journaled lifecycle run as five sequential packages;
+- existing owner/settings/import-export/path/Curator identities remain
+  compatibility bridges through the program;
+- Spatie Media Library and file-manager dependency installation remain out of
+  scope.
+
+Controlling documents begin at `docs/phase-02/media-program-context.md` and
+`docs/research/media-program/`. The complete authority map is
+`docs/research/media-program/04-active-document-supersession-map.md`.
+
 ## Guardrails
 
 - New image schema requires an explicit prompt decision. IMG-A added cover alt text after D-IMG-C; IMG-B adds `content_items.image_path` for local episode images.
@@ -37,9 +63,11 @@ Historical IMG-A options:
 
 Implements R3.
 
-### D-IMG-B - Media Plugin Direction
+### D-IMG-B - Historical Media Plugin Direction
 
-Final IMG-A decision: Curator is selected and installed as the approved Filament 5 media library.
+Historical IMG-A decision: Curator was selected and installed as the approved
+Filament 5 library. The MediaAsset program now treats Curator as the sole
+initial provider, not canonical application identity or lifecycle authority.
 
 Options:
 
@@ -56,9 +84,10 @@ Final IMG-A decision: harden existing group covers and add content group cover a
 
 Options:
 
-- C1 superseded by CURATOR-G1: `content_groups.cover_path` remains a reversible
-  compatibility mirror, while the typed `cover` attachment and immutable Media
-  reference key are canonical for new writes and portable identity.
+- C1 superseded again by the MediaAsset program: `content_groups.cover_path`
+  remains a reversible compatibility mirror; the typed `cover` attachment
+  bridges Curator and MediaAsset; the immutable MediaAsset reference key is the
+  one portable identity.
 - C2 dead: do not build author/contributor avatars.
 - C3 implemented: `content_groups.cover_alt_text` is shipped and public group images use it with group-title fallback.
 - C4: add category images later if category landing pages need them.
@@ -114,13 +143,17 @@ Options:
 
 Implements the export portion of R7; import package work remains deferred.
 
-### D-IMG-E - Library Retention And Delete Guard
+### D-IMG-E - Historical Library Retention And Delete Guard
 
 Implemented by IMG-B:
 
 - Replacing or clearing an image, and deleting the owning record, keeps files that have a Curator media row.
 - Automatic cleanup applies only to app-owned no-row strays with no remaining model/settings references.
 - Deleting a referenced Curator `Media` row is blocked at the policy/observer boundary, with translated messages naming referencing surfaces.
+
+The MediaAsset program preserves those guards during compatibility and moves
+canonical lifecycle to asset trust/status plus the durable journal. Private
+trash/quarantine defaults to 90 days and purge requires zero-reference proof.
 
 ## Mini-Step IMG-1 - Native Image Baseline
 
@@ -194,9 +227,11 @@ Delivered decisions: Yoni selected `replace` and `add_only` only; `merge` is not
 
 ## Mini-Step IMG-2 - Optional Media Plugin Track
 
-Status: implemented for Curator as part of IMG-A.
+Status: historical Curator installation is implemented; provider authority is
+superseded by the MediaAsset program.
 
-Gate: complete for Curator; Spatie Media Library remains unselected.
+Gate: complete historically for Curator; Spatie Media Library remains
+unselected and is explicitly excluded from the approved MediaAsset program.
 
 Scope if Spatie is selected:
 
@@ -264,21 +299,26 @@ Research decisions: R3 and R7.
 
 ## WB7 Touchpoints
 
-- WB7 should use the same naming concern from IMG-1.
+- Any later WB7 image flow must use the MediaAsset acquisition service and one
+  portable asset key; it may reuse IMG-1 egress naming only for downloads.
 - WB7 matching should accept slug, `reference_key`, and content item `external_id` / Spotify ID.
-- WB7 Drive downloads should validate image MIME/content before writing to public disk.
+- WB7 Drive downloads must validate/acquire through MediaAsset before any
+  trusted public output; they must not write directly to a canonical root.
 - WB7 should report missing/unmatched images as reviewable warnings, not silently attach to the wrong record.
-- WB7 should route all public output through `PublicDefaultImageResolver` after storage.
+- WB7 should route all public output through the asset-aware
+  `PublicDefaultImageResolver` after acquisition.
 
 ## Explicit Out Of Scope Until Approved
 
 - Composer/package changes.
 - Plugin installation.
-- Image schema changes beyond the four migrations approved by CURATOR-G1.
+- Image schema changes outside the approved MediaAsset kernel/bridge migrations
+  or a later amended audit.
 - Media ZIP import implementation; CURATOR-G1 already implements the bounded
   image ZIP export manifest.
 - S3 or remote filesystem migration.
-- Broad or in-place rewrites of current `cover_path`, `header`, `team`,
-  `about`, or `default-images` files outside CURATOR-G1's separately approved,
-  exact-path journaled registration runbook.
+- Real local/production migration, conversion, backfill, repair, sanitation,
+  deployment or filesystem change without separate exact approval. The old G1
+  cutover/registration runbook is historical and must not be executed as the
+  MediaAsset route.
 - Prompt 13 dashboard metrics.
