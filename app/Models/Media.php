@@ -6,6 +6,8 @@ use App\Support\Media\MediaMutationLease;
 use Database\Factories\MediaFactory;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Database\Eloquent\Relations\HasOneThrough;
 use Illuminate\Support\Str;
 use LogicException;
 
@@ -39,6 +41,24 @@ class Media extends \Awcodes\Curator\Models\Media
     public function mutationOperations(): HasMany
     {
         return $this->hasMany(MediaMutationOperation::class);
+    }
+
+    public function providerBinding(): HasOne
+    {
+        return $this->hasOne(MediaProviderBinding::class, 'provider_record_key')
+            ->where('provider', 'curator');
+    }
+
+    public function mediaAsset(): HasOneThrough
+    {
+        return $this->hasOneThrough(
+            MediaAsset::class,
+            MediaProviderBinding::class,
+            'provider_record_key',
+            'id',
+            'id',
+            'media_asset_id',
+        )->where('provider', 'curator');
     }
 
     protected static function booted(): void

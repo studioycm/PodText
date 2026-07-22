@@ -1,201 +1,120 @@
-# MEDIA-P1 Kernel and Curator Conversion Research
+# Package 1 Research — Minimal Kernel and Curator Conversion
 
-## Status
+## Authority
 
-- Package ID: `MEDIA-P1-KERNEL-CONVERSION`
-- Stage: Gate 0 closed as `4881fe588a28d985194bf432020a0d8f4fef1c4f`;
-  post-Gate-0 source/plan reconciliation is the first Package 1 action.
-- Parent audit/option: `LS-20260722-PODTEXT-MEDIA-ASSET-PROGRAM-06` /
-  `MEDIA-CUTOVER-O1-DIRECT-ASSET-HYBRID-ROOT-MAINTENANCE`.
+Package 1 is approved under `LS-20260723-MEDIA-INVENTORY-FIRST-RESET-01`, option
+`MEDIA-INV-O1-RESET-CLEANUP-P1-MINIMAL-KERNEL`.
 
-Read the registry, master research, master plan and dual baselines before this
-file. Reconcile this file again against the exact post-Gate-0 HEAD before the
-first test.
+## Current committed seams
 
-## Current source map
+- `Media` is the Curator provider model and owns the current path/metadata.
+- `MediaAttachment.media_id` is the numeric local owner relation.
+- ContentGroup cover and ContentItem image paths are compatibility mirrors.
+- Settings retain path/key pairs that can be reconciled by unique path.
+- Curator's `reference_key` column already exists after G1 and is intended as a
+  portable mirror.
 
-### Curator/provider identity
+## Draft findings
 
-- `app/Models/Media.php`: Curator subclass, lease-guarded creation/key issuance,
-  inherited destructive observer disabled.
-- `database/migrations/2026_07_12_140228_create_curator_table.php`: original
-  Curator table.
-- `database/migrations/2026_07_20_000001_add_reference_key_to_curator_table.php`:
-  nullable unique Curator key.
-- `app/Observers/CuratorMediaObserver.php`: application storage-identity and
-  deletion containment.
-- `app/Support/Media/MediaRecordScope.php`: current Curator metadata/root/key
-  trust query; must become provider-only compatibility logic.
+The unfinished draft implements a materially different product: asset trust and
+lifecycle states, logical folders, canonical storage duplication, provider
+snapshots, schema capability states, conversion manifests/digests, raster
+normalization, checksums, private quarantine, journaled file mutation, SVG
+sanitation and public asset delivery.
 
-### Relationships and journal
+Those classes and tests are not a useful incremental base. Package 1 keeps only
+the model names `MediaAsset` and `MediaProviderBinding`, the concept of a
+portable attachment bridge, and the command name. Everything else is rewritten
+from the approved requirements.
 
-- `MediaAttachment`, `ContentGroup`, `ContentItem`, and
-  `MediaAttachmentManager` own shared singleton owner roles and legacy path
-  mirrors.
-- `MediaMutationOperation`, `MediaFilesystemMutationCoordinator`,
-  `MediaMutationFence`, `MediaMutationLease` own durable copy/verify/commit/
-  cleanup state.
-- G1 migrations currently point attachment/journal FKs to `curator.id`.
+## Exact schema decision
 
-### Identity consumers
+### `media_assets`
 
-- `MediaIdentityResolver`
-- `MediaAttachmentIdentityResolver`
-- `MediaAttachmentFormState`
-- `LegacyOwnerMediaDiagnostics` / `LegacyOwnerMediaRepairer`
-- `SettingsMediaIdentityProjector`
-- public default/Menu/About renderers and resolver services
-- ContentGroup/ContentItem importers and exporters
-- `MediaReferenceFinder` and `MediaIntegrityReporter`
+- `id`
+- `reference_key` as a 26-character unique immutable ULID
+- timestamps
 
-### Transition primitives
+### `media_provider_bindings`
 
-- `LegacyMediaTransitionManifest`
-- `LegacyMediaTransitionPlanner`
-- `LegacyMediaTransitionExecutor`
-- `LegacyMediaReferenceSwitcher`
-- `StoredMediaValidator`
-- `ImageUploadValidator`
-- `SvgUploadSanitizer`
-- `MediaCacheInvalidator`
+- `id`
+- restrictive `media_asset_id` foreign key
+- `provider` string (`curator` initially)
+- `provider_record_key` string containing the preserved numeric Curator ID
+- timestamps
+- unique `(provider, provider_record_key)`
+- unique `(media_asset_id, provider)`
 
-These are Curator-typed but contain the proven digest, journal, fence, checksum,
-reference-switch and compensation algorithms to reuse.
+### attachment bridge
 
-## Schema evidence
+- nullable restrictive `media_attachments.media_asset_id`
+- retain required `media_id`
+- retain existing unique owner/type/role relationship
 
-Fresh Boost schema confirms local post-G1 tables and exact FKs/indexes. Future
-production pre-G1 lacks them. New migration B must not pretend it can run before
-G1 attachment/journal migrations; the future runbook supplies the exact order.
+No folder, trust, validation, lifecycle, disk, path, hash, provenance,
+normalization, quarantine, purge, manifest or journal fields are present.
 
-The approved schema is:
+## Model behavior
 
-- `media_folders` with six protected flat system keys;
-- `media_assets` with immutable key, trust/lifecycle, canonical storage proof,
-  filenames/provenance/repair data and no unique checksum;
-- `media_provider_bindings` with one exact Curator ID per asset;
-- nullable asset bridges on attachment/journal while retaining Curator fields.
+`MediaAsset.reference_key` is generated when absent and cannot change after the
+model exists. `MediaAsset` relates to bindings and attachments.
+`MediaProviderBinding` relates to its asset and exposes a Curator relation by
+numeric provider record key without creating a second authority.
 
-Needs Repair canonical disk/path/hash stay null. Provider snapshot and repair
-provenance retain the old Curator path/metadata. This prevents accidental raw
-URL projection.
+`Media` relates to one Curator binding and through it to one asset.
+`MediaAttachment` keeps `media()` authoritative and adds `mediaAsset()` for
+portable/key operations.
 
-## Key compatibility risk
+## Conversion algorithm
 
-Current `MediaRecordScope` considers a non-null Curator key plus acceptable
-metadata/root sufficient for ordinary gallery use. If conversion mirrors an
-asset key onto a Needs Repair Curator row before asset authority is active, the
-row may become browseable. Package 1 must prove:
+One command, `media-assets:convert-curator`, supports report-only mode and an
+explicit `--apply`. There is no digest, actor token, schema profile, manifest,
+maintenance-mode requirement or per-row selector.
 
-1. ordinary reads use MediaAsset status before unsafe keys are mirrored;
-2. unbound/partially converted rows are unavailable during maintenance;
-3. provider scope cannot be invoked by normal picker/controller paths;
-4. Needs Repair never produces a canonical/public URL.
+On apply, one database transaction:
 
-## Relationship bridge decision
+1. Loads every Curator row in stable numeric-ID order.
+2. Computes duplicate-key and duplicate-path groups from database rows.
+3. Reuses an existing binding/asset on rerun.
+4. Reuses a syntactically valid unique Curator ULID; otherwise generates a new
+   ULID and mirrors it onto the Curator row.
+5. Creates exactly one MediaAsset and one Curator binding per row.
+6. Bridges existing authoritative attachments to the asset.
+7. Repairs an authoritative attachment's stale owner path to `Media.path` and
+   reports the repair.
+8. For an owner without an attachment, creates the numeric attachment only when
+   its compatibility path matches exactly one Curator row.
+9. Fills a settings reference key only when its path matches exactly one row.
+10. Reports duplicate paths and unresolved owner/settings paths without
+    guessing or clearing compatibility values.
+11. Reports missing files using existence-only checks; the result never gates
+    conversion or inventory.
+12. Commits all database mutations together.
 
-- `media_attachments.media_asset_id` is nullable during compatibility and dual
-  written with `media_id`.
-- Both identities must resolve to the same provider binding when present.
-- Existing owner-role uniqueness remains authoritative.
-- Active unsafe associations may point to a Needs Repair asset and Curator row;
-  they remain diagnostic and resolve fallback.
-- No owner table receives another image FK.
+Report-only mode calculates database mappings and existence diagnostics but
+does not mutate. Neither mode reads bytes. No mode writes storage.
 
-Mutation fences must query open operations by both asset and Curator provider
-identity so pre-cutover and post-cutover jobs cannot race.
+## Settings scope
 
-## Conversion decision
+The converter reuses the current settings projection definitions instead of
+inventing a generic recursive setting walker. It covers the existing logo,
+header, default image, About/team and other registered media path/key pairs.
+Settings remain stored through their existing settings classes/repository.
 
-One planner/executor accepts `local_post_g1` and `production_pre_g1` profiles.
-It never scans/imports filesystem-only files. Each Curator row becomes exactly
-one asset/binding; duplicate checksums never merge.
+## Test shapes
 
-Raster candidates may be:
+- Original local incident: 15 rows with null keys.
+- Current local shape: 15 rows with valid unique keys; rerun is idempotent.
+- Production shape: 403 rows, 108 unique group cover matches, three SVG paths,
+  one oversized raster metadata row, two duplicate-byte metadata pairs and five
+  rowless files excluded from conversion.
+- Duplicate database paths and unresolved legacy paths.
+- Missing file diagnostics with rows/assets/bindings retained.
+- Exception during conversion rolls back all database changes.
+- A filesystem spy proves zero writes and no byte reads.
 
-- trusted without byte change after exact proof;
-- trusted after journaled normalization and hybrid-root placement;
-- Needs Repair when proof/safe transition is unavailable.
+## Deliberate Package 1 non-goals
 
-SVG candidates become Needs Repair in Package 1 unless already proven by an
-approved sanitation proof contract. Package 2 supplies the reusable sanitizer.
-No real SVG is sanitized.
-
-## Hybrid placement decision
-
-- one active purpose: purpose root and purpose logical folder;
-- mixed active purposes: physical `media-library`, logical Legacy library;
-- unassigned: physical `media-library`, logical Legacy library;
-- path collision: preserve cleaned stem and add deterministic Curator-ID
-  suffix; never overwrite;
-- later attachment reuse does not trigger move/copy.
-
-## Provider adapter decision
-
-`CuratorMediaProvider` is the only first implementation. It:
-
-- loads/locks provider row by binding record key;
-- creates/updates provider row only under the existing mutation lease;
-- mirrors the asset key as Curator key after asset authority is effective;
-- projects provider metadata/snapshot;
-- never decides trust, compatibility, folder, owner or portable identity;
-- never exposes vendor uploader/observer mutations.
-
-## Test fixture decision
-
-Reuse committed valid raster and safe/malicious SVG fixtures. Add builders for:
-
-- root-level raster;
-- noncanonical raster;
-- metadata mismatch;
-- missing file;
-- ambiguous duplicate path;
-- same checksum/different Curator rows;
-- local 15-row aggregate;
-- production 403-row aggregate.
-
-The 403-row fixture must be economical: a small set of fixture bytes may be
-copied under distinct fake paths, but row counts, checksums, duplicate-pair
-semantics, references and dispositions must match the verified shape.
-
-## Existing tests to extend
-
-- `MediaAttachmentModelTest`
-- `MediaRecordScopeAndAuthorizationTest`
-- `MediaRelationshipPerformanceTest`
-- `LegacyMediaTransitionTest`
-- `MediaMutationCoordinatorTest`
-- `MediaBackfillAndIntegrityReportTest`
-- `ImageMediaCuratorTest`
-- `LegacyOwnerMediaRepairTest`
-- importer/exporter/settings tests that assert media keys
-
-Create focused Package 1 files rather than overloading one giant test:
-
-- `MediaAssetKernelTest`
-- `CuratorMediaAssetConversionTest`
-- `CuratorMediaAssetProductionShapeTest`
-- `MediaAssetCompatibilityTest`
-
-## Security and performance findings
-
-- ULID syntax and Livewire lock are not authorization.
-- Source/destination paths are server planned; no client path enters executor.
-- Asset key immutability and storage mutation lease need model tests.
-- Needs Repair bytes cannot use the current direct public URL projector.
-- Settings/About/Menu/public resolvers must keep typed catch/fallback behavior.
-- Manifest aggregation must batch references and file facts, not query settings
-  or owners per Curator row.
-- Closure queries need indexes on binding and bridge fields.
-- No filesystem hash/decode occurs in owner/gallery row rendering.
-
-## Source reconciliation conclusion
-
-The package fits the approved schema and security boundary with no dependency
-or package-count drift. The main implementation risk is the authority switch:
-asset status must become authoritative before unsafe provider keys are
-available. Tests must prove the partial-conversion/maintenance state as well as
-final closure.
-
-No application, database, storage, cache, dependency, Git or production state
-was changed by this package research.
+Package 1 does not alter Resource/picker inventory queries, public D01 behavior,
+file delivery, upload validation or lifecycle. Those are Package 2+ subjects.
+It also performs no real local or production conversion.

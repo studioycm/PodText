@@ -1,34 +1,18 @@
-# MEDIA-P2 Gallery and Repair Plan Route
+# Package 2 Forecast Plan — Inventory and Repair
 
-## Status
+Status: not approved.
 
-Preliminary route only. Replace with a Filament Blueprint-complete plan after
-Package 1 closes and before the first failing test.
+After a fresh audit:
 
-## Planned jobs
+1. Make All Media query every Curator row across configured disks.
+2. Add computed/batched Needs Repair diagnostics without per-row filesystem
+   byte work or N+1 settings queries.
+3. Add logical folders only with their actual UI and keep them non-authoritative.
+4. Rewrite attachment resolution so `media_id` wins and legacy paths are
+   mirrors.
+5. Implement D01's four fallback reasons exactly.
+6. Make picker All Media clear the initial logical filter and keep disabled
+   repair rows visible with an exact reason/action.
+7. Rewrite tests that encode superseded strict visibility rules.
 
-1. TDD trusted gallery and Needs Repair separation, authorized preview/download
-   routes, minimal projection and pagination/search/query budgets.
-2. TDD system/custom logical folder model policy, Resource/settings UX,
-   deletion reassignment, visibility/default filter behavior and translations.
-3. TDD bounded media-library settings for browse/search/upload defaults,
-   cleaned filename preference, raster working targets and quarantine days.
-4. TDD reusable journaled raster normalize/revalidate and staged SVG sanitation
-   across success, malicious input, collisions, failure/retry, cache and
-   quarantine; never act on real SVG rows.
-5. Reconcile docs/handoff, independent review, focused/final gates and canonical
-   implementation plus hash-stamp commits.
-
-## Required Filament plan details before implementation
-
-- full Resource/field/column/filter/action namespaces and documentation URLs;
-- action location, visibility, authorization and step-by-step behavior;
-- exact table query/eager loads/index use;
-- exact settings fields, validation and hard ceilings;
-- real workflow feature/Livewire/browser tests;
-- no unsafe byte URL and no root/folder selection coupling.
-
-## Out of scope
-
-Four-source acquisition/picker integration, owner hover/detail UX, Files
-Discovery, real conversion/sanitation and dependencies.
+No normalization/checksum/trusted-status requirement may return.

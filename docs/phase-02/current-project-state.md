@@ -6,16 +6,23 @@ Recorded after the Markdown-only post-Prompt-10 prompt-progress centralization c
 
 ## Git State
 
-- MediaAsset Stage 2 Gate 0 began from clean `main` at
-  `5ba687eff92878f18e9e19e807944a2d39b63372`, 11 commits ahead of
-  `origin/main`, under audit `LS-20260722-PODTEXT-MEDIA-ASSET-PROGRAM-06` and
-  option `MEDIA-CUTOVER-O1-DIRECT-ASSET-HYBRID-ROOT-MAINTENANCE`.
-- MediaAsset documentation Gate 0 is complete as
-  `4881fe588a28d985194bf432020a0d8f4fef1c4f`; Package 1 kernel/conversion
-  source reconciliation is now active.
-- Current branch at cleanup preflight: `main` tracking `origin/main`.
-- Branch tracking state at cleanup preflight: no ahead/behind marker reported by `git status --short --branch`.
-- Working tree at cleanup preflight: clean.
+- The inventory-first MediaAsset reset is active under audit
+  `LS-20260723-MEDIA-INVENTORY-FIRST-RESET-01`, approved option
+  `MEDIA-INV-O1-RESET-CLEANUP-P1-MINIMAL-KERNEL`.
+- Approved Package 1 baseline: `main` at
+  `b455d5d546c5902edebaade2ad31c34bbfef3d2f`, 13 commits ahead of
+  `origin/main`.
+- Stage 1 found an unfinished overbuilt draft: 79 modified tracked files and 54
+  default-status untracked entries. Exact enumeration found 55 files because
+  `tests/Support/` was collapsed. Its trusted-status, normalization/checksum,
+  manifest/digest, quarantine/relocation and conversion-journal behavior is
+  rejected. Its untracked Package 1 handoff is invalid/incomplete.
+- Package 1 implementation, focused review and final ordered repository gates
+  are complete; local implementation/hash-stamp commits are pending. Packages
+  2-5 remain separately gated and no real local or production migration or
+  conversion is authorized.
+- The latest dated operator evidence says the 15 local Curator rows now have
+  valid unique keys; this task has not performed a fresh live probe.
 - Latest docs cleanup commit recorded here: `1cb158a docs: centralize prompt progress and ai development lessons`.
 - Latest local `HEAD` before Prompt 10 implementation: `014c6b0 docs: update phase two prompt state, completion details for Prompts 08 and 09, and readiness notes for Prompt 10`.
 - Admin management UX repair commit is present in history: `16ab33a fix: repair admin management ux after phase two resources`.
@@ -255,19 +262,17 @@ Recorded after the Markdown-only post-Prompt-10 prompt-progress centralization c
   pre-G1. No local/production transition, backfill, repair, sanitation,
   cache/process action, or real IDs 6/7 action ran. Handoff:
   `docs/phase-02/curator-g1-legacy-media-transition-correction-handoff.md`.
-- The approved MediaAsset program is now the active forward media route under
-  audit `LS-20260722-PODTEXT-MEDIA-ASSET-PROGRAM-06`, option
-  `MEDIA-CUTOVER-O1-DIRECT-ASSET-HYBRID-ROOT-MAINTENANCE`. PodText will own a
-  minimal canonical MediaAsset kernel with Curator as its only initial
-  provider; preserve one asset per Curator row, Curator numeric provider IDs,
-  one immutable portable key, owner/settings/import-export relationships,
-  hybrid initial physical roots, separate logical folders, Needs Repair,
-  configured fallback, and 90-day private quarantine; then deliver unified
-  acquisition/picker, owner image UX, Files Discovery and journaled lifecycle
-  in five sequential packages. Gate 0 controlling docs begin at
-  `docs/phase-02/media-program-context.md`. No real local/production schema,
-  conversion, file, cache, deploy, process, SVG sanitation, dependency, or push
-  action is authorized in this implementation run.
+- The active forward media route is the inventory-first reset under audit
+  `LS-20260723-MEDIA-INVENTORY-FIRST-RESET-01`, option
+  `MEDIA-INV-O1-RESET-CLEANUP-P1-MINIMAL-KERNEL`. Package 1 adds only portable
+  assets, Curator bindings, the attachment bridge and database-only conversion.
+  `media_attachments.media_id` remains local owner authority and `curator.path`
+  remains file-location authority. Existing-media visibility must not depend on
+  key, root, filename, metadata, size, dimensions, normalization, checksum or
+  provenance. Package 2 later owns All Media, Needs Repair, D01 and picker All
+  Media after a fresh audit. No real local/production schema, conversion, file,
+  cache, deploy, process, SVG sanitation, dependency, or push action is
+  authorized in this implementation run.
 - Settings development metrics retirement Mini-task 1 is complete as
   `3e5c411777994c431417dfd823576286d12d5c29` under audit
   `LS-20260721-SETTINGS-DEV-METRICS-03`, option
@@ -384,7 +389,7 @@ Recorded after the Markdown-only post-Prompt-10 prompt-progress centralization c
 | CURATOR-HF1 - Curator picker hydration repair | Complete | `23a6ce9 fix: preserve curator picker selections on reload`; `docs/phase-02/curator-picker-hydration-hf1-handoff.md` | Repairs `PathCuratorPicker` raw-state hydration and UUID-keyed state handling so registered Menu/Header logos and Display default images remain visibly selected after reload. The storage contract, legacy-path preservation, and SP3B lifecycle remain unchanged. |
 | CURATOR-G1 - Full app-owned Curator image library | Complete locally; historical compatibility baseline | Canonical implementation hash is recorded in `docs/phase-02/curator-g1-image-library-o2-handoff.md` and the mini-step ledger | Completes all seven O2 minis: positive validation, app Resource/picker, explicit abilities, immutable journal-backed keys, shared typed attachments, compatibility/settings/import-export cutover, rowless legacy registration, fenced mutations/repair, SSRF controls, query budgets, translations, and runbooks. The local incident later applied the three relational migrations and the settings-shape migration in batch 8; production did not. G1 remains compatibility evidence, while the approved MediaAsset program controls forward architecture. |
 | CURATOR-G1 LMTC - Legacy media transition correction | Complete locally; production cutover gated | `f73be008b3dbc49e09f01b645327b4083d8f70f8`; `docs/phase-02/curator-g1-legacy-media-transition-correction-handoff.md` | Closes the existing noncanonical null-key row gap with exact-digest same-ID raster/SVG transition, rowless fixed-root import, ordered backfills/integrity, production-shaped closure tests, and safe owner repair/default fallback. No schema/dependency change or real environment mutation; IDs 6/7, production cutover, root-level dispositions, recovery gallery, dependency upgrades, and empty permission-schema cleanup remain separately gated. |
-| PODTEXT MEDIA ASSET PROGRAM - direct asset cutover | Gate 0 complete; Package 1 active | `4881fe588a28d985194bf432020a0d8f4fef1c4f`; `docs/phase-02/media-program-context.md`; `docs/research/media-program/` | Approved five-package route: app-owned MediaAsset kernel and full Curator-row conversion; trusted gallery/logical folders/Needs Repair/normalization/SVG; four-source picker and unified acquisition including podcast/episode Spotify; owner hover/detail/change UX; Files Discovery and journaled lifecycle. No dependency or real environment action is authorized. |
+| PODTEXT MEDIA ASSET PROGRAM - inventory-first Package 1 | Implemented and gated; local hash-stamped closeout pending | Audit `LS-20260723-MEDIA-INVENTORY-FIRST-RESET-01`; option `MEDIA-INV-O1-RESET-CLEANUP-P1-MINIMAL-KERNEL`; implementation hash pending; `docs/phase-02/media-program-p1-kernel-conversion-handoff.md` | Adds the minimal portable asset/binding kernel, nullable attachment bridge retaining `media_id`, report-only/explicit-apply idempotent database conversion, exact owner/settings reconciliation and 15-null/15-valid/403-row proof. Final Pint/FilaCheck/Vite gates passed and the full suite passed outside the known macOS browser sandbox: 1,005 tests / 13,316 assertions. Trust/status/proof machinery remains rejected; Package 2 requires a fresh audit. No dependency or real environment action occurred. |
 | DEP-UPGRADE-O1 - Bounded full dependency refresh | Complete locally | `4d2a063954975fa07dde43f6113a97c671fc5724`; `docs/phase-02/dependency-refresh-handoff.md`; `docs/research/dependency-refresh/` | Refreshes Composer and npm lock graphs within unchanged manifest constraints; moves Laravel to 13.21.1, Filament and its Spatie plugins to 5.7.1, Horizon to 5.48.1, Pest to 4.7.5, Boost to 2.4.13, Tailwind to 4.3.3, Vite to 8.1.5, and Laravel Vite plugin to 3.1.3. Preserves Livewire 4.3.3 and Curator 5.1.2, corrects one Filament action API call and one tooltip-first Escape browser expectation, and records 18 byte-attributable tracked Filament asset changes. No manifest, schema, migration, production, worker, or local-development database change. |
 | SETTINGS-METRICS-O1 Mini-task 1 - Runtime retirement | Complete | `3e5c411777994c431417dfd823576286d12d5c29`; `docs/phase-02/settings-development-metrics-retirement-mini1-handoff.md`; research/plans 41-42 | Removed the temporary settings profiler, middleware, runtime fixtures, flags/headers, counters, config/logging, and browser harness. Functional settings/Card Template/Curator behavior and Filament 5.7.1 remain preserved; Mini-task 2 completes the separately audited test-only retirement. |
 | SETTINGS-METRICS-M2-O1 Mini-task 2 - Test-only retirement | Complete | `c37bcf7f5cd7ea0408623218edeee4842d8e6592`; `docs/phase-02/settings-development-metrics-retirement-mini2-handoff.md`; research/plans 43-44 | Deletes only the eight-file synthetic canary graph; removes five switches/eight report blocks and their exclusive metrics; removes the bilingual canary-only subtree; migrates six consumed hooks to durable Card Template names; removes four unused markers; supersedes active routing while retaining historical provenance. Preserves all functional, security, exact-query, browser-interaction/deadline, Filament 5.7.1, and Curator G1/LMTC invariants. No dependency/schema/data/environment action; no later mini-task selected. |

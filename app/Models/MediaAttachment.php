@@ -11,7 +11,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 
-#[Fillable(['media_id', 'attachable_type', 'attachable_id', 'role', 'position'])]
+#[Fillable(['media_id', 'media_asset_id', 'attachable_type', 'attachable_id', 'role', 'position'])]
 class MediaAttachment extends Model
 {
     use HasFactory;
@@ -23,6 +23,11 @@ class MediaAttachment extends Model
     public function media(): BelongsTo
     {
         return $this->belongsTo(Media::class);
+    }
+
+    public function mediaAsset(): BelongsTo
+    {
+        return $this->belongsTo(MediaAsset::class);
     }
 
     public function attachable(): MorphTo

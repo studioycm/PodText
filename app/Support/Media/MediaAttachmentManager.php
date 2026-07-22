@@ -118,13 +118,15 @@ class MediaAttachmentManager
                 ],
                 [
                     'media_id' => $trustedMedia->getKey(),
+                    'media_asset_id' => $trustedMedia->providerBinding()
+                        ->value('media_asset_id'),
                     'position' => 0,
                 ],
             );
 
             $lockedOwner->forceFill([$legacyColumn => $trustedMedia->path])->saveQuietly();
 
-            return $attachment->load('media');
+            return $attachment->load(['media', 'mediaAsset']);
         });
     }
 

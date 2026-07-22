@@ -4,23 +4,28 @@ Date: 2026-07-12
 
 This plan follows IMG-R research in `docs/research/images-media/00-images-media-research.md`. IMG-A implemented the approved IMG-1 + IMG-2 merge on 2026-07-12. IMG-B implements the local episode-image, TB1 table-action, media-guard, and export-only content-images ZIP scope.
 
-## Forward-route supersession (2026-07-22)
+## Forward-route supersession (2026-07-23)
 
 IMG-A, IMG-B, IE1, Curator G1 and LMTC remain implemented historical evidence.
 Their Curator-canonical, path/root-selection, and G1-only schema decisions no
 longer control future media work.
 
 The approved forward route is audit
-`LS-20260722-PODTEXT-MEDIA-ASSET-PROGRAM-06`, option
-`MEDIA-CUTOVER-O1-DIRECT-ASSET-HYBRID-ROOT-MAINTENANCE`:
+`LS-20260723-MEDIA-INVENTORY-FIRST-RESET-01`, option
+`MEDIA-INV-O1-RESET-CLEANUP-P1-MINIMAL-KERNEL`:
 
-- PodText `MediaAsset` is canonical; Curator is the only initial provider;
-- one asset is preserved per Curator row, with Curator numeric ID in its
-  provider binding and one immutable portable asset key;
-- physical hybrid roots are server placement only; flat logical folders are
-  independent admin organization/default picker filters;
-- Needs Repair, unified four-source acquisition/picker, owner image UX, Files
-  Discovery and journaled lifecycle run as five sequential packages;
+- `media_attachments.media_id` remains local owner authority; Curator owns the
+  current file path; MediaAsset supplies portable identity only;
+- one minimal asset/binding is preserved per Curator row, with Curator numeric
+  ID in the binding and one immutable portable key;
+- every Media row remains visible in All Media and every managed rowless file
+  belongs in Files Discovery; Needs Repair is a filter, not exclusion;
+- existing key, root, folder, filename, metadata, size, dimension, provenance,
+  normalization or relationship failures do not hide inventory;
+- conversion is database-only and does not normalize, hash, relocate,
+  quarantine or journal files;
+- unified acquisition/picker, owner image UX and physical lifecycle remain
+  later separately audited packages;
 - existing owner/settings/import-export/path/Curator identities remain
   compatibility bridges through the program;
 - Spatie Media Library and file-manager dependency installation remain out of
@@ -103,7 +108,7 @@ Implements R4, R5, and R6.
   handled SVG, and `media:register-existing-curator-assets` registered legacy
   files in place. Its recorded local result was 11 created, 0 existing, 0
   missing, and 0 skipped.
-- CURATOR-G1 supersedes those security and identity assumptions. Settings now
+- CURATOR-G1 historically superseded those security and identity assumptions. Settings then
   retain immutable media keys beside compatibility paths, new SVG uploads use
   private app-owned sanitation, raster uploads are re-encoded/normalized, and
   the legacy-named registration command is dry-run-only by default. Its
@@ -116,6 +121,11 @@ Implements R4, R5, and R6.
   checksum-proof journal; noncanonical/disallowed rows remain reported.
   Existing SVG Media IDs 6 and 7 remain untouched pending their separate
   checksum/backup/visual-verification approval runbook.
+
+The 2026-07-23 inventory-first route supersedes those G1 transition
+requirements for existing-media visibility and Package 1 conversion. They
+remain historical implementation evidence only. Existing rows are not hidden
+or converted based on normalization, checksum, root or provenance.
 
 ### IMG-B Implementation Outcomes
 
@@ -151,9 +161,9 @@ Implemented by IMG-B:
 - Automatic cleanup applies only to app-owned no-row strays with no remaining model/settings references.
 - Deleting a referenced Curator `Media` row is blocked at the policy/observer boundary, with translated messages naming referencing surfaces.
 
-The MediaAsset program preserves those guards during compatibility and moves
-canonical lifecycle to asset trust/status plus the durable journal. Private
-trash/quarantine defaults to 90 days and purge requires zero-reference proof.
+The inventory-first MediaAsset program preserves reference protection during
+compatibility. Asset trust/status and private quarantine are not Package 1
+concepts. Explicit physical lifecycle and journals are deferred to Package 5.
 
 ## Mini-Step IMG-1 - Native Image Baseline
 
@@ -302,8 +312,8 @@ Research decisions: R3 and R7.
 - Any later WB7 image flow must use the MediaAsset acquisition service and one
   portable asset key; it may reuse IMG-1 egress naming only for downloads.
 - WB7 matching should accept slug, `reference_key`, and content item `external_id` / Spotify ID.
-- WB7 Drive downloads must validate/acquire through MediaAsset before any
-  trusted public output; they must not write directly to a canonical root.
+- WB7 Drive downloads must use the approved new-input acquisition boundary
+  before public output; they must not write directly to an arbitrary path.
 - WB7 should report missing/unmatched images as reviewable warnings, not silently attach to the wrong record.
 - WB7 should route all public output through the asset-aware
   `PublicDefaultImageResolver` after acquisition.

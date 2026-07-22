@@ -46,6 +46,122 @@ class SettingsMediaIdentityProjector
 
     /**
      * @param  array<string, mixed>  $payload
+     * @param  array<string, string>  $referenceKeysByPath
+     * @param  array<int, string>  $knownReferenceKeys
+     * @return array{
+     *     payload: array<string, mixed>,
+     *     filled: array<int, string>,
+     *     unresolved: array<int, string>
+     * }
+     */
+    public function backfillFromUniquePaths(
+        array $payload,
+        array $referenceKeysByPath,
+        array $knownReferenceKeys,
+    ): array {
+        $filled = [];
+        $unresolved = [];
+        $knownReferenceKeyLookup = array_fill_keys($knownReferenceKeys, true);
+        $logo = data_get($payload, 'menu_config.logo');
+
+        if (is_array($logo)) {
+            [$payload['menu_config']['logo'], $outcome] = $this->fillUniquePathPair(
+                $logo,
+                'light_media_reference_key',
+                'light_path',
+                $referenceKeysByPath,
+                $knownReferenceKeyLookup,
+            );
+            $this->recordUniquePathOutcome($outcome, 'menu_config.logo.light', $filled, $unresolved);
+            [$payload['menu_config']['logo'], $outcome] = $this->fillUniquePathPair(
+                $payload['menu_config']['logo'],
+                'dark_media_reference_key',
+                'dark_path',
+                $referenceKeysByPath,
+                $knownReferenceKeyLookup,
+            );
+            $this->recordUniquePathOutcome($outcome, 'menu_config.logo.dark', $filled, $unresolved);
+        }
+
+        foreach (PublicFrontConfigRegistry::defaultImageFamilies() as $family) {
+            $state = data_get($payload, "default_images.{$family}");
+
+            if (! is_array($state)) {
+                continue;
+            }
+
+            [$payload['default_images'][$family], $outcome] = $this->fillUniquePathPair(
+                $state,
+                'media_reference_key',
+                'path',
+                $referenceKeysByPath,
+                $knownReferenceKeyLookup,
+            );
+            $this->recordUniquePathOutcome($outcome, "default_images.{$family}", $filled, $unresolved);
+        }
+
+        if (is_array(data_get($payload, 'about_page.blocks'))) {
+            foreach ($payload['about_page']['blocks'] as $index => $block) {
+                if (! is_array($block) || ($block['type'] ?? data_get($block, 'data.type')) !== 'image') {
+                    continue;
+                }
+
+                $outerHasIdentity = array_key_exists('image_media_reference_key', $block)
+                    || array_key_exists('image_path', $block);
+
+                if (is_array($block['data'] ?? null) && $outerHasIdentity) {
+                    throw new \InvalidArgumentException('The about-page image block has ambiguous media identity fields.');
+                }
+
+                if (is_array($block['data'] ?? null)) {
+                    [$block['data'], $outcome] = $this->fillUniquePathPair(
+                        $block['data'],
+                        'image_media_reference_key',
+                        'image_path',
+                        $referenceKeysByPath,
+                        $knownReferenceKeyLookup,
+                    );
+                } else {
+                    [$block, $outcome] = $this->fillUniquePathPair(
+                        $block,
+                        'image_media_reference_key',
+                        'image_path',
+                        $referenceKeysByPath,
+                        $knownReferenceKeyLookup,
+                    );
+                }
+
+                $payload['about_page']['blocks'][$index] = $block;
+                $this->recordUniquePathOutcome($outcome, "about_page.blocks.{$index}", $filled, $unresolved);
+            }
+        }
+
+        if (is_array(data_get($payload, 'about_page.team_profiles'))) {
+            foreach ($payload['about_page']['team_profiles'] as $index => $profile) {
+                if (! is_array($profile)) {
+                    continue;
+                }
+
+                [$payload['about_page']['team_profiles'][$index], $outcome] = $this->fillUniquePathPair(
+                    $profile,
+                    'image_media_reference_key',
+                    'image_path',
+                    $referenceKeysByPath,
+                    $knownReferenceKeyLookup,
+                );
+                $this->recordUniquePathOutcome($outcome, "about_page.team_profiles.{$index}", $filled, $unresolved);
+            }
+        }
+
+        return [
+            'payload' => $payload,
+            'filled' => $filled,
+            'unresolved' => $unresolved,
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
      * @return array<int, string>
      */
     public function legacyRegistrationLocations(
@@ -479,5 +595,61 @@ class SettingsMediaIdentityProjector
         }
 
         return $state;
+    }
+
+    /**
+     * @param  array<string, mixed>  $state
+     * @param  array<string, string>  $referenceKeysByPath
+     * @param  array<string, true>  $knownReferenceKeyLookup
+     * @return array{array<string, mixed>, ?string}
+     */
+    private function fillUniquePathPair(
+        array $state,
+        string $referenceField,
+        string $pathField,
+        array $referenceKeysByPath,
+        array $knownReferenceKeyLookup,
+    ): array {
+        $referenceKey = $state[$referenceField] ?? null;
+        $hasReferenceKey = is_string($referenceKey) && filled($referenceKey);
+
+        if ($hasReferenceKey && isset($knownReferenceKeyLookup[$referenceKey])) {
+            return [$state, null];
+        }
+
+        $path = $state[$pathField] ?? null;
+
+        if (! is_string($path) || blank($path)) {
+            return [$state, $hasReferenceKey ? 'unresolved' : null];
+        }
+
+        if (! isset($referenceKeysByPath[$path])) {
+            return [$state, 'unresolved'];
+        }
+
+        $state[$referenceField] = $referenceKeysByPath[$path];
+
+        return [$state, 'filled'];
+    }
+
+    /**
+     * @param  array<int, string>  $filled
+     * @param  array<int, string>  $unresolved
+     */
+    private function recordUniquePathOutcome(
+        ?string $outcome,
+        string $location,
+        array &$filled,
+        array &$unresolved,
+    ): void {
+        if ($outcome === 'filled') {
+            $filled[] = $location;
+
+            return;
+        }
+
+        if ($outcome === 'unresolved') {
+            $unresolved[] = $location;
+        }
     }
 }

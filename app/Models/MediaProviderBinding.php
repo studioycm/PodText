@@ -1,0 +1,21 @@
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+
+#[Fillable(['media_asset_id', 'provider', 'provider_record_key'])]
+class MediaProviderBinding extends Model
+{
+    public function mediaAsset(): BelongsTo
+    {
+        return $this->belongsTo(MediaAsset::class);
+    }
+
+    public function media(): BelongsTo
+    {
+        return $this->belongsTo(Media::class, 'provider_record_key');
+    }
+}

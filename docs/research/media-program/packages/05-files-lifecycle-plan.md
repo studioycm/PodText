@@ -1,35 +1,15 @@
-# MEDIA-P5 Files Discovery and Lifecycle Plan Route
+# Package 5 Forecast Plan — Files and Lifecycle
 
-## Status
+Status: not approved.
 
-Preliminary route only. Replace with a Filament/state-machine-complete plan
-after Package 4 closes and before the first failing test.
+After a fresh audit:
 
-## Planned jobs
-
-1. TDD bounded read-only Files Discovery, exclusions, opaque candidate digest,
-   metadata projection and authorization.
-2. TDD Import/Import-and-Use through the unified acquisition coordinator,
-   including stale/forged/symlink/traversal/refusal cases.
-3. TDD explicit physical move and rename with collision, failure/retry, provider
-   switch, cache invalidation and no logical-folder coupling.
-4. TDD trash/restore/purge, 90-day retention, zero-reference proof, incomplete
-   journal refusal and private storage cleanup.
-5. Reconcile integrity reports, final MediaAsset/SVG/cutover runbooks, all
-   active docs, handoff, independent review, complete final gates and canonical
-   two commits.
-
-## Required plan details before implementation
-
-- full page/table/action namespaces and version-correct APIs;
-- exact root/exclusion configuration and candidate serialization;
-- every operation state and pre/post-commit compensation step;
-- exact reference queries and indexes;
-- retention settings/hard bounds and authorization;
-- query/state/filesystem/browser/translation tests;
-- explicit statement that no real discovered file is imported or mutated.
-
-## Out of scope
-
-Plugin installation, other media types/providers, production execution and
-compatibility-field removal.
+1. Build bounded Files Discovery for rowless files in configured managed roots.
+2. Import one reviewed file to create its Media row before selection.
+3. Add explicit move, rename, replace, trash, restore and purge operations.
+4. Journal only those real physical mutations with copy/verify/switch/cleanup
+   and compensation as appropriate.
+5. Block deletion/purge while active owner/settings references exist.
+6. Add lifecycle/trash fields only with this UI and state machine.
+7. Keep every row visible in All Media throughout repair/lifecycle states unless
+   intentionally in Trash.
