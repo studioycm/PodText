@@ -187,4 +187,4 @@ restriction.
 
 ## Commit hash
 
-Pending canonical implementation commit.
+`c37bcf7f5cd7ea0408623218edeee4842d8e6592`
