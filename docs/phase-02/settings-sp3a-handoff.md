@@ -1,5 +1,12 @@
 # Settings SP3A Handoff
 
+> **Measurement-retirement notice — 2026-07-22:** Historical evidence only;
+> do not execute its profiler, report, selector, or browser-measurement
+> instructions. The temporary runtime plane was retired in settings metrics
+> Mini-task 1 and its remaining test-only plane in Mini-task 2. Functional
+> settings behavior remains covered; future observability requires a fresh
+> Laravel Simplifier audit.
+
 > **Historical shipped-state notice — 2026-07-16:** This remains authoritative
 > for SP3A measurement, locks, and lifecycle behavior. Forward Template/Form
 > ownership and final SP3D gating now follow ARCH1/E1–E4 in

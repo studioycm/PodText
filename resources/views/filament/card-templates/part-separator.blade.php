@@ -1,1 +1,1 @@
-<span aria-hidden="true" data-sp3c-part-item-separator>&middot;</span>
+<span aria-hidden="true">&middot;</span>

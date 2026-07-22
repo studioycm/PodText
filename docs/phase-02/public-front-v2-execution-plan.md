@@ -1,11 +1,10 @@
 # Public Front v2 Execution Plan
 
-> **Forward-architecture supersession — 2026-07-16:** This remains the record of
-> the Public Front v2 sequence and shipped decisions. Its future storage
-> assumptions are superseded where they conflict with ARCH1 in
-> `docs/research/settings-performance/07-sp3d-pre-research.md`: Card Templates
-> and Public Forms move to versioned Resources before SP3D; Menu and About/Team
-> remain temporary settings as recorded there.
+> **Current routing notice — 2026-07-22:** This remains a historical record of
+> shipped Public Front decisions, not an active SP3/ARCH1 route. Settings
+> metrics Mini-task 2 retired the bespoke measurement and browser-evidence
+> plane. Use current project state and the mini-step ledger; re-research any
+> selected future storage or observability work through a fresh audit.
 
 ## Purpose
 

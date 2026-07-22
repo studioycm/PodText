@@ -16,23 +16,18 @@
 
 For current prompt completion/progress state, see `docs/phase-02/current-project-state.md`.
 
-## Feature-First Restart
+## Current Feature Routing
 
-The controlling reset is
-`docs/research/settings-performance/19-authz-complexity-reset-and-feature-first-master-plan.md`.
-The bounded AUTHZ command-surface closure is complete in `0be8070`; no further
-AUTHZ audit or remediation is pending. The selected next work is docs-only Step
-5B planning through
-`prompts/pre-13-prompts/step5b-feature-first-controller-codex-prompt.md` v1.
-It first delegates a thorough specification-prompt mini-task, then runs that
-prompt in a separate mini-task to prepare Card Template preview beside the
-editor on wide screens and in a slide-over on narrower screens, using the
-existing SP3C storage/writer and controlled public card presenters.
+The feature-first reset and Step 5B controller are completed historical
+records. AUTHZ is done for now, and Card Template Preview UX is complete through
+the follow-ups recorded in current project state and the mini-step ledger. No
+next task is selected automatically.
 
-The specification returns for operator review. A later PHP implementation, if
-selected, begins with its own Laravel Simplifier Stage 1 audit and ID-bound
-approval; the current controller does not run that audit or write application
-code.
+Settings metrics Mini-task 2 retired the remaining SP3C/Step 5B test-only
+canary, reports, phase selectors, and active browser-evidence routing while
+preserving functional Card Template, security, deterministic query, and browser
+interaction coverage. Future observability requires a fresh Laravel Simplifier
+audit and must not revive or generalize the bespoke helper.
 
 AUTHZ1-D–I, multiple roles, direct grants, role UI, extra panels, package
 cutover, ARCH1, and SP3D are deferred/not-current. They do not block ordinary
@@ -41,9 +36,9 @@ settings, import-lock, Card Template, or Public Front feature work.
 The surviving and deferred tracking registers are maintained in
 `docs/research/settings-performance/10-pending-decision-question-queue.md`.
 They preserve P2/P3, `MAINT-LW-UX1`, `WB-PROBE-HF1`, the Google probe, LENS
-review packs, production settings/cache/mail checks, conditional SP3 browser
-evidence, and the existing optional Public Front queue without making any of
-them automatic next work.
+review packs, production settings/cache/mail checks, and the existing optional
+Public Front queue without making any of them automatic next work. The former
+conditional SP3 browser-evidence route is retired.
 
 ## Non-Negotiable Semantics
 

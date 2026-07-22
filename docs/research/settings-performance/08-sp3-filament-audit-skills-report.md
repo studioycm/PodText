@@ -1,5 +1,11 @@
 # SP3 Filament Forms UX and Performance Audit
 
+> **Superseded measurement-routing notice — 2026-07-22:** Historical evidence
+> only; do not execute this report's SP3 measurement, canary, report, selector,
+> or browser-evidence routing. Settings metrics Mini-task 2 retired the
+> remaining bespoke test plane. Use current project state and the mini-step
+> ledger; future observability requires a fresh Laravel Simplifier audit.
+
 Date: 2026-07-16
 
 Audit mode: static, read-only application/test/schema review

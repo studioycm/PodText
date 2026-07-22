@@ -39,7 +39,6 @@ use Illuminate\Support\Facades\Mail;
 use Livewire\Livewire;
 use Spatie\LaravelSettings\Events\SettingsSaved;
 use Spatie\LaravelSettings\SettingsContainer;
-use Tests\Support\SettingsSp3cCanaryMeasurement;
 
 class Fu03UnresolvableEditCardTemplate extends EditCardTemplate
 {
@@ -232,29 +231,7 @@ it('previews the current single draft from its validated request context without
         ->assertSeeHtml('data-card-template-preview-modal')
         ->assertSee('Editor Preview Episode');
 
-    $slideOverMetrics = app(SettingsSp3cCanaryMeasurement::class)->measureHtml(
-        $component->html(),
-        [
-            'preview' => [
-                'status' => $component->get('previewStatus'),
-                'family' => $component->get('previewFamily'),
-                'sample_id' => $component->get('previewSampleId'),
-                'sample_label' => $component->get('previewSampleLabel'),
-                'html' => $component->get('previewHtml'),
-            ],
-        ],
-    );
-
-    expect(substr_count($component->html(), 'data-card-template-preview-root'))->toBe(1)
-        ->and($slideOverMetrics['wire_models'])->toBeGreaterThan(0);
-
-    if (getenv('STEP5B_CANARY_REPORT') === '1') {
-        fwrite(STDERR, json_encode([
-            'narrow_slide_over_component_response' => $slideOverMetrics,
-            'server_preview_roots' => 1,
-            'browser_active_preview_roots' => 1,
-        ], JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES).PHP_EOL);
-    }
+    expect(substr_count($component->html(), 'data-card-template-preview-root'))->toBe(1);
 });
 
 it('refreshes once at the family change boundary and keeps sample selection transient', function (): void {
@@ -446,7 +423,7 @@ it('hydrates legacy order into position canonical builders with compact native c
     $component
         ->assertSee(__('admin.settings_sp3c.editor.template_settings_heading'))
         ->assertSee(__('admin.settings_sp3c.editor.parts_heading'))
-        ->assertSeeHtml('data-sp3c-part-position-badge')
+        ->assertSeeHtml('data-card-template-part-position-badge')
         ->set("data.parts.{$titleKey}.data._show_label", false)
         ->assertSet("data.parts.{$titleKey}.data.label", 'Retained title label')
         ->assertSet("data.parts.{$titleKey}.data.label_position", 'hidden')

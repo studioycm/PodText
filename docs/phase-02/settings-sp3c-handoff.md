@@ -1,5 +1,11 @@
 # Settings SP3C Handoff
 
+> **Measurement-retirement notice — 2026-07-22:** Historical evidence only;
+> do not execute its canary, report, selector, or browser-measurement
+> instructions. Settings metrics Mini-task 2 retired that bespoke test plane
+> while preserving functional editor, security, query, and browser coverage.
+> Future observability requires a fresh Laravel Simplifier audit.
+
 > **Historical shipped-state notice — 2026-07-16:** This remains authoritative
 > for SP3C behavior and measurements. Its settings-backed Template architecture
 > is now migration-source and rollback evidence. ARCH1 versioned Resources must

@@ -16,20 +16,18 @@ For current completion/progress state, see `docs/phase-02/current-project-state.
 
 Historical prompts are under `prompts/archive/` and are not active instructions.
 
-## Current feature-first controller
+## Historical feature-first controller
 
 - `pre-13-prompts/step5b-feature-first-controller-codex-prompt.md` v1 is the
-  selected docs-only controller. It opens one task to write and commit the
-  thorough Step 5B specification prompt, then—only after a clean-checkout
-  handoff—opens a separate task to execute that prompt and prepare the small
-  Card Template Preview UX specification. It authorizes no PHP implementation,
-  Laravel Simplifier implementation audit, ARCH1/SP3D work, or push.
+  completed docs-only controller. It and its measurement-era routing are
+  historical evidence, not active instructions.
 - `pre-13-prompts/step5b-card-template-preview-ux-specification-codex-prompt.md`
-  v1 is the completed Mini-task 1 contract. The controller's separate
-  Mini-task 2 must execute it from the clean prompt commit to prepare
+  v1 is the completed specification contract that prepared
   `docs/research/settings-performance/21-step5b-card-template-preview-ux-specification.md`
-  and a concise docs-only handoff, then stop for operator accept/revise before
-  any implementation audit.
+  and its handoff. Do not re-execute either prompt.
+- Current routing lives only in `docs/phase-02/current-project-state.md` and the
+  mini-step ledger. Settings metrics Mini-task 2 retired the remaining bespoke
+  SP3/Step 5B measurement route; future observability requires a fresh audit.
 
 ## AUTHZ1 pre-Prompt-13 contracts
 

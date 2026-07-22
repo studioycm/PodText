@@ -1,11 +1,11 @@
 # Public Front v2 Agent Usage Index
 
-> **ARCH1 routing notice — 2026-07-16:** Before planning Template, Form,
-> settings, preview, or SP3D work, read
-> `docs/research/settings-performance/07-sp3d-pre-research.md`. It supersedes the
-> old settings-only storage assumption for Card Templates and Public Forms.
-> Also read `09-arch1-drafts-authorization-research.md`: AUTHZ1 now precedes
-> ARCH1, and Template/Form autosave working drafts are isolated per user.
+> **Current routing notice — 2026-07-22:** The SP3 measurement and
+> browser-evidence routing in reports 07/08 is historical and must not be
+> executed. Settings metrics Mini-task 2 retired the bespoke canary/report
+> plane. Use `current-project-state.md` and the mini-step ledger for current
+> routing; future observability or storage-architecture work requires its own
+> fresh audit and operator selection.
 
 ## Purpose
 

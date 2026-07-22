@@ -30,7 +30,6 @@ use Illuminate\Support\Facades\Mail;
 use Livewire\Livewire;
 use Spatie\LaravelSettings\Events\SettingsSaved;
 use Spatie\LaravelSettings\SettingsContainer;
-use Tests\Support\SettingsSp3cCanaryMeasurement;
 
 uses(RefreshDatabase::class);
 
@@ -329,15 +328,6 @@ it('scans every homepage section in one projected query with fallback ambiguity 
 
     expect($queries)->toHaveCount(1);
 
-    if (getenv('SP3C_PRODUCTION_REPORT') === '1') {
-        fwrite(STDOUT, json_encode([
-            'reference_scan' => [
-                'initial_rows' => $initialRows,
-                'scaled_rows' => $initialRows + 40,
-                'queries_at_each_scale' => count($queries),
-            ],
-        ], JSON_THROW_ON_ERROR).PHP_EOL);
-    }
 });
 
 it('edits only the target from one fresh snapshot and preserves siblings and foreign roots', function (): void {
@@ -686,7 +676,7 @@ it('uses exact hidden routes and mounts one editable template draft without sibl
         'key', 'label', 'family', 'layout', 'density', 'image_size', 'title_size', 'parts',
     ])
         ->and(json_encode($state, JSON_THROW_ON_ERROR))->not->toContain('sibling')
-        ->and($html)->toContain('data-sp3c-part-summary')
+        ->and($html)->toContain('data-card-template-part-summary')
         ->and($html)->not->toContain('Template sibling')
         ->and($component->get('savedDataHash'))->not->toBeEmpty();
 
@@ -1084,7 +1074,7 @@ it('ignores retired settings measurement flags and enforces stored-template vali
         ]));
         $editorResponse->assertOk();
 
-        $editor = Livewire::withQueryParams([
+        Livewire::withQueryParams([
             'sp3a_measure' => '1',
             'sp3a_profile' => '1',
         ])->test(EditCardTemplate::class, [
@@ -1098,18 +1088,6 @@ it('ignores retired settings measurement flags and enforces stored-template vali
         expect(collect(settingsSp3cSnapshot()['card_templates'])->firstWhere('key', 'stored-only')['label'])
             ->toBe('Flags ignored');
 
-        if (getenv('SP3C_PRODUCTION_REPORT') === '1') {
-            $measure = app(SettingsSp3cCanaryMeasurement::class);
-            $library = Livewire::withQueryParams([
-                'sp3a_measure' => '1',
-            ])->test(CardTemplateSettings::class);
-
-            fwrite(STDOUT, json_encode([
-                'retired_flags_ignored' => true,
-                'library' => $measure->measure($library),
-                'editor' => $measure->measure($editor),
-            ], JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES).PHP_EOL);
-        }
     } finally {
         app()->detectEnvironment(fn (): string => $environment);
     }

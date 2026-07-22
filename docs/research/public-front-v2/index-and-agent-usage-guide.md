@@ -1,12 +1,10 @@
 # Public Front v2 Research Index and Agent Usage Guide
 
-> **ARCH1 routing notice — 2026-07-16:** Read
-> `docs/research/settings-performance/07-sp3d-pre-research.md` before using this
-> pack. Its JSON-first rule is superseded for independently managed Card
-> Templates and Public Forms: those are now approved versioned Resources with
-> revision-owned JSON. Bounded singleton policy remains Spatie Settings. Read
-> `../settings-performance/09-arch1-drafts-authorization-research.md` as well:
-> AUTHZ1 precedes ARCH1 and autosave working drafts are per user.
+> **Current routing notice — 2026-07-22:** This pack is historical research,
+> not an active SP3/ARCH1 instruction. Settings metrics Mini-task 2 retired the
+> bespoke canary/report and browser-evidence plane. Use current project state
+> and the mini-step ledger; any selected future storage or observability work
+> requires fresh research, audit, and operator approval.
 
 ## Purpose
 

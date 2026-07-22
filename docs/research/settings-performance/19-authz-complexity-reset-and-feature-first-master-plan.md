@@ -59,9 +59,11 @@ Do not rewrite these working surfaces:
 - SP3A, S1b, and S1c already provide settings import-lock storage, server-side
   import enforcement, visible lock surfaces, add-only behavior, and inline lock
   controls.
-- SP3B/SP3C already provide focused settings pages, a Card Template library,
+- SP3B/SP3C provide focused settings pages, a Card Template library,
   one-template editing, a focused fresh-snapshot writer, reference/default
-  guards, and a Builder preview canary.
+  guards, and retained functional Builder preview, security, deterministic
+  query, and browser interaction coverage. Their bespoke measurement canary and
+  report plane is retired.
 - Public Front v2 has working card renderers and template-driven content item,
   group, and contributor cards. Preview UX can build on those presenters.
 - WB1 is complete. WB2–WB7 are optional future work and are not prerequisites
@@ -147,8 +149,8 @@ AUTHZ is done for now when all of the following are true:
 
 | Horizon | Work |
 |---|---|
-| Now | AUTHZ is done for now. Run the versioned Step 5B feature-first controller: first create a thorough docs-only specification prompt in one mini-task, then run that prompt in a separate mini-task to prepare the small Card Template preview/side-panel UX specification. |
-| Later | Small Public Front improvements selected one at a time; measured P2/P3 work; `MAINT-LW-UX1` before its qualifying public Livewire trigger; `WB-PROBE-HF1` plus the private Google probe if Workbench resumes; LENS review packs; conditional SP3 browser evidence; production settings/cache/mail verification; an optional suggestions-only project simplification audit; dashboard or other visible features at operator choice. |
+| Now | AUTHZ is done for now and Step 5B is complete through its recorded follow-ups. No next task is selected automatically; current project state and the mini-step ledger control operator-selected work. |
+| Later | Small Public Front improvements selected one at a time; measured P2/P3 work; `MAINT-LW-UX1` before its qualifying public Livewire trigger; `WB-PROBE-HF1` plus the private Google probe if Workbench resumes; LENS review packs; production settings/cache/mail verification; an optional suggestions-only project simplification audit; dashboard or other visible features at operator choice. Future observability requires a fresh audit and must not revive or generalize the retired SP3 helper. |
 | Not now | AUTHZ1-D–I, multiple-role/direct-grant governance, role UI, extra panels, package cutover, production backfill/rollback/MySQL rehearsal, ARCH1 migration, SP3D calibration, SP4/LOG1, broad WB2–WB7 construction, or a large replacement architecture. |
 
 The existing import-lock implementation is an asset, not a new architecture

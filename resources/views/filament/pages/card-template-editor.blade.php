@@ -1,6 +1,6 @@
 <x-filament-panels::page>
     <div
-        data-sp3c-template-editor-page
+        data-card-template-editor-page
         x-data="{
             wide: window.matchMedia('(min-width: 1024px)').matches,
             media: null,
@@ -155,7 +155,7 @@
                     '.fi-modal.fi-modal-open .fi-modal-close-btn',
                     '[data-test=card-template-preview-focus-invalid]',
                     '[data-test=card-template-preview-open]',
-                    '[data-sp3c-template-editor] input, [data-sp3c-template-editor] select, [data-sp3c-template-editor] button',
+                    '[data-card-template-editor] input, [data-card-template-editor] select, [data-card-template-editor] button',
                 ])
             },
             restoreValidationTrigger(event) {
@@ -169,7 +169,7 @@
                     () => this.focusFirstVisible([
                         '[data-test=card-template-preview-focus-invalid]',
                         '[data-test=card-template-preview-open]',
-                        '[data-sp3c-template-editor] input, [data-sp3c-template-editor] select, [data-sp3c-template-editor] button',
+                        '[data-card-template-editor] input, [data-card-template-editor] select, [data-card-template-editor] button',
                     ]),
                     100,
                 )

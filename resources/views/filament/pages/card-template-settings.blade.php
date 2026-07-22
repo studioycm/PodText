@@ -1,5 +1,5 @@
 <x-filament-panels::page>
-    <div data-sp3c-template-library>
+    <div>
         <x-filament::section>
             <x-slot name="heading">{{ __('admin.settings_sp3c.import_locks.heading') }}</x-slot>
             <x-slot name="description">{{ __('admin.settings_sp3c.import_locks.description') }}</x-slot>

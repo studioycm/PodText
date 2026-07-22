@@ -1,10 +1,10 @@
 # Public Front v2 Admin and Settings Enhancement Plan
 
-> **Re-research required — 2026-07-16:** Do not execute future
-> `display_templates`/Template/Form storage assumptions from this plan unchanged.
-> ARCH1 in `docs/research/settings-performance/07-sp3d-pre-research.md` now
-> requires independently managed versioned Resources. Reconcile this plan only
-> when its step is selected; do not expand ARCH1 into unrelated future work.
+> **Current routing notice — 2026-07-22:** This plan remains historical planning
+> context, not an active implementation route. Do not execute its SP3/ARCH1
+> measurement or browser-evidence instructions: settings metrics Mini-task 2
+> retired that bespoke plane. Re-research any selected future storage or
+> observability work through a fresh audit and the current state/ledger.
 
 Date: 09/07/2026 (v4 — supersedes v3/v2/v1; v3 added the flip-slider display-type and
 result display-template builder work package, requests 12-17, steps SL1-SL4; v4 adds

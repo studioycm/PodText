@@ -1,5 +1,11 @@
 # Settings SP3B Handoff
 
+> **Measurement-retirement notice — 2026-07-22:** Historical evidence only;
+> do not execute its canary, report, selector, or browser-measurement
+> instructions. The remaining test-only plane was retired by settings metrics
+> Mini-task 2 while functional saves and regressions remain covered. Future
+> observability requires a fresh Laravel Simplifier audit.
+
 > **Historical shipped-state notice — 2026-07-16:** This remains authoritative
 > for SP3B. Its Template/Form settings ownership is now migration-source and
 > rollback evidence. ARCH1 precedes SP3D and governs the forward architecture;

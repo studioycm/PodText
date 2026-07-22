@@ -398,8 +398,6 @@ it('renders content-aware public item and group geometry in both directions', fu
         ->and($resolver->resolve('content_group', 'o2_browser_group_leading')->key)->toBe('o2_browser_group_leading');
 
     $page = visit('/')->resize(1280, 1100);
-    $matrix = [];
-
     foreach ([767, 768, 1024, 1280] as $width) {
         $page->resize($width, 1100);
         $measurement = $page->script(<<<'JS'
@@ -463,8 +461,6 @@ it('renders content-aware public item and group geometry in both directions', fu
                 };
             }
             JS);
-        $matrix[$width] = $measurement;
-
         expect($measurement['viewport_width'])->toBe($width)
             ->and($measurement['direction'])->toBe($direction)
             ->and($measurement['horizontal_overflow'])->toBeFalse()
@@ -496,15 +492,6 @@ it('renders content-aware public item and group geometry in both directions', fu
         }
     }
 
-    if (getenv('STEP5B_O2_BROWSER_REPORT') === '1') {
-        fwrite(STDERR, json_encode([
-            'locale' => $locale,
-            'direction' => $direction,
-            'public_matrix' => $matrix,
-            'measurement_plane' => 'Chromium DOM and computed style after fixture-backed server rendering.',
-        ], JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES).PHP_EOL);
-    }
-
     $page->assertNoSmoke()->assertNoJavaScriptErrors();
 })->with([
     'Hebrew RTL' => ['he', 'rtl'],
@@ -514,7 +501,6 @@ it('renders content-aware public item and group geometry in both directions', fu
 it('renders every ordered-flow preview variant responsively for item and group', function (string $locale, string $direction): void {
     app()->setLocale($locale);
     step5bO2BrowserSurfaces();
-    $matrix = [];
     $expectations = [
         'leading' => ['flow' => 'media-leading', 'parts' => 'image,title', 'layout' => 'rows', 'images' => 1],
         'body' => ['flow' => 'body-only', 'parts' => 'custom_text,title', 'layout' => 'cards', 'images' => 0],
@@ -599,8 +585,6 @@ it('renders every ordered-flow preview variant responsively for item and group',
                         };
                     }
                     JS);
-                $matrix[$prefix][$variant][$width] = $measurement;
-
                 expect($measurement['viewport_width'])->toBe($width)
                     ->and($measurement['direction'])->toBe($direction)
                     ->and($measurement['preview_roots'])->toBe(1)
@@ -661,14 +645,6 @@ it('renders every ordered-flow preview variant responsively for item and group',
         }
     }
 
-    if (getenv('STEP5B_O2_BROWSER_REPORT') === '1') {
-        fwrite(STDERR, json_encode([
-            'locale' => $locale,
-            'direction' => $direction,
-            'preview_matrix' => $matrix,
-            'measurement_plane' => 'Authenticated Chromium preview DOM and computed style at 767, 768, 1024, and 1280px.',
-        ], JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES).PHP_EOL);
-    }
 })->with([
     'Hebrew RTL' => ['he', 'rtl'],
     'English LTR' => ['en', 'ltr'],
@@ -690,22 +666,19 @@ it('keeps one inert responsive preview root with focus and dirty navigation prot
             const editorColumn = document.querySelector('[data-card-template-editor-column]');
             const previewRect = previewColumn?.getBoundingClientRect();
             const editorRect = editorColumn?.getBoundingClientRect();
-            const draftSection = editorColumn?.querySelector('[data-sp3c-template-editor]');
+            const draftSection = editorColumn?.querySelector('[data-card-template-editor]');
             const draftRect = draftSection?.getBoundingClientRect();
             const headerMetadata = document.querySelector('.fi-header [data-card-template-import-lock-metadata]');
-            const focusableSelector = 'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
             const trigger = document.querySelector('[data-test="card-template-preview-open"]');
 
             return {
                 viewport_width: window.innerWidth,
-                dom_elements: document.querySelectorAll('*').length,
                 preview_roots: document.querySelectorAll('[data-card-template-preview-root]').length,
                 adjacent_roots: document.querySelectorAll('[data-card-template-preview-adjacent]').length,
                 modal_roots: document.querySelectorAll('[data-card-template-preview-modal]').length,
-                preview_focusables: root?.querySelectorAll(focusableSelector).length ?? 0,
                 public_interactions: ready?.querySelectorAll('a[href], [wire\\:click], button, input, select, textarea').length ?? 0,
                 direction: document.documentElement.dir,
-                key_direction: document.querySelector('[data-sp3c-template-editor] input[dir="ltr"]')?.dir ?? null,
+                key_direction: document.querySelector('[data-card-template-editor] input[dir="ltr"]')?.dir ?? null,
                 horizontal_overflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
                 shell_overflow: getComputedStyle(document.querySelector('[data-card-template-preview-wide-shell]')).overflowY,
                 preview_overflow: getComputedStyle(document.querySelector('[data-card-template-preview-scroll]')).overflowY,
@@ -717,8 +690,6 @@ it('keeps one inert responsive preview root with focus and dirty navigation prot
                 draft_is_first_editor_section: Math.abs((draftRect?.top ?? -1) - (editorRect?.top ?? -3)) < 2,
                 import_metadata_in_header: Boolean(headerMetadata),
                 import_metadata_in_editor: Boolean(editorColumn?.querySelector('[data-card-template-import-lock-metadata]')),
-                livewire_components: window.Livewire?.all?.().length ?? null,
-                used_js_heap_size: performance.memory?.usedJSHeapSize ?? null,
             };
         }
         JS);
@@ -741,8 +712,6 @@ it('keeps one inert responsive preview root with focus and dirty navigation prot
         ->and($wide['draft_is_first_editor_section'])->toBeTrue()
         ->and($wide['import_metadata_in_header'])->toBeTrue()
         ->and($wide['import_metadata_in_editor'])->toBeFalse();
-
-    $wideMatrix = [];
 
     foreach ([1024, 1279, 1280] as $width) {
         $page->resize($width, 900);
@@ -769,8 +738,6 @@ it('keeps one inert responsive preview root with focus and dirty navigation prot
                 };
             }
             JS);
-        $wideMatrix[$width] = $measurement;
-
         expect($measurement['viewport_width'])->toBe($width)
             ->and($measurement['preview_roots'])->toBe(1)
             ->and($measurement['adjacent_roots'])->toBe(1)
@@ -785,9 +752,6 @@ it('keeps one inert responsive preview root with focus and dirty navigation prot
 
     $refresh = $page->script(<<<'JS'
         async () => {
-            performance.clearResourceTimings();
-            const beforeDom = document.querySelectorAll('*').length;
-            const beforeHeap = performance.memory?.usedJSHeapSize ?? null;
             const originalFetch = window.fetch;
             const requestUrls = [];
             window.fetch = (...arguments_) => {
@@ -804,23 +768,16 @@ it('keeps one inert responsive preview root with focus and dirty navigation prot
 
             await new Promise((resolve) => setTimeout(resolve, 100));
             window.fetch = originalFetch;
-            const resources = performance.getEntriesByType('resource');
 
             return {
-                duration_ms: Math.round(performance.now() - started),
                 network_requests: requestUrls.filter((url) => url.includes('/livewire')).length,
-                performance_network_requests: resources.filter((entry) => entry.name.includes('/livewire')).length,
-                dom_delta: document.querySelectorAll('*').length - beforeDom,
                 preview_roots: document.querySelectorAll('[data-card-template-preview-root]').length,
-                heap_delta: beforeHeap === null ? null : (performance.memory.usedJSHeapSize - beforeHeap),
             };
         }
         JS);
 
     expect($refresh['network_requests'])->toBe(1)
         ->and($refresh['preview_roots'])->toBe(1);
-
-    $narrowMatrix = [];
 
     foreach ([767, 768, 1023] as $width) {
         $page->resize($width, 800);
@@ -849,7 +806,6 @@ it('keeps one inert responsive preview root with focus and dirty navigation prot
 
         $open = $page->script(<<<'JS'
             async () => {
-                const beforeDom = document.querySelectorAll('*').length;
                 const started = performance.now();
                 const trigger = document.querySelector('[data-test="card-template-preview-open"]');
                 trigger.focus();
@@ -867,12 +823,10 @@ it('keeps one inert responsive preview root with focus and dirty navigation prot
 
                 return {
                     viewport_width: window.innerWidth,
-                    dom_delta: document.querySelectorAll('*').length - beforeDom,
                     preview_roots: document.querySelectorAll('[data-card-template-preview-root]').length,
                     adjacent_roots: document.querySelectorAll('[data-card-template-preview-adjacent]').length,
                     modal_roots: document.querySelectorAll('[data-card-template-preview-modal]').length,
                     active_inside_modal: Boolean(dialog?.contains(document.activeElement)),
-                    active_element: document.activeElement?.id || document.activeElement?.tagName || null,
                     horizontal_overflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
                     modal_is_logical_end: (modalRect?.left ?? Infinity) <= 4,
                     modal_public_interactions: modal?.querySelectorAll('[data-test="card-template-preview-ready"] a[href], [data-test="card-template-preview-ready"] [wire\\:click], [data-test="card-template-preview-ready"] button').length ?? 0,
@@ -916,12 +870,11 @@ it('keeps one inert responsive preview root with focus and dirty navigation prot
             }
             JS);
         expect($escapeRestored)->toBeTrue();
-        $narrowMatrix[$width] = compact('closed', 'open', 'escapeRestored');
     }
 
     $dirty = $page->script(<<<'JS'
         async () => {
-            const input = Array.from(document.querySelectorAll('[data-sp3c-template-editor] input'))
+            const input = Array.from(document.querySelectorAll('[data-card-template-editor] input'))
                 .find((candidate) => candidate.getAttribute('wire:model')?.includes('data.label'));
             const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set;
             const value = `${input.value} dirty boundary`;
@@ -1016,7 +969,7 @@ it('keeps one inert responsive preview root with focus and dirty navigation prot
             );
             window.__step5bRootObserver?.disconnect();
             window.fetch = window.__step5bOriginalFetch;
-            const input = Array.from(document.querySelectorAll('[data-sp3c-template-editor] input'))
+            const input = Array.from(document.querySelectorAll('[data-card-template-editor] input'))
                 .find((candidate) => candidate.getAttribute('wire:model')?.includes('data.label'));
             const previewRect = document.querySelector('[data-card-template-preview-column]')?.getBoundingClientRect();
             const editorRect = document.querySelector('[data-card-template-editor-column]')?.getBoundingClientRect();
@@ -1071,7 +1024,7 @@ it('keeps one inert responsive preview root with focus and dirty navigation prot
         async () => {
             await new Promise((resolve) => setTimeout(resolve, 250));
             const trigger = document.querySelector('[data-test="card-template-preview-open"]');
-            const input = Array.from(document.querySelectorAll('[data-sp3c-template-editor] input'))
+            const input = Array.from(document.querySelectorAll('[data-card-template-editor] input'))
                 .find((candidate) => candidate.getAttribute('wire:model')?.includes('data.label'));
             const event = new Event('beforeunload', { bubbles: false, cancelable: true });
             window.dispatchEvent(event);
@@ -1172,7 +1125,7 @@ it('keeps one inert responsive preview root with focus and dirty navigation prot
             window.__step5bRapidRootObserver?.disconnect();
             window.fetch = window.__step5bRapidOriginalFetch;
             const trigger = document.querySelector('[data-test="card-template-preview-open"]');
-            const input = Array.from(document.querySelectorAll('[data-sp3c-template-editor] input'))
+            const input = Array.from(document.querySelectorAll('[data-card-template-editor] input'))
                 .find((candidate) => candidate.getAttribute('wire:model')?.includes('data.label'));
             const result = {
                 viewport_width: window.innerWidth,
@@ -1250,30 +1203,11 @@ it('keeps one inert responsive preview root with focus and dirty navigation prot
             window.__pestBrowser.jsErrors = errors.filter((error) => error.message !== knownMessage);
 
             return {
-                count: messages.filter((message) => message === knownMessage).length,
                 unexpected: messages.filter((message) => message !== knownMessage),
             };
         }
         JS);
     expect($resizeObserverErrors['unexpected'])->toBe([]);
-
-    if (getenv('STEP5B_BROWSER_REPORT') === '1') {
-        fwrite(STDERR, json_encode([
-            'wide' => $wide,
-            'wide_matrix' => $wideMatrix,
-            'refresh' => $refresh,
-            'narrow_matrix' => $narrowMatrix,
-            'narrow_to_wide' => $wideRestored,
-            'wide_to_narrow' => $narrowRestored,
-            'rapid_resize_back' => $rapidResizeBack,
-            'repeat_cycle' => compact('repeatWide', 'repeatNarrow'),
-            'resize_observer_errors' => $resizeObserverErrors,
-            'listener_observation' => 'Repeated root-cycle behavior measured; listener enumeration is not exposed by the runner.',
-            'heap_observation' => $wide['used_js_heap_size'] === null
-                ? 'performance.memory unsupported by this browser runtime.'
-                : 'performance.memory usedJSHeapSize recorded.',
-        ], JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES).PHP_EOL);
-    }
 
     $page->assertNoSmoke()->assertNoJavaScriptErrors();
 });
@@ -1836,7 +1770,7 @@ it('keeps automatic preload search and effective image ranking aligned in the au
             return {
                 restricted: Boolean(document.querySelector('[data-test="card-template-preview-restricted"]')),
                 selector_count: document.querySelectorAll('[data-card-template-preview-sample-select]').length,
-                builder_count: document.querySelectorAll('[data-sp3c-template-parts]').length,
+                builder_count: document.querySelectorAll('[data-card-template-editor-parts]').length,
                 focus_invalid_count: document.querySelectorAll('[data-test="card-template-preview-focus-invalid"]').length,
                 open_modals: document.querySelectorAll('.fi-modal.fi-modal-open').length,
                 secret_visible: document.body.innerText.includes('FU02-PROTECTED-BROWSER-SECRET'),
@@ -1900,7 +1834,7 @@ it('refreshes a changed template part and keeps the wide preview below the topba
 
     $interaction = $page->script(<<<'JS'
         async () => {
-            const summary = Array.from(document.querySelectorAll('[data-sp3c-part-summary]'))
+            const summary = Array.from(document.querySelectorAll('[data-card-template-part-summary]'))
                 .find((candidate) => candidate.textContent.includes('STEP5B BROWSER PART BEFORE'));
             const item = summary?.closest('.fi-fo-builder-item');
             const edit = item?.querySelector('.fi-fo-builder-item-preview-edit-overlay');
@@ -2030,14 +1964,14 @@ it('remembers inline Builder mode locally and live refreshes authoritative part 
             document.querySelector('[data-test="card-template-builder-mode-inline"]')?.click();
             const started = performance.now();
 
-            while (document.querySelectorAll('[data-sp3c-part-summary]').length > 0 && performance.now() - started < 5000) {
+            while (document.querySelectorAll('[data-card-template-part-summary]').length > 0 && performance.now() - started < 5000) {
                 await new Promise((resolve) => setTimeout(resolve, 50));
             }
 
             return {
                 remembered: window.localStorage.getItem('podtext.card-template-builder-display-mode'),
                 inline_pressed: document.querySelector('[data-test="card-template-builder-mode-inline"]')?.getAttribute('aria-pressed'),
-                summaries: document.querySelectorAll('[data-sp3c-part-summary]').length,
+                summaries: document.querySelectorAll('[data-card-template-part-summary]').length,
                 modal_open: Boolean(document.querySelector('.fi-modal.fi-modal-open')),
             };
         }
@@ -2052,11 +1986,11 @@ it('remembers inline Builder mode locally and live refreshes authoritative part 
     $interaction = $page->script(<<<'JS'
         async () => {
             const restoreStarted = performance.now();
-            while (document.querySelectorAll('[data-sp3c-part-summary]').length > 0 && performance.now() - restoreStarted < 5000) {
+            while (document.querySelectorAll('[data-card-template-part-summary]').length > 0 && performance.now() - restoreStarted < 5000) {
                 await new Promise((resolve) => setTimeout(resolve, 50));
             }
 
-            const findCustomItem = () => Array.from(document.querySelectorAll('[data-sp3c-template-parts] input'))
+            const findCustomItem = () => Array.from(document.querySelectorAll('[data-card-template-editor-parts] input'))
                 .find((candidate) => candidate.value === 'STEP5B BROWSER PART BEFORE')
                 ?.closest('.fi-fo-builder-item');
             let customItem = findCustomItem();
@@ -2104,7 +2038,7 @@ it('remembers inline Builder mode locally and live refreshes authoritative part 
                 ),
             );
 
-            const textInput = Array.from(document.querySelectorAll('[data-sp3c-template-parts] input'))
+            const textInput = Array.from(document.querySelectorAll('[data-card-template-editor-parts] input'))
                 .find((candidate) => candidate.value === 'STEP5B BROWSER PART BEFORE');
             const binding = Array.from(textInput?.attributes ?? [])
                 .find((attribute) => attribute.name.startsWith('wire:model'))?.name ?? null;
@@ -2128,7 +2062,7 @@ it('remembers inline Builder mode locally and live refreshes authoritative part 
 
             return {
                 restored_inline: document.querySelector('[data-test="card-template-builder-mode-inline"]')?.getAttribute('aria-pressed'),
-                summaries: document.querySelectorAll('[data-sp3c-part-summary]').length,
+                summaries: document.querySelectorAll('[data-card-template-part-summary]').length,
                 header_collapsed: headerCollapsed,
                 header_expanded: headerExpanded,
                 move_modal_opened: moveModalOpened,
@@ -2186,12 +2120,12 @@ it('renders an image at the position selected through the native move modal', fu
             document.querySelector('[data-test="card-template-builder-mode-inline"]')?.click();
             const inlineStarted = performance.now();
 
-            while (document.querySelectorAll('[data-sp3c-part-summary]').length > 0 && performance.now() - inlineStarted < 5000) {
+            while (document.querySelectorAll('[data-card-template-part-summary]').length > 0 && performance.now() - inlineStarted < 5000) {
                 await new Promise((resolve) => setTimeout(resolve, 50));
             }
 
-            const imageItem = Array.from(document.querySelectorAll('[data-sp3c-template-parts] .fi-fo-builder-item'))
-                .find((item) => item.querySelector('[data-sp3c-part-heading]')?.textContent.includes('Image'));
+            const imageItem = Array.from(document.querySelectorAll('[data-card-template-editor-parts] .fi-fo-builder-item'))
+                .find((item) => item.querySelector('[data-card-template-part-heading]')?.textContent.includes('Image'));
             imageItem?.querySelector('[data-test="card-template-part-move"]')?.click();
 
             const modalStarted = performance.now();
@@ -2230,8 +2164,8 @@ it('renders an image at the position selected through the native move modal', fu
             const title = ready?.querySelector('[data-card-part="title"]');
             const custom = Array.from(ready?.querySelectorAll('[data-card-part="custom_text"]') ?? [])
                 .find((part) => part.textContent.includes('STEP5B BROWSER PART BEFORE'));
-            const movedImageItem = Array.from(document.querySelectorAll('[data-sp3c-template-parts] .fi-fo-builder-item'))
-                .find((item) => item.querySelector('[data-sp3c-part-heading]')?.textContent.includes('Image'));
+            const movedImageItem = Array.from(document.querySelectorAll('[data-card-template-editor-parts] .fi-fo-builder-item'))
+                .find((item) => item.querySelector('[data-card-template-part-heading]')?.textContent.includes('Image'));
 
             return {
                 image_item_found: Boolean(imageItem),
@@ -2240,7 +2174,7 @@ it('renders an image at the position selected through the native move modal', fu
                 ordered_stack: ready?.querySelector('[data-card-part-flow="ordered-stack"]') !== null,
                 title_before_image: Boolean(title && image && (title.compareDocumentPosition(image) & Node.DOCUMENT_POSITION_FOLLOWING)),
                 custom_before_image: Boolean(custom && image && (custom.compareDocumentPosition(image) & Node.DOCUMENT_POSITION_FOLLOWING)),
-                image_position_badge: movedImageItem?.querySelector('[data-sp3c-part-position-badge]')?.textContent.trim() ?? null,
+                image_position_badge: movedImageItem?.querySelector('[data-card-template-part-position-badge]')?.textContent.trim() ?? null,
                 modal_open: Boolean(document.querySelector('.fi-modal.fi-modal-open')),
             };
         }
@@ -2324,9 +2258,9 @@ it('focuses reordered and collapsed inline top nested and fallback validation ow
             };
 
             document.querySelector('[data-test="card-template-builder-mode-inline"]')?.click();
-            await waitFor(() => document.querySelectorAll('[data-sp3c-part-summary]').length === 0);
+            await waitFor(() => document.querySelectorAll('[data-card-template-part-summary]').length === 0);
 
-            let topInput = Array.from(document.querySelectorAll('[data-sp3c-template-parts] input'))
+            let topInput = Array.from(document.querySelectorAll('[data-card-template-editor-parts] input'))
                 .find((input) => input.value === 'FU03 TOP BROWSER TARGET');
             let topItem = topInput?.closest('.fi-fo-builder-item');
             topItem?.querySelector('[data-test="card-template-part-move"]')?.click();
@@ -2339,12 +2273,12 @@ it('focuses reordered and collapsed inline top nested and fallback validation ow
             }
 
             await waitFor(() => document.querySelector('.fi-modal.fi-modal-open') === null);
-            topInput = Array.from(document.querySelectorAll('[data-sp3c-template-parts] input'))
+            topInput = Array.from(document.querySelectorAll('[data-card-template-editor-parts] input'))
                 .find((input) => input.value === 'FU03 TOP BROWSER TARGET');
             topItem = topInput?.closest('.fi-fo-builder-item');
             const topBinding = bindingFor(topInput);
             const topUuid = topBinding?.split('.')[2] ?? null;
-            const topPosition = topItem?.querySelector('[data-sp3c-part-position-badge]')?.textContent.trim() ?? null;
+            const topPosition = topItem?.querySelector('[data-card-template-part-position-badge]')?.textContent.trim() ?? null;
 
             if (topItem && ! topItem.classList.contains('fi-collapsed')) {
                 topItem.querySelector(':scope > .fi-fo-builder-item-header')?.click();
@@ -2356,7 +2290,7 @@ it('focuses reordered and collapsed inline top nested and fallback validation ow
                 () => document.querySelector('[data-test="card-template-preview-focus-invalid"]')?.click(),
                 () => errorForStatePath(topBinding) && focusedStatePath() === topBinding,
             );
-            topItem = Array.from(document.querySelectorAll('[data-sp3c-template-parts] input'))
+            topItem = Array.from(document.querySelectorAll('[data-card-template-editor-parts] input'))
                 .find((input) => bindingFor(input) === topBinding)
                 ?.closest('.fi-fo-builder-item');
             const topError = errorForStatePath(topBinding);
@@ -2373,12 +2307,12 @@ it('focuses reordered and collapsed inline top nested and fallback validation ow
                 modal_open: Boolean(document.querySelector('.fi-modal.fi-modal-open')),
             };
 
-            topInput = Array.from(document.querySelectorAll('[data-sp3c-template-parts] input'))
+            topInput = Array.from(document.querySelectorAll('[data-card-template-editor-parts] input'))
                 .find((input) => bindingFor(input) === topBinding);
             setInput(topInput, 'FU03 TOP BROWSER TARGET');
             await waitFor(() => document.querySelector('[data-test="card-template-preview-ready"]'));
 
-            let nestedInput = Array.from(document.querySelectorAll('[data-sp3c-template-parts] input'))
+            let nestedInput = Array.from(document.querySelectorAll('[data-card-template-editor-parts] input'))
                 .find((input) => input.value === 'FU03 NESTED BROWSER TARGET');
             const nestedBinding = bindingFor(nestedInput);
             const nestedUuid = nestedBinding?.split('.')[5] ?? null;
@@ -2399,7 +2333,7 @@ it('focuses reordered and collapsed inline top nested and fallback validation ow
                 () => document.querySelector('[data-test="card-template-preview-focus-invalid"]')?.click(),
                 () => errorForStatePath(nestedBinding) && focusedStatePath() === nestedBinding,
             );
-            nestedInput = Array.from(document.querySelectorAll('[data-sp3c-template-parts] input'))
+            nestedInput = Array.from(document.querySelectorAll('[data-card-template-editor-parts] input'))
                 .find((input) => bindingFor(input) === nestedBinding);
             nestedItem = nestedInput?.closest('.fi-fo-builder-item');
             groupItem = nestedItem?.parentElement?.closest('.fi-fo-builder-item');
@@ -2418,7 +2352,7 @@ it('focuses reordered and collapsed inline top nested and fallback validation ow
 
             setInput(nestedInput, 'FU03 NESTED BROWSER TARGET');
             await waitFor(() => document.querySelector('[data-test="card-template-preview-ready"]'));
-            const componentRoot = document.querySelector('[data-sp3c-template-editor-page]')?.closest('[wire\\:id]');
+            const componentRoot = document.querySelector('[data-card-template-editor-page]')?.closest('[wire\\:id]');
             const livewire = componentRoot ? Livewire.find(componentRoot.getAttribute('wire:id')) : null;
             const forgedPath = `data.parts.${topUuid}.data.forged_field`;
             await livewire?.set(forgedPath, 'FU03-FORGED-BROWSER-VALUE', true);
@@ -2560,12 +2494,12 @@ it('opens exact native slide-over owners and restores safe focus after cancel', 
             const chooseMode = async (mode) => {
                 document.querySelector(`[data-test="card-template-builder-mode-${mode}"]`)?.click();
                 await waitFor(() => mode === 'inline'
-                    ? document.querySelectorAll('[data-sp3c-part-summary]').length === 0
-                    : document.querySelectorAll('[data-sp3c-part-summary]').length > 0);
+                    ? document.querySelectorAll('[data-card-template-part-summary]').length === 0
+                    : document.querySelectorAll('[data-card-template-part-summary]').length > 0);
             };
 
             await chooseMode('inline');
-            let topInput = Array.from(document.querySelectorAll('[data-sp3c-template-parts] input'))
+            let topInput = Array.from(document.querySelectorAll('[data-card-template-editor-parts] input'))
                 .find((input) => input.value === 'FU03 TOP BROWSER TARGET');
             let topItem = topInput?.closest('.fi-fo-builder-item');
             topItem?.querySelector('[data-test="card-template-part-move"]')?.click();
@@ -2578,12 +2512,12 @@ it('opens exact native slide-over owners and restores safe focus after cancel', 
             }
 
             await waitFor(() => document.querySelector('.fi-modal.fi-modal-open') === null);
-            topInput = Array.from(document.querySelectorAll('[data-sp3c-template-parts] input'))
+            topInput = Array.from(document.querySelectorAll('[data-card-template-editor-parts] input'))
                 .find((input) => input.value === 'FU03 TOP BROWSER TARGET');
             const topInlineBinding = bindingFor(topInput);
             const topUuid = topInlineBinding?.split('.')[2] ?? null;
             topItem = topInput?.closest('.fi-fo-builder-item');
-            const topPosition = topItem?.querySelector('[data-sp3c-part-position-badge]')?.textContent.trim() ?? null;
+            const topPosition = topItem?.querySelector('[data-card-template-part-position-badge]')?.textContent.trim() ?? null;
             setInput(topInput, 'S'.repeat(501));
             await waitFor(() => document.querySelector('[data-card-template-preview-invalid]'));
             await chooseMode('slide-over');
@@ -2619,11 +2553,11 @@ it('opens exact native slide-over owners and restores safe focus after cancel', 
             retryModal?.querySelector('form.fi-modal-window')?.requestSubmit();
             await waitFor(() => document.querySelector('.fi-modal.fi-modal-open') === null);
             await waitFor(() => document.querySelector('[data-test="card-template-preview-ready"]'));
-            const editorRoot = document.querySelector('[data-sp3c-template-editor-page]');
+            const editorRoot = document.querySelector('[data-card-template-editor-page]');
             topEvidence.action_identity_after_apply = Alpine.$data(editorRoot)?.validationRootActionModalId ?? null;
 
             await chooseMode('inline');
-            let nestedInput = Array.from(document.querySelectorAll('[data-sp3c-template-parts] input'))
+            let nestedInput = Array.from(document.querySelectorAll('[data-card-template-editor-parts] input'))
                 .find((input) => input.value === 'FU03 NESTED BROWSER TARGET');
             const nestedInlineBinding = bindingFor(nestedInput);
             const nestedUuid = nestedInlineBinding?.split('.')[5] ?? null;
@@ -2665,7 +2599,7 @@ it('opens exact native slide-over owners and restores safe focus after cancel', 
             nestedEvidence.focus_after_parent_cancel = document.activeElement?.getAttribute('data-test') ?? null;
 
             await chooseMode('inline');
-            const componentRoot = document.querySelector('[data-sp3c-template-editor-page]')?.closest('[wire\\:id]');
+            const componentRoot = document.querySelector('[data-card-template-editor-page]')?.closest('[wire\\:id]');
             const livewire = componentRoot ? Livewire.find(componentRoot.getAttribute('wire:id')) : null;
             nestedEvidence.draft_state_path_after_cancel = nestedInlineBinding;
             nestedEvidence.draft_value_preserved_after_cancel = livewire?.get(nestedInlineBinding) === 'D'.repeat(501);
@@ -2772,20 +2706,20 @@ it('mounts a visible nested fallback and restores the narrow preview opener', fu
                 && document.querySelectorAll('[data-card-template-preview-root]').length === 0
                 && document.querySelector('[data-test="card-template-preview-open"]'));
             document.querySelector('[data-test="card-template-builder-mode-inline"]')?.click();
-            await waitFor(() => document.querySelectorAll('[data-sp3c-part-summary]').length === 0);
+            await waitFor(() => document.querySelectorAll('[data-card-template-part-summary]').length === 0);
 
-            const nestedInput = Array.from(document.querySelectorAll('[data-sp3c-template-parts] input'))
+            const nestedInput = Array.from(document.querySelectorAll('[data-card-template-editor-parts] input'))
                 .find((input) => input.value === 'FU03 NESTED BROWSER TARGET');
             const nestedBinding = bindingFor(nestedInput);
             const groupUuid = nestedBinding?.split('.')[2] ?? null;
             const childUuid = nestedBinding?.split('.')[5] ?? null;
             const forgedPath = nestedBinding?.replace(/\.text$/, '.forged_field') ?? null;
-            const componentRoot = document.querySelector('[data-sp3c-template-editor-page]')?.closest('[wire\\:id]');
+            const componentRoot = document.querySelector('[data-card-template-editor-page]')?.closest('[wire\\:id]');
             const livewire = componentRoot ? Livewire.find(componentRoot.getAttribute('wire:id')) : null;
             await livewire?.set(forgedPath, 'FU03-NARROW-FALLBACK-VALUE', true);
             await waitFor(() => livewire?.get('previewStatus') === 'invalid_draft');
             document.querySelector('[data-test="card-template-builder-mode-slide-over"]')?.click();
-            await waitFor(() => document.querySelectorAll('[data-sp3c-part-summary]').length > 0);
+            await waitFor(() => document.querySelectorAll('[data-card-template-part-summary]').length > 0);
             document.querySelector('[data-test="card-template-preview-open"]')?.click();
             const previewModal = await waitFor(() => Array.from(document.querySelectorAll('.fi-modal.fi-modal-open'))
                 .find((modal) => modal.querySelector('[data-test="card-template-preview-focus-invalid"]')));
@@ -2816,7 +2750,7 @@ it('mounts a visible nested fallback and restores the narrow preview opener', fu
                 requests: requestUrls.filter((url) => url.includes('/livewire')).length,
                 value_leaked_in_error: fallbackError?.textContent.includes('FU03-NARROW-FALLBACK-VALUE') ?? false,
             };
-            const editorRoot = document.querySelector('[data-sp3c-template-editor-page]');
+            const editorRoot = document.querySelector('[data-card-template-editor-page]');
             const editorData = Alpine.$data(editorRoot);
             editorData.validationRootActionModalId = null;
             window.dispatchEvent(new CustomEvent('card-template-validation-target', {

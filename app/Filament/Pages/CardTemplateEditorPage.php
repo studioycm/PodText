@@ -266,8 +266,7 @@ abstract class CardTemplateEditorPage extends SettingsPage
         ];
 
         if ($this->restricted) {
-            $settingsFields[] = Text::make(__('admin.settings_sp3c.editor.restricted_copy'))
-                ->extraAttributes(['data-sp3c-restricted-shell' => 'true']);
+            $settingsFields[] = Text::make(__('admin.settings_sp3c.editor.restricted_copy'));
         }
 
         $sections = [
@@ -295,7 +294,7 @@ abstract class CardTemplateEditorPage extends SettingsPage
                         ->afterStateUpdated(function (): void {
                             $this->refreshPreview();
                         })
-                        ->extraAttributes(['data-sp3c-template-parts' => 'true'])
+                        ->extraAttributes(['data-card-template-editor-parts' => 'true'])
                         ->columnSpanFull(),
                 ])
                 ->collapsible();
@@ -304,7 +303,7 @@ abstract class CardTemplateEditorPage extends SettingsPage
         return $schema
             ->components([
                 Group::make($sections)
-                    ->extraAttributes(['data-sp3c-template-editor' => 'true'])
+                    ->extraAttributes(['data-card-template-editor' => 'true'])
                     ->columnSpanFull(),
             ])
             ->statePath('data');
