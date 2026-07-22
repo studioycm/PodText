@@ -3,8 +3,8 @@
 ## Status
 
 - Package ID: `MEDIA-P1-KERNEL-CONVERSION`
-- Stage: Gate 0 draft source reconciliation complete; independent review and
-  Gate 0 closeout are pending before package implementation.
+- Stage: Gate 0 closed as `4881fe588a28d985194bf432020a0d8f4fef1c4f`;
+  post-Gate-0 source/plan reconciliation is the first Package 1 action.
 - Parent audit/option: `LS-20260722-PODTEXT-MEDIA-ASSET-PROGRAM-06` /
   `MEDIA-CUTOVER-O1-DIRECT-ASSET-HYBRID-ROOT-MAINTENANCE`.
 

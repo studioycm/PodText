@@ -9,9 +9,10 @@ program's source of truth.
 
 - Audit: `LS-20260722-PODTEXT-MEDIA-ASSET-PROGRAM-06`
 - Option: `MEDIA-CUTOVER-O1-DIRECT-ASSET-HYBRID-ROOT-MAINTENANCE`
-- Current stage: Stage 2, documentation Gate 0 in progress.
-- Active package: none until Gate 0 closes; next is
-  `MEDIA-P1-KERNEL-CONVERSION`.
+- Current stage: Stage 2, documentation Gate 0 complete as
+  `4881fe588a28d985194bf432020a0d8f4fef1c4f`.
+- Active package: `MEDIA-P1-KERNEL-CONVERSION`, beginning post-Gate-0 source/
+  plan reconciliation before its first RED test.
 - Checkout at approval: clean `main`,
   `5ba687eff92878f18e9e19e807944a2d39b63372`, 11 commits ahead of
   `origin/main`.
