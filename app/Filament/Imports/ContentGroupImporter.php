@@ -10,6 +10,7 @@ use App\Models\ContentGroup;
 use App\Models\Media;
 use App\Models\User;
 use App\Support\Media\MediaAttachmentManager;
+use App\Support\Media\MediaInventoryDiagnostics;
 use App\Support\Media\MediaRecordScope;
 use Filament\Actions\Imports\Exceptions\RowImportFailedException;
 use Filament\Actions\Imports\ImportColumn;
@@ -100,7 +101,11 @@ class ContentGroupImporter extends Importer
                             MediaAttachmentRole::Cover->purpose(),
                         );
 
-                        if (! $media instanceof Media) {
+                        $blockedReason = $media instanceof Media
+                            ? app(MediaInventoryDiagnostics::class)->selectionBlockedReason($media)
+                            : null;
+
+                        if (! $media instanceof Media || $blockedReason !== null) {
                             $fail(__('admin.import.failures.unresolved_media_reference_key', [
                                 'reference_key' => $state,
                             ]));
@@ -120,6 +125,20 @@ class ContentGroupImporter extends Importer
                         app(MediaAttachmentManager::class)->detach($record, MediaAttachmentRole::Cover, $actor);
 
                         return;
+                    }
+
+                    $media = app(MediaRecordScope::class)->findByReferenceKey(
+                        (string) $state,
+                        MediaAttachmentRole::Cover->purpose(),
+                    );
+
+                    if (
+                        ! $media instanceof Media
+                        || app(MediaInventoryDiagnostics::class)->selectionBlockedReason($media) !== null
+                    ) {
+                        throw new RowImportFailedException(__('admin.import.failures.unresolved_media_reference_key', [
+                            'reference_key' => $state,
+                        ]));
                     }
 
                     app(MediaAttachmentManager::class)->attachByReferenceKey(

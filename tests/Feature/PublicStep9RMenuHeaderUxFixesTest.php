@@ -4,6 +4,7 @@ use App\Livewire\Public\ContributorDirectory;
 use App\Models\Author;
 use App\Models\ContentGroup;
 use App\Models\ContentItem;
+use App\Models\Media;
 use App\Models\Transcription;
 use App\Settings\PublicContentSettings;
 use App\Support\PublicFront\Menu\PublicMenuConfigReader;
@@ -11,6 +12,7 @@ use App\Support\PublicFront\PublicFrontConfigValidator;
 use App\Support\PublicFront\PublicFrontRenderContext;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
 use Spatie\LaravelSettings\SettingsContainer;
 
@@ -274,6 +276,12 @@ it('suppresses homepage discovery chrome when root query parameters are present 
 });
 
 it('uses group image fallback and finite badge title image styling settings on item cards', function (): void {
+    Storage::fake('public');
+    Storage::disk('public')->put('content-groups/covers/fallback-cover.jpg', 'podcast cover fixture');
+    Media::factory()->create([
+        'path' => 'content-groups/covers/fallback-cover.jpg',
+    ]);
+
     $group = ContentGroup::factory()->published()->create([
         'title' => 'Fallback Group',
         'cover_path' => 'content-groups/covers/fallback-cover.jpg',

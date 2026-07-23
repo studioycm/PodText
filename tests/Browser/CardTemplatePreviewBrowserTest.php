@@ -7,6 +7,7 @@ use App\Filament\Pages\EditCardTemplate;
 use App\Models\ContentGroup;
 use App\Models\ContentItem;
 use App\Models\HomepageSection;
+use App\Models\Media;
 use App\Models\Transcription;
 use App\Models\User;
 use App\Settings\AdminUxSettings;
@@ -111,6 +112,25 @@ function step5bO2BrowserTemplate(string $family, string $key, string $layout, ar
     ];
 }
 
+function step5bRegisterBrowserMedia(string $path, string $contents): Media
+{
+    Storage::disk('public')->put($path, $contents);
+
+    return Media::query()->where('path', $path)->first()
+        ?? Media::factory()->create([
+            'disk' => 'public',
+            'directory' => dirname($path),
+            'visibility' => 'public',
+            'name' => pathinfo($path, PATHINFO_FILENAME),
+            'path' => $path,
+            'width' => 100,
+            'height' => 100,
+            'size' => strlen($contents),
+            'type' => 'image/jpeg',
+            'ext' => 'jpg',
+        ]);
+}
+
 /**
  * @return array<string, mixed>
  */
@@ -161,6 +181,9 @@ function step5bO2BrowserSurfaces(): array
     $item = ContentItem::query()->where('title', 'like', 'Browser Preview Item%')->firstOrFail();
     $group = $item->contentGroup;
     $templates = [];
+    $defaultImageFixture = file_get_contents(public_path('images/podtext-logo.jpg'));
+    $itemDefaultMedia = step5bRegisterBrowserMedia('default-images/o2-item-default.jpg', $defaultImageFixture);
+    $groupDefaultMedia = step5bRegisterBrowserMedia('default-images/o2-group-default.jpg', $defaultImageFixture);
 
     foreach (['content_item', 'content_group'] as $family) {
         $source = $family;
@@ -189,8 +212,16 @@ function step5bO2BrowserSurfaces(): array
         'card_templates' => $templates,
         'default_images' => [
             'global' => ['mode' => 'inherit', 'path' => null],
-            'content_item' => ['mode' => 'custom', 'path' => 'default-images/o2-item-default.jpg'],
-            'content_group' => ['mode' => 'custom', 'path' => 'default-images/o2-group-default.jpg'],
+            'content_item' => [
+                'mode' => 'custom',
+                'path' => 'default-images/o2-item-default.jpg',
+                'media_reference_key' => $itemDefaultMedia->reference_key,
+            ],
+            'content_group' => [
+                'mode' => 'custom',
+                'path' => 'default-images/o2-group-default.jpg',
+                'media_reference_key' => $groupDefaultMedia->reference_key,
+            ],
             'contributor' => ['mode' => 'inherit', 'path' => null],
         ],
     ] as $name => $payload) {
@@ -204,10 +235,6 @@ function step5bO2BrowserSurfaces(): array
             ],
         );
     }
-
-    $defaultImageFixture = file_get_contents(public_path('images/podtext-logo.jpg'));
-    Storage::disk('public')->put('default-images/o2-item-default.jpg', $defaultImageFixture);
-    Storage::disk('public')->put('default-images/o2-group-default.jpg', $defaultImageFixture);
 
     foreach (['leading', 'body', 'ordered', 'card'] as $index => $variant) {
         HomepageSection::factory()->create([
@@ -270,10 +297,25 @@ function step5bFu02BrowserSaveSetting(string $settingsClass, string $name, mixed
  */
 function step5bFu02BrowserSaveDefaultImages(array $overrides): void
 {
+    $defaultImages = array_replace(PublicFrontConfigRegistry::defaults()['default_images'], $overrides);
+
+    foreach ($defaultImages as &$config) {
+        if (! is_array($config) || ($config['mode'] ?? null) !== 'custom' || ! is_string($config['path'] ?? null)) {
+            continue;
+        }
+
+        $media = Media::query()->where('path', $config['path'])->first();
+
+        if ($media instanceof Media) {
+            $config['media_reference_key'] = $media->reference_key;
+        }
+    }
+    unset($config);
+
     step5bFu02BrowserSaveSetting(
         PublicContentSettings::class,
         'default_images',
-        array_replace(PublicFrontConfigRegistry::defaults()['default_images'], $overrides),
+        $defaultImages,
     );
 }
 
@@ -322,10 +364,10 @@ function step5bFu02BrowserSamples(): array
     Storage::forgetDisk('public');
 
     $imageFixture = file_get_contents(public_path('images/podtext-logo.jpg'));
-    Storage::disk('public')->put('content-items/images/fu02-local.jpg', $imageFixture);
-    Storage::disk('public')->put('content-groups/covers/fu02-inherited.jpg', $imageFixture);
-    Storage::disk('public')->put('default-images/fu02-family.jpg', $imageFixture);
-    Storage::disk('public')->put('default-images/fu02-global.jpg', $imageFixture);
+    step5bRegisterBrowserMedia('content-items/images/fu02-local.jpg', $imageFixture);
+    step5bRegisterBrowserMedia('content-groups/covers/fu02-inherited.jpg', $imageFixture);
+    step5bRegisterBrowserMedia('default-images/fu02-family.jpg', $imageFixture);
+    step5bRegisterBrowserMedia('default-images/fu02-global.jpg', $imageFixture);
 
     step5bFu02BrowserSaveDefaultImages([
         'content_item' => ['mode' => 'custom', 'path' => 'default-images/fu02-family.jpg'],

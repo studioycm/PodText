@@ -153,7 +153,7 @@ it('keeps a registered menu logo selected after saving and remounting the settin
     $this->actingAs(User::factory()->create());
 
     $page = Livewire::test(MenuHeaderSettings::class)
-        ->assertSee('logo.svg');
+        ->assertSee((string) $media->title);
     expect(imgAHydratedPickerId($page->instance(), 'menu_config.logo.light_media_reference_key'))
         ->toBe($media->getKey());
 
@@ -166,7 +166,7 @@ it('keeps a registered menu logo selected after saving and remounting the settin
     expect(app(PublicContentSettings::class)->menu_config['logo']['light_path'])->toBe('header/logo.svg');
 
     $remounted = Livewire::test(MenuHeaderSettings::class)
-        ->assertSee('logo.svg');
+        ->assertSee((string) $media->title);
     expect(imgAHydratedPickerId($remounted->instance(), 'menu_config.logo.light_media_reference_key'))
         ->toBe($media->getKey());
 });
@@ -188,7 +188,7 @@ it('keeps a registered custom default image selected after remounting display se
     $this->actingAs(User::factory()->create());
 
     $page = Livewire::test(DisplaySettings::class)
-        ->assertSee('fallback.jpg');
+        ->assertSee((string) $media->title);
     expect(imgAHydratedPickerId($page->instance(), 'default_images.content_item.media_reference_key'))
         ->toBe($media->getKey());
 });
@@ -332,6 +332,9 @@ it('reports existing cover and settings assets without registering or mutating t
 });
 
 it('renders content group cover alt text on public images and badge thumbnails', function (): void {
+    Storage::fake('public');
+    Storage::disk('public')->put('content-groups/covers/alt.jpg', 'cover fixture');
+    imgAMedia('content-groups/covers/alt.jpg');
     $group = ContentGroup::factory()->published()->create([
         'title' => 'Alt Podcast',
         'slug' => 'alt-podcast',

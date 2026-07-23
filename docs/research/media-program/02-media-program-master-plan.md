@@ -2,11 +2,13 @@
 
 ## Controlling route
 
-Audit `LS-20260723-MEDIA-INVENTORY-FIRST-RESET-01`, approved option
-`MEDIA-INV-O1-RESET-CLEANUP-P1-MINIMAL-KERNEL`.
+Package 1 closed under audit `LS-20260723-MEDIA-INVENTORY-FIRST-RESET-01`.
+Package 2 is implemented locally under audit
+`LS-20260723-PODTEXT-MEDIA-P2-INVENTORY-PICKER-REPLACE-01`, approved option
+`MEDIA-P2-O1-REUSE-PICKER-SAME-PAGE-REPLACE`.
 
-Only Package 1 is authorized. Later packages are route forecasts and require
-fresh Simplifier approval.
+Only Package 2 is authorized in the current run. Packages 3-5 remain route
+forecasts and require fresh Simplifier approval.
 
 ## Package 1 — minimal kernel and database conversion
 
@@ -43,6 +45,9 @@ logical filter.
 
 This package removes strict existing-row eligibility from Resource/picker and
 public resolution while retaining delivery/access/SVG-inline boundaries.
+It also reuses the Gallery/Upload picker for always-visible, same-page
+podcast/episode Add/Replace Image actions. Package 2 is complete locally;
+closeout hash pending.
 
 ## Package 3 — four-source acquisition
 

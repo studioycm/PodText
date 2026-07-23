@@ -13,8 +13,6 @@ use InvalidArgumentException;
 /** Single DB-metadata-only source for unsafe owner diagnostics and fingerprints. */
 class LegacyOwnerMediaDiagnostics
 {
-    public function __construct(private readonly MediaRecordScope $scope) {}
-
     /**
      * @param  iterable<int, Media>  $rows
      */
@@ -30,10 +28,7 @@ class LegacyOwnerMediaDiagnostics
         $attached = $attachment?->relationLoaded('media') ? $attachment->getRelation('media') : null;
         $code = match (true) {
             $attachment instanceof MediaAttachment && ! $attached instanceof Media => LegacyOwnerMediaDiagnosticCode::MissingAttachmentMedia,
-            $attachment instanceof MediaAttachment && $attached instanceof Media && (string) $owner->{$column} !== (string) $attached->path => LegacyOwnerMediaDiagnosticCode::AttachmentPathMismatch,
-            $attachment instanceof MediaAttachment && $attached instanceof Media && ! $this->scope->allows($attached, $role->purpose()) => LegacyOwnerMediaDiagnosticCode::DisallowedAttachment,
             $rows->count() > 1 => LegacyOwnerMediaDiagnosticCode::DuplicateLegacyRows,
-            $rows->count() === 1 && ! $this->scope->allows($rows->sole(), $role->purpose()) => LegacyOwnerMediaDiagnosticCode::DisallowedLegacyPath,
             default => null,
         };
         if ($code === null) {

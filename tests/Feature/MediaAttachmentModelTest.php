@@ -64,6 +64,8 @@ it('shares one media record between owners while enforcing singleton roles', fun
     $secondOwner = ContentGroup::factory()->create();
     $firstMedia = Media::factory()->create();
     $secondMedia = Media::factory()->create();
+    Storage::disk('public')->put($firstMedia->path, 'first media fixture');
+    Storage::disk('public')->put($secondMedia->path, 'second media fixture');
     $manager = app(MediaAttachmentManager::class);
 
     $manager->attach($firstOwner, $firstMedia, MediaAttachmentRole::Cover, $actor);
@@ -92,6 +94,7 @@ it('enforces role and owner compatibility and resolves stable morph aliases', fu
         'name' => $primaryName,
         'path' => "content-items/images/{$primaryName}.jpg",
     ]);
+    Storage::disk('public')->put($primary->path, 'primary media fixture');
     $manager = app(MediaAttachmentManager::class);
 
     expect(fn () => $manager->attach($item, $cover, MediaAttachmentRole::Cover, $actor))
@@ -168,6 +171,8 @@ it('shares and replaces singleton primary images for content items', function ()
         'name' => $secondName,
         'path' => "content-items/images/{$secondName}.jpg",
     ]);
+    Storage::disk('public')->put($shared->path, 'shared media fixture');
+    Storage::disk('public')->put($replacement->path, 'replacement media fixture');
     $manager = app(MediaAttachmentManager::class);
 
     $manager->attach($firstItem, $shared, MediaAttachmentRole::PrimaryImage, $actor);
@@ -223,6 +228,7 @@ it('enforces the restrictive media foreign key and cleans direct item attachment
         'name' => $name,
         'path' => "content-items/images/{$name}.jpg",
     ]);
+    Storage::disk('public')->put($media->path, 'restricted media fixture');
     app(MediaAttachmentManager::class)->attach($item, $media, MediaAttachmentRole::PrimaryImage, $actor);
 
     expect(fn () => DB::table('curator')->where('id', $media->getKey())->delete())
@@ -240,6 +246,7 @@ it('authorizes detach for both attached and legacy only owner state', function (
     $attachedGroup = ContentGroup::factory()->create();
     $legacyGroup = ContentGroup::factory()->create(['cover_path' => 'content-groups/covers/legacy.jpg']);
     $media = Media::factory()->create();
+    Storage::disk('public')->put($media->path, 'detach media fixture');
     $manager = app(MediaAttachmentManager::class);
     $manager->attach($attachedGroup, $media, MediaAttachmentRole::Cover, $admin);
 
@@ -276,6 +283,7 @@ it('locks and reloads media identity for attachment writes and rejects active mu
         'name' => $newName,
         'path' => $newPath,
     ]);
+    Storage::disk('public')->put($newPath, 'locked media fixture');
 
     app(MediaAttachmentManager::class)->attach($owner, $media, MediaAttachmentRole::Cover, $actor);
     expect($owner->refresh()->cover_path)->toBe($newPath);

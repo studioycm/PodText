@@ -7,8 +7,11 @@ use App\Enums\MediaAttachmentRole;
 use App\Models\Author;
 use App\Models\ContentGroup;
 use App\Models\ContentItem;
+use App\Models\Media;
 use App\Support\Media\MediaAttachmentIdentityResolver;
 use App\Support\Media\MediaIdentityResolver;
+use App\Support\Media\PublicMediaDelivery;
+use App\Support\Media\UnresolvableMediaIdentityException;
 use App\Support\Media\UnsafeLegacyOwnerMediaException;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Support\Facades\Storage;
@@ -22,6 +25,7 @@ class PublicDefaultImageResolver
         private readonly PublicFrontRenderContext $context,
         private readonly MediaIdentityResolver $mediaIdentityResolver,
         private readonly MediaAttachmentIdentityResolver $attachmentIdentityResolver,
+        private readonly PublicMediaDelivery $publicMediaDelivery,
     ) {}
 
     /**
@@ -29,17 +33,17 @@ class PublicDefaultImageResolver
      */
     public function contentItemImage(ContentItem $item, bool $inheritGroupCover = true): array
     {
-        [$hasPrimaryAttachment, $primaryPath] = $this->ownerImage(
+        [$hasPrimaryAttachment, $primaryMedia] = $this->ownerImage(
             $item,
             MediaAttachmentRole::PrimaryImage,
         );
 
-        if ($hasPrimaryAttachment && filled($primaryPath)) {
-            return $this->publicDiskImage($primaryPath, 'item', (string) $item->title);
+        if ($hasPrimaryAttachment && $primaryMedia instanceof Media && $this->publicMediaDelivery->canDisplay($primaryMedia)) {
+            return $this->publicDiskImage($primaryMedia->path, 'item', (string) $item->title);
         }
 
-        if (! $hasPrimaryAttachment && filled($primaryPath)) {
-            return $this->publicDiskImage($primaryPath, 'item', (string) $item->title);
+        if (! $hasPrimaryAttachment && $primaryMedia instanceof Media && $this->publicMediaDelivery->canDisplay($primaryMedia)) {
+            return $this->publicDiskImage($primaryMedia->path, 'item', (string) $item->title);
         }
 
         if (filled($item->external_thumbnail_url)) {
@@ -78,13 +82,15 @@ class PublicDefaultImageResolver
 
     public function contentGroupCoverPath(ContentGroup $group): ?string
     {
-        [$hasAttachment, $path] = $this->ownerImage($group, MediaAttachmentRole::Cover);
+        [$hasAttachment, $media] = $this->ownerImage($group, MediaAttachmentRole::Cover);
 
-        if ($hasAttachment) {
-            return $path;
+        if ($hasAttachment && $media instanceof Media && $this->publicMediaDelivery->canDisplay($media)) {
+            return $media->path;
         }
 
-        return $path;
+        return ! $hasAttachment && $media instanceof Media && $this->publicMediaDelivery->canDisplay($media)
+            ? $media->path
+            : null;
     }
 
     /**
@@ -165,15 +171,21 @@ class PublicDefaultImageResolver
             : null;
 
         try {
-            $path = $this->mediaIdentityResolver->path(
+            $media = $this->mediaIdentityResolver->resolve(
                 $referenceKey,
                 $legacyPath,
                 ImageUploadPurpose::DefaultImage,
             );
         } catch (UnsafeLegacyOwnerMediaException $exception) {
             report($exception);
-            $path = null;
+            $media = null;
+        } catch (\InvalidArgumentException) {
+            $media = null;
         }
+
+        $path = $media instanceof Media && $this->publicMediaDelivery->canDisplay($media)
+            ? $media->path
+            : null;
 
         return $this->familyConfigs[$family] = [
             'mode' => is_string($config['mode'] ?? null) ? $config['mode'] : $defaults['mode'],
@@ -245,7 +257,7 @@ class PublicDefaultImageResolver
     }
 
     /**
-     * @return array{bool, string|null}
+     * @return array{bool, Media|null}
      */
     private function ownerImage(
         ContentGroup|ContentItem $owner,
@@ -255,8 +267,10 @@ class PublicDefaultImageResolver
             $identity = $this->attachmentIdentityResolver->resolve($owner, $role);
         } catch (UnsafeLegacyOwnerMediaException) {
             return [true, null];
+        } catch (UnresolvableMediaIdentityException) {
+            return [false, null];
         }
 
-        return [$identity['has_attachment'], $identity['path']];
+        return [$identity['has_attachment'], $identity['media']];
     }
 }

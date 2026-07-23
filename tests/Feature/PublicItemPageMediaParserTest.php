@@ -13,6 +13,7 @@ use App\Models\Category;
 use App\Models\ContentGroup;
 use App\Models\ContentItem;
 use App\Models\ContentTag;
+use App\Models\Media;
 use App\Models\Transcription;
 use App\Models\User;
 use App\Settings\PublicContentSettings;
@@ -432,6 +433,12 @@ it('renders podcast identity with title row positioning and sampled podcast imag
 });
 
 it('uses the podcast cover as the item page image fallback', function (): void {
+    Storage::fake('public');
+    Storage::disk('public')->put('content-groups/covers/fallback-cover.jpg', 'podcast cover fixture');
+    Media::factory()->create([
+        'path' => 'content-groups/covers/fallback-cover.jpg',
+    ]);
+
     $group = ContentGroup::factory()->published()->create([
         'slug' => 'cover-fallback-podcast',
         'cover_path' => 'content-groups/covers/fallback-cover.jpg',

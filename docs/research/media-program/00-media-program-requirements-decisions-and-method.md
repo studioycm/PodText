@@ -2,10 +2,11 @@
 
 ## Authority
 
-- Audit: `LS-20260723-MEDIA-INVENTORY-FIRST-RESET-01`
-- Approved option: `MEDIA-INV-O1-RESET-CLEANUP-P1-MINIMAL-KERNEL`
+- Audit: `LS-20260723-PODTEXT-MEDIA-P2-INVENTORY-PICKER-REPLACE-01`
+- Approved option: `MEDIA-P2-O1-REUSE-PICKER-SAME-PAGE-REPLACE`
 - Approval date: 2026-07-23
-- Scope: documentation reset, exact overbuild cleanup and Package 1 only.
+- Scope: Package 2 inventory, diagnostics, D01, picker All Media and same-page
+  podcast/episode Add/Replace Image UX only.
 
 This registry supersedes the 2026-07-22 trusted-canonical/hybrid-root program.
 Historical committed handoffs remain evidence of what existed; they do not
@@ -78,7 +79,8 @@ manifest/digest/schema-hash authorization.
 
 ## Package boundary
 
-This approval ends after Package 1. Package 1 proves the minimal portable
-kernel and database conversion but does not claim the inventory-first gallery,
-D01 or picker behavior is implemented. Package 2 needs a fresh audit against
-the post-Package-1 baseline.
+Package 1 is complete and hash-stamped. This approval ends after Package 2,
+which implements the inventory-first gallery, visible Needs Repair diagnostics,
+D01 boundaries, authoritative attachment resolution, picker All Media and the
+same-page Add/Replace Image flow. Packages 3-5, dependency changes, live data
+actions, production actions and push remain separately gated.

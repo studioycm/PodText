@@ -14,11 +14,16 @@ use App\Models\User;
 use App\Settings\AdminUxSettings;
 use App\Support\Media\ImageFileNamer;
 use App\Support\Media\MediaAttachmentFormState;
+use App\Support\Media\MediaAttachmentIdentityResolver;
+use App\Support\Media\MediaInventoryDiagnostics;
+use App\Support\Media\UnsafeLegacyOwnerMediaException;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Select;
 use Filament\Notifications\Notification;
 use Filament\Support\Icons\Heroicon;
+use Illuminate\Contracts\View\View;
+use InvalidArgumentException;
 
 class ContentImageActions
 {
@@ -29,7 +34,7 @@ class ContentImageActions
             field: 'cover_media_reference_key',
             family: ImageFileNamer::CONTENT_GROUP_COVER,
             role: MediaAttachmentRole::Cover,
-            label: __('admin.actions.choose_cover_image'),
+            label: __('admin.actions.add_replace_image'),
             helper: __('admin.helpers.cover_path'),
             successTitle: __('admin.notifications.content_group_cover_saved'),
         );
@@ -42,7 +47,7 @@ class ContentImageActions
             field: 'primary_image_media_reference_key',
             family: ImageFileNamer::CONTENT_ITEM_IMAGE,
             role: MediaAttachmentRole::PrimaryImage,
-            label: __('admin.actions.choose_episode_image'),
+            label: __('admin.actions.add_replace_image'),
             helper: __('admin.helpers.content_item_image_path'),
             successTitle: __('admin.notifications.content_item_image_saved'),
         );
@@ -108,8 +113,24 @@ class ContentImageActions
             ->icon(Heroicon::OutlinedPhoto)
             ->modalHeading($label)
             ->modalSubmitActionLabel(__('admin.actions.save'))
+            ->modalContent(function (ContentGroup|ContentItem $record) use ($role): ?View {
+                try {
+                    $media = app(MediaAttachmentIdentityResolver::class)->resolve($record, $role)['media'];
+                } catch (UnsafeLegacyOwnerMediaException|InvalidArgumentException) {
+                    return null;
+                }
+
+                if ($media === null) {
+                    return null;
+                }
+
+                return view('filament.actions.current-content-image', [
+                    'media' => $media,
+                    'previewUrl' => app(MediaInventoryDiagnostics::class)->previewUrl($media),
+                ]);
+            })
             ->fillForm(fn (ContentGroup|ContentItem $record): array => [
-                $field => app(MediaAttachmentFormState::class)->referenceKey($record, $role),
+                $field => app(MediaAttachmentFormState::class)->pickerIdentity($record, $role),
                 'legacy_media_repair_fingerprint' => app(MediaAttachmentFormState::class)->diagnostic($record, $role)?->fingerprint,
             ])
             ->schema([
@@ -121,12 +142,20 @@ class ContentImageActions
                         : $helper)
                     ->columnSpanFull(),
             ])
-            ->action(function (ContentGroup|ContentItem $record, array $data) use ($field, $role, $successTitle): void {
+            ->action(function (ContentGroup|ContentItem $record, array $data, Action $action) use ($field, $role, $successTitle): void {
                 $actor = auth()->user();
                 abort_unless($actor instanceof User, 403);
                 $referenceKey = is_string($data[$field] ?? null) ? $data[$field] : null;
                 $fingerprint = is_string($data['legacy_media_repair_fingerprint'] ?? null) ? $data['legacy_media_repair_fingerprint'] : null;
-                app(MediaAttachmentFormState::class)->persist($record, $referenceKey, $role, $actor, $fingerprint);
+                $nestingIndex = $action->getNestingIndex() ?? 0;
+                app(MediaAttachmentFormState::class)->persist(
+                    $record,
+                    $referenceKey,
+                    $role,
+                    $actor,
+                    $fingerprint,
+                    "mountedActions.{$nestingIndex}.data.{$field}",
+                );
 
                 Notification::make()
                     ->success()

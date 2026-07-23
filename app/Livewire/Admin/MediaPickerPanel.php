@@ -7,6 +7,7 @@ use App\Models\Media;
 use App\Models\User;
 use App\Support\Media\CuratorImageUploadPolicy;
 use App\Support\Media\MediaFilesystemMutationCoordinator;
+use App\Support\Media\MediaInventoryDiagnostics;
 use App\Support\Media\MediaRecordProjector;
 use App\Support\Media\MediaRecordScope;
 use Filament\Actions\Action;
@@ -68,6 +69,8 @@ class MediaPickerPanel extends Component implements HasActions, HasSchemas
 
     public string $search = '';
 
+    public bool $allMedia = false;
+
     #[Locked]
     public int $currentPage = 1;
 
@@ -91,7 +94,7 @@ class MediaPickerPanel extends Component implements HasActions, HasSchemas
         $this->purpose = $resolvedPurpose->value;
         $this->isMultiple = $isMultiple;
         $this->maxItems = $maxItems;
-        $this->selectedIds = $this->trustedIds($selectedIds, 'select');
+        $this->selectedIds = $this->trustedIds($selectedIds, 'view');
 
         if (count($this->selectedIds) > $this->selectionLimit()) {
             abort(422);
@@ -120,6 +123,20 @@ class MediaPickerPanel extends Component implements HasActions, HasSchemas
     public function updatedSearch(): void
     {
         $this->search = mb_substr(trim($this->search), 0, 100);
+        $this->currentPage = 1;
+        $this->reloadFiles();
+    }
+
+    public function showAllMedia(): void
+    {
+        $this->allMedia = true;
+        $this->currentPage = 1;
+        $this->reloadFiles();
+    }
+
+    public function showContextMedia(): void
+    {
+        $this->allMedia = false;
         $this->currentPage = 1;
         $this->reloadFiles();
     }
@@ -430,7 +447,8 @@ class MediaPickerPanel extends Component implements HasActions, HasSchemas
     private function browseQuery(): Builder
     {
         return app(MediaRecordScope::class)
-            ->query($this->uploadPurpose())
+            ->inventoryQuery()
+            ->when(! $this->allMedia, fn (Builder $query): Builder => $query->where('directory', $this->uploadPurpose()->root()))
             ->select([
                 'id', 'reference_key', 'name', 'path', 'title', 'alt', 'ext', 'size', 'width', 'height', 'created_at',
                 'disk', 'directory', 'visibility', 'type',
@@ -444,17 +462,26 @@ class MediaPickerPanel extends Component implements HasActions, HasSchemas
      */
     private function projectQuery(Builder $query): array
     {
+        $projector = app(MediaRecordProjector::class);
+
         return $query
             ->get()
-            ->map(fn (Media $media): array => app(MediaRecordProjector::class)->project($media))
+            ->map(fn (Media $media): array => $projector->project($media))
             ->all();
     }
 
     private function trustedRecord(mixed $id, string $ability): Media
     {
         abort_unless(is_int($id) || is_string($id), 422);
-        $media = app(MediaRecordScope::class)->findOrFail($id, $this->uploadPurpose());
+        $scope = app(MediaRecordScope::class);
+        $media = in_array($ability, ['delete', 'rename', 'swap'], true)
+            ? $scope->findOrFail($id)
+            : $scope->findInventoryOrFail($id);
         Gate::forUser($this->actor())->authorize($ability, $media);
+
+        if ($ability === 'select') {
+            abort_if(app(MediaInventoryDiagnostics::class)->selectionBlockedReason($media) !== null, 422);
+        }
 
         return $media;
     }
@@ -495,8 +522,10 @@ class MediaPickerPanel extends Component implements HasActions, HasSchemas
             abort(422);
         }
 
-        $records = app(MediaRecordScope::class)
-            ->query($this->uploadPurpose())
+        $scope = app(MediaRecordScope::class);
+        $records = (in_array($ability, ['delete', 'rename', 'swap'], true)
+            ? $scope->query()
+            : $scope->inventoryQuery())
             ->whereKey($trustedIds)
             ->get()
             ->keyBy(fn (Media $media): int => (int) $media->getKey());
@@ -515,6 +544,10 @@ class MediaPickerPanel extends Component implements HasActions, HasSchemas
                 /** @var Media $media */
                 $media = $records->get($id);
                 Gate::forUser($actor)->authorize($ability, $media);
+
+                if ($ability === 'select') {
+                    abort_if(app(MediaInventoryDiagnostics::class)->selectionBlockedReason($media) !== null, 422);
+                }
 
                 return $media;
             });

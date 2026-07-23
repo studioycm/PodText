@@ -1,6 +1,12 @@
 <div class="flex h-full min-h-[70vh] flex-col">
     <div class="flex items-center justify-between gap-4 border-b border-gray-200 px-4 py-3 dark:border-gray-800">
         <div class="flex items-center gap-2">
+            <x-filament::button size="xs" :color="$allMedia ? 'gray' : 'primary'" wire:click="showContextMedia">
+                {{ __('admin.media_library.context_media') }}
+            </x-filament::button>
+            <x-filament::button size="xs" :color="$allMedia ? 'primary' : 'gray'" wire:click="showAllMedia">
+                {{ __('admin.media_library.all_media') }}
+            </x-filament::button>
             @if ($currentPage > 1 && blank($search))
                 <x-filament::button size="xs" color="gray" wire:click="loadPreviousFiles">
                     {{ __('admin.media_library.previous_page') }}
@@ -34,20 +40,40 @@
             <ul class="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-6">
                 @forelse ($files as $file)
                     <li wire:key="media-picker-{{ $file['id'] }}" class="group relative aspect-square overflow-hidden rounded-md border border-gray-300 bg-gray-100 dark:border-gray-700 dark:bg-gray-900">
-                        <button type="button" wire:click="toggleSelection({{ $file['id'] }})" class="block h-full w-full">
-                            <x-curator::display
-                                :item="$file"
-                                :src="$file['preview_url']"
-                                :alt="$file['alt'] ?? ''"
-                                :lazy="true"
-                                class="h-full w-full object-cover"
-                            />
+                        <button
+                            type="button"
+                            wire:click="toggleSelection({{ $file['id'] }})"
+                            @disabled(! $file['selectable'])
+                            @class(['block h-full w-full', 'cursor-not-allowed opacity-70' => ! $file['selectable']])
+                        >
+                            @if (filled($file['preview_url']))
+                                <x-curator::display
+                                    :item="$file"
+                                    :src="$file['preview_url']"
+                                    :alt="$file['alt'] ?? ''"
+                                    :lazy="true"
+                                    class="h-full w-full object-cover"
+                                />
+                            @else
+                                <span class="grid h-full place-items-center px-3 text-center text-xs text-gray-500">
+                                    {{ __('admin.media_library.preview_unavailable') }}
+                                </span>
+                            @endif
                             @if (in_array($file['id'], $selectedIds, true))
                                 <span class="absolute inset-0 grid place-items-center bg-primary-500/20 ring-2 ring-inset ring-primary-500">
                                     <x-filament::icon icon="heroicon-s-check-circle" class="h-9 w-9 text-primary-600" />
                                 </span>
                             @endif
                         </button>
+
+                        @if (! $file['selectable'])
+                            <div class="absolute inset-x-1 top-1 rounded bg-warning-50/95 p-1 text-[0.65rem] leading-tight text-warning-800 shadow-sm dark:bg-warning-950/95 dark:text-warning-200">
+                                <p>{{ $file['selection_blocked_reason'] }}</p>
+                                <a href="{{ $file['review_url'] }}" class="font-medium underline">
+                                    {{ __('admin.media_library.review_media') }}
+                                </a>
+                            </div>
+                        @endif
 
                         <div class="absolute end-1 top-1 opacity-0 transition group-focus-within:opacity-100 group-hover:opacity-100">
                             <x-filament-actions::group

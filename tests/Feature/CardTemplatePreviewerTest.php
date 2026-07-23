@@ -1,8 +1,11 @@
 <?php
 
+use App\Enums\MediaAttachmentRole;
 use App\Models\Author;
 use App\Models\ContentGroup;
 use App\Models\ContentItem;
+use App\Models\Media;
+use App\Models\MediaAttachment;
 use App\Models\Transcription;
 use App\Support\PublicFront\Cards\PublicFrontCardTemplateRegistry;
 use App\Support\PublicFront\PublicFrontConfigReader;
@@ -17,12 +20,14 @@ use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Storage;
 
 uses(RefreshDatabase::class);
 
 beforeEach(function (): void {
     Http::preventStrayRequests();
     Mail::fake();
+    Storage::fake('public');
 });
 
 /**
@@ -77,6 +82,17 @@ function step5bCreatePublicItem(
  */
 function step5bBindPreviewDefaultImages(array $overrides = []): void
 {
+    foreach ($overrides as $family => $image) {
+        $path = $image['path'] ?? null;
+
+        if (($image['mode'] ?? null) !== 'custom' || ! is_string($path) || blank($path)) {
+            continue;
+        }
+
+        $media = step5bRegisterPreviewMedia($path);
+        $overrides[$family]['media_reference_key'] = $media->reference_key;
+    }
+
     $config = PublicFrontConfigRegistry::defaults();
     $config['default_images'] = array_replace($config['default_images'], $overrides);
     $context = new PublicFrontRenderContext(
@@ -86,6 +102,30 @@ function step5bBindPreviewDefaultImages(array $overrides = []): void
     app()->forgetInstance(CardTemplatePreviewer::class);
     app()->forgetInstance(PublicFrontRenderContext::class);
     app()->instance(PublicFrontRenderContext::class, $context);
+}
+
+function step5bRegisterPreviewMedia(string $path): Media
+{
+    $media = Media::query()->where('path', $path)->first();
+
+    if (! $media instanceof Media) {
+        $media = Media::factory()->create([
+            'disk' => 'public',
+            'directory' => dirname($path),
+            'visibility' => 'public',
+            'name' => pathinfo($path, PATHINFO_FILENAME),
+            'path' => $path,
+            'type' => 'image/jpeg',
+            'ext' => 'jpg',
+            'width' => 120,
+            'height' => 120,
+            'size' => 12,
+        ]);
+    }
+
+    Storage::disk('public')->put($path, 'preview-image-bytes');
+
+    return $media;
 }
 
 it('shares exact builder transport cleanup between preview and persistence', function (): void {
@@ -192,10 +232,12 @@ it('keeps automatic preload and search item ranking in effective image parity', 
         transcriptionPublishedAt: $ownImageTie,
     );
     $local->update(['image_path' => 'content-items/images/ranking-local.jpg']);
+    step5bRegisterPreviewMedia((string) $local->image_path);
     $inheritedGroup = ContentGroup::factory()->published()->create([
         'title' => 'Ranking Parity Inherited Group',
         'cover_path' => 'content-groups/covers/ranking-inherited.jpg',
     ]);
+    step5bRegisterPreviewMedia((string) $inheritedGroup->cover_path);
     $inherited = step5bCreatePublicItem(
         'Ranking Parity Inherited',
         group: $inheritedGroup,
@@ -260,6 +302,37 @@ it('keeps automatic preload and search item ranking in effective image parity', 
         ->toThrow(CardTemplateWriteException::class, 'preview_sample_missing');
 });
 
+it('ranks an authoritative displayable attachment ahead of newer image-less samples despite mirror and metadata drift', function (): void {
+    $attached = step5bCreatePublicItem(
+        'Inventory Attachment Ranking',
+        transcriptionPublishedAt: now()->subDays(2),
+    );
+    $media = step5bRegisterPreviewMedia('legacy/nested/inventory-attachment.bin');
+    $attached->update(['image_path' => 'content-items/images/stale-owner-mirror.jpg']);
+    MediaAttachment::factory()->create([
+        'media_id' => $media->getKey(),
+        'attachable_type' => 'content_item',
+        'attachable_id' => $attached->getKey(),
+        'role' => MediaAttachmentRole::PrimaryImage,
+        'position' => 0,
+    ]);
+    $newerWithoutImage = step5bCreatePublicItem(
+        'Inventory Attachment Newer Empty',
+        transcriptionPublishedAt: now()->subDay(),
+    );
+
+    $previewer = app(CardTemplatePreviewer::class);
+    $automatic = $previewer->preview(step5bPreviewDraft('content_item'));
+    $options = $previewer->sampleOptions('content_item', 'Inventory Attachment');
+
+    expect($automatic['sample_id'])->toBe($attached->getKey())
+        ->and($automatic['html'])->toContain('data-card-image-source="item"')
+        ->and(array_keys($options))->toBe([
+            $attached->getKey(),
+            $newerWithoutImage->getKey(),
+        ]);
+});
+
 it('caps public sample search results at fifty in deterministic order', function (): void {
     $groups = collect();
 
@@ -272,6 +345,7 @@ it('caps public sample search results at fifty in deterministic order', function
     }
 
     $groups->last()->update(['cover_path' => 'content-groups/covers/group-51.jpg']);
+    step5bRegisterPreviewMedia((string) $groups->last()->cover_path);
 
     $options = app(CardTemplatePreviewer::class)->sampleOptions('content_group', 'Preview Group');
 
@@ -287,6 +361,10 @@ it('preloads ten image-first public samples independently from the fifty-result 
             'cover_path' => $index === 11 ? 'content-groups/covers/preload-11.jpg' : null,
         ]);
         step5bCreatePublicItem("Preload Group Episode {$index}", group: $group);
+
+        if ($index === 11) {
+            step5bRegisterPreviewMedia((string) $group->cover_path);
+        }
     }
 
     $options = app(CardTemplatePreviewer::class)->initialSampleOptions('content_group');
@@ -314,6 +392,7 @@ it('uses validated global and none modes for item ranking and rendering', functi
         'title' => 'Mode Ranking Covered Group',
         'cover_path' => 'content-groups/covers/ranking-covered.jpg',
     ]);
+    step5bRegisterPreviewMedia((string) $coveredGroup->cover_path);
     $noneItem = step5bCreatePublicItem('Mode Ranking None Item', group: $coveredGroup);
     step5bBindPreviewDefaultImages([
         'global' => ['mode' => 'custom', 'path' => 'default-images/ranking-hidden-global.jpg'],
@@ -341,6 +420,7 @@ it('keeps automatic preload and search group ranking in effective image parity',
         'title' => 'Group Ranking Z Own',
         'cover_path' => 'content-groups/covers/ranking-own-group.jpg',
     ]);
+    step5bRegisterPreviewMedia((string) $ownGroup->cover_path);
     step5bCreatePublicItem('Group Ranking Own Episode', group: $ownGroup);
     $defaultGroup = ContentGroup::factory()->published()->create([
         'title' => 'Group Ranking A Default',

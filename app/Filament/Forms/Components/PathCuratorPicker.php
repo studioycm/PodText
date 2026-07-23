@@ -6,7 +6,9 @@ use App\Enums\ImageUploadPurpose;
 use App\Filament\Resources\Media\MediaResource;
 use App\Models\Media;
 use App\Models\User;
+use App\Support\Media\MediaAttachmentFormState;
 use App\Support\Media\MediaIdentityResolver;
+use App\Support\Media\MediaInventoryDiagnostics;
 use App\Support\Media\MediaRecordProjector;
 use App\Support\Media\MediaRecordScope;
 use Filament\Actions\Action;
@@ -52,14 +54,20 @@ class PathCuratorPicker extends Field
         ]);
 
         $this->afterStateHydrated(function (PathCuratorPicker $component, mixed $state): void {
-            $trusted = $component->trustedIdentity($state);
+            $trusted = $component->trustedIdentity($state, preserveExisting: true);
             $component->state($trusted);
             $component->hydrateSelectedItems($trusted);
         });
 
         $this->clearAfterStateUpdatedHooks();
-        $this->afterStateUpdated(function (PathCuratorPicker $component, mixed $state): void {
+        $this->afterStateUpdated(function (PathCuratorPicker $component, mixed $state, mixed $old): void {
             $trusted = $component->trustedIdentity($state);
+            $oldTrusted = $component->trustedIdentity($old, preserveExisting: true);
+
+            if (! $component->acceptsNewSelections($trusted, $oldTrusted)) {
+                return;
+            }
+
             $component->state($trusted);
             $component->hydrateSelectedItems($trusted);
         });
@@ -152,7 +160,7 @@ class PathCuratorPicker extends Field
         $limit = $this->isMultiple() ? min($this->getMaxItems() ?? 50, 50) : 1;
         abort_if($ids->isEmpty() || $ids->count() > $limit, 422);
         $media = app(MediaRecordScope::class)
-            ->query($this->getUploadPurpose())
+            ->inventoryQuery()
             ->whereKey($ids->all())
             ->get()
             ->keyBy(fn (Media $record): int => (int) $record->getKey());
@@ -163,6 +171,7 @@ class PathCuratorPicker extends Field
             $record = $media->get($id);
             Gate::forUser($actor)->authorize('select', $record);
             Gate::forUser($actor)->authorize('attach', $record);
+            abort_if(app(MediaInventoryDiagnostics::class)->selectionBlockedReason($record) !== null, 422);
         });
 
         $this->state($this->isMultiple() ? $ids->all() : $ids->first());
@@ -275,9 +284,8 @@ class PathCuratorPicker extends Field
     private function trustedActionRecord(array $arguments, string $ability): Media
     {
         $id = $arguments['id'] ?? null;
-        $media = app(MediaRecordScope::class)->findOrFail(
+        $media = app(MediaRecordScope::class)->findInventoryOrFail(
             is_int($id) || is_string($id) ? $id : '',
-            $this->getUploadPurpose(),
         );
         $actor = auth()->user();
         abort_unless($actor instanceof User, 403);
@@ -294,7 +302,7 @@ class PathCuratorPicker extends Field
         return $this->selectedItems;
     }
 
-    private function trustedIdentity(mixed $state): array|int|string|null
+    private function trustedIdentity(mixed $state, bool $preserveExisting = false): array|int|string|null
     {
         $values = $this->identityValues($state);
         $numericIds = collect($values)
@@ -305,22 +313,22 @@ class PathCuratorPicker extends Field
 
         if ($numericIds->count() === count($values) && $numericIds->isNotEmpty()) {
             $records = app(MediaRecordScope::class)
-                ->query($this->getUploadPurpose())
+                ->inventoryQuery()
                 ->whereKey($numericIds->all())
                 ->get()
                 ->keyBy(fn (Media $media): int => (int) $media->getKey());
             abort_if($records->count() !== $numericIds->count(), 404);
             $actor = auth()->user();
             abort_unless($actor instanceof User, 403);
-            $numericIds->each(function (int $id) use ($records, $actor): void {
-                Gate::forUser($actor)->authorize('select', $records->get($id));
+            $numericIds->each(function (int $id) use ($records, $actor, $preserveExisting): void {
+                Gate::forUser($actor)->authorize($preserveExisting ? 'view' : 'select', $records->get($id));
             });
 
             return $this->isMultiple() ? $numericIds->all() : $numericIds->first();
         }
 
         $identities = collect($values)
-            ->map(fn (mixed $identity): int|string|null => $this->trustedSingleIdentity($identity))
+            ->map(fn (mixed $identity): int|string|null => $this->trustedSingleIdentity($identity, $preserveExisting))
             ->filter(fn (mixed $identity): bool => $identity !== null)
             ->unique()
             ->values()
@@ -329,15 +337,17 @@ class PathCuratorPicker extends Field
         return $this->isMultiple() ? $identities : ($identities[0] ?? null);
     }
 
-    private function trustedSingleIdentity(mixed $identity): int|string|null
+    private function trustedSingleIdentity(mixed $identity, bool $preserveExisting = false): int|string|null
     {
         $identity = is_array($identity)
             ? ($identity['id'] ?? $identity['reference_key'] ?? null)
             : $identity;
         $media = null;
 
-        if (is_int($identity) || (is_string($identity) && ctype_digit($identity))) {
-            $media = app(MediaRecordScope::class)->findOrFail($identity, $this->getUploadPurpose());
+        if (($preservedMediaId = MediaAttachmentFormState::preservedMediaId($identity)) !== null) {
+            $media = app(MediaRecordScope::class)->findInventoryOrFail($preservedMediaId);
+        } elseif (is_int($identity) || (is_string($identity) && ctype_digit($identity))) {
+            $media = app(MediaRecordScope::class)->findInventoryOrFail($identity);
         } elseif (is_string($identity) && preg_match('/^[0-9A-HJKMNP-TV-Z]{26}$/i', $identity)) {
             $media = app(MediaRecordScope::class)->findByReferenceKey($identity, $this->getUploadPurpose());
 
@@ -362,7 +372,7 @@ class PathCuratorPicker extends Field
         if ($media instanceof Media) {
             $actor = auth()->user();
             abort_unless($actor instanceof User, 403);
-            Gate::forUser($actor)->authorize('select', $media);
+            Gate::forUser($actor)->authorize($preserveExisting ? 'view' : 'select', $media);
 
             return (int) $media->getKey();
         }
@@ -373,12 +383,21 @@ class PathCuratorPicker extends Field
     private function dehydrateIdentity(mixed $identity): ?string
     {
         if (is_int($identity) || (is_string($identity) && ctype_digit($identity))) {
-            $media = app(MediaRecordScope::class)->findOrFail($identity, $this->getUploadPurpose());
+            $media = app(MediaRecordScope::class)->findInventoryOrFail($identity);
             $actor = auth()->user();
             abort_unless($actor instanceof User, 403);
-            Gate::forUser($actor)->authorize('select', $media);
+            Gate::forUser($actor)->authorize(
+                app(MediaRecordScope::class)->hasPortableReferenceKey($media) ? 'select' : 'view',
+                $media,
+            );
 
-            return $this->dehydratesReferenceKey ? $media->reference_key : $media->path;
+            if (! $this->dehydratesReferenceKey) {
+                return $media->path;
+            }
+
+            return app(MediaRecordScope::class)->hasPortableReferenceKey($media)
+                ? $media->reference_key
+                : MediaAttachmentFormState::preservedMediaIdentity((int) $media->getKey());
         }
 
         if ($this->dehydratesReferenceKey && filled($identity)) {
@@ -386,6 +405,42 @@ class PathCuratorPicker extends Field
         }
 
         return is_string($identity) && filled($identity) ? $identity : null;
+    }
+
+    private function acceptsNewSelections(mixed $state, mixed $oldState): bool
+    {
+        $oldIds = collect($this->identityValues($oldState))
+            ->filter(fn (mixed $identity): bool => is_int($identity) || (is_string($identity) && ctype_digit($identity)))
+            ->map(fn (int|string $identity): int => (int) $identity);
+        $newIds = collect($this->identityValues($state))
+            ->filter(fn (mixed $identity): bool => is_int($identity) || (is_string($identity) && ctype_digit($identity)))
+            ->map(fn (int|string $identity): int => (int) $identity)
+            ->diff($oldIds)
+            ->unique()
+            ->values();
+        $actor = auth()->user();
+        abort_unless($actor instanceof User, 403);
+
+        foreach ($newIds as $id) {
+            $media = app(MediaRecordScope::class)->findInventoryOrFail($id);
+            Gate::forUser($actor)->authorize('select', $media);
+            Gate::forUser($actor)->authorize('attach', $media);
+            $blockedReason = app(MediaInventoryDiagnostics::class)->selectionBlockedReason($media);
+
+            if ($blockedReason === null) {
+                continue;
+            }
+
+            $this->state($oldState);
+            $this->hydrateSelectedItems($oldState);
+            $this->getLivewire()->addError((string) $this->getStatePath(), $blockedReason);
+
+            return false;
+        }
+
+        $this->getLivewire()->resetErrorBag((string) $this->getStatePath());
+
+        return true;
     }
 
     private function authorizeDetachForState(): void
@@ -397,7 +452,7 @@ class PathCuratorPicker extends Field
         collect($this->identityValues($this->getState()))
             ->filter(fn (mixed $identity): bool => is_int($identity) || (is_string($identity) && ctype_digit($identity)))
             ->each(function (int|string $identity) use ($actor): void {
-                $media = app(MediaRecordScope::class)->findOrFail($identity, $this->getUploadPurpose());
+                $media = app(MediaRecordScope::class)->findInventoryOrFail($identity);
                 Gate::forUser($actor)->authorize('detach', $media);
             });
     }
@@ -413,7 +468,7 @@ class PathCuratorPicker extends Field
 
         if ($ids->isNotEmpty()) {
             $records = app(MediaRecordScope::class)
-                ->query($this->getUploadPurpose())
+                ->inventoryQuery()
                 ->whereKey($ids->all())
                 ->get()
                 ->keyBy(fn (Media $media): int => (int) $media->getKey());

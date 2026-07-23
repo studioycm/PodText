@@ -12,7 +12,6 @@ use App\Models\MediaMutationOperation;
 use App\Models\User;
 use Awcodes\Curator\Config\CurationManager;
 use Awcodes\Curator\Facades\Curator;
-use Filament\Actions\Exceptions\ActionNotResolvableException;
 use Filament\Actions\Testing\TestAction;
 use Filament\Facades\Filament;
 use Filament\Forms\Components\FileUpload;
@@ -107,7 +106,7 @@ function appOwnedMediaFixture(string $filename): UploadedFile
     );
 }
 
-it('shows only trusted image-library rows through the app-owned resource', function (): void {
+it('shows the complete image inventory and exposes repair rows through a filter', function (): void {
     $this->actingAs(User::factory()->admin()->create());
 
     $allowed = appOwnedMediaRecord();
@@ -122,11 +121,18 @@ it('shows only trusted image-library rows through the app-owned resource', funct
         'type' => 'image/gif',
         'ext' => 'gif',
     ]);
+    Storage::disk('public')->put($allowed->path, 'allowed fixture');
+    Storage::disk('local')->put($wrongDisk->path, 'local fixture');
+    Storage::disk('public')->put($wrongType->path, 'gif fixture');
 
-    Livewire::test(ListMedia::class)
+    $component = Livewire::test(ListMedia::class)
         ->assertOk()
-        ->assertCanSeeTableRecords([$allowed])
-        ->assertCanNotSeeTableRecords([$wrongDisk, $wrongType]);
+        ->assertCanSeeTableRecords([$allowed, $wrongDisk, $wrongType]);
+
+    $component
+        ->filterTable('needs_repair')
+        ->assertCanSeeTableRecords([$wrongDisk, $wrongType])
+        ->assertCanNotSeeTableRecords([$allowed]);
 });
 
 it('bounds resource pagination uploads and concurrent transfers', function (): void {
@@ -255,7 +261,7 @@ it('routes rename swap and delete table actions through the app coordinator', fu
     expect(Media::query()->whereKey($record->getKey())->exists())->toBeFalse();
 });
 
-it('fails closed for forged resource records and mixed bulk deletion', function (): void {
+it('keeps file mutations closed for repair rows and mixed bulk deletion', function (): void {
     $this->actingAs(User::factory()->admin()->create());
     $wrongScope = appOwnedMediaRecord([
         'disk' => 'local',
@@ -274,18 +280,12 @@ it('fails closed for forged resource records and mixed bulk deletion', function 
     Storage::disk('public')->put($deletable->path, 'delete fixture');
     Storage::disk('public')->put($referenced->path, 'referenced fixture');
 
-    Livewire::test(ListMedia::class)->assertCanNotSeeTableRecords([$wrongScope]);
+    Livewire::test(ListMedia::class)->assertCanSeeTableRecords([$wrongScope]);
 
-    foreach (['rename', 'delete'] as $action) {
-        expect(fn () => Livewire::test(ListMedia::class)
-            ->callAction(TestAction::make($action)->table($wrongScope)))
-            ->toThrow(ActionNotResolvableException::class);
-    }
-
-    expect(fn () => Livewire::test(ListMedia::class)->callAction(
-        TestAction::make('swap')->table($wrongScope),
-        ['replacement' => appOwnedMediaFixture('valid.png')],
-    ))->toThrow(ActionNotResolvableException::class);
+    Livewire::test(ListMedia::class)
+        ->assertActionHidden(TestAction::make('rename')->table($wrongScope))
+        ->assertActionHidden(TestAction::make('swap')->table($wrongScope))
+        ->assertActionHidden(TestAction::make('delete')->table($wrongScope));
 
     Livewire::test(ListMedia::class)
         ->selectTableRecords([$deletable, $referenced])

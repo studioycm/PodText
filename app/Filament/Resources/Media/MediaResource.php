@@ -57,7 +57,7 @@ class MediaResource extends Resource
 
     public static function getEloquentQuery(): Builder
     {
-        return app(MediaRecordScope::class)->query();
+        return app(MediaRecordScope::class)->inventoryQuery();
     }
 
     public static function getPages(): array

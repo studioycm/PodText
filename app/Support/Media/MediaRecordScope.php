@@ -19,6 +19,20 @@ class MediaRecordScope
     /**
      * @return Builder<Media>
      */
+    public function inventoryQuery(): Builder
+    {
+        /** @var class-string<Media> $model */
+        $model = config('curator.model', Media::class);
+
+        return $model::query();
+    }
+
+    /**
+     * The managed-file scope remains intentionally narrower than inventory.
+     * It protects existing rename, swap, delete and transition operations.
+     *
+     * @return Builder<Media>
+     */
     public function query(?ImageUploadPurpose $purpose = null): Builder
     {
         /** @var class-string<Media> $model */
@@ -65,6 +79,25 @@ class MediaRecordScope
         );
     }
 
+    public function findInventory(int|string $id): ?Media
+    {
+        if (! is_int($id) && (! is_string($id) || ! ctype_digit($id))) {
+            return null;
+        }
+
+        $media = $this->inventoryQuery()->whereKey((int) $id)->first();
+
+        return $media instanceof Media ? $media : null;
+    }
+
+    public function findInventoryOrFail(int|string $id): Media
+    {
+        return $this->findInventory($id) ?? throw (new ModelNotFoundException)->setModel(
+            config('curator.model', Media::class),
+            [$id],
+        );
+    }
+
     public function find(int|string $id, ?ImageUploadPurpose $purpose = null): ?Media
     {
         if (! is_int($id) && (! is_string($id) || ! ctype_digit($id))) {
@@ -86,15 +119,17 @@ class MediaRecordScope
 
     public function findByReferenceKey(string $referenceKey, ?ImageUploadPurpose $purpose = null): ?Media
     {
+        $referenceKey = trim($referenceKey);
+
         if (! preg_match('/^[0-9A-HJKMNP-TV-Z]{26}$/', mb_strtoupper($referenceKey))) {
             return null;
         }
 
-        $media = $this->query($purpose)
-            ->where('reference_key', mb_strtoupper($referenceKey))
+        $media = $this->inventoryQuery()
+            ->whereRaw('LOWER(reference_key) = ?', [mb_strtolower($referenceKey)])
             ->first();
 
-        return $media instanceof Media && $this->allows($media, $purpose) ? $media : null;
+        return $media instanceof Media ? $media : null;
     }
 
     public function findByPath(string $path, ?ImageUploadPurpose $purpose = null): ?Media
@@ -118,6 +153,31 @@ class MediaRecordScope
      */
     public function lockForUpdateByIds(iterable $ids, ?ImageUploadPurpose $purpose = null): Collection
     {
+        return $this->lockByIds($ids, $this->query($purpose));
+    }
+
+    /**
+     * @param  iterable<int, int|string>  $ids
+     * @return Collection<int, Media>
+     */
+    public function lockInventoryForUpdateByIds(iterable $ids): Collection
+    {
+        return $this->lockByIds($ids, $this->inventoryQuery());
+    }
+
+    public function hasPortableReferenceKey(Media $media): bool
+    {
+        return is_string($media->reference_key)
+            && preg_match('/^[0-9A-HJKMNP-TV-Z]{26}$/', mb_strtoupper($media->reference_key)) === 1;
+    }
+
+    /**
+     * @param  iterable<int, int|string>  $ids
+     * @param  Builder<Media>  $query
+     * @return Collection<int, Media>
+     */
+    private function lockByIds(iterable $ids, Builder $query): Collection
+    {
         if (DB::transactionLevel() < 1) {
             throw new \LogicException('Trusted media row locks require an active database transaction.');
         }
@@ -133,7 +193,7 @@ class MediaRecordScope
             return new Collection;
         }
 
-        $records = $this->query($purpose)
+        $records = $query
             ->whereKey($ids->all())
             ->orderBy((new Media)->getQualifiedKeyName())
             ->lockForUpdate()
@@ -170,7 +230,7 @@ class MediaRecordScope
 
         if (
             ($requireReferenceKey || filled($media->reference_key))
-            && (! is_string($media->reference_key) || ! preg_match('/^[0-9A-HJKMNP-TV-Z]{26}$/', $media->reference_key))
+            && ! $this->hasPortableReferenceKey($media)
         ) {
             return false;
         }

@@ -14,7 +14,6 @@ class MediaAttachmentIdentityResolver
 {
     public function __construct(
         private readonly MediaIdentityResolver $mediaIdentityResolver,
-        private readonly MediaRecordScope $mediaRecordScope,
         private readonly LegacyOwnerMediaDiagnostics $diagnostics,
     ) {}
 
@@ -47,20 +46,6 @@ class MediaAttachmentIdentityResolver
                 }
 
                 throw new InvalidArgumentException('The media attachment references a missing media record.');
-            }
-
-            if (! $this->mediaRecordScope->allows($media, $role->purpose())) {
-                throw new UnsafeLegacyOwnerMediaException(
-                    $this->diagnosticFor($owner, $role, $attachment) ?? throw new InvalidArgumentException('The attached media record is unavailable.'),
-                    'The attached media record is unavailable for this attachment role.',
-                );
-            }
-
-            if ($legacyPath !== $media->path) {
-                throw new UnsafeLegacyOwnerMediaException(
-                    $this->diagnosticFor($owner, $role, $attachment) ?? throw new InvalidArgumentException('The media attachment and legacy path disagree.'),
-                    'The media attachment and legacy path disagree.',
-                );
             }
 
             return [

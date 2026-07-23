@@ -19,6 +19,7 @@ use App\Support\Importer\Google\GoogleApiDriveClientFactory;
 use App\Support\Importer\Spotify\SpotifyHttpClientFactory;
 use App\Support\ImportExport\ImportExportQueueTracer;
 use App\Support\Media\CuratorImageUploadPolicy;
+use App\Support\Media\MediaInventoryDiagnostics;
 use App\Support\Media\MediaMutationLease;
 use App\Support\Media\MediaReferenceFinder;
 use App\Support\PublicContent\PublicTranscriptionPolicy;
@@ -66,6 +67,7 @@ class AppServiceProvider extends ServiceProvider
 
         $this->app->scoped(SettingsLifecycleSchema::class);
         $this->app->scoped(PublicFrontCardTemplateResolver::class);
+        $this->app->scoped(MediaInventoryDiagnostics::class);
         $this->app->scoped(MediaReferenceFinder::class);
         $this->app->scoped(MediaMutationLease::class);
 

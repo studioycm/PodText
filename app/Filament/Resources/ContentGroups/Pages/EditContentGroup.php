@@ -18,6 +18,7 @@ class EditContentGroup extends EditRecord
     protected function getHeaderActions(): array
     {
         return [
+            ContentImageActions::contentGroupCover(),
             ContentImageActions::detachUnsafeOwnerImage(MediaAttachmentRole::Cover),
             DeleteAction::make(),
         ];
@@ -44,7 +45,7 @@ class EditContentGroup extends EditRecord
 
     protected function mutateFormDataBeforeFill(array $data): array
     {
-        $data['cover_media_reference_key'] = app(MediaAttachmentFormState::class)->referenceKey(
+        $data['cover_media_reference_key'] = app(MediaAttachmentFormState::class)->pickerIdentity(
             $this->getRecord(),
             MediaAttachmentRole::Cover,
         );

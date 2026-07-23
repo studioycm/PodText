@@ -6,10 +6,13 @@ use App\Enums\UserRole;
 use App\Models\ContentGroup;
 use App\Models\Media;
 use App\Models\User;
+use App\Support\Media\CuratorImageUploadPolicy;
 use App\Support\Media\ImageUploadValidator;
 use App\Support\Media\MediaAttachmentManager;
 use App\Support\Media\MediaRecordScope;
+use App\Support\Media\SvgUploadSanitizer;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
@@ -82,6 +85,14 @@ it('allows dimensionless sanitized SVG only for the header purpose and resolves 
         ->and($scope->findByReferenceKey(strtolower((string) $svg->reference_key), ImageUploadPurpose::HeaderLogo)?->is($svg))->toBeTrue()
         ->and($scope->findByPath($svg->path, ImageUploadPurpose::HeaderLogo)?->is($svg))->toBeTrue()
         ->and($scope->findByPath('../logo.svg', ImageUploadPurpose::HeaderLogo))->toBeNull();
+
+    $lowercase = curatorG1ScopedMedia();
+    $lowercaseKey = mb_strtolower((string) $lowercase->reference_key);
+    DB::table('curator')->where('id', $lowercase->getKey())->update(['reference_key' => $lowercaseKey]);
+    $lowercase->refresh();
+
+    expect($scope->findByReferenceKey(mb_strtoupper($lowercaseKey))?->is($lowercase))->toBeTrue()
+        ->and($scope->allows($lowercase))->toBeTrue();
 });
 
 it('enforces every app media ability for admin or higher and denies record mutations when referenced', function (): void {
@@ -111,6 +122,7 @@ it('enforces every app media ability for admin or higher and denies record mutat
     }
 
     $group = ContentGroup::factory()->create();
+    Storage::disk('public')->put($media->path, 'referenced media fixture');
     app(MediaAttachmentManager::class)->attach($group, $media, MediaAttachmentRole::Cover, $admin);
 
     expect(Gate::forUser($admin)->allows('view', $media))->toBeTrue()
@@ -121,7 +133,7 @@ it('enforces every app media ability for admin or higher and denies record mutat
         ->and(Gate::forUser($admin)->allows('swap', $media))->toBeFalse();
 });
 
-it('streams only trusted scoped files with inline or attachment disposition and hardened headers', function (): void {
+it('streams configured inventory files for admins with inline or attachment disposition and hardened headers', function (): void {
     $encoded = file_get_contents(base_path('tests/Fixtures/media/valid.jpg.base64'));
     expect($encoded)->toBeString();
     $validated = app(ImageUploadValidator::class)->validateBytes(
@@ -148,7 +160,7 @@ it('streams only trusted scoped files with inline or attachment disposition and 
     Storage::disk('public')->put($disallowed->path, 'private bytes');
     $this->actingAs($admin)
         ->get(route('admin.media-files.view', ['media' => $disallowed->getKey()]))
-        ->assertNotFound();
+        ->assertSuccessful();
 
     $view = $this->actingAs($admin)->get(route('admin.media-files.view', ['media' => $media->getKey()]));
     $view->assertSuccessful()
@@ -186,4 +198,77 @@ it('serves allowed header SVG through the same hardened controller without raste
         ->assertSuccessful()
         ->assertHeader('Content-Type', 'image/svg+xml')
         ->assertHeader('X-Content-Type-Options', 'nosniff');
+
+    $unsafe = Media::factory()->create([
+        'directory' => ImageUploadPurpose::HeaderLogo->root(),
+        'name' => 'unsafe-logo',
+        'path' => ImageUploadPurpose::HeaderLogo->root().'/unsafe-logo.svg',
+        'type' => 'image/svg+xml',
+        'ext' => 'svg',
+        'width' => null,
+        'height' => null,
+        'size' => 80,
+    ]);
+    Storage::disk('public')->put($unsafe->path, '<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>');
+
+    $this->actingAs($admin)
+        ->get(route('admin.media-files.view', ['media' => $unsafe->getKey()]))
+        ->assertNotFound();
+    $download = $this->actingAs($admin)
+        ->get(route('admin.media-files.download', ['media' => $unsafe->getKey()]));
+    $download->assertSuccessful();
+    expect($download->headers->get('Content-Disposition'))->toContain('attachment');
+});
+
+it('refuses inline SVG when legacy MIME metadata needs normalization or sanitization would change the bytes', function (): void {
+    $admin = User::factory()->admin()->create();
+    $unsafe = Media::factory()->create([
+        'directory' => 'legacy',
+        'name' => 'parameterized-svg',
+        'path' => 'legacy/parameterized-svg.bin',
+        'type' => 'Image/SVG+XML; charset=UTF-8',
+        'ext' => 'bin',
+        'width' => null,
+        'height' => null,
+        'size' => 160,
+    ]);
+    Storage::disk('public')->put(
+        $unsafe->path,
+        '<svg xmlns="http://www.w3.org/2000/svg"><a><set attributeName="href" to="javascript:alert(1)"/><text>x</text></a></svg>',
+    );
+
+    $this->actingAs($admin)
+        ->get(route('admin.media-files.view', ['media' => $unsafe->getKey()]))
+        ->assertNotFound();
+    $download = $this->actingAs($admin)
+        ->get(route('admin.media-files.download', ['media' => $unsafe->getKey()]));
+
+    $download->assertSuccessful();
+    expect($download->headers->get('Content-Disposition'))->toContain('attachment');
+});
+
+it('renders already sanitized legacy SVG above the new-upload size limit', function (): void {
+    $admin = User::factory()->admin()->create();
+    $contents = app(SvgUploadSanitizer::class)->sanitize(
+        '<svg xmlns="http://www.w3.org/2000/svg"><text>'.
+        str_repeat('a', (CuratorImageUploadPolicy::MAX_KILOBYTES * 1024) + 1).
+        '</text></svg>',
+    );
+    expect(strlen($contents))->toBeGreaterThan(CuratorImageUploadPolicy::MAX_KILOBYTES * 1024);
+    $media = Media::factory()->create([
+        'directory' => ImageUploadPurpose::HeaderLogo->root(),
+        'name' => 'large-safe-logo',
+        'path' => ImageUploadPurpose::HeaderLogo->root().'/large-safe-logo.svg',
+        'type' => 'image/svg+xml',
+        'ext' => 'svg',
+        'width' => null,
+        'height' => null,
+        'size' => strlen($contents),
+    ]);
+    Storage::disk('public')->put($media->path, $contents);
+
+    $this->actingAs($admin)
+        ->get(route('admin.media-files.view', ['media' => $media->getKey()]))
+        ->assertSuccessful()
+        ->assertHeader('Content-Type', 'image/svg+xml');
 });

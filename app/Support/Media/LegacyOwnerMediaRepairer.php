@@ -23,6 +23,7 @@ class LegacyOwnerMediaRepairer
         private readonly MediaRecordScope $scope,
         private readonly MediaMutationFence $fence,
         private readonly LegacyOwnerMediaDiagnostics $diagnostics,
+        private readonly MediaInventoryDiagnostics $inventoryDiagnostics,
     ) {}
 
     public function replace(ContentGroup|ContentItem $owner, MediaAttachmentRole $role, string $referenceKey, string $fingerprint, User $actor): void
@@ -74,11 +75,14 @@ class LegacyOwnerMediaRepairer
             $target = null;
             if ($referenceKey !== null) {
                 $target = $this->scope->findByReferenceKey(mb_strtoupper(trim($referenceKey)), $role->purpose());
-                if (! $target instanceof Media || ! $this->scope->allows($target, $role->purpose())) {
+                if (! $target instanceof Media) {
                     throw new RuntimeException('The requested replacement media is unavailable.');
                 }
                 $target = Media::query()->whereKey($target->getKey())->lockForUpdate()->firstOrFail();
-                if (! hash_equals(mb_strtoupper(trim($referenceKey)), (string) $target->reference_key) || ! $this->scope->allows($target, $role->purpose())) {
+                if (
+                    ! hash_equals(mb_strtoupper(trim($referenceKey)), mb_strtoupper((string) $target->reference_key))
+                    || $this->inventoryDiagnostics->selectionBlockedReason($target) !== null
+                ) {
                     throw new RuntimeException('The requested replacement media changed before repair.');
                 }
                 Gate::forUser($actor)->authorize('select', $target);

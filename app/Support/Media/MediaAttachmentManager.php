@@ -19,6 +19,7 @@ class MediaAttachmentManager
     public function __construct(
         private readonly MediaRecordScope $mediaRecordScope,
         private readonly MediaMutationFence $mutationFence,
+        private readonly MediaInventoryDiagnostics $inventoryDiagnostics,
     ) {}
 
     public function attach(
@@ -86,12 +87,20 @@ class MediaAttachmentManager
                 ->sort()
                 ->values();
             $lockedMedia = $this->mediaRecordScope
-                ->lockForUpdateByIds($mediaIds, $role->purpose())
+                ->lockInventoryForUpdateByIds($mediaIds)
                 ->keyBy(fn (Media $record): int => (int) $record->getKey());
             $this->mutationFence->assertAttachmentAvailable($mediaIds);
             $trustedMedia = $lockedMedia->get($targetMediaId)
                 ?? throw new RuntimeException('The target media record is unavailable.');
             Gate::forUser($actor)->authorize('attach', $trustedMedia);
+
+            if (! $existing instanceof MediaAttachment || (int) $existing->media_id !== $targetMediaId) {
+                $blockedReason = $this->inventoryDiagnostics->freshSelectionBlockedReason($trustedMedia);
+
+                if ($blockedReason !== null) {
+                    throw new InvalidArgumentException($blockedReason);
+                }
+            }
 
             if ($enforceExpectedIdentity) {
                 $currentMediaId = $existing instanceof MediaAttachment ? (int) $existing->media_id : null;
@@ -161,7 +170,7 @@ class MediaAttachmentManager
 
             if ($attachment instanceof MediaAttachment) {
                 $media = $this->mediaRecordScope
-                    ->lockForUpdateByIds([(int) $attachment->media_id], $role->purpose())
+                    ->lockInventoryForUpdateByIds([(int) $attachment->media_id])
                     ->firstOrFail();
                 $this->mutationFence->assertAttachmentAvailable([(int) $media->getKey()]);
                 Gate::forUser($actor)->authorize('detach', $media);

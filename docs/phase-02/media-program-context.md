@@ -7,13 +7,14 @@ not current authority.
 
 ## Controlling approval
 
-- Audit: `LS-20260723-MEDIA-INVENTORY-FIRST-RESET-01`
-- Approved option: `MEDIA-INV-O1-RESET-CLEANUP-P1-MINIMAL-KERNEL`
-- Approved scope: canonical-document reset, exact cleanup of the unfinished
-  Package 1 overbuild, and Package 1 minimal kernel/database conversion only.
-- Active package: `MEDIA-P1-KERNEL-CONVERSION`.
-- Packages 2-5 remain separately gated. Package 2 requires a fresh Simplifier
-  audit after Package 1 changes the baseline.
+- Audit: `LS-20260723-PODTEXT-MEDIA-P2-INVENTORY-PICKER-REPLACE-01`
+- Approved option: `MEDIA-P2-O1-REUSE-PICKER-SAME-PAGE-REPLACE`
+- Approved scope: Package 2 inventory-first gallery/diagnostics, authoritative
+  resolution and D01 delivery, picker All Media, and same-page podcast/episode
+  Add/Replace Image UX only.
+- Active package: `MEDIA-P2-INVENTORY-PICKER-REPLACE` (complete locally;
+  closeout hash pending).
+- Package 1 is complete and hash-stamped. Packages 3-5 remain separately gated.
 - No prompt under `prompts/pre-13-prompts/` is active.
 
 ## Controlling product rule
@@ -58,6 +59,9 @@ Admin inventory consists of:
 
 The picker may start with a logical folder/slot filter, but All Media clears it.
 Selecting an existing image never clones, copies, moves or normalizes it.
+Cancelling a staged Gallery selection changes no owner, row, file or journal.
+The reused picker's explicit Upload command remains an immediate library write;
+staging new uploads until owner save belongs to Package 3.
 
 ## Boundary-specific validation
 
@@ -75,9 +79,10 @@ Selecting an existing image never clones, copies, moves or normalizes it.
 
 ## Package sequence
 
-1. Minimal MediaAsset kernel and database-only Curator conversion.
+1. Minimal MediaAsset kernel and database-only Curator conversion — complete.
 2. Inventory-first gallery, Needs Repair diagnostics, simplified resolution,
-   attachment authority, settings/public fallback and picker All Media.
+   attachment authority, settings/public fallback, picker All Media and
+   same-page Add/Replace Image UX — complete locally.
 3. Gallery/Upload/URL/Storage acquisition; Spotify feeds URL; validation applies
    to new inputs and SVG inline rendering.
 4. Podcast/episode image hover, detail, download, copy, change and association
@@ -87,8 +92,8 @@ Selecting an existing image never clones, copies, moves or normalizes it.
 
 ## Baselines
 
-- Approved implementation baseline: `main` at
-  `b455d5d546c5902edebaade2ad31c34bbfef3d2f`, 13 commits ahead of
+- Package 2 implementation baseline: `main` at
+  `39420d1f21fbe43e193913fc59d6d9efea5ced66`, 15 commits ahead of
   `origin/main`.
 - At Stage 1: 79 modified tracked files and 54 default-status untracked entries
   formed the unfinished overbuilt Package 1 draft. Exact cleanup enumeration
@@ -98,8 +103,9 @@ Selecting an existing image never clones, copies, moves or normalizes it.
 - Production: the latest dated snapshot remains pre-G1 with 403 Curator rows,
   108 matched covers, three SVGs, five rowless managed files, one oversized
   raster and two duplicate-byte pairs.
-- Package 1 implementation and tests do not execute migrations or conversion
-  against the local development or production environment.
+- Package 2 implementation and tests use test databases and fake storage only;
+  they do not execute migrations, conversion or media operations against local
+  development or production.
 
 ## Drift checkpoint
 
@@ -118,7 +124,10 @@ before proceeding.
 - No dedicated security audit or new security architecture.
 - No real local or production DB/storage/cache action.
 - No production action without a separate exact approval.
-- No raster byte reads, normalization, checksum proof, file relocation,
-  quarantine, conversion manifest/digest/schema hash or conversion journal.
-- No filesystem-only import during Package 1.
+- No raster normalization, checksum proof, file relocation, quarantine,
+  conversion manifest/digest/schema hash or new conversion journal.
+- Selecting existing media performs attachment-only database changes; it never
+  copies, moves, renames or normalizes the selected row or file.
+- No Package 3 URL/Storage acquisition, Package 4 owner-tools expansion, or
+  Package 5 Files Discovery/lifecycle work.
 - No branch/worktree change, push, broad reset, stash, checkout or deletion.

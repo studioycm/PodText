@@ -27,10 +27,15 @@ use Filament\Actions\Imports\Models\Import;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 uses(RefreshDatabase::class);
+
+beforeEach(function (): void {
+    Storage::fake('public');
+});
 
 function importRecord(string $importerClass, array $row, ?array $columnMap = null, array $options = [], ?User $user = null): Import
 {
@@ -220,6 +225,8 @@ it('round trips group and item image attachments through portable media referenc
         'name' => $primaryName,
         'path' => MediaAttachmentRole::PrimaryImage->purpose()->root()."/{$primaryName}.jpg",
     ]);
+    Storage::disk('public')->put($cover->path, 'cover-image-bytes');
+    Storage::disk('public')->put($primary->path, 'primary-image-bytes');
     $groupReference = (string) Str::ulid();
     $itemReference = (string) Str::ulid();
 
@@ -278,7 +285,7 @@ it('round trips group and item image attachments through portable media referenc
         ->and($group->cover_path)->toBeNull();
 });
 
-it('rejects unresolved wrong-purpose and disallowed portable media identities', function (): void {
+it('allows cross-folder existing media while rejecting unresolved and nonselectable portable identities', function (): void {
     $admin = User::factory()->admin()->create();
     $wrongName = (string) Str::ulid();
     $wrongPurpose = Media::factory()->create([
@@ -287,8 +294,19 @@ it('rejects unresolved wrong-purpose and disallowed portable media identities', 
         'path' => MediaAttachmentRole::PrimaryImage->purpose()->root()."/{$wrongName}.jpg",
     ]);
     $disallowed = Media::factory()->create(['visibility' => 'private']);
+    Storage::disk('public')->put($wrongPurpose->path, 'image-bytes');
 
-    foreach ([(string) Str::ulid(), $wrongPurpose->reference_key, $disallowed->reference_key] as $referenceKey) {
+    importRecord(ContentGroupImporter::class, [
+        'reference_key' => (string) Str::ulid(),
+        'title' => 'Cross-folder portable group',
+        'cover_media_reference_key' => $wrongPurpose->reference_key,
+    ], options: [], user: $admin);
+
+    $crossFolder = ContentGroup::query()->where('title', 'Cross-folder portable group')->firstOrFail();
+    expect($crossFolder->coverMediaAttachment()->value('media_id'))->toBe($wrongPurpose->getKey())
+        ->and($crossFolder->cover_path)->toBe($wrongPurpose->path);
+
+    foreach ([(string) Str::ulid(), $disallowed->reference_key] as $referenceKey) {
         expect(fn () => importRecord(ContentGroupImporter::class, [
             'reference_key' => (string) Str::ulid(),
             'title' => 'Rejected portable group',
@@ -299,18 +317,19 @@ it('rejects unresolved wrong-purpose and disallowed portable media identities', 
     expect(ContentGroup::query()->where('title', 'Rejected portable group')->exists())->toBeFalse();
 });
 
-it('fails portable exports for null-key or mismatched legacy identity', function (): void {
+it('exports an authoritative attachment despite a stale path mirror and rejects a null-key legacy identity', function (): void {
     $admin = User::factory()->admin()->create();
     $media = Media::factory()->create();
     $group = ContentGroup::factory()->create();
+    Storage::disk('public')->put($media->path, 'authoritative export fixture');
     app(MediaAttachmentManager::class)->attach($group, $media, MediaAttachmentRole::Cover, $admin);
     $group->forceFill(['cover_path' => 'content-groups/covers/mismatch.jpg'])->saveQuietly();
 
-    expect(fn () => exportRecord(
+    expect(exportRecord(
         ContentGroupExporter::class,
         $group->load('coverMediaAttachment.media'),
         ['cover_media_reference_key' => 'cover_media_reference_key'],
-    ))->toThrow(InvalidArgumentException::class, 'disagree');
+    ))->toBe([$media->reference_key]);
 
     $legacy = Media::factory()->create();
     DB::table('curator')->where('id', $legacy->getKey())->update(['reference_key' => null]);
@@ -327,6 +346,7 @@ it('rolls back owner changes when a post-validation media attachment write fails
     $admin = User::factory()->admin()->create();
     $group = ContentGroup::factory()->create(['title' => 'Before race']);
     $media = Media::factory()->create();
+    Storage::disk('public')->put($media->path, 'image-bytes');
     $manager = Mockery::mock(MediaAttachmentManager::class);
     $manager->shouldReceive('attachByReferenceKey')->once()->andThrow(new RuntimeException('simulated media race'));
     app()->instance(MediaAttachmentManager::class, $manager);

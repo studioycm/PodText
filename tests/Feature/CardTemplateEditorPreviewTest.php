@@ -7,6 +7,7 @@ use App\Filament\Pages\EditCardTemplate;
 use App\Models\Author;
 use App\Models\ContentGroup;
 use App\Models\ContentItem;
+use App\Models\Media;
 use App\Models\Transcription;
 use App\Models\User;
 use App\Settings\AdminUxSettings;
@@ -36,6 +37,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
 use Spatie\LaravelSettings\Events\SettingsSaved;
 use Spatie\LaravelSettings\SettingsContainer;
@@ -54,9 +56,29 @@ beforeEach(function (): void {
     Filament::setCurrentPanel(Filament::getPanel('admin'));
     Http::preventStrayRequests();
     Mail::fake();
+    Storage::fake('public');
     fakeSettingsBackupSnapshotQueue();
     $this->actingAs(User::factory()->admin()->create());
 });
+
+function step5bEditorRegisterMedia(string $path): Media
+{
+    $media = Media::factory()->create([
+        'disk' => 'public',
+        'directory' => dirname($path),
+        'visibility' => 'public',
+        'name' => pathinfo($path, PATHINFO_FILENAME),
+        'path' => $path,
+        'type' => 'image/jpeg',
+        'ext' => 'jpg',
+        'width' => 120,
+        'height' => 120,
+        'size' => 12,
+    ]);
+    Storage::disk('public')->put($path, 'preview-image-bytes');
+
+    return $media;
+}
 
 /**
  * @return array<string, mixed>
@@ -1278,10 +1300,15 @@ it('keeps authorized sample selector search label selection and refresh working 
 
 it('shows the same effective image ranking in automatic preload and searched item samples', function (): void {
     $template = step5bEditorTemplate('content_item', 'preview_content_item');
+    $configuredDefaultMedia = step5bEditorRegisterMedia('default-images/editor-ranking.jpg');
     step5bEditorSaveSetting(PublicContentSettings::class, 'card_templates', [$template]);
     step5bEditorSaveSetting(PublicContentSettings::class, 'default_images', [
         ...PublicFrontConfigRegistry::defaults()['default_images'],
-        'content_item' => ['mode' => 'custom', 'path' => 'default-images/editor-ranking.jpg'],
+        'content_item' => [
+            'mode' => 'custom',
+            'path' => $configuredDefaultMedia->path,
+            'media_reference_key' => $configuredDefaultMedia->reference_key,
+        ],
     ]);
 
     $direct = step5bEditorPublicItem('Editor Ranking Direct');
@@ -1291,6 +1318,7 @@ it('shows the same effective image ranking in automatic preload and searched ite
         'title' => 'Editor Ranking Inherited Group',
         'cover_path' => 'content-groups/covers/editor-ranking.jpg',
     ]);
+    step5bEditorRegisterMedia((string) $inheritedGroup->cover_path);
     $inherited = step5bEditorPublicItem('Editor Ranking Inherited', $inheritedGroup);
     $inherited->featuredTranscription->update(['published_at' => now()->subDay()]);
     $configuredDefault = step5bEditorPublicItem('Editor Ranking Configured Default');

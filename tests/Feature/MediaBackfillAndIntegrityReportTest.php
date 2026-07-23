@@ -270,7 +270,7 @@ it('refuses ambiguous disallowed and conflicting attachment backfill candidates'
         ->and($conflictOwner->mediaAttachments()->firstOrFail()->media_id)->toBe($other->getKey());
 });
 
-it('backfills settings reference keys alongside paths and fails closed on identity mismatch', function (): void {
+it('backfills settings reference keys and keeps a valid portable identity authoritative over a stale path mirror', function (): void {
     $media = Media::factory()->create([
         'directory' => ImageUploadPurpose::DefaultImage->root(),
         'name' => 'settings-default',
@@ -296,7 +296,6 @@ it('backfills settings reference keys alongside paths and fails closed on identi
         ->and($stored['global']['path'])->toBe($media->path);
 
     $this->artisan('media:backfill-settings-reference-keys', ['--apply' => true, '--digest' => mediaTransitionDigest()])
-        ->expectsOutputToContain('already reconciled')
         ->assertSuccessful();
 
     $other = Media::factory()->create([
@@ -309,8 +308,11 @@ it('backfills settings reference keys alongside paths and fails closed on identi
     saveCuratorG1Setting('default_images', $defaults);
 
     $this->artisan('media:backfill-settings-reference-keys', ['--apply' => true, '--digest' => mediaTransitionDigest()])
-        ->expectsOutputToContain('disagree')
-        ->assertFailed();
+        ->assertSuccessful();
+
+    $stored = json_decode(DB::table('settings')->where('group', PublicContentSettings::group())->where('name', 'default_images')->value('payload'), true);
+    expect($stored['global']['media_reference_key'])->toBe($media->reference_key)
+        ->and($stored['global']['path'])->toBe($media->path);
 });
 
 it('reports a settings-owned null-key media row as transition pending without invoking the unsafe projector', function (): void {
@@ -477,8 +479,10 @@ it('exports portable settings identities and restores their local paths without 
     $mismatched['payload']['default_images']['global']['path'] = $other->path;
     $mismatched['checksum'] = PublicSettingsPackage::payloadChecksum($mismatched['payload']);
 
-    expect(fn () => PublicSettingsPackage::fromArray($mismatched)->payloadForApplication())
-        ->toThrow(InvalidArgumentException::class, 'disagree');
+    $corrected = PublicSettingsPackage::fromArray($mismatched)->payloadForApplication();
+
+    expect(data_get($corrected, 'default_images.global.media_reference_key'))->toBe($media->reference_key)
+        ->and(data_get($corrected, 'default_images.global.path'))->toBe($media->path);
 });
 
 it('refuses ambiguous nested about image identity without modifying settings', function (): void {

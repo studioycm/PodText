@@ -7,6 +7,7 @@ use App\Models\Media;
 use App\Models\User;
 use App\Support\Media\CuratorImageUploadPolicy;
 use App\Support\Media\MediaFilesystemMutationCoordinator;
+use App\Support\Media\MediaInventoryDiagnostics;
 use App\Support\Media\MediaRecordScope;
 use Filament\Actions\Action;
 use Filament\Actions\BulkAction;
@@ -16,8 +17,10 @@ use Filament\Forms\Components\FileUpload;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\ImageColumn;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Number;
@@ -32,10 +35,9 @@ class MediaTable
             ->defaultPaginationPageOption(25)
             ->paginationPageOptions([25])
             ->columns([
-                ImageColumn::make('path')
+                ImageColumn::make('preview_url')
                     ->label(__('admin.fields.preview'))
-                    ->disk('public')
-                    ->visibility('public')
+                    ->state(fn (Media $record): ?string => app(MediaInventoryDiagnostics::class)->previewUrl($record))
                     ->imageHeight(64)
                     ->imageWidth(64),
                 TextColumn::make('title')
@@ -48,6 +50,18 @@ class MediaTable
                 TextColumn::make('size')
                     ->label(__('admin.fields.file_size'))
                     ->formatStateUsing(fn (?int $state): string => Number::fileSize($state ?? 0)),
+                TextColumn::make('repair_status')
+                    ->label(__('admin.media_library.repair_status'))
+                    ->state(fn (Media $record): string => app(MediaInventoryDiagnostics::class)->needsRepair($record)
+                        ? __('admin.media_library.needs_repair')
+                        : __('admin.media_library.ready'))
+                    ->badge()
+                    ->color(fn (Media $record): string => app(MediaInventoryDiagnostics::class)->needsRepair($record) ? 'warning' : 'success')
+                    ->tooltip(fn (Media $record): ?string => app(MediaInventoryDiagnostics::class)->needsRepair($record)
+                        ? collect(app(MediaInventoryDiagnostics::class)->reasons($record))
+                            ->map(fn (string $reason): string => __("admin.media_library.repair_{$reason}"))
+                            ->implode(' · ')
+                        : null),
                 TextColumn::make('created_at')
                     ->label(__('admin.fields.created_at'))
                     ->dateTime('d/m/Y H:i', 'Asia/Jerusalem')
@@ -59,6 +73,10 @@ class MediaTable
                     ->options(fn (): array => collect(app(CuratorImageUploadPolicy::class)->globalMimeTypes())
                         ->mapWithKeys(fn (string $mimeType): array => [$mimeType => $mimeType])
                         ->all()),
+                Filter::make('needs_repair')
+                    ->label(__('admin.media_library.needs_repair'))
+                    ->query(fn (Builder $query): Builder => app(MediaInventoryDiagnostics::class)
+                        ->applyNeedsRepairFilter($query)),
             ])
             ->recordActions([
                 Action::make('view')
@@ -73,7 +91,7 @@ class MediaTable
                     ->action(function (Media $record) {
                         $user = auth()->user();
                         abort_unless($user instanceof User, 403);
-                        $trusted = app(MediaRecordScope::class)->findOrFail((int) $record->getKey());
+                        $trusted = app(MediaRecordScope::class)->findInventoryOrFail((int) $record->getKey());
                         Gate::forUser($user)->authorize('download', $trusted);
 
                         return redirect()->to(route('admin.media-files.download', ['media' => $trusted->getKey()]));
@@ -82,6 +100,7 @@ class MediaTable
                     ->label(__('admin.media_library.rename'))
                     ->icon(Heroicon::OutlinedPencilSquare)
                     ->color('gray')
+                    ->authorize(fn (Media $record): bool => Gate::allows('rename', $record))
                     ->requiresConfirmation()
                     ->action(function (Media $record): void {
                         $user = auth()->user();
@@ -92,6 +111,7 @@ class MediaTable
                     ->label(__('admin.media_library.swap'))
                     ->icon(Heroicon::OutlinedArrowsRightLeft)
                     ->color('warning')
+                    ->authorize(fn (Media $record): bool => Gate::allows('swap', $record))
                     ->schema([
                         FileUpload::make('replacement')
                             ->label(__('admin.media_library.replacement'))
@@ -112,6 +132,7 @@ class MediaTable
                     ->label(__('admin.actions.delete'))
                     ->icon(Heroicon::OutlinedTrash)
                     ->color('danger')
+                    ->authorize(fn (Media $record): bool => Gate::allows('delete', $record))
                     ->requiresConfirmation()
                     ->action(function (Media $record): void {
                         $user = auth()->user();

@@ -18,7 +18,7 @@ class CuratorMediaPolicy
 
     public function view(User $user, Media $media): bool
     {
-        return $this->canUse($user, $media);
+        return $this->isAdmin($user);
     }
 
     public function create(User $user): bool
@@ -33,7 +33,7 @@ class CuratorMediaPolicy
 
     public function update(User $user, Media $media): bool
     {
-        return $this->canUse($user, $media);
+        return $this->isAdmin($user);
     }
 
     public function delete(User $user, Media $media): Response
@@ -60,7 +60,7 @@ class CuratorMediaPolicy
 
     public function download(User $user, Media $media): bool
     {
-        return $this->canUse($user, $media);
+        return $this->isAdmin($user);
     }
 
     public function rename(User $user, Media $media): bool
@@ -75,17 +75,18 @@ class CuratorMediaPolicy
 
     public function select(User $user, Media $media): bool
     {
-        return $this->canUse($user, $media);
+        return $this->isAdmin($user)
+            && app(MediaRecordScope::class)->hasPortableReferenceKey($media);
     }
 
     public function attach(User $user, Media $media): bool
     {
-        return $this->canUse($user, $media);
+        return $this->select($user, $media);
     }
 
     public function detach(User $user, Media $media): bool
     {
-        return $this->canUse($user, $media);
+        return $this->isAdmin($user);
     }
 
     /**

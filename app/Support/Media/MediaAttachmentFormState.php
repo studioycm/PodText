@@ -12,19 +12,53 @@ use Illuminate\Validation\ValidationException;
 
 class MediaAttachmentFormState
 {
+    private const PRESERVED_MEDIA_ID_PREFIX = 'attached-media-id:';
+
     public function __construct(
         private readonly MediaAttachmentIdentityResolver $identityResolver,
         private readonly MediaRecordScope $mediaRecordScope,
         private readonly MediaAttachmentManager $attachmentManager,
+        private readonly MediaInventoryDiagnostics $inventoryDiagnostics,
     ) {}
 
     public function referenceKey(ContentGroup|ContentItem $owner, MediaAttachmentRole $role): ?string
     {
         try {
             return $this->identityResolver->referenceKey($owner, $role);
-        } catch (UnsafeLegacyOwnerMediaException) {
+        } catch (UnsafeLegacyOwnerMediaException|UnresolvableMediaIdentityException) {
             return null;
         }
+    }
+
+    public function pickerIdentity(ContentGroup|ContentItem $owner, MediaAttachmentRole $role): int|string|null
+    {
+        try {
+            $identity = $this->identityResolver->resolve($owner, $role);
+        } catch (UnsafeLegacyOwnerMediaException|UnresolvableMediaIdentityException) {
+            return null;
+        }
+
+        if ($identity['has_attachment'] && $identity['media'] instanceof Media) {
+            return (int) $identity['media']->getKey();
+        }
+
+        return $identity['media']?->reference_key;
+    }
+
+    public static function preservedMediaIdentity(int $mediaId): string
+    {
+        return self::PRESERVED_MEDIA_ID_PREFIX.$mediaId;
+    }
+
+    public static function preservedMediaId(mixed $identity): ?int
+    {
+        if (! is_string($identity) || ! str_starts_with($identity, self::PRESERVED_MEDIA_ID_PREFIX)) {
+            return null;
+        }
+
+        $id = substr($identity, strlen(self::PRESERVED_MEDIA_ID_PREFIX));
+
+        return ctype_digit($id) && (int) $id > 0 ? (int) $id : null;
     }
 
     /**
@@ -40,6 +74,18 @@ class MediaAttachmentFormState
         $referenceKey = $data[$formField] ?? null;
         unset($data[$formField]);
 
+        if (($preservedMediaId = self::preservedMediaId($referenceKey)) !== null) {
+            if ($owner !== null && (int) ($this->attachment($owner, $role)?->media_id ?? 0) === $preservedMediaId) {
+                $data[$this->legacyColumn($owner, $role)] = $owner->getAttribute($this->legacyColumn($owner, $role));
+
+                return [$data, self::preservedMediaIdentity($preservedMediaId), null];
+            }
+
+            throw ValidationException::withMessages([
+                $formField => __('admin.validation.media_reference_key'),
+            ]);
+        }
+
         $referenceKey = is_string($referenceKey) && filled($referenceKey)
             ? mb_strtoupper(trim($referenceKey))
             : null;
@@ -50,7 +96,7 @@ class MediaAttachmentFormState
         if ($owner !== null) {
             try {
                 $this->identityResolver->resolve($owner, $role);
-            } catch (UnsafeLegacyOwnerMediaException) {
+            } catch (UnsafeLegacyOwnerMediaException|UnresolvableMediaIdentityException) {
                 // An unrelated form save must leave the unsafe legacy identity intact.
             }
         }
@@ -65,13 +111,7 @@ class MediaAttachmentFormState
             return [$data, null, $owner !== null ? $this->diagnostic($owner, $role)?->fingerprint : null];
         }
 
-        $media = $this->mediaRecordScope->findByReferenceKey($referenceKey, $role->purpose());
-
-        if (! $media instanceof Media) {
-            throw ValidationException::withMessages([
-                $formField => __('admin.validation.media_reference_key'),
-            ]);
-        }
+        $media = $this->selectableReplacement($referenceKey, $formField, $owner, $role);
 
         $fingerprint = $owner !== null ? $this->diagnostic($owner, $role)?->fingerprint : null;
         // The repairer, not the ordinary record save, changes an unsafe path.
@@ -86,8 +126,26 @@ class MediaAttachmentFormState
         MediaAttachmentRole $role,
         User $actor,
         ?string $unsafeFingerprint = null,
+        ?string $validationField = null,
     ): void {
+        if (($preservedMediaId = self::preservedMediaId($referenceKey)) !== null) {
+            if ((int) ($this->attachment($owner, $role)?->media_id ?? 0) === $preservedMediaId) {
+                return;
+            }
+
+            throw ValidationException::withMessages([
+                $validationField ?? ($role === MediaAttachmentRole::Cover
+                    ? 'cover_media_reference_key'
+                    : 'primary_image_media_reference_key') => __('admin.validation.media_reference_key'),
+            ]);
+        }
+
         if (filled($referenceKey)) {
+            $field = $validationField ?? ($role === MediaAttachmentRole::Cover
+                ? 'cover_media_reference_key'
+                : 'primary_image_media_reference_key');
+            $this->selectableReplacement($referenceKey, $field, $owner, $role);
+
             if ($unsafeFingerprint !== null) {
                 app(LegacyOwnerMediaRepairer::class)->replace($owner, $role, $referenceKey, $unsafeFingerprint, $actor);
 
@@ -96,15 +154,19 @@ class MediaAttachmentFormState
             try {
                 $this->identityResolver->resolve($owner, $role);
             } catch (UnsafeLegacyOwnerMediaException) {
-                $field = $role === MediaAttachmentRole::Cover
-                    ? 'cover_media_reference_key'
-                    : 'primary_image_media_reference_key';
-
                 throw ValidationException::withMessages([
                     $field => __('admin.validation.media_reference_key'),
                 ]);
+            } catch (UnresolvableMediaIdentityException) {
+                // A selected replacement resolves a rowless legacy owner identity.
             }
-            $this->attachmentManager->attachByReferenceKey($owner, $referenceKey, $role, $actor);
+            try {
+                $this->attachmentManager->attachByReferenceKey($owner, $referenceKey, $role, $actor);
+            } catch (\InvalidArgumentException $exception) {
+                throw ValidationException::withMessages([
+                    $field => $exception->getMessage(),
+                ]);
+            }
 
             return;
         }
@@ -124,6 +186,8 @@ class MediaAttachmentFormState
             $this->identityResolver->resolve($owner, $role);
         } catch (UnsafeLegacyOwnerMediaException $exception) {
             return $exception->diagnostic;
+        } catch (UnresolvableMediaIdentityException) {
+            return null;
         }
 
         return null;
@@ -141,6 +205,43 @@ class MediaAttachmentFormState
             : $owner->primaryImageMediaAttachment();
 
         return $relation->with('media')->first();
+    }
+
+    private function selectableReplacement(
+        string $referenceKey,
+        string $formField,
+        ContentGroup|ContentItem|null $owner,
+        MediaAttachmentRole $role,
+    ): Media {
+        $media = $this->mediaRecordScope->findByReferenceKey($referenceKey, $role->purpose());
+
+        if (! $media instanceof Media) {
+            throw ValidationException::withMessages([
+                $formField => __('admin.validation.media_reference_key'),
+            ]);
+        }
+
+        if ($owner !== null) {
+            try {
+                $current = $this->identityResolver->resolve($owner, $role)['media'];
+
+                if ($current instanceof Media && $current->is($media)) {
+                    return $media;
+                }
+            } catch (UnsafeLegacyOwnerMediaException|\InvalidArgumentException) {
+                // A reviewed repair may replace an unsafe current identity.
+            }
+        }
+
+        $blockedReason = $this->inventoryDiagnostics->selectionBlockedReason($media);
+
+        if ($blockedReason !== null) {
+            throw ValidationException::withMessages([
+                $formField => $blockedReason,
+            ]);
+        }
+
+        return $media;
     }
 
     private function legacyColumn(ContentGroup|ContentItem $owner, MediaAttachmentRole $role): string

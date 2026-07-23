@@ -71,19 +71,13 @@ it('locks the server-owned purpose against livewire tampering', function (): voi
         ->toThrow(CannotUpdateLockedPropertyException::class);
 });
 
-it('bounds browse and load-more payloads and excludes every wrong record boundary', function (): void {
+it('bounds browse payloads while treating the purpose root as an initial logical folder', function (): void {
     $this->actingAs(User::factory()->admin()->create());
-    $allowed = Media::factory()->count(30)->create();
-    $root = ImageUploadPurpose::ContentGroupCover->root();
-
-    Media::factory()->create(['disk' => 'local']);
-    Media::factory()->create(['visibility' => 'private']);
-    Media::factory()->create(['directory' => 'header', 'path' => 'header/'.Str::ulid().'.jpg']);
-    Media::factory()->create(['path' => "{$root}/nested/".Str::ulid().'.jpg']);
-    Media::factory()->create(['path' => "{$root}/..%2Foutside.jpg"]);
-    Media::factory()->create(['path' => $root.'\\outside.jpg']);
-    Media::factory()->create(['type' => 'image/png', 'ext' => 'jpg']);
-    Media::factory()->create(['type' => 'image/gif', 'ext' => 'gif', 'path' => "{$root}/".Str::ulid().'.gif']);
+    $contextMedia = Media::factory()->count(30)->create();
+    $otherFolder = Media::factory()->create([
+        'directory' => 'header',
+        'path' => 'header/'.Str::ulid().'.jpg',
+    ]);
 
     $component = pickerPanel();
     $files = $component->get('files');
@@ -99,17 +93,33 @@ it('bounds browse and load-more payloads and excludes every wrong record boundar
             'width',
             'height',
             'preview_url',
+            'needs_repair',
+            'repair_reasons',
+            'selectable',
+            'selection_blocked_reason',
+            'review_url',
         ])
-        ->and(array_column($files, 'id'))->each->toBeIn($allowed->modelKeys());
+        ->and(array_column($files, 'id'))->each->toBeIn($contextMedia->modelKeys())
+        ->and(array_column($files, 'id'))->not->toContain($otherFolder->getKey());
 
     $component->call('loadMoreFiles');
 
     expect($component->get('files'))->toHaveCount(5)
-        ->and(array_column($component->get('files'), 'id'))->each->toBeIn($allowed->modelKeys());
+        ->and(array_column($component->get('files'), 'id'))->each->toBeIn($contextMedia->modelKeys());
 
     $component->call('loadPreviousFiles');
 
     expect($component->get('files'))->toHaveCount(25);
+
+    $component->call('showAllMedia');
+
+    expect($component->get('allMedia'))->toBeTrue()
+        ->and(array_column($component->get('files'), 'id'))->toContain($otherFolder->getKey());
+
+    $component->call('showContextMedia');
+
+    expect($component->get('allMedia'))->toBeFalse()
+        ->and(array_column($component->get('files'), 'id'))->not->toContain($otherFolder->getKey());
 });
 
 it('bounds picker uploads and concurrent transfers', function (): void {
@@ -138,25 +148,29 @@ it('caps picker search at fifty trusted projected records', function (): void {
         ->and(array_column($component->get('files'), 'pretty_name'))->each->toBe('Searchable cover');
 });
 
-it('reloads selection IDs through the purpose scope and emits only the trusted ID', function (): void {
+it('selects an existing image from another logical folder without mutating it', function (): void {
     $this->actingAs(User::factory()->admin()->create());
-    $allowed = Media::factory()->create();
     $wrongPurpose = Media::factory()->create([
         'directory' => 'header',
         'path' => 'header/'.Str::ulid().'.jpg',
     ]);
-
-    expect(fn () => pickerPanel()->call('toggleSelection', $wrongPurpose->getKey()))
-        ->toThrow(ModelNotFoundException::class);
+    Storage::disk('public')->put($wrongPurpose->path, 'existing media fixture');
+    $originalIdentity = $wrongPurpose->only([
+        'disk', 'directory', 'visibility', 'name', 'path', 'width', 'height', 'size', 'type', 'ext',
+    ]);
 
     pickerPanel()
-        ->call('toggleSelection', $allowed->getKey())
-        ->assertSet('selectedIds', [$allowed->getKey()])
+        ->call('showAllMedia')
+        ->call('toggleSelection', $wrongPurpose->getKey())
+        ->assertSet('selectedIds', [$wrongPurpose->getKey()])
         ->callAction(TestAction::make('insertMedia'))
         ->assertDispatched('insert-media', fn (string $event, array $parameters): bool => $parameters === [[
-            'mediaId' => $allowed->getKey(),
-            'mediaIds' => [$allowed->getKey()],
+            'mediaId' => $wrongPurpose->getKey(),
+            'mediaIds' => [$wrongPurpose->getKey()],
         ]]);
+
+    expect($wrongPurpose->refresh()->only(array_keys($originalIdentity)))->toBe($originalIdentity);
+    Storage::disk('public')->assertExists($wrongPurpose->path);
 });
 
 it('whitelists picker metadata edits and ignores forged storage identity', function (): void {
@@ -182,24 +196,31 @@ it('whitelists picker metadata edits and ignores forged storage identity', funct
         ->and($media->path)->toBe($originalPath);
 });
 
-it('revalidates forged selected arrays and every record action argument through the purpose scope', function (): void {
+it('keeps nonselectable inventory visible while fencing selection and file mutations', function (): void {
     $this->actingAs(User::factory()->admin()->create());
     $allowed = Media::factory()->create();
-    $wrongPurpose = Media::factory()->create([
-        'directory' => ImageUploadPurpose::HeaderLogo->root(),
-        'path' => ImageUploadPurpose::HeaderLogo->root().'/'.Str::ulid().'.jpg',
+    $blocked = Media::factory()->create([
+        'visibility' => 'private',
     ]);
+    Storage::disk('public')->put($allowed->path, 'allowed fixture');
+    Storage::disk('public')->put($blocked->path, 'private fixture');
 
-    expect(fn () => pickerPanel()
-        ->set('selectedIds', [$wrongPurpose->getKey()])
-        ->callAction(TestAction::make('insertMedia')))
-        ->toThrow(ModelNotFoundException::class);
+    pickerPanel()
+        ->call('toggleSelection', $blocked->getKey())
+        ->assertStatus(422);
 
-    foreach (['editItem', 'downloadItem', 'destroyItem', 'renameItem'] as $action) {
+    pickerPanel()->callAction(
+        TestAction::make('editItem'),
+        data: ['title' => 'Repair review'],
+        arguments: ['id' => $blocked->getKey()],
+    );
+
+    expect($blocked->refresh()->title)->toBe('Repair review');
+
+    foreach (['destroyItem', 'renameItem'] as $action) {
         expect(fn () => pickerPanel()->callAction(
             TestAction::make($action),
-            data: $action === 'editItem' ? ['title' => 'Forged'] : [],
-            arguments: ['id' => $wrongPurpose->getKey()],
+            arguments: ['id' => $blocked->getKey()],
         ))->toThrow(ModelNotFoundException::class);
     }
 
@@ -207,22 +228,25 @@ it('revalidates forged selected arrays and every record action argument through 
     $viewAction = $viewComponent->instance()
         ->viewItemAction()
         ->livewire($viewComponent->instance())
-        ->arguments(['id' => $wrongPurpose->getKey()]);
+        ->arguments(['id' => $blocked->getKey()]);
 
-    expect(fn () => $viewAction->getUrl())->toThrow(ModelNotFoundException::class);
+    expect($viewAction->getUrl())->toBe(route('admin.media-files.view', ['media' => $blocked->getKey()]));
 
     expect(fn () => pickerPanel()->callAction(
         TestAction::make('swapItem'),
         data: ['replacement' => pickerMediaFixture('valid.png')],
-        arguments: ['id' => $wrongPurpose->getKey()],
+        arguments: ['id' => $blocked->getKey()],
     ))->toThrow(ModelNotFoundException::class);
 
-    expect(fn () => pickerPanel()
-        ->set('selectedIds', [$allowed->getKey(), $wrongPurpose->getKey()])
+    expect(fn () => pickerPanel([
+        'selectedIds' => [$allowed->getKey(), $blocked->getKey()],
+        'isMultiple' => true,
+        'maxItems' => 2,
+    ])
         ->callAction(TestAction::make('destroySelected')))
         ->toThrow(ModelNotFoundException::class);
 
-    expect(Media::query()->whereKey([$allowed->getKey(), $wrongPurpose->getKey()])->count())->toBe(2);
+    expect(Media::query()->whereKey([$allowed->getKey(), $blocked->getKey()])->count())->toBe(2);
 });
 
 it('uploads renames swaps and deletes through real picker actions', function (): void {

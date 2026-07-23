@@ -4,17 +4,22 @@ use App\Filament\Pages\DisplaySettings;
 use App\Models\Author;
 use App\Models\ContentGroup;
 use App\Models\ContentItem;
+use App\Models\Media;
 use App\Models\Transcription;
 use App\Models\User;
 use App\Settings\PublicContentSettings;
+use App\Support\Media\PublicMediaDelivery;
 use App\Support\PublicContent\PublicTranscriptionAggregates;
 use App\Support\PublicContent\PublicTranscriptionPolicy;
 use App\Support\PublicContent\PublicTranscriptionSelector;
+use App\Support\PublicFront\PublicDefaultImageResolver;
 use App\Support\PublicFront\PublicFrontConfigRegistry;
 use App\Support\PublicFront\PublicFrontConfigValidator;
 use App\Support\PublicFront\PublicFrontRenderContext;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Livewire\Livewire;
 use Spatie\LaravelSettings\SettingsContainer;
 
@@ -22,6 +27,8 @@ uses(RefreshDatabase::class);
 
 beforeEach(function (): void {
     fakeSettingsBackupSnapshotQueue();
+    Storage::fake('local');
+    Storage::fake('public');
 });
 
 function clearStep10V1aPublicFrontSettingsCache(): void
@@ -31,6 +38,8 @@ function clearStep10V1aPublicFrontSettingsCache(): void
     app()->forgetInstance(PublicTranscriptionPolicy::class);
     app()->forgetInstance(PublicTranscriptionSelector::class);
     app()->forgetInstance(PublicTranscriptionAggregates::class);
+    app()->forgetInstance(PublicDefaultImageResolver::class);
+    app()->forgetInstance(PublicMediaDelivery::class);
     app(SettingsContainer::class)->clearCache();
 }
 
@@ -52,6 +61,60 @@ function saveStep10V1aPublicFrontSettings(array $settings): void
     }
 
     clearStep10V1aPublicFrontSettingsCache();
+}
+
+function registerStep10V1aMediaPath(?string $path): ?Media
+{
+    if (! is_string($path) || blank($path)) {
+        return null;
+    }
+
+    $existing = Media::query()->where('path', $path)->first();
+
+    if ($existing instanceof Media) {
+        return $existing;
+    }
+
+    $extension = mb_strtolower(pathinfo($path, PATHINFO_EXTENSION));
+    $type = match ($extension) {
+        'png' => 'image/png',
+        'webp' => 'image/webp',
+        'svg' => 'image/svg+xml',
+        default => 'image/jpeg',
+    };
+    Storage::disk('public')->put($path, 'renderable media fixture');
+
+    return Media::factory()->create([
+        'reference_key' => (string) Str::ulid(),
+        'disk' => 'public',
+        'directory' => dirname($path),
+        'name' => pathinfo($path, PATHINFO_FILENAME),
+        'path' => $path,
+        'visibility' => 'public',
+        'type' => $type,
+        'ext' => $extension,
+        'size' => 24,
+        'width' => $type === 'image/svg+xml' ? null : 100,
+        'height' => $type === 'image/svg+xml' ? null : 100,
+    ]);
+}
+
+function saveStep10V1aRenderableSettings(array $settings): void
+{
+    foreach ($settings['default_images'] ?? [] as &$config) {
+        if (! is_array($config) || ($config['mode'] ?? null) !== 'custom') {
+            continue;
+        }
+
+        $media = registerStep10V1aMediaPath($config['path'] ?? null);
+
+        if ($media instanceof Media) {
+            $config['media_reference_key'] = $media->reference_key;
+        }
+    }
+    unset($config);
+
+    saveStep10V1aPublicFrontSettings($settings);
 }
 
 /**
@@ -90,6 +153,8 @@ function createStep10V1aPublicItem(
         ]);
 
     $item->update(['featured_transcription_id' => $transcription->id]);
+    registerStep10V1aMediaPath($group->cover_path);
+    registerStep10V1aMediaPath($item->image_path);
 
     return [
         'group' => $group->refresh(),
@@ -216,6 +281,98 @@ it('saves no-image mode through the public settings page', function (): void {
     expect(app(PublicContentSettings::class)->default_images['content_item']['mode'])->toBe('none');
 });
 
+it('rejects forged nonselectable default media while preserving the trusted current selection', function (): void {
+    $admin = User::factory()->admin()->create();
+    $current = registerStep10V1aMediaPath('default-images/current.jpg');
+    $private = Media::factory()->create([
+        'reference_key' => (string) Str::ulid(),
+        'disk' => 'public',
+        'directory' => 'default-images',
+        'name' => 'forged-private',
+        'path' => 'default-images/forged-private.jpg',
+        'visibility' => 'private',
+        'type' => 'image/jpeg',
+        'ext' => 'jpg',
+        'size' => 24,
+        'width' => 100,
+        'height' => 100,
+    ]);
+    Storage::disk('public')->put($private->path, 'private media fixture');
+    expect($current)->toBeInstanceOf(Media::class);
+
+    saveStep10V1aPublicFrontSettings([
+        'default_images' => step10V1aDefaultImages([
+            'content_item' => [
+                'mode' => 'custom',
+                'path' => $current->path,
+                'media_reference_key' => $current->reference_key,
+            ],
+        ]),
+    ]);
+
+    $component = Livewire::actingAs($admin)
+        ->test(DisplaySettings::class)
+        ->assertSet('data.default_images.content_item.media_reference_key', $current->getKey())
+        ->set('data.default_images.content_item.media_reference_key', $private->reference_key)
+        ->assertHasErrors(['data.default_images.content_item.media_reference_key'])
+        ->assertSet('data.default_images.content_item.media_reference_key', $current->getKey());
+
+    $component->call('save')->assertHasNoFormErrors();
+    clearStep10V1aPublicFrontSettingsCache();
+
+    expect(app(PublicContentSettings::class)->default_images['content_item'])
+        ->toMatchArray([
+            'mode' => 'custom',
+            'path' => $current->path,
+            'media_reference_key' => $current->reference_key,
+        ]);
+});
+
+it('preserves an already stored nonselectable default media identity on unrelated saves', function (): void {
+    $admin = User::factory()->admin()->create();
+    $private = Media::factory()->create([
+        'reference_key' => (string) Str::ulid(),
+        'disk' => 'public',
+        'directory' => 'default-images',
+        'name' => 'existing-private',
+        'path' => 'default-images/existing-private.jpg',
+        'visibility' => 'private',
+        'type' => 'image/jpeg',
+        'ext' => 'jpg',
+        'size' => 24,
+        'width' => 100,
+        'height' => 100,
+    ]);
+    Storage::disk('public')->put($private->path, 'private media fixture');
+    saveStep10V1aPublicFrontSettings([
+        'default_images' => step10V1aDefaultImages([
+            'content_item' => [
+                'mode' => 'custom',
+                'path' => $private->path,
+                'media_reference_key' => $private->reference_key,
+            ],
+        ]),
+    ]);
+
+    Livewire::actingAs($admin)
+        ->test(DisplaySettings::class)
+        ->assertSet('data.default_images.content_item.media_reference_key', $private->getKey())
+        ->set('data.default_images.content_group.mode', 'none')
+        ->call('save')
+        ->assertHasNoFormErrors();
+
+    clearStep10V1aPublicFrontSettingsCache();
+    $settings = app(PublicContentSettings::class)->default_images;
+
+    expect($settings['content_item'])
+        ->toMatchArray([
+            'mode' => 'custom',
+            'path' => $private->path,
+            'media_reference_key' => $private->reference_key,
+        ])
+        ->and($settings['content_group']['mode'])->toBe('none');
+});
+
 it('preserves nested settings values while adding and removing media reference keys', function (): void {
     saveStep10V1aPublicFrontSettings([
         'menu_config' => [
@@ -314,7 +471,7 @@ it('preserves nested settings values while adding and removing media reference k
 
 it('renders content item custom inherit and none fallbacks on cards and item pages', function (): void {
     $custom = createStep10V1aPublicItem('V1A Item Custom');
-    saveStep10V1aPublicFrontSettings([
+    saveStep10V1aRenderableSettings([
         'default_images' => step10V1aDefaultImages([
             'content_item' => ['mode' => 'custom', 'path' => 'default-images/item-custom.jpg'],
         ]),
@@ -331,7 +488,7 @@ it('renders content item custom inherit and none fallbacks on cards and item pag
         ->assertSee('data-item-page-image-source="content_item_default"', false);
 
     $global = createStep10V1aPublicItem('V1A Item Global');
-    saveStep10V1aPublicFrontSettings([
+    saveStep10V1aRenderableSettings([
         'default_images' => step10V1aDefaultImages([
             'global' => ['mode' => 'custom', 'path' => 'default-images/global.jpg'],
             'content_item' => ['mode' => 'inherit', 'path' => null],
@@ -350,7 +507,7 @@ it('renders content item custom inherit and none fallbacks on cards and item pag
     $none = createStep10V1aPublicItem('V1A Item None', [
         'cover_path' => 'content-groups/covers/should-not-render.jpg',
     ]);
-    saveStep10V1aPublicFrontSettings([
+    saveStep10V1aRenderableSettings([
         'default_images' => step10V1aDefaultImages([
             'global' => ['mode' => 'custom', 'path' => 'default-images/global-hidden.jpg'],
             'content_item' => ['mode' => 'none', 'path' => null],
@@ -386,7 +543,7 @@ it('keeps local item images external thumbnails and podcast covers ahead of conf
         'cover_path' => 'content-groups/covers/preferred-cover.jpg',
     ]);
 
-    saveStep10V1aPublicFrontSettings([
+    saveStep10V1aRenderableSettings([
         'default_images' => step10V1aDefaultImages([
             'content_item' => ['mode' => 'custom', 'path' => 'default-images/item-ignored.jpg'],
         ]),
@@ -427,7 +584,7 @@ it('keeps local item images external thumbnails and podcast covers ahead of conf
 
 it('renders content group custom inherit and none fallbacks on cards and detail pages', function (): void {
     $custom = createStep10V1aPublicItem('V1A Group Custom');
-    saveStep10V1aPublicFrontSettings([
+    saveStep10V1aRenderableSettings([
         'default_images' => step10V1aDefaultImages([
             'content_group' => ['mode' => 'custom', 'path' => 'default-images/group-custom.jpg'],
         ]),
@@ -444,7 +601,7 @@ it('renders content group custom inherit and none fallbacks on cards and detail 
         ->assertSee('data-content-group-image-source="content_group_default"', false);
 
     $global = createStep10V1aPublicItem('V1A Group Global');
-    saveStep10V1aPublicFrontSettings([
+    saveStep10V1aRenderableSettings([
         'default_images' => step10V1aDefaultImages([
             'global' => ['mode' => 'custom', 'path' => 'default-images/group-global.jpg'],
             'content_group' => ['mode' => 'inherit', 'path' => null],
@@ -461,7 +618,7 @@ it('renders content group custom inherit and none fallbacks on cards and detail 
         ->assertSee('data-content-group-image-source="global_default"', false);
 
     $none = createStep10V1aPublicItem('V1A Group None');
-    saveStep10V1aPublicFrontSettings([
+    saveStep10V1aRenderableSettings([
         'default_images' => step10V1aDefaultImages([
             'global' => ['mode' => 'custom', 'path' => 'default-images/group-hidden.jpg'],
             'content_group' => ['mode' => 'none', 'path' => null],
@@ -482,7 +639,7 @@ it('renders content group custom inherit and none fallbacks on cards and detail 
 
 it('renders contributor custom inherit and none fallbacks on cards and detail pages', function (): void {
     $custom = createStep10V1aPublicItem('V1A Contributor Custom');
-    saveStep10V1aPublicFrontSettings([
+    saveStep10V1aRenderableSettings([
         'card_templates' => [
             step10V1aContributorImageTemplate(),
         ],
@@ -501,7 +658,7 @@ it('renders contributor custom inherit and none fallbacks on cards and detail pa
         ->assertSee('data-contributor-image-source="contributor_default"', false);
 
     $global = createStep10V1aPublicItem('V1A Contributor Global');
-    saveStep10V1aPublicFrontSettings([
+    saveStep10V1aRenderableSettings([
         'card_templates' => [
             step10V1aContributorImageTemplate(),
         ],

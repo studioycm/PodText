@@ -50,6 +50,7 @@ class EditEpisodeWorkspace extends EditRecord
     protected function getHeaderActions(): array
     {
         return [
+            ContentImageActions::contentItemImage(),
             ContentImageActions::detachUnsafeOwnerImage(MediaAttachmentRole::PrimaryImage),
             ContentImageActions::downloadExternalImage(),
             ContentImageActions::downloadExternalImage(overwrite: true),
@@ -184,7 +185,7 @@ class EditEpisodeWorkspace extends EditRecord
 
     protected function mutateFormDataBeforeFill(array $data): array
     {
-        $data['primary_image_media_reference_key'] = app(MediaAttachmentFormState::class)->referenceKey(
+        $data['primary_image_media_reference_key'] = app(MediaAttachmentFormState::class)->pickerIdentity(
             $this->getRecord(),
             MediaAttachmentRole::PrimaryImage,
         );

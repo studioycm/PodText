@@ -49,7 +49,7 @@
         </ul>
 
         <div @class(['mt-4' => $itemsCount > 0, 'flex items-center gap-3'])>
-            @if (($itemsCount === 0 || $isMultiple) && (! $maxItems || $itemsCount < $maxItems))
+            @if ((! $maxItems || $itemsCount < $maxItems) || (! $isMultiple && $itemsCount === 1))
                 {{ $getAction('launchPanel') }}
             @endif
 

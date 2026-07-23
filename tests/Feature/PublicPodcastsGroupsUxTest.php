@@ -10,12 +10,14 @@ use App\Models\Category;
 use App\Models\ContentGroup;
 use App\Models\ContentItem;
 use App\Models\Episode;
+use App\Models\Media;
 use App\Models\Podcast;
 use App\Settings\PublicContentSettings;
 use App\Support\PublicFront\PublicFrontConfigValidator;
 use App\Support\PublicFront\PublicFrontRenderContext;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
 use Spatie\LaravelSettings\SettingsContainer;
 
@@ -201,6 +203,12 @@ it('filters podcasts by visible category toggles including descendants and group
 });
 
 it('renders cover fallback categories counts and configured public labels', function (): void {
+    Storage::fake('public');
+    Storage::disk('public')->put('content-groups/covers/covered-show.jpg', 'podcast cover fixture');
+    Media::factory()->create([
+        'path' => 'content-groups/covers/covered-show.jpg',
+    ]);
+
     saveStep8PublicFrontConfig([
         'podcasts_page' => [
             'title' => 'Shows',

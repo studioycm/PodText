@@ -7,6 +7,7 @@ use App\Enums\LegacyOwnerMediaDiagnosticCode;
 use App\Enums\MediaAttachmentRole;
 use App\Models\Media;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
 
 class MediaIdentityResolver
@@ -30,17 +31,13 @@ class MediaIdentityResolver
         $referenceKey = filled($referenceKey) ? mb_strtoupper(trim((string) $referenceKey)) : null;
         $legacyPath = filled($legacyPath) ? trim((string) $legacyPath) : null;
 
-        if ($referenceKey !== null) {
+        if ($referenceKey !== null && preg_match('/^[0-9A-HJKMNP-TV-Z]{26}$/', $referenceKey) === 1) {
             $media = array_key_exists($referenceKey, $this->primedReferenceKeys[$purpose->value] ?? [])
                 ? $this->primedReferenceKeys[$purpose->value][$referenceKey]
                 : $this->scope->findByReferenceKey($referenceKey, $purpose);
 
-            if (! $media instanceof Media || ! $this->scope->allows($media, $purpose)) {
-                throw new InvalidArgumentException('The media reference key is unavailable for this purpose.');
-            }
-
-            if ($legacyPath !== null && $legacyPath !== $media->path) {
-                throw new InvalidArgumentException('The media reference key and legacy path disagree.');
+            if (! $media instanceof Media) {
+                throw new UnresolvableMediaIdentityException('The media reference key is unavailable for this purpose.');
             }
 
             return $media;
@@ -115,7 +112,7 @@ class MediaIdentityResolver
         }
 
         $matches = Media::query()
-            ->whereIn('reference_key', $keys->all())
+            ->whereIn(DB::raw('LOWER(reference_key)'), $keys->map(fn (string $key): string => mb_strtolower($key))->all())
             ->get()
             ->keyBy(fn (Media $media): string => mb_strtoupper((string) $media->reference_key));
 
@@ -126,10 +123,14 @@ class MediaIdentityResolver
 
     public function validatedLegacyPath(string $legacyPath, ImageUploadPurpose $purpose): string
     {
-        $path = $this->policy->normalizePath($legacyPath);
+        try {
+            $path = $this->policy->normalizePath($legacyPath);
+        } catch (InvalidArgumentException $exception) {
+            throw new UnresolvableMediaIdentityException('The legacy media path is invalid.', previous: $exception);
+        }
 
         if ($this->policy->purposeForPath($path) !== $purpose) {
-            throw new InvalidArgumentException('The legacy path is incompatible with this purpose.');
+            throw new UnresolvableMediaIdentityException('The legacy path is incompatible with this purpose.');
         }
 
         $extension = mb_strtolower(pathinfo($path, PATHINFO_EXTENSION));
@@ -139,7 +140,7 @@ class MediaIdentityResolver
             ->all();
 
         if (! in_array($extension, $allowedExtensions, true)) {
-            throw new InvalidArgumentException('The legacy path extension is incompatible with this purpose.');
+            throw new UnresolvableMediaIdentityException('The legacy path extension is incompatible with this purpose.');
         }
 
         return $path;
@@ -150,7 +151,7 @@ class MediaIdentityResolver
         try {
             $path = $this->policy->normalizePath($path);
         } catch (InvalidArgumentException $exception) {
-            throw new InvalidArgumentException('The legacy media path is invalid.', previous: $exception);
+            throw new UnresolvableMediaIdentityException('The legacy media path is invalid.', previous: $exception);
         }
 
         $matches = $this->primedLegacyPaths[$purpose->value][$path]
@@ -170,16 +171,6 @@ class MediaIdentityResolver
 
         /** @var Media|null $media */
         $media = $matches->first();
-
-        if ($media instanceof Media && ! $this->scope->allows($media, $purpose)) {
-            throw new UnsafeLegacyOwnerMediaException(new LegacyOwnerMediaDiagnostic(
-                LegacyOwnerMediaDiagnosticCode::DisallowedLegacyPath,
-                'unknown',
-                0,
-                $purpose === ImageUploadPurpose::ContentGroupCover ? MediaAttachmentRole::Cover : MediaAttachmentRole::PrimaryImage,
-                hash('sha256', "legacy-path\0{$path}\0{$media->getKey()}"),
-            ), 'The legacy media path belongs to a disallowed media row.');
-        }
 
         return $media;
     }

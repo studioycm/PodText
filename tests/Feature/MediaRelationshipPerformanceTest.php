@@ -10,7 +10,6 @@ use App\Models\User;
 use App\Support\Media\LegacyOwnerMediaDiagnosticProjector;
 use App\Support\Media\MediaAttachmentIdentityResolver;
 use App\Support\Media\MediaFilesystemMutationCoordinator;
-use App\Support\Media\UnsafeLegacyOwnerMediaException;
 use App\Support\PublicFront\About\PublicAboutPageRenderer;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -87,7 +86,7 @@ it('keeps owner attachment resolution queries bounded for collections of one ten
     expect($queries)->toHaveCount(6);
 })->with([1, 10, 50]);
 
-it('keeps unsafe owner diagnostics database-only after the table eager loads', function (int $ownerCount): void {
+it('keeps unique legacy owner resolution database-only after the table eager loads', function (int $ownerCount): void {
     $groupIds = [];
     $itemIds = [];
     for ($index = 0; $index < $ownerCount; $index++) {
@@ -116,12 +115,12 @@ it('keeps unsafe owner diagnostics database-only after the table eager loads', f
     $resolver = app(MediaAttachmentIdentityResolver::class);
     Storage::shouldReceive('disk')->never();
     foreach ($groups as $group) {
-        expect($projector->hasUnsafe($group, MediaAttachmentRole::Cover))->toBeTrue();
-        expect(fn () => $resolver->resolve($group, MediaAttachmentRole::Cover))->toThrow(UnsafeLegacyOwnerMediaException::class);
+        expect($projector->hasUnsafe($group, MediaAttachmentRole::Cover))->toBeFalse()
+            ->and($resolver->resolve($group, MediaAttachmentRole::Cover)['media'])->toBeInstanceOf(Media::class);
     }
     foreach ($items as $item) {
-        expect($projector->hasUnsafe($item, MediaAttachmentRole::PrimaryImage))->toBeTrue();
-        expect(fn () => $resolver->resolve($item, MediaAttachmentRole::PrimaryImage))->toThrow(UnsafeLegacyOwnerMediaException::class);
+        expect($projector->hasUnsafe($item, MediaAttachmentRole::PrimaryImage))->toBeFalse()
+            ->and($resolver->resolve($item, MediaAttachmentRole::PrimaryImage)['media'])->toBeInstanceOf(Media::class);
     }
     expect($queries)->toHaveCount(0);
 })->with([1, 10, 50]);

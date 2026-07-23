@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\ContentItems\Pages;
 
+use App\Filament\Actions\ContentImageActions;
 use App\Filament\Resources\ContentItems\ContentItemResource;
 use Filament\Actions\DeleteAction;
 use Filament\Resources\Pages\EditRecord;
@@ -14,6 +15,7 @@ class EditContentItem extends EditRecord
     protected function getHeaderActions(): array
     {
         return [
+            ContentImageActions::contentItemImage(),
             DeleteAction::make(),
         ];
     }
