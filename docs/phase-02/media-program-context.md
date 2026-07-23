@@ -12,8 +12,8 @@ not current authority.
 - Approved scope: Package 2 inventory-first gallery/diagnostics, authoritative
   resolution and D01 delivery, picker All Media, and same-page podcast/episode
   Add/Replace Image UX only.
-- Active package: `MEDIA-P2-INVENTORY-PICKER-REPLACE` (complete locally;
-  closeout hash pending).
+- Active package: `MEDIA-P2-INVENTORY-PICKER-REPLACE` (complete locally and
+  hash-stamped as `2a6de67816b9a7c8e53bcd29795a5b306a36dbaf`).
 - Package 1 is complete and hash-stamped. Packages 3-5 remain separately gated.
 - No prompt under `prompts/pre-13-prompts/` is active.
 

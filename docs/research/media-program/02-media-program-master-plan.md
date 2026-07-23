@@ -47,7 +47,8 @@ This package removes strict existing-row eligibility from Resource/picker and
 public resolution while retaining delivery/access/SVG-inline boundaries.
 It also reuses the Gallery/Upload picker for always-visible, same-page
 podcast/episode Add/Replace Image actions. Package 2 is complete locally;
-closeout hash pending.
+its implementation is hash-stamped as
+`2a6de67816b9a7c8e53bcd29795a5b306a36dbaf`.
 
 ## Package 3 — four-source acquisition
 
