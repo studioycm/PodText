@@ -2,11 +2,11 @@
 
 ## Authority
 
-- Audit: `LS-20260723-PODTEXT-MEDIA-P2-INVENTORY-PICKER-REPLACE-01`
-- Approved option: `MEDIA-P2-O1-REUSE-PICKER-SAME-PAGE-REPLACE`
+- Audit: `LS-20260723-PODTEXT-MEDIA-P3-ACQUISITION-PICKER-01`
+- Approved option: `MEDIA-P3-O1-IMMEDIATE-SHARED-ADMISSION`
 - Approval date: 2026-07-23
-- Scope: Package 2 inventory, diagnostics, D01, picker All Media and same-page
-  podcast/episode Add/Replace Image UX only.
+- Scope: Package 3 four-source picker, immediate shared admission, new-input
+  policy/settings and Spotify URL integration only.
 
 This registry supersedes the 2026-07-22 trusted-canonical/hybrid-root program.
 Historical committed handoffs remain evidence of what existed; they do not
@@ -65,6 +65,16 @@ mutation.
 | `MI-R038` | No dedicated security-audit/review phase is part of this program. | Plans and handoffs. |
 | `MI-R039` | No local-development or production action is implied by implementation. | Command log and handoff. |
 | `MI-R040` | No dependency changes, worktree/branch changes or push occur. | lockfile/status checks. |
+| `MI-R041` | Gallery is mutation-free selection; successful Upload, URL and Storage acquisitions become permanent library items immediately. Cancelling the picker/outer owner action cancels only the pending attachment. | Package 3 picker/cancel tests. |
+| `MI-R042` | Every new admission creates the Curator row, immutable MediaAsset and Curator provider binding together in one database transaction without rerunning legacy conversion. | Package 3 admission rollback/model tests. |
+| `MI-R043` | Upload, URL and Storage converge on one app-owned admission boundary after source-specific byte acquisition; owner attachment remains in `MediaAttachmentManager`. | Package 3 architecture/source sweep and integration tests. |
+| `MI-R044` | Raster admission preserves source bytes. Positive MIME/extension, structural, size and dimension rejection remains; successful SVG sanitation is allowed for every image purpose. | Package 3 validator fixtures. |
+| `MI-R045` | Original filename metadata is preserved and a bounded Admin UX setting chooses app-generated or cleaned-original collision-safe destination naming. | Package 3 settings/naming tests. |
+| `MI-R046` | Admin UX owns bounded new-input size/dimension, upload batch, browse limit, search limit and acquisition filename strategy settings. Allowlists, URL protections, parallel upload and selection safety caps remain code/config boundaries. | Package 3 settings/page tests. |
+| `MI-R047` | Picker URL acquisition is synchronous; existing external record/import acquisition remains queued after commit and returns through persisted Media/attachment state. All paths reuse the same admission boundary. | Package 3 HTTP/queue/Livewire tests. |
+| `MI-R048` | Storage accepts only bounded candidates from configured disks/roots through opaque server-side identity. It reuses an existing row, registers a safe public raster in place, or copies when required without mutating the source. | Package 3 Storage tests. |
+| `MI-R049` | Spotify is a URL producer for podcast create/edit, episode create/edit/workspace and direct-import paths. Network acquisition remains outside importer database transactions. | Package 3 form/import/queue tests. |
+| `MI-R050` | Package 3 adds no relational schema or dependency and does not implement Package 4 owner-tool expansion or Package 5 discovery/lifecycle behavior. | migration/lockfile/source/diff sweep. |
 
 ## Rejected requirements
 
@@ -79,8 +89,8 @@ manifest/digest/schema-hash authorization.
 
 ## Package boundary
 
-Package 1 is complete and hash-stamped. This approval ends after Package 2,
-which implements the inventory-first gallery, visible Needs Repair diagnostics,
-D01 boundaries, authoritative attachment resolution, picker All Media and the
-same-page Add/Replace Image flow. Packages 3-5, dependency changes, live data
-actions, production actions and push remain separately gated.
+Packages 1 and 2 are complete and hash-stamped. This approval ends after
+Package 3, which extends the existing picker with immediate Upload/URL/Storage
+admission and Spotify URL integration while preserving inventory-first Gallery
+selection. Packages 4-5, dependency changes, live data actions, production
+actions and push remain separately gated.

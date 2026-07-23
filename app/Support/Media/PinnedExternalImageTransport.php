@@ -41,8 +41,8 @@ class PinnedExternalImageTransport
                 ],
                 'progress' => function (int $downloadTotal, int $downloadedBytes): void {
                     if (
-                        $downloadTotal > CuratorImageUploadPolicy::MAX_KILOBYTES * 1024
-                        || $downloadedBytes > CuratorImageUploadPolicy::MAX_KILOBYTES * 1024
+                        $downloadTotal > $this->policy->maxKilobytes() * 1024
+                        || $downloadedBytes > $this->policy->maxKilobytes() * 1024
                     ) {
                         throw new RuntimeException('The external image exceeds the response-size limit.');
                     }

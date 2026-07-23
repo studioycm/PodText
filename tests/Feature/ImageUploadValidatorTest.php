@@ -17,15 +17,18 @@ function curatorG1Fixture(string $name): string
         : $contents;
 }
 
-it('accepts and normalizes each allowed raster format', function (string $fixture, string $filename, string $mime, string $extension): void {
-    $validated = app(ImageUploadValidator::class)->validateBytes(
-        curatorG1Fixture($fixture),
+it('accepts each allowed raster format without changing its bytes', function (string $fixture, string $filename, string $mime, string $extension): void {
+    $source = curatorG1Fixture($fixture);
+    $validated = app(ImageUploadValidator::class)->validateAdmissionBytes(
+        $source,
         $filename,
         ImageUploadPurpose::ContentGroupCover,
     );
 
     expect($validated->mimeType)->toBe($mime)
         ->and($validated->extension)->toBe($extension)
+        ->and($validated->contents)->toBe($source)
+        ->and($validated->displayFilename)->toBe($filename)
         ->and($validated->width)->toBe(2)
         ->and($validated->height)->toBe(2)
         ->and($validated->sha256)->toBe(hash('sha256', $validated->contents));
@@ -35,28 +38,22 @@ it('accepts and normalizes each allowed raster format', function (string $fixtur
     'webp' => ['valid.webp.base64', 'photo.webp', 'image/webp', 'webp'],
 ]);
 
-it('accepts clean svg only for the header purpose', function (): void {
+it('accepts sanitized svg for every image purpose', function (ImageUploadPurpose $purpose): void {
     $contents = curatorG1Fixture('clean.svg');
-    $validated = app(ImageUploadValidator::class)->validateBytes(
+    $validated = app(ImageUploadValidator::class)->validateAdmissionBytes(
         $contents,
-        'logo.svg',
-        ImageUploadPurpose::HeaderLogo,
+        'cover.svg',
+        $purpose,
     );
 
     expect($validated->mimeType)->toBe('image/svg+xml')
         ->and($validated->extension)->toBe('svg')
         ->and($validated->isSvg())->toBeTrue()
         ->and($validated->contents)->toContain('<svg');
-
-    expect(fn () => app(ImageUploadValidator::class)->validateBytes(
-        $contents,
-        'cover.svg',
-        ImageUploadPurpose::ContentGroupCover,
-    ))->toThrow(InvalidArgumentException::class);
-});
+})->with(ImageUploadPurpose::cases());
 
 it('rejects every excluded client file family', function (string $filename, string $contents): void {
-    expect(fn () => app(ImageUploadValidator::class)->validateBytes(
+    expect(fn () => app(ImageUploadValidator::class)->validateAdmissionBytes(
         $contents,
         $filename,
         ImageUploadPurpose::HeaderLogo,
@@ -91,12 +88,12 @@ it('rejects every excluded client file family', function (string $filename, stri
 it('rejects extension mime mismatches and renamed executables', function (): void {
     $validator = app(ImageUploadValidator::class);
 
-    expect(fn () => $validator->validateBytes(
+    expect(fn () => $validator->validateAdmissionBytes(
         curatorG1Fixture('valid.png.base64'),
         'photo.jpg',
         ImageUploadPurpose::ContentGroupCover,
     ))->toThrow(InvalidArgumentException::class)
-        ->and(fn () => $validator->validateBytes(
+        ->and(fn () => $validator->validateAdmissionBytes(
             '<?php echo "owned"; ?>',
             'photo.jpg',
             ImageUploadPurpose::ContentGroupCover,
@@ -106,7 +103,7 @@ it('rejects extension mime mismatches and renamed executables', function (): voi
 it('rejects raster polyglots and trailing executable data', function (): void {
     $polyglot = curatorG1Fixture('valid.jpg.base64').'<?php echo "owned"; ?>';
 
-    expect(fn () => app(ImageUploadValidator::class)->validateBytes(
+    expect(fn () => app(ImageUploadValidator::class)->validateAdmissionBytes(
         $polyglot,
         'photo.jpg',
         ImageUploadPurpose::ContentGroupCover,
@@ -114,7 +111,7 @@ it('rejects raster polyglots and trailing executable data', function (): void {
 });
 
 it('rejects malicious svg content', function (string $contents): void {
-    expect(fn () => app(ImageUploadValidator::class)->validateBytes(
+    expect(fn () => app(ImageUploadValidator::class)->validateAdmissionBytes(
         $contents,
         'logo.svg',
         ImageUploadPurpose::HeaderLogo,
@@ -135,7 +132,7 @@ it('rejects malicious svg content', function (string $contents): void {
 it('rejects oversized bytes and excessive dimensions', function (): void {
     $validator = app(ImageUploadValidator::class);
 
-    expect(fn () => $validator->validateBytes(
+    expect(fn () => $validator->validateAdmissionBytes(
         str_repeat('x', (2048 * 1024) + 1),
         'large.jpg',
         ImageUploadPurpose::ContentGroupCover,
@@ -148,7 +145,7 @@ it('rejects oversized bytes and excessive dimensions', function (): void {
     imagedestroy($image);
 
     expect($contents)->toBeString()
-        ->and(fn () => $validator->validateBytes(
+        ->and(fn () => $validator->validateAdmissionBytes(
             $contents,
             'wide.png',
             ImageUploadPurpose::ContentGroupCover,
@@ -164,7 +161,7 @@ it('rejects oversized bytes and excessive dimensions', function (): void {
         .$pngChunk('IHDR', pack('NNCCCCC', 3001, 3001, 8, 2, 0, 0, 0))
         .$pngChunk('IEND', '');
 
-    expect(fn () => $validator->validateBytes(
+    expect(fn () => $validator->validateAdmissionBytes(
         $oversizedHeaderOnly,
         'header-only.png',
         ImageUploadPurpose::ContentGroupCover,

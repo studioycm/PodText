@@ -6,12 +6,14 @@ use App\Enums\UserRole;
 use App\Filament\Forms\Components\PublicationStatusSelect;
 use App\Filament\Forms\Components\SlugInput;
 use App\Filament\Forms\Components\TrustedHtmlCodeEditor;
+use App\Filament\Forms\MediaPickerField;
 use App\Filament\Resources\ContentGroups\RelationManagers\ContentItemsRelationManager;
 use App\Filament\Resources\Support\RelationshipOptionForms;
 use App\Models\ContentGroup;
 use App\Models\ContentItem;
 use App\Rules\ApprovedEmbedUrl;
 use App\Support\Media\ContentItemMediaRules;
+use App\Support\Media\ImageFileNamer;
 use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\KeyValue;
 use Filament\Forms\Components\MarkdownEditor;
@@ -36,6 +38,7 @@ class ContentItemForm
                 Section::make(__('admin.sections.identity'))
                     ->description(__('admin.descriptions.content_item_identity'))
                     ->schema([
+                        EpisodeWorkspaceForm::spotifyEpisodeInput(),
                         TextInput::make('reference_key')
                             ->label(__('admin.fields.reference_key'))
                             ->helperText(__('admin.helpers.reference_key'))
@@ -179,6 +182,10 @@ class ContentItemForm
                 Section::make(__('admin.sections.media_metadata'))
                     ->description(__('admin.descriptions.media_metadata'))
                     ->schema([
+                        MediaPickerField::make('primary_image_media_reference_key', ImageFileNamer::CONTENT_ITEM_IMAGE)
+                            ->label(__('admin.fields.content_item_image_path'))
+                            ->helperText(__('admin.helpers.content_item_image_path'))
+                            ->columnSpanFull(),
                         TextInput::make('embed_provider')
                             ->label(__('admin.fields.embed_provider'))
                             ->helperText(__('admin.helpers.embed_provider'))

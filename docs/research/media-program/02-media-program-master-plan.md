@@ -3,12 +3,12 @@
 ## Controlling route
 
 Package 1 closed under audit `LS-20260723-MEDIA-INVENTORY-FIRST-RESET-01`.
-Package 2 is implemented locally under audit
-`LS-20260723-PODTEXT-MEDIA-P2-INVENTORY-PICKER-REPLACE-01`, approved option
-`MEDIA-P2-O1-REUSE-PICKER-SAME-PAGE-REPLACE`.
-
-Only Package 2 is authorized in the current run. Packages 3-5 remain route
-forecasts and require fresh Simplifier approval.
+Package 2 is implemented and hash-stamped under audit
+`LS-20260723-PODTEXT-MEDIA-P2-INVENTORY-PICKER-REPLACE-01`.
+Package 3 Stage 2 is authorized under audit
+`LS-20260723-PODTEXT-MEDIA-P3-ACQUISITION-PICKER-01`, approved option
+`MEDIA-P3-O1-IMMEDIATE-SHARED-ADMISSION`. Packages 4-5 remain route forecasts
+and require fresh Simplifier approval.
 
 ## Package 1 — minimal kernel and database conversion
 
@@ -56,6 +56,25 @@ Outcome: Gallery, Upload, URL and Storage share one new-input admission path;
 Spotify supplies URLs. MIME/extension/limits apply to new input, SVG sanitation
 is reusable, and raster normalization/checksum is optional rather than
 mandatory.
+
+Package 3 preserves immediate library writes: Upload, URL and Storage are
+permanent when acquisition succeeds, while Gallery remains mutation-free
+selection. One common boundary validates and admits source bytes, then creates
+the Curator row, MediaAsset and provider binding atomically. Owner attachment
+continues through `MediaAttachmentManager`.
+
+Tasks:
+
+1. Reconcile the five controlling Package 3 documents before PHP.
+2. Test-first correct byte-preserving validation, add bounded settings/naming,
+   and build atomic shared admission.
+3. Test-first extend the current picker with URL and opaque configured Storage,
+   then route queued external/Spotify paths through the same boundary.
+4. Close with the Package 3 requirements sweep, ordered gates, local
+   implementation commit and immediate hash stamp.
+
+Package 3 may add one Spatie settings migration. It adds no relational schema,
+provider, dependency, filesystem scanning or physical lifecycle feature.
 
 ## Package 4 — owner image UX
 

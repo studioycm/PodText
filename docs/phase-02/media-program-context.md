@@ -7,14 +7,13 @@ not current authority.
 
 ## Controlling approval
 
-- Audit: `LS-20260723-PODTEXT-MEDIA-P2-INVENTORY-PICKER-REPLACE-01`
-- Approved option: `MEDIA-P2-O1-REUSE-PICKER-SAME-PAGE-REPLACE`
-- Approved scope: Package 2 inventory-first gallery/diagnostics, authoritative
-  resolution and D01 delivery, picker All Media, and same-page podcast/episode
-  Add/Replace Image UX only.
-- Active package: `MEDIA-P2-INVENTORY-PICKER-REPLACE` (complete locally and
-  hash-stamped as `2a6de67816b9a7c8e53bcd29795a5b306a36dbaf`).
-- Package 1 is complete and hash-stamped. Packages 3-5 remain separately gated.
+- Audit: `LS-20260723-PODTEXT-MEDIA-P3-ACQUISITION-PICKER-01`
+- Approved option: `MEDIA-P3-O1-IMMEDIATE-SHARED-ADMISSION`
+- Approved scope: Package 3 Gallery/Upload/URL/Storage picker acquisition,
+  shared admission, new-input validation/settings and Spotify URL integration.
+- Active package: `MEDIA-P3-ACQUISITION-PICKER` (Stage 2 in progress).
+- Packages 1 and 2 are complete and hash-stamped. Packages 4-5 remain
+  separately gated.
 - No prompt under `prompts/pre-13-prompts/` is active.
 
 ## Controlling product rule
@@ -60,8 +59,10 @@ Admin inventory consists of:
 The picker may start with a logical folder/slot filter, but All Media clears it.
 Selecting an existing image never clones, copies, moves or normalizes it.
 Cancelling a staged Gallery selection changes no owner, row, file or journal.
-The reused picker's explicit Upload command remains an immediate library write;
-staging new uploads until owner save belongs to Package 3.
+The reused picker's explicit Upload command is an immediate library write.
+Package 3 deliberately extends that permanence to URL and Storage: a successful
+acquisition remains in the library if the picker or outer owner form is
+cancelled. Gallery selection remains pending and mutation-free until owner save.
 
 ## Boundary-specific validation
 
@@ -73,8 +74,12 @@ staging new uploads until owner save belongs to Package 3.
 - Audience visibility governs delivery, never admin inventory visibility.
 - Unsanitized SVG cannot render inline.
 - URL/Spotify acquisition retains SSRF, redirect and DNS controls.
+- New acquisition creates its Curator row, MediaAsset and provider binding in
+  one transaction after source bytes are ready.
+- Raster admission preserves bytes; sanitized SVG is the only allowed source
+  transformation.
 - Mutation journals govern actual move, rename, replace, trash, restore and
-  purge only.
+  purge only, not new acquisition.
 - Actively referenced media cannot be deleted.
 
 ## Package sequence
@@ -84,7 +89,7 @@ staging new uploads until owner save belongs to Package 3.
    attachment authority, settings/public fallback, picker All Media and
    same-page Add/Replace Image UX — complete locally.
 3. Gallery/Upload/URL/Storage acquisition; Spotify feeds URL; validation applies
-   to new inputs and SVG inline rendering.
+   to new inputs and SVG inline rendering — approved and in progress.
 4. Podcast/episode image hover, detail, download, copy, change and association
    repair/default UX.
 5. Files Discovery and physical lifecycle; journals apply only to real file
@@ -128,6 +133,6 @@ before proceeding.
   conversion manifest/digest/schema hash or new conversion journal.
 - Selecting existing media performs attachment-only database changes; it never
   copies, moves, renames or normalizes the selected row or file.
-- No Package 3 URL/Storage acquisition, Package 4 owner-tools expansion, or
-  Package 5 Files Discovery/lifecycle work.
+- No Package 4 owner-tools expansion or Package 5 Files Discovery/lifecycle
+  work.
 - No branch/worktree change, push, broad reset, stash, checkout or deletion.

@@ -8,7 +8,9 @@ use App\Filament\Resources\Media\Pages\ListMedia;
 use App\Filament\Resources\Media\Schemas\MediaForm;
 use App\Models\ContentGroup;
 use App\Models\Media;
+use App\Models\MediaAsset;
 use App\Models\MediaMutationOperation;
+use App\Models\MediaProviderBinding;
 use App\Models\User;
 use Awcodes\Curator\Config\CurationManager;
 use Awcodes\Curator\Facades\Curator;
@@ -175,7 +177,7 @@ it('bounds resource pagination uploads and concurrent transfers', function (): v
     expect(Media::query()->count())->toBe(26);
 });
 
-it('uploads and normalizes multiple images through the centralized coordinator', function (): void {
+it('uploads multiple images through shared admission without acquisition journals', function (): void {
     $this->actingAs(User::factory()->admin()->create());
 
     Livewire::test(CreateMedia::class)
@@ -203,8 +205,9 @@ it('uploads and normalizes multiple images through the centralized coordinator',
             $record->path,
         ) === 1))->toBeTrue();
 
-    expect(MediaMutationOperation::query()->where('operation', 'upload')->where('status', 'completed')->count())
-        ->toBe(2);
+    expect(MediaMutationOperation::query()->count())->toBe(0)
+        ->and(MediaAsset::query()->count())->toBe(2)
+        ->and(MediaProviderBinding::query()->count())->toBe(2);
 
     foreach ($media as $record) {
         Storage::disk('public')->assertExists($record->path);

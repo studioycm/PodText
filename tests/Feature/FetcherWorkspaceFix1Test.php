@@ -5,6 +5,8 @@ use App\Enums\PublicationStatus;
 use App\Filament\Imports\ContentGroupImporter;
 use App\Filament\Imports\ContentItemImporter;
 use App\Filament\Pages\SpotifyLinksFetcher;
+use App\Jobs\DownloadExternalContentGroupImage;
+use App\Jobs\DownloadExternalContentItemImage;
 use App\Models\ContentGroup;
 use App\Models\ContentItem;
 use App\Models\ImportConnection;
@@ -15,6 +17,7 @@ use Filament\Actions\Imports\Models\Import;
 use Filament\Actions\Testing\TestAction;
 use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Str;
 use Livewire\Livewire;
 
@@ -148,6 +151,10 @@ it('exports spotify fetch rows with stable keys that round trip through strict i
 });
 
 it('directly imports fetched rows creates drafts links existing podcasts and skips existing episodes', function (): void {
+    Queue::fake([
+        DownloadExternalContentGroupImage::class,
+        DownloadExternalContentItemImage::class,
+    ]);
     $connection = ImportConnection::factory()->spotify()->create([
         'status' => ImportConnectionStatus::Connected,
     ]);
@@ -190,6 +197,15 @@ it('directly imports fetched rows creates drafts links existing podcasts and ski
         ->and(ContentItem::query()->where('external_id', 'skip1111111')->count())->toBe(1)
         ->and(collect($component->get('rows'))->pluck('direct_import_status')->all())
         ->toContain('imported_episode', 'skipped_existing_episode');
+
+    Queue::assertPushed(DownloadExternalContentItemImage::class, 2);
+    Queue::assertPushed(
+        DownloadExternalContentGroupImage::class,
+        fn (DownloadExternalContentGroupImage $job): bool => $job->contentGroupId === ContentGroup::query()
+            ->where('title', 'New Show')
+            ->value('id')
+            && $job->url === 'https://i.scdn.co/image/show-new',
+    );
 });
 
 it('direct import keeps row failures isolated and supports reduced rows with sparse show data', function (): void {

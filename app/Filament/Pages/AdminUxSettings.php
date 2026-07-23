@@ -2,6 +2,7 @@
 
 namespace App\Filament\Pages;
 
+use App\Enums\MediaAcquisitionFilenameStrategy;
 use App\Enums\MediaNamingStrategy;
 use App\Enums\Tb1PickerContainer;
 use App\Enums\TranscriptionMode;
@@ -11,6 +12,7 @@ use App\Settings\AdminUxSettings as AdminUxSettingsData;
 use App\Support\Transcriptions\MultiTranscriptionSurfaces;
 use BackedEnum;
 use Filament\Forms\Components\Select;
+use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Pages\SettingsPage;
 use Filament\Schemas\Components\Section;
@@ -55,6 +57,62 @@ class AdminUxSettings extends SettingsPage
                             ->native(false)
                             ->required(),
                     ]),
+                Section::make(__('admin.sections.media_acquisition'))
+                    ->description(__('admin.descriptions.media_acquisition'))
+                    ->schema([
+                        TextInput::make('media_acquisition_max_kilobytes')
+                            ->label(__('admin.fields.media_acquisition_max_kilobytes'))
+                            ->helperText(__('admin.helpers.media_acquisition_max_kilobytes'))
+                            ->integer()
+                            ->minValue(64)
+                            ->maxValue(10240)
+                            ->default(2048)
+                            ->required(),
+                        TextInput::make('media_acquisition_max_dimension')
+                            ->label(__('admin.fields.media_acquisition_max_dimension'))
+                            ->helperText(__('admin.helpers.media_acquisition_max_dimension'))
+                            ->integer()
+                            ->minValue(64)
+                            ->maxValue(10000)
+                            ->default(3000)
+                            ->required(),
+                        TextInput::make('media_acquisition_upload_batch_limit')
+                            ->label(__('admin.fields.media_acquisition_upload_batch_limit'))
+                            ->helperText(__('admin.helpers.media_acquisition_upload_batch_limit'))
+                            ->integer()
+                            ->minValue(1)
+                            ->maxValue(20)
+                            ->default(10)
+                            ->required(),
+                        TextInput::make('media_picker_browse_limit')
+                            ->label(__('admin.fields.media_picker_browse_limit'))
+                            ->helperText(__('admin.helpers.media_picker_browse_limit'))
+                            ->integer()
+                            ->minValue(10)
+                            ->maxValue(100)
+                            ->default(25)
+                            ->required(),
+                        TextInput::make('media_picker_search_limit')
+                            ->label(__('admin.fields.media_picker_search_limit'))
+                            ->helperText(__('admin.helpers.media_picker_search_limit'))
+                            ->integer()
+                            ->minValue(10)
+                            ->maxValue(100)
+                            ->default(50)
+                            ->required(),
+                        Select::make('media_acquisition_filename_strategy')
+                            ->label(__('admin.fields.media_acquisition_filename_strategy'))
+                            ->helperText(__('admin.helpers.media_acquisition_filename_strategy'))
+                            ->options(fn (): array => collect(MediaAcquisitionFilenameStrategy::cases())
+                                ->mapWithKeys(fn (MediaAcquisitionFilenameStrategy $strategy): array => [
+                                    $strategy->value => __("admin.media_acquisition_filename_strategies.{$strategy->value}"),
+                                ])
+                                ->all())
+                            ->default(MediaAcquisitionFilenameStrategy::AppGenerated->value)
+                            ->native(false)
+                            ->required(),
+                    ])
+                    ->columns(2),
                 Section::make(__('admin.sections.episode_workspace'))
                     ->description(__('admin.descriptions.episode_workspace'))
                     ->schema([

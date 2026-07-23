@@ -25,7 +25,7 @@ enum ImageUploadPurpose: string
 
     public function allowsSvg(): bool
     {
-        return $this === self::HeaderLogo;
+        return true;
     }
 
     /**

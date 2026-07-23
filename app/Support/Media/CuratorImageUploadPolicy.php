@@ -3,14 +3,45 @@
 namespace App\Support\Media;
 
 use App\Enums\ImageUploadPurpose;
+use App\Settings\AdminUxSettings;
 use Illuminate\Support\Str;
 use InvalidArgumentException;
+use Throwable;
 
 class CuratorImageUploadPolicy
 {
     public const MAX_KILOBYTES = 2048;
 
     public const MAX_DIMENSION_PIXELS = 3000;
+
+    public const MAX_CONFIGURABLE_KILOBYTES = 10240;
+
+    public const MAX_CONFIGURABLE_DIMENSION_PIXELS = 10000;
+
+    public function maxKilobytes(): int
+    {
+        return min(max($this->integerSetting('media_acquisition_max_kilobytes', self::MAX_KILOBYTES), 64), self::MAX_CONFIGURABLE_KILOBYTES);
+    }
+
+    public function maxDimensionPixels(): int
+    {
+        return min(max($this->integerSetting('media_acquisition_max_dimension', self::MAX_DIMENSION_PIXELS), 64), self::MAX_CONFIGURABLE_DIMENSION_PIXELS);
+    }
+
+    public function uploadBatchLimit(): int
+    {
+        return min(max($this->integerSetting('media_acquisition_upload_batch_limit', 10), 1), 20);
+    }
+
+    public function pickerBrowseLimit(): int
+    {
+        return min(max($this->integerSetting('media_picker_browse_limit', 25), 10), 100);
+    }
+
+    public function pickerSearchLimit(): int
+    {
+        return min(max($this->integerSetting('media_picker_search_limit', 50), 10), 100);
+    }
 
     /**
      * @var array<string, array<int, string>>
@@ -90,6 +121,19 @@ class CuratorImageUploadPolicy
         }
 
         return $extension;
+    }
+
+    public function cleanedOriginalFilename(string $filename): string
+    {
+        $basename = basename(str_replace('\\', '/', trim($filename)));
+        $basename = preg_replace('/[\x00-\x1F\x7F]/u', '', $basename);
+        $basename = is_string($basename) ? trim($basename) : '';
+
+        if ($basename === '' || in_array($basename, ['.', '..'], true)) {
+            return 'image';
+        }
+
+        return Str::limit($basename, 255, '');
     }
 
     public function generatedPath(ImageUploadPurpose $purpose, string $mimeType): string
@@ -172,5 +216,14 @@ class CuratorImageUploadPolicy
         }
 
         return implode('/', $segments);
+    }
+
+    private function integerSetting(string $property, int $default): int
+    {
+        try {
+            return (int) app(AdminUxSettings::class)->{$property};
+        } catch (Throwable) {
+            return $default;
+        }
     }
 }

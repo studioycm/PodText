@@ -4,7 +4,7 @@ namespace App\Jobs;
 
 use App\Enums\ImageUploadPurpose;
 use App\Enums\MediaAttachmentRole;
-use App\Models\ContentItem;
+use App\Models\ContentGroup;
 use App\Models\Media;
 use App\Models\MediaAttachment;
 use App\Models\User;
@@ -19,7 +19,7 @@ use Illuminate\Support\Facades\Gate;
 use InvalidArgumentException;
 use Throwable;
 
-class DownloadExternalContentItemImage implements ShouldBeUnique, ShouldQueueAfterCommit
+class DownloadExternalContentGroupImage implements ShouldBeUnique, ShouldQueueAfterCommit
 {
     use Queueable;
 
@@ -30,10 +30,10 @@ class DownloadExternalContentItemImage implements ShouldBeUnique, ShouldQueueAft
     public int $uniqueFor = 600;
 
     public function __construct(
-        public int $contentItemId,
+        public int $contentGroupId,
         public int $userId,
+        public string $url,
         public bool $overwrite = false,
-        public ?string $expectedUrl = null,
     ) {
         $this->onQueue('imports-exports');
     }
@@ -52,7 +52,7 @@ class DownloadExternalContentItemImage implements ShouldBeUnique, ShouldQueueAft
 
     public function uniqueId(): string
     {
-        return $this->contentItemId.':'.hash('sha256', (string) $this->expectedUrl);
+        return $this->contentGroupId.':'.hash('sha256', $this->url);
     }
 
     public function handle(
@@ -60,28 +60,17 @@ class DownloadExternalContentItemImage implements ShouldBeUnique, ShouldQueueAft
         MediaAttachmentManager $attachments,
     ): void {
         $user = User::query()->find($this->userId);
-        $item = ContentItem::query()->with('primaryImageMediaAttachment.media')->find($this->contentItemId);
+        $group = ContentGroup::query()->with('coverMediaAttachment.media')->find($this->contentGroupId);
 
-        if (! $user instanceof User || ! $item instanceof ContentItem) {
+        if (! $user instanceof User || ! $group instanceof ContentGroup) {
             return;
         }
 
         Gate::forUser($user)->authorize('create', config('curator.model', Media::class));
-
-        $url = trim((string) $item->external_thumbnail_url);
-
-        if ($this->expectedUrl !== null && ! hash_equals($this->expectedUrl, $url)) {
-            $this->notifyFailure($user, __('admin.notifications.external_image_download_failed_body', [
-                'reason' => __('admin.notifications.external_image_download_source_changed'),
-            ]));
-
-            return;
-        }
-
-        $expectedMediaId = $item->primaryImageMediaAttachment instanceof MediaAttachment
-            ? (int) $item->primaryImageMediaAttachment->media_id
+        $expectedMediaId = $group->coverMediaAttachment instanceof MediaAttachment
+            ? (int) $group->coverMediaAttachment->media_id
             : null;
-        $expectedLegacyPath = is_string($item->image_path) ? $item->image_path : null;
+        $expectedLegacyPath = is_string($group->cover_path) ? $group->cover_path : null;
 
         if (! $this->overwrite && ($expectedMediaId !== null || filled($expectedLegacyPath))) {
             return;
@@ -89,44 +78,35 @@ class DownloadExternalContentItemImage implements ShouldBeUnique, ShouldQueueAft
 
         try {
             $media = $acquisitions->acquireExternalUrl(
-                $url,
-                ImageUploadPurpose::ContentItemPrimaryImage,
+                $this->url,
+                ImageUploadPurpose::ContentGroupCover,
                 $user,
-                ['title' => $item->title],
+                ['title' => $group->title],
             );
         } catch (InvalidArgumentException $exception) {
-            $this->notifyFailure($user, __('admin.notifications.external_image_download_failed_body', [
-                'reason' => $exception->getMessage(),
-            ]));
+            $this->notifyFailure($user, $exception->getMessage());
 
             return;
         }
 
         try {
             $attachments->attachIfUnchanged(
-                $item,
+                $group,
                 $media,
-                MediaAttachmentRole::PrimaryImage,
+                MediaAttachmentRole::Cover,
                 $user,
                 $expectedMediaId,
                 $expectedLegacyPath,
             );
         } catch (Throwable $exception) {
-            $this->notifyFailure($user, __('admin.notifications.external_image_download_failed_body', [
-                'reason' => $exception->getMessage(),
-            ]));
+            $this->notifyFailure($user, $exception->getMessage());
 
             return;
         }
 
-        $this->notifySuccess($user, $media);
-    }
-
-    private function notifySuccess(User $user, Media $media): void
-    {
         Notification::make()
             ->success()
-            ->title(__('admin.notifications.external_image_downloaded'))
+            ->title(__('admin.notifications.external_group_image_downloaded'))
             ->body(__('admin.notifications.external_image_downloaded_body', ['path' => $media->path]))
             ->sendToDatabase($user);
     }
@@ -135,21 +115,17 @@ class DownloadExternalContentItemImage implements ShouldBeUnique, ShouldQueueAft
     {
         $user = User::query()->find($this->userId);
 
-        if (! $user instanceof User) {
-            return;
+        if ($user instanceof User) {
+            $this->notifyFailure($user, $exception->getMessage());
         }
-
-        $this->notifyFailure($user, __('admin.notifications.external_image_download_failed_body', [
-            'reason' => $exception->getMessage(),
-        ]));
     }
 
-    private function notifyFailure(User $user, string $body): void
+    private function notifyFailure(User $user, string $reason): void
     {
         Notification::make()
             ->danger()
-            ->title(__('admin.notifications.external_image_download_failed'))
-            ->body($body)
+            ->title(__('admin.notifications.external_group_image_download_failed'))
+            ->body($reason)
             ->sendToDatabase($user);
     }
 }

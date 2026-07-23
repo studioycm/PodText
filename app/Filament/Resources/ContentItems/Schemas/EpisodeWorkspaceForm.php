@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\ContentItems\Schemas;
 
+use App\Enums\ImageUploadPurpose;
 use App\Enums\PublicationStatus;
 use App\Filament\Forms\Components\PublicationStatusSelect;
 use App\Filament\Forms\Components\SlugInput;
@@ -12,6 +13,7 @@ use App\Filament\Resources\Support\RelationshipOptionForms;
 use App\Models\ContentGroup;
 use App\Models\ContentItem;
 use App\Models\Transcription;
+use App\Models\User;
 use App\Rules\ApprovedEmbedUrl;
 use App\Settings\AdminUxSettings;
 use App\Support\Importer\SpotifyLinks\SpotifyGroupMatch;
@@ -20,6 +22,7 @@ use App\Support\Media\ContentItemMediaRules;
 use App\Support\Media\EpisodeEmbedInputNormalizer;
 use App\Support\Media\EpisodeSpotifyLookup;
 use App\Support\Media\ImageFileNamer;
+use App\Support\Media\MediaAcquisitionManager;
 use App\Support\PublicFront\ContentItemDisplayTitle;
 use App\Support\Slugs\HebrewSlugger;
 use App\Support\Transcriptions\MultiTranscriptionSurfaces;
@@ -465,7 +468,7 @@ class EpisodeWorkspaceForm
     /**
      * @return array<string, mixed>
      */
-    private static function spotifyEpisodeInput(): TextInput
+    public static function spotifyEpisodeInput(): TextInput
     {
         return TextInput::make('spotify_episode')
             ->label(__('admin.fields.spotify_episode'))
@@ -574,6 +577,31 @@ class EpisodeWorkspaceForm
         }
 
         $overwrite = (bool) ($options['overwrite_non_empty_fields'] ?? false);
+
+        if (
+            filled($data['external_thumbnail_url'] ?? null)
+            && ($overwrite || blank($get('primary_image_media_reference_key')))
+        ) {
+            $actor = auth()->user();
+
+            if ($actor instanceof User) {
+                try {
+                    $media = app(MediaAcquisitionManager::class)->acquireExternalUrl(
+                        (string) $data['external_thumbnail_url'],
+                        ImageUploadPurpose::ContentItemPrimaryImage,
+                        $actor,
+                        ['title' => $data['title'] ?? null],
+                    );
+                    $set('primary_image_media_reference_key', $media->reference_key);
+                } catch (Throwable $throwable) {
+                    Notification::make()
+                        ->warning()
+                        ->title(__('admin.notifications.spotify_image_acquisition_failed'))
+                        ->body($throwable->getMessage())
+                        ->send();
+                }
+            }
+        }
 
         if ((bool) ($options['link_matched_podcast'] ?? true)) {
             $match = app(SpotifyLinksImportResolver::class)->resolveGroupMatch([

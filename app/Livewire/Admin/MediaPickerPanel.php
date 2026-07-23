@@ -6,6 +6,7 @@ use App\Enums\ImageUploadPurpose;
 use App\Models\Media;
 use App\Models\User;
 use App\Support\Media\CuratorImageUploadPolicy;
+use App\Support\Media\MediaAcquisitionManager;
 use App\Support\Media\MediaFilesystemMutationCoordinator;
 use App\Support\Media\MediaInventoryDiagnostics;
 use App\Support\Media\MediaRecordProjector;
@@ -17,6 +18,7 @@ use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
+use Filament\Schemas\Components\Section;
 use Filament\Schemas\Concerns\InteractsWithSchemas;
 use Filament\Schemas\Concerns\RestrictsFileUploadsToSchemaComponents;
 use Filament\Schemas\Contracts\HasSchemas;
@@ -34,6 +36,7 @@ use InvalidArgumentException;
 use Livewire\Attributes\Locked;
 use Livewire\Component;
 use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
+use RuntimeException;
 use UnexpectedValueException;
 
 class MediaPickerPanel extends Component implements HasActions, HasSchemas
@@ -41,10 +44,6 @@ class MediaPickerPanel extends Component implements HasActions, HasSchemas
     use InteractsWithActions;
     use InteractsWithSchemas;
     use RestrictsFileUploadsToSchemaComponents;
-
-    private const BROWSE_LIMIT = 25;
-
-    private const SEARCH_LIMIT = 50;
 
     private const SELECTION_LIMIT = 50;
 
@@ -61,6 +60,10 @@ class MediaPickerPanel extends Component implements HasActions, HasSchemas
     #[Locked]
     public array $files = [];
 
+    /** @var array<int, array{token: string, filename: string, source: string}> */
+    #[Locked]
+    public array $storageFiles = [];
+
     /** @var array<int, int> */
     public array $selectedIds = [];
 
@@ -68,6 +71,8 @@ class MediaPickerPanel extends Component implements HasActions, HasSchemas
     public array $panelData = [];
 
     public string $search = '';
+
+    public string $storageSearch = '';
 
     public bool $allMedia = false;
 
@@ -102,6 +107,7 @@ class MediaPickerPanel extends Component implements HasActions, HasSchemas
 
         $this->form->fill();
         $this->reloadFiles();
+        $this->reloadStorageFiles();
     }
 
     public function form(Schema $schema): Schema
@@ -109,14 +115,26 @@ class MediaPickerPanel extends Component implements HasActions, HasSchemas
         return $schema
             ->statePath('panelData')
             ->components([
-                FileUpload::make('uploads')
-                    ->label(__('admin.fields.media_files'))
-                    ->acceptedFileTypes(app(CuratorImageUploadPolicy::class)->mimeTypesFor($this->uploadPurpose()))
-                    ->maxSize(CuratorImageUploadPolicy::MAX_KILOBYTES)
-                    ->multiple()
-                    ->maxFiles(10)
-                    ->maxParallelUploads(2)
-                    ->storeFiles(false),
+                Section::make(__('admin.media_library.upload_source'))
+                    ->schema([
+                        FileUpload::make('uploads')
+                            ->label(__('admin.fields.media_files'))
+                            ->acceptedFileTypes(app(CuratorImageUploadPolicy::class)->mimeTypesFor($this->uploadPurpose()))
+                            ->maxSize(app(CuratorImageUploadPolicy::class)->maxKilobytes())
+                            ->multiple()
+                            ->maxFiles(app(CuratorImageUploadPolicy::class)->uploadBatchLimit())
+                            ->maxParallelUploads(2)
+                            ->storeFiles(false),
+                    ]),
+                Section::make(__('admin.media_library.url_source'))
+                    ->schema([
+                        TextInput::make('external_url')
+                            ->label(__('admin.media_library.url_field'))
+                            ->helperText(__('admin.media_library.url_help'))
+                            ->url()
+                            ->rule('url:https')
+                            ->maxLength(2048),
+                    ]),
             ]);
     }
 
@@ -132,6 +150,12 @@ class MediaPickerPanel extends Component implements HasActions, HasSchemas
         $this->allMedia = true;
         $this->currentPage = 1;
         $this->reloadFiles();
+    }
+
+    public function updatedStorageSearch(): void
+    {
+        $this->storageSearch = mb_substr(trim($this->storageSearch), 0, 100);
+        $this->reloadStorageFiles();
     }
 
     public function showContextMedia(): void
@@ -200,7 +224,7 @@ class MediaPickerPanel extends Component implements HasActions, HasSchemas
                 $data = $this->form->getState();
                 $uploads = array_values(Arr::wrap($data['uploads'] ?? []));
 
-                if (count($uploads) > 10) {
+                if (count($uploads) > app(CuratorImageUploadPolicy::class)->uploadBatchLimit()) {
                     abort(422);
                 }
 
@@ -226,7 +250,7 @@ class MediaPickerPanel extends Component implements HasActions, HasSchemas
                 }
 
                 try {
-                    $created = app(MediaFilesystemMutationCoordinator::class)->createManyFromUploads(
+                    $created = app(MediaAcquisitionManager::class)->acquireUploads(
                         $uploads,
                         $this->uploadPurpose(),
                         $actor,
@@ -237,14 +261,7 @@ class MediaPickerPanel extends Component implements HasActions, HasSchemas
                     ]);
                 }
 
-                $newIds = $this->trustedIds($created->map(fn (Media $media): int => (int) $media->getKey())->all(), 'select');
-                $this->selectedIds = $this->isMultiple
-                    ? array_values(array_unique([...$this->selectedIds, ...$newIds]))
-                    : array_slice($newIds, 0, 1);
-
-                if (count($this->selectedIds) > $this->selectionLimit()) {
-                    abort(422);
-                }
+                $this->selectAcquired($created);
 
                 $this->form->fill();
                 $this->currentPage = 1;
@@ -253,6 +270,75 @@ class MediaPickerPanel extends Component implements HasActions, HasSchemas
                 Notification::make()
                     ->success()
                     ->title(__('admin.media_library.uploaded'))
+                    ->send();
+            });
+    }
+
+    public function acquireUrlAction(): Action
+    {
+        return Action::make('acquireUrl')
+            ->label(__('admin.media_library.acquire_url'))
+            ->icon(Heroicon::Link)
+            ->visible(fn (): bool => filled($this->form->getRawState()['external_url'] ?? null))
+            ->action(function (): void {
+                $url = trim((string) ($this->form->getState()['external_url'] ?? ''));
+
+                try {
+                    $media = app(MediaAcquisitionManager::class)->acquireExternalUrl(
+                        $url,
+                        $this->uploadPurpose(),
+                        $this->actor(),
+                    );
+                } catch (InvalidArgumentException|RuntimeException) {
+                    throw ValidationException::withMessages([
+                        'panelData.external_url' => __('admin.media_library.url_invalid'),
+                    ]);
+                }
+
+                $this->selectAcquired(collect([$media]));
+                $this->form->fill();
+                $this->currentPage = 1;
+                $this->reloadFiles();
+
+                Notification::make()
+                    ->success()
+                    ->title(__('admin.media_library.url_acquired'))
+                    ->send();
+            });
+    }
+
+    public function acquireStorageAction(): Action
+    {
+        return Action::make('acquireStorage')
+            ->label(__('admin.media_library.acquire_storage'))
+            ->icon(Heroicon::CircleStack)
+            ->action(function (array $arguments): void {
+                $token = $arguments['token'] ?? null;
+
+                if (! is_string($token)) {
+                    abort(422);
+                }
+
+                try {
+                    $media = app(MediaAcquisitionManager::class)->acquireStorageCandidate(
+                        $token,
+                        $this->uploadPurpose(),
+                        $this->actor(),
+                    );
+                } catch (InvalidArgumentException|RuntimeException) {
+                    throw ValidationException::withMessages([
+                        'storageSearch' => __('admin.media_library.storage_invalid'),
+                    ]);
+                }
+
+                $this->selectAcquired(collect([$media]));
+                $this->currentPage = 1;
+                $this->reloadFiles();
+                $this->reloadStorageFiles();
+
+                Notification::make()
+                    ->success()
+                    ->title(__('admin.media_library.storage_acquired'))
                     ->send();
             });
     }
@@ -428,7 +514,7 @@ class MediaPickerPanel extends Component implements HasActions, HasSchemas
                     ->orWhereRaw("description LIKE ? ESCAPE '!'", [$search]);
             });
 
-            $this->files = $this->projectQuery($query->limit(self::SEARCH_LIMIT));
+            $this->files = $this->projectQuery($query->limit(app(CuratorImageUploadPolicy::class)->pickerSearchLimit()));
             $this->lastPage = 1;
 
             return;
@@ -436,9 +522,10 @@ class MediaPickerPanel extends Component implements HasActions, HasSchemas
 
         $query = $this->browseQuery();
         $count = (clone $query)->count();
-        $this->lastPage = max(1, (int) ceil($count / self::BROWSE_LIMIT));
+        $browseLimit = app(CuratorImageUploadPolicy::class)->pickerBrowseLimit();
+        $this->lastPage = max(1, (int) ceil($count / $browseLimit));
         $this->currentPage = min(max(1, $this->currentPage), $this->lastPage);
-        $this->files = $this->projectQuery($query->forPage($this->currentPage, self::BROWSE_LIMIT));
+        $this->files = $this->projectQuery($query->forPage($this->currentPage, $browseLimit));
     }
 
     /**
@@ -560,6 +647,27 @@ class MediaPickerPanel extends Component implements HasActions, HasSchemas
         }
 
         return min($this->maxItems ?? self::SELECTION_LIMIT, self::SELECTION_LIMIT);
+    }
+
+    /** @param Collection<int, Media> $media */
+    private function selectAcquired(Collection $media): void
+    {
+        $newIds = $this->trustedIds(
+            $media->map(fn (Media $item): int => (int) $item->getKey())->all(),
+            'select',
+        );
+        $this->selectedIds = $this->isMultiple
+            ? array_values(array_unique([...$this->selectedIds, ...$newIds]))
+            : array_slice($newIds, 0, 1);
+
+        if (count($this->selectedIds) > $this->selectionLimit()) {
+            abort(422);
+        }
+    }
+
+    private function reloadStorageFiles(): void
+    {
+        $this->storageFiles = app(MediaAcquisitionManager::class)->storageCandidates($this->storageSearch);
     }
 
     private function uploadPurpose(): ImageUploadPurpose

@@ -34,9 +34,9 @@ class MediaForm
                                 ? app(CuratorImageUploadPolicy::class)->mimeTypesFor($purpose)
                                 : app(CuratorImageUploadPolicy::class)->globalMimeTypes();
                         })
-                        ->maxSize(CuratorImageUploadPolicy::MAX_KILOBYTES)
+                        ->maxSize(app(CuratorImageUploadPolicy::class)->maxKilobytes())
                         ->multiple()
-                        ->maxFiles(10)
+                        ->maxFiles(app(CuratorImageUploadPolicy::class)->uploadBatchLimit())
                         ->maxParallelUploads(2)
                         ->storeFiles(false)
                         ->required()

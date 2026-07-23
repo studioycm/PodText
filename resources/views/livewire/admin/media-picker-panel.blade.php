@@ -37,6 +37,7 @@
 
     <div class="grid min-h-0 flex-1 lg:grid-cols-[minmax(0,1fr)_20rem]">
         <div class="overflow-auto p-4">
+            <h2 class="mb-3 font-semibold">{{ __('admin.media_library.gallery_source') }}</h2>
             <ul class="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-6">
                 @forelse ($files as $file)
                     <li wire:key="media-picker-{{ $file['id'] }}" class="group relative aspect-square overflow-hidden rounded-md border border-gray-300 bg-gray-100 dark:border-gray-700 dark:bg-gray-900">
@@ -103,9 +104,41 @@
         </div>
 
         <aside class="overflow-auto border-t border-gray-200 p-4 dark:border-gray-800 lg:border-s lg:border-t-0">
-            <h3 class="mb-3 font-semibold">{{ __('admin.media_library.upload_heading') }}</h3>
-            {{ $this->form }}
-            <div class="mt-3">{{ $this->uploadFilesAction }}</div>
+            <p class="mb-4 rounded-md bg-primary-50 p-3 text-xs text-primary-800 dark:bg-primary-950 dark:text-primary-200">
+                {{ __('admin.media_library.acquisition_permanence') }}
+            </p>
+
+            <section class="border-b border-gray-200 pb-4 dark:border-gray-800">
+                {{ $this->form }}
+                <div class="mt-3 flex flex-wrap gap-2">
+                    {{ $this->uploadFilesAction }}
+                    {{ $this->acquireUrlAction }}
+                </div>
+            </section>
+
+            <section class="pt-4">
+                <h3 class="mb-2 font-semibold">{{ __('admin.media_library.storage_source') }}</h3>
+                <x-filament::input.wrapper prefix-icon="heroicon-s-magnifying-glass">
+                    <x-filament::input
+                        type="search"
+                        :placeholder="__('admin.media_library.storage_search')"
+                        wire:model.live.debounce.400ms="storageSearch"
+                    />
+                </x-filament::input.wrapper>
+                <ul class="mt-3 space-y-2">
+                    @forelse ($storageFiles as $candidate)
+                        <li wire:key="storage-candidate-{{ hash('sha256', $candidate['token']) }}" class="flex items-center justify-between gap-2 rounded-md border border-gray-200 p-2 text-xs dark:border-gray-700">
+                            <span class="min-w-0">
+                                <span class="block truncate font-medium">{{ $candidate['filename'] }}</span>
+                                <span class="block truncate text-gray-500">{{ $candidate['source'] }}</span>
+                            </span>
+                            {{ ($this->acquireStorageAction)(['token' => $candidate['token']]) }}
+                        </li>
+                    @empty
+                        <li class="text-xs text-gray-500">{{ __('admin.media_library.storage_empty') }}</li>
+                    @endforelse
+                </ul>
+            </section>
         </aside>
     </div>
 

@@ -2,9 +2,13 @@
 
 use App\Enums\ImageUploadPurpose;
 use App\Enums\UserRole;
+use App\Jobs\DownloadExternalContentGroupImage;
 use App\Jobs\DownloadExternalContentItemImage;
+use App\Models\ContentGroup;
 use App\Models\ContentItem;
 use App\Models\Media;
+use App\Models\MediaAsset;
+use App\Models\MediaProviderBinding;
 use App\Models\User;
 use App\Support\Media\ExternalImageDnsResolver;
 use App\Support\Media\PinnedExternalImageTransport;
@@ -217,7 +221,7 @@ it('fails closed when an HTTP fake cannot prove the pinned connected address', f
     ))->toThrow(RuntimeException::class, 'did not prove its connected address');
 });
 
-it('downloads validates journals and attaches an external image idempotently', function (): void {
+it('downloads validates admits and attaches an external image idempotently', function (): void {
     $user = User::factory()->admin()->create();
     $item = ContentItem::factory()->create([
         'external_thumbnail_url' => 'https://cdn.example.test/image.png',
@@ -239,8 +243,32 @@ it('downloads validates journals and attaches an external image idempotently', f
         ->and($item->image_path)->toBe($item->primaryImageMediaAttachment?->media?->path)
         ->and($item->primaryImageMediaAttachment?->media?->directory)->toBe(ImageUploadPurpose::ContentItemPrimaryImage->root())
         ->and(Media::query()->count())->toBe(1)
+        ->and(MediaAsset::query()->count())->toBe(1)
+        ->and(MediaProviderBinding::query()->count())->toBe(1)
         ->and($user->notifications()->count())->toBe(1);
     Storage::disk('public')->assertExists((string) $item->image_path);
+});
+
+it('downloads a Spotify-produced podcast URL through the same queued admission path', function (): void {
+    $user = User::factory()->admin()->create();
+    $group = ContentGroup::factory()->create();
+    $url = 'https://cdn.example.test/show.png';
+    $fetcher = Mockery::mock(SafeExternalImageFetcher::class);
+    $fetcher->shouldReceive('fetch')->once()->with($url)->andReturn(curatorG1ExternalPng());
+    app()->instance(SafeExternalImageFetcher::class, $fetcher);
+
+    app()->call([(new DownloadExternalContentGroupImage(
+        contentGroupId: (int) $group->getKey(),
+        userId: (int) $user->getKey(),
+        url: $url,
+    )), 'handle']);
+
+    $group->refresh()->load('coverMediaAttachment.media');
+
+    expect($group->coverMediaAttachment?->media)->toBeInstanceOf(Media::class)
+        ->and($group->cover_path)->toBe($group->coverMediaAttachment?->media?->path)
+        ->and(MediaAsset::query()->count())->toBe(1)
+        ->and(MediaProviderBinding::query()->count())->toBe(1);
 });
 
 it('checks authorization and source freshness before any external request', function (): void {
@@ -269,7 +297,7 @@ it('checks authorization and source freshness before any external request', func
         ->and($admin->notifications()->count())->toBe(1);
 });
 
-it('compensates a newly created media record when owner identity changes during the fetch', function (): void {
+it('keeps a newly admitted library item when owner identity changes during the fetch', function (): void {
     $user = User::factory()->admin()->create();
     $item = ContentItem::factory()->create([
         'external_thumbnail_url' => 'https://cdn.example.test/image.png',
@@ -284,15 +312,18 @@ it('compensates a newly created media record when owner identity changes during 
     });
     app()->instance(SafeExternalImageFetcher::class, $fetcher);
 
-    expect(fn () => app()->call([(new DownloadExternalContentItemImage(
+    app()->call([(new DownloadExternalContentItemImage(
         (int) $item->getKey(),
         (int) $user->getKey(),
         expectedUrl: (string) $item->external_thumbnail_url,
-    )), 'handle']))->toThrow(RuntimeException::class, 'changed while the media operation was running');
+    )), 'handle']);
 
     expect($item->refresh()->image_path)->toBe('content-items/images/concurrent-editor.jpg')
-        ->and(Media::query()->count())->toBe(0)
-        ->and(Storage::disk('public')->allFiles())->toBe([]);
+        ->and(Media::query()->count())->toBe(1)
+        ->and(MediaAsset::query()->count())->toBe(1)
+        ->and(MediaProviderBinding::query()->count())->toBe(1)
+        ->and(Storage::disk('public')->allFiles())->toHaveCount(1)
+        ->and($user->notifications()->count())->toBe(1);
 });
 
 it('turns validation failures into notifications while transient failures remain retryable', function (): void {

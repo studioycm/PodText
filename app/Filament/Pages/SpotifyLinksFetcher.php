@@ -7,8 +7,11 @@ use App\Enums\ImportConnectionStatus;
 use App\Filament\Imports\ContentGroupImporter;
 use App\Filament\Imports\ContentItemImporter;
 use App\Filament\Support\Concerns\UsesAdminNavigationOrder;
+use App\Jobs\DownloadExternalContentGroupImage;
+use App\Jobs\DownloadExternalContentItemImage;
 use App\Models\ContentGroup;
 use App\Models\ImportConnection;
+use App\Models\User;
 use App\Support\Importer\ImporterThrottle;
 use App\Support\Importer\SpotifyLinks\ImporterCsvBuilder;
 use App\Support\Importer\SpotifyLinks\SpotifyEntityMode;
@@ -185,6 +188,7 @@ class SpotifyLinksFetcher extends Page
         $this->rows = $result['episode_rows'];
         $this->podcastRows = $result['podcast_rows'];
         $this->lastDirectImportSummary = $result['summary']->toArray();
+        $this->queueDirectImportImages();
 
         Notification::make()
             ->title(__('admin.spotify_fetcher.notifications.direct_import_complete'))
@@ -193,6 +197,55 @@ class SpotifyLinksFetcher extends Page
             ->send();
 
         return null;
+    }
+
+    private function queueDirectImportImages(): void
+    {
+        $user = auth()->user();
+
+        if (! $user instanceof User) {
+            return;
+        }
+
+        foreach ($this->rows as $row) {
+            $itemId = $row['direct_import_item_id'] ?? null;
+            $url = $row['external_thumbnail_url'] ?? null;
+
+            if (
+                ($row['direct_import_status'] ?? null) !== 'imported_episode'
+                || ! is_numeric($itemId)
+                || ! is_string($url)
+                || blank($url)
+            ) {
+                continue;
+            }
+
+            DownloadExternalContentItemImage::dispatch(
+                contentItemId: (int) $itemId,
+                userId: (int) $user->getKey(),
+                expectedUrl: $url,
+            );
+        }
+
+        foreach ($this->podcastRows as $row) {
+            $groupId = $row['direct_import_group_id'] ?? null;
+            $url = $row['external_thumbnail_url'] ?? null;
+
+            if (
+                ($row['direct_import_status'] ?? null) !== 'imported_podcast'
+                || ! is_numeric($groupId)
+                || ! is_string($url)
+                || blank($url)
+            ) {
+                continue;
+            }
+
+            DownloadExternalContentGroupImage::dispatch(
+                contentGroupId: (int) $groupId,
+                userId: (int) $user->getKey(),
+                url: $url,
+            );
+        }
     }
 
     public function downloadEpisodesCsv(): StreamedResponse
@@ -367,6 +420,9 @@ class SpotifyLinksFetcher extends Page
             'release_date' => $releaseDate,
             'show_id' => data_get($lookup, 'media_metadata.show_id') ?: ($show['external_id'] ?? ''),
             'show_name' => $show['title'] ?? $lookup['title_prefix'] ?? '',
+            'show_description_markdown' => $this->markdownDescriptionFromLookup($show),
+            'show_thumbnail_url' => $show['thumbnail'] ?? '',
+            'show_url' => $show['external_url'] ?? '',
             'source' => 'api',
             'source_label' => $this->sourceLabel('api'),
             'status' => $status,

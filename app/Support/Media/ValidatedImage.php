@@ -16,6 +16,7 @@ readonly class ValidatedImage
         public ?int $height,
         public string $sha256,
         public ?string $displayFilename = null,
+        public ?string $originalFilename = null,
     ) {}
 
     public function isSvg(): bool

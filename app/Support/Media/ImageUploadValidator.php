@@ -18,6 +18,21 @@ class ImageUploadValidator
 
     public function validateUploadedFile(TemporaryUploadedFile|UploadedFile $file, ImageUploadPurpose $purpose): ValidatedImage
     {
+        [$contents, $clientFilename] = $this->readUploadedFile($file);
+
+        return $this->validateBytes($contents, $clientFilename, $purpose);
+    }
+
+    public function validateUploadedFileForAdmission(TemporaryUploadedFile|UploadedFile $file, ImageUploadPurpose $purpose): ValidatedImage
+    {
+        [$contents, $clientFilename] = $this->readUploadedFile($file);
+
+        return $this->validateAdmissionBytes($contents, $clientFilename, $purpose);
+    }
+
+    /** @return array{string, string} */
+    private function readUploadedFile(TemporaryUploadedFile|UploadedFile $file): array
+    {
         $path = $file->getRealPath();
 
         if (! is_string($path) || $path === '' || ! is_file($path)) {
@@ -30,32 +45,82 @@ class ImageUploadValidator
             throw new InvalidArgumentException('The uploaded file could not be read.');
         }
 
-        return $this->validateBytes($contents, $file->getClientOriginalName(), $purpose);
+        return [$contents, $file->getClientOriginalName()];
     }
 
     public function validateBytes(string $contents, string $clientFilename, ImageUploadPurpose $purpose): ValidatedImage
     {
+        return $this->validate(
+            $contents,
+            $clientFilename,
+            $purpose,
+            extensionRequired: true,
+            preserveRaster: false,
+            maxKilobytes: CuratorImageUploadPolicy::MAX_KILOBYTES,
+            maxDimensionPixels: CuratorImageUploadPolicy::MAX_DIMENSION_PIXELS,
+        );
+    }
+
+    public function validateAdmissionBytes(string $contents, string $clientFilename, ImageUploadPurpose $purpose): ValidatedImage
+    {
+        return $this->validate(
+            $contents,
+            $clientFilename,
+            $purpose,
+            extensionRequired: true,
+            preserveRaster: true,
+            maxKilobytes: $this->policy->maxKilobytes(),
+            maxDimensionPixels: $this->policy->maxDimensionPixels(),
+        );
+    }
+
+    public function validateExternalBytes(string $contents, string $clientFilename, ImageUploadPurpose $purpose): ValidatedImage
+    {
+        return $this->validate(
+            $contents,
+            $clientFilename,
+            $purpose,
+            extensionRequired: false,
+            preserveRaster: true,
+            maxKilobytes: $this->policy->maxKilobytes(),
+            maxDimensionPixels: $this->policy->maxDimensionPixels(),
+        );
+    }
+
+    private function validate(
+        string $contents,
+        string $clientFilename,
+        ImageUploadPurpose $purpose,
+        bool $extensionRequired,
+        bool $preserveRaster,
+        int $maxKilobytes,
+        int $maxDimensionPixels,
+    ): ValidatedImage {
         $size = strlen($contents);
 
-        if ($size === 0 || $size > CuratorImageUploadPolicy::MAX_KILOBYTES * 1024) {
+        if ($size === 0 || $size > $maxKilobytes * 1024) {
             throw new InvalidArgumentException('The image exceeds the allowed size or is empty.');
         }
 
-        $clientExtension = $this->policy->clientExtension($clientFilename);
+        $originalFilename = $this->policy->cleanedOriginalFilename($clientFilename);
+        $candidateExtension = mb_strtolower(pathinfo($originalFilename, PATHINFO_EXTENSION));
+        $clientExtension = $candidateExtension === '' && ! $extensionRequired
+            ? null
+            : $this->policy->clientExtension($originalFilename);
         $mimeType = $this->contentMimeType($contents, $clientExtension);
 
         if (! $this->policy->allowsMime($purpose, $mimeType)) {
             throw new InvalidArgumentException('The image type is not allowed for this purpose.');
         }
 
-        if (! $this->policy->extensionMatchesMime($clientExtension, $mimeType)) {
+        if ($clientExtension !== null && ! $this->policy->extensionMatchesMime($clientExtension, $mimeType)) {
             throw new InvalidArgumentException('The client extension does not match the image content.');
         }
 
         if ($mimeType === 'image/svg+xml') {
             $sanitized = $this->svgSanitizer->sanitize($contents);
 
-            if (strlen($sanitized) > CuratorImageUploadPolicy::MAX_KILOBYTES * 1024) {
+            if (strlen($sanitized) > $maxKilobytes * 1024) {
                 throw new InvalidArgumentException('The sanitized SVG exceeds the allowed size.');
             }
 
@@ -68,13 +133,16 @@ class ImageUploadValidator
                 width: null,
                 height: null,
                 sha256: hash('sha256', $sanitized),
-                displayFilename: pathinfo($clientFilename, PATHINFO_FILENAME),
+                displayFilename: $preserveRaster
+                    ? $originalFilename
+                    : pathinfo($originalFilename, PATHINFO_FILENAME),
+                originalFilename: $originalFilename,
             );
         }
 
         $this->assertCompleteRasterStructure($contents, $mimeType);
         [$headerWidth, $headerHeight] = $this->rasterHeaderDimensions($contents, $mimeType);
-        $this->assertRasterDimensions($headerWidth, $headerHeight);
+        $this->assertRasterDimensions($headerWidth, $headerHeight, $maxDimensionPixels);
 
         try {
             $image = ImageManager::gd()->read($contents)->orient();
@@ -84,13 +152,28 @@ class ImageUploadValidator
             throw new InvalidArgumentException('The raster image could not be decoded.', previous: $exception);
         }
 
-        $this->assertRasterDimensions($width, $height);
+        $this->assertRasterDimensions($width, $height, $maxDimensionPixels);
 
         if (
             ($width !== $headerWidth || $height !== $headerHeight)
             && ($width !== $headerHeight || $height !== $headerWidth)
         ) {
             throw new InvalidArgumentException('The decoded raster dimensions disagree with its header.');
+        }
+
+        if ($preserveRaster) {
+            return new ValidatedImage(
+                purpose: $purpose,
+                contents: $contents,
+                mimeType: $mimeType,
+                extension: $this->policy->canonicalExtension($mimeType),
+                size: $size,
+                width: $width,
+                height: $height,
+                sha256: hash('sha256', $contents),
+                displayFilename: $originalFilename,
+                originalFilename: $originalFilename,
+            );
         }
 
         $normalized = match ($mimeType) {
@@ -100,7 +183,7 @@ class ImageUploadValidator
             default => throw new InvalidArgumentException('The raster image type is not supported.'),
         };
 
-        if (strlen($normalized) > CuratorImageUploadPolicy::MAX_KILOBYTES * 1024) {
+        if (strlen($normalized) > $maxKilobytes * 1024) {
             throw new InvalidArgumentException('The normalized raster image exceeds the allowed size.');
         }
 
@@ -115,16 +198,17 @@ class ImageUploadValidator
             width: $width,
             height: $height,
             sha256: hash('sha256', $normalized),
-            displayFilename: pathinfo($clientFilename, PATHINFO_FILENAME),
+            displayFilename: pathinfo($originalFilename, PATHINFO_FILENAME),
+            originalFilename: $originalFilename,
         );
     }
 
-    private function contentMimeType(string $contents, string $clientExtension): string
+    private function contentMimeType(string $contents, ?string $clientExtension): string
     {
         $finfo = new \finfo(FILEINFO_MIME_TYPE);
         $mimeType = $finfo->buffer($contents);
 
-        if ($clientExtension === 'svg' && $this->hasSvgRoot($contents)) {
+        if (($clientExtension === 'svg' || $clientExtension === null) && $this->hasSvgRoot($contents)) {
             return 'image/svg+xml';
         }
 
@@ -166,13 +250,13 @@ class ImageUploadValidator
         return [$width, $height];
     }
 
-    private function assertRasterDimensions(int $width, int $height): void
+    private function assertRasterDimensions(int $width, int $height, int $maxDimensionPixels): void
     {
         if (
             $width < 1
             || $height < 1
-            || $width > CuratorImageUploadPolicy::MAX_DIMENSION_PIXELS
-            || $height > CuratorImageUploadPolicy::MAX_DIMENSION_PIXELS
+            || $width > $maxDimensionPixels
+            || $height > $maxDimensionPixels
         ) {
             throw new InvalidArgumentException('The raster image dimensions are outside the allowed range.');
         }

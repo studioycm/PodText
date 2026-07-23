@@ -5,6 +5,7 @@ namespace App\Filament\Resources\ContentGroups\Schemas;
 use App\Filament\Forms\Components\PublicationStatusSelect;
 use App\Filament\Forms\Components\SlugInput;
 use App\Filament\Forms\MediaPickerField;
+use App\Filament\Forms\SpotifyShowInput;
 use App\Filament\Pages\DisplaySettings;
 use App\Filament\Resources\Support\RelationshipOptionForms;
 use App\Support\Media\ImageFileNamer;
@@ -27,6 +28,7 @@ class ContentGroupForm
             ->components([
                 Section::make(__('admin.sections.identity'))
                     ->schema([
+                        SpotifyShowInput::make(),
                         Hidden::make('reference_key')
                             ->default(fn (): string => (string) Str::ulid())
                             ->dehydrated()

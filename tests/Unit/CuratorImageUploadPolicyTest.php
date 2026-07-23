@@ -23,12 +23,12 @@ it('owns the exact positive image union and canonical extensions', function (): 
         ->and($policy->canonicalExtension('image/svg+xml'))->toBe('svg');
 });
 
-it('keeps svg limited to the header purpose', function (): void {
+it('allows sanitized svg input for every image purpose', function (): void {
     $policy = app(CuratorImageUploadPolicy::class);
 
     expect($policy->allowsMime(ImageUploadPurpose::HeaderLogo, 'image/svg+xml'))->toBeTrue()
-        ->and($policy->allowsMime(ImageUploadPurpose::ContentGroupCover, 'image/svg+xml'))->toBeFalse()
-        ->and($policy->allowsMime(ImageUploadPurpose::ContentItemPrimaryImage, 'image/svg+xml'))->toBeFalse();
+        ->and($policy->allowsMime(ImageUploadPurpose::ContentGroupCover, 'image/svg+xml'))->toBeTrue()
+        ->and($policy->allowsMime(ImageUploadPurpose::ContentItemPrimaryImage, 'image/svg+xml'))->toBeTrue();
 });
 
 it('normalizes only exact app owned roots and paths', function (string $value): void {

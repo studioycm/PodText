@@ -96,7 +96,7 @@ class SafeExternalImageFetcher
 
             $contents = $response->body();
 
-            if ($contents === '' || strlen($contents) > CuratorImageUploadPolicy::MAX_KILOBYTES * 1024) {
+            if ($contents === '' || strlen($contents) > app(CuratorImageUploadPolicy::class)->maxKilobytes() * 1024) {
                 throw new InvalidArgumentException('The external image is empty or exceeds the response-size limit.');
             }
 
@@ -156,7 +156,7 @@ class SafeExternalImageFetcher
 
         $contentLength = trim((string) $response->header('Content-Length'));
 
-        if ($contentLength !== '' && (! ctype_digit($contentLength) || (int) $contentLength > CuratorImageUploadPolicy::MAX_KILOBYTES * 1024)) {
+        if ($contentLength !== '' && (! ctype_digit($contentLength) || (int) $contentLength > app(CuratorImageUploadPolicy::class)->maxKilobytes() * 1024)) {
             throw new InvalidArgumentException('The external image response length is invalid or too large.');
         }
 

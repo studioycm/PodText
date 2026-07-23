@@ -5,7 +5,11 @@ use App\Enums\UserRole;
 use App\Livewire\Admin\DisabledVendorCuratorSurface;
 use App\Livewire\Admin\MediaPickerPanel;
 use App\Models\Media;
+use App\Models\MediaAsset;
+use App\Models\MediaProviderBinding;
 use App\Models\User;
+use App\Settings\AdminUxSettings;
+use App\Support\Media\SafeExternalImageFetcher;
 use Filament\Actions\Testing\TestAction;
 use Filament\Forms\Components\FileUpload;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -131,6 +135,41 @@ it('bounds picker uploads and concurrent transfers', function (): void {
     expect($upload)->toBeInstanceOf(FileUpload::class)
         ->and($upload->getMaxFiles())->toBe(10)
         ->and($upload->getMaxParallelUploads())->toBe(2);
+});
+
+it('uses bounded Admin UX batch browse and search settings for new picker work', function (): void {
+    $this->actingAs(User::factory()->admin()->create());
+    $settings = app(AdminUxSettings::class);
+    $settings->media_acquisition_max_kilobytes = 4096;
+    $settings->media_acquisition_upload_batch_limit = 3;
+    $settings->media_picker_browse_limit = 12;
+    $settings->media_picker_search_limit = 11;
+    $settings->save();
+    Media::factory()->count(20)->create(['title' => 'Configured search']);
+
+    $component = pickerPanel();
+    $upload = collect($component->instance()->getSchema('form')->getFlatComponents(withHidden: true))
+        ->first(fn (mixed $field): bool => $field instanceof FileUpload && $field->getName() === 'uploads');
+
+    expect($component->get('files'))->toHaveCount(12)
+        ->and($upload)->toBeInstanceOf(FileUpload::class)
+        ->and($upload->getMaxFiles())->toBe(3)
+        ->and($upload->getMaxSize())->toBe(4096);
+
+    $component->set('search', 'Configured');
+
+    expect($component->get('files'))->toHaveCount(11);
+});
+
+it('shows Gallery Upload URL and Storage in one shared picker with permanence help', function (): void {
+    $this->actingAs(User::factory()->admin()->create());
+
+    pickerPanel()
+        ->assertSee(__('admin.media_library.gallery_source'))
+        ->assertSee(__('admin.media_library.upload_source'))
+        ->assertSee(__('admin.media_library.url_source'))
+        ->assertSee(__('admin.media_library.storage_source'))
+        ->assertSee(__('admin.media_library.acquisition_permanence'));
 });
 
 it('caps picker search at fifty trusted projected records', function (): void {
@@ -260,6 +299,8 @@ it('uploads renames swaps and deletes through real picker actions', function ():
     $media = Media::query()->sole();
     $originalPath = $media->path;
     Storage::disk('public')->assertExists($originalPath);
+    expect($media->mediaAsset)->toBeInstanceOf(MediaAsset::class)
+        ->and($media->providerBinding)->toBeInstanceOf(MediaProviderBinding::class);
 
     $component->callAction(
         TestAction::make('renameItem'),
@@ -301,4 +342,53 @@ it('rejects malformed picker upload state without creating media', function (): 
         ->assertHasFormErrors(['uploads']);
 
     expect(Media::query()->count())->toBe(0);
+});
+
+it('acquires an extensionless URL immediately through the shared picker admission path', function (): void {
+    $this->actingAs(User::factory()->admin()->create());
+    $fetcher = Mockery::mock(SafeExternalImageFetcher::class);
+    $fetcher->shouldReceive('fetch')
+        ->once()
+        ->with('https://cdn.example.test/artwork')
+        ->andReturn(base64_decode((string) file_get_contents(base_path('tests/Fixtures/media/valid.png.base64')), true));
+    app()->instance(SafeExternalImageFetcher::class, $fetcher);
+
+    $component = pickerPanel()
+        ->fillForm(['external_url' => 'https://cdn.example.test/artwork'])
+        ->callAction(TestAction::make('acquireUrl'))
+        ->assertHasNoFormErrors();
+
+    $media = Media::query()->sole();
+
+    expect($component->get('selectedIds'))->toBe([$media->getKey()])
+        ->and($media->ext)->toBe('png')
+        ->and($media->mediaAsset)->toBeInstanceOf(MediaAsset::class)
+        ->and($media->providerBinding)->toBeInstanceOf(MediaProviderBinding::class);
+    Storage::disk('public')->assertExists($media->path);
+});
+
+it('acquires an opaque Storage candidate and keeps the library item before owner insertion', function (): void {
+    $this->actingAs(User::factory()->admin()->create());
+    Storage::disk('public')->put(
+        'media-imports/storage-cover.jpg',
+        base64_decode((string) file_get_contents(base_path('tests/Fixtures/media/valid.jpg.base64')), true),
+    );
+
+    $component = pickerPanel();
+    $candidate = $component->get('storageFiles')[0];
+
+    expect($candidate)->not->toHaveKey('path');
+
+    $component
+        ->callAction(
+            TestAction::make('acquireStorage'),
+            arguments: ['token' => $candidate['token']],
+        )
+        ->assertHasNoFormErrors();
+
+    $media = Media::query()->sole();
+
+    expect($component->get('selectedIds'))->toBe([$media->getKey()])
+        ->and($media->path)->toBe('media-imports/storage-cover.jpg')
+        ->and($media->mediaAsset)->toBeInstanceOf(MediaAsset::class);
 });

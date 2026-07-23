@@ -5,7 +5,7 @@ namespace App\Filament\Resources\Media\Pages;
 use App\Enums\ImageUploadPurpose;
 use App\Filament\Resources\Media\MediaResource;
 use App\Models\User;
-use App\Support\Media\MediaFilesystemMutationCoordinator;
+use App\Support\Media\MediaAcquisitionManager;
 use Filament\Resources\Pages\CreateRecord;
 use Filament\Schemas\Concerns\RestrictsFileUploadsToSchemaComponents;
 use Illuminate\Database\Eloquent\Model;
@@ -46,7 +46,7 @@ class CreateMedia extends CreateRecord
         })->all();
 
         try {
-            $created = app(MediaFilesystemMutationCoordinator::class)->createManyFromUploads(
+            $created = app(MediaAcquisitionManager::class)->acquireUploads(
                 $uploads,
                 $purpose,
                 $user,
