@@ -4,6 +4,7 @@ namespace App\Filament\Forms\Components;
 
 use App\Enums\ImageUploadPurpose;
 use App\Filament\Resources\Media\MediaResource;
+use App\Livewire\Admin\MediaPickerPanel;
 use App\Models\Media;
 use App\Models\User;
 use App\Support\Media\MediaAttachmentFormState;
@@ -13,12 +14,13 @@ use App\Support\Media\MediaRecordProjector;
 use App\Support\Media\MediaRecordScope;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Field;
+use Filament\Schemas\Components\Livewire as LivewireSchemaComponent;
 use Filament\Support\Components\Attributes\ExposedLivewireMethod;
 use Filament\Support\Enums\Width;
 use Filament\Support\Icons\Heroicon;
-use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Gate;
 use InvalidArgumentException;
+use Livewire\Attributes\Renderless;
 use LogicException;
 
 class PathCuratorPicker extends Field
@@ -186,6 +188,31 @@ class PathCuratorPicker extends Field
         $this->partiallyRender();
     }
 
+    #[ExposedLivewireMethod]
+    #[Renderless]
+    public function closePicker(): void
+    {
+        $livewire = $this->getLivewire();
+
+        if (
+            (! method_exists($livewire, 'getMountedAction')) ||
+            (! method_exists($livewire, 'unmountAction'))
+        ) {
+            return;
+        }
+
+        $action = $livewire->getMountedAction();
+
+        if (
+            ($action?->getName() !== 'launchPanel') ||
+            ($action->getSchemaComponent()?->getKey() !== $this->getKey())
+        ) {
+            return;
+        }
+
+        $livewire->unmountAction(false);
+    }
+
     public function getDownloadAction(): Action
     {
         return Action::make('download')
@@ -234,22 +261,136 @@ class PathCuratorPicker extends Field
             ->color('gray')
             ->outlined()
             ->size('md')
+            ->extraAttributes(fn (PathCuratorPicker $component): array => [
+                'data-testid' => 'media-picker-open',
+                'id' => $component->getPickerFocusTargetId(),
+            ])
             ->modalSubmitAction(false)
             ->modalCancelAction(false)
             ->modalWidth(Width::Screen)
             ->modalCloseButton(false)
-            ->modalContent(fn (PathCuratorPicker $component): View => view('filament.forms.components.media-picker-modal', [
-                'componentKey' => $component->getKey(),
-                'purpose' => $component->getUploadPurpose()->value,
-                'selectedIds' => collect($component->identityValues($component->getState()))
-                    ->filter(fn (mixed $identity): bool => is_int($identity) || (is_string($identity) && ctype_digit($identity)))
-                    ->map(fn (int|string $identity): int => (int) $identity)
-                    ->values()
-                    ->all(),
-                'isMultiple' => $component->isMultiple(),
-                'maxItems' => $component->getMaxItems(),
-            ]))
+            ->closeModalByClickingAway(false)
+            ->closeModalByEscaping(false)
+            ->formWrapper(false)
+            ->schema(function (PathCuratorPicker $component): array {
+                $componentKey = $component->getKey();
+                $focusTargetId = $component->getPickerFocusTargetId();
+                $restoreFocus = "requestAnimationFrame(() => requestAnimationFrame(() => document.getElementById('{$focusTargetId}')?.focus({ preventScroll: true })))";
+                $closePicker = "\$wire.callSchemaComponentMethod('{$componentKey}', 'closePicker')";
+                $closeHandler = <<<JS
+                    if (returningSelection) {
+                        return;
+                    }
+
+                    if (navigator.onLine) {
+                        await \$wire.unmountAction(false);
+                        {$restoreFocus};
+
+                        return;
+                    }
+
+                    const modal = \$el.closest('[data-fi-modal-id]');
+
+                    if (! modal) {
+                        {$restoreFocus};
+
+                        return;
+                    }
+
+                    const modalId = modal.id;
+                    const actionMatch = modalId.match(/^(.*-action-)(\d+)$/);
+                    offlineClosePending = true;
+                    // Keep Filament's full focus-trap and scroll-lock cleanup,
+                    // but suppress this modal's unreachable server unmount.
+                    modal.addEventListener('modal-closed', (event) => {
+                        if (event.detail?.id !== modalId) {
+                            return;
+                        }
+
+                        event.stopImmediatePropagation();
+                    }, { capture: true, once: true });
+                    window.dispatchEvent(new CustomEvent('close-modal', {
+                        bubbles: true,
+                        composed: true,
+                        detail: { id: modalId },
+                    }));
+                    // Update Filament's window-level action-modal bookkeeping
+                    // without bubbling through the suppressed server listener.
+                    window.dispatchEvent(new CustomEvent('modal-closed', {
+                        detail: { id: modalId },
+                    }));
+
+                    if (actionMatch && (Number(actionMatch[2]) > 0)) {
+                        window.dispatchEvent(new CustomEvent('open-modal', {
+                            bubbles: true,
+                            composed: true,
+                            detail: {
+                                id: actionMatch[1] + (Number(actionMatch[2]) - 1),
+                            },
+                        }));
+                    }
+
+                    {$restoreFocus};
+                    JS;
+                $onlineHandler = <<<JS
+                    if ((! offlineClosePending) || offlineCloseReconciling) {
+                        return;
+                    }
+
+                    offlineCloseReconciling = true;
+
+                    try {
+                        await {$closePicker};
+                        offlineClosePending = false;
+                    } catch {
+                        // Keep the close pending for a later online event.
+                    } finally {
+                        offlineCloseReconciling = false;
+                    }
+                    JS;
+                $insertHandler = <<<JS
+                    if (returningSelection) {
+                        return;
+                    }
+
+                    returningSelection = true;
+
+                    try {
+                        await \$wire.callSchemaComponentMethod('{$componentKey}', 'updateState', \$event.detail);
+                        await \$wire.unmountAction(false);
+                        {$restoreFocus};
+                    } finally {
+                        returningSelection = false;
+                    }
+                    JS;
+
+                return [
+                    LivewireSchemaComponent::make(MediaPickerPanel::class, [
+                        'purpose' => $component->getUploadPurpose()->value,
+                        'selectedIds' => collect($component->identityValues($component->getState()))
+                            ->filter(fn (mixed $identity): bool => is_int($identity) || (is_string($identity) && ctype_digit($identity)))
+                            ->map(fn (int|string $identity): int => (int) $identity)
+                            ->values()
+                            ->all(),
+                        'isMultiple' => $component->isMultiple(),
+                        'maxItems' => $component->getMaxItems(),
+                    ])
+                        ->key("media-picker-workspace-{$componentKey}")
+                        ->columnSpanFull()
+                        ->extraAttributes([
+                            'x-data' => '{ offlineClosePending: false, offlineCloseReconciling: false, returningSelection: false }',
+                            'x-on:close-media-picker' => $closeHandler,
+                            'x-on:online.window' => $onlineHandler,
+                            'x-on:insert-media' => $insertHandler,
+                        ]),
+                ];
+            })
             ->action(fn (): null => null);
+    }
+
+    public function getPickerFocusTargetId(): string
+    {
+        return 'media-picker-open-'.substr(hash('sha256', (string) $this->getKey()), 0, 12);
     }
 
     public function getRemoveAction(): Action
@@ -299,6 +440,11 @@ class PathCuratorPicker extends Field
      */
     public function getSelectedItems(): array
     {
+        $this->hydrateSelectedItems($this->trustedIdentity(
+            $this->getState(),
+            preserveExisting: true,
+        ));
+
         return $this->selectedItems;
     }
 

@@ -9,7 +9,11 @@
     <div class="w-full">
         <ul @class(['grid gap-4 sm:grid-cols-2' => $itemsCount > 0])>
             @foreach ($items as $uuid => $item)
-                <li wire:key="{{ $this->getId() }}.{{ $uuid }}.media-item" class="relative overflow-hidden rounded-lg border border-gray-300 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-900">
+                <li
+                    wire:key="{{ $this->getId() }}.{{ $uuid }}.media-item"
+                    data-testid="media-picker-selected-item"
+                    class="relative overflow-hidden rounded-lg border border-gray-300 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-900"
+                >
                     @if (filled($item['preview_url'] ?? null))
                         <div class="checkered flex h-48 items-center justify-center overflow-hidden">
                             <x-curator::display

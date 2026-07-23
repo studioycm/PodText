@@ -14,6 +14,11 @@ class StorageImageCandidateBrowser
         private readonly CuratorImageUploadPolicy $policy,
     ) {}
 
+    public function hasConfiguredSources(): bool
+    {
+        return $this->sources() !== [];
+    }
+
     /** @return array<int, array{token: string, filename: string, source: string}> */
     public function browse(string $search = ''): array
     {

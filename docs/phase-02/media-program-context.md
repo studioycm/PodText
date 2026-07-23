@@ -7,13 +7,17 @@ not current authority.
 
 ## Controlling approval
 
-- Audit: `LS-20260723-PODTEXT-MEDIA-P3-ACQUISITION-PICKER-01`
-- Approved option: `MEDIA-P3-O1-IMMEDIATE-SHARED-ADMISSION`
-- Approved scope: Package 3 Gallery/Upload/URL/Storage picker acquisition,
-  shared admission, new-input validation/settings and Spotify URL integration.
-- Active package: `MEDIA-P3-ACQUISITION-PICKER` (Stage 2 in progress).
-- Packages 1 and 2 are complete and hash-stamped. Packages 4-5 remain
-  separately gated.
+- Audit: `LS-20260723-PODTEXT-MEDIA-P3-POST-ACQUISITION-UX-01`
+- Approved option: `MEDIA-P3-POST-O3-IMMEDIATE-SOURCE-WORKSPACE`
+- Approved scope: the five-mini-task post-Package-3 correction covering
+  acquisition result/error truth, single-mode safety, Storage convergence,
+  one URL deadline, direct single choice, busy/offline/accessibility behavior
+  and the Upload/URL/Storage source workspace.
+- Completed local package: post-Package-3 acquisition picker UX. Its handoff is
+  `docs/phase-02/media-program-p3-post-acquisition-picker-ux-handoff.md`.
+- Packages 1-3 are complete and hash-stamped. The original Package 3 audit,
+  option and handoff remain historical implementation authority. Packages 4-5
+  remain separately gated and no next media package is active.
 - No prompt under `prompts/pre-13-prompts/` is active.
 
 ## Controlling product rule
@@ -89,7 +93,10 @@ cancelled. Gallery selection remains pending and mutation-free until owner save.
    attachment authority, settings/public fallback, picker All Media and
    same-page Add/Replace Image UX — complete locally.
 3. Gallery/Upload/URL/Storage acquisition; Spotify feeds URL; validation applies
-   to new inputs and SVG inline rendering — approved and in progress.
+   to new inputs and SVG inline rendering — complete locally.
+Post-Package-3 correction: immediate acquisition correctness and
+source-workspace UX — complete locally.
+
 4. Podcast/episode image hover, detail, download, copy, change and association
    repair/default UX.
 5. Files Discovery and physical lifecycle; journals apply only to real file
@@ -97,8 +104,8 @@ cancelled. Gallery selection remains pending and mutation-free until owner save.
 
 ## Baselines
 
-- Package 2 implementation baseline: `main` at
-  `39420d1f21fbe43e193913fc59d6d9efea5ced66`, 15 commits ahead of
+- Package 3 hash-stamped baseline: `main` at
+  `786f7c5f699a3d9d2c02f4c93baff02b0ddcbc1f`, 19 commits ahead of
   `origin/main`.
 - At Stage 1: 79 modified tracked files and 54 default-status untracked entries
   formed the unfinished overbuilt Package 1 draft. Exact cleanup enumeration
@@ -108,9 +115,9 @@ cancelled. Gallery selection remains pending and mutation-free until owner save.
 - Production: the latest dated snapshot remains pre-G1 with 403 Curator rows,
   108 matched covers, three SVGs, five rowless managed files, one oversized
   raster and two duplicate-byte pairs.
-- Package 2 implementation and tests use test databases and fake storage only;
-  they do not execute migrations, conversion or media operations against local
-  development or production.
+- Package 3 and this correction use test databases, test cache locks and fake
+  storage only. They do not execute migrations, acquisition, conversion or
+  media operations against local development or production.
 
 ## Drift checkpoint
 
@@ -125,7 +132,9 @@ before proceeding.
 
 ## Hard exclusions
 
-- No dependency changes.
+- No dependency changes except the operator-approved bounded Filament 5.7.1 to
+  5.7.3 patch refresh inside the post-Package-3 correction; no manifest, npm or
+  unrelated package change.
 - No dedicated security audit or new security architecture.
 - No real local or production DB/storage/cache action.
 - No production action without a separate exact approval.

@@ -21,6 +21,7 @@ use App\Support\Importer\SpotifyLinks\SpotifyLinksImportResolver;
 use App\Support\Media\ContentItemMediaRules;
 use App\Support\Media\EpisodeEmbedInputNormalizer;
 use App\Support\Media\EpisodeSpotifyLookup;
+use App\Support\Media\ExternalImageFailureMessage;
 use App\Support\Media\ImageFileNamer;
 use App\Support\Media\MediaAcquisitionManager;
 use App\Support\PublicFront\ContentItemDisplayTitle;
@@ -45,6 +46,7 @@ use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Contracts\Support\Htmlable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Query\Builder as QueryBuilder;
@@ -593,11 +595,17 @@ class EpisodeWorkspaceForm
                         ['title' => $data['title'] ?? null],
                     );
                     $set('primary_image_media_reference_key', $media->reference_key);
+                } catch (AuthorizationException $throwable) {
+                    throw $throwable;
                 } catch (Throwable $throwable) {
+                    if (! ExternalImageFailureMessage::isExpected($throwable)) {
+                        report($throwable);
+                    }
+
                     Notification::make()
                         ->warning()
                         ->title(__('admin.notifications.spotify_image_acquisition_failed'))
-                        ->body($throwable->getMessage())
+                        ->body(ExternalImageFailureMessage::for($throwable))
                         ->send();
                 }
             }

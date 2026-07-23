@@ -1,6 +1,7 @@
 <?php
 
 use App\Enums\ImageUploadPurpose;
+use App\Enums\MediaAcquisitionDisposition;
 use App\Enums\MediaAcquisitionFilenameStrategy;
 use App\Filament\Pages\AdminUxSettings as AdminUxSettingsPage;
 use App\Models\Media;
@@ -9,8 +10,11 @@ use App\Models\MediaProviderBinding;
 use App\Models\User;
 use App\Settings\AdminUxSettings;
 use App\Support\Media\MediaAcquisitionManager;
+use App\Support\Media\StorageImageCandidateBrowser;
+use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
@@ -109,6 +113,64 @@ it('validates an Upload batch completely before making any item permanent', func
         ->and(Storage::disk('public')->allFiles())->toBe([]);
 });
 
+it('returns permanent successes and stops after a later operational batch failure', function (): void {
+    $bindingAttempts = 0;
+
+    Event::listen('eloquent.creating: '.MediaProviderBinding::class, function () use (&$bindingAttempts): void {
+        $bindingAttempts++;
+
+        if ($bindingAttempts === 2) {
+            throw new RuntimeException('second binding failed');
+        }
+    });
+
+    $result = app(MediaAcquisitionManager::class)->acquireUploads(
+        [
+            UploadedFile::fake()->createWithContent('first.jpg', acquisitionFixture()),
+            UploadedFile::fake()->createWithContent('second.png', acquisitionFixture('valid.png.base64')),
+            UploadedFile::fake()->createWithContent('third.jpg', acquisitionFixture()),
+        ],
+        ImageUploadPurpose::ContentGroupCover,
+        User::factory()->admin()->create(),
+    );
+
+    expect($result->successful)->toHaveCount(1)
+        ->and($result->failedCount)->toBe(1)
+        ->and($result->notAttemptedCount)->toBe(1)
+        ->and($result->unsuccessfulCount())->toBe(2)
+        ->and($result->successful->sole()->disposition)->toBe(MediaAcquisitionDisposition::Created)
+        ->and(Media::query()->count())->toBe(1)
+        ->and(MediaAsset::query()->count())->toBe(1)
+        ->and(MediaProviderBinding::query()->count())->toBe(1)
+        ->and(Storage::disk('public')->allFiles())->toHaveCount(1);
+});
+
+it('does not convert programming errors into a normal partial batch result', function (): void {
+    $bindingAttempts = 0;
+
+    Event::listen('eloquent.creating: '.MediaProviderBinding::class, function () use (&$bindingAttempts): void {
+        $bindingAttempts++;
+
+        if ($bindingAttempts === 2) {
+            throw new TypeError('programming failure');
+        }
+    });
+
+    expect(fn () => app(MediaAcquisitionManager::class)->acquireUploads(
+        [
+            UploadedFile::fake()->createWithContent('first.jpg', acquisitionFixture()),
+            UploadedFile::fake()->createWithContent('second.png', acquisitionFixture('valid.png.base64')),
+        ],
+        ImageUploadPurpose::ContentGroupCover,
+        User::factory()->admin()->create(),
+    ))->toThrow(TypeError::class, 'programming failure');
+
+    expect(Media::query()->count())->toBe(1)
+        ->and(MediaAsset::query()->count())->toBe(1)
+        ->and(MediaProviderBinding::query()->count())->toBe(1)
+        ->and(Storage::disk('public')->allFiles())->toHaveCount(1);
+});
+
 it('saves the bounded Package 3 acquisition settings', function (): void {
     $this->actingAs(User::factory()->admin()->create());
 
@@ -156,22 +218,103 @@ it('registers a safe public Storage raster in place and reuses its Media row', f
     Storage::disk('public')->put('media-imports/in-place.jpg', acquisitionFixture());
     $token = app(MediaAcquisitionManager::class)->storageCandidates()[0]['token'];
 
-    $media = app(MediaAcquisitionManager::class)->acquireStorageCandidate(
+    $registered = app(MediaAcquisitionManager::class)->acquireStorageCandidate(
         $token,
         ImageUploadPurpose::ContentGroupCover,
         $actor,
     );
-    $again = app(MediaAcquisitionManager::class)->acquireStorageCandidate(
+    $reused = app(MediaAcquisitionManager::class)->acquireStorageCandidate(
         $token,
         ImageUploadPurpose::ContentGroupCover,
         $actor,
     );
 
-    expect($media->path)->toBe('media-imports/in-place.jpg')
-        ->and($again->is($media))->toBeTrue()
+    expect($registered->media->path)->toBe('media-imports/in-place.jpg')
+        ->and($registered->disposition)->toBe(MediaAcquisitionDisposition::Registered)
+        ->and($reused->media->is($registered->media))->toBeTrue()
+        ->and($reused->disposition)->toBe(MediaAcquisitionDisposition::Reused)
         ->and(Media::query()->count())->toBe(1)
         ->and(MediaAsset::query()->count())->toBe(1);
     Storage::disk('public')->assertExists('media-imports/in-place.jpg');
+});
+
+it('rechecks for a concurrently admitted Storage row inside the candidate lock', function (): void {
+    expect(config('media.acquisition.storage_lock_seconds'))->toBe(60);
+
+    $actor = User::factory()->admin()->create();
+    Storage::disk('public')->put('media-imports/concurrent.jpg', acquisitionFixture());
+    $realBrowser = app(StorageImageCandidateBrowser::class);
+    $token = $realBrowser->browse()[0]['token'];
+    $candidate = $realBrowser->resolve($token);
+    $existing = null;
+    $resolveCount = 0;
+    $browser = Mockery::mock(StorageImageCandidateBrowser::class);
+    $browser->shouldReceive('resolve')
+        ->twice()
+        ->with($token)
+        ->andReturnUsing(function () use (&$existing, &$resolveCount, $candidate) {
+            $resolveCount++;
+
+            if ($resolveCount === 2) {
+                $existing = Media::factory()->create([
+                    'disk' => $candidate->disk,
+                    'directory' => dirname($candidate->path),
+                    'path' => $candidate->path,
+                    'name' => pathinfo($candidate->path, PATHINFO_FILENAME),
+                ]);
+                $asset = MediaAsset::query()->create([
+                    'reference_key' => $existing->reference_key,
+                ]);
+                MediaProviderBinding::query()->create([
+                    'media_asset_id' => $asset->getKey(),
+                    'provider' => 'curator',
+                    'provider_record_key' => (string) $existing->getKey(),
+                ]);
+            }
+
+            return $candidate;
+        });
+    app()->instance(StorageImageCandidateBrowser::class, $browser);
+    app()->forgetInstance(MediaAcquisitionManager::class);
+
+    $result = app(MediaAcquisitionManager::class)->acquireStorageCandidate(
+        $token,
+        ImageUploadPurpose::ContentGroupCover,
+        $actor,
+    );
+
+    expect($result->disposition)->toBe(MediaAcquisitionDisposition::Reused)
+        ->and($result->media->is($existing))->toBeTrue()
+        ->and($resolveCount)->toBe(2)
+        ->and(Media::query()->count())->toBe(1)
+        ->and(MediaAsset::query()->count())->toBe(1)
+        ->and(MediaProviderBinding::query()->count())->toBe(1);
+    Storage::disk('public')->assertExists('media-imports/concurrent.jpg');
+});
+
+it('fails safely when the bounded Storage candidate lock is contended', function (): void {
+    Storage::disk('public')->put('media-imports/contended.jpg', acquisitionFixture());
+    $token = app(MediaAcquisitionManager::class)->storageCandidates()[0]['token'];
+    $key = 'media-acquisition:storage:'.hash('sha256', "public\0media-imports/contended.jpg");
+    $lock = Cache::lock($key, 30);
+
+    expect($lock->get())->toBeTrue();
+    config()->set('media.acquisition.storage_lock_wait_seconds', 0);
+
+    try {
+        expect(fn () => app(MediaAcquisitionManager::class)->acquireStorageCandidate(
+            $token,
+            ImageUploadPurpose::ContentGroupCover,
+            User::factory()->admin()->create(),
+        ))->toThrow(LockTimeoutException::class);
+    } finally {
+        $lock->release();
+    }
+
+    expect(Media::query()->count())->toBe(0)
+        ->and(MediaAsset::query()->count())->toBe(0)
+        ->and(MediaProviderBinding::query()->count())->toBe(0);
+    Storage::disk('public')->assertExists('media-imports/contended.jpg');
 });
 
 it('copies private Storage input and sanitized public SVG without changing either source', function (): void {
@@ -196,11 +339,13 @@ it('copies private Storage input and sanitized public SVG without changing eithe
         $actor,
     );
 
-    expect($privateMedia->path)->toStartWith('content-groups/covers/')
-        ->and($svgMedia->path)->toStartWith('content-groups/covers/')
-        ->and($svgMedia->path)->not->toBe('media-imports/public.svg')
-        ->and(Storage::disk('public')->get($privateMedia->path))->toBe($raster)
-        ->and(Storage::disk('public')->get($svgMedia->path))->toContain('<svg');
+    expect($privateMedia->disposition)->toBe(MediaAcquisitionDisposition::Copied)
+        ->and($svgMedia->disposition)->toBe(MediaAcquisitionDisposition::Copied)
+        ->and($privateMedia->media->path)->toStartWith('content-groups/covers/')
+        ->and($svgMedia->media->path)->toStartWith('content-groups/covers/')
+        ->and($svgMedia->media->path)->not->toBe('media-imports/public.svg')
+        ->and(Storage::disk('public')->get($privateMedia->media->path))->toBe($raster)
+        ->and(Storage::disk('public')->get($svgMedia->media->path))->toContain('<svg');
     Storage::disk('local')->assertExists('media-imports/private.jpg');
     Storage::disk('public')->assertExists('media-imports/public.svg');
     expect(Storage::disk('public')->get('media-imports/public.svg'))->toBe($svg);

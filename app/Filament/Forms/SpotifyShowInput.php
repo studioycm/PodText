@@ -6,6 +6,7 @@ use App\Enums\ImageUploadPurpose;
 use App\Models\ContentGroup;
 use App\Models\User;
 use App\Support\Media\EpisodeSpotifyLookup;
+use App\Support\Media\ExternalImageFailureMessage;
 use App\Support\Media\MediaAcquisitionManager;
 use App\Support\Slugs\HebrewSlugger;
 use Filament\Actions\Action;
@@ -15,6 +16,7 @@ use Filament\Notifications\Notification;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
 use Filament\Support\Icons\Heroicon;
+use Illuminate\Auth\Access\AuthorizationException;
 use Throwable;
 
 class SpotifyShowInput
@@ -86,11 +88,17 @@ class SpotifyShowInput
                         ['title' => $data['title'] ?? null],
                     );
                     $set('cover_media_reference_key', $media->reference_key);
+                } catch (AuthorizationException $throwable) {
+                    throw $throwable;
                 } catch (Throwable $throwable) {
+                    if (! ExternalImageFailureMessage::isExpected($throwable)) {
+                        report($throwable);
+                    }
+
                     Notification::make()
                         ->warning()
                         ->title(__('admin.notifications.spotify_image_acquisition_failed'))
-                        ->body($throwable->getMessage())
+                        ->body(ExternalImageFailureMessage::for($throwable))
                         ->send();
                 }
             }

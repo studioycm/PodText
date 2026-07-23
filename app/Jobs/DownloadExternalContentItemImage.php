@@ -8,9 +8,11 @@ use App\Models\ContentItem;
 use App\Models\Media;
 use App\Models\MediaAttachment;
 use App\Models\User;
+use App\Support\Media\ExternalImageFailureMessage;
 use App\Support\Media\MediaAcquisitionManager;
 use App\Support\Media\MediaAttachmentManager;
 use Filament\Notifications\Notification;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueueAfterCommit;
 use Illuminate\Foundation\Queue\Queueable;
@@ -96,7 +98,7 @@ class DownloadExternalContentItemImage implements ShouldBeUnique, ShouldQueueAft
             );
         } catch (InvalidArgumentException $exception) {
             $this->notifyFailure($user, __('admin.notifications.external_image_download_failed_body', [
-                'reason' => $exception->getMessage(),
+                'reason' => ExternalImageFailureMessage::for($exception),
             ]));
 
             return;
@@ -111,9 +113,12 @@ class DownloadExternalContentItemImage implements ShouldBeUnique, ShouldQueueAft
                 $expectedMediaId,
                 $expectedLegacyPath,
             );
+        } catch (AuthorizationException $exception) {
+            throw $exception;
         } catch (Throwable $exception) {
+            report($exception);
             $this->notifyFailure($user, __('admin.notifications.external_image_download_failed_body', [
-                'reason' => $exception->getMessage(),
+                'reason' => __('admin.notifications.external_image_attachment_failed'),
             ]));
 
             return;
@@ -140,7 +145,9 @@ class DownloadExternalContentItemImage implements ShouldBeUnique, ShouldQueueAft
         }
 
         $this->notifyFailure($user, __('admin.notifications.external_image_download_failed_body', [
-            'reason' => $exception->getMessage(),
+            'reason' => $exception instanceof AuthorizationException
+                ? __('admin.notifications.external_image_authorization_failed')
+                : ExternalImageFailureMessage::for($exception),
         ]));
     }
 

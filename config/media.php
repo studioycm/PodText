@@ -6,6 +6,9 @@ return [
     ],
 
     'acquisition' => [
+        'external_image_timeout_seconds' => 20,
+        'storage_lock_seconds' => 60,
+        'storage_lock_wait_seconds' => 3,
         'storage_candidate_limit' => 50,
         'storage_sources' => [
             'public_imports' => [

@@ -5,10 +5,15 @@
 Package 1 closed under audit `LS-20260723-MEDIA-INVENTORY-FIRST-RESET-01`.
 Package 2 is implemented and hash-stamped under audit
 `LS-20260723-PODTEXT-MEDIA-P2-INVENTORY-PICKER-REPLACE-01`.
-Package 3 Stage 2 is authorized under audit
+Package 3 is implemented and hash-stamped under audit
 `LS-20260723-PODTEXT-MEDIA-P3-ACQUISITION-PICKER-01`, approved option
-`MEDIA-P3-O1-IMMEDIATE-SHARED-ADMISSION`. Packages 4-5 remain route forecasts
-and require fresh Simplifier approval.
+`MEDIA-P3-O1-IMMEDIATE-SHARED-ADMISSION`. Its post-acquisition picker
+correction is complete locally under audit
+`LS-20260723-PODTEXT-MEDIA-P3-POST-ACQUISITION-UX-01`, approved option
+`MEDIA-P3-POST-O3-IMMEDIATE-SOURCE-WORKSPACE`; its handoff is
+`../../phase-02/media-program-p3-post-acquisition-picker-ux-handoff.md`.
+Packages 4-5 remain route forecasts, no next package is active and each
+requires fresh Simplifier approval.
 
 ## Package 1 — minimal kernel and database conversion
 
@@ -76,6 +81,37 @@ Tasks:
 Package 3 may add one Spatie settings migration. It adds no relational schema,
 provider, dependency, filesystem scanning or physical lifecycle feature.
 
+Package 3 is complete locally. Its implementation is hash-stamped as
+`656a7c2ed1b64b3f6fd8392bff88f7cca36d2695`.
+
+## Post-Package-3 acquisition picker correction
+
+Outcome: preserve immediate permanent acquisition and pending owner attachment
+while correcting single-mode batch admission, partial-result truth, Storage
+error/concurrency behavior, URL deadline/error copy and the picker interaction.
+Gallery remains primary; Upload, URL and Storage become an on-demand source
+workspace with accessible, truthful busy/offline/selection behavior.
+
+Tasks:
+
+1. Write durable post-P3 research/plan and reconcile active route documents.
+2. Test-first correct mode guards, batch results, Storage dispositions/locking
+   and Media Resource compatibility.
+3. Test-first add one URL deadline and safe localized failure categories.
+4. Test-first add direct single acquisition, source workspace, lazy Storage,
+   truthful feedback and guarded busy/offline/dismissal behavior.
+5. Complete accessibility/browser regressions, requirements sweep, ordered
+   gates, handoff, implementation commit and immediate hash stamp.
+
+The correction adds no migration, relational schema, cached inventory, queue
+or new persistence lifecycle. Its only dependency change is the operator's
+later explicit bounded Filament 5.7.1 to 5.7.3 patch amendment; manifests, npm
+and unrelated packages remain unchanged. Its detailed authority is
+`packages/03-post-acquisition-picker-ux-research.md` and
+`packages/03-post-acquisition-picker-ux-plan.md`; its completed result is
+recorded in
+`../../phase-02/media-program-p3-post-acquisition-picker-ux-handoff.md`.
+
 ## Package 4 — owner image UX
 
 Outcome: podcast/episode list and detail surfaces provide bounded preview,
@@ -97,6 +133,7 @@ immediately by a docs-only handoff/ledger hash stamp. No push occurs.
 
 ## Program exclusions
 
-No dependency changes, one-shot five-package implementation, dedicated
-security-audit phase, local/production live action, compatibility-field removal
-or parallel repository writers.
+No dependency changes beyond the post-Package-3 operator-approved bounded
+Filament patch amendment, one-shot five-package implementation, dedicated
+security-audit phase, local/production live action, compatibility-field
+removal or parallel repository writers.

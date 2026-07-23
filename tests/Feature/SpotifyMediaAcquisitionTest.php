@@ -1,22 +1,30 @@
 <?php
 
+use App\Enums\ExternalImageFailureReason;
 use App\Enums\PublicationStatus;
+use App\Filament\Forms\SpotifyShowInput;
 use App\Filament\Resources\ContentGroups\Pages\CreateContentGroup;
 use App\Filament\Resources\ContentGroups\Pages\EditContentGroup;
 use App\Filament\Resources\ContentItems\Pages\CreateContentItem;
 use App\Filament\Resources\ContentItems\Pages\CreateEpisodeWorkspace;
 use App\Filament\Resources\ContentItems\Pages\EditContentItem;
 use App\Filament\Resources\ContentItems\Pages\EditEpisodeWorkspace;
+use App\Filament\Resources\ContentItems\Schemas\EpisodeWorkspaceForm;
 use App\Models\ContentGroup;
 use App\Models\ContentItem;
-use App\Models\ImportConnection;
 use App\Models\Media;
 use App\Models\MediaAsset;
 use App\Models\User;
 use App\Support\Media\EpisodeSpotifyLookup;
+use App\Support\Media\ExternalImageUnavailableException;
+use App\Support\Media\MediaAcquisitionManager;
 use App\Support\Media\SafeExternalImageFetcher;
 use Filament\Actions\Testing\TestAction;
 use Filament\Facades\Filament;
+use Filament\Notifications\Notification;
+use Filament\Schemas\Components\Utilities\Get;
+use Filament\Schemas\Components\Utilities\Set;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
@@ -42,24 +50,16 @@ function spotifyAcquisitionPng(): string
 
 function fakeSpotifyEpisodeLookup(string $imageUrl): void
 {
-    app()->instance(EpisodeSpotifyLookup::class, new class($imageUrl) extends EpisodeSpotifyLookup
-    {
-        public function __construct(
-            private readonly string $imageUrl,
-        ) {}
-
-        public function lookup(string $episodeInput, ?ImportConnection $connection = null): array
-        {
-            return [
-                'title' => 'Spotify episode',
-                'description_markdown' => 'Spotify description',
-                'media_url' => 'https://open.spotify.com/episode/episode12345',
-                'embed_url' => 'https://open.spotify.com/embed/episode/episode12345',
-                'external_thumbnail_url' => $this->imageUrl,
-                'media_metadata' => ['show_id' => 'show12345'],
-            ];
-        }
-    });
+    $lookup = Mockery::mock(EpisodeSpotifyLookup::class);
+    $lookup->shouldReceive('lookup')->atLeast()->once()->andReturn([
+        'title' => 'Spotify episode',
+        'description_markdown' => 'Spotify description',
+        'media_url' => 'https://open.spotify.com/episode/episode12345',
+        'embed_url' => 'https://open.spotify.com/embed/episode/episode12345',
+        'external_thumbnail_url' => $imageUrl,
+        'media_metadata' => ['show_id' => 'show12345'],
+    ]);
+    app()->instance(EpisodeSpotifyLookup::class, $lookup);
 }
 
 it('feeds Spotify episode artwork through shared URL acquisition on workspace and classic create/edit surfaces', function (): void {
@@ -101,21 +101,13 @@ it('feeds Spotify episode artwork through shared URL acquisition on workspace an
 
 it('feeds Spotify show artwork through shared URL acquisition on podcast create and edit surfaces', function (): void {
     $imageUrl = 'https://cdn.example.test/spotify-show.png';
-    app()->instance(EpisodeSpotifyLookup::class, new class($imageUrl) extends EpisodeSpotifyLookup
-    {
-        public function __construct(
-            private readonly string $imageUrl,
-        ) {}
-
-        public function lookupShow(string $showInput, ?ImportConnection $connection = null): array
-        {
-            return [
-                'title' => 'Spotify podcast',
-                'description_markdown' => 'Podcast description',
-                'thumbnail' => $this->imageUrl,
-            ];
-        }
-    });
+    $lookup = Mockery::mock(EpisodeSpotifyLookup::class);
+    $lookup->shouldReceive('lookupShow')->atLeast()->once()->andReturn([
+        'title' => 'Spotify podcast',
+        'description_markdown' => 'Podcast description',
+        'thumbnail' => $imageUrl,
+    ]);
+    app()->instance(EpisodeSpotifyLookup::class, $lookup);
     $fetcher = Mockery::mock(SafeExternalImageFetcher::class);
     $fetcher->shouldReceive('fetch')->once()->with($imageUrl)->andReturn(spotifyAcquisitionPng());
     app()->instance(SafeExternalImageFetcher::class, $fetcher);
@@ -135,4 +127,94 @@ it('feeds Spotify show artwork through shared URL acquisition on podcast create 
     $group = ContentGroup::factory()->create(['status' => PublicationStatus::Draft]);
     Livewire::test(EditContentGroup::class, ['record' => $group->getRouteKey()])
         ->assertActionExists(TestAction::make('fetchSpotifyShow')->schemaComponent('spotify_show', 'form'));
+});
+
+it('keeps Spotify metadata while presenting a safe categorized image failure', function (): void {
+    $imageUrl = 'https://cdn.example.test/spotify-episode.png';
+    $unsafeDetails = 'connection failed at 10.0.0.1 with token=secret';
+    fakeSpotifyEpisodeLookup($imageUrl);
+    $fetcher = Mockery::mock(SafeExternalImageFetcher::class);
+    $fetcher->shouldReceive('fetch')->once()->with($imageUrl)->andThrow(
+        new ExternalImageUnavailableException(
+            ExternalImageFailureReason::TemporarilyUnavailable,
+            $unsafeDetails,
+        ),
+    );
+    app()->instance(SafeExternalImageFetcher::class, $fetcher);
+
+    Livewire::test(CreateEpisodeWorkspace::class)
+        ->set('data.spotify_episode', 'spotify:episode:episode12345')
+        ->callAction(TestAction::make('fetchSpotifyEpisode')->schemaComponent('spotify_episode', 'form'), data: [
+            'fill_slug_when_empty' => true,
+            'fill_title_prefix_when_empty' => true,
+            'link_matched_podcast' => false,
+            'overwrite_non_empty_fields' => false,
+        ])
+        ->assertSet('data.title', 'Spotify episode')
+        ->assertSet('data.primary_image_media_reference_key', null)
+        ->assertNotified(
+            Notification::make()
+                ->warning()
+                ->title(__('admin.notifications.spotify_image_acquisition_failed'))
+                ->body(__('admin.media_library.url_failure_temporarily_unavailable')),
+        )
+        ->assertDontSee($unsafeDetails);
+});
+
+it('rethrows authorization failures from Spotify show image acquisition', function (): void {
+    $lookup = Mockery::mock(EpisodeSpotifyLookup::class);
+    $lookup->shouldReceive('lookupShow')->once()->andReturn([
+        'title' => 'Authorized podcast title',
+        'description_markdown' => 'Description',
+        'thumbnail' => 'https://cdn.example.test/spotify-show.png',
+    ]);
+    app()->instance(EpisodeSpotifyLookup::class, $lookup);
+    $acquisitions = Mockery::mock(MediaAcquisitionManager::class);
+    $acquisitions->shouldReceive('acquireExternalUrl')
+        ->once()
+        ->andThrow(new AuthorizationException('show artwork denied'));
+    app()->instance(MediaAcquisitionManager::class, $acquisitions);
+    $get = Mockery::mock(Get::class);
+    $get->shouldReceive('__invoke')->zeroOrMoreTimes()->andReturnUsing(
+        fn (string $field): mixed => $field === 'spotify_show'
+            ? 'spotify:show:show12345'
+            : null,
+    );
+    $set = Mockery::mock(Set::class);
+    $set->shouldReceive('__invoke')->zeroOrMoreTimes()->andReturnNull();
+    $method = new ReflectionMethod(SpotifyShowInput::class, 'fetch');
+
+    expect(fn () => $method->invoke(null, $set, $get, [
+        'overwrite_non_empty_fields' => false,
+    ]))->toThrow(AuthorizationException::class, 'show artwork denied');
+});
+
+it('rethrows authorization failures from Spotify episode image acquisition', function (): void {
+    $lookup = Mockery::mock(EpisodeSpotifyLookup::class);
+    $lookup->shouldReceive('lookup')->once()->andReturn([
+        'title' => 'Authorized episode title',
+        'external_thumbnail_url' => 'https://cdn.example.test/spotify-episode.png',
+    ]);
+    app()->instance(EpisodeSpotifyLookup::class, $lookup);
+    $acquisitions = Mockery::mock(MediaAcquisitionManager::class);
+    $acquisitions->shouldReceive('acquireExternalUrl')
+        ->once()
+        ->andThrow(new AuthorizationException('episode artwork denied'));
+    app()->instance(MediaAcquisitionManager::class, $acquisitions);
+    $get = Mockery::mock(Get::class);
+    $get->shouldReceive('__invoke')->zeroOrMoreTimes()->andReturnUsing(
+        fn (string $field): mixed => $field === 'spotify_episode'
+            ? 'spotify:episode:episode12345'
+            : null,
+    );
+    $set = Mockery::mock(Set::class);
+    $set->shouldReceive('__invoke')->zeroOrMoreTimes()->andReturnNull();
+    $method = new ReflectionMethod(EpisodeWorkspaceForm::class, 'fetchSpotifyEpisode');
+
+    expect(fn () => $method->invoke(null, $set, $get, [
+        'fill_slug_when_empty' => true,
+        'fill_title_prefix_when_empty' => true,
+        'link_matched_podcast' => false,
+        'overwrite_non_empty_fields' => false,
+    ]))->toThrow(AuthorizationException::class, 'episode artwork denied');
 });

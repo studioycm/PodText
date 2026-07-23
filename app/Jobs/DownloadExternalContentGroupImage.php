@@ -8,9 +8,11 @@ use App\Models\ContentGroup;
 use App\Models\Media;
 use App\Models\MediaAttachment;
 use App\Models\User;
+use App\Support\Media\ExternalImageFailureMessage;
 use App\Support\Media\MediaAcquisitionManager;
 use App\Support\Media\MediaAttachmentManager;
 use Filament\Notifications\Notification;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueueAfterCommit;
 use Illuminate\Foundation\Queue\Queueable;
@@ -84,7 +86,7 @@ class DownloadExternalContentGroupImage implements ShouldBeUnique, ShouldQueueAf
                 ['title' => $group->title],
             );
         } catch (InvalidArgumentException $exception) {
-            $this->notifyFailure($user, $exception->getMessage());
+            $this->notifyFailure($user, ExternalImageFailureMessage::for($exception));
 
             return;
         }
@@ -98,8 +100,11 @@ class DownloadExternalContentGroupImage implements ShouldBeUnique, ShouldQueueAf
                 $expectedMediaId,
                 $expectedLegacyPath,
             );
+        } catch (AuthorizationException $exception) {
+            throw $exception;
         } catch (Throwable $exception) {
-            $this->notifyFailure($user, $exception->getMessage());
+            report($exception);
+            $this->notifyFailure($user, __('admin.notifications.external_image_attachment_failed'));
 
             return;
         }
@@ -116,7 +121,12 @@ class DownloadExternalContentGroupImage implements ShouldBeUnique, ShouldQueueAf
         $user = User::query()->find($this->userId);
 
         if ($user instanceof User) {
-            $this->notifyFailure($user, $exception->getMessage());
+            $this->notifyFailure(
+                $user,
+                $exception instanceof AuthorizationException
+                    ? __('admin.notifications.external_image_authorization_failed')
+                    : ExternalImageFailureMessage::for($exception),
+            );
         }
     }
 

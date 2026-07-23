@@ -6,6 +6,8 @@ use App\Enums\ImageUploadPurpose;
 use App\Filament\Resources\Media\MediaResource;
 use App\Models\User;
 use App\Support\Media\MediaAcquisitionManager;
+use App\Support\Media\MediaUploadBatchResult;
+use Filament\Notifications\Notification;
 use Filament\Resources\Pages\CreateRecord;
 use Filament\Schemas\Concerns\RestrictsFileUploadsToSchemaComponents;
 use Illuminate\Database\Eloquent\Model;
@@ -23,6 +25,8 @@ class CreateMedia extends CreateRecord
     protected static string $resource = MediaResource::class;
 
     protected static bool $canCreateAnother = false;
+
+    private ?MediaUploadBatchResult $uploadResult = null;
 
     protected function handleRecordCreation(array $data): Model
     {
@@ -46,7 +50,7 @@ class CreateMedia extends CreateRecord
         })->all();
 
         try {
-            $created = app(MediaAcquisitionManager::class)->acquireUploads(
+            $this->uploadResult = app(MediaAcquisitionManager::class)->acquireUploads(
                 $uploads,
                 $purpose,
                 $user,
@@ -58,6 +62,27 @@ class CreateMedia extends CreateRecord
             ]);
         }
 
-        return $created->firstOrFail();
+        if ($this->uploadResult->successful->isEmpty()) {
+            throw ValidationException::withMessages([
+                'data.uploads' => __('admin.media_library.upload_failed'),
+            ]);
+        }
+
+        return $this->uploadResult->media()->firstOrFail();
+    }
+
+    protected function getCreatedNotification(): ?Notification
+    {
+        if (! $this->uploadResult?->isPartial()) {
+            return parent::getCreatedNotification();
+        }
+
+        return Notification::make()
+            ->warning()
+            ->title(__('admin.media_library.upload_partial_title'))
+            ->body(__('admin.media_library.upload_partial_body', [
+                'added' => $this->uploadResult->successful->count(),
+                'not_added' => $this->uploadResult->unsuccessfulCount(),
+            ]));
     }
 }

@@ -37,11 +37,25 @@ create a new handoff at that path from the implemented inventory-first work.
 
 ## Current package documents
 
-- `packages/01-kernel-conversion-research.md` and plan: active and approved.
-- Package 2 pair: forecast only; fresh audit required.
-- Package 3 pair: forecast only; fresh audit required.
+- Package 1 pair and committed handoff: completed historical authority.
+- Package 2 pair and committed handoff: completed historical authority.
+- Package 3 acquisition pair and committed handoff: completed historical
+  authority.
+- `packages/03-post-acquisition-picker-ux-research.md`, plan and
+  `../../phase-02/media-program-p3-post-acquisition-picker-ux-handoff.md`:
+  completed historical authority under
+  `LS-20260723-PODTEXT-MEDIA-P3-POST-ACQUISITION-UX-01` /
+  `MEDIA-P3-POST-O3-IMMEDIATE-SOURCE-WORKSPACE`.
 - Package 4 pair: forecast only; fresh audit required.
 - Package 5 pair: forecast only; fresh audit required.
+
+The earlier Package 4 audit
+`LS-20260723-PODTEXT-MEDIA-P4-OWNER-IMAGE-UX-01` and options
+`MEDIA-P4-O1-SHARED-DETAIL-MODAL` /
+`MEDIA-P4-O2-SHARED-DETAIL-SLIDEOVER` are superseded and authorize nothing.
+The post-Package-3 correction is closed locally. Package 4 must be freshly
+audited and explicitly approved before implementation; no next package is
+active.
 
 ## Related active track documents
 

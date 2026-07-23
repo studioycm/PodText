@@ -1,0 +1,1149 @@
+<?php
+
+use App\Filament\Resources\ContentGroups\ContentGroupResource;
+use App\Models\ContentGroup;
+use App\Models\Media;
+use App\Models\MediaAsset;
+use App\Models\MediaProviderBinding;
+use App\Models\User;
+use Filament\Facades\Filament;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Storage;
+
+uses(RefreshDatabase::class);
+
+beforeEach(function (): void {
+    Filament::setCurrentPanel(Filament::getPanel('admin'));
+    Http::preventStrayRequests();
+    Storage::fake('local');
+    Storage::fake('public');
+    $this->actingAs(User::factory()->admin()->create());
+});
+
+function setMediaPickerBrowserOffline(object $webpage, bool $offline): void
+{
+    $webpageReflection = new ReflectionClass($webpage);
+    $pageProperty = $webpageReflection->getProperty('page');
+    $playwrightPage = $pageProperty->getValue($webpage);
+    $context = $playwrightPage->context();
+    $sendMessage = new ReflectionMethod($context, 'sendMessage');
+    $response = $sendMessage->invoke($context, 'setOffline', ['offline' => $offline]);
+
+    iterator_to_array($response, false);
+}
+
+it('keeps the acquisition workspace accessible responsive and stateful', function (
+    string $locale,
+    string $direction,
+): void {
+    app()->setLocale($locale);
+    Storage::disk('public')->put(
+        'media-imports/browser-storage.jpg',
+        base64_decode((string) file_get_contents(base_path('tests/Fixtures/media/valid.jpg.base64')), true),
+    );
+    $group = ContentGroup::factory()->create([
+        'title' => "Media picker {$locale}",
+    ]);
+
+    $page = visit(ContentGroupResource::getUrl('edit', ['record' => $group]))
+        ->resize(1280, 900);
+
+    $wide = $page->script(<<<'JS'
+        async () => {
+            const waitFor = async (callback, timeout = 7000) => {
+                const started = performance.now();
+
+                while (performance.now() - started < timeout) {
+                    const result = callback();
+
+                    if (result) {
+                        return result;
+                    }
+
+                    await new Promise((resolve) => setTimeout(resolve, 25));
+                }
+
+                throw new Error('Timed out while waiting for media picker browser evidence.');
+            };
+            const dialog = () => document.querySelector('[aria-modal="true"].fi-modal-open');
+            const picker = () => dialog()?.querySelector('[data-testid="media-picker"]');
+            const modalRoot = picker;
+            const opener = document.querySelector('[data-testid="media-picker-open"]');
+            opener.focus();
+            opener.click();
+
+            await waitFor(() => picker());
+            await new Promise((resolve) => setTimeout(resolve, 250));
+
+            const activeDialog = dialog();
+            const modalWindow = activeDialog?.querySelector('.fi-modal-window');
+            const storageFilename = 'browser-storage.jpg';
+            const storageWasLazy = ! picker()?.textContent.includes(storageFilename);
+
+            picker()?.querySelector('[data-testid="media-picker-source-url"]')?.click();
+            const urlInput = await waitFor(() => picker()?.querySelector('#media-picker-url-input'));
+            const inputValueSetter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set;
+            const retainedUrl = 'https://cdn.example.test/preserved-picker.png';
+            inputValueSetter.call(urlInput, retainedUrl);
+            urlInput.dispatchEvent(new Event('input', { bubbles: true }));
+            await new Promise((resolve) => setTimeout(resolve, 700));
+
+            picker()?.querySelector('[data-testid="media-picker-source-storage"]')?.click();
+            await waitFor(() => picker()?.querySelector('[data-testid="media-picker-panel-storage"]'));
+            await waitFor(() => picker()?.textContent.includes(storageFilename));
+            const storageLoaded = picker()?.textContent.includes(storageFilename) ?? false;
+            const inactiveUploadPanel = picker()?.querySelector('[data-testid="media-picker-panel-upload"]');
+            const uploadPanelPersisted = Boolean(
+                inactiveUploadPanel
+                && inactiveUploadPanel.classList.contains('hidden')
+                && inactiveUploadPanel.inert
+                && picker()?.querySelector('#media-picker-upload-input'),
+            );
+
+            picker()?.querySelector('[data-testid="media-picker-source-url"]')?.click();
+            const restoredUrlInput = await waitFor(() => {
+                const input = picker()?.querySelector('#media-picker-url-input');
+
+                return input?.value === retainedUrl ? input : null;
+            });
+
+            activeDialog?.querySelector('.fi-modal-window-ctn')?.click();
+            await new Promise((resolve) => setTimeout(resolve, 150));
+            const backdropKeptModalOpen = Boolean(modalRoot());
+
+            window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+            await new Promise((resolve) => setTimeout(resolve, 150));
+            const escapeKeptModalOpen = Boolean(modalRoot());
+
+            window.dispatchEvent(new Event('offline'));
+            await waitFor(() => {
+                const fieldset = picker()?.querySelector('[data-testid="media-picker-source-form"]');
+                const notice = picker()?.querySelector('[wire\\:offline]');
+
+                return fieldset?.disabled
+                    && notice
+                    && getComputedStyle(notice).display !== 'none';
+            });
+            const offlineDisabledSource = picker()?.querySelector(
+                '[data-testid="media-picker-source-form"]',
+            )?.disabled ?? false;
+            const offlineKeptCloseAvailable = ! picker()?.querySelector(
+                '[data-testid="media-picker-close"]',
+            )?.disabled;
+
+            window.dispatchEvent(new Event('online'));
+            await waitFor(() => ! picker()?.querySelector(
+                '[data-testid="media-picker-source-form"]',
+            )?.disabled);
+            const onlineRestoredSource = ! picker()?.querySelector(
+                '[data-testid="media-picker-source-form"]',
+            )?.disabled;
+
+            picker()?.querySelector('[data-testid="media-picker-source-upload"]')?.click();
+            const uploadInput = await waitFor(() => picker()?.querySelector('#media-picker-upload-input'));
+            const uploadDetail = {
+                id: picker()?.closest('[wire\\:id]')?.getAttribute('wire:id'),
+                property: 'panelData.uploads',
+            };
+            uploadInput.focus();
+            picker().dispatchEvent(new CustomEvent('livewire-upload-start', {
+                detail: uploadDetail,
+            }));
+            await waitFor(() => {
+                const sourceButtons = [
+                    picker()?.querySelector('[data-testid="media-picker-source-upload"]'),
+                    picker()?.querySelector('[data-testid="media-picker-source-url"]'),
+                    picker()?.querySelector('[data-testid="media-picker-source-storage"]'),
+                ];
+
+                return sourceButtons.every((button) => button?.disabled)
+                    && picker()?.querySelector('[data-testid="media-picker-header"]')?.inert
+                    && picker()?.querySelector('[data-testid="media-picker-upload-action-guard"]')?.inert
+                    && picker()?.querySelector('[data-testid="media-picker-close"]')
+                        ?.getAttribute('aria-disabled') === 'true'
+                    && picker()?.getAttribute('aria-busy') === 'true';
+            });
+            const uploadGuardedWorkspace = [
+                picker()?.querySelector('[data-testid="media-picker-source-upload"]'),
+                picker()?.querySelector('[data-testid="media-picker-source-url"]'),
+                picker()?.querySelector('[data-testid="media-picker-source-storage"]'),
+            ].every((button) => button?.disabled)
+                && picker()?.querySelector('[data-testid="media-picker-header"]')?.inert
+                && picker()?.querySelector('[data-testid="media-picker-upload-action-guard"]')?.inert
+                && picker()?.querySelector('[data-testid="media-picker-close"]')
+                    ?.getAttribute('aria-disabled') === 'true';
+            const uploadKeptTransferControls = ! picker()?.querySelector(
+                '[data-testid="media-picker-source-form"]',
+            )?.disabled && ! picker()?.querySelector(
+                '[data-testid="media-picker-source-form"]',
+            )?.closest('[inert]');
+
+            picker().dispatchEvent(new CustomEvent('livewire-upload-finish', {
+                detail: uploadDetail,
+            }));
+            await waitFor(() =>
+                ! picker()?.querySelector('[data-testid="media-picker-source-upload"]')?.disabled
+                && ! picker()?.querySelector('[data-testid="media-picker-header"]')?.inert
+                && ! picker()?.querySelector('[data-testid="media-picker-upload-action-guard"]')?.inert
+                && picker()?.querySelector('[data-testid="media-picker-close"]')
+                    ?.getAttribute('aria-disabled') !== 'true'
+                && picker()?.getAttribute('aria-busy') !== 'true'
+                && picker()?.contains(document.activeElement)
+            );
+            const uploadGuardReleased = ! picker()?.querySelector('[data-testid="media-picker-source-upload"]')?.disabled
+                && ! picker()?.querySelector('[data-testid="media-picker-header"]')?.inert
+                && picker()?.querySelector('[data-testid="media-picker-close"]')
+                    ?.getAttribute('aria-disabled') !== 'true';
+            const modalRect = modalWindow?.getBoundingClientRect();
+
+            return {
+                direction: document.documentElement.dir,
+                modal_roots: document.querySelectorAll(
+                    '[aria-modal="true"].fi-modal-open [data-testid="media-picker"]',
+                ).length,
+                dialog_roots: document.querySelectorAll('[aria-modal="true"].fi-modal-open').length,
+                active_inside_modal: Boolean(dialog()?.contains(document.activeElement)),
+                horizontal_overflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
+                picker_horizontal_overflow: (picker()?.scrollWidth ?? 0) > (picker()?.clientWidth ?? 0) + 1,
+                modal_within_viewport: (modalRect?.left ?? -1) >= -1
+                    && (modalRect?.right ?? window.innerWidth + 1) <= window.innerWidth + 1,
+                storage_was_lazy: storageWasLazy,
+                storage_loaded: storageLoaded,
+                upload_panel_persisted: uploadPanelPersisted,
+                url_state_preserved: restoredUrlInput.value === retainedUrl,
+                backdrop_kept_modal_open: backdropKeptModalOpen,
+                escape_kept_modal_open: escapeKeptModalOpen,
+                offline_disabled_source: offlineDisabledSource,
+                offline_kept_close_available: offlineKeptCloseAvailable,
+                online_restored_source: onlineRestoredSource,
+                request_guarded_close: Boolean(
+                    picker()?.querySelector('[data-testid="media-picker-close"]')
+                        ?.closest('[wire\\:loading\\.attr="inert"]'),
+                ),
+                upload_guarded_workspace: uploadGuardedWorkspace,
+                upload_kept_transfer_controls: uploadKeptTransferControls,
+                upload_guard_released: uploadGuardReleased,
+            };
+        }
+        JS);
+
+    expect($wide['direction'])->toBe($direction)
+        ->and($wide['modal_roots'])->toBe(1, json_encode($wide, JSON_THROW_ON_ERROR))
+        ->and($wide['dialog_roots'])->toBe(1)
+        ->and($wide['active_inside_modal'])->toBeTrue(json_encode($wide, JSON_THROW_ON_ERROR))
+        ->and($wide['horizontal_overflow'])->toBeFalse()
+        ->and($wide['picker_horizontal_overflow'])->toBeFalse()
+        ->and($wide['modal_within_viewport'])->toBeTrue(json_encode($wide, JSON_THROW_ON_ERROR))
+        ->and($wide['storage_was_lazy'])->toBeTrue()
+        ->and($wide['storage_loaded'])->toBeTrue()
+        ->and($wide['upload_panel_persisted'])->toBeTrue()
+        ->and($wide['url_state_preserved'])->toBeTrue()
+        ->and($wide['backdrop_kept_modal_open'])->toBeTrue()
+        ->and($wide['escape_kept_modal_open'])->toBeTrue()
+        ->and($wide['offline_disabled_source'])->toBeTrue()
+        ->and($wide['offline_kept_close_available'])->toBeTrue()
+        ->and($wide['online_restored_source'])->toBeTrue()
+        ->and($wide['request_guarded_close'])->toBeTrue()
+        ->and($wide['upload_guarded_workspace'])->toBeTrue()
+        ->and($wide['upload_kept_transfer_controls'])->toBeTrue()
+        ->and($wide['upload_guard_released'])->toBeTrue();
+
+    $page->resize(390, 844);
+    $narrow = $page->script(<<<'JS'
+        async () => {
+            await new Promise((resolve) => setTimeout(resolve, 300));
+            const dialog = document.querySelector('[aria-modal="true"].fi-modal-open');
+            const picker = dialog?.querySelector('[data-testid="media-picker"]');
+            const modalWindow = dialog?.querySelector('.fi-modal-window');
+            const grid = picker?.querySelector('.grid.min-h-0.flex-1');
+            const gallery = grid?.querySelector('main');
+            const sourceRail = grid?.querySelector('aside');
+            const modalRect = modalWindow?.getBoundingClientRect();
+            const galleryRect = gallery?.getBoundingClientRect();
+            const sourceRect = sourceRail?.getBoundingClientRect();
+            const pickerRect = picker?.getBoundingClientRect();
+            const overflowingElements = Array.from(picker?.querySelectorAll('*') ?? [])
+                .filter((element) => {
+                    const rect = element.getBoundingClientRect();
+
+                    return rect.left < (pickerRect?.left ?? 0) - 1
+                        || rect.right > (pickerRect?.right ?? window.innerWidth) + 1;
+                })
+                .slice(0, 10)
+                .map((element) => ({
+                    tag: element.tagName,
+                    testid: element.getAttribute('data-testid'),
+                    classes: element.className,
+                    left: element.getBoundingClientRect().left,
+                    right: element.getBoundingClientRect().right,
+                    scroll_width: element.scrollWidth,
+                    client_width: element.clientWidth,
+                }));
+
+            return {
+                viewport_width: window.innerWidth,
+                direction: document.documentElement.dir,
+                modal_roots: document.querySelectorAll(
+                    '[aria-modal="true"].fi-modal-open [data-testid="media-picker"]',
+                ).length,
+                active_inside_modal: Boolean(dialog?.contains(document.activeElement)),
+                horizontal_overflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
+                picker_horizontal_overflow: (picker?.scrollWidth ?? 0) > (picker?.clientWidth ?? 0) + 1,
+                picker_scroll_width: picker?.scrollWidth ?? null,
+                picker_client_width: picker?.clientWidth ?? null,
+                overflowing_elements: overflowingElements,
+                modal_within_viewport: (modalRect?.left ?? -1) >= -1
+                    && (modalRect?.right ?? window.innerWidth + 1) <= window.innerWidth + 1,
+                sources_stacked: Math.abs((galleryRect?.left ?? 0) - (sourceRect?.left ?? 1)) <= 2
+                    && Math.abs((galleryRect?.width ?? 0) - (sourceRect?.width ?? 1)) <= 2
+                    && (sourceRect?.top ?? 0) >= (galleryRect?.bottom ?? 1) - 2,
+                header_sticky: getComputedStyle(
+                    picker?.querySelector('[data-testid="media-picker-header"]'),
+                ).position === 'sticky',
+                footer_sticky: getComputedStyle(
+                    picker?.querySelector('[data-testid="media-picker-footer"]'),
+                ).position === 'sticky',
+            };
+        }
+        JS);
+
+    expect($narrow['viewport_width'])->toBe(390)
+        ->and($narrow['direction'])->toBe($direction)
+        ->and($narrow['modal_roots'])->toBe(1)
+        ->and($narrow['active_inside_modal'])->toBeTrue(json_encode($narrow, JSON_THROW_ON_ERROR))
+        ->and($narrow['horizontal_overflow'])->toBeFalse()
+        ->and($narrow['picker_horizontal_overflow'])->toBeFalse(json_encode($narrow, JSON_THROW_ON_ERROR))
+        ->and($narrow['modal_within_viewport'])->toBeTrue(json_encode($narrow, JSON_THROW_ON_ERROR))
+        ->and($narrow['sources_stacked'])->toBeTrue(json_encode($narrow, JSON_THROW_ON_ERROR))
+        ->and($narrow['header_sticky'])->toBeTrue()
+        ->and($narrow['footer_sticky'])->toBeTrue();
+
+    $closed = $page->script(<<<'JS'
+        async () => {
+            const started = performance.now();
+            document.querySelector(
+                '[aria-modal="true"].fi-modal-open [data-testid="media-picker-close"]',
+            )?.click();
+
+            while (document.querySelector(
+                '[aria-modal="true"].fi-modal-open [data-testid="media-picker"]',
+            ) !== null
+                && performance.now() - started < 7000) {
+                await new Promise((resolve) => setTimeout(resolve, 25));
+            }
+
+            while (! document.activeElement?.closest('[data-testid="media-picker-open"]')
+                && performance.now() - started < 7000) {
+                await new Promise((resolve) => setTimeout(resolve, 25));
+            }
+
+            const knownResizeObserverMessage = 'ResizeObserver loop completed with undelivered notifications.';
+            window.__pestBrowser.jsErrors = (window.__pestBrowser?.jsErrors ?? [])
+                .filter((error) => error.message !== knownResizeObserverMessage);
+
+            return {
+                modal_closed: document.querySelector(
+                    '[aria-modal="true"].fi-modal-open [data-testid="media-picker"]',
+                ) === null,
+                focus_returned: Boolean(document.activeElement?.closest('[data-testid="media-picker-open"]')),
+                horizontal_overflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
+            };
+        }
+        JS);
+
+    expect($closed['modal_closed'])->toBeTrue(json_encode($closed, JSON_THROW_ON_ERROR))
+        ->and($closed['focus_returned'])->toBeTrue(json_encode($closed, JSON_THROW_ON_ERROR))
+        ->and($closed['horizontal_overflow'])->toBeFalse();
+
+    $acquired = $page->script(<<<'JS'
+        async () => {
+            const waitFor = async (callback, timeout = 7000) => {
+                const started = performance.now();
+
+                while (performance.now() - started < timeout) {
+                    const result = callback();
+
+                    if (result) {
+                        return result;
+                    }
+
+                    await new Promise((resolve) => setTimeout(resolve, 25));
+                }
+
+                throw new Error('Timed out while waiting for nested Storage acquisition.');
+            };
+            const opener = document.querySelector('[data-testid="media-picker-open"]');
+            opener.click();
+            const picker = await waitFor(() => document.querySelector(
+                '[aria-modal="true"].fi-modal-open [data-testid="media-picker"]',
+            ));
+            await waitFor(() => {
+                const childId = picker.closest('[wire\\:id]')?.getAttribute('wire:id');
+
+                return childId && window.Livewire.find(childId);
+            });
+            await new Promise((resolve) => setTimeout(resolve, 250));
+            const storageSource = await waitFor(() => {
+                const button = picker.querySelector('[data-testid="media-picker-source-storage"]');
+
+                return button && ! button.disabled ? button : null;
+            });
+            storageSource.click();
+            await waitFor(() => {
+                const panel = picker.querySelector('[data-testid="media-picker-panel-storage"]');
+
+                return panel && ! panel.hidden ? panel : null;
+            });
+            const acquire = await waitFor(() => document.querySelector(
+                '[aria-modal="true"].fi-modal-open [data-testid="media-picker-storage-acquire"]:not([disabled])',
+            ));
+            acquire.click();
+            await waitFor(() => document.querySelector(
+                '[aria-modal="true"].fi-modal-open [data-testid="media-picker"]',
+            ) === null);
+            const selectedItem = await waitFor(() => document.querySelector('[data-testid="media-picker-selected-item"]'));
+            await waitFor(() => document.activeElement?.closest('[data-testid="media-picker-open"]'));
+
+            return {
+                modal_closed: document.querySelector(
+                    '[aria-modal="true"].fi-modal-open [data-testid="media-picker"]',
+                ) === null,
+                focus_returned: Boolean(document.activeElement?.closest('[data-testid="media-picker-open"]')),
+                owner_field_updated: selectedItem.textContent.includes('browser-storage.jpg'),
+            };
+        }
+        JS);
+
+    expect($acquired['modal_closed'])->toBeTrue()
+        ->and($acquired['focus_returned'])->toBeTrue()
+        ->and($acquired['owner_field_updated'])->toBeTrue(json_encode($acquired, JSON_THROW_ON_ERROR));
+
+    $media = Media::query()->where('path', 'media-imports/browser-storage.jpg')->sole();
+
+    expect($media->mediaAsset)->toBeInstanceOf(MediaAsset::class)
+        ->and($media->providerBinding)->toBeInstanceOf(MediaProviderBinding::class)
+        ->and($group->refresh()->coverMediaAttachment()->exists())->toBeFalse();
+
+    $saved = $page->script(<<<'JS'
+        async () => {
+            const ownerRoot = document.querySelector('[data-testid="media-picker-open"]')?.closest('[wire\\:id]');
+            const ownerId = ownerRoot?.getAttribute('wire:id');
+
+            if (! ownerId) {
+                throw new Error('Unable to find the owner Livewire component.');
+            }
+
+            await window.Livewire.find(ownerId).$call('save');
+
+            return {
+                saved: true,
+                selected_item_present: Boolean(document.querySelector('[data-testid="media-picker-selected-item"]')),
+            };
+        }
+        JS);
+
+    expect($saved['saved'])->toBeTrue()
+        ->and($saved['selected_item_present'])->toBeTrue()
+        ->and($group->refresh()->coverMediaAttachment()->value('media_id'))->toBe($media->getKey());
+
+    $page->script(<<<'JS'
+        () => {
+            const knownResizeObserverMessage = 'ResizeObserver loop completed with undelivered notifications.';
+            window.__pestBrowser.jsErrors = (window.__pestBrowser?.jsErrors ?? [])
+                .filter((error) => error.message !== knownResizeObserverMessage);
+        }
+        JS);
+    $page->assertNoJavaScriptErrors();
+})->with([
+    'Hebrew RTL' => ['he', 'rtl'],
+    'English LTR' => ['en', 'ltr'],
+]);
+
+it('guards close while the parent accepts a returned selection', function (): void {
+    app()->setLocale('he');
+    $media = Media::factory()->create([
+        'title' => 'Delayed parent handoff',
+    ]);
+    Storage::disk('public')->put(
+        $media->path,
+        base64_decode((string) file_get_contents(base_path('tests/Fixtures/media/valid.jpg.base64')), true),
+    );
+    $group = ContentGroup::factory()->create([
+        'title' => 'Parent handoff guard',
+    ]);
+    $page = visit(ContentGroupResource::getUrl('edit', ['record' => $group]))
+        ->resize(1280, 900);
+    $script = str_replace('__MEDIA_ID__', (string) $media->getKey(), <<<'JS'
+        async () => {
+            const waitFor = async (callback, timeout = 7000) => {
+                const started = performance.now();
+
+                while (performance.now() - started < timeout) {
+                    const result = callback();
+
+                    if (result) {
+                        return result;
+                    }
+
+                    await new Promise((resolve) => setTimeout(resolve, 25));
+                }
+
+                throw new Error('Timed out while testing the parent selection handoff.');
+            };
+            const picker = () => document.querySelector(
+                '[aria-modal="true"].fi-modal-open [data-testid="media-picker"]',
+            );
+            const opener = document.querySelector('[data-testid="media-picker-open"]');
+            opener.click();
+            await waitFor(() => picker());
+            await new Promise((resolve) => setTimeout(resolve, 250));
+
+            const originalFetch = window.fetch.bind(window);
+            let releaseRequest = null;
+            let requestHeld = false;
+            window.fetch = (...arguments_) => {
+                if (! requestHeld) {
+                    requestHeld = true;
+
+                    return new Promise((resolve, reject) => {
+                        releaseRequest = () => {
+                            window.fetch = originalFetch;
+                            originalFetch(...arguments_).then(resolve, reject);
+                        };
+                    });
+                }
+
+                return originalFetch(...arguments_);
+            };
+            picker().dispatchEvent(new CustomEvent('insert-media', {
+                bubbles: true,
+                detail: [{ mediaId: __MEDIA_ID__ }],
+            }));
+            await waitFor(() => requestHeld && releaseRequest);
+
+            const pickerRoot = picker();
+            const close = pickerRoot.querySelector('[data-testid="media-picker-close"]');
+            const guarded = pickerRoot.inert
+                && close.disabled
+                && close.getAttribute('aria-disabled') === 'true'
+                && pickerRoot.getAttribute('aria-busy') === 'true';
+            let remainedOpenAfterCloseAttempt = false;
+
+            if (guarded) {
+                close.click();
+                await new Promise((resolve) => setTimeout(resolve, 100));
+                remainedOpenAfterCloseAttempt = Boolean(picker());
+            }
+
+            releaseRequest();
+            await waitFor(() => picker() === null);
+            await waitFor(() => document.querySelector('[data-testid="media-picker-selected-item"]'));
+            await waitFor(
+                () => document.activeElement?.closest('[data-testid="media-picker-open"]'),
+            );
+
+            return {
+                close_guarded: guarded,
+                focus_returned: Boolean(document.activeElement?.closest('[data-testid="media-picker-open"]')),
+                modal_closed_after_handoff: picker() === null,
+                remained_open_after_close_attempt: remainedOpenAfterCloseAttempt,
+                selection_returned: Boolean(document.querySelector(
+                    '[data-testid="media-picker-selected-item"]',
+                )),
+            };
+        }
+        JS);
+
+    $result = $page->script($script);
+
+    expect($result['close_guarded'])->toBeTrue(json_encode($result, JSON_THROW_ON_ERROR))
+        ->and($result['remained_open_after_close_attempt'])->toBeTrue(json_encode($result, JSON_THROW_ON_ERROR))
+        ->and($result['modal_closed_after_handoff'])->toBeTrue(json_encode($result, JSON_THROW_ON_ERROR))
+        ->and($result['selection_returned'])->toBeTrue(json_encode($result, JSON_THROW_ON_ERROR))
+        ->and($result['focus_returned'])->toBeTrue(json_encode($result, JSON_THROW_ON_ERROR));
+
+    $page->script(<<<'JS'
+        () => {
+            const knownResizeObserverMessage = 'ResizeObserver loop completed with undelivered notifications.';
+            window.__pestBrowser.jsErrors = (window.__pestBrowser?.jsErrors ?? [])
+                .filter((error) => error.message !== knownResizeObserverMessage);
+        }
+        JS);
+    $page->assertNoJavaScriptErrors();
+});
+
+it('closes locally while truly offline and reconciles the action on reconnect', function (bool $nested): void {
+    app()->setLocale('he');
+    $group = ContentGroup::factory()->create([
+        'title' => 'Offline media picker close',
+    ]);
+    $page = visit(ContentGroupResource::getUrl('edit', ['record' => $group]))
+        ->resize(1280, 900);
+
+    $openPicker = str_replace('__NESTED__', $nested ? 'true' : 'false', <<<'JS'
+        async () => {
+            const waitFor = async (callback, timeout = 7000) => {
+                const started = performance.now();
+
+                while (performance.now() - started < timeout) {
+                    const result = callback();
+
+                    if (result) {
+                        return result;
+                    }
+
+                    await new Promise((resolve) => setTimeout(resolve, 25));
+                }
+
+                throw new Error('Timed out while opening the offline media picker.');
+            };
+            const triggerFor = (actionName) => Array.from(document.querySelectorAll('button, a'))
+                .find((element) => Array.from(element.attributes)
+                    .some((attribute) => attribute.value.includes(actionName)));
+            const visibleOpener = () => Array.from(document.querySelectorAll(
+                '[data-testid="media-picker-open"]',
+            )).find((element) => (element.offsetParent !== null) && ! element.closest('[inert]'));
+            const started = performance.now();
+            let opener;
+
+            if (__NESTED__) {
+                triggerFor('chooseContentGroupCover')?.click();
+                const outer = await waitFor(() => Array.from(document.querySelectorAll(
+                    '[aria-modal="true"].fi-modal-open',
+                )).find((dialog) => dialog.querySelector('[data-testid="media-picker-open"]')));
+                opener = await waitFor(() => outer.querySelector('[data-testid="media-picker-open"]'));
+            } else {
+                opener = await waitFor(() => visibleOpener());
+            }
+
+            opener.click();
+
+            while (performance.now() - started < 7000) {
+                const close = document.querySelector(
+                    '[aria-modal="true"].fi-modal-open [data-testid="media-picker-close"]',
+                );
+                const wrapper = close?.closest('[x-data*="offlineClosePending"]');
+
+                if (
+                    wrapper
+                    && window.Alpine
+                    && (typeof window.Alpine.$data(wrapper).offlineClosePending === 'boolean')
+                ) {
+                    await new Promise((resolve) => setTimeout(resolve, 250));
+
+                    return;
+                }
+
+                await new Promise((resolve) => setTimeout(resolve, 25));
+            }
+
+            throw new Error('Timed out while waiting for the offline close handler.');
+        }
+        JS);
+    $page->script($openPicker);
+
+    setMediaPickerBrowserOffline($page, true);
+
+    $offline = $page->script(<<<'JS'
+        async () => {
+            const started = performance.now();
+            const picker = () => document.querySelector(
+                '[aria-modal="true"].fi-modal-open [data-testid="media-picker"]',
+            );
+
+            while (performance.now() - started < 7000) {
+                const notice = picker()?.querySelector('[wire\\:offline]');
+
+                if (notice && getComputedStyle(notice).display !== 'none') {
+                    break;
+                }
+
+                await new Promise((resolve) => setTimeout(resolve, 25));
+            }
+
+            const close = picker()?.querySelector('[data-testid="media-picker-close"]');
+            const modal = close?.closest('[data-fi-modal-id]');
+            const modalId = modal?.id ?? null;
+            const actionMatch = modalId?.match(/^(.*-action-)(\d+)$/);
+            const parentId = actionMatch && (Number(actionMatch[2]) > 0)
+                ? actionMatch[1] + (Number(actionMatch[2]) - 1)
+                : null;
+            const modalState = modal && window.Alpine ? window.Alpine.$data(modal) : null;
+            let offlineRequestCount = 0;
+            const stopRecordingRequests = window.Livewire.hook('request', () => {
+                offlineRequestCount++;
+            });
+            close?.click();
+
+            while (picker() && performance.now() - started < 7000) {
+                await new Promise((resolve) => setTimeout(resolve, 25));
+            }
+
+            while (parentId
+                && ! document.getElementById(parentId)?.classList.contains('fi-modal-open')
+                && performance.now() - started < 7000) {
+                await new Promise((resolve) => setTimeout(resolve, 25));
+            }
+
+            while (! document.activeElement?.closest('[data-testid="media-picker-open"]')
+                && performance.now() - started < 7000) {
+                await new Promise((resolve) => setTimeout(resolve, 25));
+            }
+
+            await new Promise((resolve) => setTimeout(resolve, 100));
+            stopRecordingRequests();
+            const parent = parentId ? document.getElementById(parentId) : null;
+            const parentState = parent && window.Alpine ? window.Alpine.$data(parent) : null;
+
+            return {
+                child_scroll_lock_released: modalState?.isHoldingScrollLock === false,
+                child_trap_released: modalState?.isTrapActive === false,
+                closed_while_offline: picker() === null,
+                correct_remaining_scroll_lock: parentId === null
+                    ? document.documentElement.style.overflow !== 'hidden'
+                    : (
+                        parentState?.isHoldingScrollLock === true
+                        && document.documentElement.style.overflow === 'hidden'
+                    ),
+                focus_returned: Boolean(document.activeElement?.closest('[data-testid="media-picker-open"]')),
+                navigator_offline: navigator.onLine === false,
+                offline_request_count: offlineRequestCount,
+                parent_open: parentId === null
+                    || document.getElementById(parentId)?.classList.contains('fi-modal-open'),
+            };
+        }
+        JS);
+
+    setMediaPickerBrowserOffline($page, false);
+
+    $reconnected = $page->script(<<<'JS'
+        async () => {
+            const waitFor = async (callback, timeout = 7000) => {
+                const started = performance.now();
+
+                while (performance.now() - started < timeout) {
+                    const result = callback();
+
+                    if (result) {
+                        return result;
+                    }
+
+                    await new Promise((resolve) => setTimeout(resolve, 25));
+                }
+
+                throw new Error('Timed out while reconciling the offline media picker close.');
+            };
+            const openPicker = () => document.querySelector(
+                '[aria-modal="true"].fi-modal-open [data-testid="media-picker"]',
+            );
+            const visibleOpener = () => Array.from(document.querySelectorAll(
+                '[data-testid="media-picker-open"]',
+            )).find((element) => (element.offsetParent !== null) && ! element.closest('[inert]'));
+
+            await waitFor(() => navigator.onLine);
+
+            if (openPicker()) {
+                openPicker().querySelector('[data-testid="media-picker-close"]')?.click();
+                await waitFor(() => openPicker() === null);
+            }
+
+            await waitFor(() => document.querySelector('[data-testid="media-picker"]') === null);
+            const opener = await waitFor(() => visibleOpener());
+            opener.click();
+            await waitFor(() => openPicker());
+            await new Promise((resolve) => setTimeout(resolve, 250));
+            const reopenedCount = document.querySelectorAll(
+                '[aria-modal="true"].fi-modal-open [data-testid="media-picker"]',
+            ).length;
+            openPicker().querySelector('[data-testid="media-picker-close"]')?.click();
+            await waitFor(() => openPicker() === null);
+            await waitFor(
+                () => document.activeElement?.closest('[data-testid="media-picker-open"]'),
+            );
+            const focusReturned = Boolean(
+                document.activeElement?.closest('[data-testid="media-picker-open"]'),
+            );
+            const parent = Array.from(document.querySelectorAll(
+                '[aria-modal="true"].fi-modal-open',
+            )).find((dialog) => dialog.querySelector('[data-testid="media-picker-open"]'));
+
+            if (parent) {
+                const cancel = Array.from(parent.querySelectorAll(
+                    '.fi-modal-footer-actions button',
+                )).find((button) => button.type !== 'submit');
+
+                if (! cancel) {
+                    throw new Error('Unable to find the restored parent action cancel button.');
+                }
+
+                cancel.click();
+                await waitFor(() => document.querySelector('[aria-modal="true"].fi-modal-open') === null);
+            }
+
+            await waitFor(() => document.documentElement.style.overflow !== 'hidden');
+
+            return {
+                parent_closed: document.querySelector('[aria-modal="true"].fi-modal-open') === null,
+                reopened_count: reopenedCount,
+                focus_returned: focusReturned,
+                scroll_lock_released: document.documentElement.style.overflow !== 'hidden',
+            };
+        }
+        JS);
+
+    expect($offline['navigator_offline'])->toBeTrue()
+        ->and($offline['offline_request_count'])->toBe(0, json_encode($offline, JSON_THROW_ON_ERROR))
+        ->and($offline['closed_while_offline'])->toBeTrue(json_encode($offline, JSON_THROW_ON_ERROR))
+        ->and($offline['child_trap_released'])->toBeTrue(json_encode($offline, JSON_THROW_ON_ERROR))
+        ->and($offline['child_scroll_lock_released'])->toBeTrue(json_encode($offline, JSON_THROW_ON_ERROR))
+        ->and($offline['correct_remaining_scroll_lock'])->toBeTrue(json_encode($offline, JSON_THROW_ON_ERROR))
+        ->and($offline['parent_open'])->toBeTrue(json_encode($offline, JSON_THROW_ON_ERROR))
+        ->and($offline['focus_returned'])->toBeTrue(json_encode($offline, JSON_THROW_ON_ERROR))
+        ->and($reconnected['reopened_count'])->toBe(1)
+        ->and($reconnected['focus_returned'])->toBeTrue()
+        ->and($reconnected['parent_closed'])->toBeTrue()
+        ->and($reconnected['scroll_lock_released'])->toBeTrue();
+
+    $page->script(<<<'JS'
+        () => {
+            const knownResizeObserverMessage = 'ResizeObserver loop completed with undelivered notifications.';
+            window.__pestBrowser.jsErrors = (window.__pestBrowser?.jsErrors ?? [])
+                .filter((error) => error.message !== knownResizeObserverMessage);
+        }
+        JS);
+    $page->assertNoJavaScriptErrors();
+})->with([
+    'direct field action' => [false],
+    'nested Add or Replace Image action' => [true],
+]);
+
+it('returns acquired media to the outer image action while attachment stays pending until save', function (): void {
+    app()->setLocale('he');
+    Storage::disk('public')->put(
+        'media-imports/browser-nested-storage.jpg',
+        base64_decode((string) file_get_contents(base_path('tests/Fixtures/media/valid.jpg.base64')), true),
+    );
+    $group = ContentGroup::factory()->create([
+        'title' => 'Nested media picker action',
+    ]);
+
+    $page = visit(ContentGroupResource::getUrl('edit', ['record' => $group]))
+        ->resize(1280, 900);
+
+    $firstSelection = $page->script(<<<'JS'
+        async () => {
+            const waitFor = async (callback, timeout = 7000) => {
+                const started = performance.now();
+
+                while (performance.now() - started < timeout) {
+                    const result = callback();
+
+                    if (result) {
+                        return result;
+                    }
+
+                    await new Promise((resolve) => setTimeout(resolve, 25));
+                }
+
+                throw new Error('Timed out while waiting for the nested media action.');
+            };
+            const triggerFor = (actionName) => Array.from(document.querySelectorAll('button, a'))
+                .find((element) => Array.from(element.attributes)
+                    .some((attribute) => attribute.value.includes(actionName)));
+            const picker = () => document.querySelector(
+                '[aria-modal="true"].fi-modal-open [data-testid="media-picker"]',
+            );
+            const outerDialog = () => Array.from(document.querySelectorAll(
+                '[aria-modal="true"].fi-modal-open',
+            )).find((dialog) => dialog.querySelector('[data-testid="media-picker-open"]'));
+
+            triggerFor('chooseContentGroupCover')?.click();
+            const outer = await waitFor(() => outerDialog());
+            const nestedOpener = await waitFor(() => outer.querySelector('[data-testid="media-picker-open"]'));
+            nestedOpener.focus();
+            nestedOpener.click();
+
+            const workspace = await waitFor(() => picker());
+            await waitFor(() => {
+                const childId = workspace.closest('[wire\\:id]')?.getAttribute('wire:id');
+
+                return childId && window.Livewire.find(childId);
+            });
+            workspace.querySelector('[data-testid="media-picker-source-storage"]')?.click();
+            await waitFor(() => workspace.textContent.includes('browser-nested-storage.jpg'));
+            const acquire = await waitFor(() => workspace.querySelector(
+                '[data-testid="media-picker-storage-acquire"]:not([disabled])',
+            ));
+            acquire.click();
+
+            await waitFor(() => picker() === null);
+            const restoredOuter = await waitFor(() => outerDialog());
+            const selected = await waitFor(() => restoredOuter.querySelector(
+                '[data-testid="media-picker-selected-item"]',
+            ));
+            await waitFor(() => document.activeElement?.closest('[data-testid="media-picker-open"]'));
+
+            return {
+                parent_remained_open: restoredOuter.classList.contains('fi-modal-open'),
+                selection_returned: selected.textContent.includes('browser-nested-storage.jpg'),
+                focus_returned: Boolean(document.activeElement?.closest('[data-testid="media-picker-open"]')),
+                open_picker_count: document.querySelectorAll('[data-testid="media-picker"]').length,
+            };
+        }
+        JS);
+
+    expect($firstSelection['parent_remained_open'])->toBeTrue(json_encode($firstSelection, JSON_THROW_ON_ERROR))
+        ->and($firstSelection['selection_returned'])->toBeTrue(json_encode($firstSelection, JSON_THROW_ON_ERROR))
+        ->and($firstSelection['focus_returned'])->toBeTrue(json_encode($firstSelection, JSON_THROW_ON_ERROR))
+        ->and($firstSelection['open_picker_count'])->toBe(0);
+
+    $media = Media::query()->where('path', 'media-imports/browser-nested-storage.jpg')->sole();
+
+    expect($media->mediaAsset)->toBeInstanceOf(MediaAsset::class)
+        ->and($media->providerBinding)->toBeInstanceOf(MediaProviderBinding::class)
+        ->and($group->refresh()->coverMediaAttachment()->exists())->toBeFalse();
+
+    $cancelled = $page->script(<<<'JS'
+        async () => {
+            const started = performance.now();
+            const outer = Array.from(document.querySelectorAll(
+                '[aria-modal="true"].fi-modal-open',
+            )).find((dialog) => dialog.querySelector('[data-testid="media-picker-open"]'));
+            const cancel = Array.from(outer?.querySelectorAll(
+                '.fi-modal-footer-actions button',
+            ) ?? []).find((button) => button.type !== 'submit');
+
+            if (! cancel) {
+                throw new Error('Unable to find the outer image action cancel button.');
+            }
+
+            cancel.click();
+
+            while (document.querySelector('[aria-modal="true"].fi-modal-open') !== null
+                && performance.now() - started < 7000) {
+                await new Promise((resolve) => setTimeout(resolve, 25));
+            }
+
+            return {
+                outer_closed: document.querySelector('[aria-modal="true"].fi-modal-open') === null,
+            };
+        }
+        JS);
+
+    expect($cancelled['outer_closed'])->toBeTrue(json_encode($cancelled, JSON_THROW_ON_ERROR))
+        ->and($group->refresh()->coverMediaAttachment()->exists())->toBeFalse()
+        ->and(Media::query()->whereKey($media)->exists())->toBeTrue();
+
+    $saved = $page->script(<<<'JS'
+        async () => {
+            const waitFor = async (callback, timeout = 7000) => {
+                const started = performance.now();
+
+                while (performance.now() - started < timeout) {
+                    const result = callback();
+
+                    if (result) {
+                        return result;
+                    }
+
+                    await new Promise((resolve) => setTimeout(resolve, 25));
+                }
+
+                throw new Error('Timed out while saving the nested media action.');
+            };
+            const triggerFor = (actionName) => Array.from(document.querySelectorAll('button, a'))
+                .find((element) => Array.from(element.attributes)
+                    .some((attribute) => attribute.value.includes(actionName)));
+            const picker = () => document.querySelector(
+                '[aria-modal="true"].fi-modal-open [data-testid="media-picker"]',
+            );
+            const outerDialog = () => Array.from(document.querySelectorAll(
+                '[aria-modal="true"].fi-modal-open',
+            )).find((dialog) => dialog.querySelector('[data-testid="media-picker-open"]'));
+
+            triggerFor('chooseContentGroupCover')?.click();
+            const outer = await waitFor(() => outerDialog());
+            const nestedOpener = await waitFor(() => outer.querySelector('[data-testid="media-picker-open"]'));
+            nestedOpener.click();
+            const workspace = await waitFor(() => picker());
+            await waitFor(() => {
+                const childId = workspace.closest('[wire\\:id]')?.getAttribute('wire:id');
+
+                return childId && window.Livewire.find(childId);
+            });
+            workspace.querySelector('[data-testid="media-picker-source-storage"]')?.click();
+            await waitFor(() => workspace.textContent.includes('browser-nested-storage.jpg'));
+            const acquire = await waitFor(() => workspace.querySelector(
+                '[data-testid="media-picker-storage-acquire"]:not([disabled])',
+            ));
+            acquire.click();
+            await waitFor(() => picker() === null);
+            const restoredOuter = await waitFor(() => outerDialog());
+            await waitFor(() => restoredOuter.querySelector('[data-testid="media-picker-selected-item"]'));
+            const submit = restoredOuter.querySelector('.fi-modal-footer-actions button[type="submit"]');
+
+            if (! submit) {
+                throw new Error('Unable to find the outer image action submit button.');
+            }
+
+            submit.click();
+            await waitFor(() => outerDialog() === undefined);
+
+            const knownResizeObserverMessage = 'ResizeObserver loop completed with undelivered notifications.';
+            window.__pestBrowser.jsErrors = (window.__pestBrowser?.jsErrors ?? [])
+                .filter((error) => error.message !== knownResizeObserverMessage);
+
+            return {
+                outer_closed: outerDialog() === undefined,
+            };
+        }
+        JS);
+
+    expect($saved['outer_closed'])->toBeTrue(json_encode($saved, JSON_THROW_ON_ERROR))
+        ->and($group->refresh()->coverMediaAttachment()->value('media_id'))->toBe($media->getKey());
+
+    $page->assertNoJavaScriptErrors();
+});
+
+it('keeps a nested media item action owned by the picker across repeated modal lifecycles', function (): void {
+    app()->setLocale('he');
+    $media = Media::factory()->create([
+        'directory' => 'content-groups/covers',
+        'path' => 'content-groups/covers/browser-nested-edit.jpg',
+        'name' => 'browser-nested-edit',
+        'title' => 'Nested editable media',
+    ]);
+    Storage::disk('public')->put(
+        $media->path,
+        base64_decode((string) file_get_contents(base_path('tests/Fixtures/media/valid.jpg.base64')), true),
+    );
+    $group = ContentGroup::factory()->create([
+        'title' => 'Nested item action owner',
+    ]);
+
+    $page = visit(ContentGroupResource::getUrl('edit', ['record' => $group]))
+        ->resize(1280, 900);
+
+    $result = $page->script(<<<'JS'
+        async () => {
+            const waitFor = async (callback, timeout = 7000) => {
+                const started = performance.now();
+
+                while (performance.now() - started < timeout) {
+                    const result = callback();
+
+                    if (result) {
+                        return result;
+                    }
+
+                    await new Promise((resolve) => setTimeout(resolve, 25));
+                }
+
+                throw new Error('Timed out while waiting for a nested picker item action.');
+            };
+            const picker = () => document.querySelector(
+                '[aria-modal="true"].fi-modal-open [data-testid="media-picker"]',
+            );
+            const childDialog = () => Array.from(document.querySelectorAll(
+                '[aria-modal="true"].fi-modal-open',
+            )).find((dialog) => ! dialog.querySelector('[data-testid="media-picker"]'));
+            const closeChild = async () => {
+                const dialog = await waitFor(() => childDialog());
+                const cancel = Array.from(dialog.querySelectorAll(
+                    '.fi-modal-footer-actions button',
+                )).find((button) => button.type !== 'submit');
+
+                if (! cancel) {
+                    throw new Error('Unable to find the nested item action cancel button.');
+                }
+
+                cancel.click();
+                await waitFor(() => childDialog() === undefined);
+                await waitFor(() => picker());
+            };
+            const openEdit = async () => {
+                const workspace = await waitFor(() => picker());
+                const mediaCard = Array.from(workspace.querySelectorAll(
+                    '[wire\\:key^="media-picker-"]',
+                )).find((card) => card.textContent.includes('Nested editable media'));
+                const actionGroup = mediaCard?.querySelector('.fi-dropdown');
+                const actionGroupTrigger = actionGroup?.querySelector(
+                    ':scope > .fi-dropdown-trigger button',
+                );
+
+                if (! actionGroupTrigger) {
+                    throw new Error('Unable to resolve the nested picker item action group.');
+                }
+
+                actionGroupTrigger.click();
+                const editAction = await waitFor(() => {
+                    const action = Array.from(actionGroup.querySelectorAll(
+                        '.fi-dropdown-list-item',
+                    )).find((candidate) => candidate
+                        .getAttribute('wire:click')
+                        ?.includes('editItem'));
+
+                    return action && getComputedStyle(action).display !== 'none'
+                        ? action
+                        : null;
+                });
+                editAction.click();
+
+                return await waitFor(() => {
+                    const dialog = childDialog();
+                    const titleInput = Array.from(dialog?.querySelectorAll('input') ?? [])
+                        .find((input) => input.value === 'Nested editable media');
+
+                    return titleInput ? dialog : null;
+                });
+            };
+
+            document.querySelector('[data-testid="media-picker-open"]')?.click();
+            await waitFor(() => picker());
+
+            const firstDialog = await openEdit();
+            const firstChildOpened = firstDialog.classList.contains('fi-modal-open');
+            const firstOpenDialogCount = document.querySelectorAll(
+                '[aria-modal="true"].fi-modal-open',
+            ).length;
+            await closeChild();
+            const pickerSurvivedFirstClose = Boolean(picker());
+
+            const secondDialog = await openEdit();
+            const secondChildOpened = secondDialog.classList.contains('fi-modal-open');
+            const secondOpenDialogCount = document.querySelectorAll(
+                '[aria-modal="true"].fi-modal-open',
+            ).length;
+            await closeChild();
+            const pickerSurvivedSecondClose = Boolean(picker());
+
+            picker()?.querySelector('[data-testid="media-picker-close"]')?.click();
+            await waitFor(() => picker() === null);
+
+            const knownResizeObserverMessage = 'ResizeObserver loop completed with undelivered notifications.';
+            window.__pestBrowser.jsErrors = (window.__pestBrowser?.jsErrors ?? [])
+                .filter((error) => error.message !== knownResizeObserverMessage);
+
+            return {
+                first_child_opened: firstChildOpened,
+                second_child_opened: secondChildOpened,
+                first_open_dialog_count: firstOpenDialogCount,
+                second_open_dialog_count: secondOpenDialogCount,
+                picker_survived_first_close: pickerSurvivedFirstClose,
+                picker_survived_second_close: pickerSurvivedSecondClose,
+                picker_closed_explicitly: picker() === null,
+            };
+        }
+        JS);
+
+    expect($result['first_child_opened'])->toBeTrue(json_encode($result, JSON_THROW_ON_ERROR))
+        ->and($result['second_child_opened'])->toBeTrue(json_encode($result, JSON_THROW_ON_ERROR))
+        ->and($result['first_open_dialog_count'])->toBe(2)
+        ->and($result['second_open_dialog_count'])->toBe(2)
+        ->and($result['picker_survived_first_close'])->toBeTrue()
+        ->and($result['picker_survived_second_close'])->toBeTrue()
+        ->and($result['picker_closed_explicitly'])->toBeTrue();
+
+    $page->assertNoJavaScriptErrors();
+});

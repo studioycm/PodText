@@ -3,14 +3,17 @@
 namespace App\Livewire\Admin;
 
 use App\Enums\ImageUploadPurpose;
+use App\Enums\MediaAcquisitionDisposition;
 use App\Models\Media;
 use App\Models\User;
 use App\Support\Media\CuratorImageUploadPolicy;
+use App\Support\Media\ExternalImageFailureMessage;
 use App\Support\Media\MediaAcquisitionManager;
 use App\Support\Media\MediaFilesystemMutationCoordinator;
 use App\Support\Media\MediaInventoryDiagnostics;
 use App\Support\Media\MediaRecordProjector;
 use App\Support\Media\MediaRecordScope;
+use App\Support\Media\StorageImageCandidateBrowser;
 use Filament\Actions\Action;
 use Filament\Actions\Concerns\InteractsWithActions;
 use Filament\Actions\Contracts\HasActions;
@@ -25,6 +28,8 @@ use Filament\Schemas\Contracts\HasSchemas;
 use Filament\Schemas\Schema;
 use Filament\Support\Enums\Width;
 use Filament\Support\Icons\Heroicon;
+use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -37,6 +42,7 @@ use Livewire\Attributes\Locked;
 use Livewire\Component;
 use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
 use RuntimeException;
+use Throwable;
 use UnexpectedValueException;
 
 class MediaPickerPanel extends Component implements HasActions, HasSchemas
@@ -46,6 +52,8 @@ class MediaPickerPanel extends Component implements HasActions, HasSchemas
     use RestrictsFileUploadsToSchemaComponents;
 
     private const SELECTION_LIMIT = 50;
+
+    private const SOURCES = ['upload', 'url', 'storage'];
 
     #[Locked]
     public string $purpose;
@@ -77,6 +85,15 @@ class MediaPickerPanel extends Component implements HasActions, HasSchemas
     public bool $allMedia = false;
 
     #[Locked]
+    public string $activeSource = 'upload';
+
+    #[Locked]
+    public bool $storageConfigured = false;
+
+    #[Locked]
+    public bool $storageLoaded = false;
+
+    #[Locked]
     public int $currentPage = 1;
 
     #[Locked]
@@ -100,6 +117,7 @@ class MediaPickerPanel extends Component implements HasActions, HasSchemas
         $this->isMultiple = $isMultiple;
         $this->maxItems = $maxItems;
         $this->selectedIds = $this->trustedIds($selectedIds, 'view');
+        $this->storageConfigured = app(StorageImageCandidateBrowser::class)->hasConfiguredSources();
 
         if (count($this->selectedIds) > $this->selectionLimit()) {
             abort(422);
@@ -107,7 +125,6 @@ class MediaPickerPanel extends Component implements HasActions, HasSchemas
 
         $this->form->fill();
         $this->reloadFiles();
-        $this->reloadStorageFiles();
     }
 
     public function form(Schema $schema): Schema
@@ -116,26 +133,64 @@ class MediaPickerPanel extends Component implements HasActions, HasSchemas
             ->statePath('panelData')
             ->components([
                 Section::make(__('admin.media_library.upload_source'))
+                    ->extraAttributes(fn (): array => $this->sourceSectionAttributes('upload'))
+                    ->dehydrated(fn (): bool => $this->activeSource === 'upload')
+                    ->validatedWhenNotDehydrated(false)
                     ->schema([
                         FileUpload::make('uploads')
                             ->label(__('admin.fields.media_files'))
                             ->acceptedFileTypes(app(CuratorImageUploadPolicy::class)->mimeTypesFor($this->uploadPurpose()))
                             ->maxSize(app(CuratorImageUploadPolicy::class)->maxKilobytes())
-                            ->multiple()
-                            ->maxFiles(app(CuratorImageUploadPolicy::class)->uploadBatchLimit())
+                            ->multiple($this->isMultiple)
+                            ->maxFiles($this->isMultiple ? app(CuratorImageUploadPolicy::class)->uploadBatchLimit() : 1)
                             ->maxParallelUploads(2)
+                            ->extraInputAttributes([
+                                'data-testid' => 'media-picker-upload-input',
+                                'id' => 'media-picker-upload-input',
+                            ])
+                            ->uploadingMessage(__('admin.media_library.uploading_file'))
                             ->storeFiles(false),
                     ]),
                 Section::make(__('admin.media_library.url_source'))
+                    ->extraAttributes(fn (): array => $this->sourceSectionAttributes('url'))
+                    ->dehydrated(fn (): bool => $this->activeSource === 'url')
+                    ->validatedWhenNotDehydrated(false)
                     ->schema([
                         TextInput::make('external_url')
                             ->label(__('admin.media_library.url_field'))
                             ->helperText(__('admin.media_library.url_help'))
                             ->url()
                             ->rule('url:https')
-                            ->maxLength(2048),
+                            ->maxLength(2048)
+                            ->extraInputAttributes([
+                                'data-testid' => 'media-picker-url-input',
+                                'id' => 'media-picker-url-input',
+                                'x-bind:disabled' => 'uploading',
+                                'wire:loading.attr' => 'disabled',
+                                'wire:offline.attr' => 'disabled',
+                            ])
+                            ->live(debounce: 400),
                     ]),
             ]);
+    }
+
+    public function activateSource(string $source): void
+    {
+        abort_unless(in_array($source, self::SOURCES, true), 422);
+
+        $this->activeSource = $source;
+        $this->resetValidation($this->sourceErrorKeys($source));
+
+        if ($source === 'storage' && ! $this->storageLoaded) {
+            $this->loadStorageFiles();
+        }
+    }
+
+    public function refreshStorageFiles(): void
+    {
+        $this->activeSource = 'storage';
+        $this->resetValidation($this->sourceErrorKeys('storage'));
+        $this->loadStorageFiles();
     }
 
     public function updatedSearch(): void
@@ -155,7 +210,25 @@ class MediaPickerPanel extends Component implements HasActions, HasSchemas
     public function updatedStorageSearch(): void
     {
         $this->storageSearch = mb_substr(trim($this->storageSearch), 0, 100);
-        $this->reloadStorageFiles();
+        $this->resetValidation($this->sourceErrorKeys('storage'));
+    }
+
+    /** @return array<int, array{token: string, filename: string, source: string}> */
+    public function filteredStorageFiles(): array
+    {
+        $search = mb_strtolower($this->storageSearch);
+
+        if ($search === '') {
+            return $this->storageFiles;
+        }
+
+        return array_values(array_filter(
+            $this->storageFiles,
+            fn (array $candidate): bool => str_contains(
+                mb_strtolower($candidate['filename'].' '.$candidate['source']),
+                $search,
+            ),
+        ));
     }
 
     public function showContextMedia(): void
@@ -217,12 +290,28 @@ class MediaPickerPanel extends Component implements HasActions, HasSchemas
     public function uploadFilesAction(): Action
     {
         return Action::make('uploadFiles')
-            ->label(__('admin.media_library.upload'))
+            ->label(fn (): string => $this->isMultiple
+                ? __('admin.media_library.add_and_select')
+                : __('admin.media_library.add_and_choose'))
             ->icon(Heroicon::ArrowUpTray)
-            ->visible(fn (): bool => count(Arr::wrap($this->form->getRawState()['uploads'] ?? [])) > 0)
+            ->disabled(fn (): bool => count(Arr::wrap($this->form->getRawState()['uploads'] ?? [])) === 0)
+            ->extraAttributes([
+                'wire:loading.attr' => 'disabled',
+                'wire:offline.attr' => 'disabled',
+            ])
             ->action(function (): void {
+                $this->activeSource = 'upload';
+                $this->resetValidation($this->sourceErrorKeys('upload'));
                 $data = $this->form->getState();
                 $uploads = array_values(Arr::wrap($data['uploads'] ?? []));
+
+                if (! $this->isMultiple && count($uploads) > 1) {
+                    $this->failSource(
+                        'upload',
+                        'panelData.uploads',
+                        __('admin.media_library.single_upload_only'),
+                    );
+                }
 
                 if (count($uploads) > app(CuratorImageUploadPolicy::class)->uploadBatchLimit()) {
                     abort(422);
@@ -232,9 +321,11 @@ class MediaPickerPanel extends Component implements HasActions, HasSchemas
                     $this->isMultiple
                     && count($this->selectedIds) + count($uploads) > $this->selectionLimit()
                 ) {
-                    throw ValidationException::withMessages([
-                        'panelData.uploads' => __('admin.media_library.selection_limit_exceeded'),
-                    ]);
+                    $this->failSource(
+                        'upload',
+                        'panelData.uploads',
+                        __('admin.media_library.selection_limit_exceeded'),
+                    );
                 }
 
                 $actor = $this->actor();
@@ -250,38 +341,76 @@ class MediaPickerPanel extends Component implements HasActions, HasSchemas
                 }
 
                 try {
-                    $created = app(MediaAcquisitionManager::class)->acquireUploads(
+                    $result = app(MediaAcquisitionManager::class)->acquireUploads(
                         $uploads,
                         $this->uploadPurpose(),
                         $actor,
                     );
                 } catch (InvalidArgumentException) {
-                    throw ValidationException::withMessages([
-                        'panelData.uploads' => __('admin.media_library.upload_invalid'),
-                    ]);
+                    $this->failSource(
+                        'upload',
+                        'panelData.uploads',
+                        __('admin.media_library.upload_invalid'),
+                    );
                 }
 
-                $this->selectAcquired($created);
+                if ($result->successful->isEmpty()) {
+                    $this->failSource(
+                        'upload',
+                        'panelData.uploads',
+                        __('admin.media_library.upload_failed'),
+                    );
+                }
 
-                $this->form->fill();
-                $this->currentPage = 1;
-                $this->reloadFiles();
+                $this->selectAcquired($result->media());
+                $this->clearSourceInput('upload');
 
-                Notification::make()
-                    ->success()
-                    ->title(__('admin.media_library.uploaded'))
-                    ->send();
+                if ($this->isMultiple) {
+                    $this->currentPage = 1;
+                    $this->reloadFiles();
+                }
+
+                if ($result->isPartial()) {
+                    Notification::make()
+                        ->warning()
+                        ->title(__('admin.media_library.upload_partial_title'))
+                        ->body(__('admin.media_library.upload_partial_body', [
+                            'added' => $result->successful->count(),
+                            'not_added' => $result->unsuccessfulCount(),
+                        ]))
+                        ->send();
+                } else {
+                    Notification::make()
+                        ->success()
+                        ->title(__('admin.media_library.uploaded'))
+                        ->body($this->acquisitionSuccessBody($result->successful->count()))
+                        ->send();
+                }
+
+                $this->dispatchSelectionIfSingle();
             });
     }
 
     public function acquireUrlAction(): Action
     {
         return Action::make('acquireUrl')
-            ->label(__('admin.media_library.acquire_url'))
+            ->label(fn (): string => $this->isMultiple
+                ? __('admin.media_library.add_and_select')
+                : __('admin.media_library.add_and_choose'))
             ->icon(Heroicon::Link)
-            ->visible(fn (): bool => filled($this->form->getRawState()['external_url'] ?? null))
+            ->disabled(fn (): bool => blank($this->form->getRawState()['external_url'] ?? null))
+            ->extraAttributes([
+                'wire:loading.attr' => 'disabled',
+                'wire:offline.attr' => 'disabled',
+            ])
             ->action(function (): void {
+                $this->activeSource = 'url';
+                $this->resetValidation($this->sourceErrorKeys('url'));
                 $url = trim((string) ($this->form->getState()['external_url'] ?? ''));
+                $this->ensureAcquisitionCapacity(
+                    'url',
+                    'panelData.external_url',
+                );
 
                 try {
                     $media = app(MediaAcquisitionManager::class)->acquireExternalUrl(
@@ -289,57 +418,100 @@ class MediaPickerPanel extends Component implements HasActions, HasSchemas
                         $this->uploadPurpose(),
                         $this->actor(),
                     );
-                } catch (InvalidArgumentException|RuntimeException) {
-                    throw ValidationException::withMessages([
-                        'panelData.external_url' => __('admin.media_library.url_invalid'),
-                    ]);
+                } catch (AuthorizationException $exception) {
+                    throw $exception;
+                } catch (Throwable $exception) {
+                    if (! ExternalImageFailureMessage::isExpected($exception)) {
+                        report($exception);
+                    }
+
+                    $this->failSource(
+                        'url',
+                        'panelData.external_url',
+                        ExternalImageFailureMessage::for($exception),
+                    );
                 }
 
                 $this->selectAcquired(collect([$media]));
-                $this->form->fill();
-                $this->currentPage = 1;
-                $this->reloadFiles();
+                $this->clearSourceInput('url');
+
+                if ($this->isMultiple) {
+                    $this->currentPage = 1;
+                    $this->reloadFiles();
+                }
 
                 Notification::make()
                     ->success()
                     ->title(__('admin.media_library.url_acquired'))
+                    ->body($this->acquisitionSuccessBody())
                     ->send();
+
+                $this->dispatchSelectionIfSingle();
             });
     }
 
     public function acquireStorageAction(): Action
     {
         return Action::make('acquireStorage')
-            ->label(__('admin.media_library.acquire_storage'))
+            ->label(fn (): string => $this->isMultiple
+                ? __('admin.media_library.add_and_select')
+                : __('admin.media_library.add_and_choose'))
             ->icon(Heroicon::CircleStack)
+            ->extraAttributes([
+                'data-testid' => 'media-picker-storage-acquire',
+                'wire:loading.attr' => 'disabled',
+                'wire:offline.attr' => 'disabled',
+            ])
             ->action(function (array $arguments): void {
+                $this->activeSource = 'storage';
+                $this->resetValidation($this->sourceErrorKeys('storage'));
                 $token = $arguments['token'] ?? null;
 
                 if (! is_string($token)) {
                     abort(422);
                 }
 
+                $this->ensureAcquisitionCapacity(
+                    'storage',
+                    'storageAcquisition',
+                );
+
                 try {
-                    $media = app(MediaAcquisitionManager::class)->acquireStorageCandidate(
+                    $result = app(MediaAcquisitionManager::class)->acquireStorageCandidate(
                         $token,
                         $this->uploadPurpose(),
                         $this->actor(),
                     );
+                } catch (LockTimeoutException) {
+                    $this->failSource(
+                        'storage',
+                        'storageAcquisition',
+                        __('admin.media_library.storage_busy'),
+                    );
                 } catch (InvalidArgumentException|RuntimeException) {
-                    throw ValidationException::withMessages([
-                        'storageSearch' => __('admin.media_library.storage_invalid'),
-                    ]);
+                    $this->failSource(
+                        'storage',
+                        'storageAcquisition',
+                        __('admin.media_library.storage_invalid'),
+                    );
                 }
 
-                $this->selectAcquired(collect([$media]));
-                $this->currentPage = 1;
-                $this->reloadFiles();
-                $this->reloadStorageFiles();
+                $this->selectAcquired(collect([$result->media]));
+
+                if ($this->isMultiple) {
+                    $this->currentPage = 1;
+                    $this->reloadFiles();
+                }
 
                 Notification::make()
                     ->success()
-                    ->title(__('admin.media_library.storage_acquired'))
+                    ->title(__("admin.media_library.storage_{$result->disposition->value}"))
+                    ->body($this->acquisitionSuccessBody(
+                        reused: $result->disposition === MediaAcquisitionDisposition::Reused,
+                    ))
                     ->send();
+
+                $this->dispatchSelectionIfSingle();
             });
     }
 
@@ -476,20 +648,7 @@ class MediaPickerPanel extends Component implements HasActions, HasSchemas
             ->color('success')
             ->visible(fn (): bool => $this->selectedIds !== [])
             ->action(function (): void {
-                $ids = $this->trustedIds($this->selectedIds, 'select');
-
-                if (! $this->isMultiple && count($ids) > 1) {
-                    abort(422);
-                }
-
-                if ($this->maxItems !== null && count($ids) > $this->maxItems) {
-                    abort(422);
-                }
-
-                $this->dispatch('insert-media', [
-                    'mediaId' => $ids[0] ?? null,
-                    'mediaIds' => $ids,
-                ]);
+                $this->dispatchSelection();
             });
     }
 
@@ -649,6 +808,19 @@ class MediaPickerPanel extends Component implements HasActions, HasSchemas
         return min($this->maxItems ?? self::SELECTION_LIMIT, self::SELECTION_LIMIT);
     }
 
+    private function ensureAcquisitionCapacity(string $source, string $field): void
+    {
+        if (! $this->isMultiple || count($this->selectedIds) < $this->selectionLimit()) {
+            return;
+        }
+
+        $this->failSource(
+            $source,
+            $field,
+            __('admin.media_library.acquisition_selection_limit_exceeded'),
+        );
+    }
+
     /** @param Collection<int, Media> $media */
     private function selectAcquired(Collection $media): void
     {
@@ -667,7 +839,109 @@ class MediaPickerPanel extends Component implements HasActions, HasSchemas
 
     private function reloadStorageFiles(): void
     {
-        $this->storageFiles = app(MediaAcquisitionManager::class)->storageCandidates($this->storageSearch);
+        if (! $this->storageConfigured) {
+            $this->storageFiles = [];
+
+            return;
+        }
+
+        $this->storageFiles = app(MediaAcquisitionManager::class)->storageCandidates();
+    }
+
+    private function loadStorageFiles(): void
+    {
+        try {
+            $this->reloadStorageFiles();
+            $this->storageLoaded = true;
+        } catch (Throwable $exception) {
+            report($exception);
+
+            $this->storageFiles = [];
+            $this->storageLoaded = false;
+            $this->failSource(
+                'storage',
+                'storageAcquisition',
+                __('admin.media_library.storage_load_failed'),
+            );
+        }
+    }
+
+    /** @return array<int, string> */
+    private function sourceErrorKeys(string $source): array
+    {
+        return match ($source) {
+            'upload' => ['panelData.uploads'],
+            'url' => ['panelData.external_url'],
+            'storage' => ['storageAcquisition'],
+            default => [],
+        };
+    }
+
+    /** @return array<string, bool|string|null> */
+    private function sourceSectionAttributes(string $source): array
+    {
+        $isActive = $this->activeSource === $source;
+
+        return [
+            'id' => "media-picker-panel-{$source}",
+            'data-testid' => "media-picker-panel-{$source}",
+            'class' => $isActive ? 'pt-3' : 'hidden',
+            'aria-hidden' => $isActive ? null : 'true',
+            'inert' => $isActive ? null : true,
+        ];
+    }
+
+    private function acquisitionSuccessBody(int $count = 1, bool $reused = false): string
+    {
+        $mode = $this->isMultiple ? 'multiple' : 'single';
+        $disposition = $reused ? 'reused' : 'created';
+
+        return __("admin.media_library.acquisition_{$disposition}_{$mode}", [
+            'count' => $count,
+        ]);
+    }
+
+    private function dispatchSelectionIfSingle(): void
+    {
+        if (! $this->isMultiple) {
+            $this->dispatchSelection();
+        }
+    }
+
+    private function dispatchSelection(): void
+    {
+        $ids = $this->trustedIds($this->selectedIds, 'select');
+
+        if (! $this->isMultiple && count($ids) > 1) {
+            abort(422);
+        }
+
+        if ($this->maxItems !== null && count($ids) > $this->maxItems) {
+            abort(422);
+        }
+
+        $this->dispatch('insert-media', [
+            'mediaId' => $ids[0] ?? null,
+            'mediaIds' => $ids,
+        ]);
+    }
+
+    private function clearSourceInput(string $source): void
+    {
+        if ($source === 'upload') {
+            $this->panelData['uploads'] = [];
+        } elseif ($source === 'url') {
+            $this->panelData['external_url'] = null;
+        }
+    }
+
+    private function failSource(string $source, string $field, string $message): never
+    {
+        $this->activeSource = $source;
+
+        throw ValidationException::withMessages([
+            $field => $message,
+        ]);
     }
 
     private function uploadPurpose(): ImageUploadPurpose

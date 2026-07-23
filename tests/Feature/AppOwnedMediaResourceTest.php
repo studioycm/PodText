@@ -17,9 +17,11 @@ use Awcodes\Curator\Facades\Curator;
 use Filament\Actions\Testing\TestAction;
 use Filament\Facades\Filament;
 use Filament\Forms\Components\FileUpload;
+use Filament\Notifications\Notification;
 use Filament\Schemas\Concerns\RestrictsFileUploadsToSchemaComponents;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
@@ -83,7 +85,7 @@ it('keeps rich editor file attachments and curator curation editing disabled', f
 
 function appOwnedMediaRecord(array $overrides = []): Media
 {
-    return Media::factory()->create(array_merge([
+    $media = Media::factory()->create(array_merge([
         'disk' => 'public',
         'directory' => 'content-groups/covers',
         'visibility' => 'public',
@@ -96,6 +98,9 @@ function appOwnedMediaRecord(array $overrides = []): Media
         'ext' => 'jpg',
         'title' => 'Allowed image',
     ], $overrides));
+    assert($media instanceof Media);
+
+    return $media;
 }
 
 function appOwnedMediaFixture(string $filename): UploadedFile
@@ -150,6 +155,8 @@ it('bounds resource pagination uploads and concurrent transfers', function (): v
     $create = Livewire::test(CreateMedia::class);
     $upload = collect($create->instance()->getSchema('form')->getFlatComponents(withHidden: true))
         ->first(fn (mixed $component): bool => $component instanceof FileUpload && $component->getName() === 'uploads');
+
+    assert($upload instanceof FileUpload);
 
     expect($upload)->toBeInstanceOf(FileUpload::class)
         ->and($upload->getMaxFiles())->toBe(10)
@@ -212,6 +219,45 @@ it('uploads multiple images through shared admission without acquisition journal
     foreach ($media as $record) {
         Storage::disk('public')->assertExists($record->path);
     }
+});
+
+it('reports a partial Media Resource batch without removing an earlier permanent item', function (): void {
+    $this->actingAs(User::factory()->admin()->create());
+    $bindingAttempts = 0;
+
+    Event::listen('eloquent.creating: '.MediaProviderBinding::class, function () use (&$bindingAttempts): void {
+        $bindingAttempts++;
+
+        if ($bindingAttempts === 2) {
+            throw new RuntimeException('second binding failed');
+        }
+    });
+
+    Livewire::test(CreateMedia::class)
+        ->fillForm([
+            'purpose' => ImageUploadPurpose::ContentGroupCover->value,
+            'uploads' => [
+                appOwnedMediaFixture('valid.jpg'),
+                appOwnedMediaFixture('valid.png'),
+            ],
+        ])
+        ->call('create')
+        ->assertHasNoFormErrors()
+        ->assertNotified(
+            Notification::make()
+                ->warning()
+                ->title(__('admin.media_library.upload_partial_title'))
+                ->body(__('admin.media_library.upload_partial_body', [
+                    'added' => 1,
+                    'not_added' => 1,
+                ])),
+        );
+
+    $media = Media::query()->sole();
+
+    expect(MediaAsset::query()->count())->toBe(1)
+        ->and(MediaProviderBinding::query()->count())->toBe(1);
+    Storage::disk('public')->assertExists($media->path);
 });
 
 it('restricts resource access to admins and keeps file identity immutable during metadata edits', function (): void {

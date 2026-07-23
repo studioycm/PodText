@@ -9,11 +9,25 @@ Recorded after the Markdown-only post-Prompt-10 prompt-progress centralization c
 - Media Program Package 3 is complete locally under audit
   `LS-20260723-PODTEXT-MEDIA-P3-ACQUISITION-PICKER-01`, approved option
   `MEDIA-P3-O1-IMMEDIATE-SHARED-ADMISSION`.
-- Package 3 implementation baseline: `main` at
-  `a65de4c3c4c22b89cd2934dc01faa602877d924c`, 17 commits ahead of
+- Package 3 hash-stamped baseline: `main` at
+  `786f7c5f699a3d9d2c02f4c93baff02b0ddcbc1f`, 19 commits ahead of
   `origin/main`.
 - Package 3 implementation is committed as
   `656a7c2ed1b64b3f6fd8392bff88f7cca36d2695`.
+- The approved post-Package-3 correction is complete locally under audit
+  `LS-20260723-PODTEXT-MEDIA-P3-POST-ACQUISITION-UX-01`, option
+  `MEDIA-P3-POST-O3-IMMEDIATE-SOURCE-WORKSPACE`. It preserves immediate
+  permanent acquisition and pending owner attachment while correcting
+  result/error truth, single-mode safety, Storage convergence, URL deadline,
+  direct single choice, busy/offline/accessibility behavior and source
+  organization. The first complete ordered gate passed Pint, FilaCheck, Vite
+  and 1,080 tests / 14,165 assertions outside the known macOS browser sandbox.
+  Its handoff is
+  `docs/phase-02/media-program-p3-post-acquisition-picker-ux-handoff.md`.
+  Packages 4-5, migrations, live data, production actions and push remain
+  excluded. The operator later amended only the dependency boundary for a
+  bounded Filament 5.7.1 to 5.7.3 patch refresh; manifests, npm and unrelated
+  packages remain unchanged. No next media package is active.
 - Stage 1 found an unfinished overbuilt draft: 79 modified tracked files and 54
   default-status untracked entries. Exact enumeration found 55 files because
   `tests/Support/` was collapsed. Its trusted-status, normalization/checksum,
@@ -273,13 +287,15 @@ Recorded after the Markdown-only post-Prompt-10 prompt-progress centralization c
   pre-G1. No local/production transition, backfill, repair, sanitation,
   cache/process action, or real IDs 6/7 action ran. Handoff:
   `docs/phase-02/curator-g1-legacy-media-transition-correction-handoff.md`.
-- The active forward media route is Package 3 under audit
-  `LS-20260723-PODTEXT-MEDIA-P3-ACQUISITION-PICKER-01`, option
-  `MEDIA-P3-O1-IMMEDIATE-SHARED-ADMISSION`. Package 1 added portable assets,
+- The completed forward media route is the post-Package-3 correction under audit
+  `LS-20260723-PODTEXT-MEDIA-P3-POST-ACQUISITION-UX-01`, option
+  `MEDIA-P3-POST-O3-IMMEDIATE-SOURCE-WORKSPACE`. Package 1 added portable assets,
   Curator bindings, the attachment bridge and database-only conversion;
   Package 2 added visible inventory/diagnostics, D01 and picker/replacement UX;
-  Package 3 adds one immediate Upload/URL/Storage admission boundary, atomic
+  Package 3 added one immediate Upload/URL/Storage admission boundary, atomic
   Curator/asset/binding creation, four-source picker and Spotify URL reuse.
+  The completed correction hardens that boundary and organizes its
+  acquisition rail without changing permanence or attachment timing.
   `media_attachments.media_id` remains local owner authority and `curator.path`
   remains file-location authority. Existing-media visibility must not depend on
   key, root, filename, metadata, size, dimensions, normalization, checksum or
@@ -289,9 +305,11 @@ Recorded after the Markdown-only post-Prompt-10 prompt-progress centralization c
   Upload/URL/Storage becomes a permanent library item immediately; cancelling
   the picker or owner form cancels only the pending attachment. New raster
   admission preserves bytes, SVG uses the existing sanitizer, and legacy
-  normalization/journals remain isolated from acquisition. Packages 4-5,
-  dependencies, real local/production schema/data/file/cache actions, deploy,
-  process actions and push remain outside this implementation run.
+  normalization/journals remain isolated from acquisition. Package 4 and
+  Package 5 require fresh Simplifier Stage 1 audits and approvals; neither is
+  active. Other dependencies, real local/production schema/data/file/cache
+  actions, deploy, process actions and push remain outside this implementation
+  run.
 - Settings development metrics retirement Mini-task 1 is complete as
   `3e5c411777994c431417dfd823576286d12d5c29` under audit
   `LS-20260721-SETTINGS-DEV-METRICS-03`, option
@@ -411,6 +429,7 @@ Recorded after the Markdown-only post-Prompt-10 prompt-progress centralization c
 | PODTEXT MEDIA ASSET PROGRAM - inventory-first Package 1 | Complete locally | `ca483c0c0072e0791fe6c26755aadae341ece0a5`; audit `LS-20260723-MEDIA-INVENTORY-FIRST-RESET-01`; option `MEDIA-INV-O1-RESET-CLEANUP-P1-MINIMAL-KERNEL`; `docs/phase-02/media-program-p1-kernel-conversion-handoff.md` | Adds the minimal portable asset/binding kernel, nullable attachment bridge retaining `media_id`, report-only/explicit-apply idempotent database conversion, exact owner/settings reconciliation and 15-null/15-valid/403-row proof. Final Pint/FilaCheck/Vite gates passed and the full suite passed outside the known macOS browser sandbox: 1,005 tests / 13,316 assertions. Trust/status/proof machinery remains rejected; Package 2 requires a fresh audit. No dependency or real environment action occurred. |
 | PODTEXT MEDIA ASSET PROGRAM - inventory-first Package 2 | Complete locally | `2a6de67816b9a7c8e53bcd29795a5b306a36dbaf`; audit `LS-20260723-PODTEXT-MEDIA-P2-INVENTORY-PICKER-REPLACE-01`; option `MEDIA-P2-O1-REUSE-PICKER-SAME-PAGE-REPLACE`; `docs/phase-02/media-program-p2-inventory-picker-replace-handoff.md` | Makes every Curator row visible in All Media, adds visible Needs Repair diagnostics, makes `media_id` authoritative, enforces D01 delivery/SVG boundaries, clears the picker context through All Media, and reuses Gallery/Upload for always-visible same-page podcast/episode Add/Replace Image actions with current-image display and cancel no-op. Existing selection is attachment-only. Packages 3-5, dependencies and real environment actions remain gated. |
 | PODTEXT MEDIA ASSET PROGRAM - Package 3 acquisition picker | Complete locally | `656a7c2ed1b64b3f6fd8392bff88f7cca36d2695`; audit `LS-20260723-PODTEXT-MEDIA-P3-ACQUISITION-PICKER-01`; option `MEDIA-P3-O1-IMMEDIATE-SHARED-ADMISSION`; `docs/phase-02/media-program-p3-acquisition-picker-handoff.md` | Adds one shared immediate Upload/URL/Storage admission path, atomic Curator/asset/provider binding creation, preserved raster bytes, all-purpose sanitized SVG, original-filename/naming settings, opaque bounded Storage candidates, four-source bilingual picker and Spotify URL convergence. Focused matrix passed 218 tests / 1,631 assertions; final serial suite passed outside the macOS browser sandbox: 1,037 / 13,633. No dependency, relational schema, live data, Package 4 or Package 5 action. |
+| PODTEXT MEDIA ASSET PROGRAM - post-Package-3 acquisition picker UX | Complete locally | Audit `LS-20260723-PODTEXT-MEDIA-P3-POST-ACQUISITION-UX-01`; option `MEDIA-P3-POST-O3-IMMEDIATE-SOURCE-WORKSPACE`; `docs/research/media-program/packages/03-post-acquisition-picker-ux-plan.md`; `docs/phase-02/media-program-p3-post-acquisition-picker-ux-handoff.md` | Completes all five sequential mini-tasks: active-doc closure; single/batch/Storage correctness; total URL deadline and safe categories; immediate source workspace with direct single choice and busy/offline truth; accessibility, nested/offline lifecycle browser proof and canonical closeout. Focused proof reached 86 tests / 1,112 assertions and the complete picker browser file reached 7 / 139. The first complete ordered gate passed Pint, FilaCheck, Vite and the full 1,080 / 14,165 suite outside the macOS browser sandbox. Immediate permanence and pending owner attachment remain fixed. No Package 4/5, migration, live-data, production or push action. The operator explicitly amended only the dependency exclusion for Filament 5.7.1 to 5.7.3; no manifest, npm or unrelated dependency changed. |
 | DEP-UPGRADE-O1 - Bounded full dependency refresh | Complete locally | `4d2a063954975fa07dde43f6113a97c671fc5724`; `docs/phase-02/dependency-refresh-handoff.md`; `docs/research/dependency-refresh/` | Refreshes Composer and npm lock graphs within unchanged manifest constraints; moves Laravel to 13.21.1, Filament and its Spatie plugins to 5.7.1, Horizon to 5.48.1, Pest to 4.7.5, Boost to 2.4.13, Tailwind to 4.3.3, Vite to 8.1.5, and Laravel Vite plugin to 3.1.3. Preserves Livewire 4.3.3 and Curator 5.1.2, corrects one Filament action API call and one tooltip-first Escape browser expectation, and records 18 byte-attributable tracked Filament asset changes. No manifest, schema, migration, production, worker, or local-development database change. |
 | SETTINGS-METRICS-O1 Mini-task 1 - Runtime retirement | Complete | `3e5c411777994c431417dfd823576286d12d5c29`; `docs/phase-02/settings-development-metrics-retirement-mini1-handoff.md`; research/plans 41-42 | Removed the temporary settings profiler, middleware, runtime fixtures, flags/headers, counters, config/logging, and browser harness. Functional settings/Card Template/Curator behavior and Filament 5.7.1 remain preserved; Mini-task 2 completes the separately audited test-only retirement. |
 | SETTINGS-METRICS-M2-O1 Mini-task 2 - Test-only retirement | Complete | `c37bcf7f5cd7ea0408623218edeee4842d8e6592`; `docs/phase-02/settings-development-metrics-retirement-mini2-handoff.md`; research/plans 43-44 | Deletes only the eight-file synthetic canary graph; removes five switches/eight report blocks and their exclusive metrics; removes the bilingual canary-only subtree; migrates six consumed hooks to durable Card Template names; removes four unused markers; supersedes active routing while retaining historical provenance. Preserves all functional, security, exact-query, browser-interaction/deadline, Filament 5.7.1, and Curator G1/LMTC invariants. No dependency/schema/data/environment action; no later mini-task selected. |
@@ -474,7 +493,7 @@ Recorded after the Markdown-only post-Prompt-10 prompt-progress centralization c
 
 - Laravel: 13.21.1.
 - PHP: 8.4.23 from the local CLI; Laravel Boost reports PHP 8.4.
-- Filament: 5.7.1.
+- Filament: 5.7.3.
 - Livewire: 4.3.3.
 - Laravel Horizon: 5.48.1.
 - Laravel Boost: 2.4.13 installed and available through MCP.
@@ -483,9 +502,9 @@ Recorded after the Markdown-only post-Prompt-10 prompt-progress centralization c
 - FilaCheck Pro: 1.2.7 installed.
 - Awcodes Curator: 5.1.2 installed.
 - Spatie Laravel Tags: 4.12.0 installed.
-- Filament Spatie Laravel Tags plugin: 5.7.1 installed.
+- Filament Spatie Laravel Tags plugin: 5.7.3 installed.
 - Spatie Laravel Settings: 3.9.0 installed.
-- Filament Spatie Laravel Settings plugin: 5.7.1 installed.
+- Filament Spatie Laravel Settings plugin: 5.7.3 installed.
 - Tailwind CSS: 4.3.3.
 - Vite: 8.1.5; Laravel Vite plugin: 3.1.3.
 - App locale from `php artisan about`: `he`.

@@ -2,11 +2,11 @@
 
 namespace App\Support\Media;
 
+use App\Enums\ExternalImageFailureReason;
 use GuzzleHttp\Psr7\Uri;
 use GuzzleHttp\Psr7\UriResolver;
 use Illuminate\Http\Client\Response;
-use InvalidArgumentException;
-use RuntimeException;
+use Throwable;
 
 class SafeExternalImageFetcher
 {
@@ -67,18 +67,31 @@ class SafeExternalImageFetcher
     public function __construct(
         private readonly ExternalImageDnsResolver $dnsResolver,
         private readonly PinnedExternalImageTransport $transport,
+        private readonly CuratorImageUploadPolicy $policy,
     ) {}
 
     public function fetch(string $url): string
     {
+        $deadline = hrtime(true) + (int) round($this->timeoutSeconds() * 1_000_000_000);
+
         for ($redirects = 0; $redirects <= self::MAX_REDIRECTS; $redirects++) {
-            [$host, $addresses] = $this->guardedEndpoint($url);
-            $response = $this->request($url, $host, $addresses[0]);
-            $this->assertDnsStable($host, $addresses);
+            $this->remainingSeconds($deadline);
+            [$host, $addresses] = $this->guardedEndpoint($url, $deadline);
+            $response = $this->request(
+                $url,
+                $host,
+                $addresses[0],
+                $deadline,
+            );
+            $this->remainingSeconds($deadline);
+            $this->assertDnsStable($host, $addresses, $deadline);
 
             if ($this->isRedirect($response)) {
                 if ($redirects === self::MAX_REDIRECTS) {
-                    throw new InvalidArgumentException('The external image exceeded the redirect limit.');
+                    throw new ExternalImageRejectedException(
+                        ExternalImageFailureReason::InvalidResponse,
+                        'The external image exceeded the redirect limit.',
+                    );
                 }
 
                 $url = $this->redirectUrl($url, $response->header('Location'));
@@ -88,33 +101,50 @@ class SafeExternalImageFetcher
 
             if ($response->failed()) {
                 if ($response->status() === 429 || $response->serverError()) {
-                    throw new RuntimeException("External image request failed transiently with HTTP {$response->status()}.");
+                    throw new ExternalImageUnavailableException(
+                        ExternalImageFailureReason::TemporarilyUnavailable,
+                        "External image request failed transiently with HTTP {$response->status()}.",
+                    );
                 }
 
-                throw new InvalidArgumentException("External image request was rejected with HTTP {$response->status()}.");
+                throw new ExternalImageRejectedException(
+                    $response->notFound()
+                        ? ExternalImageFailureReason::NotFound
+                        : ExternalImageFailureReason::InvalidResponse,
+                    "External image request was rejected with HTTP {$response->status()}.",
+                );
             }
 
             $contents = $response->body();
 
-            if ($contents === '' || strlen($contents) > app(CuratorImageUploadPolicy::class)->maxKilobytes() * 1024) {
-                throw new InvalidArgumentException('The external image is empty or exceeds the response-size limit.');
+            if ($contents === '' || strlen($contents) > $this->policy->maxKilobytes() * 1024) {
+                throw new ExternalImageRejectedException(
+                    ExternalImageFailureReason::InvalidResponse,
+                    'The external image is empty or exceeds the response-size limit.',
+                );
             }
 
             return $contents;
         }
 
-        throw new RuntimeException('The external image could not be fetched safely.');
+        throw new ExternalImageUnavailableException(
+            ExternalImageFailureReason::TemporarilyUnavailable,
+            'The external image could not be fetched safely.',
+        );
     }
 
     /** @return array{string, array<int, string>} */
-    private function guardedEndpoint(string $url): array
+    private function guardedEndpoint(string $url, int $deadline): array
     {
         if (
             filter_var($url, FILTER_VALIDATE_URL) === false
             || str_contains($url, '\\')
             || preg_match('/[\x00-\x20\x7F]/', $url) === 1
         ) {
-            throw new InvalidArgumentException('The external image URL is not canonical.');
+            throw new ExternalImageRejectedException(
+                ExternalImageFailureReason::Blocked,
+                'The external image URL is not canonical.',
+            );
         }
 
         $parts = parse_url($url);
@@ -130,13 +160,29 @@ class SafeExternalImageFetcher
             || isset($parts['fragment'])
             || (isset($parts['port']) && (int) $parts['port'] !== 443)
         ) {
-            throw new InvalidArgumentException('External images require a plain HTTPS URL on port 443.');
+            throw new ExternalImageRejectedException(
+                ExternalImageFailureReason::Blocked,
+                'External images require a plain HTTPS URL on port 443.',
+            );
         }
 
-        $addresses = $this->dnsResolver->addresses($host);
+        try {
+            $addresses = $this->dnsResolver->addresses($host);
+        } catch (Throwable $exception) {
+            $this->remainingSeconds($deadline);
+
+            throw new ExternalImageUnavailableException(
+                ExternalImageFailureReason::TemporarilyUnavailable,
+                'The external image host could not be resolved.',
+                $exception,
+            );
+        }
 
         if ($addresses === [] || collect($addresses)->contains(fn (string $address): bool => ! $this->isPublicAddress($address))) {
-            throw new InvalidArgumentException('The external image host does not resolve exclusively to public addresses.');
+            throw new ExternalImageRejectedException(
+                ExternalImageFailureReason::Blocked,
+                'The external image host does not resolve exclusively to public addresses.',
+            );
         }
 
         sort($addresses);
@@ -144,33 +190,73 @@ class SafeExternalImageFetcher
         return [$host, array_values(array_unique($addresses))];
     }
 
-    private function request(string $url, string $host, string $address): Response
+    private function request(string $url, string $host, string $address, int $deadline): Response
     {
-        $response = $this->transport->get($url, $host, $address);
+        try {
+            $response = $this->transport->get(
+                $url,
+                $host,
+                $address,
+                $this->remainingSeconds($deadline),
+            );
+        } catch (ExternalImageRejectedException|ExternalImageUnavailableException $exception) {
+            throw $exception;
+        } catch (Throwable $exception) {
+            $this->remainingSeconds($deadline);
+
+            throw new ExternalImageUnavailableException(
+                ExternalImageFailureReason::TemporarilyUnavailable,
+                'The external image request failed.',
+                $exception,
+            );
+        }
 
         $contentEncoding = trim((string) $response->header('Content-Encoding'));
 
         if ($contentEncoding !== '' && mb_strtolower($contentEncoding) !== 'identity') {
-            throw new InvalidArgumentException('Encoded external image responses are not accepted.');
+            throw new ExternalImageRejectedException(
+                ExternalImageFailureReason::InvalidResponse,
+                'Encoded external image responses are not accepted.',
+            );
         }
 
         $contentLength = trim((string) $response->header('Content-Length'));
 
-        if ($contentLength !== '' && (! ctype_digit($contentLength) || (int) $contentLength > app(CuratorImageUploadPolicy::class)->maxKilobytes() * 1024)) {
-            throw new InvalidArgumentException('The external image response length is invalid or too large.');
+        if ($contentLength !== '' && (! ctype_digit($contentLength) || (int) $contentLength > $this->policy->maxKilobytes() * 1024)) {
+            throw new ExternalImageRejectedException(
+                ExternalImageFailureReason::InvalidResponse,
+                'The external image response length is invalid or too large.',
+            );
         }
 
         return $response;
     }
 
     /** @param array<int, string> $before */
-    private function assertDnsStable(string $host, array $before): void
+    private function assertDnsStable(string $host, array $before, int $deadline): void
     {
-        $after = $this->dnsResolver->addresses($host);
+        $this->remainingSeconds($deadline);
+
+        try {
+            $after = $this->dnsResolver->addresses($host);
+        } catch (Throwable $exception) {
+            $this->remainingSeconds($deadline);
+
+            throw new ExternalImageUnavailableException(
+                ExternalImageFailureReason::TemporarilyUnavailable,
+                'The external image host could not be revalidated.',
+                $exception,
+            );
+        }
+
+        $this->remainingSeconds($deadline);
         sort($after);
 
         if ($after !== $before || collect($after)->contains(fn (string $address): bool => ! $this->isPublicAddress($address))) {
-            throw new InvalidArgumentException('The external image host changed DNS addresses during the request.');
+            throw new ExternalImageRejectedException(
+                ExternalImageFailureReason::Blocked,
+                'The external image host changed DNS addresses during the request.',
+            );
         }
     }
 
@@ -239,19 +325,51 @@ class SafeExternalImageFetcher
     private function redirectUrl(string $baseUrl, ?string $location): string
     {
         if (! is_string($location) || trim($location) === '') {
-            throw new RuntimeException('The external image redirect is missing a location.');
+            throw new ExternalImageRejectedException(
+                ExternalImageFailureReason::InvalidResponse,
+                'The external image redirect is missing a location.',
+            );
         }
 
         $location = trim($location);
 
         if (str_contains($location, '\\') || preg_match('/[\x00-\x20\x7F]/', $location) === 1) {
-            throw new InvalidArgumentException('The external image redirect location is not canonical.');
+            throw new ExternalImageRejectedException(
+                ExternalImageFailureReason::InvalidResponse,
+                'The external image redirect location is not canonical.',
+            );
         }
 
         try {
             return (string) UriResolver::resolve(new Uri($baseUrl), new Uri($location));
-        } catch (\Throwable $exception) {
-            throw new InvalidArgumentException('The external image redirect location is invalid.', previous: $exception);
+        } catch (Throwable $exception) {
+            throw new ExternalImageRejectedException(
+                ExternalImageFailureReason::InvalidResponse,
+                'The external image redirect location is invalid.',
+                $exception,
+            );
         }
+    }
+
+    private function timeoutSeconds(): float
+    {
+        return max(
+            0.001,
+            min(30.0, (float) config('media.acquisition.external_image_timeout_seconds', 20)),
+        );
+    }
+
+    private function remainingSeconds(int $deadline): float
+    {
+        $remaining = ($deadline - hrtime(true)) / 1_000_000_000;
+
+        if ($remaining <= 0) {
+            throw new ExternalImageUnavailableException(
+                ExternalImageFailureReason::TimedOut,
+                'The external image request exceeded its total deadline.',
+            );
+        }
+
+        return $remaining;
     }
 }
