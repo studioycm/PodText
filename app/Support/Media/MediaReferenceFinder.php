@@ -17,6 +17,68 @@ class MediaReferenceFinder
     /** @var array<int, array<int, string>>|null */
     private ?array $primedLegacyReferences = null;
 
+    /** @var array<string, array<string, mixed>>|null */
+    private ?array $settingsPayloadCache = null;
+
+    /**
+     * @return array{paths: array<int, string>, reference_keys: array<int, string>}
+     */
+    public function settingsIdentityCandidates(): array
+    {
+        $paths = [];
+        $referenceKeys = [];
+
+        foreach ($this->settingsPayloads() as $name => $payload) {
+            $identities = match ($name) {
+                'menu_config' => [
+                    [data_get($payload, 'logo.light_path'), data_get($payload, 'logo.light_media_reference_key')],
+                    [data_get($payload, 'logo.dark_path'), data_get($payload, 'logo.dark_media_reference_key')],
+                ],
+                'about_page' => collect($payload['blocks'] ?? [])
+                    ->filter(fn (mixed $block): bool => is_array($block))
+                    ->map(fn (array $block): array => [
+                        $block['image_path'] ?? data_get($block, 'data.image_path'),
+                        $block['image_media_reference_key'] ?? data_get($block, 'data.image_media_reference_key'),
+                    ])
+                    ->merge(collect($payload['team_profiles'] ?? [])
+                        ->filter(fn (mixed $profile): bool => is_array($profile))
+                        ->map(fn (array $profile): array => [
+                            $profile['image_path'] ?? null,
+                            $profile['image_media_reference_key'] ?? null,
+                        ]))
+                    ->all(),
+                'default_images' => collect($payload)
+                    ->filter(fn (mixed $config): bool => is_array($config))
+                    ->map(fn (array $config): array => [
+                        $config['path'] ?? null,
+                        $config['media_reference_key'] ?? null,
+                    ])
+                    ->all(),
+                default => [],
+            };
+
+            foreach ($identities as $identity) {
+                $path = $this->normalize(is_string($identity[0] ?? null) ? $identity[0] : null);
+                $referenceKey = is_string($identity[1] ?? null)
+                    ? mb_strtolower(trim($identity[1]))
+                    : null;
+
+                if ($path !== null) {
+                    $paths[] = $path;
+                }
+
+                if (filled($referenceKey)) {
+                    $referenceKeys[] = $referenceKey;
+                }
+            }
+        }
+
+        return [
+            'paths' => array_values(array_unique($paths)),
+            'reference_keys' => array_values(array_unique($referenceKeys)),
+        ];
+    }
+
     /**
      * @return array<int, string>
      */
@@ -142,6 +204,12 @@ class MediaReferenceFinder
         $this->primedLegacyReferences = null;
     }
 
+    public function forgetSettingsPayloads(): void
+    {
+        $this->settingsPayloadCache = null;
+        $this->clearPrime();
+    }
+
     /**
      * @return array<int, string>
      */
@@ -252,11 +320,15 @@ class MediaReferenceFinder
     /** @return array<string, array<string, mixed>> */
     private function settingsPayloads(): array
     {
-        if (! Schema::hasTable('settings')) {
-            return [];
+        if (is_array($this->settingsPayloadCache)) {
+            return $this->settingsPayloadCache;
         }
 
-        return DB::table('settings')
+        if (! Schema::hasTable('settings')) {
+            return $this->settingsPayloadCache = [];
+        }
+
+        return $this->settingsPayloadCache = DB::table('settings')
             ->where('group', PublicContentSettings::group())
             ->whereIn('name', ['menu_config', 'about_page', 'default_images'])
             ->pluck('payload', 'name')

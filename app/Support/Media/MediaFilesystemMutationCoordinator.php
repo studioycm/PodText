@@ -812,6 +812,7 @@ class MediaFilesystemMutationCoordinator
         app()->forgetInstance(PublicContentSettings::class);
         app(SettingsContainer::class)->clearCache();
         $this->publicFrontConfigCache->forget();
+        $this->references->forgetSettingsPayloads();
     }
 
     /**

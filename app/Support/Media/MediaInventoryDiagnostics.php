@@ -2,6 +2,7 @@
 
 namespace App\Support\Media;
 
+use App\Enums\MediaDiagnosticReason;
 use App\Models\Media;
 use Illuminate\Database\Eloquent\Builder;
 
@@ -9,6 +10,9 @@ class MediaInventoryDiagnostics
 {
     /** @var array<string, array<int, string>> */
     private array $reasons = [];
+
+    /** @var array<string, array<int, int>>|null */
+    private ?array $diagnosticIds = null;
 
     public function __construct(
         private readonly MediaRecordScope $scope,
@@ -27,25 +31,25 @@ class MediaInventoryDiagnostics
         $reasons = [];
 
         if (! $this->scope->hasPortableReferenceKey($media)) {
-            $reasons[] = 'portable_identity';
+            $reasons[] = MediaDiagnosticReason::PortableIdentity->value;
         }
 
         if (! array_key_exists((string) $media->disk, config('filesystems.disks', []))) {
-            $reasons[] = 'storage_disk';
+            $reasons[] = MediaDiagnosticReason::StorageDisk->value;
         } elseif (! $this->fileExists($media)) {
-            $reasons[] = 'missing_file';
+            $reasons[] = MediaDiagnosticReason::MissingFile->value;
         }
 
         if ($media->disk !== 'public' || $media->visibility !== 'public') {
-            $reasons[] = 'audience_denied';
+            $reasons[] = MediaDiagnosticReason::AudienceDenied->value;
         }
 
         if ($this->fileExists($media) && ! $this->publicDelivery->canRenderInline($media)) {
-            $reasons[] = 'unsanitized_svg';
+            $reasons[] = MediaDiagnosticReason::UnsanitizedSvg->value;
         }
 
         if ($this->hasMetadataIssue($media)) {
-            $reasons[] = 'metadata';
+            $reasons[] = MediaDiagnosticReason::Metadata->value;
         }
 
         return $this->reasons[$cacheKey] = array_values(array_unique($reasons));
@@ -58,6 +62,7 @@ class MediaInventoryDiagnostics
 
     public function forget(Media $media): void
     {
+        $this->diagnosticIds = null;
         unset($this->reasons[$this->diagnosticCacheKey($media)]);
         $this->publicDelivery->forget($media);
     }
@@ -65,17 +70,24 @@ class MediaInventoryDiagnostics
     /** @param Builder<Media> $query */
     public function applyNeedsRepairFilter(Builder $query): Builder
     {
-        $qualifiedKey = (new Media)->getQualifiedKeyName();
-        $managedIds = $this->scope->query()->select($qualifiedKey);
-        $missingIds = $this->missingFileIds();
+        return $this->applyReasonFilter($query);
+    }
 
-        return $query->where(function (Builder $query) use ($qualifiedKey, $managedIds, $missingIds): void {
-            $query->whereNotIn($qualifiedKey, $managedIds);
+    /** @param Builder<Media> $query */
+    public function applyReasonFilter(
+        Builder $query,
+        ?MediaDiagnosticReason $reason = null,
+    ): Builder {
+        $diagnosticIds = $this->diagnosticIds();
+        $ids = $reason instanceof MediaDiagnosticReason
+            ? $diagnosticIds[$reason->value]
+            : collect($diagnosticIds)->flatten()->unique()->sort()->values()->all();
 
-            if ($missingIds !== []) {
-                $query->orWhereIntegerInRaw($qualifiedKey, $missingIds);
-            }
-        });
+        if ($ids === []) {
+            return $query->whereRaw('1 = 0');
+        }
+
+        return $query->whereIntegerInRaw((new Media)->getQualifiedKeyName(), $ids);
     }
 
     public function selectionBlockedReason(Media $media): ?string
@@ -117,20 +129,43 @@ class MediaInventoryDiagnostics
         return $this->publicDelivery->fileExists($media);
     }
 
-    /** @return array<int, int> */
-    private function missingFileIds(): array
+    /** @return array<string, array<int, int>> */
+    private function diagnosticIds(): array
     {
-        $configuredDisks = array_keys(config('filesystems.disks', []));
+        if (is_array($this->diagnosticIds)) {
+            return $this->diagnosticIds;
+        }
 
-        return $this->scope->inventoryQuery()
-            ->select(['id', 'disk', 'path'])
-            ->whereIn('disk', $configuredDisks)
-            ->orderBy('id')
-            ->lazyById(250)
-            ->reject(fn (Media $media): bool => $this->fileExists($media))
-            ->map(fn (Media $media): int => (int) $media->getKey())
-            ->values()
+        $ids = collect(MediaDiagnosticReason::cases())
+            ->mapWithKeys(fn (MediaDiagnosticReason $reason): array => [$reason->value => []])
             ->all();
+
+        $this->scope->inventoryQuery()
+            ->select([
+                'id',
+                'disk',
+                'directory',
+                'visibility',
+                'name',
+                'path',
+                'width',
+                'height',
+                'size',
+                'type',
+                'ext',
+                'reference_key',
+                'updated_at',
+            ])
+            ->lazyById(250)
+            ->each(function (Media $media) use (&$ids): void {
+                foreach ($this->reasons($media) as $reason) {
+                    if (array_key_exists($reason, $ids)) {
+                        $ids[$reason][] = (int) $media->getKey();
+                    }
+                }
+            });
+
+        return $this->diagnosticIds = $ids;
     }
 
     private function diagnosticCacheKey(Media $media): string

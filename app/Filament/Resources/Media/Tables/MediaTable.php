@@ -2,12 +2,15 @@
 
 namespace App\Filament\Resources\Media\Tables;
 
+use App\Enums\MediaDiagnosticReason;
 use App\Filament\Resources\Media\MediaResource;
+use App\Filament\Resources\Media\Pages\ListMedia;
 use App\Models\Media;
 use App\Models\User;
 use App\Support\Media\CuratorImageUploadPolicy;
 use App\Support\Media\MediaFilesystemMutationCoordinator;
 use App\Support\Media\MediaInventoryDiagnostics;
+use App\Support\Media\MediaLibraryTaskQuery;
 use App\Support\Media\MediaRecordScope;
 use App\Support\Media\MediaReferenceFinder;
 use Filament\Actions\Action;
@@ -23,7 +26,6 @@ use Filament\Tables\Columns\Layout\Grid;
 use Filament\Tables\Columns\Layout\Stack;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Enums\RecordActionsPosition;
-use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
@@ -37,13 +39,21 @@ class MediaTable
     public static function configure(Table $table): Table
     {
         return $table
-            ->defaultSort('id', 'desc')
+            ->defaultSort('created_at', 'desc')
+            ->defaultSortOptionLabel(__('admin.media_library.added_newest_first'))
             ->defaultPaginationPageOption(25)
             ->paginationPageOptions([25])
             ->recordActionsPosition(RecordActionsPosition::AfterContent)
-            ->recordUrl(fn (Media $record): ?string => Gate::allows('update', $record)
-                ? MediaResource::getUrl('edit', ['record' => $record])
+            ->description(fn (ListMedia $livewire): string => $livewire->activeTaskDescription())
+            ->recordUrl(fn (Media $record, ListMedia $livewire): ?string => Gate::allows('update', $record)
+                ? $livewire->editUrlForMedia($record)
                 : null)
+            ->extraRecordLinkAttributes(
+                fn (Media $record, ListMedia $livewire): array => [
+                    'id' => 'media-record-'.(int) $record->getKey(),
+                    'autofocus' => $livewire->shouldFocusMedia($record),
+                ],
+            )
             ->columns([
                 Grid::make(1)
                     ->extraAttributes([
@@ -183,11 +193,15 @@ class MediaTable
                                     ->color('gray')
                                     ->wrap(),
                                 TextColumn::make('created_at')
-                                    ->label(__('admin.fields.created_at'))
+                                    ->label(__('admin.media_library.added'))
                                     ->dateTime('d/m/Y H:i', 'Asia/Jerusalem')
                                     ->icon(Heroicon::OutlinedCalendarDays)
                                     ->color('gray')
-                                    ->sortable(),
+                                    ->sortable(
+                                        query: fn (Builder $query, string $direction): Builder => $query
+                                            ->orderBy('created_at', $direction)
+                                            ->orderBy($query->getModel()->getQualifiedKeyName(), $direction),
+                                    ),
                             ])
                                 ->space(1)
                                 ->extraAttributes([
@@ -206,11 +220,46 @@ class MediaTable
                     ->label(__('admin.fields.mime_type'))
                     ->options(fn (): array => collect(app(CuratorImageUploadPolicy::class)->globalMimeTypes())
                         ->mapWithKeys(fn (string $mimeType): array => [$mimeType => $mimeType])
-                        ->all()),
-                Filter::make('needs_repair')
-                    ->label(__('admin.media_library.needs_repair'))
-                    ->query(fn (Builder $query): Builder => app(MediaInventoryDiagnostics::class)
-                        ->applyNeedsRepairFilter($query)),
+                        ->all())
+                    ->query(function (Builder $query, array $data): Builder {
+                        $value = $data['value'] ?? null;
+
+                        if (blank($value)) {
+                            return $query;
+                        }
+
+                        if (
+                            ! is_string($value)
+                            || ! in_array(
+                                $value,
+                                app(CuratorImageUploadPolicy::class)->globalMimeTypes(),
+                                true,
+                            )
+                        ) {
+                            return $query->whereRaw('1 = 0');
+                        }
+
+                        return $query->where(
+                            $query->getModel()->qualifyColumn('type'),
+                            $value,
+                        );
+                    }),
+                SelectFilter::make('reason')
+                    ->label(__('admin.media_library.attention_reason'))
+                    ->options(MediaDiagnosticReason::class)
+                    ->query(function (Builder $query, array $data): Builder {
+                        $value = $data['value'] ?? null;
+
+                        if (blank($value)) {
+                            return $query;
+                        }
+
+                        if (! is_string($value)) {
+                            return $query->whereRaw('1 = 0');
+                        }
+
+                        return app(MediaLibraryTaskQuery::class)->applyReason($query, $value);
+                    }),
             ])
             ->recordActions([
                 EditAction::make()
@@ -219,7 +268,7 @@ class MediaTable
                     ->button()
                     ->color('primary')
                     ->authorize(fn (Media $record): bool => Gate::allows('update', $record))
-                    ->url(fn (Media $record): string => MediaResource::getUrl('edit', ['record' => $record])),
+                    ->url(fn (Media $record, ListMedia $livewire): string => $livewire->editUrlForMedia($record)),
                 ActionGroup::make([
                     Action::make('view')
                         ->label(__('admin.actions.view'))
@@ -248,6 +297,7 @@ class MediaTable
                             $user = auth()->user();
                             abort_unless($user instanceof User, 403);
                             app(MediaFilesystemMutationCoordinator::class)->rename($record, $user);
+                            app(MediaInventoryDiagnostics::class)->forget($record);
                         }),
                     Action::make('swap')
                         ->label(__('admin.media_library.swap'))
@@ -269,6 +319,7 @@ class MediaTable
                             $replacement = $data['replacement'] ?? null;
                             abort_unless($replacement instanceof TemporaryUploadedFile, 422);
                             app(MediaFilesystemMutationCoordinator::class)->swap($record, $replacement, $user);
+                            app(MediaInventoryDiagnostics::class)->forget($record);
                         }),
                     Action::make('delete')
                         ->label(__('admin.media_library.delete_permanently'))
@@ -276,10 +327,12 @@ class MediaTable
                         ->color('danger')
                         ->authorize(fn (Media $record): bool => Gate::allows('delete', $record))
                         ->requiresConfirmation()
-                        ->action(function (Media $record): void {
+                        ->action(function (Media $record, ListMedia $livewire): void {
                             $user = auth()->user();
                             abort_unless($user instanceof User, 403);
                             app(MediaFilesystemMutationCoordinator::class)->delete($record, $user);
+                            app(MediaInventoryDiagnostics::class)->forget($record);
+                            $livewire->forgetMediaTaskCaches();
                         }),
                 ])
                     ->label(__('admin.media_library.more_actions'))
@@ -288,12 +341,29 @@ class MediaTable
                     ->tooltip(__('admin.media_library.more_actions'))
                     ->iconButton(),
             ])
+            ->emptyStateHeading(
+                fn (ListMedia $livewire): string => $livewire->hasMediaViewConstraints()
+                    ? __('admin.media_library.empty_view_heading')
+                    : __('admin.media_library.empty_inventory_heading'),
+            )
+            ->emptyStateDescription(
+                fn (ListMedia $livewire): string => $livewire->hasMediaViewConstraints()
+                    ? __('admin.media_library.empty_view_description')
+                    : __('admin.media_library.empty_inventory_description'),
+            )
             ->emptyStateActions([
+                Action::make('resetMediaView')
+                    ->label(__('admin.media_library.reset_view'))
+                    ->icon(Heroicon::OutlinedArrowPath)
+                    ->color('gray')
+                    ->url(MediaResource::getUrl('index'))
+                    ->visible(fn (ListMedia $livewire): bool => $livewire->hasMediaViewConstraints()),
                 Action::make('create')
                     ->label(__('admin.actions.create'))
                     ->icon(Heroicon::OutlinedPlus)
                     ->authorize(fn (): bool => Gate::allows('create', MediaResource::getModel()))
-                    ->url(MediaResource::getUrl('create')),
+                    ->url(MediaResource::getUrl('create'))
+                    ->visible(fn (ListMedia $livewire): bool => ! $livewire->hasMediaViewConstraints()),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
@@ -303,10 +373,14 @@ class MediaTable
                         ->color('danger')
                         ->requiresConfirmation()
                         ->authorize(fn (): bool => Gate::allows('deleteAny', MediaResource::getModel()))
-                        ->action(function (Collection $records): void {
+                        ->action(function (Collection $records, ListMedia $livewire): void {
                             $user = auth()->user();
                             abort_unless($user instanceof User, 403);
                             app(MediaFilesystemMutationCoordinator::class)->deleteMany($records, $user);
+                            $records->each(
+                                fn (Media $record) => app(MediaInventoryDiagnostics::class)->forget($record),
+                            );
+                            $livewire->forgetMediaTaskCaches();
                         })
                         ->deselectRecordsAfterCompletion(),
                 ]),

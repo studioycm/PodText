@@ -62,7 +62,7 @@ function p2StoredMedia(string $path, array $overrides = []): Media
     return $media;
 }
 
-it('shows every curator row in All Media and uses Needs Repair as a filter instead of an exclusion', function (): void {
+it('shows every curator row in All Media and uses Needs Attention as a task instead of an exclusion', function (): void {
     $this->actingAs(User::factory()->admin()->create());
     $ready = p2StoredMedia('content-groups/covers/'.Str::ulid().'.jpg');
     $private = p2StoredMedia('private-covers/'.Str::ulid().'.jpg', [
@@ -86,12 +86,12 @@ it('shows every curator row in All Media and uses Needs Repair as a filter inste
 
     Livewire::test(ListMedia::class)
         ->assertCanSeeTableRecords([$ready, $private, $oddMetadata, $missing])
-        ->filterTable('needs_repair')
+        ->set('activeTab', 'needs_attention')
         ->assertCanSeeTableRecords([$private, $oddMetadata, $missing])
         ->assertCanNotSeeTableRecords([$ready]);
 });
 
-it('filters repair metadata without reading every SVG body in the inventory', function (): void {
+it('runs one exact SVG diagnostic snapshot only after Needs Attention is selected', function (): void {
     $this->actingAs(User::factory()->admin()->create());
     $records = collect(range(1, 30))->map(function (int $index): Media {
         $name = (string) Str::ulid();
@@ -110,16 +110,25 @@ it('filters repair metadata without reading every SVG body in the inventory', fu
 
         return $media;
     });
+    $sanitizeCalls = 0;
     $sanitizer = Mockery::mock(SvgUploadSanitizer::class);
     $sanitizer->shouldReceive('sanitize')
-        ->atMost()
-        ->times(25)
-        ->andReturnUsing(fn (string $contents): string => $contents);
+        ->andReturnUsing(function (string $contents) use (&$sanitizeCalls): string {
+            $sanitizeCalls++;
+
+            return $contents;
+        });
     app()->instance(SvgUploadSanitizer::class, $sanitizer);
 
-    Livewire::test(ListMedia::class)
-        ->filterTable('needs_repair')
+    $component = Livewire::test(ListMedia::class);
+
+    expect($sanitizeCalls)->toBe(25);
+
+    $component
+        ->set('activeTab', 'needs_attention')
         ->assertCanNotSeeTableRecords($records);
+
+    expect($sanitizeCalls)->toBe(30);
 });
 
 it('starts the picker in its logical context and All Media clears that filter without mutating existing media', function (): void {

@@ -6,6 +6,21 @@ Recorded after the Markdown-only post-Prompt-10 prompt-progress centralization c
 
 ## Git State
 
+- Media Operations UX3 Mini-task 2 is complete locally under parent option
+  `MEDIA-OPS-UX3-O2-PDF-CONTRACT-TARGETED-WORKSPACES`, audit
+  `LS-20260724-PODTEXT-MEDIA-OPERATIONS-UX3-M2-01` and approved option
+  `MEDIA-OPS-UX3-M2-O2-CANONICAL-TASK-CONTEXT`, with
+  `PODTEXT-MEDIA-UX-CONTRACT-20260724-CORRECTED` binding. It started from
+  clean `main` at `69aa0ce3f4983be54a3d25124cf43ef3ee21b5d6`, 31 commits
+  ahead of `origin/main`. Its implementation is `PENDING`. The Media Library
+  now has five canonical task views, exact diagnostic-reason composition,
+  the inclusive rolling previous 30-day Recent definition, two bounded
+  request-memoized badges, deterministic Added sorting and a validated,
+  versioned List-to-Edit return context that restores filters, page and actual
+  card focus. All Package 1–4 persistence, inventory, attachment, acquisition,
+  delivery, authorization and mutation authorities remain unchanged.
+  Mini-task 3, Package 5, migrations, dependencies, local-development data,
+  production and push were not started.
 - Media Operations UX3 Mini-task 1 is complete locally under audit
   `LS-20260724-PODTEXT-MEDIA-OPERATIONS-UX-03`, approved option
   `MEDIA-OPS-UX3-O2-PDF-CONTRACT-TARGETED-WORKSPACES`, with

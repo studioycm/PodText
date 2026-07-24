@@ -22,6 +22,7 @@ use App\Support\Importer\Spotify\SpotifyHttpClientFactory;
 use App\Support\ImportExport\ImportExportQueueTracer;
 use App\Support\Media\CuratorImageUploadPolicy;
 use App\Support\Media\MediaInventoryDiagnostics;
+use App\Support\Media\MediaLibraryTaskQuery;
 use App\Support\Media\MediaMutationLease;
 use App\Support\Media\MediaReferenceFinder;
 use App\Support\PublicContent\PublicTranscriptionPolicy;
@@ -78,6 +79,7 @@ class AppServiceProvider extends ServiceProvider
         $this->app->scoped(PublicFrontCardTemplateResolver::class);
         $this->app->scoped(MediaInventoryDiagnostics::class);
         $this->app->scoped(MediaReferenceFinder::class);
+        $this->app->scoped(MediaLibraryTaskQuery::class);
         $this->app->scoped(MediaMutationLease::class);
 
         $this->app->scoped(

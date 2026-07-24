@@ -1,6 +1,8 @@
 <?php
 
 use App\Enums\ImageUploadPurpose;
+use App\Enums\MediaDiagnosticReason;
+use App\Enums\MediaLibraryTask;
 use App\Enums\UserRole;
 use App\Filament\Resources\Media\MediaResource;
 use App\Filament\Resources\Media\Pages\CreateMedia;
@@ -127,7 +129,7 @@ function appOwnedMediaFixture(string $filename): UploadedFile
     );
 }
 
-it('shows the complete image inventory and exposes repair rows through a filter', function (): void {
+it('shows the complete image inventory and exposes diagnostic rows through the Needs Attention task', function (): void {
     $this->actingAs(User::factory()->admin()->create());
 
     $allowed = appOwnedMediaRecord();
@@ -151,7 +153,7 @@ it('shows the complete image inventory and exposes repair rows through a filter'
         ->assertCanSeeTableRecords([$allowed, $wrongDisk, $wrongType]);
 
     $component
-        ->filterTable('needs_repair')
+        ->set('activeTab', 'needs_attention')
         ->assertCanSeeTableRecords([$wrongDisk, $wrongType])
         ->assertCanNotSeeTableRecords([$allowed]);
 });
@@ -187,9 +189,9 @@ it('renders Media as a native responsive card gallery without losing table contr
     $columnsLayout = array_values($table->getColumnsLayout());
     $recordActions = array_values($table->getRecordActions());
 
-    expect($table->getRecordUrl($media))->toBe(MediaResource::getUrl('edit', [
-        'record' => $media,
-    ]));
+    expect($table->getRecordUrl($media))->toBe(
+        $component->instance()->editUrlForMedia($media),
+    );
 
     $component->assertSeeInOrder([
         'Original display filename.jpg',
@@ -231,9 +233,278 @@ it('renders Media as a native responsive card gallery without losing table contr
             'delete',
         ])
         ->and($table->getRecordActionsPosition())->toBe(RecordActionsPosition::AfterContent)
-        ->and($table->getFilters())->toHaveKeys(['type', 'needs_repair'])
+        ->and($table->getFilters())->toHaveKeys(['type', 'reason'])
         ->and($table->getToolbarActions())->toHaveCount(1)
-        ->and($table->getDefaultPaginationPageOption())->toBe(25);
+        ->and($table->getDefaultPaginationPageOption())->toBe(25)
+        ->and($table->getDefaultSortOptionLabel())
+        ->toBe(__('admin.media_library.added_newest_first'));
+});
+
+it('configures the five canonical native tasks with only the two approved badges', function (): void {
+    $this->actingAs(User::factory()->admin()->create());
+    $ready = appOwnedMediaRecord([
+        'name' => 'canonical-ready',
+        'path' => 'content-groups/covers/canonical-ready.jpg',
+    ]);
+    $missing = appOwnedMediaRecord([
+        'name' => 'canonical-missing',
+        'path' => 'content-groups/covers/canonical-missing.jpg',
+    ]);
+    Storage::disk('public')->put($ready->path, 'ready fixture');
+
+    $component = Livewire::test(ListMedia::class)->assertOk();
+    $tabs = $component->instance()->getCachedTabs();
+
+    expect(array_keys($tabs))->toBe(array_column(MediaLibraryTask::cases(), 'value'))
+        ->and(collect($tabs)->map(fn ($tab): string => (string) $tab->getLabel())->all())
+        ->toBe(collect(MediaLibraryTask::cases())
+            ->mapWithKeys(fn (MediaLibraryTask $task): array => [$task->value => $task->getLabel()])
+            ->all())
+        ->and($tabs['all']->getBadge())->toBe('2')
+        ->and($tabs['no_direct_attachment']->getBadge())->toBe('2')
+        ->and($tabs['in_use']->getBadge())->toBeNull()
+        ->and($tabs['needs_attention']->getBadge())->toBeNull()
+        ->and($tabs['recent']->getBadge())->toBeNull()
+        ->and($component->instance()->getTable()->getDescription())
+        ->toBe(MediaLibraryTask::All->description());
+
+    $component
+        ->set('activeTab', MediaLibraryTask::NeedsAttention->value)
+        ->assertCanSeeTableRecords([$missing])
+        ->assertCanNotSeeTableRecords([$ready]);
+
+    expect($component->instance()->getTable()->getDescription())
+        ->toBe(MediaLibraryTask::NeedsAttention->description());
+});
+
+it('sorts Added newest or oldest with a deterministic Media key tie break', function (): void {
+    $this->actingAs(User::factory()->admin()->create());
+    $createdAt = now()->startOfSecond();
+    $first = appOwnedMediaRecord([
+        'name' => 'sort-first',
+        'path' => 'content-groups/covers/sort-first.jpg',
+        'created_at' => $createdAt,
+    ]);
+    $second = appOwnedMediaRecord([
+        'name' => 'sort-second',
+        'path' => 'content-groups/covers/sort-second.jpg',
+        'created_at' => $createdAt,
+    ]);
+    Storage::disk('public')->put($first->path, 'first');
+    Storage::disk('public')->put($second->path, 'second');
+
+    $component = Livewire::test(ListMedia::class);
+
+    expect($component->instance()->getTableRecords()->pluck('id')->all())->toBe([
+        $second->getKey(),
+        $first->getKey(),
+    ]);
+
+    $component->set('tableSort', 'created_at:asc');
+
+    expect($component->instance()->getTableRecords()->pluck('id')->all())->toBe([
+        $first->getKey(),
+        $second->getKey(),
+    ]);
+});
+
+it('composes task MIME reason search sort page and one canonical details context', function (): void {
+    $this->actingAs(User::factory()->admin()->create());
+    $matching = appOwnedMediaRecord([
+        'title' => 'Cover target',
+        'name' => 'matching-context',
+        'path' => 'content-groups/covers/matching-context.jpg',
+    ]);
+    $wrongMime = appOwnedMediaRecord([
+        'title' => 'Cover target PNG',
+        'name' => 'wrong-mime-context',
+        'path' => 'content-groups/covers/wrong-mime-context.png',
+        'type' => 'image/png',
+        'ext' => 'png',
+    ]);
+    $healthy = appOwnedMediaRecord([
+        'title' => 'Cover target healthy',
+        'name' => 'healthy-context',
+        'path' => 'content-groups/covers/healthy-context.jpg',
+    ]);
+    Storage::disk('public')->put($healthy->path, 'healthy fixture');
+
+    $component = Livewire::test(ListMedia::class)
+        ->set('activeTab', MediaLibraryTask::NeedsAttention->value)
+        ->filterTable('type', 'image/jpeg')
+        ->filterTable('reason', MediaDiagnosticReason::MissingFile)
+        ->searchTable('Cover target')
+        ->set('tableSort', 'created_at:asc')
+        ->assertCanSeeTableRecords([$matching])
+        ->assertCanNotSeeTableRecords([$wrongMime, $healthy]);
+
+    $component->call('setPage', 2);
+    $url = $component->instance()->editUrlForMedia($matching);
+    parse_str((string) parse_url($url, PHP_URL_QUERY), $query);
+    $expectedContext = [
+        'v' => '1',
+        'task' => 'needs_attention',
+        'mime' => 'image/jpeg',
+        'reason' => 'missing_file',
+        'search' => 'Cover target',
+        'sort' => 'created_at:asc',
+        'page' => '2',
+        'focus' => (string) $matching->getKey(),
+    ];
+    $table = $component->instance()->getTable();
+    $editAction = $table->getAction('edit');
+    assert($editAction instanceof EditAction);
+    $editAction->record($matching);
+
+    expect($query['from'] ?? null)->toBe($expectedContext)
+        ->and($table->getRecordUrl($matching))->toBe($url)
+        ->and($editAction->getUrl())->toBe($url);
+
+    $component
+        ->removeTableFilter('reason')
+        ->assertSet('activeTab', MediaLibraryTask::NeedsAttention->value)
+        ->assertSet('tableSearch', 'Cover target')
+        ->assertSet('tableSort', 'created_at:asc');
+
+    expect(data_get($component->get('tableFilters'), 'type.value'))->toBe('image/jpeg')
+        ->and(data_get($component->get('tableFilters'), 'reason.value'))->toBeNull()
+        ->and($component->instance()->getTablePage())->toBe(1);
+});
+
+it('fails closed for a forged non-image MIME filter value', function (): void {
+    $this->actingAs(User::factory()->admin()->create());
+    $forgedType = appOwnedMediaRecord([
+        'name' => 'forged-mime',
+        'path' => 'legacy/forged-mime.pdf',
+        'directory' => 'legacy',
+        'type' => 'application/pdf',
+        'ext' => 'pdf',
+    ]);
+
+    Livewire::test(ListMedia::class)
+        ->filterTable('type', 'application/pdf')
+        ->assertCanNotSeeTableRecords([$forgedType]);
+});
+
+it('reconstructs one safe Media Library destination for Back and Cancel while Save stays on Edit', function (): void {
+    $this->actingAs(User::factory()->admin()->create());
+    $media = appOwnedMediaRecord([
+        'title' => 'Context edit target',
+        'name' => 'context-edit-target',
+        'path' => 'content-groups/covers/context-edit-target.jpg',
+    ]);
+    $from = [
+        'v' => 1,
+        'task' => 'needs_attention',
+        'mime' => 'image/jpeg',
+        'reason' => 'missing_file',
+        'search' => 'Context edit',
+        'sort' => 'created_at:asc',
+        'page' => 2,
+        'focus' => $media->getKey(),
+    ];
+    $component = Livewire::withQueryParams(['from' => $from])
+        ->test(EditMedia::class, ['record' => $media->getRouteKey()])
+        ->assertOk();
+    $expected = MediaResource::getUrl('index', [
+        'tab' => 'needs_attention',
+        'filters' => [
+            'type' => ['value' => 'image/jpeg'],
+            'reason' => ['value' => 'missing_file'],
+        ],
+        'search' => 'Context edit',
+        'sort' => 'created_at:asc',
+        'page' => 2,
+        'focus' => $media->getKey(),
+    ]).'#media-record-'.$media->getKey();
+    $back = collect($component->instance()->getCachedHeaderActions())
+        ->first(fn (Action $action): bool => $action->getName() === 'backToMediaLibrary');
+    $cancel = (fn (): Action => $this->getCancelFormAction())
+        ->call($component->instance());
+
+    expect($component->instance()->mediaLibraryReturnUrl())->toBe($expected)
+        ->and($back)->toBeInstanceOf(Action::class)
+        ->and($back?->getUrl())->toBe($expected)
+        ->and($back?->getIcon())->toBe(Heroicon::OutlinedPhoto)
+        ->and($cancel->getUrl())->toBe($expected)
+        ->and($cancel->getAlpineClickHandler())->toBeNull();
+
+    $component
+        ->fillForm(['title' => 'Saved in place'])
+        ->call('save')
+        ->assertHasNoFormErrors()
+        ->assertNoRedirect();
+
+    expect($media->refresh()->title)->toBe('Saved in place')
+        ->and($component->instance()->mediaLibraryReturnUrl())->toBe($expected);
+});
+
+it('normalizes malformed native Media list query state without an exception', function (
+    array $query,
+): void {
+    $this->actingAs(User::factory()->admin()->create());
+    appOwnedMediaRecord();
+
+    Livewire::withQueryParams($query)
+        ->test(ListMedia::class)
+        ->assertOk()
+        ->assertSet('activeTab', MediaLibraryTask::All->value)
+        ->assertSet('tableSearch', '')
+        ->assertSet('tableSort', null)
+        ->assertSet('focus', null);
+})->with([
+    'array tab' => [['tab' => ['needs_attention']]],
+    'array sort' => [['sort' => ['created_at:asc']]],
+    'array search' => [['search' => ['cover']]],
+    'array MIME value' => [['filters' => ['type' => ['value' => ['image/jpeg']]]]],
+    'array focus' => [['focus' => ['1']]],
+    'unknown values' => [[
+        'tab' => 'trash',
+        'sort' => 'title:desc',
+        'search' => str_repeat('x', 201),
+        'filters' => ['reason' => ['value' => 'fix_everything']],
+        'page' => 0,
+        'focus' => 'not-an-id',
+    ]],
+]);
+
+it('normalizes an invalid task received after the Media list has mounted', function (): void {
+    $this->actingAs(User::factory()->admin()->create());
+    $media = appOwnedMediaRecord();
+
+    Livewire::test(ListMedia::class)
+        ->set('activeTab', 'trash')
+        ->assertSet('activeTab', MediaLibraryTask::All->value)
+        ->assertCanSeeTableRecords([$media]);
+});
+
+it('refreshes the two task badges after successful existing delete actions', function (): void {
+    $this->actingAs(User::factory()->admin()->create());
+    $records = collect(range(1, 3))->map(function (int $index): Media {
+        $media = appOwnedMediaRecord([
+            'name' => "badge-delete-{$index}",
+            'path' => "content-groups/covers/badge-delete-{$index}.jpg",
+        ]);
+        Storage::disk('public')->put($media->path, 'deletable fixture');
+
+        return $media;
+    });
+    $component = Livewire::test(ListMedia::class);
+
+    expect($component->instance()->getCachedTabs()['all']->getBadge())->toBe('3')
+        ->and($component->instance()->getCachedTabs()['no_direct_attachment']->getBadge())->toBe('3');
+
+    $component->callAction(TestAction::make('delete')->table($records->shift()));
+
+    expect($component->instance()->getCachedTabs()['all']->getBadge())->toBe('2')
+        ->and($component->instance()->getCachedTabs()['no_direct_attachment']->getBadge())->toBe('2');
+
+    $component
+        ->selectTableRecords($records)
+        ->callAction(TestAction::make('deleteSelected')->table()->bulk());
+
+    expect($component->instance()->getCachedTabs()['all']->getBadge())->toBe('0')
+        ->and($component->instance()->getCachedTabs()['no_direct_attachment']->getBadge())->toBe('0');
 });
 
 it('describes zero known references without claiming that Media is unused', function (): void {
