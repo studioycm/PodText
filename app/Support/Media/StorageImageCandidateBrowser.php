@@ -22,25 +22,80 @@ class StorageImageCandidateBrowser
     /** @return array<int, array{token: string, filename: string, source: string}> */
     public function browse(string $search = ''): array
     {
-        $search = mb_strtolower(trim($search));
+        $search = mb_strtolower(mb_substr(trim($search), 0, 100));
         $limit = min(max((int) config('media.acquisition.storage_candidate_limit', 50), 1), 100);
+        $traversalLimit = min(max((int) config('media.acquisition.storage_traversal_limit', 2000), 1), 5000);
+        $directoryLimit = min(max((int) config('media.acquisition.storage_directory_limit', 200), 1), 500);
         $candidates = [];
+        $examined = 0;
+        $directoriesVisited = 0;
 
         foreach ($this->sources() as $sourceId => $source) {
-            foreach (Storage::disk($source['disk'])->files($source['root'], false) as $path) {
-                $filename = basename($path);
+            $disk = Storage::disk($source['disk']);
+            $pendingDirectories = [$source['root']];
+            $queuedDirectories = [$source['root'] => true];
 
-                if (
-                    ! $this->hasSupportedExtension($filename)
-                    || ($search !== '' && ! str_contains(mb_strtolower($filename), $search))
-                ) {
-                    continue;
+            while ($pendingDirectories !== []) {
+                if ($directoriesVisited >= $directoryLimit || $examined >= $traversalLimit) {
+                    return $candidates;
                 }
 
-                $candidates[] = $this->candidate($sourceId, $source, $path)->publicData();
+                $directory = array_shift($pendingDirectories);
+                $directoriesVisited++;
 
-                if (count($candidates) >= $limit) {
-                    return $candidates;
+                $files = $disk->files($directory, false);
+                sort($files, SORT_NATURAL | SORT_FLAG_CASE);
+
+                foreach ($files as $path) {
+                    if ($examined >= $traversalLimit) {
+                        return $candidates;
+                    }
+
+                    $examined++;
+                    $path = $this->normalizedPath($path);
+
+                    if ($path === null || ! $this->isWithinRoot($path, $source['root'])) {
+                        continue;
+                    }
+
+                    $filename = basename($path);
+                    $haystack = mb_strtolower($filename.' '.$path.' '.$source['label']);
+
+                    if (
+                        ! $this->hasSupportedExtension($filename)
+                        || ($search !== '' && ! str_contains($haystack, $search))
+                    ) {
+                        continue;
+                    }
+
+                    $candidates[] = $this->candidate($sourceId, $source, $path)->publicData();
+
+                    if (count($candidates) >= $limit) {
+                        return $candidates;
+                    }
+                }
+
+                $directories = $disk->directories($directory, false);
+                sort($directories, SORT_NATURAL | SORT_FLAG_CASE);
+
+                foreach ($directories as $childDirectory) {
+                    if ($examined >= $traversalLimit) {
+                        return $candidates;
+                    }
+
+                    $examined++;
+                    $childDirectory = $this->normalizedPath($childDirectory);
+
+                    if (
+                        $childDirectory === null
+                        || ! $this->isWithinRoot($childDirectory, $source['root'])
+                        || array_key_exists($childDirectory, $queuedDirectories)
+                    ) {
+                        continue;
+                    }
+
+                    $queuedDirectories[$childDirectory] = true;
+                    $pendingDirectories[] = $childDirectory;
                 }
             }
         }
@@ -65,7 +120,9 @@ class StorageImageCandidateBrowser
 
         $source = $this->sources()[$sourceId] ?? null;
 
-        if (! is_array($source) || ! $this->isDirectChild($path, $source['root'])) {
+        $path = $this->normalizedPath($path);
+
+        if (! is_array($source) || $path === null || ! $this->isWithinRoot($path, $source['root'])) {
             throw new InvalidArgumentException('The Storage candidate is outside its configured root.');
         }
 
@@ -154,8 +211,11 @@ class StorageImageCandidateBrowser
 
     private function isNormalizedRoot(string $root): bool
     {
+        if ($root === '') {
+            return true;
+        }
+
         return trim($root) === $root
-            && $root !== ''
             && ! str_starts_with($root, '/')
             && ! str_ends_with($root, '/')
             && ! str_contains($root, '\\')
@@ -165,18 +225,27 @@ class StorageImageCandidateBrowser
             );
     }
 
-    private function isDirectChild(string $path, string $root): bool
+    private function normalizedPath(string $path): ?string
     {
-        if (! str_starts_with($path, $root.'/')) {
-            return false;
+        if (
+            trim($path) !== $path
+            || $path === ''
+            || str_starts_with($path, '/')
+            || str_ends_with($path, '/')
+            || str_contains($path, '\\')
+            || str_contains($path, "\0")
+            || collect(explode('/', $path))->contains(
+                fn (string $segment): bool => in_array($segment, ['', '.', '..'], true),
+            )
+        ) {
+            return null;
         }
 
-        $relative = substr($path, strlen($root) + 1);
+        return $path;
+    }
 
-        return $relative !== ''
-            && ! str_contains($relative, '/')
-            && ! str_contains($relative, '\\')
-            && ! str_contains($relative, "\0")
-            && ! in_array($relative, ['.', '..'], true);
+    private function isWithinRoot(string $path, string $root): bool
+    {
+        return $root === '' || str_starts_with($path, $root.'/');
     }
 }

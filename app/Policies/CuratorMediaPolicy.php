@@ -110,11 +110,7 @@ class CuratorMediaPolicy
     {
         return $this->canUse($user, $media)
             && app(MediaReferenceFinder::class)->referencesForMedia($media) === []
-            && ! Media::query()
-                ->where('disk', $media->disk)
-                ->where('path', $media->path)
-                ->whereKeyNot($media->getKey())
-                ->exists();
+            && app(MediaRecordScope::class)->hasUniqueStorageIdentity($media);
     }
 
     private function canUse(User $user, Media $media): bool

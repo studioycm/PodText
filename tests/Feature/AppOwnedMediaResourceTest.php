@@ -12,6 +12,8 @@ use App\Models\MediaAsset;
 use App\Models\MediaMutationOperation;
 use App\Models\MediaProviderBinding;
 use App\Models\User;
+use App\Support\Media\MediaInventoryDiagnostics;
+use App\Support\Media\MediaRecordProjector;
 use Awcodes\Curator\Config\CurationManager;
 use Awcodes\Curator\Facades\Curator;
 use Filament\Actions\Action;
@@ -21,11 +23,15 @@ use Filament\Forms\Components\FileUpload;
 use Filament\Notifications\Notification;
 use Filament\Schemas\Concerns\RestrictsFileUploadsToSchemaComponents;
 use Filament\Support\Icons\Heroicon;
+use Filament\Tables\Columns\Layout\Grid as TableGrid;
+use Illuminate\Filesystem\FilesystemAdapter;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Livewire\Livewire;
 use Symfony\Component\Finder\Finder;
 
@@ -143,6 +149,98 @@ it('shows the complete image inventory and exposes repair rows through a filter'
         ->assertCanSeeTableRecords([$wrongDisk, $wrongType])
         ->assertCanNotSeeTableRecords([$allowed]);
 });
+
+it('renders Media as a native responsive card gallery without losing table controls', function (): void {
+    $this->actingAs(User::factory()->admin()->create());
+    $media = appOwnedMediaRecord([
+        'title' => 'Original display filename.jpg',
+        'name' => 'stored-card-name',
+        'path' => 'content-groups/covers/stored-card-name.jpg',
+        'exif' => ['original_filename' => 'Original display filename.jpg'],
+    ]);
+    Storage::disk('public')->put($media->path, 'card fixture');
+
+    $component = Livewire::test(ListMedia::class)
+        ->assertOk()
+        ->assertCanSeeTableRecords([$media])
+        ->assertSee('Original display filename.jpg')
+        ->assertSee('stored-card-name.jpg')
+        ->assertSee('image/jpeg')
+        ->assertSee(__('admin.media_library.ready'));
+    $table = $component->instance()->getTable();
+    $columnsLayout = array_values($table->getColumnsLayout());
+
+    expect($table->getContentGrid())->toBe([
+        'md' => 2,
+        'lg' => 3,
+        '2xl' => 4,
+    ])
+        ->and($columnsLayout[0] ?? null)->toBeInstanceOf(TableGrid::class)
+        ->and($table->getRecordActions())->toHaveCount(6)
+        ->and($table->getFilters())->toHaveKeys(['type', 'needs_repair'])
+        ->and($table->getToolbarActions())->toHaveCount(1)
+        ->and($table->getDefaultPaginationPageOption())->toBe(25);
+});
+
+it('reuses one request-local filesystem existence decision per projected raster', function (int $recordCount): void {
+    $records = collect(range(1, $recordCount))
+        ->map(fn (int $index): Media => appOwnedMediaRecord([
+            'reference_key' => (string) Str::ulid(),
+            'name' => "probe-{$index}",
+            'path' => "content-groups/covers/probe-{$index}.jpg",
+        ]));
+    $disk = Mockery::mock(FilesystemAdapter::class);
+    $disk->shouldReceive('exists')
+        ->times($recordCount)
+        ->andReturnTrue();
+    Storage::shouldReceive('disk')
+        ->times($recordCount)
+        ->with('public')
+        ->andReturn($disk);
+    app()->forgetInstance(MediaInventoryDiagnostics::class);
+    $projector = app(MediaRecordProjector::class);
+
+    $records->each(fn (Media $media): array => $projector->project($media));
+})->with([1, 10, 25]);
+
+it('keeps Media card authorization reference queries bounded by page not record count', function (int $recordCount): void {
+    $this->actingAs(User::factory()->admin()->create());
+    $records = collect(range(1, $recordCount))
+        ->map(function (int $index): Media {
+            $media = appOwnedMediaRecord([
+                'reference_key' => (string) Str::ulid(),
+                'name' => "query-budget-{$index}",
+                'path' => "content-groups/covers/query-budget-{$index}.jpg",
+            ]);
+            Storage::disk('public')->put($media->path, 'query budget fixture');
+
+            return $media;
+        });
+    $queries = [];
+    DB::listen(function ($query) use (&$queries): void {
+        $sql = mb_strtolower($query->sql);
+
+        if (
+            str_contains($sql, 'media_attachments')
+            || str_contains($sql, 'content_groups')
+            || str_contains($sql, 'content_items')
+            || str_contains($sql, 'settings')
+            || (str_contains($sql, 'curator') && str_contains($sql, 'path'))
+        ) {
+            $queries[] = $query->sql;
+        }
+    });
+
+    Livewire::test(ListMedia::class)
+        ->assertOk()
+        ->assertCanSeeTableRecords($records)
+        ->html();
+
+    expect(count($queries))->toBeLessThanOrEqual(
+        20,
+        json_encode($queries, JSON_THROW_ON_ERROR),
+    );
+})->with([1, 10, 25]);
 
 it('bounds resource pagination uploads and concurrent transfers', function (): void {
     $this->actingAs(User::factory()->admin()->create());

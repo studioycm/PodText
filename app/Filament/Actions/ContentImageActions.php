@@ -144,7 +144,8 @@ class ContentImageActions
             ->icon(Heroicon::OutlinedPhoto)
             ->modalHeading(__('admin.owner_image.heading'))
             ->modalDescription(__('admin.owner_image.description'))
-            ->modalWidth(Width::FiveExtraLarge)
+            ->modalWidth(Width::SevenExtraLarge)
+            ->modalAutofocus(false)
             ->modalSubmitActionLabel(__('admin.owner_image.actions.change_image'))
             ->fillForm(function (ContentGroup|ContentItem $record) use ($field, $presentationFor, $role): array {
                 $presentation = $presentationFor($record);

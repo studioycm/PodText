@@ -21,6 +21,12 @@ topology correction is complete locally under audit
 `LS-20260724-PODTEXT-MEDIA-OWNER-PICKER-CORRECTIONS-01`, approved option
 `MEDIA-OWNER-CORR-O3-INLINE-PICKER-TABS`; its handoff is
 `../../phase-02/media-program-p4-inline-picker-correction-handoff.md`.
+The approved post-P3/Package 4 visual correction is complete locally under audit
+`LS-20260724-PODTEXT-MEDIA-P3-POSTP3-P4-VISUAL-UX-01`, option
+`MEDIA-P3-POSTP3-P4-VUX-O2-NATIVE-CARD-GALLERY`; its detailed authority is
+`packages/04-postp3-visual-ux-research.md` and
+`packages/04-postp3-visual-ux-plan.md`, and its result is
+`../../phase-02/media-program-p3-postp3-p4-visual-ux-handoff.md`.
 Package 5 remains a route forecast requiring fresh Simplifier approval.
 
 ## Package 1 — minimal kernel and database conversion
@@ -175,6 +181,31 @@ The correction adds no migration or dependency of its own. Storage continues
 to browse only configured bounded roots and broader discovery remains Package
 5. The original Package 4 source detail, diagnostics, safe delivery,
 stale-write protection and Resource-table rider remain unchanged.
+
+## Post-P3 / Package 4 visual UX correction
+
+Outcome: keep all completed acquisition/owner contracts while making Media a
+Filament-native responsive card gallery, improving the inline owner workspace
+layout and making Storage search server-backed and recursively useful within
+two explicit bounded sources.
+
+Tasks:
+
+1. Reconcile active authority and add the approved research/plan.
+2. Test-first widen and de-autofocus the shared owner modal, compact the
+   contain-fit selection and put acquisition controls first on narrow screens.
+3. Test-first add 1500-millisecond server-backed Storage search and bounded
+   recursive acquisition discovery only for Laravel's public disk and
+   `public/images`.
+4. Test-first recompose the Media Resource as native responsive cards while
+   retaining table inventory, repair, selection and action behavior.
+5. Prime reference queries, share request-local existence decisions, complete
+   browser visual verification and run the ordered closeout.
+
+The production admin topbar remains sticky. Capture tooling alone applies and
+removes a static-topbar class/style while taking stitched screenshots. This
+correction adds no schema, dependency, provider, Package 5 lifecycle or
+arbitrary public/build scan.
 
 ## Package 5 — files and physical lifecycle
 

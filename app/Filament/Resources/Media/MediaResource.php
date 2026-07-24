@@ -57,7 +57,19 @@ class MediaResource extends Resource
 
     public static function getEloquentQuery(): Builder
     {
-        return app(MediaRecordScope::class)->inventoryQuery();
+        /** @var class-string<Media> $model */
+        $model = static::getModel();
+        $table = (new $model)->getTable();
+        $storagePeers = $model::query()
+            ->from("{$table} as storage_identity_peers")
+            ->selectRaw('count(*)')
+            ->whereColumn('storage_identity_peers.disk', "{$table}.disk")
+            ->whereColumn('storage_identity_peers.path', "{$table}.path");
+
+        return app(MediaRecordScope::class)
+            ->inventoryQuery()
+            ->select("{$table}.*")
+            ->selectSub($storagePeers, 'storage_identity_count');
     }
 
     public static function getPages(): array

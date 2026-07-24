@@ -2,13 +2,16 @@
 
 ## Authority
 
-- Audit: `LS-20260724-PODTEXT-MEDIA-OWNER-PICKER-CORRECTIONS-01`
+- Audit:
+  `LS-20260724-PODTEXT-MEDIA-P3-POSTP3-P4-VISUAL-UX-01`
 - Approved option:
-  `MEDIA-OWNER-CORR-O3-INLINE-PICKER-TABS`
+  `MEDIA-P3-POSTP3-P4-VUX-O2-NATIVE-CARD-GALLERY`
 - Approval date: 2026-07-24
-- Scope: the bounded Package 4 owner-picker topology, acquisition-only owner
-  batch upload, standalone Media Library batch-upload visibility and exact
-  local database activation approved separately.
+- Scope: the bounded post-P3/Package 4 visual UX correction, native Media
+  Resource card gallery, owner workspace sizing/focus/contain behavior,
+  source-first narrow layout, recursive server-backed Storage acquisition
+  search and measured media budgets. Production topbar behavior remains
+  unchanged; capture tooling alone makes it static.
 
 This registry supersedes the 2026-07-22 trusted-canonical/hybrid-root program.
 Historical committed handoffs remain evidence of what existed; they do not
@@ -94,6 +97,12 @@ production remain prohibited.
 | `MI-R063` | Owner attachment cardinality remains one. One successful inline upload may become the pending owner choice; a multi-file upload permanently admits every successful image, selects no arbitrary owner image and requires the operator to choose exactly one. Partial successes remain permanent and cancellation removes none. | Package 4 correction acquisition and cancel tests. |
 | `MI-R064` | The standalone Media Library exposes its existing bounded batch admission through an explicit translated Upload Images action and one-or-many field/help copy without adding another uploader. | Package 4 correction Resource tests. |
 | `MI-R065` | Storage remains lazy, bounded to configured roots and opaque server identities, with explicit unconfigured/empty/search-empty/failure/candidate states. Broader directory discovery and physical browsing remain Package 5. | Package 3 Storage and Package 4 correction browser regressions. |
+| `MI-R066` | The Media Resource uses one Filament-native responsive card grid while preserving complete inventory, Needs Repair, search, filters, 25-record pagination, bulk selection, authorization and every existing safe/mutation action. | Visual correction Resource and browser tests. |
+| `MI-R067` | The shared owner action is seven-extra-large, does not autofocus-scroll, keeps Replace first and Details second, renders a compact contain-fit selected image and puts acquisition controls before Gallery on narrow screens. | Action schema/view and RTL/LTR browser tests. |
+| `MI-R068` | Storage search is server-backed with a 1500-millisecond debounce and explicit Refresh. It recursively discovers only normalized descendants of the Laravel public disk and the explicitly allowlisted `public/images` source through opaque identities and bounded candidate/traversal limits. | Storage browser/Livewire/filesystem-fake tests. |
+| `MI-R069` | Media Resource reference checks are primed once per current page and picker/card raster projection reuses one request-local existence decision per row; query ceilings remain count-independent and filesystem probes remain bounded. | 1/10/25 query and probe-budget tests. |
+| `MI-R070` | Full-page visual captures temporarily apply and remove a capture-only static-topbar class/style. The real admin topbar and Card Template Editor runtime layout remain unchanged. | Browser capture procedure and Card Template regression. |
+| `MI-R071` | The visual correction adds no schema, dependency, provider, settings property, arbitrary public/build scan, Package 5 lifecycle, image-byte mutation or production action. | migration/lockfile/config/source/status sweep. |
 
 ## Rejected requirements
 

@@ -15,6 +15,7 @@ use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
@@ -27,6 +28,7 @@ beforeEach(function (): void {
     Http::preventStrayRequests();
     Storage::fake('local');
     Storage::fake('public');
+    Storage::fake('public_assets');
 });
 
 function acquisitionFixture(string $name = 'valid.jpg.base64'): string
@@ -198,19 +200,105 @@ it('saves the bounded Package 3 acquisition settings', function (): void {
         ->and($settings->media_acquisition_filename_strategy)->toBe(MediaAcquisitionFilenameStrategy::CleanedOriginal->value);
 });
 
-it('browses configured Storage roots through opaque direct-child identities', function (): void {
-    Storage::disk('public')->put('media-imports/visible.jpg', acquisitionFixture());
-    Storage::disk('public')->put('media-imports/nested/hidden.jpg', acquisitionFixture());
-    Storage::disk('public')->put('outside/hidden.jpg', acquisitionFixture());
-    Storage::disk('public')->put('media-imports/not-image.txt', 'no');
+it('recursively browses only the bounded Laravel public disk and public images source', function (): void {
+    config()->set('filesystems.disks.public_assets', [
+        'driver' => 'local',
+        'root' => public_path(),
+        'throw' => false,
+        'report' => false,
+    ]);
+    config()->set('media.acquisition.storage_sources', [
+        'laravel_public' => [
+            'disk' => 'public',
+            'root' => '',
+            'mode' => 'register',
+            'label' => ['en' => 'Laravel public disk', 'he' => 'דיסק Laravel הציבורי'],
+        ],
+        'public_images' => [
+            'disk' => 'public_assets',
+            'root' => 'images',
+            'mode' => 'copy',
+            'label' => ['en' => 'Public images', 'he' => 'תמונות public'],
+        ],
+    ]);
+    Storage::fake('public_assets');
+    Storage::disk('public')->put('root-visible.jpg', acquisitionFixture());
+    Storage::disk('public')->put('podcasts/nested/deep-visible.png', acquisitionFixture('valid.png.base64'));
+    Storage::disk('public')->put('podcasts/nested/not-image.txt', 'no');
+    Storage::disk('public_assets')->put('images/archive/deep-public-image.jpg', acquisitionFixture());
+    Storage::disk('public_assets')->put('build/assets/excluded.png', acquisitionFixture('valid.png.base64'));
 
     $candidates = app(MediaAcquisitionManager::class)->storageCandidates();
 
-    expect($candidates)->toHaveCount(1)
+    expect($candidates)->toHaveCount(3)
         ->and(array_keys($candidates[0]))->toBe(['token', 'filename', 'source'])
-        ->and($candidates[0]['filename'])->toBe('visible.jpg')
-        ->and($candidates[0]['token'])->not->toContain('media-imports')
-        ->and($candidates[0])->not->toHaveKey('path');
+        ->and(collect($candidates)->pluck('filename')->all())->toEqualCanonicalizing([
+            'root-visible.jpg',
+            'deep-visible.png',
+            'deep-public-image.jpg',
+        ])
+        ->and(collect($candidates)->pluck('token')->implode(' '))
+        ->not->toContain('podcasts')
+        ->not->toContain('images/archive')
+        ->and($candidates[0])->not->toHaveKey('path')
+        ->and(app(MediaAcquisitionManager::class)->storageCandidates('deep-public'))
+        ->toHaveCount(1)
+        ->and(app(MediaAcquisitionManager::class)->storageCandidates('deep-public')[0]['filename'])
+        ->toBe('deep-public-image.jpg');
+
+    $forgedOutsideRoot = Crypt::encryptString(json_encode([
+        'source' => 'public_images',
+        'path' => 'build/assets/excluded.png',
+    ], JSON_THROW_ON_ERROR));
+
+    expect(fn () => app(StorageImageCandidateBrowser::class)->resolve($forgedOutsideRoot))
+        ->toThrow(InvalidArgumentException::class);
+});
+
+it('caps recursive Storage results and examined entries', function (): void {
+    config()->set('media.acquisition.storage_candidate_limit', 2);
+    config()->set('media.acquisition.storage_traversal_limit', 30);
+    config()->set('media.acquisition.storage_directory_limit', 12);
+    config()->set('media.acquisition.storage_sources', [
+        'laravel_public' => [
+            'disk' => 'public',
+            'root' => '',
+            'mode' => 'register',
+            'label' => ['en' => 'Laravel public disk', 'he' => 'דיסק Laravel הציבורי'],
+        ],
+    ]);
+
+    foreach (range(1, 8) as $index) {
+        Storage::disk('public')->put("nested/{$index}/candidate-{$index}.jpg", acquisitionFixture());
+    }
+
+    expect(app(MediaAcquisitionManager::class)->storageCandidates())
+        ->toHaveCount(2);
+});
+
+it('stops recursive Storage discovery at its entry and directory budgets', function (): void {
+    config()->set('media.acquisition.storage_candidate_limit', 50);
+    config()->set('media.acquisition.storage_traversal_limit', 1);
+    config()->set('media.acquisition.storage_directory_limit', 12);
+    config()->set('media.acquisition.storage_sources', [
+        'laravel_public' => [
+            'disk' => 'public',
+            'root' => '',
+            'mode' => 'register',
+            'label' => ['en' => 'Laravel public disk', 'he' => 'דיסק Laravel הציבורי'],
+        ],
+    ]);
+    Storage::disk('public')->put('a-not-image.txt', 'not an image');
+    Storage::disk('public')->put('z-later-image.jpg', acquisitionFixture());
+
+    expect(app(MediaAcquisitionManager::class)->storageCandidates())->toBe([]);
+
+    Storage::fake('public');
+    config()->set('media.acquisition.storage_traversal_limit', 30);
+    config()->set('media.acquisition.storage_directory_limit', 1);
+    Storage::disk('public')->put('nested/never-visited.jpg', acquisitionFixture());
+
+    expect(app(MediaAcquisitionManager::class)->storageCandidates())->toBe([]);
 });
 
 it('registers a safe public Storage raster in place and reuses its Media row', function (): void {
@@ -317,11 +405,11 @@ it('fails safely when the bounded Storage candidate lock is contended', function
     Storage::disk('public')->assertExists('media-imports/contended.jpg');
 });
 
-it('copies private Storage input and sanitized public SVG without changing either source', function (): void {
+it('copies public images input and sanitized public SVG without changing either source', function (): void {
     $actor = User::factory()->admin()->create();
     $raster = acquisitionFixture();
     $svg = (string) file_get_contents(base_path('tests/Fixtures/media/clean.svg'));
-    Storage::disk('local')->put('media-imports/private.jpg', $raster);
+    Storage::disk('public_assets')->put('images/private.jpg', $raster);
     Storage::disk('public')->put('media-imports/public.svg', $svg);
 
     $candidates = app(MediaAcquisitionManager::class)->storageCandidates();
@@ -346,7 +434,7 @@ it('copies private Storage input and sanitized public SVG without changing eithe
         ->and($svgMedia->media->path)->not->toBe('media-imports/public.svg')
         ->and(Storage::disk('public')->get($privateMedia->media->path))->toBe($raster)
         ->and(Storage::disk('public')->get($svgMedia->media->path))->toContain('<svg');
-    Storage::disk('local')->assertExists('media-imports/private.jpg');
+    Storage::disk('public_assets')->assertExists('images/private.jpg');
     Storage::disk('public')->assertExists('media-imports/public.svg');
     expect(Storage::disk('public')->get('media-imports/public.svg'))->toBe($svg);
 });

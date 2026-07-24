@@ -59,6 +59,14 @@ create a new handoff at that path from the implemented inventory-first work.
   `MEDIA-OWNER-CORR-O3-INLINE-PICKER-TABS`. It supersedes only the earlier
   Package 4 nested picker-launch topology; the original detail, diagnostics,
   stale-write, safe-delivery and Resource-table rider results remain active.
+- `packages/04-postp3-visual-ux-research.md` and plan: completed Stage 2
+  authority under
+  `LS-20260724-PODTEXT-MEDIA-P3-POSTP3-P4-VISUAL-UX-01` /
+  `MEDIA-P3-POSTP3-P4-VUX-O2-NATIVE-CARD-GALLERY`. It preserves the completed
+  picker/owner contracts and adds only the bounded native card gallery,
+  owner-layout, Storage-search/discovery and query/probe corrections. Its
+  static topbar rule is capture-only; runtime topbar and Card Template Editor
+  layout remain unchanged.
 - Package 5 pair: forecast only; fresh audit required.
 
 The earlier Package 4 audit
@@ -66,7 +74,9 @@ The earlier Package 4 audit
 `MEDIA-P4-O1-SHARED-DETAIL-MODAL` /
 `MEDIA-P4-O2-SHARED-DETAIL-SLIDEOVER` are superseded and authorize nothing.
 The post-Package-3 correction, Package 4 implementation and Package 4
-inline-picker correction are closed locally. Package 5 remains unapproved.
+inline-picker correction are closed locally. The post-P3/Package 4 visual
+correction is also closed locally. Package 5 and a deeper Media UX redesign
+remain unapproved.
 
 ## Related active track documents
 

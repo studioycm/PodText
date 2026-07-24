@@ -325,9 +325,10 @@ it('keeps the acquisition workspace accessible responsive and stateful', functio
                 overflowing_elements: overflowingElements,
                 modal_within_viewport: (modalRect?.left ?? -1) >= -1
                     && (modalRect?.right ?? window.innerWidth + 1) <= window.innerWidth + 1,
-                sources_stacked: Math.abs((galleryRect?.left ?? 0) - (sourceRect?.left ?? 1)) <= 2
+                sources_stacked_before_gallery: Math.abs((galleryRect?.left ?? 0) - (sourceRect?.left ?? 1)) <= 2
                     && Math.abs((galleryRect?.width ?? 0) - (sourceRect?.width ?? 1)) <= 2
-                    && (sourceRect?.top ?? 0) >= (galleryRect?.bottom ?? 1) - 2,
+                    && (sourceRect?.bottom ?? Number.POSITIVE_INFINITY)
+                        <= (galleryRect?.top ?? Number.NEGATIVE_INFINITY) + 2,
                 header_sticky: getComputedStyle(
                     picker?.querySelector('[data-testid="media-picker-header"]'),
                 ).position === 'sticky',
@@ -345,7 +346,7 @@ it('keeps the acquisition workspace accessible responsive and stateful', functio
         ->and($narrow['horizontal_overflow'])->toBeFalse()
         ->and($narrow['picker_horizontal_overflow'])->toBeFalse(json_encode($narrow, JSON_THROW_ON_ERROR))
         ->and($narrow['modal_within_viewport'])->toBeTrue(json_encode($narrow, JSON_THROW_ON_ERROR))
-        ->and($narrow['sources_stacked'])->toBeTrue(json_encode($narrow, JSON_THROW_ON_ERROR))
+        ->and($narrow['sources_stacked_before_gallery'])->toBeTrue(json_encode($narrow, JSON_THROW_ON_ERROR))
         ->and($narrow['header_sticky'])->toBeTrue()
         ->and($narrow['footer_sticky'])->toBeTrue();
 

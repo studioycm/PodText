@@ -7,24 +7,37 @@ not current authority.
 
 ## Controlling approval
 
-- Audit: `LS-20260724-PODTEXT-MEDIA-OWNER-PICKER-CORRECTIONS-01`
+- Audit:
+  `LS-20260724-PODTEXT-MEDIA-P3-POSTP3-P4-VISUAL-UX-01`
 - Approved option:
-  `MEDIA-OWNER-CORR-O3-INLINE-PICKER-TABS`
-- Approved scope: correct Package 4's owner action to show the complete
-  Gallery/Upload/URL/Storage picker in the first/default Replace Image tab,
-  show Details and Effective Image second, support acquisition-only owner
-  batch upload and expose standalone Media Library batch upload clearly.
+  `MEDIA-P3-POSTP3-P4-VUX-O2-NATIVE-CARD-GALLERY`
+- Approved scope: correct the completed Package 3/post-P3/Package 4 visual UX
+  with a native Media Resource card gallery, wider non-autofocusing owner
+  workspace, compact contain-fit selected image, narrow-screen source-first
+  picker order, server-backed 1500-millisecond Storage search, bounded
+  recursive Laravel-public and `public/images` acquisition discovery, and
+  measured query/filesystem-probe budgets.
+- The operator amended only the topbar part: production remains sticky. Visual
+  capture tooling temporarily applies a capture-only static-topbar class/style
+  and removes it after capture, so no Card Template Editor runtime change is
+  included.
 - Package 4's original implementation and 43-action Resource-table rider
   remain authoritative except where the correction changes picker topology.
-  The correction research, plan and handoff are
+  The inline-picker correction research, plan and handoff are
   `docs/research/media-program/packages/04-owner-image-inline-picker-correction-research.md`,
   `docs/research/media-program/packages/04-owner-image-inline-picker-correction-plan.md`
   and
   `docs/phase-02/media-program-p4-inline-picker-correction-handoff.md`.
+- The active visual correction research, plan and handoff are
+  `docs/research/media-program/packages/04-postp3-visual-ux-research.md`,
+  `docs/research/media-program/packages/04-postp3-visual-ux-plan.md` and
+  `docs/phase-02/media-program-p3-postp3-p4-visual-ux-handoff.md`.
 - Packages 1-4, the post-Package-3 correction and the Package 4 picker
-  correction are complete locally. Package 5 remains separately gated.
+  correction are complete locally. This visual correction is also complete
+  locally; Package 5 and any deeper Media UX redesign remain separately
+  gated.
 - Starting baseline: clean `main` at
-  `75249da2c6de7dcdc82cd938d2a722449d87aa47`, 25 commits ahead of
+  `5b737e1e0f3d355a8dbb51a6887c2e0e785ed463`, 27 commits ahead of
   `origin/main`.
 - No prompt under `prompts/pre-13-prompts/` is active.
 
@@ -115,13 +128,17 @@ source-workspace UX — complete locally.
 Package 4 picker correction: inline Replace Image first, Details and Effective
 Image second, acquisition-only owner batch upload and explicit standalone Media
 batch upload — complete locally.
+Post-P3/Package 4 visual correction: native Media card gallery, wider
+non-autofocusing owner workspace, compact contain-fit selection, source-first
+mobile picker order, bounded recursive server-backed Storage search and
+measured query/probe budgets — complete locally.
 5. Files Discovery and physical lifecycle; journals apply only to real file
    mutations.
 
 ## Baselines
 
-- Package 4 correction starting baseline: clean `main` at
-  `75249da2c6de7dcdc82cd938d2a722449d87aa47`, 25 commits ahead of
+- Visual correction starting baseline: clean `main` at
+  `5b737e1e0f3d355a8dbb51a6887c2e0e785ed463`, 27 commits ahead of
   `origin/main`.
 - At Stage 1: 79 modified tracked files and 54 default-status untracked entries
   formed the unfinished overbuilt Package 1 draft. Exact cleanup enumeration
@@ -134,7 +151,7 @@ batch upload — complete locally.
 - Production: the latest dated snapshot remains pre-G1 with 403 Curator rows,
   108 matched covers, three SVGs, five rowless managed files, one oversized
   raster and two duplicate-byte pairs.
-- Package 4 correction tests use isolated databases and fake storage only.
+- Visual correction tests use isolated databases and fake storage only.
   The separate local database activation performed database-only migration and
   conversion work; it did not mutate media files or authorize production.
 
@@ -161,4 +178,6 @@ before proceeding.
 - Selecting existing media performs attachment-only database changes; it never
   copies, moves, renames or normalizes the selected row or file.
 - No Package 5 Files Discovery/lifecycle work or unrelated media expansion.
+- No runtime topbar/Card Template Editor change; the static topbar rule exists
+  only inside the visual-capture session.
 - No branch/worktree change, push, broad reset, stash, checkout or deletion.

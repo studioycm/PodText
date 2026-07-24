@@ -223,24 +223,10 @@ class MediaPickerPanel extends Component implements HasActions, HasSchemas
     {
         $this->storageSearch = mb_substr(trim($this->storageSearch), 0, 100);
         $this->resetValidation($this->sourceErrorKeys('storage'));
-    }
 
-    /** @return array<int, array{token: string, filename: string, source: string}> */
-    public function filteredStorageFiles(): array
-    {
-        $search = mb_strtolower($this->storageSearch);
-
-        if ($search === '') {
-            return $this->storageFiles;
+        if ($this->activeSource === 'storage' && $this->storageConfigured) {
+            $this->loadStorageFiles();
         }
-
-        return array_values(array_filter(
-            $this->storageFiles,
-            fn (array $candidate): bool => str_contains(
-                mb_strtolower($candidate['filename'].' '.$candidate['source']),
-                $search,
-            ),
-        ));
     }
 
     public function showContextMedia(): void
@@ -882,7 +868,7 @@ class MediaPickerPanel extends Component implements HasActions, HasSchemas
             return;
         }
 
-        $this->storageFiles = app(MediaAcquisitionManager::class)->storageCandidates();
+        $this->storageFiles = app(MediaAcquisitionManager::class)->storageCandidates($this->storageSearch);
     }
 
     private function loadStorageFiles(): void

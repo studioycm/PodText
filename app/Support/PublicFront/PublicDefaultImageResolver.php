@@ -93,6 +93,11 @@ class PublicDefaultImageResolver
             : null;
     }
 
+    public function forget(Media $media): void
+    {
+        $this->publicMediaDelivery->forget($media);
+    }
+
     /**
      * @return array{url: string|null, source: string, path: string|null, alt: string|null}
      */

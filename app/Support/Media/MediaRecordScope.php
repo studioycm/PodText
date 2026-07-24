@@ -171,6 +171,21 @@ class MediaRecordScope
             && preg_match('/^[0-9A-HJKMNP-TV-Z]{26}$/', mb_strtoupper($media->reference_key)) === 1;
     }
 
+    public function hasUniqueStorageIdentity(Media $media): bool
+    {
+        $selectedCount = $media->getAttribute('storage_identity_count');
+
+        if (is_numeric($selectedCount)) {
+            return (int) $selectedCount === 1;
+        }
+
+        return ! $this->inventoryQuery()
+            ->where('disk', $media->disk)
+            ->where('path', $media->path)
+            ->whereKeyNot($media->getKey())
+            ->exists();
+    }
+
     /**
      * @param  iterable<int, int|string>  $ids
      * @param  Builder<Media>  $query

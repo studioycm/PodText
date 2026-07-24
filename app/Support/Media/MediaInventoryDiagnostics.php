@@ -4,16 +4,11 @@ namespace App\Support\Media;
 
 use App\Models\Media;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\Facades\Storage;
-use Throwable;
 
 class MediaInventoryDiagnostics
 {
     /** @var array<string, array<int, string>> */
     private array $reasons = [];
-
-    /** @var array<string, bool> */
-    private array $fileExists = [];
 
     public function __construct(
         private readonly MediaRecordScope $scope,
@@ -59,6 +54,12 @@ class MediaInventoryDiagnostics
     public function needsRepair(Media $media): bool
     {
         return $this->reasons($media) !== [];
+    }
+
+    public function forget(Media $media): void
+    {
+        unset($this->reasons[$this->diagnosticCacheKey($media)]);
+        $this->publicDelivery->forget($media);
     }
 
     /** @param Builder<Media> $query */
@@ -113,21 +114,7 @@ class MediaInventoryDiagnostics
 
     private function fileExists(Media $media): bool
     {
-        $cacheKey = implode(':', [
-            $media->getKey(),
-            $media->disk,
-            $media->path,
-        ]);
-
-        if (array_key_exists($cacheKey, $this->fileExists)) {
-            return $this->fileExists[$cacheKey];
-        }
-
-        try {
-            return $this->fileExists[$cacheKey] = Storage::disk((string) $media->disk)->exists((string) $media->path);
-        } catch (Throwable) {
-            return $this->fileExists[$cacheKey] = false;
-        }
+        return $this->publicDelivery->fileExists($media);
     }
 
     /** @return array<int, int> */

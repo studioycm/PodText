@@ -33,6 +33,17 @@ class OwnerImagePresenter
         $attachment = $attachment instanceof MediaAttachment ? $attachment : null;
         $directMedia = $attachment?->getRelation('media');
         $directMedia = $directMedia instanceof Media ? $directMedia : null;
+        collect([
+            $directMedia,
+            $owner instanceof ContentItem
+                ? $owner->contentGroup?->coverMediaAttachment?->media
+                : null,
+        ])
+            ->filter(fn (mixed $media): bool => $media instanceof Media)
+            ->each(function (Media $media): void {
+                $this->inventoryDiagnostics->forget($media);
+                $this->defaultImageResolver->forget($media);
+            });
         $diagnostic = null;
         $identityMedia = null;
 

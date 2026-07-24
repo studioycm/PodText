@@ -10,23 +10,25 @@ return [
         'storage_lock_seconds' => 60,
         'storage_lock_wait_seconds' => 3,
         'storage_candidate_limit' => 50,
+        'storage_traversal_limit' => 2000,
+        'storage_directory_limit' => 200,
         'storage_sources' => [
-            'public_imports' => [
+            'laravel_public' => [
                 'disk' => 'public',
-                'root' => 'media-imports',
+                'root' => '',
                 'mode' => 'register',
                 'label' => [
-                    'en' => 'Public imports',
-                    'he' => 'ייבוא ציבורי',
+                    'en' => 'Laravel public disk',
+                    'he' => 'דיסק Laravel הציבורי',
                 ],
             ],
-            'private_imports' => [
-                'disk' => 'local',
-                'root' => 'media-imports',
+            'public_images' => [
+                'disk' => 'public_assets',
+                'root' => 'images',
                 'mode' => 'copy',
                 'label' => [
-                    'en' => 'Private imports',
-                    'he' => 'ייבוא פרטי',
+                    'en' => 'Public images',
+                    'he' => 'תמונות public',
                 ],
             ],
         ],

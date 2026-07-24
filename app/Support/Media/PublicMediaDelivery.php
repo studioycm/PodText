@@ -20,6 +20,9 @@ class PublicMediaDelivery
     /** @var array<string, bool> */
     private array $inlineDecisions = [];
 
+    /** @var array<string, bool> */
+    private array $fileExistence = [];
+
     public function __construct(private readonly SvgUploadSanitizer $svgSanitizer) {}
 
     public function fallbackReason(Media $media): ?string
@@ -38,11 +41,7 @@ class PublicMediaDelivery
             return $this->decisions[$cacheKey] = self::MissingFile;
         }
 
-        try {
-            if (! Storage::disk((string) $media->disk)->exists((string) $media->path)) {
-                return $this->decisions[$cacheKey] = self::MissingFile;
-            }
-        } catch (Throwable) {
+        if (! $this->fileExists($media)) {
             return $this->decisions[$cacheKey] = self::MissingFile;
         }
 
@@ -61,7 +60,31 @@ class PublicMediaDelivery
     public function forget(Media $media): void
     {
         $cacheKey = $this->cacheKey($media);
-        unset($this->decisions[$cacheKey], $this->inlineDecisions[$cacheKey]);
+        unset(
+            $this->decisions[$cacheKey],
+            $this->inlineDecisions[$cacheKey],
+            $this->fileExistence[$cacheKey],
+        );
+    }
+
+    public function fileExists(Media $media): bool
+    {
+        $cacheKey = $this->cacheKey($media);
+
+        if (array_key_exists($cacheKey, $this->fileExistence)) {
+            return $this->fileExistence[$cacheKey];
+        }
+
+        if (! array_key_exists((string) $media->disk, config('filesystems.disks', []))) {
+            return $this->fileExistence[$cacheKey] = false;
+        }
+
+        try {
+            return $this->fileExistence[$cacheKey] = Storage::disk((string) $media->disk)
+                ->exists((string) $media->path);
+        } catch (Throwable) {
+            return $this->fileExistence[$cacheKey] = false;
+        }
     }
 
     public function canRenderInline(Media $media): bool

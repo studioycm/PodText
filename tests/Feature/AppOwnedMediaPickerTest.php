@@ -40,6 +40,7 @@ beforeEach(function (): void {
     Http::preventStrayRequests();
     Storage::fake('local');
     Storage::fake('public');
+    Storage::fake('public_assets');
 });
 
 function pickerPanel(array $overrides = []): Testable
@@ -224,11 +225,19 @@ it('loads Storage only on first activation and explicit refresh', function (): v
     $browser = Mockery::mock(StorageImageCandidateBrowser::class);
     $browser->shouldReceive('hasConfiguredSources')->once()->andReturnTrue();
     $browser->shouldReceive('browse')
-        ->twice()
+        ->once()
         ->with('')
+        ->andReturn([[
+            'token' => 'first-token',
+            'filename' => 'first.jpg',
+            'source' => 'Public imports',
+        ]]);
+    $browser->shouldReceive('browse')
+        ->twice()
+        ->with('first')
         ->andReturn(
             [[
-                'token' => 'first-token',
+                'token' => 'searched-token',
                 'filename' => 'first.jpg',
                 'source' => 'Public imports',
             ]],
@@ -249,6 +258,7 @@ it('loads Storage only on first activation and explicit refresh', function (): v
         ->assertSet('storageLoaded', true)
         ->assertSet('storageFiles.0.filename', 'first.jpg')
         ->set('storageSearch', 'first')
+        ->assertSet('storageFiles.0.token', 'searched-token')
         ->assertSee('first.jpg')
         ->call('activateSource', 'url')
         ->call('activateSource', 'storage')
@@ -256,6 +266,26 @@ it('loads Storage only on first activation and explicit refresh', function (): v
         ->call('refreshStorageFiles')
         ->assertSet('storageFiles.0.filename', 'refreshed.jpg')
         ->assertSet('storageSearch', 'first');
+});
+
+it('uses a 1500 millisecond server-backed Storage search binding', function (): void {
+    $this->actingAs(User::factory()->admin()->create());
+    $browser = Mockery::mock(StorageImageCandidateBrowser::class);
+    $browser->shouldReceive('hasConfiguredSources')->once()->andReturnTrue();
+    $browser->shouldReceive('browse')->once()->with('')->andReturn([]);
+    $browser->shouldReceive('browse')->once()->with('nested cover')->andReturn([[
+        'token' => 'nested-token',
+        'filename' => 'nested-cover.jpg',
+        'source' => 'Laravel public disk',
+    ]]);
+    app()->instance(StorageImageCandidateBrowser::class, $browser);
+
+    pickerPanel()
+        ->call('activateSource', 'storage')
+        ->set('storageSearch', '  nested cover  ')
+        ->assertSet('storageSearch', 'nested cover')
+        ->assertSet('storageFiles.0.filename', 'nested-cover.jpg')
+        ->assertSee('wire:model.live.debounce.1500ms="storageSearch"', false);
 });
 
 it('locks source and Storage-load authority against direct Livewire tampering', function (): void {
@@ -1042,6 +1072,14 @@ it('routes Storage acquisition failures to the visible dedicated error', functio
     $acquisitions->shouldReceive('acquireStorageCandidate')
         ->once()
         ->andThrow(new RuntimeException('internal /private/path token=secret'));
+    $acquisitions->shouldReceive('storageCandidates')
+        ->once()
+        ->with('try another image')
+        ->andReturn([]);
+    $acquisitions->shouldReceive('storageCandidates')
+        ->once()
+        ->with('retry this image')
+        ->andReturn([]);
     app()->instance(MediaAcquisitionManager::class, $acquisitions);
 
     $component
@@ -1107,7 +1145,7 @@ it('keeps Storage retryable with safe copy when configured-source enumeration fa
     $acquisitions = Mockery::mock(MediaAcquisitionManager::class);
     $acquisitions->shouldReceive('storageCandidates')
         ->once()
-        ->withNoArgs()
+        ->with('')
         ->andThrow(new RuntimeException('filesystem secret /mounted/private/path'));
     app()->instance(MediaAcquisitionManager::class, $acquisitions);
 

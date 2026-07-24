@@ -129,6 +129,15 @@ it('keeps owner image details bounded accessible and same-page', function (
                 && picker.querySelector('[data-testid="media-picker-source-url"]')
                 && picker.querySelector('[data-testid="media-picker-source-storage"]'),
             );
+            const selectedPreview = dialog.querySelector(
+                '[data-testid="media-picker-selected-item"][data-inline-owner-summary="true"] img',
+            );
+            const selectedPreviewRect = selectedPreview?.getBoundingClientRect();
+            const duplicateSelectedPreview = dialog.querySelector(
+                '[data-testid="media-picker-selected-preview"]',
+            );
+            const replaceModalWindow = dialog.querySelector('.fi-modal-window');
+            const replaceScrollTop = replaceModalWindow?.scrollTop ?? null;
 
             picker.querySelector('[data-testid="media-picker-source-storage"]').click();
             await waitFor(() => {
@@ -191,6 +200,12 @@ it('keeps owner image details bounded accessible and same-page', function (
                 picker_launcher_absent: ! dialog.querySelector('[data-testid="media-picker-open"]'),
                 selected_count_present: Boolean(selectedBeforeDetails),
                 complete_picker_visible: completePickerVisible,
+                modal_opened_at_top: replaceScrollTop !== null && replaceScrollTop <= 1,
+                selected_preview_height: selectedPreviewRect?.height ?? null,
+                selected_preview_object_fit: selectedPreview
+                    ? getComputedStyle(selectedPreview).objectFit
+                    : null,
+                duplicate_selected_preview_absent: ! duplicateSelectedPreview,
                 storage_candidate_visible: storageCandidateVisible,
                 upload_accepts_multiple: uploadAcceptsMultiple,
                 upload_input_tag: uploadInput?.tagName ?? null,
@@ -226,6 +241,10 @@ it('keeps owner image details bounded accessible and same-page', function (
         ->and($wide['picker_launcher_absent'])->toBeTrue()
         ->and($wide['selected_count_present'])->toBeTrue()
         ->and($wide['complete_picker_visible'])->toBeTrue()
+        ->and($wide['modal_opened_at_top'])->toBeTrue(json_encode($wide, JSON_THROW_ON_ERROR))
+        ->and($wide['selected_preview_height'])->toBeLessThanOrEqual(144)
+        ->and($wide['selected_preview_object_fit'])->toBe('contain')
+        ->and($wide['duplicate_selected_preview_absent'])->toBeTrue()
         ->and($wide['storage_candidate_visible'])->toBeTrue()
         ->and($wide['upload_accepts_multiple'])->toBeTrue(json_encode($wide, JSON_THROW_ON_ERROR))
         ->and($wide['picker_footer_text'])->not->toContain(__('admin.media_library.delete_selected'))
@@ -302,6 +321,14 @@ it('keeps owner image details bounded accessible and same-page', function (
             );
             await waitFor(() => replaceTab?.getAttribute('aria-selected') === 'true');
             const replacementWasDefault = true;
+            const picker = dialog.querySelector('[data-testid="media-picker"]');
+            const pickerGrid = picker?.querySelector('.grid.min-h-0.flex-1');
+            const gallery = pickerGrid?.querySelector('main');
+            const sources = pickerGrid?.querySelector('aside');
+            const galleryRect = gallery?.getBoundingClientRect();
+            const sourcesRect = sources?.getBoundingClientRect();
+            const sourcesBeforeGallery = (sourcesRect?.bottom ?? Number.POSITIVE_INFINITY)
+                <= (galleryRect?.top ?? Number.NEGATIVE_INFINITY) + 2;
             detailsTab.click();
             const workspace = await waitFor(() => {
                 const candidate = dialog.querySelector('[data-testid="owner-image-workspace"]');
@@ -346,6 +373,7 @@ it('keeps owner image details bounded accessible and same-page', function (
                 modal_css_width: modalStyle.width,
                 widest_child: widestChild,
                 replacement_was_default: replacementWasDefault,
+                sources_before_gallery: sourcesBeforeGallery,
                 open_dialogs: document.querySelectorAll('[aria-modal="true"].fi-modal-open').length,
                 modal_within_viewport: rect.left >= -1 && rect.right <= window.innerWidth + 1,
                 document_horizontal_overflow: document.documentElement.scrollWidth
@@ -360,6 +388,7 @@ it('keeps owner image details bounded accessible and same-page', function (
     expect($narrow['viewport_width'])->toBe(390)
         ->and($narrow['direction'])->toBe($direction)
         ->and($narrow['replacement_was_default'])->toBeTrue(json_encode($narrow, JSON_THROW_ON_ERROR))
+        ->and($narrow['sources_before_gallery'])->toBeTrue(json_encode($narrow, JSON_THROW_ON_ERROR))
         ->and($narrow['open_dialogs'])->toBe(1)
         ->and($narrow['modal_within_viewport'])->toBeTrue(json_encode($narrow, JSON_THROW_ON_ERROR))
         ->and($narrow['document_horizontal_overflow'])->toBeFalse()

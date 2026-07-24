@@ -15,8 +15,11 @@ use Filament\Actions\BulkAction;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\FileUpload;
+use Filament\Support\Enums\FontWeight;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\ImageColumn;
+use Filament\Tables\Columns\Layout\Grid;
+use Filament\Tables\Columns\Layout\Stack;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
@@ -36,37 +39,109 @@ class MediaTable
             ->defaultPaginationPageOption(25)
             ->paginationPageOptions([25])
             ->columns([
-                ImageColumn::make('preview_url')
-                    ->label(__('admin.fields.preview'))
-                    ->state(fn (Media $record): ?string => app(MediaInventoryDiagnostics::class)->previewUrl($record))
-                    ->imageHeight(64)
-                    ->imageWidth(64),
-                TextColumn::make('title')
-                    ->label(__('admin.fields.title'))
-                    ->placeholder(__('admin.placeholders.empty'))
-                    ->searchable(),
-                TextColumn::make('type')
-                    ->label(__('admin.fields.mime_type'))
-                    ->badge(),
-                TextColumn::make('size')
-                    ->label(__('admin.fields.file_size'))
-                    ->formatStateUsing(fn (?int $state): string => Number::fileSize($state ?? 0)),
-                TextColumn::make('repair_status')
-                    ->label(__('admin.media_library.repair_status'))
-                    ->state(fn (Media $record): string => app(MediaInventoryDiagnostics::class)->needsRepair($record)
-                        ? __('admin.media_library.needs_repair')
-                        : __('admin.media_library.ready'))
-                    ->badge()
-                    ->color(fn (Media $record): string => app(MediaInventoryDiagnostics::class)->needsRepair($record) ? 'warning' : 'success')
-                    ->tooltip(fn (Media $record): ?string => app(MediaInventoryDiagnostics::class)->needsRepair($record)
-                        ? collect(app(MediaInventoryDiagnostics::class)->reasons($record))
-                            ->map(fn (string $reason): string => __("admin.media_library.repair_{$reason}"))
-                            ->implode(' · ')
-                        : null),
-                TextColumn::make('created_at')
-                    ->label(__('admin.fields.created_at'))
-                    ->dateTime('d/m/Y H:i', 'Asia/Jerusalem')
-                    ->sortable(),
+                Grid::make(1)
+                    ->extraAttributes([
+                        'data-testid' => 'media-library-card',
+                        'class' => 'min-w-0 overflow-hidden',
+                    ])
+                    ->schema([
+                        Stack::make([
+                            ImageColumn::make('preview_url')
+                                ->label(__('admin.fields.preview'))
+                                ->state(fn (Media $record): ?string => app(MediaInventoryDiagnostics::class)->previewUrl($record))
+                                ->alt(fn (Media $record): string => (string) (
+                                    data_get($record->exif, 'original_filename')
+                                    ?: $record->title
+                                    ?: $record->name
+                                ))
+                                ->imageHeight('12rem')
+                                ->imageWidth('100%')
+                                ->checkFileExistence(false)
+                                ->extraImgAttributes([
+                                    'data-testid' => 'media-library-card-image',
+                                    'loading' => 'lazy',
+                                    'class' => 'w-full rounded-md bg-gray-50 object-contain dark:bg-gray-900',
+                                    'style' => 'object-fit: contain;',
+                                ]),
+                            Stack::make([
+                                TextColumn::make('card_title')
+                                    ->label(__('admin.owner_image.metadata.title'))
+                                    ->state(fn (Media $record): string => (string) ($record->title ?: $record->name))
+                                    ->searchable(['title', 'name'])
+                                    ->weight(FontWeight::SemiBold)
+                                    ->wrap(),
+                                TextColumn::make('card_original_filename')
+                                    ->label(__('admin.owner_image.metadata.original_filename'))
+                                    ->state(fn (Media $record): ?string => is_string($original = data_get($record->exif, 'original_filename'))
+                                        && filled($original)
+                                            ? $original
+                                            : null)
+                                    ->description(__('admin.owner_image.metadata.original_filename'), 'above')
+                                    ->wrap(),
+                                TextColumn::make('card_stored_filename')
+                                    ->label(__('admin.owner_image.metadata.stored_filename'))
+                                    ->state(fn (Media $record): string => basename((string) $record->path))
+                                    ->description(__('admin.owner_image.metadata.stored_filename'), 'above')
+                                    ->extraAttributes([
+                                        'data-testid' => 'media-library-card-stored-filename',
+                                        'dir' => 'ltr',
+                                    ])
+                                    ->copyable()
+                                    ->copyMessage(__('admin.owner_image.copy_success'))
+                                    ->wrap(),
+                                TextColumn::make('card_file_summary')
+                                    ->label(__('admin.owner_image.media_metadata'))
+                                    ->description(__('admin.owner_image.media_metadata'), 'above')
+                                    ->state(fn (Media $record): string => collect([
+                                        $record->type,
+                                        filled($record->ext) ? mb_strtoupper((string) $record->ext) : null,
+                                        ($record->width && $record->height)
+                                            ? "{$record->width}×{$record->height}"
+                                            : null,
+                                        Number::fileSize((int) ($record->size ?? 0)),
+                                    ])->filter()->implode(' · '))
+                                    ->extraAttributes([
+                                        'data-testid' => 'media-library-card-file-summary',
+                                        'dir' => 'ltr',
+                                    ])
+                                    ->wrap(),
+                                TextColumn::make('card_location')
+                                    ->label(__('admin.owner_image.metadata.directory'))
+                                    ->state(fn (Media $record): string => collect([
+                                        $record->disk,
+                                        $record->directory,
+                                    ])->filter()->implode(' · '))
+                                    ->icon(Heroicon::OutlinedFolder)
+                                    ->wrap(),
+                                TextColumn::make('repair_status')
+                                    ->label(__('admin.media_library.repair_status'))
+                                    ->state(fn (Media $record): string => app(MediaInventoryDiagnostics::class)->needsRepair($record)
+                                        ? __('admin.media_library.needs_repair')
+                                        : __('admin.media_library.ready'))
+                                    ->badge()
+                                    ->color(fn (Media $record): string => app(MediaInventoryDiagnostics::class)->needsRepair($record) ? 'warning' : 'success')
+                                    ->tooltip(fn (Media $record): ?string => app(MediaInventoryDiagnostics::class)->needsRepair($record)
+                                        ? collect(app(MediaInventoryDiagnostics::class)->reasons($record))
+                                            ->map(fn (string $reason): string => __("admin.media_library.repair_{$reason}"))
+                                            ->implode(' · ')
+                                        : null),
+                                TextColumn::make('created_at')
+                                    ->label(__('admin.fields.created_at'))
+                                    ->dateTime('d/m/Y H:i', 'Asia/Jerusalem')
+                                    ->icon(Heroicon::OutlinedCalendarDays)
+                                    ->sortable(),
+                            ])
+                                ->space(1)
+                                ->extraAttributes([
+                                    'class' => 'min-w-0 p-3',
+                                ]),
+                        ])->space(2),
+                    ]),
+            ])
+            ->contentGrid([
+                'md' => 2,
+                'lg' => 3,
+                '2xl' => 4,
             ])
             ->filters([
                 SelectFilter::make('type')

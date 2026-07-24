@@ -2575,7 +2575,7 @@ return [
         'storage_reused' => 'נבחרה תמונה שכבר קיימת בספרייה.',
         'storage_search' => 'חיפוש באחסון המוגדר',
         'storage_search_empty' => 'אין תמונות מהאחסון שתואמות לחיפוש הזה.',
-        'storage_search_label' => 'חיפוש בתמונות שנטענו מהאחסון',
+        'storage_search_label' => 'חיפוש בתמונות ממקורות האחסון המוגדרים',
         'storage_source' => 'אחסון',
         'storage_unconfigured' => 'לא מוגדר מקור תקין של תמונות מהאחסון.',
         'swap' => 'החלפת קובץ',

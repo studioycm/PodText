@@ -157,7 +157,7 @@
         wire:offline.attr="inert"
     >
         <main
-            class="overflow-auto p-4"
+            class="order-2 overflow-auto p-4 lg:order-1"
             data-testid="media-picker-gallery"
             x-bind:inert="uploading"
         >
@@ -287,7 +287,7 @@
             </ul>
         </main>
 
-        <aside class="overflow-auto border-t border-gray-200 p-4 dark:border-gray-800 lg:border-s lg:border-t-0">
+        <aside class="order-1 overflow-auto border-b border-gray-200 p-4 dark:border-gray-800 lg:order-2 lg:border-b-0 lg:border-s">
             <p class="mb-4 rounded-md bg-primary-50 p-3 text-xs text-primary-800 dark:bg-primary-950 dark:text-primary-200">
                 {{ __($isInlineOwnerWorkspace
                     ? 'admin.media_library.acquisition_permanence_inline'
@@ -375,7 +375,6 @@
                     {{ $this->acquireUrlAction }}
                 </div>
             @else
-                @php($visibleStorageFiles = $this->filteredStorageFiles())
                 <section
                     id="media-picker-panel-storage"
                     data-testid="media-picker-panel-storage"
@@ -403,7 +402,7 @@
                                             data-testid="media-picker-storage-search"
                                             type="search"
                                             :placeholder="__('admin.media_library.storage_search')"
-                                            wire:model.live.debounce.300ms="storageSearch"
+                                            wire:model.live.debounce.1500ms="storageSearch"
                                             :aria-invalid="$errors->has('storageAcquisition') ? 'true' : 'false'"
                                             aria-describedby="media-picker-storage-error"
                                         />
@@ -432,7 +431,7 @@
                             </div>
 
                             <ul class="mt-3 space-y-2">
-                                @forelse ($visibleStorageFiles as $candidate)
+                                @forelse ($storageFiles as $candidate)
                                     <li
                                         wire:key="storage-candidate-{{ hash('sha256', $candidate['token']) }}"
                                         class="flex items-center justify-between gap-2 rounded-md border border-gray-200 p-2 text-xs dark:border-gray-700"

@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\ImageUploadPurpose;
 use App\Enums\MediaAttachmentRole;
 use App\Filament\Forms\Components\PathCuratorPicker;
 use App\Filament\Resources\ContentGroups\Pages\EditContentGroup;
@@ -28,6 +29,7 @@ use Filament\Schemas\Components\Livewire as LivewireSchemaComponent;
 use Filament\Schemas\Components\Tabs;
 use Filament\Schemas\Components\Tabs\Tab;
 use Filament\Schemas\Components\View as SchemaView;
+use Filament\Support\Enums\Width;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
@@ -183,7 +185,8 @@ it('shows the complete inline replacement picker before details in one owner act
         ->test(ListContentItems::class)
         ->mountAction(TestAction::make('contentItemImageDetails')->table($item))
         ->assertMountedActionModalSee(__('admin.owner_image.tabs.replace'))
-        ->assertMountedActionModalSee(__('admin.owner_image.tabs.details'));
+        ->assertMountedActionModalSee(__('admin.owner_image.tabs.details'))
+        ->assertMountedActionModalSee('data-inline-owner-summary="true"', false);
 
     $action = $component->instance()->getMountedAction();
     $schema = $component->instance()->getSchema('mountedActionSchema0');
@@ -201,6 +204,8 @@ it('shows the complete inline replacement picker before details in one owner act
     $tabComponents = $tabs->getChildSchema()->getComponents();
 
     expect($action?->hasModalContent())->toBeFalse()
+        ->and($action?->getModalWidth())->toBe(Width::SevenExtraLarge)
+        ->and($action?->isModalAutofocused())->toBeFalse()
         ->and($tabComponents)->toHaveCount(2)
         ->and($tabComponents[0])->toBeInstanceOf(Tab::class)
         ->and($tabComponents[0]->getLabel())->toBe(__('admin.owner_image.tabs.replace'))
@@ -208,6 +213,16 @@ it('shows the complete inline replacement picker before details in one owner act
         ->and($tabComponents[1]->getLabel())->toBe(__('admin.owner_image.tabs.details'))
         ->and($livewire->getComponent())->toBe(MediaPickerPanel::class)
         ->and($livewire->getData()['isInlineOwnerWorkspace'] ?? false)->toBeTrue();
+
+    Livewire::actingAs($admin)
+        ->test(MediaPickerPanel::class, [
+            'purpose' => ImageUploadPurpose::ContentItemPrimaryImage->value,
+            'selectedIds' => [$media->getKey()],
+            'isMultiple' => false,
+            'maxItems' => 1,
+            'isInlineOwnerWorkspace' => true,
+        ])
+        ->assertDontSee('data-testid="media-picker-selected-preview"', false);
 });
 
 it('keeps an inline gallery choice pending until the outer owner action is submitted', function (): void {
@@ -544,6 +559,34 @@ it('refreshes canonical Media metadata when the detail workspace opens', functio
         ->and($presentation->media['title'])->toBe('After refresh')
         ->and($presentation->media['stored_filename'])->toBe('after-refresh.jpg')
         ->and($presentation->media['preview_url'])->toBe(route('admin.media-files.view', ['media' => $media]));
+});
+
+it('rechecks direct file availability when the detail workspace reopens', function (): void {
+    $admin = User::factory()->admin()->create();
+    $group = ContentGroup::factory()->create();
+    $media = ownerImageMedia('content-groups/covers/rechecked-file.jpg');
+    app(MediaAttachmentManager::class)->attach(
+        $group,
+        $media,
+        MediaAttachmentRole::Cover,
+        $admin,
+    );
+
+    $this->actingAs($admin);
+    $presenter = app(OwnerImagePresenter::class);
+    $available = $presenter->present($group, MediaAttachmentRole::Cover);
+    Storage::disk('public')->delete($media->path);
+    $missing = $presenter->present($group, MediaAttachmentRole::Cover);
+
+    expect($available)
+        ->effectiveSource->toBe('direct_media')
+        ->brokenDirect->toBeFalse()
+        ->and($available->warningCodes)->not->toContain('missing_file')
+        ->and($available->media['preview_url'])->toBe(route('admin.media-files.view', ['media' => $media]))
+        ->and($missing)
+        ->brokenDirect->toBeTrue()
+        ->and($missing->warningCodes)->toContain('missing_file')
+        ->and($missing->media['preview_url'])->toBeNull();
 });
 
 it('mounts the shared workspace for a broken direct image while keeping fallback and warning separate', function (): void {

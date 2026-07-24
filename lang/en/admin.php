@@ -2575,7 +2575,7 @@ return [
         'storage_reused' => 'Existing library image selected.',
         'storage_search' => 'Search configured Storage',
         'storage_search_empty' => 'No Storage images match this search.',
-        'storage_search_label' => 'Search loaded Storage images',
+        'storage_search_label' => 'Search configured Storage images',
         'storage_source' => 'Storage',
         'storage_unconfigured' => 'No valid Storage image source is configured.',
         'swap' => 'Replace file',
