@@ -101,9 +101,9 @@ manifest/digest/schema-hash authorization.
 
 ## Package boundary
 
-Packages 1-4 and the post-Package-3 picker correction are complete locally;
-Packages 1-3 and the correction are hash-stamped, while Package 4 awaits its
-canonical implementation hash stamp. This approval ended after Package 4 and
-its bounded Resource-table record-action rider. Package 5,
+Packages 1-4 and the post-Package-3 picker correction are complete locally and
+hash-stamped. Package 4 is implemented as
+`52875222916558542cfde19f8a1987b78e72c121`. This approval ended after Package
+4 and its bounded Resource-table record-action rider. Package 5,
 dependency/toolchain changes, live data actions, production actions and push
 remain separately gated.

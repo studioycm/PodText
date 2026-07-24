@@ -17,11 +17,10 @@ not current authority.
   `docs/research/media-program/packages/04-owner-image-ux-plan.md`, and
   `docs/phase-02/media-program-p4-owner-image-ux-handoff.md`.
 - Packages 1-4 and the post-Package-3 correction are complete locally.
-  Packages 1-3 and the correction are
-  hash-stamped. Their audits, options and handoffs remain historical
-  implementation authority. Package 4's canonical implementation hash is
-  pending its immediate documentation stamp. Package 5 remains separately
-  gated.
+  All four packages and the correction are hash-stamped. Their audits,
+  options and handoffs remain historical implementation authority. Package 4
+  is implemented as `52875222916558542cfde19f8a1987b78e72c121`. Package 5
+  remains separately gated.
 - Starting baseline: clean `main` at
   `abd5e11b1e8db6cedd8e673a246711698fde3c5f`, 23 commits ahead of
   `origin/main`.

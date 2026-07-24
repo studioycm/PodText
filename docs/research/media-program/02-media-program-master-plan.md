@@ -15,8 +15,8 @@ correction is complete locally under audit
 Package 4 is complete locally under audit
 `LS-20260724-PODTEXT-MEDIA-P4-POSTP3-OWNER-UX-01`, approved option
 `MEDIA-P4-POSTP3-O1-INTEGRATED-IMAGE-WORKSPACE`; its handoff is
-`../../phase-02/media-program-p4-owner-image-ux-handoff.md` and its canonical
-implementation hash is pending the immediate documentation stamp. Package 5
+`../../phase-02/media-program-p4-owner-image-ux-handoff.md` and its
+implementation is `52875222916558542cfde19f8a1987b78e72c121`. Package 5
 remains a route forecast requiring fresh Simplifier approval.
 
 ## Package 1 — minimal kernel and database conversion
