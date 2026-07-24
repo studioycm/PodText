@@ -6,6 +6,7 @@ use App\Enums\PublicationStatus;
 use App\Enums\UserRole;
 use App\Filament\Exports\TranscriptionExporter;
 use App\Filament\Imports\TranscriptionImporter;
+use App\Filament\Resources\Support\ResourceTableActions;
 use App\Models\Author;
 use App\Models\ContentGroup;
 use App\Models\Transcription;
@@ -32,7 +33,7 @@ class TranscriptionsTable
 {
     public static function configure(Table $table): Table
     {
-        return $table
+        return ResourceTableActions::iconOnly($table)
             ->modifyQueryUsing(fn (Builder $query): Builder => app(SingleTranscriptionLens::class)
                 ->applyAdminCurrentScope($query->with('authors')))
             ->columns([

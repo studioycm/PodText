@@ -8,9 +8,10 @@ use App\Filament\Actions\ContentImageActions;
 use App\Filament\Actions\EditEffectiveTranscriptionAction;
 use App\Filament\Resources\ContentItems\ContentItemResource;
 use App\Filament\Resources\ContentItems\Tables\ContentItemsTable;
+use App\Filament\Resources\Support\ResourceTableActions;
+use App\Filament\Tables\OwnerImageColumn;
 use App\Models\ContentItem;
 use App\Support\Media\LegacyOwnerMediaDiagnosticProjector;
-use App\Support\PublicFront\PublicDefaultImageResolver;
 use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\CreateAction;
@@ -22,7 +23,6 @@ use Filament\Schemas\Components\Tabs\Tab;
 use Filament\Schemas\Schema;
 use Filament\Support\Enums\Width;
 use Filament\Support\Icons\Heroicon;
-use Filament\Tables\Columns\ImageColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Filters\TernaryFilter;
@@ -43,7 +43,7 @@ class ContentItemsRelationManager extends RelationManager
 
     public function table(Table $table): Table
     {
-        return $table
+        return ResourceTableActions::iconOnly($table)
             ->recordTitleAttribute('title')
             ->modifyQueryUsing(fn (Builder $query): Builder => $query
                 ->with([
@@ -60,11 +60,7 @@ class ContentItemsRelationManager extends RelationManager
                 ->latest('published_at')
                 ->latest('id'))
             ->columns([
-                ImageColumn::make('effective_image')
-                    ->label(__('admin.fields.effective_image'))
-                    ->state(fn (ContentItem $record): ?string => app(PublicDefaultImageResolver::class)->contentItemImage($record)['url'])
-                    ->imageSize(48)
-                    ->square(),
+                OwnerImageColumn::contentItem(),
                 TextColumn::make('title')
                     ->label(__('admin.fields.title'))
                     ->searchable()

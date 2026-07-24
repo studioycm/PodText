@@ -9,6 +9,8 @@ use App\Models\Media;
 use App\Models\MediaAttachment;
 use App\Models\User;
 use Illuminate\Validation\ValidationException;
+use InvalidArgumentException;
+use RuntimeException;
 
 class MediaAttachmentFormState
 {
@@ -127,6 +129,9 @@ class MediaAttachmentFormState
         User $actor,
         ?string $unsafeFingerprint = null,
         ?string $validationField = null,
+        ?int $expectedMediaId = null,
+        ?string $expectedLegacyPath = null,
+        bool $enforceExpectedIdentity = false,
     ): void {
         if (($preservedMediaId = self::preservedMediaId($referenceKey)) !== null) {
             if ((int) ($this->attachment($owner, $role)?->media_id ?? 0) === $preservedMediaId) {
@@ -144,7 +149,7 @@ class MediaAttachmentFormState
             $field = $validationField ?? ($role === MediaAttachmentRole::Cover
                 ? 'cover_media_reference_key'
                 : 'primary_image_media_reference_key');
-            $this->selectableReplacement($referenceKey, $field, $owner, $role);
+            $media = $this->selectableReplacement($referenceKey, $field, $owner, $role);
 
             if ($unsafeFingerprint !== null) {
                 app(LegacyOwnerMediaRepairer::class)->replace($owner, $role, $referenceKey, $unsafeFingerprint, $actor);
@@ -160,11 +165,27 @@ class MediaAttachmentFormState
             } catch (UnresolvableMediaIdentityException) {
                 // A selected replacement resolves a rowless legacy owner identity.
             }
+
             try {
-                $this->attachmentManager->attachByReferenceKey($owner, $referenceKey, $role, $actor);
-            } catch (\InvalidArgumentException $exception) {
+                if ($enforceExpectedIdentity) {
+                    $this->attachmentManager->attachIfUnchanged(
+                        $owner,
+                        $media,
+                        $role,
+                        $actor,
+                        $expectedMediaId,
+                        $expectedLegacyPath,
+                    );
+                } else {
+                    $this->attachmentManager->attach($owner, $media, $role, $actor);
+                }
+            } catch (InvalidArgumentException $exception) {
                 throw ValidationException::withMessages([
                     $field => $exception->getMessage(),
+                ]);
+            } catch (RuntimeException) {
+                throw ValidationException::withMessages([
+                    $field => __('admin.validation.owner_image_changed'),
                 ]);
             }
 
@@ -176,7 +197,40 @@ class MediaAttachmentFormState
         }
 
         if ($this->attachment($owner, $role) instanceof MediaAttachment) {
-            $this->attachmentManager->detach($owner, $role, $actor);
+            if ($enforceExpectedIdentity) {
+                $this->attachmentManager->detachIfUnchanged(
+                    $owner,
+                    $role,
+                    $actor,
+                    $expectedMediaId,
+                    $expectedLegacyPath,
+                );
+            } else {
+                $this->attachmentManager->detach($owner, $role, $actor);
+            }
+        }
+    }
+
+    public function detachDirectIfUnchanged(
+        ContentGroup|ContentItem $owner,
+        MediaAttachmentRole $role,
+        User $actor,
+        ?int $expectedMediaId,
+        ?string $expectedLegacyPath,
+        ?string $validationField = null,
+    ): void {
+        try {
+            $this->attachmentManager->detachIfUnchanged(
+                $owner,
+                $role,
+                $actor,
+                $expectedMediaId,
+                $expectedLegacyPath,
+            );
+        } catch (RuntimeException) {
+            throw ValidationException::withMessages([
+                $validationField ?? 'owner_image_operation' => __('admin.validation.owner_image_changed'),
+            ]);
         }
     }
 
@@ -228,7 +282,7 @@ class MediaAttachmentFormState
                 if ($current instanceof Media && $current->is($media)) {
                     return $media;
                 }
-            } catch (UnsafeLegacyOwnerMediaException|\InvalidArgumentException) {
+            } catch (UnsafeLegacyOwnerMediaException|InvalidArgumentException) {
                 // A reviewed repair may replace an unsafe current identity.
             }
         }
@@ -249,7 +303,7 @@ class MediaAttachmentFormState
         return match (true) {
             $owner instanceof ContentGroup && $role === MediaAttachmentRole::Cover => 'cover_path',
             $owner instanceof ContentItem && $role === MediaAttachmentRole::PrimaryImage => 'image_path',
-            default => throw new \InvalidArgumentException('The attachment form role is incompatible with the owner.'),
+            default => throw new InvalidArgumentException('The attachment form role is incompatible with the owner.'),
         };
     }
 }

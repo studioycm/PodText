@@ -25,7 +25,7 @@ class EditEffectiveTranscriptionAction extends Action
 
         $this
             ->label(__('admin.actions.edit_effective_transcription'))
-            ->icon(Heroicon::OutlinedPencilSquare)
+            ->icon(Heroicon::OutlinedChatBubbleLeftEllipsis)
             ->color('gray')
             ->modalSubmitActionLabel(TranscriptionModeLabel::text('admin.actions.save_transcription'))
             ->modalHeading(fn (ContentItem $record): string => static::modalHeadingFor($record))

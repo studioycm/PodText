@@ -7,16 +7,16 @@ use App\Enums\PublicationStatus;
 use App\Filament\Actions\ContentImageActions;
 use App\Filament\Exports\ContentGroupExporter;
 use App\Filament\Imports\ContentGroupImporter;
+use App\Filament\Resources\Support\ResourceTableActions;
+use App\Filament\Tables\OwnerImageColumn;
 use App\Models\ContentGroup;
 use App\Support\Media\LegacyOwnerMediaDiagnosticProjector;
-use App\Support\PublicFront\PublicDefaultImageResolver;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Actions\ExportAction;
 use Filament\Actions\ExportBulkAction;
 use Filament\Actions\ImportAction;
-use Filament\Tables\Columns\ImageColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
@@ -27,13 +27,10 @@ class ContentGroupsTable
 {
     public static function configure(Table $table): Table
     {
-        return $table
+        return ResourceTableActions::iconOnly($table)
             ->modifyQueryUsing(fn (Builder $query): Builder => $query->with(['coverMediaAttachment.media', 'legacyCoverMediaRows']))
             ->columns([
-                ImageColumn::make('effective_cover')
-                    ->label(__('admin.fields.cover_path'))
-                    ->state(fn (ContentGroup $record): ?string => app(PublicDefaultImageResolver::class)->contentGroupImage($record)['url'])
-                    ->square(),
+                OwnerImageColumn::contentGroup(),
                 TextColumn::make('title')
                     ->label(__('admin.fields.title'))
                     ->searchable()

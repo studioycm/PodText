@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\ContentTags\Tables;
 
+use App\Filament\Resources\Support\ResourceTableActions;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
@@ -14,7 +15,7 @@ class ContentTagsTable
 {
     public static function configure(Table $table): Table
     {
-        return $table
+        return ResourceTableActions::iconOnly($table)
             ->modifyQueryUsing(fn ($query) => $query->content())
             ->columns([
                 TextColumn::make('name')

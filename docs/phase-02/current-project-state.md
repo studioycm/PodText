@@ -6,6 +6,17 @@ Recorded after the Markdown-only post-Prompt-10 prompt-progress centralization c
 
 ## Git State
 
+- Media Program Package 4 is complete locally under audit
+  `LS-20260724-PODTEXT-MEDIA-P4-POSTP3-OWNER-UX-01`, approved option
+  `MEDIA-P4-POSTP3-O1-INTEGRATED-IMAGE-WORKSPACE`. Its implementation hash is
+  pending the canonical implementation commit and immediate documentation
+  hash stamp.
+- Package 4 started from clean `main` at
+  `abd5e11b1e8db6cedd8e673a246711698fde3c5f`, 23 commits ahead of
+  `origin/main`. Its scope is the integrated owner-image workspace plus the
+  separately estimated Resource-table record-action rider. Composer/npm
+  toolchain changes, Package 5, live data, production actions and push are
+  excluded.
 - Media Program Package 3 is complete locally under audit
   `LS-20260723-PODTEXT-MEDIA-P3-ACQUISITION-PICKER-01`, approved option
   `MEDIA-P3-O1-IMMEDIATE-SHARED-ADMISSION`.
@@ -24,10 +35,10 @@ Recorded after the Markdown-only post-Prompt-10 prompt-progress centralization c
   and 1,080 tests / 14,165 assertions outside the known macOS browser sandbox.
   Its handoff is
   `docs/phase-02/media-program-p3-post-acquisition-picker-ux-handoff.md`.
-  Packages 4-5, migrations, live data, production actions and push remain
+  Package 5, migrations, live data, production actions and push remain
   excluded. The operator later amended only the dependency boundary for a
   bounded Filament 5.7.1 to 5.7.3 patch refresh; manifests, npm and unrelated
-  packages remain unchanged. No next media package is active.
+  packages remain unchanged.
 - The approved dependency/Resend webhook follow-up is complete locally under
   audit `LS-20260724-PODTEXT-DEPENDENCY-RESEND-WEBHOOK-02`, option
   `DEP-REFRESH-WEBHOOK-O1-BUILTIN-SAFE-LOGGING`. It replaces the direct Resend
@@ -57,8 +68,8 @@ Recorded after the Markdown-only post-Prompt-10 prompt-progress centralization c
   `2a6de67816b9a7c8e53bcd29795a5b306a36dbaf`. Package 3 adds the shared
   immediate Upload/URL/Storage admission boundary, atomic asset/binding
   creation, four-source picker, bounded settings and Spotify URL convergence.
-  Packages 4-5 remain separately gated and no real local or production action
-  is authorized.
+  Package 4 is complete locally under its fresh approval; Package 5 remains
+  separately gated and no real local or production action is authorized.
 - The latest dated operator evidence says the 15 local Curator rows now have
   valid unique keys; this task has not performed a fresh live probe.
 - Latest docs cleanup commit recorded here: `1cb158a docs: centralize prompt progress and ai development lessons`.
@@ -318,11 +329,11 @@ Recorded after the Markdown-only post-Prompt-10 prompt-progress centralization c
   Upload/URL/Storage becomes a permanent library item immediately; cancelling
   the picker or owner form cancels only the pending attachment. New raster
   admission preserves bytes, SVG uses the existing sanitizer, and legacy
-  normalization/journals remain isolated from acquisition. Package 4 and
-  Package 5 require fresh Simplifier Stage 1 audits and approvals; neither is
-  active. Other dependencies, real local/production schema/data/file/cache
-  actions, deploy, process actions and push remain outside this implementation
-  run.
+  normalization/journals remain isolated from acquisition. Package 4 now adds
+  only the approved owner-image workspace and bounded Resource-table action
+  rider. Package 5 remains unapproved. Dependency/toolchain changes, real
+  local/production schema/data/file/cache actions, deploy, process actions and
+  push remain outside this implementation run.
 - Settings development metrics retirement Mini-task 1 is complete as
   `3e5c411777994c431417dfd823576286d12d5c29` under audit
   `LS-20260721-SETTINGS-DEV-METRICS-03`, option
@@ -443,6 +454,7 @@ Recorded after the Markdown-only post-Prompt-10 prompt-progress centralization c
 | PODTEXT MEDIA ASSET PROGRAM - inventory-first Package 2 | Complete locally | `2a6de67816b9a7c8e53bcd29795a5b306a36dbaf`; audit `LS-20260723-PODTEXT-MEDIA-P2-INVENTORY-PICKER-REPLACE-01`; option `MEDIA-P2-O1-REUSE-PICKER-SAME-PAGE-REPLACE`; `docs/phase-02/media-program-p2-inventory-picker-replace-handoff.md` | Makes every Curator row visible in All Media, adds visible Needs Repair diagnostics, makes `media_id` authoritative, enforces D01 delivery/SVG boundaries, clears the picker context through All Media, and reuses Gallery/Upload for always-visible same-page podcast/episode Add/Replace Image actions with current-image display and cancel no-op. Existing selection is attachment-only. Packages 3-5, dependencies and real environment actions remain gated. |
 | PODTEXT MEDIA ASSET PROGRAM - Package 3 acquisition picker | Complete locally | `656a7c2ed1b64b3f6fd8392bff88f7cca36d2695`; audit `LS-20260723-PODTEXT-MEDIA-P3-ACQUISITION-PICKER-01`; option `MEDIA-P3-O1-IMMEDIATE-SHARED-ADMISSION`; `docs/phase-02/media-program-p3-acquisition-picker-handoff.md` | Adds one shared immediate Upload/URL/Storage admission path, atomic Curator/asset/provider binding creation, preserved raster bytes, all-purpose sanitized SVG, original-filename/naming settings, opaque bounded Storage candidates, four-source bilingual picker and Spotify URL convergence. Focused matrix passed 218 tests / 1,631 assertions; final serial suite passed outside the macOS browser sandbox: 1,037 / 13,633. No dependency, relational schema, live data, Package 4 or Package 5 action. |
 | PODTEXT MEDIA ASSET PROGRAM - post-Package-3 acquisition picker UX | Complete locally | Audit `LS-20260723-PODTEXT-MEDIA-P3-POST-ACQUISITION-UX-01`; option `MEDIA-P3-POST-O3-IMMEDIATE-SOURCE-WORKSPACE`; `docs/research/media-program/packages/03-post-acquisition-picker-ux-plan.md`; `docs/phase-02/media-program-p3-post-acquisition-picker-ux-handoff.md` | Completes all five sequential mini-tasks: active-doc closure; single/batch/Storage correctness; total URL deadline and safe categories; immediate source workspace with direct single choice and busy/offline truth; accessibility, nested/offline lifecycle browser proof and canonical closeout. Focused proof reached 86 tests / 1,112 assertions and the complete picker browser file reached 7 / 139. The first complete ordered gate passed Pint, FilaCheck, Vite and the full 1,080 / 14,165 suite outside the macOS browser sandbox. Immediate permanence and pending owner attachment remain fixed. No Package 4/5, migration, live-data, production or push action. The operator explicitly amended only the dependency exclusion for Filament 5.7.1 to 5.7.3; no manifest, npm or unrelated dependency changed. |
+| PODTEXT MEDIA ASSET PROGRAM - Package 4 owner image UX | Complete locally | Pending canonical implementation hash; audit `LS-20260724-PODTEXT-MEDIA-P4-POSTP3-OWNER-UX-01`; option `MEDIA-P4-POSTP3-O1-INTEGRATED-IMAGE-WORKSPACE`; `docs/phase-02/media-program-p4-owner-image-ux-handoff.md` | One lazy effective-source/metadata presenter; stale-safe normal replace/remove; one integrated action across six owner surfaces; bounded table preview/detail; safe copy/download/review; broken-association repair/default UX; the independently estimated 43-action Resource-table rider; HE/EN, RTL/narrow/browser and performance proof. Complete ordered gate passed Pint, FilaCheck, Vite and 1,127 tests / 14,725 assertions outside the macOS browser sandbox. No schema, dependency, file lifecycle, live-data, production or push action. |
 | DEP-UPGRADE-O1 - Bounded full dependency refresh | Complete locally | `4d2a063954975fa07dde43f6113a97c671fc5724`; `docs/phase-02/dependency-refresh-handoff.md`; `docs/research/dependency-refresh/` | Refreshes Composer and npm lock graphs within unchanged manifest constraints; moves Laravel to 13.21.1, Filament and its Spatie plugins to 5.7.1, Horizon to 5.48.1, Pest to 4.7.5, Boost to 2.4.13, Tailwind to 4.3.3, Vite to 8.1.5, and Laravel Vite plugin to 3.1.3. Preserves Livewire 4.3.3 and Curator 5.1.2, corrects one Filament action API call and one tooltip-first Escape browser expectation, and records 18 byte-attributable tracked Filament asset changes. No manifest, schema, migration, production, worker, or local-development database change. |
 | DEP-REFRESH-WEBHOOK-O1 - Resend wrapper, safe delivery logging, and Fontaine | Complete locally | `c9d064aa9b3921b5b99f83859f305b2fc8332cc9`; audit `LS-20260724-PODTEXT-DEPENDENCY-RESEND-WEBHOOK-02`; option `DEP-REFRESH-WEBHOOK-O1-BUILTIN-SAFE-LOGGING`; `docs/phase-02/dependency-resend-webhook-fontaine-handoff.md` | Replaces the direct SDK with the official wrapper while retaining the SDK transitively; completes bounded lock refreshes, Fontaine 0.8.0 installation and Boost discovery; keeps one built-in webhook controller behind missing-secret and signature guards; synchronously logs an exact four-field allowlist for seven delivery events. Focused proof: 27 tests / 88 assertions. Canonical Pint/FilaCheck/Vite gates and the full 1,107-test / 14,253-assertion suite passed. No migration, persistence/admin page, raw payload, engagement/inbound/contact/domain handling, live call, production, Package 4/5 or push action. |
 | SETTINGS-METRICS-O1 Mini-task 1 - Runtime retirement | Complete | `3e5c411777994c431417dfd823576286d12d5c29`; `docs/phase-02/settings-development-metrics-retirement-mini1-handoff.md`; research/plans 41-42 | Removed the temporary settings profiler, middleware, runtime fixtures, flags/headers, counters, config/logging, and browser harness. Functional settings/Card Template/Curator behavior and Filament 5.7.1 remain preserved; Mini-task 2 completes the separately audited test-only retirement. |

@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Users\Tables;
 
 use App\Enums\UserRole;
+use App\Filament\Resources\Support\ResourceTableActions;
 use Filament\Actions\EditAction;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
@@ -12,7 +13,7 @@ class UsersTable
 {
     public static function configure(Table $table): Table
     {
-        return $table
+        return ResourceTableActions::iconOnly($table)
             ->columns([
                 TextColumn::make('name')
                     ->label(__('admin.fields.name'))

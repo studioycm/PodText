@@ -33,6 +33,36 @@ function setMediaPickerBrowserOffline(object $webpage, bool $offline): void
     iterator_to_array($response, false);
 }
 
+function trackMediaPickerBrowserRequests(object $webpage): void
+{
+    $webpage->script(<<<'JS'
+        () => {
+            window.__mediaPickerPendingRequests = 0;
+            window.__mediaPickerCompletedRequests = 0;
+            window.Livewire.hook('request', ({ succeed, fail }) => {
+                window.__mediaPickerPendingRequests++;
+                let settled = false;
+                const finish = () => {
+                    if (settled) {
+                        return;
+                    }
+
+                    settled = true;
+                    requestAnimationFrame(() => {
+                        queueMicrotask(() => {
+                            window.__mediaPickerPendingRequests--;
+                            window.__mediaPickerCompletedRequests++;
+                        });
+                    });
+                };
+
+                succeed(finish);
+                fail(finish);
+            });
+        }
+        JS);
+}
+
 it('keeps the acquisition workspace accessible responsive and stateful', function (
     string $locale,
     string $direction,
@@ -715,6 +745,8 @@ it('closes locally while truly offline and reconciles the action on reconnect', 
         }
         JS);
 
+    trackMediaPickerBrowserRequests($page);
+
     setMediaPickerBrowserOffline($page, false);
 
     $reconnected = $page->script(<<<'JS'
@@ -740,24 +772,27 @@ it('closes locally while truly offline and reconciles the action on reconnect', 
             const visibleOpener = () => Array.from(document.querySelectorAll(
                 '[data-testid="media-picker-open"]',
             )).find((element) => (element.offsetParent !== null) && ! element.closest('[inert]'));
+            const requestsSettledAfter = (completed) => (
+                window.__mediaPickerCompletedRequests > completed
+                && window.__mediaPickerPendingRequests === 0
+            );
 
             await waitFor(() => navigator.onLine);
-
-            if (openPicker()) {
-                openPicker().querySelector('[data-testid="media-picker-close"]')?.click();
-                await waitFor(() => openPicker() === null);
-            }
-
+            await waitFor(() => requestsSettledAfter(0));
             await waitFor(() => document.querySelector('[data-testid="media-picker"]') === null);
             const opener = await waitFor(() => visibleOpener());
+            let completed = window.__mediaPickerCompletedRequests;
             opener.click();
             await waitFor(() => openPicker());
+            await waitFor(() => requestsSettledAfter(completed));
             await new Promise((resolve) => setTimeout(resolve, 250));
             const reopenedCount = document.querySelectorAll(
                 '[aria-modal="true"].fi-modal-open [data-testid="media-picker"]',
             ).length;
+            completed = window.__mediaPickerCompletedRequests;
             openPicker().querySelector('[data-testid="media-picker-close"]')?.click();
             await waitFor(() => openPicker() === null);
+            await waitFor(() => requestsSettledAfter(completed));
             await waitFor(
                 () => document.activeElement?.closest('[data-testid="media-picker-open"]'),
             );
@@ -777,8 +812,10 @@ it('closes locally while truly offline and reconciles the action on reconnect', 
                     throw new Error('Unable to find the restored parent action cancel button.');
                 }
 
+                completed = window.__mediaPickerCompletedRequests;
                 cancel.click();
                 await waitFor(() => document.querySelector('[aria-modal="true"].fi-modal-open') === null);
+                await waitFor(() => requestsSettledAfter(completed));
             }
 
             await waitFor(() => document.documentElement.style.overflow !== 'hidden');
@@ -831,6 +868,8 @@ it('returns acquired media to the outer image action while attachment stays pend
     $page = visit(ContentGroupResource::getUrl('edit', ['record' => $group]))
         ->resize(1280, 900);
 
+    trackMediaPickerBrowserRequests($page);
+
     $firstSelection = $page->script(<<<'JS'
         async () => {
             const waitFor = async (callback, timeout = 7000) => {
@@ -854,6 +893,21 @@ it('returns acquired media to the outer image action while attachment stays pend
             const picker = () => document.querySelector(
                 '[aria-modal="true"].fi-modal-open [data-testid="media-picker"]',
             );
+            const currentWorkspace = () => {
+                const workspace = picker();
+                const childId = workspace?.getAttribute('wire:id');
+                const component = childId ? window.Livewire.find(childId) : null;
+
+                return workspace?.isConnected
+                    && ! workspace.inert
+                    && component?.el === workspace
+                    ? workspace
+                    : null;
+            };
+            const requestsSettledAfter = (completed) => (
+                window.__mediaPickerCompletedRequests > completed
+                && window.__mediaPickerPendingRequests === 0
+            );
             const outerDialog = () => Array.from(document.querySelectorAll(
                 '[aria-modal="true"].fi-modal-open',
             )).find((dialog) => dialog.querySelector('[data-testid="media-picker-open"]'));
@@ -862,19 +916,19 @@ it('returns acquired media to the outer image action while attachment stays pend
             const outer = await waitFor(() => outerDialog());
             const nestedOpener = await waitFor(() => outer.querySelector('[data-testid="media-picker-open"]'));
             nestedOpener.focus();
+            let completed = window.__mediaPickerCompletedRequests;
             nestedOpener.click();
 
-            const workspace = await waitFor(() => picker());
-            await waitFor(() => {
-                const childId = workspace.closest('[wire\\:id]')?.getAttribute('wire:id');
-
-                return childId && window.Livewire.find(childId);
-            });
-            workspace.querySelector('[data-testid="media-picker-source-storage"]')?.click();
-            await waitFor(() => workspace.textContent.includes('browser-nested-storage.jpg'));
-            const acquire = await waitFor(() => workspace.querySelector(
+            await waitFor(() => currentWorkspace());
+            await waitFor(() => requestsSettledAfter(completed));
+            completed = window.__mediaPickerCompletedRequests;
+            currentWorkspace()?.querySelector('[data-testid="media-picker-source-storage"]')?.click();
+            await waitFor(() => currentWorkspace()?.textContent.includes('browser-nested-storage.jpg'));
+            await waitFor(() => requestsSettledAfter(completed));
+            const acquire = await waitFor(() => currentWorkspace()?.querySelector(
                 '[data-testid="media-picker-storage-acquire"]:not([disabled])',
             ));
+            completed = window.__mediaPickerCompletedRequests;
             acquire.click();
 
             await waitFor(() => picker() === null);
@@ -883,6 +937,7 @@ it('returns acquired media to the outer image action while attachment stays pend
                 '[data-testid="media-picker-selected-item"]',
             ));
             await waitFor(() => document.activeElement?.closest('[data-testid="media-picker-open"]'));
+            await waitFor(() => requestsSettledAfter(completed));
 
             return {
                 parent_remained_open: restoredOuter.classList.contains('fi-modal-open'),
@@ -907,6 +962,7 @@ it('returns acquired media to the outer image action while attachment stays pend
     $cancelled = $page->script(<<<'JS'
         async () => {
             const started = performance.now();
+            const completed = window.__mediaPickerCompletedRequests;
             const outer = Array.from(document.querySelectorAll(
                 '[aria-modal="true"].fi-modal-open',
             )).find((dialog) => dialog.querySelector('[data-testid="media-picker-open"]'));
@@ -925,13 +981,22 @@ it('returns acquired media to the outer image action while attachment stays pend
                 await new Promise((resolve) => setTimeout(resolve, 25));
             }
 
+            while ((window.__mediaPickerCompletedRequests <= completed
+                || window.__mediaPickerPendingRequests !== 0)
+                && performance.now() - started < 7000) {
+                await new Promise((resolve) => setTimeout(resolve, 25));
+            }
+
             return {
                 outer_closed: document.querySelector('[aria-modal="true"].fi-modal-open') === null,
+                request_settled: window.__mediaPickerCompletedRequests > completed
+                    && window.__mediaPickerPendingRequests === 0,
             };
         }
         JS);
 
     expect($cancelled['outer_closed'])->toBeTrue(json_encode($cancelled, JSON_THROW_ON_ERROR))
+        ->and($cancelled['request_settled'])->toBeTrue(json_encode($cancelled, JSON_THROW_ON_ERROR))
         ->and($group->refresh()->coverMediaAttachment()->exists())->toBeFalse()
         ->and(Media::query()->whereKey($media)->exists())->toBeTrue();
 
@@ -958,6 +1023,21 @@ it('returns acquired media to the outer image action while attachment stays pend
             const picker = () => document.querySelector(
                 '[aria-modal="true"].fi-modal-open [data-testid="media-picker"]',
             );
+            const currentWorkspace = () => {
+                const workspace = picker();
+                const childId = workspace?.getAttribute('wire:id');
+                const component = childId ? window.Livewire.find(childId) : null;
+
+                return workspace?.isConnected
+                    && ! workspace.inert
+                    && component?.el === workspace
+                    ? workspace
+                    : null;
+            };
+            const requestsSettledAfter = (completed) => (
+                window.__mediaPickerCompletedRequests > completed
+                && window.__mediaPickerPendingRequests === 0
+            );
             const outerDialog = () => Array.from(document.querySelectorAll(
                 '[aria-modal="true"].fi-modal-open',
             )).find((dialog) => dialog.querySelector('[data-testid="media-picker-open"]'));
@@ -965,30 +1045,34 @@ it('returns acquired media to the outer image action while attachment stays pend
             triggerFor('chooseContentGroupCover')?.click();
             const outer = await waitFor(() => outerDialog());
             const nestedOpener = await waitFor(() => outer.querySelector('[data-testid="media-picker-open"]'));
+            let completed = window.__mediaPickerCompletedRequests;
             nestedOpener.click();
-            const workspace = await waitFor(() => picker());
-            await waitFor(() => {
-                const childId = workspace.closest('[wire\\:id]')?.getAttribute('wire:id');
 
-                return childId && window.Livewire.find(childId);
-            });
-            workspace.querySelector('[data-testid="media-picker-source-storage"]')?.click();
-            await waitFor(() => workspace.textContent.includes('browser-nested-storage.jpg'));
-            const acquire = await waitFor(() => workspace.querySelector(
+            await waitFor(() => currentWorkspace());
+            await waitFor(() => requestsSettledAfter(completed));
+            completed = window.__mediaPickerCompletedRequests;
+            currentWorkspace()?.querySelector('[data-testid="media-picker-source-storage"]')?.click();
+            await waitFor(() => currentWorkspace()?.textContent.includes('browser-nested-storage.jpg'));
+            await waitFor(() => requestsSettledAfter(completed));
+            const acquire = await waitFor(() => currentWorkspace()?.querySelector(
                 '[data-testid="media-picker-storage-acquire"]:not([disabled])',
             ));
+            completed = window.__mediaPickerCompletedRequests;
             acquire.click();
             await waitFor(() => picker() === null);
             const restoredOuter = await waitFor(() => outerDialog());
             await waitFor(() => restoredOuter.querySelector('[data-testid="media-picker-selected-item"]'));
+            await waitFor(() => requestsSettledAfter(completed));
             const submit = restoredOuter.querySelector('.fi-modal-footer-actions button[type="submit"]');
 
             if (! submit) {
                 throw new Error('Unable to find the outer image action submit button.');
             }
 
+            completed = window.__mediaPickerCompletedRequests;
             submit.click();
             await waitFor(() => outerDialog() === undefined);
+            await waitFor(() => requestsSettledAfter(completed));
 
             const knownResizeObserverMessage = 'ResizeObserver loop completed with undelivered notifications.';
             window.__pestBrowser.jsErrors = (window.__pestBrowser?.jsErrors ?? [])
@@ -1025,6 +1109,8 @@ it('keeps a nested media item action owned by the picker across repeated modal l
     $page = visit(ContentGroupResource::getUrl('edit', ['record' => $group]))
         ->resize(1280, 900);
 
+    trackMediaPickerBrowserRequests($page);
+
     $result = $page->script(<<<'JS'
         async () => {
             const waitFor = async (callback, timeout = 7000) => {
@@ -1045,11 +1131,27 @@ it('keeps a nested media item action owned by the picker across repeated modal l
             const picker = () => document.querySelector(
                 '[aria-modal="true"].fi-modal-open [data-testid="media-picker"]',
             );
+            const currentWorkspace = () => {
+                const workspace = picker();
+                const childId = workspace?.getAttribute('wire:id');
+                const component = childId ? window.Livewire.find(childId) : null;
+
+                return workspace?.isConnected
+                    && ! workspace.inert
+                    && component?.el === workspace
+                    ? workspace
+                    : null;
+            };
+            const requestsSettledAfter = (completed) => (
+                window.__mediaPickerCompletedRequests > completed
+                && window.__mediaPickerPendingRequests === 0
+            );
             const childDialog = () => Array.from(document.querySelectorAll(
                 '[aria-modal="true"].fi-modal-open',
             )).find((dialog) => ! dialog.querySelector('[data-testid="media-picker"]'));
             const closeChild = async () => {
                 const dialog = await waitFor(() => childDialog());
+                const completed = window.__mediaPickerCompletedRequests;
                 const cancel = Array.from(dialog.querySelectorAll(
                     '.fi-modal-footer-actions button',
                 )).find((button) => button.type !== 'submit');
@@ -1061,26 +1163,28 @@ it('keeps a nested media item action owned by the picker across repeated modal l
                 cancel.click();
                 await waitFor(() => childDialog() === undefined);
                 await waitFor(() => picker());
+                await waitFor(() => requestsSettledAfter(completed));
             };
             const openEdit = async () => {
-                const workspace = await waitFor(() => picker());
-                const mediaCard = Array.from(workspace.querySelectorAll(
-                    '[wire\\:key^="media-picker-"]',
-                )).find((card) => card.textContent.includes('Nested editable media'));
-                const actionGroup = mediaCard?.querySelector('.fi-dropdown');
-                const actionGroupTrigger = actionGroup?.querySelector(
-                    ':scope > .fi-dropdown-trigger button',
-                );
+                await waitFor(() => currentWorkspace());
+                const actionGroupTrigger = await waitFor(() => {
+                    const mediaCard = Array.from(currentWorkspace()?.querySelectorAll(
+                        '[wire\\:key^="media-picker-"]',
+                    ) ?? []).find((card) => card.textContent.includes('Nested editable media'));
 
-                if (! actionGroupTrigger) {
-                    throw new Error('Unable to resolve the nested picker item action group.');
-                }
+                    return mediaCard?.querySelector(
+                        '.fi-dropdown > .fi-dropdown-trigger button',
+                    );
+                });
 
                 actionGroupTrigger.click();
                 const editAction = await waitFor(() => {
-                    const action = Array.from(actionGroup.querySelectorAll(
+                    const mediaCard = Array.from(currentWorkspace()?.querySelectorAll(
+                        '[wire\\:key^="media-picker-"]',
+                    ) ?? []).find((card) => card.textContent.includes('Nested editable media'));
+                    const action = Array.from(mediaCard?.querySelectorAll(
                         '.fi-dropdown-list-item',
-                    )).find((candidate) => candidate
+                    ) ?? []).find((candidate) => candidate
                         .getAttribute('wire:click')
                         ?.includes('editItem'));
 
@@ -1088,19 +1192,25 @@ it('keeps a nested media item action owned by the picker across repeated modal l
                         ? action
                         : null;
                 });
+                const completed = window.__mediaPickerCompletedRequests;
                 editAction.click();
 
-                return await waitFor(() => {
+                const dialog = await waitFor(() => {
                     const dialog = childDialog();
                     const titleInput = Array.from(dialog?.querySelectorAll('input') ?? [])
                         .find((input) => input.value === 'Nested editable media');
 
                     return titleInput ? dialog : null;
                 });
+                await waitFor(() => requestsSettledAfter(completed));
+
+                return dialog;
             };
 
+            let completed = window.__mediaPickerCompletedRequests;
             document.querySelector('[data-testid="media-picker-open"]')?.click();
-            await waitFor(() => picker());
+            await waitFor(() => currentWorkspace());
+            await waitFor(() => requestsSettledAfter(completed));
 
             const firstDialog = await openEdit();
             const firstChildOpened = firstDialog.classList.contains('fi-modal-open');
@@ -1118,8 +1228,10 @@ it('keeps a nested media item action owned by the picker across repeated modal l
             await closeChild();
             const pickerSurvivedSecondClose = Boolean(picker());
 
+            completed = window.__mediaPickerCompletedRequests;
             picker()?.querySelector('[data-testid="media-picker-close"]')?.click();
             await waitFor(() => picker() === null);
+            await waitFor(() => requestsSettledAfter(completed));
 
             const knownResizeObserverMessage = 'ResizeObserver loop completed with undelivered notifications.';
             window.__pestBrowser.jsErrors = (window.__pestBrowser?.jsErrors ?? [])

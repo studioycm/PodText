@@ -12,8 +12,12 @@ correction is complete locally under audit
 `LS-20260723-PODTEXT-MEDIA-P3-POST-ACQUISITION-UX-01`, approved option
 `MEDIA-P3-POST-O3-IMMEDIATE-SOURCE-WORKSPACE`; its handoff is
 `../../phase-02/media-program-p3-post-acquisition-picker-ux-handoff.md`.
-Packages 4-5 remain route forecasts, no next package is active and each
-requires fresh Simplifier approval.
+Package 4 is complete locally under audit
+`LS-20260724-PODTEXT-MEDIA-P4-POSTP3-OWNER-UX-01`, approved option
+`MEDIA-P4-POSTP3-O1-INTEGRATED-IMAGE-WORKSPACE`; its handoff is
+`../../phase-02/media-program-p4-owner-image-ux-handoff.md` and its canonical
+implementation hash is pending the immediate documentation stamp. Package 5
+remains a route forecast requiring fresh Simplifier approval.
 
 ## Package 1 — minimal kernel and database conversion
 
@@ -118,6 +122,28 @@ Outcome: podcast/episode list and detail surfaces provide bounded preview,
 metadata, safe download, copy filename, change image and broken-association
 repair/default actions.
 
+Tasks:
+
+1. Reconcile active Package 4 route documents.
+2. Test-first add a lazy effective-source/metadata presenter and stale-safe
+   normal replace/remove attachment mutations.
+3. Integrate one owner-image workspace across all six table/edit/workspace
+   surfaces while reusing the completed picker and safe delivery routes.
+4. Convert the verified 43 ungrouped Resource/RelationManager record actions
+   to accessible icon-only triggers through an explicitly applied local
+   configurator; retain the Settings Backups ActionGroup.
+5. Complete focused, performance, localization and browser regressions, then
+   the ordered gates, handoff, implementation commit and immediate hash stamp.
+
+Package 4 adds no schema, dependency, provider, new Livewire picker, storage
+scan, filesystem mutation or byte fingerprint. Its detailed authority is
+`packages/04-owner-image-ux-research.md` and
+`packages/04-owner-image-ux-plan.md`.
+
+Package 4 is complete locally. It preserves the post-Package-3 picker and
+attachment contracts, adds the integrated six-surface owner-image workspace,
+and completes the bounded 43-action Resource-table rider.
+
 ## Package 5 — files and physical lifecycle
 
 Outcome: managed rowless files appear in Files Discovery; explicit import,
@@ -133,7 +159,6 @@ immediately by a docs-only handoff/ledger hash stamp. No push occurs.
 
 ## Program exclusions
 
-No dependency changes beyond the post-Package-3 operator-approved bounded
-Filament patch amendment, one-shot five-package implementation, dedicated
-security-audit phase, local/production live action, compatibility-field
-removal or parallel repository writers.
+No Package 4 dependency/toolchain change, one-shot five-package
+implementation, dedicated security-audit phase, local/production live action,
+compatibility-field removal or parallel repository writers.

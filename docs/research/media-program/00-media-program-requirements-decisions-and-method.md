@@ -2,11 +2,12 @@
 
 ## Authority
 
-- Audit: `LS-20260723-PODTEXT-MEDIA-P3-ACQUISITION-PICKER-01`
-- Approved option: `MEDIA-P3-O1-IMMEDIATE-SHARED-ADMISSION`
-- Approval date: 2026-07-23
-- Scope: Package 3 four-source picker, immediate shared admission, new-input
-  policy/settings and Spotify URL integration only.
+- Audit: `LS-20260724-PODTEXT-MEDIA-P4-POSTP3-OWNER-UX-01`
+- Approved option:
+  `MEDIA-P4-POSTP3-O1-INTEGRATED-IMAGE-WORKSPACE`
+- Approval date: 2026-07-24
+- Scope: Package 4 owner-image UX and its separately estimated Resource-table
+  record-action rider only.
 
 This registry supersedes the 2026-07-22 trusted-canonical/hybrid-root program.
 Historical committed handoffs remain evidence of what existed; they do not
@@ -75,6 +76,17 @@ mutation.
 | `MI-R048` | Storage accepts only bounded candidates from configured disks/roots through opaque server-side identity. It reuses an existing row, registers a safe public raster in place, or copies when required without mutating the source. | Package 3 Storage tests. |
 | `MI-R049` | Spotify is a URL producer for podcast create/edit, episode create/edit/workspace and direct-import paths. Network acquisition remains outside importer database transactions. | Package 3 form/import/queue tests. |
 | `MI-R050` | Package 3 adds no relational schema or dependency and does not implement Package 4 owner-tool expansion or Package 5 discovery/lifecycle behavior. | migration/lockfile/source/diff sweep. |
+| `MI-R051` | One reusable integrated owner-image workspace serves podcast list/edit, episode list/classic edit/workspace and the podcast ContentItems relation manager. | Package 4 action/surface tests. |
+| `MI-R052` | Owner image detail identifies the real effective source: direct Media, compatibility Media, external URL, inherited podcast cover, configured family/global fallback, empty fallback, or fallback displayed because a direct association is broken. | Package 4 presenter source matrix. |
+| `MI-R053` | Canonical Media detail distinguishes original filename from stored basename and exposes useful existing metadata, safe preview/download and Media review without exposing a raw storage path. | Package 4 presenter/controller tests. |
+| `MI-R054` | List thumbnails stay compact; supplemental previews are lazy and bounded to 300 by 300 pixels. Thumbnail click/keyboard/touch opens detail without record navigation or per-row detail/storage queries. | Package 4 table/query/browser tests. |
+| `MI-R055` | Change Image reuses the completed four-source picker and its single outer-owner/schema-child modal topology. Gallery remains mutation-free, completed acquisition remains permanent, and cancel remains an attachment no-op. | Package 4 action and browser regressions. |
+| `MI-R056` | Normal replace and Remove Direct Image / Use Automatic Image recheck the mount-time owner identity under row locks. Stale actions fail closed; unrelated saves never silently clear broken evidence. | Package 4 stale-write and owner-save tests. |
+| `MI-R057` | A broken direct association shows the effective fallback separately from a plain warning and offers bounded replace, detach and Media review choices while preserving D01 and diagnostic visibility. | Package 4 broken-state matrix. |
+| `MI-R058` | Package 4 labels, metadata, warnings, actions and copy feedback are translated in Hebrew and English; Hebrew-first RTL, narrow screens and day-first Jerusalem timestamps are preserved. | translation and browser tests. |
+| `MI-R059` | Package 4 adds no relational/settings migration, dependency, provider, storage scan, file mutation, byte fingerprint, filesystem journal or Package 5 lifecycle behavior. | source/diff/lockfile sweep. |
+| `MI-R060` | Exactly 43 ungrouped record actions across 12 Filament Resource/RelationManager tables become icon-only through a bounded local configurator while retaining the translated accessible label as tooltip and accessible name. Every action has a semantic Heroicon. | Package 4 rider inventory tests. |
+| `MI-R061` | The Settings Backups ActionGroup stays grouped with visible labels, and header/toolbar/bulk/empty-state/page-header/form/modal-footer actions plus custom Page tables remain outside the rider. | Package 4 rider exclusion tests. |
 
 ## Rejected requirements
 
@@ -89,8 +101,9 @@ manifest/digest/schema-hash authorization.
 
 ## Package boundary
 
-Packages 1 and 2 are complete and hash-stamped. This approval ends after
-Package 3, which extends the existing picker with immediate Upload/URL/Storage
-admission and Spotify URL integration while preserving inventory-first Gallery
-selection. Packages 4-5, dependency changes, live data actions, production
-actions and push remain separately gated.
+Packages 1-4 and the post-Package-3 picker correction are complete locally;
+Packages 1-3 and the correction are hash-stamped, while Package 4 awaits its
+canonical implementation hash stamp. This approval ended after Package 4 and
+its bounded Resource-table record-action rider. Package 5,
+dependency/toolchain changes, live data actions, production actions and push
+remain separately gated.

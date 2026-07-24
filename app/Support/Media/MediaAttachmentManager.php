@@ -156,10 +156,47 @@ class MediaAttachmentManager
         MediaAttachmentRole $role,
         User $actor,
     ): void {
+        $this->detachWithExpectedIdentity($owner, $role, $actor);
+    }
+
+    public function detachIfUnchanged(
+        ContentGroup|ContentItem $owner,
+        MediaAttachmentRole $role,
+        User $actor,
+        ?int $expectedMediaId,
+        ?string $expectedLegacyPath,
+    ): void {
+        $this->detachWithExpectedIdentity(
+            $owner,
+            $role,
+            $actor,
+            enforceExpectedIdentity: true,
+            expectedMediaId: $expectedMediaId,
+            expectedLegacyPath: $expectedLegacyPath,
+        );
+    }
+
+    private function detachWithExpectedIdentity(
+        ContentGroup|ContentItem $owner,
+        MediaAttachmentRole $role,
+        User $actor,
+        bool $enforceExpectedIdentity = false,
+        ?int $expectedMediaId = null,
+        ?string $expectedLegacyPath = null,
+    ): void {
         [$alias, $legacyColumn] = $this->ownerContract($owner, $role);
         Gate::forUser($actor)->authorize('viewAny', config('curator.model', Media::class));
 
-        DB::transaction(function () use ($owner, $role, $actor, $alias, $legacyColumn): void {
+        DB::transaction(function () use (
+            $owner,
+            $role,
+            $actor,
+            $alias,
+            $legacyColumn,
+            $enforceExpectedIdentity,
+            $expectedMediaId,
+            $expectedLegacyPath,
+        ): void {
             $lockedOwner = $owner->newQuery()->lockForUpdate()->findOrFail($owner->getKey());
             $attachment = MediaAttachment::query()
                 ->where('attachable_type', $alias)
@@ -168,12 +205,26 @@ class MediaAttachmentManager
                 ->lockForUpdate()
                 ->first();
 
+            if ($enforceExpectedIdentity) {
+                $currentMediaId = $attachment instanceof MediaAttachment ? (int) $attachment->media_id : null;
+                $currentLegacyPath = is_string($lockedOwner->getAttribute($legacyColumn))
+                    ? $lockedOwner->getAttribute($legacyColumn)
+                    : null;
+
+                if ($currentMediaId !== $expectedMediaId || $currentLegacyPath !== $expectedLegacyPath) {
+                    throw new RuntimeException('The owner image changed while the media operation was running.');
+                }
+            }
+
             if ($attachment instanceof MediaAttachment) {
                 $media = $this->mediaRecordScope
                     ->lockInventoryForUpdateByIds([(int) $attachment->media_id])
-                    ->firstOrFail();
-                $this->mutationFence->assertAttachmentAvailable([(int) $media->getKey()]);
-                Gate::forUser($actor)->authorize('detach', $media);
+                    ->first();
+                $this->mutationFence->assertAttachmentAvailable([(int) $attachment->media_id]);
+
+                if ($media instanceof Media) {
+                    Gate::forUser($actor)->authorize('detach', $media);
+                }
 
                 $attachment->delete();
             }

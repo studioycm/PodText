@@ -46,16 +46,19 @@ create a new handoff at that path from the implemented inventory-first work.
   completed historical authority under
   `LS-20260723-PODTEXT-MEDIA-P3-POST-ACQUISITION-UX-01` /
   `MEDIA-P3-POST-O3-IMMEDIATE-SOURCE-WORKSPACE`.
-- Package 4 pair: forecast only; fresh audit required.
+- Package 4 research/plan and
+  `../../phase-02/media-program-p4-owner-image-ux-handoff.md`: completed
+  historical authority under
+  `LS-20260724-PODTEXT-MEDIA-P4-POSTP3-OWNER-UX-01` /
+  `MEDIA-P4-POSTP3-O1-INTEGRATED-IMAGE-WORKSPACE`.
 - Package 5 pair: forecast only; fresh audit required.
 
 The earlier Package 4 audit
 `LS-20260723-PODTEXT-MEDIA-P4-OWNER-IMAGE-UX-01` and options
 `MEDIA-P4-O1-SHARED-DETAIL-MODAL` /
 `MEDIA-P4-O2-SHARED-DETAIL-SLIDEOVER` are superseded and authorize nothing.
-The post-Package-3 correction is closed locally. Package 4 must be freshly
-audited and explicitly approved before implementation; no next package is
-active.
+The post-Package-3 correction and fresh Package 4 implementation are closed
+locally. Package 5 remains unapproved.
 
 ## Related active track documents
 

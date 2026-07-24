@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\HomepageSections\Tables;
 
 use App\Enums\HomepageSectionType;
+use App\Filament\Resources\Support\ResourceTableActions;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
@@ -16,7 +17,7 @@ class HomepageSectionsTable
 {
     public static function configure(Table $table): Table
     {
-        return $table
+        return ResourceTableActions::iconOnly($table)
             ->columns([
                 TextColumn::make('name')
                     ->label(__('admin.fields.name'))

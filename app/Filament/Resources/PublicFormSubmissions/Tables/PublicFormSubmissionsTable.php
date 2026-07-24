@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\PublicFormSubmissions\Tables;
 
 use App\Enums\PublicFormSubmissionStatus;
+use App\Filament\Resources\Support\ResourceTableActions;
 use App\Models\PublicFormSubmission;
 use App\Support\PublicFront\Forms\PublicFormSubmissionPresenter;
 use Filament\Actions\Action;
@@ -20,7 +21,7 @@ class PublicFormSubmissionsTable
 {
     public static function configure(Table $table): Table
     {
-        return $table
+        return ResourceTableActions::iconOnly($table)
             ->defaultSort('submitted_at', 'desc')
             ->columns([
                 TextColumn::make('form_key')

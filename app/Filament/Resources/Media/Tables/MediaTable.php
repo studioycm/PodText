@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Media\Tables;
 
 use App\Filament\Resources\Media\MediaResource;
+use App\Filament\Resources\Support\ResourceTableActions;
 use App\Models\Media;
 use App\Models\User;
 use App\Support\Media\CuratorImageUploadPolicy;
@@ -30,7 +31,7 @@ class MediaTable
 {
     public static function configure(Table $table): Table
     {
-        return $table
+        return ResourceTableActions::iconOnly($table)
             ->defaultSort('id', 'desc')
             ->defaultPaginationPageOption(25)
             ->paginationPageOptions([25])
@@ -98,7 +99,7 @@ class MediaTable
                     }),
                 Action::make('rename')
                     ->label(__('admin.media_library.rename'))
-                    ->icon(Heroicon::OutlinedPencilSquare)
+                    ->icon(Heroicon::OutlinedTag)
                     ->color('gray')
                     ->authorize(fn (Media $record): bool => Gate::allows('rename', $record))
                     ->requiresConfirmation()

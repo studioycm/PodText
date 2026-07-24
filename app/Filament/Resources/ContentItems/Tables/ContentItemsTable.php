@@ -10,10 +10,11 @@ use App\Filament\Exports\ContentItemExporter;
 use App\Filament\Imports\ContentItemImporter;
 use App\Filament\Resources\ContentItems\ContentItemResource;
 use App\Filament\Resources\Support\RelationshipOptionForms;
+use App\Filament\Resources\Support\ResourceTableActions;
+use App\Filament\Tables\OwnerImageColumn;
 use App\Models\Author;
 use App\Models\ContentItem;
 use App\Support\Media\LegacyOwnerMediaDiagnosticProjector;
-use App\Support\PublicFront\PublicDefaultImageResolver;
 use App\Support\Transcriptions\TranscriptionModeLabel;
 use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
@@ -28,7 +29,6 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Support\Icons\Heroicon;
-use Filament\Tables\Columns\ImageColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Filters\TernaryFilter;
@@ -40,7 +40,7 @@ class ContentItemsTable
 {
     public static function configure(Table $table): Table
     {
-        return $table
+        return ResourceTableActions::iconOnly($table)
             ->modifyQueryUsing(fn (Builder $query): Builder => $query
                 ->with([
                     'contentGroup.coverMediaAttachment.media',
@@ -52,11 +52,7 @@ class ContentItemsTable
                 ])
                 ->withCount('transcriptions'))
             ->columns([
-                ImageColumn::make('effective_image')
-                    ->label(__('admin.fields.effective_image'))
-                    ->state(fn (ContentItem $record): ?string => app(PublicDefaultImageResolver::class)->contentItemImage($record)['url'])
-                    ->imageSize(48)
-                    ->square(),
+                OwnerImageColumn::contentItem(),
                 TextColumn::make('title')
                     ->label(__('admin.fields.title'))
                     ->searchable()

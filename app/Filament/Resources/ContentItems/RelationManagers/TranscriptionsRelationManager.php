@@ -6,6 +6,7 @@ use App\Enums\PublicationStatus;
 use App\Enums\UserRole;
 use App\Filament\Forms\Components\PublicationStatusSelect;
 use App\Filament\Resources\Support\RelationshipOptionForms;
+use App\Filament\Resources\Support\ResourceTableActions;
 use App\Filament\Resources\Transcriptions\TranscriptionResource;
 use App\Models\Transcription;
 use App\Support\Transcriptions\MultiTranscriptionSurfaces;
@@ -89,7 +90,7 @@ class TranscriptionsRelationManager extends RelationManager
 
     public function table(Table $table): Table
     {
-        return $table
+        return ResourceTableActions::iconOnly($table)
             ->recordTitleAttribute('title')
             ->modifyQueryUsing(fn (Builder $query): Builder => $query
                 ->with('authors')

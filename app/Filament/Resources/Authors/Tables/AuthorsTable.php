@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Authors\Tables;
 
 use App\Filament\Exports\AuthorExporter;
 use App\Filament\Imports\AuthorImporter;
+use App\Filament\Resources\Support\ResourceTableActions;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
@@ -18,7 +19,7 @@ class AuthorsTable
 {
     public static function configure(Table $table): Table
     {
-        return $table
+        return ResourceTableActions::iconOnly($table)
             ->columns([
                 TextColumn::make('name')
                     ->label(__('admin.fields.author_name'))

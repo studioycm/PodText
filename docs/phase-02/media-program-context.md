@@ -7,17 +7,24 @@ not current authority.
 
 ## Controlling approval
 
-- Audit: `LS-20260723-PODTEXT-MEDIA-P3-POST-ACQUISITION-UX-01`
-- Approved option: `MEDIA-P3-POST-O3-IMMEDIATE-SOURCE-WORKSPACE`
-- Approved scope: the five-mini-task post-Package-3 correction covering
-  acquisition result/error truth, single-mode safety, Storage convergence,
-  one URL deadline, direct single choice, busy/offline/accessibility behavior
-  and the Upload/URL/Storage source workspace.
-- Completed local package: post-Package-3 acquisition picker UX. Its handoff is
-  `docs/phase-02/media-program-p3-post-acquisition-picker-ux-handoff.md`.
-- Packages 1-3 are complete and hash-stamped. The original Package 3 audit,
-  option and handoff remain historical implementation authority. Packages 4-5
-  remain separately gated and no next media package is active.
+- Audit: `LS-20260724-PODTEXT-MEDIA-P4-POSTP3-OWNER-UX-01`
+- Approved option:
+  `MEDIA-P4-POSTP3-O1-INTEGRATED-IMAGE-WORKSPACE`
+- Approved scope: Package 4's integrated podcast/episode owner-image workspace
+  and the separately estimated 43-action Resource-table rider.
+- Package 4 is complete locally. Its controlling research, plan and handoff are
+  `docs/research/media-program/packages/04-owner-image-ux-research.md` and
+  `docs/research/media-program/packages/04-owner-image-ux-plan.md`, and
+  `docs/phase-02/media-program-p4-owner-image-ux-handoff.md`.
+- Packages 1-4 and the post-Package-3 correction are complete locally.
+  Packages 1-3 and the correction are
+  hash-stamped. Their audits, options and handoffs remain historical
+  implementation authority. Package 4's canonical implementation hash is
+  pending its immediate documentation stamp. Package 5 remains separately
+  gated.
+- Starting baseline: clean `main` at
+  `abd5e11b1e8db6cedd8e673a246711698fde3c5f`, 23 commits ahead of
+  `origin/main`.
 - No prompt under `prompts/pre-13-prompts/` is active.
 
 ## Controlling product rule
@@ -98,14 +105,14 @@ Post-Package-3 correction: immediate acquisition correctness and
 source-workspace UX — complete locally.
 
 4. Podcast/episode image hover, detail, download, copy, change and association
-   repair/default UX.
+   repair/default UX — active under the controlling approval.
 5. Files Discovery and physical lifecycle; journals apply only to real file
    mutations.
 
 ## Baselines
 
-- Package 3 hash-stamped baseline: `main` at
-  `786f7c5f699a3d9d2c02f4c93baff02b0ddcbc1f`, 19 commits ahead of
+- Package 4 starting baseline: clean `main` at
+  `abd5e11b1e8db6cedd8e673a246711698fde3c5f`, 23 commits ahead of
   `origin/main`.
 - At Stage 1: 79 modified tracked files and 54 default-status untracked entries
   formed the unfinished overbuilt Package 1 draft. Exact cleanup enumeration
@@ -115,9 +122,9 @@ source-workspace UX — complete locally.
 - Production: the latest dated snapshot remains pre-G1 with 403 Curator rows,
   108 matched covers, three SVGs, five rowless managed files, one oversized
   raster and two duplicate-byte pairs.
-- Package 3 and this correction use test databases, test cache locks and fake
-  storage only. They do not execute migrations, acquisition, conversion or
-  media operations against local development or production.
+- Package 4 uses test databases and fake storage only. It does not execute
+  migrations, acquisition, conversion or media operations against local
+  development or production.
 
 ## Drift checkpoint
 
@@ -132,9 +139,7 @@ before proceeding.
 
 ## Hard exclusions
 
-- No dependency changes except the operator-approved bounded Filament 5.7.1 to
-  5.7.3 patch refresh inside the post-Package-3 correction; no manifest, npm or
-  unrelated package change.
+- No dependency, manifest, lockfile, npm/toolchain or Boost-discovery change.
 - No dedicated security audit or new security architecture.
 - No real local or production DB/storage/cache action.
 - No production action without a separate exact approval.
@@ -142,6 +147,5 @@ before proceeding.
   conversion manifest/digest/schema hash or new conversion journal.
 - Selecting existing media performs attachment-only database changes; it never
   copies, moves, renames or normalizes the selected row or file.
-- No Package 4 owner-tools expansion or Package 5 Files Discovery/lifecycle
-  work.
+- No Package 5 Files Discovery/lifecycle work or unrelated media expansion.
 - No branch/worktree change, push, broad reset, stash, checkout or deletion.
