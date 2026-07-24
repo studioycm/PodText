@@ -12,7 +12,8 @@ Recorded after the Markdown-only post-Prompt-10 prompt-progress centralization c
   `MEDIA-OPS-UX3-M2-O2-CANONICAL-TASK-CONTEXT`, with
   `PODTEXT-MEDIA-UX-CONTRACT-20260724-CORRECTED` binding. It started from
   clean `main` at `69aa0ce3f4983be54a3d25124cf43ef3ee21b5d6`, 31 commits
-  ahead of `origin/main`. Its implementation is `PENDING`. The Media Library
+  ahead of `origin/main`. Its implementation is
+  `ce97b3d9350db966073b1fc224046d4a25cbfa68`. The Media Library
   now has five canonical task views, exact diagnostic-reason composition,
   the inclusive rolling previous 30-day Recent definition, two bounded
   request-memoized badges, deterministic Added sorting and a validated,
