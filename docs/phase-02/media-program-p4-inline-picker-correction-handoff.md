@@ -217,6 +217,7 @@ protection and 43-action Resource-table rider remain unchanged.
 | `vendor/bin/filacheck` | PASS with 0 issues. |
 | `npm run build` | PASS; production assets built and the Fontaine warning did not return. |
 | Full `php artisan test` last | PASS outside the macOS sandbox: 1,131 tests / 14,797 assertions. |
+| Hash-stamp-only closeout | `git diff --check` PASS. No third full-suite run was added after two identical complete green suites because only the recorded implementation hash changed. |
 
 The original operator-reported upload error was consistent with the observed
 missing local schema activation. No live upload experiment was authorized or
@@ -280,4 +281,4 @@ and isolated mounted FileUpload plus browser/feature regressions pass.
 
 ## Commit hash
 
-Pending until the canonical implementation commit.
+`f905de83e996d34c65b767deb7ce121283f0786a`
