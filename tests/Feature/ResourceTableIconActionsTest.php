@@ -22,8 +22,10 @@ use App\Models\ContentItem;
 use App\Models\User;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
+use Filament\Actions\EditAction;
 use Filament\Facades\Filament;
 use Filament\Support\Icons\Heroicon;
+use Filament\Tables\Enums\RecordActionsPosition;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Livewire\Livewire;
@@ -35,7 +37,7 @@ beforeEach(function (): void {
     Http::preventStrayRequests();
 });
 
-it('keeps exactly 43 Resource table record actions icon only with authoritative labels and tooltips', function (): void {
+it('keeps exactly 37 general Resource table record actions icon only with authoritative labels and tooltips', function (): void {
     $this->actingAs(User::factory()->superAdmin()->create());
     $group = ContentGroup::factory()->create();
     $item = ContentItem::factory()->for($group)->create();
@@ -55,7 +57,6 @@ it('keeps exactly 43 Resource table record actions icon only with authoritative 
         ])->instance()->getTable()->getRecordActions(), 4],
         'content tags' => [Livewire::test(ListContentTags::class)->instance()->getTable()->getRecordActions(), 1],
         'homepage sections' => [Livewire::test(ListHomepageSections::class)->instance()->getTable()->getRecordActions(), 1],
-        'media' => [Livewire::test(ListMedia::class)->instance()->getTable()->getRecordActions(), 6],
         'public form submissions' => [Livewire::test(ListPublicFormSubmissions::class)->instance()->getTable()->getRecordActions(), 4],
         'transcriptions' => [Livewire::test(ListTranscriptions::class)->instance()->getTable()->getRecordActions(), 2],
         'users' => [Livewire::test(ListUsers::class)->instance()->getTable()->getRecordActions(), 1],
@@ -81,7 +82,42 @@ it('keeps exactly 43 Resource table record actions icon only with authoritative 
         expect(array_unique($icons))->toHaveCount($expectedCount, "{$surface} duplicate icons");
     }
 
-    expect($actionCount)->toBe(43);
+    expect($actionCount)->toBe(37);
+});
+
+it('gives Media one visible details action and one quiet grouped action menu', function (): void {
+    $this->actingAs(User::factory()->superAdmin()->create());
+    $table = Livewire::test(ListMedia::class)->instance()->getTable();
+    $recordActions = array_values($table->getRecordActions());
+
+    expect($recordActions)->toHaveCount(2)
+        ->and($recordActions[0])->toBeInstanceOf(EditAction::class)
+        ->and($recordActions[0]->getName())->toBe('edit')
+        ->and($recordActions[0]->isButton())->toBeTrue()
+        ->and($recordActions[0]->isLabelHidden())->toBeFalse()
+        ->and((string) $recordActions[0]->getLabel())->toBe(__('admin.media_library.open_details'))
+        ->and($recordActions[0]->getIcon())->toBe(Heroicon::OutlinedInformationCircle)
+        ->and($recordActions[1])->toBeInstanceOf(ActionGroup::class)
+        ->and($recordActions[1]->isIconButton())->toBeTrue()
+        ->and((string) $recordActions[1]->getLabel())->toBe(__('admin.media_library.more_actions'))
+        ->and((string) $recordActions[1]->getTooltip())->toBe(__('admin.media_library.more_actions'))
+        ->and($recordActions[1]->getColor())->toBe('gray')
+        ->and(array_keys($recordActions[1]->getFlatActions()))->toBe([
+            'view',
+            'download',
+            'rename',
+            'swap',
+            'delete',
+        ])
+        ->and(array_keys($table->getFlatRecordActions()))->toBe([
+            'edit',
+            'view',
+            'download',
+            'rename',
+            'swap',
+            'delete',
+        ])
+        ->and($table->getRecordActionsPosition())->toBe(RecordActionsPosition::AfterContent);
 });
 
 it('leaves the Settings Backups group and custom Page tables outside the rider', function (): void {

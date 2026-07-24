@@ -3,14 +3,15 @@
 namespace App\Filament\Resources\Media\Tables;
 
 use App\Filament\Resources\Media\MediaResource;
-use App\Filament\Resources\Support\ResourceTableActions;
 use App\Models\Media;
 use App\Models\User;
 use App\Support\Media\CuratorImageUploadPolicy;
 use App\Support\Media\MediaFilesystemMutationCoordinator;
 use App\Support\Media\MediaInventoryDiagnostics;
 use App\Support\Media\MediaRecordScope;
+use App\Support\Media\MediaReferenceFinder;
 use Filament\Actions\Action;
+use Filament\Actions\ActionGroup;
 use Filament\Actions\BulkAction;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\EditAction;
@@ -21,6 +22,7 @@ use Filament\Tables\Columns\ImageColumn;
 use Filament\Tables\Columns\Layout\Grid;
 use Filament\Tables\Columns\Layout\Stack;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Enums\RecordActionsPosition;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
@@ -34,10 +36,14 @@ class MediaTable
 {
     public static function configure(Table $table): Table
     {
-        return ResourceTableActions::iconOnly($table)
+        return $table
             ->defaultSort('id', 'desc')
             ->defaultPaginationPageOption(25)
             ->paginationPageOptions([25])
+            ->recordActionsPosition(RecordActionsPosition::AfterContent)
+            ->recordUrl(fn (Media $record): ?string => Gate::allows('update', $record)
+                ? MediaResource::getUrl('edit', ['record' => $record])
+                : null)
             ->columns([
                 Grid::make(1)
                     ->extraAttributes([
@@ -49,11 +55,7 @@ class MediaTable
                             ImageColumn::make('preview_url')
                                 ->label(__('admin.fields.preview'))
                                 ->state(fn (Media $record): ?string => app(MediaInventoryDiagnostics::class)->previewUrl($record))
-                                ->alt(fn (Media $record): string => (string) (
-                                    data_get($record->exif, 'original_filename')
-                                    ?: $record->title
-                                    ?: $record->name
-                                ))
+                                ->alt(fn (Media $record): string => self::displayIdentity($record))
                                 ->imageHeight('12rem')
                                 ->imageWidth('100%')
                                 ->checkFileExistence(false)
@@ -66,7 +68,7 @@ class MediaTable
                             Stack::make([
                                 TextColumn::make('card_title')
                                     ->label(__('admin.owner_image.metadata.title'))
-                                    ->state(fn (Media $record): string => (string) ($record->title ?: $record->name))
+                                    ->state(fn (Media $record): string => self::displayIdentity($record))
                                     ->searchable(['title', 'name'])
                                     ->weight(FontWeight::SemiBold)
                                     ->wrap(),
@@ -89,6 +91,71 @@ class MediaTable
                                     ->copyable()
                                     ->copyMessage(__('admin.owner_image.copy_success'))
                                     ->wrap(),
+                                TextColumn::make('card_known_references')
+                                    ->label(__('admin.media_library.known_references'))
+                                    ->description(__('admin.media_library.known_references'), 'above')
+                                    ->state(function (Media $record): string {
+                                        if ($record->disk !== 'public') {
+                                            return __('admin.media_library.known_reference_count_unavailable');
+                                        }
+
+                                        $count = self::knownReferenceCount($record);
+
+                                        return trans_choice(
+                                            'admin.media_library.known_reference_count',
+                                            $count,
+                                            ['count' => $count],
+                                        );
+                                    })
+                                    ->icon(Heroicon::OutlinedLink)
+                                    ->extraAttributes([
+                                        'data-testid' => 'media-library-card-known-references',
+                                    ])
+                                    ->wrap(),
+                                TextColumn::make('repair_status')
+                                    ->label(__('admin.media_library.repair_status'))
+                                    ->state(fn (Media $record): string => app(MediaInventoryDiagnostics::class)->needsRepair($record)
+                                        ? __('admin.media_library.needs_attention')
+                                        : __('admin.media_library.ready'))
+                                    ->badge()
+                                    ->color(fn (Media $record): string => app(MediaInventoryDiagnostics::class)->needsRepair($record) ? 'warning' : 'success')
+                                    ->tooltip(fn (Media $record): ?string => app(MediaInventoryDiagnostics::class)->needsRepair($record)
+                                        ? collect(app(MediaInventoryDiagnostics::class)->reasons($record))
+                                            ->map(fn (string $reason): string => __("admin.media_library.repair_{$reason}"))
+                                            ->implode(' · ')
+                                        : null)
+                                    ->extraAttributes([
+                                        'data-testid' => 'media-library-card-attention-status',
+                                    ]),
+                                TextColumn::make('card_primary_issue')
+                                    ->label(__('admin.media_library.needs_attention'))
+                                    ->state(function (Media $record): ?string {
+                                        $reason = app(MediaInventoryDiagnostics::class)->reasons($record)[0] ?? null;
+
+                                        return is_string($reason)
+                                            ? __("admin.media_library.repair_{$reason}")
+                                            : null;
+                                    })
+                                    ->description(function (Media $record): ?string {
+                                        $additional = max(
+                                            count(app(MediaInventoryDiagnostics::class)->reasons($record)) - 1,
+                                            0,
+                                        );
+
+                                        return $additional > 0
+                                            ? trans_choice(
+                                                'admin.media_library.additional_issue_count',
+                                                $additional,
+                                                ['count' => $additional],
+                                            )
+                                            : null;
+                                    })
+                                    ->icon(Heroicon::OutlinedExclamationTriangle)
+                                    ->color('warning')
+                                    ->extraAttributes([
+                                        'data-testid' => 'media-library-card-primary-issue',
+                                    ])
+                                    ->wrap(),
                                 TextColumn::make('card_file_summary')
                                     ->label(__('admin.owner_image.media_metadata'))
                                     ->description(__('admin.owner_image.media_metadata'), 'above')
@@ -104,6 +171,7 @@ class MediaTable
                                         'data-testid' => 'media-library-card-file-summary',
                                         'dir' => 'ltr',
                                     ])
+                                    ->color('gray')
                                     ->wrap(),
                                 TextColumn::make('card_location')
                                     ->label(__('admin.owner_image.metadata.directory'))
@@ -112,23 +180,13 @@ class MediaTable
                                         $record->directory,
                                     ])->filter()->implode(' · '))
                                     ->icon(Heroicon::OutlinedFolder)
+                                    ->color('gray')
                                     ->wrap(),
-                                TextColumn::make('repair_status')
-                                    ->label(__('admin.media_library.repair_status'))
-                                    ->state(fn (Media $record): string => app(MediaInventoryDiagnostics::class)->needsRepair($record)
-                                        ? __('admin.media_library.needs_repair')
-                                        : __('admin.media_library.ready'))
-                                    ->badge()
-                                    ->color(fn (Media $record): string => app(MediaInventoryDiagnostics::class)->needsRepair($record) ? 'warning' : 'success')
-                                    ->tooltip(fn (Media $record): ?string => app(MediaInventoryDiagnostics::class)->needsRepair($record)
-                                        ? collect(app(MediaInventoryDiagnostics::class)->reasons($record))
-                                            ->map(fn (string $reason): string => __("admin.media_library.repair_{$reason}"))
-                                            ->implode(' · ')
-                                        : null),
                                 TextColumn::make('created_at')
                                     ->label(__('admin.fields.created_at'))
                                     ->dateTime('d/m/Y H:i', 'Asia/Jerusalem')
                                     ->icon(Heroicon::OutlinedCalendarDays)
+                                    ->color('gray')
                                     ->sortable(),
                             ])
                                 ->space(1)
@@ -155,69 +213,80 @@ class MediaTable
                         ->applyNeedsRepairFilter($query)),
             ])
             ->recordActions([
-                Action::make('view')
-                    ->label(__('admin.actions.view'))
-                    ->icon(Heroicon::OutlinedEye)
-                    ->authorize(fn (Media $record): bool => Gate::allows('view', $record))
-                    ->url(fn (Media $record): string => route('admin.media-files.view', ['media' => $record->getKey()]), true),
-                Action::make('download')
-                    ->label(__('admin.actions.download'))
-                    ->icon(Heroicon::OutlinedArrowDownTray)
-                    ->authorize(fn (Media $record): bool => Gate::allows('download', $record))
-                    ->action(function (Media $record) {
-                        $user = auth()->user();
-                        abort_unless($user instanceof User, 403);
-                        $trusted = app(MediaRecordScope::class)->findInventoryOrFail((int) $record->getKey());
-                        Gate::forUser($user)->authorize('download', $trusted);
-
-                        return redirect()->to(route('admin.media-files.download', ['media' => $trusted->getKey()]));
-                    }),
-                Action::make('rename')
-                    ->label(__('admin.media_library.rename'))
-                    ->icon(Heroicon::OutlinedTag)
-                    ->color('gray')
-                    ->authorize(fn (Media $record): bool => Gate::allows('rename', $record))
-                    ->requiresConfirmation()
-                    ->action(function (Media $record): void {
-                        $user = auth()->user();
-                        abort_unless($user instanceof User, 403);
-                        app(MediaFilesystemMutationCoordinator::class)->rename($record, $user);
-                    }),
-                Action::make('swap')
-                    ->label(__('admin.media_library.swap'))
-                    ->icon(Heroicon::OutlinedArrowsRightLeft)
-                    ->color('warning')
-                    ->authorize(fn (Media $record): bool => Gate::allows('swap', $record))
-                    ->schema([
-                        FileUpload::make('replacement')
-                            ->label(__('admin.media_library.replacement'))
-                            ->acceptedFileTypes(fn (Media $record): array => app(CuratorImageUploadPolicy::class)
-                                ->mimeTypesFor(app(CuratorImageUploadPolicy::class)->purposeForPath((string) $record->path)))
-                            ->maxSize(CuratorImageUploadPolicy::MAX_KILOBYTES)
-                            ->storeFiles(false)
-                            ->required(),
-                    ])
-                    ->action(function (Media $record, array $data): void {
-                        $user = auth()->user();
-                        abort_unless($user instanceof User, 403);
-                        $replacement = $data['replacement'] ?? null;
-                        abort_unless($replacement instanceof TemporaryUploadedFile, 422);
-                        app(MediaFilesystemMutationCoordinator::class)->swap($record, $replacement, $user);
-                    }),
-                Action::make('delete')
-                    ->label(__('admin.actions.delete'))
-                    ->icon(Heroicon::OutlinedTrash)
-                    ->color('danger')
-                    ->authorize(fn (Media $record): bool => Gate::allows('delete', $record))
-                    ->requiresConfirmation()
-                    ->action(function (Media $record): void {
-                        $user = auth()->user();
-                        abort_unless($user instanceof User, 403);
-                        app(MediaFilesystemMutationCoordinator::class)->delete($record, $user);
-                    }),
                 EditAction::make()
+                    ->label(__('admin.media_library.open_details'))
+                    ->icon(Heroicon::OutlinedInformationCircle)
+                    ->button()
+                    ->color('primary')
                     ->authorize(fn (Media $record): bool => Gate::allows('update', $record))
                     ->url(fn (Media $record): string => MediaResource::getUrl('edit', ['record' => $record])),
+                ActionGroup::make([
+                    Action::make('view')
+                        ->label(__('admin.actions.view'))
+                        ->icon(Heroicon::OutlinedEye)
+                        ->authorize(fn (Media $record): bool => Gate::allows('view', $record))
+                        ->url(fn (Media $record): string => route('admin.media-files.view', ['media' => $record->getKey()]), true),
+                    Action::make('download')
+                        ->label(__('admin.actions.download'))
+                        ->icon(Heroicon::OutlinedArrowDownTray)
+                        ->authorize(fn (Media $record): bool => Gate::allows('download', $record))
+                        ->action(function (Media $record) {
+                            $user = auth()->user();
+                            abort_unless($user instanceof User, 403);
+                            $trusted = app(MediaRecordScope::class)->findInventoryOrFail((int) $record->getKey());
+                            Gate::forUser($user)->authorize('download', $trusted);
+
+                            return redirect()->to(route('admin.media-files.download', ['media' => $trusted->getKey()]));
+                        }),
+                    Action::make('rename')
+                        ->label(__('admin.media_library.rename'))
+                        ->icon(Heroicon::OutlinedTag)
+                        ->color('gray')
+                        ->authorize(fn (Media $record): bool => Gate::allows('rename', $record))
+                        ->requiresConfirmation()
+                        ->action(function (Media $record): void {
+                            $user = auth()->user();
+                            abort_unless($user instanceof User, 403);
+                            app(MediaFilesystemMutationCoordinator::class)->rename($record, $user);
+                        }),
+                    Action::make('swap')
+                        ->label(__('admin.media_library.swap'))
+                        ->icon(Heroicon::OutlinedArrowsRightLeft)
+                        ->color('warning')
+                        ->authorize(fn (Media $record): bool => Gate::allows('swap', $record))
+                        ->schema([
+                            FileUpload::make('replacement')
+                                ->label(__('admin.media_library.replacement'))
+                                ->acceptedFileTypes(fn (Media $record): array => app(CuratorImageUploadPolicy::class)
+                                    ->mimeTypesFor(app(CuratorImageUploadPolicy::class)->purposeForPath((string) $record->path)))
+                                ->maxSize(CuratorImageUploadPolicy::MAX_KILOBYTES)
+                                ->storeFiles(false)
+                                ->required(),
+                        ])
+                        ->action(function (Media $record, array $data): void {
+                            $user = auth()->user();
+                            abort_unless($user instanceof User, 403);
+                            $replacement = $data['replacement'] ?? null;
+                            abort_unless($replacement instanceof TemporaryUploadedFile, 422);
+                            app(MediaFilesystemMutationCoordinator::class)->swap($record, $replacement, $user);
+                        }),
+                    Action::make('delete')
+                        ->label(__('admin.media_library.delete_permanently'))
+                        ->icon(Heroicon::OutlinedTrash)
+                        ->color('danger')
+                        ->authorize(fn (Media $record): bool => Gate::allows('delete', $record))
+                        ->requiresConfirmation()
+                        ->action(function (Media $record): void {
+                            $user = auth()->user();
+                            abort_unless($user instanceof User, 403);
+                            app(MediaFilesystemMutationCoordinator::class)->delete($record, $user);
+                        }),
+                ])
+                    ->label(__('admin.media_library.more_actions'))
+                    ->icon(Heroicon::OutlinedEllipsisVertical)
+                    ->color('gray')
+                    ->tooltip(__('admin.media_library.more_actions'))
+                    ->iconButton(),
             ])
             ->emptyStateActions([
                 Action::make('create')
@@ -229,7 +298,7 @@ class MediaTable
             ->toolbarActions([
                 BulkActionGroup::make([
                     BulkAction::make('deleteSelected')
-                        ->label(__('admin.media_library.delete_selected'))
+                        ->label(__('admin.media_library.delete_selected_permanently'))
                         ->icon(Heroicon::OutlinedTrash)
                         ->color('danger')
                         ->requiresConfirmation()
@@ -242,5 +311,28 @@ class MediaTable
                         ->deselectRecordsAfterCompletion(),
                 ]),
             ]);
+    }
+
+    private static function displayIdentity(Media $media): string
+    {
+        $originalFilename = data_get($media->exif, 'original_filename');
+
+        foreach ([
+            $media->title,
+            is_string($originalFilename) ? $originalFilename : null,
+            basename((string) $media->path),
+            $media->name,
+        ] as $candidate) {
+            if (is_string($candidate) && filled($candidate)) {
+                return $candidate;
+            }
+        }
+
+        return (string) $media->getKey();
+    }
+
+    private static function knownReferenceCount(Media $media): int
+    {
+        return count(app(MediaReferenceFinder::class)->referencesForMedia($media));
     }
 }

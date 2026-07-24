@@ -57,7 +57,17 @@ it('renders the Media inventory as responsive accessible native cards', function
     }
 
     $page = visit(MediaResource::getUrl('index'))->resize(1280, 900);
-    $needsRepair = json_encode(__('admin.media_library.needs_repair'), JSON_THROW_ON_ERROR);
+    $needsAttention = json_encode(__('admin.media_library.needs_attention'), JSON_THROW_ON_ERROR);
+    $missingFile = json_encode(__('admin.media_library.repair_missing_file'), JSON_THROW_ON_ERROR);
+    $openDetails = json_encode(__('admin.media_library.open_details'), JSON_THROW_ON_ERROR);
+    $moreActions = json_encode(__('admin.media_library.more_actions'), JSON_THROW_ON_ERROR);
+    $menuLabels = json_encode([
+        __('admin.actions.view'),
+        __('admin.actions.download'),
+        __('admin.media_library.rename'),
+        __('admin.media_library.swap'),
+        __('admin.media_library.delete_permanently'),
+    ], JSON_THROW_ON_ERROR);
     $wide = $page->script(<<<JS
         async () => {
             const waitFor = async (callback, timeout = 7000) => {
@@ -92,8 +102,34 @@ it('renders the Media inventory as responsive accessible native cards', function
                 '[data-testid="media-library-card-image"]',
             ));
             const missingCard = cards.find((card) => card.textContent.includes(
-                {$needsRepair},
+                {$missingFile},
             ));
+            const healthyCard = cards.find((card) => ! card.textContent.includes(
+                {$needsAttention},
+            ));
+            const records = cards.map((card) => card.closest('.fi-ta-record'));
+            const findActionGroupTrigger = (record) => Array.from(
+                record?.querySelectorAll('button[aria-label]') ?? [],
+            ).find((button) => button.getAttribute('aria-label') === {$moreActions});
+            const actionGroupTriggers = records.map(findActionGroupTrigger);
+            findActionGroupTrigger(healthyCard?.closest('.fi-ta-record'))?.dispatchEvent(
+                new MouseEvent('mousedown', {
+                    bubbles: true,
+                    button: 0,
+                }),
+            );
+            const expectedMenuLabels = {$menuLabels};
+            const openMenu = await waitFor(() => Array.from(document.querySelectorAll(
+                '.fi-dropdown-panel',
+            )).find((panel) => {
+                const styles = getComputedStyle(panel);
+                const text = panel.textContent;
+
+                return panel.getClientRects().length > 0
+                    && styles.display !== 'none'
+                    && styles.visibility !== 'hidden'
+                    && expectedMenuLabels.every((label) => text.includes(label));
+            }));
 
             return {
                 direction: document.documentElement.dir,
@@ -103,9 +139,25 @@ it('renders the Media inventory as responsive accessible native cards', function
                     card.querySelector('[data-testid="media-library-card-stored-filename"]')
                     && card.querySelector('[data-testid="media-library-card-file-summary"]')
                 ),
+                known_references_visible: cards.every((card) => Boolean(
+                    card.querySelector('[data-testid="media-library-card-known-references"]'),
+                )),
                 image_object_fits: images.map((image) => getComputedStyle(image).objectFit),
                 lazy_images: images.every((image) => image.getAttribute('loading') === 'lazy'),
-                needs_repair_visible: Boolean(missingCard),
+                needs_attention_visible: Boolean(missingCard)
+                    && missingCard.textContent.includes({$needsAttention}),
+                primary_issue_persistent: Boolean(
+                    missingCard?.querySelector('[data-testid="media-library-card-primary-issue"]'),
+                ),
+                details_visible: records.every((record) => Array.from(
+                    record?.querySelectorAll('.fi-ta-actions a') ?? [],
+                ).some((action) => action.textContent.trim() === {$openDetails}
+                    && action.getClientRects().length > 0)),
+                action_group_accessible: actionGroupTriggers.every(Boolean),
+                action_menu_labels_visible: expectedMenuLabels.every(
+                    (label) => openMenu.textContent.includes(label),
+                ),
+                healthy_card_found: Boolean(healthyCard),
                 bulk_selection_available: Boolean(document.querySelector(
                     '.fi-ta input[type="checkbox"]',
                 )),
@@ -119,9 +171,15 @@ it('renders the Media inventory as responsive accessible native cards', function
         ->and($wide['card_count'])->toBe(6)
         ->and($wide['desktop_columns'])->toBe(3, json_encode($wide, JSON_THROW_ON_ERROR))
         ->and($wide['metadata_visible'])->toBeTrue()
+        ->and($wide['known_references_visible'])->toBeTrue()
         ->and($wide['image_object_fits'])->each->toBe('contain')
         ->and($wide['lazy_images'])->toBeTrue()
-        ->and($wide['needs_repair_visible'])->toBeTrue()
+        ->and($wide['needs_attention_visible'])->toBeTrue()
+        ->and($wide['primary_issue_persistent'])->toBeTrue()
+        ->and($wide['details_visible'])->toBeTrue()
+        ->and($wide['action_group_accessible'])->toBeTrue()
+        ->and($wide['action_menu_labels_visible'])->toBeTrue()
+        ->and($wide['healthy_card_found'])->toBeTrue()
         ->and($wide['bulk_selection_available'])->toBeTrue()
         ->and($wide['horizontal_overflow'])->toBeFalse();
 

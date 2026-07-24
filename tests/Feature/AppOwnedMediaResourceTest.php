@@ -2,6 +2,7 @@
 
 use App\Enums\ImageUploadPurpose;
 use App\Enums\UserRole;
+use App\Filament\Resources\Media\MediaResource;
 use App\Filament\Resources\Media\Pages\CreateMedia;
 use App\Filament\Resources\Media\Pages\EditMedia;
 use App\Filament\Resources\Media\Pages\ListMedia;
@@ -9,6 +10,7 @@ use App\Filament\Resources\Media\Schemas\MediaForm;
 use App\Models\ContentGroup;
 use App\Models\Media;
 use App\Models\MediaAsset;
+use App\Models\MediaAttachment;
 use App\Models\MediaMutationOperation;
 use App\Models\MediaProviderBinding;
 use App\Models\User;
@@ -17,6 +19,8 @@ use App\Support\Media\MediaRecordProjector;
 use Awcodes\Curator\Config\CurationManager;
 use Awcodes\Curator\Facades\Curator;
 use Filament\Actions\Action;
+use Filament\Actions\ActionGroup;
+use Filament\Actions\EditAction;
 use Filament\Actions\Testing\TestAction;
 use Filament\Facades\Filament;
 use Filament\Forms\Components\FileUpload;
@@ -24,6 +28,8 @@ use Filament\Notifications\Notification;
 use Filament\Schemas\Concerns\RestrictsFileUploadsToSchemaComponents;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\Layout\Grid as TableGrid;
+use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Enums\RecordActionsPosition;
 use Illuminate\Filesystem\FilesystemAdapter;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -153,33 +159,157 @@ it('shows the complete image inventory and exposes repair rows through a filter'
 it('renders Media as a native responsive card gallery without losing table controls', function (): void {
     $this->actingAs(User::factory()->admin()->create());
     $media = appOwnedMediaRecord([
-        'title' => 'Original display filename.jpg',
+        'title' => null,
         'name' => 'stored-card-name',
         'path' => 'content-groups/covers/stored-card-name.jpg',
+        'visibility' => 'private',
         'exif' => ['original_filename' => 'Original display filename.jpg'],
     ]);
+    DB::table($media->getTable())
+        ->where($media->getKeyName(), $media->getKey())
+        ->update(['reference_key' => null]);
+    $media->refresh();
     Storage::disk('public')->put($media->path, 'card fixture');
+    ContentGroup::factory()->create([
+        'title' => 'First known reference',
+        'cover_path' => $media->path,
+    ]);
+    ContentGroup::factory()->create([
+        'title' => 'Second known reference',
+        'cover_path' => $media->path,
+    ]);
+    $reasons = app(MediaInventoryDiagnostics::class)->reasons($media);
 
     $component = Livewire::test(ListMedia::class)
         ->assertOk()
-        ->assertCanSeeTableRecords([$media])
-        ->assertSee('Original display filename.jpg')
-        ->assertSee('stored-card-name.jpg')
-        ->assertSee('image/jpeg')
-        ->assertSee(__('admin.media_library.ready'));
+        ->assertCanSeeTableRecords([$media]);
     $table = $component->instance()->getTable();
     $columnsLayout = array_values($table->getColumnsLayout());
+    $recordActions = array_values($table->getRecordActions());
 
-    expect($table->getContentGrid())->toBe([
-        'md' => 2,
-        'lg' => 3,
-        '2xl' => 4,
-    ])
+    expect($table->getRecordUrl($media))->toBe(MediaResource::getUrl('edit', [
+        'record' => $media,
+    ]));
+
+    $component->assertSeeInOrder([
+        'Original display filename.jpg',
+        'stored-card-name.jpg',
+        trans_choice('admin.media_library.known_reference_count', 2, ['count' => 2]),
+        __('admin.media_library.needs_attention'),
+        __('admin.media_library.repair_portable_identity'),
+        trans_choice('admin.media_library.additional_issue_count', 1, ['count' => 1]),
+        'image/jpeg',
+    ]);
+
+    expect($reasons)->toBe(['portable_identity', 'audience_denied'])
+        ->and($table->getContentGrid())->toBe([
+            'md' => 2,
+            'lg' => 3,
+            '2xl' => 4,
+        ])
         ->and($columnsLayout[0] ?? null)->toBeInstanceOf(TableGrid::class)
-        ->and($table->getRecordActions())->toHaveCount(6)
+        ->and($recordActions)->toHaveCount(2)
+        ->and($recordActions[0])->toBeInstanceOf(EditAction::class)
+        ->and($recordActions[0]->getName())->toBe('edit')
+        ->and($recordActions[0]->isButton())->toBeTrue()
+        ->and($recordActions[0]->isLabelHidden())->toBeFalse()
+        ->and((string) $recordActions[0]->getLabel())->toBe(__('admin.media_library.open_details'))
+        ->and($recordActions[1])->toBeInstanceOf(ActionGroup::class)
+        ->and(array_keys($recordActions[1]->getFlatActions()))->toBe([
+            'view',
+            'download',
+            'rename',
+            'swap',
+            'delete',
+        ])
+        ->and(array_keys($table->getFlatRecordActions()))->toBe([
+            'edit',
+            'view',
+            'download',
+            'rename',
+            'swap',
+            'delete',
+        ])
+        ->and($table->getRecordActionsPosition())->toBe(RecordActionsPosition::AfterContent)
         ->and($table->getFilters())->toHaveKeys(['type', 'needs_repair'])
         ->and($table->getToolbarActions())->toHaveCount(1)
         ->and($table->getDefaultPaginationPageOption())->toBe(25);
+});
+
+it('describes zero known references without claiming that Media is unused', function (): void {
+    $this->actingAs(User::factory()->admin()->create());
+    $media = appOwnedMediaRecord([
+        'title' => 'No known references fixture',
+        'name' => 'no-known-references',
+        'path' => 'content-groups/covers/no-known-references.jpg',
+    ]);
+    Storage::disk('public')->put($media->path, 'unreferenced fixture');
+
+    Livewire::test(ListMedia::class)
+        ->assertOk()
+        ->assertCanSeeTableRecords([$media])
+        ->assertSee(trans_choice('admin.media_library.known_reference_count', 0, ['count' => 0]))
+        ->assertDontSee('Unused');
+});
+
+it('uses every stable Media card identity fallback in order', function (
+    array $attributes,
+    string $expected,
+): void {
+    $this->actingAs(User::factory()->admin()->create());
+    $column = Livewire::test(ListMedia::class)
+        ->instance()
+        ->getTable()
+        ->getColumn('card_title');
+    $media = appOwnedMediaRecord();
+    $media->forceFill(array_merge([
+        'title' => null,
+        'exif' => [],
+        'path' => '',
+        'name' => '',
+    ], $attributes));
+
+    expect($column)->toBeInstanceOf(TextColumn::class)
+        ->and($column?->record($media)->getState())->toBe($expected);
+})->with([
+    'title' => [
+        ['title' => 'Human title', 'exif' => ['original_filename' => 'Original.jpg'], 'path' => 'stored.jpg', 'name' => 'stored'],
+        'Human title',
+    ],
+    'original filename' => [
+        ['exif' => ['original_filename' => 'Original.jpg'], 'path' => 'stored.jpg', 'name' => 'stored'],
+        'Original.jpg',
+    ],
+    'stored basename' => [
+        ['path' => 'content-groups/covers/stored.jpg', 'name' => 'stored'],
+        'stored.jpg',
+    ],
+    'Media name' => [
+        ['name' => 'stored-name'],
+        'stored-name',
+    ],
+]);
+
+it('does not claim zero known references when the bounded reference count is unavailable', function (): void {
+    $this->actingAs(User::factory()->admin()->create());
+    $media = appOwnedMediaRecord([
+        'disk' => 'local',
+        'title' => 'Attached non-public fixture',
+        'name' => 'attached-non-public',
+        'path' => 'content-groups/covers/attached-non-public.jpg',
+    ]);
+    $group = ContentGroup::factory()->create();
+    MediaAttachment::factory()->create([
+        'media_id' => $media->getKey(),
+        'attachable_id' => $group->getKey(),
+    ]);
+    Storage::disk('local')->put($media->path, 'non-public fixture');
+
+    Livewire::test(ListMedia::class)
+        ->assertOk()
+        ->assertCanSeeTableRecords([$media])
+        ->assertSee(__('admin.media_library.known_reference_count_unavailable'))
+        ->assertDontSee(trans_choice('admin.media_library.known_reference_count', 0, ['count' => 0]));
 });
 
 it('reuses one request-local filesystem existence decision per projected raster', function (int $recordCount): void {
