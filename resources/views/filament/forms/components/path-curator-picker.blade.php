@@ -52,14 +52,16 @@
             @endforeach
         </ul>
 
-        <div @class(['mt-4' => $itemsCount > 0, 'flex items-center gap-3'])>
-            @if ((! $maxItems || $itemsCount < $maxItems) || (! $isMultiple && $itemsCount === 1))
-                {{ $getAction('launchPanel') }}
-            @endif
+        @if (! $isInlineOwnerWorkspace())
+            <div @class(['mt-4' => $itemsCount > 0, 'flex items-center gap-3'])>
+                @if ((! $maxItems || $itemsCount < $maxItems) || (! $isMultiple && $itemsCount === 1))
+                    {{ $getAction('launchPanel') }}
+                @endif
 
-            @if ($itemsCount > 1)
-                {{ $getAction('removeAll') }}
-            @endif
-        </div>
+                @if ($itemsCount > 1)
+                    {{ $getAction('removeAll') }}
+                @endif
+            </div>
+        @endif
     </div>
 </x-dynamic-component>

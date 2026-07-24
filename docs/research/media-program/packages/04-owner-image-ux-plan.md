@@ -1,5 +1,10 @@
 # Package 4 Plan — Integrated Owner Image Workspace
 
+> Correction note, 2026-07-24: this plan remains the completed authority for
+> Package 4 detail, diagnostics, stale-write protection and the Resource-table
+> rider. Its picker-launch topology is superseded by
+> `04-owner-image-inline-picker-correction-plan.md`.
+
 ## Approval
 
 - Audit: `LS-20260724-PODTEXT-MEDIA-P4-POSTP3-OWNER-UX-01`

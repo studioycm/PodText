@@ -20,9 +20,11 @@ use Filament\Actions\Action;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Select;
 use Filament\Notifications\Notification;
+use Filament\Schemas\Components\Tabs;
+use Filament\Schemas\Components\Tabs\Tab;
+use Filament\Schemas\Components\View as SchemaView;
 use Filament\Support\Enums\Width;
 use Filament\Support\Icons\Heroicon;
-use Illuminate\Contracts\View\View;
 
 class ContentImageActions
 {
@@ -129,6 +131,13 @@ class ContentImageActions
 
             return $presentations[$key] ??= app(OwnerImagePresenter::class)->present($record, $role);
         };
+        $picker = MediaPickerField::make($field, $family)
+            ->label($label)
+            ->helperText(fn (ContentGroup|ContentItem $record): string => app(MediaAttachmentFormState::class)->diagnostic($record, $role) !== null
+                ? __('admin.helpers.unsafe_legacy_media_repair')
+                : $helper)
+            ->inlineOwnerWorkspace()
+            ->columnSpanFull();
 
         $action = Action::make($name)
             ->label($label)
@@ -137,11 +146,6 @@ class ContentImageActions
             ->modalDescription(__('admin.owner_image.description'))
             ->modalWidth(Width::FiveExtraLarge)
             ->modalSubmitActionLabel(__('admin.owner_image.actions.change_image'))
-            ->modalContent(function (ContentGroup|ContentItem $record) use ($presentationFor): View {
-                return view('filament.actions.current-content-image', [
-                    'presentation' => $presentationFor($record),
-                ]);
-            })
             ->fillForm(function (ContentGroup|ContentItem $record) use ($field, $presentationFor, $role): array {
                 $presentation = $presentationFor($record);
 
@@ -160,11 +164,32 @@ class ContentImageActions
                 Hidden::make('expected_legacy_path'),
                 Hidden::make('can_remove_direct'),
                 Hidden::make('can_import_external'),
-                MediaPickerField::make($field, $family)
-                    ->label($label)
-                    ->helperText(fn (ContentGroup|ContentItem $record): string => app(MediaAttachmentFormState::class)->diagnostic($record, $role) !== null
-                        ? __('admin.helpers.unsafe_legacy_media_repair')
-                        : $helper)
+                Tabs::make(__('admin.owner_image.heading'))
+                    ->tabs([
+                        Tab::make(__('admin.owner_image.tabs.replace'))
+                            ->icon(Heroicon::OutlinedPhoto)
+                            ->extraAttributes([
+                                'data-testid' => 'owner-image-tab-replace',
+                            ])
+                            ->schema([
+                                $picker,
+                                $picker->getInlineWorkspaceComponent(),
+                            ]),
+                        Tab::make(__('admin.owner_image.tabs.details'))
+                            ->icon(Heroicon::OutlinedInformationCircle)
+                            ->extraAttributes([
+                                'data-testid' => 'owner-image-tab-details',
+                            ])
+                            ->schema([
+                                SchemaView::make('filament.actions.current-content-image')
+                                    ->viewData(fn (ContentGroup|ContentItem $record): array => [
+                                        'presentation' => $presentationFor($record),
+                                    ]),
+                            ]),
+                    ])
+                    ->extraAttributes([
+                        'data-testid' => 'owner-image-workspace-tabs',
+                    ])
                     ->columnSpanFull(),
             ])
             ->extraModalFooterActions(fn (Action $action): array => self::ownerImageFooterActions($action))

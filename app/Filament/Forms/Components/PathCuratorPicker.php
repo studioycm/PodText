@@ -33,6 +33,8 @@ class PathCuratorPicker extends Field
 
     private bool $multiple = false;
 
+    private bool $inlineOwnerWorkspace = false;
+
     private ?int $maximumItems = null;
 
     private bool $dehydratesReferenceKey = false;
@@ -116,6 +118,18 @@ class PathCuratorPicker extends Field
     public function isMultiple(): bool
     {
         return $this->multiple;
+    }
+
+    public function inlineOwnerWorkspace(bool $condition = true): static
+    {
+        $this->inlineOwnerWorkspace = $condition;
+
+        return $this;
+    }
+
+    public function isInlineOwnerWorkspace(): bool
+    {
+        return $this->inlineOwnerWorkspace;
     }
 
     public function maxItems(int $items): static
@@ -388,6 +402,44 @@ class PathCuratorPicker extends Field
             ->action(fn (): null => null);
     }
 
+    public function getInlineWorkspaceComponent(): LivewireSchemaComponent
+    {
+        if (! $this->isInlineOwnerWorkspace()) {
+            throw new LogicException('The inline Media workspace requires inline owner mode.');
+        }
+
+        return LivewireSchemaComponent::make(
+            MediaPickerPanel::class,
+            fn (): array => [
+                ...$this->pickerComponentData(),
+                'isInlineOwnerWorkspace' => true,
+            ],
+        )
+            ->key(fn (): string => "inline-media-picker-workspace-{$this->getKey()}")
+            ->columnSpanFull()
+            ->extraAttributes(function (): array {
+                $componentKey = $this->getKey();
+                $insertHandler = <<<JS
+                    if (returningSelection) {
+                        return;
+                    }
+
+                    returningSelection = true;
+
+                    try {
+                        await \$wire.callSchemaComponentMethod('{$componentKey}', 'updateState', \$event.detail);
+                    } finally {
+                        returningSelection = false;
+                    }
+                    JS;
+
+                return [
+                    'x-data' => '{ returningSelection: false }',
+                    'x-on:insert-media.stop' => $insertHandler,
+                ];
+            });
+    }
+
     public function getPickerFocusTargetId(): string
     {
         return 'media-picker-open-'.substr(hash('sha256', (string) $this->getKey()), 0, 12);
@@ -399,7 +451,7 @@ class PathCuratorPicker extends Field
             ->label(__('admin.media_library.remove'))
             ->icon(Heroicon::MinusCircle)
             ->color('gray')
-            ->hidden(fn (PathCuratorPicker $component): bool => $component->isDisabled())
+            ->hidden(fn (PathCuratorPicker $component): bool => $component->isDisabled() || $component->isInlineOwnerWorkspace())
             ->action(function (array $arguments, PathCuratorPicker $component): void {
                 $component->authorizeDetachForState();
                 $component->state(null);
@@ -667,5 +719,20 @@ class PathCuratorPicker extends Field
         }
 
         return [];
+    }
+
+    /** @return array<string, mixed> */
+    private function pickerComponentData(): array
+    {
+        return [
+            'purpose' => $this->getUploadPurpose()->value,
+            'selectedIds' => collect($this->identityValues($this->getState()))
+                ->filter(fn (mixed $identity): bool => is_int($identity) || (is_string($identity) && ctype_digit($identity)))
+                ->map(fn (int|string $identity): int => (int) $identity)
+                ->values()
+                ->all(),
+            'isMultiple' => $this->isMultiple(),
+            'maxItems' => $this->getMaxItems(),
+        ];
     }
 }

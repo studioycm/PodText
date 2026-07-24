@@ -2,12 +2,13 @@
 
 ## Authority
 
-- Audit: `LS-20260724-PODTEXT-MEDIA-P4-POSTP3-OWNER-UX-01`
+- Audit: `LS-20260724-PODTEXT-MEDIA-OWNER-PICKER-CORRECTIONS-01`
 - Approved option:
-  `MEDIA-P4-POSTP3-O1-INTEGRATED-IMAGE-WORKSPACE`
+  `MEDIA-OWNER-CORR-O3-INLINE-PICKER-TABS`
 - Approval date: 2026-07-24
-- Scope: Package 4 owner-image UX and its separately estimated Resource-table
-  record-action rider only.
+- Scope: the bounded Package 4 owner-picker topology, acquisition-only owner
+  batch upload, standalone Media Library batch-upload visibility and exact
+  local database activation approved separately.
 
 This registry supersedes the 2026-07-22 trusted-canonical/hybrid-root program.
 Historical committed handoffs remain evidence of what existed; they do not
@@ -19,8 +20,10 @@ For every checkpoint: read the context helper, this registry, the current
 audit/approval, active package plan and Git diff. Separate committed behavior,
 unfinished draft behavior, dated environment evidence and current test proof.
 Use test-first implementation in isolated test databases and fake storage.
-Keep writers serial and do not execute real migrations, conversion or file
-mutation.
+Keep writers serial. Real migrations/conversion require separate backup-first
+environment approval; this correction used that approval only for the three
+named local migrations and database-only Curator conversion. File mutation and
+production remain prohibited.
 
 ## Controlling requirements
 
@@ -80,13 +83,17 @@ mutation.
 | `MI-R052` | Owner image detail identifies the real effective source: direct Media, compatibility Media, external URL, inherited podcast cover, configured family/global fallback, empty fallback, or fallback displayed because a direct association is broken. | Package 4 presenter source matrix. |
 | `MI-R053` | Canonical Media detail distinguishes original filename from stored basename and exposes useful existing metadata, safe preview/download and Media review without exposing a raw storage path. | Package 4 presenter/controller tests. |
 | `MI-R054` | List thumbnails stay compact; supplemental previews are lazy and bounded to 300 by 300 pixels. Thumbnail click/keyboard/touch opens detail without record navigation or per-row detail/storage queries. | Package 4 table/query/browser tests. |
-| `MI-R055` | Change Image reuses the completed four-source picker and its single outer-owner/schema-child modal topology. Gallery remains mutation-free, completed acquisition remains permanent, and cancel remains an attachment no-op. | Package 4 action and browser regressions. |
+| `MI-R055` | Change Image reuses the completed four-source picker inside one outer owner action. Gallery remains mutation-free, completed acquisition remains permanent, and cancel remains an attachment no-op. | Package 4 action and browser regressions. |
 | `MI-R056` | Normal replace and Remove Direct Image / Use Automatic Image recheck the mount-time owner identity under row locks. Stale actions fail closed; unrelated saves never silently clear broken evidence. | Package 4 stale-write and owner-save tests. |
 | `MI-R057` | A broken direct association shows the effective fallback separately from a plain warning and offers bounded replace, detach and Media review choices while preserving D01 and diagnostic visibility. | Package 4 broken-state matrix. |
 | `MI-R058` | Package 4 labels, metadata, warnings, actions and copy feedback are translated in Hebrew and English; Hebrew-first RTL, narrow screens and day-first Jerusalem timestamps are preserved. | translation and browser tests. |
 | `MI-R059` | Package 4 adds no relational/settings migration, dependency, provider, storage scan, file mutation, byte fingerprint, filesystem journal or Package 5 lifecycle behavior. | source/diff/lockfile sweep. |
 | `MI-R060` | Exactly 43 ungrouped record actions across 12 Filament Resource/RelationManager tables become icon-only through a bounded local configurator while retaining the translated accessible label as tooltip and accessible name. Every action has a semantic Heroicon. | Package 4 rider inventory tests. |
 | `MI-R061` | The Settings Backups ActionGroup stays grouped with visible labels, and header/toolbar/bulk/empty-state/page-header/form/modal-footer actions plus custom Page tables remain outside the rider. | Package 4 rider exclusion tests. |
+| `MI-R062` | The owner action uses one modal/slide-over with first/default Replace Image and second Details and Effective Image schema tabs. The complete schema-owned Gallery/Upload/URL/Storage picker is inline in the first tab; no second picker modal, picker form wrapper or duplicate action-modal owner is introduced. | Package 4 correction schema and browser tests. |
+| `MI-R063` | Owner attachment cardinality remains one. One successful inline upload may become the pending owner choice; a multi-file upload permanently admits every successful image, selects no arbitrary owner image and requires the operator to choose exactly one. Partial successes remain permanent and cancellation removes none. | Package 4 correction acquisition and cancel tests. |
+| `MI-R064` | The standalone Media Library exposes its existing bounded batch admission through an explicit translated Upload Images action and one-or-many field/help copy without adding another uploader. | Package 4 correction Resource tests. |
+| `MI-R065` | Storage remains lazy, bounded to configured roots and opaque server identities, with explicit unconfigured/empty/search-empty/failure/candidate states. Broader directory discovery and physical browsing remain Package 5. | Package 3 Storage and Package 4 correction browser regressions. |
 
 ## Rejected requirements
 
@@ -101,9 +108,11 @@ manifest/digest/schema-hash authorization.
 
 ## Package boundary
 
-Packages 1-4 and the post-Package-3 picker correction are complete locally and
-hash-stamped. Package 4 is implemented as
-`52875222916558542cfde19f8a1987b78e72c121`. This approval ended after Package
-4 and its bounded Resource-table record-action rider. Package 5,
-dependency/toolchain changes, live data actions, production actions and push
-remain separately gated.
+Packages 1-4 and the post-Package-3 picker correction are complete and
+hash-stamped. The Package 4 inline-picker correction is complete locally under
+`LS-20260724-PODTEXT-MEDIA-OWNER-PICKER-CORRECTIONS-01` /
+`MEDIA-OWNER-CORR-O3-INLINE-PICKER-TABS`; its implementation hash is stamped in
+its handoff. The original Package 4 detail, stale-write, diagnostics and
+43-action rider contracts remain unchanged. Package 5, broader Storage
+discovery, dependency/toolchain changes, further local data actions,
+production actions and push remain separately gated.

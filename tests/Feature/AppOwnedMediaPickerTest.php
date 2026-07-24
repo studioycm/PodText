@@ -149,9 +149,22 @@ it('bounds picker uploads and concurrent transfers', function (): void {
     ]);
     $multipleUpload = collect($multiple->instance()->getSchema('form')->getFlatComponents(withHidden: true))
         ->first(fn (mixed $field): bool => $field instanceof FileUpload && $field->getName() === 'uploads');
+    $inlineSelection = Media::factory()->create();
+    $inline = pickerPanel([
+        'selectedIds' => [$inlineSelection->getKey()],
+        'isInlineOwnerWorkspace' => true,
+    ])
+        ->assertSee(__('admin.media_library.inline_batch_help'))
+        ->assertSee(__('admin.media_library.upload_one_or_multiple'))
+        ->assertDontSee('data-testid="media-picker-close"', false)
+        ->assertDontSee(__('admin.media_library.delete_selected'))
+        ->assertActionHidden(TestAction::make('destroySelected'));
+    $inlineUpload = collect($inline->instance()->getSchema('form')->getFlatComponents(withHidden: true))
+        ->first(fn (mixed $field): bool => $field instanceof FileUpload && $field->getName() === 'uploads');
 
     assert($singleUpload instanceof FileUpload);
     assert($multipleUpload instanceof FileUpload);
+    assert($inlineUpload instanceof FileUpload);
 
     expect($singleUpload)->toBeInstanceOf(FileUpload::class)
         ->and($singleUpload->isMultiple())->toBeFalse()
@@ -160,7 +173,10 @@ it('bounds picker uploads and concurrent transfers', function (): void {
         ->and($multipleUpload)->toBeInstanceOf(FileUpload::class)
         ->and($multipleUpload->isMultiple())->toBeTrue()
         ->and($multipleUpload->getMaxFiles())->toBe(10)
-        ->and($multipleUpload->getMaxParallelUploads())->toBe(2);
+        ->and($multipleUpload->getMaxParallelUploads())->toBe(2)
+        ->and($inlineUpload->isMultiple())->toBeTrue()
+        ->and($inlineUpload->getMaxFiles())->toBe(10)
+        ->and($inlineUpload->getMaxParallelUploads())->toBe(2);
 });
 
 it('uses bounded Admin UX batch browse and search settings for new picker work', function (): void {
@@ -250,6 +266,8 @@ it('locks source and Storage-load authority against direct Livewire tampering', 
     expect(fn () => pickerPanel()->set('storageLoaded', true))
         ->toThrow(CannotUpdateLockedPropertyException::class);
     expect(fn () => pickerPanel()->set('storageConfigured', false))
+        ->toThrow(CannotUpdateLockedPropertyException::class);
+    expect(fn () => pickerPanel()->set('isInlineOwnerWorkspace', true))
         ->toThrow(CannotUpdateLockedPropertyException::class);
 });
 
@@ -694,6 +712,98 @@ it('rejects forged multi-file state in a single picker before permanent admissio
         ->and(MediaAsset::query()->count())->toBe(0)
         ->and(MediaProviderBinding::query()->count())->toBe(0)
         ->and(Storage::disk('public')->allFiles())->toBe([]);
+});
+
+it('admits an inline owner upload batch without choosing an arbitrary owner image', function (): void {
+    $this->actingAs(User::factory()->admin()->create());
+
+    $component = pickerPanel([
+        'isInlineOwnerWorkspace' => true,
+    ])
+        ->fillForm([
+            'uploads' => [
+                pickerMediaFixture('valid.jpg'),
+                pickerMediaFixture('valid.png'),
+            ],
+        ])
+        ->callAction(TestAction::make('uploadFiles'))
+        ->assertHasNoFormErrors()
+        ->assertNotDispatched('insert-media')
+        ->assertNotified(
+            Notification::make()
+                ->success()
+                ->title(__('admin.media_library.uploaded'))
+                ->body(__('admin.media_library.acquisition_batch_created', [
+                    'count' => 2,
+                ])),
+        );
+
+    expect($component->get('selectedIds'))->toBe([])
+        ->and(Media::query()->count())->toBe(2)
+        ->and(MediaAsset::query()->count())->toBe(2)
+        ->and(MediaProviderBinding::query()->count())->toBe(2);
+
+    foreach (Media::query()->get() as $media) {
+        Storage::disk('public')->assertExists($media->path);
+    }
+});
+
+it('keeps successful inline owner batch acquisitions permanent after a partial failure', function (): void {
+    $this->actingAs(User::factory()->admin()->create());
+    $bindingAttempts = 0;
+
+    Event::listen('eloquent.creating: '.MediaProviderBinding::class, function () use (&$bindingAttempts): void {
+        $bindingAttempts++;
+
+        if ($bindingAttempts === 2) {
+            throw new RuntimeException('second binding failed');
+        }
+    });
+
+    $component = pickerPanel([
+        'isInlineOwnerWorkspace' => true,
+    ])
+        ->fillForm([
+            'uploads' => [
+                pickerMediaFixture('valid.jpg'),
+                pickerMediaFixture('valid.png'),
+            ],
+        ])
+        ->callAction(TestAction::make('uploadFiles'))
+        ->assertHasNoFormErrors()
+        ->assertNotDispatched('insert-media')
+        ->assertNotified(
+            Notification::make()
+                ->warning()
+                ->title(__('admin.media_library.upload_partial_title'))
+                ->body(__('admin.media_library.acquisition_batch_partial', [
+                    'added' => 1,
+                    'not_added' => 1,
+                ])),
+        );
+
+    $media = Media::query()->sole();
+
+    expect($component->get('selectedIds'))->toBe([])
+        ->and(MediaAsset::query()->count())->toBe(1)
+        ->and(MediaProviderBinding::query()->count())->toBe(1);
+    Storage::disk('public')->assertExists($media->path);
+});
+
+it('keeps one inline owner upload selected as pending outer action state', function (): void {
+    $this->actingAs(User::factory()->admin()->create());
+
+    $component = pickerPanel([
+        'isInlineOwnerWorkspace' => true,
+    ])
+        ->fillForm([
+            'uploads' => [pickerMediaFixture('valid.jpg')],
+        ])
+        ->callAction(TestAction::make('uploadFiles'))
+        ->assertHasNoFormErrors()
+        ->assertDispatched('insert-media');
+
+    expect($component->get('selectedIds'))->toBe([Media::query()->sole()->getKey()]);
 });
 
 it('selects and reports permanent successes when a later picker batch admission fails', function (): void {

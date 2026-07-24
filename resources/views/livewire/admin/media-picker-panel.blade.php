@@ -1,6 +1,10 @@
 <div
     data-testid="media-picker"
-    class="flex h-full min-h-[70vh] flex-col"
+    @class([
+        'flex h-full flex-col',
+        'min-h-[60vh]' => $isInlineOwnerWorkspace,
+        'min-h-[70vh]' => ! $isInlineOwnerWorkspace,
+    ])
     x-data="{ uploading: false, uploadFocusId: null }"
     x-on:livewire-upload-start="
         const active = document.activeElement;
@@ -134,15 +138,17 @@
                     />
                 </x-filament::input.wrapper>
             </div>
-            <x-filament::icon-button
-                data-testid="media-picker-close"
-                x-on:click="$dispatch('close-media-picker')"
-                x-bind:aria-disabled="(uploading || returningSelection) ? 'true' : null"
-                x-bind:disabled="uploading || returningSelection"
-                icon="heroicon-o-x-mark"
-                color="gray"
-                :label="__('admin.actions.close')"
-            />
+            @if (! $isInlineOwnerWorkspace)
+                <x-filament::icon-button
+                    data-testid="media-picker-close"
+                    x-on:click="$dispatch('close-media-picker')"
+                    x-bind:aria-disabled="(uploading || returningSelection) ? 'true' : null"
+                    x-bind:disabled="uploading || returningSelection"
+                    icon="heroicon-o-x-mark"
+                    color="gray"
+                    :label="__('admin.actions.close')"
+                />
+            @endif
         </div>
     </div>
 
@@ -283,7 +289,9 @@
 
         <aside class="overflow-auto border-t border-gray-200 p-4 dark:border-gray-800 lg:border-s lg:border-t-0">
             <p class="mb-4 rounded-md bg-primary-50 p-3 text-xs text-primary-800 dark:bg-primary-950 dark:text-primary-200">
-                {{ __('admin.media_library.acquisition_permanence') }}
+                {{ __($isInlineOwnerWorkspace
+                    ? 'admin.media_library.acquisition_permanence_inline'
+                    : 'admin.media_library.acquisition_permanence') }}
             </p>
 
             <x-filament::tabs
@@ -459,16 +467,18 @@
         wire:loading.attr="inert"
         wire:offline.attr="inert"
     >
-        <x-filament::button
-            color="gray"
-            wire:click="clearSelection"
-            x-bind:disabled="uploading"
-            wire:loading.attr="disabled"
-            wire:offline.attr="disabled"
-        >
-            {{ __('admin.media_library.clear_selection') }}
-        </x-filament::button>
-        {{ $this->destroySelectedAction }}
+        @if (! $isInlineOwnerWorkspace)
+            <x-filament::button
+                color="gray"
+                wire:click="clearSelection"
+                x-bind:disabled="uploading"
+                wire:loading.attr="disabled"
+                wire:offline.attr="disabled"
+            >
+                {{ __('admin.media_library.clear_selection') }}
+            </x-filament::button>
+            {{ $this->destroySelectedAction }}
+        @endif
         {{ $this->insertMediaAction }}
     </div>
 

@@ -26,7 +26,8 @@ class MediaForm
                         ->live()
                         ->required(),
                     FileUpload::make('uploads')
-                        ->label(__('admin.fields.media_files'))
+                        ->label(__('admin.media_library.batch_files'))
+                        ->helperText(__('admin.media_library.batch_files_help'))
                         ->acceptedFileTypes(function (Get $get): array {
                             $purpose = ImageUploadPurpose::tryFrom((string) $get('purpose'));
 

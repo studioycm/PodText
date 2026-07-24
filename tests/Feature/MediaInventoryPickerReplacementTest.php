@@ -252,7 +252,8 @@ it('keeps Add or Replace Image visible on podcast and episode list and edit page
         ->mountAction(TestAction::make('chooseContentGroupCover')->table($group))
         ->assertSet('mountedActions.0.data.cover_media_reference_key', $cover->getKey())
         ->assertMountedActionModalSee('Current podcast cover')
-        ->assertMountedActionModalSee(__('admin.actions.pick_media'))
+        ->assertMountedActionModalSee(__('admin.owner_image.tabs.replace'))
+        ->assertMountedActionModalSee(__('admin.media_library.gallery_source'))
         ->set('mountedActions.0.data.cover_media_reference_key', $replacement->reference_key)
         ->unmountAction();
 

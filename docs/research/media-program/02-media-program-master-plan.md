@@ -16,8 +16,12 @@ Package 4 is complete locally under audit
 `LS-20260724-PODTEXT-MEDIA-P4-POSTP3-OWNER-UX-01`, approved option
 `MEDIA-P4-POSTP3-O1-INTEGRATED-IMAGE-WORKSPACE`; its handoff is
 `../../phase-02/media-program-p4-owner-image-ux-handoff.md` and its
-implementation is `52875222916558542cfde19f8a1987b78e72c121`. Package 5
-remains a route forecast requiring fresh Simplifier approval.
+implementation is `52875222916558542cfde19f8a1987b78e72c121`. Its owner-picker
+topology correction is complete locally under audit
+`LS-20260724-PODTEXT-MEDIA-OWNER-PICKER-CORRECTIONS-01`, approved option
+`MEDIA-OWNER-CORR-O3-INLINE-PICKER-TABS`; its handoff is
+`../../phase-02/media-program-p4-inline-picker-correction-handoff.md`.
+Package 5 remains a route forecast requiring fresh Simplifier approval.
 
 ## Package 1 — minimal kernel and database conversion
 
@@ -144,6 +148,34 @@ Package 4 is complete locally. It preserves the post-Package-3 picker and
 attachment contracts, adds the integrated six-surface owner-image workspace,
 and completes the bounded 43-action Resource-table rider.
 
+## Package 4 owner-picker correction
+
+Outcome: the complete four-source picker is visible directly in the
+first/default Replace Image tab of the existing owner action, with Details and
+Effective Image second and no additional picker modal.
+
+Tasks:
+
+1. Activate only the already-committed Package 3 settings and Media Asset
+   migrations under separate backup-first local approval, then settle the
+   database-only Curator conversion.
+2. Test-first move the existing schema-owned `MediaPickerPanel` inline while
+   preserving the trusted field bridge, stale owner evidence, one outer action
+   owner and all six Package 4 surfaces.
+3. Test-first allow bounded acquisition-only owner multi-upload: admit all
+   successes permanently, choose no arbitrary owner image and require one
+   explicit gallery choice.
+4. Make the existing standalone Media Resource batch admission explicit
+   without adding another uploader.
+5. Close with localization, Storage-state, busy/offline, focus, RTL/LTR,
+   narrow-screen and cancellation regressions, ordered gates, handoff,
+   implementation commit and immediate hash stamp.
+
+The correction adds no migration or dependency of its own. Storage continues
+to browse only configured bounded roots and broader discovery remains Package
+5. The original Package 4 source detail, diagnostics, safe delivery,
+stale-write protection and Resource-table rider remain unchanged.
+
 ## Package 5 — files and physical lifecycle
 
 Outcome: managed rowless files appear in Files Discovery; explicit import,
@@ -160,5 +192,5 @@ immediately by a docs-only handoff/ledger hash stamp. No push occurs.
 ## Program exclusions
 
 No Package 4 dependency/toolchain change, one-shot five-package
-implementation, dedicated security-audit phase, local/production live action,
-compatibility-field removal or parallel repository writers.
+implementation, dedicated security-audit phase, unapproved local/production
+live action, compatibility-field removal or parallel repository writers.

@@ -14,11 +14,13 @@ use App\Models\MediaProviderBinding;
 use App\Models\User;
 use Awcodes\Curator\Config\CurationManager;
 use Awcodes\Curator\Facades\Curator;
+use Filament\Actions\Action;
 use Filament\Actions\Testing\TestAction;
 use Filament\Facades\Filament;
 use Filament\Forms\Components\FileUpload;
 use Filament\Notifications\Notification;
 use Filament\Schemas\Concerns\RestrictsFileUploadsToSchemaComponents;
+use Filament\Support\Icons\Heroicon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Event;
@@ -146,19 +148,26 @@ it('bounds resource pagination uploads and concurrent transfers', function (): v
     $this->actingAs(User::factory()->admin()->create());
     Media::factory()->count(26)->create();
 
-    $list = Livewire::test(ListMedia::class)->assertOk();
+    $list = Livewire::test(ListMedia::class)
+        ->assertOk()
+        ->assertActionExists('create', function (Action $action): bool {
+            return $action->getLabel() === __('admin.media_library.upload_multiple')
+                && $action->getIcon() === Heroicon::ArrowUpTray;
+        });
 
     expect($list->instance()->getTableRecords())->toHaveCount(25)
         ->and($list->instance()->getTable()->getDefaultPaginationPageOption())->toBe(25)
         ->and($list->instance()->getTable()->getPaginationPageOptions())->toBe([25]);
 
-    $create = Livewire::test(CreateMedia::class);
+    $create = Livewire::test(CreateMedia::class)
+        ->assertSee(__('admin.media_library.batch_files_help'));
     $upload = collect($create->instance()->getSchema('form')->getFlatComponents(withHidden: true))
         ->first(fn (mixed $component): bool => $component instanceof FileUpload && $component->getName() === 'uploads');
 
     assert($upload instanceof FileUpload);
 
     expect($upload)->toBeInstanceOf(FileUpload::class)
+        ->and($upload->getLabel())->toBe(__('admin.media_library.batch_files'))
         ->and($upload->getMaxFiles())->toBe(10)
         ->and($upload->getMaxParallelUploads())->toBe(2);
 

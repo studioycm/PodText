@@ -6,6 +6,21 @@ Recorded after the Markdown-only post-Prompt-10 prompt-progress centralization c
 
 ## Git State
 
+- The Package 4 owner-picker correction is complete locally under audit
+  `LS-20260724-PODTEXT-MEDIA-OWNER-PICKER-CORRECTIONS-01`, approved option
+  `MEDIA-OWNER-CORR-O3-INLINE-PICKER-TABS`. It started from clean `main` at
+  `75249da2c6de7dcdc82cd938d2a722449d87aa47`, 25 commits ahead of
+  `origin/main`. The complete Gallery/Upload/URL/Storage picker now appears in
+  the first/default Replace Image tab, Details and Effective Image is second,
+  owner batch upload admits every success without choosing an arbitrary owner
+  image, and standalone Media batch upload is explicit. No dependency,
+  Package 5, broader Storage discovery, production or push action occurred.
+- Under separate exact backup-first local-database approval, this run applied
+  the already-committed Package 3 settings migration and two Media Asset
+  relational migrations to local MySQL database `podtext`, then ran Curator
+  conversion report/apply/report. The settled state is 15 bound rows, zero
+  unbound rows and zero diagnostics. No media file or production state was
+  touched.
 - Media Program Package 4 is complete locally under audit
   `LS-20260724-PODTEXT-MEDIA-P4-POSTP3-OWNER-UX-01`, approved option
   `MEDIA-P4-POSTP3-O1-INTEGRATED-IMAGE-WORKSPACE`. Its implementation is
@@ -67,10 +82,13 @@ Recorded after the Markdown-only post-Prompt-10 prompt-progress centralization c
   `2a6de67816b9a7c8e53bcd29795a5b306a36dbaf`. Package 3 adds the shared
   immediate Upload/URL/Storage admission boundary, atomic asset/binding
   creation, four-source picker, bounded settings and Spotify URL convergence.
-  Package 4 is complete locally under its fresh approval; Package 5 remains
-  separately gated and no real local or production action is authorized.
-- The latest dated operator evidence says the 15 local Curator rows now have
-  valid unique keys; this task has not performed a fresh live probe.
+  Package 4 and its inline owner-picker correction are complete locally under
+  their exact approvals; Package 5 remains separately gated. The only local
+  environment action was the separately approved backup-first database
+  activation recorded above; no further local or production action is
+  authorized.
+- Fresh local conversion evidence now records all 15 Curator rows bound to
+  MediaAssets with zero diagnostics. Production was not probed or changed.
 - Latest docs cleanup commit recorded here: `1cb158a docs: centralize prompt progress and ai development lessons`.
 - Latest local `HEAD` before Prompt 10 implementation: `014c6b0 docs: update phase two prompt state, completion details for Prompts 08 and 09, and readiness notes for Prompt 10`.
 - Admin management UX repair commit is present in history: `16ab33a fix: repair admin management ux after phase two resources`.
@@ -454,6 +472,7 @@ Recorded after the Markdown-only post-Prompt-10 prompt-progress centralization c
 | PODTEXT MEDIA ASSET PROGRAM - Package 3 acquisition picker | Complete locally | `656a7c2ed1b64b3f6fd8392bff88f7cca36d2695`; audit `LS-20260723-PODTEXT-MEDIA-P3-ACQUISITION-PICKER-01`; option `MEDIA-P3-O1-IMMEDIATE-SHARED-ADMISSION`; `docs/phase-02/media-program-p3-acquisition-picker-handoff.md` | Adds one shared immediate Upload/URL/Storage admission path, atomic Curator/asset/provider binding creation, preserved raster bytes, all-purpose sanitized SVG, original-filename/naming settings, opaque bounded Storage candidates, four-source bilingual picker and Spotify URL convergence. Focused matrix passed 218 tests / 1,631 assertions; final serial suite passed outside the macOS browser sandbox: 1,037 / 13,633. No dependency, relational schema, live data, Package 4 or Package 5 action. |
 | PODTEXT MEDIA ASSET PROGRAM - post-Package-3 acquisition picker UX | Complete locally | Audit `LS-20260723-PODTEXT-MEDIA-P3-POST-ACQUISITION-UX-01`; option `MEDIA-P3-POST-O3-IMMEDIATE-SOURCE-WORKSPACE`; `docs/research/media-program/packages/03-post-acquisition-picker-ux-plan.md`; `docs/phase-02/media-program-p3-post-acquisition-picker-ux-handoff.md` | Completes all five sequential mini-tasks: active-doc closure; single/batch/Storage correctness; total URL deadline and safe categories; immediate source workspace with direct single choice and busy/offline truth; accessibility, nested/offline lifecycle browser proof and canonical closeout. Focused proof reached 86 tests / 1,112 assertions and the complete picker browser file reached 7 / 139. The first complete ordered gate passed Pint, FilaCheck, Vite and the full 1,080 / 14,165 suite outside the macOS browser sandbox. Immediate permanence and pending owner attachment remain fixed. No Package 4/5, migration, live-data, production or push action. The operator explicitly amended only the dependency exclusion for Filament 5.7.1 to 5.7.3; no manifest, npm or unrelated dependency changed. |
 | PODTEXT MEDIA ASSET PROGRAM - Package 4 owner image UX | Complete locally | `52875222916558542cfde19f8a1987b78e72c121`; audit `LS-20260724-PODTEXT-MEDIA-P4-POSTP3-OWNER-UX-01`; option `MEDIA-P4-POSTP3-O1-INTEGRATED-IMAGE-WORKSPACE`; `docs/phase-02/media-program-p4-owner-image-ux-handoff.md` | One lazy effective-source/metadata presenter; stale-safe normal replace/remove; one integrated action across six owner surfaces; bounded table preview/detail; safe copy/download/review; broken-association repair/default UX; the independently estimated 43-action Resource-table rider; HE/EN, RTL/narrow/browser and performance proof. Complete ordered gate passed Pint, FilaCheck, Vite and 1,127 tests / 14,725 assertions outside the macOS browser sandbox. No schema, dependency, file lifecycle, live-data, production or push action. |
+| PODTEXT MEDIA ASSET PROGRAM - Package 4 inline owner picker correction | Complete locally | Audit `LS-20260724-PODTEXT-MEDIA-OWNER-PICKER-CORRECTIONS-01`; option `MEDIA-OWNER-CORR-O3-INLINE-PICKER-TABS`; `docs/phase-02/media-program-p4-inline-picker-correction-handoff.md` | Replaces the extra picker modal with one schema-owned inline Gallery/Upload/URL/Storage workspace in the first/default Replace Image tab and keeps Details/Effective Image second. Adds bounded acquisition-only owner multi-upload, explicit standalone Media batch upload, and regression proof for Storage, cancellation, busy/offline, focus, touch, RTL/LTR and narrow screens. Focused proof: 105 / 1,517; combined browser proof: 8 / 212; full suite: 1,131 / 14,797. The separately approved local database activation settled 15/15 Media rows with zero diagnostics. No new migration/dependency, Package 5, broader Storage discovery, media-file mutation, production or push action. |
 | DEP-UPGRADE-O1 - Bounded full dependency refresh | Complete locally | `4d2a063954975fa07dde43f6113a97c671fc5724`; `docs/phase-02/dependency-refresh-handoff.md`; `docs/research/dependency-refresh/` | Refreshes Composer and npm lock graphs within unchanged manifest constraints; moves Laravel to 13.21.1, Filament and its Spatie plugins to 5.7.1, Horizon to 5.48.1, Pest to 4.7.5, Boost to 2.4.13, Tailwind to 4.3.3, Vite to 8.1.5, and Laravel Vite plugin to 3.1.3. Preserves Livewire 4.3.3 and Curator 5.1.2, corrects one Filament action API call and one tooltip-first Escape browser expectation, and records 18 byte-attributable tracked Filament asset changes. No manifest, schema, migration, production, worker, or local-development database change. |
 | DEP-REFRESH-WEBHOOK-O1 - Resend wrapper, safe delivery logging, and Fontaine | Complete locally | `c9d064aa9b3921b5b99f83859f305b2fc8332cc9`; audit `LS-20260724-PODTEXT-DEPENDENCY-RESEND-WEBHOOK-02`; option `DEP-REFRESH-WEBHOOK-O1-BUILTIN-SAFE-LOGGING`; `docs/phase-02/dependency-resend-webhook-fontaine-handoff.md` | Replaces the direct SDK with the official wrapper while retaining the SDK transitively; completes bounded lock refreshes, Fontaine 0.8.0 installation and Boost discovery; keeps one built-in webhook controller behind missing-secret and signature guards; synchronously logs an exact four-field allowlist for seven delivery events. Focused proof: 27 tests / 88 assertions. Canonical Pint/FilaCheck/Vite gates and the full 1,107-test / 14,253-assertion suite passed. No migration, persistence/admin page, raw payload, engagement/inbound/contact/domain handling, live call, production, Package 4/5 or push action. |
 | SETTINGS-METRICS-O1 Mini-task 1 - Runtime retirement | Complete | `3e5c411777994c431417dfd823576286d12d5c29`; `docs/phase-02/settings-development-metrics-retirement-mini1-handoff.md`; research/plans 41-42 | Removed the temporary settings profiler, middleware, runtime fixtures, flags/headers, counters, config/logging, and browser harness. Functional settings/Card Template/Curator behavior and Filament 5.7.1 remain preserved; Mini-task 2 completes the separately audited test-only retirement. |

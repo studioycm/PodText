@@ -1,5 +1,12 @@
 # Media Program Package 4 Owner Image UX Handoff
 
+> Post-handoff correction, 2026-07-24: effective-source detail, diagnostics,
+> stale-write protection, safe delivery and the 43-action rider remain
+> authoritative. The owner picker-launch topology is superseded by
+> `media-program-p4-inline-picker-correction-handoff.md` under audit
+> `LS-20260724-PODTEXT-MEDIA-OWNER-PICKER-CORRECTIONS-01`, option
+> `MEDIA-OWNER-CORR-O3-INLINE-PICKER-TABS`.
+
 ## Scope and baseline
 
 - Audit: `LS-20260724-PODTEXT-MEDIA-P4-POSTP3-OWNER-UX-01`

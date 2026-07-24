@@ -7,22 +7,24 @@ not current authority.
 
 ## Controlling approval
 
-- Audit: `LS-20260724-PODTEXT-MEDIA-P4-POSTP3-OWNER-UX-01`
+- Audit: `LS-20260724-PODTEXT-MEDIA-OWNER-PICKER-CORRECTIONS-01`
 - Approved option:
-  `MEDIA-P4-POSTP3-O1-INTEGRATED-IMAGE-WORKSPACE`
-- Approved scope: Package 4's integrated podcast/episode owner-image workspace
-  and the separately estimated 43-action Resource-table rider.
-- Package 4 is complete locally. Its controlling research, plan and handoff are
-  `docs/research/media-program/packages/04-owner-image-ux-research.md` and
-  `docs/research/media-program/packages/04-owner-image-ux-plan.md`, and
-  `docs/phase-02/media-program-p4-owner-image-ux-handoff.md`.
-- Packages 1-4 and the post-Package-3 correction are complete locally.
-  All four packages and the correction are hash-stamped. Their audits,
-  options and handoffs remain historical implementation authority. Package 4
-  is implemented as `52875222916558542cfde19f8a1987b78e72c121`. Package 5
-  remains separately gated.
+  `MEDIA-OWNER-CORR-O3-INLINE-PICKER-TABS`
+- Approved scope: correct Package 4's owner action to show the complete
+  Gallery/Upload/URL/Storage picker in the first/default Replace Image tab,
+  show Details and Effective Image second, support acquisition-only owner
+  batch upload and expose standalone Media Library batch upload clearly.
+- Package 4's original implementation and 43-action Resource-table rider
+  remain authoritative except where the correction changes picker topology.
+  The correction research, plan and handoff are
+  `docs/research/media-program/packages/04-owner-image-inline-picker-correction-research.md`,
+  `docs/research/media-program/packages/04-owner-image-inline-picker-correction-plan.md`
+  and
+  `docs/phase-02/media-program-p4-inline-picker-correction-handoff.md`.
+- Packages 1-4, the post-Package-3 correction and the Package 4 picker
+  correction are complete locally. Package 5 remains separately gated.
 - Starting baseline: clean `main` at
-  `abd5e11b1e8db6cedd8e673a246711698fde3c5f`, 23 commits ahead of
+  `75249da2c6de7dcdc82cd938d2a722449d87aa47`, 25 commits ahead of
   `origin/main`.
 - No prompt under `prompts/pre-13-prompts/` is active.
 
@@ -73,6 +75,11 @@ The reused picker's explicit Upload command is an immediate library write.
 Package 3 deliberately extends that permanence to URL and Storage: a successful
 acquisition remains in the library if the picker or outer owner form is
 cancelled. Gallery selection remains pending and mutation-free until owner save.
+The corrected owner action contains one schema-owned picker directly in its
+first/default tab; it opens no second picker modal. One uploaded image becomes
+the pending owner choice. A multi-file upload permanently admits every
+successful image but chooses no owner image automatically; the operator must
+choose exactly one from the gallery.
 
 ## Boundary-specific validation
 
@@ -104,26 +111,32 @@ Post-Package-3 correction: immediate acquisition correctness and
 source-workspace UX — complete locally.
 
 4. Podcast/episode image hover, detail, download, copy, change and association
-   repair/default UX — active under the controlling approval.
+   repair/default UX — complete locally.
+Package 4 picker correction: inline Replace Image first, Details and Effective
+Image second, acquisition-only owner batch upload and explicit standalone Media
+batch upload — complete locally.
 5. Files Discovery and physical lifecycle; journals apply only to real file
    mutations.
 
 ## Baselines
 
-- Package 4 starting baseline: clean `main` at
-  `abd5e11b1e8db6cedd8e673a246711698fde3c5f`, 23 commits ahead of
+- Package 4 correction starting baseline: clean `main` at
+  `75249da2c6de7dcdc82cd938d2a722449d87aa47`, 25 commits ahead of
   `origin/main`.
 - At Stage 1: 79 modified tracked files and 54 default-status untracked entries
   formed the unfinished overbuilt Package 1 draft. Exact cleanup enumeration
   resolved 55 files because `tests/Support/` had been collapsed to one entry.
-- Local data: the latest dated operator evidence says all 15 Curator rows have
-  valid unique keys. This task does not claim a fresh live check.
+- Local data: under separate exact backup-first approval, the committed
+  Package 3 settings migration and two Media Asset relational migrations were
+  applied to local MySQL database `podtext`. The report/apply/report conversion
+  settled at 15 bound Media rows, zero unbound rows and zero diagnostics.
+  Production was not touched.
 - Production: the latest dated snapshot remains pre-G1 with 403 Curator rows,
   108 matched covers, three SVGs, five rowless managed files, one oversized
   raster and two duplicate-byte pairs.
-- Package 4 uses test databases and fake storage only. It does not execute
-  migrations, acquisition, conversion or media operations against local
-  development or production.
+- Package 4 correction tests use isolated databases and fake storage only.
+  The separate local database activation performed database-only migration and
+  conversion work; it did not mutate media files or authorize production.
 
 ## Drift checkpoint
 
@@ -140,7 +153,8 @@ before proceeding.
 
 - No dependency, manifest, lockfile, npm/toolchain or Boost-discovery change.
 - No dedicated security audit or new security architecture.
-- No real local or production DB/storage/cache action.
+- No further local database/storage/cache action. The separately approved
+  local database activation is complete; production remains untouched.
 - No production action without a separate exact approval.
 - No raster normalization, checksum proof, file relocation, quarantine,
   conversion manifest/digest/schema hash or new conversion journal.

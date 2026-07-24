@@ -603,7 +603,7 @@ it('guards close while the parent accepts a returned selection', function (): vo
     $page->assertNoJavaScriptErrors();
 });
 
-it('closes locally while truly offline and reconciles the action on reconnect', function (bool $nested): void {
+it('closes a field picker locally while truly offline and reconciles the action on reconnect', function (): void {
     app()->setLocale('he');
     $group = ContentGroup::factory()->create([
         'title' => 'Offline media picker close',
@@ -611,7 +611,7 @@ it('closes locally while truly offline and reconciles the action on reconnect', 
     $page = visit(ContentGroupResource::getUrl('edit', ['record' => $group]))
         ->resize(1280, 900);
 
-    $openPicker = str_replace('__NESTED__', $nested ? 'true' : 'false', <<<'JS'
+    $openPicker = <<<'JS'
         async () => {
             const waitFor = async (callback, timeout = 7000) => {
                 const started = performance.now();
@@ -628,24 +628,11 @@ it('closes locally while truly offline and reconciles the action on reconnect', 
 
                 throw new Error('Timed out while opening the offline media picker.');
             };
-            const triggerFor = (actionName) => Array.from(document.querySelectorAll('button, a'))
-                .find((element) => Array.from(element.attributes)
-                    .some((attribute) => attribute.value.includes(actionName)));
             const visibleOpener = () => Array.from(document.querySelectorAll(
                 '[data-testid="media-picker-open"]',
             )).find((element) => (element.offsetParent !== null) && ! element.closest('[inert]'));
             const started = performance.now();
-            let opener;
-
-            if (__NESTED__) {
-                triggerFor('chooseContentGroupCover')?.click();
-                const outer = await waitFor(() => Array.from(document.querySelectorAll(
-                    '[aria-modal="true"].fi-modal-open',
-                )).find((dialog) => dialog.querySelector('[data-testid="media-picker-open"]')));
-                opener = await waitFor(() => outer.querySelector('[data-testid="media-picker-open"]'));
-            } else {
-                opener = await waitFor(() => visibleOpener());
-            }
+            const opener = await waitFor(() => visibleOpener());
 
             opener.click();
 
@@ -670,7 +657,7 @@ it('closes locally while truly offline and reconciles the action on reconnect', 
 
             throw new Error('Timed out while waiting for the offline close handler.');
         }
-        JS);
+        JS;
     $page->script($openPicker);
 
     setMediaPickerBrowserOffline($page, true);
@@ -850,12 +837,9 @@ it('closes locally while truly offline and reconciles the action on reconnect', 
         }
         JS);
     $page->assertNoJavaScriptErrors();
-})->with([
-    'direct field action' => [false],
-    'nested Add or Replace Image action' => [true],
-]);
+});
 
-it('returns acquired media to the outer image action while attachment stays pending until save', function (): void {
+it('returns acquired media to the inline owner action while attachment stays pending until save', function (): void {
     app()->setLocale('he');
     Storage::disk('public')->put(
         'media-imports/browser-nested-storage.jpg',
@@ -910,15 +894,11 @@ it('returns acquired media to the outer image action while attachment stays pend
             );
             const outerDialog = () => Array.from(document.querySelectorAll(
                 '[aria-modal="true"].fi-modal-open',
-            )).find((dialog) => dialog.querySelector('[data-testid="media-picker-open"]'));
+            )).find((dialog) => dialog.querySelector('[data-testid="media-picker"]'));
 
-            triggerFor('chooseContentGroupCover')?.click();
-            const outer = await waitFor(() => outerDialog());
-            const nestedOpener = await waitFor(() => outer.querySelector('[data-testid="media-picker-open"]'));
-            nestedOpener.focus();
             let completed = window.__mediaPickerCompletedRequests;
-            nestedOpener.click();
-
+            triggerFor('chooseContentGroupCover')?.click();
+            await waitFor(() => outerDialog());
             await waitFor(() => currentWorkspace());
             await waitFor(() => requestsSettledAfter(completed));
             completed = window.__mediaPickerCompletedRequests;
@@ -931,27 +911,27 @@ it('returns acquired media to the outer image action while attachment stays pend
             completed = window.__mediaPickerCompletedRequests;
             acquire.click();
 
-            await waitFor(() => picker() === null);
             const restoredOuter = await waitFor(() => outerDialog());
             const selected = await waitFor(() => restoredOuter.querySelector(
                 '[data-testid="media-picker-selected-item"]',
             ));
-            await waitFor(() => document.activeElement?.closest('[data-testid="media-picker-open"]'));
             await waitFor(() => requestsSettledAfter(completed));
 
             return {
                 parent_remained_open: restoredOuter.classList.contains('fi-modal-open'),
                 selection_returned: selected.textContent.includes('browser-nested-storage.jpg'),
-                focus_returned: Boolean(document.activeElement?.closest('[data-testid="media-picker-open"]')),
-                open_picker_count: document.querySelectorAll('[data-testid="media-picker"]').length,
+                single_dialog: document.querySelectorAll('[aria-modal="true"].fi-modal-open').length === 1,
+                picker_remained_inline: document.querySelectorAll('[data-testid="media-picker"]').length === 1,
+                picker_close_absent: ! restoredOuter.querySelector('[data-testid="media-picker-close"]'),
             };
         }
         JS);
 
     expect($firstSelection['parent_remained_open'])->toBeTrue(json_encode($firstSelection, JSON_THROW_ON_ERROR))
         ->and($firstSelection['selection_returned'])->toBeTrue(json_encode($firstSelection, JSON_THROW_ON_ERROR))
-        ->and($firstSelection['focus_returned'])->toBeTrue(json_encode($firstSelection, JSON_THROW_ON_ERROR))
-        ->and($firstSelection['open_picker_count'])->toBe(0);
+        ->and($firstSelection['single_dialog'])->toBeTrue(json_encode($firstSelection, JSON_THROW_ON_ERROR))
+        ->and($firstSelection['picker_remained_inline'])->toBeTrue(json_encode($firstSelection, JSON_THROW_ON_ERROR))
+        ->and($firstSelection['picker_close_absent'])->toBeTrue();
 
     $media = Media::query()->where('path', 'media-imports/browser-nested-storage.jpg')->sole();
 
@@ -965,7 +945,7 @@ it('returns acquired media to the outer image action while attachment stays pend
             const completed = window.__mediaPickerCompletedRequests;
             const outer = Array.from(document.querySelectorAll(
                 '[aria-modal="true"].fi-modal-open',
-            )).find((dialog) => dialog.querySelector('[data-testid="media-picker-open"]'));
+            )).find((dialog) => dialog.querySelector('[data-testid="media-picker"]'));
             const cancel = Array.from(outer?.querySelectorAll(
                 '.fi-modal-footer-actions button',
             ) ?? []).find((button) => button.type !== 'submit');
@@ -1040,14 +1020,11 @@ it('returns acquired media to the outer image action while attachment stays pend
             );
             const outerDialog = () => Array.from(document.querySelectorAll(
                 '[aria-modal="true"].fi-modal-open',
-            )).find((dialog) => dialog.querySelector('[data-testid="media-picker-open"]'));
+            )).find((dialog) => dialog.querySelector('[data-testid="media-picker"]'));
 
-            triggerFor('chooseContentGroupCover')?.click();
-            const outer = await waitFor(() => outerDialog());
-            const nestedOpener = await waitFor(() => outer.querySelector('[data-testid="media-picker-open"]'));
             let completed = window.__mediaPickerCompletedRequests;
-            nestedOpener.click();
-
+            triggerFor('chooseContentGroupCover')?.click();
+            await waitFor(() => outerDialog());
             await waitFor(() => currentWorkspace());
             await waitFor(() => requestsSettledAfter(completed));
             completed = window.__mediaPickerCompletedRequests;
@@ -1059,7 +1036,6 @@ it('returns acquired media to the outer image action while attachment stays pend
             ));
             completed = window.__mediaPickerCompletedRequests;
             acquire.click();
-            await waitFor(() => picker() === null);
             const restoredOuter = await waitFor(() => outerDialog());
             await waitFor(() => restoredOuter.querySelector('[data-testid="media-picker-selected-item"]'));
             await waitFor(() => requestsSettledAfter(completed));

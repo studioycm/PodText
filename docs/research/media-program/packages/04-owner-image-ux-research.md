@@ -1,5 +1,12 @@
 # Package 4 Research — Post-P3 Owner Image UX
 
+> Correction note, 2026-07-24: the detail, diagnostics, stale-write,
+> safe-delivery and Resource-table rider findings remain authoritative. The
+> picker-launch topology is superseded by
+> `04-owner-image-inline-picker-correction-research.md` under audit
+> `LS-20260724-PODTEXT-MEDIA-OWNER-PICKER-CORRECTIONS-01`, option
+> `MEDIA-OWNER-CORR-O3-INLINE-PICKER-TABS`.
+
 ## Authority and baseline
 
 - Audit: `LS-20260724-PODTEXT-MEDIA-P4-POSTP3-OWNER-UX-01`

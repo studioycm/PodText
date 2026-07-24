@@ -51,14 +51,22 @@ create a new handoff at that path from the implemented inventory-first work.
   historical authority under
   `LS-20260724-PODTEXT-MEDIA-P4-POSTP3-OWNER-UX-01` /
   `MEDIA-P4-POSTP3-O1-INTEGRATED-IMAGE-WORKSPACE`.
+- `packages/04-owner-image-inline-picker-correction-research.md`, plan and
+  `../../phase-02/media-program-p4-inline-picker-correction-handoff.md`:
+  current completed authority for owner-picker topology, acquisition-only
+  owner batch upload and standalone Media upload visibility under
+  `LS-20260724-PODTEXT-MEDIA-OWNER-PICKER-CORRECTIONS-01` /
+  `MEDIA-OWNER-CORR-O3-INLINE-PICKER-TABS`. It supersedes only the earlier
+  Package 4 nested picker-launch topology; the original detail, diagnostics,
+  stale-write, safe-delivery and Resource-table rider results remain active.
 - Package 5 pair: forecast only; fresh audit required.
 
 The earlier Package 4 audit
 `LS-20260723-PODTEXT-MEDIA-P4-OWNER-IMAGE-UX-01` and options
 `MEDIA-P4-O1-SHARED-DETAIL-MODAL` /
 `MEDIA-P4-O2-SHARED-DETAIL-SLIDEOVER` are superseded and authorize nothing.
-The post-Package-3 correction and fresh Package 4 implementation are closed
-locally. Package 5 remains unapproved.
+The post-Package-3 correction, Package 4 implementation and Package 4
+inline-picker correction are closed locally. Package 5 remains unapproved.
 
 ## Related active track documents
 

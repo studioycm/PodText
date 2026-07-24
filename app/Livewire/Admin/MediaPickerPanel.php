@@ -62,6 +62,9 @@ class MediaPickerPanel extends Component implements HasActions, HasSchemas
     public bool $isMultiple = false;
 
     #[Locked]
+    public bool $isInlineOwnerWorkspace = false;
+
+    #[Locked]
     public ?int $maxItems = null;
 
     /** @var array<int, array<string, int|string|null>> */
@@ -107,6 +110,7 @@ class MediaPickerPanel extends Component implements HasActions, HasSchemas
         array $selectedIds = [],
         bool $isMultiple = false,
         ?int $maxItems = null,
+        bool $isInlineOwnerWorkspace = false,
     ): void {
         $resolvedPurpose = ImageUploadPurpose::tryFrom($purpose)
             ?? throw new UnexpectedValueException('The media picker purpose is invalid.');
@@ -116,6 +120,7 @@ class MediaPickerPanel extends Component implements HasActions, HasSchemas
         $this->purpose = $resolvedPurpose->value;
         $this->isMultiple = $isMultiple;
         $this->maxItems = $maxItems;
+        $this->isInlineOwnerWorkspace = $isInlineOwnerWorkspace;
         $this->selectedIds = $this->trustedIds($selectedIds, 'view');
         $this->storageConfigured = app(StorageImageCandidateBrowser::class)->hasConfiguredSources();
 
@@ -139,10 +144,17 @@ class MediaPickerPanel extends Component implements HasActions, HasSchemas
                     ->schema([
                         FileUpload::make('uploads')
                             ->label(__('admin.fields.media_files'))
+                            ->helperText(fn (): ?string => $this->isInlineOwnerWorkspace
+                                ? __('admin.media_library.inline_batch_help')
+                                : null)
                             ->acceptedFileTypes(app(CuratorImageUploadPolicy::class)->mimeTypesFor($this->uploadPurpose()))
                             ->maxSize(app(CuratorImageUploadPolicy::class)->maxKilobytes())
-                            ->multiple($this->isMultiple)
-                            ->maxFiles($this->isMultiple ? app(CuratorImageUploadPolicy::class)->uploadBatchLimit() : 1)
+                            ->multiple($this->isMultiple || $this->isInlineOwnerWorkspace)
+                            ->maxFiles(
+                                $this->isMultiple || $this->isInlineOwnerWorkspace
+                                    ? app(CuratorImageUploadPolicy::class)->uploadBatchLimit()
+                                    : 1,
+                            )
                             ->maxParallelUploads(2)
                             ->extraInputAttributes([
                                 'data-testid' => 'media-picker-upload-input',
@@ -264,6 +276,10 @@ class MediaPickerPanel extends Component implements HasActions, HasSchemas
         $id = (int) $media->getKey();
 
         if (in_array($id, $this->selectedIds, true)) {
+            if ($this->isInlineOwnerWorkspace) {
+                return;
+            }
+
             $this->selectedIds = array_values(array_diff($this->selectedIds, [$id]));
 
             return;
@@ -284,15 +300,21 @@ class MediaPickerPanel extends Component implements HasActions, HasSchemas
 
     public function clearSelection(): void
     {
+        if ($this->isInlineOwnerWorkspace) {
+            return;
+        }
+
         $this->selectedIds = [];
     }
 
     public function uploadFilesAction(): Action
     {
         return Action::make('uploadFiles')
-            ->label(fn (): string => $this->isMultiple
-                ? __('admin.media_library.add_and_select')
-                : __('admin.media_library.add_and_choose'))
+            ->label(fn (): string => $this->isInlineOwnerWorkspace
+                ? __('admin.media_library.upload_one_or_multiple')
+                : ($this->isMultiple
+                    ? __('admin.media_library.add_and_select')
+                    : __('admin.media_library.add_and_choose')))
             ->icon(Heroicon::ArrowUpTray)
             ->disabled(fn (): bool => count(Arr::wrap($this->form->getRawState()['uploads'] ?? [])) === 0)
             ->extraAttributes([
@@ -304,8 +326,9 @@ class MediaPickerPanel extends Component implements HasActions, HasSchemas
                 $this->resetValidation($this->sourceErrorKeys('upload'));
                 $data = $this->form->getState();
                 $uploads = array_values(Arr::wrap($data['uploads'] ?? []));
+                $isAcquisitionOnlyBatch = $this->isInlineOwnerWorkspace && count($uploads) > 1;
 
-                if (! $this->isMultiple && count($uploads) > 1) {
+                if (! $this->isMultiple && ! $this->isInlineOwnerWorkspace && count($uploads) > 1) {
                     $this->failSource(
                         'upload',
                         'panelData.uploads',
@@ -362,10 +385,13 @@ class MediaPickerPanel extends Component implements HasActions, HasSchemas
                     );
                 }
 
-                $this->selectAcquired($result->media());
+                if (! $isAcquisitionOnlyBatch) {
+                    $this->selectAcquired($result->media());
+                }
+
                 $this->clearSourceInput('upload');
 
-                if ($this->isMultiple) {
+                if ($this->isMultiple || $this->isInlineOwnerWorkspace) {
                     $this->currentPage = 1;
                     $this->reloadFiles();
                 }
@@ -374,20 +400,31 @@ class MediaPickerPanel extends Component implements HasActions, HasSchemas
                     Notification::make()
                         ->warning()
                         ->title(__('admin.media_library.upload_partial_title'))
-                        ->body(__('admin.media_library.upload_partial_body', [
-                            'added' => $result->successful->count(),
-                            'not_added' => $result->unsuccessfulCount(),
-                        ]))
+                        ->body($isAcquisitionOnlyBatch
+                            ? __('admin.media_library.acquisition_batch_partial', [
+                                'added' => $result->successful->count(),
+                                'not_added' => $result->unsuccessfulCount(),
+                            ])
+                            : __('admin.media_library.upload_partial_body', [
+                                'added' => $result->successful->count(),
+                                'not_added' => $result->unsuccessfulCount(),
+                            ]))
                         ->send();
                 } else {
                     Notification::make()
                         ->success()
                         ->title(__('admin.media_library.uploaded'))
-                        ->body($this->acquisitionSuccessBody($result->successful->count()))
+                        ->body($isAcquisitionOnlyBatch
+                            ? __('admin.media_library.acquisition_batch_created', [
+                                'count' => $result->successful->count(),
+                            ])
+                            : $this->acquisitionSuccessBody($result->successful->count()))
                         ->send();
                 }
 
-                $this->dispatchSelectionIfSingle();
+                if (! $isAcquisitionOnlyBatch) {
+                    $this->dispatchSelectionIfSingle();
+                }
             });
     }
 
@@ -630,7 +667,7 @@ class MediaPickerPanel extends Component implements HasActions, HasSchemas
             ->icon(Heroicon::Trash)
             ->color('danger')
             ->requiresConfirmation()
-            ->visible(fn (): bool => $this->selectedIds !== [])
+            ->visible(fn (): bool => ! $this->isInlineOwnerWorkspace && $this->selectedIds !== [])
             ->action(function (): void {
                 $records = $this->trustedRecords($this->selectedIds, 'delete');
 

@@ -57,6 +57,10 @@ it('keeps owner image details bounded accessible and same-page', function (
     $group = ContentGroup::factory()->create();
     $item = ContentItem::factory()->for($group)->create(['title' => "Owner image {$locale}"]);
     $media = ownerImageBrowserMedia('content-items/images/browser-owner-image.jpg');
+    Storage::disk('public')->put(
+        'media-imports/browser-owner-storage.jpg',
+        base64_decode((string) file_get_contents(base_path('tests/Fixtures/media/valid.jpg.base64')), true),
+    );
     app(MediaAttachmentManager::class)->attach(
         $item,
         $media,
@@ -101,10 +105,64 @@ it('keeps owner image details bounded accessible and same-page', function (
             await new Promise((resolve) => setTimeout(resolve, 100));
             opener.click();
 
-            const workspace = await waitFor(() => document.querySelector(
-                '[aria-modal="true"].fi-modal-open [data-testid="owner-image-workspace"]',
-            ));
-            const dialog = workspace.closest('[aria-modal="true"]');
+            const dialog = await waitFor(() => Array.from(document.querySelectorAll(
+                '[aria-modal="true"].fi-modal-open',
+            )).find((candidate) => candidate.querySelector('[data-testid="media-picker"]')));
+            const picker = dialog.querySelector('[data-testid="media-picker"]');
+            const replaceTab = dialog.querySelector(
+                'button[data-testid="owner-image-tab-replace"]',
+            );
+            const detailsTab = dialog.querySelector(
+                'button[data-testid="owner-image-tab-details"]',
+            );
+            await waitFor(() =>
+                replaceTab?.getAttribute('aria-selected') === 'true'
+                && picker?.getClientRects().length > 0
+            );
+            const replacementWasDefault = true;
+            const selectedBeforeDetails = picker.querySelector(
+                '[data-testid="media-picker-selected-count"]',
+            )?.textContent.trim();
+            const completePickerVisible = Boolean(
+                picker.querySelector('[data-testid="media-picker-gallery"]')
+                && picker.querySelector('[data-testid="media-picker-source-upload"]')
+                && picker.querySelector('[data-testid="media-picker-source-url"]')
+                && picker.querySelector('[data-testid="media-picker-source-storage"]'),
+            );
+
+            picker.querySelector('[data-testid="media-picker-source-storage"]').click();
+            await waitFor(() => {
+                const storagePanel = picker.querySelector(
+                    '[data-testid="media-picker-panel-storage"]',
+                );
+
+                return storagePanel?.textContent.includes('browser-owner-storage.jpg');
+            });
+            const storageCandidateVisible = picker.querySelector(
+                '[data-testid="media-picker-panel-storage"]',
+            )?.textContent.includes('browser-owner-storage.jpg') ?? false;
+
+            picker.querySelector('[data-testid="media-picker-source-upload"]').click();
+            const uploadPanel = await waitFor(() => {
+                const uploadPanel = picker.querySelector(
+                    '[data-testid="media-picker-panel-upload"]',
+                );
+
+                return uploadPanel
+                    && ! uploadPanel.classList.contains('hidden')
+                    && ! uploadPanel.inert
+                        ? uploadPanel
+                        : null;
+            });
+            const uploadInput = uploadPanel.querySelector('input[type="file"]');
+            const uploadAcceptsMultiple = uploadInput.hasAttribute('multiple');
+
+            detailsTab.click();
+            const workspace = await waitFor(() => {
+                const candidate = dialog.querySelector('[data-testid="owner-image-workspace"]');
+
+                return candidate?.getClientRects().length ? candidate : null;
+            });
             const modalWindow = dialog.querySelector('.fi-modal-window');
             const preview = workspace.querySelector('[data-testid="owner-image-effective-preview"]');
             const previewRect = preview.getBoundingClientRect();
@@ -128,6 +186,18 @@ it('keeps owner image details bounded accessible and same-page', function (
                 same_path: window.location.pathname === initialPath,
                 open_dialogs: document.querySelectorAll('[aria-modal="true"].fi-modal-open').length,
                 nested_forms: dialog.querySelectorAll('form form').length,
+                replacement_was_default: replacementWasDefault,
+                picker_close_absent: ! dialog.querySelector('[data-testid="media-picker-close"]'),
+                picker_launcher_absent: ! dialog.querySelector('[data-testid="media-picker-open"]'),
+                selected_count_present: Boolean(selectedBeforeDetails),
+                complete_picker_visible: completePickerVisible,
+                storage_candidate_visible: storageCandidateVisible,
+                upload_accepts_multiple: uploadAcceptsMultiple,
+                upload_input_tag: uploadInput?.tagName ?? null,
+                upload_input_type: uploadInput?.getAttribute('type') ?? null,
+                picker_footer_text: picker.querySelector(
+                    '[data-testid="media-picker-footer"]',
+                )?.textContent.trim() ?? '',
                 preview_width: previewRect.width,
                 preview_height: previewRect.height,
                 copied_feedback_visible: Boolean(copied?.textContent.trim()),
@@ -151,6 +221,14 @@ it('keeps owner image details bounded accessible and same-page', function (
         ->and($wide['same_path'])->toBeTrue()
         ->and($wide['open_dialogs'])->toBe(1)
         ->and($wide['nested_forms'])->toBe(0)
+        ->and($wide['replacement_was_default'])->toBeTrue(json_encode($wide, JSON_THROW_ON_ERROR))
+        ->and($wide['picker_close_absent'])->toBeTrue()
+        ->and($wide['picker_launcher_absent'])->toBeTrue()
+        ->and($wide['selected_count_present'])->toBeTrue()
+        ->and($wide['complete_picker_visible'])->toBeTrue()
+        ->and($wide['storage_candidate_visible'])->toBeTrue()
+        ->and($wide['upload_accepts_multiple'])->toBeTrue(json_encode($wide, JSON_THROW_ON_ERROR))
+        ->and($wide['picker_footer_text'])->not->toContain(__('admin.media_library.delete_selected'))
         ->and($wide['preview_width'])->toBeLessThanOrEqual(300)
         ->and($wide['preview_height'])->toBeLessThanOrEqual(300)
         ->and($wide['copied_feedback_visible'])->toBeTrue()
@@ -213,10 +291,24 @@ it('keeps owner image details bounded accessible and same-page', function (
                 pointerType: 'touch',
             }));
             opener.click();
-            const workspace = await waitFor(() => document.querySelector(
-                '[aria-modal="true"].fi-modal-open [data-testid="owner-image-workspace"]',
-            ));
-            const modalWindow = workspace.closest('[aria-modal="true"]').querySelector('.fi-modal-window');
+            const dialog = await waitFor(() => Array.from(document.querySelectorAll(
+                '[aria-modal="true"].fi-modal-open',
+            )).find((candidate) => candidate.querySelector('[data-testid="media-picker"]')));
+            const replaceTab = dialog.querySelector(
+                'button[data-testid="owner-image-tab-replace"]',
+            );
+            const detailsTab = dialog.querySelector(
+                'button[data-testid="owner-image-tab-details"]',
+            );
+            await waitFor(() => replaceTab?.getAttribute('aria-selected') === 'true');
+            const replacementWasDefault = true;
+            detailsTab.click();
+            const workspace = await waitFor(() => {
+                const candidate = dialog.querySelector('[data-testid="owner-image-workspace"]');
+
+                return candidate?.getClientRects().length ? candidate : null;
+            });
+            const modalWindow = dialog.querySelector('.fi-modal-window');
             const rect = await waitFor(() => {
                 const candidate = modalWindow.getBoundingClientRect();
                 const style = getComputedStyle(modalWindow);
@@ -253,6 +345,8 @@ it('keeps owner image details bounded accessible and same-page', function (
                 modal_max_width: modalStyle.maxWidth,
                 modal_css_width: modalStyle.width,
                 widest_child: widestChild,
+                replacement_was_default: replacementWasDefault,
+                open_dialogs: document.querySelectorAll('[aria-modal="true"].fi-modal-open').length,
                 modal_within_viewport: rect.left >= -1 && rect.right <= window.innerWidth + 1,
                 document_horizontal_overflow: document.documentElement.scrollWidth
                     > document.documentElement.clientWidth + 1,
@@ -265,6 +359,8 @@ it('keeps owner image details bounded accessible and same-page', function (
 
     expect($narrow['viewport_width'])->toBe(390)
         ->and($narrow['direction'])->toBe($direction)
+        ->and($narrow['replacement_was_default'])->toBeTrue(json_encode($narrow, JSON_THROW_ON_ERROR))
+        ->and($narrow['open_dialogs'])->toBe(1)
         ->and($narrow['modal_within_viewport'])->toBeTrue(json_encode($narrow, JSON_THROW_ON_ERROR))
         ->and($narrow['document_horizontal_overflow'])->toBeFalse()
         ->and($narrow['workspace_horizontal_overflow'])->toBeFalse()

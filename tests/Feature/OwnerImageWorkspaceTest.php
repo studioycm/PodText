@@ -1,6 +1,7 @@
 <?php
 
 use App\Enums\MediaAttachmentRole;
+use App\Filament\Forms\Components\PathCuratorPicker;
 use App\Filament\Resources\ContentGroups\Pages\EditContentGroup;
 use App\Filament\Resources\ContentGroups\Pages\ListContentGroups;
 use App\Filament\Resources\ContentItems\Pages\EditContentItem;
@@ -8,6 +9,7 @@ use App\Filament\Resources\ContentItems\Pages\EditEpisodeWorkspace;
 use App\Filament\Resources\ContentItems\Pages\ListContentItems;
 use App\Filament\Resources\Media\MediaResource;
 use App\Jobs\DownloadExternalContentItemImage;
+use App\Livewire\Admin\MediaPickerPanel;
 use App\Models\ContentGroup;
 use App\Models\ContentItem;
 use App\Models\Media;
@@ -22,6 +24,10 @@ use App\Support\PublicFront\PublicFrontConfigRegistry;
 use App\Support\PublicFront\PublicFrontRenderContext;
 use Filament\Actions\Testing\TestAction;
 use Filament\Facades\Filament;
+use Filament\Schemas\Components\Livewire as LivewireSchemaComponent;
+use Filament\Schemas\Components\Tabs;
+use Filament\Schemas\Components\Tabs\Tab;
+use Filament\Schemas\Components\View as SchemaView;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
@@ -159,6 +165,86 @@ it('opens the shared detail workspace from a table thumbnail without row navigat
         ->assertMountedActionModalSee('keyboard-episode.jpg')
         ->assertSet('mountedActions.0.data.expected_media_id', $media->getKey())
         ->assertSet('mountedActions.0.data.expected_legacy_path', $media->path);
+});
+
+it('shows the complete inline replacement picker before details in one owner action', function (): void {
+    $admin = User::factory()->admin()->create();
+    $group = ContentGroup::factory()->create();
+    $item = ContentItem::factory()->for($group)->create();
+    $media = ownerImageMedia('content-items/images/inline-picker.jpg');
+    app(MediaAttachmentManager::class)->attach(
+        $item,
+        $media,
+        MediaAttachmentRole::PrimaryImage,
+        $admin,
+    );
+
+    $component = Livewire::actingAs($admin)
+        ->test(ListContentItems::class)
+        ->mountAction(TestAction::make('contentItemImageDetails')->table($item))
+        ->assertMountedActionModalSee(__('admin.owner_image.tabs.replace'))
+        ->assertMountedActionModalSee(__('admin.owner_image.tabs.details'));
+
+    $action = $component->instance()->getMountedAction();
+    $schema = $component->instance()->getSchema('mountedActionSchema0');
+    $components = collect($schema?->getFlatComponents(withHidden: true));
+    $tabs = $components->first(fn (mixed $component): bool => $component instanceof Tabs);
+    $picker = $components->first(fn (mixed $component): bool => $component instanceof PathCuratorPicker);
+    $livewire = $components->first(fn (mixed $component): bool => $component instanceof LivewireSchemaComponent);
+    $detail = $components->first(fn (mixed $component): bool => $component instanceof SchemaView);
+
+    assert($tabs instanceof Tabs);
+    assert($picker instanceof PathCuratorPicker);
+    assert($livewire instanceof LivewireSchemaComponent);
+    assert($detail instanceof SchemaView);
+
+    $tabComponents = $tabs->getChildSchema()->getComponents();
+
+    expect($action?->hasModalContent())->toBeFalse()
+        ->and($tabComponents)->toHaveCount(2)
+        ->and($tabComponents[0])->toBeInstanceOf(Tab::class)
+        ->and($tabComponents[0]->getLabel())->toBe(__('admin.owner_image.tabs.replace'))
+        ->and($tabComponents[1])->toBeInstanceOf(Tab::class)
+        ->and($tabComponents[1]->getLabel())->toBe(__('admin.owner_image.tabs.details'))
+        ->and($livewire->getComponent())->toBe(MediaPickerPanel::class)
+        ->and($livewire->getData()['isInlineOwnerWorkspace'] ?? false)->toBeTrue();
+});
+
+it('keeps an inline gallery choice pending until the outer owner action is submitted', function (): void {
+    $admin = User::factory()->admin()->create();
+    $group = ContentGroup::factory()->create();
+    $item = ContentItem::factory()->for($group)->create();
+    $current = ownerImageMedia('content-items/images/current-inline-choice.jpg');
+    $replacement = ownerImageMedia('content-items/images/pending-inline-choice.jpg');
+    app(MediaAttachmentManager::class)->attach(
+        $item,
+        $current,
+        MediaAttachmentRole::PrimaryImage,
+        $admin,
+    );
+
+    $component = Livewire::actingAs($admin)
+        ->test(ListContentItems::class)
+        ->mountAction(TestAction::make('chooseContentItemImage')->table($item));
+    $schema = $component->instance()->getSchema('mountedActionSchema0');
+    $picker = collect($schema?->getFlatComponents(withHidden: true))
+        ->first(fn (mixed $component): bool => $component instanceof PathCuratorPicker);
+
+    assert($picker instanceof PathCuratorPicker);
+
+    $component
+        ->call('callSchemaComponentMethod', $picker->getKey(), 'updateState', [
+            [
+                'mediaId' => $replacement->getKey(),
+                'mediaIds' => [$replacement->getKey()],
+            ],
+        ])
+        ->assertSet('mountedActions.0.data.primary_image_media_reference_key', $replacement->getKey())
+        ->unmountAction();
+
+    expect($item->primaryImageMediaAttachment()->value('media_id'))->toBe($current->getKey())
+        ->and($item->refresh()->image_path)->toBe($current->path)
+        ->and(Media::query()->whereKey($replacement)->exists())->toBeTrue();
 });
 
 it('reuses the same integrated workspace on podcast edit classic episode edit and episode workspace', function (): void {
