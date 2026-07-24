@@ -3,6 +3,8 @@
 namespace App\Providers;
 
 use App\Enums\UserRole;
+use App\Http\Middleware\RequireResendWebhookSecret;
+use App\Listeners\ResendWebhookEventSubscriber;
 use App\Livewire\Admin\DisabledVendorCuratorSurface;
 use App\Livewire\Admin\MediaPickerPanel;
 use App\Models\ContentGroup;
@@ -49,6 +51,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
 use Livewire\Livewire;
 use Spatie\LaravelSettings\Events\SettingsSaved;
@@ -61,6 +64,12 @@ class AppServiceProvider extends ServiceProvider
     public function register(): void
     {
         config()->set('livewire.temporary_file_upload.disk', 'local');
+
+        $resendApiKey = config('resend.api_key');
+
+        if (! is_string($resendApiKey) || trim($resendApiKey) === '') {
+            config()->set('resend.api_key', config('services.resend.key'));
+        }
 
         $this->app->bind(GoogleDriveClientFactory::class, GoogleApiDriveClientFactory::class);
         $this->app->bind(SpotifyClientFactory::class, SpotifyHttpClientFactory::class);
@@ -98,6 +107,18 @@ class AppServiceProvider extends ServiceProvider
         PackageMutationCommandGuard::register();
 
         Model::preventLazyLoading(! $this->app->isProduction());
+
+        $this->app->booted(function (): void {
+            foreach (Route::getRoutes()->getRoutes() as $route) {
+                if ($route->getName() !== 'resend.webhook') {
+                    continue;
+                }
+
+                $route->middleware(RequireResendWebhookSecret::class);
+
+                return;
+            }
+        });
 
         Relation::morphMap([
             ContentGroup::class => ContentGroup::class,
@@ -192,6 +213,7 @@ class AppServiceProvider extends ServiceProvider
             $this->app->forgetInstance(PublicFrontRenderContext::class);
             $this->app->forgetInstance(PublicTranscriptionPolicy::class);
         });
+        Event::subscribe(ResendWebhookEventSubscriber::class);
 
         RateLimiter::for('public-form-submissions', function (Request $request): Limit {
             return Limit::perMinute(10)->by('submit:'.$this->publicFormThrottleKey($request));

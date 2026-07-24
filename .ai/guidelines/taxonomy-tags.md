@@ -37,7 +37,9 @@ Custom hierarchical `Category` model plus Spatie Laravel Tags with the Filament 
 
 ## FilaCheck / FilaCheck Pro notes
 
-- Relationship selects should be searchable/preloaded.
+- Growing relationship selects should be searchable without preload, capped at
+  50 results with `optionsLimit()`, and backed by a constrained server query.
+  Preload only bounded option sets.
 - Category/tag tables need searchable name/slug columns and useful filters.
 - FilaCheck/FilaCheck Pro must pass; do not run `filacheck --fix` unless explicitly approved.
 

@@ -18,10 +18,14 @@
     "skills": [
         "laravel-best-practices",
         "configuring-horizon",
+        "socialite-development",
         "livewire-development",
         "pest-testing",
         "tailwindcss-development",
         "filament-security-audit",
+        "filament-forms-ux-audit",
+        "filament-performance-audit",
+        "laravel-simplifier",
         "spatie-laravel-php",
         "technical-debt-manager-php-laravel"
     ]

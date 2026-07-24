@@ -43,7 +43,9 @@ Filament Table inside a public Livewire component, rendered as item cards or row
 
 - Tables need searchable columns.
 - Custom filters need indicators.
-- Relationship filters should be searchable/preloaded where record count can grow.
+- Growing relationship filters should be searchable without preload, capped at
+  50 results with `optionsLimit()`, and backed by a constrained server query.
+  Preload only bounded option sets.
 - FilaCheck/FilaCheck Pro must pass; do not run `filacheck --fix` unless explicitly approved.
 
 ## Cross-cutting UI rules

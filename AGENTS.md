@@ -522,23 +522,31 @@ Native Filament Importer/Exporter classes with portable reference keys and faile
 
 ## Purpose
 
-Keep media storage URL-only, safe to render, and available before import/export revisions.
+Keep media storage URL-first, safe to render, and available before import/export revisions, with the narrow D-EMB1 trusted-admin raw HTML exceptions.
 
 ## Preferred architecture
 
-Store URLs/metadata on `ContentItem`; render through the app-owned Blade media component.
+Store URLs/metadata on `ContentItem` by default. Trusted admin-pasted embed code may be stored verbatim only in `content_items.embed_html`; trusted maintenance-page override HTML may be stored verbatim only in `PublicContentSettings` `maintenance.raw_html_override`; render all media through the app-owned Blade media component.
 
 ## Do
 
 - Add media metadata foundation before import/export revision.
 - Accept HTTPS URLs only.
 - Use provider/host allowlists.
+- Store admin-pasted trusted embed code only in `content_items.embed_html` when D-EMB1 behavior is in scope.
+- Store trusted full maintenance-page override HTML only in `maintenance.raw_html_override`.
+- Edit trusted raw HTML fields with an LTR code editor, not an RTL prose textarea.
+- Render `embed_html` only through the owned public media-embed component raw mode.
+- Give `embed_html` precedence over `embed_url` in that owned component.
+- Keep an explicit extract-src helper for admins who want to fill the allowlisted `embed_url` path instead.
 - Render original source link fallback.
 - Keep metadata extraction explicit and admin-triggered.
 
 ## Do not
 
-- Do not store raw iframe HTML.
+- Do not store raw embed/iframe HTML anywhere except `content_items.embed_html` or the maintenance-only `maintenance.raw_html_override`.
+- Do not sanitize, normalize, rewrite, extract, trim, escape, or app-limit trusted raw HTML fields on save.
+- Do not render `embed_html` through Markdown, public cards, admin tables, imports/exports, generic presenters, or any surface outside the owned media component.
 - Do not fetch remote media during import.
 - Do not render unapproved embed URLs.
 
@@ -547,12 +555,15 @@ Store URLs/metadata on `ContentItem`; render through the app-owned Blade media c
 - Approved embed accepted/rendered.
 - Unknown host rejected/fallback.
 - HTTP rejected.
-- Raw iframe HTML rejected.
+- Trusted `embed_html` renders verbatim on the item page through the media component.
+- `embed_html` takes precedence over `embed_url`.
+- `embed_html` renders nowhere else.
+- Extract-src helper fills `embed_url` without changing `embed_html`.
 
 ## Security rules
 
-- URL-only storage.
-- Owned component controls iframe attributes.
+- URL-first storage, with D-EMB1 trusted `embed_html` and maintenance `raw_html_override` as the only raw HTML exceptions.
+- Owned component controls iframe attributes for URL embeds and owns raw-mode rendering for trusted `embed_html`.
 - Sanitize displayed metadata.
 
 ## FilaCheck / FilaCheck Pro notes
@@ -696,7 +707,9 @@ Filament Table inside a public Livewire component, rendered as item cards or row
 
 - Tables need searchable columns.
 - Custom filters need indicators.
-- Growing relationship filters should be searchable without preload and use a capped constrained query; only bounded filters should preload.
+- Growing relationship filters should be searchable without preload, capped at
+  50 results with `optionsLimit()`, and backed by a constrained server query.
+  Preload only bounded option sets.
 - FilaCheck/FilaCheck Pro must pass; do not run `filacheck --fix` unless explicitly approved.
 
 ## Cross-cutting UI rules
@@ -765,9 +778,11 @@ Spatie Settings for bounded global policy, normal database records for independe
 - Avoid default polling in widgets unless needed.
 - Use searchable table columns and useful warning filters.
 - Prefer native controls for tiny finite sets unless required custom/HTML
-  rendering or behavior needs a non-native Select. Preload bounded options,
-  remove search from tiny sets, and keep growing sources searchable without
-  preload with a constrained server query and a 50-result cap.
+  rendering or behavior needs a non-native Select. Preload bounded Select
+  options (about 20 or fewer) and remove search from tiny sets (10 or fewer).
+  Keep growing or settings-derived Selects searchable without preload, cap
+  results at 50 with `optionsLimit()`, constrain the server query, and memoize
+  computed option services per request.
 - Use enum icons instead of string icons.
 - FilaCheck/FilaCheck Pro must pass; do not run `filacheck --fix` unless explicitly approved.
 
@@ -830,7 +845,9 @@ Custom hierarchical `Category` model plus Spatie Laravel Tags with the Filament 
 
 ## FilaCheck / FilaCheck Pro notes
 
-- Relationship selects backed by growing tables should be searchable without preload and must cap results; preload only demonstrably bounded option sets.
+- Growing relationship selects should be searchable without preload, capped at
+  50 results with `optionsLimit()`, and backed by a constrained server query.
+  Preload only bounded option sets.
 - Category/tag tables need searchable name/slug columns and useful filters.
 - FilaCheck/FilaCheck Pro must pass; do not run `filacheck --fix` unless explicitly approved.
 
@@ -867,6 +884,7 @@ Every implementation prompt uses Boost where available, reads its blueprint, che
 - Retry Laravel Boost MCP tools before implementation.
 - Read the relevant blueprint first.
 - Use FilamentExamples MCP before Filament code.
+- For FilamentExamples MCP, decompose the feature into short search topics, run multiple query batches with a higher limit such as 8 to 10 when supported, inspect returned names/snippets/paths, then run a refined second pass. Record example names, paths/classes, copied patterns, rejected patterns, PodText adaptation notes, and whether only `search_examples` was available.
 - Run full final quality gate.
 - Record FilaCheck/FilaCheck Pro output.
 - Preserve cross-cutting form, locale, and dashboard requirements from active specs/guidelines.
@@ -907,6 +925,17 @@ npm run build
 
 - Review diffs for secrets before final report.
 - Keep `.env`, MCP config, Composer auth, and license files untouched.
+
+## FilamentExamples MCP Research Protocol
+
+- Use `filament-examples` MCP before changing Filament Resources, Pages, Settings pages, forms, tables, actions, widgets, Livewire public page patterns, or panel layout/header behavior.
+- Do not run one broad query only. First decompose the feature into short topic phrases and scatter them across multiple query batches.
+- Prefer multiple short queries over one long query. Use `limit` 8 to 10 when supported; if the MCP rejects the limit, retry with the maximum accepted limit or with `limit: 3`.
+- After first results, inspect result names, snippets, source paths, and class names. Run a second pass with refined terms based on those results.
+- Search direct goals and surrounding implementation patterns, such as tabbed settings, render hooks, page shells, FileUpload safety, card grids, Livewire state, and public Blade rendering.
+- For each relevant example, record the example name, file/class/snippet found, pattern to copy, pattern to avoid, and PodText adaptation notes.
+- If the MCP exposes a source/read/fetch/details tool, use it. If only `search_examples` exists, record that limitation honestly.
+- Never write MCP token/header values to tracked docs.
 
 ## FilaCheck / FilaCheck Pro notes
 
@@ -1081,6 +1110,7 @@ This application is a Laravel application and its main Laravel ecosystems packag
 - laravel/framework (LARAVEL) - v13
 - laravel/horizon (HORIZON) - v5
 - laravel/prompts (PROMPTS) - v0
+- laravel/socialite (SOCIALITE) - v5
 - livewire/livewire (LIVEWIRE) - v4
 - laravel/boost (BOOST) - v2
 - laravel/mcp (MCP) - v0
@@ -1182,13 +1212,6 @@ This project has domain-specific skills available in `**/skills/**`. You MUST ac
 
 - The application is served by Laravel Herd at `https?://[kebab-case-project-dir].test`. Use the `get-absolute-url` tool to generate valid URLs. Never run commands to serve the site. It is always available.
 - Use the `herd` CLI to manage services, PHP versions, and sites (e.g. `herd sites`, `herd services:start <service>`, `herd php:list`). Run `herd list` to discover all available commands.
-
-=== tests rules ===
-
-# Test Enforcement
-
-- Every change must be programmatically tested. Write a new test or update an existing test, then run the affected tests to make sure they pass.
-- Run the minimum number of tests needed to ensure code quality and speed. Use `php artisan test --compact` with a specific filename or filter.
 
 === laravel/core rules ===
 

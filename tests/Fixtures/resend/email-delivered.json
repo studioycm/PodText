@@ -1,0 +1,24 @@
+{
+    "type": "email.delivered",
+    "created_at": "2026-07-24T01:02:03.000Z",
+    "data": {
+        "email_id": "email_operational_123",
+        "from": "sender-private-marker@example.test",
+        "to": [
+            "recipient-private-marker@example.test"
+        ],
+        "subject": "subject-private-marker",
+        "html": "<p>body-private-marker</p>",
+        "text": "body-private-marker",
+        "tags": {
+            "private": "tag-private-marker"
+        },
+        "bounce": {
+            "message": "failure-private-marker"
+        },
+        "click": {
+            "link": "https://private-marker.example.test/message"
+        },
+        "ip": "203.0.113.42"
+    }
+}
