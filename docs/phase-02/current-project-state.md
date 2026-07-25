@@ -10,10 +10,11 @@ Recorded after the Markdown-only post-Prompt-10 prompt-progress centralization c
   `LS-20260725-PODTEXT-MEDIA-OPERATIONS-UX3-M3-01` and approved option
   `MEDIA-OPS-UX3-M3-O1-ROUTE-FIRST-ISSUE-REVIEW-NO-RECHECK`. It started from
   `main` at `cc634cb02a922c9bf165bb5951ae32c5654fd564`, 33 commits ahead of
-  `origin/main`; its implementation commit is pending the canonical local
-  hash stamp. Media details now leads with stable identity and a concise issue
-  indication, labels descriptive editing as non-repair, and links to a
-  dedicated read-only Issue Review. The Review surface explains all six
+  `origin/main`; its implementation is
+  `fa3b626ccb45f7ff22962cf4cdb8a0755216329f`. Media details now leads
+  with stable identity and a concise issue indication, labels descriptive
+  editing as non-repair, and links to a dedicated read-only Issue Review.
+  The Review surface explains all six
   current diagnostics, bounded known impact and evidence limits; exposes only
   current authorized owner-presentation and file routes; shows an honest
   no-repair-authority blocker; and preserves the original Library task,
