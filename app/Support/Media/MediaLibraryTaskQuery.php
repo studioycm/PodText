@@ -22,6 +22,7 @@ class MediaLibraryTaskQuery
         private readonly MediaRecordScope $scope,
         private readonly MediaReferenceFinder $references,
         private readonly MediaInventoryDiagnostics $diagnostics,
+        private readonly CuratorImageUploadPolicy $uploadPolicy,
     ) {}
 
     /** @param Builder<Media> $query */
@@ -73,6 +74,153 @@ class MediaLibraryTaskQuery
     public function forgetCounts(): void
     {
         $this->counts = null;
+    }
+
+    /** @param Builder<Media> $query */
+    public function applySearchTerm(Builder $query, string $searchTerm): Builder
+    {
+        $title = $query->getModel()->qualifyColumn('title');
+        $name = $query->getModel()->qualifyColumn('name');
+
+        return $query
+            ->where($title, 'like', "%{$searchTerm}%")
+            ->orWhere($name, 'like', "%{$searchTerm}%");
+    }
+
+    /** @param Builder<Media> $query */
+    public function applySearch(Builder $query, string $search): Builder
+    {
+        foreach ($this->extractSearchTerms($search) as $searchTerm) {
+            $query->where(
+                fn (Builder $query): Builder => $this->applySearchTerm(
+                    $query,
+                    $searchTerm,
+                ),
+            );
+        }
+
+        return $query;
+    }
+
+    /**
+     * @param  array<string, int|string|null>  $context
+     */
+    public function nextIssue(Media $current, array $context): ?Media
+    {
+        $task = is_string($context['task'] ?? null)
+            ? MediaLibraryTask::tryFrom($context['task'])
+            : null;
+        $mime = $context['mime'] ?? null;
+        $reason = $context['reason'] ?? null;
+        $search = $context['search'] ?? null;
+        $sort = $context['sort'] ?? null;
+
+        if (
+            ! $task instanceof MediaLibraryTask
+            || ($mime !== null && (
+                ! is_string($mime)
+                || ! in_array($mime, $this->uploadPolicy->globalMimeTypes(), true)
+            ))
+            || ($reason !== null && (
+                ! is_string($reason)
+                || ! MediaDiagnosticReason::tryFrom($reason) instanceof MediaDiagnosticReason
+            ))
+            || ($search !== null && ! is_string($search))
+            || ($sort !== null && ! in_array($sort, ['created_at:asc', 'created_at:desc'], true))
+        ) {
+            return null;
+        }
+
+        $query = $this->apply($this->scope->inventoryQuery(), $task);
+
+        if (is_string($mime)) {
+            $query->where($query->getModel()->qualifyColumn('type'), $mime);
+        }
+
+        if (is_string($reason)) {
+            $this->applyReason($query, $reason);
+        } elseif ($task !== MediaLibraryTask::NeedsAttention) {
+            $this->diagnostics->applyReasonFilter($query);
+        }
+
+        if (is_string($search) && $search !== '') {
+            $this->applySearch($query, $search);
+        }
+
+        $direction = $sort === 'created_at:asc' ? 'asc' : 'desc';
+        $createdAt = $query->getModel()->qualifyColumn('created_at');
+        $key = $query->getModel()->getQualifiedKeyName();
+        $currentCreatedAt = $current->created_at;
+        $currentKey = (int) $current->getKey();
+
+        $query->where(function (Builder $query) use (
+            $createdAt,
+            $currentCreatedAt,
+            $currentKey,
+            $direction,
+            $key,
+        ): void {
+            if ($currentCreatedAt === null) {
+                if ($direction === 'desc') {
+                    $query
+                        ->whereNull($createdAt)
+                        ->where($key, '<', $currentKey);
+
+                    return;
+                }
+
+                $query
+                    ->where(function (Builder $query) use ($createdAt, $currentKey, $key): void {
+                        $query
+                            ->whereNull($createdAt)
+                            ->where($key, '>', $currentKey);
+                    })
+                    ->orWhereNotNull($createdAt);
+
+                return;
+            }
+
+            $operator = $direction === 'asc' ? '>' : '<';
+            $query
+                ->where($createdAt, $operator, $currentCreatedAt)
+                ->orWhere(function (Builder $query) use (
+                    $createdAt,
+                    $currentCreatedAt,
+                    $currentKey,
+                    $key,
+                    $operator,
+                ): void {
+                    $query
+                        ->where($createdAt, $currentCreatedAt)
+                        ->where($key, $operator, $currentKey);
+                });
+
+            if ($direction === 'desc') {
+                $query->orWhereNull($createdAt);
+            }
+        });
+
+        $next = $query
+            ->orderBy($createdAt, $direction)
+            ->orderBy($key, $direction)
+            ->first();
+
+        return $next instanceof Media ? $next : null;
+    }
+
+    /** @return array<int, string> */
+    private function extractSearchTerms(string $search): array
+    {
+        $normalizedSearch = preg_replace(
+            '/(\s|\x{3164}|\x{1160})+/u',
+            ' ',
+            $search,
+        ) ?? $search;
+
+        return array_values(array_filter(
+            str_getcsv($normalizedSearch, separator: ' ', escape: '\\'),
+            fn (string $word): bool => filled($word),
+        ));
     }
 
     /** @param Builder<Media> $query */

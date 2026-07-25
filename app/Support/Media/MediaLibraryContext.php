@@ -4,6 +4,10 @@ namespace App\Support\Media;
 
 use App\Enums\MediaDiagnosticReason;
 use App\Enums\MediaLibraryTask;
+use Illuminate\Contracts\Encryption\DecryptException;
+use Illuminate\Support\Facades\Crypt;
+use InvalidArgumentException;
+use JsonException;
 
 class MediaLibraryContext
 {
@@ -86,40 +90,60 @@ class MediaLibraryContext
      */
     public function fromInput(mixed $input, int $actualFocus): array
     {
-        if (! is_array($input) || ! $this->hasExactShape($input)) {
+        $state = $this->validatedInput($input);
+
+        if ($state === null) {
             return $this->fallback($actualFocus);
         }
 
-        $task = $this->validTask($input['task']);
-        $mime = $this->validNullableMime($input['mime']);
-        $reason = $this->validNullableReason($input['reason']);
-        $search = $this->validNullableSearch($input['search']);
-        $sort = $this->validNullableSort($input['sort']);
-        $page = $this->validPage($input['page']);
+        $state['focus'] = $actualFocus;
 
-        if (
-            ! in_array($input['v'], [self::VERSION, (string) self::VERSION], true)
-            || ! $this->validPositiveInteger($input['focus'])
-            || $task === null
-            || $mime === false
-            || $reason === false
-            || $search === false
-            || $sort === false
-            || $page === null
-        ) {
-            return $this->fallback($actualFocus);
+        return $state;
+    }
+
+    /**
+     * @param  array<string, int|string|null>  $state
+     */
+    public function continuationToken(array $state): string
+    {
+        $state = $this->validatedInput($state);
+
+        if ($state === null) {
+            throw new InvalidArgumentException('A Media Library continuation requires normalized context.');
         }
 
-        return [
-            'v' => self::VERSION,
-            'task' => $task,
-            'mime' => $mime,
-            'reason' => $reason,
-            'search' => $search,
-            'sort' => $sort,
-            'page' => $page,
-            'focus' => $actualFocus,
-        ];
+        return Crypt::encryptString(json_encode($state, JSON_THROW_ON_ERROR));
+    }
+
+    /**
+     * @return array<string, int|string|null>
+     */
+    public function fromContinuationToken(mixed $token, int $fallbackFocus): array
+    {
+        if (! is_string($token) || blank($token)) {
+            return $this->fallback($fallbackFocus);
+        }
+
+        try {
+            $input = json_decode(
+                Crypt::decryptString($token),
+                true,
+                flags: JSON_THROW_ON_ERROR,
+            );
+        } catch (DecryptException|JsonException) {
+            return $this->fallback($fallbackFocus);
+        }
+
+        return $this->validatedInput($input) ?? $this->fallback($fallbackFocus);
+    }
+
+    /**
+     * @param  array<string, int|string|null>  $state
+     * @return array{origin: string}
+     */
+    public function continuationParameters(array $state): array
+    {
+        return ['origin' => $this->continuationToken($state)];
     }
 
     /**
@@ -173,6 +197,47 @@ class MediaLibraryContext
         sort($actual);
 
         return $actual === $expected;
+    }
+
+    /**
+     * @return array<string, int|string|null>|null
+     */
+    private function validatedInput(mixed $input): ?array
+    {
+        if (! is_array($input) || ! $this->hasExactShape($input)) {
+            return null;
+        }
+
+        $task = $this->validTask($input['task']);
+        $mime = $this->validNullableMime($input['mime']);
+        $reason = $this->validNullableReason($input['reason']);
+        $search = $this->validNullableSearch($input['search']);
+        $sort = $this->validNullableSort($input['sort']);
+        $page = $this->validPage($input['page']);
+
+        if (
+            ! in_array($input['v'], [self::VERSION, (string) self::VERSION], true)
+            || ! $this->validPositiveInteger($input['focus'])
+            || $task === null
+            || $mime === false
+            || $reason === false
+            || $search === false
+            || $sort === false
+            || $page === null
+        ) {
+            return null;
+        }
+
+        return [
+            'v' => self::VERSION,
+            'task' => $task,
+            'mime' => $mime,
+            'reason' => $reason,
+            'search' => $search,
+            'sort' => $sort,
+            'page' => $page,
+            'focus' => (int) $input['focus'],
+        ];
     }
 
     /** @return array<string, int|string|null> */

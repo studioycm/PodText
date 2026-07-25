@@ -103,9 +103,29 @@ class MediaReferenceFinder
                 ]))
             : collect();
 
-        return collect($this->referencesForPath((string) $media->path))
+        return collect($this->nonAttachmentReferencesForMedia($media))
             ->merge($attachmentReferences)
-            ->merge($this->settingsReferenceKeyReferences($media->reference_key))
+            ->unique()
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    public function nonAttachmentReferencesForMedia(Media $media): array
+    {
+        $path = $this->normalize((string) $media->path);
+        $references = $media->disk === 'public'
+            ? collect($this->referencesForPath($path))
+            : collect();
+
+        return $references
+            ->merge($this->settingsIdentityReferences(
+                $path,
+                $media->reference_key,
+                $this->settingsPayloads(),
+            ))
             ->unique()
             ->values()
             ->all();

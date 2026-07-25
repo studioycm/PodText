@@ -5,6 +5,7 @@ namespace App\Filament\Resources\Media;
 use App\Filament\Resources\Media\Pages\CreateMedia;
 use App\Filament\Resources\Media\Pages\EditMedia;
 use App\Filament\Resources\Media\Pages\ListMedia;
+use App\Filament\Resources\Media\Pages\ReviewMediaIssues;
 use App\Filament\Resources\Media\Schemas\MediaForm;
 use App\Filament\Resources\Media\Tables\MediaTable;
 use App\Filament\Support\Concerns\UsesAdminNavigationOrder;
@@ -78,6 +79,7 @@ class MediaResource extends Resource
             'index' => ListMedia::route('/'),
             'create' => CreateMedia::route('/create'),
             'edit' => EditMedia::route('/{record}/edit'),
+            'review-issues' => ReviewMediaIssues::route('/{record}/review-issues'),
         ];
     }
 }

@@ -21,10 +21,16 @@ class EditMedia extends EditRecord
     {
         parent::mount($record);
 
-        $this->mediaLibraryContext = app(MediaLibraryContext::class)->fromInput(
-            request()->query('from'),
-            (int) $this->getRecord()->getKey(),
-        );
+        $context = app(MediaLibraryContext::class);
+        $this->mediaLibraryContext = request()->has('origin')
+            ? $context->fromContinuationToken(
+                request()->query('origin'),
+                (int) $this->getRecord()->getKey(),
+            )
+            : $context->fromInput(
+                request()->query('from'),
+                (int) $this->getRecord()->getKey(),
+            );
     }
 
     protected function mutateFormDataBeforeFill(array $data): array
@@ -59,12 +65,19 @@ class EditMedia extends EditRecord
     public function mediaLibraryReturnUrl(): string
     {
         $context = app(MediaLibraryContext::class);
-        $state = $context->fromInput(
-            $this->mediaLibraryContext,
-            (int) $this->getRecord()->getKey(),
-        );
 
-        return MediaResource::getUrl('index', $context->indexParameters($state))
-            .$context->fragment($state);
+        return MediaResource::getUrl(
+            'index',
+            $context->indexParameters($this->mediaLibraryContext),
+        ).$context->fragment($this->mediaLibraryContext);
+    }
+
+    public function issueReviewUrl(): string
+    {
+        return MediaResource::getUrl('review-issues', [
+            'record' => $this->getRecord(),
+            ...app(MediaLibraryContext::class)
+                ->continuationParameters($this->mediaLibraryContext),
+        ]);
     }
 }

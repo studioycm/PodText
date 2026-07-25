@@ -79,7 +79,10 @@ class MediaTable
                                 TextColumn::make('card_title')
                                     ->label(__('admin.owner_image.metadata.title'))
                                     ->state(fn (Media $record): string => self::displayIdentity($record))
-                                    ->searchable(['title', 'name'])
+                                    ->searchable(
+                                        query: fn (Builder $query, string $search): Builder => app(MediaLibraryTaskQuery::class)
+                                            ->applySearchTerm($query, $search),
+                                    )
                                     ->weight(FontWeight::SemiBold)
                                     ->wrap(),
                                 TextColumn::make('card_original_filename')

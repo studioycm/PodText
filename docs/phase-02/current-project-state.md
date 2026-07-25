@@ -6,6 +6,27 @@ Recorded after the Markdown-only post-Prompt-10 prompt-progress centralization c
 
 ## Git State
 
+- Media Operations UX3 Mini-task 3 is complete locally under audit
+  `LS-20260725-PODTEXT-MEDIA-OPERATIONS-UX3-M3-01` and approved option
+  `MEDIA-OPS-UX3-M3-O1-ROUTE-FIRST-ISSUE-REVIEW-NO-RECHECK`. It started from
+  `main` at `cc634cb02a922c9bf165bb5951ae32c5654fd564`, 33 commits ahead of
+  `origin/main`; its implementation commit is pending the canonical local
+  hash stamp. Media details now leads with stable identity and a concise issue
+  indication, labels descriptive editing as non-repair, and links to a
+  dedicated read-only Issue Review. The Review surface explains all six
+  current diagnostics, bounded known impact and evidence limits; exposes only
+  current authorized owner-presentation and file routes; shows an honest
+  no-repair-authority blocker; and preserves the original Library task,
+  filters, search, sort, page and card focus through Close, Next and Return.
+  Recheck/Retry, generic Fix, the first reason-specific repair mutation,
+  Package 5, Mini-task 4, migrations, dependencies, local-development data,
+  production and push were not started. Independent review found no critical
+  issue and corrected one Library/Next split-search parity issue plus bounded
+  null-order coverage and direction-aware icon gaps. The post-review
+  pre-documentation and final documented-state gates passed Pint, FilaCheck,
+  Vite and the full serial 1,207-test / 15,420-assertion suite outside the
+  macOS browser sandbox. Handoff:
+  `docs/phase-02/media-operations-ux3-mini3-media-issue-review-handoff.md`.
 - Media Operations UX3 Mini-task 2 is complete locally under parent option
   `MEDIA-OPS-UX3-O2-PDF-CONTRACT-TARGETED-WORKSPACES`, audit
   `LS-20260724-PODTEXT-MEDIA-OPERATIONS-UX3-M2-01` and approved option
@@ -20,8 +41,9 @@ Recorded after the Markdown-only post-Prompt-10 prompt-progress centralization c
   versioned List-to-Edit return context that restores filters, page and actual
   card focus. All Package 1–4 persistence, inventory, attachment, acquisition,
   delivery, authorization and mutation authorities remain unchanged.
-  Mini-task 3, Package 5, migrations, dependencies, local-development data,
-  production and push were not started.
+  Mini-task 3 builds on this context under the separate completed entry above.
+  Package 5, migrations, dependencies, local-development data, production and
+  push were not started.
 - Media Operations UX3 Mini-task 1 is complete locally under audit
   `LS-20260724-PODTEXT-MEDIA-OPERATIONS-UX-03`, approved option
   `MEDIA-OPS-UX3-O2-PDF-CONTRACT-TARGETED-WORKSPACES`, with

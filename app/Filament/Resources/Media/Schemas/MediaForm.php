@@ -3,20 +3,33 @@
 namespace App\Filament\Resources\Media\Schemas;
 
 use App\Enums\ImageUploadPurpose;
+use App\Filament\Resources\Media\Pages\EditMedia;
+use App\Models\Media;
 use App\Support\Media\CuratorImageUploadPolicy;
+use App\Support\Media\MediaIssueReviewPresenter;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
+use Filament\Schemas\Components\View as SchemaView;
 use Filament\Schemas\Schema;
+use Filament\Support\Icons\Heroicon;
 
 class MediaForm
 {
     public static function configure(Schema $schema): Schema
     {
         return $schema->components([
+            SchemaView::make('filament.resources.media.schemas.media-details-summary')
+                ->visibleOn('edit')
+                ->viewData(fn (Media $record, EditMedia $livewire): array => [
+                    'summary' => app(MediaIssueReviewPresenter::class)->details($record),
+                    'reviewUrl' => $livewire->issueReviewUrl(),
+                    'reviewIcon' => Heroicon::OutlinedExclamationTriangle,
+                ])
+                ->columnSpanFull(),
             Section::make(__('admin.sections.media_upload'))
                 ->visibleOn('create')
                 ->schema([
@@ -44,7 +57,8 @@ class MediaForm
                         ->columnSpanFull(),
                 ])
                 ->columns(2),
-            Section::make(__('admin.sections.media_metadata'))
+            Section::make(__('admin.media_issue_review.details.describe_heading'))
+                ->description(__('admin.media_issue_review.details.describe_not_repair'))
                 ->schema([
                     TextInput::make('title')
                         ->label(__('admin.fields.title'))

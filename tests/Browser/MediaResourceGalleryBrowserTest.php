@@ -1,7 +1,10 @@
 <?php
 
+use App\Enums\MediaAttachmentRole;
 use App\Filament\Resources\Media\MediaResource;
+use App\Models\ContentGroup;
 use App\Models\Media;
+use App\Models\MediaAttachment;
 use App\Models\User;
 use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -526,4 +529,242 @@ it('keeps canonical Media task context keyboard reachable across Edit and safe f
 })->with([
     'Hebrew canonical context' => ['he', 'rtl'],
     'English canonical context' => ['en', 'ltr'],
+]);
+
+it('delivers a responsive accessible issue review and preserves its exact task origin', function (
+    string $locale,
+    string $direction,
+): void {
+    app()->setLocale($locale);
+    $current = Media::factory()->create([
+        'disk' => 'public',
+        'directory' => 'content-groups/covers',
+        'visibility' => 'public',
+        'name' => 'browser-issue-current',
+        'path' => 'content-groups/covers/browser-issue-current.jpg',
+        'width' => 640,
+        'height' => 360,
+        'size' => 2048,
+        'type' => 'image/jpeg',
+        'ext' => 'jpg',
+        'title' => 'Browser issue current',
+        'exif' => ['original_filename' => 'Browser issue current original.jpg'],
+        'created_at' => now()->subMinute(),
+    ]);
+    $next = Media::factory()->create([
+        'disk' => 'public',
+        'directory' => 'content-groups/covers',
+        'visibility' => 'public',
+        'name' => 'browser-issue-next',
+        'path' => 'content-groups/covers/browser-issue-next.jpg',
+        'width' => 640,
+        'height' => 360,
+        'size' => 4096,
+        'type' => 'image/jpeg',
+        'ext' => 'jpg',
+        'title' => 'Browser issue next',
+        'exif' => ['original_filename' => 'Browser issue next original.jpg'],
+        'created_at' => now(),
+    ]);
+    $owner = ContentGroup::factory()->create(['title' => 'Browser issue owner']);
+    MediaAttachment::factory()->create([
+        'media_id' => $current,
+        'attachable_type' => 'content_group',
+        'attachable_id' => $owner,
+        'role' => MediaAttachmentRole::Cover,
+    ]);
+    $indexUrl = MediaResource::getUrl('index', [
+        'tab' => 'needs_attention',
+        'filters' => [
+            'type' => ['value' => 'image/jpeg'],
+            'reason' => ['value' => 'missing_file'],
+        ],
+        'search' => 'Browser issue',
+        'sort' => 'created_at:asc',
+        'focus' => $current->getKey(),
+    ]).'#media-record-'.$current->getKey();
+    $page = visit($indexUrl)->resize(1280, 960);
+
+    $page
+        ->click(__('admin.media_library.open_details'))
+        ->wait(0.25)
+        ->assertSee('Browser issue current')
+        ->assertSee('Browser issue current original.jpg')
+        ->assertSee(__('admin.media_issue_review.details.describe_not_repair'))
+        ->click(__('admin.media_issue_review.review_issues'))
+        ->wait(0.35)
+        ->assertSee(__('admin.media_issue_review.heading'))
+        ->assertSee(__('admin.media_issue_review.reasons.missing_file.cause'))
+        ->assertSee(__('admin.media_issue_review.reasons.missing_file.consequence'))
+        ->assertSee(__('admin.media_issue_review.reasons.missing_file.evidence_limit'))
+        ->assertSee(__('admin.media_issue_review.blocker.heading'))
+        ->assertSee(__('admin.media_issue_review.owners.presentation_only'));
+
+    $reviewState = $page->script(<<<'JS'
+        () => {
+            const visible = (element) => element?.getClientRects().length > 0;
+            const action = (testId) => document.querySelector(`[data-testid="${testId}"]`);
+            const ownerRoute = action('media-issue-owner-route');
+
+            return {
+                direction: document.documentElement.dir,
+                path: window.location.pathname,
+                identity_visible: visible(document.querySelector('[data-testid="media-issue-review"]')),
+                issue_visible: visible(document.querySelector('[data-testid="media-issue-reason-missing_file"]')),
+                blocker_visible: visible(action('media-issue-blocker')),
+                owner_route_visible: visible(ownerRoute),
+                owner_route_new_tab: ownerRoute?.getAttribute('target') === '_blank'
+                    && ownerRoute?.getAttribute('rel')?.includes('noopener'),
+                close_visible: visible(action('media-issue-close')),
+                next_visible: visible(action('media-issue-next')),
+                return_visible: visible(action('media-issue-return')),
+                generic_fix_present: Boolean(action('media-issue-fix')),
+                recheck_present: Boolean(action('media-issue-recheck')),
+                retry_present: Boolean(action('media-issue-retry')),
+                files_discovery_present: Boolean(action('media-files-discovery')),
+                trash_present: Boolean(action('media-trash')),
+                horizontal_overflow: document.documentElement.scrollWidth
+                    > document.documentElement.clientWidth + 1,
+            };
+        }
+        JS);
+
+    expect($reviewState['direction'])->toBe($direction)
+        ->and($reviewState['path'])->toContain('/admin/media/'.$current->getKey().'/review-issues')
+        ->and($reviewState['identity_visible'])->toBeTrue()
+        ->and($reviewState['issue_visible'])->toBeTrue()
+        ->and($reviewState['blocker_visible'])->toBeTrue()
+        ->and($reviewState['owner_route_visible'])->toBeTrue()
+        ->and($reviewState['owner_route_new_tab'])->toBeTrue()
+        ->and($reviewState['close_visible'])->toBeTrue()
+        ->and($reviewState['next_visible'])->toBeTrue()
+        ->and($reviewState['return_visible'])->toBeTrue()
+        ->and($reviewState['generic_fix_present'])->toBeFalse()
+        ->and($reviewState['recheck_present'])->toBeFalse()
+        ->and($reviewState['retry_present'])->toBeFalse()
+        ->and($reviewState['files_discovery_present'])->toBeFalse()
+        ->and($reviewState['trash_present'])->toBeFalse()
+        ->and($reviewState['horizontal_overflow'])->toBeFalse();
+
+    if ($locale === 'he') {
+        $page->screenshot(
+            fullPage: true,
+            filename: 'media-operations-ux3-mini3-issue-review-he-desktop',
+        );
+    } else {
+        $page->screenshot(
+            fullPage: true,
+            filename: 'media-operations-ux3-mini3-issue-review-en-desktop',
+        );
+    }
+
+    $page->resize(390, 844)->wait(0.25);
+    $narrow = $page->script(<<<'JS'
+        () => {
+            const review = document.querySelector('[data-testid="media-issue-review"]');
+            const rect = review?.getBoundingClientRect();
+
+            return {
+                viewport_width: window.innerWidth,
+                direction: document.documentElement.dir,
+                review_within_viewport: Boolean(rect)
+                    && rect.left >= -1
+                    && rect.right <= window.innerWidth + 1,
+                horizontal_overflow: document.documentElement.scrollWidth
+                    > document.documentElement.clientWidth + 1,
+            };
+        }
+        JS);
+
+    expect($narrow['viewport_width'])->toBe(390)
+        ->and($narrow['direction'])->toBe($direction)
+        ->and($narrow['review_within_viewport'])->toBeTrue()
+        ->and($narrow['horizontal_overflow'])->toBeFalse();
+
+    if ($locale === 'he') {
+        $page->screenshot(
+            fullPage: true,
+            filename: 'media-operations-ux3-mini3-issue-review-he-narrow',
+        );
+    }
+
+    $page->resize(1280, 960)->wait(0.25);
+    $page->script(<<<'JS'
+        () => document.querySelector('[data-testid="media-issue-close"]')?.focus()
+        JS);
+    $page->keys('[data-testid="media-issue-close"]', ['Tab']);
+    $firstTab = $page->script(<<<'JS'
+        () => document.activeElement?.getAttribute('data-testid')
+        JS);
+    $page->keys('[data-testid="media-issue-next"]', ['Tab']);
+    $secondTab = $page->script(<<<'JS'
+        () => document.activeElement?.getAttribute('data-testid')
+        JS);
+
+    expect($firstTab)->toBe('media-issue-next')
+        ->and($secondTab)->toBe('media-issue-return');
+
+    $page->script(<<<'JS'
+        () => {
+            const knownResizeObserverMessage = 'ResizeObserver loop completed with undelivered notifications.';
+            const browserErrors = window.__pestBrowser?.jsErrors ?? [];
+            window.__pestBrowser.jsErrors = browserErrors.filter(
+                (error) => error.message !== knownResizeObserverMessage,
+            );
+        }
+        JS);
+    $accessibilityIssues = $page->script(<<<'JS'
+        async () => {
+            const root = document.querySelector('[data-testid="media-issue-review"]');
+            const violations = root ? (await window.axe.run(root)).violations : [{
+                id: 'missing-review-root',
+                impact: 'critical',
+                nodes: [],
+            }];
+
+            return violations
+                .filter((violation) => ['critical', 'serious'].includes(violation.impact))
+                .map((violation) => ({
+                    id: violation.id,
+                    impact: violation.impact,
+                    targets: violation.nodes.flatMap((node) => node.target),
+                }));
+        }
+        JS);
+
+    expect($accessibilityIssues)->toBeEmpty();
+
+    $page
+        ->assertNoSmoke()
+        ->click(__('admin.media_issue_review.actions.next'))
+        ->wait(0.35)
+        ->assertSee('Browser issue next')
+        ->click(__('admin.media_issue_review.actions.return'))
+        ->wait(0.35);
+    $returnState = $page->script(<<<'JS'
+        () => ({
+            path: window.location.pathname,
+            tab: new URL(window.location.href).searchParams.get('tab'),
+            mime: new URL(window.location.href).searchParams.get('filters[type][value]'),
+            reason: new URL(window.location.href).searchParams.get('filters[reason][value]'),
+            search: new URL(window.location.href).searchParams.get('search'),
+            sort: new URL(window.location.href).searchParams.get('sort'),
+            hash: window.location.hash,
+            focused_id: document.activeElement?.id ?? null,
+        })
+        JS);
+
+    expect($returnState)->toBe([
+        'path' => '/admin/media',
+        'tab' => 'needs_attention',
+        'mime' => 'image/jpeg',
+        'reason' => 'missing_file',
+        'search' => 'Browser issue',
+        'sort' => 'created_at:asc',
+        'hash' => '#media-record-'.$current->getKey(),
+        'focused_id' => 'media-record-'.$current->getKey(),
+    ]);
+})->with([
+    'Hebrew issue review' => ['he', 'rtl'],
+    'English issue review' => ['en', 'ltr'],
 ]);
