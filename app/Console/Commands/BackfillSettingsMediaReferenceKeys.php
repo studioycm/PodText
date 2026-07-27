@@ -6,11 +6,12 @@ use App\Models\Media;
 use App\Settings\PublicContentSettings;
 use App\Support\Media\LegacyMediaTransitionPlanner;
 use App\Support\PublicFront\PublicFrontConfigCache;
+use App\Support\SettingsLifecycle\PublicContentSettingsWriteCoordinator;
 use App\Support\SettingsLifecycle\SettingsMediaIdentityProjector;
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\DB;
 use RuntimeException;
 use Spatie\LaravelSettings\Models\SettingsProperty;
+use Spatie\LaravelSettings\SettingsContainer;
 use Throwable;
 
 class BackfillSettingsMediaReferenceKeys extends Command
@@ -22,10 +23,10 @@ class BackfillSettingsMediaReferenceKeys extends Command
     protected $description = 'Report or backfill immutable media reference keys alongside legacy public-settings paths';
 
     public function handle(
-        PublicContentSettings $settings,
         SettingsMediaIdentityProjector $projector,
         PublicFrontConfigCache $cache,
         LegacyMediaTransitionPlanner $planner,
+        PublicContentSettingsWriteCoordinator $writeCoordinator,
     ): int {
         $manifest = $planner->manifest();
         $planner->assertClosed($manifest);
@@ -48,7 +49,7 @@ class BackfillSettingsMediaReferenceKeys extends Command
             return self::SUCCESS;
         }
 
-        $repository = $settings->getRepository();
+        $repository = app(PublicContentSettings::class)->getRepository();
         $payload = $repository->getPropertiesInGroup(PublicContentSettings::group());
 
         try {
@@ -84,7 +85,10 @@ class BackfillSettingsMediaReferenceKeys extends Command
         }
 
         try {
-            $updated = DB::transaction(function () use ($repository, $projector, $planner, $manifest): int {
+            $updated = $writeCoordinator->transaction(function () use ($projector, $planner, $manifest): int {
+                app()->forgetInstance(PublicContentSettings::class);
+                app(SettingsContainer::class)->clearCache();
+                $repository = app(PublicContentSettings::class)->getRepository();
                 $names = ['menu_config', 'about_page', 'default_images'];
                 $properties = SettingsProperty::query()
                     ->where('group', PublicContentSettings::group())

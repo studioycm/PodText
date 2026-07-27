@@ -7,9 +7,11 @@ use App\Enums\UserRole;
 use App\Filament\Forms\Components\IconSelect;
 use App\Filament\Forms\Components\TrustedHtmlCodeEditor;
 use App\Filament\Forms\MediaPickerField;
+use App\Filament\Support\IntegerTextInputState;
 use App\Support\Media\ImageFileNamer;
 use App\Support\Media\MediaIdentityResolver;
 use App\Support\PublicContent\PublicTranscriptionPolicy;
+use App\Support\PublicFront\About\PublicAboutBlockKey;
 use App\Support\PublicFront\Cards\PublicFrontCardTemplateRegistry;
 use App\Support\PublicFront\Cards\PublicFrontCardTemplateResolver;
 use App\Support\PublicFront\Colors\PublicFrontColor;
@@ -40,9 +42,23 @@ use Filament\Schemas\Components\Utilities\Set;
 use Filament\Support\Enums\Width;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Support\Arr;
+use Illuminate\Support\Collection;
+use InvalidArgumentException;
 
 trait BuildsPublicContentSettingsSubjectSchemas
 {
+    /**
+     * Subject Settings pages override this to retain the pre-fill editable
+     * projection until the native afterFill hook captures unit hashes.
+     *
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    protected function rememberOpenedFormFacingPayload(array $data): array
+    {
+        return $data;
+    }
+
     protected function homepageTab(): Tab
     {
         return Tab::make(__('admin.tabs.public_content_settings.homepage'))
@@ -59,6 +75,7 @@ trait BuildsPublicContentSettingsSubjectSchemas
                                 ->required()
                                 ->numeric()
                                 ->integer()
+                                ->dehydrateStateUsing(IntegerTextInputState::dehydrate(...))
                                 ->minValue(1),
                             TextInput::make('pinned_item_limit')
                                 ->label(__('admin.fields.pinned_item_limit'))
@@ -66,6 +83,7 @@ trait BuildsPublicContentSettingsSubjectSchemas
                                 ->required()
                                 ->numeric()
                                 ->integer()
+                                ->dehydrateStateUsing(IntegerTextInputState::dehydrate(...))
                                 ->minValue(1),
                             Toggle::make('show_latest_section')
                                 ->label(__('admin.fields.show_latest_section'))
@@ -170,6 +188,7 @@ trait BuildsPublicContentSettingsSubjectSchemas
                                 ->required()
                                 ->numeric()
                                 ->integer()
+                                ->dehydrateStateUsing(IntegerTextInputState::dehydrate(...))
                                 ->minValue(1)
                                 ->maxValue(48),
                             TextInput::make('homepage_description_lines')
@@ -178,6 +197,7 @@ trait BuildsPublicContentSettingsSubjectSchemas
                                 ->required()
                                 ->numeric()
                                 ->integer()
+                                ->dehydrateStateUsing(IntegerTextInputState::dehydrate(...))
                                 ->minValue(0)
                                 ->maxValue(4),
                             Toggle::make('homepage_show_group_badge')
@@ -282,6 +302,7 @@ trait BuildsPublicContentSettingsSubjectSchemas
                                 ->required()
                                 ->numeric()
                                 ->integer()
+                                ->dehydrateStateUsing(IntegerTextInputState::dehydrate(...))
                                 ->minValue(1)
                                 ->maxValue(48),
                         ])
@@ -545,10 +566,18 @@ trait BuildsPublicContentSettingsSubjectSchemas
                                 ->schema([
                                     MediaPickerField::make('menu_config.logo.light_media_reference_key', ImageFileNamer::HEADER, allowSvg: true)
                                         ->label(__('admin.fields.public_menu_logo_light_path'))
-                                        ->helperText(__('admin.helpers.public_menu_logo_light_path')),
+                                        ->helperText(__('admin.helpers.public_menu_logo_light_path'))
+                                        ->ownerChoice(fn (Get $get): mixed => $this->settingsOwnerImageChoice(
+                                            'menu_config.logo.light_media_reference_key',
+                                            $get('menu_config.logo.light_media_reference_key'),
+                                        )),
                                     MediaPickerField::make('menu_config.logo.dark_media_reference_key', ImageFileNamer::HEADER, allowSvg: true)
                                         ->label(__('admin.fields.public_menu_logo_dark_path'))
-                                        ->helperText(__('admin.helpers.public_menu_logo_dark_path')),
+                                        ->helperText(__('admin.helpers.public_menu_logo_dark_path'))
+                                        ->ownerChoice(fn (Get $get): mixed => $this->settingsOwnerImageChoice(
+                                            'menu_config.logo.dark_media_reference_key',
+                                            $get('menu_config.logo.dark_media_reference_key'),
+                                        )),
                                     TextInput::make('menu_config.logo.alt_text')
                                         ->label(__('admin.fields.public_menu_logo_alt_text'))
                                         ->helperText(__('admin.helpers.public_menu_logo_alt_text'))
@@ -625,6 +654,7 @@ trait BuildsPublicContentSettingsSubjectSchemas
                                                 ->helperText(__('admin.helpers.public_menu_item_sort'))
                                                 ->numeric()
                                                 ->integer()
+                                                ->dehydrateStateUsing(IntegerTextInputState::dehydrate(...))
                                                 ->minValue(0)
                                                 ->maxValue(1000),
                                         ])
@@ -710,6 +740,7 @@ trait BuildsPublicContentSettingsSubjectSchemas
                                     Select::make('route_key')
                                         ->label(__('admin.fields.public_front_route_key'))
                                         ->options(fn (): array => PublicFrontConfigRegistry::routeOptions())
+                                        ->disableOptionsWhenSelectedInSiblingRepeaterItems()
                                         ->native(false)
                                         ->required(),
                                     TextInput::make('label')
@@ -721,6 +752,19 @@ trait BuildsPublicContentSettingsSubjectSchemas
                                 ->defaultItems(0)
                                 ->reorderable()
                                 ->cloneable()
+                                ->cloneAction(fn (Action $action): Action => $action->after(
+                                    function (Repeater $component): void {
+                                        $items = $component->getRawState();
+                                        $cloneKey = array_key_last($items);
+
+                                        if ($cloneKey === null) {
+                                            return;
+                                        }
+
+                                        data_set($items[$cloneKey], 'route_key', null);
+                                        $component->rawState($items);
+                                    },
+                                ))
                                 ->columnSpanFull(),
                         ])
                         ->columns(1)
@@ -772,6 +816,7 @@ trait BuildsPublicContentSettingsSubjectSchemas
                                 ->required()
                                 ->numeric()
                                 ->integer()
+                                ->dehydrateStateUsing(IntegerTextInputState::dehydrate(...))
                                 ->minValue(1)
                                 ->maxValue(48),
                             Toggle::make('podcasts_page.category_filter_enabled')
@@ -894,6 +939,7 @@ trait BuildsPublicContentSettingsSubjectSchemas
                                                 ->required()
                                                 ->numeric()
                                                 ->integer()
+                                                ->dehydrateStateUsing(IntegerTextInputState::dehydrate(...))
                                                 ->minValue(1)
                                                 ->maxValue(48),
                                             Select::make('podcasts_page.group_page.page_size_options')
@@ -1087,6 +1133,7 @@ trait BuildsPublicContentSettingsSubjectSchemas
                                         ->required()
                                         ->numeric()
                                         ->integer()
+                                        ->dehydrateStateUsing(IntegerTextInputState::dehydrate(...))
                                         ->minValue(1)
                                         ->maxValue(24),
                                     Select::make('contributors_page.directory.preview_grid_columns')
@@ -1120,6 +1167,7 @@ trait BuildsPublicContentSettingsSubjectSchemas
                                         ->required()
                                         ->numeric()
                                         ->integer()
+                                        ->dehydrateStateUsing(IntegerTextInputState::dehydrate(...))
                                         ->minValue(1)
                                         ->maxValue(24),
                                     Select::make('contributors_page.top_transcribers.layout')
@@ -1193,6 +1241,7 @@ trait BuildsPublicContentSettingsSubjectSchemas
                                         ->required()
                                         ->numeric()
                                         ->integer()
+                                        ->dehydrateStateUsing(IntegerTextInputState::dehydrate(...))
                                         ->minValue(1)
                                         ->maxValue(48),
                                     Select::make('contributors_page.page.page_size_options')
@@ -1362,6 +1411,7 @@ trait BuildsPublicContentSettingsSubjectSchemas
                                         ->helperText(__('admin.helpers.about_team_card_description_lines'))
                                         ->numeric()
                                         ->integer()
+                                        ->dehydrateStateUsing(IntegerTextInputState::dehydrate(...))
                                         ->minValue(0)
                                         ->maxValue(6),
                                 ])
@@ -1375,6 +1425,19 @@ trait BuildsPublicContentSettingsSubjectSchemas
                                 ->collapsible()
                                 ->collapsed()
                                 ->cloneable()
+                                ->cloneAction(fn (Action $action): Action => $action->after(
+                                    function (Builder $component): void {
+                                        $items = $component->getRawState();
+                                        $cloneKey = array_key_last($items);
+
+                                        if ($cloneKey === null) {
+                                            return;
+                                        }
+
+                                        data_set($items[$cloneKey], 'data.key', null);
+                                        $component->rawState($items);
+                                    },
+                                ))
                                 ->default([])
                                 ->addActionLabel(__('admin.actions.add_about_page_block'))
                                 ->columnSpanFull(),
@@ -1386,6 +1449,7 @@ trait BuildsPublicContentSettingsSubjectSchemas
                                         ->label(__('admin.fields.about_team_profile_key'))
                                         ->helperText(__('admin.helpers.about_team_profile_key'))
                                         ->required()
+                                        ->distinct()
                                         ->maxLength(80)
                                         ->rules(['regex:/^[a-z][a-z0-9_-]*$/']),
                                     Toggle::make('visible')
@@ -1397,11 +1461,16 @@ trait BuildsPublicContentSettingsSubjectSchemas
                                         ->helperText(__('admin.helpers.about_team_profile_sort'))
                                         ->numeric()
                                         ->integer()
+                                        ->dehydrateStateUsing(IntegerTextInputState::dehydrate(...))
                                         ->minValue(0)
                                         ->maxValue(1000),
                                     MediaPickerField::make('image_media_reference_key', ImageFileNamer::TEAM)
                                         ->label(__('admin.fields.about_team_profile_image'))
-                                        ->helperText(__('admin.helpers.about_team_profile_image')),
+                                        ->helperText(__('admin.helpers.about_team_profile_image'))
+                                        ->ownerChoice(fn (Get $get): mixed => $this->settingsOwnerImageChoice(
+                                            'about_page.team_profiles.'.(string) $get('key').'.image_media_reference_key',
+                                            $get('image_media_reference_key'),
+                                        )),
                                     TextInput::make('name')
                                         ->label(__('admin.fields.about_team_profile_name'))
                                         ->helperText(__('admin.helpers.about_team_profile_name'))
@@ -1422,6 +1491,19 @@ trait BuildsPublicContentSettingsSubjectSchemas
                                 ->defaultItems(0)
                                 ->reorderable()
                                 ->cloneable()
+                                ->cloneAction(fn (Action $action): Action => $action->after(
+                                    function (Repeater $component): void {
+                                        $items = $component->getRawState();
+                                        $cloneKey = array_key_last($items);
+
+                                        if ($cloneKey === null) {
+                                            return;
+                                        }
+
+                                        data_set($items[$cloneKey], 'key', null);
+                                        $component->rawState($items);
+                                    },
+                                ))
                                 ->collapsed()
                                 ->grid(['md' => 2])
                                 ->columns(3)
@@ -1759,6 +1841,10 @@ trait BuildsPublicContentSettingsSubjectSchemas
                     MediaPickerField::make("default_images.{$family}.media_reference_key", ImageFileNamer::DEFAULT_IMAGES)
                         ->label(__('admin.fields.default_image_path'))
                         ->helperText(__('admin.helpers.default_image_path'))
+                        ->ownerChoice(fn (Get $get): mixed => $this->settingsOwnerImageChoice(
+                            "default_images.{$family}.media_reference_key",
+                            $get("default_images.{$family}.media_reference_key"),
+                        ))
                         ->visible(fn (Get $get): bool => $get("default_images.{$family}.mode") === 'custom')
                         ->required(fn (Get $get): bool => $get("default_images.{$family}.mode") === 'custom')
                         ->columnSpanFull(),
@@ -1827,7 +1913,7 @@ trait BuildsPublicContentSettingsSubjectSchemas
 
         $owned = $this->hydrateMediaIdentityState($owned);
 
-        return match ($this->settingsSubject()) {
+        $formFacing = match ($this->settingsSubject()) {
             SettingsSubjectOwnershipRegistry::ABOUT => [
                 ...$owned,
                 'about_page' => $this->aboutPageForBuilder($owned['about_page'] ?? []),
@@ -1836,8 +1922,14 @@ trait BuildsPublicContentSettingsSubjectSchemas
                 ...$owned,
                 'card_templates' => $this->cardTemplatesForBuilder($owned['card_templates'] ?? []),
             ],
+            SettingsSubjectOwnershipRegistry::PUBLIC_FORMS => [
+                ...$owned,
+                'public_forms' => $this->publicFormsForBuilder($owned['public_forms'] ?? []),
+            ],
             default => $owned,
         };
+
+        return $this->rememberOpenedFormFacingPayload($formFacing);
     }
 
     /**
@@ -1919,12 +2011,14 @@ trait BuildsPublicContentSettingsSubjectSchemas
      */
     private function hydrateMediaIdentityState(array $owned): array
     {
+        $resolver = app(MediaIdentityResolver::class);
+
         if ($this->settingsSubject() === SettingsSubjectOwnershipRegistry::MENU_HEADER) {
             $logo = data_get($owned, 'menu_config.logo', []);
 
             if (is_array($logo)) {
-                $owned['menu_config']['logo'] = $this->hydrateMediaPair($logo, 'light_media_reference_key', 'light_path', ImageUploadPurpose::HeaderLogo);
-                $owned['menu_config']['logo'] = $this->hydrateMediaPair($owned['menu_config']['logo'], 'dark_media_reference_key', 'dark_path', ImageUploadPurpose::HeaderLogo);
+                $owned['menu_config']['logo'] = $this->hydrateMediaPair($logo, 'light_media_reference_key', 'light_path', ImageUploadPurpose::HeaderLogo, $resolver);
+                $owned['menu_config']['logo'] = $this->hydrateMediaPair($owned['menu_config']['logo'], 'dark_media_reference_key', 'dark_path', ImageUploadPurpose::HeaderLogo, $resolver);
             }
         }
 
@@ -1936,6 +2030,7 @@ trait BuildsPublicContentSettingsSubjectSchemas
                         'media_reference_key',
                         'path',
                         ImageUploadPurpose::DefaultImage,
+                        $resolver,
                     );
                 }
             }
@@ -1946,23 +2041,45 @@ trait BuildsPublicContentSettingsSubjectSchemas
         }
 
         $aboutPage = is_array($owned['about_page'] ?? null) ? $owned['about_page'] : [];
-        $aboutPage['blocks'] = collect($aboutPage['blocks'] ?? [])
-            ->filter(fn (mixed $block): bool => is_array($block))
+        $blocks = collect($aboutPage['blocks'] ?? [])
+            ->filter(fn (mixed $block): bool => is_array($block));
+        $profiles = collect($aboutPage['team_profiles'] ?? [])
+            ->filter(fn (mixed $profile): bool => is_array($profile));
+
+        $resolver->primeReferenceKeys(
+            $blocks->pluck('image_media_reference_key'),
+            ImageUploadPurpose::AboutImage,
+        );
+        $resolver->primeLegacyPaths(
+            $blocks->pluck('image_path'),
+            ImageUploadPurpose::AboutImage,
+        );
+        $resolver->primeReferenceKeys(
+            $profiles->pluck('image_media_reference_key'),
+            ImageUploadPurpose::TeamImage,
+        );
+        $resolver->primeLegacyPaths(
+            $profiles->pluck('image_path'),
+            ImageUploadPurpose::TeamImage,
+        );
+
+        $aboutPage['blocks'] = $blocks
             ->map(fn (array $block): array => $this->hydrateMediaPair(
                 $block,
                 'image_media_reference_key',
                 'image_path',
                 ImageUploadPurpose::AboutImage,
+                $resolver,
             ))
             ->values()
             ->all();
-        $aboutPage['team_profiles'] = collect($aboutPage['team_profiles'] ?? [])
-            ->filter(fn (mixed $profile): bool => is_array($profile))
+        $aboutPage['team_profiles'] = $profiles
             ->map(fn (array $profile): array => $this->hydrateMediaPair(
                 $profile,
                 'image_media_reference_key',
                 'image_path',
                 ImageUploadPurpose::TeamImage,
+                $resolver,
             ))
             ->values()
             ->all();
@@ -1980,13 +2097,35 @@ trait BuildsPublicContentSettingsSubjectSchemas
         string $referenceField,
         string $pathField,
         ImageUploadPurpose $purpose,
+        MediaIdentityResolver $resolver,
     ): array {
+        if (
+            array_key_exists($referenceField, $state)
+            && $state[$referenceField] !== null
+            && ! is_string($state[$referenceField])
+        ) {
+            $state[$referenceField] = null;
+
+            return $state;
+        }
+
         $referenceKey = is_string($state[$referenceField] ?? null) ? $state[$referenceField] : null;
         $legacyPath = is_string($state[$pathField] ?? null) ? $state[$pathField] : null;
-        $media = app(MediaIdentityResolver::class)->resolve($referenceKey, $legacyPath, $purpose);
+
+        try {
+            $media = $resolver->resolve($referenceKey, $legacyPath, $purpose);
+        } catch (InvalidArgumentException) {
+            if (blank($referenceKey) && filled($legacyPath)) {
+                $state[$referenceField] = $legacyPath;
+            }
+
+            return $state;
+        }
 
         if ($media !== null) {
             $state[$referenceField] = $media->reference_key;
+        } elseif (blank($referenceKey) && filled($legacyPath)) {
+            $state[$referenceField] = $legacyPath;
         }
 
         return $state;
@@ -2003,14 +2142,68 @@ trait BuildsPublicContentSettingsSubjectSchemas
             return [];
         }
 
+        $resolver = app(MediaIdentityResolver::class);
         $storedAboutPage = is_array($storedAboutPage) ? $storedAboutPage : [];
         $storedBlocks = collect($storedAboutPage['blocks'] ?? [])
-            ->filter(fn (mixed $block): bool => is_array($block) && filled($block['key'] ?? null))
-            ->keyBy(fn (array $block): string => (string) $block['key']);
-
-        $aboutPage['blocks'] = collect($aboutPage['blocks'] ?? [])
             ->filter(fn (mixed $block): bool => is_array($block))
-            ->map(function (array $block) use ($storedBlocks): array {
+            ->values()
+            ->map(fn (array $block, int $index): array => [
+                'key' => PublicAboutBlockKey::fromPersistedBlock($block, $index),
+                'block' => $block,
+            ])
+            ->filter(fn (array $entry): bool => is_string($entry['key']))
+            ->groupBy('key')
+            ->filter(fn ($entries): bool => $entries->count() === 1)
+            ->map(fn ($entries): array => $entries->first()['block']);
+        $blocks = collect($aboutPage['blocks'] ?? [])
+            ->filter(fn (mixed $block): bool => is_array($block));
+        $blockPairs = $blocks->map(function (array $block) use ($storedBlocks): array {
+            $incoming = array_key_exists('data', $block) && is_array($block['data'])
+                ? $block['data']
+                : $block;
+            $stored = $storedBlocks->get((string) ($incoming['key'] ?? ''), []);
+
+            return [
+                'incoming' => $incoming,
+                'stored' => is_array($stored) ? $stored : [],
+                'slot_key' => $this->settingsOwnerImageSlotKey(
+                    'about_page.blocks',
+                    $incoming['key'] ?? null,
+                ),
+            ];
+        });
+
+        $storedProfiles = collect($storedAboutPage['team_profiles'] ?? [])
+            ->filter(fn (mixed $profile): bool => is_array($profile) && filled($profile['key'] ?? null))
+            ->keyBy(fn (array $profile): string => (string) $profile['key']);
+        $profiles = collect($aboutPage['team_profiles'] ?? [])
+            ->filter(fn (mixed $profile): bool => is_array($profile));
+        $profilePairs = $profiles->map(function (array $profile) use ($storedProfiles): array {
+            $stored = $storedProfiles->get((string) ($profile['key'] ?? ''), []);
+
+            return [
+                'incoming' => $profile,
+                'stored' => is_array($stored) ? $stored : [],
+                'slot_key' => $this->settingsOwnerImageSlotKey(
+                    'about_page.team_profiles',
+                    $profile['key'] ?? null,
+                ),
+            ];
+        });
+
+        $this->primeAboutNormalizationPairs(
+            $resolver,
+            $blockPairs,
+            ImageUploadPurpose::AboutImage,
+        );
+        $this->primeAboutNormalizationPairs(
+            $resolver,
+            $profilePairs,
+            ImageUploadPurpose::TeamImage,
+        );
+
+        $aboutPage['blocks'] = $blocks
+            ->map(function (array $block) use ($resolver, $storedBlocks): array {
                 if (array_key_exists('data', $block) && is_array($block['data'])) {
                     $stored = $storedBlocks->get((string) ($block['data']['key'] ?? ''), []);
                     $block['data'] = $this->normalizeMediaPair(
@@ -2019,6 +2212,11 @@ trait BuildsPublicContentSettingsSubjectSchemas
                         'image_media_reference_key',
                         'image_path',
                         ImageUploadPurpose::AboutImage,
+                        $this->settingsOwnerImageSlotKey(
+                            'about_page.blocks',
+                            $block['data']['key'] ?? null,
+                        ),
+                        $resolver,
                     );
 
                     return $block;
@@ -2032,6 +2230,8 @@ trait BuildsPublicContentSettingsSubjectSchemas
                     'image_media_reference_key',
                     'image_path',
                     ImageUploadPurpose::AboutImage,
+                    $this->settingsOwnerImageSlotKey('about_page.blocks', $block['key'] ?? null),
+                    $resolver,
                 );
 
                 return $block;
@@ -2039,12 +2239,7 @@ trait BuildsPublicContentSettingsSubjectSchemas
             ->values()
             ->all();
 
-        $storedProfiles = collect($storedAboutPage['team_profiles'] ?? [])
-            ->filter(fn (mixed $profile): bool => is_array($profile) && filled($profile['key'] ?? null))
-            ->keyBy(fn (array $profile): string => (string) $profile['key']);
-
-        $aboutPage['team_profiles'] = collect($aboutPage['team_profiles'] ?? [])
-            ->filter(fn (mixed $profile): bool => is_array($profile))
+        $aboutPage['team_profiles'] = $profiles
             ->map(fn (array $profile): array => $this->normalizeMediaPair(
                 $profile,
                 is_array($storedProfiles->get((string) ($profile['key'] ?? ''), []))
@@ -2053,6 +2248,11 @@ trait BuildsPublicContentSettingsSubjectSchemas
                 'image_media_reference_key',
                 'image_path',
                 ImageUploadPurpose::TeamImage,
+                $this->settingsOwnerImageSlotKey(
+                    'about_page.team_profiles',
+                    $profile['key'] ?? null,
+                ),
+                $resolver,
             ))
             ->values()
             ->all();
@@ -2078,6 +2278,7 @@ trait BuildsPublicContentSettingsSubjectSchemas
                 'light_media_reference_key',
                 'light_path',
                 ImageUploadPurpose::HeaderLogo,
+                'menu_config.logo.light_media_reference_key',
             );
             $menuConfig['logo'] = $this->normalizeMediaPair(
                 $menuConfig['logo'],
@@ -2085,6 +2286,7 @@ trait BuildsPublicContentSettingsSubjectSchemas
                 'dark_media_reference_key',
                 'dark_path',
                 ImageUploadPurpose::HeaderLogo,
+                'menu_config.logo.dark_media_reference_key',
             );
         }
 
@@ -2109,12 +2311,27 @@ trait BuildsPublicContentSettingsSubjectSchemas
                 continue;
             }
 
+            $storedFamily = is_array($storedDefaultImages[$family] ?? null)
+                ? $storedDefaultImages[$family]
+                : [];
+            $incomingMode = $defaultImages[$family]['mode'] ?? null;
+            $storedMode = $storedFamily['mode'] ?? null;
+
+            if (
+                is_string($incomingMode)
+                && in_array($incomingMode, ['inherit', 'none'], true)
+                && $storedMode === 'custom'
+            ) {
+                $defaultImages[$family]['media_reference_key'] = null;
+            }
+
             $defaultImages[$family] = $this->normalizeMediaPair(
                 $defaultImages[$family],
-                is_array($storedDefaultImages[$family] ?? null) ? $storedDefaultImages[$family] : [],
+                $storedFamily,
                 'media_reference_key',
                 'path',
                 ImageUploadPurpose::DefaultImage,
+                "default_images.{$family}.media_reference_key",
             );
         }
 
@@ -2132,18 +2349,82 @@ trait BuildsPublicContentSettingsSubjectSchemas
         string $referenceField,
         string $pathField,
         ImageUploadPurpose $purpose,
+        string $slotKey,
+        ?MediaIdentityResolver $resolver = null,
     ): array {
-        $storedReferenceKey = is_string($stored[$referenceField] ?? null) ? $stored[$referenceField] : null;
-        $storedPath = is_string($stored[$pathField] ?? null) ? $stored[$pathField] : null;
-        $resolver = app(MediaIdentityResolver::class);
-
-        if (filled($storedReferenceKey)) {
-            $resolver->resolve($storedReferenceKey, $storedPath, $purpose);
-        }
+        $storedReferenceKey = $stored[$referenceField] ?? null;
+        $storedPath = $stored[$pathField] ?? null;
 
         if (! array_key_exists($referenceField, $incoming)) {
             $incoming[$referenceField] = $storedReferenceKey;
             $incoming[$pathField] = $storedPath;
+
+            return $incoming;
+        }
+
+        if ($incoming[$referenceField] !== null && ! is_string($incoming[$referenceField])) {
+            return $incoming;
+        }
+
+        $openedEvidence = $this->openedSettingsOwnerImageEvidence($slotKey);
+        $openedEvidenceHash = $openedEvidence['evidence_hash'] ?? null;
+        $hasOpenedBrokenEvidence = ($openedEvidence['direct_state'] ?? null) === 'broken'
+            && is_string($openedEvidenceHash)
+            && preg_match('/^[a-f0-9]{64}$/D', $openedEvidenceHash) === 1;
+        $openedReferenceKey = is_string($openedEvidence['reference_key'] ?? null)
+            ? $openedEvidence['reference_key']
+            : null;
+        $openedPath = is_string($openedEvidence['legacy_path'] ?? null)
+            ? $openedEvidence['legacy_path']
+            : null;
+        $openedIdentity = filled($openedReferenceKey)
+            ? $openedReferenceKey
+            : (filled($openedPath) ? $openedPath : null);
+        $openedResolvedMediaId = $openedEvidence['resolved_media_id'] ?? null;
+        $openedEvidenceIsPresent = ($openedEvidence['direct_state'] ?? null) === 'present'
+            && is_int($openedResolvedMediaId)
+            && $openedResolvedMediaId > 0
+            && is_string($openedReferenceKey)
+            && preg_match('/^[0-9A-HJKMNP-TV-Z]{26}$/D', $openedReferenceKey) === 1
+            && is_string($openedEvidenceHash)
+            && hash_equals(
+                hash('sha256', json_encode([
+                    'reference' => $openedReferenceKey,
+                    'path' => $openedPath,
+                ], JSON_THROW_ON_ERROR)),
+                $openedEvidenceHash,
+            );
+
+        if (
+            $openedEvidenceIsPresent
+            && is_string($incoming[$referenceField])
+            && hash_equals($openedReferenceKey, $incoming[$referenceField])
+        ) {
+            $incoming[$referenceField] = $openedReferenceKey;
+            $incoming[$pathField] = $openedPath;
+
+            return $incoming;
+        }
+
+        if (
+            $hasOpenedBrokenEvidence
+            && $openedIdentity === null
+            && blank($incoming[$referenceField])
+        ) {
+            $incoming[$referenceField] = $storedReferenceKey;
+            $incoming[$pathField] = $storedPath;
+
+            return $incoming;
+        }
+
+        if (
+            $hasOpenedBrokenEvidence
+            && is_string($openedIdentity)
+            && is_string($incoming[$referenceField])
+            && hash_equals($openedIdentity, $incoming[$referenceField])
+        ) {
+            $incoming[$referenceField] = $openedReferenceKey;
+            $incoming[$pathField] = $openedPath;
 
             return $incoming;
         }
@@ -2153,19 +2434,50 @@ trait BuildsPublicContentSettingsSubjectSchemas
             : null;
 
         if (filled($incomingReferenceKey)) {
-            $media = $resolver->resolve($incomingReferenceKey, null, $purpose);
+            $resolver ??= app(MediaIdentityResolver::class);
+            $storedEvidence = is_string($storedReferenceKey) && filled($storedReferenceKey)
+                ? $storedReferenceKey
+                : (is_string($storedPath) && filled($storedPath) ? $storedPath : null);
+
+            if (is_string($storedEvidence) && hash_equals($storedEvidence, $incoming[$referenceField])) {
+                try {
+                    $media = $resolver->resolve(
+                        is_string($storedReferenceKey) ? $storedReferenceKey : null,
+                        is_string($storedPath) ? $storedPath : null,
+                        $purpose,
+                    );
+                } catch (InvalidArgumentException) {
+                    $incoming[$referenceField] = $storedReferenceKey;
+                    $incoming[$pathField] = $storedPath;
+
+                    return $incoming;
+                }
+
+                if ($media === null) {
+                    $incoming[$referenceField] = $storedReferenceKey;
+                    $incoming[$pathField] = $storedPath;
+
+                    return $incoming;
+                }
+            } else {
+                $media = $resolver->resolve($incomingReferenceKey, null, $purpose);
+            }
+
+            if ($media === null) {
+                return $incoming;
+            }
+
             $incoming[$referenceField] = $media?->reference_key;
             $incoming[$pathField] = $media?->path;
 
             return $incoming;
         }
 
-        $legacyMedia = filled($storedPath) && blank($storedReferenceKey)
-            ? $resolver->resolve(null, $storedPath, $purpose)
-            : null;
-
-        if ($legacyMedia === null && filled($storedPath) && blank($storedReferenceKey)) {
-            $incoming[$referenceField] = null;
+        if (
+            ($storedReferenceKey !== null && ! is_string($storedReferenceKey))
+            || ($storedPath !== null && ! is_string($storedPath))
+        ) {
+            $incoming[$referenceField] = $storedReferenceKey;
             $incoming[$pathField] = $storedPath;
 
             return $incoming;
@@ -2175,6 +2487,86 @@ trait BuildsPublicContentSettingsSubjectSchemas
         $incoming[$pathField] = null;
 
         return $incoming;
+    }
+
+    /**
+     * @param  Collection<int, array{
+     *     incoming: array<string, mixed>,
+     *     stored: array<string, mixed>,
+     *     slot_key: string
+     * }>  $pairs
+     */
+    private function primeAboutNormalizationPairs(
+        MediaIdentityResolver $resolver,
+        Collection $pairs,
+        ImageUploadPurpose $purpose,
+    ): void {
+        $requiresResolution = $pairs->contains(function (array $pair): bool {
+            $incoming = $pair['incoming'];
+            $reference = $incoming['image_media_reference_key'] ?? null;
+
+            if (! is_string($reference) || blank($reference)) {
+                return false;
+            }
+
+            $evidence = $this->openedSettingsOwnerImageEvidence($pair['slot_key']);
+            $evidenceReference = is_string($evidence['reference_key'] ?? null)
+                ? $evidence['reference_key']
+                : null;
+            $evidencePath = is_string($evidence['legacy_path'] ?? null)
+                ? $evidence['legacy_path']
+                : null;
+            $evidenceHash = $evidence['evidence_hash'] ?? null;
+            $resolvedMediaId = $evidence['resolved_media_id'] ?? null;
+            $isPresentEvidence = ($evidence['direct_state'] ?? null) === 'present'
+                && is_int($resolvedMediaId)
+                && $resolvedMediaId > 0
+                && is_string($evidenceReference)
+                && preg_match('/^[0-9A-HJKMNP-TV-Z]{26}$/D', $evidenceReference) === 1
+                && is_string($evidenceHash)
+                && hash_equals(
+                    hash('sha256', json_encode([
+                        'reference' => $evidenceReference,
+                        'path' => $evidencePath,
+                    ], JSON_THROW_ON_ERROR)),
+                    $evidenceHash,
+                )
+                && hash_equals($evidenceReference, $reference);
+            $brokenIdentity = filled($evidenceReference) ? $evidenceReference : $evidencePath;
+            $isBrokenEvidence = ($evidence['direct_state'] ?? null) === 'broken'
+                && is_string($evidenceHash)
+                && preg_match('/^[a-f0-9]{64}$/D', $evidenceHash) === 1
+                && is_string($brokenIdentity)
+                && hash_equals($brokenIdentity, $reference);
+
+            return ! $isPresentEvidence && ! $isBrokenEvidence;
+        });
+
+        if (! $requiresResolution) {
+            return;
+        }
+
+        $resolver->primeReferenceKeys(
+            $pairs->flatMap(fn (array $pair): array => [
+                $pair['incoming']['image_media_reference_key'] ?? null,
+                $pair['stored']['image_media_reference_key'] ?? null,
+            ]),
+            $purpose,
+        );
+        $resolver->primeLegacyPaths(
+            $pairs->flatMap(fn (array $pair): array => [
+                $pair['incoming']['image_path'] ?? null,
+                $pair['stored']['image_path'] ?? null,
+            ]),
+            $purpose,
+        );
+    }
+
+    private function settingsOwnerImageSlotKey(string $collectionPath, mixed $key): string
+    {
+        return "{$collectionPath}."
+            .(is_string($key) ? $key : '')
+            .'.image_media_reference_key';
     }
 
     /**
@@ -2245,6 +2637,8 @@ trait BuildsPublicContentSettingsSubjectSchemas
             TextInput::make('key')
                 ->label(__('admin.fields.about_block_key'))
                 ->helperText(__('admin.helpers.about_block_key'))
+                ->required()
+                ->distinct()
                 ->maxLength(80)
                 ->rules(['regex:/^[a-z][a-z0-9_-]*$/']),
             Toggle::make('visible')
@@ -2256,6 +2650,7 @@ trait BuildsPublicContentSettingsSubjectSchemas
                 ->helperText(__('admin.helpers.about_block_sort'))
                 ->numeric()
                 ->integer()
+                ->dehydrateStateUsing(IntegerTextInputState::dehydrate(...))
                 ->minValue(0)
                 ->maxValue(1000),
             Select::make('style')
@@ -2297,6 +2692,10 @@ trait BuildsPublicContentSettingsSubjectSchemas
             MediaPickerField::make('image_media_reference_key', ImageFileNamer::ABOUT)
                 ->label(__('admin.fields.about_block_image'))
                 ->helperText(__('admin.helpers.about_block_image'))
+                ->ownerChoice(fn (Get $get): mixed => $this->settingsOwnerImageChoice(
+                    'about_page.blocks.'.(string) $get('key').'.image_media_reference_key',
+                    $get('image_media_reference_key'),
+                ))
                 ->required($type === 'image')
                 ->visible($type === 'image'),
             TextInput::make('image_alt')
@@ -2386,6 +2785,7 @@ trait BuildsPublicContentSettingsSubjectSchemas
                 ->label(__('admin.fields.public_form_field_min_length'))
                 ->numeric()
                 ->integer()
+                ->dehydrateStateUsing(IntegerTextInputState::dehydrate(...))
                 ->minValue(0)
                 ->maxValue(5000)
                 ->visible($supportsTextLengths),
@@ -2393,6 +2793,7 @@ trait BuildsPublicContentSettingsSubjectSchemas
                 ->label(__('admin.fields.public_form_field_max_length'))
                 ->numeric()
                 ->integer()
+                ->dehydrateStateUsing(IntegerTextInputState::dehydrate(...))
                 ->minValue(1)
                 ->maxValue(5000)
                 ->visible($supportsTextLengths),
@@ -2622,6 +3023,7 @@ trait BuildsPublicContentSettingsSubjectSchemas
                         ->required()
                         ->numeric()
                         ->integer()
+                        ->dehydrateStateUsing(IntegerTextInputState::dehydrate(...))
                         ->autofocus()
                         ->extraInputAttributes(['onfocus' => 'this.select()']),
                 ];

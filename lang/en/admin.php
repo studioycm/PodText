@@ -88,6 +88,7 @@ return [
         'episode_workspace_taxonomy' => 'Taxonomy',
         'episode_workspace_transcription' => 'Workspace transcription',
         'episode_workspace_visibility' => 'Publication and visibility',
+        'episode_image' => 'Episode Image',
         'identity' => 'Identity',
         'content' => 'Content',
         'featured_transcription' => 'Featured transcription',
@@ -102,6 +103,8 @@ return [
         'media_acquisition' => 'Media acquisition',
         'media_upload' => 'Upload images',
         'pinning' => 'Pinning',
+        'player_embed' => 'Player and Embed',
+        'podcast_cover' => 'Podcast Cover',
         'public_card_display' => 'Public card display',
         'public_content_settings_tabs' => 'Public content settings',
         'public_default_images' => 'Default images',
@@ -1083,6 +1086,8 @@ return [
         'edit_author' => 'Edit author',
         'edit_category' => 'Edit category',
         'edit_content_group' => 'Edit content group',
+        'create_episode' => 'Create Episode',
+        'edit_episode' => 'Edit Episode',
         'edit_effective_transcription' => 'Edit transcription: :title [:status]',
         'edit_effective_transcription_missing' => 'Edit transcription',
         'download_content_images' => 'Download content images',
@@ -1091,6 +1096,9 @@ return [
         'fetch_spotify_episode' => 'Fetch Spotify episode',
         'fetch_spotify_show' => 'Fetch Spotify podcast',
         'replace_workspace_transcription' => 'Replace workspace transcription',
+    ],
+    'relations' => [
+        'episodes' => 'Episodes',
     ],
     'labels' => [
         'single' => [
@@ -1932,6 +1940,13 @@ return [
         'unlocked' => 'Unlocked',
     ],
     'settings_paths' => [
+        'about_page' => [
+            'blocks' => 'About page content blocks',
+            'team_profiles' => 'About page team profiles',
+        ],
+        'default_images' => [
+            'content_item' => 'Default episode image',
+        ],
         'homepage_item_limit' => 'Homepage item limit',
         'item_page' => [
             'dates' => 'Episode page dates',
@@ -2450,6 +2465,11 @@ return [
         'warnings_heading' => 'Image needs attention',
         'broken_direct_heading' => 'The directly attached image is broken',
         'broken_direct_body' => 'The fallback shown above is still available. The direct attachment remains visible here so you can replace it, detach it, or review its Media record.',
+        'broken_configured_heading' => 'The configured image is unavailable',
+        'broken_configured_body' => 'The saved image identity cannot be matched to a Media record. Saving another setting will not remove it.',
+        'broken_configured_reference' => 'Saved reference key',
+        'broken_configured_path' => 'Saved legacy path',
+        'broken_configured_evidence_hidden' => 'The saved evidence is malformed, so its raw value is not displayed.',
         'automatic_fallback_hint' => 'Using the automatic image removes only the direct attachment. An episode may then use its external image, podcast cover, or a configured fallback.',
         'copy_success' => 'Copied',
         'tabs' => [
@@ -2494,12 +2514,41 @@ return [
         'actions' => [
             'open_details' => 'Image details',
             'change_image' => 'Change image',
+            'add_podcast_cover' => 'Add podcast cover',
+            'change_podcast_cover' => 'Change podcast cover',
+            'save_podcast_cover' => 'Save podcast cover',
+            'add_episode_image' => 'Add episode image',
+            'change_episode_image' => 'Change episode image',
+            'save_episode_image' => 'Save episode image',
             'use_automatic_image' => 'Remove direct image / use automatic image',
             'import_external' => 'Import external image to Media',
             'copy_filename' => 'Copy filename',
             'open_preview' => 'Open preview',
             'download' => 'Download',
             'review_media' => 'Review Media',
+        ],
+        'choice' => [
+            'direct_heading' => 'Direct image',
+            'shown_now_heading' => 'Shown now',
+            'pending_heading' => 'Pending choice',
+            'direct_states' => [
+                'present' => 'A direct image is saved.',
+                'absent' => 'No direct image is saved.',
+                'broken' => 'The saved direct image is unavailable.',
+                'unsafe_legacy' => 'A legacy image reference is saved but cannot be used safely.',
+                'custom' => 'A custom image is saved.',
+                'inherit' => 'No direct image is saved; the inherited image is used.',
+                'none' => 'No direct image is saved and no fallback is available.',
+            ],
+            'pending_states' => [
+                'unchanged' => 'No owner-image change is pending.',
+                'replacement' => 'Replacement selected — not saved yet.',
+                'automatic_fallback' => 'Automatic or fallback image selected — not saved yet.',
+            ],
+            'commit_boundary' => [
+                'commit' => 'Choose :action to save this owner-image choice.',
+                'cancel' => 'Choose :action to leave the saved owner image unchanged. Completed Media acquisitions remain permanent.',
+            ],
         ],
         'notifications' => [
             'automatic_image_enabled' => 'The direct image was removed. Automatic image selection is now active.',
@@ -2616,7 +2665,7 @@ return [
         'acquire_storage' => 'Add',
         'acquire_url' => 'Add from URL',
         'acquisition_permanence' => 'Upload, URL, and Storage become permanent library items as soon as acquisition succeeds. Closing this picker or cancelling the owner form does not delete them. Gallery changes only when the owner is saved.',
-        'acquisition_permanence_inline' => 'Upload, URL, and Storage become permanent library items as soon as acquisition succeeds. A multi-upload adds every successful image but never chooses an owner image automatically. Choose exactly one image, then submit Change image. Cancelling does not delete completed acquisitions.',
+        'acquisition_permanence_inline' => 'Upload, URL, and Storage become permanent library items as soon as acquisition succeeds. A multi-upload adds every successful image but never chooses an owner image automatically. Choose exactly one image, then save the owner-image choice. Cancelling does not delete completed acquisitions.',
         'acquisition_reused_multiple' => 'This existing library image is selected here. Choose “Use selected”, then save the owner form to attach it.',
         'acquisition_reused_single' => 'This existing library image is chosen for this field. Save the owner form to attach it.',
         'add_and_choose' => 'Add to library and choose',
@@ -2757,6 +2806,10 @@ return [
         'embed_url_url' => 'The embed URL must be a valid URL.',
         'media_url_https' => 'The media URL must use HTTPS.',
         'media_reference_key' => 'Choose an allowed image from the image library.',
+        'owner_image_baseline_invalid' => 'This owner-image workspace can no longer be verified. Close it and open it again before saving.',
         'owner_image_changed' => 'The owner image changed after this workspace opened. Close it, review the current image, and try again.',
+        'settings_owner_image_changed' => 'A saved image for these settings changed while this page was open. Review the refreshed current image, then save again.',
+        'settings_unit_changed' => '“:unit” changed while this settings page was open. Reload the page, review the current value, and try again.',
+        'settings_unit_invalid' => '“:unit” contains an invalid change. Correct that section before saving.',
     ],
 ];

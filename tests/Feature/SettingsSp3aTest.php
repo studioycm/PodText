@@ -66,7 +66,7 @@ it('keeps lifecycle unit bytes stable across repeated and fresh derivations', fu
     $secondJson = json_encode($secondUnits, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     $freshJson = json_encode($freshUnits, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 
-    expect(hash('sha256', $firstJson))->toBe('61e551a60016b1ac0c9aa8051463818adf31677bea465ac0e9b269fe3d2386b8')
+    expect(hash('sha256', $firstJson))->toBe('7e2a1e5436cceecedea09533caa760cabf4577e4141f85e935928262ee529ed6')
         ->and($secondJson)->toBe($firstJson)
         ->and($freshJson)->toBe($firstJson)
         ->and($secondUnits[0])->toBe($firstUnits[0])

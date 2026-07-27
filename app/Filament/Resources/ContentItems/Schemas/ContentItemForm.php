@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\ContentItems\Schemas;
 
+use App\Enums\MediaAttachmentRole;
 use App\Enums\UserRole;
 use App\Filament\Forms\Components\PublicationStatusSelect;
 use App\Filament\Forms\Components\SlugInput;
@@ -14,7 +15,9 @@ use App\Models\ContentItem;
 use App\Rules\ApprovedEmbedUrl;
 use App\Support\Media\ContentItemMediaRules;
 use App\Support\Media\ImageFileNamer;
+use App\Support\Media\OwnerImagePresenter;
 use Filament\Forms\Components\DateTimePicker;
+use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\KeyValue;
 use Filament\Forms\Components\MarkdownEditor;
 use Filament\Forms\Components\Select;
@@ -23,6 +26,7 @@ use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
+use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Query\Builder as QueryBuilder;
@@ -89,6 +93,45 @@ class ContentItemForm
                             ->disableToolbarButtons(['attachFiles'])
                             ->fileAttachments(false)
                             ->columnSpanFull(),
+                        RelationshipOptionForms::configureCategorySelect(
+                            Select::make('categories')
+                                ->label(__('admin.fields.categories'))
+                                ->relationship('categories', 'name')
+                                ->multiple()
+                                ->searchable()
+                                ->preload(false)
+                                ->optionsLimit(50)
+                                ->helperText(__('admin.helpers.item_categories')),
+                            allowEdit: false,
+                        ),
+                        SpatieTagsInput::make('tags')
+                            ->label(__('admin.fields.tags'))
+                            ->type('content')
+                            ->helperText(__('admin.helpers.content_tags')),
+                    ])
+                    ->columns(2),
+                Section::make(__('admin.sections.episode_image'))
+                    ->schema([
+                        Hidden::make('relation_owner_image_baseline_token'),
+                        Hidden::make('relation_owner_image_pending_identity'),
+                        MediaPickerField::make('primary_image_media_reference_key', ImageFileNamer::CONTENT_ITEM_IMAGE)
+                            ->label(__('admin.fields.content_item_image_path'))
+                            ->helperText(__('admin.helpers.content_item_image_path'))
+                            ->ownerChoice(fn (Get $get, ?ContentItem $record): mixed => app(OwnerImagePresenter::class)->choice(
+                                $record ?? new ContentItem,
+                                MediaAttachmentRole::PrimaryImage,
+                                $get('primary_image_media_reference_key'),
+                                [
+                                    'commit' => __('admin.actions.save'),
+                                    'cancel' => __('admin.actions.cancel'),
+                                    'admission' => __('admin.media_library.acquisition_permanence_inline'),
+                                ],
+                            ))
+                            ->afterStateUpdated(fn (Set $set, mixed $state): mixed => $set('relation_owner_image_pending_identity', $state))
+                            ->columnSpanFull(),
+                    ]),
+                Section::make(__('admin.sections.player_embed'))
+                    ->schema([
                         TextInput::make('media_url')
                             ->label(__('admin.fields.media_url'))
                             ->helperText(__('admin.helpers.media_url'))
@@ -117,21 +160,6 @@ class ContentItemForm
                             ->numeric()
                             ->integer()
                             ->minValue(0),
-                        RelationshipOptionForms::configureCategorySelect(
-                            Select::make('categories')
-                                ->label(__('admin.fields.categories'))
-                                ->relationship('categories', 'name')
-                                ->multiple()
-                                ->searchable()
-                                ->preload(false)
-                                ->optionsLimit(50)
-                                ->helperText(__('admin.helpers.item_categories')),
-                            allowEdit: false,
-                        ),
-                        SpatieTagsInput::make('tags')
-                            ->label(__('admin.fields.tags'))
-                            ->type('content')
-                            ->helperText(__('admin.helpers.content_tags')),
                     ])
                     ->columns(2),
                 Section::make(__('admin.sections.featured_transcription'))
@@ -182,10 +210,6 @@ class ContentItemForm
                 Section::make(__('admin.sections.media_metadata'))
                     ->description(__('admin.descriptions.media_metadata'))
                     ->schema([
-                        MediaPickerField::make('primary_image_media_reference_key', ImageFileNamer::CONTENT_ITEM_IMAGE)
-                            ->label(__('admin.fields.content_item_image_path'))
-                            ->helperText(__('admin.helpers.content_item_image_path'))
-                            ->columnSpanFull(),
                         TextInput::make('embed_provider')
                             ->label(__('admin.fields.embed_provider'))
                             ->helperText(__('admin.helpers.embed_provider'))

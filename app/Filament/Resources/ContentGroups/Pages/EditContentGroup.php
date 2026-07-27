@@ -5,15 +5,19 @@ namespace App\Filament\Resources\ContentGroups\Pages;
 use App\Enums\MediaAttachmentRole;
 use App\Filament\Actions\ContentImageActions;
 use App\Filament\Resources\ContentGroups\ContentGroupResource;
+use App\Filament\Support\Concerns\InteractsWithOwnerImageFormLifecycle;
 use App\Models\User;
-use App\Support\Media\MediaAttachmentFormState;
 use Filament\Actions\DeleteAction;
 use Filament\Resources\Pages\EditRecord;
 use Filament\Resources\Pages\Enums\ContentTabPosition;
 
 class EditContentGroup extends EditRecord
 {
+    use InteractsWithOwnerImageFormLifecycle;
+
     protected static string $resource = ContentGroupResource::class;
+
+    protected ?bool $hasDatabaseTransactions = true;
 
     protected function getHeaderActions(): array
     {
@@ -39,30 +43,24 @@ class EditContentGroup extends EditRecord
         return __('admin.tabs.group_details');
     }
 
-    private ?string $pendingCoverMediaReferenceKey = null;
-
-    private ?string $pendingUnsafeCoverFingerprint = null;
-
     protected function mutateFormDataBeforeFill(array $data): array
     {
-        $data['cover_media_reference_key'] = app(MediaAttachmentFormState::class)->pickerIdentity(
+        return $this->hydrateOwnerImageForm(
+            $data,
             $this->getRecord(),
             MediaAttachmentRole::Cover,
+            'cover_media_reference_key',
         );
-
-        return $data;
     }
 
     protected function mutateFormDataBeforeSave(array $data): array
     {
-        [$data, $this->pendingCoverMediaReferenceKey, $this->pendingUnsafeCoverFingerprint] = app(MediaAttachmentFormState::class)->prepare(
+        return $this->prepareOwnerImageForm(
             $data,
-            'cover_media_reference_key',
             $this->getRecord(),
             MediaAttachmentRole::Cover,
+            'cover_media_reference_key',
         );
-
-        return $data;
     }
 
     protected function afterSave(): void
@@ -70,12 +68,12 @@ class EditContentGroup extends EditRecord
         $actor = auth()->user();
         abort_unless($actor instanceof User, 403);
 
-        app(MediaAttachmentFormState::class)->persist(
+        $this->persistOwnerImageForm(
             $this->getRecord(),
-            $this->pendingCoverMediaReferenceKey,
             MediaAttachmentRole::Cover,
+            'cover_media_reference_key',
             $actor,
-            $this->pendingUnsafeCoverFingerprint,
+            enforceExpectedIdentity: true,
         );
     }
 }

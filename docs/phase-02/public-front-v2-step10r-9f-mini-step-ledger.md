@@ -4,20 +4,39 @@ This ledger controls the post-Step-10 mini-step sequence. Each run implements ex
 
 ## Current Run
 
-- Most recent ad-hoc program: Media Operations UX3 Mini-task 1 under audit
-  `LS-20260724-PODTEXT-MEDIA-OPERATIONS-UX-03`, option
-  `MEDIA-OPS-UX3-O2-PDF-CONTRACT-TARGETED-WORKSPACES`.
-- Status: Mini-task 1 is complete locally from clean `main` at
-  `6d8f7f73742448a7671fb5b8f238bf01ebf6b5ad`, 29 commits ahead of
-  `origin/main`.
-- Scope is only the binding corrected contract's Media Library card hierarchy:
-  stable identity, truthful bounded reference copy, persistent issue evidence,
-  quiet technical facts, one visible details action and one accessible
-  secondary menu.
-- Packages 1–4 remain authoritative. Mini-task 2, complete Care/fix/result
-  workspaces, Package 5, migration/data/storage action, dependency/toolchain
-  change, production/deployment/process action, branch/worktree change, push
-  and outage action are not authorized.
+- Most recent completed ad-hoc outcome: Media Operations UX3 Mini-task 3 —
+  Media Issue Review, implementation
+  `fa3b626ccb45f7ff22962cf4cdb8a0755216329f` with documentation hash stamp
+  `576f5ada925d035baef75615f24d0fc9f8c7aa06`. Mini-tasks 1–3 are complete
+  locally; original Media Program Packages 1–4 remain authoritative.
+- The documentation-only **Media Operations UX3 — Program Reconciliation and
+  Finding Coverage** contract
+  `prompts/pre-13-prompts/media-operations-ux3-program-reconciliation-finding-coverage-codex-prompt.md`
+  v1 is complete and was accepted by the operator on 2026-07-26 at
+  `docs/research/media-operations-ux3/07-program-reconciliation-and-finding-coverage.md`.
+  It supplied the forward authority but did not itself authorize
+  implementation.
+- Current outcome: **Mini-task 3A — Owner Image Choice and Commit** is
+  implemented locally; implementation hash pending canonical commit. Handoff:
+  `docs/phase-02/media-operations-ux3-mini3a-owner-image-choice-and-commit-handoff.md`.
+- Remaining outcome order after operator review and closure of 3A:
+  **Mini-task 3B — Media Intake and Acquisition Results** →
+  **Mini-task 3C — Safe Existing-File Operations and Outcomes** →
+  **replanned Mini-task 4 — provisional boundary: Reason-Specific Media Issue
+  Resolution and Verified Results**.
+- Mini-task 4 is not yet researched or planned and is blocked by a design
+  dependency: it must not begin UX research, technical research, planning,
+  Laravel Simplifier Stage 1 or implementation until Mini-task 3C has been
+  reviewed and closed. It then restarts at UX research/design using the
+  completed 3A–3C choice, acquisition-result and existing-file operation
+  contracts. No earlier Mini-task 4 scope, repair reason, plan, audit or option
+  is authoritative.
+- Package 5, migration/data/storage action, dependency/toolchain change,
+  production/deployment/process action, branch/worktree change, push and outage
+  action remain separately gated.
+- Current gate: stop for Mini-task 3A operator outcome review. Mini-task 3B has
+  not started and no research, design, audit or implementation is authorized
+  until 3A is reviewed and closed.
 
 ## Checklist
 
@@ -96,6 +115,11 @@ This ledger controls the post-Step-10 mini-step sequence. Each run implements ex
 | PODTEXT MEDIA OPERATIONS UX3 - Mini-task 1 Media Library card hierarchy | complete locally | `0e42ea47d2813141fa8583fc36532c3a85250c33`; audit `LS-20260724-PODTEXT-MEDIA-OPERATIONS-UX-03`; option `MEDIA-OPS-UX3-O2-PDF-CONTRACT-TARGETED-WORKSPACES`; `docs/phase-02/media-operations-ux3-mini1-library-card-hierarchy-handoff.md` | Stable card identity; bounded truthful known-reference copy; persistent primary issue/additional count; quiet technical facts; explicit details destination; one visible details button and one accessible More actions group; permanent-delete wording; HE/EN research/plan/tests/state/handoff; this ledger | Focused feature/action proof: 25 / 558. Media browser proof: 2 / 54 outside the macOS sandbox. Package 1–4 regression proof: 102 / 1,374. Final ordered gate recorded in the handoff. | Preserves All Media, Needs Repair, current-page query/probe budgets, attachment/acquisition permanence, safe delivery, policies and mutation coordinator. Mini-task 2, complete Care/fix/results, Package 5, migration/dependency/data/production/push remain gated. |
 | PODTEXT MEDIA OPERATIONS UX3 - Mini-task 2 canonical task and return context | complete locally | `ce97b3d9350db966073b1fc224046d4a25cbfa68`; parent option `MEDIA-OPS-UX3-O2-PDF-CONTRACT-TARGETED-WORKSPACES`; audit `LS-20260724-PODTEXT-MEDIA-OPERATIONS-UX3-M2-01`; option `MEDIA-OPS-UX3-M2-O2-CANONICAL-TASK-CONTEXT`; `docs/phase-02/media-operations-ux3-mini2-canonical-task-context-handoff.md` | Five native task tabs; exact reason composition; inclusive rolling 30-day Recent; two bounded badges; MIME/reason/search/sort/page composition; Added deterministic sort; strict versioned return context; same safe Back/Cancel destination with actual-card focus; HE/EN research/plan/tests/state/handoff; this ledger | Focused feature proof: 77 / 656. Media browser proof: 4 / 142 outside the macOS browser sandbox. Final ordered gate recorded in the handoff. | Preserves complete inventory, Package 1–4 persistence/attachment/acquisition/delivery/policy/mutation authorities and Mini-task 1 hierarchy. No unused/delete-safe claim. Mini-task 3 builds on it in the next row; later repair/result authority, Package 5, migration/dependency/data/production/push remain gated. |
 | PODTEXT MEDIA OPERATIONS UX3 - Mini-task 3 Media Issue Review | complete locally | `fa3b626ccb45f7ff22962cf4cdb8a0755216329f`; audit `LS-20260725-PODTEXT-MEDIA-OPERATIONS-UX3-M3-01`; option `MEDIA-OPS-UX3-M3-O1-ROUTE-FIRST-ISSUE-REVIEW-NO-RECHECK`; `docs/phase-02/media-operations-ux3-mini3-media-issue-review-handoff.md` | Stable details identity and concise issue route; dedicated read-only Review; six cause/consequence/fact/evidence projections; canonical owner versus bounded legacy/settings impact; authorized owner/file routes with non-repair copy; honest blocker; encrypted exact origin through Close/Next/Return; shared split/quoted Library search cohort; direction-aware enum icons; HE/EN responsive/browser proof; research/plan/tests/state/handoff; this ledger | Post-review focused issue proof: 11 / 114. Issue/task context matrix: 39 / 213. Complete Media browser proof: 6 / 214 outside the macOS sandbox. Post-review pre-documentation and final documented-state gates passed Pint, FilaCheck, Vite and 1,207 / 15,420. | Independent review found no critical issue and corrected one important search-parity finding plus two minor coverage/convention findings. Preserves complete inventory and all Package 1–4 persistence, attachment, acquisition, delivery, authorization and mutation authorities. Recheck/Retry, generic Fix, first repair mutation, Package 5, Mini-task 4, migration/dependency/data/production/push remain gated. |
+| PODTEXT MEDIA OPERATIONS UX3 - Program Reconciliation and Finding Coverage | accepted by the operator on 2026-07-26; complete as uncommitted documentation | `prompts/pre-13-prompts/media-operations-ux3-program-reconciliation-finding-coverage-codex-prompt.md` v1; `docs/research/media-operations-ux3/07-program-reconciliation-and-finding-coverage.md` | Canonical literal goal; 51-finding inventory/coverage matrix; outcome ownership; sequence; dependencies; dispositions; Package 5 separation; compact authority cross-references | Requirements sweep, changed-Markdown reference check, `git diff --check` and `git status --short --branch` | Routes modal/slide-over parity to 3A and direct-file View/Download/return continuity to 3C. Acceptance makes 3A eligible for separate research but starts no design, Laravel Simplifier audit, implementation or documentation-consolidation task. |
+| PODTEXT MEDIA OPERATIONS UX3 - Mini-task 3A Owner Image Choice and Commit | complete locally; awaiting operator outcome review | pending canonical implementation commit | Shared owner presentation and lifecycle across dedicated actions, full forms, workspaces, relation-manager Create/Edit and public Settings image slots; cross-task Settings mechanism closeout; localized responsive owner contract; native event bridge | Focused feature/domain coverage, representative HE/EN desktop/narrow browser proof, independent Critical/Important reviews, Pint, FilaCheck, Vite and full serial suite | Handoff: `media-operations-ux3-mini3a-owner-image-choice-and-commit-handoff.md`. Browser-harness-only limitations and production color/type polish are not 3A product blockers. Do not begin 3B until operator review closes 3A. |
+| PODTEXT MEDIA OPERATIONS UX3 - Mini-task 3B Media Intake and Acquisition Results | not started; blocked by Mini-task 3A review and closure |  | Future independent research-first outcome for Gallery/Upload/URL/Storage intake, permanence, per-source and per-file result truth, partial outcomes and continuity | Its own UX research, visuals, operator design decision, bounded technical plan, fresh audit/approval, implementation and browser proof | Starts only after 3A is reviewed and closed. |
+| PODTEXT MEDIA OPERATIONS UX3 - Mini-task 3C Safe Existing-File Operations and Outcomes | not started; blocked by Mini-task 3B review and closure |  | Future independent research-first outcome for current file inspection/operations, identity/impact/result truth and direct-file View/Download/return continuity | Its own UX research, visuals, operator design decision, bounded technical plan, fresh audit/approval, implementation and browser proof | Starts only after 3B is reviewed and closed; no Package 5 lifecycle controls. |
+| PODTEXT MEDIA OPERATIONS UX3 - Replanned Mini-task 4 Reason-Specific Media Issue Resolution and Verified Results | not yet researched or planned; blocked by design dependency |  | Only a future outcome boundary: select and deliver the first truthful, valuable and safely bounded reason-specific repair with verified result/continuity semantics | Fresh UX research begins only after 3C review and closure; later fresh audit/approval and implementation are separately gated | Do not select a repair reason, design, plan, Audit ID or Option ID now. Earlier Mini-task 4 proposals are non-authoritative. Conditional Recheck/Retry remains unproven; Package 5 remains separate. |
 | DEP-UPGRADE-O1 - Bounded full dependency refresh | complete locally | `4d2a063954975fa07dde43f6113a97c671fc5724`; `docs/phase-02/dependency-refresh-handoff.md` | Composer/npm lockfiles; Filament compatibility call; Card Template browser compatibility expectation; 18 tracked Filament assets; tooling-state docs; research/plan/handoff; this ledger | Focused feature: 28 tests / 387 assertions. Focused browser: 14 tests / 1,832 assertions. Final serial suite: 1,001 tests / 13,635 assertions. Pint, FilaCheck, and Vite build passed. | Manifests remain unchanged; no major, schema, migration, production, worker, or local-development database change. Livewire 4.3.3 and Curator 5.1.2 remain unchanged. FU04 remains next and unapproved. |
 | DEP-REFRESH-WEBHOOK-O1 - Resend wrapper, safe delivery logging, and Fontaine | complete locally | `c9d064aa9b3921b5b99f83859f305b2fc8332cc9`; audit `LS-20260724-PODTEXT-DEPENDENCY-RESEND-WEBHOOK-02`; option `DEP-REFRESH-WEBHOOK-O1-BUILTIN-SAFE-LOGGING`; `docs/phase-02/dependency-resend-webhook-fontaine-handoff.md` | Bounded Composer/npm refresh; direct wrapper/transitive SDK; Fontaine; Boost discovery and guideline reconciliation; missing/unusable-secret guard; built-in verifier/controller/events; exact four-field delivery subscriber; fixture-backed TDD; research/plan/handoff/state; this ledger | Focused Resend integration: 27 / 88. Adjacent OTP/public forms/maintenance: 68 / 649. Canonical Pint/FilaCheck/Vite gates and full serial suite: 1,107 / 14,253. | No migration, persistence/admin page, raw payload, engagement/inbound/contact/domain handling, live call, production, Package 4/5 or push action. |
 | SETTINGS-METRICS-O1 Mini-task 1 - Runtime retirement | complete | `3e5c411777994c431417dfd823576286d12d5c29`; `docs/phase-02/settings-development-metrics-retirement-mini1-handoff.md` | Runtime profiler/middleware/fixtures/flags/headers/counters/config/logging/browser harness; settings/Card Template unwraps; functional regression rewrites; Curator identity-pair additions; research/plan/handoff/state; this ledger | TDD retirement RED then focused green; settings/media matrix 122 / 1,195; Curator preservation 71 / 778; deferred canary/preview 38 / 775; browser 14 / 1,832; current SP3A/SP3B/SP3C 59 / 495. Final serial suite: 997 / 13,555; Pint, FilaCheck, and Vite build passed. | Preserves Filament 5.7.1, Curator G1/LMTC, functional settings lifecycle/saves, Card Template protection/preview, and historical provenance. Mini-task 2 completes the separately audited test-only retirement. |

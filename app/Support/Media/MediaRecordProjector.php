@@ -4,6 +4,7 @@ namespace App\Support\Media;
 
 use App\Filament\Resources\Media\MediaResource;
 use App\Models\Media;
+use Illuminate\Support\Facades\Gate;
 
 class MediaRecordProjector
 {
@@ -12,11 +13,11 @@ class MediaRecordProjector
     /**
      * @return array<string, bool|int|string|array<int, string>|null>
      */
-    public function project(Media $media): array
+    public function project(Media $media, bool $withOwnerDetails = false): array
     {
         $selectionBlockedReason = $this->diagnostics->selectionBlockedReason($media);
 
-        return [
+        $projection = [
             'id' => (int) $media->getKey(),
             'reference_key' => $media->getAttribute('reference_key'),
             'pretty_name' => $media->title ?: $media->name,
@@ -32,5 +33,13 @@ class MediaRecordProjector
             'selection_blocked_reason' => $selectionBlockedReason,
             'review_url' => MediaResource::getUrl('edit', ['record' => $media], panel: 'admin'),
         ];
+
+        if ($withOwnerDetails) {
+            $projection['details_url'] = Gate::allows('update', $media)
+                ? MediaResource::getUrl('edit', ['record' => $media], panel: 'admin')
+                : null;
+        }
+
+        return $projection;
     }
 }

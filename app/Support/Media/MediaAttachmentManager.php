@@ -109,7 +109,7 @@ class MediaAttachmentManager
                     : null;
 
                 if ($currentMediaId !== $expectedMediaId || $currentLegacyPath !== $expectedLegacyPath) {
-                    throw new RuntimeException('The owner image changed while the media operation was running.');
+                    throw new OwnerImageChangedException;
                 }
             }
 
@@ -212,7 +212,7 @@ class MediaAttachmentManager
                     : null;
 
                 if ($currentMediaId !== $expectedMediaId || $currentLegacyPath !== $expectedLegacyPath) {
-                    throw new RuntimeException('The owner image changed while the media operation was running.');
+                    throw new OwnerImageChangedException;
                 }
             }
 

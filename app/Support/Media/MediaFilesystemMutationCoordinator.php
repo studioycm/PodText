@@ -10,6 +10,8 @@ use App\Models\MediaMutationOperation;
 use App\Models\User;
 use App\Settings\PublicContentSettings;
 use App\Support\PublicFront\PublicFrontConfigCache;
+use App\Support\SettingsLifecycle\PublicContentSettingsWriteCoordinator;
+use Closure;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -37,6 +39,7 @@ class MediaFilesystemMutationCoordinator
         private readonly LegacyMediaReferenceSwitcher $registrationSwitcher,
         private readonly PublicFrontConfigCache $publicFrontConfigCache,
         private readonly SettingsCacheFactory $settingsCacheFactory,
+        private readonly PublicContentSettingsWriteCoordinator $settingsWriteCoordinator,
     ) {}
 
     /**
@@ -184,7 +187,7 @@ class MediaFilesystemMutationCoordinator
             );
             $this->fence->markCopied($operation);
 
-            $media = DB::transaction(function () use ($plan, $actor, $destinationPath, $operation): Media {
+            $media = $this->withinSettingsWriteTransaction($plan, function () use ($plan, $actor, $destinationPath, $operation): Media {
                 $lockedOperation = $this->fence->lockForCommit($operation);
                 $mediaClass = $this->mediaModel();
                 /** @var Media $media */
@@ -205,7 +208,7 @@ class MediaFilesystemMutationCoordinator
                 $this->lease->runCreation(fn (): bool => $media->save());
                 Gate::forUser($actor)->authorize('select', $media);
                 Gate::forUser($actor)->authorize('attach', $media);
-                $this->registrationSwitcher->switch($plan, $media);
+                $this->registrationSwitcher->switchWithinCoordinatedTransaction($plan, $media);
                 $lockedOperation->update([
                     'media_id' => $media->getKey(),
                     'media_id_snapshot' => $media->getKey(),
@@ -284,7 +287,7 @@ class MediaFilesystemMutationCoordinator
             $this->putVerified('public', $destinationPath, Storage::disk('local')->get($stagingPath), $freshPlan->validatedImage->sha256, 'public');
             $this->fence->markCopied($operation);
 
-            $updated = DB::transaction(function () use ($mediaId, $identity, $actor, $freshPlan, $reviewedEntry, $destinationPath, $operation): Media {
+            $updated = $this->withinSettingsWriteTransaction($freshPlan, function () use ($mediaId, $identity, $actor, $freshPlan, $reviewedEntry, $destinationPath, $operation): Media {
                 $locked = Media::query()->whereKey($mediaId)->lockForUpdate()->firstOrFail();
                 $lockedOperation = $this->fence->lockForCommit($operation);
                 Gate::forUser($actor)->authorize('transitionLegacy', $locked);
@@ -308,7 +311,7 @@ class MediaFilesystemMutationCoordinator
                         ])->save();
                     });
                 });
-                $this->registrationSwitcher->switch($replanned, $locked, inPlaceTransition: true, reviewedEntry: $reviewedEntry);
+                $this->registrationSwitcher->switchWithinCoordinatedTransaction($replanned, $locked, inPlaceTransition: true, reviewedEntry: $reviewedEntry);
                 $lockedOperation->update(['media_reference_key' => $key, 'status' => MediaMutationStatus::Committed, 'committed_at' => now()]);
 
                 return $locked->refresh();
@@ -813,6 +816,15 @@ class MediaFilesystemMutationCoordinator
         app(SettingsContainer::class)->clearCache();
         $this->publicFrontConfigCache->forget();
         $this->references->forgetSettingsPayloads();
+    }
+
+    private function withinSettingsWriteTransaction(LegacyMediaRegistrationPlan $plan, Closure $callback): mixed
+    {
+        if ($plan->settingsSnapshots === []) {
+            return DB::transaction($callback);
+        }
+
+        return $this->settingsWriteCoordinator->transaction($callback);
     }
 
     /**

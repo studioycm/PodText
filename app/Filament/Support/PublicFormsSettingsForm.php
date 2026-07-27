@@ -94,6 +94,7 @@ class PublicFormsSettingsForm
                             ->helperText(__('admin.helpers.public_form_rate_limit_attempts'))
                             ->numeric()
                             ->integer()
+                            ->dehydrateStateUsing(IntegerTextInputState::dehydrate(...))
                             ->minValue(1)
                             ->maxValue(30)
                             ->default(5),
@@ -102,6 +103,7 @@ class PublicFormsSettingsForm
                             ->helperText(__('admin.helpers.public_form_rate_limit_decay_seconds'))
                             ->numeric()
                             ->integer()
+                            ->dehydrateStateUsing(IntegerTextInputState::dehydrate(...))
                             ->minValue(60)
                             ->maxValue(86400)
                             ->default(600),
@@ -125,6 +127,19 @@ class PublicFormsSettingsForm
                             ->collapsible()
                             ->collapsed()
                             ->cloneable()
+                            ->cloneAction(fn (Action $action): Action => $action->after(
+                                function (Builder $component): void {
+                                    $items = $component->getRawState();
+                                    $cloneKey = array_key_last($items);
+
+                                    if ($cloneKey === null) {
+                                        return;
+                                    }
+
+                                    data_set($items[$cloneKey], 'data.key', null);
+                                    $component->rawState($items);
+                                },
+                            ))
                             ->default([])
                             ->addActionLabel(__('admin.actions.add_public_form_field'))
                             ->columnSpanFull(),
@@ -219,6 +234,7 @@ class PublicFormsSettingsForm
                 ->label(__('admin.fields.public_form_field_key'))
                 ->helperText(__('admin.helpers.public_form_field_key'))
                 ->required()
+                ->distinct()
                 ->maxLength(80)
                 ->rules(['regex:/^[a-z][a-z0-9_-]*$/']),
             TextInput::make('label')
@@ -250,6 +266,7 @@ class PublicFormsSettingsForm
                 ->helperText(__('admin.helpers.public_form_field_min_length'))
                 ->numeric()
                 ->integer()
+                ->dehydrateStateUsing(IntegerTextInputState::dehydrate(...))
                 ->minValue(0)
                 ->maxValue(5000)
                 ->visible($supportsTextLengths),
@@ -258,6 +275,7 @@ class PublicFormsSettingsForm
                 ->helperText(__('admin.helpers.public_form_field_max_length'))
                 ->numeric()
                 ->integer()
+                ->dehydrateStateUsing(IntegerTextInputState::dehydrate(...))
                 ->minValue(1)
                 ->maxValue(5000)
                 ->visible($supportsTextLengths),
@@ -269,6 +287,7 @@ class PublicFormsSettingsForm
                         ->label(__('admin.fields.public_form_option_value'))
                         ->helperText(__('admin.helpers.public_form_option_value'))
                         ->required($type === 'select')
+                        ->distinct()
                         ->maxLength(80)
                         ->rules(['regex:/^[a-z][a-z0-9_-]*$/']),
                     TextInput::make('label')
@@ -280,6 +299,19 @@ class PublicFormsSettingsForm
                 ->defaultItems(0)
                 ->reorderable()
                 ->cloneable()
+                ->cloneAction(fn (Action $action): Action => $action->after(
+                    function (Repeater $component): void {
+                        $items = $component->getRawState();
+                        $cloneKey = array_key_last($items);
+
+                        if ($cloneKey === null) {
+                            return;
+                        }
+
+                        data_set($items[$cloneKey], 'value', null);
+                        $component->rawState($items);
+                    },
+                ))
                 ->columns(2)
                 ->visible($supportsOptions)
                 ->columnSpanFull(),

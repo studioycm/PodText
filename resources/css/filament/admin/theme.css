@@ -19,3 +19,98 @@
     font-weight: 600;
     line-height: 1.5rem;
 }
+
+/* Owner-image modal only: Filament's window remains the vertical scroll owner. */
+.podtext-owner-image-modal {
+    overflow-x: clip;
+}
+
+.podtext-owner-image-modal [data-testid='media-picker'] {
+    block-size: auto;
+    max-inline-size: 100%;
+}
+
+.podtext-owner-image-modal [data-testid='media-picker-header'] {
+    position: static;
+}
+
+.podtext-owner-image-modal [data-testid='media-picker-gallery'],
+.podtext-owner-image-modal [data-testid='media-picker-gallery'] + aside {
+    overflow: visible;
+}
+
+@media (max-width: 40rem) {
+    .fi-modal:not(.fi-modal-slide-over):not(.fi-width-screen)
+        > .fi-modal-window-ctn
+        > .fi-modal-window.podtext-owner-image-modal {
+        position: fixed;
+        inset: 0;
+        margin: 0;
+        inline-size: 100%;
+        block-size: 100dvh;
+        max-inline-size: none;
+        max-block-size: 100dvh;
+        border-radius: 0;
+        overscroll-behavior-y: contain;
+    }
+
+    .fi-modal:not(.fi-modal-slide-over):not(.fi-width-screen)
+        > .fi-modal-window-ctn
+        > .fi-modal-window.podtext-owner-image-modal
+        > .fi-modal-header {
+        padding-block-start: calc(1.5rem + env(safe-area-inset-top));
+        border-start-start-radius: 0;
+        border-start-end-radius: 0;
+    }
+
+    .fi-modal:not(.fi-modal-slide-over):not(.fi-width-screen)
+        > .fi-modal-window-ctn
+        > .fi-modal-window.podtext-owner-image-modal
+        > .fi-modal-footer {
+        padding-block-end: calc(1.25rem + env(safe-area-inset-bottom));
+        border-end-start-radius: 0;
+        border-end-end-radius: 0;
+    }
+
+    .podtext-owner-image-modal
+        [data-testid='media-picker-owner-source-navigation'] {
+        flex-wrap: wrap;
+        overflow-x: visible;
+    }
+
+    .podtext-owner-image-modal
+        [data-testid='media-picker-owner-source-navigation']
+        > .fi-tabs-item {
+        flex: 1 1 0;
+        min-inline-size: 0;
+        min-block-size: 2.75rem;
+    }
+
+    .podtext-owner-image-modal
+        [data-testid='media-picker-owner-source-navigation']
+        .fi-tabs-item-label {
+        overflow-wrap: anywhere;
+        white-space: normal;
+        text-align: center;
+    }
+
+    .podtext-owner-image-modal .fi-btn,
+    .podtext-owner-image-modal .fi-icon-btn,
+    .podtext-owner-image-modal .fi-input {
+        min-block-size: 2.75rem;
+    }
+
+    .podtext-owner-image-modal .fi-icon-btn {
+        min-inline-size: 2.75rem;
+    }
+
+    .podtext-owner-image-modal
+        [data-testid^='media-picker-owner-details-'],
+    .podtext-owner-image-modal
+        [data-testid='owner-image-choice-state']
+        a {
+        display: inline-flex;
+        min-block-size: 2.75rem;
+        align-items: center;
+    }
+}

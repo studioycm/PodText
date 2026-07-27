@@ -62,6 +62,7 @@
         x-bind:inert="uploading || returningSelection"
     >
         <div class="flex flex-wrap items-center gap-2">
+            @if (! $isOwnerChoice)
             <x-filament::button
                 size="xs"
                 :color="$allMedia ? 'gray' : 'primary'"
@@ -80,6 +81,7 @@
             >
                 {{ __('admin.media_library.all_media') }}
             </x-filament::button>
+            @endif
             @if ($currentPage > 1 && blank($search))
                 <x-filament::button
                     size="xs"
@@ -152,27 +154,65 @@
         </div>
     </div>
 
+    @if ($isOwnerChoice)
+        <x-filament::tabs
+            :label="__('admin.media_library.source_navigation')"
+            contained
+            class="mx-4 mt-4 overflow-x-auto"
+            data-testid="media-picker-owner-source-navigation"
+            wire:loading.attr="inert"
+        >
+            @foreach (['gallery', 'upload', 'url', 'storage'] as $source)
+                <x-filament::tabs.item
+                    :active="$activeSource === $source"
+                    id="media-picker-source-{{ $source }}"
+                    data-testid="media-picker-source-{{ $source }}"
+                    wire:click="activateSource('{{ $source }}')"
+                    x-bind:disabled="uploading"
+                    wire:offline.attr="disabled"
+                >
+                    {{ __("admin.media_library.{$source}_source") }}
+                </x-filament::tabs.item>
+            @endforeach
+        </x-filament::tabs>
+    @endif
+
     <div
-        class="grid min-h-0 flex-1 lg:grid-cols-[minmax(0,1fr)_22rem]"
+        @class([
+            'min-h-0 flex-1',
+            'grid lg:grid-cols-[minmax(0,1fr)_22rem]' => ! $isOwnerChoice,
+        ])
         wire:offline.attr="inert"
     >
         <main
-            class="order-2 overflow-auto p-4 lg:order-1"
+            @class([
+                'overflow-auto p-4',
+                'order-2 lg:order-1' => ! $isOwnerChoice,
+                'hidden' => $isOwnerChoice && $activeSource !== 'gallery',
+            ])
             data-testid="media-picker-gallery"
             x-bind:inert="uploading"
         >
             <h2 class="mb-3 font-semibold">{{ __('admin.media_library.gallery_source') }}</h2>
-            <ul class="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-6">
+            <ul @class([
+                'grid grid-cols-2 gap-3',
+                'sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5' => $isOwnerChoice,
+                'sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-6' => ! $isOwnerChoice,
+            ])>
                 @forelse ($files as $file)
                     @php
                         $selected = in_array($file['id'], $selectedIds, true);
+                        $ownerSelected = $isOwnerChoice && $selected;
+                        $selectionDisabled = ! $file['selectable'] || $ownerSelected;
                         $blockedReasonId = "media-picker-blocked-{$file['id']}";
-                        $selectionLabel = __(
-                            $selected
-                                ? 'admin.media_library.deselect_image'
-                                : 'admin.media_library.select_image',
-                            ['name' => $file['pretty_name']],
-                        );
+                        $selectionLabel = $ownerSelected
+                            ? __('admin.media_library.current_image').': '.$file['pretty_name']
+                            : __(
+                                $selected
+                                    ? 'admin.media_library.deselect_image'
+                                    : 'admin.media_library.select_image',
+                                ['name' => $file['pretty_name']],
+                            );
                     @endphp
                     <li
                         wire:key="media-picker-{{ $file['id'] }}"
@@ -185,8 +225,9 @@
                             wire:offline.attr="disabled"
                             aria-label="{{ $selectionLabel }}"
                             aria-pressed="{{ $selected ? 'true' : 'false' }}"
+                            @if ($selectionDisabled) aria-disabled="true" @endif
                             @if (! $file['selectable']) aria-describedby="{{ $blockedReasonId }}" @endif
-                            @disabled(! $file['selectable'])
+                            @disabled($selectionDisabled)
                             @class([
                                 'block h-full w-full focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-inset focus-visible:ring-primary-500',
                                 'cursor-not-allowed opacity-70' => ! $file['selectable'],
@@ -218,26 +259,54 @@
                                 class="absolute inset-x-1 top-1 rounded bg-warning-50/95 p-1 text-[0.65rem] leading-tight text-warning-800 shadow-sm dark:bg-warning-950/95 dark:text-warning-200"
                             >
                                 <p>{{ $file['selection_blocked_reason'] }}</p>
-                                <a href="{{ $file['review_url'] }}" class="font-medium underline">
-                                    {{ __('admin.media_library.review_media') }}
-                                </a>
+                                @if ($isOwnerChoice)
+                                    @if (filled($file['details_url'] ?? null))
+                                        <a
+                                            href="{{ $file['details_url'] }}"
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            class="font-medium underline"
+                                            data-testid="media-picker-owner-details-{{ $file['id'] }}"
+                                        >
+                                            {{ __('admin.media_library.open_details') }}
+                                        </a>
+                                    @endif
+                                @else
+                                    <a href="{{ $file['review_url'] }}" class="font-medium underline">
+                                        {{ __('admin.media_library.review_media') }}
+                                    </a>
+                                @endif
                             </div>
                         @endif
 
-                        <div class="absolute end-1 top-1 opacity-0 transition group-focus-within:opacity-100 group-hover:opacity-100 pointer-coarse:opacity-100">
-                            <x-filament-actions::group
-                                :actions="[
-                                    ($this->viewItemAction)(['id' => $file['id']]),
-                                    ($this->downloadItemAction)(['id' => $file['id']]),
-                                    ($this->editItemAction)(['id' => $file['id']]),
-                                    ($this->renameItemAction)(['id' => $file['id']]),
-                                    ($this->swapItemAction)(['id' => $file['id']]),
-                                    ($this->destroyItemAction)(['id' => $file['id']]),
-                                ]"
-                                color="gray"
-                                size="xs"
-                            />
-                        </div>
+                        @if ($isOwnerChoice)
+                            @if ($file['selectable'] && filled($file['details_url'] ?? null))
+                                <a
+                                    href="{{ $file['details_url'] }}"
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    class="absolute end-1 top-1 rounded-md bg-white/95 px-2 py-1 text-xs font-medium text-primary-700 shadow-sm dark:bg-gray-900/95 dark:text-primary-300"
+                                    data-testid="media-picker-owner-details-{{ $file['id'] }}"
+                                >
+                                    {{ __('admin.media_library.open_details') }}
+                                </a>
+                            @endif
+                        @else
+                            <div class="absolute end-1 top-1 opacity-0 transition group-focus-within:opacity-100 group-hover:opacity-100 pointer-coarse:opacity-100">
+                                <x-filament-actions::group
+                                    :actions="[
+                                        ($this->viewItemAction)(['id' => $file['id']]),
+                                        ($this->downloadItemAction)(['id' => $file['id']]),
+                                        ($this->editItemAction)(['id' => $file['id']]),
+                                        ($this->renameItemAction)(['id' => $file['id']]),
+                                        ($this->swapItemAction)(['id' => $file['id']]),
+                                        ($this->destroyItemAction)(['id' => $file['id']]),
+                                    ]"
+                                    color="gray"
+                                    size="xs"
+                                />
+                            </div>
+                        @endif
 
                         <p class="pointer-events-none absolute inset-x-0 bottom-0 truncate bg-gradient-to-t from-black/80 px-2 pb-1 pt-6 text-xs text-white">
                             {{ $file['pretty_name'] }}
@@ -287,13 +356,18 @@
             </ul>
         </main>
 
-        <aside class="order-1 overflow-auto border-b border-gray-200 p-4 dark:border-gray-800 lg:order-2 lg:border-b-0 lg:border-s">
+        <aside @class([
+            'overflow-auto border-b border-gray-200 p-4 dark:border-gray-800',
+            'order-1 lg:order-2 lg:border-b-0 lg:border-s' => ! $isOwnerChoice,
+            'hidden' => $isOwnerChoice && $activeSource === 'gallery',
+        ])>
             <p class="mb-4 rounded-md bg-primary-50 p-3 text-xs text-primary-800 dark:bg-primary-950 dark:text-primary-200">
                 {{ __($isInlineOwnerWorkspace
                     ? 'admin.media_library.acquisition_permanence_inline'
                     : 'admin.media_library.acquisition_permanence') }}
             </p>
 
+            @if (! $isOwnerChoice)
             <x-filament::tabs
                 :label="__('admin.media_library.source_navigation')"
                 contained
@@ -314,6 +388,7 @@
                     </x-filament::tabs.item>
                 @endforeach
             </x-filament::tabs>
+            @endif
 
             <div
                 class="min-h-6"
@@ -459,6 +534,7 @@
         </aside>
     </div>
 
+    @if (! $isOwnerChoice)
     <div
         data-testid="media-picker-footer"
         class="sticky bottom-0 z-20 flex flex-wrap items-center justify-end gap-3 border-t border-gray-200 bg-white px-4 py-3 dark:border-gray-800 dark:bg-gray-900"
@@ -480,6 +556,7 @@
         @endif
         {{ $this->insertMediaAction }}
     </div>
+    @endif
 
     <x-filament-actions::modals />
 </div>

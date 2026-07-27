@@ -4,6 +4,7 @@ namespace App\Support\PublicFront;
 
 use App\Enums\PublicMenuItemType;
 use App\Support\PublicContent\PublicTranscriptionPolicy;
+use App\Support\PublicFront\About\PublicAboutBlockKey;
 use App\Support\PublicFront\About\PublicAboutPageRegistry;
 use App\Support\PublicFront\Cards\PublicFrontCardTemplateRegistry;
 use App\Support\PublicFront\Colors\PublicFrontColor;
@@ -662,6 +663,7 @@ class PublicFrontConfigValidator
         }
 
         $normalized = [];
+        $seenKeys = [];
 
         foreach ($items as $index => $item) {
             $blockPath = "{$path}.{$index}";
@@ -675,6 +677,13 @@ class PublicFrontConfigValidator
             $block = $this->normalizeAboutBlock($item, $blockPath, $invalidConfig, $index);
 
             if ($block !== null) {
+                if (in_array($block['key'], $seenKeys, true)) {
+                    $invalidConfig[] = PublicFrontInvalidConfig::make("{$blockPath}.key", 'duplicate_key', $block['key']);
+
+                    continue;
+                }
+
+                $seenKeys[] = $block['key'];
                 $normalized[] = $block;
             }
         }
@@ -720,12 +729,26 @@ class PublicFrontConfigValidator
             return null;
         }
 
+        $key = PublicAboutBlockKey::derive(
+            $this->semanticKey(
+                $block['key'] ?? null,
+                "{$blockPath}.key",
+                $invalidConfig,
+                nullable: true,
+            ),
+            $type,
+            $index,
+        );
+
+        if ($key === null) {
+            return null;
+        }
+
         $normalized = [
-            'key' => $this->semanticKey($block['key'] ?? null, "{$blockPath}.key", $invalidConfig, nullable: true)
-                ?? "{$type}_".($index + 1),
+            'key' => $key,
             'type' => $type,
             'visible' => $this->boolean($block['visible'] ?? null, "{$blockPath}.visible", true, $invalidConfig),
-            'sort' => array_key_exists('sort', $block)
+            'sort' => $this->hasOptionalValue($block['sort'] ?? null)
                 ? $this->integerRange($block['sort'], "{$blockPath}.sort", 0, 1000, ($index + 1) * 10, $invalidConfig)
                 : ($index + 1) * 10,
             'style' => $this->finiteString($block['style'] ?? null, PublicAboutPageRegistry::styles(), "{$blockPath}.style", $invalidConfig, 'default'),
@@ -910,7 +933,7 @@ class PublicFrontConfigValidator
         return array_filter([
             'key' => $key,
             'visible' => $this->boolean($item['visible'] ?? null, "{$path}.visible", true, $invalidConfig),
-            'sort' => array_key_exists('sort', $item)
+            'sort' => $this->hasOptionalValue($item['sort'] ?? null)
                 ? $this->integerRange($item['sort'], "{$path}.sort", 0, 1000, ($index + 1) * 10, $invalidConfig)
                 : ($index + 1) * 10,
             'image_path' => array_key_exists('image_path', $item)
@@ -996,7 +1019,7 @@ class PublicFrontConfigValidator
             'density' => $this->finiteString($settings['density'] ?? null, PublicAboutPageRegistry::teamCardDensities(), "{$path}.density", $invalidConfig, (string) ($defaults['density'] ?? 'comfortable')),
             'show_title' => $this->boolean($settings['show_title'] ?? null, "{$path}.show_title", (bool) ($defaults['show_title'] ?? true), $invalidConfig),
             'show_description' => $this->boolean($settings['show_description'] ?? null, "{$path}.show_description", (bool) ($defaults['show_description'] ?? true), $invalidConfig),
-            'description_lines' => array_key_exists('description_lines', $settings)
+            'description_lines' => $this->hasOptionalValue($settings['description_lines'] ?? null)
                 ? $this->integerRange($settings['description_lines'], "{$path}.description_lines", 0, 6, (int) ($defaults['description_lines'] ?? 3), $invalidConfig)
                 : (int) ($defaults['description_lines'] ?? 3),
         ];
@@ -1213,11 +1236,11 @@ class PublicFrontConfigValidator
             'validation_semantics' => $this->finiteString($fieldItem['validation_semantics'] ?? null, PublicFormDefinitionRegistry::validationSemantics(), "{$fieldPath}.validation_semantics", $invalidConfig, 'none'),
         ];
 
-        if (array_key_exists('min_length', $fieldItem)) {
+        if ($this->hasOptionalValue($fieldItem['min_length'] ?? null)) {
             $field['min_length'] = $this->integerRange($fieldItem['min_length'], "{$fieldPath}.min_length", 0, 5000, 0, $invalidConfig);
         }
 
-        if (array_key_exists('max_length', $fieldItem)) {
+        if ($this->hasOptionalValue($fieldItem['max_length'] ?? null)) {
             $field['max_length'] = $this->integerRange($fieldItem['max_length'], "{$fieldPath}.max_length", 1, 5000, $type === 'textarea' ? 5000 : 255, $invalidConfig);
         }
 
@@ -2703,6 +2726,15 @@ class PublicFrontConfigValidator
     }
 
     /**
+     * Treat only null and a blank string as an omitted optional value.
+     */
+    private function hasOptionalValue(mixed $value): bool
+    {
+        return $value !== null
+            && (! is_string($value) || trim($value) !== '');
+    }
+
+    /**
      * @param  array<PublicFrontInvalidConfig>  $invalidConfig
      */
     private function boolean(mixed $value, string $path, bool $default, array &$invalidConfig, bool $nullable = false): ?bool
@@ -2953,7 +2985,7 @@ class PublicFrontConfigValidator
      */
     private function integerRange(mixed $value, string $path, int $min, int $max, int $default, array &$invalidConfig): int
     {
-        if (! is_numeric($value)) {
+        if (! $this->isIntegerLike($value)) {
             $invalidConfig[] = PublicFrontInvalidConfig::make($path, 'expected_integer', $value);
 
             return $default;
@@ -2968,6 +3000,12 @@ class PublicFrontConfigValidator
         }
 
         return $value;
+    }
+
+    private function isIntegerLike(mixed $value): bool
+    {
+        return is_int($value)
+            || (is_string($value) && filter_var($value, FILTER_VALIDATE_INT) !== false);
     }
 
     /**

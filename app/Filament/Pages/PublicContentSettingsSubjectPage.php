@@ -7,29 +7,37 @@ use App\Filament\Actions\ExportPublicSettingsAction;
 use App\Filament\Support\Concerns\UsesAdminNavigationOrder;
 use App\Models\User;
 use App\Settings\PublicContentSettings as PublicContentSettingsData;
+use App\Support\Media\OwnerImageChoicePresentation;
+use App\Support\Media\SettingsOwnerImagePresenter;
+use App\Support\Media\SettingsOwnerImageSnapshot;
 use App\Support\PublicFront\PublicFrontConfigValidator;
+use App\Support\SettingsLifecycle\PublicContentSettingsWriteCoordinator;
 use App\Support\SettingsLifecycle\SettingsImportLocks;
 use App\Support\SettingsLifecycle\SettingsImportLockSurfaceRegistry;
 use App\Support\SettingsLifecycle\SettingsLifecycleSchema;
 use App\Support\SettingsLifecycle\SettingsLifecycleSelectionState;
 use App\Support\SettingsLifecycle\SettingsLifecycleUnit;
+use App\Support\SettingsLifecycle\SettingsSubjectBaseline;
+use App\Support\SettingsLifecycle\SettingsSubjectThreeWayMerger;
 use App\Support\Transcriptions\MultiTranscriptionSurfaces;
 use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Field;
+use Filament\Notifications\Notification;
 use Filament\Pages\SettingsPage;
 use Filament\Schemas\Components\Component as SchemaComponent;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Tabs\Tab;
+use Filament\Schemas\Concerns\RestrictsFileUploadsToSchemaComponents;
 use Filament\Schemas\Schema;
 use Filament\Support\Exceptions\Halt;
-use Filament\Support\Facades\FilamentView;
 use Filament\Support\Icons\Heroicon;
-use Throwable;
+use Livewire\Attributes\Locked;
 
 abstract class PublicContentSettingsSubjectPage extends SettingsPage
 {
     use BuildsPublicContentSettingsSubjectSchemas;
+    use RestrictsFileUploadsToSchemaComponents;
     use UsesAdminNavigationOrder;
 
     protected static string $settings = PublicContentSettingsData::class;
@@ -37,6 +45,8 @@ abstract class PublicContentSettingsSubjectPage extends SettingsPage
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedCog6Tooth;
 
     protected static bool $shouldRegisterNavigation = false;
+
+    protected ?bool $hasDatabaseTransactions = true;
 
     /**
      * @var array<int, array{group: string, path: string, selectable: bool}>|null
@@ -52,6 +62,54 @@ abstract class PublicContentSettingsSubjectPage extends SettingsPage
      * @var array<string, array<int, string>>
      */
     private array $inlineImportLockUnitPathsBySemanticPath = [];
+
+    #[Locked]
+    public string $settingsOwnerImageFingerprint = '';
+
+    /**
+     * @var array<string, array{
+     *     direct_state: string,
+     *     reference_key: string|null,
+     *     legacy_path: string|null,
+     *     evidence_hash: string|null,
+     *     resolved_media_id: int|null,
+     *     can_choose_automatic: bool
+     * }>
+     */
+    #[Locked]
+    public array $settingsOpenedOwnerImageEvidence = [];
+
+    /**
+     * @var array<string, array{exists: bool, hash: string}>
+     */
+    #[Locked]
+    public array $settingsOpenedRawUnitBaseline = [];
+
+    /**
+     * @var array<string, array{exists: bool, hash: string}>
+     */
+    #[Locked]
+    public array $settingsOpenedEditableUnitBaseline = [];
+
+    /**
+     * Exists only between native beforeFill and afterFill in one request.
+     *
+     * @var array<string, mixed>|null
+     */
+    private ?array $openedRawPayloadDuringFill = null;
+
+    /**
+     * Exists only between native mutateFormDataBeforeFill and afterFill.
+     *
+     * @var array<string, mixed>|null
+     */
+    private ?array $openedFormFacingPayloadDuringFill = null;
+
+    private ?SettingsOwnerImagePresenter $settingsOwnerImagePresenter = null;
+
+    private ?SettingsOwnerImageSnapshot $settingsOwnerImageSnapshot = null;
+
+    private ?PublicContentSettingsWriteCoordinator $settingsWriteCoordinator = null;
 
     public static function getNavigationLabel(): string
     {
@@ -87,104 +145,211 @@ abstract class PublicContentSettingsSubjectPage extends SettingsPage
         return static::canAccess();
     }
 
-    public function mount(): void
-    {
-        parent::mount();
-    }
-
     protected function settingsSubject(): string
     {
         throw new \LogicException('A public content settings subject page must declare its owner.');
     }
 
-    protected function fillForm(): void
+    protected function beforeFill(): void
     {
-        $this->callHook('beforeFill');
+        $raw = $this->freshRawSettingsPayload();
 
-        $settings = app(static::getSettings());
-        $data = $this->mutateFormDataBeforeFill($settings->toArray());
+        $this->openedRawPayloadDuringFill = $raw;
+        $this->settingsOpenedRawUnitBaseline = $this->settingsSubjectBaseline()->capture($raw);
+        $this->captureSettingsOwnerImageSnapshot($raw);
+    }
 
-        $this->form->fill($data);
+    protected function afterFill(): void
+    {
+        $openedRaw = $this->openedRawPayloadDuringFill ?? $this->freshRawSettingsPayload();
+        $openedEditable = $this->prepareUnvalidatedLocalCandidate(
+            $this->openedFormFacingPayloadDuringFill ?? [],
+            $openedRaw,
+        );
+        $openedEditable = $this->normalizedValidatorCandidate($openedEditable);
 
-        $this->callHook('afterFill');
+        $this->settingsOpenedEditableUnitBaseline = $this->settingsSubjectBaseline()
+            ->capture($openedEditable);
+        $this->openedRawPayloadDuringFill = null;
+        $this->openedFormFacingPayloadDuringFill = null;
     }
 
     public function save(): void
     {
         abort_unless($this->canEdit(), 403);
 
-        try {
-            $this->beginDatabaseTransaction();
+        $this->settingsWriteCoordinator()
+            ->withinLock(fn (): mixed => parent::save());
+    }
 
-            $this->callHook('beforeValidate');
+    /**
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    protected function mutateFormDataBeforeSave(array $data): array
+    {
+        $freshRaw = $this->freshRawSettingsPayload();
+        $localCandidate = $this->prepareUnvalidatedLocalCandidate($data, $freshRaw);
+        $merger = app(SettingsSubjectThreeWayMerger::class);
+        $validator = app(PublicFrontConfigValidator::class);
+        $validatorGroups = SettingsSubjectOwnershipRegistry::validatorGroups($this->settingsSubject());
+        $localValidation = $validator->validateGroups($localCandidate, $validatorGroups);
+        $freshValidation = $validator->validateGroups($freshRaw, $validatorGroups);
+        $normalizedLocalCandidate = $this->overlayNormalizedValidatorGroups(
+            $localCandidate,
+            $localValidation->config(),
+            $validatorGroups,
+        );
+        $validationPayload = $merger->validationPayload(
+            $this->settingsOpenedEditableUnitBaseline,
+            $localCandidate,
+            $freshRaw,
+            $normalizedLocalCandidate,
+            $localValidation->invalidConfig(),
+            $freshValidation->invalidConfig(),
+        );
+        $validation = $validator->validateGroups($validationPayload, $validatorGroups);
+        $normalizedCandidate = $this->overlayNormalizedValidatorGroups(
+            $validationPayload,
+            $validation->config(),
+            $validatorGroups,
+        );
 
-            $data = $this->form->getState();
+        $merge = $merger->merge(
+            $this->settingsOpenedRawUnitBaseline,
+            $this->settingsOpenedEditableUnitBaseline,
+            $localCandidate,
+            $freshRaw,
+            $normalizedCandidate,
+            $validation->invalidConfig(),
+            $freshValidation->invalidConfig(),
+            $validationPayload,
+            $normalizedLocalCandidate,
+        );
 
-            $this->callHook('afterValidate');
+        if ($merge['invalid_path'] !== null) {
+            $unitPath = $merge['invalid_unit_path'] ?? $merge['invalid_path'];
+            $message = __('admin.validation.settings_unit_invalid', [
+                'unit' => app(SettingsLifecycleSchema::class)->labelFor($unitPath),
+            ]);
 
-            $settings = app(static::getSettings());
-            $settings->refresh();
-            $stored = $settings->toArray();
-            $owned = SettingsSubjectOwnershipRegistry::extractOwned($data, $this->settingsSubject());
-            $owned = $this->normalizeOwnedFormData($owned, $stored);
-            $candidate = SettingsSubjectOwnershipRegistry::overlayOwned(
-                $stored,
-                $owned,
-                $this->settingsSubject(),
-            );
-            $candidate = MultiTranscriptionSurfaces::overlayUnauthorizedSettings(
-                $candidate,
-                PublicContentSettingsData::class,
-                storedSnapshot: $stored,
-            );
-            $validated = app(PublicFrontConfigValidator::class)
-                ->validateGroups(
-                    $candidate,
-                    SettingsSubjectOwnershipRegistry::validatorGroups($this->settingsSubject()),
-                )
-                ->config();
-            $owned = SettingsSubjectOwnershipRegistry::overlayOwned(
-                $owned,
-                $validated,
-                $this->settingsSubject(),
-            );
-            $data = MultiTranscriptionSurfaces::overlayUnauthorizedSettings(
-                SettingsSubjectOwnershipRegistry::overlayOwned(
-                    $stored,
-                    $owned,
-                    $this->settingsSubject(),
-                ),
-                PublicContentSettingsData::class,
-                storedSnapshot: $stored,
-            );
+            $this->addError("data.{$unitPath}", $message);
 
-            $this->callHook('beforeSave');
+            Notification::make()
+                ->danger()
+                ->title($message)
+                ->send();
 
-            $settings->fill($data);
-            $settings->save();
-
-            $this->callHook('afterSave');
-        } catch (Halt $exception) {
-            $exception->shouldRollbackDatabaseTransaction() ?
-                $this->rollBackDatabaseTransaction() :
-                $this->commitDatabaseTransaction();
-
-            return;
-        } catch (Throwable $exception) {
-            $this->rollBackDatabaseTransaction();
-
-            throw $exception;
+            throw new Halt;
         }
 
-        $this->commitDatabaseTransaction();
+        if ($merge['conflict_path'] !== null) {
+            Notification::make()
+                ->warning()
+                ->title(__('admin.validation.settings_unit_changed', [
+                    'unit' => app(SettingsLifecycleSchema::class)->labelFor($merge['conflict_path']),
+                ]))
+                ->send();
 
-        $this->rememberData();
-
-        $this->getSavedNotification()?->send();
-
-        if ($redirectUrl = $this->getRedirectUrl()) {
-            $this->redirect($redirectUrl, navigate: FilamentView::hasSpaMode($redirectUrl));
+            throw new Halt;
         }
+
+        return $merge['payload'];
+    }
+
+    protected function afterSave(): void
+    {
+        $this->fillForm();
+
+        $this->settingsWriteCoordinator()->refreshLeaseOrFail();
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    protected function rememberOpenedFormFacingPayload(array $data): array
+    {
+        $this->openedFormFacingPayloadDuringFill = $data;
+
+        return $data;
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     * @param  array<string, mixed>  $stored
+     * @return array<string, mixed>
+     */
+    private function prepareUnvalidatedLocalCandidate(array $data, array $stored): array
+    {
+        $owned = SettingsSubjectOwnershipRegistry::extractOwned($data, $this->settingsSubject());
+        $owned = $this->normalizeOwnedFormData($owned, $stored);
+        $candidate = SettingsSubjectOwnershipRegistry::overlayOwned(
+            $stored,
+            $owned,
+            $this->settingsSubject(),
+        );
+        $candidate = MultiTranscriptionSurfaces::overlayUnauthorizedSettings(
+            $candidate,
+            PublicContentSettingsData::class,
+            storedSnapshot: $stored,
+        );
+
+        return $candidate;
+    }
+
+    /**
+     * @param  array<string, mixed>  $candidate
+     * @return array<string, mixed>
+     */
+    private function normalizedValidatorCandidate(array $candidate): array
+    {
+        $groups = SettingsSubjectOwnershipRegistry::validatorGroups($this->settingsSubject());
+        $config = app(PublicFrontConfigValidator::class)
+            ->validateGroups($candidate, $groups)
+            ->config();
+
+        return $this->overlayNormalizedValidatorGroups($candidate, $config, $groups);
+    }
+
+    /**
+     * @param  array<string, mixed>  $candidate
+     * @param  array<string, mixed>  $normalized
+     * @param  array<int, string>  $groups
+     * @return array<string, mixed>
+     */
+    private function overlayNormalizedValidatorGroups(
+        array $candidate,
+        array $normalized,
+        array $groups,
+    ): array {
+        foreach ($groups as $group) {
+            if (array_key_exists($group, $normalized)) {
+                $candidate[$group] = $normalized[$group];
+            }
+        }
+
+        return $candidate;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function freshRawSettingsPayload(): array
+    {
+        $settings = app(static::getSettings());
+
+        return $settings->getRepository()->getPropertiesInGroup($settings::group());
+    }
+
+    private function settingsSubjectBaseline(): SettingsSubjectBaseline
+    {
+        return app(SettingsSubjectBaseline::class);
+    }
+
+    private function settingsWriteCoordinator(): PublicContentSettingsWriteCoordinator
+    {
+        return $this->settingsWriteCoordinator ??= app(PublicContentSettingsWriteCoordinator::class);
     }
 
     public function form(Schema $schema): Schema
@@ -203,6 +368,80 @@ abstract class PublicContentSettingsSubjectPage extends SettingsPage
     protected function subjectSchema(): Tab
     {
         throw new \LogicException('A focused public content settings page must declare its schema.');
+    }
+
+    protected function settingsOwnerImageChoice(
+        string $slotKey,
+        int|string|null $pendingIdentity,
+    ): OwnerImageChoicePresentation {
+        $presenter = $this->settingsOwnerImagePresenter();
+        $presenter->primeOpenedEvidence($this->settingsOpenedOwnerImageEvidence);
+
+        return $presenter->choice(
+            $this->currentSettingsOwnerImageSnapshot(),
+            $slotKey,
+            $pendingIdentity,
+            [
+                'commit' => __('admin.actions.save'),
+                'cancel' => __('admin.actions.cancel'),
+                'admission' => __('admin.media_library.acquisition_permanence_inline'),
+            ],
+            $this->openedSettingsOwnerImageEvidence($slotKey),
+        );
+    }
+
+    /**
+     * @return array{
+     *     direct_state?: string,
+     *     reference_key?: string|null,
+     *     legacy_path?: string|null,
+     *     evidence_hash?: string|null,
+     *     resolved_media_id?: int|null,
+     *     can_choose_automatic?: bool
+     * }|null
+     */
+    protected function openedSettingsOwnerImageEvidence(string $slotKey): ?array
+    {
+        $evidence = $this->settingsOpenedOwnerImageEvidence[$slotKey] ?? null;
+
+        return is_array($evidence) ? $evidence : null;
+    }
+
+    private function currentSettingsOwnerImageSnapshot(): SettingsOwnerImageSnapshot
+    {
+        if ($this->settingsOwnerImageSnapshot instanceof SettingsOwnerImageSnapshot) {
+            return $this->settingsOwnerImageSnapshot;
+        }
+
+        $settings = app(static::getSettings());
+        $settings->refresh();
+
+        return $this->settingsOwnerImageSnapshot = $this->settingsOwnerImagePresenter()->snapshot(
+            $settings->toArray(),
+            $this->settingsSubject(),
+        );
+    }
+
+    /**
+     * @param  array<string, mixed>  $settings
+     */
+    private function captureSettingsOwnerImageSnapshot(array $settings): SettingsOwnerImageSnapshot
+    {
+        $snapshot = $this->settingsOwnerImagePresenter()->snapshot(
+            $settings,
+            $this->settingsSubject(),
+        );
+        $this->settingsOwnerImageSnapshot = $snapshot;
+        $this->settingsOwnerImageFingerprint = $snapshot->fingerprint;
+        $this->settingsOpenedOwnerImageEvidence = $this->settingsOwnerImagePresenter()
+            ->openedEvidence($snapshot);
+
+        return $snapshot;
+    }
+
+    private function settingsOwnerImagePresenter(): SettingsOwnerImagePresenter
+    {
+        return $this->settingsOwnerImagePresenter ??= app(SettingsOwnerImagePresenter::class);
     }
 
     protected function withImportLockSection(Section $section, string $group, string $key): Section

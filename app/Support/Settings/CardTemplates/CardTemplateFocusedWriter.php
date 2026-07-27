@@ -4,16 +4,18 @@ namespace App\Support\Settings\CardTemplates;
 
 use App\Settings\PublicContentSettings;
 use App\Support\PublicFront\Cards\PublicFrontCardTemplateRegistry;
+use App\Support\SettingsLifecycle\PublicContentSettingsWriteCoordinator;
 use Closure;
+use Spatie\LaravelSettings\SettingsContainer;
 
 class CardTemplateFocusedWriter
 {
     public function __construct(
-        private readonly PublicContentSettings $settings,
         private readonly CardTemplateDraftNormalizer $normalizer,
         private readonly CardTemplateAccessPolicy $accessPolicy,
         private readonly CardTemplateReferenceScanner $referenceScanner,
         private readonly CardTemplateIdentity $identity,
+        private readonly PublicContentSettingsWriteCoordinator $writeCoordinator,
     ) {}
 
     /**
@@ -27,9 +29,30 @@ class CardTemplateFocusedWriter
         ?Closure $beforePersist = null,
         ?Closure $afterPersist = null,
     ): CardTemplateWriteResult {
+        return $this->writeCoordinator->transaction(fn (): CardTemplateWriteResult => $this->editWithinLock(
+            $draft,
+            $originalFamily,
+            $originalKey,
+            $targetFingerprint,
+            $beforePersist,
+            $afterPersist,
+        ));
+    }
+
+    /**
+     * @param  array<string, mixed>  $draft
+     */
+    private function editWithinLock(
+        array $draft,
+        string $originalFamily,
+        string $originalKey,
+        string $targetFingerprint,
+        ?Closure $beforePersist,
+        ?Closure $afterPersist,
+    ): CardTemplateWriteResult {
         $this->authorizeEditor();
         $this->assertIdentity($originalFamily, $originalKey);
-        [$snapshot, $templates] = $this->freshSnapshot();
+        [$settings, $snapshot, $templates] = $this->freshSnapshot();
         $located = $this->locateExactlyOnce($templates, $originalFamily, $originalKey);
         $freshTarget = $located['template'];
 
@@ -75,7 +98,7 @@ class CardTemplateFocusedWriter
         $this->guardNormalizedCandidate($normalized, $freshTarget, $capable);
         $templates[$located['index']] = $normalized;
         $beforePersist?->__invoke();
-        $this->persist($snapshot, $templates);
+        $this->persist($settings, $snapshot, $templates);
         $afterPersist?->__invoke();
 
         return new CardTemplateWriteResult(
@@ -97,13 +120,36 @@ class CardTemplateFocusedWriter
         ?Closure $beforePersist = null,
         ?Closure $afterPersist = null,
     ): CardTemplateWriteResult {
+        return $this->writeCoordinator->transaction(fn (): CardTemplateWriteResult => $this->createWithinLock(
+            $draft,
+            $mode,
+            $sourceFamily,
+            $sourceKey,
+            $sourceFingerprint,
+            $beforePersist,
+            $afterPersist,
+        ));
+    }
+
+    /**
+     * @param  array<string, mixed>  $draft
+     */
+    private function createWithinLock(
+        array $draft,
+        string $mode,
+        ?string $sourceFamily,
+        ?string $sourceKey,
+        ?string $sourceFingerprint,
+        ?Closure $beforePersist,
+        ?Closure $afterPersist,
+    ): CardTemplateWriteResult {
         $this->authorizeEditor();
 
         if (! in_array($mode, ['blank', 'clone', 'override'], true)) {
             throw CardTemplateWriteException::named('invalid_mode');
         }
 
-        [$snapshot, $templates] = $this->freshSnapshot();
+        [$settings, $snapshot, $templates] = $this->freshSnapshot();
         $capable = $this->accessPolicy->currentActorCanManageProtectedTemplates();
 
         if ($mode === 'clone') {
@@ -159,7 +205,7 @@ class CardTemplateFocusedWriter
         $this->guardNormalizedCandidate($normalized, null, $capable);
         $templates[] = $normalized;
         $beforePersist?->__invoke();
-        $this->persist($snapshot, $templates);
+        $this->persist($settings, $snapshot, $templates);
         $afterPersist?->__invoke();
 
         return new CardTemplateWriteResult(
@@ -176,9 +222,25 @@ class CardTemplateFocusedWriter
         ?Closure $beforePersist = null,
         ?Closure $afterPersist = null,
     ): void {
+        $this->writeCoordinator->transaction(fn (): null => $this->deleteWithinLock(
+            $family,
+            $key,
+            $targetFingerprint,
+            $beforePersist,
+            $afterPersist,
+        ));
+    }
+
+    private function deleteWithinLock(
+        string $family,
+        string $key,
+        string $targetFingerprint,
+        ?Closure $beforePersist,
+        ?Closure $afterPersist,
+    ): null {
         $this->authorizeEditor();
         $this->assertIdentity($family, $key);
-        [$snapshot, $templates] = $this->freshSnapshot();
+        [$settings, $snapshot, $templates] = $this->freshSnapshot();
         $located = $this->locateExactlyOnce($templates, $family, $key);
         $freshTarget = $located['template'];
 
@@ -206,8 +268,10 @@ class CardTemplateFocusedWriter
 
         unset($templates[$located['index']]);
         $beforePersist?->__invoke();
-        $this->persist($snapshot, array_values($templates));
+        $this->persist($settings, $snapshot, array_values($templates));
         $afterPersist?->__invoke();
+
+        return null;
     }
 
     private function authorizeEditor(): void
@@ -218,19 +282,22 @@ class CardTemplateFocusedWriter
     }
 
     /**
-     * @return array{0: array<string, mixed>, 1: array<int, mixed>}
+     * @return array{0: PublicContentSettings, 1: array<string, mixed>, 2: array<int, mixed>}
      */
     private function freshSnapshot(): array
     {
-        $this->settings->refresh();
-        $snapshot = $this->settings->toArray();
+        app()->forgetInstance(PublicContentSettings::class);
+        app(SettingsContainer::class)->clearCache();
+        $settings = app(PublicContentSettings::class);
+        $settings->refresh();
+        $snapshot = $settings->toArray();
         $templates = $snapshot['card_templates'] ?? null;
 
         if (! is_array($templates) || ! array_is_list($templates)) {
             throw CardTemplateWriteException::named('corrupt_root');
         }
 
-        return [$snapshot, $templates];
+        return [$settings, $snapshot, $templates];
     }
 
     /**
@@ -308,10 +375,10 @@ class CardTemplateFocusedWriter
      * @param  array<string, mixed>  $snapshot
      * @param  array<int, mixed>  $templates
      */
-    private function persist(array $snapshot, array $templates): void
+    private function persist(PublicContentSettings $settings, array $snapshot, array $templates): void
     {
         $snapshot['card_templates'] = $templates;
-        $this->settings->fill($snapshot);
-        $this->settings->save();
+        $settings->fill($snapshot);
+        $settings->save();
     }
 }

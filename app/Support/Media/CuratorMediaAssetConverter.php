@@ -10,6 +10,7 @@ use App\Models\MediaAsset;
 use App\Models\MediaAttachment;
 use App\Models\MediaProviderBinding;
 use App\Settings\PublicContentSettings;
+use App\Support\SettingsLifecycle\PublicContentSettingsWriteCoordinator;
 use App\Support\SettingsLifecycle\SettingsMediaIdentityProjector;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
@@ -23,11 +24,12 @@ class CuratorMediaAssetConverter
 {
     public function __construct(
         private SettingsMediaIdentityProjector $settingsProjector,
+        private PublicContentSettingsWriteCoordinator $writeCoordinator,
     ) {}
 
     public function convert(): CuratorMediaAssetConversionReport
     {
-        return DB::transaction(function (): CuratorMediaAssetConversionReport {
+        return $this->writeCoordinator->transaction(function (): CuratorMediaAssetConversionReport {
             $counts = $this->emptyCounts();
             $details = $this->emptyDetails();
             $mediaRows = Media::query()

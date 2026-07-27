@@ -5,11 +5,13 @@ namespace App\Support\SettingsLifecycle;
 use App\Settings\PublicContentSettings;
 use App\Support\PublicFront\PublicFrontConfigRegistry;
 use RuntimeException;
+use Spatie\LaravelSettings\SettingsContainer;
 
 class SettingsImportLocks
 {
     public function __construct(
         private readonly SettingsLifecycleSchema $schema,
+        private readonly PublicContentSettingsWriteCoordinator $writeCoordinator,
     ) {}
 
     /**
@@ -32,6 +34,20 @@ class SettingsImportLocks
     public function save(array $paths): array
     {
         $lockedPaths = $this->normalize($paths);
+
+        return $this->writeCoordinator->transaction(
+            fn (): array => $this->saveWithinLock($lockedPaths),
+        );
+    }
+
+    /**
+     * @param  array<int, string>  $lockedPaths
+     * @return array<int, string>
+     */
+    private function saveWithinLock(array $lockedPaths): array
+    {
+        app()->forgetInstance(PublicContentSettings::class);
+        app(SettingsContainer::class)->clearCache();
         $settings = app(PublicContentSettings::class);
         $settings->import_locks = [
             'locked_paths' => $lockedPaths,

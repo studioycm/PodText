@@ -18,7 +18,7 @@ use Illuminate\Support\Facades\Storage;
 
 class PublicDefaultImageResolver
 {
-    /** @var array<string, array{mode: string, path: string|null, media_reference_key: string|null}> */
+    /** @var array<string, array{mode: string, path: string|null, media_reference_key: string|null, media: Media|null}> */
     private array $familyConfigs = [];
 
     public function __construct(
@@ -149,7 +149,61 @@ class PublicDefaultImageResolver
     }
 
     /**
-     * @return array{mode: string, path: string|null, media_reference_key: string|null}
+     * @param  array<string, mixed>|null  $defaultImages
+     * @return array{
+     *     mode: string,
+     *     direct_media: Media|null,
+     *     shown_media: Media|null,
+     *     shown_source: string,
+     *     shown_path: string|null,
+     *     shown_url: string|null
+     * }
+     */
+    public function projectDefaultFamily(string $family, ?array $defaultImages = null): array
+    {
+        $config = $defaultImages === null
+            ? $this->familyConfig($family)
+            : $this->familyConfigFrom($defaultImages, $family);
+        $global = $defaultImages === null
+            ? $this->familyConfig('global')
+            : $this->familyConfigFrom($defaultImages, 'global');
+        $shown = match (true) {
+            $config['mode'] === 'custom' && $config['media'] instanceof Media && filled($config['path']) => [
+                'media' => $config['media'],
+                'source' => 'configured_default',
+            ],
+            $config['mode'] === 'none' => [
+                'media' => null,
+                'source' => 'none',
+            ],
+            $family !== 'global'
+                && $global['mode'] === 'custom'
+                && $global['media'] instanceof Media
+                && filled($global['path']) => [
+                    'media' => $global['media'],
+                    'source' => 'global_default',
+                ],
+            default => [
+                'media' => null,
+                'source' => 'none',
+            ],
+        };
+        $shownMedia = $shown['media'];
+
+        return [
+            'mode' => $config['mode'],
+            'direct_media' => $config['media'],
+            'shown_media' => $shownMedia,
+            'shown_source' => $shown['source'],
+            'shown_path' => $shownMedia?->path,
+            'shown_url' => $shownMedia instanceof Media
+                ? Storage::disk('public')->url($shownMedia->path)
+                : null,
+        ];
+    }
+
+    /**
+     * @return array{mode: string, path: string|null, media_reference_key: string|null, media: Media|null}
      */
     private function familyConfig(string $family): array
     {
@@ -157,12 +211,24 @@ class PublicDefaultImageResolver
             return $this->familyConfigs[$family];
         }
 
+        return $this->familyConfigs[$family] = $this->familyConfigFrom(
+            $this->context->defaultImages(),
+            $family,
+        );
+    }
+
+    /**
+     * @param  array<string, mixed>  $defaultImages
+     * @return array{mode: string, path: string|null, media_reference_key: string|null, media: Media|null}
+     */
+    private function familyConfigFrom(array $defaultImages, string $family): array
+    {
         $defaults = PublicFrontConfigRegistry::defaults()['default_images'][$family] ?? [
             'mode' => 'inherit',
             'path' => null,
             'media_reference_key' => null,
         ];
-        $config = $this->context->defaultImages()[$family] ?? [];
+        $config = $defaultImages[$family] ?? [];
 
         if (! is_array($config)) {
             $config = [];
@@ -192,10 +258,11 @@ class PublicDefaultImageResolver
             ? $media->path
             : null;
 
-        return $this->familyConfigs[$family] = [
+        return [
             'mode' => is_string($config['mode'] ?? null) ? $config['mode'] : $defaults['mode'],
             'path' => $path,
             'media_reference_key' => $referenceKey,
+            'media' => $media,
         ];
     }
 

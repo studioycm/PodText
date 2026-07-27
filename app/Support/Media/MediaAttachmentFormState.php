@@ -10,7 +10,6 @@ use App\Models\MediaAttachment;
 use App\Models\User;
 use Illuminate\Validation\ValidationException;
 use InvalidArgumentException;
-use RuntimeException;
 
 class MediaAttachmentFormState
 {
@@ -183,10 +182,6 @@ class MediaAttachmentFormState
                 throw ValidationException::withMessages([
                     $field => $exception->getMessage(),
                 ]);
-            } catch (RuntimeException) {
-                throw ValidationException::withMessages([
-                    $field => __('admin.validation.owner_image_changed'),
-                ]);
             }
 
             return;
@@ -219,19 +214,13 @@ class MediaAttachmentFormState
         ?string $expectedLegacyPath,
         ?string $validationField = null,
     ): void {
-        try {
-            $this->attachmentManager->detachIfUnchanged(
-                $owner,
-                $role,
-                $actor,
-                $expectedMediaId,
-                $expectedLegacyPath,
-            );
-        } catch (RuntimeException) {
-            throw ValidationException::withMessages([
-                $validationField ?? 'owner_image_operation' => __('admin.validation.owner_image_changed'),
-            ]);
-        }
+        $this->attachmentManager->detachIfUnchanged(
+            $owner,
+            $role,
+            $actor,
+            $expectedMediaId,
+            $expectedLegacyPath,
+        );
     }
 
     public function diagnostic(ContentGroup|ContentItem $owner, MediaAttachmentRole $role): ?LegacyOwnerMediaDiagnostic

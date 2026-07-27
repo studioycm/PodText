@@ -29,6 +29,41 @@ The approved post-P3/Package 4 visual correction is complete locally under audit
 `../../phase-02/media-program-p3-postp3-p4-visual-ux-handoff.md`.
 Package 5 remains a route forecast requiring fresh Simplifier approval.
 
+## Media Operations UX3 cross-track route
+
+This original five-package plan remains the product, persistence, attachment,
+admission, delivery, authorization, mutation and safety authority. It does not
+pre-design the remaining Media Operations UX3 experience.
+
+Media Operations UX3 Mini-tasks 1–3 are implemented. The documentation-only
+reconciliation contract at
+`../../../prompts/pre-13-prompts/media-operations-ux3-program-reconciliation-finding-coverage-codex-prompt.md`
+v1 has been executed and was accepted by the operator on 2026-07-26. Its
+canonical result is at
+`../media-operations-ux3/07-program-reconciliation-and-finding-coverage.md`,
+the detailed forward UX3 plan and finding-to-task coverage authority. The
+original outcome order was Mini-task 3A — Owner Image Choice and Commit,
+Mini-task 3B — Media Intake and Acquisition Results, Mini-task 3C — Safe
+Existing-File Operations and Outcomes, then replanned Mini-task 4 —
+provisional boundary: Reason-Specific Media Issue Resolution and Verified
+Results.
+
+**Binding sequencing rule:** Mini-task 4 must not begin UX research, technical
+research, planning, Laravel Simplifier Stage 1 or implementation until
+Mini-task 3C has been reviewed and closed. After 3C closes, Mini-task 4
+restarts at UX research/design and is replanned from the reconciled 3A–3C
+evidence. No earlier Mini-task 4 title, scope, selected repair reason, plan,
+audit or option is authoritative. The completed choice, acquisition-result and
+existing-file operation contracts determine which first reason-specific repair
+is truthful, valuable and safely bounded.
+
+The reconciliation is accepted. Mini-task 3A has since completed locally under
+its separately approved design, technical, audit and implementation cycle and
+is awaiting operator outcome review. Its handoff is
+`../../phase-02/media-operations-ux3-mini3a-owner-image-choice-and-commit-handoff.md`.
+Mini-task 3B is the next sequential outcome only after that review closes 3A;
+it has not started and is not authorized.
+
 ## Package 1 — minimal kernel and database conversion
 
 Outcome: every Curator row has one portable MediaAsset and Curator binding;

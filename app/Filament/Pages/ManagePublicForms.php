@@ -5,8 +5,6 @@ namespace App\Filament\Pages;
 use App\Filament\Actions\ExportPublicSettingsAction;
 use App\Filament\Support\Concerns\UsesAdminNavigationOrder;
 use App\Filament\Support\PublicFormsSettingsForm;
-use App\Support\PublicFront\PublicFrontConfigReader;
-use App\Support\PublicFront\PublicFrontConfigValidator;
 use BackedEnum;
 use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Section;
@@ -66,37 +64,5 @@ class ManagePublicForms extends PublicContentSettingsSubjectPage
         $this->applyInlineImportLockHints($schema->getComponents());
 
         return $schema;
-    }
-
-    /**
-     * @param  array<string, mixed>  $data
-     * @return array<string, mixed>
-     */
-    protected function mutateFormDataBeforeFill(array $data): array
-    {
-        $publicForms = app(PublicFrontConfigReader::class)
-            ->fromArray($data)
-            ->group('public_forms');
-
-        return [
-            'public_forms' => PublicFormsSettingsForm::publicFormsForBuilder($publicForms),
-        ];
-    }
-
-    /**
-     * @param  array<string, mixed>  $data
-     * @return array<string, mixed>
-     */
-    protected function normalizeOwnedFormData(array $data, array $stored): array
-    {
-        $publicForms = app(PublicFrontConfigValidator::class)
-            ->validate([
-                'public_forms' => $data['public_forms'] ?? [],
-            ])
-            ->group('public_forms');
-
-        return [
-            'public_forms' => $publicForms,
-        ];
     }
 }

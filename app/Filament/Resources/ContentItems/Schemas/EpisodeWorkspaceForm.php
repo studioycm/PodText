@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\ContentItems\Schemas;
 
 use App\Enums\ImageUploadPurpose;
+use App\Enums\MediaAttachmentRole;
 use App\Enums\PublicationStatus;
 use App\Filament\Forms\Components\PublicationStatusSelect;
 use App\Filament\Forms\Components\SlugInput;
@@ -24,6 +25,7 @@ use App\Support\Media\EpisodeSpotifyLookup;
 use App\Support\Media\ExternalImageFailureMessage;
 use App\Support\Media\ImageFileNamer;
 use App\Support\Media\MediaAcquisitionManager;
+use App\Support\Media\OwnerImagePresenter;
 use App\Support\PublicFront\ContentItemDisplayTitle;
 use App\Support\Slugs\HebrewSlugger;
 use App\Support\Transcriptions\MultiTranscriptionSurfaces;
@@ -119,8 +121,8 @@ class EpisodeWorkspaceForm
                             ->columnSpanFull(),
                     ])
                     ->columns(2),
-                Section::make(__('admin.sections.episode_workspace_media'))
-                    ->description(__('admin.descriptions.episode_workspace_media'))
+                Section::make(__('admin.sections.content'))
+                    ->description(__('admin.descriptions.content_item_content'))
                     ->schema([
                         MarkdownEditor::make('description_markdown')
                             ->label(__('admin.fields.description_markdown'))
@@ -128,10 +130,27 @@ class EpisodeWorkspaceForm
                             ->disableToolbarButtons(['attachFiles'])
                             ->fileAttachments(false)
                             ->columnSpanFull(),
+                    ]),
+                Section::make(__('admin.sections.episode_image'))
+                    ->schema([
                         MediaPickerField::make('primary_image_media_reference_key', ImageFileNamer::CONTENT_ITEM_IMAGE)
                             ->label(__('admin.fields.image_path'))
                             ->helperText(__('admin.helpers.content_item_image_path'))
+                            ->ownerChoice(fn (Get $get, ?ContentItem $record): mixed => app(OwnerImagePresenter::class)->choice(
+                                $record ?? new ContentItem,
+                                MediaAttachmentRole::PrimaryImage,
+                                $get('primary_image_media_reference_key'),
+                                [
+                                    'commit' => __('admin.actions.save_episode_workspace'),
+                                    'cancel' => __('admin.actions.cancel'),
+                                    'admission' => __('admin.media_library.acquisition_permanence_inline'),
+                                ],
+                            ))
                             ->columnSpanFull(),
+                    ]),
+                Section::make(__('admin.sections.player_embed'))
+                    ->description(__('admin.descriptions.episode_workspace_media'))
+                    ->schema([
                         TextInput::make('media_url')
                             ->label(__('admin.fields.media_url'))
                             ->helperText(__('admin.helpers.media_url'))

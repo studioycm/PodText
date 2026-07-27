@@ -7,10 +7,10 @@ use App\Enums\UserRole;
 use App\Filament\Actions\ContentImageActions;
 use App\Filament\Resources\ContentItems\ContentItemResource;
 use App\Filament\Resources\ContentItems\Schemas\EpisodeWorkspaceForm;
+use App\Filament\Support\Concerns\InteractsWithOwnerImageFormLifecycle;
 use App\Models\ContentItem;
 use App\Models\Transcription;
 use App\Models\User;
-use App\Support\Media\MediaAttachmentFormState;
 use App\Support\Transcriptions\MultiTranscriptionSurfaces;
 use Filament\Actions\Action;
 use Filament\Actions\DeleteAction;
@@ -26,7 +26,11 @@ use Illuminate\Validation\ValidationException;
 
 class EditEpisodeWorkspace extends EditRecord
 {
+    use InteractsWithOwnerImageFormLifecycle;
+
     protected static string $resource = ContentItemResource::class;
+
+    protected ?bool $hasDatabaseTransactions = true;
 
     public function form(Schema $schema): Schema
     {
@@ -37,12 +41,12 @@ class EditEpisodeWorkspace extends EditRecord
     {
         $actor = auth()->user();
         abort_unless($actor instanceof User, 403);
-        app(MediaAttachmentFormState::class)->persist(
+        $this->persistOwnerImageForm(
             $this->getRecord(),
-            $this->pendingPrimaryImageMediaReferenceKey,
             MediaAttachmentRole::PrimaryImage,
+            'primary_image_media_reference_key',
             $actor,
-            $this->pendingUnsafePrimaryImageFingerprint,
+            enforceExpectedIdentity: true,
         );
         $this->getRecord()->refresh()->adoptWorkspaceTranscription();
     }
@@ -179,29 +183,23 @@ class EditEpisodeWorkspace extends EditRecord
         return MultiTranscriptionSurfaces::currentUserCan(UserRole::Admin);
     }
 
-    private ?string $pendingPrimaryImageMediaReferenceKey = null;
-
-    private ?string $pendingUnsafePrimaryImageFingerprint = null;
-
     protected function mutateFormDataBeforeFill(array $data): array
     {
-        $data['primary_image_media_reference_key'] = app(MediaAttachmentFormState::class)->pickerIdentity(
+        return $this->hydrateOwnerImageForm(
+            $data,
             $this->getRecord(),
             MediaAttachmentRole::PrimaryImage,
+            'primary_image_media_reference_key',
         );
-
-        return $data;
     }
 
     protected function mutateFormDataBeforeSave(array $data): array
     {
-        [$data, $this->pendingPrimaryImageMediaReferenceKey, $this->pendingUnsafePrimaryImageFingerprint] = app(MediaAttachmentFormState::class)->prepare(
+        return $this->prepareOwnerImageForm(
             $data,
-            'primary_image_media_reference_key',
             $this->getRecord(),
             MediaAttachmentRole::PrimaryImage,
+            'primary_image_media_reference_key',
         );
-
-        return $data;
     }
 }

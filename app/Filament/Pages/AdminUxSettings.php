@@ -4,7 +4,6 @@ namespace App\Filament\Pages;
 
 use App\Enums\MediaAcquisitionFilenameStrategy;
 use App\Enums\MediaNamingStrategy;
-use App\Enums\Tb1PickerContainer;
 use App\Enums\TranscriptionMode;
 use App\Enums\TranscriptionPresentationMode;
 use App\Filament\Support\Concerns\UsesAdminNavigationOrder;
@@ -145,15 +144,6 @@ class AdminUxSettings extends SettingsPage
                             ->label(__('admin.fields.show_episode_workspace_language_code'))
                             ->helperText(__('admin.helpers.show_episode_workspace_language_code'))
                             ->default(false),
-                        Select::make('tb1_picker_container')
-                            ->label(__('admin.fields.tb1_picker_container'))
-                            ->helperText(__('admin.helpers.tb1_picker_container'))
-                            ->options(fn (): array => collect(Tb1PickerContainer::cases())
-                                ->mapWithKeys(fn (Tb1PickerContainer $container): array => [$container->value => $container->getLabel()])
-                                ->all())
-                            ->default(Tb1PickerContainer::Modal->value)
-                            ->native(false)
-                            ->required(),
                     ])
                     ->columns(2),
             ]);

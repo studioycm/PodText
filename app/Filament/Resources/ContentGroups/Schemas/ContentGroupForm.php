@@ -2,13 +2,16 @@
 
 namespace App\Filament\Resources\ContentGroups\Schemas;
 
+use App\Enums\MediaAttachmentRole;
 use App\Filament\Forms\Components\PublicationStatusSelect;
 use App\Filament\Forms\Components\SlugInput;
 use App\Filament\Forms\MediaPickerField;
 use App\Filament\Forms\SpotifyShowInput;
 use App\Filament\Pages\DisplaySettings;
 use App\Filament\Resources\Support\RelationshipOptionForms;
+use App\Models\ContentGroup;
 use App\Support\Media\ImageFileNamer;
+use App\Support\Media\OwnerImagePresenter;
 use Filament\Actions\Action;
 use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\Hidden;
@@ -16,6 +19,7 @@ use Filament\Forms\Components\MarkdownEditor;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Support\Str;
@@ -89,19 +93,6 @@ class ContentGroupForm
                             ->disableToolbarButtons(['attachFiles'])
                             ->fileAttachments(false)
                             ->columnSpanFull(),
-                        MediaPickerField::make('cover_media_reference_key', ImageFileNamer::CONTENT_GROUP_COVER)
-                            ->label(__('admin.fields.cover_path'))
-                            ->helperText(__('admin.helpers.cover_path'))
-                            ->hintAction(
-                                Action::make('manageDefaultImages')
-                                    ->label(__('admin.actions.manage_default_images'))
-                                    ->icon(Heroicon::OutlinedPhoto)
-                                    ->url(fn (): string => DisplaySettings::getUrl()),
-                            ),
-                        TextInput::make('cover_alt_text')
-                            ->label(__('admin.fields.cover_alt_text'))
-                            ->helperText(__('admin.helpers.cover_alt_text'))
-                            ->maxLength(160),
                         RelationshipOptionForms::configureCategorySelect(
                             Select::make('categories')
                                 ->label(__('admin.fields.categories'))
@@ -113,6 +104,32 @@ class ContentGroupForm
                                 ->helperText(__('admin.helpers.group_categories')),
                             allowEdit: false,
                         ),
+                    ]),
+                Section::make(__('admin.sections.podcast_cover'))
+                    ->schema([
+                        MediaPickerField::make('cover_media_reference_key', ImageFileNamer::CONTENT_GROUP_COVER)
+                            ->label(__('admin.fields.cover_path'))
+                            ->helperText(__('admin.helpers.cover_path'))
+                            ->ownerChoice(fn (Get $get, ?ContentGroup $record): mixed => app(OwnerImagePresenter::class)->choice(
+                                $record ?? new ContentGroup,
+                                MediaAttachmentRole::Cover,
+                                $get('cover_media_reference_key'),
+                                [
+                                    'commit' => __('admin.actions.save'),
+                                    'cancel' => __('admin.actions.cancel'),
+                                    'admission' => __('admin.media_library.acquisition_permanence_inline'),
+                                ],
+                            ))
+                            ->hintAction(
+                                Action::make('manageDefaultImages')
+                                    ->label(__('admin.actions.manage_default_images'))
+                                    ->icon(Heroicon::OutlinedPhoto)
+                                    ->url(fn (): string => DisplaySettings::getUrl()),
+                            ),
+                        TextInput::make('cover_alt_text')
+                            ->label(__('admin.fields.cover_alt_text'))
+                            ->helperText(__('admin.helpers.cover_alt_text'))
+                            ->maxLength(160),
                     ]),
                 Section::make(__('admin.sections.homepage'))
                     ->schema([

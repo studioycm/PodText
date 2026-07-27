@@ -11,7 +11,13 @@ use App\Filament\Resources\ContentItems\Tables\ContentItemsTable;
 use App\Filament\Resources\Support\ResourceTableActions;
 use App\Filament\Tables\OwnerImageColumn;
 use App\Models\ContentItem;
+use App\Models\User;
 use App\Support\Media\LegacyOwnerMediaDiagnosticProjector;
+use App\Support\Media\MediaAttachmentFormState;
+use App\Support\Media\MediaRecordScope;
+use App\Support\Media\OwnerImageChangedException;
+use App\Support\Media\OwnerImageChoicePresentation;
+use App\Support\Media\OwnerImagePresenter;
 use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\CreateAction;
@@ -27,14 +33,36 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Table;
+use Illuminate\Contracts\Encryption\DecryptException;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Crypt;
+use JsonException;
+use Livewire\Attributes\Locked;
 
 class ContentItemsRelationManager extends RelationManager
 {
+    private const int OWNER_IMAGE_BASELINE_VERSION = 1;
+
     protected static string $relationship = 'contentItems';
 
     protected static bool $isLazy = false;
+
+    #[Locked]
+    public ?int $ownerImageExpectedMediaId = null;
+
+    #[Locked]
+    public ?string $ownerImageExpectedLegacyPath = null;
+
+    #[Locked]
+    public ?string $ownerImageUnsafeFingerprint = null;
+
+    private ?string $pendingPrimaryImageMediaReferenceKey = null;
+
+    /**
+     * @var array{expected_media_id: int|null, expected_legacy_path: string|null, unsafe_fingerprint: string|null}|null
+     */
+    private ?array $pendingOwnerImageBaseline = null;
 
     public function form(Schema $schema): Schema
     {
@@ -44,6 +72,7 @@ class ContentItemsRelationManager extends RelationManager
     public function table(Table $table): Table
     {
         return ResourceTableActions::iconOnly($table)
+            ->heading(__('admin.relations.episodes'))
             ->recordTitleAttribute('title')
             ->modifyQueryUsing(fn (Builder $query): Builder => $query
                 ->with([
@@ -151,8 +180,36 @@ class ContentItemsRelationManager extends RelationManager
             ->headerActions([
                 CreateAction::make()
                     ->label(__('admin.actions.classic_create'))
+                    ->modalHeading(__('admin.modals.create_episode'))
                     ->createAnother(false)
-                    ->modalWidth(Width::SevenExtraLarge),
+                    ->modalWidth(Width::SevenExtraLarge)
+                    ->databaseTransaction()
+                    ->mutateDataUsing(function (array $data): array {
+                        unset(
+                            $data['relation_owner_image_baseline_token'],
+                            $data['relation_owner_image_pending_identity'],
+                        );
+
+                        [$data, $this->pendingPrimaryImageMediaReferenceKey] = app(MediaAttachmentFormState::class)->prepare(
+                            $data,
+                            'primary_image_media_reference_key',
+                            null,
+                            MediaAttachmentRole::PrimaryImage,
+                        );
+
+                        return $data;
+                    })
+                    ->after(function (ContentItem $record): void {
+                        $actor = auth()->user();
+                        abort_unless($actor instanceof User, 403);
+
+                        app(MediaAttachmentFormState::class)->persist(
+                            $record,
+                            $this->pendingPrimaryImageMediaReferenceKey,
+                            MediaAttachmentRole::PrimaryImage,
+                            $actor,
+                        );
+                    }),
             ])
             ->recordUrl(fn (ContentItem $record): string => ContentItemResource::getUrl('workspace', ['record' => $record]))
             ->recordActions([
@@ -169,7 +226,98 @@ class ContentItemsRelationManager extends RelationManager
                 EditAction::make()
                     ->label(__('admin.actions.classic_edit'))
                     ->icon(Heroicon::OutlinedDocumentText)
-                    ->modalWidth(Width::SevenExtraLarge),
+                    ->modalHeading(__('admin.modals.edit_episode'))
+                    ->modalWidth(Width::SevenExtraLarge)
+                    ->databaseTransaction()
+                    ->mutateRecordDataUsing(function (array $data, ContentItem $record): array {
+                        $presentation = $this->captureOwnerImageBaseline($record);
+                        $pickerIdentity = app(OwnerImagePresenter::class)->pickerIdentity(
+                            $record,
+                            MediaAttachmentRole::PrimaryImage,
+                        );
+                        $data['primary_image_media_reference_key'] = $pickerIdentity;
+                        $data['relation_owner_image_pending_identity'] = $pickerIdentity;
+                        $data['relation_owner_image_baseline_token'] = $this->ownerImageBaselineToken(
+                            $record,
+                            $presentation,
+                        );
+
+                        return $data;
+                    })
+                    ->mutateDataUsing(function (array $data, ContentItem $record, EditAction $action): array {
+                        $actor = auth()->user();
+                        abort_unless($actor instanceof User, 403);
+                        $this->pendingOwnerImageBaseline = $this->ownerImageBaseline(
+                            $data['relation_owner_image_baseline_token'] ?? null,
+                            $record,
+                            $actor,
+                        );
+                        $rawIdentity = $data['relation_owner_image_pending_identity'] ?? null;
+                        unset($data['relation_owner_image_baseline_token']);
+                        unset($data['relation_owner_image_pending_identity']);
+
+                        if ($this->pendingOwnerImageBaseline === null) {
+                            $index = $action->getNestingIndex() ?? 0;
+                            $action->getLivewire()->addError(
+                                "mountedActions.{$index}.data.primary_image_media_reference_key",
+                                __('admin.validation.owner_image_baseline_invalid'),
+                            );
+                            $action->halt(true);
+                        }
+
+                        if (
+                            blank($data['primary_image_media_reference_key'] ?? null)
+                            && (is_int($rawIdentity) || (is_string($rawIdentity) && ctype_digit($rawIdentity)))
+                        ) {
+                            $media = app(MediaRecordScope::class)->findInventoryOrFail((int) $rawIdentity);
+                            $data['primary_image_media_reference_key'] = $media->reference_key;
+                        }
+
+                        $legacyPath = $record->image_path;
+                        [$data, $this->pendingPrimaryImageMediaReferenceKey] = app(MediaAttachmentFormState::class)->prepare(
+                            $data,
+                            'primary_image_media_reference_key',
+                            $record,
+                            MediaAttachmentRole::PrimaryImage,
+                        );
+                        $data['image_path'] = $legacyPath;
+
+                        return $data;
+                    })
+                    ->after(function (ContentItem $record, EditAction $action): void {
+                        $actor = auth()->user();
+                        abort_unless($actor instanceof User, 403);
+
+                        try {
+                            $baseline = $this->pendingOwnerImageBaseline;
+                            abort_unless(is_array($baseline), 409);
+
+                            app(MediaAttachmentFormState::class)->persist(
+                                $record,
+                                $this->pendingPrimaryImageMediaReferenceKey,
+                                MediaAttachmentRole::PrimaryImage,
+                                $actor,
+                                $baseline['unsafe_fingerprint'],
+                                'primary_image_media_reference_key',
+                                $baseline['expected_media_id'],
+                                $baseline['expected_legacy_path'],
+                                enforceExpectedIdentity: true,
+                            );
+                        } catch (OwnerImageChangedException) {
+                            $presentation = $this->captureOwnerImageBaseline($record);
+                            $livewire = $action->getLivewire();
+                            $livewire->mountedActions[$action->getNestingIndex() ?? 0]['data']['relation_owner_image_baseline_token'] = $this->ownerImageBaselineToken(
+                                $record,
+                                $presentation,
+                            );
+                            $index = $action->getNestingIndex() ?? 0;
+                            $livewire->addError(
+                                "mountedActions.{$index}.data.primary_image_media_reference_key",
+                                __('admin.validation.owner_image_changed'),
+                            );
+                            $action->halt(true);
+                        }
+                    }),
                 Action::make('openResource')
                     ->label(__('admin.actions.open_content_item_resource'))
                     ->icon(Heroicon::OutlinedArrowTopRightOnSquare)
@@ -186,10 +334,109 @@ class ContentItemsRelationManager extends RelationManager
 
     public static function getTabComponent(Model $ownerRecord, string $pageClass): Tab
     {
-        return Tab::make(__('admin.tabs.content_items'))
+        return Tab::make(__('admin.relations.episodes'))
             ->icon(Heroicon::OutlinedDocumentText)
             ->badge((string) $ownerRecord->contentItems()->count())
             ->badgeColor('info')
             ->badgeTooltip(__('admin.tabs.content_items_badge_tooltip'));
+    }
+
+    private function captureOwnerImageBaseline(ContentItem $record): OwnerImageChoicePresentation
+    {
+        $presenter = app(OwnerImagePresenter::class);
+        $presenter->refresh($record, MediaAttachmentRole::PrimaryImage);
+        $presentation = $presenter->choice(
+            $record,
+            MediaAttachmentRole::PrimaryImage,
+            $presenter->pickerIdentity($record, MediaAttachmentRole::PrimaryImage),
+            [
+                'commit' => __('admin.actions.classic_edit'),
+                'cancel' => __('admin.actions.cancel'),
+                'admission' => __('admin.media_library.acquisition_permanence_inline'),
+            ],
+        );
+
+        $this->ownerImageExpectedMediaId = $presentation->expectedMediaId;
+        $this->ownerImageExpectedLegacyPath = $presentation->expectedLegacyPath;
+        $this->ownerImageUnsafeFingerprint = $presentation->unsafeFingerprint;
+
+        return $presentation;
+    }
+
+    private function ownerImageBaselineToken(
+        ContentItem $record,
+        OwnerImageChoicePresentation $presentation,
+    ): string {
+        $actor = auth()->user();
+        abort_unless($actor instanceof User, 403);
+
+        return Crypt::encryptString(json_encode([
+            'v' => self::OWNER_IMAGE_BASELINE_VERSION,
+            'action' => 'edit',
+            'field' => 'primary_image_media_reference_key',
+            'owner_type' => 'content_item',
+            'owner_id' => (int) $record->getKey(),
+            'role' => MediaAttachmentRole::PrimaryImage->value,
+            'actor_id' => (int) $actor->getKey(),
+            'expected_media_id' => $presentation->expectedMediaId,
+            'expected_legacy_path' => $presentation->expectedLegacyPath,
+            'unsafe_fingerprint' => $presentation->unsafeFingerprint,
+        ], JSON_THROW_ON_ERROR));
+    }
+
+    /**
+     * @return array{expected_media_id: int|null, expected_legacy_path: string|null, unsafe_fingerprint: string|null}|null
+     */
+    private function ownerImageBaseline(mixed $token, ContentItem $record, User $actor): ?array
+    {
+        if (! is_string($token) || blank($token)) {
+            return null;
+        }
+
+        try {
+            $payload = json_decode(
+                Crypt::decryptString($token),
+                true,
+                flags: JSON_THROW_ON_ERROR,
+            );
+        } catch (DecryptException|JsonException) {
+            return null;
+        }
+
+        if (! is_array($payload) || array_keys($payload) !== [
+            'v',
+            'action',
+            'field',
+            'owner_type',
+            'owner_id',
+            'role',
+            'actor_id',
+            'expected_media_id',
+            'expected_legacy_path',
+            'unsafe_fingerprint',
+        ]) {
+            return null;
+        }
+
+        if (
+            $payload['v'] !== self::OWNER_IMAGE_BASELINE_VERSION
+            || $payload['action'] !== 'edit'
+            || $payload['field'] !== 'primary_image_media_reference_key'
+            || $payload['owner_type'] !== 'content_item'
+            || $payload['owner_id'] !== (int) $record->getKey()
+            || $payload['role'] !== MediaAttachmentRole::PrimaryImage->value
+            || $payload['actor_id'] !== (int) $actor->getKey()
+            || (! is_int($payload['expected_media_id']) && $payload['expected_media_id'] !== null)
+            || (! is_string($payload['expected_legacy_path']) && $payload['expected_legacy_path'] !== null)
+            || (! is_string($payload['unsafe_fingerprint']) && $payload['unsafe_fingerprint'] !== null)
+        ) {
+            return null;
+        }
+
+        return [
+            'expected_media_id' => $payload['expected_media_id'],
+            'expected_legacy_path' => $payload['expected_legacy_path'],
+            'unsafe_fingerprint' => $payload['unsafe_fingerprint'],
+        ];
     }
 }

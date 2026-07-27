@@ -1,6 +1,9 @@
 <?php
 
+use App\Filament\Forms\Components\PathCuratorPicker;
 use App\Filament\Pages\DisplaySettings;
+use App\Filament\Pages\SettingsSubjectOwnershipRegistry;
+use App\Filament\Resources\Media\MediaResource;
 use App\Models\Author;
 use App\Models\ContentGroup;
 use App\Models\ContentItem;
@@ -9,6 +12,7 @@ use App\Models\Transcription;
 use App\Models\User;
 use App\Settings\PublicContentSettings;
 use App\Support\Media\PublicMediaDelivery;
+use App\Support\Media\SettingsOwnerImagePresenter;
 use App\Support\PublicContent\PublicTranscriptionAggregates;
 use App\Support\PublicContent\PublicTranscriptionPolicy;
 use App\Support\PublicContent\PublicTranscriptionSelector;
@@ -16,11 +20,14 @@ use App\Support\PublicFront\PublicDefaultImageResolver;
 use App\Support\PublicFront\PublicFrontConfigRegistry;
 use App\Support\PublicFront\PublicFrontConfigValidator;
 use App\Support\PublicFront\PublicFrontRenderContext;
+use App\Support\SettingsLifecycle\SettingsLifecycleSchema;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Livewire\Livewire;
+use Spatie\LaravelSettings\Events\SettingsSaved;
 use Spatie\LaravelSettings\SettingsContainer;
 
 uses(RefreshDatabase::class);
@@ -281,6 +288,290 @@ it('saves no-image mode through the public settings page', function (): void {
     expect(app(PublicContentSettings::class)->default_images['content_item']['mode'])->toBe('none');
 });
 
+it('presents every default image family as a pending owner choice with its effective source', function (): void {
+    $this->actingAs(User::factory()->admin()->create());
+    $global = registerStep10V1aMediaPath('default-images/global-current.jpg');
+
+    saveStep10V1aPublicFrontSettings([
+        'default_images' => step10V1aDefaultImages([
+            'global' => [
+                'mode' => 'custom',
+                'path' => $global->path,
+                'media_reference_key' => $global->reference_key,
+            ],
+            'content_item' => ['mode' => 'inherit'],
+            'content_group' => ['mode' => 'none'],
+            'contributor' => ['mode' => 'inherit'],
+        ]),
+    ]);
+
+    $schema = Livewire::test(DisplaySettings::class)
+        ->instance()
+        ->getSchema('form');
+    $pickers = collect($schema->getFlatComponents(withActions: false, withHidden: true, withAbsoluteKeys: true))
+        ->filter(fn (mixed $component): bool => $component instanceof PathCuratorPicker)
+        ->keyBy(fn (PathCuratorPicker $component): string => $component->getStatePath(isAbsolute: false));
+
+    expect($pickers)->toHaveCount(4);
+
+    foreach ([
+        'default_images.global.media_reference_key' => ['custom', 'configured_default'],
+        'default_images.content_item.media_reference_key' => ['inherit', 'global_default'],
+        'default_images.content_group.media_reference_key' => ['none', 'none'],
+        'default_images.contributor.media_reference_key' => ['inherit', 'global_default'],
+    ] as $path => [$mode, $source]) {
+        $picker = $pickers->get($path);
+
+        expect($picker)->toBeInstanceOf(PathCuratorPicker::class)
+            ->and($picker->isOwnerChoice())->toBeTrue()
+            ->and($picker->getOwnerChoicePresentation()?->ownerKind)->toBe($path)
+            ->and($picker->getOwnerChoicePresentation()?->directState)->toBe($mode)
+            ->and($picker->getOwnerChoicePresentation()?->shownNowSource)->toBe($source);
+    }
+});
+
+it('keeps opened default-image modes authoritative against a fresh owner snapshot', function (string $mode): void {
+    $this->actingAs(User::factory()->admin()->create());
+    $openedMedia = $mode === 'custom'
+        ? registerStep10V1aMediaPath("default-images/opened-{$mode}.jpg")
+        : null;
+    $pendingMedia = registerStep10V1aMediaPath("default-images/pending-{$mode}.jpg");
+    $freshMedia = registerStep10V1aMediaPath("default-images/fresh-{$mode}.jpg");
+    expect($pendingMedia)->toBeInstanceOf(Media::class)
+        ->and($freshMedia)->toBeInstanceOf(Media::class);
+    $presenter = app(SettingsOwnerImagePresenter::class);
+    $openedSnapshot = $presenter->snapshot([
+        'default_images' => step10V1aDefaultImages([
+            'content_item' => [
+                'mode' => $mode,
+                'path' => $openedMedia?->path,
+                'media_reference_key' => $openedMedia?->reference_key,
+            ],
+        ]),
+    ], SettingsSubjectOwnershipRegistry::DISPLAY);
+    $freshSnapshot = $presenter->snapshot([
+        'default_images' => step10V1aDefaultImages([
+            'content_item' => [
+                'mode' => 'custom',
+                'path' => $freshMedia->path,
+                'media_reference_key' => $freshMedia->reference_key,
+            ],
+        ]),
+    ], SettingsSubjectOwnershipRegistry::DISPLAY);
+    $openedEvidence = $presenter->openedEvidence($openedSnapshot);
+    $presenter->primeOpenedEvidence($openedEvidence);
+    $choice = $presenter->choice(
+        $freshSnapshot,
+        'default_images.content_item.media_reference_key',
+        $pendingMedia->getKey(),
+        ['commit' => 'Save', 'cancel' => 'Cancel', 'admission' => 'Permanent'],
+        $openedEvidence['default_images.content_item.media_reference_key'],
+    );
+
+    expect($choice->directState)->toBe($mode)
+        ->and($choice->savedMediaId)->toBe($openedMedia?->getKey())
+        ->and($choice->savedReferenceKey)->toBe($openedMedia?->reference_key)
+        ->and($choice->expectedLegacyPath)->toBe($openedMedia?->path)
+        ->and($choice->directMedia['id'] ?? null)->toBe($openedMedia?->getKey())
+        ->and($choice->shownNowMedia['id'] ?? null)->toBe($freshMedia->getKey())
+        ->and($choice->pendingMedia['id'] ?? null)->toBe($pendingMedia->getKey());
+})->with(['custom', 'inherit', 'none']);
+
+it('presents an admitted storage media row as a numeric pending default image without mutating its identity', function (): void {
+    $this->actingAs(User::factory()->admin()->create());
+    $saved = registerStep10V1aMediaPath('default-images/inventory-pending-saved.jpg');
+    $pending = registerStep10V1aMediaPath('media-imports/inventory-pending-default.jpg');
+    expect($saved)->toBeInstanceOf(Media::class)
+        ->and($pending)->toBeInstanceOf(Media::class);
+    $pending->forceFill(['title' => 'Admitted storage default image'])->save();
+    $pending->refresh();
+    $settings = [
+        'default_images' => step10V1aDefaultImages([
+            'content_item' => [
+                'mode' => 'custom',
+                'path' => $saved->path,
+                'media_reference_key' => $saved->reference_key,
+            ],
+        ]),
+    ];
+    $settingsBefore = $settings;
+    $pendingAttributes = $pending->getAttributes();
+    $pendingContents = Storage::disk((string) $pending->disk)->get((string) $pending->path);
+    $presenter = app(SettingsOwnerImagePresenter::class);
+    $snapshot = $presenter->snapshot($settings, SettingsSubjectOwnershipRegistry::DISPLAY);
+
+    $choice = $presenter->choice(
+        $snapshot,
+        'default_images.content_item.media_reference_key',
+        $pending->getKey(),
+        ['commit' => 'Save', 'cancel' => 'Cancel', 'admission' => 'Permanent'],
+    );
+
+    expect($choice)
+        ->pendingKind->toBe('replacement')
+        ->and($choice->pendingMedia)->toBe([
+            'id' => $pending->getKey(),
+            'reference_key' => $pending->reference_key,
+            'label' => 'Admitted storage default image',
+            'preview_url' => route('admin.media-files.view', ['media' => $pending]),
+            'details_url' => MediaResource::getUrl('edit', ['record' => $pending], panel: 'admin'),
+        ])
+        ->and($settings)->toBe($settingsBefore)
+        ->and($pending->refresh()->getAttributes())->toBe($pendingAttributes)
+        ->and($pending->disk)->toBe('public')
+        ->and($pending->path)->toBe('media-imports/inventory-pending-default.jpg')
+        ->and(Storage::disk((string) $pending->disk)->get((string) $pending->path))->toBe($pendingContents);
+});
+
+it('replaces a broken configured default image through the real owner picker workflow', function (): void {
+    $missingReferenceKey = (string) Str::ulid();
+    $missingPath = 'default-images/missing-content-item-default.jpg';
+    $replacement = registerStep10V1aMediaPath('default-images/replacement-content-item-default.jpg');
+    expect($replacement)->toBeInstanceOf(Media::class);
+    saveStep10V1aPublicFrontSettings([
+        'default_images' => step10V1aDefaultImages([
+            'content_item' => [
+                'mode' => 'custom',
+                'path' => $missingPath,
+                'media_reference_key' => $missingReferenceKey,
+            ],
+        ]),
+    ]);
+
+    Livewire::actingAs(User::factory()->admin()->create())
+        ->test(DisplaySettings::class)
+        ->assertSet(
+            'data.default_images.content_item.media_reference_key',
+            $missingReferenceKey,
+        )
+        ->set(
+            'data.default_images.content_item.media_reference_key',
+            $replacement->getKey(),
+        )
+        ->call('save')
+        ->assertHasNoFormErrors();
+
+    clearStep10V1aPublicFrontSettingsCache();
+
+    expect(app(PublicContentSettings::class)->default_images['content_item'])
+        ->toMatchArray([
+            'mode' => 'custom',
+            'path' => $replacement->path,
+            'media_reference_key' => $replacement->reference_key,
+        ]);
+});
+
+it('clears a broken configured default image through the real mode transition', function (): void {
+    $missingReferenceKey = (string) Str::ulid();
+    $missingPath = 'default-images/missing-content-item-default-to-clear.jpg';
+    saveStep10V1aPublicFrontSettings([
+        'default_images' => step10V1aDefaultImages([
+            'content_item' => [
+                'mode' => 'custom',
+                'path' => $missingPath,
+                'media_reference_key' => $missingReferenceKey,
+            ],
+        ]),
+    ]);
+
+    $component = Livewire::actingAs(User::factory()->admin()->create())
+        ->test(DisplaySettings::class)
+        ->assertSet(
+            'data.default_images.content_item.media_reference_key',
+            $missingReferenceKey,
+        );
+    $picker = collect($component->instance()->getSchema('form')->getFlatComponents(
+        withActions: false,
+        withHidden: true,
+        withAbsoluteKeys: true,
+    ))->first(fn (mixed $field): bool => $field instanceof PathCuratorPicker
+        && $field->getStatePath(isAbsolute: false) === 'default_images.content_item.media_reference_key');
+    assert($picker instanceof PathCuratorPicker);
+
+    expect($picker->getOwnerChoicePresentation()?->directState)->toBe('broken')
+        ->and($picker->getOwnerChoicePresentation()?->canChooseAutomatic)->toBeFalse();
+
+    $component
+        ->set('data.default_images.content_item.mode', 'none')
+        ->call('save')
+        ->assertHasNoFormErrors();
+
+    clearStep10V1aPublicFrontSettingsCache();
+
+    expect(app(PublicContentSettings::class)->default_images['content_item'])
+        ->toMatchArray([
+            'mode' => 'none',
+            'path' => null,
+            'media_reference_key' => null,
+        ]);
+});
+
+it('clears a valid configured default image through the same real mode transition', function (): void {
+    $current = registerStep10V1aMediaPath('default-images/valid-content-item-default-to-clear.jpg');
+    expect($current)->toBeInstanceOf(Media::class);
+    saveStep10V1aPublicFrontSettings([
+        'default_images' => step10V1aDefaultImages([
+            'content_item' => [
+                'mode' => 'custom',
+                'path' => $current->path,
+                'media_reference_key' => $current->reference_key,
+            ],
+        ]),
+    ]);
+
+    Livewire::actingAs(User::factory()->admin()->create())
+        ->test(DisplaySettings::class)
+        ->assertSet(
+            'data.default_images.content_item.media_reference_key',
+            $current->getKey(),
+        )
+        ->set('data.default_images.content_item.mode', 'inherit')
+        ->call('save')
+        ->assertHasNoFormErrors();
+
+    clearStep10V1aPublicFrontSettingsCache();
+
+    expect(app(PublicContentSettings::class)->default_images['content_item'])
+        ->toMatchArray([
+            'mode' => 'inherit',
+            'path' => null,
+            'media_reference_key' => null,
+        ]);
+});
+
+it('preserves an untouched broken custom default image when its picker is omitted', function (): void {
+    $missingReferenceKey = (string) Str::ulid();
+    $missingPath = 'default-images/untouched-missing-content-item-default.jpg';
+    saveStep10V1aPublicFrontSettings([
+        'default_images' => step10V1aDefaultImages([
+            'content_item' => [
+                'mode' => 'custom',
+                'path' => $missingPath,
+                'media_reference_key' => $missingReferenceKey,
+            ],
+        ]),
+    ]);
+
+    Livewire::actingAs(User::factory()->admin()->create())
+        ->test(DisplaySettings::class)
+        ->assertSet(
+            'data.default_images.content_item.media_reference_key',
+            $missingReferenceKey,
+        )
+        ->set('data.default_images.contributor.mode', 'none')
+        ->call('save')
+        ->assertHasNoFormErrors();
+
+    clearStep10V1aPublicFrontSettingsCache();
+
+    expect(app(PublicContentSettings::class)->default_images['content_item'])
+        ->toMatchArray([
+            'mode' => 'custom',
+            'path' => $missingPath,
+            'media_reference_key' => $missingReferenceKey,
+        ]);
+});
+
 it('rejects forged nonselectable default media while preserving the trusted current selection', function (): void {
     $admin = User::factory()->admin()->create();
     $current = registerStep10V1aMediaPath('default-images/current.jpg');
@@ -371,6 +662,119 @@ it('preserves an already stored nonselectable default media identity on unrelate
             'media_reference_key' => $private->reference_key,
         ])
         ->and($settings['content_group']['mode'])->toBe('none');
+});
+
+it('halts a same-unit image conflict preserves pending state and requires reload', function (): void {
+    $admin = User::factory()->admin()->create();
+    $openedWith = registerStep10V1aMediaPath('default-images/opened-with.jpg');
+    $changedElsewhere = registerStep10V1aMediaPath('default-images/changed-elsewhere.jpg');
+    $pending = registerStep10V1aMediaPath('default-images/pending-choice.jpg');
+    saveStep10V1aPublicFrontSettings([
+        'default_images' => step10V1aDefaultImages([
+            'content_item' => [
+                'mode' => 'custom',
+                'path' => $openedWith->path,
+                'media_reference_key' => $openedWith->reference_key,
+            ],
+        ]),
+    ]);
+
+    $component = Livewire::actingAs($admin)
+        ->test(DisplaySettings::class)
+        ->set('data.default_images.content_item.media_reference_key', $pending->getKey())
+        ->set('data.default_images.contributor.mode', 'none');
+    $openedFingerprint = $component->get('settingsOwnerImageFingerprint');
+
+    saveStep10V1aPublicFrontSettings([
+        'default_images' => step10V1aDefaultImages([
+            'content_item' => [
+                'mode' => 'custom',
+                'path' => $changedElsewhere->path,
+                'media_reference_key' => $changedElsewhere->reference_key,
+            ],
+        ]),
+    ]);
+
+    $component
+        ->set('data.default_images.global.mode', 'none')
+        ->assertSet('data.default_images.content_item.media_reference_key', $pending->getKey());
+    expect($component->get('settingsOwnerImageFingerprint'))->toBe($openedFingerprint);
+    clearStep10V1aPublicFrontSettingsCache();
+    $displayBeforeHalt = SettingsSubjectOwnershipRegistry::extractOwned(
+        app(PublicContentSettings::class)->toArray(),
+        SettingsSubjectOwnershipRegistry::DISPLAY,
+    );
+    Event::fake([SettingsSaved::class]);
+    $conflictTitle = __('admin.validation.settings_unit_changed', [
+        'unit' => app(SettingsLifecycleSchema::class)->labelFor('default_images.content_item'),
+    ]);
+
+    $component
+        ->call('save')
+        ->assertNotified($conflictTitle)
+        ->assertSet('data.default_images.content_item.media_reference_key', $pending->getKey())
+        ->assertSet('data.default_images.global.mode', 'none')
+        ->assertSet('data.default_images.contributor.mode', 'none');
+    Event::assertNotDispatched(SettingsSaved::class);
+
+    expect($component->get('settingsOwnerImageFingerprint'))->toBe($openedFingerprint);
+    clearStep10V1aPublicFrontSettingsCache();
+    $displayAfterHalt = SettingsSubjectOwnershipRegistry::extractOwned(
+        app(PublicContentSettings::class)->toArray(),
+        SettingsSubjectOwnershipRegistry::DISPLAY,
+    );
+    expect($displayAfterHalt)
+        ->toBe($displayBeforeHalt)
+        ->and(app(PublicContentSettings::class)->default_images['content_item']['media_reference_key'])
+        ->toBe($changedElsewhere->reference_key);
+
+    $component
+        ->call('save')
+        ->assertNotified($conflictTitle);
+    Event::assertNotDispatched(SettingsSaved::class);
+    clearStep10V1aPublicFrontSettingsCache();
+
+    expect(app(PublicContentSettings::class)->default_images['content_item'])
+        ->toMatchArray([
+            'path' => $changedElsewhere->path,
+            'media_reference_key' => $changedElsewhere->reference_key,
+        ])
+        ->and(app(PublicContentSettings::class)->default_images['global']['mode'])->not->toBe('none')
+        ->and(app(PublicContentSettings::class)->default_images['contributor']['mode'])->not->toBe('none');
+});
+
+it('does not treat an unrelated settings subject image change as display drift', function (): void {
+    $admin = User::factory()->admin()->create();
+    $current = registerStep10V1aMediaPath('default-images/unrelated-current.jpg');
+    $logo = registerStep10V1aMediaPath('header/unrelated-logo.png');
+    saveStep10V1aPublicFrontSettings([
+        'default_images' => step10V1aDefaultImages([
+            'content_item' => [
+                'mode' => 'custom',
+                'path' => $current->path,
+                'media_reference_key' => $current->reference_key,
+            ],
+        ]),
+    ]);
+
+    $component = Livewire::actingAs($admin)
+        ->test(DisplaySettings::class)
+        ->set('data.default_images.contributor.mode', 'none');
+    saveStep10V1aPublicFrontSettings([
+        'menu_config' => [
+            'logo' => [
+                'light_path' => $logo->path,
+                'light_media_reference_key' => $logo->reference_key,
+            ],
+        ],
+    ]);
+
+    $component->call('save')->assertHasNoFormErrors();
+    clearStep10V1aPublicFrontSettingsCache();
+
+    expect(app(PublicContentSettings::class)->default_images['contributor']['mode'])->toBe('none')
+        ->and(app(PublicContentSettings::class)->menu_config['logo']['light_media_reference_key'])
+        ->toBe($logo->reference_key);
 });
 
 it('preserves nested settings values while adding and removing media reference keys', function (): void {

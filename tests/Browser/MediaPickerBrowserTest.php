@@ -39,9 +39,11 @@ function trackMediaPickerBrowserRequests(object $webpage): void
         () => {
             window.__mediaPickerPendingRequests = 0;
             window.__mediaPickerCompletedRequests = 0;
-            window.Livewire.hook('request', ({ succeed, fail }) => {
+            window.__mediaPickerFailedRequests = 0;
+            window.Livewire.interceptRequest(({ onError, onFailure, onFinish }) => {
                 window.__mediaPickerPendingRequests++;
                 let settled = false;
+                let failed = false;
                 const finish = () => {
                     if (settled) {
                         return;
@@ -52,12 +54,17 @@ function trackMediaPickerBrowserRequests(object $webpage): void
                         queueMicrotask(() => {
                             window.__mediaPickerPendingRequests--;
                             window.__mediaPickerCompletedRequests++;
+
+                            if (failed) {
+                                window.__mediaPickerFailedRequests++;
+                            }
                         });
                     });
                 };
 
-                succeed(finish);
-                fail(finish);
+                onError(() => failed = true);
+                onFailure(() => failed = true);
+                onFinish(finish);
             });
         }
         JS);
@@ -549,7 +556,10 @@ it('guards close while the parent accepts a returned selection', function (): vo
             };
             picker().dispatchEvent(new CustomEvent('insert-media', {
                 bubbles: true,
-                detail: [{ mediaId: __MEDIA_ID__ }],
+                detail: {
+                    mediaId: __MEDIA_ID__,
+                    mediaIds: [__MEDIA_ID__],
+                },
             }));
             await waitFor(() => requestHeld && releaseRequest);
 
@@ -913,17 +923,25 @@ it('returns acquired media to the inline owner action while attachment stays pen
             acquire.click();
 
             const restoredOuter = await waitFor(() => outerDialog());
-            const selected = await waitFor(() => restoredOuter.querySelector(
-                '[data-testid="media-picker-selected-item"]',
-            ));
+            const pending = await waitFor(() => {
+                const state = restoredOuter.querySelector('[data-testid="owner-image-pending-state"]');
+
+                return state?.textContent.includes('browser-nested-storage.jpg')
+                    ? state
+                    : null;
+            });
             await waitFor(() => requestsSettledAfter(completed));
 
             return {
                 parent_remained_open: restoredOuter.classList.contains('fi-modal-open'),
-                selection_returned: selected.textContent.includes('browser-nested-storage.jpg'),
+                selection_returned: pending.textContent.includes('browser-nested-storage.jpg'),
                 single_dialog: document.querySelectorAll('[aria-modal="true"].fi-modal-open').length === 1,
                 picker_remained_inline: document.querySelectorAll('[data-testid="media-picker"]').length === 1,
                 picker_close_absent: ! restoredOuter.querySelector('[data-testid="media-picker-close"]'),
+                generic_selected_summary_absent: ! restoredOuter.querySelector(
+                    '[data-testid="media-picker-selected-item"]',
+                ),
+                failed_requests: window.__mediaPickerFailedRequests,
             };
         }
         JS);
@@ -932,7 +950,9 @@ it('returns acquired media to the inline owner action while attachment stays pen
         ->and($firstSelection['selection_returned'])->toBeTrue(json_encode($firstSelection, JSON_THROW_ON_ERROR))
         ->and($firstSelection['single_dialog'])->toBeTrue(json_encode($firstSelection, JSON_THROW_ON_ERROR))
         ->and($firstSelection['picker_remained_inline'])->toBeTrue(json_encode($firstSelection, JSON_THROW_ON_ERROR))
-        ->and($firstSelection['picker_close_absent'])->toBeTrue();
+        ->and($firstSelection['picker_close_absent'])->toBeTrue()
+        ->and($firstSelection['generic_selected_summary_absent'])->toBeTrue()
+        ->and($firstSelection['failed_requests'])->toBe(0, json_encode($firstSelection, JSON_THROW_ON_ERROR));
 
     $media = Media::query()->where('path', 'media-imports/browser-nested-storage.jpg')->sole();
 
@@ -1038,7 +1058,9 @@ it('returns acquired media to the inline owner action while attachment stays pen
             completed = window.__mediaPickerCompletedRequests;
             acquire.click();
             const restoredOuter = await waitFor(() => outerDialog());
-            await waitFor(() => restoredOuter.querySelector('[data-testid="media-picker-selected-item"]'));
+            await waitFor(() => restoredOuter.querySelector(
+                '[data-testid="owner-image-pending-state"]',
+            )?.textContent.includes('browser-nested-storage.jpg'));
             await waitFor(() => requestsSettledAfter(completed));
             const submit = restoredOuter.querySelector('.fi-modal-footer-actions button[type="submit"]');
 
@@ -1057,11 +1079,13 @@ it('returns acquired media to the inline owner action while attachment stays pen
 
             return {
                 outer_closed: outerDialog() === undefined,
+                failed_requests: window.__mediaPickerFailedRequests,
             };
         }
         JS);
 
     expect($saved['outer_closed'])->toBeTrue(json_encode($saved, JSON_THROW_ON_ERROR))
+        ->and($saved['failed_requests'])->toBe(0, json_encode($saved, JSON_THROW_ON_ERROR))
         ->and($group->refresh()->coverMediaAttachment()->value('media_id'))->toBe($media->getKey());
 
     $page->assertNoJavaScriptErrors();

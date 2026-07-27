@@ -13,7 +13,9 @@ use App\Settings\PublicContentSettings;
 use App\Support\Media\LegacyMediaRegistrationPlanner;
 use App\Support\Media\LegacyMediaTransitionPlanner;
 use App\Support\PublicFront\PublicFrontConfigRegistry;
+use App\Support\SettingsLifecycle\PublicContentSettingsWriteCoordinator;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
@@ -175,6 +177,76 @@ it('switches settings identity to the immutable key and generated path in the sa
         ->and(app(PublicContentSettings::class)->default_images['global']['path'])->toBe($media->path)
         ->and(app(PublicContentSettings::class)->default_images['global']['media_reference_key'])->toBe($media->reference_key);
     Storage::disk('public')->assertMissing($sourcePath);
+});
+
+it('acquires the settings mutex before revalidating a legacy registration plan with settings snapshots', function (): void {
+    app()->instance(
+        PublicContentSettingsWriteCoordinator::class,
+        new PublicContentSettingsWriteCoordinator(waitSeconds: 0),
+    );
+    $actor = User::factory()->admin()->create();
+    $sourcePath = 'default-images/coordinated-registration.png';
+    Storage::disk('public')->put($sourcePath, curatorG1LegacyPng(), 'public');
+    $defaults = PublicFrontConfigRegistry::defaults()['default_images'];
+    $defaults['global'] = [
+        'mode' => 'custom',
+        'path' => $sourcePath,
+        'media_reference_key' => null,
+    ];
+    saveCuratorG1RegistrationSetting('default_images', $defaults);
+    $digest = curatorG1TransitionDigest();
+    $heldLock = Cache::lock(PublicContentSettingsWriteCoordinator::LOCK_KEY, 30);
+    expect($heldLock->get())->toBeTrue();
+
+    try {
+        $this->artisan('media:register-existing-curator-assets', [
+            '--apply' => true,
+            '--actor' => (string) $actor->getKey(),
+            '--path' => [$sourcePath],
+            '--digest' => $digest,
+        ])
+            ->expectsOutputToContain('Timed out acquiring the public content settings write lock.')
+            ->assertFailed();
+    } finally {
+        $heldLock->release();
+    }
+
+    $stored = json_decode((string) DB::table('settings')
+        ->where('group', PublicContentSettings::group())
+        ->where('name', 'default_images')
+        ->value('payload'), true, flags: JSON_THROW_ON_ERROR);
+
+    expect($stored['global']['path'])->toBe($sourcePath)
+        ->and($stored['global']['media_reference_key'])->toBeNull()
+        ->and(Media::query()->count())->toBe(0);
+    Storage::disk('public')->assertExists($sourcePath);
+});
+
+it('does not acquire the settings mutex for a legacy registration plan without settings snapshots', function (): void {
+    app()->instance(
+        PublicContentSettingsWriteCoordinator::class,
+        new PublicContentSettingsWriteCoordinator(waitSeconds: 0),
+    );
+    $actor = User::factory()->admin()->create();
+    $sourcePath = 'content-groups/covers/coordinated-owner-only.png';
+    Storage::disk('public')->put($sourcePath, curatorG1LegacyPng(), 'public');
+    ContentGroup::factory()->create(['cover_path' => $sourcePath]);
+    $digest = curatorG1TransitionDigest();
+    $heldLock = Cache::lock(PublicContentSettingsWriteCoordinator::LOCK_KEY, 30);
+    expect($heldLock->get())->toBeTrue();
+
+    try {
+        $this->artisan('media:register-existing-curator-assets', [
+            '--apply' => true,
+            '--actor' => (string) $actor->getKey(),
+            '--path' => [$sourcePath],
+            '--digest' => $digest,
+        ])->assertSuccessful();
+    } finally {
+        $heldLock->release();
+    }
+
+    expect(Media::query()->count())->toBe(1);
 });
 
 it('requires one exact path and an authorized actor and compensates locked settings', function (): void {

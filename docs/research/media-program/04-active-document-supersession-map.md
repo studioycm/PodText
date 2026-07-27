@@ -9,6 +9,36 @@
 5. Current package research/plan and committed handoff.
 6. Current project state, ledger, source and tests.
 
+## Forward Media Operations UX3 authority
+
+Media Operations UX3 Mini-tasks 1–3 are implemented and remain the accepted UX
+baseline. The documentation-only
+`prompts/pre-13-prompts/media-operations-ux3-program-reconciliation-finding-coverage-codex-prompt.md`
+v1 has been executed and was accepted by the operator on 2026-07-26. Its
+canonical result is at
+`docs/research/media-operations-ux3/07-program-reconciliation-and-finding-coverage.md`;
+that document owns detailed forward authority, while rolling execution status
+remains in the current-project-state document and ledger.
+
+The original forward outcome order is Mini-task 3A — Owner Image Choice and
+Commit, Mini-task 3B — Media Intake and Acquisition Results, Mini-task 3C —
+Safe Existing-File Operations and Outcomes, then replanned Mini-task 4 —
+provisional boundary: Reason-Specific Media Issue Resolution and Verified
+Results.
+
+Mini-task 4 must not begin UX research, technical research, planning, Laravel
+Simplifier Stage 1 or implementation until Mini-task 3C has been reviewed and
+closed. It then restarts at UX research/design and is replanned from the
+completed 3A–3C choice, acquisition-result and existing-file operation
+contracts. No earlier Mini-task 4 title, scope, selected repair reason, plan,
+audit or option is authoritative.
+
+The reconciliation is accepted. Mini-task 3A has since completed locally under
+its separately approved design, technical, audit and implementation cycle and
+is awaiting operator outcome review. Its handoff is
+`../../phase-02/media-operations-ux3-mini3a-owner-image-choice-and-commit-handoff.md`.
+Mini-task 3B remains unauthorized until that review closes 3A.
+
 ## Superseded active route
 
 The following audits/options are historical and must not be implemented:
@@ -75,8 +105,9 @@ The earlier Package 4 audit
 `MEDIA-P4-O2-SHARED-DETAIL-SLIDEOVER` are superseded and authorize nothing.
 The post-Package-3 correction, Package 4 implementation and Package 4
 inline-picker correction are closed locally. The post-P3/Package 4 visual
-correction is also closed locally. Package 5 and a deeper Media UX redesign
-remain unapproved.
+correction is also closed locally. Media Operations UX3 Mini-tasks 1–3 and 3A
+are implemented. Remaining UX3 work follows the forward route above; Package
+5 remains forecast-only and requires separate research, audit and approval.
 
 ## Related active track documents
 

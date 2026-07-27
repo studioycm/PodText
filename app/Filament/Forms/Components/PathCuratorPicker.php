@@ -12,6 +12,8 @@ use App\Support\Media\MediaIdentityResolver;
 use App\Support\Media\MediaInventoryDiagnostics;
 use App\Support\Media\MediaRecordProjector;
 use App\Support\Media\MediaRecordScope;
+use App\Support\Media\OwnerImageChoicePresentation;
+use Closure;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Field;
 use Filament\Schemas\Components\Livewire as LivewireSchemaComponent;
@@ -34,6 +36,14 @@ class PathCuratorPicker extends Field
     private bool $multiple = false;
 
     private bool $inlineOwnerWorkspace = false;
+
+    private bool $ownerChoice = false;
+
+    private ?Closure $ownerChoicePresentation = null;
+
+    private ?OwnerImageChoicePresentation $cachedOwnerChoicePresentation = null;
+
+    private bool $hasCachedOwnerChoicePresentation = false;
 
     private ?int $maximumItems = null;
 
@@ -58,6 +68,12 @@ class PathCuratorPicker extends Field
         ]);
 
         $this->afterStateHydrated(function (PathCuratorPicker $component, mixed $state): void {
+            $component->invalidateOwnerChoicePresentation();
+
+            if ($component->hydrateSavedOwnerIdentity($state)) {
+                return;
+            }
+
             $trusted = $component->trustedIdentity($state, preserveExisting: true);
             $component->state($trusted);
             $component->hydrateSelectedItems($trusted);
@@ -65,7 +81,11 @@ class PathCuratorPicker extends Field
 
         $this->clearAfterStateUpdatedHooks();
         $this->afterStateUpdated(function (PathCuratorPicker $component, mixed $state, mixed $old): void {
-            $trusted = $component->trustedIdentity($state);
+            $component->invalidateOwnerChoicePresentation();
+            $trusted = $component->trustedIdentity(
+                $state,
+                preserveExisting: $component->isSavedBrokenOwnerIdentity($state),
+            );
             $oldTrusted = $component->trustedIdentity($old, preserveExisting: true);
 
             if (! $component->acceptsNewSelections($trusted, $oldTrusted)) {
@@ -117,7 +137,7 @@ class PathCuratorPicker extends Field
 
     public function isMultiple(): bool
     {
-        return $this->multiple;
+        return ! $this->isOwnerChoice() && $this->multiple;
     }
 
     public function inlineOwnerWorkspace(bool $condition = true): static
@@ -130,6 +150,42 @@ class PathCuratorPicker extends Field
     public function isInlineOwnerWorkspace(): bool
     {
         return $this->inlineOwnerWorkspace;
+    }
+
+    public function ownerChoice(Closure $presentation): static
+    {
+        $this->ownerChoice = true;
+        $this->ownerChoicePresentation = $presentation;
+        $this->invalidateOwnerChoicePresentation();
+
+        return $this;
+    }
+
+    public function isOwnerChoice(): bool
+    {
+        return $this->ownerChoice;
+    }
+
+    public function getOwnerChoicePresentation(): ?OwnerImageChoicePresentation
+    {
+        if (! $this->isOwnerChoice()) {
+            return null;
+        }
+
+        if ($this->hasCachedOwnerChoicePresentation) {
+            return $this->cachedOwnerChoicePresentation;
+        }
+
+        $presentation = $this->evaluate($this->ownerChoicePresentation);
+
+        if (! $presentation instanceof OwnerImageChoicePresentation) {
+            throw new LogicException('Owner choice mode requires an owner image choice presentation.');
+        }
+
+        $this->cachedOwnerChoicePresentation = $presentation;
+        $this->hasCachedOwnerChoicePresentation = true;
+
+        return $this->cachedOwnerChoicePresentation;
     }
 
     public function maxItems(int $items): static
@@ -199,6 +255,60 @@ class PathCuratorPicker extends Field
                 return [(string) $id => app(MediaRecordProjector::class)->project($record)];
             })
             ->all();
+
+        if ($this->isOwnerChoice()) {
+            $this->callAfterStateUpdated();
+        }
+
+        $this->invalidateOwnerChoicePresentation();
+        $this->dispatchOwnerSelectionChanged($ids->first());
+        $this->partiallyRender();
+    }
+
+    #[ExposedLivewireMethod]
+    public function restoreSavedOwnerSelection(array $arguments = []): void
+    {
+        abort_unless($this->isOwnerChoice(), 404);
+        $presentation = $this->getOwnerChoicePresentation();
+        $savedMediaId = $presentation?->savedMediaId;
+
+        if ($savedMediaId === null) {
+            $savedBrokenIdentity = $this->savedBrokenOwnerIdentity();
+
+            if ($savedBrokenIdentity === null) {
+                $this->state(null);
+                $this->selectedItems = [];
+            } else {
+                $trusted = $this->trustedIdentity($savedBrokenIdentity, preserveExisting: true);
+                $this->state($trusted);
+                $this->hydrateSelectedItems($trusted);
+            }
+        } else {
+            $trusted = $this->trustedIdentity($savedMediaId, preserveExisting: true);
+            $this->state($trusted);
+            $this->hydrateSelectedItems($trusted);
+        }
+
+        $this->callAfterStateUpdated();
+        $this->invalidateOwnerChoicePresentation();
+        $this->getLivewire()->dispatch(
+            'owner-media-selection-restored',
+            selectedId: $savedMediaId,
+        );
+        $this->partiallyRender();
+    }
+
+    #[ExposedLivewireMethod]
+    public function chooseAutomaticOwnerImage(array $arguments = []): void
+    {
+        abort_unless($this->isOwnerChoice(), 404);
+        abort_unless($this->getOwnerChoicePresentation()?->canChooseAutomatic === true, 422);
+
+        $this->state(null);
+        $this->selectedItems = [];
+        $this->callAfterStateUpdated();
+        $this->invalidateOwnerChoicePresentation();
+        $this->dispatchOwnerSelectionChanged(null);
         $this->partiallyRender();
     }
 
@@ -233,6 +343,7 @@ class PathCuratorPicker extends Field
             ->label(__('admin.actions.download'))
             ->icon(Heroicon::ArrowDownTray)
             ->color('gray')
+            ->hidden(fn (PathCuratorPicker $component): bool => $component->isOwnerChoice())
             ->action(function (array $arguments) {
                 $media = $this->trustedActionRecord($arguments, 'download');
 
@@ -246,7 +357,7 @@ class PathCuratorPicker extends Field
             ->label(__('admin.actions.edit'))
             ->icon(Heroicon::Pencil)
             ->color('gray')
-            ->hidden(fn (PathCuratorPicker $component): bool => $component->isDisabled())
+            ->hidden(fn (PathCuratorPicker $component): bool => $component->isDisabled() || $component->isOwnerChoice())
             ->url(function (array $arguments): string {
                 $media = $this->trustedActionRecord($arguments, 'update');
 
@@ -260,6 +371,7 @@ class PathCuratorPicker extends Field
             ->label(__('admin.actions.view'))
             ->icon(Heroicon::Eye)
             ->color('gray')
+            ->hidden(fn (PathCuratorPicker $component): bool => $component->isOwnerChoice())
             ->url(function (array $arguments): string {
                 $media = $this->trustedActionRecord($arguments, 'view');
 
@@ -370,7 +482,7 @@ class PathCuratorPicker extends Field
                     returningSelection = true;
 
                     try {
-                        await \$wire.callSchemaComponentMethod('{$componentKey}', 'updateState', \$event.detail);
+                        await \$wire.callSchemaComponentMethod('{$componentKey}', 'updateState', { arguments: \$event.detail });
                         await \$wire.unmountAction(false);
                         {$restoreFocus};
                     } finally {
@@ -379,16 +491,10 @@ class PathCuratorPicker extends Field
                     JS;
 
                 return [
-                    LivewireSchemaComponent::make(MediaPickerPanel::class, [
-                        'purpose' => $component->getUploadPurpose()->value,
-                        'selectedIds' => collect($component->identityValues($component->getState()))
-                            ->filter(fn (mixed $identity): bool => is_int($identity) || (is_string($identity) && ctype_digit($identity)))
-                            ->map(fn (int|string $identity): int => (int) $identity)
-                            ->values()
-                            ->all(),
-                        'isMultiple' => $component->isMultiple(),
-                        'maxItems' => $component->getMaxItems(),
-                    ])
+                    LivewireSchemaComponent::make(
+                        MediaPickerPanel::class,
+                        fn (): array => $component->pickerComponentData(),
+                    )
                         ->key("media-picker-workspace-{$componentKey}")
                         ->columnSpanFull()
                         ->extraAttributes([
@@ -427,7 +533,7 @@ class PathCuratorPicker extends Field
                     returningSelection = true;
 
                     try {
-                        await \$wire.callSchemaComponentMethod('{$componentKey}', 'updateState', \$event.detail);
+                        await \$wire.callSchemaComponentMethod('{$componentKey}', 'updateState', { arguments: \$event.detail });
                     } finally {
                         returningSelection = false;
                     }
@@ -451,8 +557,11 @@ class PathCuratorPicker extends Field
             ->label(__('admin.media_library.remove'))
             ->icon(Heroicon::MinusCircle)
             ->color('gray')
-            ->hidden(fn (PathCuratorPicker $component): bool => $component->isDisabled() || $component->isInlineOwnerWorkspace())
+            ->hidden(fn (PathCuratorPicker $component): bool => $component->isDisabled()
+                || $component->isInlineOwnerWorkspace()
+                || $component->isOwnerChoice())
             ->action(function (array $arguments, PathCuratorPicker $component): void {
+                abort_if($component->isOwnerChoice(), 404);
                 $component->authorizeDetachForState();
                 $component->state(null);
             });
@@ -464,8 +573,9 @@ class PathCuratorPicker extends Field
             ->label(__('admin.media_library.clear_selection'))
             ->color('danger')
             ->outlined()
-            ->hidden(fn (PathCuratorPicker $component): bool => $component->isDisabled())
+            ->hidden(fn (PathCuratorPicker $component): bool => $component->isDisabled() || $component->isOwnerChoice())
             ->action(function (PathCuratorPicker $component): void {
+                abort_if($component->isOwnerChoice(), 404);
                 $component->authorizeDetachForState();
                 $component->state([]);
             });
@@ -476,6 +586,7 @@ class PathCuratorPicker extends Field
      */
     private function trustedActionRecord(array $arguments, string $ability): Media
     {
+        abort_if($this->isOwnerChoice(), 404);
         $id = $arguments['id'] ?? null;
         $media = app(MediaRecordScope::class)->findInventoryOrFail(
             is_int($id) || is_string($id) ? $id : '',
@@ -498,6 +609,54 @@ class PathCuratorPicker extends Field
         ));
 
         return $this->selectedItems;
+    }
+
+    private function hydrateSavedOwnerIdentity(mixed $state): bool
+    {
+        if (! $this->isOwnerChoice()) {
+            return false;
+        }
+
+        $presentation = $this->getOwnerChoicePresentation();
+
+        if (! $presentation instanceof OwnerImageChoicePresentation) {
+            return false;
+        }
+
+        if ($this->authorizedSavedOwnerReferenceKey($presentation, $state) !== null) {
+            $this->state($presentation->savedMediaId);
+            $this->selectedItems = [];
+
+            return true;
+        }
+
+        if ($presentation->directState === 'broken' && is_string($state)) {
+            $savedBrokenIdentity = filled($presentation->savedReferenceKey)
+                ? $presentation->savedReferenceKey
+                : $presentation->expectedLegacyPath;
+
+            if (is_string($savedBrokenIdentity) && hash_equals($savedBrokenIdentity, $state)) {
+                $this->state($savedBrokenIdentity);
+                $this->selectedItems = [];
+
+                return true;
+            }
+        }
+
+        if (
+            $presentation->directState === 'absent'
+            && $presentation->savedMediaId === null
+            && blank($presentation->savedReferenceKey)
+            && blank($presentation->expectedLegacyPath)
+            && $state === null
+        ) {
+            $this->state(null);
+            $this->selectedItems = [];
+
+            return true;
+        }
+
+        return false;
     }
 
     private function trustedIdentity(mixed $state, bool $preserveExisting = false): array|int|string|null
@@ -540,6 +699,11 @@ class PathCuratorPicker extends Field
         $identity = is_array($identity)
             ? ($identity['id'] ?? $identity['reference_key'] ?? null)
             : $identity;
+
+        if ($preserveExisting && $this->isSavedBrokenOwnerIdentity($identity)) {
+            return $identity;
+        }
+
         $media = null;
 
         if (($preservedMediaId = MediaAttachmentFormState::preservedMediaId($identity)) !== null) {
@@ -580,6 +744,16 @@ class PathCuratorPicker extends Field
 
     private function dehydrateIdentity(mixed $identity): ?string
     {
+        if ($this->isSavedBrokenOwnerIdentity($identity)) {
+            return $identity;
+        }
+
+        $savedOwnerIdentity = $this->dehydrateAuthorizedSavedOwnerIdentity($identity);
+
+        if (is_string($savedOwnerIdentity)) {
+            return $savedOwnerIdentity;
+        }
+
         if (is_int($identity) || (is_string($identity) && ctype_digit($identity))) {
             $media = app(MediaRecordScope::class)->findInventoryOrFail($identity);
             $actor = auth()->user();
@@ -603,6 +777,79 @@ class PathCuratorPicker extends Field
         }
 
         return is_string($identity) && filled($identity) ? $identity : null;
+    }
+
+    private function dehydrateAuthorizedSavedOwnerIdentity(mixed $identity): ?string
+    {
+        if (
+            ! $this->isOwnerChoice()
+            || (! is_int($identity) && (! is_string($identity) || ! ctype_digit($identity)))
+        ) {
+            return null;
+        }
+
+        $presentation = $this->getOwnerChoicePresentation();
+
+        return $presentation instanceof OwnerImageChoicePresentation
+            ? $this->authorizedSavedOwnerReferenceKey($presentation, $identity)
+            : null;
+    }
+
+    private function authorizedSavedOwnerReferenceKey(
+        OwnerImageChoicePresentation $presentation,
+        mixed $identity,
+    ): ?string {
+        if (
+            $presentation->directState !== 'present'
+            || ! $presentation->savedMediaCanSelect
+            || $presentation->savedMediaId === null
+            || ! is_string($presentation->savedReferenceKey)
+            || preg_match('/^[0-9A-HJKMNP-TV-Z]{26}$/D', $presentation->savedReferenceKey) !== 1
+            || ! is_array($presentation->directMedia)
+            || ($presentation->directMedia['id'] ?? null) !== $presentation->savedMediaId
+            || ($presentation->directMedia['reference_key'] ?? null) !== $presentation->savedReferenceKey
+        ) {
+            return null;
+        }
+
+        if (
+            (is_int($identity) || (is_string($identity) && ctype_digit($identity)))
+            && (int) $identity === $presentation->savedMediaId
+        ) {
+            return $presentation->savedReferenceKey;
+        }
+
+        return is_string($identity) && hash_equals($presentation->savedReferenceKey, $identity)
+            ? $presentation->savedReferenceKey
+            : null;
+    }
+
+    private function isSavedBrokenOwnerIdentity(mixed $identity): bool
+    {
+        if (! $this->isOwnerChoice() || ! is_string($identity) || blank($identity)) {
+            return false;
+        }
+
+        $savedIdentity = $this->savedBrokenOwnerIdentity();
+
+        return is_string($savedIdentity) && hash_equals($savedIdentity, $identity);
+    }
+
+    private function savedBrokenOwnerIdentity(): ?string
+    {
+        $presentation = $this->getOwnerChoicePresentation();
+
+        if ($presentation?->directState !== 'broken') {
+            return null;
+        }
+
+        $savedIdentity = filled($presentation->savedReferenceKey)
+            ? $presentation->savedReferenceKey
+            : $presentation->expectedLegacyPath;
+
+        return is_string($savedIdentity) && filled($savedIdentity)
+            ? $savedIdentity
+            : null;
     }
 
     private function acceptsNewSelections(mixed $state, mixed $oldState): bool
@@ -724,6 +971,8 @@ class PathCuratorPicker extends Field
     /** @return array<string, mixed> */
     private function pickerComponentData(): array
     {
+        $presentation = $this->getOwnerChoicePresentation();
+
         return [
             'purpose' => $this->getUploadPurpose()->value,
             'selectedIds' => collect($this->identityValues($this->getState()))
@@ -733,6 +982,28 @@ class PathCuratorPicker extends Field
                 ->all(),
             'isMultiple' => $this->isMultiple(),
             'maxItems' => $this->getMaxItems(),
+            ...($this->isOwnerChoice() ? [
+                'isOwnerChoice' => true,
+                'savedMediaId' => $presentation?->savedMediaId,
+            ] : []),
         ];
+    }
+
+    private function invalidateOwnerChoicePresentation(): void
+    {
+        $this->cachedOwnerChoicePresentation = null;
+        $this->hasCachedOwnerChoicePresentation = false;
+    }
+
+    private function dispatchOwnerSelectionChanged(?int $selectedId): void
+    {
+        if (! $this->isOwnerChoice()) {
+            return;
+        }
+
+        $this->getLivewire()->dispatch(
+            'owner-media-selection-changed',
+            selectedId: $selectedId,
+        );
     }
 }

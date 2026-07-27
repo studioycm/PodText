@@ -39,6 +39,7 @@ use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\ValidationException;
 use InvalidArgumentException;
 use Livewire\Attributes\Locked;
+use Livewire\Attributes\On;
 use Livewire\Component;
 use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
 use RuntimeException;
@@ -53,7 +54,7 @@ class MediaPickerPanel extends Component implements HasActions, HasSchemas
 
     private const SELECTION_LIMIT = 50;
 
-    private const SOURCES = ['upload', 'url', 'storage'];
+    private const SOURCES = ['gallery', 'upload', 'url', 'storage'];
 
     #[Locked]
     public string $purpose;
@@ -63,6 +64,12 @@ class MediaPickerPanel extends Component implements HasActions, HasSchemas
 
     #[Locked]
     public bool $isInlineOwnerWorkspace = false;
+
+    #[Locked]
+    public bool $isOwnerChoice = false;
+
+    #[Locked]
+    public ?int $savedMediaId = null;
 
     #[Locked]
     public ?int $maxItems = null;
@@ -85,6 +92,7 @@ class MediaPickerPanel extends Component implements HasActions, HasSchemas
 
     public string $storageSearch = '';
 
+    #[Locked]
     public bool $allMedia = false;
 
     #[Locked]
@@ -111,6 +119,8 @@ class MediaPickerPanel extends Component implements HasActions, HasSchemas
         bool $isMultiple = false,
         ?int $maxItems = null,
         bool $isInlineOwnerWorkspace = false,
+        bool $isOwnerChoice = false,
+        ?int $savedMediaId = null,
     ): void {
         $resolvedPurpose = ImageUploadPurpose::tryFrom($purpose)
             ?? throw new UnexpectedValueException('The media picker purpose is invalid.');
@@ -118,10 +128,16 @@ class MediaPickerPanel extends Component implements HasActions, HasSchemas
         Gate::forUser($this->actor())->authorize('viewAny', $this->mediaModel());
 
         $this->purpose = $resolvedPurpose->value;
-        $this->isMultiple = $isMultiple;
+        $this->isOwnerChoice = $isOwnerChoice;
+        $this->isMultiple = $isOwnerChoice ? false : $isMultiple;
         $this->maxItems = $maxItems;
         $this->isInlineOwnerWorkspace = $isInlineOwnerWorkspace;
         $this->selectedIds = $this->trustedIds($selectedIds, 'view');
+        $this->savedMediaId = $savedMediaId === null
+            ? null
+            : (int) $this->trustedRecord($savedMediaId, 'view')->getKey();
+        $this->allMedia = $isOwnerChoice;
+        $this->activeSource = $isOwnerChoice ? 'gallery' : 'upload';
         $this->storageConfigured = app(StorageImageCandidateBrowser::class)->hasConfiguredSources();
 
         if (count($this->selectedIds) > $this->selectionLimit()) {
@@ -189,6 +205,7 @@ class MediaPickerPanel extends Component implements HasActions, HasSchemas
     public function activateSource(string $source): void
     {
         abort_unless(in_array($source, self::SOURCES, true), 422);
+        abort_if($source === 'gallery' && ! $this->isOwnerChoice, 422);
 
         $this->activeSource = $source;
         $this->resetValidation($this->sourceErrorKeys($source));
@@ -231,6 +248,8 @@ class MediaPickerPanel extends Component implements HasActions, HasSchemas
 
     public function showContextMedia(): void
     {
+        abort_if($this->isOwnerChoice, 422);
+
         $this->allMedia = false;
         $this->currentPage = 1;
         $this->reloadFiles();
@@ -262,7 +281,7 @@ class MediaPickerPanel extends Component implements HasActions, HasSchemas
         $id = (int) $media->getKey();
 
         if (in_array($id, $this->selectedIds, true)) {
-            if ($this->isInlineOwnerWorkspace) {
+            if ($this->isInlineOwnerWorkspace || $this->isOwnerChoice) {
                 return;
             }
 
@@ -273,6 +292,10 @@ class MediaPickerPanel extends Component implements HasActions, HasSchemas
 
         if (! $this->isMultiple) {
             $this->selectedIds = [$id];
+
+            if ($this->isOwnerChoice) {
+                $this->dispatchSelection();
+            }
 
             return;
         }
@@ -286,11 +309,35 @@ class MediaPickerPanel extends Component implements HasActions, HasSchemas
 
     public function clearSelection(): void
     {
-        if ($this->isInlineOwnerWorkspace) {
+        if ($this->isOwnerChoice || $this->isInlineOwnerWorkspace) {
             return;
         }
 
         $this->selectedIds = [];
+    }
+
+    #[On('owner-media-selection-restored')]
+    public function restoreSavedOwnerSelection(mixed $selectedId = null): void
+    {
+        abort_unless($this->isOwnerChoice, 404);
+
+        $this->selectedIds = $this->savedMediaId === null
+            ? []
+            : [(int) $this->trustedRecord($this->savedMediaId, 'view')->getKey()];
+    }
+
+    #[On('owner-media-selection-changed')]
+    public function synchronizeOwnerSelection(mixed $selectedId): void
+    {
+        abort_unless($this->isOwnerChoice, 404);
+
+        if ($selectedId === null) {
+            $this->selectedIds = [];
+
+            return;
+        }
+
+        $this->selectedIds = [(int) $this->trustedRecord($selectedId, 'select')->getKey()];
     }
 
     public function uploadFilesAction(): Action
@@ -544,6 +591,7 @@ class MediaPickerPanel extends Component implements HasActions, HasSchemas
             ->label(__('admin.actions.edit'))
             ->icon(Heroicon::Pencil)
             ->color('gray')
+            ->hidden(fn (): bool => $this->isOwnerChoice)
             ->modalWidth(Width::Medium)
             ->schema([
                 TextInput::make('title')->label(__('admin.fields.title'))->maxLength(255),
@@ -574,6 +622,7 @@ class MediaPickerPanel extends Component implements HasActions, HasSchemas
             ->label(__('admin.actions.view'))
             ->icon(Heroicon::Eye)
             ->color('gray')
+            ->hidden(fn (): bool => $this->isOwnerChoice)
             ->url(function (array $arguments): string {
                 $media = $this->trustedRecord($arguments['id'] ?? '', 'view');
 
@@ -587,6 +636,7 @@ class MediaPickerPanel extends Component implements HasActions, HasSchemas
             ->label(__('admin.actions.download'))
             ->icon(Heroicon::ArrowDownTray)
             ->color('gray')
+            ->hidden(fn (): bool => $this->isOwnerChoice)
             ->action(function (array $arguments) {
                 $media = $this->trustedRecord($arguments['id'] ?? '', 'download');
 
@@ -601,6 +651,7 @@ class MediaPickerPanel extends Component implements HasActions, HasSchemas
             ->icon(Heroicon::Trash)
             ->color('danger')
             ->requiresConfirmation()
+            ->hidden(fn (): bool => $this->isOwnerChoice)
             ->action(function (array $arguments): void {
                 $media = $this->trustedRecord($arguments['id'] ?? '', 'delete');
                 app(MediaFilesystemMutationCoordinator::class)->delete($media, $this->actor());
@@ -616,6 +667,7 @@ class MediaPickerPanel extends Component implements HasActions, HasSchemas
             ->icon(Heroicon::PencilSquare)
             ->color('gray')
             ->requiresConfirmation()
+            ->hidden(fn (): bool => $this->isOwnerChoice)
             ->action(function (array $arguments): void {
                 $media = $this->trustedRecord($arguments['id'] ?? '', 'rename');
                 app(MediaFilesystemMutationCoordinator::class)->rename($media, $this->actor());
@@ -629,6 +681,7 @@ class MediaPickerPanel extends Component implements HasActions, HasSchemas
             ->label(__('admin.media_library.swap'))
             ->icon(Heroicon::ArrowsRightLeft)
             ->color('warning')
+            ->hidden(fn (): bool => $this->isOwnerChoice)
             ->schema([
                 FileUpload::make('replacement')
                     ->label(__('admin.media_library.replacement'))
@@ -653,7 +706,9 @@ class MediaPickerPanel extends Component implements HasActions, HasSchemas
             ->icon(Heroicon::Trash)
             ->color('danger')
             ->requiresConfirmation()
-            ->visible(fn (): bool => ! $this->isInlineOwnerWorkspace && $this->selectedIds !== [])
+            ->visible(fn (): bool => ! $this->isOwnerChoice
+                && ! $this->isInlineOwnerWorkspace
+                && $this->selectedIds !== [])
             ->action(function (): void {
                 $records = $this->trustedRecords($this->selectedIds, 'delete');
 
@@ -669,7 +724,7 @@ class MediaPickerPanel extends Component implements HasActions, HasSchemas
         return Action::make('insertMedia')
             ->label(__('admin.media_library.use_selected'))
             ->color('success')
-            ->visible(fn (): bool => $this->selectedIds !== [])
+            ->visible(fn (): bool => ! $this->isOwnerChoice && $this->selectedIds !== [])
             ->action(function (): void {
                 $this->dispatchSelection();
             });
@@ -717,7 +772,10 @@ class MediaPickerPanel extends Component implements HasActions, HasSchemas
     {
         return app(MediaRecordScope::class)
             ->inventoryQuery()
-            ->when(! $this->allMedia, fn (Builder $query): Builder => $query->where('directory', $this->uploadPurpose()->root()))
+            ->when(
+                ! $this->isOwnerChoice && ! $this->allMedia,
+                fn (Builder $query): Builder => $query->where('directory', $this->uploadPurpose()->root()),
+            )
             ->select([
                 'id', 'reference_key', 'name', 'path', 'title', 'alt', 'ext', 'size', 'width', 'height', 'created_at',
                 'disk', 'directory', 'visibility', 'type',
@@ -735,7 +793,10 @@ class MediaPickerPanel extends Component implements HasActions, HasSchemas
 
         return $query
             ->get()
-            ->map(fn (Media $media): array => $projector->project($media))
+            ->map(fn (Media $media): array => $projector->project(
+                $media,
+                withOwnerDetails: $this->isOwnerChoice,
+            ))
             ->all();
     }
 
@@ -943,10 +1004,11 @@ class MediaPickerPanel extends Component implements HasActions, HasSchemas
             abort(422);
         }
 
-        $this->dispatch('insert-media', [
-            'mediaId' => $ids[0] ?? null,
-            'mediaIds' => $ids,
-        ]);
+        $this->dispatch(
+            'insert-media',
+            mediaId: $ids[0] ?? null,
+            mediaIds: $ids,
+        );
     }
 
     private function clearSourceInput(string $source): void

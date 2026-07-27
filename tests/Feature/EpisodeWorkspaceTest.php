@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\MediaNamingStrategy;
 use App\Enums\PublicationStatus;
 use App\Enums\Tb1PickerContainer;
 use App\Enums\TranscriptionMode;
@@ -221,7 +222,6 @@ it('saves workspace admin ux settings and renders modal and slideover transcript
         ->set('data.transcription_mode', TranscriptionMode::Single->value)
         ->set('data.show_episode_workspace_hint_line', true)
         ->set('data.show_episode_workspace_language_code', true)
-        ->set('data.tb1_picker_container', Tb1PickerContainer::SlideOver->value)
         ->call('save')
         ->assertHasNoFormErrors();
 
@@ -232,8 +232,7 @@ it('saves workspace admin ux settings and renders modal and slideover transcript
     expect($settings->transcription_presentation_mode)->toBe(TranscriptionPresentationMode::SlideOver->value)
         ->and($settings->transcription_mode)->toBe(TranscriptionMode::Single->value)
         ->and($settings->show_episode_workspace_hint_line)->toBeTrue()
-        ->and($settings->show_episode_workspace_language_code)->toBeTrue()
-        ->and($settings->tb1_picker_container)->toBe(Tb1PickerContainer::SlideOver->value);
+        ->and($settings->show_episode_workspace_language_code)->toBeTrue();
 
     $item = ContentItem::factory()->create();
     Transcription::factory()->for($item)->create();
@@ -247,7 +246,6 @@ it('saves workspace admin ux settings and renders modal and slideover transcript
         ->set('data.transcription_mode', TranscriptionMode::Single->value)
         ->set('data.show_episode_workspace_hint_line', true)
         ->set('data.show_episode_workspace_language_code', true)
-        ->set('data.tb1_picker_container', Tb1PickerContainer::Modal->value)
         ->call('save')
         ->assertHasNoFormErrors();
 
@@ -256,6 +254,23 @@ it('saves workspace admin ux settings and renders modal and slideover transcript
     Livewire::test(EditEpisodeWorkspace::class, ['record' => $item->getRouteKey()])
         ->assertSee('data-transcription-presentation-mode="modal"', false)
         ->assertSee(__('admin.sections.single.episode_workspace_transcription'));
+});
+
+it('keeps the legacy owner image container setting inert and removes only its selector', function (): void {
+    $settings = app(AdminUxSettings::class);
+    $settings->tb1_picker_container = Tb1PickerContainer::SlideOver->value;
+    $settings->save();
+    clearEpisodeWorkspaceSettingsCache();
+
+    Livewire::test(AdminUxSettingsPage::class)
+        ->assertSchemaComponentDoesNotExist('tb1_picker_container')
+        ->set('data.media_naming_strategy', MediaNamingStrategy::ReferenceKey->value)
+        ->call('save')
+        ->assertHasNoFormErrors();
+    clearEpisodeWorkspaceSettingsCache();
+
+    expect(app(AdminUxSettings::class)->tb1_picker_container)->toBe(Tb1PickerContainer::SlideOver->value)
+        ->and(app(AdminUxSettings::class)->media_naming_strategy)->toBe(MediaNamingStrategy::ReferenceKey->value);
 });
 
 it('fills blank fields from spotify lookup and extracts iframe src values', function (): void {

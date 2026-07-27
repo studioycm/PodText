@@ -91,7 +91,101 @@ class SettingsLifecycleSchema
         $key = $this->labelKeyFor($path);
         $label = __($key);
 
-        return is_string($label) && $label !== $key ? $label : $path;
+        if (is_string($label) && $label !== $key) {
+            return $label;
+        }
+
+        if (str_starts_with($path, 'card_templates.')) {
+            return $this->qualifiedLabel(
+                'admin.fields.public_front_card_templates',
+                'admin.card_template_families.'.str($path)->afterLast('.'),
+            );
+        }
+
+        if (str_starts_with($path, 'default_images.')) {
+            return $this->qualifiedLabel(
+                'admin.sections.public_default_images',
+                'admin.default_image_families.'.str($path)->afterLast('.'),
+            );
+        }
+
+        if (str_starts_with($path, 'route_labels.')) {
+            return $this->qualifiedLabel(
+                'admin.fields.public_front_route_label',
+                'admin.public_front_routes.'.str($path)->afterLast('.'),
+            );
+        }
+
+        foreach ($this->labelCandidatesFor($path) as $candidate) {
+            $label = __($candidate);
+
+            if (is_string($label) && $label !== $candidate) {
+                return $label;
+            }
+        }
+
+        return $path;
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function labelCandidatesFor(string $path): array
+    {
+        $aliases = [
+            'about_page.settings' => 'admin.sections.about_page_team_defaults',
+            'card_templates' => 'admin.fields.public_front_card_templates',
+            'contributors_page.cards' => 'admin.sections.public_front_contributor_cards',
+            'contributors_page.directory' => 'admin.sections.public_front_contributors_directory',
+            'contributors_page.page' => 'admin.sections.public_front_contributor_page_items',
+            'contributors_page.top_transcribers' => 'admin.sections.public_front_top_transcribers',
+            'display_defaults.density' => 'admin.fields.public_front_card_density',
+            'display_defaults.image_fit' => 'admin.fields.public_front_card_image_fit',
+            'display_defaults.image_radius' => 'admin.fields.public_front_card_image_radius',
+            'display_defaults.image_size' => 'admin.fields.public_front_card_image_size',
+            'display_defaults.layout' => 'admin.fields.public_front_display_layout',
+            'display_defaults.page_size' => 'admin.fields.public_front_page_size',
+            'display_defaults.title_size' => 'admin.fields.public_front_card_title_size',
+            'display_defaults.transcription_display' => 'admin.fields.public_front_transcription_display',
+            'item_page.badges' => 'admin.sections.public_front_item_page_badges',
+            'item_page.info_fields' => 'admin.sections.public_front_item_page_info_fields',
+            'item_page.podcast_identity' => 'admin.sections.public_front_item_page_header',
+            'menu_config.enabled' => 'admin.fields.public_front_menu_enabled',
+            'menu_config.items' => 'admin.fields.public_menu_items',
+            'menu_config.items_alignment' => 'admin.fields.public_menu_items_alignment',
+            'menu_config.logo' => 'admin.sections.public_menu_logo',
+            'menu_config.search' => 'admin.sections.public_menu_search',
+            'menu_config.theme_selector' => 'admin.sections.public_menu_theme_selector',
+            'podcasts_page.group_page' => 'admin.sections.public_front_podcasts_group_page',
+            'public_forms.definitions' => 'admin.fields.public_forms',
+            'route_labels' => 'admin.fields.public_front_route_labels',
+            'transcription_policy.count_mode' => 'admin.fields.public_transcription_policy_count_mode',
+            'transcription_policy.public_mode' => 'admin.fields.public_transcription_policy_public_mode',
+            'transcription_policy.show_multiple_transcriptions_on_item_page' => 'admin.fields.public_transcription_policy_show_multiple_transcriptions_on_item_page',
+        ];
+
+        return array_values(array_filter([
+            $aliases[$path] ?? null,
+            "admin.fields.{$path}",
+            'admin.fields.'.str_replace('.', '_', $path),
+        ]));
+    }
+
+    private function qualifiedLabel(string $groupKey, string $unitKey): string
+    {
+        $group = __($groupKey);
+        $unit = __($unitKey);
+
+        if (
+            ! is_string($group)
+            || ! is_string($unit)
+            || $group === $groupKey
+            || $unit === $unitKey
+        ) {
+            return $unitKey;
+        }
+
+        return "{$group}: {$unit}";
     }
 
     public function structuralType(mixed $value): string
@@ -225,7 +319,40 @@ class SettingsLifecycleSchema
      */
     public function unitPathsForSemanticPath(string $semanticPath, ?array $payload = null, ?string $group = null): array
     {
+        $payload ??= $this->payloadForGroup($group);
         $units = $this->units($payload, $group);
+        $unitPaths = collect($units)->pluck('path');
+        $exactPaths = $unitPaths
+            ->filter(fn (string $path): bool => $path === $semanticPath)
+            ->values()
+            ->all();
+
+        if ($exactPaths !== []) {
+            return $exactPaths;
+        }
+
+        $segmentedPath = $this->segmentedUnitPathForSemanticPath($semanticPath, $payload);
+
+        if ($segmentedPath !== null) {
+            $segmentedPaths = $unitPaths
+                ->filter(fn (string $path): bool => $path === $segmentedPath)
+                ->values()
+                ->all();
+
+            if ($segmentedPaths !== []) {
+                return $segmentedPaths;
+            }
+        }
+
+        $topLevel = str($semanticPath)->before('.')->toString();
+        $segmentationMode = $this->groups
+            ->get($group ?? $this->groups->defaultGroup()->name)
+            ->overlay
+            ->segmentationMode($topLevel);
+
+        if (in_array($segmentationMode, ['route_key', 'card_family'], true)) {
+            return [];
+        }
 
         return collect($units)
             ->filter(function (SettingsLifecycleUnit $unit) use ($semanticPath): bool {
@@ -238,6 +365,36 @@ class SettingsLifecycleSchema
             ->pluck('path')
             ->values()
             ->all();
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     */
+    private function segmentedUnitPathForSemanticPath(string $semanticPath, array $payload): ?string
+    {
+        $segments = explode('.', $semanticPath);
+        $topLevel = $segments[0] ?? null;
+        $index = $segments[1] ?? null;
+
+        if (! in_array($topLevel, ['route_labels', 'card_templates'], true) || ! ctype_digit((string) $index)) {
+            return null;
+        }
+
+        $item = $payload[$topLevel][(int) $index] ?? null;
+
+        if (! is_array($item)) {
+            return null;
+        }
+
+        $identity = $topLevel === 'route_labels'
+            ? ($item['route_key'] ?? null)
+            : ($item['family'] ?? null);
+
+        if (! is_string($identity) || $identity === '' || str_contains($identity, '.')) {
+            return null;
+        }
+
+        return "{$topLevel}.{$identity}";
     }
 
     /**

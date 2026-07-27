@@ -169,10 +169,10 @@ it('starts the picker in its logical context and All Media clears that filter wi
     $picker
         ->call('toggleSelection', $otherFolder->getKey())
         ->callAction(TestAction::make('insertMedia'))
-        ->assertDispatched('insert-media', fn (string $event, array $parameters): bool => $parameters === [[
+        ->assertDispatched('insert-media', fn (string $event, array $parameters): bool => $parameters === [
             'mediaId' => $otherFolder->getKey(),
             'mediaIds' => [$otherFolder->getKey()],
-        ]]);
+        ]);
 
     expect(Media::query()->orderBy('id')->get()->map->getAttributes()->all())->toBe($beforeRows)
         ->and(MediaMutationOperation::query()->count())->toBe(0)
@@ -261,7 +261,7 @@ it('keeps Add or Replace Image visible on podcast and episode list and edit page
         ->mountAction(TestAction::make('chooseContentGroupCover')->table($group))
         ->assertSet('mountedActions.0.data.cover_media_reference_key', $cover->getKey())
         ->assertMountedActionModalSee('Current podcast cover')
-        ->assertMountedActionModalSee(__('admin.owner_image.tabs.replace'))
+        ->assertMountedActionModalSee(__('admin.owner_image.actions.change_podcast_cover'))
         ->assertMountedActionModalSee(__('admin.media_library.gallery_source'))
         ->set('mountedActions.0.data.cover_media_reference_key', $replacement->reference_key)
         ->unmountAction();

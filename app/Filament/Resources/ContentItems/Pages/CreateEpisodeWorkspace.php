@@ -5,8 +5,8 @@ namespace App\Filament\Resources\ContentItems\Pages;
 use App\Enums\MediaAttachmentRole;
 use App\Filament\Resources\ContentItems\ContentItemResource;
 use App\Filament\Resources\ContentItems\Schemas\EpisodeWorkspaceForm;
+use App\Filament\Support\Concerns\InteractsWithOwnerImageFormLifecycle;
 use App\Models\User;
-use App\Support\Media\MediaAttachmentFormState;
 use Filament\Actions\Action;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\CreateRecord;
@@ -15,7 +15,11 @@ use Filament\Support\Icons\Heroicon;
 
 class CreateEpisodeWorkspace extends CreateRecord
 {
+    use InteractsWithOwnerImageFormLifecycle;
+
     protected static string $resource = ContentItemResource::class;
+
+    protected ?bool $hasDatabaseTransactions = true;
 
     public function form(Schema $schema): Schema
     {
@@ -26,10 +30,10 @@ class CreateEpisodeWorkspace extends CreateRecord
     {
         $actor = auth()->user();
         abort_unless($actor instanceof User, 403);
-        app(MediaAttachmentFormState::class)->persist(
+        $this->persistOwnerImageForm(
             $this->getRecord(),
-            $this->pendingPrimaryImageMediaReferenceKey,
             MediaAttachmentRole::PrimaryImage,
+            'primary_image_media_reference_key',
             $actor,
         );
         $this->getRecord()->refresh()->adoptWorkspaceTranscription();
@@ -71,17 +75,13 @@ class CreateEpisodeWorkspace extends CreateRecord
             ->title(__('admin.notifications.episode_workspace_created'));
     }
 
-    private ?string $pendingPrimaryImageMediaReferenceKey = null;
-
     protected function mutateFormDataBeforeCreate(array $data): array
     {
-        [$data, $this->pendingPrimaryImageMediaReferenceKey] = app(MediaAttachmentFormState::class)->prepare(
+        return $this->prepareOwnerImageForm(
             $data,
-            'primary_image_media_reference_key',
             null,
             MediaAttachmentRole::PrimaryImage,
+            'primary_image_media_reference_key',
         );
-
-        return $data;
     }
 }

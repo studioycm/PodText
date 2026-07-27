@@ -59,7 +59,7 @@ class LegacyOwnerMediaRepairer
             $old = $pathRows->count() === 1 ? $pathRows->sole() : null;
             $diagnostic = $this->diagnostics->make($locked, $role, $attachment, $pathRows);
             if (! $diagnostic instanceof LegacyOwnerMediaDiagnostic || ! hash_equals($diagnostic->fingerprint, $fingerprint)) {
-                throw new RuntimeException('The legacy owner media repair state changed before commit.');
+                throw new OwnerImageChangedException;
             }
             if ($evidenceRows->isNotEmpty()) {
                 foreach ($evidenceRows as $evidenceRow) {

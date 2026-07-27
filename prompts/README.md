@@ -16,19 +16,32 @@ For current completion/progress state, see `docs/phase-02/current-project-state.
 
 Historical prompts are under `prompts/archive/` and are not active instructions.
 
-## Active ad-hoc MediaAsset program
+## Media Operations UX3 forward contract
 
-The current media work is not controlled by a file under
-`prompts/pre-13-prompts/`. It is an explicitly approved ad-hoc Stage 2 program:
+Original Media Program Packages 1–4 and Media Operations UX3 Mini-tasks 1–3
+are complete locally. Original Package 5 remains forecast-only.
 
-- Audit: `LS-20260722-PODTEXT-MEDIA-ASSET-PROGRAM-06`
-- Option: `MEDIA-CUTOVER-O1-DIRECT-ASSET-HYBRID-ROOT-MAINTENANCE`
-- Resume helper: `docs/phase-02/media-program-context.md`
-- Requirements and package route: `docs/research/media-program/`
+The documentation-only
+`pre-13-prompts/media-operations-ux3-program-reconciliation-finding-coverage-codex-prompt.md`
+(`Prompt version: v1 — 2026-07-25`) has been executed. Its result was accepted
+by the operator on 2026-07-26 and is at
+`../docs/research/media-operations-ux3/07-program-reconciliation-and-finding-coverage.md`,
+the canonical detailed UX3 goal, 51-finding coverage matrix and forward
+outcome sequence. That acceptance did not itself authorize implementation.
+Mini-task 3A later completed locally under its own research, design, audit and
+implementation approvals; its handoff is
+`../docs/phase-02/media-operations-ux3-mini3a-owner-image-choice-and-commit-handoff.md`.
 
-The program runs documentation Gate 0 and five sequential MediaAsset packages
-without changing the main prompt sequence above. Current status remains in the
-project-state document and mini-step ledger.
+The remaining order after operator review and closure of 3A is UX3 Mini-task
+3B, then 3C, then a freshly researched and replanned Mini-task 4. Mini-task 4
+has no authoritative title, selected repair reason, plan, audit or option
+before Mini-task 3C is reviewed and closed. Current status remains in
+`docs/phase-02/current-project-state.md` and the mini-step ledger; original
+Media Program authority remains under `docs/research/media-program/`.
+
+The separate **PodText Documentation Architecture and Consolidation Audit**
+prompt-authoring trigger was satisfied by that acceptance, but its prompt has
+not been written and the task has not started.
 
 ## Historical feature-first controller
 

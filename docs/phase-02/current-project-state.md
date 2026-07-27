@@ -4,8 +4,68 @@ This is the single source of truth for rolling Phase 02 prompt progress. Other a
 
 Recorded after the Markdown-only post-Prompt-10 prompt-progress centralization cleanup. This document intentionally avoids local secrets and should be updated when later prompts change the active baseline.
 
+## Active Media Operations UX3 Forward Route
+
+- The documentation-only **Program Reconciliation and Finding Coverage**
+  contract at
+  `prompts/pre-13-prompts/media-operations-ux3-program-reconciliation-finding-coverage-codex-prompt.md`
+  (`Prompt version: v1 — 2026-07-25`) has been executed and accepted by the
+  operator on 2026-07-26. The canonical result is at
+  `docs/research/media-operations-ux3/07-program-reconciliation-and-finding-coverage.md`.
+  That document is the detailed owner of the literal goal, 51-finding matrix,
+  outcome boundaries and gates. This state file and the mini-step ledger own
+  rolling status only.
+- Mini-task 3A — Owner Image Choice and Commit is implemented locally and is
+  awaiting operator outcome review. The remaining outcome order after that
+  review is:
+  **Mini-task 3B — Media Intake and Acquisition Results** →
+  **Mini-task 3C — Safe Existing-File Operations and Outcomes** →
+  **replanned Mini-task 4 — provisional boundary: Reason-Specific Media Issue
+  Resolution and Verified Results**. Each outcome receives its own
+  research-first Operations UX cycle, operator design decision, bounded
+  technical implementation plan, fresh audit/approval and separately gated
+  implementation.
+- **Binding sequencing rule:** Media Operations UX3 Mini-task 4 must not begin
+  UX research, technical research, planning, Laravel Simplifier Stage 1 or
+  implementation until Mini-task 3C has been reviewed and closed. After 3C
+  closes, Mini-task 4 restarts at UX research/design and is replanned from the
+  reconciled 3A–3C evidence. No earlier Mini-task 4 title, scope, selected
+  diagnostic reason, plan, audit, option or implementation proposal is
+  authoritative. The completed choice, acquisition-result and existing-file
+  operation contracts determine which first reason-specific repair is
+  truthful, valuable and safely bounded.
+- The separate **PodText Documentation Architecture and Consolidation Audit**
+  prompt is intentionally not written yet. Operator acceptance on 2026-07-26
+  satisfies its prompt-authoring trigger; its later read-only inventory may be
+  coordinated alongside a future UX research phase, while document moves or
+  consolidation remain separately reviewed and must not overlap an
+  implementation write phase.
+- **Current gate:** Mini-task 3A implementation is complete locally under its
+  accepted audits/options. Stop for operator outcome review. Mini-task 3B has
+  not started and receives no research, design, audit or implementation
+  authority until the operator reviews and closes 3A.
+
 ## Git State
 
+- Media Operations UX3 Mini-task 3A is complete locally under primary audit
+  `LS-20260726-PODTEXT-MEDIA-OPERATIONS-UX3-M3A-01` and option
+  `MEDIA-OPS-UX3-M3A-O1-CANONICAL-MODAL-SHARED-OWNER-LIFECYCLE`, with the
+  approved cross-task mechanism closeout and Task 8/9 amendments recorded in
+  `docs/phase-02/media-operations-ux3-mini3a-owner-image-choice-and-commit-handoff.md`.
+  It started from `main` at
+  `576f5ada925d035baef75615f24d0fc9f8c7aa06`, 35 commits ahead of
+  `origin/main`. Implementation hash: pending canonical implementation
+  commit. Owner actions, full forms, workspaces, relation-manager Create/Edit
+  and public Settings image slots now share direct/shown/pending truth and the
+  correct prepare/persist/rollback lifecycle. All Media remains complete,
+  Gallery choice remains mutation-free, admitted Media remains permanent,
+  Cancel remains an owner no-op, and attachment/file-location authorities are
+  unchanged. Root settings lifecycle, nested identity, coordinated-writer and
+  event-bridge gaps discovered during implementation were fixed under the
+  approved O2 closeout. Independent final Task 9 review found no Critical or
+  Important issue. Recheck/Retry, generic Fix, reason-specific repair, 3B, 3C,
+  Mini-task 4, Package 5, dependency/schema/production work and push were not
+  started.
 - Media Operations UX3 Mini-task 3 is complete locally under audit
   `LS-20260725-PODTEXT-MEDIA-OPERATIONS-UX3-M3-01` and approved option
   `MEDIA-OPS-UX3-M3-O1-ROUTE-FIRST-ISSUE-REVIEW-NO-RECHECK`. It started from

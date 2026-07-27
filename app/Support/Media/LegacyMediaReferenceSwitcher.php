@@ -20,8 +20,16 @@ class LegacyMediaReferenceSwitcher
         private readonly SettingsMediaIdentityProjector $settingsProjector,
     ) {}
 
-    public function switch(LegacyMediaRegistrationPlan $plan, Media $media, bool $inPlaceTransition = false, array $reviewedEntry = []): void
-    {
+    /**
+     * The caller must own the public-content Settings group mutex whenever
+     * the reviewed plan contains Settings snapshots.
+     */
+    public function switchWithinCoordinatedTransaction(
+        LegacyMediaRegistrationPlan $plan,
+        Media $media,
+        bool $inPlaceTransition = false,
+        array $reviewedEntry = [],
+    ): void {
         if (DB::transactionLevel() < 1) {
             throw new \LogicException('Legacy media references may only be switched inside a database transaction.');
         }

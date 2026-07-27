@@ -4,27 +4,27 @@ namespace App\Filament\Resources\ContentItems\Pages;
 
 use App\Enums\MediaAttachmentRole;
 use App\Filament\Resources\ContentItems\ContentItemResource;
+use App\Filament\Support\Concerns\InteractsWithOwnerImageFormLifecycle;
 use App\Models\User;
-use App\Support\Media\MediaAttachmentFormState;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\CreateRecord;
 
 class CreateContentItem extends CreateRecord
 {
+    use InteractsWithOwnerImageFormLifecycle;
+
     protected static string $resource = ContentItemResource::class;
 
-    private ?string $pendingPrimaryImageMediaReferenceKey = null;
+    protected ?bool $hasDatabaseTransactions = true;
 
     protected function mutateFormDataBeforeCreate(array $data): array
     {
-        [$data, $this->pendingPrimaryImageMediaReferenceKey] = app(MediaAttachmentFormState::class)->prepare(
+        return $this->prepareOwnerImageForm(
             $data,
-            'primary_image_media_reference_key',
             null,
             MediaAttachmentRole::PrimaryImage,
+            'primary_image_media_reference_key',
         );
-
-        return $data;
     }
 
     protected function afterCreate(): void
@@ -32,10 +32,10 @@ class CreateContentItem extends CreateRecord
         $actor = auth()->user();
         abort_unless($actor instanceof User, 403);
 
-        app(MediaAttachmentFormState::class)->persist(
+        $this->persistOwnerImageForm(
             $this->getRecord(),
-            $this->pendingPrimaryImageMediaReferenceKey,
             MediaAttachmentRole::PrimaryImage,
+            'primary_image_media_reference_key',
             $actor,
         );
     }

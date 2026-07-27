@@ -5,6 +5,7 @@ use App\Enums\ImageUploadPurpose;
 use App\Enums\MediaAcquisitionDisposition;
 use App\Enums\UserRole;
 use App\Filament\Forms\Components\PathCuratorPicker;
+use App\Filament\Resources\Media\MediaResource;
 use App\Livewire\Admin\DisabledVendorCuratorSurface;
 use App\Livewire\Admin\MediaPickerPanel;
 use App\Models\Media;
@@ -27,6 +28,7 @@ use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -86,6 +88,297 @@ it('locks the server-owned purpose against livewire tampering', function (): voi
 
     expect(fn () => pickerPanel()->set('purpose', ImageUploadPurpose::HeaderLogo->value))
         ->toThrow(CannotUpdateLockedPropertyException::class);
+});
+
+it('starts owner choice on All Media and Gallery without a Current folder concept', function (): void {
+    $this->actingAs(User::factory()->admin()->create());
+
+    pickerPanel([
+        'isOwnerChoice' => true,
+        'savedMediaId' => null,
+    ])
+        ->assertSet('allMedia', true)
+        ->assertSet('activeSource', 'gallery')
+        ->assertSee('data-testid="media-picker-owner-source-navigation"', false)
+        ->assertSee('data-testid="media-picker-source-gallery"', false)
+        ->assertSee('data-testid="media-picker-source-upload"', false)
+        ->assertSee('data-testid="media-picker-source-url"', false)
+        ->assertSee('data-testid="media-picker-source-storage"', false)
+        ->assertDontSee(__('admin.media_library.context_media'));
+});
+
+it('rejects the hidden Current folder transition in owner choice mode', function (): void {
+    $this->actingAs(User::factory()->admin()->create());
+
+    pickerPanel([
+        'isOwnerChoice' => true,
+        'savedMediaId' => null,
+    ])
+        ->call('showContextMedia')
+        ->assertStatus(422);
+});
+
+it('locks the owner All Media scope against client tampering', function (): void {
+    $this->actingAs(User::factory()->admin()->create());
+
+    expect(fn () => pickerPanel([
+        'isOwnerChoice' => true,
+        'savedMediaId' => null,
+    ])->set('allMedia', false))
+        ->toThrow(CannotUpdateLockedPropertyException::class);
+});
+
+it('keeps owner search inventory wide after server-side scope drift', function (): void {
+    $this->actingAs(User::factory()->admin()->create());
+    $crossFolder = Media::factory()->create([
+        'directory' => 'header',
+        'title' => 'Cross-folder owner image',
+    ]);
+    $component = pickerPanel([
+        'isOwnerChoice' => true,
+        'savedMediaId' => null,
+    ]);
+    $instance = $component->instance();
+
+    $instance->allMedia = false;
+    $instance->search = 'Cross-folder owner';
+    $instance->updatedSearch();
+
+    expect(collect($instance->files)->pluck('id')->all())
+        ->toContain($crossFolder->getKey());
+});
+
+it('dispatches an owner Gallery tile immediately as the one pending selection', function (bool $inline): void {
+    $this->actingAs(User::factory()->admin()->create());
+    $saved = Media::factory()->create();
+    $replacement = Media::factory()->create();
+    $original = $replacement->only(['path', 'disk', 'visibility']);
+    Storage::disk($replacement->disk)->put($replacement->path, 'replacement fixture');
+
+    $component = pickerPanel([
+        'selectedIds' => [$saved->getKey()],
+        'isInlineOwnerWorkspace' => $inline,
+        'isOwnerChoice' => true,
+        'savedMediaId' => $saved->getKey(),
+    ])
+        ->assertSet('selectedIds', [$saved->getKey()])
+        ->call('toggleSelection', $replacement->getKey());
+
+    $component
+        ->assertSet('selectedIds', [$replacement->getKey()])
+        ->assertDispatched('insert-media', fn (string $event, array $parameters): bool => $parameters === [
+            'mediaId' => $replacement->getKey(),
+            'mediaIds' => [$replacement->getKey()],
+        ])
+        ->assertNotDispatched('close-media-picker');
+
+    expect($replacement->refresh()->only(array_keys($original)))->toBe($original);
+})->with([
+    'nested field' => [false],
+    'inline dedicated action' => [true],
+]);
+
+it('renders the selected owner tile as a disabled localized current image', function (string $locale): void {
+    app()->setLocale($locale);
+    $this->actingAs(User::factory()->admin()->create());
+    $selected = Media::factory()->create(['title' => 'Accessible owner image']);
+    Storage::disk($selected->disk)->put($selected->path, 'selected owner fixture');
+    $component = pickerPanel([
+        'selectedIds' => [$selected->getKey()],
+        'isOwnerChoice' => true,
+        'savedMediaId' => $selected->getKey(),
+    ]);
+    $selectionLabel = __('admin.media_library.current_image').': '.$selected->title;
+    $html = $component->html();
+    preg_match(
+        '/<button[^>]*aria-label="'.preg_quote($selectionLabel, '/').'"[^>]*>/',
+        $html,
+        $buttonMatches,
+    );
+
+    expect($buttonMatches)->toHaveCount(1)
+        ->and($buttonMatches[0])->toContain('aria-pressed="true"')
+        ->and($buttonMatches[0])->toContain('aria-disabled="true"')
+        ->and($buttonMatches[0])->toContain('disabled')
+        ->and($html)->not->toContain(__('admin.media_library.deselect_image', ['name' => $selected->title]));
+
+    $component
+        ->call('toggleSelection', $selected->getKey())
+        ->assertSet('selectedIds', [$selected->getKey()])
+        ->assertNotDispatched('insert-media');
+})->with([
+    'Hebrew' => ['he'],
+    'English' => ['en'],
+]);
+
+it('ignores hostile clear selection calls in every owner mode', function (bool $inline): void {
+    $this->actingAs(User::factory()->admin()->create());
+    $selected = Media::factory()->create();
+
+    pickerPanel([
+        'selectedIds' => [$selected->getKey()],
+        'isInlineOwnerWorkspace' => $inline,
+        'isOwnerChoice' => true,
+        'savedMediaId' => $selected->getKey(),
+    ])
+        ->call('clearSelection')
+        ->assertSet('selectedIds', [$selected->getKey()]);
+})->with([
+    'nested field' => [false],
+    'inline dedicated action' => [true],
+]);
+
+it('restores owner pending selection from the locked saved identity without mutation', function (): void {
+    $this->actingAs(User::factory()->admin()->create());
+    $saved = Media::factory()->create();
+    $pending = Media::factory()->create();
+    $forged = Media::factory()->create();
+    $savedIdentity = $saved->only(['path', 'disk', 'visibility']);
+
+    pickerPanel([
+        'selectedIds' => [$pending->getKey()],
+        'isOwnerChoice' => true,
+        'savedMediaId' => $saved->getKey(),
+    ])
+        ->dispatch('owner-media-selection-restored', selectedId: $forged->getKey())
+        ->assertSet('selectedIds', [$saved->getKey()])
+        ->assertNotDispatched('insert-media');
+
+    expect($saved->refresh()->only(array_keys($savedIdentity)))->toBe($savedIdentity);
+});
+
+it('synchronizes owner pending selection changes through trusted records', function (): void {
+    $this->actingAs(User::factory()->admin()->create());
+    $saved = Media::factory()->create();
+    $replacement = Media::factory()->create();
+    Storage::disk($replacement->disk)->put($replacement->path, 'replacement fixture');
+
+    pickerPanel([
+        'selectedIds' => [$saved->getKey()],
+        'isOwnerChoice' => true,
+        'savedMediaId' => $saved->getKey(),
+    ])
+        ->dispatch('owner-media-selection-changed', selectedId: null)
+        ->assertSet('selectedIds', [])
+        ->dispatch('owner-media-selection-changed', selectedId: $replacement->getKey())
+        ->assertSet('selectedIds', [$replacement->getKey()])
+        ->assertNotDispatched('insert-media');
+});
+
+it('shows only one authorized new tab Details route on each owner Gallery card', function (): void {
+    $this->actingAs(User::factory()->admin()->create());
+    $media = Media::factory()->create(['title' => 'Owner details card']);
+
+    $component = pickerPanel([
+        'isOwnerChoice' => true,
+        'savedMediaId' => null,
+    ])
+        ->assertActionHidden(TestAction::make('viewItem'))
+        ->assertActionHidden(TestAction::make('downloadItem'))
+        ->assertActionHidden(TestAction::make('editItem'))
+        ->assertActionHidden(TestAction::make('renameItem'))
+        ->assertActionHidden(TestAction::make('swapItem'))
+        ->assertActionHidden(TestAction::make('destroyItem'))
+        ->assertActionHidden(TestAction::make('destroySelected'))
+        ->assertActionHidden(TestAction::make('insertMedia'));
+    $html = $component->html();
+
+    expect(substr_count($html, 'data-testid="media-picker-owner-details-'.$media->getKey().'"'))->toBe(1)
+        ->and($html)->toContain('href="'.e(MediaResource::getUrl('edit', ['record' => $media])).'"')
+        ->and($html)->toContain('target="_blank"')
+        ->and($html)->not->toContain(__('admin.media_library.use_selected'))
+        ->and($html)->not->toContain(__('admin.media_library.delete_selected'));
+});
+
+it('omits owner card Details when current Media update authorization is denied', function (): void {
+    $this->actingAs(User::factory()->admin()->create());
+    $media = Media::factory()->create();
+    Gate::before(
+        static fn (User $user, string $ability): ?bool => $ability === 'update' ? false : null,
+    );
+
+    pickerPanel([
+        'isOwnerChoice' => true,
+        'savedMediaId' => null,
+    ])->assertDontSee('data-testid="media-picker-owner-details-'.$media->getKey().'"', false);
+});
+
+it('locks owner choice workflow and saved identity against livewire tampering', function (): void {
+    $this->actingAs(User::factory()->admin()->create());
+    $saved = Media::factory()->create();
+
+    expect(fn () => pickerPanel([
+        'isOwnerChoice' => true,
+        'savedMediaId' => $saved->getKey(),
+    ])->set('isOwnerChoice', false))
+        ->toThrow(CannotUpdateLockedPropertyException::class)
+        ->and(fn () => pickerPanel([
+            'isOwnerChoice' => true,
+            'savedMediaId' => $saved->getKey(),
+        ])->set('savedMediaId', null))
+        ->toThrow(CannotUpdateLockedPropertyException::class);
+});
+
+it('keeps owner source navigation responsive at two narrow and five desktop Gallery columns', function (): void {
+    $this->actingAs(User::factory()->admin()->create());
+
+    pickerPanel([
+        'isOwnerChoice' => true,
+        'savedMediaId' => null,
+    ])
+        ->assertSee('grid grid-cols-2 gap-3', false)
+        ->assertSee('xl:grid-cols-5', false)
+        ->assertDontSee('xl:grid-cols-6', false)
+        ->call('activateSource', 'upload')
+        ->assertSet('activeSource', 'upload')
+        ->assertSee(__('admin.media_library.acquisition_permanence'));
+});
+
+it('makes one successful owner admission pending while keeping the Media permanent', function (): void {
+    $this->actingAs(User::factory()->admin()->create());
+
+    $component = pickerPanel([
+        'isOwnerChoice' => true,
+        'savedMediaId' => null,
+    ])
+        ->call('activateSource', 'upload')
+        ->fillForm(['uploads' => [pickerMediaFixture('valid.jpg')]])
+        ->callAction(TestAction::make('uploadFiles'))
+        ->assertHasNoFormErrors()
+        ->assertDispatched('insert-media');
+
+    $media = Media::query()->sole();
+
+    expect($component->get('selectedIds'))->toBe([$media->getKey()]);
+    Storage::disk($media->disk)->assertExists($media->path);
+});
+
+it('keeps every owner batch admission permanent without choosing an arbitrary pending image', function (): void {
+    $this->actingAs(User::factory()->admin()->create());
+
+    $component = pickerPanel([
+        'isInlineOwnerWorkspace' => true,
+        'isOwnerChoice' => true,
+        'savedMediaId' => null,
+    ])
+        ->call('activateSource', 'upload')
+        ->fillForm([
+            'uploads' => [
+                pickerMediaFixture('valid.jpg'),
+                pickerMediaFixture('valid.png'),
+            ],
+        ])
+        ->callAction(TestAction::make('uploadFiles'))
+        ->assertHasNoFormErrors()
+        ->assertNotDispatched('insert-media')
+        ->assertSee(__('admin.media_library.acquisition_permanence_inline'));
+
+    expect($component->get('selectedIds'))->toBe([])
+        ->and(Media::query()->count())->toBe(2);
+
+    foreach (Media::query()->get() as $media) {
+        Storage::disk($media->disk)->assertExists($media->path);
+    }
 });
 
 it('bounds browse payloads while treating the purpose root as an initial logical folder', function (): void {
@@ -577,10 +870,10 @@ it('selects an existing image from another logical folder without mutating it', 
         ->call('toggleSelection', $wrongPurpose->getKey())
         ->assertSet('selectedIds', [$wrongPurpose->getKey()])
         ->callAction(TestAction::make('insertMedia'))
-        ->assertDispatched('insert-media', fn (string $event, array $parameters): bool => $parameters === [[
+        ->assertDispatched('insert-media', fn (string $event, array $parameters): bool => $parameters === [
             'mediaId' => $wrongPurpose->getKey(),
             'mediaIds' => [$wrongPurpose->getKey()],
-        ]]);
+        ]);
 
     expect($wrongPurpose->refresh()->only(array_keys($originalIdentity)))->toBe($originalIdentity);
     Storage::disk('public')->assertExists($wrongPurpose->path);
@@ -684,10 +977,10 @@ it('uploads renames swaps and deletes through real picker actions', function ():
         ->toBe('https://cdn.example.test/preserved-after-upload.png');
     $component->assertDispatched(
         'insert-media',
-        fn (string $event, array $parameters): bool => $parameters === [[
+        fn (string $event, array $parameters): bool => $parameters === [
             'mediaId' => $media->getKey(),
             'mediaIds' => [$media->getKey()],
-        ]],
+        ],
     );
     $originalPath = $media->path;
     Storage::disk('public')->assertExists($originalPath);
@@ -926,10 +1219,10 @@ it('acquires an extensionless URL immediately through the shared picker admissio
                 ->title(__('admin.media_library.url_acquired'))
                 ->body(__('admin.media_library.acquisition_created_single', ['count' => 1])),
         )
-        ->assertDispatched('insert-media', fn (string $event, array $parameters): bool => $parameters === [[
+        ->assertDispatched('insert-media', fn (string $event, array $parameters): bool => $parameters === [
             'mediaId' => Media::query()->sole()->getKey(),
             'mediaIds' => [Media::query()->sole()->getKey()],
-        ]]);
+        ]);
 
     $media = Media::query()->sole();
 
@@ -1189,10 +1482,10 @@ it('acquires an opaque Storage candidate and keeps the library item before owner
     $media = Media::query()->sole();
     $component->assertDispatched(
         'insert-media',
-        fn (string $event, array $parameters): bool => $parameters === [[
+        fn (string $event, array $parameters): bool => $parameters === [
             'mediaId' => $media->getKey(),
             'mediaIds' => [$media->getKey()],
-        ]],
+        ],
     );
 
     expect($component->get('selectedIds'))->toBe([$media->getKey()])
@@ -1243,4 +1536,89 @@ it('keeps a successful multi Storage acquisition selected until explicit inserti
         ->and(data_get($component->get('panelData'), 'uploads'))->toHaveCount(1)
         ->and(data_get($component->get('panelData'), 'external_url'))
         ->toBe('https://cdn.example.test/preserved-after-storage.png');
+});
+
+it('renders the exact owner picker source and permanence contract in both locales', function (string $locale): void {
+    app()->setLocale($locale);
+    $this->actingAs(User::factory()->admin()->create());
+    $media = Media::factory()->create(['title' => 'Mixed תמונה & image']);
+    Storage::disk((string) $media->disk)->put((string) $media->path, 'image fixture');
+    $component = pickerPanel([
+        'selectedIds' => [$media->getKey()],
+        'isInlineOwnerWorkspace' => true,
+        'isOwnerChoice' => true,
+        'savedMediaId' => $media->getKey(),
+    ])
+        ->assertSee(__('admin.media_library.source_navigation'))
+        ->assertSee(__('admin.media_library.gallery_source'))
+        ->assertSee(__('admin.media_library.upload_source'))
+        ->assertSee(__('admin.media_library.url_source'))
+        ->assertSee(__('admin.media_library.storage_source'))
+        ->assertSee(__('admin.media_library.gallery_search_label'))
+        ->assertSee(__('admin.media_library.selected_count', ['count' => 1]))
+        ->assertSee(__('admin.media_library.current_image').': '.$media->title)
+        ->assertSee(__('admin.media_library.open_details'))
+        ->assertSee(__('admin.media_library.working'))
+        ->assertSee(__('admin.media_library.offline'))
+        ->assertDontSee('admin.media_library.', false);
+
+    app()->setLocale($locale);
+    $component
+        ->call('activateSource', 'upload')
+        ->assertSee(__('admin.media_library.acquisition_permanence_inline'))
+        ->assertSee(__('admin.media_library.inline_batch_help'))
+        ->assertSee(__('admin.media_library.upload_one_or_multiple'))
+        ->assertDontSee('admin.media_library.', false);
+
+    app()->setLocale($locale);
+    $component
+        ->call('activateSource', 'url')
+        ->assertSee(__('admin.media_library.url_field'))
+        ->assertSee(__('admin.media_library.url_help'))
+        ->assertSee(__('admin.media_library.add_and_choose'))
+        ->assertDontSee('admin.media_library.', false);
+
+    app()->setLocale($locale);
+    $component
+        ->call('activateSource', 'storage')
+        ->assertSee(__('admin.media_library.storage_search_label'))
+        ->assertSee(__('admin.media_library.refresh_storage'))
+        ->assertSee(__('admin.media_library.add_and_choose'))
+        ->assertDontSee('admin.media_library.', false);
+
+    expect($component->html())->toContain(e('Mixed תמונה & image'));
+})->with([
+    'Hebrew' => ['he'],
+    'English' => ['en'],
+]);
+
+it('keeps generic and owner picker layout contracts structurally separate', function (): void {
+    $this->actingAs(User::factory()->admin()->create());
+    $media = Media::factory()->create();
+    Storage::disk((string) $media->disk)->put((string) $media->path, 'image fixture');
+    $genericHtml = pickerPanel(['selectedIds' => [$media->getKey()]])->html();
+    $ownerHtml = pickerPanel([
+        'selectedIds' => [$media->getKey()],
+        'isInlineOwnerWorkspace' => true,
+        'isOwnerChoice' => true,
+        'savedMediaId' => $media->getKey(),
+    ])->html();
+
+    expect($genericHtml)
+        ->toContain('min-h-[70vh]')
+        ->toContain('xl:grid-cols-6')
+        ->toContain('data-testid="media-picker-footer"')
+        ->toContain('data-testid="media-picker-close"')
+        ->toContain(__('admin.media_library.context_media'))
+        ->toContain(__('admin.media_library.use_selected'))
+        ->not->toContain('podtext-owner-image-modal')
+        ->and($ownerHtml)
+        ->toContain('min-h-[60vh]')
+        ->toContain('grid grid-cols-2 gap-3')
+        ->toContain('xl:grid-cols-5')
+        ->not->toContain('xl:grid-cols-6')
+        ->not->toContain('data-testid="media-picker-footer"')
+        ->not->toContain('data-testid="media-picker-close"')
+        ->not->toContain(__('admin.media_library.context_media'))
+        ->not->toContain(__('admin.media_library.use_selected'));
 });

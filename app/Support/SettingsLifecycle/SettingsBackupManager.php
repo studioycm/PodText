@@ -16,6 +16,7 @@ use App\Support\Transcriptions\MultiTranscriptionSurfaces;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use RuntimeException;
+use Spatie\LaravelSettings\SettingsContainer;
 
 class SettingsBackupManager
 {
@@ -25,6 +26,7 @@ class SettingsBackupManager
         private readonly SettingsBackupSnapshotManager $snapshots,
         private readonly SettingsLifecycleSchema $schema,
         private readonly SettingsImportMergeEngine $mergeEngine,
+        private readonly PublicContentSettingsWriteCoordinator $writeCoordinator,
     ) {}
 
     /**
@@ -113,7 +115,8 @@ class SettingsBackupManager
 
         $this->validatePackageForRestore($package);
 
-        DB::transaction(function () use ($backup, $package, $user): void {
+        $this->writeCoordinator->transaction(function () use ($backup, $package, $user): void {
+            $this->forgetFreshSettingsInstance();
             $this->createBeforeRestore($backup, $user);
             $this->applyPayload($package->payloadForApplication(), $user);
         });
@@ -133,6 +136,27 @@ class SettingsBackupManager
     ): SettingsImportReport {
         $mode = SettingsImportMode::normalize($mode);
         $this->validatePackageForRestore($package);
+
+        return $this->writeCoordinator->transaction(fn (): SettingsImportReport => $this->importWithinCoordinatedTransaction(
+            $package,
+            $selectedPaths,
+            $user,
+            $mode,
+            $sourceLabel,
+        ));
+    }
+
+    /**
+     * @param  array<int, string>  $selectedPaths
+     */
+    private function importWithinCoordinatedTransaction(
+        PublicSettingsPackage $package,
+        array $selectedPaths,
+        ?User $user,
+        SettingsImportMode $mode,
+        ?string $sourceLabel,
+    ): SettingsImportReport {
+        $this->forgetFreshSettingsInstance();
         $analysis = app(SettingsPackageImportAnalyzer::class)->analyze($package, $mode);
 
         if ($analysis->refused()) {
@@ -142,31 +166,22 @@ class SettingsBackupManager
         $allowedPaths = $analysis->selectablePaths();
         $selectedPaths = app(SettingsMediaIdentityProjector::class)->expandSelectedPaths($selectedPaths);
         $selectedPaths = array_values(array_intersect($selectedPaths, $allowedPaths));
-        $appliedPaths = [];
-        $report = null;
+        $beforeImportBackup = $this->createBeforeImport($user);
+        $appliedPaths = $this->applySelectedPayload($package->payloadForApplication(), $selectedPaths, $mode, $user);
+        $report = SettingsImportReport::fromAnalysis(
+            analysis: $analysis,
+            selectedPaths: $selectedPaths,
+            appliedPaths: $appliedPaths,
+            beforeImportBackup: $beforeImportBackup,
+            mode: $mode,
+            sourceLabel: $sourceLabel,
+        );
 
-        DB::transaction(function () use ($analysis, $package, $selectedPaths, $user, $mode, $sourceLabel, &$appliedPaths, &$report): void {
-            $beforeImportBackup = $this->createBeforeImport($user);
-            $appliedPaths = $this->applySelectedPayload($package->payloadForApplication(), $selectedPaths, $mode, $user);
-            $report = SettingsImportReport::fromAnalysis(
-                analysis: $analysis,
-                selectedPaths: $selectedPaths,
-                appliedPaths: $appliedPaths,
-                beforeImportBackup: $beforeImportBackup,
-                mode: $mode,
-                sourceLabel: $sourceLabel,
-            );
-
-            $beforeImportBackup->update([
-                'import_report' => $report->toArray(),
-            ]);
-        });
+        $beforeImportBackup->update([
+            'import_report' => $report->toArray(),
+        ]);
 
         $this->forgetPublicFrontState();
-
-        if (! $report instanceof SettingsImportReport) {
-            throw new RuntimeException('The settings import report was not created.');
-        }
 
         return $report;
     }
@@ -258,6 +273,7 @@ class SettingsBackupManager
 
     private function applyPayload(array $payload, ?User $user): array
     {
+        $this->forgetFreshSettingsInstance();
         $settings = app(PublicContentSettings::class);
         $payload = MultiTranscriptionSurfaces::overlayUnauthorizedSettings(
             $this->normalizePayloadForApply($payload),
@@ -347,5 +363,11 @@ class SettingsBackupManager
         app()->forgetInstance(PublicContentSettings::class);
         app()->forgetInstance(PublicFrontRenderContext::class);
         app()->forgetInstance(PublicTranscriptionPolicy::class);
+    }
+
+    private function forgetFreshSettingsInstance(): void
+    {
+        app()->forgetInstance(PublicContentSettings::class);
+        app(SettingsContainer::class)->clearCache();
     }
 }

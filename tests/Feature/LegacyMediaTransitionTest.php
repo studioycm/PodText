@@ -16,9 +16,12 @@ use App\Support\Media\LegacyMediaTransitionExecutor;
 use App\Support\Media\LegacyMediaTransitionPlanner;
 use App\Support\Media\MediaFilesystemMutationCoordinator;
 use App\Support\PublicFront\PublicFrontConfigRegistry;
+use App\Support\SettingsLifecycle\PublicContentSettingsWriteCoordinator;
 use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Schema;
@@ -181,6 +184,60 @@ it('emits a stable raw settings token for a valid default-image legacy row', fun
 
     expect(DB::table('settings')->where('group', PublicContentSettings::group())->where('name', 'default_images')->exists())->toBeTrue()
         ->and($entry['active_references'])->not->toBeEmpty();
+});
+
+it('acquires the settings mutex before revalidating a legacy transition plan with settings snapshots', function (): void {
+    app()->instance(
+        PublicContentSettingsWriteCoordinator::class,
+        new PublicContentSettingsWriteCoordinator(waitSeconds: 0),
+    );
+    $media = legacyTransitionMedia(
+        legacyTransitionFixture('valid.jpg.base64'),
+        null,
+        ImageUploadPurpose::DefaultImage,
+    );
+    $defaults = PublicFrontConfigRegistry::defaults()['default_images'];
+    $defaults['global'] = [
+        'mode' => 'custom',
+        'path' => $media->path,
+        'media_reference_key' => null,
+    ];
+    DB::table('settings')->updateOrInsert(
+        ['group' => PublicContentSettings::group(), 'name' => 'default_images'],
+        [
+            'locked' => false,
+            'payload' => json_encode($defaults, JSON_THROW_ON_ERROR),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ],
+    );
+    $actor = User::factory()->admin()->create();
+    $manifest = app(LegacyMediaTransitionPlanner::class)->manifest();
+    $heldLock = Cache::lock(PublicContentSettingsWriteCoordinator::LOCK_KEY, 30);
+    expect($heldLock->get())->toBeTrue();
+
+    try {
+        expect(fn () => app(LegacyMediaTransitionExecutor::class)->apply(
+            [$media->getKey()],
+            $manifest->digest(),
+            $actor,
+        ))->toThrow(
+            LockTimeoutException::class,
+            'Timed out acquiring the public content settings write lock.',
+        );
+    } finally {
+        $heldLock->release();
+    }
+
+    $stored = json_decode((string) DB::table('settings')
+        ->where('group', PublicContentSettings::group())
+        ->where('name', 'default_images')
+        ->value('payload'), true, flags: JSON_THROW_ON_ERROR);
+
+    expect($media->fresh()->reference_key)->toBeNull()
+        ->and($stored['global']['path'])->toBe($media->path)
+        ->and($stored['global']['media_reference_key'])->toBeNull();
+    Storage::disk('public')->assertExists($media->path);
 });
 
 it('does not treat an arbitrary settings string containing a path as a media reference', function (): void {

@@ -1,13 +1,22 @@
 @php
-    $items = $getSelectedItems();
+    $isOwnerChoice = $isOwnerChoice();
+    $items = $isOwnerChoice ? [] : $getSelectedItems();
     $itemsCount = count($items);
     $isMultiple = $isMultiple();
     $maxItems = $getMaxItems();
     $isInlineOwnerWorkspace = $isInlineOwnerWorkspace();
+    $ownerChoicePresentation = $getOwnerChoicePresentation();
 @endphp
 
 <x-dynamic-component :component="$getFieldWrapperView()" :field="$field">
     <div class="w-full">
+        @if ($isOwnerChoice && $ownerChoicePresentation)
+            @include('filament.forms.components.owner-image-choice-state', [
+                'presentation' => $ownerChoicePresentation,
+            ])
+        @endif
+
+        @if (! $isOwnerChoice)
         <ul @class([
             'grid gap-4 sm:grid-cols-2' => $itemsCount > 0 && ! $isInlineOwnerWorkspace,
             'space-y-3' => $itemsCount > 0 && $isInlineOwnerWorkspace,
@@ -74,6 +83,7 @@
                 </li>
             @endforeach
         </ul>
+        @endif
 
         @if (! $isInlineOwnerWorkspace)
             <div @class(['mt-4' => $itemsCount > 0, 'flex items-center gap-3'])>
@@ -81,7 +91,7 @@
                     {{ $getAction('launchPanel') }}
                 @endif
 
-                @if ($itemsCount > 1)
+                @if (! $isOwnerChoice && $itemsCount > 1)
                     {{ $getAction('removeAll') }}
                 @endif
             </div>

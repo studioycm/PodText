@@ -4,7 +4,7 @@ namespace App\Filament\Actions;
 
 use App\Enums\MediaAttachmentRole;
 use App\Enums\MediaNamingStrategy;
-use App\Enums\Tb1PickerContainer;
+use App\Filament\Forms\Components\PathCuratorPicker;
 use App\Filament\Forms\MediaPickerField;
 use App\Jobs\DownloadExternalContentItemImage;
 use App\Jobs\ExportContentImagesZip;
@@ -14,20 +14,24 @@ use App\Models\User;
 use App\Settings\AdminUxSettings;
 use App\Support\Media\ImageFileNamer;
 use App\Support\Media\MediaAttachmentFormState;
+use App\Support\Media\OwnerImageChangedException;
+use App\Support\Media\OwnerImageChoicePresentation;
 use App\Support\Media\OwnerImagePresentation;
 use App\Support\Media\OwnerImagePresenter;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Select;
 use Filament\Notifications\Notification;
-use Filament\Schemas\Components\Tabs;
-use Filament\Schemas\Components\Tabs\Tab;
-use Filament\Schemas\Components\View as SchemaView;
 use Filament\Support\Enums\Width;
 use Filament\Support\Icons\Heroicon;
+use Illuminate\Contracts\Encryption\DecryptException;
+use Illuminate\Support\Facades\Crypt;
+use JsonException;
 
 class ContentImageActions
 {
+    private const OWNER_IMAGE_BASELINE_VERSION = 1;
+
     public static function contentGroupCover(): Action
     {
         return self::imagePickerAction(
@@ -125,147 +129,276 @@ class ContentImageActions
         string $helper,
         string $successTitle,
     ): Action {
-        $presentations = [];
-        $presentationFor = static function (ContentGroup|ContentItem $record) use (&$presentations, $role): OwnerImagePresentation {
-            $key = implode(':', [$record::class, $record->getKey(), $role->value]);
-
-            return $presentations[$key] ??= app(OwnerImagePresenter::class)->present($record, $role);
-        };
+        $presenter = app(OwnerImagePresenter::class);
+        $presentationFor = static fn (ContentGroup|ContentItem $record): OwnerImagePresentation => $presenter->present($record, $role);
         $picker = MediaPickerField::make($field, $family)
-            ->label($label)
-            ->helperText(fn (ContentGroup|ContentItem $record): string => app(MediaAttachmentFormState::class)->diagnostic($record, $role) !== null
+            ->label(fn (ContentGroup|ContentItem $record): string => self::ownerImageHeading(
+                $record,
+                $role,
+                $presentationFor($record),
+            ))
+            ->helperText(fn (ContentGroup|ContentItem $record): string => $presentationFor($record)->unsafeFingerprint !== null
                 ? __('admin.helpers.unsafe_legacy_media_repair')
                 : $helper)
             ->inlineOwnerWorkspace()
+            ->ownerChoice(fn (
+                PathCuratorPicker $component,
+                ContentGroup|ContentItem $record,
+            ): OwnerImageChoicePresentation => $presenter->choice(
+                $record,
+                $role,
+                $component->getState(),
+                [
+                    'commit' => self::ownerImageSubmitLabel($record, $role),
+                    'cancel' => __('admin.actions.cancel'),
+                    'admission' => __('admin.media_library.acquisition_permanence_inline'),
+                ],
+            ))
             ->columnSpanFull();
-
-        $action = Action::make($name)
-            ->label($label)
-            ->icon(Heroicon::OutlinedPhoto)
-            ->modalHeading(__('admin.owner_image.heading'))
-            ->modalDescription(__('admin.owner_image.description'))
-            ->modalWidth(Width::SevenExtraLarge)
-            ->modalAutofocus(false)
-            ->modalSubmitActionLabel(__('admin.owner_image.actions.change_image'))
-            ->fillForm(function (ContentGroup|ContentItem $record) use ($field, $presentationFor, $role): array {
+        $inlineWorkspace = $picker->getInlineWorkspaceComponent()
+            ->data(function (ContentGroup|ContentItem $record) use ($picker, $presentationFor, $role): array {
+                $state = $picker->getState();
                 $presentation = $presentationFor($record);
 
                 return [
-                    $field => app(MediaAttachmentFormState::class)->pickerIdentity($record, $role),
-                    'legacy_media_repair_fingerprint' => $presentation->unsafeFingerprint,
-                    'expected_media_id' => $presentation->expectedMediaId,
-                    'expected_legacy_path' => $presentation->expectedLegacyPath,
-                    'can_remove_direct' => $presentation->canRemoveDirect,
-                    'can_import_external' => $presentation->canImportExternal,
+                    'purpose' => $role->purpose()->value,
+                    'selectedIds' => is_int($state) || (is_string($state) && ctype_digit($state))
+                        ? [(int) $state]
+                        : [],
+                    'isMultiple' => false,
+                    'maxItems' => $picker->getMaxItems(),
+                    'isOwnerChoice' => true,
+                    'savedMediaId' => (int) ($presentation->media['id'] ?? 0) === $presentation->expectedMediaId
+                        ? $presentation->expectedMediaId
+                        : null,
+                    'isInlineOwnerWorkspace' => true,
+                ];
+            });
+
+        return Action::make($name)
+            ->label(fn (ContentGroup|ContentItem|null $record): string => $record === null
+                ? $label
+                : self::ownerImageHeading($record, $role, $presentationFor($record)))
+            ->icon(Heroicon::OutlinedPhoto)
+            ->extraAttributes(fn (ContentGroup|ContentItem|null $record): array => [
+                'data-owner-image-action' => $role->value,
+                'data-owner-image-state' => $record !== null && $presentationFor($record)->hasDirectAttachment
+                    ? 'change'
+                    : 'add',
+            ])
+            ->modalHeading(fn (ContentGroup|ContentItem $record): string => self::ownerImageHeading(
+                $record,
+                $role,
+                $presentationFor($record),
+            ))
+            ->modalDescription($helper)
+            ->modalWidth(Width::SevenExtraLarge)
+            ->modalAutofocus(false)
+            ->modalSubmitActionLabel(fn (ContentGroup|ContentItem $record): string => self::ownerImageSubmitLabel($record, $role))
+            ->stickyModalHeader()
+            ->stickyModalFooter()
+            ->extraModalWindowAttributes([
+                'class' => 'podtext-owner-image-modal',
+                'data-owner-image-modal' => 'true',
+            ])
+            ->fillForm(function (ContentGroup|ContentItem $record) use ($field, $name, $presentationFor, $presenter, $role): array {
+                $presentation = $presentationFor($record);
+
+                return [
+                    $field => $presenter->pickerIdentity($record, $role),
+                    'owner_image_baseline_token' => self::ownerImageBaselineToken(
+                        $record,
+                        $role,
+                        $name,
+                        $field,
+                        $presentation,
+                    ),
                 ];
             })
             ->schema([
-                Hidden::make('legacy_media_repair_fingerprint'),
-                Hidden::make('expected_media_id'),
-                Hidden::make('expected_legacy_path'),
-                Hidden::make('can_remove_direct'),
-                Hidden::make('can_import_external'),
-                Tabs::make(__('admin.owner_image.heading'))
-                    ->tabs([
-                        Tab::make(__('admin.owner_image.tabs.replace'))
-                            ->icon(Heroicon::OutlinedPhoto)
-                            ->extraAttributes([
-                                'data-testid' => 'owner-image-tab-replace',
-                            ])
-                            ->schema([
-                                $picker,
-                                $picker->getInlineWorkspaceComponent(),
-                            ]),
-                        Tab::make(__('admin.owner_image.tabs.details'))
-                            ->icon(Heroicon::OutlinedInformationCircle)
-                            ->extraAttributes([
-                                'data-testid' => 'owner-image-tab-details',
-                            ])
-                            ->schema([
-                                SchemaView::make('filament.actions.current-content-image')
-                                    ->viewData(fn (ContentGroup|ContentItem $record): array => [
-                                        'presentation' => $presentationFor($record),
-                                    ]),
-                            ]),
-                    ])
-                    ->extraAttributes([
-                        'data-testid' => 'owner-image-workspace-tabs',
-                    ])
-                    ->columnSpanFull(),
+                Hidden::make('owner_image_baseline_token'),
+                $picker,
+                $inlineWorkspace,
             ])
-            ->extraModalFooterActions(fn (Action $action): array => self::ownerImageFooterActions($action))
             ->action(function (
                 ContentGroup|ContentItem $record,
-                array $arguments,
                 array $data,
                 Action $action,
-            ) use ($field, $role, $successTitle): void {
+            ) use ($field, $name, $presenter, $role, $successTitle): void {
                 $actor = auth()->user();
                 abort_unless($actor instanceof User, 403);
-                $operation = is_string($arguments['operation'] ?? null)
-                    ? $arguments['operation']
-                    : 'change';
-                $fingerprint = is_string($data['legacy_media_repair_fingerprint'] ?? null)
-                    ? $data['legacy_media_repair_fingerprint']
-                    : null;
-                $expectedMediaId = is_numeric($data['expected_media_id'] ?? null)
-                    ? (int) $data['expected_media_id']
-                    : null;
-                $expectedLegacyPath = is_string($data['expected_legacy_path'] ?? null)
-                    ? $data['expected_legacy_path']
-                    : null;
                 $nestingIndex = $action->getNestingIndex() ?? 0;
                 $validationField = "mountedActions.{$nestingIndex}.data.{$field}";
-
-                if ($operation === 'remove') {
-                    if ($fingerprint !== null) {
-                        app(MediaAttachmentFormState::class)->detachUnsafe($record, $role, $fingerprint, $actor);
-                    } else {
-                        app(MediaAttachmentFormState::class)->detachDirectIfUnchanged(
-                            $record,
-                            $role,
-                            $actor,
-                            $expectedMediaId,
-                            $expectedLegacyPath,
-                            $validationField,
-                        );
-                    }
-
-                    Notification::make()
-                        ->success()
-                        ->title(__('admin.owner_image.notifications.automatic_image_enabled'))
-                        ->send();
-
-                    return;
-                }
-
-                if ($operation === 'import_external') {
-                    abort_unless($record instanceof ContentItem, 422);
-                    self::queueExternalImage($record, $actor, overwrite: false);
-
-                    return;
-                }
-
                 $referenceKey = is_string($data[$field] ?? null) ? $data[$field] : null;
-                app(MediaAttachmentFormState::class)->persist(
+                $baseline = self::ownerImageBaseline(
+                    $data['owner_image_baseline_token'] ?? null,
                     $record,
-                    $referenceKey,
                     $role,
                     $actor,
-                    $fingerprint,
-                    $validationField,
-                    $expectedMediaId,
-                    $expectedLegacyPath,
-                    enforceExpectedIdentity: true,
+                    $name,
+                    $field,
                 );
+
+                if ($baseline === null) {
+                    $action->getLivewire()->addError(
+                        $validationField,
+                        __('admin.validation.owner_image_baseline_invalid'),
+                    );
+                    $action->halt();
+
+                    return;
+                }
+
+                $fingerprint = $baseline['unsafe_fingerprint'];
+                $expectedMediaId = $baseline['expected_media_id'];
+                $expectedLegacyPath = $baseline['expected_legacy_path'];
+
+                try {
+                    if ($referenceKey === null && $expectedMediaId !== null && $fingerprint !== null) {
+                        app(MediaAttachmentFormState::class)->detachUnsafe(
+                            $record,
+                            $role,
+                            $fingerprint,
+                            $actor,
+                        );
+                    } else {
+                        app(MediaAttachmentFormState::class)->persist(
+                            $record,
+                            $referenceKey,
+                            $role,
+                            $actor,
+                            $fingerprint,
+                            $validationField,
+                            $expectedMediaId,
+                            $expectedLegacyPath,
+                            enforceExpectedIdentity: true,
+                        );
+                    }
+                } catch (OwnerImageChangedException) {
+                    $presenter->refresh($record, $role);
+                    $presentation = $presenter->choice(
+                        $record,
+                        $role,
+                        $referenceKey,
+                        [
+                            'commit' => self::ownerImageSubmitLabel($record, $role),
+                            'cancel' => __('admin.actions.cancel'),
+                            'admission' => __('admin.media_library.acquisition_permanence_inline'),
+                        ],
+                    );
+                    $livewire = $action->getLivewire();
+                    $livewire->mountedActions[$nestingIndex]['data']['owner_image_baseline_token'] = self::ownerImageBaselineToken(
+                        $record,
+                        $role,
+                        $name,
+                        $field,
+                        $presentation,
+                    );
+                    $currentEvidence = collect([
+                        $presentation->directMedia['label'] ?? null,
+                        $presentation->directMedia['reference_key'] ?? null,
+                    ])->filter()->implode(' · ');
+                    $livewire->addError(
+                        $validationField,
+                        implode(' ', array_filter([
+                            __('admin.validation.owner_image_changed'),
+                            $currentEvidence,
+                        ])),
+                    );
+                    $action->halt();
+                }
 
                 Notification::make()
                     ->success()
                     ->title($successTitle)
                     ->send();
             });
+    }
 
-        return self::applyConfiguredContainer($action);
+    private static function ownerImageBaselineToken(
+        ContentGroup|ContentItem $record,
+        MediaAttachmentRole $role,
+        string $action,
+        string $field,
+        OwnerImagePresentation|OwnerImageChoicePresentation $presentation,
+    ): string {
+        $actor = auth()->user();
+        abort_unless($actor instanceof User, 403);
+
+        return Crypt::encryptString(json_encode([
+            'v' => self::OWNER_IMAGE_BASELINE_VERSION,
+            'action' => $action,
+            'field' => $field,
+            'owner_type' => $record instanceof ContentGroup ? 'content_group' : 'content_item',
+            'owner_id' => (int) $record->getKey(),
+            'role' => $role->value,
+            'actor_id' => (int) $actor->getKey(),
+            'expected_media_id' => $presentation->expectedMediaId,
+            'expected_legacy_path' => $presentation->expectedLegacyPath,
+            'unsafe_fingerprint' => $presentation->unsafeFingerprint,
+        ], JSON_THROW_ON_ERROR));
+    }
+
+    /**
+     * @return array{expected_media_id: int|null, expected_legacy_path: string|null, unsafe_fingerprint: string|null}|null
+     */
+    private static function ownerImageBaseline(
+        mixed $token,
+        ContentGroup|ContentItem $record,
+        MediaAttachmentRole $role,
+        User $actor,
+        string $action,
+        string $field,
+    ): ?array {
+        if (! is_string($token) || blank($token)) {
+            return null;
+        }
+
+        try {
+            $payload = json_decode(
+                Crypt::decryptString($token),
+                true,
+                flags: JSON_THROW_ON_ERROR,
+            );
+        } catch (DecryptException|JsonException) {
+            return null;
+        }
+
+        if (! is_array($payload) || array_keys($payload) !== [
+            'v',
+            'action',
+            'field',
+            'owner_type',
+            'owner_id',
+            'role',
+            'actor_id',
+            'expected_media_id',
+            'expected_legacy_path',
+            'unsafe_fingerprint',
+        ]) {
+            return null;
+        }
+
+        if (
+            $payload['v'] !== self::OWNER_IMAGE_BASELINE_VERSION
+            || $payload['action'] !== $action
+            || $payload['field'] !== $field
+            || $payload['owner_type'] !== ($record instanceof ContentGroup ? 'content_group' : 'content_item')
+            || $payload['owner_id'] !== (int) $record->getKey()
+            || $payload['role'] !== $role->value
+            || $payload['actor_id'] !== (int) $actor->getKey()
+            || (! is_int($payload['expected_media_id']) && $payload['expected_media_id'] !== null)
+            || (! is_string($payload['expected_legacy_path']) && $payload['expected_legacy_path'] !== null)
+            || (! is_string($payload['unsafe_fingerprint']) && $payload['unsafe_fingerprint'] !== null)
+        ) {
+            return null;
+        }
+
+        return [
+            'expected_media_id' => $payload['expected_media_id'],
+            'expected_legacy_path' => $payload['expected_legacy_path'],
+            'unsafe_fingerprint' => $payload['unsafe_fingerprint'],
+        ];
     }
 
     public static function detachUnsafeOwnerImage(MediaAttachmentRole $role): Action
@@ -288,33 +421,6 @@ class ContentImageActions
                 app(MediaAttachmentFormState::class)->detachUnsafe($record, $role, $fingerprint, $actor);
                 Notification::make()->success()->title(__('admin.notifications.unsafe_media_detached_to_default'))->send();
             });
-    }
-
-    /**
-     * @return array<int, Action>
-     */
-    private static function ownerImageFooterActions(Action $action): array
-    {
-        $data = $action->getData();
-        $actions = [];
-
-        if ((bool) ($data['can_remove_direct'] ?? false)) {
-            $actions[] = $action
-                ->makeModalSubmitAction('removeDirectImage', ['operation' => 'remove'])
-                ->label(__('admin.owner_image.actions.use_automatic_image'))
-                ->icon(Heroicon::OutlinedLinkSlash)
-                ->color('warning');
-        }
-
-        if ((bool) ($data['can_import_external'] ?? false)) {
-            $actions[] = $action
-                ->makeModalSubmitAction('importExternalImage', ['operation' => 'import_external'])
-                ->label(__('admin.owner_image.actions.import_external'))
-                ->icon(Heroicon::OutlinedCloudArrowDown)
-                ->color('gray');
-        }
-
-        return $actions;
     }
 
     private static function queueExternalImage(ContentItem $record, User $actor, bool $overwrite): void
@@ -377,17 +483,35 @@ class ContentImageActions
             });
     }
 
-    private static function applyConfiguredContainer(Action $action): Action
-    {
-        try {
-            $container = Tb1PickerContainer::tryFrom(app(AdminUxSettings::class)->tb1_picker_container);
-        } catch (\Throwable) {
-            $container = Tb1PickerContainer::Modal;
-        }
+    private static function ownerImageHeading(
+        ContentGroup|ContentItem $record,
+        MediaAttachmentRole $role,
+        OwnerImagePresentation $presentation,
+    ): string {
+        return match (true) {
+            $record instanceof ContentGroup && $role === MediaAttachmentRole::Cover => __(
+                $presentation->hasDirectAttachment
+                    ? 'admin.owner_image.actions.change_podcast_cover'
+                    : 'admin.owner_image.actions.add_podcast_cover',
+            ),
+            $record instanceof ContentItem && $role === MediaAttachmentRole::PrimaryImage => __(
+                $presentation->hasDirectAttachment
+                    ? 'admin.owner_image.actions.change_episode_image'
+                    : 'admin.owner_image.actions.add_episode_image',
+            ),
+            default => throw new \InvalidArgumentException('The media attachment role is incompatible with this owner.'),
+        };
+    }
 
-        return $container === Tb1PickerContainer::SlideOver
-            ? $action->slideOver()
-            : $action;
+    private static function ownerImageSubmitLabel(
+        ContentGroup|ContentItem $record,
+        MediaAttachmentRole $role,
+    ): string {
+        return match (true) {
+            $record instanceof ContentGroup && $role === MediaAttachmentRole::Cover => __('admin.owner_image.actions.save_podcast_cover'),
+            $record instanceof ContentItem && $role === MediaAttachmentRole::PrimaryImage => __('admin.owner_image.actions.save_episode_image'),
+            default => throw new \InvalidArgumentException('The media attachment role is incompatible with this owner.'),
+        };
     }
 
     private static function defaultEgressNamingStrategy(): MediaNamingStrategy

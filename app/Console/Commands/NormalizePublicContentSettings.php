@@ -9,6 +9,7 @@ use App\Support\PublicFront\PublicFrontConfigRegistry;
 use App\Support\PublicFront\PublicFrontConfigResult;
 use App\Support\PublicFront\PublicFrontConfigValidator;
 use App\Support\PublicFront\PublicFrontRenderContext;
+use App\Support\SettingsLifecycle\PublicContentSettingsWriteCoordinator;
 use App\Support\SettingsLifecycle\PublicSettingsPackage;
 use App\Support\SettingsLifecycle\SettingsBackupManager;
 use App\Support\Transcriptions\MultiTranscriptionSurfaces;
@@ -26,6 +27,7 @@ class NormalizePublicContentSettings extends Command
         private readonly PublicFrontConfigValidator $validator,
         private readonly SettingsBackupManager $backups,
         private readonly PublicFrontConfigCache $cache,
+        private readonly PublicContentSettingsWriteCoordinator $writeCoordinator,
     ) {
         parent::__construct();
     }
@@ -53,23 +55,45 @@ class NormalizePublicContentSettings extends Command
             return self::SUCCESS;
         }
 
-        $backup = $this->backups->createSystem();
-        $settings = app(PublicContentSettings::class);
+        $apply = $this->writeCoordinator->transaction(function () use ($settingsKeys): array {
+            $this->forgetState();
+            $freshPayload = PublicSettingsPackage::fromCurrentSettings()->payload();
+            $freshSettingGroups = array_intersect_key($freshPayload, array_flip($settingsKeys));
+            $freshNormalizedGroups = $this->validator
+                ->validateGroups($freshSettingGroups, $settingsKeys)
+                ->config();
 
-        $normalizedGroups = MultiTranscriptionSurfaces::overlayUnauthorizedSettings(
-            $normalizedGroups,
-            PublicContentSettings::class,
-            null,
-        );
-
-        foreach ($normalizedGroups as $key => $value) {
-            if (property_exists($settings, $key)) {
-                $settings->{$key} = $value;
+            if (! $this->hasChanges($freshPayload, $freshNormalizedGroups, $settingsKeys)) {
+                return ['saved' => false, 'backup' => null];
             }
+
+            $backup = $this->backups->createSystem();
+            $settings = app(PublicContentSettings::class);
+            $freshNormalizedGroups = MultiTranscriptionSurfaces::overlayUnauthorizedSettings(
+                $freshNormalizedGroups,
+                PublicContentSettings::class,
+                null,
+            );
+
+            foreach ($freshNormalizedGroups as $key => $value) {
+                if (property_exists($settings, $key)) {
+                    $settings->{$key} = $value;
+                }
+            }
+
+            $settings->save();
+
+            return ['saved' => true, 'backup' => $backup];
+        });
+
+        if (! $apply['saved']) {
+            $this->components->info('No public content JSON settings changes to apply.');
+
+            return self::SUCCESS;
         }
 
-        $settings->save();
         $this->forgetState();
+        $backup = $apply['backup'];
 
         if ($backup instanceof SettingsBackupVersion) {
             $this->components->info("Created system backup #{$backup->getKey()}.");
