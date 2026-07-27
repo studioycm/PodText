@@ -27,6 +27,7 @@ use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Http;
@@ -1621,4 +1622,59 @@ it('keeps generic and owner picker layout contracts structurally separate', func
         ->not->toContain('data-testid="media-picker-close"')
         ->not->toContain(__('admin.media_library.context_media'))
         ->not->toContain(__('admin.media_library.use_selected'));
+});
+
+it('filters the owner gallery by directory with validation, paging reset, and an empty state', function (): void {
+    $this->actingAs(User::factory()->admin()->create());
+    $cover = Media::factory()->create(['directory' => 'content-groups/covers', 'title' => 'Cover A']);
+    $headerLogo = Media::factory()->create(['directory' => 'header', 'title' => 'Header logo']);
+    $rootSpare = Media::factory()->create(['directory' => '', 'title' => 'Root spare']);
+
+    $component = pickerPanel(['isOwnerChoice' => true, 'savedMediaId' => null]);
+
+    expect(collect($component->instance()->files)->pluck('id')->all())
+        ->toContain($cover->getKey())
+        ->toContain($headerLogo->getKey())
+        ->toContain($rootSpare->getKey())
+        ->and($component->instance()->directoryOptions())
+        ->toHaveKeys(['content-groups/covers', 'header', '__root__']);
+
+    $component
+        ->assertSee('data-testid="media-picker-directory-filter"', false)
+        ->set('directoryFilter', 'header')
+        ->assertSet('directoryFilter', 'header')
+        ->assertSet('currentPage', 1);
+    expect(collect($component->instance()->files)->pluck('id')->all())
+        ->toBe([$headerLogo->getKey()]);
+
+    $component->set('directoryFilter', '__root__');
+    expect(collect($component->instance()->files)->pluck('id')->all())
+        ->toBe([$rootSpare->getKey()]);
+
+    $component->set('directoryFilter', '../etc')->assertSet('directoryFilter', '');
+    expect(collect($component->instance()->files)->pluck('id')->all())->toHaveCount(3);
+
+    $component->set('directoryFilter', 'header');
+    DB::table('curator')
+        ->where('id', $headerLogo->getKey())
+        ->update(['directory' => 'moved-elsewhere']);
+    $component->call('showAllMedia')
+        ->assertSee(__('admin.media_library.empty_directory'));
+});
+
+it('shows the directory filter only when browsing all media outside owner choice', function (): void {
+    $this->actingAs(User::factory()->admin()->create());
+    Media::factory()->create(['directory' => 'header', 'title' => 'Header logo']);
+
+    $component = pickerPanel();
+    $component->assertDontSee('data-testid="media-picker-directory-filter"', false);
+
+    $component->call('showAllMedia')
+        ->assertSee('data-testid="media-picker-directory-filter"', false)
+        ->set('directoryFilter', 'header')
+        ->assertSet('directoryFilter', 'header');
+
+    $component->call('showContextMedia')
+        ->assertSet('directoryFilter', '')
+        ->assertDontSee('data-testid="media-picker-directory-filter"', false);
 });

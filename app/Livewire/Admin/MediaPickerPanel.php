@@ -56,6 +56,8 @@ class MediaPickerPanel extends Component implements HasActions, HasSchemas
 
     private const SOURCES = ['gallery', 'upload', 'url', 'storage'];
 
+    private const ROOT_DIRECTORY_FILTER = '__root__';
+
     #[Locked]
     public string $purpose;
 
@@ -89,6 +91,8 @@ class MediaPickerPanel extends Component implements HasActions, HasSchemas
     public array $panelData = [];
 
     public string $search = '';
+
+    public string $directoryFilter = '';
 
     public string $storageSearch = '';
 
@@ -229,6 +233,36 @@ class MediaPickerPanel extends Component implements HasActions, HasSchemas
         $this->reloadFiles();
     }
 
+    public function updatedDirectoryFilter(): void
+    {
+        if ($this->directoryFilter !== '' && ! array_key_exists($this->directoryFilter, $this->directoryOptions())) {
+            $this->directoryFilter = '';
+        }
+
+        $this->currentPage = 1;
+        $this->reloadFiles();
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public function directoryOptions(): array
+    {
+        return once(fn (): array => app(MediaRecordScope::class)
+            ->inventoryQuery()
+            ->select('directory')
+            ->distinct()
+            ->orderBy('directory')
+            ->pluck('directory')
+            ->map(fn (?string $directory): string => (string) $directory)
+            ->unique()
+            ->values()
+            ->mapWithKeys(fn (string $directory): array => $directory === ''
+                ? [self::ROOT_DIRECTORY_FILTER => __('admin.media_library.root_directory')]
+                : [$directory => $directory])
+            ->all());
+    }
+
     public function showAllMedia(): void
     {
         $this->allMedia = true;
@@ -251,6 +285,7 @@ class MediaPickerPanel extends Component implements HasActions, HasSchemas
         abort_if($this->isOwnerChoice, 422);
 
         $this->allMedia = false;
+        $this->directoryFilter = '';
         $this->currentPage = 1;
         $this->reloadFiles();
     }
@@ -775,6 +810,12 @@ class MediaPickerPanel extends Component implements HasActions, HasSchemas
             ->when(
                 ! $this->isOwnerChoice && ! $this->allMedia,
                 fn (Builder $query): Builder => $query->where('directory', $this->uploadPurpose()->root()),
+            )
+            ->when(
+                $this->directoryFilter !== '' && ($this->isOwnerChoice || $this->allMedia),
+                fn (Builder $query): Builder => $this->directoryFilter === self::ROOT_DIRECTORY_FILTER
+                    ? $query->where(fn (Builder $query): Builder => $query->whereNull('directory')->orWhere('directory', ''))
+                    : $query->where('directory', $this->directoryFilter),
             )
             ->select([
                 'id', 'reference_key', 'name', 'path', 'title', 'alt', 'ext', 'size', 'width', 'height', 'created_at',

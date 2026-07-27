@@ -162,6 +162,27 @@
                         />
                     </x-filament::input.wrapper>
                 </div>
+                @if ($isOwnerChoice || $allMedia)
+                    <div wire:loading.attr="inert">
+                        <label for="media-picker-directory-filter" class="sr-only">
+                            {{ __('admin.media_library.directory_filter_label') }}
+                        </label>
+                        <x-filament::input.wrapper>
+                            <x-filament::input.select
+                                id="media-picker-directory-filter"
+                                data-testid="media-picker-directory-filter"
+                                wire:model.live="directoryFilter"
+                                wire:loading.attr="disabled"
+                                wire:offline.attr="disabled"
+                            >
+                                <option value="">{{ __('admin.media_library.all_media') }}</option>
+                                @foreach ($this->directoryOptions() as $value => $label)
+                                    <option value="{{ $value }}" dir="ltr">{{ $label }}</option>
+                                @endforeach
+                            </x-filament::input.select>
+                        </x-filament::input.wrapper>
+                    </div>
+                @endif
                 <span
                     class="text-sm text-gray-500"
                     role="status"
@@ -330,6 +351,18 @@
                                 wire:offline.attr="disabled"
                             >
                                 {{ __('admin.media_library.clear_search') }}
+                            </x-filament::button>
+                        @elseif ($directoryFilter !== '')
+                            <p>{{ __('admin.media_library.empty_directory') }}</p>
+                            <x-filament::button
+                                class="mt-3"
+                                size="xs"
+                                color="gray"
+                                wire:click="$set('directoryFilter', '')"
+                                wire:loading.attr="disabled"
+                                wire:offline.attr="disabled"
+                            >
+                                {{ __('admin.media_library.all_media') }}
                             </x-filament::button>
                         @elseif (! $allMedia)
                             <p>{{ __('admin.media_library.empty_context') }}</p>

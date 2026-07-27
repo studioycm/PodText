@@ -41,14 +41,35 @@ Recorded after the Markdown-only post-Prompt-10 prompt-progress centralization c
   consolidation remain separately reviewed and must not overlap an
   implementation write phase.
 - **Current gate:** Mini-task 3A implementation is complete locally under its
-  accepted audits/options. Its first operator outcome review produced the
-  approved OR1 presentation correction, now implemented under the separate
-  entry below. Stop for continued operator review and 3A closure. Mini-task 3B
-  has not started and receives no research, design, audit or implementation
-  authority until the operator reviews and closes 3A.
+  accepted audits/options. Its operator outcome review produced the approved
+  OR1 and OR2 presentation corrections, both implemented under the separate
+  entries below. The operator selected the continuation sequence OR2 → 3B →
+  3C → replanned Mini-task 4 → Package 5, followed by a revision of the
+  paused non-media queues, with bounded TDD (stash-baseline environment
+  attribution, time-boxed failure chases, known-environmental ledger). Upon
+  operator review of OR2, the 3A gate closes and Mini-task 3B UX research
+  begins.
 
 ## Git State
 
+- Media Operations UX3 Mini-task 3A outcome-review correction OR2 is complete
+  locally under the same design-review artifact as OR1
+  (`LS-20260728-PODTEXT-MEDIA-OPS-UX3-M3A-OR1`, OR2 section) and operator
+  selection `OR2 first, then 3B`. It started from clean `main` at
+  `841f8a8` (OR1 docs backfill), 39 commits ahead of `origin/main`. Its
+  implementation hash is backfilled in the follow-up docs commit. The gallery
+  toolbar gains one native folder select whose resting value «כל המדיה»
+  states the owner gallery's true whole-library scope and, when changed,
+  filters by directory: options are the distinct inventory directories with a
+  root sentinel, tampered values reset to all, changing the filter resets to
+  page one and recounts pagination, search composes with the filter, the
+  non-owner picker shows the select only in All-Media mode and clears it on
+  return to context mode, and a filtered-empty state offers a one-click
+  return to all media. Three new HE+EN keys (`directory_filter_label`,
+  `root_directory`, `empty_directory`) joined the translation-parity list.
+  No schema, dependency, settings or authority change. The 10-per-batch
+  upload limit stays a settings decision (raisable to 20); lifting the 20
+  ceiling is routed to Mini-task 3B per F019/F020.
 - Media Operations UX3 Mini-task 3A outcome-review correction OR1 is complete
   locally under design review `LS-20260728-PODTEXT-MEDIA-OPS-UX3-M3A-OR1`
   (ux-design-thinking lens-lint review) and operator approval `approve OR1`
