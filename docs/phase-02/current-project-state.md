@@ -54,10 +54,11 @@ Recorded after the Markdown-only post-Prompt-10 prompt-progress centralization c
   `docs/phase-02/media-operations-ux3-mini3a-owner-image-choice-and-commit-handoff.md`.
   It started from `main` at
   `576f5ada925d035baef75615f24d0fc9f8c7aa06`, 35 commits ahead of
-  `origin/main`. Implementation hash: pending canonical implementation
-  commit. Owner actions, full forms, workspaces, relation-manager Create/Edit
-  and public Settings image slots now share direct/shown/pending truth and the
-  correct prepare/persist/rollback lifecycle. All Media remains complete,
+  `origin/main`. Its implementation is
+  `6da7fda62e59c515b2fccc7a9108d814300d313b`. Owner actions, full forms,
+  workspaces, relation-manager Create/Edit and public Settings image slots now
+  share direct/shown/pending truth and the correct prepare/persist/rollback
+  lifecycle. All Media remains complete,
   Gallery choice remains mutation-free, admitted Media remains permanent,
   Cancel remains an owner no-op, and attachment/file-location authorities are
   unchanged. Root settings lifecycle, nested identity, coordinated-writer and

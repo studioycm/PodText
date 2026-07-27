@@ -550,4 +550,4 @@ focused outcome is retained.
 
 ## Commit hash
 
-Pending canonical implementation commit.
+`6da7fda62e59c515b2fccc7a9108d814300d313b`
