@@ -57,7 +57,7 @@ Recorded after the Markdown-only post-Prompt-10 prompt-progress centralization c
   (`LS-20260728-PODTEXT-MEDIA-OPS-UX3-M3A-OR1`, OR2 section) and operator
   selection `OR2 first, then 3B`. It started from clean `main` at
   `841f8a8` (OR1 docs backfill), 39 commits ahead of `origin/main`. Its
-  implementation hash is backfilled in the follow-up docs commit. The gallery
+  implementation is `c9152b386bd0c1a2a17586df64ebc02ccbbc3b4a`. The gallery
   toolbar gains one native folder select whose resting value «כל המדיה»
   states the owner gallery's true whole-library scope and, when changed,
   filters by directory: options are the distinct inventory directories with a
