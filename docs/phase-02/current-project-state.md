@@ -55,8 +55,8 @@ Recorded after the Markdown-only post-Prompt-10 prompt-progress centralization c
   covering phases P1 (gallery-scoped chrome and duplicate removal) and P2
   (compact owner choice strip). It started from clean `main` at
   `07b7eab8be1d9207705fedec02e19c7754a3d70c`, 37 commits ahead of
-  `origin/main`. Its implementation hash is backfilled in the follow-up docs
-  commit. The owner Change-Image surface now scopes gallery search, the
+  `origin/main`. Its implementation is
+  `b641f60fe55930d2b894ac907dfe549c9a9e35a0`. The owner Change-Image surface now scopes gallery search, the
   selected-count live region and pagination inside the Gallery tab, removes
   the panel header row in the inline owner workspace, renders the owner
   heading and helper once each, keeps the acquisition permanence sentence only
