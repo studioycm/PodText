@@ -67,7 +67,7 @@ class OwnerImagePresenter
     }
 
     /**
-     * @param  array{commit: string, cancel: string, admission: string}  $commitBoundary
+     * @param  array{commit: string, cancel: string, admission?: string}  $commitBoundary
      */
     public function choice(
         ContentGroup|ContentItem $owner,

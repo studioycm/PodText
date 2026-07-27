@@ -137,6 +137,7 @@ class ContentImageActions
                 $role,
                 $presentationFor($record),
             ))
+            ->hiddenLabel()
             ->helperText(fn (ContentGroup|ContentItem $record): string => $presentationFor($record)->unsafeFingerprint !== null
                 ? __('admin.helpers.unsafe_legacy_media_repair')
                 : $helper)
@@ -151,7 +152,6 @@ class ContentImageActions
                 [
                     'commit' => self::ownerImageSubmitLabel($record, $role),
                     'cancel' => __('admin.actions.cancel'),
-                    'admission' => __('admin.media_library.acquisition_permanence_inline'),
                 ],
             ))
             ->columnSpanFull();
@@ -191,7 +191,6 @@ class ContentImageActions
                 $role,
                 $presentationFor($record),
             ))
-            ->modalDescription($helper)
             ->modalWidth(Width::SevenExtraLarge)
             ->modalAutofocus(false)
             ->modalSubmitActionLabel(fn (ContentGroup|ContentItem $record): string => self::ownerImageSubmitLabel($record, $role))
@@ -283,7 +282,6 @@ class ContentImageActions
                         [
                             'commit' => self::ownerImageSubmitLabel($record, $role),
                             'cancel' => __('admin.actions.cancel'),
-                            'admission' => __('admin.media_library.acquisition_permanence_inline'),
                         ],
                     );
                     $livewire = $action->getLivewire();

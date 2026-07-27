@@ -8,7 +8,7 @@ readonly class OwnerImageChoicePresentation
      * @param  array{id: int, reference_key: string, label: string, preview_url: string|null, details_url: string|null}|null  $directMedia
      * @param  array{id: int, reference_key: string, label: string, preview_url: string|null, details_url: string|null}|null  $shownNowMedia
      * @param  array{id: int, reference_key: string, label: string, preview_url: string|null, details_url: string|null}|null  $pendingMedia
-     * @param  array{commit: string, cancel: string, admission: string}  $commitBoundary
+     * @param  array{commit: string, cancel: string, admission?: string}  $commitBoundary
      * @param  array<int, string>  $warningCodes
      */
     public function __construct(

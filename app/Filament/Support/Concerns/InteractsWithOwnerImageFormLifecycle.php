@@ -136,7 +136,6 @@ trait InteractsWithOwnerImageFormLifecycle
             [
                 'commit' => __('admin.actions.save'),
                 'cancel' => __('admin.actions.cancel'),
-                'admission' => __('admin.media_library.acquisition_permanence_inline'),
             ],
         );
 

@@ -124,7 +124,6 @@ class ContentItemForm
                                 [
                                     'commit' => __('admin.actions.save'),
                                     'cancel' => __('admin.actions.cancel'),
-                                    'admission' => __('admin.media_library.acquisition_permanence_inline'),
                                 ],
                             ))
                             ->afterStateUpdated(fn (Set $set, mixed $state): mixed => $set('relation_owner_image_pending_identity', $state))

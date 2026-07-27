@@ -56,6 +56,7 @@
     x-bind:inert="returningSelection"
     wire:loading.attr="aria-busy"
 >
+    @if (! ($isOwnerChoice && $isInlineOwnerWorkspace))
     <div
         data-testid="media-picker-header"
         class="sticky top-0 z-20 flex flex-wrap items-center justify-between gap-3 border-b border-gray-200 bg-white px-4 py-3 dark:border-gray-800 dark:bg-gray-900"
@@ -82,77 +83,21 @@
                 {{ __('admin.media_library.all_media') }}
             </x-filament::button>
             @endif
-            @if ($currentPage > 1 && blank($search))
-                <x-filament::button
-                    size="xs"
-                    color="gray"
-                    wire:click="loadPreviousFiles"
-                    wire:loading.attr="disabled"
-                    wire:offline.attr="disabled"
-                >
-                    {{ __('admin.media_library.previous_page') }}
-                </x-filament::button>
-            @endif
-            @if ($currentPage < $lastPage && blank($search))
-                <x-filament::button
-                    size="xs"
-                    color="gray"
-                    wire:click="loadMoreFiles"
-                    wire:loading.attr="disabled"
-                    wire:offline.attr="disabled"
-                >
-                    {{ __('admin.media_library.next_page') }}
-                </x-filament::button>
-            @endif
-            @if ($lastPage > 1 && blank($search))
-                <span class="text-sm text-gray-500">
-                    {{ __('admin.media_library.page_count', ['current' => $currentPage, 'last' => $lastPage]) }}
-                </span>
-            @endif
-            <span
-                class="text-sm text-gray-500"
-                role="status"
-                aria-live="polite"
-                aria-atomic="true"
-                data-testid="media-picker-selected-count"
-            >
-                {{ __('admin.media_library.selected_count', ['count' => count($selectedIds)]) }}
-            </span>
         </div>
 
-        <div
-            class="flex min-w-0 basis-full flex-1 items-center justify-end gap-3 sm:basis-auto sm:flex-initial"
-            wire:loading.attr="inert"
-        >
-            <div class="min-w-0 flex-1 sm:w-64">
-                <label for="media-picker-gallery-search" class="sr-only">
-                    {{ __('admin.media_library.gallery_search_label') }}
-                </label>
-                <x-filament::input.wrapper prefix-icon="heroicon-s-magnifying-glass">
-                    <x-filament::input
-                        id="media-picker-gallery-search"
-                        data-testid="media-picker-gallery-search"
-                        type="search"
-                        :placeholder="__('admin.media_library.search')"
-                        wire:model.live.debounce.400ms="search"
-                        wire:loading.attr="disabled"
-                        wire:offline.attr="disabled"
-                    />
-                </x-filament::input.wrapper>
-            </div>
-            @if (! $isInlineOwnerWorkspace)
-                <x-filament::icon-button
-                    data-testid="media-picker-close"
-                    x-on:click="$dispatch('close-media-picker')"
-                    x-bind:aria-disabled="(uploading || returningSelection) ? 'true' : null"
-                    x-bind:disabled="uploading || returningSelection"
-                    icon="heroicon-o-x-mark"
-                    color="gray"
-                    :label="__('admin.actions.close')"
-                />
-            @endif
-        </div>
+        @if (! $isInlineOwnerWorkspace)
+            <x-filament::icon-button
+                data-testid="media-picker-close"
+                x-on:click="$dispatch('close-media-picker')"
+                x-bind:aria-disabled="(uploading || returningSelection) ? 'true' : null"
+                x-bind:disabled="uploading || returningSelection"
+                icon="heroicon-o-x-mark"
+                color="gray"
+                :label="__('admin.actions.close')"
+            />
+        @endif
     </div>
+    @endif
 
     @if ($isOwnerChoice)
         <x-filament::tabs
@@ -193,7 +138,67 @@
             data-testid="media-picker-gallery"
             x-bind:inert="uploading"
         >
-            <h2 class="mb-3 font-semibold">{{ __('admin.media_library.gallery_source') }}</h2>
+            @unless ($isOwnerChoice)
+                <h2 class="mb-3 font-semibold">{{ __('admin.media_library.gallery_source') }}</h2>
+            @endunless
+
+            <div
+                data-testid="media-picker-gallery-toolbar"
+                class="mb-3 flex flex-wrap items-center gap-3"
+            >
+                <div class="min-w-0 flex-1 sm:max-w-64" wire:loading.attr="inert">
+                    <label for="media-picker-gallery-search" class="sr-only">
+                        {{ __('admin.media_library.gallery_search_label') }}
+                    </label>
+                    <x-filament::input.wrapper prefix-icon="heroicon-s-magnifying-glass">
+                        <x-filament::input
+                            id="media-picker-gallery-search"
+                            data-testid="media-picker-gallery-search"
+                            type="search"
+                            :placeholder="__('admin.media_library.search')"
+                            wire:model.live.debounce.400ms="search"
+                            wire:loading.attr="disabled"
+                            wire:offline.attr="disabled"
+                        />
+                    </x-filament::input.wrapper>
+                </div>
+                <span
+                    class="text-sm text-gray-500"
+                    role="status"
+                    aria-live="polite"
+                    aria-atomic="true"
+                    data-testid="media-picker-selected-count"
+                >
+                    {{ __('admin.media_library.selected_count', ['count' => count($selectedIds)]) }}
+                </span>
+                @if ($currentPage > 1 && blank($search))
+                    <x-filament::button
+                        size="xs"
+                        color="gray"
+                        wire:click="loadPreviousFiles"
+                        wire:loading.attr="disabled"
+                        wire:offline.attr="disabled"
+                    >
+                        {{ __('admin.media_library.previous_page') }}
+                    </x-filament::button>
+                @endif
+                @if ($currentPage < $lastPage && blank($search))
+                    <x-filament::button
+                        size="xs"
+                        color="gray"
+                        wire:click="loadMoreFiles"
+                        wire:loading.attr="disabled"
+                        wire:offline.attr="disabled"
+                    >
+                        {{ __('admin.media_library.next_page') }}
+                    </x-filament::button>
+                @endif
+                @if ($lastPage > 1 && blank($search))
+                    <span class="text-sm text-gray-500">
+                        {{ __('admin.media_library.page_count', ['current' => $currentPage, 'last' => $lastPage]) }}
+                    </span>
+                @endif
+            </div>
             <ul @class([
                 'grid grid-cols-2 gap-3',
                 'sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5' => $isOwnerChoice,

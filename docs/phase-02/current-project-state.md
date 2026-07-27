@@ -41,12 +41,39 @@ Recorded after the Markdown-only post-Prompt-10 prompt-progress centralization c
   consolidation remain separately reviewed and must not overlap an
   implementation write phase.
 - **Current gate:** Mini-task 3A implementation is complete locally under its
-  accepted audits/options. Stop for operator outcome review. Mini-task 3B has
-  not started and receives no research, design, audit or implementation
+  accepted audits/options. Its first operator outcome review produced the
+  approved OR1 presentation correction, now implemented under the separate
+  entry below. Stop for continued operator review and 3A closure. Mini-task 3B
+  has not started and receives no research, design, audit or implementation
   authority until the operator reviews and closes 3A.
 
 ## Git State
 
+- Media Operations UX3 Mini-task 3A outcome-review correction OR1 is complete
+  locally under design review `LS-20260728-PODTEXT-MEDIA-OPS-UX3-M3A-OR1`
+  (ux-design-thinking lens-lint review) and operator approval `approve OR1`
+  covering phases P1 (gallery-scoped chrome and duplicate removal) and P2
+  (compact owner choice strip). It started from clean `main` at
+  `07b7eab8be1d9207705fedec02e19c7754a3d70c`, 37 commits ahead of
+  `origin/main`. Its implementation hash is backfilled in the follow-up docs
+  commit. The owner Change-Image surface now scopes gallery search, the
+  selected-count live region and pagination inside the Gallery tab, removes
+  the panel header row in the inline owner workspace, renders the owner
+  heading and helper once each, keeps the acquisition permanence sentence only
+  in the acquisition aside, and compresses the three choice-state cards into
+  one compact strip with an inline shown-now thumbnail and a single details
+  link. Direct/shown/pending truth, broken-state evidence, commit/cancel
+  boundary wording, restore and automatic actions, every choice-state and
+  picker testid, and mixed-direction isolation remain unchanged; the
+  `commitBoundary` admission label became optional and unused, and one dead
+  owner-modal header CSS rule was removed with its stylesheet-contract
+  assertion. Pint, FilaCheck (0 issues), Vite and the full 1,415-test /
+  17,101-assertion suite passed except four browser tests that fail
+  identically on clean `main` in this macOS environment (stash-baseline
+  attribution run: no new and no fixed browser failures versus baseline),
+  with a trailing light Laravel-simplifier pass over the touched files.
+  3B, 3C, Mini-task 4, Package 5, dependency/schema/production work and
+  push were not started.
 - Media Operations UX3 Mini-task 3A is complete locally under primary audit
   `LS-20260726-PODTEXT-MEDIA-OPERATIONS-UX3-M3A-01` and option
   `MEDIA-OPS-UX3-M3A-O1-CANONICAL-MODAL-SHARED-OWNER-LIFECYCLE`, with the

@@ -30,10 +30,6 @@
     max-inline-size: 100%;
 }
 
-.podtext-owner-image-modal [data-testid='media-picker-header'] {
-    position: static;
-}
-
 .podtext-owner-image-modal [data-testid='media-picker-gallery'],
 .podtext-owner-image-modal [data-testid='media-picker-gallery'] + aside {
     overflow: visible;

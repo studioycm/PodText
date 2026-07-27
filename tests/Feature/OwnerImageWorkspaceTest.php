@@ -1548,7 +1548,7 @@ it('configures one owner specific canonical modal with one state then source sch
 
         expect($action?->getLabel())->toBe($heading)
             ->and($action?->getModalHeading())->toBe($heading)
-            ->and($action?->getModalDescription())->toBe($description)
+            ->and($action?->getModalDescription())->toBeNull()
             ->and($action?->getModalSubmitAction()?->getLabel())->toBe($submitLabel)
             ->and($action?->getModalWidth())->toBe(Width::SevenExtraLarge)
             ->and($action?->isModalSlideOver())->toBeFalse()
@@ -1561,6 +1561,8 @@ it('configures one owner specific canonical modal with one state then source sch
             ->and($action?->getExtraModalFooterActions())->toBe([])
             ->and($visibleComponents)->toHaveCount(2)
             ->and($visibleComponents[0])->toBeInstanceOf(PathCuratorPicker::class)
+            ->and($visibleComponents[0]->isLabelHidden())->toBeTrue()
+            ->and(substr_count($component->getMountedActionModalHtml(), e($description)))->toBe(1)
             ->and($visibleComponents[1])->toBeInstanceOf(LivewireSchemaComponent::class)
             ->and($visibleComponents)->each(
                 fn ($component): mixed => $component->not->toBeInstanceOf(Tabs::class),
@@ -3126,15 +3128,14 @@ it('renders direct shown pending and commit boundary state from real owner evide
         ->assertMountedActionModalSee('data-testid="owner-image-pending-state"', false)
         ->assertMountedActionModalSee(__("admin.owner_image.choice.direct_states.{$expectedDirectState}"))
         ->assertMountedActionModalSee(__("admin.owner_image.sources.{$expectedShownSource}"))
-        ->assertMountedActionModalSee(__("admin.owner_image.choice.pending_states.{$expectedPendingState}"))
-        ->assertMountedActionModalSee(__('admin.media_library.acquisition_permanence_inline'));
+        ->assertMountedActionModalSee(__("admin.owner_image.choice.pending_states.{$expectedPendingState}"));
     $modalHtml = $component->getMountedActionModalHtml();
     $boundaryHtml = taskEightElementHtml($modalHtml, 'owner-image-commit-boundary');
 
     expect($boundaryHtml)
         ->toContain(e(__('admin.owner_image.choice.commit_boundary.commit', ['action' => $submitLabel])))
         ->toContain(e(__('admin.owner_image.choice.commit_boundary.cancel', ['action' => $cancelLabel])))
-        ->toContain(e(__('admin.media_library.acquisition_permanence_inline')));
+        ->not->toContain(e(__('admin.media_library.acquisition_permanence_inline')));
 
     if ($state === 'replacement') {
         $component->assertMountedActionModalSee('Replacement mixed תמונה');
@@ -3193,7 +3194,6 @@ it('declares only the scoped owner modal responsive stylesheet contract', functi
     expect($css)
         ->toContain('.fi-modal-window.podtext-owner-image-modal')
         ->toContain(".podtext-owner-image-modal [data-testid='media-picker']")
-        ->toContain(".podtext-owner-image-modal [data-testid='media-picker-header']")
         ->toContain(".podtext-owner-image-modal [data-testid='media-picker-gallery'] + aside")
         ->toContain('@media (max-width: 40rem)')
         ->toContain('inline-size: 100%')
