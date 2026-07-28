@@ -42,13 +42,16 @@ Recorded after the Markdown-only post-Prompt-10 prompt-progress centralization c
   implementation write phase.
 - **Current gate:** Mini-task 3A implementation is complete locally under its
   accepted audits/options. Its operator outcome review produced the approved
-  OR1 and OR2 presentation corrections, both implemented under the separate
-  entries below. The operator selected the continuation sequence OR2 → 3B →
-  3C → replanned Mini-task 4 → Package 5, followed by a revision of the
-  paused non-media queues, with bounded TDD (stash-baseline environment
-  attribution, time-boxed failure chases, known-environmental ledger). Upon
-  operator review of OR2, the 3A gate closes and Mini-task 3B UX research
-  begins.
+  OR1 through OR6 corrections, all implemented, committed and pushed
+  (`07b7eab..cc5c294`). The operator closed the 3A outcome review on
+  2026-07-28 («looks great» plus push approval). The selected continuation
+  sequence is 3B → 3C → replanned Mini-task 4 → Package 5, followed by a
+  revision of the paused non-media queues, with bounded TDD (stash-baseline
+  environment attribution, time-boxed failure chases, known-environmental
+  ledger). **Current gate:** Mini-task 3B UX research is open under the
+  mandatory cycle, seeded with the operator-reported URL blur-preview
+  (F018/F020) and upload batch-ceiling lift (F019/F020) items; production
+  deploy of the pushed series awaits an explicit operator deploy request.
 
 ## Git State
 
