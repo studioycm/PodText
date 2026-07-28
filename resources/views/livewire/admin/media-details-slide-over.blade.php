@@ -56,7 +56,18 @@
         @else
             <ul class="list-inside list-disc space-y-0.5 text-gray-600 dark:text-gray-300">
                 @foreach ($references as $reference)
-                    <li>{{ $reference }}</li>
+                    <li>
+                        @if (filled($reference['url'] ?? null))
+                            <a
+                                href="{{ $reference['url'] }}"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                class="font-medium text-primary-600 hover:text-primary-500 dark:text-primary-400"
+                            >{{ $reference['label'] }}</a>
+                        @else
+                            {{ $reference['label'] ?? $reference }}
+                        @endif
+                    </li>
                 @endforeach
             </ul>
         @endif

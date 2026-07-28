@@ -8,6 +8,7 @@ use App\Filament\Resources\Media\Pages\ListMedia;
 use App\Models\Media;
 use App\Models\User;
 use App\Support\Media\CuratorImageUploadPolicy;
+use App\Support\Media\MediaDetailsViewModel;
 use App\Support\Media\MediaFilesystemMutationCoordinator;
 use App\Support\Media\MediaInventoryDiagnostics;
 use App\Support\Media\MediaLibraryTaskQuery;
@@ -19,7 +20,7 @@ use Filament\Actions\BulkAction;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\FileUpload;
-use Filament\Support\Enums\FontWeight;
+use Filament\Support\Enums\Width;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\ImageColumn;
 use Filament\Tables\Columns\Layout\Grid;
@@ -29,6 +30,7 @@ use Filament\Tables\Columns\TextInputColumn;
 use Filament\Tables\Enums\RecordActionsPosition;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
+use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Gate;
@@ -47,15 +49,8 @@ class MediaTable
             ->paginationPageOptions([25])
             ->recordActionsPosition(RecordActionsPosition::AfterContent)
             ->description(fn (ListMedia $livewire): string => $livewire->activeTaskDescription())
-            ->recordUrl(fn (Media $record, ListMedia $livewire): ?string => Gate::allows('update', $record)
-                ? $livewire->editUrlForMedia($record)
-                : null)
-            ->extraRecordLinkAttributes(
-                fn (Media $record, ListMedia $livewire): array => [
-                    'id' => 'media-record-'.(int) $record->getKey(),
-                    'autofocus' => $livewire->shouldFocusMedia($record),
-                ],
-            )
+            ->recordUrl(null)
+            ->recordAction('mediaDetails')
             ->columns([
                 Grid::make(1)
                     ->extraAttributes([
@@ -78,15 +73,6 @@ class MediaTable
                                     'style' => 'object-fit: contain;',
                                 ]),
                             Stack::make([
-                                TextColumn::make('card_title')
-                                    ->label(__('admin.owner_image.metadata.title'))
-                                    ->state(fn (Media $record): string => self::displayIdentity($record))
-                                    ->searchable(
-                                        query: fn (Builder $query, string $search): Builder => app(MediaLibraryTaskQuery::class)
-                                            ->applySearchTerm($query, $search),
-                                    )
-                                    ->weight(FontWeight::SemiBold)
-                                    ->wrap(),
                                 TextInputColumn::make('title')
                                     ->label(__('admin.fields.title'))
                                     ->placeholder(__('admin.media_library.inline_title_placeholder'))
@@ -101,16 +87,24 @@ class MediaTable
                                         && filled($original)
                                             ? $original
                                             : null)
-                                    ->description(__('admin.owner_image.metadata.original_filename'), 'above')
+                                    ->formatStateUsing(fn (string $state): HtmlString => new HtmlString(
+                                        '<span class="text-gray-500 dark:text-gray-400">'.e(__('admin.media_library.card_row_original')).': </span>'
+                                        .'<span dir="ltr" style="unicode-bidi: isolate; overflow-wrap: anywhere;">'.e($state).'</span>',
+                                    ))
+                                    ->html()
+                                    ->searchable(
+                                        query: fn (Builder $query, string $search): Builder => app(MediaLibraryTaskQuery::class)
+                                            ->applySearchTerm($query, $search),
+                                    )
                                     ->wrap(),
                                 TextColumn::make('card_stored_filename')
                                     ->label(__('admin.owner_image.metadata.stored_filename'))
                                     ->state(fn (Media $record): string => basename((string) $record->path))
                                     ->formatStateUsing(fn (string $state): HtmlString => new HtmlString(
-                                        '<span dir="ltr">'.e($state).'</span>',
+                                        '<span class="text-gray-500 dark:text-gray-400">'.e(__('admin.media_library.card_row_file')).': </span>'
+                                        .'<span dir="ltr" style="unicode-bidi: isolate; overflow-wrap: anywhere;">'.e($state).'</span>',
                                     ))
                                     ->html()
-                                    ->description(__('admin.owner_image.metadata.stored_filename'), 'above')
                                     ->extraAttributes([
                                         'data-testid' => 'media-library-card-stored-filename',
                                     ])
@@ -119,40 +113,50 @@ class MediaTable
                                     ->wrap(),
                                 TextColumn::make('card_known_references')
                                     ->label(__('admin.media_library.known_references'))
-                                    ->description(__('admin.media_library.known_references'), 'above')
-                                    ->state(function (Media $record): string {
-                                        if ($record->disk !== 'public') {
-                                            return __('admin.media_library.known_reference_count_unavailable');
-                                        }
+                                    ->state(function (Media $record): HtmlString {
+                                        $diagnostics = app(MediaInventoryDiagnostics::class);
+                                        $needsRepair = $diagnostics->needsRepair($record);
+                                        $statusTitle = $needsRepair
+                                            ? collect($diagnostics->reasons($record))
+                                                ->map(fn (string $reason): string => __("admin.media_library.repair_{$reason}"))
+                                                ->implode(' · ')
+                                            : '';
+                                        $badge = '<span data-testid="media-library-card-attention-status" title="'.e($statusTitle).'" class="'.($needsRepair
+                                            ? 'text-warning-700 dark:text-warning-300 border border-warning-400 dark:border-warning-500'
+                                            : 'text-success-700 dark:text-success-300 border border-success-400 dark:border-success-500')
+                                            .' ms-auto shrink-0 rounded-full px-2 text-[11px] font-bold">'
+                                            .e($needsRepair ? __('admin.media_library.needs_attention') : __('admin.media_library.ready'))
+                                            .'</span>';
+                                        $count = $record->disk === 'public'
+                                            ? trans_choice(
+                                                'admin.media_library.known_reference_count',
+                                                self::knownReferenceCount($record),
+                                                ['count' => self::knownReferenceCount($record)],
+                                            )
+                                            : __('admin.media_library.known_reference_count_unavailable');
 
-                                        $count = self::knownReferenceCount($record);
-
-                                        return trans_choice(
-                                            'admin.media_library.known_reference_count',
-                                            $count,
-                                            ['count' => $count],
+                                        return new HtmlString(
+                                            '<span class="flex min-w-0 items-center gap-2">'
+                                            .'<span class="text-gray-500 dark:text-gray-400">'.e(__('admin.media_library.card_row_references')).': </span>'
+                                            .'<span>'.e($count).'</span>'
+                                            .$badge
+                                            .'</span>',
                                         );
                                     })
-                                    ->icon(Heroicon::OutlinedLink)
+                                    ->html()
+                                    ->tooltip(function (Media $record): ?string {
+                                        if ($record->disk !== 'public') {
+                                            return null;
+                                        }
+
+                                        $references = app(MediaReferenceFinder::class)->referencesForMedia($record);
+
+                                        return $references === [] ? null : implode("\n", $references);
+                                    })
                                     ->extraAttributes([
                                         'data-testid' => 'media-library-card-known-references',
                                     ])
                                     ->wrap(),
-                                TextColumn::make('repair_status')
-                                    ->label(__('admin.media_library.repair_status'))
-                                    ->state(fn (Media $record): string => app(MediaInventoryDiagnostics::class)->needsRepair($record)
-                                        ? __('admin.media_library.needs_attention')
-                                        : __('admin.media_library.ready'))
-                                    ->badge()
-                                    ->color(fn (Media $record): string => app(MediaInventoryDiagnostics::class)->needsRepair($record) ? 'warning' : 'success')
-                                    ->tooltip(fn (Media $record): ?string => app(MediaInventoryDiagnostics::class)->needsRepair($record)
-                                        ? collect(app(MediaInventoryDiagnostics::class)->reasons($record))
-                                            ->map(fn (string $reason): string => __("admin.media_library.repair_{$reason}"))
-                                            ->implode(' · ')
-                                        : null)
-                                    ->extraAttributes([
-                                        'data-testid' => 'media-library-card-attention-status',
-                                    ]),
                                 TextColumn::make('card_primary_issue')
                                     ->label(__('admin.media_library.needs_attention'))
                                     ->state(function (Media $record): ?string {
@@ -184,7 +188,6 @@ class MediaTable
                                     ->wrap(),
                                 TextColumn::make('card_file_summary')
                                     ->label(__('admin.owner_image.media_metadata'))
-                                    ->description(__('admin.owner_image.media_metadata'), 'above')
                                     ->state(fn (Media $record): string => collect([
                                         $record->type,
                                         filled($record->ext) ? mb_strtoupper((string) $record->ext) : null,
@@ -194,7 +197,8 @@ class MediaTable
                                         Number::fileSize((int) ($record->size ?? 0)),
                                     ])->filter()->implode(' · '))
                                     ->formatStateUsing(fn (string $state): HtmlString => new HtmlString(
-                                        '<span dir="ltr">'.e($state).'</span>',
+                                        '<span class="text-gray-500 dark:text-gray-400">'.e(__('admin.media_library.card_row_details')).': </span>'
+                                        .'<span dir="ltr" style="unicode-bidi: isolate;">'.e($state).'</span>',
                                     ))
                                     ->html()
                                     ->extraAttributes([
@@ -208,7 +212,11 @@ class MediaTable
                                         $record->disk,
                                         $record->directory,
                                     ])->filter()->implode(' · '))
-                                    ->icon(Heroicon::OutlinedFolder)
+                                    ->formatStateUsing(fn (string $state): HtmlString => new HtmlString(
+                                        '<span class="text-gray-500 dark:text-gray-400">'.e(__('admin.media_library.card_row_location')).': </span>'
+                                        .'<span dir="ltr" style="unicode-bidi: isolate; overflow-wrap: anywhere;">'.e($state).'</span>',
+                                    ))
+                                    ->html()
                                     ->color('gray')
                                     ->wrap(),
                                 TextColumn::make('created_at')
@@ -281,12 +289,30 @@ class MediaTable
                     }),
             ])
             ->recordActions([
+                Action::make('mediaDetails')
+                    ->label(__('admin.owner_image.actions.open_details'))
+                    ->icon(Heroicon::OutlinedInformationCircle)
+                    ->iconButton()
+                    ->authorize(fn (Media $record): bool => Gate::allows('view', $record))
+                    ->slideOver()
+                    ->modalWidth(Width::Medium)
+                    ->modalHeading(__('admin.owner_image.actions.open_details'))
+                    ->modalSubmitAction(false)
+                    ->modalCancelActionLabel(__('admin.actions.close'))
+                    ->modalContent(fn (Media $record): View => view(
+                        'livewire.admin.media-details-slide-over',
+                        MediaDetailsViewModel::make($record),
+                    )),
                 EditAction::make()
                     ->label(__('admin.media_library.open_details'))
                     ->icon(Heroicon::OutlinedInformationCircle)
                     ->button()
                     ->color('primary')
                     ->authorize(fn (Media $record): bool => Gate::allows('update', $record))
+                    ->extraAttributes(fn (Media $record, ListMedia $livewire): array => [
+                        'id' => 'media-record-'.(int) $record->getKey(),
+                        'autofocus' => $livewire->shouldFocusMedia($record),
+                    ])
                     ->url(fn (Media $record, ListMedia $livewire): string => $livewire->editUrlForMedia($record)),
                 ActionGroup::make([
                     Action::make('view')

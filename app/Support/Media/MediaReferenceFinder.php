@@ -2,6 +2,11 @@
 
 namespace App\Support\Media;
 
+use App\Filament\Pages\AboutSettings;
+use App\Filament\Pages\DisplaySettings;
+use App\Filament\Pages\MenuHeaderSettings;
+use App\Filament\Resources\ContentGroups\ContentGroupResource;
+use App\Filament\Resources\ContentItems\ContentItemResource;
 use App\Models\ContentGroup;
 use App\Models\ContentItem;
 use App\Models\Media;
@@ -97,9 +102,9 @@ class MediaReferenceFinder
                 ->where('media_id', $media->getKey())
                 ->get(['attachable_type', 'attachable_id', 'role'])
                 ->map(fn (object $attachment): string => __('admin.media_references.attachment', [
-                    'type' => (string) $attachment->attachable_type,
+                    'type' => $this->attachableKindLabel((string) $attachment->attachable_type),
                     'id' => (int) $attachment->attachable_id,
-                    'role' => (string) $attachment->role,
+                    'role' => $this->attachmentRoleLabel((string) $attachment->role),
                 ]))
             : collect();
 
@@ -113,6 +118,103 @@ class MediaReferenceFinder
     /**
      * @return array<int, string>
      */
+    /** @return array<int, array{label: string, url: string|null}> */
+    public function linkedReferencesForMedia(Media $media): array
+    {
+        $links = collect();
+
+        if (Schema::hasTable('media_attachments')) {
+            $attachments = DB::table('media_attachments')
+                ->where('media_id', $media->getKey())
+                ->get(['attachable_type', 'attachable_id', 'role']);
+            $groupTitles = ContentGroup::query()
+                ->whereKey($attachments->where('attachable_type', ContentGroup::class)->pluck('attachable_id'))
+                ->pluck('title', 'id');
+            $itemTitles = ContentItem::query()
+                ->whereKey($attachments->where('attachable_type', ContentItem::class)->pluck('attachable_id'))
+                ->pluck('title', 'id');
+
+            foreach ($attachments as $attachment) {
+                $id = (int) $attachment->attachable_id;
+                [$title, $url] = match ((string) $attachment->attachable_type) {
+                    ContentGroup::class => [
+                        (string) ($groupTitles[$id] ?? "#{$id}"),
+                        ContentGroupResource::getUrl('edit', ['record' => $id], panel: 'admin'),
+                    ],
+                    ContentItem::class => [
+                        (string) ($itemTitles[$id] ?? "#{$id}"),
+                        ContentItemResource::getUrl('edit', ['record' => $id], panel: 'admin'),
+                    ],
+                    default => ["#{$id}", null],
+                };
+                $links->push([
+                    'label' => $this->attachableKindLabel((string) $attachment->attachable_type)
+                        .': '.$title
+                        .' ('.$this->attachmentRoleLabel((string) $attachment->role).')',
+                    'url' => $url,
+                ]);
+            }
+        }
+
+        $path = $this->normalize((string) $media->path);
+
+        if ($media->disk === 'public' && $path !== null) {
+            if (Schema::hasTable('content_groups')) {
+                ContentGroup::query()
+                    ->where('cover_path', $path)
+                    ->get(['id', 'title'])
+                    ->each(fn (ContentGroup $group) => $links->push([
+                        'label' => __('admin.media_references.content_group_cover', ['title' => (string) $group->title]),
+                        'url' => ContentGroupResource::getUrl('edit', ['record' => $group->getKey()], panel: 'admin'),
+                    ]));
+            }
+
+            if (Schema::hasTable('content_items') && Schema::hasColumn('content_items', 'image_path')) {
+                ContentItem::query()
+                    ->where('image_path', $path)
+                    ->get(['id', 'title'])
+                    ->each(fn (ContentItem $item) => $links->push([
+                        'label' => __('admin.media_references.content_item_image', ['title' => (string) $item->title]),
+                        'url' => ContentItemResource::getUrl('edit', ['record' => $item->getKey()], panel: 'admin'),
+                    ]));
+            }
+        }
+
+        $settings = $this->settingsPayloads();
+        $families = [
+            ['menu_config', MenuHeaderSettings::class, fn (array $payload): array => $this->menuConfigIdentityReferences($path, $media->reference_key, $payload)],
+            ['about_page', AboutSettings::class, fn (array $payload): array => $this->aboutPageIdentityReferences($path, $media->reference_key, $payload)],
+            ['default_images', DisplaySettings::class, fn (array $payload): array => $this->defaultImageIdentityReferences($path, $media->reference_key, $payload)],
+        ];
+
+        foreach ($families as [$name, $page, $builder]) {
+            foreach ($builder($settings[$name] ?? []) as $label) {
+                $links->push(['label' => $label, 'url' => $page::getUrl(panel: 'admin')]);
+            }
+        }
+
+        return $links
+            ->unique(fn (array $link): string => $link['label'].'|'.($link['url'] ?? ''))
+            ->values()
+            ->all();
+    }
+
+    private function attachableKindLabel(string $type): string
+    {
+        return match ($type) {
+            ContentGroup::class => __('admin.settings_backup_snapshot_screens.podcast'),
+            ContentItem::class => __('admin.settings_backup_snapshot_screens.episode'),
+            default => class_basename($type),
+        };
+    }
+
+    private function attachmentRoleLabel(string $role): string
+    {
+        return in_array($role, ['cover', 'primary_image'], true)
+            ? __("admin.media_attachment_roles.{$role}")
+            : $role;
+    }
+
     public function nonAttachmentReferencesForMedia(Media $media): array
     {
         $path = $this->normalize((string) $media->path);

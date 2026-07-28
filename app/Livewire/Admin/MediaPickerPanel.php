@@ -10,11 +10,11 @@ use App\Models\User;
 use App\Support\Media\CuratorImageUploadPolicy;
 use App\Support\Media\ExternalImageFailureMessage;
 use App\Support\Media\MediaAcquisitionManager;
+use App\Support\Media\MediaDetailsViewModel;
 use App\Support\Media\MediaFilesystemMutationCoordinator;
 use App\Support\Media\MediaInventoryDiagnostics;
 use App\Support\Media\MediaRecordProjector;
 use App\Support\Media\MediaRecordScope;
-use App\Support\Media\MediaReferenceFinder;
 use App\Support\Media\MediaUploadBatchResult;
 use App\Support\Media\StorageImageCandidateBrowser;
 use Filament\Actions\Action;
@@ -711,15 +711,8 @@ class MediaPickerPanel extends Component implements HasActions, HasSchemas
             ->modalCancelActionLabel(__('admin.actions.close'))
             ->modalContent(function (array $arguments): View {
                 $media = $this->trustedRecord($arguments['id'] ?? '', 'view');
-                $projection = app(MediaRecordProjector::class)->project($media, withOwnerDetails: true);
 
-                return view('livewire.admin.media-details-slide-over', [
-                    'projection' => $projection,
-                    'mime' => $media->type,
-                    'directory' => (string) $media->directory,
-                    'storedFilename' => $media->name,
-                    'references' => app(MediaReferenceFinder::class)->referencesForMedia($media),
-                ]);
+                return view('livewire.admin.media-details-slide-over', MediaDetailsViewModel::make($media));
             });
     }
 

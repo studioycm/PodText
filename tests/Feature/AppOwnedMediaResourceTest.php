@@ -9,6 +9,7 @@ use App\Filament\Resources\Media\Pages\CreateMedia;
 use App\Filament\Resources\Media\Pages\EditMedia;
 use App\Filament\Resources\Media\Pages\ListMedia;
 use App\Filament\Resources\Media\Schemas\MediaForm;
+use App\Filament\Resources\Media\Tables\MediaTable;
 use App\Models\ContentGroup;
 use App\Models\Media;
 use App\Models\MediaAsset;
@@ -30,7 +31,6 @@ use Filament\Notifications\Notification;
 use Filament\Schemas\Concerns\RestrictsFileUploadsToSchemaComponents;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\Layout\Grid as TableGrid;
-use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Enums\RecordActionsPosition;
 use Illuminate\Filesystem\FilesystemAdapter;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -189,9 +189,13 @@ it('renders Media as a native responsive card gallery without losing table contr
     $columnsLayout = array_values($table->getColumnsLayout());
     $recordActions = array_values($table->getRecordActions());
 
-    expect($table->getRecordUrl($media))->toBe(
-        $component->instance()->editUrlForMedia($media),
-    );
+    $editAction = $table->getAction('edit');
+    assert($editAction instanceof EditAction);
+    $editAction->record($media);
+
+    expect($table->getRecordUrl($media))->toBeNull()
+        ->and($table->getRecordAction($media))->toBe('mediaDetails')
+        ->and($editAction->getUrl())->toBe($component->instance()->editUrlForMedia($media));
 
     $component->assertSeeInOrder([
         'Original display filename.jpg',
@@ -210,14 +214,16 @@ it('renders Media as a native responsive card gallery without losing table contr
             '2xl' => 4,
         ])
         ->and($columnsLayout[0] ?? null)->toBeInstanceOf(TableGrid::class)
-        ->and($recordActions)->toHaveCount(2)
-        ->and($recordActions[0])->toBeInstanceOf(EditAction::class)
-        ->and($recordActions[0]->getName())->toBe('edit')
-        ->and($recordActions[0]->isButton())->toBeTrue()
-        ->and($recordActions[0]->isLabelHidden())->toBeFalse()
-        ->and((string) $recordActions[0]->getLabel())->toBe(__('admin.media_library.open_details'))
-        ->and($recordActions[1])->toBeInstanceOf(ActionGroup::class)
-        ->and(array_keys($recordActions[1]->getFlatActions()))->toBe([
+        ->and($recordActions)->toHaveCount(3)
+        ->and($recordActions[0]->getName())->toBe('mediaDetails')
+        ->and($recordActions[1])->toBeInstanceOf(EditAction::class)
+        ->and($recordActions[1]->getName())->toBe('edit')
+        ->and($recordActions[1]->isButton())->toBeTrue()
+        ->and($recordActions[1]->isLabelHidden())->toBeFalse()
+        ->and((string) $recordActions[0]->getLabel())->toBe(__('admin.owner_image.actions.open_details'))
+        ->and((string) $recordActions[1]->getLabel())->toBe(__('admin.media_library.open_details'))
+        ->and($recordActions[2])->toBeInstanceOf(ActionGroup::class)
+        ->and(array_keys($recordActions[2]->getFlatActions()))->toBe([
             'view',
             'download',
             'rename',
@@ -225,6 +231,7 @@ it('renders Media as a native responsive card gallery without losing table contr
             'delete',
         ])
         ->and(array_keys($table->getFlatRecordActions()))->toBe([
+            'mediaDetails',
             'edit',
             'view',
             'download',
@@ -357,7 +364,8 @@ it('composes task MIME reason search sort page and one canonical details context
     $editAction->record($matching);
 
     expect($query['from'] ?? null)->toBe($expectedContext)
-        ->and($table->getRecordUrl($matching))->toBe($url)
+        ->and($table->getRecordUrl($matching))->toBeNull()
+        ->and($table->getRecordAction($matching))->toBe('mediaDetails')
         ->and($editAction->getUrl())->toBe($url);
 
     $component
@@ -540,8 +548,9 @@ it('uses every stable Media card identity fallback in order', function (
         'name' => '',
     ], $attributes));
 
-    expect($column)->toBeInstanceOf(TextColumn::class)
-        ->and($column?->record($media)->getState())->toBe($expected);
+    $identity = new ReflectionMethod(MediaTable::class, 'displayIdentity');
+
+    expect($identity->invoke(null, $media))->toBe($expected);
 })->with([
     'title' => [
         ['title' => 'Human title', 'exif' => ['original_filename' => 'Original.jpg'], 'path' => 'stored.jpg', 'name' => 'stored'],
