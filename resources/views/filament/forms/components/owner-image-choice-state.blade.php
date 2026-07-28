@@ -8,6 +8,12 @@
             'media' => $presentation->shownNowMedia,
             'thumb' => $presentation->shownNowPreviewUrl ?? ($presentation->shownNowMedia['preview_url'] ?? null),
             'pending' => false,
+            'state_suffix' => $presentation->pendingFallbackSource !== null
+                ? __('admin.owner_image.choice.shown_after_save', [
+                    'source' => $cardStateText(__("admin.owner_image.sources.{$presentation->pendingFallbackSource}")),
+                ])
+                : null,
+            'state_suffix_class' => 'text-danger-600 dark:text-danger-400',
             'details_url' => null,
             'restore' => false,
             'automatic' => false,
@@ -19,6 +25,10 @@
             'media' => $presentation->directMedia,
             'thumb' => $presentation->directMedia['preview_url'] ?? null,
             'pending' => false,
+            'state_suffix' => $presentation->pendingKind === 'automatic_fallback'
+                ? __('admin.owner_image.choice.direct_removal_pending')
+                : null,
+            'state_suffix_class' => 'text-danger-600 dark:text-danger-400',
             'details_url' => $presentation->directMedia['details_url'] ?? null,
             'restore' => false,
             'automatic' => $presentation->canChooseAutomatic,
@@ -32,6 +42,11 @@
                 ? ($presentation->pendingMedia['preview_url'] ?? null)
                 : null,
             'pending' => $presentation->pendingKind !== 'unchanged',
+            'state_suffix' => null,
+            'state_suffix_class' => null,
+            'thumb_fallback' => $presentation->directState !== 'broken'
+                ? $presentation->pendingFallbackPreviewUrl
+                : null,
             'details_url' => $presentation->directState !== 'broken'
                 ? ($presentation->pendingMedia['details_url'] ?? null)
                 : null,
@@ -74,17 +89,18 @@
                         title="{{ $choiceCard['media']['label'] }} — {{ __('admin.owner_image.actions.copy_filename') }}"
                         aria-label="{{ __('admin.owner_image.actions.copy_filename') }}: {{ $choiceCard['media']['label'] }}"
                     >
-                        @if (filled($choiceCard['thumb']))
+                        @php $cardThumb = $choiceCard['thumb'] ?? ($choiceCard['thumb_fallback'] ?? null); @endphp
+                        @if (filled($cardThumb))
                             <img
-                                src="{{ $choiceCard['thumb'] }}"
+                                src="{{ $cardThumb }}"
                                 alt=""
-                                width="36"
-                                height="36"
+                                width="56"
+                                height="56"
                                 loading="lazy"
-                                class="h-9 w-9 shrink-0 rounded-md border border-gray-200 object-cover dark:border-gray-700"
+                                class="h-14 w-14 shrink-0 rounded-md border border-gray-200 object-cover dark:border-gray-700"
                             />
                         @else
-                            <span class="grid h-9 w-9 shrink-0 place-items-center rounded-md border border-gray-200 text-gray-400 dark:border-gray-700">—</span>
+                            <span class="grid h-14 w-14 shrink-0 place-items-center rounded-md border border-gray-200 text-gray-400 dark:border-gray-700">—</span>
                         @endif
                         <span class="grid min-w-0 gap-0.5">
                             <span @class([
@@ -94,19 +110,33 @@
                             ])>{{ $choiceCard['label'] }}</span>
                             <span
                                 @class([
-                                    'truncate text-xs',
+                                    'text-xs',
+                                    'truncate' => ! $choiceCard['pending'],
+                                    'max-w-72 whitespace-normal' => $choiceCard['pending'],
                                     'text-gray-700 dark:text-gray-200' => ! $choiceCard['pending'],
                                     'text-warning-700 dark:text-warning-300' => $choiceCard['pending'],
                                 ])
                             >
-                                <span x-show="! copied">{{ $choiceCard['state'] }}</span>
+                                <span x-show="! copied">{{ $choiceCard['state'] }}@if (filled($choiceCard['state_suffix'] ?? null)) <span class="{{ $choiceCard['state_suffix_class'] ?? 'text-danger-600 dark:text-danger-400' }}">· {{ $choiceCard['state_suffix'] }}</span>@endif</span>
                                 <span x-cloak x-show="copied">{{ __('admin.owner_image.copy_success') }}</span>
                             </span>
                         </span>
                     </button>
                 @else
                     <span class="flex min-w-0 items-center gap-2">
-                        <span class="grid h-9 w-9 shrink-0 place-items-center rounded-md border border-gray-200 text-gray-400 dark:border-gray-700">—</span>
+                        @php $cardThumb = $choiceCard['thumb'] ?? ($choiceCard['thumb_fallback'] ?? null); @endphp
+                        @if (filled($cardThumb))
+                            <img
+                                src="{{ $cardThumb }}"
+                                alt=""
+                                width="56"
+                                height="56"
+                                loading="lazy"
+                                class="h-14 w-14 shrink-0 rounded-md border border-gray-200 object-cover dark:border-gray-700"
+                            />
+                        @else
+                            <span class="grid h-14 w-14 shrink-0 place-items-center rounded-md border border-gray-200 text-gray-400 dark:border-gray-700">—</span>
+                        @endif
                         <span class="grid min-w-0 gap-0.5">
                             <span @class([
                                 'text-[10px] leading-none',
@@ -114,53 +144,46 @@
                                 'text-warning-700 dark:text-warning-300' => $choiceCard['pending'],
                             ])>{{ $choiceCard['label'] }}</span>
                             <span @class([
-                                'truncate text-xs',
+                                'text-xs',
+                                'truncate' => ! $choiceCard['pending'],
+                                'max-w-72 whitespace-normal' => $choiceCard['pending'],
                                 'text-gray-700 dark:text-gray-200' => ! $choiceCard['pending'],
                                 'text-warning-700 dark:text-warning-300' => $choiceCard['pending'],
-                            ])>{{ $choiceCard['state'] }}</span>
+                            ])>{{ $choiceCard['state'] }}@if (filled($choiceCard['state_suffix'] ?? null)) <span class="{{ $choiceCard['state_suffix_class'] ?? 'text-danger-600 dark:text-danger-400' }}">· {{ $choiceCard['state_suffix'] }}</span>@endif</span>
                         </span>
                     </span>
                 @endif
 
                 @if (filled($choiceCard['details_url']) || $choiceCard['restore'] || $choiceCard['automatic'])
                     <span class="flex items-center gap-1">
-                        @if (filled($choiceCard['details_url']))
-                            <a
-                                href="{{ $choiceCard['details_url'] }}"
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                class="grid h-5 w-5 place-items-center rounded border border-gray-300 text-gray-500 hover:text-primary-600 dark:border-gray-600 dark:text-gray-400 dark:hover:text-primary-400"
+                        @if (filled($choiceCard['details_url']) && is_array($choiceCard['media']))
+                            <button
+                                type="button"
+                                class="grid h-7 w-7 place-items-center rounded-md border border-gray-300 text-gray-500 hover:text-primary-600 dark:border-gray-600 dark:text-gray-400 dark:hover:text-primary-400"
+                                x-on:click="$dispatch('open-media-details', { id: @js($choiceCard['media']['id']) })"
+                                data-media-details-id="{{ $choiceCard['media']['id'] }}"
                                 title="{{ __('admin.owner_image.actions.open_details') }}"
                                 aria-label="{{ __('admin.owner_image.actions.open_details') }}"
                             >
-                                <x-filament::icon icon="heroicon-o-information-circle" class="h-3.5 w-3.5" />
-                            </a>
+                                <x-filament::icon icon="heroicon-o-information-circle" class="h-4 w-4" />
+                            </button>
                         @endif
 
                         @if ($choiceCard['restore'])
                             <button
                                 type="button"
-                                class="grid h-5 w-5 place-items-center rounded border border-warning-400 text-warning-700 hover:text-warning-600 dark:border-warning-500 dark:text-warning-300"
+                                class="grid h-7 w-7 place-items-center rounded-md border border-danger-400 text-danger-600 hover:text-danger-500 dark:border-danger-500 dark:text-danger-400"
                                 wire:click="callSchemaComponentMethod('{{ $field->getKey() }}', 'restoreSavedOwnerSelection', [[]])"
                                 data-testid="owner-image-restore-saved"
                                 title="{{ __('admin.owner_image.actions.restore_saved') }}"
                                 aria-label="{{ __('admin.owner_image.actions.restore_saved') }}"
                             >
-                                <x-filament::icon icon="heroicon-o-arrow-uturn-left" class="h-3.5 w-3.5" />
+                                <x-filament::icon icon="heroicon-o-arrow-uturn-left" class="h-4 w-4" />
                             </button>
                         @endif
 
                         @if ($choiceCard['automatic'])
-                            <button
-                                type="button"
-                                class="grid h-5 w-5 place-items-center rounded border border-gray-300 text-gray-500 hover:text-primary-600 dark:border-gray-600 dark:text-gray-400 dark:hover:text-primary-400"
-                                wire:click="callSchemaComponentMethod('{{ $field->getKey() }}', 'chooseAutomaticOwnerImage', [[]])"
-                                data-testid="owner-image-choose-automatic"
-                                title="{{ __('admin.owner_image.actions.use_automatic_image') }}"
-                                aria-label="{{ __('admin.owner_image.actions.use_automatic_image') }}"
-                            >
-                                <x-filament::icon icon="heroicon-o-arrow-path" class="h-3.5 w-3.5" />
-                            </button>
+                            {{ $field->getAction('removeDirectOwnerImage') }}
                         @endif
                     </span>
                 @endif

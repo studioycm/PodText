@@ -4,6 +4,7 @@ namespace App\Livewire\Admin;
 
 use App\Enums\ImageUploadPurpose;
 use App\Enums\MediaAcquisitionDisposition;
+use App\Filament\Resources\Media\MediaResource;
 use App\Models\Media;
 use App\Models\User;
 use App\Support\Media\CuratorImageUploadPolicy;
@@ -13,6 +14,7 @@ use App\Support\Media\MediaFilesystemMutationCoordinator;
 use App\Support\Media\MediaInventoryDiagnostics;
 use App\Support\Media\MediaRecordProjector;
 use App\Support\Media\MediaRecordScope;
+use App\Support\Media\MediaReferenceFinder;
 use App\Support\Media\StorageImageCandidateBrowser;
 use Filament\Actions\Action;
 use Filament\Actions\Concerns\InteractsWithActions;
@@ -157,7 +159,7 @@ class MediaPickerPanel extends Component implements HasActions, HasSchemas
         return $schema
             ->statePath('panelData')
             ->components([
-                Section::make(__('admin.media_library.upload_source'))
+                Section::make()
                     ->extraAttributes(fn (): array => $this->sourceSectionAttributes('upload'))
                     ->dehydrated(fn (): bool => $this->activeSource === 'upload')
                     ->validatedWhenNotDehydrated(false)
@@ -184,7 +186,7 @@ class MediaPickerPanel extends Component implements HasActions, HasSchemas
                             ->uploadingMessage(__('admin.media_library.uploading_file'))
                             ->storeFiles(false),
                     ]),
-                Section::make(__('admin.media_library.url_source'))
+                Section::make()
                     ->extraAttributes(fn (): array => $this->sourceSectionAttributes('url'))
                     ->dehydrated(fn (): bool => $this->activeSource === 'url')
                     ->validatedWhenNotDehydrated(false)
@@ -649,6 +651,34 @@ class MediaPickerPanel extends Component implements HasActions, HasSchemas
                     ->success()
                     ->title(__('admin.media_library.updated'))
                     ->send();
+            });
+    }
+
+    public function mediaLibraryUrl(): string
+    {
+        return MediaResource::getUrl(panel: 'admin');
+    }
+
+    public function mediaDetailsAction(): Action
+    {
+        return Action::make('mediaDetails')
+            ->label(__('admin.owner_image.actions.open_details'))
+            ->modalHeading(__('admin.owner_image.actions.open_details'))
+            ->slideOver()
+            ->modalWidth(Width::Medium)
+            ->modalSubmitAction(false)
+            ->modalCancelActionLabel(__('admin.actions.close'))
+            ->modalContent(function (array $arguments): View {
+                $media = $this->trustedRecord($arguments['id'] ?? '', 'view');
+                $projection = app(MediaRecordProjector::class)->project($media, withOwnerDetails: true);
+
+                return view('livewire.admin.media-details-slide-over', [
+                    'projection' => $projection,
+                    'mime' => $media->type,
+                    'directory' => (string) $media->directory,
+                    'storedFilename' => $media->name,
+                    'references' => app(MediaReferenceFinder::class)->referencesForMedia($media),
+                ]);
             });
     }
 

@@ -64,6 +64,7 @@ class PathCuratorPicker extends Field
             fn (): Action => $this->getRemoveAction(),
             fn (): Action => $this->getRemoveAllAction(),
             fn (): Action => $this->getViewAction(),
+            fn (): Action => $this->getRemoveDirectOwnerImageAction(),
             fn (): Action => $this->getPickerAction(),
         ]);
 
@@ -363,6 +364,22 @@ class PathCuratorPicker extends Field
 
                 return MediaResource::getUrl('edit', ['record' => $media]);
             }, true);
+    }
+
+    public function getRemoveDirectOwnerImageAction(): Action
+    {
+        return Action::make('removeDirectOwnerImage')
+            ->label(__('admin.owner_image.actions.use_automatic_image'))
+            ->icon(Heroicon::OutlinedTrash)
+            ->color('danger')
+            ->iconButton()
+            ->extraAttributes(['data-testid' => 'owner-image-choose-automatic'])
+            ->hidden(fn (PathCuratorPicker $component): bool => ! $component->isOwnerChoice())
+            ->requiresConfirmation()
+            ->modalHeading(__('admin.owner_image.actions.use_automatic_image'))
+            ->modalDescription(__('admin.owner_image.automatic_fallback_hint'))
+            ->modalSubmitActionLabel(__('admin.media_library.remove'))
+            ->action(fn (PathCuratorPicker $component) => $component->chooseAutomaticOwnerImage());
     }
 
     public function getViewAction(): Action

@@ -1018,7 +1018,7 @@ it('renders shared owner choice state in the canonical owner action', function (
         ->assertMountedActionModalSee('data-testid="owner-image-choice-state"', false)
         ->assertMountedActionModalSee('dir="auto"', false)
         ->assertMountedActionModalSee('dir="ltr"', false)
-        ->assertMountedActionModalSee('chooseAutomaticOwnerImage', false)
+        ->assertMountedActionModalSee('data-testid="owner-image-choose-automatic"', false)
         ->assertMountedActionModalDontSee('data-inline-owner-summary="true"', false);
 });
 
@@ -2995,7 +2995,7 @@ it('loads the bounded owner image translation contract directly with exact local
         'owner_image.choice.direct_heading' => 'Direct image',
         'owner_image.choice.shown_now_heading' => 'Shown now',
         'owner_image.choice.pending_heading' => 'Pending choice',
-        'media_library.acquisition_permanence_inline' => 'Every admitted image stays in the library permanently, even after Cancel. A multi-upload does not choose the owner image automatically. Choose one image and press Save.',
+        'media_library.acquisition_permanence_inline' => 'Uploaded or imported images enter the library immediately, and Cancel does not remove them. To remove them, go to :link. A multi-upload does not choose the owner image — choose one image and save.',
     ])->and($localeValues['he'])->toMatchArray([
         'owner_image.actions.add_podcast_cover' => 'פודקאסט · עטיפה — הוספה',
         'owner_image.actions.change_podcast_cover' => 'פודקאסט · עטיפה — החלפה',
@@ -3006,7 +3006,7 @@ it('loads the bounded owner image translation contract directly with exact local
         'owner_image.choice.direct_heading' => 'תמונה ישירה',
         'owner_image.choice.shown_now_heading' => 'מוצגת עכשיו',
         'owner_image.choice.pending_heading' => 'בחירה ממתינה',
-        'media_library.acquisition_permanence_inline' => 'כל תמונה שנקלטה נשמרת בספרייה לצמיתות, גם אחרי ביטול. העלאה מרובה אינה בוחרת תמונת בעלים אוטומטית. יש לבחור תמונה אחת וללחוץ שמירה.',
+        'media_library.acquisition_permanence_inline' => 'תמונות שמועלות או מיובאות נכנסות לספרייה מיד, וביטול לא מסיר אותן. להסרה יש לעבור אל :link. העלאה מרובה לא בוחרת תמונת בעלים — יש לבחור תמונה אחת ולשמור.',
     ]);
 });
 

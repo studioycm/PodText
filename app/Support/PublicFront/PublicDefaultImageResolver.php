@@ -31,19 +31,21 @@ class PublicDefaultImageResolver
     /**
      * @return array{url: string|null, source: string, path: string|null, alt: string|null}
      */
-    public function contentItemImage(ContentItem $item, bool $inheritGroupCover = true): array
+    public function contentItemImage(ContentItem $item, bool $inheritGroupCover = true, bool $ignoreOwnImage = false): array
     {
-        [$hasPrimaryAttachment, $primaryMedia] = $this->ownerImage(
-            $item,
-            MediaAttachmentRole::PrimaryImage,
-        );
+        if (! $ignoreOwnImage) {
+            [$hasPrimaryAttachment, $primaryMedia] = $this->ownerImage(
+                $item,
+                MediaAttachmentRole::PrimaryImage,
+            );
 
-        if ($hasPrimaryAttachment && $primaryMedia instanceof Media && $this->publicMediaDelivery->canDisplay($primaryMedia)) {
-            return $this->publicDiskImage($primaryMedia->path, 'item', (string) $item->title);
-        }
+            if ($hasPrimaryAttachment && $primaryMedia instanceof Media && $this->publicMediaDelivery->canDisplay($primaryMedia)) {
+                return $this->publicDiskImage($primaryMedia->path, 'item', (string) $item->title);
+            }
 
-        if (! $hasPrimaryAttachment && $primaryMedia instanceof Media && $this->publicMediaDelivery->canDisplay($primaryMedia)) {
-            return $this->publicDiskImage($primaryMedia->path, 'item', (string) $item->title);
+            if (! $hasPrimaryAttachment && $primaryMedia instanceof Media && $this->publicMediaDelivery->canDisplay($primaryMedia)) {
+                return $this->publicDiskImage($primaryMedia->path, 'item', (string) $item->title);
+            }
         }
 
         if (filled($item->external_thumbnail_url)) {
@@ -69,9 +71,9 @@ class PublicDefaultImageResolver
     /**
      * @return array{url: string|null, source: string, path: string|null, alt: string|null}
      */
-    public function contentGroupImage(ContentGroup $group): array
+    public function contentGroupImage(ContentGroup $group, bool $ignoreOwnImage = false): array
     {
-        $path = $this->contentGroupCoverPath($group);
+        $path = $ignoreOwnImage ? null : $this->contentGroupCoverPath($group);
 
         if (filled($path)) {
             return $this->publicDiskImage($path, 'group', $this->groupCoverAlt($group));

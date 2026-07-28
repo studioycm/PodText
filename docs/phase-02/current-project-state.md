@@ -52,6 +52,37 @@ Recorded after the Markdown-only post-Prompt-10 prompt-progress centralization c
 
 ## Git State
 
+- Media Operations UX3 Mini-task 3A outcome-review corrections OR5 and OR6
+  are complete locally under the shared design-review artifact (OR5 section
+  plus in-chat steers) and operator approval `approve OR5 - all details
+  actions` with follow-up steers. Their implementation hash is backfilled in
+  the follow-up docs commit. OR5: every details action on the picker surface
+  (owner gallery tiles, blocked-tile links, strip card ⓘ, plus an additive
+  entry on standalone tiles) opens a panel-owned read-only details slide-over
+  (thumbnail, name with copy, MIME/dimensions/size, stored filename, folder,
+  reference key, known usages, warning or selectable state) instead of a new
+  tab; the full Media page stays one click away inside it; Issue Review stays
+  a full page; the strip reaches the panel action through a window event
+  bridge. OR6: status-card thumbnails grew to 56px and card actions to 28px
+  with unified button rendering; restore is danger-red; remove-direct-image
+  became a danger trash Filament field action with a confirmation modal
+  (restore stays confirmation-free as the undo); the upload/url source
+  sections lost their duplicated headers; the upload and URL acquire actions
+  sit in a top bar sticky inside the source panel with the permanence note
+  inline; and both permanence texts were rewritten functional with an inline
+  new-tab link to Media management («ניהול הגלריה») via a `:link`
+  placeholder kept in HE/EN placeholder parity. Browser predicates and the
+  canonical details contract moved to button/slide-over assertions. The
+  staged-removal state now tells its whole story: pending-state texts were
+  rewritten to the happened-then-result formula («התמונה הישירה הוסרה
+  מהבחירה. בשמירה תוצג במקומה תמונה אוטומטית או ברירת מחדל.» /
+  «נבחרה תמונה חדשה. בשמירה היא תחליף את התמונה המוצגת.»), the direct card
+  carries a danger «תוסר בשמירה» marker while removal is staged, the pending
+  card previews the resolved future image via a new read-only
+  `ignoreOwnImage` skip on `PublicDefaultImageResolver`, the shown-now card
+  gains an amber «בשמירה: :source» suffix naming the resolved future source,
+  and the details slide-over leads with a large (~85% width) preview. No
+  schema, dependency, settings or authority change.
 - Media Operations UX3 Mini-task 3A outcome-review correction OR4 is complete
   locally under the shared design-review artifact (OR4 section) and operator
   approval `approve OR4`. Its implementation is

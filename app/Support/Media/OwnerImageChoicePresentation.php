@@ -35,5 +35,7 @@ readonly class OwnerImageChoicePresentation
         public array $commitBoundary,
         public array $warningCodes,
         public bool $savedMediaCanSelect = false,
+        public ?string $pendingFallbackSource = null,
+        public ?string $pendingFallbackPreviewUrl = null,
     ) {}
 }

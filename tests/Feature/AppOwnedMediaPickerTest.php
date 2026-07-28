@@ -266,7 +266,7 @@ it('synchronizes owner pending selection changes through trusted records', funct
         ->assertNotDispatched('insert-media');
 });
 
-it('shows only one authorized new tab Details route on each owner Gallery card', function (): void {
+it('shows only one authorized details slide-over trigger on each owner Gallery card', function (): void {
     $this->actingAs(User::factory()->admin()->create());
     $media = Media::factory()->create(['title' => 'Owner details card']);
 
@@ -285,8 +285,8 @@ it('shows only one authorized new tab Details route on each owner Gallery card',
     $html = $component->html();
 
     expect(substr_count($html, 'data-testid="media-picker-owner-details-'.$media->getKey().'"'))->toBe(1)
-        ->and($html)->toContain('href="'.e(MediaResource::getUrl('edit', ['record' => $media])).'"')
-        ->and($html)->toContain('target="_blank"')
+        ->and($html)->toContain("mountAction('mediaDetails', { id: ".$media->getKey().' })')
+        ->and($html)->not->toContain('href="'.e(MediaResource::getUrl('edit', ['record' => $media])).'"')
         ->and($html)->not->toContain(__('admin.media_library.use_selected'))
         ->and($html)->not->toContain(__('admin.media_library.delete_selected'));
 });
@@ -332,7 +332,7 @@ it('keeps owner source navigation responsive at two narrow and five desktop Gall
         ->assertDontSee('xl:grid-cols-6', false)
         ->call('activateSource', 'upload')
         ->assertSet('activeSource', 'upload')
-        ->assertSee(__('admin.media_library.acquisition_permanence'));
+        ->assertSee(rtrim(Str::before(__('admin.media_library.acquisition_permanence'), ':link')));
 });
 
 it('makes one successful owner admission pending while keeping the Media permanent', function (): void {
@@ -372,7 +372,7 @@ it('keeps every owner batch admission permanent without choosing an arbitrary pe
         ->callAction(TestAction::make('uploadFiles'))
         ->assertHasNoFormErrors()
         ->assertNotDispatched('insert-media')
-        ->assertSee(__('admin.media_library.acquisition_permanence_inline'));
+        ->assertSee(rtrim(Str::before(__('admin.media_library.acquisition_permanence_inline'), ':link')));
 
     expect($component->get('selectedIds'))->toBe([])
         ->and(Media::query()->count())->toBe(2);
@@ -511,7 +511,7 @@ it('shows Gallery Upload URL and Storage in one shared picker with permanence he
         ->assertSee(__('admin.media_library.upload_source'))
         ->assertSee(__('admin.media_library.url_source'))
         ->assertSee(__('admin.media_library.storage_source'))
-        ->assertSee(__('admin.media_library.acquisition_permanence'));
+        ->assertSee(rtrim(Str::before(__('admin.media_library.acquisition_permanence'), ':link')));
 });
 
 it('loads Storage only on first activation and explicit refresh', function (): void {
@@ -1566,7 +1566,7 @@ it('renders the exact owner picker source and permanence contract in both locale
     app()->setLocale($locale);
     $component
         ->call('activateSource', 'upload')
-        ->assertSee(__('admin.media_library.acquisition_permanence_inline'))
+        ->assertSee(rtrim(Str::before(__('admin.media_library.acquisition_permanence_inline'), ':link')))
         ->assertSee(__('admin.media_library.inline_batch_help'))
         ->assertSee(__('admin.media_library.upload_one_or_multiple'))
         ->assertDontSee('admin.media_library.', false);
@@ -1677,4 +1677,52 @@ it('shows the directory filter only when browsing all media outside owner choice
     $component->call('showContextMedia')
         ->assertSet('directoryFilter', '')
         ->assertDontSee('data-testid="media-picker-directory-filter"', false);
+});
+
+it('opens a read-only media details slide-over from owner details triggers', function (): void {
+    $this->actingAs(User::factory()->admin()->create());
+    $selectable = Media::factory()->create([
+        'directory' => 'header',
+        'title' => 'Slide over subject',
+        'name' => 'slide-over-subject',
+        'path' => 'header/slide-over-subject.png',
+        'disk' => 'public',
+        'visibility' => 'public',
+        'type' => 'image/png',
+        'ext' => 'png',
+        'size' => 2048,
+        'width' => 320,
+        'height' => 240,
+    ]);
+    Storage::disk('public')->put($selectable->path, 'slide-over');
+    $blocked = Media::factory()->create([
+        'directory' => 'header',
+        'title' => 'Blocked slide over subject',
+    ]);
+
+    $component = pickerPanel(['isOwnerChoice' => true, 'savedMediaId' => null]);
+
+    $component
+        ->assertSee("mountAction('mediaDetails'", false)
+        ->call('mountAction', 'mediaDetails', ['id' => $selectable->getKey()]);
+    $modalHtml = $component->getMountedActionModalHtml();
+
+    expect($modalHtml)
+        ->toContain('data-testid="media-details-slide-over"')
+        ->toContain('Slide over subject')
+        ->toContain('image/png')
+        ->toContain('320×240')
+        ->toContain((string) $selectable->reference_key)
+        ->toContain(__('admin.media_library.details_known_usages'))
+        ->toContain(__('admin.media_library.details_no_warnings'))
+        ->toContain(__('admin.media_library.details_full_page'));
+
+    $component
+        ->call('unmountAction')
+        ->call('mountAction', 'mediaDetails', ['id' => $blocked->getKey()]);
+    $blockedHtml = $component->getMountedActionModalHtml();
+
+    expect($blockedHtml)
+        ->toContain('Blocked slide over subject')
+        ->not->toContain(__('admin.media_library.details_no_warnings'));
 });

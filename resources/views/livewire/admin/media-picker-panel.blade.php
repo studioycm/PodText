@@ -54,6 +54,7 @@
     "
     x-bind:aria-busy="(uploading || returningSelection) ? 'true' : null"
     x-bind:inert="returningSelection"
+    x-on:open-media-details.window="$wire.mountAction('mediaDetails', { id: $event.detail.id })"
     wire:loading.attr="aria-busy"
 >
     @if (! ($isOwnerChoice && $isInlineOwnerWorkspace))
@@ -287,15 +288,14 @@
                                 <p>{{ $file['selection_blocked_reason'] }}</p>
                                 @if ($isOwnerChoice)
                                     @if (filled($file['details_url'] ?? null))
-                                        <a
-                                            href="{{ $file['details_url'] }}"
-                                            target="_blank"
-                                            rel="noopener noreferrer"
+                                        <button
+                                            type="button"
+                                            wire:click="mountAction('mediaDetails', { id: {{ $file['id'] }} })"
                                             class="font-medium underline"
                                             data-testid="media-picker-owner-details-{{ $file['id'] }}"
                                         >
                                             {{ __('admin.media_library.open_details') }}
-                                        </a>
+                                        </button>
                                     @endif
                                 @else
                                     <a href="{{ $file['review_url'] }}" class="font-medium underline">
@@ -307,20 +307,20 @@
 
                         @if ($isOwnerChoice)
                             @if ($file['selectable'] && filled($file['details_url'] ?? null))
-                                <a
-                                    href="{{ $file['details_url'] }}"
-                                    target="_blank"
-                                    rel="noopener noreferrer"
+                                <button
+                                    type="button"
+                                    wire:click="mountAction('mediaDetails', { id: {{ $file['id'] }} })"
                                     class="absolute end-1 top-1 rounded-md bg-white/95 px-2 py-1 text-xs font-medium text-primary-700 shadow-sm dark:bg-gray-900/95 dark:text-primary-300"
                                     data-testid="media-picker-owner-details-{{ $file['id'] }}"
                                 >
                                     {{ __('admin.media_library.open_details') }}
-                                </a>
+                                </button>
                             @endif
                         @else
                             <div class="absolute end-1 top-1 opacity-0 transition group-focus-within:opacity-100 group-hover:opacity-100 pointer-coarse:opacity-100">
                                 <x-filament-actions::group
                                     :actions="[
+                                        ($this->mediaDetailsAction)(['id' => $file['id']]),
                                         ($this->viewItemAction)(['id' => $file['id']]),
                                         ($this->downloadItemAction)(['id' => $file['id']]),
                                         ($this->editItemAction)(['id' => $file['id']]),
@@ -399,21 +399,46 @@
             'order-1 lg:order-2 lg:border-b-0 lg:border-s' => ! $isOwnerChoice,
             'hidden' => $isOwnerChoice && $activeSource === 'gallery',
         ])>
-            @if ($activeSource === 'upload')
-                <div
-                    data-testid="media-picker-upload-action-guard"
-                    class="sticky top-0 z-10 -mx-4 -mt-4 mb-3 border-b border-gray-200 bg-white px-4 py-2 dark:border-gray-800 dark:bg-gray-900"
-                    x-bind:inert="uploading"
-                >
-                    {{ $this->uploadFilesAction }}
-                </div>
-            @endif
+            @php
+                $permanenceNoteHtml = str_replace(
+                    ':link',
+                    '<a href="'.e($this->mediaLibraryUrl()).'" target="_blank" rel="noopener noreferrer" class="font-medium underline">'
+                        .e(__('admin.media_library.manage_gallery'))
+                        .'</a>',
+                    e(__($isInlineOwnerWorkspace
+                        ? 'admin.media_library.acquisition_permanence_inline'
+                        : 'admin.media_library.acquisition_permanence')),
+                );
+            @endphp
 
-            <p class="mb-4 rounded-md bg-primary-50 p-3 text-xs text-primary-800 dark:bg-primary-950 dark:text-primary-200">
-                {{ __($isInlineOwnerWorkspace
-                    ? 'admin.media_library.acquisition_permanence_inline'
-                    : 'admin.media_library.acquisition_permanence') }}
-            </p>
+            @if (in_array($activeSource, ['upload', 'url'], true))
+                <div class="sticky top-0 z-10 -mx-4 -mt-4 mb-3 flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-gray-200 bg-white px-4 py-2 dark:border-gray-800 dark:bg-gray-900">
+                    @if ($activeSource === 'upload')
+                        <span
+                            data-testid="media-picker-upload-action-guard"
+                            x-bind:inert="uploading"
+                        >
+                            {{ $this->uploadFilesAction }}
+                        </span>
+                    @else
+                        <span
+                            data-testid="media-picker-url-action-guard"
+                            x-bind:inert="uploading"
+                            wire:loading.attr="inert"
+                            wire:offline.attr="inert"
+                        >
+                            {{ $this->acquireUrlAction }}
+                        </span>
+                    @endif
+                    <p class="min-w-48 flex-1 text-xs text-primary-800 dark:text-primary-200">
+                        {!! $permanenceNoteHtml !!}
+                    </p>
+                </div>
+            @elseif ($activeSource === 'storage')
+                <p class="mb-4 rounded-md bg-primary-50 p-3 text-xs text-primary-800 dark:bg-primary-950 dark:text-primary-200">
+                    {!! $permanenceNoteHtml !!}
+                </p>
+            @endif
 
             @if (! $isOwnerChoice)
             <x-filament::tabs
@@ -482,14 +507,6 @@
                         x-init="$nextTick(() => (document.getElementById('media-picker-url-input') ?? document.getElementById('media-picker-source-url'))?.focus())"
                     ></span>
                 @enderror
-                <div
-                    class="mt-3"
-                    x-bind:inert="uploading"
-                    wire:loading.attr="inert"
-                    wire:offline.attr="inert"
-                >
-                    {{ $this->acquireUrlAction }}
-                </div>
             @else
                 <section
                     id="media-picker-panel-storage"

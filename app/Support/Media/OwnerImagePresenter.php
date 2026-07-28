@@ -127,6 +127,24 @@ class OwnerImagePresenter
             $savedReferenceKey,
             $canChooseAutomatic,
         );
+        $pendingFallbackSource = null;
+        $pendingFallbackPreviewUrl = null;
+
+        if ($pendingKind === 'automatic_fallback') {
+            $fallback = $owner instanceof ContentGroup
+                ? $this->defaultImageResolver->contentGroupImage($owner, ignoreOwnImage: true)
+                : $this->defaultImageResolver->contentItemImage($owner, ignoreOwnImage: true);
+            $pendingFallbackSource = match ($fallback['source']) {
+                'item_external' => 'external_url',
+                'group' => 'inherited_podcast_cover',
+                'content_item_default', 'content_group_default' => 'configured_default',
+                'global_default' => 'global_default',
+                default => 'none',
+            };
+            $pendingFallbackPreviewUrl = is_string($fallback['url'] ?? null) && filled($fallback['url'])
+                ? $fallback['url']
+                : null;
+        }
 
         return new OwnerImageChoicePresentation(
             ownerKind: $ownerKind,
@@ -160,6 +178,8 @@ class OwnerImagePresenter
             unsafeFingerprint: $snapshot['unsafe_fingerprint'],
             commitBoundary: $commitBoundary,
             warningCodes: $snapshot['warning_codes'],
+            pendingFallbackSource: $pendingFallbackSource,
+            pendingFallbackPreviewUrl: $pendingFallbackPreviewUrl,
         );
     }
 

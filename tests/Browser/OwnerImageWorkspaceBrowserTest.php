@@ -3,7 +3,6 @@
 use App\Enums\MediaAttachmentRole;
 use App\Filament\Resources\ContentGroups\ContentGroupResource;
 use App\Filament\Resources\ContentItems\ContentItemResource;
-use App\Filament\Resources\Media\MediaResource;
 use App\Models\ContentGroup;
 use App\Models\ContentItem;
 use App\Models\Media;
@@ -514,9 +513,10 @@ function ownerImageBrowserOpenDedicatedAction(
                 generic_actions_absent: ! {$genericActionLabels}.some(
                     (label) => dialog.textContent.includes(label),
                 ),
-                details_target: details?.getAttribute('target'),
-                details_rel: details?.getAttribute('rel'),
-                details_href: details?.getAttribute('href'),
+                details_is_button: details?.tagName === 'BUTTON',
+                details_mounts_slide_over: Boolean(
+                    details?.getAttribute('wire:click')?.includes("mountAction('mediaDetails'"),
+                ),
                 raw_key_absent: ! /\\b(?:admin\\.)[a-z0-9_.]+/i.test(modal.textContent),
                 axe_serious: seriousAxe,
                 viewport_width: innerWidth,
@@ -591,10 +591,8 @@ function expectOwnerImageBrowserContract(array $evidence, bool $mobile): void
         ->and($evidence['removed_tabs_absent'])->toBeTrue()
         ->and($evidence['generic_summary_absent'])->toBeTrue()
         ->and($evidence['generic_actions_absent'])->toBeTrue()
-        ->and($evidence['details_target'])->toBe('_blank')
-        ->and($evidence['details_rel'])->toContain('noopener')
-        ->and($evidence['details_rel'])->toContain('noreferrer')
-        ->and($evidence['details_href'])->toContain('/admin/media/')
+        ->and($evidence['details_is_button'])->toBeTrue(json_encode($evidence, JSON_THROW_ON_ERROR))
+        ->and($evidence['details_mounts_slide_over'])->toBeTrue()
         ->and($evidence['raw_key_absent'])->toBeTrue()
         ->and($evidence['axe_serious'])->toBe([])
         ->and($evidence['failed_requests'])->toBe(0, json_encode($evidence, JSON_THROW_ON_ERROR))
@@ -834,7 +832,7 @@ it('proves canonical dedicated owner actions across locale and device contracts'
     );
     expectOwnerImageBrowserContract($episode, $mobile);
 
-    $replacementSelector = '[wire\\:key="media-picker-'.$fixtures['replacement']->getKey().'"] button';
+    $replacementSelector = '[wire\\:key="media-picker-'.$fixtures['replacement']->getKey().'"] button[wire\\:click^="toggleSelection"]';
 
     if ($mobile) {
         ownerImageBrowserTap($page, $replacementSelector);
@@ -853,7 +851,7 @@ it('proves canonical dedicated owner actions across locale and device contracts'
                 if (state?.querySelector('button[title*="Browser pending replacement"]')
                     && window.__ownerImagePendingRequests === 0) {
                     const modal = dialog.querySelector('[data-owner-image-modal="true"]');
-                    const details = state.querySelector('a[target="_blank"]') ?? null;
+                    const details = state.querySelector('button[data-media-details-id]') ?? null;
 
                     if (! details?.isConnected) {
                         await new Promise((resolve) => setTimeout(resolve, 25));
@@ -878,14 +876,14 @@ it('proves canonical dedicated owner actions across locale and device contracts'
                     const currentState = currentDialog?.querySelector(
                         '[data-testid="owner-image-pending-state"]',
                     ) ?? null;
-                    const currentDetails = currentState?.querySelector('a[target="_blank"]') ?? null;
+                    const currentDetails = currentState?.querySelector('button[data-media-details-id]') ?? null;
 
                     return {
                         pending: Boolean(currentState?.querySelector(
                             'button[title*="Browser pending replacement"]',
                         )),
                         details_connected: Boolean(currentDetails?.isConnected),
-                        details_href: currentDetails?.href ?? null,
+                        details_media_id: currentDetails?.getAttribute('data-media-details-id') ?? null,
                         path_unchanged: location.pathname === before.path,
                         modal_unchanged: Boolean(currentModal?.isConnected)
                             && currentDialog.classList.contains('fi-modal-open'),
@@ -893,8 +891,6 @@ it('proves canonical dedicated owner actions across locale and device contracts'
                         scroll_unchanged: currentModal
                             ? Math.abs(currentModal.scrollTop - before.scroll) <= 1
                             : false,
-                        details_target: currentDetails?.target ?? null,
-                        details_rel: currentDetails?.rel ?? null,
                         failed_requests: window.__ownerImageFailedRequests,
                     };
                 }
@@ -910,6 +906,56 @@ it('proves canonical dedicated owner actions across locale and device contracts'
         ownerImageBrowserCapture($page, '03-episode-pending-he-390.png');
         ownerImageBrowserCapture($page, '10-details-original-modal-he-390.png');
     }
+
+    $slideOver = $page->script(<<<'JS'
+        async () => {
+            const waitUntil = async (predicate) => {
+                const started = performance.now();
+
+                while (performance.now() - started < 10000) {
+                    const result = predicate();
+
+                    if (result) {
+                        return result;
+                    }
+
+                    await new Promise((resolve) => setTimeout(resolve, 25));
+                }
+
+                throw new Error('Timed out inside the media details slide-over flow.');
+            };
+            const ownerDialog = () => Array.from(document.querySelectorAll(
+                '[aria-modal="true"].fi-modal-open',
+            )).find((dialog) => dialog.querySelector('[data-owner-image-modal="true"]'));
+            const detailsDialog = () => Array.from(document.querySelectorAll(
+                '[aria-modal="true"].fi-modal-open',
+            )).find((dialog) => dialog.querySelector('[data-testid="media-details-slide-over"]'));
+
+            ownerDialog()?.querySelector(
+                '[data-testid="owner-image-pending-state"] button[data-media-details-id]',
+            )?.click();
+            await waitUntil(() => detailsDialog());
+            const opened = {
+                slide_over_open: Boolean(detailsDialog()),
+                owner_modal_open: Boolean(ownerDialog()),
+                name_present: Boolean(detailsDialog()?.textContent.includes('Browser pending replacement')),
+                path: location.pathname,
+            };
+            detailsDialog()?.querySelector('.fi-modal-footer-actions button')?.click();
+            await waitUntil(() => ! detailsDialog());
+            await waitUntil(() => window.__ownerImagePendingRequests === 0);
+
+            return {
+                ...opened,
+                slide_over_closed: ! detailsDialog(),
+                owner_modal_still_open: Boolean(ownerDialog()),
+                pending_still_present: Boolean(ownerDialog()?.querySelector(
+                    '[data-testid="owner-image-pending-state"] button[title*="Browser pending replacement"]',
+                )),
+                path_unchanged: location.pathname === opened.path,
+            };
+        }
+        JS);
 
     $episodeOpenerId = ownerImageBrowserJsValue($episode['opener_id']);
 
@@ -956,16 +1002,18 @@ it('proves canonical dedicated owner actions across locale and device contracts'
 
     expect($pending['pending'])->toBeTrue(json_encode($pending, JSON_THROW_ON_ERROR))
         ->and($pending['details_connected'])->toBeTrue()
-        ->and($pending['details_href'])->toBe(
-            MediaResource::getUrl('edit', ['record' => $fixtures['replacement']]),
-        )
+        ->and($pending['details_media_id'])->toBe((string) $fixtures['replacement']->getKey())
         ->and($pending['path_unchanged'])->toBeTrue()
         ->and($pending['modal_unchanged'])->toBeTrue()
         ->and($pending['pending_unchanged'])->toBeTrue()
         ->and($pending['scroll_unchanged'])->toBeTrue()
-        ->and($pending['details_target'])->toBe('_blank')
-        ->and($pending['details_rel'])->toContain('noopener')
-        ->and($pending['details_rel'])->toContain('noreferrer')
+        ->and($slideOver['slide_over_open'])->toBeTrue(json_encode($slideOver, JSON_THROW_ON_ERROR))
+        ->and($slideOver['owner_modal_open'])->toBeTrue()
+        ->and($slideOver['name_present'])->toBeTrue()
+        ->and($slideOver['slide_over_closed'])->toBeTrue()
+        ->and($slideOver['owner_modal_still_open'])->toBeTrue()
+        ->and($slideOver['pending_still_present'])->toBeTrue()
+        ->and($slideOver['path_unchanged'])->toBeTrue()
         ->and($pending['failed_requests'])->toBe(0)
         ->and($closedOwnerAction['closed'])->toBeTrue(
             json_encode($closedOwnerAction, JSON_THROW_ON_ERROR),
