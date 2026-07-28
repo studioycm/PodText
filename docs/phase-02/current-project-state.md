@@ -62,10 +62,22 @@ Recorded after the Markdown-only post-Prompt-10 prompt-progress centralization c
   public alt chain) were absorbed into the dossier as P5–P8 before
   approval, and the operator's «rename is for a title» ruling is recorded
   as the model: filenames stay anonymous engine mints; «יצירת שם קובץ
-  חדש» is maintenance-only. 3C outcome review by the operator is the next
-  step; after it closes, replanned Mini-task 4 research opens
-  (`unsanitized_svg` operator-preferred first reason). Production deploy
-  of the pushed series awaits an explicit operator deploy request.
+  חדש» is maintenance-only. The operator closed the 3C outcome review on
+  2026-07-28 («3c is good») after two approved corrections: OR1
+  `e529f48` (card references stacked — label above the humanized names
+  or the no-usages text, readiness badge on its own row) and OR2
+  `88c6880` (the primed reference cache and linked references now build
+  one canonical owner-title label and dedupe an attachment against its
+  converter-bridged legacy path column; repair-facing legacy list
+  untouched). Replanned Mini-task 4 research was opened in parallel by
+  operator direction as a read-only background research cycle
+  (`unsanitized_svg` operator-preferred first reason; dossier pending);
+  with 3C closed, M4 implementation awaits only the M4 dossier and the
+  operator's phase approval. Package 5 gained operator seeds: legacy
+  owner-column retirement (production census 2026-07-28: 294 covers all
+  attachment-bridged, 0 legacy-only, `image_path` unused — code-only
+  migration) alongside root-file relocation. A staged Eloquent
+  strict-mode chore runs in a separate operator-started session.
 
 ## Git State
 
