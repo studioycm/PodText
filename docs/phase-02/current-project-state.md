@@ -55,8 +55,8 @@ Recorded after the Markdown-only post-Prompt-10 prompt-progress centralization c
 - Media Operations UX3 Mini-task 3A outcome-review corrections OR5 and OR6
   are complete locally under the shared design-review artifact (OR5 section
   plus in-chat steers) and operator approval `approve OR5 - all details
-  actions` with follow-up steers. Their implementation hash is backfilled in
-  the follow-up docs commit. OR5: every details action on the picker surface
+  actions` with follow-up steers. Their implementation is
+  `6af53a1562aff67b02c05ac12faf23d51af2ae63`. OR5: every details action on the picker surface
   (owner gallery tiles, blocked-tile links, strip card ⓘ, plus an additive
   entry on standalone tiles) opens a panel-owned read-only details slide-over
   (thumbnail, name with copy, MIME/dimensions/size, stored filename, folder,
