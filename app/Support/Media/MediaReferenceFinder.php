@@ -11,6 +11,7 @@ use App\Models\ContentGroup;
 use App\Models\ContentItem;
 use App\Models\Media;
 use App\Settings\PublicContentSettings;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
@@ -97,22 +98,103 @@ class MediaReferenceFinder
             return $this->primedReferences[(int) $media->getKey()];
         }
 
-        $attachmentReferences = Schema::hasTable('media_attachments')
+        $attachments = Schema::hasTable('media_attachments')
             ? DB::table('media_attachments')
                 ->where('media_id', $media->getKey())
                 ->get(['attachable_type', 'attachable_id', 'role'])
-                ->map(fn (object $attachment): string => __('admin.media_references.attachment', [
-                    'type' => $this->attachableKindLabel((string) $attachment->attachable_type),
-                    'id' => (int) $attachment->attachable_id,
-                    'role' => $this->attachmentRoleLabel((string) $attachment->role),
-                ]))
             : collect();
+        $groupTitles = ContentGroup::query()
+            ->whereKey($attachments->whereIn('attachable_type', ['content_group', ContentGroup::class])->pluck('attachable_id'))
+            ->pluck('title', 'id');
+        $itemTitles = ContentItem::query()
+            ->whereKey($attachments->whereIn('attachable_type', ['content_item', ContentItem::class])->pluck('attachable_id'))
+            ->pluck('title', 'id');
+        $attachmentReferences = $attachments->map(
+            fn (object $attachment): string => $this->attachmentReferenceLabel(
+                (string) $attachment->attachable_type,
+                (int) $attachment->attachable_id,
+                (string) $attachment->role,
+                $groupTitles,
+                $itemTitles,
+            ),
+        );
+        $legacyDuplicates = $this->legacyDuplicateStrings($attachments, $groupTitles, $itemTitles);
 
         return collect($this->nonAttachmentReferencesForMedia($media))
+            ->reject(fn (string $reference): bool => in_array($reference, $legacyDuplicates, true))
             ->merge($attachmentReferences)
             ->unique()
             ->values()
             ->all();
+    }
+
+    /**
+     * One canonical humanized owner string for an attachment reference.
+     *
+     * @param  Collection<int|string, string|null>  $groupTitles
+     * @param  Collection<int|string, string|null>  $itemTitles
+     */
+    private function attachmentReferenceLabel(
+        string $type,
+        int $id,
+        string $role,
+        Collection $groupTitles,
+        Collection $itemTitles,
+    ): string {
+        $title = match (true) {
+            in_array($type, ['content_group', ContentGroup::class], true) => $groupTitles[$id] ?? null,
+            in_array($type, ['content_item', ContentItem::class], true) => $itemTitles[$id] ?? null,
+            default => null,
+        };
+
+        if (filled($title)) {
+            return $this->attachableKindLabel($type).': '.$title.' ('.$this->attachmentRoleLabel($role).')';
+        }
+
+        return __('admin.media_references.attachment', [
+            'type' => $this->attachableKindLabel($type),
+            'id' => $id,
+            'role' => $this->attachmentRoleLabel($role),
+        ]);
+    }
+
+    /**
+     * The legacy path-column strings that describe the same usage an
+     * attachment already covers, so one real usage renders once.
+     *
+     * @param  Collection<int, object>  $attachments
+     * @param  Collection<int|string, string|null>  $groupTitles
+     * @param  Collection<int|string, string|null>  $itemTitles
+     * @return array<int, string>
+     */
+    private function legacyDuplicateStrings(
+        Collection $attachments,
+        Collection $groupTitles,
+        Collection $itemTitles,
+    ): array {
+        $duplicates = [];
+
+        foreach ($attachments as $attachment) {
+            $id = (int) $attachment->attachable_id;
+
+            if (
+                (string) $attachment->role === 'cover'
+                && in_array((string) $attachment->attachable_type, ['content_group', ContentGroup::class], true)
+                && filled($groupTitles[$id] ?? null)
+            ) {
+                $duplicates[] = __('admin.media_references.content_group_cover', ['title' => $groupTitles[$id]]);
+            }
+
+            if (
+                (string) $attachment->role === 'primary_image'
+                && in_array((string) $attachment->attachable_type, ['content_item', ContentItem::class], true)
+                && filled($itemTitles[$id] ?? null)
+            ) {
+                $duplicates[] = __('admin.media_references.content_item_image', ['title' => $itemTitles[$id]]);
+            }
+        }
+
+        return $duplicates;
     }
 
     /**
@@ -122,6 +204,8 @@ class MediaReferenceFinder
     public function linkedReferencesForMedia(Media $media): array
     {
         $links = collect();
+        $attachedGroupIds = [];
+        $attachedItemIds = [];
 
         if (Schema::hasTable('media_attachments')) {
             $attachments = DB::table('media_attachments')
@@ -147,6 +231,12 @@ class MediaReferenceFinder
                     ],
                     default => ["#{$id}", null],
                 };
+
+                if (in_array((string) $attachment->attachable_type, ['content_group', ContentGroup::class], true)) {
+                    $attachedGroupIds[] = $id;
+                } elseif (in_array((string) $attachment->attachable_type, ['content_item', ContentItem::class], true)) {
+                    $attachedItemIds[] = $id;
+                }
                 $links->push([
                     'label' => $this->attachableKindLabel((string) $attachment->attachable_type)
                         .': '.$title
@@ -163,6 +253,7 @@ class MediaReferenceFinder
                 ContentGroup::query()
                     ->where('cover_path', $path)
                     ->get(['id', 'title'])
+                    ->reject(fn (ContentGroup $group): bool => in_array((int) $group->getKey(), $attachedGroupIds, true))
                     ->each(fn (ContentGroup $group) => $links->push([
                         'label' => __('admin.media_references.content_group_cover', ['title' => (string) $group->title]),
                         'url' => ContentGroupResource::getUrl('edit', ['record' => $group->getKey()], panel: 'admin'),
@@ -173,6 +264,7 @@ class MediaReferenceFinder
                 ContentItem::query()
                     ->where('image_path', $path)
                     ->get(['id', 'title'])
+                    ->reject(fn (ContentItem $item): bool => in_array((int) $item->getKey(), $attachedItemIds, true))
                     ->each(fn (ContentItem $item) => $links->push([
                         'label' => __('admin.media_references.content_item_image', ['title' => (string) $item->title]),
                         'url' => ContentItemResource::getUrl('edit', ['record' => $item->getKey()], panel: 'admin'),
@@ -312,27 +404,47 @@ class MediaReferenceFinder
         $ids = $records->keys()->all();
         $paths = $records->pluck('path')->filter()->unique()->values()->all();
 
+        $attachmentDuplicates = [];
+
         if ($ids !== [] && Schema::hasTable('media_attachments')) {
-            DB::table('media_attachments')
+            $attachments = DB::table('media_attachments')
                 ->whereIn('media_id', $ids)
-                ->get(['media_id', 'attachable_type', 'attachable_id', 'role'])
-                ->each(function (object $attachment) use (&$references): void {
-                    $references[(int) $attachment->media_id][] = __('admin.media_references.attachment', [
-                        'type' => (string) $attachment->attachable_type,
-                        'id' => (int) $attachment->attachable_id,
-                        'role' => (string) $attachment->role,
-                    ]);
-                });
+                ->get(['media_id', 'attachable_type', 'attachable_id', 'role']);
+            $groupTitles = ContentGroup::query()
+                ->whereKey($attachments->whereIn('attachable_type', ['content_group', ContentGroup::class])->pluck('attachable_id'))
+                ->pluck('title', 'id');
+            $itemTitles = ContentItem::query()
+                ->whereKey($attachments->whereIn('attachable_type', ['content_item', ContentItem::class])->pluck('attachable_id'))
+                ->pluck('title', 'id');
+
+            foreach ($attachments as $attachment) {
+                $mediaId = (int) $attachment->media_id;
+                $references[$mediaId][] = $this->attachmentReferenceLabel(
+                    (string) $attachment->attachable_type,
+                    (int) $attachment->attachable_id,
+                    (string) $attachment->role,
+                    $groupTitles,
+                    $itemTitles,
+                );
+                $attachmentDuplicates[$mediaId] = array_merge(
+                    $attachmentDuplicates[$mediaId] ?? [],
+                    $this->legacyDuplicateStrings(collect([$attachment]), $groupTitles, $itemTitles),
+                );
+            }
         }
 
         if ($paths !== [] && Schema::hasTable('content_groups')) {
             ContentGroup::query()
                 ->whereIn('cover_path', $paths)
                 ->get(['title', 'cover_path'])
-                ->each(function (ContentGroup $group) use ($recordsByPath, &$legacyReferences, &$references): void {
-                    $recordsByPath->get((string) $group->cover_path, collect())->each(function (Media $media) use ($group, &$legacyReferences, &$references): void {
+                ->each(function (ContentGroup $group) use ($recordsByPath, &$legacyReferences, &$references, $attachmentDuplicates): void {
+                    $recordsByPath->get((string) $group->cover_path, collect())->each(function (Media $media) use ($group, &$legacyReferences, &$references, $attachmentDuplicates): void {
                         $reference = __('admin.media_references.content_group_cover', ['title' => $group->title]);
-                        $references[(int) $media->getKey()][] = $reference;
+
+                        if (! in_array($reference, $attachmentDuplicates[(int) $media->getKey()] ?? [], true)) {
+                            $references[(int) $media->getKey()][] = $reference;
+                        }
+
                         $legacyReferences[(int) $media->getKey()][] = $reference;
                     });
                 });
@@ -342,10 +454,14 @@ class MediaReferenceFinder
             ContentItem::query()
                 ->whereIn('image_path', $paths)
                 ->get(['title', 'image_path'])
-                ->each(function (ContentItem $item) use ($recordsByPath, &$legacyReferences, &$references): void {
-                    $recordsByPath->get((string) $item->image_path, collect())->each(function (Media $media) use ($item, &$legacyReferences, &$references): void {
+                ->each(function (ContentItem $item) use ($recordsByPath, &$legacyReferences, &$references, $attachmentDuplicates): void {
+                    $recordsByPath->get((string) $item->image_path, collect())->each(function (Media $media) use ($item, &$legacyReferences, &$references, $attachmentDuplicates): void {
                         $reference = __('admin.media_references.content_item_image', ['title' => $item->title]);
-                        $references[(int) $media->getKey()][] = $reference;
+
+                        if (! in_array($reference, $attachmentDuplicates[(int) $media->getKey()] ?? [], true)) {
+                            $references[(int) $media->getKey()][] = $reference;
+                        }
+
                         $legacyReferences[(int) $media->getKey()][] = $reference;
                     });
                 });

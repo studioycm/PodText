@@ -20,6 +20,7 @@ use App\Models\MediaProviderBinding;
 use App\Models\User;
 use App\Support\Media\MediaInventoryDiagnostics;
 use App\Support\Media\MediaRecordProjector;
+use App\Support\Media\MediaReferenceFinder;
 use Awcodes\Curator\Config\CurationManager;
 use Awcodes\Curator\Facades\Curator;
 use Filament\Actions\Action;
@@ -1197,4 +1198,43 @@ it('scopes gallery search to title owner or filename', function (): void {
     $component->call('setSearchScope', 'nonsense');
 
     expect($component->get('searchScope'))->toBe('all');
+});
+
+it('renders one humanized owner reference when an attachment and its bridged legacy column coexist', function (): void {
+    $this->actingAs(User::factory()->admin()->create());
+    $media = appOwnedMediaRecord([
+        'name' => '01J00000000000000000000071',
+        'path' => 'content-groups/covers/01J00000000000000000000071.jpg',
+    ]);
+    $group = ContentGroup::factory()->create([
+        'title' => 'טכנולוגיה בעברית',
+        'cover_path' => $media->path,
+    ]);
+    MediaAttachment::query()->create([
+        'media_id' => $media->getKey(),
+        'attachable_type' => 'content_group',
+        'attachable_id' => $group->getKey(),
+        'role' => 'cover',
+        'position' => 0,
+    ]);
+
+    $finder = app(MediaReferenceFinder::class);
+    $expectedLabel = __('admin.settings_backup_snapshot_screens.podcast')
+        .': טכנולוגיה בעברית ('.__('admin.media_attachment_roles.cover').')';
+
+    expect($finder->referencesForMedia($media))->toBe([$expectedLabel]);
+
+    $finder->prime(collect([$media]));
+
+    expect($finder->referencesForMedia($media))->toBe([$expectedLabel])
+        ->and($finder->legacyReferencesForMedia($media))->toBe([
+            __('admin.media_references.content_group_cover', ['title' => 'טכנולוגיה בעברית']),
+        ]);
+
+    $finder->clearPrime();
+    $links = $finder->linkedReferencesForMedia($media);
+
+    expect($links)->toHaveCount(1)
+        ->and($links[0]['label'])->toBe($expectedLabel)
+        ->and($links[0]['url'])->not->toBeNull();
 });
