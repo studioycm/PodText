@@ -893,3 +893,16 @@ it('prefixes normalized per-file titles and alt in a multi upload and keeps sing
 
     expect(Media::query()->sole()->title)->toBe('כותרת מדויקת');
 });
+
+it('renames a media title inline from the gallery card', function (): void {
+    $this->actingAs(User::factory()->admin()->create());
+    $media = appOwnedMediaRecord(['title' => null]);
+    Storage::disk('public')->put($media->path, 'inline title fixture');
+
+    Livewire::test(ListMedia::class)
+        ->assertSee('data-testid="media-library-card-title-input"', false)
+        ->assertSee(__('admin.media_library.inline_title_placeholder'))
+        ->call('updateTableColumnState', 'title', (string) $media->getKey(), 'כותרת מהגלריה');
+
+    expect($media->refresh()->title)->toBe('כותרת מהגלריה');
+});

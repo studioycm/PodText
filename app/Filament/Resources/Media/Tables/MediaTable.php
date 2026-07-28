@@ -25,12 +25,14 @@ use Filament\Tables\Columns\ImageColumn;
 use Filament\Tables\Columns\Layout\Grid;
 use Filament\Tables\Columns\Layout\Stack;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Columns\TextInputColumn;
 use Filament\Tables\Enums\RecordActionsPosition;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\HtmlString;
 use Illuminate\Support\Number;
 use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
 
@@ -85,6 +87,14 @@ class MediaTable
                                     )
                                     ->weight(FontWeight::SemiBold)
                                     ->wrap(),
+                                TextInputColumn::make('title')
+                                    ->label(__('admin.fields.title'))
+                                    ->placeholder(__('admin.media_library.inline_title_placeholder'))
+                                    ->rules(['nullable', 'string', 'max:255'])
+                                    ->disabled(fn (Media $record): bool => ! Gate::allows('update', $record))
+                                    ->extraAttributes([
+                                        'data-testid' => 'media-library-card-title-input',
+                                    ]),
                                 TextColumn::make('card_original_filename')
                                     ->label(__('admin.owner_image.metadata.original_filename'))
                                     ->state(fn (Media $record): ?string => is_string($original = data_get($record->exif, 'original_filename'))
@@ -96,10 +106,13 @@ class MediaTable
                                 TextColumn::make('card_stored_filename')
                                     ->label(__('admin.owner_image.metadata.stored_filename'))
                                     ->state(fn (Media $record): string => basename((string) $record->path))
+                                    ->formatStateUsing(fn (string $state): HtmlString => new HtmlString(
+                                        '<span dir="ltr">'.e($state).'</span>',
+                                    ))
+                                    ->html()
                                     ->description(__('admin.owner_image.metadata.stored_filename'), 'above')
                                     ->extraAttributes([
                                         'data-testid' => 'media-library-card-stored-filename',
-                                        'dir' => 'ltr',
                                     ])
                                     ->copyable()
                                     ->copyMessage(__('admin.owner_image.copy_success'))
@@ -180,9 +193,12 @@ class MediaTable
                                             : null,
                                         Number::fileSize((int) ($record->size ?? 0)),
                                     ])->filter()->implode(' · '))
+                                    ->formatStateUsing(fn (string $state): HtmlString => new HtmlString(
+                                        '<span dir="ltr">'.e($state).'</span>',
+                                    ))
+                                    ->html()
                                     ->extraAttributes([
                                         'data-testid' => 'media-library-card-file-summary',
-                                        'dir' => 'ltr',
                                     ])
                                     ->color('gray')
                                     ->wrap(),

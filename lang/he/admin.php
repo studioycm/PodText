@@ -2713,6 +2713,7 @@ return [
         'inline_batch_help' => 'בחירת תמונה אחת מוסיפה וגם מסמנת אותה. בחירת כמה תמונות מוסיפה את כולן, בלי לבחור תמונת בעלים אוטומטית.',
         'legacy_missing' => 'הפניית תמונה ישנה: :name',
         'load_more' => 'טעינת תמונות נוספות',
+        'inline_title_placeholder' => 'הוספת כותרת מהירה…',
         'known_references' => 'הפניות ידועות',
         'known_reference_count' => '{0} לא נמצאו הפניות ידועות|{1} הפניה ידועה אחת|[2,*] :count הפניות ידועות',
         'known_reference_count_unavailable' => 'ספירת ההפניות אינה זמינה',

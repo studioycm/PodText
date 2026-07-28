@@ -2713,6 +2713,7 @@ return [
         'inline_batch_help' => 'Choose one image to add and select it, or choose multiple images to add them all. A batch never chooses the owner image automatically.',
         'legacy_missing' => 'Legacy image reference: :name',
         'load_more' => 'Load more',
+        'inline_title_placeholder' => 'Add a quick title…',
         'known_references' => 'Known references',
         'known_reference_count' => '{0} No known references|{1} 1 known reference|[2,*] :count known references',
         'known_reference_count_unavailable' => 'Reference count unavailable',
