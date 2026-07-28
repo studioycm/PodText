@@ -54,8 +54,8 @@ Recorded after the Markdown-only post-Prompt-10 prompt-progress centralization c
 
 - Media Operations UX3 Mini-task 3A outcome-review correction OR4 is complete
   locally under the shared design-review artifact (OR4 section) and operator
-  approval `approve OR4`. Its implementation hash is backfilled in the
-  follow-up docs commit. The two acquisition permanence texts are rewritten
+  approval `approve OR4`. Its implementation is
+  `5a27e5b3ab2c001d3b39941e47c89261c510715a`. The two acquisition permanence texts are rewritten
   short and simple in HE+EN (inline: «כל תמונה שנקלטה נשמרת בספרייה לצמיתות,
   גם אחרי ביטול. העלאה מרובה אינה בוחרת תמונת בעלים אוטומטית. יש לבחור תמונה
   אחת וללחוץ שמירה.»; standalone keeps the gallery-choice sentence) with the
