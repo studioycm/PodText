@@ -239,6 +239,16 @@ class MediaFilesystemMutationCoordinator
     }
 
     /**
+     * Re-derives a sanitized copy of the stored bytes and swaps it into the
+     * record through the same journaled machinery as rename/swap. Refusal
+     * classes throw from validation before anything is journaled.
+     */
+    public function sanitize(Media $media, User $actor): Media
+    {
+        return $this->mutateExisting($media, $actor, MediaMutationOperationType::Sanitize);
+    }
+
+    /**
      * Transition one reviewed, currently unscoped Curator row in-place.
      * Filesystem handling intentionally uses the same fenced journal and
      * compensation/repair machinery as normal mutations.
@@ -644,7 +654,11 @@ class MediaFilesystemMutationCoordinator
         MediaMutationOperationType $operationType,
         ?ValidatedImage $replacement = null,
     ): Media {
-        $ability = $operationType === MediaMutationOperationType::Rename ? 'rename' : 'swap';
+        $ability = match ($operationType) {
+            MediaMutationOperationType::Rename => 'rename',
+            MediaMutationOperationType::Sanitize => 'repair',
+            default => 'swap',
+        };
         $trusted = $this->scope->findOrFail($media->getKey());
         Gate::forUser($actor)->authorize($ability, $trusted);
         $this->assertUniqueStorageIdentity($trusted);
@@ -655,13 +669,33 @@ class MediaFilesystemMutationCoordinator
         }
 
         $sourceContents = $this->readBoundedArtifact('public', (string) $trusted->path);
-        $sourceProof = $this->validator->validateBytes($sourceContents, basename((string) $trusted->path), $purpose);
 
-        if ($sourceProof->mimeType !== $trusted->type || $sourceProof->extension !== $trusted->ext) {
+        try {
+            $sourceProof = $this->validator->validateBytes($sourceContents, basename((string) $trusted->path), $purpose);
+        } catch (\InvalidArgumentException $sourceRejection) {
+            // A swap replaces the bytes anyway, so an unsafe source (for
+            // example a refusal-class SVG) may not block its own replacement;
+            // the raw source still lands in quarantine below. Operations that
+            // derive their output from the source keep the strict throw.
+            if ($replacement === null) {
+                throw $sourceRejection;
+            }
+
+            $sourceProof = null;
+        }
+
+        if (
+            $sourceProof !== null
+            && ($sourceProof->mimeType !== $trusted->type || $sourceProof->extension !== $trusted->ext)
+        ) {
             throw new RuntimeException('The source media bytes disagree with the record.');
         }
 
         $destinationImage = $replacement ?? $sourceProof;
+
+        if (! $destinationImage instanceof ValidatedImage) {
+            throw new RuntimeException('The mutation destination bytes are unavailable.');
+        }
 
         if ($destinationImage->purpose !== $purpose) {
             throw new RuntimeException('The replacement purpose is incompatible with the media record.');
@@ -757,7 +791,7 @@ class MediaFilesystemMutationCoordinator
             $this->assertOperationShape($operation);
             $this->assertCommittedState($operation);
 
-            if (in_array($operation->operation, [MediaMutationOperationType::Rename, MediaMutationOperationType::Swap, MediaMutationOperationType::Delete, MediaMutationOperationType::Registration, MediaMutationOperationType::LegacyTransition], true)) {
+            if (in_array($operation->operation, [MediaMutationOperationType::Rename, MediaMutationOperationType::Swap, MediaMutationOperationType::Sanitize, MediaMutationOperationType::Delete, MediaMutationOperationType::Registration, MediaMutationOperationType::LegacyTransition], true)) {
                 $context = is_array($operation->context) ? $operation->context : [];
 
                 if (! (bool) ($context['source_missing'] ?? false)) {
@@ -774,7 +808,7 @@ class MediaFilesystemMutationCoordinator
                 $this->forgetRegistrationSettingsCaches();
             }
 
-            if (in_array($operation->operation, [MediaMutationOperationType::Rename, MediaMutationOperationType::Swap, MediaMutationOperationType::Delete, MediaMutationOperationType::Registration, MediaMutationOperationType::LegacyTransition], true)) {
+            if (in_array($operation->operation, [MediaMutationOperationType::Rename, MediaMutationOperationType::Swap, MediaMutationOperationType::Sanitize, MediaMutationOperationType::Delete, MediaMutationOperationType::Registration, MediaMutationOperationType::LegacyTransition], true)) {
                 $this->cleanupCommittedSource($operation);
             }
 

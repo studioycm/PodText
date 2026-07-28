@@ -2,9 +2,11 @@
 
 namespace App\Policies;
 
+use App\Enums\MediaDiagnosticReason;
 use App\Enums\UserRole;
 use App\Models\Media;
 use App\Models\User;
+use App\Support\Media\MediaInventoryDiagnostics;
 use App\Support\Media\MediaRecordScope;
 use App\Support\Media\MediaReferenceFinder;
 use Illuminate\Auth\Access\Response;
@@ -70,6 +72,39 @@ class CuratorMediaPolicy
     public function rename(User $user, Media $media): Response
     {
         return $this->mutateFileResponse($user, $media);
+    }
+
+    public function repair(User $user, Media $media): Response
+    {
+        if (! $this->isAdmin($user)) {
+            return Response::deny();
+        }
+
+        if (! app(MediaRecordScope::class)->allows($media)) {
+            return Response::deny(__('admin.media_library.op_blocked_unmanaged'));
+        }
+
+        if (! in_array(
+            MediaDiagnosticReason::UnsanitizedSvg->value,
+            app(MediaInventoryDiagnostics::class)->reasons($media),
+            true,
+        )) {
+            return Response::deny(__('admin.media_issue_review.sanitize.not_applicable'));
+        }
+
+        $references = app(MediaReferenceFinder::class)->referencesForMedia($media);
+
+        if ($references !== []) {
+            return Response::deny(__('admin.media_library.op_blocked_in_use', [
+                'surfaces' => implode(', ', $references),
+            ]));
+        }
+
+        if (! app(MediaRecordScope::class)->hasUniqueStorageIdentity($media)) {
+            return Response::deny(__('admin.media_library.op_blocked_duplicate_identity'));
+        }
+
+        return Response::allow();
     }
 
     public function swap(User $user, Media $media): Response

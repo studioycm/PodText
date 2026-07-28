@@ -52,6 +52,17 @@ class MediaOperationReceipts
         $this->durable($user, $notification);
     }
 
+    public function sanitizeSucceeded(User $user, string $name, int $closed, int $remaining): void
+    {
+        $this->durable($user, Notification::make()
+            ->success()
+            ->title(__('admin.media_issue_review.sanitize.done_title', ['name' => $name]))
+            ->body(__('admin.media_issue_review.sanitize.done_body', [
+                'closed' => $closed,
+                'remaining' => $remaining,
+            ])));
+    }
+
     public function titleByOwnerFinished(User $user, int $titled, int $skipped): void
     {
         $notification = Notification::make()

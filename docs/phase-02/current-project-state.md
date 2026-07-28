@@ -71,9 +71,15 @@ Recorded after the Markdown-only post-Prompt-10 prompt-progress centralization c
   converter-bridged legacy path column; repair-facing legacy list
   untouched). Replanned Mini-task 4 research was opened in parallel by
   operator direction as a read-only background research cycle
-  (`unsanitized_svg` operator-preferred first reason; dossier pending);
-  with 3C closed, M4 implementation awaits only the M4 dossier and the
-  operator's phase approval. Package 5 gained operator seeds: legacy
+  (`unsanitized_svg` operator-preferred first reason). The M4 dossier
+  (`LS-20260728-PODTEXT-MEDIA-OPS-UX3-M4-01`, published artifact) was
+  delivered and the operator approved «M4 all» = P1+P2+P3 with decisions
+  D1=b («ניקוי בטיחותי»), D2=A (managed rows only — P4 dropped; media 2
+  waits for Package 5 relocation, accepted explicitly: zero live
+  production targets until then), D3=a, D4=a, D5=Issue-Review-only plus
+  card/slide-over Issue Review links, D6=a (fate chips, no Recheck),
+  D7=a, D8=a. M4 P1–P3 are implemented locally (implementation hash
+  `M4_IMPLEMENTATION_HASH`); operator outcome review is the next step. Package 5 gained operator seeds: legacy
   owner-column retirement (production census 2026-07-28: 294 covers all
   attachment-bridged, 0 legacy-only, `image_path` unused — code-only
   migration) alongside root-file relocation. A staged Eloquent
@@ -81,6 +87,50 @@ Recorded after the Markdown-only post-Prompt-10 prompt-progress centralization c
 
 ## Git State
 
+- Media Operations UX3 replanned Mini-task 4 (Repairing Unsafe Files) is
+  complete locally for the approved P1–P3 under dossier
+  `LS-20260728-PODTEXT-MEDIA-OPS-UX3-M4-01` (M4 research ran as a
+  parallel read-only agent by operator direction), operator approval
+  «approve M4 all» with D1–D8 (D2 flipped to A: managed rows only, P4
+  dropped — the production root-level cohort, including media 2, waits
+  for Package 5 relocation), and light audit
+  `LS-20260728-PODTEXT-M4-IMPL-01` (no change). Implementation hash
+  `M4_IMPLEMENTATION_HASH`. P1: the Issue Review page replaces the
+  hard-coded no-authority blocker with truthful per-reason resolution
+  states (`MediaIssueReviewPresenter::resolutionForReason`): the
+  `unsanitized_svg` reason renders its action zone or a
+  disabled-with-reason block from the new `repair` policy Response;
+  root-path `metadata` reviews carry the D7 sentence
+  («הקובץ שמור מחוץ לתיקיות המנוהלות…»); the generic blocker shows only
+  when no reason has resolution content. D5 additions: gallery cards
+  gained a «בדיקת הבעיות» group action (visible when the row needs
+  attention) and the details slide-over keeps its Issue Review link. P2:
+  «ניקוי בטיחותי» (D1=b) is a new journaled coordinator operation
+  (`MediaMutationOperationType::Sanitize` through the same
+  staging/quarantine/lease machinery as rename/swap; destination bytes =
+  sanitizer output; refusal classes throw from validation before
+  anything is journaled) behind the narrow `CuratorMediaPolicy::repair`
+  ability (admin + managed scope + reason present + zero references +
+  unique identity, each deny carrying its truthful message). The page
+  action shows the 3C-grammar consequence dialog (address-change
+  disclosure + not-a-swap hint), and success sends a durable receipt
+  (toast + bell) plus same-request re-evaluated fate chips
+  («נסגר»/«נותר») with no Recheck control (D6=a). P3: an unsanitizable
+  file is a named refusal (nothing journaled, bytes untouched) with two
+  prefilled continuation routes on the page — the 3C swap and
+  permanent-delete dialogs (delete returns to the library).
+  Engine-contract adjustment discovered and required by approved D4
+  routes: `mutateExisting` validated SOURCE bytes unconditionally, which
+  made swapping a refusal-class SVG impossible; source validation is now
+  skipped only when a replacement exists (raw source bytes still
+  quarantined; derive-from-source operations keep the strict throw) —
+  covered by the refusal-route test. Gate: full suite 1449 tests /
+  19282 assertions with only the 4 known-environmental browser
+  failures, FilaCheck 0 issues, pint clean, `npm run build` green; the
+  `media_mutation_operations.operation` column is `string(32)` so the
+  new enum case needs no migration. Deferred: repair for in-use SVGs
+  (D3 reference-plane work), intrinsic metadata-row repairs (natural
+  second cycle per D8), root-level reach (Package 5).
 - Staged Eloquent strict mode (bounded chore, implemented on worktree
   branch `claude/keen-gould-16e3a4`, rebased onto the 3C closure
   `9393fef`; implementation hash `72c29c5`, merged fast-forward into

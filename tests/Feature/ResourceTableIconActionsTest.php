@@ -104,6 +104,7 @@ it('gives Media one visible details action and one quiet grouped action menu', f
         ->and((string) $recordActions[2]->getTooltip())->toBe(__('admin.media_library.more_actions'))
         ->and($recordActions[2]->getColor())->toBe('gray')
         ->and(array_keys($recordActions[2]->getFlatActions()))->toBe([
+            'reviewIssues',
             'view',
             'download',
             'titleByOwner',
@@ -114,6 +115,7 @@ it('gives Media one visible details action and one quiet grouped action menu', f
         ->and(array_keys($table->getFlatRecordActions()))->toBe([
             'mediaDetails',
             'edit',
+            'reviewIssues',
             'view',
             'download',
             'titleByOwner',

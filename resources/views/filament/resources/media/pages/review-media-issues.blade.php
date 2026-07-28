@@ -52,6 +52,57 @@
             </div>
         </x-filament::section>
 
+        @if ($this->sanitizeResult !== null)
+            <div
+                class="rounded-xl border border-success-300 bg-success-50 p-4 text-success-900 dark:border-success-700 dark:bg-success-950 dark:text-success-100"
+                role="status"
+                data-testid="media-sanitize-result"
+            >
+                <div class="flex flex-wrap gap-2 text-sm font-medium">
+                    @foreach ($this->sanitizeResult['closed'] as $label)
+                        <span class="rounded-full border border-success-500 px-2.5 py-0.5">
+                            {{ __('admin.media_issue_review.resolution.closed', ['label' => $label]) }}
+                        </span>
+                    @endforeach
+                    @foreach ($this->sanitizeResult['remaining'] as $label)
+                        <span class="rounded-full border border-gray-400 px-2.5 py-0.5 text-gray-700 dark:text-gray-200">
+                            {{ __('admin.media_issue_review.resolution.remaining', ['label' => $label]) }}
+                        </span>
+                    @endforeach
+                </div>
+            </div>
+        @endif
+
+        @if ($this->sanitizeRefused)
+            <div
+                class="rounded-xl border border-warning-300 bg-warning-50 p-5 text-warning-950 dark:border-warning-700 dark:bg-warning-950 dark:text-warning-100"
+                role="alert"
+                data-testid="media-sanitize-refusal"
+            >
+                <h2 class="font-semibold">{{ __('admin.media_issue_review.sanitize.refusal_title') }}</h2>
+                <p class="mt-2 text-sm">{{ __('admin.media_issue_review.sanitize.refusal_body') }}</p>
+                <p class="mt-2 text-sm">{{ __('admin.media_issue_review.sanitize.refusal_routes') }}</p>
+                <div class="mt-3 flex flex-wrap gap-3">
+                    <x-filament::button
+                        color="warning"
+                        icon="heroicon-o-arrows-right-left"
+                        wire:click="mountAction('swapFile')"
+                        data-testid="media-sanitize-refusal-swap"
+                    >
+                        {{ __('admin.media_library.swap') }}
+                    </x-filament::button>
+                    <x-filament::button
+                        color="danger"
+                        icon="heroicon-o-trash"
+                        wire:click="mountAction('deleteFile')"
+                        data-testid="media-sanitize-refusal-delete"
+                    >
+                        {{ __('admin.media_library.delete_permanently') }}
+                    </x-filament::button>
+                </div>
+            </div>
+        @endif
+
         @if ($review['issues'] !== [])
             <section aria-labelledby="media-issue-summary-heading" class="space-y-4">
                 <div
@@ -114,6 +165,43 @@
                                     </div>
                                 @endforeach
                             </dl>
+
+                            @if ($issue['resolution']['kind'] === 'action')
+                                <div
+                                    class="mt-5 border-t border-dashed border-gray-200 pt-4 dark:border-gray-700"
+                                    data-testid="media-issue-resolution-action-{{ $issue['value'] }}"
+                                >
+                                    <x-filament::button
+                                        color="warning"
+                                        icon="heroicon-o-sparkles"
+                                        wire:click="mountAction('sanitizeFile')"
+                                        data-testid="media-sanitize-trigger"
+                                    >
+                                        {{ $issue['resolution']['label'] }}
+                                    </x-filament::button>
+                                    <p class="mt-2 text-sm text-gray-600 dark:text-gray-300">
+                                        {{ $issue['resolution']['description'] }}
+                                    </p>
+                                </div>
+                            @elseif ($issue['resolution']['kind'] === 'blocked')
+                                <p
+                                    class="mt-5 rounded-lg bg-warning-50 p-3 text-sm text-warning-800 dark:bg-warning-950 dark:text-warning-200"
+                                    data-testid="media-issue-resolution-blocked-{{ $issue['value'] }}"
+                                >
+                                    {{ $issue['resolution']['reason'] }}
+                                </p>
+                            @elseif ($issue['resolution']['kind'] === 'separate_phase')
+                                <p
+                                    class="mt-5 rounded-lg bg-gray-50 p-3 text-sm text-gray-600 dark:bg-white/5 dark:text-gray-300"
+                                    data-testid="media-issue-resolution-separate-{{ $issue['value'] }}"
+                                >
+                                    {{ $issue['resolution']['description'] }}
+                                </p>
+                            @elseif ($review['issues_have_resolution_content'])
+                                <p class="mt-5 text-sm text-gray-500 dark:text-gray-400">
+                                    {{ __('admin.media_issue_review.resolution.no_action') }}
+                                </p>
+                            @endif
                         </article>
                     @endforeach
                 </div>
@@ -254,7 +342,7 @@
             </p>
         </x-filament::section>
 
-        @if ($review['issues'] !== [] && ! $review['has_current_media_repair_authority'])
+        @if ($review['issues'] !== [] && ! $review['issues_have_resolution_content'])
             <div
                 class="rounded-xl border border-danger-300 bg-danger-50 p-5 text-danger-950 dark:border-danger-700 dark:bg-danger-950 dark:text-danger-100"
                 role="alert"

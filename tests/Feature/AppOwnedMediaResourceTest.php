@@ -228,6 +228,7 @@ it('renders Media as a native responsive card gallery without losing table contr
         ->and((string) $recordActions[1]->getLabel())->toBe(__('admin.media_library.open_details'))
         ->and($recordActions[2])->toBeInstanceOf(ActionGroup::class)
         ->and(array_keys($recordActions[2]->getFlatActions()))->toBe([
+            'reviewIssues',
             'view',
             'download',
             'titleByOwner',
@@ -238,6 +239,7 @@ it('renders Media as a native responsive card gallery without losing table contr
         ->and(array_keys($table->getFlatRecordActions()))->toBe([
             'mediaDetails',
             'edit',
+            'reviewIssues',
             'view',
             'download',
             'titleByOwner',

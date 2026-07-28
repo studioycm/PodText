@@ -21,6 +21,7 @@ class MediaIssueReviewPresenter
         private readonly MediaInventoryDiagnostics $diagnostics,
         private readonly PublicMediaDelivery $publicDelivery,
         private readonly MediaReferenceFinder $references,
+        private readonly CuratorImageUploadPolicy $uploadPolicy,
     ) {}
 
     /**
@@ -91,24 +92,77 @@ class MediaIssueReviewPresenter
             $details['reasons'],
         );
 
+        $issues = collect($details['reasons'])
+            ->map(fn (string $reason): array => [
+                'value' => $reason,
+                'label' => __("admin.media_library.repair_{$reason}"),
+                'cause' => __("admin.media_issue_review.reasons.{$reason}.cause"),
+                'consequence' => __("admin.media_issue_review.reasons.{$reason}.consequence"),
+                'evidence_limit' => __("admin.media_issue_review.reasons.{$reason}.evidence_limit"),
+                'facts' => $this->factsForReason($reason, $details),
+                'resolution' => $this->resolutionForReason($reason, $media),
+            ])
+            ->all();
+
         return [
             ...$details,
-            'issues' => collect($details['reasons'])
-                ->map(fn (string $reason): array => [
-                    'value' => $reason,
-                    'label' => __("admin.media_library.repair_{$reason}"),
-                    'cause' => __("admin.media_issue_review.reasons.{$reason}.cause"),
-                    'consequence' => __("admin.media_issue_review.reasons.{$reason}.consequence"),
-                    'evidence_limit' => __("admin.media_issue_review.reasons.{$reason}.evidence_limit"),
-                    'facts' => $this->factsForReason($reason, $details),
-                ])
-                ->all(),
+            'issues' => $issues,
             'owners' => $owners,
             'unresolved_attachment_count' => $unresolvedAttachmentCount,
             'non_attachment_references' => $this->references
                 ->nonAttachmentReferencesForMedia($media),
-            'has_current_media_repair_authority' => false,
+            'has_current_media_repair_authority' => collect($issues)->contains(
+                fn (array $issue): bool => $issue['resolution']['kind'] === 'action',
+            ),
+            'issues_have_resolution_content' => collect($issues)->contains(
+                fn (array $issue): bool => $issue['resolution']['kind'] !== 'none',
+            ),
         ];
+    }
+
+    /**
+     * The truthful per-reason resolution state: an available action, a
+     * reasoned block, a separate-phase fact, or nothing yet.
+     *
+     * @return array{kind: string, label?: string, description?: string, reason?: string}
+     */
+    private function resolutionForReason(string $reason, Media $media): array
+    {
+        if ($reason === MediaDiagnosticReason::UnsanitizedSvg->value) {
+            $response = Gate::inspect('repair', $media);
+
+            if ($response->allowed()) {
+                return [
+                    'kind' => 'action',
+                    'label' => __('admin.media_issue_review.sanitize.action'),
+                    'description' => __('admin.media_issue_review.sanitize.consequence'),
+                ];
+            }
+
+            return filled($response->message())
+                ? ['kind' => 'blocked', 'reason' => (string) $response->message()]
+                : ['kind' => 'none'];
+        }
+
+        if ($reason === MediaDiagnosticReason::Metadata->value && ! $this->pathIsPurposeManaged($media)) {
+            return [
+                'kind' => 'separate_phase',
+                'description' => __('admin.media_issue_review.resolution.metadata_root'),
+            ];
+        }
+
+        return ['kind' => 'none'];
+    }
+
+    private function pathIsPurposeManaged(Media $media): bool
+    {
+        try {
+            $this->uploadPolicy->purposeForPath((string) $media->path);
+        } catch (\InvalidArgumentException) {
+            return false;
+        }
+
+        return true;
     }
 
     private function displayIdentity(Media $media, ?string $originalFilename): string

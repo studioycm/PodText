@@ -350,6 +350,12 @@ class MediaTable
                     ])
                     ->url(fn (Media $record, ListMedia $livewire): string => $livewire->editUrlForMedia($record)),
                 ActionGroup::make([
+                    Action::make('reviewIssues')
+                        ->label(__('admin.media_issue_review.review_issues'))
+                        ->icon(Heroicon::OutlinedExclamationTriangle)
+                        ->color('warning')
+                        ->visible(fn (Media $record): bool => app(MediaInventoryDiagnostics::class)->needsRepair($record))
+                        ->url(fn (Media $record): string => MediaResource::getUrl('review-issues', ['record' => $record])),
                     Action::make('view')
                         ->label(__('admin.actions.view'))
                         ->icon(Heroicon::OutlinedEye)
