@@ -87,6 +87,27 @@ Recorded after the Markdown-only post-Prompt-10 prompt-progress centralization c
 
 ## Git State
 
+- Browser-suite storage URL hermeticity (bounded test chore, investigation
+  of the two `CardTemplatePreviewBrowserTest` geometry failures flagged
+  below): root cause found — card image `src` values come from
+  `Storage::disk('public')->url(...)`, whose `filesystems.disks.public.url`
+  bakes the `.env` `APP_URL` (`https://PodText.test`) because the pest
+  browser plugin's in-process server rewrites `app.url` and the URL
+  generator origins but not the filesystem disk URL. Playwright therefore
+  fetched card images from the Herd vhost, which always serves the primary
+  checkout's `storage/app/public`; runs from the primary checkout passed
+  (fixtures land in the storage Herd serves) while runs from any worktree
+  failed deterministically with `leading_image_loaded=false` (fixtures
+  land in the worktree's storage; Herd 404s). Fix: a Browser-suite
+  `beforeEach` in `tests/Pest.php` sets
+  `filesystems.disks.public.url` to relative `/storage` (plus
+  `Storage::forgetDisk('public')`), so browser subresources resolve
+  against the pest server origin, which serves `public_path()` through the
+  `public/storage` symlink of the checkout under test. `storage:link`
+  remains a required worktree provisioning step. The two flagged failures
+  are resolved; the known-environmental browser ledger stays at four
+  (MediaPicker acquisition-workspace x2, guards-close,
+  nested-item-action).
 - Media Operations UX3 replanned Mini-task 4 (Repairing Unsafe Files) is
   complete locally for the approved P1–P3 under dossier
   `LS-20260728-PODTEXT-MEDIA-OPS-UX3-M4-01` (M4 research ran as a

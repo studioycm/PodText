@@ -7,6 +7,7 @@ use App\Settings\AdminUxSettings;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\Facades\Storage;
 use Spatie\LaravelSettings\SettingsContainer;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
@@ -42,6 +43,16 @@ pest()->extend(TestCase::class)
     ->in('Feature', 'Browser');
 
 pest()->browser()->timeout(30000);
+
+/*
+ * The real browser fetches subresources itself, so public-disk URLs must stay
+ * relative to reach the pest in-process server; APP_URL-based absolute URLs
+ * would point at the Herd vhost, which serves the primary checkout's storage.
+ */
+uses()->beforeEach(function (): void {
+    config()->set('filesystems.disks.public.url', '/storage');
+    Storage::forgetDisk('public');
+})->in('Browser');
 
 dataset('authz five roles', [
     'super-admin' => [UserRole::SuperAdmin],
