@@ -48,9 +48,15 @@ Recorded after the Markdown-only post-Prompt-10 prompt-progress centralization c
   sequence is 3B → 3C → replanned Mini-task 4 → Package 5, followed by a
   revision of the paused non-media queues, with bounded TDD (stash-baseline
   environment attribution, time-boxed failure chases, known-environmental
-  ledger). **Current gate:** Mini-task 3B UX research is open under the
-  mandatory cycle, seeded with the operator-reported URL blur-preview
-  (F018/F020) and upload batch-ceiling lift (F019/F020) items; production
+  ledger). **Current gate:** Mini-task 3B is closed by the operator on
+  2026-07-28 after full outcome review (P1–P5 plus the OR corrections,
+  pushed at `a638fd4`). Mini-task 3C — Safe Existing-File Operations and
+  Outcomes — is open in UX research under the mandatory cycle, owning
+  F024–F030 and the F045 evidence gap plus the production finding that the
+  mutation coordinator's strict record scope blocks deleting root-level
+  legacy rows (production media id 2). The operator accepted the Mini-task
+  4 gate: SVG sanitize-repair waits for M4 after 3C closes, with
+  `unsanitized_svg` as the operator-preferred first reason. Production
   deploy of the pushed series awaits an explicit operator deploy request.
 
 ## Git State
