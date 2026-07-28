@@ -4,17 +4,22 @@ namespace App\Livewire\Admin;
 
 use App\Enums\ImageUploadPurpose;
 use App\Enums\MediaAcquisitionDisposition;
+use App\Enums\MediaDiagnosticReason;
 use App\Filament\Resources\Media\MediaResource;
 use App\Models\Media;
 use App\Models\User;
 use App\Support\Media\CuratorImageUploadPolicy;
 use App\Support\Media\ExternalImageFailureMessage;
 use App\Support\Media\MediaAcquisitionManager;
+use App\Support\Media\MediaBulkDeleteCensus;
 use App\Support\Media\MediaDetailsViewModel;
 use App\Support\Media\MediaFilesystemMutationCoordinator;
 use App\Support\Media\MediaInventoryDiagnostics;
+use App\Support\Media\MediaLibraryTaskQuery;
+use App\Support\Media\MediaOperationReceipts;
 use App\Support\Media\MediaRecordProjector;
 use App\Support\Media\MediaRecordScope;
+use App\Support\Media\MediaReferenceFinder;
 use App\Support\Media\MediaUploadBatchResult;
 use App\Support\Media\StorageImageCandidateBrowser;
 use Filament\Actions\Action;
@@ -94,6 +99,8 @@ class MediaPickerPanel extends Component implements HasActions, HasSchemas
     public array $panelData = [];
 
     public string $search = '';
+
+    public string $searchScope = 'all';
 
     public string $directoryFilter = '';
 
@@ -240,6 +247,16 @@ class MediaPickerPanel extends Component implements HasActions, HasSchemas
     public function updatedSearch(): void
     {
         $this->search = mb_substr(trim($this->search), 0, 100);
+        $this->currentPage = 1;
+        $this->reloadFiles();
+    }
+
+    public function updatedSearchScope(): void
+    {
+        if (! in_array($this->searchScope, ['all', 'title', 'owner', 'filename'], true)) {
+            $this->searchScope = 'all';
+        }
+
         $this->currentPage = 1;
         $this->reloadFiles();
     }
@@ -723,6 +740,10 @@ class MediaPickerPanel extends Component implements HasActions, HasSchemas
             ->icon(Heroicon::Eye)
             ->color('gray')
             ->hidden(fn (): bool => $this->isOwnerChoice)
+            ->disabled(fn (array $arguments): bool => $this->fileIsMissing($arguments['id'] ?? null))
+            ->tooltip(fn (array $arguments): ?string => $this->fileIsMissing($arguments['id'] ?? null)
+                ? __('admin.media_library.op_file_missing')
+                : null)
             ->url(function (array $arguments): string {
                 $media = $this->trustedRecord($arguments['id'] ?? '', 'view');
 
@@ -737,6 +758,10 @@ class MediaPickerPanel extends Component implements HasActions, HasSchemas
             ->icon(Heroicon::ArrowDownTray)
             ->color('gray')
             ->hidden(fn (): bool => $this->isOwnerChoice)
+            ->disabled(fn (array $arguments): bool => $this->fileIsMissing($arguments['id'] ?? null))
+            ->tooltip(fn (array $arguments): ?string => $this->fileIsMissing($arguments['id'] ?? null)
+                ? __('admin.media_library.op_file_missing')
+                : null)
             ->action(function (array $arguments) {
                 $media = $this->trustedRecord($arguments['id'] ?? '', 'download');
 
@@ -747,14 +772,32 @@ class MediaPickerPanel extends Component implements HasActions, HasSchemas
     public function destroyItemAction(): Action
     {
         return Action::make('destroyItem')
-            ->label(__('admin.actions.delete'))
+            ->label(__('admin.media_library.delete_permanently'))
             ->icon(Heroicon::Trash)
             ->color('danger')
             ->requiresConfirmation()
             ->hidden(fn (): bool => $this->isOwnerChoice)
+            ->disabled(fn (array $arguments): bool => ! $this->operationAllowed($arguments['id'] ?? null, 'delete'))
+            ->tooltip(fn (array $arguments): ?string => $this->operationBlockedReason($arguments['id'] ?? null, 'delete'))
+            ->modalContent(fn (array $arguments): View => $this->panelOperationConsequence($arguments['id'] ?? 0, 'delete'))
+            ->modalSubmitActionLabel(__('admin.media_library.delete_permanently'))
             ->action(function (array $arguments): void {
                 $media = $this->trustedRecord($arguments['id'] ?? '', 'delete');
-                app(MediaFilesystemMutationCoordinator::class)->delete($media, $this->actor());
+                $name = (string) ($media->title ?: $media->name);
+
+                try {
+                    app(MediaFilesystemMutationCoordinator::class)->delete($media, $this->actor());
+                } catch (ValidationException $exception) {
+                    app(MediaOperationReceipts::class)->operationFailed($exception->getMessage());
+
+                    return;
+                } catch (RuntimeException) {
+                    app(MediaOperationReceipts::class)->operationFailed();
+
+                    return;
+                }
+
+                app(MediaOperationReceipts::class)->deleteSucceeded($this->actor(), $name);
                 $this->selectedIds = array_values(array_diff($this->selectedIds, [(int) $media->getKey()]));
                 $this->reloadFiles();
             });
@@ -768,9 +811,27 @@ class MediaPickerPanel extends Component implements HasActions, HasSchemas
             ->color('gray')
             ->requiresConfirmation()
             ->hidden(fn (): bool => $this->isOwnerChoice)
+            ->disabled(fn (array $arguments): bool => ! $this->operationAllowed($arguments['id'] ?? null, 'rename'))
+            ->tooltip(fn (array $arguments): ?string => $this->operationBlockedReason($arguments['id'] ?? null, 'rename'))
+            ->modalContent(fn (array $arguments): View => $this->panelOperationConsequence($arguments['id'] ?? 0, 'rename'))
+            ->modalSubmitActionLabel(__('admin.media_library.rename_submit'))
             ->action(function (array $arguments): void {
                 $media = $this->trustedRecord($arguments['id'] ?? '', 'rename');
-                app(MediaFilesystemMutationCoordinator::class)->rename($media, $this->actor());
+                $oldName = basename((string) $media->path);
+
+                try {
+                    $updated = app(MediaFilesystemMutationCoordinator::class)->rename($media, $this->actor());
+                } catch (ValidationException $exception) {
+                    app(MediaOperationReceipts::class)->operationFailed($exception->getMessage());
+
+                    return;
+                } catch (RuntimeException) {
+                    app(MediaOperationReceipts::class)->operationFailed();
+
+                    return;
+                }
+
+                app(MediaOperationReceipts::class)->renameSucceeded($this->actor(), $oldName, basename((string) $updated->path));
                 $this->reloadFiles();
             });
     }
@@ -782,6 +843,10 @@ class MediaPickerPanel extends Component implements HasActions, HasSchemas
             ->icon(Heroicon::ArrowsRightLeft)
             ->color('warning')
             ->hidden(fn (): bool => $this->isOwnerChoice)
+            ->disabled(fn (array $arguments): bool => ! $this->operationAllowed($arguments['id'] ?? null, 'swap'))
+            ->tooltip(fn (array $arguments): ?string => $this->operationBlockedReason($arguments['id'] ?? null, 'swap'))
+            ->modalContent(fn (array $arguments): View => $this->panelOperationConsequence($arguments['id'] ?? 0, 'swap'))
+            ->modalSubmitActionLabel(__('admin.media_library.swap_submit'))
             ->schema([
                 FileUpload::make('replacement')
                     ->label(__('admin.media_library.replacement'))
@@ -794,7 +859,21 @@ class MediaPickerPanel extends Component implements HasActions, HasSchemas
                 $media = $this->trustedRecord($arguments['id'] ?? '', 'swap');
                 $replacement = $data['replacement'] ?? null;
                 abort_unless($replacement instanceof TemporaryUploadedFile, 422);
-                app(MediaFilesystemMutationCoordinator::class)->swap($media, $replacement, $this->actor());
+                $oldSize = (int) $media->size;
+
+                try {
+                    $updated = app(MediaFilesystemMutationCoordinator::class)->swap($media, $replacement, $this->actor());
+                } catch (ValidationException $exception) {
+                    app(MediaOperationReceipts::class)->operationFailed($exception->getMessage());
+
+                    return;
+                } catch (RuntimeException) {
+                    app(MediaOperationReceipts::class)->operationFailed();
+
+                    return;
+                }
+
+                app(MediaOperationReceipts::class)->swapSucceeded($this->actor(), $oldSize, (int) $updated->size);
                 $this->reloadFiles();
             });
     }
@@ -809,14 +888,48 @@ class MediaPickerPanel extends Component implements HasActions, HasSchemas
             ->visible(fn (): bool => ! $this->isOwnerChoice
                 && ! $this->isInlineOwnerWorkspace
                 && $this->selectedIds !== [])
+            ->modalContent(fn (): View => app(MediaBulkDeleteCensus::class)->censusView(
+                $this->selectedInventoryRecords(),
+                $this->actor(),
+            ))
+            ->modalSubmitActionLabel(__('admin.media_library.bulk_delete_submit'))
             ->action(function (): void {
-                $records = $this->trustedRecords($this->selectedIds, 'delete');
+                Gate::forUser($this->actor())->authorize('deleteAny', $this->mediaModel());
 
-                app(MediaFilesystemMutationCoordinator::class)->deleteMany($records, $this->actor());
+                $result = app(MediaBulkDeleteCensus::class)->execute(
+                    $this->selectedInventoryRecords(),
+                    $this->actor(),
+                );
 
-                $this->selectedIds = [];
+                app(MediaOperationReceipts::class)->bulkDeleteFinished(
+                    $this->actor(),
+                    $result['deleted'],
+                    $result['blocked'],
+                    $result['failed'],
+                );
+
+                $this->selectedIds = array_values(array_diff(
+                    array_map(intval(...), $this->selectedIds),
+                    $result['deleted_ids'],
+                ));
                 $this->reloadFiles();
             });
+    }
+
+    /**
+     * @return Collection<int, Media>
+     */
+    private function selectedInventoryRecords(): Collection
+    {
+        $ids = array_values(array_filter(array_map(
+            fn (mixed $id): int => is_int($id) || ctype_digit((string) $id) ? (int) $id : 0,
+            $this->selectedIds,
+        )));
+
+        return app(MediaRecordScope::class)
+            ->inventoryQuery()
+            ->whereKey($ids)
+            ->get();
     }
 
     public function insertMediaAction(): Action
@@ -842,13 +955,28 @@ class MediaPickerPanel extends Component implements HasActions, HasSchemas
         if (filled($this->search)) {
             $query = $this->browseQuery();
             $search = '%'.str_replace(['!', '%', '_'], ['!!', '!%', '!_'], $this->search).'%';
-            $query->where(function (Builder $query) use ($search): void {
-                $query
-                    ->whereRaw("name LIKE ? ESCAPE '!'", [$search])
-                    ->orWhereRaw("title LIKE ? ESCAPE '!'", [$search])
-                    ->orWhereRaw("alt LIKE ? ESCAPE '!'", [$search])
-                    ->orWhereRaw("caption LIKE ? ESCAPE '!'", [$search])
-                    ->orWhereRaw("description LIKE ? ESCAPE '!'", [$search]);
+            $scope = $this->searchScope;
+            $rawTerm = $this->search;
+            $query->where(function (Builder $query) use ($search, $scope, $rawTerm): void {
+                if (in_array($scope, ['all', 'filename'], true)) {
+                    $query->orWhereRaw("name LIKE ? ESCAPE '!'", [$search]);
+                }
+
+                if (in_array($scope, ['all', 'title'], true)) {
+                    $query
+                        ->orWhereRaw("title LIKE ? ESCAPE '!'", [$search])
+                        ->orWhereRaw("alt LIKE ? ESCAPE '!'", [$search]);
+                }
+
+                if ($scope === 'all') {
+                    $query
+                        ->orWhereRaw("caption LIKE ? ESCAPE '!'", [$search])
+                        ->orWhereRaw("description LIKE ? ESCAPE '!'", [$search]);
+                }
+
+                if (in_array($scope, ['all', 'owner'], true)) {
+                    app(MediaLibraryTaskQuery::class)->applyOwnerTitleSearch($query, $rawTerm);
+                }
             });
 
             $this->files = $this->projectQuery($query->limit(app(CuratorImageUploadPolicy::class)->pickerSearchLimit()));
@@ -897,22 +1025,112 @@ class MediaPickerPanel extends Component implements HasActions, HasSchemas
     {
         $projector = app(MediaRecordProjector::class);
 
-        return $query
-            ->get()
-            ->map(fn (Media $media): array => $projector->project(
-                $media,
-                withOwnerDetails: $this->isOwnerChoice,
-            ))
+        if (! $this->isOwnerChoice) {
+            $model = $this->mediaModel();
+            $table = (new $model)->getTable();
+            $query
+                ->select("{$table}.*")
+                ->addSelect([
+                    'storage_identity_count' => $model::query()
+                        ->from("{$table} as storage_identity")
+                        ->selectRaw('count(*)')
+                        ->whereColumn('storage_identity.disk', "{$table}.disk")
+                        ->whereColumn('storage_identity.path', "{$table}.path"),
+                ]);
+        }
+
+        $records = $query->get();
+
+        if (! $this->isOwnerChoice) {
+            app(MediaReferenceFinder::class)->prime($records);
+        }
+
+        return $records
+            ->map(function (Media $media) use ($projector): array {
+                $projection = $projector->project(
+                    $media,
+                    withOwnerDetails: $this->isOwnerChoice,
+                );
+
+                if (! $this->isOwnerChoice) {
+                    $projection['ops'] = $this->operationAvailability($media);
+                }
+
+                return $projection;
+            })
             ->all();
+    }
+
+    /**
+     * @return array<string, array{allowed: bool, reason: ?string}>
+     */
+    private function operationAvailability(Media $media): array
+    {
+        $gate = Gate::forUser($this->actor());
+        $describe = function (string $ability) use ($gate, $media): array {
+            $response = $gate->inspect($ability, $media);
+
+            return [
+                'allowed' => $response->allowed(),
+                'reason' => $response->allowed() ? null : ($response->message() ?: null),
+            ];
+        };
+        $mutate = $describe('rename');
+
+        return [
+            'rename' => $mutate,
+            'swap' => $mutate,
+            'delete' => $describe('delete'),
+        ];
+    }
+
+    private function fileProjection(mixed $id): ?array
+    {
+        foreach ($this->files as $file) {
+            if ((int) ($file['id'] ?? 0) === (int) $id) {
+                return $file;
+            }
+        }
+
+        return null;
+    }
+
+    private function operationAllowed(mixed $id, string $operation): bool
+    {
+        $ops = $this->fileProjection($id)['ops'] ?? null;
+
+        return $ops === null || (bool) ($ops[$operation]['allowed'] ?? false);
+    }
+
+    private function operationBlockedReason(mixed $id, string $operation): ?string
+    {
+        $ops = $this->fileProjection($id)['ops'] ?? null;
+
+        return $ops === null ? null : ($ops[$operation]['reason'] ?? null);
+    }
+
+    private function fileIsMissing(mixed $id): bool
+    {
+        $reasons = $this->fileProjection($id)['repair_reasons'] ?? [];
+
+        return in_array(MediaDiagnosticReason::MissingFile->value, $reasons, true);
+    }
+
+    private function panelOperationConsequence(mixed $id, string $operation): View
+    {
+        $media = app(MediaRecordScope::class)->findInventoryOrFail((int) $id);
+
+        return view('filament.resources.media.operation-consequence', [
+            'projection' => app(MediaRecordProjector::class)->project($media),
+            'storedFilename' => basename((string) $media->path),
+            'operation' => $operation,
+        ]);
     }
 
     private function trustedRecord(mixed $id, string $ability): Media
     {
         abort_unless(is_int($id) || is_string($id), 422);
-        $scope = app(MediaRecordScope::class);
-        $media = in_array($ability, ['delete', 'rename', 'swap'], true)
-            ? $scope->findOrFail($id)
-            : $scope->findInventoryOrFail($id);
+        $media = app(MediaRecordScope::class)->findInventoryOrFail($id);
         Gate::forUser($this->actor())->authorize($ability, $media);
 
         if ($ability === 'select') {

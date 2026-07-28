@@ -128,20 +128,20 @@ class MediaReferenceFinder
                 ->where('media_id', $media->getKey())
                 ->get(['attachable_type', 'attachable_id', 'role']);
             $groupTitles = ContentGroup::query()
-                ->whereKey($attachments->where('attachable_type', ContentGroup::class)->pluck('attachable_id'))
+                ->whereKey($attachments->whereIn('attachable_type', ['content_group', ContentGroup::class])->pluck('attachable_id'))
                 ->pluck('title', 'id');
             $itemTitles = ContentItem::query()
-                ->whereKey($attachments->where('attachable_type', ContentItem::class)->pluck('attachable_id'))
+                ->whereKey($attachments->whereIn('attachable_type', ['content_item', ContentItem::class])->pluck('attachable_id'))
                 ->pluck('title', 'id');
 
             foreach ($attachments as $attachment) {
                 $id = (int) $attachment->attachable_id;
-                [$title, $url] = match ((string) $attachment->attachable_type) {
-                    ContentGroup::class => [
+                [$title, $url] = match (true) {
+                    in_array((string) $attachment->attachable_type, ['content_group', ContentGroup::class], true) => [
                         (string) ($groupTitles[$id] ?? "#{$id}"),
                         ContentGroupResource::getUrl('edit', ['record' => $id], panel: 'admin'),
                     ],
-                    ContentItem::class => [
+                    in_array((string) $attachment->attachable_type, ['content_item', ContentItem::class], true) => [
                         (string) ($itemTitles[$id] ?? "#{$id}"),
                         ContentItemResource::getUrl('edit', ['record' => $id], panel: 'admin'),
                     ],
@@ -199,11 +199,60 @@ class MediaReferenceFinder
             ->all();
     }
 
+    /**
+     * Derives the owner-based display title for a media row, by role priority:
+     * podcast cover, then episode primary image, then settings usages.
+     */
+    public function ownerTitleForMedia(Media $media): ?string
+    {
+        $path = $this->normalize((string) $media->path);
+        $attachments = Schema::hasTable('media_attachments')
+            ? DB::table('media_attachments')
+                ->where('media_id', $media->getKey())
+                ->get(['attachable_type', 'attachable_id', 'role'])
+            : collect();
+
+        $groupAttachment = $attachments->first(
+            fn (object $attachment): bool => in_array((string) $attachment->attachable_type, ['content_group', ContentGroup::class], true),
+        );
+        $groupTitle = $groupAttachment !== null
+            ? ContentGroup::query()->whereKey((int) $groupAttachment->attachable_id)->value('title')
+            : ($media->disk === 'public' && $path !== null && Schema::hasTable('content_groups')
+                ? ContentGroup::query()->where('cover_path', $path)->value('title')
+                : null);
+
+        if (filled($groupTitle)) {
+            return $groupTitle.' — '.$this->attachmentRoleLabel('cover');
+        }
+
+        $itemAttachment = $attachments->first(
+            fn (object $attachment): bool => in_array((string) $attachment->attachable_type, ['content_item', ContentItem::class], true),
+        );
+        $itemTitle = $itemAttachment !== null
+            ? ContentItem::query()->whereKey((int) $itemAttachment->attachable_id)->value('title')
+            : ($media->disk === 'public' && $path !== null
+                && Schema::hasTable('content_items') && Schema::hasColumn('content_items', 'image_path')
+                ? ContentItem::query()->where('image_path', $path)->value('title')
+                : null);
+
+        if (filled($itemTitle)) {
+            return $itemTitle.' — '.$this->attachmentRoleLabel('primary_image');
+        }
+
+        $settingsLabels = $this->settingsIdentityReferences(
+            $path,
+            $media->reference_key,
+            $this->settingsPayloads(),
+        );
+
+        return $settingsLabels[0] ?? null;
+    }
+
     private function attachableKindLabel(string $type): string
     {
-        return match ($type) {
-            ContentGroup::class => __('admin.settings_backup_snapshot_screens.podcast'),
-            ContentItem::class => __('admin.settings_backup_snapshot_screens.episode'),
+        return match (true) {
+            in_array($type, ['content_group', ContentGroup::class], true) => __('admin.settings_backup_snapshot_screens.podcast'),
+            in_array($type, ['content_item', ContentItem::class], true) => __('admin.settings_backup_snapshot_screens.episode'),
             default => class_basename($type),
         };
     }

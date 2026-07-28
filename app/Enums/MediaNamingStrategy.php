@@ -7,6 +7,7 @@ enum MediaNamingStrategy: string
     case Slug = 'slug';
     case ReferenceKey = 'reference_key';
     case SlugKey = 'slug_key';
+    case Title = 'title';
 
     public static function fromSetting(?string $value): self
     {

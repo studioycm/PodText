@@ -10,15 +10,20 @@ use App\Jobs\DownloadExternalContentItemImage;
 use App\Jobs\ExportContentImagesZip;
 use App\Models\ContentGroup;
 use App\Models\ContentItem;
+use App\Models\Media;
+use App\Models\MediaAttachment;
 use App\Models\User;
 use App\Settings\AdminUxSettings;
 use App\Support\Media\ImageFileNamer;
 use App\Support\Media\MediaAttachmentFormState;
+use App\Support\Media\MediaAttachmentIdentityResolver;
+use App\Support\Media\MediaOwnerTitleApplier;
 use App\Support\Media\OwnerImageChangedException;
 use App\Support\Media\OwnerImageChoicePresentation;
 use App\Support\Media\OwnerImagePresentation;
 use App\Support\Media\OwnerImagePresenter;
 use Filament\Actions\Action;
+use Filament\Forms\Components\Checkbox;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Select;
 use Filament\Notifications\Notification;
@@ -205,6 +210,7 @@ class ContentImageActions
 
                 return [
                     $field => $presenter->pickerIdentity($record, $role),
+                    'retitle_media_by_owner' => self::currentOwnerMediaTitleIsBlank($record, $role),
                     'owner_image_baseline_token' => self::ownerImageBaselineToken(
                         $record,
                         $role,
@@ -217,6 +223,9 @@ class ContentImageActions
             ->schema([
                 Hidden::make('owner_image_baseline_token'),
                 $picker,
+                Checkbox::make('retitle_media_by_owner')
+                    ->label(__('admin.media_library.retitle_checkbox'))
+                    ->helperText(__('admin.media_library.retitle_checkbox_help')),
                 $inlineWorkspace,
             ])
             ->action(function (
@@ -272,6 +281,15 @@ class ContentImageActions
                             $expectedLegacyPath,
                             enforceExpectedIdentity: true,
                         );
+
+                        if (($data['retitle_media_by_owner'] ?? false) && filled($referenceKey)) {
+                            app(MediaOwnerTitleApplier::class)->applyOwnerSelectionTitle(
+                                $record,
+                                $role,
+                                $referenceKey,
+                                $actor,
+                            );
+                        }
                     }
                 } catch (OwnerImageChangedException) {
                     $presenter->refresh($record, $role);
@@ -444,6 +462,21 @@ class ContentImageActions
         return Action::make($name)
             ->requiresConfirmation()
             ->modalHeading(__('admin.modals.download_content_images'))
+            ->modalDescription(function (?ContentGroup $record = null) use ($contentGroupId): string {
+                $scopedGroupId = $contentGroupId instanceof \Closure && $record instanceof ContentGroup
+                    ? $contentGroupId($record)
+                    : null;
+                $group = $scopedGroupId === null ? null : ContentGroup::query()->find($scopedGroupId);
+                $count = self::contentImagesCount($scopedGroupId);
+                $population = $group instanceof ContentGroup
+                    ? __('admin.media_library.export_population_group', [
+                        'group' => (string) $group->title,
+                        'count' => $count,
+                    ])
+                    : __('admin.media_library.export_population_all', ['count' => $count]);
+
+                return $population.' '.__('admin.media_library.export_destination');
+            })
             ->modalSubmitActionLabel(__('admin.actions.download_content_images'))
             ->schema([
                 Select::make('media_naming_strategy')
@@ -480,6 +513,36 @@ class ContentImageActions
                     ->title(__('admin.notifications.content_images_export_queued'))
                     ->send();
             });
+    }
+
+    private static function currentOwnerMediaTitleIsBlank(ContentGroup|ContentItem $record, MediaAttachmentRole $role): bool
+    {
+        try {
+            $media = app(MediaAttachmentIdentityResolver::class)->resolve($record, $role)['media'] ?? null;
+        } catch (\Throwable) {
+            return true;
+        }
+
+        return ! $media instanceof Media || blank($media->title);
+    }
+
+    private static function contentImagesCount(?int $contentGroupId): int
+    {
+        $covers = MediaAttachment::query()
+            ->whereIn('attachable_type', ['content_group', ContentGroup::class])
+            ->where('role', MediaAttachmentRole::Cover)
+            ->when($contentGroupId, fn ($query) => $query->where('attachable_id', $contentGroupId))
+            ->count();
+        $primaryImages = MediaAttachment::query()
+            ->whereIn('attachable_type', ['content_item', ContentItem::class])
+            ->where('role', MediaAttachmentRole::PrimaryImage)
+            ->when($contentGroupId, fn ($query) => $query->whereIn(
+                'attachable_id',
+                ContentItem::query()->where('content_group_id', $contentGroupId)->select('id'),
+            ))
+            ->count();
+
+        return $covers + $primaryImages;
     }
 
     private static function ownerImageHeading(

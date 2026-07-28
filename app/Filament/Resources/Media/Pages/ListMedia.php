@@ -26,9 +26,19 @@ class ListMedia extends ListRecords
     #[Session]
     public int $cardsPerRow = 3;
 
+    #[Session]
+    public string $searchScope = 'all';
+
     public function setCardsPerRow(int $count): void
     {
         $this->cardsPerRow = max(3, min(5, $count));
+    }
+
+    public function setSearchScope(string $scope): void
+    {
+        $this->searchScope = in_array($scope, ['all', 'title', 'owner', 'filename'], true)
+            ? $scope
+            : 'all';
     }
 
     use RestrictsFileUploadsToSchemaComponents;

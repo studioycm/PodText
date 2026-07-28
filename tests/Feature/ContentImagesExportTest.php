@@ -303,3 +303,112 @@ it('rejects non-HTTPS oversized and non-raster external image downloads', functi
         ->and($oversizedItem->refresh()->image_path)->toBeNull()
         ->and($user->notifications()->count())->toBe(3);
 });
+
+it('names export entries by media title with safe fallbacks and duplicate suffixes', function (): void {
+    Storage::fake('public');
+    Storage::fake('local');
+    imgbStoreImage('content-items/images/one.jpg');
+    imgbStoreImage('content-items/images/two.jpg');
+    imgbStoreImage('content-items/images/three.jpg');
+
+    $user = User::factory()->create();
+    $group = ContentGroup::factory()->create([
+        'reference_key' => '01J0000000000000000000011',
+        'title' => 'Beta Podcast',
+        'slug' => 'beta-podcast',
+    ]);
+    $items = collect([
+        ['slug' => 'ep-one', 'key' => '01J0000000000000000000012', 'path' => 'content-items/images/one.jpg', 'title' => 'Season Finale'],
+        ['slug' => 'ep-two', 'key' => '01J0000000000000000000013', 'path' => 'content-items/images/two.jpg', 'title' => 'Season Finale'],
+        ['slug' => 'ep-three', 'key' => '01J0000000000000000000014', 'path' => 'content-items/images/three.jpg', 'title' => null],
+    ])->map(function (array $definition) use ($group): ContentItem {
+        $item = ContentItem::factory()->for($group)->create([
+            'reference_key' => $definition['key'],
+            'slug' => $definition['slug'],
+        ]);
+        $media = Media::factory()->create([
+            'disk' => 'public',
+            'directory' => 'content-items/images',
+            'visibility' => 'public',
+            'name' => pathinfo($definition['path'], PATHINFO_FILENAME),
+            'path' => $definition['path'],
+            'width' => 40,
+            'height' => 40,
+            'size' => Storage::disk('public')->size($definition['path']),
+            'type' => 'image/jpeg',
+            'ext' => 'jpg',
+            'title' => $definition['title'],
+        ]);
+        MediaAttachment::query()->create([
+            'media_id' => $media->getKey(),
+            'attachable_type' => 'content_item',
+            'attachable_id' => $item->getKey(),
+            'role' => MediaAttachmentRole::PrimaryImage,
+            'position' => 0,
+        ]);
+
+        return $item;
+    });
+
+    $result = app(ContentImagesExportManager::class)->build(
+        (int) $user->getKey(),
+        null,
+        MediaNamingStrategy::Title,
+    );
+
+    $zip = new ZipArchive;
+    expect($zip->open(Storage::disk('local')->path($result['path'])))->toBeTrue()
+        ->and($zip->getFromName('podcasts/beta-podcast/episodes/season-finale.jpg'))->toBeString()
+        ->and($zip->getFromName('podcasts/beta-podcast/episodes/season-finale-2.jpg'))->toBeString()
+        ->and($zip->getFromName('podcasts/beta-podcast/episodes/ep-three--01j0000000000000000000014.jpg'))->toBeString()
+        ->and($result['included'])->toBe(3);
+    $zip->close();
+});
+
+it('states the export population and destination in both export dialogs', function (): void {
+    $user = User::factory()->create();
+    $group = ContentGroup::factory()->create(['title' => 'Gamma Podcast']);
+    $item = ContentItem::factory()->for($group)->create();
+    $coverMedia = Media::factory()->create([
+        'name' => '01J0000000000000000000021',
+        'path' => 'content-groups/covers/01J0000000000000000000021.jpg',
+    ]);
+    $itemMedia = Media::factory()->create([
+        'directory' => 'content-items/images',
+        'name' => '01J0000000000000000000022',
+        'path' => 'content-items/images/01J0000000000000000000022.jpg',
+    ]);
+    MediaAttachment::query()->create([
+        'media_id' => $coverMedia->getKey(),
+        'attachable_type' => 'content_group',
+        'attachable_id' => $group->getKey(),
+        'role' => MediaAttachmentRole::Cover,
+        'position' => 0,
+    ]);
+    MediaAttachment::query()->create([
+        'media_id' => $itemMedia->getKey(),
+        'attachable_type' => 'content_item',
+        'attachable_id' => $item->getKey(),
+        'role' => MediaAttachmentRole::PrimaryImage,
+        'position' => 0,
+    ]);
+
+    $this->actingAs($user);
+
+    $globalHtml = Livewire::test(ListContentGroups::class)
+        ->mountAction(TestAction::make('downloadContentImages')->table())
+        ->getMountedActionModalHtml();
+
+    expect($globalHtml)
+        ->toContain(__('admin.media_library.export_population_all', ['count' => 2]))
+        ->toContain(__('admin.media_library.export_destination'))
+        ->toContain(__('admin.media_naming_strategies.title'));
+
+    $scopedHtml = Livewire::test(ListContentGroups::class)
+        ->mountAction(TestAction::make('downloadPodcastImages')->table($group))
+        ->getMountedActionModalHtml();
+
+    expect($scopedHtml)
+        ->toContain(__('admin.media_library.export_population_group', ['group' => 'Gamma Podcast', 'count' => 2]))
+        ->toContain(__('admin.media_library.export_destination'));
+});

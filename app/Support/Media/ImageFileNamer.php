@@ -76,10 +76,19 @@ class ImageFileNamer
         string $referenceKey,
         string $mimeType,
         MediaNamingStrategy|string|null $strategy = MediaNamingStrategy::SlugKey,
+        ?string $title = null,
     ): string {
         $strategy = $strategy instanceof MediaNamingStrategy
             ? $strategy
             : MediaNamingStrategy::fromSetting($strategy);
+
+        if ($strategy === MediaNamingStrategy::Title) {
+            $stem = self::cleanStem($title);
+
+            return ($stem !== '' ? $stem : self::storageStem($slug, $referenceKey, MediaNamingStrategy::SlugKey))
+                .'.'
+                .self::extensionForMimeType($mimeType);
+        }
 
         return self::storageStem($slug, $referenceKey, $strategy)
             .'.'
@@ -92,7 +101,7 @@ class ImageFileNamer
         $referenceKey = self::cleanStem($referenceKey);
 
         return match ($strategy) {
-            MediaNamingStrategy::Slug => $slug ?: $referenceKey,
+            MediaNamingStrategy::Slug, MediaNamingStrategy::Title => $slug ?: $referenceKey,
             MediaNamingStrategy::ReferenceKey => $referenceKey,
             MediaNamingStrategy::SlugKey => $slug ? "{$slug}--{$referenceKey}" : $referenceKey,
         };

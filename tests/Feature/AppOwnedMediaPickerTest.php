@@ -8,6 +8,7 @@ use App\Filament\Forms\Components\PathCuratorPicker;
 use App\Filament\Resources\Media\MediaResource;
 use App\Livewire\Admin\DisabledVendorCuratorSurface;
 use App\Livewire\Admin\MediaPickerPanel;
+use App\Models\ContentGroup;
 use App\Models\Media;
 use App\Models\MediaAsset;
 use App\Models\MediaProviderBinding;
@@ -24,7 +25,6 @@ use Filament\Forms\Components\FileUpload;
 use Filament\Notifications\Notification;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Contracts\Cache\LockTimeoutException;
-use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
@@ -409,6 +409,7 @@ it('bounds browse payloads while treating the purpose root as an initial logical
             'selectable',
             'selection_blocked_reason',
             'review_url',
+            'ops',
         ])
         ->and(array_column($files, 'id'))->each->toBeIn($contextMedia->modelKeys())
         ->and(array_column($files, 'id'))->not->toContain($otherFolder->getKey());
@@ -925,11 +926,19 @@ it('keeps nonselectable inventory visible while fencing selection and file mutat
 
     expect($blocked->refresh()->title)->toBe('Repair review');
 
+    $blockedOps = collect(pickerPanel()->get('files'))
+        ->firstWhere('id', $blocked->getKey())['ops'];
+
+    expect($blockedOps['delete']['allowed'])->toBeFalse()
+        ->and($blockedOps['delete']['reason'])->toBe(__('admin.media_library.op_blocked_unmanaged'))
+        ->and($blockedOps['rename']['allowed'])->toBeFalse()
+        ->and($blockedOps['swap']['allowed'])->toBeFalse();
+
     foreach (['destroyItem', 'renameItem'] as $action) {
-        expect(fn () => pickerPanel()->callAction(
+        pickerPanel()->callAction(
             TestAction::make($action),
             arguments: ['id' => $blocked->getKey()],
-        ))->toThrow(ModelNotFoundException::class);
+        );
     }
 
     $viewComponent = pickerPanel();
@@ -940,21 +949,24 @@ it('keeps nonselectable inventory visible while fencing selection and file mutat
 
     expect($viewAction->getUrl())->toBe(route('admin.media-files.view', ['media' => $blocked->getKey()]));
 
-    expect(fn () => pickerPanel()->callAction(
+    pickerPanel()->callAction(
         TestAction::make('swapItem'),
         data: ['replacement' => pickerMediaFixture('valid.png')],
         arguments: ['id' => $blocked->getKey()],
-    ))->toThrow(ModelNotFoundException::class);
+    );
 
-    expect(fn () => pickerPanel([
+    expect($blocked->refresh()->visibility)->toBe('private');
+
+    pickerPanel([
         'selectedIds' => [$allowed->getKey(), $blocked->getKey()],
         'isMultiple' => true,
         'maxItems' => 2,
     ])
-        ->callAction(TestAction::make('destroySelected')))
-        ->toThrow(ModelNotFoundException::class);
+        ->callAction(TestAction::make('destroySelected'))
+        ->assertNotified(__('admin.media_library.bulk_delete_done_title'));
 
-    expect(Media::query()->whereKey([$allowed->getKey(), $blocked->getKey()])->count())->toBe(2);
+    expect(Media::query()->whereKey($allowed->getKey())->exists())->toBeFalse()
+        ->and(Media::query()->whereKey($blocked->getKey())->exists())->toBeTrue();
 });
 
 it('uploads renames swaps and deletes through real picker actions', function (): void {
@@ -1809,4 +1821,59 @@ it('admits a large queue in batch-limit chunks with an accumulating receipt', fu
         ->and($component->get('panelData.uploads'))->toHaveCount(0)
         ->and(collect($component->get('uploadResults'))->pluck('fate')->all())
         ->toBe(['acquired', 'acquired', 'acquired']);
+});
+
+it('projects per-file operation availability with truthful reasons', function (): void {
+    $this->actingAs(User::factory()->admin()->create());
+    $orphan = Media::factory()->create();
+    $referenced = Media::factory()->create([
+        'name' => '01J00000000000000000000031',
+        'path' => 'content-groups/covers/01J00000000000000000000031.jpg',
+    ]);
+    ContentGroup::factory()->create(['cover_path' => $referenced->path]);
+
+    $component = pickerPanel();
+    $files = collect($component->get('files'));
+    $orphanOps = $files->firstWhere('id', $orphan->getKey())['ops'];
+    $referencedOps = $files->firstWhere('id', $referenced->getKey())['ops'];
+
+    expect($orphanOps['rename']['allowed'])->toBeTrue()
+        ->and($orphanOps['delete']['allowed'])->toBeTrue()
+        ->and($orphanOps['delete']['reason'])->toBeNull()
+        ->and($referencedOps['delete']['allowed'])->toBeFalse()
+        ->and($referencedOps['delete']['reason'])->toBeString()->not->toBe('')
+        ->and($referencedOps['swap']['allowed'])->toBeFalse()
+        ->and($referencedOps['rename']['reason'])->toBe($referencedOps['swap']['reason']);
+
+    expect($component->instance()->destroyItemAction()->getLabel())
+        ->toBe(__('admin.media_library.delete_permanently'));
+});
+
+it('scopes the panel search including owner titles', function (): void {
+    $this->actingAs(User::factory()->admin()->create());
+    $titled = Media::factory()->create([
+        'name' => '01J00000000000000000000061',
+        'path' => 'content-groups/covers/01J00000000000000000000061.jpg',
+        'title' => 'כרומה כתומה',
+    ]);
+    $owned = Media::factory()->create([
+        'name' => '01J00000000000000000000062',
+        'path' => 'content-groups/covers/01J00000000000000000000062.jpg',
+        'title' => null,
+    ]);
+    ContentGroup::factory()->create(['title' => 'שיחות עומק', 'cover_path' => $owned->path]);
+
+    $component = pickerPanel()
+        ->set('searchScope', 'owner')
+        ->set('search', 'עומק');
+
+    expect(array_column($component->get('files'), 'id'))->toBe([$owned->getKey()]);
+
+    $component->set('searchScope', 'title')->set('search', 'כרומה');
+
+    expect(array_column($component->get('files'), 'id'))->toBe([$titled->getKey()]);
+
+    $component->set('searchScope', 'garbage');
+
+    expect($component->get('searchScope'))->toBe('all');
 });

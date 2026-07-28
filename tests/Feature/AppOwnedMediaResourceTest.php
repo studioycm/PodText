@@ -11,6 +11,7 @@ use App\Filament\Resources\Media\Pages\ListMedia;
 use App\Filament\Resources\Media\Schemas\MediaForm;
 use App\Filament\Resources\Media\Tables\MediaTable;
 use App\Models\ContentGroup;
+use App\Models\ContentItem;
 use App\Models\Media;
 use App\Models\MediaAsset;
 use App\Models\MediaAttachment;
@@ -37,6 +38,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -226,6 +228,7 @@ it('renders Media as a native responsive card gallery without losing table contr
         ->and(array_keys($recordActions[2]->getFlatActions()))->toBe([
             'view',
             'download',
+            'titleByOwner',
             'rename',
             'swap',
             'delete',
@@ -235,6 +238,7 @@ it('renders Media as a native responsive card gallery without losing table contr
             'edit',
             'view',
             'download',
+            'titleByOwner',
             'rename',
             'swap',
             'delete',
@@ -805,12 +809,14 @@ it('restricts resource access to admins and keeps file identity immutable during
 });
 
 it('routes rename swap and delete table actions through the app coordinator', function (): void {
-    $this->actingAs(User::factory()->admin()->create());
+    $user = User::factory()->admin()->create();
+    $this->actingAs($user);
     $record = appOwnedMediaRecord();
     Storage::disk('public')->put($record->path, appOwnedMediaFixture('valid.jpg')->getContent());
 
     $component = Livewire::test(ListMedia::class);
-    $component->callAction(TestAction::make('rename')->table($record));
+    $component->callAction(TestAction::make('rename')->table($record))
+        ->assertNotified(__('admin.media_library.rename_done_title'));
     $renamed = $record->refresh();
 
     expect($renamed->path)->not->toBe('content-groups/covers/01J00000000000000000000000.jpg');
@@ -819,17 +825,20 @@ it('routes rename swap and delete table actions through the app coordinator', fu
         TestAction::make('swap')->table($renamed),
         ['replacement' => appOwnedMediaFixture('valid.png')],
     );
+    $component->assertNotified(__('admin.media_library.swap_done_title'));
     $swapped = $record->refresh();
 
     expect($swapped->type)->toBe('image/png')
         ->and($swapped->ext)->toBe('png');
 
-    $component->callAction(TestAction::make('delete')->table($swapped));
+    $component->callAction(TestAction::make('delete')->table($swapped))
+        ->assertNotified(__('admin.media_library.delete_done_title', ['name' => (string) ($swapped->title ?: $swapped->name)]));
 
-    expect(Media::query()->whereKey($record->getKey())->exists())->toBeFalse();
+    expect(Media::query()->whereKey($record->getKey())->exists())->toBeFalse()
+        ->and($user->notifications()->count())->toBe(3);
 });
 
-it('keeps file mutations closed for repair rows and mixed bulk deletion', function (): void {
+it('discloses blocked file mutations and skips blocked rows in bulk deletion', function (): void {
     $this->actingAs(User::factory()->admin()->create());
     $wrongScope = appOwnedMediaRecord([
         'disk' => 'local',
@@ -851,16 +860,19 @@ it('keeps file mutations closed for repair rows and mixed bulk deletion', functi
     Livewire::test(ListMedia::class)->assertCanSeeTableRecords([$wrongScope]);
 
     Livewire::test(ListMedia::class)
-        ->assertActionHidden(TestAction::make('rename')->table($wrongScope))
-        ->assertActionHidden(TestAction::make('swap')->table($wrongScope))
-        ->assertActionHidden(TestAction::make('delete')->table($wrongScope));
+        ->assertActionVisible(TestAction::make('rename')->table($wrongScope))
+        ->assertActionDisabled(TestAction::make('rename')->table($wrongScope))
+        ->assertActionDisabled(TestAction::make('swap')->table($wrongScope))
+        ->assertActionDisabled(TestAction::make('delete')->table($wrongScope));
 
     Livewire::test(ListMedia::class)
         ->selectTableRecords([$deletable, $referenced])
-        ->callAction(TestAction::make('deleteSelected')->table()->bulk());
+        ->callAction(TestAction::make('deleteSelected')->table()->bulk())
+        ->assertNotified(__('admin.media_library.bulk_delete_done_title'));
 
-    expect(Media::query()->whereKey([$wrongScope->getKey(), $deletable->getKey(), $referenced->getKey()])->count())->toBe(3)
-        ->and(MediaMutationOperation::query()->count())->toBe(0);
+    expect(Media::query()->whereKey($deletable->getKey())->exists())->toBeFalse()
+        ->and(Media::query()->whereKey([$wrongScope->getKey(), $referenced->getKey()])->count())->toBe(2)
+        ->and(MediaMutationOperation::query()->count())->toBe(1);
 });
 
 it('prefixes normalized per-file titles and alt in a multi upload and keeps single uploads verbatim', function (): void {
@@ -966,4 +978,222 @@ it('links the primary issue row and the details slide-over to the issue review p
     expect($modalHtml)
         ->toContain('data-testid="media-details-issue-review-link"')
         ->toContain(__('admin.media_issue_review.heading'));
+});
+
+it('explains blocked file operations with truthful policy reasons', function (): void {
+    $admin = User::factory()->admin()->create();
+    $this->actingAs($admin);
+    $managed = appOwnedMediaRecord();
+    $legacy = appOwnedMediaRecord([
+        'directory' => '',
+        'name' => 'podcast_2',
+        'path' => 'podcast_2.jpg',
+    ]);
+    $referenced = appOwnedMediaRecord([
+        'name' => '01J00000000000000000000011',
+        'path' => 'content-groups/covers/01J00000000000000000000011.jpg',
+    ]);
+    $group = ContentGroup::factory()->create(['cover_path' => $referenced->path]);
+
+    $gate = Gate::forUser($admin);
+
+    expect($gate->inspect('rename', $managed)->allowed())->toBeTrue()
+        ->and($gate->inspect('swap', $managed)->allowed())->toBeTrue()
+        ->and($gate->inspect('delete', $managed)->allowed())->toBeTrue();
+
+    foreach (['rename', 'swap', 'delete'] as $ability) {
+        $legacyResponse = $gate->inspect($ability, $legacy);
+
+        expect($legacyResponse->allowed())->toBeFalse()
+            ->and($legacyResponse->message())->toBe(__('admin.media_library.op_blocked_unmanaged'));
+    }
+
+    foreach (['rename', 'swap', 'delete'] as $ability) {
+        $blockedResponse = $gate->inspect($ability, $referenced);
+
+        expect($blockedResponse->allowed())->toBeFalse()
+            ->and($blockedResponse->message())->toContain($group->title);
+    }
+});
+
+it('opens consequence dialogs for file operations with identity and impact truth', function (): void {
+    $this->actingAs(User::factory()->admin()->create());
+    $record = appOwnedMediaRecord();
+    Storage::disk('public')->put($record->path, appOwnedMediaFixture('valid.jpg')->getContent());
+
+    $html = Livewire::test(ListMedia::class)
+        ->call('mountTableAction', 'rename', (string) $record->getKey())
+        ->getMountedActionModalHtml();
+
+    expect($html)
+        ->toContain('data-testid="media-operation-consequence"')
+        ->toContain(e((string) $record->title))
+        ->toContain(__('admin.media_library.op_no_usages'))
+        ->toContain(__('admin.media_library.rename_consequence'))
+        ->toContain(__('admin.media_library.rename_submit'));
+
+    $deleteHtml = Livewire::test(ListMedia::class)
+        ->call('mountTableAction', 'delete', (string) $record->getKey())
+        ->getMountedActionModalHtml();
+
+    expect($deleteHtml)
+        ->toContain(__('admin.media_library.delete_consequence'))
+        ->toContain(__('admin.media_library.delete_permanently'));
+
+    $swapHtml = Livewire::test(ListMedia::class)
+        ->call('mountTableAction', 'swap', (string) $record->getKey())
+        ->getMountedActionModalHtml();
+
+    expect($swapHtml)
+        ->toContain(__('admin.media_library.swap_consequence'))
+        ->toContain(__('admin.media_library.swap_submit'));
+});
+
+it('derives owner titles by role priority and applies them in bulk', function (): void {
+    $user = User::factory()->admin()->create();
+    $this->actingAs($user);
+    $coverMedia = appOwnedMediaRecord([
+        'name' => '01J00000000000000000000041',
+        'path' => 'content-groups/covers/01J00000000000000000000041.jpg',
+        'title' => null,
+    ]);
+    $episodeMedia = appOwnedMediaRecord([
+        'directory' => 'content-items/images',
+        'name' => '01J00000000000000000000042',
+        'path' => 'content-items/images/01J00000000000000000000042.jpg',
+        'title' => null,
+    ]);
+    $orphan = appOwnedMediaRecord([
+        'name' => '01J00000000000000000000043',
+        'path' => 'content-groups/covers/01J00000000000000000000043.jpg',
+        'title' => null,
+    ]);
+    $group = ContentGroup::factory()->create(['title' => 'הפודקאסט שלנו']);
+    $item = ContentItem::factory()->for($group)->create(['title' => 'פרק הפתיחה']);
+    MediaAttachment::query()->create([
+        'media_id' => $coverMedia->getKey(),
+        'attachable_type' => 'content_group',
+        'attachable_id' => $group->getKey(),
+        'role' => 'cover',
+        'position' => 0,
+    ]);
+    $itemTwo = ContentItem::factory()->for($group)->create(['title' => 'פרק שני']);
+    MediaAttachment::query()->create([
+        'media_id' => $coverMedia->getKey(),
+        'attachable_type' => 'content_item',
+        'attachable_id' => $itemTwo->getKey(),
+        'role' => 'primary_image',
+        'position' => 1,
+    ]);
+    MediaAttachment::query()->create([
+        'media_id' => $episodeMedia->getKey(),
+        'attachable_type' => 'content_item',
+        'attachable_id' => $item->getKey(),
+        'role' => 'primary_image',
+        'position' => 0,
+    ]);
+
+    Livewire::test(ListMedia::class)
+        ->selectTableRecords([$coverMedia, $episodeMedia, $orphan])
+        ->callAction(
+            TestAction::make('titleByOwnerSelected')->table()->bulk(),
+            ['title_prefix' => '', 'title_suffix' => ''],
+        )
+        ->assertNotified(__('admin.media_library.title_by_owner_done_title'));
+
+    $coverRole = __('admin.media_attachment_roles.cover');
+    $primaryRole = __('admin.media_attachment_roles.primary_image');
+
+    expect($coverMedia->refresh()->title)->toBe('הפודקאסט שלנו — '.$coverRole)
+        ->and($coverMedia->alt)->toBe('הפודקאסט שלנו — '.$coverRole)
+        ->and($episodeMedia->refresh()->title)->toBe('פרק הפתיחה — '.$primaryRole)
+        ->and($orphan->refresh()->title)->toBeNull()
+        ->and($user->notifications()->count())->toBe(1);
+});
+
+it('previews and applies a single-card owner title with bulk affixes available', function (): void {
+    $user = User::factory()->admin()->create();
+    $this->actingAs($user);
+    $media = appOwnedMediaRecord([
+        'name' => '01J00000000000000000000044',
+        'path' => 'content-groups/covers/01J00000000000000000000044.jpg',
+        'title' => null,
+    ]);
+    $affixed = appOwnedMediaRecord([
+        'name' => '01J00000000000000000000045',
+        'path' => 'content-groups/covers/01J00000000000000000000045.jpg',
+        'title' => null,
+    ]);
+    $group = ContentGroup::factory()->create(['title' => 'דרך הארץ', 'cover_path' => $media->path]);
+    ContentGroup::factory()->create(['title' => 'קול העיר', 'cover_path' => $affixed->path]);
+    $coverRole = __('admin.media_attachment_roles.cover');
+
+    $html = Livewire::test(ListMedia::class)
+        ->call('mountTableAction', 'titleByOwner', (string) $media->getKey())
+        ->getMountedActionModalHtml();
+
+    expect($html)->toContain(e('דרך הארץ — '.$coverRole));
+
+    Livewire::test(ListMedia::class)
+        ->callAction(TestAction::make('titleByOwner')->table($media))
+        ->assertNotified(__('admin.media_library.title_by_owner_done_title'));
+
+    expect($media->refresh()->title)->toBe('דרך הארץ — '.$coverRole);
+
+    Livewire::test(ListMedia::class)
+        ->selectTableRecords([$affixed])
+        ->callAction(
+            TestAction::make('titleByOwnerSelected')->table()->bulk(),
+            ['title_prefix' => 'עטיפת', 'title_suffix' => '(2026)'],
+        );
+
+    expect($affixed->refresh()->title)->toBe('עטיפת קול העיר — '.$coverRole.' (2026)');
+});
+
+it('scopes gallery search to title owner or filename', function (): void {
+    $this->actingAs(User::factory()->admin()->create());
+    $titled = appOwnedMediaRecord([
+        'name' => '01J00000000000000000000051',
+        'path' => 'content-groups/covers/01J00000000000000000000051.jpg',
+        'title' => 'כרומה כתומה',
+    ]);
+    $named = appOwnedMediaRecord([
+        'name' => 'zebra-file',
+        'path' => 'content-groups/covers/zebra-file.jpg',
+        'title' => null,
+    ]);
+    $owned = appOwnedMediaRecord([
+        'name' => '01J00000000000000000000053',
+        'path' => 'content-groups/covers/01J00000000000000000000053.jpg',
+        'title' => null,
+    ]);
+    ContentGroup::factory()->create(['title' => 'שיחות עומק', 'cover_path' => $owned->path]);
+
+    Livewire::test(ListMedia::class)
+        ->set('searchScope', 'owner')
+        ->searchTable('עומק')
+        ->assertCanSeeTableRecords([$owned])
+        ->assertCanNotSeeTableRecords([$titled, $named]);
+
+    Livewire::test(ListMedia::class)
+        ->set('searchScope', 'title')
+        ->searchTable('כרומה')
+        ->assertCanSeeTableRecords([$titled])
+        ->assertCanNotSeeTableRecords([$named, $owned]);
+
+    Livewire::test(ListMedia::class)
+        ->set('searchScope', 'filename')
+        ->searchTable('zebra')
+        ->assertCanSeeTableRecords([$named])
+        ->assertCanNotSeeTableRecords([$titled, $owned]);
+
+    Livewire::test(ListMedia::class)
+        ->set('searchScope', 'all')
+        ->searchTable('עומק')
+        ->assertCanSeeTableRecords([$owned]);
+
+    $component = Livewire::test(ListMedia::class);
+    $component->call('setSearchScope', 'nonsense');
+
+    expect($component->get('searchScope'))->toBe('all');
 });

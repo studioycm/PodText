@@ -3213,3 +3213,37 @@ it('declares only the scoped owner modal responsive stylesheet contract', functi
         ->toContain('min-inline-size: 2.75rem')
         ->not->toContain('!important');
 });
+
+it('retitles the selected media from the owner when the retitle checkbox is on', function (): void {
+    $admin = User::factory()->admin()->create();
+    $group = ContentGroup::factory()->create(['title' => 'הפודקאסט המרכזי']);
+    $item = ContentItem::factory()->for($group)->create(['title' => 'פרק שלוש']);
+    $media = ownerImageMedia('content-items/images/retitle-target.jpg', ['title' => null]);
+    $primaryRole = __('admin.media_attachment_roles.primary_image');
+
+    $component = Livewire::actingAs($admin)
+        ->test(ListContentItems::class)
+        ->mountAction(TestAction::make('chooseContentItemImage')->table($item));
+
+    expect($component->get('mountedActions.0.data.retitle_media_by_owner'))->toBeTrue();
+
+    $component
+        ->set('mountedActions.0.data.primary_image_media_reference_key', $media->reference_key)
+        ->callMountedAction();
+
+    expect($media->refresh()->title)->toBe('פרק שלוש — '.$primaryRole)
+        ->and($media->alt)->toBe('פרק שלוש — '.$primaryRole);
+
+    $keepTitle = ownerImageMedia('content-items/images/retitle-off.jpg', ['title' => 'כותרת שנבחרה ביד']);
+    $component = Livewire::actingAs($admin)
+        ->test(ListContentItems::class)
+        ->mountAction(TestAction::make('chooseContentItemImage')->table($item));
+
+    expect($component->get('mountedActions.0.data.retitle_media_by_owner'))->toBeFalse();
+
+    $component
+        ->set('mountedActions.0.data.primary_image_media_reference_key', $keepTitle->reference_key)
+        ->callMountedAction();
+
+    expect($keepTitle->refresh()->title)->toBe('כותרת שנבחרה ביד');
+});

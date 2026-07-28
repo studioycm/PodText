@@ -50,17 +50,81 @@ Recorded after the Markdown-only post-Prompt-10 prompt-progress centralization c
   environment attribution, time-boxed failure chases, known-environmental
   ledger). **Current gate:** Mini-task 3B is closed by the operator on
   2026-07-28 after full outcome review (P1–P5 plus the OR corrections,
-  pushed at `a638fd4`). Mini-task 3C — Safe Existing-File Operations and
-  Outcomes — is open in UX research under the mandatory cycle, owning
-  F024–F030 and the F045 evidence gap plus the production finding that the
-  mutation coordinator's strict record scope blocks deleting root-level
-  legacy rows (production media id 2). The operator accepted the Mini-task
-  4 gate: SVG sanitize-repair waits for M4 after 3C closes, with
-  `unsanitized_svg` as the operator-preferred first reason. Production
-  deploy of the pushed series awaits an explicit operator deploy request.
+  pushed at `a638fd4`). **Current gate:** Mini-task 3C — Safe Existing-File
+  Operations — completed its research cycle (dossier
+  `LS-20260728-PODTEXT-MEDIA-OPS-UX3-3C-01`, published artifact) and the
+  operator approved «3C all» with decisions D1–D8 (D4 flipped to role
+  priority podcast → episode → settings; the rest as recommended). All
+  eight phases are implemented locally (see the Git State entry below,
+  implementation hash `3C_IMPLEMENTATION_HASH`). The mid-research operator
+  seeds (bulk name-by-owner, title-as-export-filename with preselected
+  default, search scopes, selection-time retitle checkbox, zero-cost
+  public alt chain) were absorbed into the dossier as P5–P8 before
+  approval, and the operator's «rename is for a title» ruling is recorded
+  as the model: filenames stay anonymous engine mints; «יצירת שם קובץ
+  חדש» is maintenance-only. 3C outcome review by the operator is the next
+  step; after it closes, replanned Mini-task 4 research opens
+  (`unsanitized_svg` operator-preferred first reason). Production deploy
+  of the pushed series awaits an explicit operator deploy request.
 
 ## Git State
 
+- Media Operations UX3 Mini-task 3C (Safe Existing-File Operations) is
+  complete locally under research dossier
+  `LS-20260728-PODTEXT-MEDIA-OPS-UX3-3C-01`, operator approval
+  «approved 3C all» with D1–D8 (D4: role priority podcast → episode →
+  settings), and post-implementation light audit
+  `LS-20260728-PODTEXT-3C-IMPL-01` (verdict: no change). Implementation
+  hash `3C_IMPLEMENTATION_HASH`. P1 buttons tell the truth: rename/swap/
+  delete policies now return `Response` reasons (in-use with surfaces,
+  unmanaged legacy, duplicate identity) rendered by Filament
+  `authorizationTooltip()` as disabled-with-reason on gallery cards; the
+  picker panel projects per-tile `ops` availability (primed references +
+  `storage_identity_count` subselect, zero extra queries) and its tile
+  buttons disable with the same reasons — the production «media 2» class
+  of confirm-then-404 crashes is closed (`trustedRecord` now resolves
+  inventory + authorize, 403 with reason instead of 404). View/Download
+  disable with «הקובץ חסר באחסון» when diagnostics report a missing file.
+  The panel delete label unified to «מחיקה לצמיתות». P2 consequence
+  dialogs: one shared blade shows identity (thumb, name, dims, size),
+  the truthful zero-usages line, and one per-operation consequence
+  sentence (rename address-change + external-links warning; swap
+  library-file semantics; delete permanent + journal safety copy per D1).
+  Implementation-discovered contract recorded: policy restricts rename/
+  swap to unreferenced files (`canMutateFile`), so the dossier's
+  «בכל :count המקומות» swap state is unreachable and PM3 dies at the
+  policy layer. P3 receipts: every operation sends before→after success
+  notifications (toast + database bell) via `MediaOperationReceipts`;
+  failures show the engine reason or a safe generic. P4 bulk census:
+  `MediaBulkDeleteCensus` classifies selections (eligible / blocked with
+  reasons), the confirm modal shows the census, execution skips blocked
+  rows per D2 (one legacy row no longer aborts the whole bulk), and a
+  three-count receipt lands in toast + bell on both surfaces. P5 export
+  truth: both export dialogs state population + count + destination, and
+  `MediaNamingStrategy::Title` makes the media title the export filename
+  source (settings default preselected; NULL titles fall back to
+  slug-key per D6; duplicate entry names suffix -2/-3). P6 title-by-
+  owner: `MediaReferenceFinder::ownerTitleForMedia` derives «{owner} —
+  {role}» per D4 priority/D5 shape; gallery bulk action with census +
+  optional prefix/suffix, single-card action with preview, and the D8
+  smart-default selection-time checkbox on the owner-image modal
+  (checked when the media has no title; applies on save via
+  `MediaOwnerTitleApplier`). P7 search scopes: gallery header selector
+  and panel select scope search to הכל/כותרת/בעלים/שם קובץ, with the
+  new owner-title search (attachments via both morph aliases + legacy
+  path columns). P8 public alt chain: `media.title ?: owner title` on
+  already-loaded rows only (groups keep `cover_alt_text` priority) —
+  zero added queries by contract. Latent bug fixed in passing: raw
+  `attachable_type` comparisons accepted only one morph alias while the
+  database holds both (`content_group`/FQCN); the finder, export count,
+  and owner search now accept both. Gate: full suite 1438 tests /
+  19203 assertions with only the 4 known-environmental browser failures,
+  FilaCheck 0 issues, pint clean, `npm run build` green. Deferred/
+  registered: retitle checkbox on the two other selection paths
+  (relation manager, owner edit-page lifecycle — same applier, small
+  wiring each), quarantine-journal UI, root-file relocation (Package 5),
+  lifting the rename/swap zero-reference restriction (drift, operator
+  decision).
 - Media Operations UX3 Mini-task 3B (Sources, Acquisition and Results) is
   complete locally under research dossier
   `LS-20260728-PODTEXT-MEDIA-OPS-UX3-3B-01` and operator approval

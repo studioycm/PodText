@@ -163,6 +163,22 @@
                         />
                     </x-filament::input.wrapper>
                 </div>
+                <div wire:loading.attr="inert">
+                    <label for="media-picker-search-scope" class="sr-only">
+                        {{ __('admin.media_library.search_scope', ['scope' => __("admin.media_library.search_scopes.{$searchScope}")]) }}
+                    </label>
+                    <x-filament::input.wrapper>
+                        <x-filament::input.select
+                            id="media-picker-search-scope"
+                            data-testid="media-picker-search-scope"
+                            wire:model.live="searchScope"
+                        >
+                            @foreach (['all', 'title', 'owner', 'filename'] as $scopeOption)
+                                <option value="{{ $scopeOption }}">{{ __("admin.media_library.search_scopes.{$scopeOption}") }}</option>
+                            @endforeach
+                        </x-filament::input.select>
+                    </x-filament::input.wrapper>
+                </div>
                 @if ($isOwnerChoice || $allMedia)
                     <div wire:loading.attr="inert">
                         <label for="media-picker-directory-filter" class="sr-only">

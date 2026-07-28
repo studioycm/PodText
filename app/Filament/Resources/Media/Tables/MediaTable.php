@@ -8,10 +8,14 @@ use App\Filament\Resources\Media\Pages\ListMedia;
 use App\Models\Media;
 use App\Models\User;
 use App\Support\Media\CuratorImageUploadPolicy;
+use App\Support\Media\MediaBulkDeleteCensus;
 use App\Support\Media\MediaDetailsViewModel;
 use App\Support\Media\MediaFilesystemMutationCoordinator;
 use App\Support\Media\MediaInventoryDiagnostics;
 use App\Support\Media\MediaLibraryTaskQuery;
+use App\Support\Media\MediaOperationReceipts;
+use App\Support\Media\MediaOwnerTitleApplier;
+use App\Support\Media\MediaRecordProjector;
 use App\Support\Media\MediaRecordScope;
 use App\Support\Media\MediaReferenceFinder;
 use Filament\Actions\Action;
@@ -20,6 +24,7 @@ use Filament\Actions\BulkAction;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\FileUpload;
+use Filament\Forms\Components\TextInput;
 use Filament\Support\Enums\Width;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\ImageColumn;
@@ -36,7 +41,9 @@ use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\HtmlString;
 use Illuminate\Support\Number;
+use Illuminate\Validation\ValidationException;
 use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
+use RuntimeException;
 
 class MediaTable
 {
@@ -93,8 +100,8 @@ class MediaTable
                                     ))
                                     ->html()
                                     ->searchable(
-                                        query: fn (Builder $query, string $search): Builder => app(MediaLibraryTaskQuery::class)
-                                            ->applySearchTerm($query, $search),
+                                        query: fn (Builder $query, string $search, ListMedia $livewire): Builder => app(MediaLibraryTaskQuery::class)
+                                            ->applySearchTerm($query, $search, $livewire->searchScope),
                                     )
                                     ->wrap(),
                                 TextColumn::make('card_stored_filename')
@@ -246,6 +253,17 @@ class MediaTable
                 '2xl' => $livewire->cardsPerRow,
             ])
             ->headerActions([
+                ActionGroup::make(collect(['all', 'title', 'owner', 'filename'])->map(
+                    fn (string $scope): Action => Action::make('searchScope'.ucfirst($scope))
+                        ->label(__("admin.media_library.search_scopes.{$scope}"))
+                        ->action(fn (ListMedia $livewire) => $livewire->setSearchScope($scope)),
+                )->all())
+                    ->label(fn (ListMedia $livewire): string => __('admin.media_library.search_scope', [
+                        'scope' => __("admin.media_library.search_scopes.{$livewire->searchScope}"),
+                    ]))
+                    ->icon(Heroicon::OutlinedMagnifyingGlass)
+                    ->button()
+                    ->color('gray'),
                 ActionGroup::make(collect([3, 4, 5])->map(
                     fn (int $count): Action => Action::make("cardsPerRow{$count}")
                         ->label(__('admin.media_library.cards_per_row_option', ['count' => $count]))
@@ -335,11 +353,19 @@ class MediaTable
                         ->label(__('admin.actions.view'))
                         ->icon(Heroicon::OutlinedEye)
                         ->authorize(fn (Media $record): bool => Gate::allows('view', $record))
+                        ->disabled(fn (Media $record): bool => self::fileIsMissing($record))
+                        ->tooltip(fn (Media $record): ?string => self::fileIsMissing($record)
+                            ? __('admin.media_library.op_file_missing')
+                            : null)
                         ->url(fn (Media $record): string => route('admin.media-files.view', ['media' => $record->getKey()]), true),
                     Action::make('download')
                         ->label(__('admin.actions.download'))
                         ->icon(Heroicon::OutlinedArrowDownTray)
                         ->authorize(fn (Media $record): bool => Gate::allows('download', $record))
+                        ->disabled(fn (Media $record): bool => self::fileIsMissing($record))
+                        ->tooltip(fn (Media $record): ?string => self::fileIsMissing($record)
+                            ? __('admin.media_library.op_file_missing')
+                            : null)
                         ->action(function (Media $record) {
                             $user = auth()->user();
                             abort_unless($user instanceof User, 403);
@@ -348,23 +374,63 @@ class MediaTable
 
                             return redirect()->to(route('admin.media-files.download', ['media' => $trusted->getKey()]));
                         }),
+                    Action::make('titleByOwner')
+                        ->label(__('admin.media_library.title_by_owner'))
+                        ->icon(Heroicon::OutlinedIdentification)
+                        ->color('gray')
+                        ->authorize(fn (Media $record): bool => Gate::allows('update', $record))
+                        ->requiresConfirmation()
+                        ->modalDescription(function (Media $record): string {
+                            $title = app(MediaOwnerTitleApplier::class)->composedTitle($record);
+
+                            return $title === null
+                                ? __('admin.media_library.title_by_owner_none')
+                                : __('admin.media_library.title_by_owner_single_preview', ['title' => $title]);
+                        })
+                        ->action(function (Media $record): void {
+                            $user = auth()->user();
+                            abort_unless($user instanceof User, 403);
+
+                            $result = app(MediaOwnerTitleApplier::class)->apply(new Collection([$record]), $user);
+                            app(MediaOperationReceipts::class)->titleByOwnerFinished($user, $result['titled'], $result['skipped']);
+                        }),
                     Action::make('rename')
                         ->label(__('admin.media_library.rename'))
                         ->icon(Heroicon::OutlinedTag)
                         ->color('gray')
-                        ->authorize(fn (Media $record): bool => Gate::allows('rename', $record))
+                        ->authorize('rename')
+                        ->authorizationTooltip()
                         ->requiresConfirmation()
+                        ->modalContent(fn (Media $record): View => self::operationConsequence($record, 'rename'))
+                        ->modalSubmitActionLabel(__('admin.media_library.rename_submit'))
                         ->action(function (Media $record): void {
                             $user = auth()->user();
                             abort_unless($user instanceof User, 403);
-                            app(MediaFilesystemMutationCoordinator::class)->rename($record, $user);
+                            $oldName = basename((string) $record->path);
+
+                            try {
+                                $updated = app(MediaFilesystemMutationCoordinator::class)->rename($record, $user);
+                            } catch (ValidationException $exception) {
+                                app(MediaOperationReceipts::class)->operationFailed($exception->getMessage());
+
+                                return;
+                            } catch (RuntimeException) {
+                                app(MediaOperationReceipts::class)->operationFailed();
+
+                                return;
+                            }
+
                             app(MediaInventoryDiagnostics::class)->forget($record);
+                            app(MediaOperationReceipts::class)->renameSucceeded($user, $oldName, basename((string) $updated->path));
                         }),
                     Action::make('swap')
                         ->label(__('admin.media_library.swap'))
                         ->icon(Heroicon::OutlinedArrowsRightLeft)
                         ->color('warning')
-                        ->authorize(fn (Media $record): bool => Gate::allows('swap', $record))
+                        ->authorize('swap')
+                        ->authorizationTooltip()
+                        ->modalContent(fn (Media $record): View => self::operationConsequence($record, 'swap'))
+                        ->modalSubmitActionLabel(__('admin.media_library.swap_submit'))
                         ->schema([
                             FileUpload::make('replacement')
                                 ->label(__('admin.media_library.replacement'))
@@ -379,21 +445,52 @@ class MediaTable
                             abort_unless($user instanceof User, 403);
                             $replacement = $data['replacement'] ?? null;
                             abort_unless($replacement instanceof TemporaryUploadedFile, 422);
-                            app(MediaFilesystemMutationCoordinator::class)->swap($record, $replacement, $user);
+                            $oldSize = (int) $record->size;
+
+                            try {
+                                $updated = app(MediaFilesystemMutationCoordinator::class)->swap($record, $replacement, $user);
+                            } catch (ValidationException $exception) {
+                                app(MediaOperationReceipts::class)->operationFailed($exception->getMessage());
+
+                                return;
+                            } catch (RuntimeException) {
+                                app(MediaOperationReceipts::class)->operationFailed();
+
+                                return;
+                            }
+
                             app(MediaInventoryDiagnostics::class)->forget($record);
+                            app(MediaOperationReceipts::class)->swapSucceeded($user, $oldSize, (int) $updated->size);
                         }),
                     Action::make('delete')
                         ->label(__('admin.media_library.delete_permanently'))
                         ->icon(Heroicon::OutlinedTrash)
                         ->color('danger')
-                        ->authorize(fn (Media $record): bool => Gate::allows('delete', $record))
+                        ->authorize('delete')
+                        ->authorizationTooltip()
                         ->requiresConfirmation()
+                        ->modalContent(fn (Media $record): View => self::operationConsequence($record, 'delete'))
+                        ->modalSubmitActionLabel(__('admin.media_library.delete_permanently'))
                         ->action(function (Media $record, ListMedia $livewire): void {
                             $user = auth()->user();
                             abort_unless($user instanceof User, 403);
-                            app(MediaFilesystemMutationCoordinator::class)->delete($record, $user);
+                            $name = (string) ($record->title ?: $record->name);
+
+                            try {
+                                app(MediaFilesystemMutationCoordinator::class)->delete($record, $user);
+                            } catch (ValidationException $exception) {
+                                app(MediaOperationReceipts::class)->operationFailed($exception->getMessage());
+
+                                return;
+                            } catch (RuntimeException) {
+                                app(MediaOperationReceipts::class)->operationFailed();
+
+                                return;
+                            }
+
                             app(MediaInventoryDiagnostics::class)->forget($record);
                             $livewire->forgetMediaTaskCaches();
+                            app(MediaOperationReceipts::class)->deleteSucceeded($user, $name);
                         }),
                 ])
                     ->label(__('admin.media_library.more_actions'))
@@ -434,14 +531,67 @@ class MediaTable
                         ->color('danger')
                         ->requiresConfirmation()
                         ->authorize(fn (): bool => Gate::allows('deleteAny', MediaResource::getModel()))
+                        ->modalContent(function (Collection $records): View {
+                            $user = auth()->user();
+                            abort_unless($user instanceof User, 403);
+
+                            return app(MediaBulkDeleteCensus::class)->censusView($records, $user);
+                        })
+                        ->modalSubmitActionLabel(__('admin.media_library.bulk_delete_submit'))
                         ->action(function (Collection $records, ListMedia $livewire): void {
                             $user = auth()->user();
                             abort_unless($user instanceof User, 403);
-                            app(MediaFilesystemMutationCoordinator::class)->deleteMany($records, $user);
+
+                            $result = app(MediaBulkDeleteCensus::class)->execute($records, $user);
+
                             $records->each(
                                 fn (Media $record) => app(MediaInventoryDiagnostics::class)->forget($record),
                             );
                             $livewire->forgetMediaTaskCaches();
+
+                            app(MediaOperationReceipts::class)->bulkDeleteFinished(
+                                $user,
+                                $result['deleted'],
+                                $result['blocked'],
+                                $result['failed'],
+                            );
+                        })
+                        ->deselectRecordsAfterCompletion(),
+                    BulkAction::make('titleByOwnerSelected')
+                        ->label(__('admin.media_library.title_by_owner'))
+                        ->icon(Heroicon::OutlinedIdentification)
+                        ->color('gray')
+                        ->authorize(fn (): bool => Gate::allows('viewAny', MediaResource::getModel()))
+                        ->modalContent(fn (Collection $records): View => view(
+                            'filament.resources.media.title-by-owner-census',
+                            app(MediaOwnerTitleApplier::class)->preview($records),
+                        ))
+                        ->schema([
+                            TextInput::make('title_prefix')
+                                ->label(__('admin.media_library.title_by_owner_prefix'))
+                                ->helperText(__('admin.media_library.title_by_owner_affix_help'))
+                                ->maxLength(100),
+                            TextInput::make('title_suffix')
+                                ->label(__('admin.media_library.title_by_owner_suffix'))
+                                ->helperText(__('admin.media_library.title_by_owner_affix_help'))
+                                ->maxLength(100),
+                        ])
+                        ->action(function (Collection $records, array $data): void {
+                            $user = auth()->user();
+                            abort_unless($user instanceof User, 403);
+
+                            $result = app(MediaOwnerTitleApplier::class)->apply(
+                                $records,
+                                $user,
+                                (string) ($data['title_prefix'] ?? ''),
+                                (string) ($data['title_suffix'] ?? ''),
+                            );
+
+                            app(MediaOperationReceipts::class)->titleByOwnerFinished(
+                                $user,
+                                $result['titled'],
+                                $result['skipped'],
+                            );
                         })
                         ->deselectRecordsAfterCompletion(),
                 ]),
@@ -469,5 +619,23 @@ class MediaTable
     private static function knownReferenceCount(Media $media): int
     {
         return count(app(MediaReferenceFinder::class)->referencesForMedia($media));
+    }
+
+    private static function fileIsMissing(Media $media): bool
+    {
+        return in_array(
+            MediaDiagnosticReason::MissingFile->value,
+            app(MediaInventoryDiagnostics::class)->reasons($media),
+            true,
+        );
+    }
+
+    private static function operationConsequence(Media $media, string $operation): View
+    {
+        return view('filament.resources.media.operation-consequence', [
+            'projection' => app(MediaRecordProjector::class)->project($media),
+            'storedFilename' => basename((string) $media->path),
+            'operation' => $operation,
+        ]);
     }
 }

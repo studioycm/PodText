@@ -65,6 +65,7 @@ class ContentImagesExportManager
 
             foreach ($groups as $group) {
                 $podcastStem = ImageFileNamer::storageStem($group->slug, $group->reference_key, $strategy);
+                $usedEpisodeEntries = [];
                 $coverMedia = $group->coverMediaAttachment === null
                     ? null
                     : $this->attachmentIdentityResolver->resolve($group, MediaAttachmentRole::Cover)['media'];
@@ -102,11 +103,15 @@ class ContentImagesExportManager
                         continue;
                     }
 
-                    $episodeFileName = ImageFileNamer::exportFileName(
-                        $item->slug,
-                        $item->reference_key,
-                        (string) $media->type,
-                        $strategy,
+                    $episodeFileName = $this->uniqueEntryName(
+                        ImageFileNamer::exportFileName(
+                            $item->slug,
+                            $item->reference_key,
+                            (string) $media->type,
+                            $strategy,
+                            is_string($media->title) ? $media->title : null,
+                        ),
+                        $usedEpisodeEntries,
                     );
 
                     $this->addMedia(
@@ -155,6 +160,24 @@ class ContentImagesExportManager
             'included' => $included,
             'skipped' => $skipped,
         ];
+    }
+
+    /**
+     * @param  array<string, true>  $used
+     */
+    private function uniqueEntryName(string $fileName, array &$used): string
+    {
+        $extension = pathinfo($fileName, PATHINFO_EXTENSION);
+        $stem = pathinfo($fileName, PATHINFO_FILENAME);
+        $candidate = $fileName;
+
+        for ($suffix = 2; array_key_exists($candidate, $used); $suffix++) {
+            $candidate = "{$stem}-{$suffix}.{$extension}";
+        }
+
+        $used[$candidate] = true;
+
+        return $candidate;
     }
 
     public function pruneForUser(int $userId): void

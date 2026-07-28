@@ -38,8 +38,12 @@ class CuratorMediaPolicy
 
     public function delete(User $user, Media $media): Response
     {
-        if (! $this->canUse($user, $media)) {
+        if (! $this->isAdmin($user)) {
             return Response::deny();
+        }
+
+        if (! app(MediaRecordScope::class)->allows($media)) {
+            return Response::deny(__('admin.media_library.op_blocked_unmanaged'));
         }
 
         $references = app(MediaReferenceFinder::class)->referencesForMedia($media);
@@ -63,14 +67,14 @@ class CuratorMediaPolicy
         return $this->isAdmin($user);
     }
 
-    public function rename(User $user, Media $media): bool
+    public function rename(User $user, Media $media): Response
     {
-        return $this->canMutateFile($user, $media);
+        return $this->mutateFileResponse($user, $media);
     }
 
-    public function swap(User $user, Media $media): bool
+    public function swap(User $user, Media $media): Response
     {
-        return $this->canMutateFile($user, $media);
+        return $this->mutateFileResponse($user, $media);
     }
 
     public function select(User $user, Media $media): bool
@@ -106,17 +110,29 @@ class CuratorMediaPolicy
         return $this->isAdmin($user) && ! app(MediaRecordScope::class)->allows($media);
     }
 
-    private function canMutateFile(User $user, Media $media): bool
+    private function mutateFileResponse(User $user, Media $media): Response
     {
-        return $this->canUse($user, $media)
-            && app(MediaReferenceFinder::class)->referencesForMedia($media) === []
-            && app(MediaRecordScope::class)->hasUniqueStorageIdentity($media);
-    }
+        if (! $this->isAdmin($user)) {
+            return Response::deny();
+        }
 
-    private function canUse(User $user, Media $media): bool
-    {
-        return $this->isAdmin($user)
-            && app(MediaRecordScope::class)->allows($media);
+        if (! app(MediaRecordScope::class)->allows($media)) {
+            return Response::deny(__('admin.media_library.op_blocked_unmanaged'));
+        }
+
+        $references = app(MediaReferenceFinder::class)->referencesForMedia($media);
+
+        if ($references !== []) {
+            return Response::deny(__('admin.media_library.op_blocked_in_use', [
+                'surfaces' => implode(', ', $references),
+            ]));
+        }
+
+        if (! app(MediaRecordScope::class)->hasUniqueStorageIdentity($media)) {
+            return Response::deny(__('admin.media_library.op_blocked_duplicate_identity'));
+        }
+
+        return Response::allow();
     }
 
     private function isAdmin(User $user): bool

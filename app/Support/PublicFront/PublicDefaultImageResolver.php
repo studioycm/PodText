@@ -39,12 +39,12 @@ class PublicDefaultImageResolver
                 MediaAttachmentRole::PrimaryImage,
             );
 
-            if ($hasPrimaryAttachment && $primaryMedia instanceof Media && $this->publicMediaDelivery->canDisplay($primaryMedia)) {
-                return $this->publicDiskImage($primaryMedia->path, 'item', (string) $item->title);
-            }
-
-            if (! $hasPrimaryAttachment && $primaryMedia instanceof Media && $this->publicMediaDelivery->canDisplay($primaryMedia)) {
-                return $this->publicDiskImage($primaryMedia->path, 'item', (string) $item->title);
+            if ($primaryMedia instanceof Media && $this->publicMediaDelivery->canDisplay($primaryMedia)) {
+                return $this->publicDiskImage(
+                    $primaryMedia->path,
+                    'item',
+                    filled($primaryMedia->title) ? (string) $primaryMedia->title : (string) $item->title,
+                );
             }
         }
 
@@ -58,10 +58,14 @@ class PublicDefaultImageResolver
         }
 
         if ($inheritGroupCover && $this->mode('content_item') !== 'none' && $item->contentGroup instanceof ContentGroup) {
-            $groupPath = $this->contentGroupCoverPath($item->contentGroup);
+            $groupMedia = $this->contentGroupCoverMedia($item->contentGroup);
 
-            if (filled($groupPath)) {
-                return $this->publicDiskImage($groupPath, 'group', $this->groupCoverAlt($item->contentGroup));
+            if ($groupMedia instanceof Media) {
+                return $this->publicDiskImage(
+                    $groupMedia->path,
+                    'group',
+                    $this->groupCoverAlt($item->contentGroup, $groupMedia),
+                );
             }
         }
 
@@ -73,10 +77,10 @@ class PublicDefaultImageResolver
      */
     public function contentGroupImage(ContentGroup $group, bool $ignoreOwnImage = false): array
     {
-        $path = $ignoreOwnImage ? null : $this->contentGroupCoverPath($group);
+        $media = $ignoreOwnImage ? null : $this->contentGroupCoverMedia($group);
 
-        if (filled($path)) {
-            return $this->publicDiskImage($path, 'group', $this->groupCoverAlt($group));
+        if ($media instanceof Media) {
+            return $this->publicDiskImage($media->path, 'group', $this->groupCoverAlt($group, $media));
         }
 
         return $this->familyImage('content_group', 'content_group_default', (string) $group->title);
@@ -84,14 +88,15 @@ class PublicDefaultImageResolver
 
     public function contentGroupCoverPath(ContentGroup $group): ?string
     {
-        [$hasAttachment, $media] = $this->ownerImage($group, MediaAttachmentRole::Cover);
+        return $this->contentGroupCoverMedia($group)?->path;
+    }
 
-        if ($hasAttachment && $media instanceof Media && $this->publicMediaDelivery->canDisplay($media)) {
-            return $media->path;
-        }
+    public function contentGroupCoverMedia(ContentGroup $group): ?Media
+    {
+        [, $media] = $this->ownerImage($group, MediaAttachmentRole::Cover);
 
-        return ! $hasAttachment && $media instanceof Media && $this->publicMediaDelivery->canDisplay($media)
-            ? $media->path
+        return $media instanceof Media && $this->publicMediaDelivery->canDisplay($media)
+            ? $media
             : null;
     }
 
@@ -323,11 +328,17 @@ class PublicDefaultImageResolver
         ];
     }
 
-    private function groupCoverAlt(ContentGroup $group): string
+    private function groupCoverAlt(ContentGroup $group, ?Media $media = null): string
     {
-        return filled($group->cover_alt_text)
-            ? (string) $group->cover_alt_text
-            : (string) $group->title;
+        if (filled($group->cover_alt_text)) {
+            return (string) $group->cover_alt_text;
+        }
+
+        if ($media instanceof Media && filled($media->title)) {
+            return (string) $media->title;
+        }
+
+        return (string) $group->title;
     }
 
     /**

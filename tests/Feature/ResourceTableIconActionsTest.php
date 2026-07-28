@@ -106,6 +106,7 @@ it('gives Media one visible details action and one quiet grouped action menu', f
         ->and(array_keys($recordActions[2]->getFlatActions()))->toBe([
             'view',
             'download',
+            'titleByOwner',
             'rename',
             'swap',
             'delete',
@@ -115,6 +116,7 @@ it('gives Media one visible details action and one quiet grouped action menu', f
             'edit',
             'view',
             'download',
+            'titleByOwner',
             'rename',
             'swap',
             'delete',
