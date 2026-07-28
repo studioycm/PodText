@@ -58,9 +58,13 @@ class MediaForm
                         ->columnSpanFull(),
                 ])
                 ->columns(2),
-            Section::make(__('admin.media_library.describe_uploads_heading'))
-                ->description(__('admin.media_library.describe_uploads_help'))
-                ->collapsed()
+            Section::make(fn (string $operation): string => $operation === 'create'
+                ? __('admin.media_library.describe_uploads_heading')
+                : __('admin.media_issue_review.details.describe_heading'))
+                ->description(fn (string $operation): string => $operation === 'create'
+                    ? __('admin.media_library.describe_uploads_help')
+                    : __('admin.media_issue_review.details.describe_not_repair'))
+                ->collapsed(fn (string $operation): bool => $operation === 'create')
                 ->schema([
                     TextInput::make('title')
                         ->label(__('admin.fields.title'))
