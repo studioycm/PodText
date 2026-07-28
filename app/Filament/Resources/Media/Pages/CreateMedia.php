@@ -14,7 +14,6 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\ValidationException;
-use InvalidArgumentException;
 use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
 use UnexpectedValueException;
 
@@ -49,22 +48,18 @@ class CreateMedia extends CreateRecord
             return $file;
         })->all();
 
-        try {
-            $this->uploadResult = app(MediaAcquisitionManager::class)->acquireUploads(
-                $uploads,
-                $purpose,
-                $user,
-                Arr::only($data, ['alt', 'title', 'caption', 'description']),
-            );
-        } catch (InvalidArgumentException) {
-            throw ValidationException::withMessages([
-                'data.uploads' => __('admin.media_library.upload_invalid'),
-            ]);
-        }
+        $this->uploadResult = app(MediaAcquisitionManager::class)->acquireUploads(
+            $uploads,
+            $purpose,
+            $user,
+            Arr::only($data, ['alt', 'title', 'caption', 'description']),
+        );
 
         if ($this->uploadResult->successful->isEmpty()) {
             throw ValidationException::withMessages([
-                'data.uploads' => __('admin.media_library.upload_failed'),
+                'data.uploads' => __($this->uploadResult->nothingAdmittedForInvalidFiles()
+                    ? 'admin.media_library.upload_invalid'
+                    : 'admin.media_library.upload_failed'),
             ]);
         }
 
@@ -82,7 +77,8 @@ class CreateMedia extends CreateRecord
             ->title(__('admin.media_library.upload_partial_title'))
             ->body(__('admin.media_library.upload_partial_body', [
                 'added' => $this->uploadResult->successful->count(),
-                'not_added' => $this->uploadResult->unsuccessfulCount(),
+                'failed' => $this->uploadResult->failedCount,
+                'not_attempted' => $this->uploadResult->notAttemptedCount,
             ]));
     }
 }

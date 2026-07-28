@@ -1102,7 +1102,8 @@ it('keeps successful inline owner batch acquisitions permanent after a partial f
                 ->title(__('admin.media_library.upload_partial_title'))
                 ->body(__('admin.media_library.acquisition_batch_partial', [
                     'added' => 1,
-                    'not_added' => 1,
+                    'failed' => 1,
+                    'not_attempted' => 0,
                 ])),
         );
 
@@ -1110,7 +1111,15 @@ it('keeps successful inline owner batch acquisitions permanent after a partial f
 
     expect($component->get('selectedIds'))->toBe([])
         ->and(MediaAsset::query()->count())->toBe(1)
-        ->and(MediaProviderBinding::query()->count())->toBe(1);
+        ->and(MediaProviderBinding::query()->count())->toBe(1)
+        ->and($component->get('panelData.uploads'))->toHaveCount(1)
+        ->and(collect($component->get('uploadResults'))->pluck('fate')->all())
+        ->toBe(['acquired', 'failed']);
+    $component
+        ->assertSee('data-testid="media-picker-upload-results"', false)
+        ->assertSee(__('admin.media_library.upload_fate_failed'))
+        ->assertSee(__('admin.media_library.upload_reason_admission'))
+        ->assertSee(__('admin.media_library.upload_retry_remaining', ['count' => 1]));
     Storage::disk('public')->assertExists($media->path);
 });
 
@@ -1160,7 +1169,8 @@ it('selects and reports permanent successes when a later picker batch admission 
                 ->title(__('admin.media_library.upload_partial_title'))
                 ->body(__('admin.media_library.upload_partial_body', [
                     'added' => 1,
-                    'not_added' => 1,
+                    'failed' => 1,
+                    'not_attempted' => 0,
                 ])),
         );
 
@@ -1725,4 +1735,38 @@ it('opens a read-only media details slide-over from owner details triggers', fun
     expect($blockedHtml)
         ->toContain('Blocked slide over subject')
         ->not->toContain(__('admin.media_library.details_no_warnings'));
+});
+
+it('names every file fate and keeps the queue when validation blocks a batch', function (): void {
+    $this->actingAs(User::factory()->admin()->create());
+
+    $component = pickerPanel(['isInlineOwnerWorkspace' => true])
+        ->fillForm([
+            'uploads' => [
+                pickerMediaFixture('valid.jpg'),
+                UploadedFile::fake()->createWithContent('broken.jpg', '<?php echo 1;'),
+            ],
+        ])
+        ->callAction(TestAction::make('uploadFiles'))
+        ->assertHasErrors(['panelData.uploads']);
+
+    expect(Media::query()->count())->toBe(0)
+        ->and($component->get('panelData.uploads'))->toHaveCount(2)
+        ->and(collect($component->get('uploadResults'))->pluck('fate')->all())
+        ->toBe(['not_attempted', 'failed']);
+    $component
+        ->assertSee('data-testid="media-picker-upload-results"', false)
+        ->assertSee(__('admin.media_library.upload_fate_not_attempted'))
+        ->assertSee(__('admin.media_library.upload_reason_validation'))
+        ->assertSee('broken.jpg');
+});
+
+it('renders the browser-side url preview island on the url tab', function (): void {
+    $this->actingAs(User::factory()->admin()->create());
+
+    pickerPanel()
+        ->call('activateSource', 'url')
+        ->assertSee('data-testid="media-picker-url-preview"', false)
+        ->assertSee(__('admin.media_library.url_preview_failed'))
+        ->assertSee(__('admin.media_library.url_help'));
 });

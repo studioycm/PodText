@@ -15,6 +15,7 @@ use App\Support\Media\MediaInventoryDiagnostics;
 use App\Support\Media\MediaRecordProjector;
 use App\Support\Media\MediaRecordScope;
 use App\Support\Media\MediaReferenceFinder;
+use App\Support\Media\MediaUploadBatchResult;
 use App\Support\Media\StorageImageCandidateBrowser;
 use Filament\Actions\Action;
 use Filament\Actions\Concerns\InteractsWithActions;
@@ -115,6 +116,13 @@ class MediaPickerPanel extends Component implements HasActions, HasSchemas
 
     #[Locked]
     public int $lastPage = 1;
+
+    /** @var array<int, array{name: string, fate: string, reason: string|null}> */
+    #[Locked]
+    public array $uploadResults = [];
+
+    #[Locked]
+    public ?string $storageErrorToken = null;
 
     /**
      * @param  array<int, int|string>  $selectedIds
@@ -381,11 +389,19 @@ class MediaPickerPanel extends Component implements HasActions, HasSchemas
     public function uploadFilesAction(): Action
     {
         return Action::make('uploadFiles')
-            ->label(fn (): string => $this->isInlineOwnerWorkspace
-                ? __('admin.media_library.upload_one_or_multiple')
-                : ($this->isMultiple
-                    ? __('admin.media_library.add_and_select')
-                    : __('admin.media_library.add_and_choose')))
+            ->label(function (): string {
+                $queued = count(Arr::wrap($this->form->getRawState()['uploads'] ?? []));
+
+                if ($this->uploadResults !== [] && $queued > 0) {
+                    return __('admin.media_library.upload_retry_remaining', ['count' => $queued]);
+                }
+
+                return $this->isInlineOwnerWorkspace
+                    ? __('admin.media_library.upload_one_or_multiple')
+                    : ($this->isMultiple
+                        ? __('admin.media_library.add_and_select')
+                        : __('admin.media_library.add_and_choose'));
+            })
             ->icon(Heroicon::ArrowUpTray)
             ->disabled(fn (): bool => count(Arr::wrap($this->form->getRawState()['uploads'] ?? [])) === 0)
             ->extraAttributes([
@@ -434,33 +450,28 @@ class MediaPickerPanel extends Component implements HasActions, HasSchemas
                     }
                 }
 
-                try {
-                    $result = app(MediaAcquisitionManager::class)->acquireUploads(
-                        $uploads,
-                        $this->uploadPurpose(),
-                        $actor,
-                    );
-                } catch (InvalidArgumentException) {
-                    $this->failSource(
-                        'upload',
-                        'panelData.uploads',
-                        __('admin.media_library.upload_invalid'),
-                    );
-                }
+                $result = app(MediaAcquisitionManager::class)->acquireUploads(
+                    $uploads,
+                    $this->uploadPurpose(),
+                    $actor,
+                );
+
+                $this->uploadResults = $this->uploadResultRows($uploads, $result);
+                $this->retainUnadmittedUploads($result->admittedIndexes);
 
                 if ($result->successful->isEmpty()) {
                     $this->failSource(
                         'upload',
                         'panelData.uploads',
-                        __('admin.media_library.upload_failed'),
+                        __($result->nothingAdmittedForInvalidFiles()
+                            ? 'admin.media_library.upload_invalid'
+                            : 'admin.media_library.upload_failed'),
                     );
                 }
 
                 if (! $isAcquisitionOnlyBatch) {
                     $this->selectAcquired($result->media());
                 }
-
-                $this->clearSourceInput('upload');
 
                 if ($this->isMultiple || $this->isInlineOwnerWorkspace) {
                     $this->currentPage = 1;
@@ -474,11 +485,13 @@ class MediaPickerPanel extends Component implements HasActions, HasSchemas
                         ->body($isAcquisitionOnlyBatch
                             ? __('admin.media_library.acquisition_batch_partial', [
                                 'added' => $result->successful->count(),
-                                'not_added' => $result->unsuccessfulCount(),
+                                'failed' => $result->failedCount,
+                                'not_attempted' => $result->notAttemptedCount,
                             ])
                             : __('admin.media_library.upload_partial_body', [
                                 'added' => $result->successful->count(),
-                                'not_added' => $result->unsuccessfulCount(),
+                                'failed' => $result->failedCount,
+                                'not_attempted' => $result->notAttemptedCount,
                             ]))
                         ->send();
                 } else {
@@ -579,6 +592,7 @@ class MediaPickerPanel extends Component implements HasActions, HasSchemas
                     abort(422);
                 }
 
+                $this->storageErrorToken = null;
                 $this->ensureAcquisitionCapacity(
                     'storage',
                     'storageAcquisition',
@@ -591,12 +605,14 @@ class MediaPickerPanel extends Component implements HasActions, HasSchemas
                         $this->actor(),
                     );
                 } catch (LockTimeoutException) {
+                    $this->storageErrorToken = $token;
                     $this->failSource(
                         'storage',
                         'storageAcquisition',
                         __('admin.media_library.storage_busy'),
                     );
                 } catch (InvalidArgumentException|RuntimeException) {
+                    $this->storageErrorToken = $token;
                     $this->failSource(
                         'storage',
                         'storageAcquisition',
@@ -1081,6 +1097,49 @@ class MediaPickerPanel extends Component implements HasActions, HasSchemas
             mediaId: $ids[0] ?? null,
             mediaIds: $ids,
         );
+    }
+
+    /**
+     * @param  array<int, TemporaryUploadedFile>  $uploads
+     * @return array<int, array{name: string, fate: string, reason: string|null}>
+     */
+    private function uploadResultRows(array $uploads, MediaUploadBatchResult $result): array
+    {
+        $failedReasons = $result->failed->keyBy('index');
+
+        return collect($uploads)
+            ->map(function (TemporaryUploadedFile $upload, int $index) use ($failedReasons, $result): array {
+                $fate = match (true) {
+                    in_array($index, $result->admittedIndexes, true) => 'acquired',
+                    $failedReasons->has($index) => 'failed',
+                    default => 'not_attempted',
+                };
+
+                return [
+                    'name' => $upload->getClientOriginalName(),
+                    'fate' => $fate,
+                    'reason' => $fate === 'failed' ? (string) $failedReasons->get($index)['reason'] : null,
+                ];
+            })
+            ->values()
+            ->all();
+    }
+
+    /** @param array<int, int> $admittedIndexes */
+    private function retainUnadmittedUploads(array $admittedIndexes): void
+    {
+        $position = 0;
+        $remaining = [];
+
+        foreach (Arr::wrap($this->panelData['uploads'] ?? []) as $key => $file) {
+            if (! in_array($position, $admittedIndexes, true)) {
+                $remaining[$key] = $file;
+            }
+
+            $position++;
+        }
+
+        $this->panelData['uploads'] = $remaining;
     }
 
     private function clearSourceInput(string $source): void

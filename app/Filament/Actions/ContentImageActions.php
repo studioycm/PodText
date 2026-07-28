@@ -435,6 +435,7 @@ class ContentImageActions
         Notification::make()
             ->success()
             ->title(__('admin.notifications.external_image_download_queued'))
+            ->body(__('admin.notifications.external_image_queued_body'))
             ->send();
     }
 

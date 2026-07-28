@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Storage;
 use InvalidArgumentException;
 use JsonException;
+use Throwable;
 
 class StorageImageCandidateBrowser
 {
@@ -68,7 +69,16 @@ class StorageImageCandidateBrowser
                         continue;
                     }
 
-                    $candidates[] = $this->candidate($sourceId, $source, $path)->publicData();
+                    $row = $this->candidate($sourceId, $source, $path)->publicData();
+                    $row['ext'] = mb_strtoupper(pathinfo($filename, PATHINFO_EXTENSION));
+
+                    try {
+                        $row['size'] = $disk->size($path);
+                    } catch (Throwable) {
+                        $row['size'] = null;
+                    }
+
+                    $candidates[] = $row;
 
                     if (count($candidates) >= $limit) {
                         return $candidates;

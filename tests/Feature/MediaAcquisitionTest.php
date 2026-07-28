@@ -104,13 +104,19 @@ it('validates an Upload batch completely before making any item permanent', func
     $valid = UploadedFile::fake()->createWithContent('valid.jpg', acquisitionFixture());
     $invalid = UploadedFile::fake()->createWithContent('invalid.jpg', '<?php echo 1;');
 
-    expect(fn () => app(MediaAcquisitionManager::class)->acquireUploads(
+    $result = app(MediaAcquisitionManager::class)->acquireUploads(
         [$valid, $invalid],
         ImageUploadPurpose::ContentGroupCover,
         User::factory()->admin()->create(),
-    ))->toThrow(InvalidArgumentException::class);
+    );
 
-    expect(Media::query()->count())->toBe(0)
+    expect($result->successful)->toHaveCount(0)
+        ->and($result->admittedIndexes)->toBe([])
+        ->and($result->nothingAdmittedForInvalidFiles())->toBeTrue()
+        ->and($result->failed->pluck('index')->all())->toBe([1])
+        ->and($result->failed->sole()['reason'])->toBe('validation')
+        ->and($result->notAttemptedIndexes)->toBe([0])
+        ->and(Media::query()->count())->toBe(0)
         ->and(MediaAsset::query()->count())->toBe(0)
         ->and(Storage::disk('public')->allFiles())->toBe([]);
 });
@@ -231,7 +237,9 @@ it('recursively browses only the bounded Laravel public disk and public images s
     $candidates = app(MediaAcquisitionManager::class)->storageCandidates();
 
     expect($candidates)->toHaveCount(3)
-        ->and(array_keys($candidates[0]))->toBe(['token', 'filename', 'source'])
+        ->and(array_keys($candidates[0]))->toBe(['token', 'filename', 'source', 'ext', 'size'])
+        ->and($candidates[0]['ext'])->toBeIn(['JPG', 'PNG'])
+        ->and($candidates[0]['size'])->toBeGreaterThan(0)
         ->and(collect($candidates)->pluck('filename')->all())->toEqualCanonicalizing([
             'root-visible.jpg',
             'deep-visible.png',

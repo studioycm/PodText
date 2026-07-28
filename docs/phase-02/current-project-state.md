@@ -55,6 +55,35 @@ Recorded after the Markdown-only post-Prompt-10 prompt-progress centralization c
 
 ## Git State
 
+- Media Operations UX3 Mini-task 3B (Sources, Acquisition and Results) is
+  complete locally under research dossier
+  `LS-20260728-PODTEXT-MEDIA-OPS-UX3-3B-01` and operator approval
+  `approve 3B all` (phases P1–P4 implemented, P5 delivered as a read-only
+  spike memo). Its implementation hash is backfilled in the follow-up docs
+  commit. P1: batch uploads now report named per-file fates
+  (נקלט/נכשל/לא נוסה) with three separated counts in an in-panel result list
+  and in the partial toasts, and un-admitted files stay queued for one-click
+  retry («קליטת :count הקבצים שנותרו») — achieved without changing the
+  validate-all-first admission safety contract (invalid batches now return a
+  named zero-admission result instead of a blind exception; the deliberate
+  safety test proves the same guarantee against the new shape).
+  `MediaUploadBatchResult` carries failed/notAttempted/admitted indexes, and
+  the standalone Media create page consumes the new shape. P2: the URL gate
+  gains a browser-side blur preview in a wire:ignore Alpine island (no
+  server fetch before the explicit Add; admin CSP verified absent), honest
+  browser-fact dimensions, an onerror message, and a reworded url_help. P3:
+  the Spotify/external thread speaks one verb — «ייבוא» — across nav, action
+  labels, modals and notifications, and the queued toast now says the result
+  arrives in the notifications bell. P4: Storage candidate rows carry
+  extension and file size and show busy/invalid errors on the attempted row
+  (`storageErrorToken`). P5 memo: the >20 ceiling is feasible as
+  retained-queue sequential chunks over P1's mechanics with no schema
+  change; the required queue-size settings addition keeps it drift-gated.
+  Findings F017–F022 and both operator seeds are addressed or explicitly
+  gated. Delta gate: Pint, FilaCheck (0), Vite, 219 feature tests across the
+  affected files and both browser files with only the four
+  known-environmental failures; the cumulative full suite runs before the
+  commit is finalized.
 - Media Operations UX3 Mini-task 3A outcome-review corrections OR5 and OR6
   are complete locally under the shared design-review artifact (OR5 section
   plus in-chat steers) and operator approval `approve OR5 - all details

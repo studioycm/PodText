@@ -499,6 +499,55 @@
                         x-init="$nextTick(() => (document.getElementById('media-picker-upload-input') ?? document.getElementById('media-picker-source-upload'))?.focus())"
                     ></span>
                 @enderror
+
+                @if ($uploadResults !== [])
+                    @php
+                        $fateCounts = collect($uploadResults)->countBy('fate');
+                    @endphp
+                    <div
+                        class="mt-3 overflow-hidden rounded-lg border border-gray-200 dark:border-gray-700"
+                        data-testid="media-picker-upload-results"
+                        role="status"
+                        aria-live="polite"
+                    >
+                        <div class="flex flex-wrap items-center justify-between gap-2 border-b border-gray-200 bg-gray-50 px-3 py-1.5 text-xs font-semibold dark:border-gray-700 dark:bg-gray-800/60">
+                            <span>{{ __('admin.media_library.upload_results_heading', ['count' => count($uploadResults)]) }}</span>
+                            <span class="font-normal text-gray-500 dark:text-gray-400">
+                                {{ __('admin.media_library.upload_results_counts', [
+                                    'acquired' => $fateCounts->get('acquired', 0),
+                                    'failed' => $fateCounts->get('failed', 0),
+                                    'not_attempted' => $fateCounts->get('not_attempted', 0),
+                                ]) }}
+                            </span>
+                        </div>
+                        <ul>
+                            @foreach ($uploadResults as $row)
+                                <li class="flex min-w-0 items-center gap-2 border-b border-dashed border-gray-200 px-3 py-1.5 text-xs last:border-b-0 dark:border-gray-700">
+                                    <span @class([
+                                        'shrink-0 rounded-full border px-2 text-[11px] font-bold',
+                                        'border-success-500 text-success-600 dark:text-success-400' => $row['fate'] === 'acquired',
+                                        'border-danger-500 text-danger-600 dark:text-danger-400' => $row['fate'] === 'failed',
+                                        'border-gray-400 text-gray-500 dark:text-gray-400' => $row['fate'] === 'not_attempted',
+                                    ])>{{ __("admin.media_library.upload_fate_{$row['fate']}") }}</span>
+                                    <span class="min-w-0 truncate font-mono text-[11px]" dir="ltr">{{ $row['name'] }}</span>
+                                    <span @class([
+                                        'ms-auto shrink-0',
+                                        'text-danger-600 dark:text-danger-400' => $row['fate'] === 'failed',
+                                        'text-gray-500 dark:text-gray-400' => $row['fate'] !== 'failed',
+                                    ])>
+                                        @if ($row['fate'] === 'acquired')
+                                            {{ __('admin.media_library.upload_fate_acquired_note') }}
+                                        @elseif ($row['fate'] === 'failed')
+                                            {{ __("admin.media_library.upload_reason_{$row['reason']}") }}
+                                        @else
+                                            {{ __('admin.media_library.upload_fate_queue_note') }}
+                                        @endif
+                                    </span>
+                                </li>
+                            @endforeach
+                        </ul>
+                    </div>
+                @endif
             @elseif ($activeSource === 'url')
                 @error('panelData.external_url')
                     <span
@@ -507,6 +556,50 @@
                         x-init="$nextTick(() => (document.getElementById('media-picker-url-input') ?? document.getElementById('media-picker-source-url'))?.focus())"
                     ></span>
                 @enderror
+
+                <div wire:ignore>
+                    <div
+                        class="mt-3"
+                        data-testid="media-picker-url-preview"
+                        x-data="{ src: null, failed: false, w: null, h: null }"
+                        x-init="
+                            $nextTick(() => {
+                                const input = document.getElementById('media-picker-url-input');
+                                input?.addEventListener('blur', () => {
+                                    const value = input.value.trim();
+                                    failed = false;
+                                    w = null;
+                                    h = null;
+                                    src = value.startsWith('https://') ? value : null;
+                                });
+                            })
+                        "
+                    >
+                        <template x-if="src">
+                            <div class="flex min-w-0 items-center gap-3 rounded-lg border border-gray-200 p-2.5 dark:border-gray-700">
+                                <img
+                                    x-show="! failed"
+                                    x-bind:src="src"
+                                    x-on:load="w = $el.naturalWidth; h = $el.naturalHeight"
+                                    x-on:error="failed = true"
+                                    alt=""
+                                    class="h-24 w-24 shrink-0 rounded-md border border-gray-200 object-contain dark:border-gray-700"
+                                />
+                                <div class="grid min-w-0 gap-0.5 text-xs">
+                                    <p x-show="! failed" class="text-success-700 dark:text-success-400">
+                                        {{ __('admin.media_library.url_preview_loaded') }}
+                                    </p>
+                                    <p x-show="! failed && w" class="text-gray-500 dark:text-gray-400">
+                                        <span dir="ltr" x-text="w + '×' + h"></span> · {{ __('admin.media_library.url_preview_dims_note') }}
+                                    </p>
+                                    <p x-show="failed" class="text-danger-600 dark:text-danger-400">
+                                        {{ __('admin.media_library.url_preview_failed') }}
+                                    </p>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+                </div>
             @else
                 <section
                     id="media-picker-panel-storage"
@@ -569,9 +662,19 @@
                                         wire:key="storage-candidate-{{ hash('sha256', $candidate['token']) }}"
                                         class="flex items-center justify-between gap-2 rounded-md border border-gray-200 p-2 text-xs dark:border-gray-700"
                                     >
-                                        <span class="min-w-0">
-                                            <span class="block truncate font-medium">{{ $candidate['filename'] }}</span>
-                                            <span class="block truncate text-gray-500">{{ $candidate['source'] }}</span>
+                                        <span class="min-w-0 flex-1">
+                                            <span class="block truncate font-medium" dir="ltr">{{ $candidate['filename'] }}</span>
+                                            <span class="block truncate text-gray-500">
+                                                {{ $candidate['source'] }}
+                                                @if (filled($candidate['ext'] ?? null))
+                                                    · <span dir="ltr">{{ $candidate['ext'] }}@if (($candidate['size'] ?? null) !== null) · {{ \Illuminate\Support\Number::fileSize((int) $candidate['size']) }}@endif</span>
+                                                @endif
+                                            </span>
+                                            @if ($storageErrorToken === $candidate['token'] && $errors->has('storageAcquisition'))
+                                                <span class="block text-danger-600 dark:text-danger-400" data-testid="media-picker-storage-row-error">
+                                                    {{ $errors->first('storageAcquisition') }}
+                                                </span>
+                                            @endif
                                         </span>
                                         {{ ($this->acquireStorageAction)(['token' => $candidate['token']]) }}
                                     </li>

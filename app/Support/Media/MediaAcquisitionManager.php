@@ -51,22 +51,42 @@ class MediaAcquisitionManager
         User $actor,
         array $metadata = [],
     ): MediaUploadBatchResult {
-        $images = collect($uploads)->map(
-            fn (TemporaryUploadedFile|UploadedFile $upload): ValidatedImage => $this->validator->validateUploadedFileForAdmission(
-                $upload,
-                $purpose,
-            ),
-        );
+        $entries = array_values($uploads);
+
+        /** @var Collection<int, array{index: int, reason: string}> $failed */
+        $failed = collect();
+
+        /** @var array<int, ValidatedImage> $validated */
+        $validated = [];
+
+        foreach ($entries as $index => $upload) {
+            try {
+                $validated[$index] = $this->validator->validateUploadedFileForAdmission($upload, $purpose);
+            } catch (InvalidArgumentException) {
+                $failed->push(['index' => $index, 'reason' => 'validation']);
+            }
+        }
+
+        if ($failed->isNotEmpty()) {
+            return new MediaUploadBatchResult(
+                successful: collect(),
+                failed: $failed,
+                notAttemptedIndexes: array_values(array_diff(array_keys($entries), $failed->pluck('index')->all())),
+            );
+        }
 
         /** @var Collection<int, MediaAcquisitionResult> $successful */
         $successful = collect();
+        $admittedIndexes = [];
+        $indexes = array_keys($validated);
 
-        foreach ($images as $index => $image) {
+        foreach ($indexes as $position => $index) {
             try {
                 $successful->push(new MediaAcquisitionResult(
-                    media: $this->admitNewFile($image, $actor, $metadata),
+                    media: $this->admitNewFile($validated[$index], $actor, $metadata),
                     disposition: MediaAcquisitionDisposition::Created,
                 ));
+                $admittedIndexes[] = $index;
             } catch (AuthorizationException $exception) {
                 throw $exception;
             } catch (Exception $exception) {
@@ -74,13 +94,14 @@ class MediaAcquisitionManager
 
                 return new MediaUploadBatchResult(
                     successful: $successful,
-                    failedCount: 1,
-                    notAttemptedCount: $images->count() - $index - 1,
+                    failed: collect([['index' => $index, 'reason' => 'admission']]),
+                    notAttemptedIndexes: array_slice($indexes, $position + 1),
+                    admittedIndexes: $admittedIndexes,
                 );
             }
         }
 
-        return new MediaUploadBatchResult($successful);
+        return new MediaUploadBatchResult(successful: $successful, admittedIndexes: $admittedIndexes);
     }
 
     /** @param array<string, mixed> $metadata */

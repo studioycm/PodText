@@ -7,14 +7,25 @@ use Illuminate\Support\Collection;
 
 readonly class MediaUploadBatchResult
 {
+    public int $failedCount;
+
+    public int $notAttemptedCount;
+
     /**
      * @param  Collection<int, MediaAcquisitionResult>  $successful
+     * @param  Collection<int, array{index: int, reason: string}>  $failed
+     * @param  array<int, int>  $notAttemptedIndexes
+     * @param  array<int, int>  $admittedIndexes
      */
     public function __construct(
         public Collection $successful,
-        public int $failedCount = 0,
-        public int $notAttemptedCount = 0,
-    ) {}
+        public Collection $failed = new Collection,
+        public array $notAttemptedIndexes = [],
+        public array $admittedIndexes = [],
+    ) {
+        $this->failedCount = $this->failed->count();
+        $this->notAttemptedCount = count($this->notAttemptedIndexes);
+    }
 
     /** @return Collection<int, Media> */
     public function media(): Collection
@@ -32,5 +43,10 @@ readonly class MediaUploadBatchResult
     public function isPartial(): bool
     {
         return $this->successful->isNotEmpty() && $this->unsuccessfulCount() > 0;
+    }
+
+    public function nothingAdmittedForInvalidFiles(): bool
+    {
+        return $this->admittedIndexes === [] && $this->failed->isNotEmpty();
     }
 }
