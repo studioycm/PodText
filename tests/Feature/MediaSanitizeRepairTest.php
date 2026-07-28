@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Support\Media\MediaInventoryDiagnostics;
 use App\Support\Media\MediaIssueReviewPresenter;
 use App\Support\Media\MediaRecordScope;
+use App\Support\Media\PublicMediaDelivery;
 use App\Support\Media\SvgUploadSanitizer;
 use Filament\Actions\Testing\TestAction;
 use Filament\Facades\Filament;
@@ -230,4 +231,61 @@ it('exposes the issue review card action only for rows needing attention', funct
     Livewire::test(ListMedia::class)
         ->assertActionVisible(TestAction::make('reviewIssues')->table($broken))
         ->assertActionHidden(TestAction::make('reviewIssues')->table($healthy));
+});
+
+it('settles an unsanitizable svg with an accountable trust mark and revokes it cleanly', function (): void {
+    $user = User::factory()->admin()->create();
+    $this->actingAs($user);
+    $malicious = (string) file_get_contents(base_path('tests/Fixtures/media/malicious.svg'));
+    $media = sanitizeRepairSvgRow('trust-me', $malicious);
+    $gate = Gate::forUser($user);
+
+    expect($gate->inspect('trust', $media)->allowed())->toBeTrue();
+
+    $healthyJpeg = Media::factory()->create([
+        'reference_key' => (string) Str::ulid(),
+        'name' => 'trust-na',
+        'path' => 'content-groups/covers/trust-na.jpg',
+    ]);
+    Storage::disk('public')->put($healthyJpeg->path, 'raster');
+    $notApplicable = $gate->inspect('trust', $healthyJpeg);
+
+    expect($notApplicable->allowed())->toBeFalse()
+        ->and($notApplicable->message())->toBe(__('admin.media_issue_review.trust.not_applicable'));
+
+    $component = Livewire::test(ReviewMediaIssues::class, ['record' => $media->getKey()])
+        ->callAction('sanitizeFile');
+
+    $component->assertSee('data-testid="media-sanitize-refusal-trust"', false);
+
+    $modalHtml = $component->mountAction('trustFile')->getMountedActionModalHtml();
+
+    expect($modalHtml)->toContain(__('admin.media_issue_review.trust.consequence'));
+
+    $component
+        ->callMountedAction()
+        ->assertNotified(__('admin.media_issue_review.trust.done_title', ['name' => (string) $media->title]));
+
+    $media->refresh();
+
+    expect($media->trusted_at)->not->toBeNull()
+        ->and((int) $media->trusted_by_user_id)->toBe((int) $user->getKey())
+        ->and(app(PublicMediaDelivery::class)->canRenderInline($media))->toBeTrue()
+        ->and(app(MediaInventoryDiagnostics::class)->reasons($media))->toBe([])
+        ->and((string) Storage::disk('public')->get($media->path))->toBe($malicious)
+        ->and(MediaMutationOperation::query()->count())->toBe(0);
+
+    $strip = Livewire::test(ReviewMediaIssues::class, ['record' => $media->getKey()])
+        ->assertSee('data-testid="media-trusted-strip"', false)
+        ->assertSee(__('admin.media_issue_review.no_current_issues'));
+
+    $strip
+        ->callAction('untrustFile')
+        ->assertNotified(__('admin.media_issue_review.trust.untrust_done_title', ['name' => (string) $media->title]));
+
+    $media->refresh();
+
+    expect($media->trusted_at)->toBeNull()
+        ->and(app(MediaInventoryDiagnostics::class)->reasons($media))
+        ->toContain(MediaDiagnosticReason::UnsanitizedSvg->value);
 });

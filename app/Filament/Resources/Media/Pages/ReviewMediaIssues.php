@@ -127,8 +127,20 @@ class ReviewMediaIssues extends Page
      */
     protected function getViewData(): array
     {
+        $media = $this->media();
+        $trustedStrip = null;
+
+        if ($media->trusted_at !== null) {
+            $trustedStrip = __('admin.media_issue_review.trust.strip', [
+                'date' => $media->trusted_at->timezone('Asia/Jerusalem')->format('d/m/Y H:i'),
+                'user' => (string) (User::query()->find($media->trusted_by_user_id)?->name
+                    ?? __('admin.media_issue_review.facts.unavailable')),
+            ]);
+        }
+
         return [
             'review' => app(MediaIssueReviewPresenter::class)->review($this->media()),
+            'trustedStrip' => $trustedStrip,
             'detailsUrl' => $this->detailsUrl(),
             'returnUrl' => $this->mediaLibraryReturnUrl(),
             'nextUrl' => $this->nextIssueUrl(),
@@ -284,6 +296,59 @@ class ReviewMediaIssues extends Page
                 app(MediaInventoryDiagnostics::class)->forget($media);
                 app(MediaOperationReceipts::class)->deleteSucceeded($user, $name);
                 $this->redirect($this->mediaLibraryReturnUrl());
+            });
+    }
+
+    public function trustFileAction(): Action
+    {
+        return Action::make('trustFile')
+            ->label(__('admin.media_issue_review.trust.action'))
+            ->icon(Heroicon::OutlinedShieldExclamation)
+            ->color('danger')
+            ->requiresConfirmation()
+            ->modalHeading(__('admin.media_issue_review.trust.action'))
+            ->modalDescription(__('admin.media_issue_review.trust.consequence'))
+            ->modalSubmitActionLabel(__('admin.media_issue_review.trust.submit'))
+            ->action(function (): void {
+                $user = $this->actor();
+                $media = $this->media();
+                Gate::forUser($user)->authorize('trust', $media);
+
+                $media->forceFill([
+                    'trusted_at' => now(),
+                    'trusted_by_user_id' => $user->getKey(),
+                ])->save();
+
+                app(MediaInventoryDiagnostics::class)->forget($media);
+                $this->record = $media->refresh();
+                $this->sanitizeRefused = false;
+                $this->sanitizeResult = null;
+                app(MediaOperationReceipts::class)->trustGranted($user, (string) ($media->title ?: $media->name));
+            });
+    }
+
+    public function untrustFileAction(): Action
+    {
+        return Action::make('untrustFile')
+            ->label(__('admin.media_issue_review.trust.untrust_action'))
+            ->icon(Heroicon::OutlinedShieldCheck)
+            ->color('gray')
+            ->requiresConfirmation()
+            ->modalHeading(__('admin.media_issue_review.trust.untrust_action'))
+            ->modalDescription(__('admin.media_issue_review.trust.untrust_consequence'))
+            ->action(function (): void {
+                $user = $this->actor();
+                $media = $this->media();
+                Gate::forUser($user)->authorize('trust', $media);
+
+                $media->forceFill([
+                    'trusted_at' => null,
+                    'trusted_by_user_id' => null,
+                ])->save();
+
+                app(MediaInventoryDiagnostics::class)->forget($media);
+                $this->record = $media->refresh();
+                app(MediaOperationReceipts::class)->trustRevoked($user, (string) ($media->title ?: $media->name));
             });
     }
 

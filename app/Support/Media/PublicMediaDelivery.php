@@ -93,6 +93,10 @@ class PublicMediaDelivery
             return true;
         }
 
+        if ($media->trusted_at !== null) {
+            return true;
+        }
+
         $cacheKey = $this->cacheKey($media);
 
         return $this->inlineDecisions[$cacheKey]

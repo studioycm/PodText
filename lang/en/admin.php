@@ -2574,6 +2574,17 @@ return [
             'refusal_body' => 'The file contains a component that cannot be safely removed — for example a script, embedded styling, or an external reference. No change was made to the file.',
             'refusal_routes' => 'Available routes: replace the file with a safe one, or delete permanently.',
         ],
+        'trust' => [
+            'action' => 'Mark as trusted file',
+            'consequence' => 'The file will be shown and delivered as-is, without safety cleanup — including on public pages. Mark only when the file source is fully trusted by you; responsibility for its content is yours. The mark records who and when, and can be revoked.',
+            'submit' => 'Mark as trusted',
+            'done_title' => 'File marked as trusted: :name',
+            'not_applicable' => 'This record has no safety block that a trust mark settles.',
+            'strip' => 'The file was manually marked as trusted on :date by :user — shown without safety cleanup.',
+            'untrust_action' => 'Revoke trust mark',
+            'untrust_consequence' => 'The mark will be removed and the safety checks will apply to the file again. If the file fails them, its display will be blocked again.',
+            'untrust_done_title' => 'Trust mark revoked: :name',
+        ],
         'resolution' => [
             'no_action' => 'There is no repair action for this reason yet.',
             'metadata_root' => 'The file is stored outside the managed library folders. Moving files into the managed folders is handled in a separate phase and is not part of this review.',

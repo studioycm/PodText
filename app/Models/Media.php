@@ -15,6 +15,18 @@ class Media extends \Awcodes\Curator\Models\Media
 {
     private bool $testFixtureCreation = false;
 
+    /**
+     * Merged with the vendor model's $casts property by the base model.
+     *
+     * @return array<string, string>
+     */
+    protected function casts(): array
+    {
+        return [
+            'trusted_at' => 'datetime',
+        ];
+    }
+
     protected $fillable = [
         'alt',
         'title',

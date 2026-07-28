@@ -128,8 +128,26 @@ Recorded after the Markdown-only post-Prompt-10 prompt-progress centralization c
   19282 assertions with only the 4 known-environmental browser
   failures, FilaCheck 0 issues, pint clean, `npm run build` green; the
   `media_mutation_operations.operation` column is `string(32)` so the
-  new enum case needs no migration. Deferred: repair for in-use SVGs
-  (D3 reference-plane work), intrinsic metadata-row repairs (natural
+  new enum case needs no migration. M4 outcome review (operator,
+  2026-07-28) added OR1 — the admin trust mark: «סימון כקובץ מהימן»
+  settles validator-based display blocks for files whose source the
+  admin fully trusts (the project's existing trusted-admin doctrine,
+  extended from `embed_html`/maintenance raw HTML to SVG media). One
+  migration adds nullable `trusted_at`/`trusted_by_user_id` to the
+  `curator` table; trust flows through the single
+  `PublicMediaDelivery::canRenderInline` choke point so the diagnostic
+  reason, selection blocking, previews, and public rendering settle
+  together; the `CuratorMediaPolicy::trust` ability requires admin plus
+  an applicable safety block (or an existing mark, for revocation); the
+  refusal region offers the trust route with a heavy accountability
+  dialog; a trusted-state strip on the review page shows who/when
+  (day-first Asia/Jerusalem) with a revoke action; grant and revoke send
+  durable receipts; bytes are never touched and nothing is journaled.
+  The operator's D3 follow-through (lift the zero-reference sanitize
+  restriction once legacy path columns retire — id-authority
+  attachments plus the engine's settings-reference rewrite make it
+  safe, and sanitizer output is app-derived, trusted bytes) is seeded
+  to Package 5. Deferred: intrinsic metadata-row repairs (natural
   second cycle per D8), root-level reach (Package 5).
 - Staged Eloquent strict mode (bounded chore, implemented on worktree
   branch `claude/keen-gould-16e3a4`, rebased onto the 3C closure

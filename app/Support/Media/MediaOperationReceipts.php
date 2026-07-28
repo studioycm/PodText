@@ -63,6 +63,20 @@ class MediaOperationReceipts
             ])));
     }
 
+    public function trustGranted(User $user, string $name): void
+    {
+        $this->durable($user, Notification::make()
+            ->warning()
+            ->title(__('admin.media_issue_review.trust.done_title', ['name' => $name])));
+    }
+
+    public function trustRevoked(User $user, string $name): void
+    {
+        $this->durable($user, Notification::make()
+            ->success()
+            ->title(__('admin.media_issue_review.trust.untrust_done_title', ['name' => $name])));
+    }
+
     public function titleByOwnerFinished(User $user, int $titled, int $skipped): void
     {
         $notification = Notification::make()

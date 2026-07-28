@@ -52,6 +52,26 @@
             </div>
         </x-filament::section>
 
+        @if (filled($trustedStrip ?? null))
+            <div
+                class="rounded-xl border border-warning-300 bg-warning-50 p-4 text-warning-950 dark:border-warning-700 dark:bg-warning-950 dark:text-warning-100"
+                role="status"
+                data-testid="media-trusted-strip"
+            >
+                <p class="text-sm">{{ $trustedStrip }}</p>
+                <div class="mt-3">
+                    <x-filament::button
+                        color="gray"
+                        icon="heroicon-o-shield-check"
+                        wire:click="mountAction('untrustFile')"
+                        data-testid="media-untrust-trigger"
+                    >
+                        {{ __('admin.media_issue_review.trust.untrust_action') }}
+                    </x-filament::button>
+                </div>
+            </div>
+        @endif
+
         @if ($this->sanitizeResult !== null)
             <div
                 class="rounded-xl border border-success-300 bg-success-50 p-4 text-success-900 dark:border-success-700 dark:bg-success-950 dark:text-success-100"
@@ -98,6 +118,15 @@
                         data-testid="media-sanitize-refusal-delete"
                     >
                         {{ __('admin.media_library.delete_permanently') }}
+                    </x-filament::button>
+                    <x-filament::button
+                        color="danger"
+                        outlined
+                        icon="heroicon-o-shield-exclamation"
+                        wire:click="mountAction('trustFile')"
+                        data-testid="media-sanitize-refusal-trust"
+                    >
+                        {{ __('admin.media_issue_review.trust.action') }}
                     </x-filament::button>
                 </div>
             </div>

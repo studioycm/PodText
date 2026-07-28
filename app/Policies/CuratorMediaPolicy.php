@@ -64,6 +64,31 @@ class CuratorMediaPolicy
         return $this->isAdmin($user);
     }
 
+    /**
+     * Marking a file as admin-trusted (or revoking that mark) settles
+     * validator-based display blocks; it never touches bytes or paths.
+     */
+    public function trust(User $user, Media $media): Response
+    {
+        if (! $this->isAdmin($user)) {
+            return Response::deny();
+        }
+
+        if ($media->trusted_at !== null) {
+            return Response::allow();
+        }
+
+        if (! in_array(
+            MediaDiagnosticReason::UnsanitizedSvg->value,
+            app(MediaInventoryDiagnostics::class)->reasons($media),
+            true,
+        )) {
+            return Response::deny(__('admin.media_issue_review.trust.not_applicable'));
+        }
+
+        return Response::allow();
+    }
+
     public function download(User $user, Media $media): bool
     {
         return $this->isAdmin($user);
