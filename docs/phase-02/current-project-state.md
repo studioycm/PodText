@@ -56,7 +56,7 @@ Recorded after the Markdown-only post-Prompt-10 prompt-progress centralization c
   operator approved «3C all» with decisions D1–D8 (D4 flipped to role
   priority podcast → episode → settings; the rest as recommended). All
   eight phases are implemented locally (see the Git State entry below,
-  implementation hash `3C_IMPLEMENTATION_HASH`). The mid-research operator
+  implementation hash `bc0ce8f488135afd5a407113e94dfbafe2926da4`). The mid-research operator
   seeds (bulk name-by-owner, title-as-export-filename with preselected
   default, search scopes, selection-time retitle checkbox, zero-cost
   public alt chain) were absorbed into the dossier as P5–P8 before
@@ -75,7 +75,7 @@ Recorded after the Markdown-only post-Prompt-10 prompt-progress centralization c
   «approved 3C all» with D1–D8 (D4: role priority podcast → episode →
   settings), and post-implementation light audit
   `LS-20260728-PODTEXT-3C-IMPL-01` (verdict: no change). Implementation
-  hash `3C_IMPLEMENTATION_HASH`. P1 buttons tell the truth: rename/swap/
+  hash `bc0ce8f488135afd5a407113e94dfbafe2926da4`. P1 buttons tell the truth: rename/swap/
   delete policies now return `Response` reasons (in-use with surfaces,
   unmanaged legacy, duplicate identity) rendered by Filament
   `authorizationTooltip()` as disabled-with-reason on gallery cards; the
