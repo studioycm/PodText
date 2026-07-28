@@ -78,15 +78,25 @@
                 role="status"
                 data-testid="media-sanitize-result"
             >
-                <div class="flex flex-wrap gap-2 text-sm font-medium">
+                <div class="flex flex-col gap-2 text-sm">
                     @foreach ($this->sanitizeResult['closed'] as $label)
-                        <span class="rounded-full border border-success-500 px-2.5 py-0.5">
-                            {{ __('admin.media_issue_review.resolution.closed', ['label' => $label]) }}
+                        <span class="flex flex-wrap items-center gap-2">
+                            <span class="rounded-full border border-success-400 bg-white/60 px-2.5 py-0.5 dark:border-success-600 dark:bg-white/5">
+                                {{ $label }}
+                            </span>
+                            <span class="font-bold text-success-700 dark:text-success-300">
+                                {{ __('admin.media_issue_review.resolution.closed_status') }}
+                            </span>
                         </span>
                     @endforeach
                     @foreach ($this->sanitizeResult['remaining'] as $label)
-                        <span class="rounded-full border border-gray-400 px-2.5 py-0.5 text-gray-700 dark:text-gray-200">
-                            {{ __('admin.media_issue_review.resolution.remaining', ['label' => $label]) }}
+                        <span class="flex flex-wrap items-center gap-2">
+                            <span class="rounded-full border border-gray-400 bg-white/60 px-2.5 py-0.5 text-gray-700 dark:bg-white/5 dark:text-gray-200">
+                                {{ $label }}
+                            </span>
+                            <span class="font-bold text-gray-600 dark:text-gray-300">
+                                {{ __('admin.media_issue_review.resolution.remaining_status') }}
+                            </span>
                         </span>
                     @endforeach
                 </div>

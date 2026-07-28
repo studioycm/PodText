@@ -173,9 +173,8 @@ it('sanitizes a managed unsafe svg end to end with journal receipt and fate chip
 
     $component
         ->assertSee('data-testid="media-sanitize-result"', false)
-        ->assertSee(__('admin.media_issue_review.resolution.closed', [
-            'label' => __('admin.media_library.repair_unsanitized_svg'),
-        ]));
+        ->assertSee(__('admin.media_library.repair_unsanitized_svg'))
+        ->assertSee(__('admin.media_issue_review.resolution.closed_status'));
 });
 
 it('refuses an unsanitizable svg without changes and offers the swap and delete routes', function (): void {

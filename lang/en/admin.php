@@ -2588,8 +2588,8 @@ return [
         'resolution' => [
             'no_action' => 'There is no repair action for this reason yet.',
             'metadata_root' => 'The file is stored outside the managed library folders. Moving files into the managed folders is handled in a separate phase and is not part of this review.',
-            'closed' => 'Closed: :label',
-            'remaining' => 'Remaining: :label',
+            'closed_status' => 'Closed',
+            'remaining_status' => 'Remaining',
         ],
         'heading' => 'Review Media issues',
         'subheading' => 'Inspect the cause, consequence, known impact, and current routes without changing the Media record.',
