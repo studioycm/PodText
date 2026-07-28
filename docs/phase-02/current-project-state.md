@@ -59,8 +59,9 @@ Recorded after the Markdown-only post-Prompt-10 prompt-progress centralization c
   complete locally under research dossier
   `LS-20260728-PODTEXT-MEDIA-OPS-UX3-3B-01` and operator approval
   `approve 3B all` (phases P1–P4 implemented, P5 delivered as a read-only
-  spike memo). Its implementation is
-  `bc95e21d692754b8404b2bd30dbe370326c22698`. P1: batch uploads now report named per-file fates
+  spike memo, then P5 built on explicit operator approval). Its
+  implementation is `bc95e21d692754b8404b2bd30dbe370326c22698` with the P5
+  chunked-queue follow-up hash backfilled in the follow-up docs commit. P1: batch uploads now report named per-file fates
   (נקלט/נכשל/לא נוסה) with three separated counts in an in-panel result list
   and in the partial toasts, and un-admitted files stay queued for one-click
   retry («קליטת :count הקבצים שנותרו») — achieved without changing the
@@ -76,9 +77,13 @@ Recorded after the Markdown-only post-Prompt-10 prompt-progress centralization c
   labels, modals and notifications, and the queued toast now says the result
   arrives in the notifications bell. P4: Storage candidate rows carry
   extension and file size and show busy/invalid errors on the attempted row
-  (`storageErrorToken`). P5 memo: the >20 ceiling is feasible as
-  retained-queue sequential chunks over P1's mechanics with no schema
-  change; the required queue-size settings addition keeps it drift-gated.
+  (`storageErrorToken`). P5 (built): a new `media_upload_queue_limit`
+  Admin UX setting (default 40, clamped queue ≥ batch and ≤ 100, settings
+  migration applied) lets the upload queue exceed the per-request batch
+  limit; the action admits the first batch-limit chunk per run, the result
+  list accumulates admitted history plus current-run and queued rows, the
+  success toast reports the remaining queue, and the retry button invites
+  the next chunk.
   Findings F017–F022 and both operator seeds are addressed or explicitly
   gated. Delta gate: Pint, FilaCheck (0), Vite, 219 feature tests across the
   affected files and both browser files with only the four

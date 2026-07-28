@@ -33,6 +33,11 @@ class CuratorImageUploadPolicy
         return min(max($this->integerSetting('media_acquisition_upload_batch_limit', 10), 1), 20);
     }
 
+    public function uploadQueueLimit(): int
+    {
+        return min(max($this->integerSetting('media_upload_queue_limit', 40), $this->uploadBatchLimit()), 100);
+    }
+
     public function pickerBrowseLimit(): int
     {
         return min(max($this->integerSetting('media_picker_browse_limit', 25), 10), 100);

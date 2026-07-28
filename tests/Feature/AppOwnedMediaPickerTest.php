@@ -467,10 +467,10 @@ it('bounds picker uploads and concurrent transfers', function (): void {
         ->and($singleUpload->getMaxParallelUploads())->toBe(2)
         ->and($multipleUpload)->toBeInstanceOf(FileUpload::class)
         ->and($multipleUpload->isMultiple())->toBeTrue()
-        ->and($multipleUpload->getMaxFiles())->toBe(10)
+        ->and($multipleUpload->getMaxFiles())->toBe(40)
         ->and($multipleUpload->getMaxParallelUploads())->toBe(2)
         ->and($inlineUpload->isMultiple())->toBeTrue()
-        ->and($inlineUpload->getMaxFiles())->toBe(10)
+        ->and($inlineUpload->getMaxFiles())->toBe(40)
         ->and($inlineUpload->getMaxParallelUploads())->toBe(2);
 });
 
@@ -479,6 +479,7 @@ it('uses bounded Admin UX batch browse and search settings for new picker work',
     $settings = app(AdminUxSettings::class);
     $settings->media_acquisition_max_kilobytes = 4096;
     $settings->media_acquisition_upload_batch_limit = 3;
+    $settings->media_upload_queue_limit = 7;
     $settings->media_picker_browse_limit = 12;
     $settings->media_picker_search_limit = 11;
     $settings->save();
@@ -495,7 +496,7 @@ it('uses bounded Admin UX batch browse and search settings for new picker work',
 
     expect($component->get('files'))->toHaveCount(12)
         ->and($upload)->toBeInstanceOf(FileUpload::class)
-        ->and($upload->getMaxFiles())->toBe(3)
+        ->and($upload->getMaxFiles())->toBe(7)
         ->and($upload->getMaxSize())->toBe(4096);
 
     $component->set('search', 'Configured');
@@ -1769,4 +1770,43 @@ it('renders the browser-side url preview island on the url tab', function (): vo
         ->assertSee('data-testid="media-picker-url-preview"', false)
         ->assertSee(__('admin.media_library.url_preview_failed'))
         ->assertSee(__('admin.media_library.url_help'));
+});
+
+it('admits a large queue in batch-limit chunks with an accumulating receipt', function (): void {
+    $this->actingAs(User::factory()->admin()->create());
+    $settings = app(AdminUxSettings::class);
+    $settings->media_acquisition_upload_batch_limit = 2;
+    $settings->media_upload_queue_limit = 5;
+    $settings->save();
+
+    $component = pickerPanel(['isInlineOwnerWorkspace' => true])
+        ->fillForm([
+            'uploads' => [
+                pickerMediaFixture('valid.jpg'),
+                pickerMediaFixture('valid.png'),
+                pickerMediaFixture('valid.webp'),
+            ],
+        ])
+        ->callAction(TestAction::make('uploadFiles'))
+        ->assertHasNoFormErrors()
+        ->assertNotified(
+            Notification::make()
+                ->success()
+                ->title(__('admin.media_library.uploaded'))
+                ->body(__('admin.media_library.acquisition_batch_created', ['count' => 2])
+                    .' '.__('admin.media_library.upload_more_queued', ['count' => 1])),
+        );
+
+    expect(Media::query()->count())->toBe(2)
+        ->and($component->get('panelData.uploads'))->toHaveCount(1)
+        ->and(collect($component->get('uploadResults'))->pluck('fate')->all())
+        ->toBe(['acquired', 'acquired', 'not_attempted']);
+    $component->assertSee(__('admin.media_library.upload_retry_remaining', ['count' => 1]));
+
+    $component->callAction(TestAction::make('uploadFiles'))->assertHasNoFormErrors();
+
+    expect(Media::query()->count())->toBe(3)
+        ->and($component->get('panelData.uploads'))->toHaveCount(0)
+        ->and(collect($component->get('uploadResults'))->pluck('fate')->all())
+        ->toBe(['acquired', 'acquired', 'acquired']);
 });

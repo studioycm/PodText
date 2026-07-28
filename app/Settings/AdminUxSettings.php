@@ -14,6 +14,8 @@ class AdminUxSettings extends Settings
 
     public int $media_acquisition_upload_batch_limit = 10;
 
+    public int $media_upload_queue_limit = 40;
+
     public int $media_picker_browse_limit = 25;
 
     public int $media_picker_search_limit = 50;

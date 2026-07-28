@@ -182,7 +182,7 @@ class MediaPickerPanel extends Component implements HasActions, HasSchemas
                             ->multiple($this->isMultiple || $this->isInlineOwnerWorkspace)
                             ->maxFiles(
                                 $this->isMultiple || $this->isInlineOwnerWorkspace
-                                    ? app(CuratorImageUploadPolicy::class)->uploadBatchLimit()
+                                    ? app(CuratorImageUploadPolicy::class)->uploadQueueLimit()
                                     : 1,
                             )
                             ->maxParallelUploads(2)
@@ -423,7 +423,7 @@ class MediaPickerPanel extends Component implements HasActions, HasSchemas
                     );
                 }
 
-                if (count($uploads) > app(CuratorImageUploadPolicy::class)->uploadBatchLimit()) {
+                if (count($uploads) > app(CuratorImageUploadPolicy::class)->uploadQueueLimit()) {
                     abort(422);
                 }
 
@@ -450,13 +450,31 @@ class MediaPickerPanel extends Component implements HasActions, HasSchemas
                     }
                 }
 
+                $chunk = array_slice($uploads, 0, app(CuratorImageUploadPolicy::class)->uploadBatchLimit());
                 $result = app(MediaAcquisitionManager::class)->acquireUploads(
-                    $uploads,
+                    $chunk,
                     $this->uploadPurpose(),
                     $actor,
                 );
 
-                $this->uploadResults = $this->uploadResultRows($uploads, $result);
+                $queuedRows = collect($uploads)
+                    ->slice(count($chunk))
+                    ->map(fn (TemporaryUploadedFile $upload): array => [
+                        'name' => $upload->getClientOriginalName(),
+                        'fate' => 'not_attempted',
+                        'reason' => null,
+                    ])
+                    ->values()
+                    ->all();
+                $acquiredHistory = collect($this->uploadResults)
+                    ->where('fate', 'acquired')
+                    ->values()
+                    ->all();
+                $this->uploadResults = [
+                    ...$acquiredHistory,
+                    ...$this->uploadResultRows($chunk, $result),
+                    ...$queuedRows,
+                ];
                 $this->retainUnadmittedUploads($result->admittedIndexes);
 
                 if ($result->successful->isEmpty()) {
@@ -495,14 +513,21 @@ class MediaPickerPanel extends Component implements HasActions, HasSchemas
                             ]))
                         ->send();
                 } else {
+                    $body = $isAcquisitionOnlyBatch
+                        ? __('admin.media_library.acquisition_batch_created', [
+                            'count' => $result->successful->count(),
+                        ])
+                        : $this->acquisitionSuccessBody($result->successful->count());
+                    $remaining = count(Arr::wrap($this->panelData['uploads'] ?? []));
+
+                    if ($remaining > 0) {
+                        $body .= ' '.__('admin.media_library.upload_more_queued', ['count' => $remaining]);
+                    }
+
                     Notification::make()
                         ->success()
                         ->title(__('admin.media_library.uploaded'))
-                        ->body($isAcquisitionOnlyBatch
-                            ? __('admin.media_library.acquisition_batch_created', [
-                                'count' => $result->successful->count(),
-                            ])
-                            : $this->acquisitionSuccessBody($result->successful->count()))
+                        ->body($body)
                         ->send();
                 }
 

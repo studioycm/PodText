@@ -83,6 +83,14 @@ class AdminUxSettings extends SettingsPage
                             ->maxValue(20)
                             ->default(10)
                             ->required(),
+                        TextInput::make('media_upload_queue_limit')
+                            ->label(__('admin.fields.media_upload_queue_limit'))
+                            ->helperText(__('admin.helpers.media_upload_queue_limit'))
+                            ->integer()
+                            ->minValue(1)
+                            ->maxValue(100)
+                            ->default(40)
+                            ->required(),
                         TextInput::make('media_picker_browse_limit')
                             ->label(__('admin.fields.media_picker_browse_limit'))
                             ->helperText(__('admin.helpers.media_picker_browse_limit'))
