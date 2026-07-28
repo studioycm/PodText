@@ -1525,7 +1525,7 @@ it('configures one owner specific canonical modal with one state then source sch
             ListContentGroups::class,
             $group,
             'chooseContentGroupCover',
-            'Add podcast cover',
+            'Podcast · Cover — Add',
             'Save podcast cover',
             __('admin.helpers.cover_path'),
         ],
@@ -1533,7 +1533,7 @@ it('configures one owner specific canonical modal with one state then source sch
             ListContentItems::class,
             $item,
             'chooseContentItemImage',
-            'Change episode image',
+            'Episode · Primary image — Change',
             'Save episode image',
             __('admin.helpers.content_item_image_path'),
         ],
@@ -2986,22 +2986,22 @@ it('loads the bounded owner image translation contract directly with exact local
     }
 
     expect($localeValues['en'])->toMatchArray([
-        'owner_image.actions.add_podcast_cover' => 'Add podcast cover',
-        'owner_image.actions.change_podcast_cover' => 'Change podcast cover',
+        'owner_image.actions.add_podcast_cover' => 'Podcast · Cover — Add',
+        'owner_image.actions.change_podcast_cover' => 'Podcast · Cover — Change',
         'owner_image.actions.save_podcast_cover' => 'Save podcast cover',
-        'owner_image.actions.add_episode_image' => 'Add episode image',
-        'owner_image.actions.change_episode_image' => 'Change episode image',
+        'owner_image.actions.add_episode_image' => 'Episode · Primary image — Add',
+        'owner_image.actions.change_episode_image' => 'Episode · Primary image — Change',
         'owner_image.actions.save_episode_image' => 'Save episode image',
         'owner_image.choice.direct_heading' => 'Direct image',
         'owner_image.choice.shown_now_heading' => 'Shown now',
         'owner_image.choice.pending_heading' => 'Pending choice',
         'media_library.acquisition_permanence_inline' => 'Upload, URL, and Storage become permanent library items as soon as acquisition succeeds. A multi-upload adds every successful image but never chooses an owner image automatically. Choose exactly one image, then save the owner-image choice. Cancelling does not delete completed acquisitions.',
     ])->and($localeValues['he'])->toMatchArray([
-        'owner_image.actions.add_podcast_cover' => 'הוספת עטיפת הפודקאסט',
-        'owner_image.actions.change_podcast_cover' => 'החלפת עטיפת הפודקאסט',
+        'owner_image.actions.add_podcast_cover' => 'פודקאסט · עטיפה — הוספה',
+        'owner_image.actions.change_podcast_cover' => 'פודקאסט · עטיפה — החלפה',
         'owner_image.actions.save_podcast_cover' => 'שמירת עטיפת הפודקאסט',
-        'owner_image.actions.add_episode_image' => 'הוספת תמונת הפרק',
-        'owner_image.actions.change_episode_image' => 'החלפת תמונת הפרק',
+        'owner_image.actions.add_episode_image' => 'פרק · תמונה ראשית — הוספה',
+        'owner_image.actions.change_episode_image' => 'פרק · תמונה ראשית — החלפה',
         'owner_image.actions.save_episode_image' => 'שמירת תמונת הפרק',
         'owner_image.choice.direct_heading' => 'תמונה ישירה',
         'owner_image.choice.shown_now_heading' => 'מוצגת עכשיו',
@@ -3062,14 +3062,14 @@ it('mounts exact localized podcast and episode add and change owner actions', fu
         ->and($action?->getModalSubmitAction()?->getLabel())->toBe($expectedSubmitLabel)
         ->and($action?->getModalCancelAction()?->getLabel())->toBe($expectedCancelLabel);
 })->with([
-    'English podcast add' => ['en', 'podcast', false, 'Add podcast cover', 'Save podcast cover', 'Cancel'],
-    'English podcast change' => ['en', 'podcast', true, 'Change podcast cover', 'Save podcast cover', 'Cancel'],
-    'English episode add' => ['en', 'episode', false, 'Add episode image', 'Save episode image', 'Cancel'],
-    'English episode change' => ['en', 'episode', true, 'Change episode image', 'Save episode image', 'Cancel'],
-    'Hebrew podcast add' => ['he', 'podcast', false, 'הוספת עטיפת הפודקאסט', 'שמירת עטיפת הפודקאסט', 'ביטול'],
-    'Hebrew podcast change' => ['he', 'podcast', true, 'החלפת עטיפת הפודקאסט', 'שמירת עטיפת הפודקאסט', 'ביטול'],
-    'Hebrew episode add' => ['he', 'episode', false, 'הוספת תמונת הפרק', 'שמירת תמונת הפרק', 'ביטול'],
-    'Hebrew episode change' => ['he', 'episode', true, 'החלפת תמונת הפרק', 'שמירת תמונת הפרק', 'ביטול'],
+    'English podcast add' => ['en', 'podcast', false, 'Podcast · Cover — Add', 'Save podcast cover', 'Cancel'],
+    'English podcast change' => ['en', 'podcast', true, 'Podcast · Cover — Change', 'Save podcast cover', 'Cancel'],
+    'English episode add' => ['en', 'episode', false, 'Episode · Primary image — Add', 'Save episode image', 'Cancel'],
+    'English episode change' => ['en', 'episode', true, 'Episode · Primary image — Change', 'Save episode image', 'Cancel'],
+    'Hebrew podcast add' => ['he', 'podcast', false, 'פודקאסט · עטיפה — הוספה', 'שמירת עטיפת הפודקאסט', 'ביטול'],
+    'Hebrew podcast change' => ['he', 'podcast', true, 'פודקאסט · עטיפה — החלפה', 'שמירת עטיפת הפודקאסט', 'ביטול'],
+    'Hebrew episode add' => ['he', 'episode', false, 'פרק · תמונה ראשית — הוספה', 'שמירת תמונת הפרק', 'ביטול'],
+    'Hebrew episode change' => ['he', 'episode', true, 'פרק · תמונה ראשית — החלפה', 'שמירת תמונת הפרק', 'ביטול'],
 ]);
 
 it('renders direct shown pending and commit boundary state from real owner evidence', function (
@@ -3129,9 +3129,9 @@ it('renders direct shown pending and commit boundary state from real owner evide
         ->assertMountedActionModalSee('data-testid="owner-image-direct-state"', false)
         ->assertMountedActionModalSee('data-testid="owner-image-shown-now-state"', false)
         ->assertMountedActionModalSee('data-testid="owner-image-pending-state"', false)
-        ->assertMountedActionModalSee(__("admin.owner_image.choice.direct_states.{$expectedDirectState}"))
-        ->assertMountedActionModalSee(__("admin.owner_image.sources.{$expectedShownSource}"))
-        ->assertMountedActionModalSee(__("admin.owner_image.choice.pending_states.{$expectedPendingState}"));
+        ->assertMountedActionModalSee(rtrim(__("admin.owner_image.choice.direct_states.{$expectedDirectState}"), '.'))
+        ->assertMountedActionModalSee(rtrim(__("admin.owner_image.sources.{$expectedShownSource}"), '.'))
+        ->assertMountedActionModalSee(rtrim(__("admin.owner_image.choice.pending_states.{$expectedPendingState}"), '.'));
     $modalHtml = $component->getMountedActionModalHtml();
     $boundaryHtml = taskEightElementHtml($modalHtml, 'owner-image-commit-boundary');
 
@@ -3181,10 +3181,12 @@ it('escapes mixed direction owner and media content while isolating technical id
         ->test(ListContentItems::class)
         ->mountAction(TestAction::make('chooseContentItemImage')->table($item));
     $modalHtml = $component->getMountedActionModalHtml();
+    $choiceHtml = taskEightElementHtml($modalHtml, 'owner-image-choice-state');
 
     expect(taskEightHasDirectedExactText($modalHtml, 'auto', $ownerTitle))->toBeTrue()
-        ->and(taskEightHasDirectedExactText($modalHtml, 'auto', $mediaTitle))->toBeTrue()
-        ->and(taskEightHasDirectedExactText($modalHtml, 'ltr', (string) $media->reference_key))->toBeTrue();
+        ->and(str_contains($choiceHtml, e($mediaTitle)))->toBeTrue()
+        ->and(taskEightHasDirectedExactText($choiceHtml, 'auto', $mediaTitle))->toBeFalse()
+        ->and(str_contains($choiceHtml, (string) $media->reference_key))->toBeFalse();
 
     $component
         ->assertMountedActionModalDontSee('<em>Episode</em>', false)

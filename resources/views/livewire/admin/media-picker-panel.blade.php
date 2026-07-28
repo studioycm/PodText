@@ -103,7 +103,7 @@
         <x-filament::tabs
             :label="__('admin.media_library.source_navigation')"
             contained
-            class="mx-4 mt-4 overflow-x-auto"
+            class="mx-4 mt-2 overflow-x-auto"
             data-testid="media-picker-owner-source-navigation"
             wire:loading.attr="inert"
         >

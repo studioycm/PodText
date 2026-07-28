@@ -926,7 +926,7 @@ it('returns acquired media to the inline owner action while attachment stays pen
             const pending = await waitFor(() => {
                 const state = restoredOuter.querySelector('[data-testid="owner-image-pending-state"]');
 
-                return state?.textContent.includes('browser-nested-storage.jpg')
+                return state?.querySelector('button[title*="browser-nested-storage.jpg"]')
                     ? state
                     : null;
             });
@@ -934,7 +934,7 @@ it('returns acquired media to the inline owner action while attachment stays pen
 
             return {
                 parent_remained_open: restoredOuter.classList.contains('fi-modal-open'),
-                selection_returned: pending.textContent.includes('browser-nested-storage.jpg'),
+                selection_returned: Boolean(pending.querySelector('button[title*="browser-nested-storage.jpg"]')),
                 single_dialog: document.querySelectorAll('[aria-modal="true"].fi-modal-open').length === 1,
                 picker_remained_inline: document.querySelectorAll('[data-testid="media-picker"]').length === 1,
                 picker_close_absent: ! restoredOuter.querySelector('[data-testid="media-picker-close"]'),
@@ -1060,7 +1060,7 @@ it('returns acquired media to the inline owner action while attachment stays pen
             const restoredOuter = await waitFor(() => outerDialog());
             await waitFor(() => restoredOuter.querySelector(
                 '[data-testid="owner-image-pending-state"]',
-            )?.textContent.includes('browser-nested-storage.jpg'));
+            )?.querySelector('button[title*="browser-nested-storage.jpg"]'));
             await waitFor(() => requestsSettledAfter(completed));
             const submit = restoredOuter.querySelector('.fi-modal-footer-actions button[type="submit"]');
 

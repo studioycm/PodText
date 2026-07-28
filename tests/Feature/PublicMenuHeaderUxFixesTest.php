@@ -677,7 +677,7 @@ it('keeps pending replacement capabilities out of a broken owner card', function
         ]])
         ->call('$refresh')
         ->assertSee('data-testid="owner-image-broken-state"', false)
-        ->assertSee($replacement->reference_key)
+        ->assertDontSee($replacement->reference_key)
         ->assertDontSee(__('admin.owner_image.actions.open_details'));
     if (is_string($replacementProjection['details_url'] ?? null)) {
         $component->assertDontSee($replacementProjection['details_url'], false);
@@ -1344,8 +1344,6 @@ it('renders settings image state with localized labels and semantic content dire
         ->test(MenuHeaderSettings::class)
         ->assertSee(__('admin.sections.public_menu_logo'))
         ->assertSee('data-testid="owner-image-choice-state"', false)
-        ->assertSee('dir="auto"', false)
-        ->assertSee('dir="ltr"', false)
         ->assertSee('לוגו Logo &lt;unsafe&gt;', false)
         ->assertDontSee('לוגו Logo <unsafe>', false);
 })->with(['he', 'en']);

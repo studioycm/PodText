@@ -52,6 +52,28 @@ Recorded after the Markdown-only post-Prompt-10 prompt-progress centralization c
 
 ## Git State
 
+- Media Operations UX3 Mini-task 3A outcome-review correction OR3 is complete
+  locally under the shared design-review artifact
+  (`LS-20260728-PODTEXT-MEDIA-OPS-UX3-M3A-OR1`, OR3 v3 section) and operator
+  approval `OR3 as drawn` after three mockup iterations. Its implementation
+  hash is backfilled in the follow-up docs commit. The owner choice strip is
+  now one line: bare owner title above three compact cards ordered shown-now,
+  direct, pending — each card a 36px thumbnail, small fact label and visible
+  short state description with the trailing period dropped; media names and
+  reference keys left the strip (hover tooltip carries the name, clicking the
+  card copies it with the existing «הועתק» feedback), and per-card icon
+  actions replace the standalone button row: details ⓘ on the direct and
+  pending cards (details before restore), restore ↺ on the pending card only,
+  and the preserved choose-automatic action as a direct-card icon. The four
+  owner heading values were reworded to the «kind · slot — action» format
+  («פרק · תמונה ראשית — החלפה»…), `sources.direct_media` became
+  «התמונה הישירה»/'The direct image', and a dedicated
+  `owner_image.actions.restore_saved` key («חזרה לתמונה השמורה») replaced the
+  shared generic Restore label on this surface. Commit and cancel sentences
+  stay verbatim on one compact line; the broken-state block is unchanged;
+  spacing tightened (strip p-2, tabs mt-2). All 3A testids and
+  mixed-direction escaping guarantees are preserved with updated assertions.
+  No schema, dependency, settings or authority change.
 - Media Operations UX3 Mini-task 3A outcome-review correction OR2 is complete
   locally under the same design-review artifact as OR1
   (`LS-20260728-PODTEXT-MEDIA-OPS-UX3-M3A-OR1`, OR2 section) and operator

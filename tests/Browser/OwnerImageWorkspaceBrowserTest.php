@@ -760,13 +760,13 @@ it('proves canonical dedicated owner actions across locale and device contracts'
                         '[data-testid="owner-image-pending-state"]',
                     );
 
-                    return state?.textContent.includes('browser-owner-admission.jpg')
+                    return state?.querySelector('button[title*="browser-owner-admission.jpg"]')
                         ? state.textContent
                         : null;
                 }, 'waiting for the current owner pending state');
                 await waitFor(() => activeDialog()?.querySelector(
                     '[data-testid="owner-image-pending-state"]',
-                )?.textContent.includes('browser-owner-admission.jpg')
+                )?.querySelector('button[title*="browser-owner-admission.jpg"]')
                     && window.__ownerImageSucceededRequests > succeeded
                     && window.__ownerImagePendingRequests === 0,
                 'waiting for the acquire request to settle');
@@ -785,7 +785,7 @@ it('proves canonical dedicated owner actions across locale and device contracts'
                 'waiting for the Cancel request to settle');
 
                 return {
-                    pending: pendingText.includes('browser-owner-admission.jpg'),
+                    pending: Boolean(pendingText),
                     closed: ! activeDialog(),
                     failed_requests: window.__ownerImageFailedRequests,
                 };
@@ -850,12 +850,10 @@ it('proves canonical dedicated owner actions across locale and device contracts'
                 const dialog = document.querySelector('[aria-modal="true"].fi-modal-open');
                 const state = dialog?.querySelector('[data-testid="owner-image-pending-state"]');
 
-                if (state?.textContent.includes('Browser pending replacement')
+                if (state?.querySelector('button[title*="Browser pending replacement"]')
                     && window.__ownerImagePendingRequests === 0) {
                     const modal = dialog.querySelector('[data-owner-image-modal="true"]');
-                    const details = state.closest(
-                        '[data-testid="owner-image-choice-state"]',
-                    )?.querySelector('a[target="_blank"]') ?? null;
+                    const details = state.querySelector('a[target="_blank"]') ?? null;
 
                     if (! details?.isConnected) {
                         await new Promise((resolve) => setTimeout(resolve, 25));
@@ -880,14 +878,12 @@ it('proves canonical dedicated owner actions across locale and device contracts'
                     const currentState = currentDialog?.querySelector(
                         '[data-testid="owner-image-pending-state"]',
                     ) ?? null;
-                    const currentDetails = currentState?.closest(
-                        '[data-testid="owner-image-choice-state"]',
-                    )?.querySelector('a[target="_blank"]') ?? null;
+                    const currentDetails = currentState?.querySelector('a[target="_blank"]') ?? null;
 
                     return {
-                        pending: currentState?.textContent.includes(
-                            'Browser pending replacement',
-                        ) ?? false,
+                        pending: Boolean(currentState?.querySelector(
+                            'button[title*="Browser pending replacement"]',
+                        )),
                         details_connected: Boolean(currentDetails?.isConnected),
                         details_href: currentDetails?.href ?? null,
                         path_unchanged: location.pathname === before.path,
