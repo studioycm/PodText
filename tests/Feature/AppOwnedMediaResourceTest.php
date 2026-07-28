@@ -757,7 +757,8 @@ it('reports a partial Media Resource batch without removing an earlier permanent
                 ->title(__('admin.media_library.upload_partial_title'))
                 ->body(__('admin.media_library.upload_partial_body', [
                     'added' => 1,
-                    'not_added' => 1,
+                    'failed' => 1,
+                    'not_attempted' => 0,
                 ])),
         );
 
