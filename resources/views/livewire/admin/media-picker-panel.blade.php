@@ -399,6 +399,16 @@
             'order-1 lg:order-2 lg:border-b-0 lg:border-s' => ! $isOwnerChoice,
             'hidden' => $isOwnerChoice && $activeSource === 'gallery',
         ])>
+            @if ($activeSource === 'upload')
+                <div
+                    data-testid="media-picker-upload-action-guard"
+                    class="sticky top-0 z-10 -mx-4 -mt-4 mb-3 border-b border-gray-200 bg-white px-4 py-2 dark:border-gray-800 dark:bg-gray-900"
+                    x-bind:inert="uploading"
+                >
+                    {{ $this->uploadFilesAction }}
+                </div>
+            @endif
+
             <p class="mb-4 rounded-md bg-primary-50 p-3 text-xs text-primary-800 dark:bg-primary-950 dark:text-primary-200">
                 {{ __($isInlineOwnerWorkspace
                     ? 'admin.media_library.acquisition_permanence_inline'
@@ -464,13 +474,6 @@
                         x-init="$nextTick(() => (document.getElementById('media-picker-upload-input') ?? document.getElementById('media-picker-source-upload'))?.focus())"
                     ></span>
                 @enderror
-                <div
-                    data-testid="media-picker-upload-action-guard"
-                    class="mt-3"
-                    x-bind:inert="uploading"
-                >
-                    {{ $this->uploadFilesAction }}
-                </div>
             @elseif ($activeSource === 'url')
                 @error('panelData.external_url')
                     <span

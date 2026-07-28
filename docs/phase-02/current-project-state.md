@@ -52,6 +52,21 @@ Recorded after the Markdown-only post-Prompt-10 prompt-progress centralization c
 
 ## Git State
 
+- Media Operations UX3 Mini-task 3A outcome-review correction OR4 is complete
+  locally under the shared design-review artifact (OR4 section) and operator
+  approval `approve OR4`. Its implementation hash is backfilled in the
+  follow-up docs commit. The two acquisition permanence texts are rewritten
+  short and simple in HE+EN (inline: «כל תמונה שנקלטה נשמרת בספרייה לצמיתות,
+  גם אחרי ביטול. העלאה מרובה אינה בוחרת תמונת בעלים אוטומטית. יש לבחור תמונה
+  אחת וללחוץ שמירה.»; standalone keeps the gallery-choice sentence) with the
+  translation-contract expected values updated; queued upload previews render
+  as a grid (`panelLayout('grid')`) on the picker upload field and the
+  standalone Media create form while single-file replacements keep rows; and
+  the upload action moved into a bar sticky at the top of the scrolling
+  source panel with its guards and testid intact. Delta gate: Pint, FilaCheck
+  (0), Vite, 167 picker/owner feature tests and the picker browser file with
+  only the four known-environmental failures; the cumulative full suite runs
+  at the OR5 gate.
 - Media Operations UX3 Mini-task 3A outcome-review correction OR3 is complete
   locally under the shared design-review artifact
   (`LS-20260728-PODTEXT-MEDIA-OPS-UX3-M3A-OR1`, OR3 v3 section) and operator

@@ -52,6 +52,7 @@ class MediaForm
                         ->multiple()
                         ->maxFiles(app(CuratorImageUploadPolicy::class)->uploadBatchLimit())
                         ->maxParallelUploads(2)
+                        ->panelLayout('grid')
                         ->storeFiles(false)
                         ->required()
                         ->columnSpanFull(),

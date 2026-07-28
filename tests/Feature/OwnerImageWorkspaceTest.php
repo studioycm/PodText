@@ -2995,7 +2995,7 @@ it('loads the bounded owner image translation contract directly with exact local
         'owner_image.choice.direct_heading' => 'Direct image',
         'owner_image.choice.shown_now_heading' => 'Shown now',
         'owner_image.choice.pending_heading' => 'Pending choice',
-        'media_library.acquisition_permanence_inline' => 'Upload, URL, and Storage become permanent library items as soon as acquisition succeeds. A multi-upload adds every successful image but never chooses an owner image automatically. Choose exactly one image, then save the owner-image choice. Cancelling does not delete completed acquisitions.',
+        'media_library.acquisition_permanence_inline' => 'Every admitted image stays in the library permanently, even after Cancel. A multi-upload does not choose the owner image automatically. Choose one image and press Save.',
     ])->and($localeValues['he'])->toMatchArray([
         'owner_image.actions.add_podcast_cover' => 'פודקאסט · עטיפה — הוספה',
         'owner_image.actions.change_podcast_cover' => 'פודקאסט · עטיפה — החלפה',
@@ -3006,7 +3006,7 @@ it('loads the bounded owner image translation contract directly with exact local
         'owner_image.choice.direct_heading' => 'תמונה ישירה',
         'owner_image.choice.shown_now_heading' => 'מוצגת עכשיו',
         'owner_image.choice.pending_heading' => 'בחירה ממתינה',
-        'media_library.acquisition_permanence_inline' => 'העלאה, כתובת ואחסון הופכים לפריטים קבועים בספרייה מיד כשהקליטה מצליחה. העלאה מרובה מוסיפה כל תמונה תקינה, אך אינה בוחרת תמונת בעלים אוטומטית. יש לבחור בדיוק תמונה אחת ואז לשמור את בחירת התמונה. ביטול אינו מוחק קליטות שהושלמו.',
+        'media_library.acquisition_permanence_inline' => 'כל תמונה שנקלטה נשמרת בספרייה לצמיתות, גם אחרי ביטול. העלאה מרובה אינה בוחרת תמונת בעלים אוטומטית. יש לבחור תמונה אחת וללחוץ שמירה.',
     ]);
 });
 

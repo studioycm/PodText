@@ -176,6 +176,7 @@ class MediaPickerPanel extends Component implements HasActions, HasSchemas
                                     : 1,
                             )
                             ->maxParallelUploads(2)
+                            ->panelLayout('grid')
                             ->extraInputAttributes([
                                 'data-testid' => 'media-picker-upload-input',
                                 'id' => 'media-picker-upload-input',
