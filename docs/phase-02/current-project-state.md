@@ -56,7 +56,7 @@ Recorded after the Markdown-only post-Prompt-10 prompt-progress centralization c
   locally under the shared design-review artifact
   (`LS-20260728-PODTEXT-MEDIA-OPS-UX3-M3A-OR1`, OR3 v3 section) and operator
   approval `OR3 as drawn` after three mockup iterations. Its implementation
-  hash is backfilled in the follow-up docs commit. The owner choice strip is
+  is `0ddb9d1fb79694686c2555ec24ccaed2284b3777`. The owner choice strip is
   now one line: bare owner title above three compact cards ordered shown-now,
   direct, pending — each card a 36px thumbnail, small fact label and visible
   short state description with the trailing period dropped; media names and
