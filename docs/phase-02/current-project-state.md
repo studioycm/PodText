@@ -59,8 +59,8 @@ Recorded after the Markdown-only post-Prompt-10 prompt-progress centralization c
   complete locally under research dossier
   `LS-20260728-PODTEXT-MEDIA-OPS-UX3-3B-01` and operator approval
   `approve 3B all` (phases P1–P4 implemented, P5 delivered as a read-only
-  spike memo). Its implementation hash is backfilled in the follow-up docs
-  commit. P1: batch uploads now report named per-file fates
+  spike memo). Its implementation is
+  `bc95e21d692754b8404b2bd30dbe370326c22698`. P1: batch uploads now report named per-file fates
   (נקלט/נכשל/לא נוסה) with three separated counts in an in-panel result list
   and in the partial toasts, and un-admitted files stay queued for one-click
   retry («קליטת :count הקבצים שנותרו») — achieved without changing the
