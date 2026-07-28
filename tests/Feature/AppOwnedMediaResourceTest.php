@@ -906,3 +906,16 @@ it('renames a media title inline from the gallery card', function (): void {
 
     expect($media->refresh()->title)->toBe('כותרת מהגלריה');
 });
+
+it('returns to the gallery after creating uploads instead of the first record edit page', function (): void {
+    $this->actingAs(User::factory()->admin()->create());
+
+    Livewire::test(CreateMedia::class)
+        ->fillForm([
+            'purpose' => ImageUploadPurpose::ContentGroupCover->value,
+            'uploads' => [appOwnedMediaFixture('valid.jpg')],
+        ])
+        ->call('create')
+        ->assertHasNoFormErrors()
+        ->assertRedirect(MediaResource::getUrl('index'));
+});

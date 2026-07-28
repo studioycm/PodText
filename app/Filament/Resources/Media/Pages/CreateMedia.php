@@ -101,6 +101,11 @@ class CreateMedia extends CreateRecord
         return trim((string) preg_replace('/\s+/', ' ', str_replace(['-', '_'], ' ', $base)));
     }
 
+    protected function getRedirectUrl(): string
+    {
+        return $this->getResource()::getUrl('index');
+    }
+
     protected function getCreatedNotification(): ?Notification
     {
         if (! $this->uploadResult?->isPartial()) {
