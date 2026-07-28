@@ -2691,6 +2691,8 @@ return [
         'delete_permanently' => 'Delete permanently',
         'delete_selected_permanently' => 'Delete selected permanently',
         'directory_filter_label' => 'Filter by folder',
+        'describe_uploads_heading' => 'Describing the uploads (optional)',
+        'describe_uploads_help' => 'Title and alt text: in a multi-upload they prefix a normalized name for each file; in a single upload they are kept as written. Caption and description are kept as written for every file.',
         'details_full_page' => 'Open the full page',
         'manage_gallery' => 'Media management',
         'details_known_usages' => 'Known usages',

@@ -2692,6 +2692,8 @@ return [
         'delete_selected_permanently' => 'מחיקת הנבחרים לצמיתות',
         'deselect_image' => 'ביטול הבחירה של :name',
         'directory_filter_label' => 'סינון לפי תיקייה',
+        'describe_uploads_heading' => 'תיאור לקבצים (רשות)',
+        'describe_uploads_help' => 'כותרת וטקסט חלופי: בהעלאה מרובה הם משמשים קידומת לשם מנורמל של כל קובץ; בהעלאה בודדת הם נשמרים כלשונם. כיתוב ותיאור נשמרים כלשונם לכל הקבצים.',
         'details_full_page' => 'פתיחה בעמוד המלא',
         'manage_gallery' => 'ניהול הגלריה',
         'details_known_usages' => 'שימושים ידועים',

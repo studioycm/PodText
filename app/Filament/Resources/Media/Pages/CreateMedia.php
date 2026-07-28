@@ -63,7 +63,42 @@ class CreateMedia extends CreateRecord
             ]);
         }
 
+        if (count($files) > 1) {
+            $this->applyBatchDescriptivePrefixes($uploads, $data);
+        }
+
         return $this->uploadResult->media()->firstOrFail();
+    }
+
+    /**
+     * @param  array<int, TemporaryUploadedFile>  $uploads
+     * @param  array<string, mixed>  $data
+     */
+    private function applyBatchDescriptivePrefixes(array $uploads, array $data): void
+    {
+        $titlePrefix = trim((string) ($data['title'] ?? ''));
+        $altPrefix = trim((string) ($data['alt'] ?? ''));
+
+        if ($titlePrefix === '' && $altPrefix === '') {
+            return;
+        }
+
+        foreach ($this->uploadResult->admittedIndexes as $position => $index) {
+            $media = $this->uploadResult->successful[$position]->media;
+            $normalized = $this->normalizedUploadName($uploads[$index]->getClientOriginalName());
+
+            $media->fill([
+                ...($titlePrefix !== '' ? ['title' => trim("{$titlePrefix} {$normalized}")] : []),
+                ...($altPrefix !== '' ? ['alt' => trim("{$altPrefix} {$normalized}")] : []),
+            ])->save();
+        }
+    }
+
+    private function normalizedUploadName(string $filename): string
+    {
+        $base = pathinfo($filename, PATHINFO_FILENAME);
+
+        return trim((string) preg_replace('/\s+/', ' ', str_replace(['-', '_'], ' ', $base)));
     }
 
     protected function getCreatedNotification(): ?Notification

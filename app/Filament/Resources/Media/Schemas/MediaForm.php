@@ -58,8 +58,9 @@ class MediaForm
                         ->columnSpanFull(),
                 ])
                 ->columns(2),
-            Section::make(__('admin.media_issue_review.details.describe_heading'))
-                ->description(__('admin.media_issue_review.details.describe_not_repair'))
+            Section::make(__('admin.media_library.describe_uploads_heading'))
+                ->description(__('admin.media_library.describe_uploads_help'))
+                ->collapsed()
                 ->schema([
                     TextInput::make('title')
                         ->label(__('admin.fields.title'))

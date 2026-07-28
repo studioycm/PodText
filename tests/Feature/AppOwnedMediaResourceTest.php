@@ -714,7 +714,8 @@ it('uploads multiple images through shared admission without acquisition journal
         ->and($media->pluck('disk')->unique()->all())->toBe(['public'])
         ->and($media->pluck('directory')->unique()->all())->toBe(['content-groups/covers'])
         ->and($media->pluck('visibility')->unique()->all())->toBe(['public'])
-        ->and($media->pluck('title')->unique()->all())->toBe(['Imported cover'])
+        ->and($media->pluck('title')->unique()->all())->toBe(['Imported cover valid'])
+        ->and($media->pluck('alt')->unique()->all())->toBe(['Cover alt text valid'])
         ->and($media->every(fn (Media $record): bool => preg_match(
             '#^content-groups/covers/[0-9A-HJKMNP-TV-Z]{26}\.(?:jpg|png)$#',
             $record->path,
@@ -851,4 +852,44 @@ it('keeps file mutations closed for repair rows and mixed bulk deletion', functi
 
     expect(Media::query()->whereKey([$wrongScope->getKey(), $deletable->getKey(), $referenced->getKey()])->count())->toBe(3)
         ->and(MediaMutationOperation::query()->count())->toBe(0);
+});
+
+it('prefixes normalized per-file titles and alt in a multi upload and keeps single uploads verbatim', function (): void {
+    $this->actingAs(User::factory()->admin()->create());
+    $fixtureAs = static function (string $source, string $as): UploadedFile {
+        $encoded = file_get_contents(base_path("tests/Fixtures/media/{$source}.base64"));
+
+        return UploadedFile::fake()->createWithContent($as, base64_decode((string) $encoded, true));
+    };
+
+    Livewire::test(CreateMedia::class)
+        ->fillForm([
+            'purpose' => ImageUploadPurpose::ContentGroupCover->value,
+            'uploads' => [
+                $fixtureAs('valid.jpg', 'season-two_cover (1).jpg'),
+                $fixtureAs('valid.png', 'season-two_cover (2).png'),
+            ],
+            'title' => 'עונה 2',
+            'alt' => 'עטיפת עונה 2',
+        ])
+        ->call('create')
+        ->assertHasNoFormErrors();
+
+    expect(Media::query()->orderBy('id')->pluck('title')->all())
+        ->toBe(['עונה 2 season two cover (1)', 'עונה 2 season two cover (2)'])
+        ->and(Media::query()->orderBy('id')->pluck('alt')->all())
+        ->toBe(['עטיפת עונה 2 season two cover (1)', 'עטיפת עונה 2 season two cover (2)']);
+
+    Media::query()->forceDelete();
+
+    Livewire::test(CreateMedia::class)
+        ->fillForm([
+            'purpose' => ImageUploadPurpose::ContentGroupCover->value,
+            'uploads' => [$fixtureAs('valid.jpg', 'solo.jpg')],
+            'title' => 'כותרת מדויקת',
+        ])
+        ->call('create')
+        ->assertHasNoFormErrors();
+
+    expect(Media::query()->sole()->title)->toBe('כותרת מדויקת');
 });
