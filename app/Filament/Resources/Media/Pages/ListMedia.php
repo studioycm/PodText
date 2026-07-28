@@ -18,10 +18,19 @@ use Illuminate\Contracts\Pagination\CursorPaginator;
 use Illuminate\Contracts\Pagination\Paginator;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
+use Livewire\Attributes\Session;
 use Livewire\Attributes\Url;
 
 class ListMedia extends ListRecords
 {
+    #[Session]
+    public int $cardsPerRow = 3;
+
+    public function setCardsPerRow(int $count): void
+    {
+        $this->cardsPerRow = max(3, min(5, $count));
+    }
+
     use RestrictsFileUploadsToSchemaComponents;
 
     protected static string $resource = MediaResource::class;

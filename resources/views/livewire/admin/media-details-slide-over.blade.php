@@ -83,6 +83,18 @@
         </p>
     @endif
 
+    @if (filled($issueReviewUrl ?? null))
+        <p>
+            <a
+                href="{{ $issueReviewUrl }}"
+                class="text-sm font-medium text-warning-700 hover:text-warning-600 dark:text-warning-300"
+                data-testid="media-details-issue-review-link"
+            >
+                {{ __('admin.media_issue_review.heading') }} ←
+            </a>
+        </p>
+    @endif
+
     @if (filled($projection['details_url'] ?? null))
         <p class="border-t border-dashed border-gray-200 pt-3 dark:border-gray-700">
             <a

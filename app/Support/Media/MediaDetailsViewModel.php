@@ -2,6 +2,7 @@
 
 namespace App\Support\Media;
 
+use App\Filament\Resources\Media\MediaResource;
 use App\Models\Media;
 
 final class MediaDetailsViewModel
@@ -15,6 +16,9 @@ final class MediaDetailsViewModel
             'directory' => (string) $media->directory,
             'storedFilename' => $media->name,
             'references' => app(MediaReferenceFinder::class)->linkedReferencesForMedia($media),
+            'issueReviewUrl' => app(MediaInventoryDiagnostics::class)->needsRepair($media)
+                ? MediaResource::getUrl('review-issues', ['record' => $media], panel: 'admin')
+                : null,
         ];
     }
 }

@@ -211,7 +211,7 @@ it('renders Media as a native responsive card gallery without losing table contr
         ->and($table->getContentGrid())->toBe([
             'md' => 2,
             'lg' => 3,
-            '2xl' => 4,
+            '2xl' => 3,
         ])
         ->and($columnsLayout[0] ?? null)->toBeInstanceOf(TableGrid::class)
         ->and($recordActions)->toHaveCount(3)
@@ -927,4 +927,43 @@ it('returns to the gallery after creating uploads instead of the first record ed
         ->call('create')
         ->assertHasNoFormErrors()
         ->assertRedirect(MediaResource::getUrl('index'));
+});
+
+it('lets the operator choose three to five gallery cards per desktop row', function (): void {
+    $this->actingAs(User::factory()->admin()->create());
+    appOwnedMediaRecord();
+
+    $component = Livewire::test(ListMedia::class)
+        ->assertSet('cardsPerRow', 3)
+        ->callAction(TestAction::make('cardsPerRow5')->table())
+        ->assertSet('cardsPerRow', 5);
+
+    expect($component->instance()->getTable()->getContentGrid())
+        ->toBe(['md' => 2, 'lg' => 5, '2xl' => 5]);
+
+    $component->call('setCardsPerRow', 9);
+
+    expect($component->get('cardsPerRow'))->toBe(5);
+});
+
+it('links the primary issue row and the details slide-over to the issue review page', function (): void {
+    $this->actingAs(User::factory()->admin()->create());
+    $broken = appOwnedMediaRecord([
+        'disk' => 'local',
+        'name' => '01J00000000000000000000009',
+        'path' => 'content-groups/covers/01J00000000000000000000009.jpg',
+    ]);
+    Storage::disk('local')->put($broken->path, 'broken fixture');
+    $reviewUrl = MediaResource::getUrl('review-issues', ['record' => $broken]);
+
+    $component = Livewire::test(ListMedia::class)
+        ->assertSee('href="'.e($reviewUrl).'"', false)
+        ->call('mountTableAction', 'mediaDetails', (string) $broken->getKey());
+
+    expect($component->instance()->getMountedAction())->not->toBeNull();
+    $modalHtml = $component->getMountedActionModalHtml();
+
+    expect($modalHtml)
+        ->toContain('data-testid="media-details-issue-review-link"')
+        ->toContain(__('admin.media_issue_review.heading'));
 });

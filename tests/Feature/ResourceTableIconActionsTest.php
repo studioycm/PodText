@@ -90,19 +90,20 @@ it('gives Media one visible details action and one quiet grouped action menu', f
     $table = Livewire::test(ListMedia::class)->instance()->getTable();
     $recordActions = array_values($table->getRecordActions());
 
-    expect($recordActions)->toHaveCount(2)
-        ->and($recordActions[0])->toBeInstanceOf(EditAction::class)
-        ->and($recordActions[0]->getName())->toBe('edit')
-        ->and($recordActions[0]->isButton())->toBeTrue()
-        ->and($recordActions[0]->isLabelHidden())->toBeFalse()
-        ->and((string) $recordActions[0]->getLabel())->toBe(__('admin.media_library.open_details'))
-        ->and($recordActions[0]->getIcon())->toBe(Heroicon::OutlinedInformationCircle)
-        ->and($recordActions[1])->toBeInstanceOf(ActionGroup::class)
-        ->and($recordActions[1]->isIconButton())->toBeTrue()
-        ->and((string) $recordActions[1]->getLabel())->toBe(__('admin.media_library.more_actions'))
-        ->and((string) $recordActions[1]->getTooltip())->toBe(__('admin.media_library.more_actions'))
-        ->and($recordActions[1]->getColor())->toBe('gray')
-        ->and(array_keys($recordActions[1]->getFlatActions()))->toBe([
+    expect($recordActions)->toHaveCount(3)
+        ->and($recordActions[0]->getName())->toBe('mediaDetails')
+        ->and($recordActions[1])->toBeInstanceOf(EditAction::class)
+        ->and($recordActions[1]->getName())->toBe('edit')
+        ->and($recordActions[1]->isButton())->toBeTrue()
+        ->and($recordActions[1]->isLabelHidden())->toBeFalse()
+        ->and((string) $recordActions[1]->getLabel())->toBe(__('admin.media_library.open_details'))
+        ->and($recordActions[1]->getIcon())->toBe(Heroicon::OutlinedInformationCircle)
+        ->and($recordActions[2])->toBeInstanceOf(ActionGroup::class)
+        ->and($recordActions[2]->isIconButton())->toBeTrue()
+        ->and((string) $recordActions[2]->getLabel())->toBe(__('admin.media_library.more_actions'))
+        ->and((string) $recordActions[2]->getTooltip())->toBe(__('admin.media_library.more_actions'))
+        ->and($recordActions[2]->getColor())->toBe('gray')
+        ->and(array_keys($recordActions[2]->getFlatActions()))->toBe([
             'view',
             'download',
             'rename',
@@ -110,6 +111,7 @@ it('gives Media one visible details action and one quiet grouped action menu', f
             'delete',
         ])
         ->and(array_keys($table->getFlatRecordActions()))->toBe([
+            'mediaDetails',
             'edit',
             'view',
             'download',

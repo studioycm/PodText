@@ -2713,6 +2713,8 @@ return [
         'inline_batch_help' => 'Choose one image to add and select it, or choose multiple images to add them all. A batch never chooses the owner image automatically.',
         'legacy_missing' => 'Legacy image reference: :name',
         'load_more' => 'Load more',
+        'cards_per_row' => 'Cards per row: :count',
+        'cards_per_row_option' => ':count per row',
         'card_row_original' => 'Original',
         'card_row_file' => 'File',
         'card_row_references' => 'References',

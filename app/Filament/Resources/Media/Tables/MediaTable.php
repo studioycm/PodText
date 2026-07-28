@@ -182,6 +182,9 @@ class MediaTable
                                     })
                                     ->icon(Heroicon::OutlinedExclamationTriangle)
                                     ->color('warning')
+                                    ->url(fn (Media $record): ?string => app(MediaInventoryDiagnostics::class)->needsRepair($record)
+                                        ? MediaResource::getUrl('review-issues', ['record' => $record])
+                                        : null)
                                     ->extraAttributes([
                                         'data-testid' => 'media-library-card-primary-issue',
                                     ])
@@ -237,10 +240,23 @@ class MediaTable
                         ])->space(2),
                     ]),
             ])
-            ->contentGrid([
+            ->contentGrid(fn (ListMedia $livewire): array => [
                 'md' => 2,
-                'lg' => 3,
-                '2xl' => 4,
+                'lg' => $livewire->cardsPerRow,
+                '2xl' => $livewire->cardsPerRow,
+            ])
+            ->headerActions([
+                ActionGroup::make(collect([3, 4, 5])->map(
+                    fn (int $count): Action => Action::make("cardsPerRow{$count}")
+                        ->label(__('admin.media_library.cards_per_row_option', ['count' => $count]))
+                        ->action(fn (ListMedia $livewire) => $livewire->setCardsPerRow($count)),
+                )->all())
+                    ->label(fn (ListMedia $livewire): string => __('admin.media_library.cards_per_row', [
+                        'count' => $livewire->cardsPerRow,
+                    ]))
+                    ->icon(Heroicon::OutlinedSquares2x2)
+                    ->button()
+                    ->color('gray'),
             ])
             ->filters([
                 SelectFilter::make('type')

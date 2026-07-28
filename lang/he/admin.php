@@ -2713,6 +2713,8 @@ return [
         'inline_batch_help' => 'בחירת תמונה אחת מוסיפה וגם מסמנת אותה. בחירת כמה תמונות מוסיפה את כולן, בלי לבחור תמונת בעלים אוטומטית.',
         'legacy_missing' => 'הפניית תמונה ישנה: :name',
         'load_more' => 'טעינת תמונות נוספות',
+        'cards_per_row' => 'כרטיסים בשורה: :count',
+        'cards_per_row_option' => ':count בשורה',
         'card_row_original' => 'מקור',
         'card_row_file' => 'קובץ',
         'card_row_references' => 'הפניות',
