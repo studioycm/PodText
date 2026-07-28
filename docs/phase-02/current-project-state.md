@@ -82,9 +82,9 @@ Recorded after the Markdown-only post-Prompt-10 prompt-progress centralization c
 ## Git State
 
 - Staged Eloquent strict mode (bounded chore, implemented on worktree
-  branch `claude/keen-gould-16e3a4` on top of 3C `88c6880`; implementation
-  hash `1e90c70`, merged fast-forward into `main` and the worktree
-  retired): lazy-loading
+  branch `claude/keen-gould-16e3a4`, rebased onto the 3C closure
+  `9393fef`; implementation hash `72c29c5`, merged fast-forward into
+  `main` and the worktree retired): lazy-loading
   prevention outside production has been active since `af9f399`
   (2026-07-08); this chore adds the production degradation path.
   `AppServiceProvider::boot()` now registers
