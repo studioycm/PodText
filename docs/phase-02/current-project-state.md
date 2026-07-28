@@ -79,7 +79,7 @@ Recorded after the Markdown-only post-Prompt-10 prompt-progress centralization c
   production targets until then), D3=a, D4=a, D5=Issue-Review-only plus
   card/slide-over Issue Review links, D6=a (fate chips, no Recheck),
   D7=a, D8=a. M4 P1–P3 are implemented locally (implementation hash
-  `M4_IMPLEMENTATION_HASH`); operator outcome review is the next step. Package 5 gained operator seeds: legacy
+  `24b13fb5ba3313d4ffe53ada418e62f7963a6678`); operator outcome review is the next step. Package 5 gained operator seeds: legacy
   owner-column retirement (production census 2026-07-28: 294 covers all
   attachment-bridged, 0 legacy-only, `image_path` unused — code-only
   migration) alongside root-file relocation. A staged Eloquent
@@ -95,7 +95,7 @@ Recorded after the Markdown-only post-Prompt-10 prompt-progress centralization c
   dropped — the production root-level cohort, including media 2, waits
   for Package 5 relocation), and light audit
   `LS-20260728-PODTEXT-M4-IMPL-01` (no change). Implementation hash
-  `M4_IMPLEMENTATION_HASH`. P1: the Issue Review page replaces the
+  `24b13fb5ba3313d4ffe53ada418e62f7963a6678`. P1: the Issue Review page replaces the
   hard-coded no-authority blocker with truthful per-reason resolution
   states (`MediaIssueReviewPresenter::resolutionForReason`): the
   `unsanitized_svg` reason renders its action zone or a
