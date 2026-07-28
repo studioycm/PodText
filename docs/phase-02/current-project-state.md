@@ -61,7 +61,7 @@ Recorded after the Markdown-only post-Prompt-10 prompt-progress centralization c
   `approve 3B all` (phases P1–P4 implemented, P5 delivered as a read-only
   spike memo, then P5 built on explicit operator approval). Its
   implementation is `bc95e21d692754b8404b2bd30dbe370326c22698` with the P5
-  chunked-queue follow-up hash backfilled in the follow-up docs commit. P1: batch uploads now report named per-file fates
+  chunked-queue follow-up at `7e4eaf2931b2800ec35e4827131afc028409c147`. P1: batch uploads now report named per-file fates
   (נקלט/נכשל/לא נוסה) with three separated counts in an in-panel result list
   and in the partial toasts, and un-admitted files stay queued for one-click
   retry («קליטת :count הקבצים שנותרו») — achieved without changing the
