@@ -48,9 +48,11 @@ use Filament\Tables\Table;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\Relation;
+use Illuminate\Database\LazyLoadingViolationException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
@@ -109,6 +111,22 @@ class AppServiceProvider extends ServiceProvider
         PackageMutationCommandGuard::register();
 
         Model::preventLazyLoading(! $this->app->isProduction());
+        Model::handleLazyLoadingViolationUsing(function (Model $model, string $relation): void {
+            if (! $model->exists || $model->wasRecentlyCreated) {
+                return;
+            }
+
+            if (app()->isProduction()) {
+                Log::warning('Lazy loading violation detected.', [
+                    'model' => $model::class,
+                    'relation' => $relation,
+                ]);
+
+                return;
+            }
+
+            throw new LazyLoadingViolationException($model, $relation);
+        });
 
         $this->app->booted(function (): void {
             foreach (Route::getRoutes()->getRoutes() as $route) {

@@ -171,9 +171,14 @@ class MediaRecordScope
             && preg_match('/^[0-9A-HJKMNP-TV-Z]{26}$/', mb_strtoupper($media->reference_key)) === 1;
     }
 
+    /**
+     * The storage-identity count is an optional query-time subselect, so it is
+     * read from the raw attribute array; property-style access would violate
+     * Model::preventAccessingMissingAttributes() once that guard is enabled.
+     */
     public function hasUniqueStorageIdentity(Media $media): bool
     {
-        $selectedCount = $media->getAttribute('storage_identity_count');
+        $selectedCount = $media->getAttributes()['storage_identity_count'] ?? null;
 
         if (is_numeric($selectedCount)) {
             return (int) $selectedCount === 1;

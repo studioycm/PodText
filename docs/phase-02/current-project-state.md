@@ -81,6 +81,50 @@ Recorded after the Markdown-only post-Prompt-10 prompt-progress centralization c
 
 ## Git State
 
+- Staged Eloquent strict mode (bounded chore, implemented on worktree
+  branch `claude/keen-gould-16e3a4` on top of 3C `88c6880`): lazy-loading
+  prevention outside production has been active since `af9f399`
+  (2026-07-08); this chore adds the production degradation path.
+  `AppServiceProvider::boot()` now registers
+  `Model::handleLazyLoadingViolationUsing(...)` that logs a warning
+  (`Lazy loading violation detected.` with model/relation context) and
+  lets the relation load normally in production, rethrows
+  `LazyLoadingViolationException` elsewhere, and preserves stock silence
+  for non-existing/recently-created models (the framework default skips
+  those; a naive callback would newly throw on `replicate()`d or deleted
+  models — `MediaInventoryDiagnostics` replicates media records).
+  `MediaRecordScope::hasUniqueStorageIdentity()` now reads
+  `getAttributes()['storage_identity_count'] ?? null` so both optional
+  producers of that alias — `MediaResource::getEloquentQuery()` and the
+  3C picker projection (`MediaPickerPanel` adds it only when the panel is
+  not in owner-choice mode) — stay safe for a future
+  `Model::preventAccessingMissingAttributes()` enablement; that guard and
+  `preventSilentlyDiscardingAttributes` stay intentionally off (vendor
+  Curator `Media` mass-assignment risk). Optional-attribute audit: the
+  one remaining must-fix before enabling the missing-attribute guard is
+  `EditEffectiveTranscriptionAction::recordHasTranscriptions()`
+  (`getAttribute('transcriptions_count')`); `?? 0`/`isset()` readers of
+  public aggregate aliases are guard-safe because `Model::offsetExists`
+  suspends the guard; `CardTemplatePreviewer` subselect aliases are
+  SQL-only; dynamic legacy-column `getAttribute()` reads across
+  `app/Support/Media/*` target real columns and only need a
+  partial-select hydration spot-check at enablement time. New
+  `tests/Feature/EloquentStrictModeTest.php` (5 tests) proves
+  collection-hydrated lazy loads throw outside production (single-model
+  hydration is exempt by framework design — `Builder::hydrate` stamps the
+  per-instance flag only when hydrating more than one row), production
+  logs and still loads, deleted models stay silent, a selected
+  `storage_identity_count` is trusted, and the peer-query fallback passes
+  under an enabled missing-attribute guard. Lazy-loading triage across
+  the full suite: zero violations, none deferred. Gate on the post-3C
+  tree: Pint clean, FilaCheck 0 issues, Vite build clean, full suite
+  1444 tests / 1438 passed / 18,883 assertions in 10.8 minutes; the only
+  6 failures are the four known-environmental browser tests plus two
+  `CardTemplatePreviewBrowserTest` geometry failures proven pre-existing
+  on this machine (identical with the chore stashed and at a pre-3B
+  commit; `leading_image_loaded` false on seeded default images; the
+  fresh-worktree `public/storage` symlink gap was found and fixed but is
+  not the full cause; flagged for a separate investigation session).
 - Media Operations UX3 Mini-task 3C (Safe Existing-File Operations) is
   complete locally under research dossier
   `LS-20260728-PODTEXT-MEDIA-OPS-UX3-3C-01`, operator approval
@@ -972,6 +1016,7 @@ Laravel Boost MCP tools were exposed and usable during Prompt 10.
 - Public Front v2 Step 10R-S1d used Boost `application_info`, `database_schema`, and `search_docs` before changing settings import reports, panel middleware, Horizon authorization, and Livewire/Pest tests. FilamentExamples `search_examples` returned search/snippet-only examples for table action report modals, grouped read-only entries, wizard summary UI, and multi-panel provider patterns.
 - Importer Workbench WB1 used Boost `application_info`, `database_schema`, and `search_docs` before adding `import_connections`, Google/Socialite/Spotify connector boundaries, a custom Filament Importer Settings page, and Pest tests. FilamentExamples `search_examples` was run in multiple short batches plus a refined pass for custom pages with schema/table actions, progressive disclosure, FileUpload constraints, and table record actions; access level was search/snippet only.
 - Step 10R-HF3 used Boost `application_info`, `database_schema`, and `search_docs` before changing Filament exporters, queue lifecycle hooks, and queue event tracing. Boost confirmed Laravel 13.19.0, Filament 5.6.7, Horizon 5.47.2, and Pest 4.7.4; docs confirmed exporter `modifyQuery()`, batch names, tags, queue hooks, completion notifications, and queue event payload access. FilamentExamples `search_examples` was run in short batches plus a refined pass for exporter/table query patterns; access level was search/snippet only and no source/detail fetch tool was exposed.
+- The staged Eloquent strict mode chore ran without Boost MCP exposure (no Boost tools were registered in that session); framework lazy-loading and missing-attribute semantics were verified directly against the installed `laravel/framework` source (`Builder::hydrate`, `HasAttributes::getRelationValue`/`handleLazyLoadingViolation`, `Model::offsetExists`) plus a `php artisan tinker` probe. FilamentExamples was not consulted because no Filament surface changed.
 
 ## Application Shape
 
