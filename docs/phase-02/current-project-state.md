@@ -157,7 +157,7 @@ Recorded after the Markdown-only post-Prompt-10 prompt-progress centralization c
 
 - Package 5 P3+P4+P5 (legacy owner-column retirement, drop and sanitize
   lift) is complete locally, commits held for operator push/deploy
-  approval per the 2026-07-29 gate. Implementation hash `TBD-P5-P3P4P5`.
+  approval per the 2026-07-29 gate. Implementation hash `d5be68f0662b5037a135089b126ee19dbb724808`.
   Media ownership truth is now the `media_attachments` pivot alone:
   `content_groups.cover_path` and `content_items.image_path` are dropped
   by migration `2026_07_29_172340_drop_legacy_owner_media_path_columns`
