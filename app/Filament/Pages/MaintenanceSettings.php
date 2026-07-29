@@ -2,13 +2,16 @@
 
 namespace App\Filament\Pages;
 
+use App\Filament\Clusters\SystemCluster;
 use BackedEnum;
 use Filament\Schemas\Components\Tabs\Tab;
 use Filament\Support\Icons\Heroicon;
 
 class MaintenanceSettings extends PublicContentSettingsSubjectPage
 {
-    protected static ?string $slug = 'settings/maintenance';
+    protected static ?string $cluster = SystemCluster::class;
+
+    protected static ?string $slug = 'maintenance';
 
     protected static bool $shouldRegisterNavigation = true;
 

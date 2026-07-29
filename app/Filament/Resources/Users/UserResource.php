@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Users;
 
+use App\Filament\Clusters\SystemCluster;
 use App\Filament\Resources\Users\Pages\EditUser;
 use App\Filament\Resources\Users\Pages\ListUsers;
 use App\Filament\Resources\Users\Schemas\UserForm;
@@ -18,6 +19,8 @@ use Illuminate\Support\Facades\Gate;
 
 class UserResource extends Resource
 {
+    protected static ?string $cluster = SystemCluster::class;
+
     use UsesAdminNavigationOrder;
 
     protected static ?string $model = User::class;

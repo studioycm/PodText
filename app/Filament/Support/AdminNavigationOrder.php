@@ -2,6 +2,8 @@
 
 namespace App\Filament\Support;
 
+use App\Filament\Clusters\SettingsCluster;
+use App\Filament\Clusters\SystemCluster;
 use App\Filament\Pages\AboutSettings;
 use App\Filament\Pages\AdminTools;
 use App\Filament\Pages\AdminUxSettings;
@@ -39,10 +41,6 @@ class AdminNavigationOrder
 
     public const TAXONOMY_MANAGEMENT = 'taxonomy_management';
 
-    public const SETTINGS = 'settings';
-
-    public const SYSTEM_MANAGEMENT = 'system_management';
-
     public const EPISODE_WORKSPACE_CREATE_SORT = 10;
 
     /**
@@ -54,12 +52,6 @@ class AdminNavigationOrder
         ],
         self::TAXONOMY_MANAGEMENT => [
             'label' => 'admin.navigation.groups.taxonomy_management',
-        ],
-        self::SETTINGS => [
-            'label' => 'admin.navigation.groups.settings',
-        ],
-        self::SYSTEM_MANAGEMENT => [
-            'label' => 'admin.navigation.groups.system_management',
         ],
     ];
 
@@ -97,63 +89,63 @@ class AdminNavigationOrder
         ],
         HomepageSettings::class => [
             'sort' => 300,
-            'group' => self::SETTINGS,
+            'group' => null,
         ],
         HomepageSectionResource::class => [
             'sort' => 310,
-            'group' => self::SETTINGS,
+            'group' => null,
         ],
         PodcastSettings::class => [
             'sort' => 320,
-            'group' => self::SETTINGS,
+            'group' => null,
         ],
         EpisodePageSettings::class => [
             'sort' => 330,
-            'group' => self::SETTINGS,
+            'group' => null,
         ],
         ContributorSettings::class => [
             'sort' => 340,
-            'group' => self::SETTINGS,
+            'group' => null,
         ],
         AboutSettings::class => [
             'sort' => 350,
-            'group' => self::SETTINGS,
+            'group' => null,
         ],
         DisplaySettings::class => [
             'sort' => 360,
-            'group' => self::SETTINGS,
+            'group' => null,
         ],
         MenuHeaderSettings::class => [
             'sort' => 370,
-            'group' => self::SETTINGS,
+            'group' => null,
         ],
         MaintenanceSettings::class => [
             'sort' => 300,
-            'group' => self::SYSTEM_MANAGEMENT,
+            'group' => null,
         ],
         UserResource::class => [
             'sort' => 310,
-            'group' => self::SYSTEM_MANAGEMENT,
+            'group' => null,
         ],
         ImporterSettings::class => [
             'sort' => 320,
-            'group' => self::SYSTEM_MANAGEMENT,
+            'group' => null,
         ],
         ManagePublicForms::class => [
-            'sort' => 330,
-            'group' => self::SYSTEM_MANAGEMENT,
+            'sort' => 380,
+            'group' => null,
         ],
         CardTemplateSettings::class => [
-            'sort' => 340,
-            'group' => self::SYSTEM_MANAGEMENT,
+            'sort' => 390,
+            'group' => null,
         ],
         SettingsBackupResource::class => [
             'sort' => 350,
-            'group' => self::SYSTEM_MANAGEMENT,
+            'group' => null,
         ],
         AdminUxSettings::class => [
             'sort' => 360,
-            'group' => self::SYSTEM_MANAGEMENT,
+            'group' => null,
         ],
         PublicFormSubmissionResource::class => [
             'sort' => 20,
@@ -170,6 +162,14 @@ class AdminNavigationOrder
         ],
         SpotifyLinksFetcher::class => [
             'sort' => 50,
+            'group' => null,
+        ],
+        SettingsCluster::class => [
+            'sort' => 52,
+            'group' => null,
+        ],
+        SystemCluster::class => [
+            'sort' => 54,
             'group' => null,
         ],
     ];

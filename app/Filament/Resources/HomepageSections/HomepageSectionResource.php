@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\HomepageSections;
 
+use App\Filament\Clusters\SettingsCluster;
 use App\Filament\Resources\HomepageSections\Pages\CreateHomepageSection;
 use App\Filament\Resources\HomepageSections\Pages\EditHomepageSection;
 use App\Filament\Resources\HomepageSections\Pages\ListHomepageSections;
@@ -17,6 +18,8 @@ use Filament\Tables\Table;
 
 class HomepageSectionResource extends Resource
 {
+    protected static ?string $cluster = SettingsCluster::class;
+
     use UsesAdminNavigationOrder;
 
     protected static ?string $model = HomepageSection::class;

@@ -2,13 +2,16 @@
 
 namespace App\Filament\Pages;
 
+use App\Filament\Clusters\SettingsCluster;
 use BackedEnum;
 use Filament\Schemas\Components\Tabs\Tab;
 use Filament\Support\Icons\Heroicon;
 
 class ContributorSettings extends PublicContentSettingsSubjectPage
 {
-    protected static ?string $slug = 'settings/contributors';
+    protected static ?string $cluster = SettingsCluster::class;
+
+    protected static ?string $slug = 'contributors';
 
     protected static bool $shouldRegisterNavigation = true;
 

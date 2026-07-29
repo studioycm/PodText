@@ -2,13 +2,16 @@
 
 namespace App\Filament\Pages;
 
+use App\Filament\Clusters\SettingsCluster;
 use BackedEnum;
 use Filament\Schemas\Components\Tabs\Tab;
 use Filament\Support\Icons\Heroicon;
 
 class HomepageSettings extends PublicContentSettingsSubjectPage
 {
-    protected static ?string $slug = 'settings/homepage';
+    protected static ?string $cluster = SettingsCluster::class;
+
+    protected static ?string $slug = 'homepage';
 
     protected static bool $shouldRegisterNavigation = true;
 

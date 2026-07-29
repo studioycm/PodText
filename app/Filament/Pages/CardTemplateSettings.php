@@ -3,6 +3,7 @@
 namespace App\Filament\Pages;
 
 use App\Enums\UserRole;
+use App\Filament\Clusters\SettingsCluster;
 use App\Filament\Support\Concerns\UsesAdminNavigationOrder;
 use App\Models\User;
 use App\Settings\PublicContentSettings;
@@ -22,10 +23,12 @@ use Illuminate\Support\Str;
 
 class CardTemplateSettings extends Page implements HasTable
 {
+    protected static ?string $cluster = SettingsCluster::class;
+
     use InteractsWithTable;
     use UsesAdminNavigationOrder;
 
-    protected static ?string $slug = 'settings/card-templates';
+    protected static ?string $slug = 'card-templates';
 
     protected static bool $shouldRegisterNavigation = true;
 

@@ -2,6 +2,7 @@
 
 namespace App\Filament\Pages;
 
+use App\Filament\Clusters\SettingsCluster;
 use App\Settings\PublicContentSettings;
 use App\Support\PublicFront\PublicFrontConfigValidator;
 use App\Support\Settings\CardTemplates\CardTemplateAccessPolicy;
@@ -21,7 +22,9 @@ use Throwable;
 
 class EditCardTemplate extends CardTemplateEditorPage
 {
-    protected static ?string $slug = 'settings/card-templates/edit/{family}/{key}';
+    protected static ?string $cluster = SettingsCluster::class;
+
+    protected static ?string $slug = 'card-templates/edit/{family}/{key}';
 
     public static function routes(Panel $panel, ?PageConfiguration $configuration = null): void
     {

@@ -3,6 +3,7 @@
 namespace App\Filament\Pages;
 
 use App\Filament\Actions\ExportPublicSettingsAction;
+use App\Filament\Clusters\SettingsCluster;
 use App\Filament\Support\Concerns\UsesAdminNavigationOrder;
 use App\Filament\Support\PublicFormsSettingsForm;
 use BackedEnum;
@@ -13,6 +14,8 @@ use Filament\Support\Icons\Heroicon;
 
 class ManagePublicForms extends PublicContentSettingsSubjectPage
 {
+    protected static ?string $cluster = SettingsCluster::class;
+
     use UsesAdminNavigationOrder;
 
     protected static bool $shouldRegisterNavigation = true;

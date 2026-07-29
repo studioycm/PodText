@@ -42,7 +42,7 @@ return [
         'homepage_section' => [
             'singular' => 'Homepage Content Section',
             'plural' => 'Homepage Content Sections',
-            'navigation' => 'Homepage sections',
+            'navigation' => 'Sections',
         ],
         'public_form_submission' => [
             'singular' => 'Public Form Submission',
@@ -1801,7 +1801,7 @@ return [
             'title' => 'Import Public Settings',
         ],
         'card_template_settings' => [
-            'navigation' => 'Card Templates',
+            'navigation' => 'Templates',
             'title' => 'Card Template Settings',
         ],
         'contributor_settings' => [
@@ -1828,7 +1828,7 @@ return [
             'title' => 'Maintenance Settings',
         ],
         'menu_header_settings' => [
-            'navigation' => 'Menu / Header',
+            'navigation' => 'Menu',
             'title' => 'Menu / Header Settings',
         ],
         'manage_public_forms' => [

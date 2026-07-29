@@ -3,6 +3,7 @@
 namespace App\Filament\Pages;
 
 use App\Enums\UserRole;
+use App\Filament\Clusters\SettingsCluster;
 use App\Filament\Support\CardTemplateValidationTarget;
 use App\Models\User;
 use App\Settings\PublicContentSettings;
@@ -41,6 +42,8 @@ use Throwable;
 
 abstract class CardTemplateEditorPage extends SettingsPage
 {
+    protected static ?string $cluster = SettingsCluster::class;
+
     use BuildsPublicContentSettingsSubjectSchemas;
 
     public const BUILDER_DISPLAY_INLINE = 'inline';

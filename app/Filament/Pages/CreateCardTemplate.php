@@ -2,6 +2,7 @@
 
 namespace App\Filament\Pages;
 
+use App\Filament\Clusters\SettingsCluster;
 use App\Settings\PublicContentSettings;
 use App\Support\PublicFront\Cards\PublicFrontCardTemplateRegistry;
 use App\Support\PublicFront\PublicFrontConfigValidator;
@@ -14,7 +15,9 @@ use Closure;
 
 class CreateCardTemplate extends CardTemplateEditorPage
 {
-    protected static ?string $slug = 'settings/card-templates/create';
+    protected static ?string $cluster = SettingsCluster::class;
+
+    protected static ?string $slug = 'card-templates/create';
 
     public function mount(): void
     {

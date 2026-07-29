@@ -42,7 +42,7 @@ return [
         'homepage_section' => [
             'singular' => 'מקטע בדף הבית',
             'plural' => 'מקטעי בדף הבית',
-            'navigation' => 'מקטעי דף הבית',
+            'navigation' => 'מקטעים',
         ],
         'public_form_submission' => [
             'singular' => 'שליחת טופס',
@@ -1813,7 +1813,7 @@ return [
             'title' => 'ייבוא הגדרות ציבוריות',
         ],
         'card_template_settings' => [
-            'navigation' => 'תבניות כרטיסים',
+            'navigation' => 'תבניות',
             'title' => 'הגדרות תבניות כרטיסים',
         ],
         'contributor_settings' => [
@@ -1840,7 +1840,7 @@ return [
             'title' => 'הגדרות תחזוקה',
         ],
         'menu_header_settings' => [
-            'navigation' => 'תפריט / כותרת',
+            'navigation' => 'תפריט',
             'title' => 'הגדרות תפריט וכותרת',
         ],
         'manage_public_forms' => [

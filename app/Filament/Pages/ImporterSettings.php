@@ -5,6 +5,7 @@ namespace App\Filament\Pages;
 use App\Enums\ImportConnectionAuthType;
 use App\Enums\ImportConnectionProvider;
 use App\Enums\ImportConnectionStatus;
+use App\Filament\Clusters\SystemCluster;
 use App\Filament\Support\Concerns\UsesAdminNavigationOrder;
 use App\Models\ImportConnection;
 use App\Support\Importer\ConnectionTester;
@@ -35,6 +36,8 @@ use Throwable;
 
 class ImporterSettings extends Page implements HasActions, HasSchemas, HasTable
 {
+    protected static ?string $cluster = SystemCluster::class;
+
     use InteractsWithActions;
     use InteractsWithSchemas;
     use InteractsWithTable;

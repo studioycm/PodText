@@ -4,6 +4,8 @@ use App\Enums\HomepageSectionType;
 use App\Enums\PublicationStatus;
 use App\Enums\PublicFormSubmissionStatus;
 use App\Enums\TranscriptionMode;
+use App\Filament\Clusters\SettingsCluster;
+use App\Filament\Clusters\SystemCluster;
 use App\Filament\Pages\AboutSettings;
 use App\Filament\Pages\AdminTools;
 use App\Filament\Pages\AdminUxSettings as AdminUxSettingsPage;
@@ -187,63 +189,63 @@ it('orders every registered admin navigation resource and page through the centr
         ],
         HomepageSettings::class => [
             'sort' => 300,
-            'group' => AdminNavigationOrder::SETTINGS,
+            'group' => null,
         ],
         HomepageSectionResource::class => [
             'sort' => 310,
-            'group' => AdminNavigationOrder::SETTINGS,
+            'group' => null,
         ],
         PodcastSettings::class => [
             'sort' => 320,
-            'group' => AdminNavigationOrder::SETTINGS,
+            'group' => null,
         ],
         EpisodePageSettings::class => [
             'sort' => 330,
-            'group' => AdminNavigationOrder::SETTINGS,
+            'group' => null,
         ],
         ContributorSettings::class => [
             'sort' => 340,
-            'group' => AdminNavigationOrder::SETTINGS,
+            'group' => null,
         ],
         AboutSettings::class => [
             'sort' => 350,
-            'group' => AdminNavigationOrder::SETTINGS,
+            'group' => null,
         ],
         DisplaySettings::class => [
             'sort' => 360,
-            'group' => AdminNavigationOrder::SETTINGS,
+            'group' => null,
         ],
         MenuHeaderSettings::class => [
             'sort' => 370,
-            'group' => AdminNavigationOrder::SETTINGS,
+            'group' => null,
         ],
         MaintenanceSettings::class => [
             'sort' => 300,
-            'group' => AdminNavigationOrder::SYSTEM_MANAGEMENT,
+            'group' => null,
         ],
         UserResource::class => [
             'sort' => 310,
-            'group' => AdminNavigationOrder::SYSTEM_MANAGEMENT,
+            'group' => null,
         ],
         ImporterSettings::class => [
             'sort' => 320,
-            'group' => AdminNavigationOrder::SYSTEM_MANAGEMENT,
+            'group' => null,
         ],
         ManagePublicForms::class => [
-            'sort' => 330,
-            'group' => AdminNavigationOrder::SYSTEM_MANAGEMENT,
+            'sort' => 380,
+            'group' => null,
         ],
         CardTemplateSettings::class => [
-            'sort' => 340,
-            'group' => AdminNavigationOrder::SYSTEM_MANAGEMENT,
+            'sort' => 390,
+            'group' => null,
         ],
         SettingsBackupResource::class => [
             'sort' => 350,
-            'group' => AdminNavigationOrder::SYSTEM_MANAGEMENT,
+            'group' => null,
         ],
         AdminUxSettingsPage::class => [
             'sort' => 360,
-            'group' => AdminNavigationOrder::SYSTEM_MANAGEMENT,
+            'group' => null,
         ],
         PublicFormSubmissionResource::class => [
             'sort' => 20,
@@ -260,6 +262,14 @@ it('orders every registered admin navigation resource and page through the centr
         ],
         SpotifyLinksFetcher::class => [
             'sort' => 50,
+            'group' => null,
+        ],
+        SettingsCluster::class => [
+            'sort' => 52,
+            'group' => null,
+        ],
+        SystemCluster::class => [
+            'sort' => 54,
             'group' => null,
         ],
     ];
@@ -304,8 +314,6 @@ it('orders every registered admin navigation resource and page through the centr
         null,
         AdminNavigationOrder::groupLabel(AdminNavigationOrder::CONTENT_MANAGEMENT),
         AdminNavigationOrder::groupLabel(AdminNavigationOrder::TAXONOMY_MANAGEMENT),
-        AdminNavigationOrder::groupLabel(AdminNavigationOrder::SETTINGS),
-        AdminNavigationOrder::groupLabel(AdminNavigationOrder::SYSTEM_MANAGEMENT),
     ]);
 
     $groupedNavigation = $navigation
@@ -334,6 +342,8 @@ it('orders every registered admin navigation resource and page through the centr
         __('admin.curator.plural_label'),
         __('admin.tools.pages.tools.navigation'),
         __('admin.spotify_fetcher.pages.navigation'),
+        SettingsCluster::getNavigationLabel(),
+        SystemCluster::getNavigationLabel(),
         __('admin.navigation.public_homepage'),
     ])
         ->and($itemLabelsFor(AdminNavigationOrder::groupLabel(AdminNavigationOrder::CONTENT_MANAGEMENT)))->toBe([
@@ -346,24 +356,15 @@ it('orders every registered admin navigation resource and page through the centr
             __('admin.resources.category.navigation'),
             __('admin.resources.content_tag.navigation'),
         ])
-        ->and($itemLabelsFor(AdminNavigationOrder::groupLabel(AdminNavigationOrder::SETTINGS)))->toBe([
-            HomepageSettings::getNavigationLabel(),
-            __('admin.resources.homepage_section.navigation'),
-            PodcastSettings::getNavigationLabel(),
-            EpisodePageSettings::getNavigationLabel(),
-            ContributorSettings::getNavigationLabel(),
-            AboutSettings::getNavigationLabel(),
-            DisplaySettings::getNavigationLabel(),
-            MenuHeaderSettings::getNavigationLabel(),
-        ])
-        ->and($itemLabelsFor(AdminNavigationOrder::groupLabel(AdminNavigationOrder::SYSTEM_MANAGEMENT)))->toBe([
-            MaintenanceSettings::getNavigationLabel(),
-            __('admin.importer.pages.settings.navigation'),
-            ManagePublicForms::getNavigationLabel(),
-            CardTemplateSettings::getNavigationLabel(),
-            __('admin.resources.settings_backup.navigation'),
-            AdminUxSettingsPage::getNavigationLabel(),
-        ]);
+        ->and(collect(SettingsCluster::getClusteredComponents())->all())->toContain(
+            HomepageSettings::class,
+            ManagePublicForms::class,
+            CardTemplateSettings::class,
+        )
+        ->and(collect(SystemCluster::getClusteredComponents())->all())->toContain(
+            MaintenanceSettings::class,
+            AdminUxSettingsPage::class,
+        );
 
     $ungroupedItems = collect($navigation
         ->first(fn ($group): bool => $group->getLabel() === null)
@@ -377,11 +378,11 @@ it('orders every registered admin navigation resource and page through the centr
 
     app()->setLocale('en');
 
-    expect(AdminNavigationOrder::groupLabel(AdminNavigationOrder::SYSTEM_MANAGEMENT))->toBe('System management');
+    expect(SystemCluster::getNavigationLabel())->toBe('System management');
 
     app()->setLocale('he');
 
-    expect(AdminNavigationOrder::groupLabel(AdminNavigationOrder::SYSTEM_MANAGEMENT))->toBe('ניהול מערכת');
+    expect(SystemCluster::getNavigationLabel())->toBe('ניהול מערכת');
 });
 
 it('defers the public form submission navigation badge query until badge evaluation', function (): void {

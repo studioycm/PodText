@@ -6,6 +6,7 @@ use App\Enums\MediaAcquisitionFilenameStrategy;
 use App\Enums\MediaNamingStrategy;
 use App\Enums\TranscriptionMode;
 use App\Enums\TranscriptionPresentationMode;
+use App\Filament\Clusters\SystemCluster;
 use App\Filament\Support\Concerns\UsesAdminNavigationOrder;
 use App\Settings\AdminUxSettings as AdminUxSettingsData;
 use App\Support\Media\CuratorImageUploadPolicy;
@@ -22,6 +23,8 @@ use Filament\Support\Icons\Heroicon;
 
 class AdminUxSettings extends SettingsPage
 {
+    protected static ?string $cluster = SystemCluster::class;
+
     use UsesAdminNavigationOrder;
 
     protected static string $settings = AdminUxSettingsData::class;

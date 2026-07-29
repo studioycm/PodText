@@ -2,12 +2,15 @@
 
 namespace App\Filament\Pages;
 
+use App\Filament\Clusters\SystemCluster;
 use BackedEnum;
 use Filament\Pages\Page;
 use Filament\Support\Icons\Heroicon;
 
 class ManageSettingsImportLocks extends Page
 {
+    protected static ?string $cluster = SystemCluster::class;
+
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedLockClosed;
 
     protected static ?string $slug = 'settings-import-locks';

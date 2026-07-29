@@ -872,7 +872,7 @@ it('toggles import locks from inline section and deep field actions', function (
     $maintenanceComponent = Livewire::test(MaintenanceSettings::class)
         ->assertActionExists(TestAction::make('toggleImportLockUnit_maintenance_enabled')->schemaComponent($maintenanceFieldPath, 'form'));
 
-    expect(str_ends_with(ManageSettingsImportLocks::getUrl(), '/admin/settings-import-locks'))->toBeTrue();
+    expect(str_ends_with(ManageSettingsImportLocks::getUrl(), '/admin/system/settings-import-locks'))->toBeTrue();
 
     $component->callAction(TestAction::make('toggleImportLockGroup_homepage_settings')->schemaComponent($homepageSectionPath, 'form'));
 

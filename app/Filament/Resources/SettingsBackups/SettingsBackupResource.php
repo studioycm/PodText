@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\SettingsBackups;
 
+use App\Filament\Clusters\SystemCluster;
 use App\Filament\Resources\SettingsBackups\Pages\ListSettingsBackups;
 use App\Filament\Resources\SettingsBackups\Tables\SettingsBackupsTable;
 use App\Filament\Support\Concerns\UsesAdminNavigationOrder;
@@ -14,6 +15,8 @@ use Filament\Tables\Table;
 
 class SettingsBackupResource extends Resource
 {
+    protected static ?string $cluster = SystemCluster::class;
+
     use UsesAdminNavigationOrder;
 
     protected static ?string $model = SettingsBackupVersion::class;

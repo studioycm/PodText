@@ -2,13 +2,16 @@
 
 namespace App\Filament\Pages;
 
+use App\Filament\Clusters\SettingsCluster;
 use BackedEnum;
 use Filament\Schemas\Components\Tabs\Tab;
 use Filament\Support\Icons\Heroicon;
 
 class EpisodePageSettings extends PublicContentSettingsSubjectPage
 {
-    protected static ?string $slug = 'settings/episode-page';
+    protected static ?string $cluster = SettingsCluster::class;
+
+    protected static ?string $slug = 'episode-page';
 
     protected static bool $shouldRegisterNavigation = true;
 

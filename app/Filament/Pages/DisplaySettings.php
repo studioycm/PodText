@@ -2,13 +2,16 @@
 
 namespace App\Filament\Pages;
 
+use App\Filament\Clusters\SettingsCluster;
 use BackedEnum;
 use Filament\Schemas\Components\Tabs\Tab;
 use Filament\Support\Icons\Heroicon;
 
 class DisplaySettings extends PublicContentSettingsSubjectPage
 {
-    protected static ?string $slug = 'settings/display';
+    protected static ?string $cluster = SettingsCluster::class;
+
+    protected static ?string $slug = 'display';
 
     protected static bool $shouldRegisterNavigation = true;
 
