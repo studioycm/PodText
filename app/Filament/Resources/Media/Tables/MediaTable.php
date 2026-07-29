@@ -26,6 +26,7 @@ use Filament\Actions\BulkActionGroup;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\TextInput;
+use Filament\Support\Enums\Size;
 use Filament\Support\Enums\Width;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\ImageColumn;
@@ -187,19 +188,6 @@ class MediaTable
                                 TextColumn::make('card_known_references')
                                     ->label(__('admin.media_library.known_references'))
                                     ->state(function (Media $record): HtmlString {
-                                        $diagnostics = app(MediaInventoryDiagnostics::class);
-                                        $needsRepair = $diagnostics->needsRepair($record);
-                                        $statusTitle = $needsRepair
-                                            ? collect($diagnostics->reasons($record))
-                                                ->map(fn (string $reason): string => __("admin.media_library.repair_{$reason}"))
-                                                ->implode(' · ')
-                                            : '';
-                                        $badge = '<span data-testid="media-library-card-attention-status" title="'.e($statusTitle).'" class="'.($needsRepair
-                                            ? 'text-warning-700 dark:text-warning-300 border border-warning-400 dark:border-warning-500'
-                                            : 'text-success-700 dark:text-success-300 border border-success-400 dark:border-success-500')
-                                            .' shrink-0 rounded-full px-2 text-[11px] font-bold">'
-                                            .e($needsRepair ? __('admin.media_library.needs_attention') : __('admin.media_library.ready'))
-                                            .'</span>';
                                         $references = $record->disk === 'public'
                                             ? app(MediaReferenceFinder::class)->referencesForMedia($record)
                                             : null;
@@ -213,7 +201,6 @@ class MediaTable
                                             '<span class="block min-w-0">'
                                             .'<span class="block text-gray-500 dark:text-gray-400">'.e(__('admin.media_library.card_row_references')).':</span>'
                                             .'<span class="block" dir="auto">'.e($values).'</span>'
-                                            .'<span class="mt-1 flex">'.$badge.'</span>'
                                             .'</span>',
                                         );
                                     })
@@ -341,6 +328,27 @@ class MediaTable
                     }),
             ])
             ->recordActions([
+                Action::make('cardStatus')
+                    ->label(fn (Media $record): string => app(MediaInventoryDiagnostics::class)->needsRepair($record)
+                        ? __('admin.media_library.needs_attention')
+                        : __('admin.media_library.ready'))
+                    ->color(fn (Media $record): string => app(MediaInventoryDiagnostics::class)->needsRepair($record)
+                        ? 'warning'
+                        : 'success')
+                    ->outlined()
+                    ->size(Size::ExtraSmall)
+                    ->tooltip(fn (Media $record): ?string => ($reasons = app(MediaInventoryDiagnostics::class)->reasons($record)) === []
+                        ? null
+                        : collect($reasons)
+                            ->map(fn (string $reason): string => __("admin.media_library.repair_{$reason}"))
+                            ->implode(' · '))
+                    ->disabled(fn (Media $record): bool => ! app(MediaInventoryDiagnostics::class)->needsRepair($record))
+                    ->url(fn (Media $record): ?string => app(MediaInventoryDiagnostics::class)->needsRepair($record)
+                        ? MediaResource::getUrl('review-issues', ['record' => $record])
+                        : null)
+                    ->extraAttributes([
+                        'data-testid' => 'media-library-card-attention-status',
+                    ]),
                 Action::make('mediaDetails')
                     ->label(__('admin.owner_image.actions.open_details'))
                     ->icon(Heroicon::OutlinedInformationCircle)
@@ -356,9 +364,10 @@ class MediaTable
                         MediaDetailsViewModel::make($record),
                     )),
                 EditAction::make()
-                    ->label(__('admin.media_library.open_details'))
-                    ->icon(Heroicon::OutlinedInformationCircle)
-                    ->button()
+                    ->label(__('admin.media_library.open_edit_page'))
+                    ->tooltip(__('admin.media_library.open_edit_page'))
+                    ->icon(Heroicon::OutlinedPencilSquare)
+                    ->iconButton()
                     ->color('primary')
                     ->authorize(fn (Media $record): bool => Gate::allows('update', $record))
                     ->extraAttributes(fn (Media $record, ListMedia $livewire): array => [

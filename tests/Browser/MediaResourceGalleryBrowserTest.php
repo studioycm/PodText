@@ -63,7 +63,7 @@ it('renders the Media inventory as responsive accessible native cards', function
     $page = visit(MediaResource::getUrl('index'))->resize(1280, 900);
     $needsAttention = json_encode(__('admin.media_library.needs_attention'), JSON_THROW_ON_ERROR);
     $missingFile = json_encode(__('admin.media_library.repair_missing_file'), JSON_THROW_ON_ERROR);
-    $openDetails = json_encode(__('admin.media_library.open_details'), JSON_THROW_ON_ERROR);
+    $openDetails = json_encode(__('admin.media_library.open_edit_page'), JSON_THROW_ON_ERROR);
     $moreActions = json_encode(__('admin.media_library.more_actions'), JSON_THROW_ON_ERROR);
     $menuLabels = json_encode([
         __('admin.actions.view'),
@@ -108,7 +108,7 @@ it('renders the Media inventory as responsive accessible native cards', function
             const missingCard = cards.find((card) => card.textContent.includes(
                 {$missingFile},
             ));
-            const healthyCard = cards.find((card) => ! card.textContent.includes(
+            const healthyCard = cards.find((card) => ! card.closest('.fi-ta-record').textContent.includes(
                 {$needsAttention},
             ));
             const records = cards.map((card) => card.closest('.fi-ta-record'));
@@ -149,13 +149,13 @@ it('renders the Media inventory as responsive accessible native cards', function
                 image_object_fits: images.map((image) => getComputedStyle(image).objectFit),
                 lazy_images: images.every((image) => image.getAttribute('loading') === 'lazy'),
                 needs_attention_visible: Boolean(missingCard)
-                    && missingCard.textContent.includes({$needsAttention}),
+                    && missingCard.closest('.fi-ta-record').textContent.includes({$needsAttention}),
                 primary_issue_persistent: Boolean(
                     missingCard?.querySelector('[data-testid="media-library-card-primary-issue"]'),
                 ),
                 details_visible: records.every((record) => Array.from(
                     record?.querySelectorAll('.fi-ta-actions a') ?? [],
-                ).some((action) => action.textContent.trim() === {$openDetails}
+                ).some((action) => action.getAttribute('aria-label') === {$openDetails}
                     && action.getClientRects().length > 0)),
                 action_group_accessible: actionGroupTriggers.every(Boolean),
                 action_menu_labels_visible: expectedMenuLabels.every(
@@ -241,7 +241,7 @@ it('keeps canonical Media task context keyboard reachable across Edit and safe f
     string $direction,
 ): void {
     app()->setLocale($locale);
-    $records = collect(range(1, 26))->map(function (int $index): Media {
+    $records = collect(range(1, 25))->map(function (int $index): Media {
         $name = "browser-focus-{$index}";
 
         return Media::factory()->create([
@@ -257,7 +257,7 @@ it('keeps canonical Media task context keyboard reachable across Edit and safe f
             'type' => 'image/jpeg',
             'ext' => 'jpg',
             'title' => "Browser focus {$index}",
-            'created_at' => now()->subSeconds(27 - $index),
+            'created_at' => now()->subSeconds(26 - $index),
         ]);
     });
     $origin = $records->last();
@@ -270,7 +270,7 @@ it('keeps canonical Media task context keyboard reachable across Edit and safe f
         ],
         'search' => 'Browser focus',
         'sort' => 'created_at:asc',
-        'page' => 2,
+        'page' => 3,
         'focus' => $origin->getKey(),
     ]).'#media-record-'.$origin->getKey();
     $page = visit($indexUrl)->resize(1280, 900);
@@ -368,12 +368,12 @@ it('keeps canonical Media task context keyboard reachable across Edit and safe f
         ->and($initial['focused_id'])->toBe('media-record-'.$origin->getKey())
         ->and($initial['hash'])->toBe('#media-record-'.$origin->getKey())
         ->and($initial['tab'])->toBe('needs_attention')
-        ->and($initial['page'])->toBe('2')
+        ->and($initial['page'])->toBe('3')
         ->and($initial['card_count'])->toBe(1)
         ->and($initial['horizontal_overflow'])->toBeFalse();
 
     $page
-        ->click(__('admin.media_library.open_details'))
+        ->click('#media-record-'.$origin->getKey())
         ->wait(0.25)
         ->assertSee(__('admin.media_library.back_to_media_library'));
     $editAccessibility = $page->script(<<<'JS'
@@ -417,12 +417,12 @@ it('keeps canonical Media task context keyboard reachable across Edit and safe f
     expect($backState['path'])->toBe('/admin/media')
         ->and($backState['query'])->toContain('tab=needs_attention')
         ->and($backState['query'])->toContain('sort=created_at%3Aasc')
-        ->and($backState['query'])->toContain('page=2')
+        ->and($backState['query'])->toContain('page=3')
         ->and($backState['hash'])->toBe('#media-record-'.$origin->getKey())
         ->and($backState['focused_id'])->toBe('media-record-'.$origin->getKey());
 
     $page
-        ->click(__('admin.media_library.open_details'))
+        ->click('#media-record-'.$origin->getKey())
         ->wait(0.25)
         ->click(__('filament-panels::resources/pages/edit-record.form.actions.cancel.label'))
         ->wait(0.35);
@@ -441,7 +441,7 @@ it('keeps canonical Media task context keyboard reachable across Edit and safe f
     ]);
 
     $page
-        ->click(__('admin.media_library.open_details'))
+        ->click('#media-record-'.$origin->getKey())
         ->wait(0.25);
     DB::table($origin->getTable())
         ->where($origin->getKeyName(), $origin->getKey())
@@ -586,7 +586,7 @@ it('delivers a responsive accessible issue review and preserves its exact task o
     $page = visit($indexUrl)->resize(1280, 960);
 
     $page
-        ->click(__('admin.media_library.open_details'))
+        ->click('#media-record-'.$current->getKey())
         ->wait(0.25)
         ->assertSee('Browser issue current')
         ->assertSee('Browser issue current original.jpg')

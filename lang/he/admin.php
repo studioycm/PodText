@@ -2825,6 +2825,7 @@ return [
         'needs_attention' => 'דורש טיפול',
         'offline' => 'אין חיבור לרשת. יש להתחבר מחדש לפני שינוי הבורר.',
         'open_details' => 'פתיחת פרטי המדיה',
+        'open_edit_page' => 'פתח עמוד עריכה',
         'next_page' => 'העמוד הבא',
         'page_count' => 'עמוד :current מתוך :last',
         'previous_page' => 'העמוד הקודם',

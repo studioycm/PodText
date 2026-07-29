@@ -2825,6 +2825,7 @@ return [
         'needs_attention' => 'Needs attention',
         'offline' => 'You are offline. Reconnect before changing the picker.',
         'open_details' => 'Open details',
+        'open_edit_page' => 'Open edit page',
         'next_page' => 'Next page',
         'page_count' => 'Page :current of :last',
         'previous_page' => 'Previous page',

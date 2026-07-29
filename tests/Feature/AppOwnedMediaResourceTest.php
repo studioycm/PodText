@@ -223,16 +223,17 @@ it('renders Media as a native responsive card gallery without losing table contr
             '2xl' => 3,
         ])
         ->and($columnsLayout[0] ?? null)->toBeInstanceOf(TableGrid::class)
-        ->and($recordActions)->toHaveCount(3)
-        ->and($recordActions[0]->getName())->toBe('mediaDetails')
-        ->and($recordActions[1])->toBeInstanceOf(EditAction::class)
-        ->and($recordActions[1]->getName())->toBe('edit')
-        ->and($recordActions[1]->isButton())->toBeTrue()
-        ->and($recordActions[1]->isLabelHidden())->toBeFalse()
-        ->and((string) $recordActions[0]->getLabel())->toBe(__('admin.owner_image.actions.open_details'))
-        ->and((string) $recordActions[1]->getLabel())->toBe(__('admin.media_library.open_details'))
-        ->and($recordActions[2])->toBeInstanceOf(ActionGroup::class)
-        ->and(array_keys($recordActions[2]->getFlatActions()))->toBe([
+        ->and($recordActions)->toHaveCount(4)
+        ->and($recordActions[0]->getName())->toBe('cardStatus')
+        ->and($recordActions[1]->getName())->toBe('mediaDetails')
+        ->and($recordActions[2])->toBeInstanceOf(EditAction::class)
+        ->and($recordActions[2]->getName())->toBe('edit')
+        ->and($recordActions[2]->isIconButton())->toBeTrue()
+        ->and((string) $recordActions[1]->getLabel())->toBe(__('admin.owner_image.actions.open_details'))
+        ->and((string) $recordActions[2]->getLabel())->toBe(__('admin.media_library.open_edit_page'))
+        ->and($recordActions[2]->getTooltip())->toBe(__('admin.media_library.open_edit_page'))
+        ->and($recordActions[3])->toBeInstanceOf(ActionGroup::class)
+        ->and(array_keys($recordActions[3]->getFlatActions()))->toBe([
             'reviewIssues',
             'view',
             'download',
@@ -242,6 +243,7 @@ it('renders Media as a native responsive card gallery without losing table contr
             'delete',
         ])
         ->and(array_keys($table->getFlatRecordActions()))->toBe([
+            'cardStatus',
             'mediaDetails',
             'edit',
             'reviewIssues',
@@ -258,6 +260,15 @@ it('renders Media as a native responsive card gallery without losing table contr
         ->and($table->getDefaultPaginationPageOption())->toBe(12)
         ->and($table->getDefaultSortOptionLabel())
         ->toBe(__('admin.media_library.added_newest_first'));
+
+    $statusAction = $table->getAction('cardStatus');
+    assert($statusAction instanceof Action);
+    $statusAction->record($media);
+
+    expect((string) $statusAction->getLabel())->toBe(__('admin.media_library.needs_attention'))
+        ->and($statusAction->getColor())->toBe('warning')
+        ->and($statusAction->isOutlined())->toBeTrue()
+        ->and($statusAction->getUrl())->toBe(MediaResource::getUrl('review-issues', ['record' => $media]));
 });
 
 it('configures the five canonical native tasks with only the two approved badges', function (): void {
