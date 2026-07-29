@@ -2734,6 +2734,7 @@ return [
         'relocation_skip_settings' => 'מוזכר בהגדרות האתר — טיפול ידני',
         'relocation_skip_oversized' => 'חורג מגבולות התמונה — נדרש מסלול נפרד',
         'relocation_fail_unsafe' => 'קובץ SVG שלא ניתן לנקות — זמינים החלפה, מחיקה או סימון מהימנות',
+        'relocation_fail_invalid' => 'הקובץ לא עבר את בדיקות הקליטה — נדרש טיפול ידני',
         'relocation_progress' => 'הועברו :moved · נותרו :remaining',
         'relocation_done_title' => 'ההעברה המנוהלת הסתיימה',
         'relocation_done_body' => ':moved הועברו · :skipped דולגו · :failed נכשלו',

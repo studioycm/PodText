@@ -287,3 +287,27 @@ it('reports and applies through the artisan wrapper', function (): void {
 
     expect((string) $row->refresh()->directory)->toBe('content-groups/covers');
 });
+
+it('normalizes a mime extension mismatch during relocation via content-first validation', function (): void {
+    $admin = User::factory()->admin()->create();
+    $this->actingAs($admin);
+    $webpBytes = base64_decode(
+        trim((string) file_get_contents(base_path('tests/Fixtures/media/valid.webp.base64'))),
+        true,
+    ) ?: '';
+    $media = relocationRootRow('legacy_mismatch', $webpBytes, [
+        'size' => strlen($webpBytes),
+        'type' => 'image/jpeg',
+        'ext' => 'jpg',
+    ]);
+    $group = ContentGroup::factory()->create(['title' => 'בעלים של הקובץ השגוי', 'cover_path' => $media->path]);
+
+    $updated = app(MediaFilesystemMutationCoordinator::class)->relocate($media, $admin);
+
+    expect((string) $updated->type)->toBe('image/webp')
+        ->and((string) $updated->ext)->toBe('webp')
+        ->and((string) Storage::disk('public')->get($updated->path))->toBe($webpBytes)
+        ->and(app(MediaRecordScope::class)->allows($updated))->toBeTrue()
+        ->and((string) $group->refresh()->cover_path)->toBe((string) $updated->path)
+        ->and(app(MediaInventoryDiagnostics::class)->reasons($updated->refresh()))->toBe([]);
+});

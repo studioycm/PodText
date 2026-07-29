@@ -118,7 +118,9 @@ class MediaRelocationBatch
                 $failed[] = [
                     'id' => (int) $media->getKey(),
                     'name' => $name,
-                    'reason' => __('admin.media_library.relocation_fail_unsafe'),
+                    'reason' => str_ends_with(mb_strtolower((string) $media->path), '.svg')
+                        ? __('admin.media_library.relocation_fail_unsafe')
+                        : __('admin.media_library.relocation_fail_invalid'),
                 ];
             } catch (RuntimeException|Throwable $exception) {
                 $failed[] = [

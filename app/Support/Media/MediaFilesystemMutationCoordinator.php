@@ -305,9 +305,13 @@ class MediaFilesystemMutationCoordinator
                 originalFilename: basename((string) $trusted->path),
             );
         } else {
-            $proof = $this->validator->validateBytes(
+            // Content-first validation: the source's claimed extension is
+            // exactly what a legacy mismatch gets wrong, so the proof derives
+            // mime and canonical extension from the bytes and the relocation
+            // normalizes the record.
+            $proof = $this->validator->validateExternalBytes(
                 $sourceContents,
-                basename((string) $trusted->path),
+                pathinfo((string) $trusted->path, PATHINFO_FILENAME),
                 $purpose,
             );
 

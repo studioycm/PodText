@@ -2734,6 +2734,7 @@ return [
         'relocation_skip_settings' => 'Referenced by site settings — manual handling',
         'relocation_skip_oversized' => 'Exceeds the image bounds — needs a separate route',
         'relocation_fail_unsafe' => 'An SVG that cannot be cleaned — replace, delete, or trust mark are available',
+        'relocation_fail_invalid' => 'The file did not pass the admission checks — manual handling required',
         'relocation_progress' => ':moved moved · :remaining remaining',
         'relocation_done_title' => 'Managed relocation finished',
         'relocation_done_body' => ':moved moved · :skipped skipped · :failed failed',
