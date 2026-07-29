@@ -335,7 +335,7 @@ it('keeps canonical Media task context keyboard reachable across Edit and safe f
                 ),
                 selected_task: tabs.find((tab) => tab.classList.contains('fi-active'))
                     ?.textContent.replace(/\s+/g, ' ').trim(),
-                description: document.querySelector('.fi-ta-header-description')?.textContent.trim(),
+                description: document.querySelector('.fi-header-subheading')?.textContent.trim(),
                 indicator_text: indicators?.textContent.replace(/\s+/g, ' ').trim(),
                 reason_visible: indicators?.textContent.includes({$missingFile}),
                 sort_values: sortSelects.map((select) => select.value),

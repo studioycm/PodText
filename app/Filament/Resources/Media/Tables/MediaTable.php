@@ -18,7 +18,6 @@ use App\Support\Media\MediaOwnerTitleApplier;
 use App\Support\Media\MediaRecordProjector;
 use App\Support\Media\MediaRecordScope;
 use App\Support\Media\MediaReferenceFinder;
-use App\Support\Media\MediaRelocationBatch;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\BulkAction;
@@ -49,15 +48,23 @@ use RuntimeException;
 
 class MediaTable
 {
+    /** @var array<string, array{0: string, 1: string}> */
+    private const SORT_MODES = [
+        'newest' => ['created_at', 'desc'],
+        'oldest' => ['created_at', 'asc'],
+        'title' => ['title', 'asc'],
+        'filename' => ['card_stored_filename', 'asc'],
+    ];
+
     public static function configure(Table $table): Table
     {
         return $table
+            ->extraAttributes(['class' => 'podtext-media-gallery'])
             ->defaultSort('created_at', 'desc')
             ->defaultSortOptionLabel(__('admin.media_library.added_newest_first'))
             ->defaultPaginationPageOption(12)
             ->paginationPageOptions([8, 12, 16, 24])
             ->recordActionsPosition(RecordActionsPosition::AfterContent)
-            ->description(fn (ListMedia $livewire): string => $livewire->activeTaskDescription())
             ->recordUrl(null)
             ->recordAction('mediaDetails')
             ->columns([
@@ -235,56 +242,6 @@ class MediaTable
                 'md' => min(2, $livewire->cardsPerRow),
                 'lg' => $livewire->cardsPerRow,
                 '2xl' => $livewire->cardsPerRow,
-            ])
-            ->headerActions([
-                Action::make('relocateRootFiles')
-                    ->label(__('admin.media_library.relocation_action'))
-                    ->icon(Heroicon::OutlinedArchiveBoxArrowDown)
-                    ->color('warning')
-                    ->visible(fn (): bool => Gate::allows('deleteAny', MediaResource::getModel())
-                        && Media::query()
-                            ->where('disk', 'public')
-                            ->where('path', 'not like', '%/%')
-                            ->exists())
-                    ->requiresConfirmation()
-                    ->modalHeading(__('admin.media_library.relocation_action'))
-                    ->modalContent(function (): View {
-                        $user = auth()->user();
-                        abort_unless($user instanceof User, 403);
-                        $census = app(MediaRelocationBatch::class)->census($user);
-
-                        return view('filament.resources.media.relocation-census', [
-                            'moveCount' => $census['relocatable']->count(),
-                            'skipped' => array_map(fn (array $row): array => [
-                                'name' => (string) ($row['media']->title ?: $row['media']->name),
-                                'reason' => $row['reason'],
-                            ], $census['skipped']),
-                        ]);
-                    })
-                    ->modalSubmitActionLabel(__('admin.media_library.relocation_submit'))
-                    ->action(fn (ListMedia $livewire) => $livewire->startRootRelocation()),
-                ActionGroup::make(collect(['all', 'title', 'owner', 'filename'])->map(
-                    fn (string $scope): Action => Action::make('searchScope'.ucfirst($scope))
-                        ->label(__("admin.media_library.search_scopes.{$scope}"))
-                        ->action(fn (ListMedia $livewire) => $livewire->setSearchScope($scope)),
-                )->all())
-                    ->label(fn (ListMedia $livewire): string => __('admin.media_library.search_scope', [
-                        'scope' => __("admin.media_library.search_scopes.{$livewire->searchScope}"),
-                    ]))
-                    ->icon(Heroicon::OutlinedMagnifyingGlass)
-                    ->button()
-                    ->color('gray'),
-                ActionGroup::make(collect([1, 2, 3, 4, 6, 8])->map(
-                    fn (int $count): Action => Action::make("cardsPerRow{$count}")
-                        ->label(__('admin.media_library.cards_per_row_option', ['count' => $count]))
-                        ->action(fn (ListMedia $livewire) => $livewire->setCardsPerRow($count)),
-                )->all())
-                    ->label(fn (ListMedia $livewire): string => __('admin.media_library.cards_per_row', [
-                        'count' => $livewire->cardsPerRow,
-                    ]))
-                    ->icon(Heroicon::OutlinedSquares2x2)
-                    ->button()
-                    ->color('gray'),
             ])
             ->filters([
                 SelectFilter::make('type')
@@ -563,6 +520,44 @@ class MediaTable
                     ->visible(fn (ListMedia $livewire): bool => ! $livewire->hasMediaViewConstraints()),
             ])
             ->toolbarActions([
+                ActionGroup::make(collect(self::SORT_MODES)->map(
+                    fn (array $mode, string $key): Action => Action::make('sortMode'.ucfirst($key))
+                        ->label(__("admin.media_library.sort_modes.{$key}"))
+                        ->action(fn (ListMedia $livewire) => $livewire->sortTable($mode[0], $mode[1])),
+                )->all())
+                    ->label(function (ListMedia $livewire): string {
+                        $current = collect(self::SORT_MODES)
+                            ->search(fn (array $mode): bool => "{$mode[0]}:{$mode[1]}" === $livewire->tableSort);
+
+                        return __('admin.media_library.sort_menu', [
+                            'mode' => __('admin.media_library.sort_modes.'.($current ?: 'newest')),
+                        ]);
+                    })
+                    ->icon(Heroicon::OutlinedArrowsUpDown)
+                    ->button()
+                    ->color('gray'),
+                ActionGroup::make(collect(['all', 'title', 'owner', 'filename'])->map(
+                    fn (string $scope): Action => Action::make('searchScope'.ucfirst($scope))
+                        ->label(__("admin.media_library.search_scopes.{$scope}"))
+                        ->action(fn (ListMedia $livewire) => $livewire->setSearchScope($scope)),
+                )->all())
+                    ->label(fn (ListMedia $livewire): string => __('admin.media_library.search_scope', [
+                        'scope' => __("admin.media_library.search_scopes.{$livewire->searchScope}"),
+                    ]))
+                    ->icon(Heroicon::OutlinedMagnifyingGlass)
+                    ->button()
+                    ->color('gray'),
+                ActionGroup::make(collect([1, 2, 3, 4, 6, 8])->map(
+                    fn (int $count): Action => Action::make("cardsPerRow{$count}")
+                        ->label(__('admin.media_library.cards_per_row_option', ['count' => $count]))
+                        ->action(fn (ListMedia $livewire) => $livewire->setCardsPerRow($count)),
+                )->all())
+                    ->label(fn (ListMedia $livewire): string => __('admin.media_library.cards_per_row', [
+                        'count' => $livewire->cardsPerRow,
+                    ]))
+                    ->icon(Heroicon::OutlinedSquares2x2)
+                    ->button()
+                    ->color('gray'),
                 BulkActionGroup::make([
                     BulkAction::make('deleteSelected')
                         ->label(__('admin.media_library.delete_selected_permanently'))

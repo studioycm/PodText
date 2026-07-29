@@ -166,6 +166,7 @@ it('shows the complete image inventory and exposes diagnostic rows through the N
 
 it('renders Media as a native responsive card gallery without losing table controls', function (): void {
     $this->actingAs(User::factory()->admin()->create());
+    Filament::bootCurrentPanel();
     $media = appOwnedMediaRecord([
         'title' => null,
         'name' => 'stored-card-name',
@@ -264,10 +265,16 @@ it('renders Media as a native responsive card gallery without losing table contr
         ])
         ->and($table->getRecordActionsPosition())->toBe(RecordActionsPosition::AfterContent)
         ->and($table->getFilters())->toHaveKeys(['type', 'reason'])
-        ->and($table->getToolbarActions())->toHaveCount(1)
+        ->and($table->getToolbarActions())->toHaveCount(4)
+        ->and($table->getDescription())->toBeNull()
+        ->and($component->instance()->getSubheading())
+        ->toBe($component->instance()->activeTaskDescription())
         ->and($table->getDefaultPaginationPageOption())->toBe(12)
         ->and($table->getDefaultSortOptionLabel())
         ->toBe(__('admin.media_library.added_newest_first'));
+
+    $component->assertSee('data-testid="media-top-pagination"', false)
+        ->assertSee('podtext-media-gallery');
 
     $statusAction = $table->getAction('cardStatus');
     assert($statusAction instanceof Action);
@@ -304,7 +311,7 @@ it('configures the five canonical native tasks with only the two approved badges
         ->and($tabs['in_use']->getBadge())->toBeNull()
         ->and($tabs['needs_attention']->getBadge())->toBeNull()
         ->and($tabs['recent']->getBadge())->toBeNull()
-        ->and($component->instance()->getTable()->getDescription())
+        ->and($component->instance()->getSubheading())
         ->toBe(MediaLibraryTask::All->description());
 
     $component
@@ -312,7 +319,7 @@ it('configures the five canonical native tasks with only the two approved badges
         ->assertCanSeeTableRecords([$missing])
         ->assertCanNotSeeTableRecords([$ready]);
 
-    expect($component->instance()->getTable()->getDescription())
+    expect($component->instance()->getSubheading())
         ->toBe(MediaLibraryTask::NeedsAttention->description());
 });
 
@@ -1352,5 +1359,10 @@ it('sorts the gallery by title and by stored filename', function (): void {
         ->sortTable('card_stored_filename')
         ->assertCanSeeTableRecords([$aleph, $bee], inOrder: true)
         ->sortTable('card_stored_filename', 'desc')
-        ->assertCanSeeTableRecords([$bee, $aleph], inOrder: true);
+        ->assertCanSeeTableRecords([$bee, $aleph], inOrder: true)
+        ->callAction(TestAction::make('sortModeTitle')->table())
+        ->assertSet('tableSort', 'title:asc')
+        ->assertCanSeeTableRecords([$bee, $aleph], inOrder: true)
+        ->callAction(TestAction::make('sortModeNewest')->table())
+        ->assertSet('tableSort', 'created_at:desc');
 });

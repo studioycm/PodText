@@ -2710,6 +2710,13 @@ return [
         'add_and_choose' => 'הוספה לספרייה ובחירה',
         'add_and_select' => 'הוספה לספרייה וסימון',
         'added' => 'נוסף',
+        'sort_menu' => 'מיון: :mode',
+        'sort_modes' => [
+            'newest' => 'החדש קודם',
+            'oldest' => 'הישן קודם',
+            'title' => 'כותרת א־ת',
+            'filename' => 'שם קובץ א־ת',
+        ],
         'added_newest_first' => 'נוסף — החדש ביותר קודם',
         'all_media' => 'כל המדיה',
         'attention_reason' => 'סיבת הטיפול',

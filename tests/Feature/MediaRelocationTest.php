@@ -13,7 +13,6 @@ use App\Support\Media\MediaRecordScope;
 use App\Support\Media\MediaRelocationBatch;
 use App\Support\Media\PublicMediaDelivery;
 use App\Support\Media\SvgUploadSanitizer;
-use Filament\Actions\Testing\TestAction;
 use Filament\Facades\Filament;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -249,10 +248,10 @@ it('runs the admin relocation action end to end with census modal and durable re
     relocationRootRow('admin_run_two', $bytes, ['size' => strlen($bytes)]);
 
     $component = Livewire::test(ListMedia::class)
-        ->assertActionVisible(TestAction::make('relocateRootFiles')->table());
+        ->assertActionVisible('relocateRootFiles');
 
     $modalHtml = $component
-        ->mountAction(TestAction::make('relocateRootFiles')->table())
+        ->mountAction('relocateRootFiles')
         ->getMountedActionModalHtml();
 
     expect($modalHtml)

@@ -20,6 +20,7 @@ use Filament\Schemas\Concerns\RestrictsFileUploadsToSchemaComponents;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Contracts\Pagination\CursorPaginator;
 use Illuminate\Contracts\Pagination\Paginator;
+use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Gate;
@@ -160,6 +161,11 @@ class ListMedia extends ListRecords
             ->description();
     }
 
+    public function getSubheading(): string
+    {
+        return $this->activeTaskDescription();
+    }
+
     public function updatedActiveTab(): void
     {
         $this->activeTab = MediaLibraryTask::tryFrom((string) $this->activeTab)?->value
@@ -240,6 +246,32 @@ class ListMedia extends ListRecords
                 ->color('gray')
                 ->url(MediaResource::getUrl('index'))
                 ->visible(fn (): bool => $this->hasMediaViewConstraints()),
+            Action::make('relocateRootFiles')
+                ->label(__('admin.media_library.relocation_action'))
+                ->icon(Heroicon::OutlinedArchiveBoxArrowDown)
+                ->color('warning')
+                ->visible(fn (): bool => Gate::allows('deleteAny', MediaResource::getModel())
+                    && Media::query()
+                        ->where('disk', 'public')
+                        ->where('path', 'not like', '%/%')
+                        ->exists())
+                ->requiresConfirmation()
+                ->modalHeading(__('admin.media_library.relocation_action'))
+                ->modalContent(function (): View {
+                    $user = auth()->user();
+                    abort_unless($user instanceof User, 403);
+                    $census = app(MediaRelocationBatch::class)->census($user);
+
+                    return view('filament.resources.media.relocation-census', [
+                        'moveCount' => $census['relocatable']->count(),
+                        'skipped' => array_map(fn (array $row): array => [
+                            'name' => (string) ($row['media']->title ?: $row['media']->name),
+                            'reason' => $row['reason'],
+                        ], $census['skipped']),
+                    ]);
+                })
+                ->modalSubmitActionLabel(__('admin.media_library.relocation_submit'))
+                ->action(fn () => $this->startRootRelocation()),
             CreateAction::make()
                 ->label(__('admin.media_library.upload_multiple'))
                 ->icon(Heroicon::ArrowUpTray),

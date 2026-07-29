@@ -16,6 +16,7 @@ use Filament\PanelProvider;
 use Filament\Support\Colors\Color;
 use Filament\Support\Enums\Width;
 use Filament\Support\Icons\Heroicon;
+use Filament\Tables\View\TablesRenderHook;
 use Filament\View\PanelsRenderHook;
 use Filament\Widgets\AccountWidget;
 use Filament\Widgets\FilamentInfoWidget;
@@ -57,6 +58,10 @@ class AdminPanelProvider extends PanelProvider
                 PanelsRenderHook::RESOURCE_PAGES_LIST_RECORDS_TABLE_AFTER,
                 fn (): View => view('filament.resources.media.gallery-keyboard-nav'),
                 scopes: ListMedia::class,
+            )
+            ->renderHook(
+                TablesRenderHook::TOOLBAR_END,
+                fn (): View => view('filament.resources.media.gallery-top-pagination'),
             )
             ->sidebarWidth('15rem')
             ->sidebarCollapsibleOnDesktop()

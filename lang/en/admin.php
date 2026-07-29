@@ -2710,6 +2710,13 @@ return [
         'add_and_choose' => 'Add to library and choose',
         'add_and_select' => 'Add to library and select',
         'added' => 'Added',
+        'sort_menu' => 'Sort: :mode',
+        'sort_modes' => [
+            'newest' => 'Newest first',
+            'oldest' => 'Oldest first',
+            'title' => 'Title A-Z',
+            'filename' => 'Filename A-Z',
+        ],
         'added_newest_first' => 'Added — newest first',
         'all_media' => 'All Media',
         'attention_reason' => 'Attention reason',

@@ -148,6 +148,80 @@
     padding-block: 0.375rem 0.5rem;
 }
 
+/* Media gallery: one top panel with two columns — controls at the
+   start, the pagination panel pushed to the end — wrapping into two
+   rows when the toolbar runs out of room. The vendor select-all/sort
+   row is replaced by the toolbar's sort menu. */
+.fi-ta-header-toolbar:has(.podtext-gallery-top-pagination) {
+    flex-wrap: wrap;
+    row-gap: 0.5rem;
+    column-gap: 0.75rem;
+}
+
+/* The vendor search group claims the row end with an auto margin;
+   in the panel the pagination owns the end instead, and the search
+   field slims down so one row fits on desktop. */
+.fi-ta-header-toolbar:has(.podtext-gallery-top-pagination)
+    > div:not(.fi-ta-actions):not(.podtext-gallery-top-pagination) {
+    margin-inline-start: 0;
+}
+
+.fi-ta-header-toolbar:has(.podtext-gallery-top-pagination) .fi-ta-search-field {
+    max-inline-size: 12rem;
+}
+
+.podtext-gallery-top-pagination {
+    margin-inline-start: auto;
+    min-width: 0;
+}
+
+.podtext-gallery-top-pagination .fi-pagination {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+    container-type: normal;
+}
+
+.podtext-gallery-top-pagination .fi-pagination-overview {
+    font-size: 0.8125rem;
+    white-space: nowrap;
+}
+
+.podtext-gallery-top-pagination .fi-pagination-records-per-page-select select {
+    font-size: 0.8125rem;
+}
+
+.fi-ta-header-toolbar:has(.podtext-gallery-top-pagination) .fi-ta-actions .fi-btn {
+    padding-inline: 0.625rem;
+}
+
+/* The vendor pagination decides its variant by container width, which
+   collapses inside a shrink-wrapped panel cell; force the full variant
+   here: overview + per-page select + numbered items, no compact
+   prev/next buttons. */
+.podtext-gallery-top-pagination .fi-pagination-previous-btn,
+.podtext-gallery-top-pagination .fi-pagination-next-btn,
+.podtext-gallery-top-pagination .fi-pagination-records-per-page-select.fi-compact {
+    display: none;
+}
+
+.podtext-gallery-top-pagination .fi-pagination-overview {
+    display: inline;
+}
+
+.podtext-gallery-top-pagination .fi-pagination-records-per-page-select:not(.fi-compact) {
+    display: inline-flex;
+}
+
+.podtext-gallery-top-pagination .fi-pagination-items {
+    display: flex;
+}
+
+.podtext-media-gallery .fi-ta-content-header {
+    display: none;
+}
+
 /* The standalone picker modal (settings pickers, form fields) scrolls as
    one window, like the owner-image modal: the panel's internal scroll
    areas relax so the tall gallery can actually be reached. */
