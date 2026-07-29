@@ -541,7 +541,8 @@ class MediaTable
                         ->label(__("admin.media_library.search_scopes.{$scope}"))
                         ->action(fn (ListMedia $livewire) => $livewire->setSearchScope($scope)),
                 )->all())
-                    ->label(fn (ListMedia $livewire): string => __('admin.media_library.search_scope', [
+                    ->label(fn (ListMedia $livewire): string => __("admin.media_library.search_scopes.{$livewire->searchScope}"))
+                    ->tooltip(fn (ListMedia $livewire): string => __('admin.media_library.search_scope', [
                         'scope' => __("admin.media_library.search_scopes.{$livewire->searchScope}"),
                     ]))
                     ->icon(Heroicon::OutlinedMagnifyingGlass)
@@ -552,7 +553,8 @@ class MediaTable
                         ->label(__('admin.media_library.cards_per_row_option', ['count' => $count]))
                         ->action(fn (ListMedia $livewire) => $livewire->setCardsPerRow($count)),
                 )->all())
-                    ->label(fn (ListMedia $livewire): string => __('admin.media_library.cards_per_row', [
+                    ->label(fn (ListMedia $livewire): string => (string) $livewire->cardsPerRow)
+                    ->tooltip(fn (ListMedia $livewire): string => __('admin.media_library.cards_per_row', [
                         'count' => $livewire->cardsPerRow,
                     ]))
                     ->icon(Heroicon::OutlinedSquares2x2)

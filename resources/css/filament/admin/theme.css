@@ -171,7 +171,7 @@
 }
 
 .podtext-gallery-top-pagination {
-    margin-inline-start: auto;
+    flex: 1 1 24rem;
     min-width: 0;
 }
 
@@ -183,9 +183,16 @@
     container-type: normal;
 }
 
+.podtext-gallery-top-pagination .fi-pagination {
+    inline-size: 100%;
+}
+
+/* Results overview anchors the panel's start; the per-page select and
+   numbered links sit at its end. */
 .podtext-gallery-top-pagination .fi-pagination-overview {
     font-size: 0.8125rem;
     white-space: nowrap;
+    margin-inline-end: auto;
 }
 
 .podtext-gallery-top-pagination .fi-pagination-records-per-page-select select {
