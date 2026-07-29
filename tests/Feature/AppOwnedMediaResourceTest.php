@@ -18,6 +18,8 @@ use App\Models\MediaAttachment;
 use App\Models\MediaMutationOperation;
 use App\Models\MediaProviderBinding;
 use App\Models\User;
+use App\Settings\AdminUxSettings;
+use App\Support\Media\CuratorImageUploadPolicy;
 use App\Support\Media\MediaInventoryDiagnostics;
 use App\Support\Media\MediaRecordProjector;
 use App\Support\Media\MediaReferenceFinder;
@@ -64,7 +66,7 @@ it('pins curator global upload configuration to the app-owned maximum union', fu
             'image/webp',
             'image/svg+xml',
         ])
-        ->and(Curator::getMaxSize())->toBe(2048)
+        ->and(Curator::getMaxSize())->toBe(4096)
         ->and(Curator::getDiskName())->toBe('public')
         ->and(Curator::getVisibility())->toBe('public')
         ->and(Curator::shouldPreserveFilenames())->toBeFalse()
@@ -1235,4 +1237,44 @@ it('renders one humanized owner reference when an attachment and its bridged leg
     expect($links)->toHaveCount(1)
         ->and($links[0]['label'])->toBe($expectedLabel)
         ->and($links[0]['url'])->not->toBeNull();
+});
+
+it('clamps the heavy upload warning threshold and informs without blocking on create', function (): void {
+    $this->actingAs(User::factory()->admin()->create());
+    $policy = app(CuratorImageUploadPolicy::class);
+
+    expect($policy->heavyUploadWarningKilobytes())->toBe(2048);
+
+    $settings = app(AdminUxSettings::class);
+    $settings->media_heavy_upload_warning_kilobytes = 8;
+    $settings->save();
+
+    expect(app(CuratorImageUploadPolicy::class)->heavyUploadWarningKilobytes())->toBe(64);
+
+    $settings->media_heavy_upload_warning_kilobytes = 64;
+    $settings->save();
+
+    $image = imagecreatetruecolor(400, 400);
+    for ($x = 0; $x < 400; $x++) {
+        for ($y = 0; $y < 400; $y++) {
+            imagesetpixel($image, $x, $y, imagecolorallocate($image, random_int(0, 255), random_int(0, 255), random_int(0, 255)));
+        }
+    }
+    ob_start();
+    imagejpeg($image, null, 100);
+    $heavyBytes = (string) ob_get_clean();
+    imagedestroy($image);
+
+    expect(strlen($heavyBytes))->toBeGreaterThan(64 * 1024);
+
+    Livewire::test(CreateMedia::class)
+        ->fillForm([
+            'purpose' => ImageUploadPurpose::ContentGroupCover->value,
+            'uploads' => [UploadedFile::fake()->createWithContent('heavy-cover.jpg', $heavyBytes)],
+        ])
+        ->call('create')
+        ->assertHasNoFormErrors()
+        ->assertNotified(__('admin.media_library.upload_heavy_notice_title'));
+
+    expect(Media::query()->where('size', strlen($heavyBytes))->exists())->toBeTrue();
 });

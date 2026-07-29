@@ -138,7 +138,7 @@ it('rejects oversized bytes and excessive dimensions', function (): void {
         ImageUploadPurpose::ContentGroupCover,
     ))->toThrow(InvalidArgumentException::class);
 
-    $image = imagecreatetruecolor(3001, 1);
+    $image = imagecreatetruecolor(6001, 1);
     ob_start();
     imagepng($image);
     $contents = ob_get_clean();
@@ -158,7 +158,7 @@ it('rejects oversized bytes and excessive dimensions', function (): void {
         return pack('N', strlen($data)).$type.$data.pack('N', $crc);
     };
     $oversizedHeaderOnly = "\x89PNG\r\n\x1A\n"
-        .$pngChunk('IHDR', pack('NNCCCCC', 3001, 3001, 8, 2, 0, 0, 0))
+        .$pngChunk('IHDR', pack('NNCCCCC', 6001, 6001, 8, 2, 0, 0, 0))
         .$pngChunk('IEND', '');
 
     expect(fn () => $validator->validateAdmissionBytes(

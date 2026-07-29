@@ -10,9 +10,9 @@ use Throwable;
 
 class CuratorImageUploadPolicy
 {
-    public const MAX_KILOBYTES = 2048;
+    public const MAX_KILOBYTES = 4096;
 
-    public const MAX_DIMENSION_PIXELS = 3000;
+    public const MAX_DIMENSION_PIXELS = 6000;
 
     public const MAX_CONFIGURABLE_KILOBYTES = 10240;
 
@@ -36,6 +36,14 @@ class CuratorImageUploadPolicy
     public function uploadQueueLimit(): int
     {
         return min(max($this->integerSetting('media_upload_queue_limit', 40), $this->uploadBatchLimit()), 100);
+    }
+
+    /**
+     * Admissions above this stay allowed — the admin is informed, not blocked.
+     */
+    public function heavyUploadWarningKilobytes(): int
+    {
+        return min(max($this->integerSetting('media_heavy_upload_warning_kilobytes', 2048), 64), self::MAX_KILOBYTES);
     }
 
     public function pickerBrowseLimit(): int

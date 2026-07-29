@@ -5,6 +5,7 @@ namespace App\Filament\Resources\Media\Pages;
 use App\Enums\ImageUploadPurpose;
 use App\Filament\Resources\Media\MediaResource;
 use App\Models\User;
+use App\Support\Media\CuratorImageUploadPolicy;
 use App\Support\Media\MediaAcquisitionManager;
 use App\Support\Media\MediaUploadBatchResult;
 use Filament\Notifications\Notification;
@@ -13,6 +14,7 @@ use Filament\Schemas\Concerns\RestrictsFileUploadsToSchemaComponents;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Number;
 use Illuminate\Validation\ValidationException;
 use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
 use UnexpectedValueException;
@@ -65,6 +67,22 @@ class CreateMedia extends CreateRecord
 
         if (count($files) > 1) {
             $this->applyBatchDescriptivePrefixes($uploads, $data);
+        }
+
+        $heavyBytes = app(CuratorImageUploadPolicy::class)->heavyUploadWarningKilobytes() * 1024;
+        $heavyCount = $this->uploadResult->media()
+            ->filter(fn (mixed $media): bool => (int) $media->size > $heavyBytes)
+            ->count();
+
+        if ($heavyCount > 0) {
+            Notification::make()
+                ->warning()
+                ->title(__('admin.media_library.upload_heavy_notice_title'))
+                ->body(trans_choice('admin.media_library.upload_heavy_notice_body', $heavyCount, [
+                    'count' => $heavyCount,
+                    'threshold' => Number::fileSize($heavyBytes),
+                ]))
+                ->send();
         }
 
         return $this->uploadResult->media()->firstOrFail();

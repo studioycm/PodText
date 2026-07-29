@@ -552,6 +552,12 @@
                                         'text-gray-500 dark:text-gray-400' => $row['fate'] !== 'failed',
                                     ])>
                                         @if ($row['fate'] === 'acquired')
+                                            @if ($row['heavy'] ?? false)
+                                                <span
+                                                    class="me-1 rounded-full border border-warning-500 px-1.5 text-[10px] font-bold text-warning-600 dark:text-warning-400"
+                                                    data-testid="media-picker-upload-heavy"
+                                                >{{ __('admin.media_library.upload_heavy_chip', ['size' => \Illuminate\Support\Number::fileSize((int) ($row['size'] ?? 0))]) }}</span>
+                                            @endif
                                             {{ __('admin.media_library.upload_fate_acquired_note') }}
                                         @elseif ($row['fate'] === 'failed')
                                             {{ __("admin.media_library.upload_reason_{$row['reason']}") }}

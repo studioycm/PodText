@@ -16,6 +16,8 @@ class AdminUxSettings extends Settings
 
     public int $media_upload_queue_limit = 40;
 
+    public int $media_heavy_upload_warning_kilobytes = 2048;
+
     public int $media_picker_browse_limit = 25;
 
     public int $media_picker_search_limit = 50;

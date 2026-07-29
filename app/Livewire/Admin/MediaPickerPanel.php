@@ -1342,19 +1342,23 @@ class MediaPickerPanel extends Component implements HasActions, HasSchemas
     private function uploadResultRows(array $uploads, MediaUploadBatchResult $result): array
     {
         $failedReasons = $result->failed->keyBy('index');
+        $heavyBytes = app(CuratorImageUploadPolicy::class)->heavyUploadWarningKilobytes() * 1024;
 
         return collect($uploads)
-            ->map(function (TemporaryUploadedFile $upload, int $index) use ($failedReasons, $result): array {
+            ->map(function (TemporaryUploadedFile $upload, int $index) use ($failedReasons, $result, $heavyBytes): array {
                 $fate = match (true) {
                     in_array($index, $result->admittedIndexes, true) => 'acquired',
                     $failedReasons->has($index) => 'failed',
                     default => 'not_attempted',
                 };
+                $size = (int) $upload->getSize();
 
                 return [
                     'name' => $upload->getClientOriginalName(),
                     'fate' => $fate,
                     'reason' => $fate === 'failed' ? (string) $failedReasons->get($index)['reason'] : null,
+                    'heavy' => $fate === 'acquired' && $size > $heavyBytes,
+                    'size' => $size,
                 ];
             })
             ->values()

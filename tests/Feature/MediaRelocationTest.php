@@ -206,7 +206,7 @@ it('censuses and executes the batch with truthful fates and no failure spinning'
     $this->actingAs($admin);
     $bytes = relocationJpegBytes();
     $movable = relocationRootRow('movable_cover', $bytes, ['size' => strlen($bytes)]);
-    $oversized = relocationRootRow('oversized_cover', $bytes, ['size' => strlen($bytes), 'width' => 4000, 'height' => 4000]);
+    $oversized = relocationRootRow('oversized_cover', $bytes, ['size' => strlen($bytes), 'width' => 7000, 'height' => 7000]);
     $refusal = relocationRootRow('refusal_batch_logo', (string) file_get_contents(base_path('tests/Fixtures/media/malicious.svg')), [
         'ext' => 'svg',
         'type' => 'image/svg+xml',

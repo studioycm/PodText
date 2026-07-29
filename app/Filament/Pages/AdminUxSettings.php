@@ -8,6 +8,7 @@ use App\Enums\TranscriptionMode;
 use App\Enums\TranscriptionPresentationMode;
 use App\Filament\Support\Concerns\UsesAdminNavigationOrder;
 use App\Settings\AdminUxSettings as AdminUxSettingsData;
+use App\Support\Media\CuratorImageUploadPolicy;
 use App\Support\Transcriptions\MultiTranscriptionSurfaces;
 use BackedEnum;
 use Filament\Forms\Components\Select;
@@ -90,6 +91,14 @@ class AdminUxSettings extends SettingsPage
                             ->minValue(1)
                             ->maxValue(100)
                             ->default(40)
+                            ->required(),
+                        TextInput::make('media_heavy_upload_warning_kilobytes')
+                            ->label(__('admin.fields.media_heavy_upload_warning_kilobytes'))
+                            ->helperText(__('admin.helpers.media_heavy_upload_warning_kilobytes'))
+                            ->integer()
+                            ->minValue(64)
+                            ->maxValue(CuratorImageUploadPolicy::MAX_KILOBYTES)
+                            ->default(2048)
                             ->required(),
                         TextInput::make('media_picker_browse_limit')
                             ->label(__('admin.fields.media_picker_browse_limit'))

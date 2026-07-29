@@ -53,9 +53,9 @@ it('applies the same fixed disk visibility root type extension name size and dim
         curatorG1ScopedMedia(['path' => 'content-groups/covers/%2e%2e.jpg', 'name' => '%2e%2e']),
         curatorG1ScopedMedia(['directory' => 'content-groups/covers-sibling', 'path' => 'content-groups/covers-sibling/image.jpg', 'name' => 'image']),
         curatorG1ScopedMedia(['size' => 0]),
-        curatorG1ScopedMedia(['size' => (2048 * 1024) + 1]),
+        curatorG1ScopedMedia(['size' => (4096 * 1024) + 1]),
         curatorG1ScopedMedia(['width' => 0]),
-        curatorG1ScopedMedia(['height' => 3001]),
+        curatorG1ScopedMedia(['height' => 6001]),
     ];
 
     expect($scope->allows($allowed, ImageUploadPurpose::ContentGroupCover))->toBeTrue()
