@@ -36,7 +36,7 @@ class ListMedia extends ListRecords
 
     public function setCardsPerRow(int $count): void
     {
-        $this->cardsPerRow = max(3, min(5, $count));
+        $this->cardsPerRow = in_array($count, [1, 2, 3, 4, 6, 8], true) ? $count : 3;
     }
 
     public function setSearchScope(string $scope): void

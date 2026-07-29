@@ -53,17 +53,19 @@ class MediaTable
         return $table
             ->defaultSort('created_at', 'desc')
             ->defaultSortOptionLabel(__('admin.media_library.added_newest_first'))
-            ->defaultPaginationPageOption(25)
-            ->paginationPageOptions([25])
+            ->defaultPaginationPageOption(12)
+            ->paginationPageOptions([8, 12, 16, 24])
             ->recordActionsPosition(RecordActionsPosition::AfterContent)
             ->description(fn (ListMedia $livewire): string => $livewire->activeTaskDescription())
             ->recordUrl(null)
             ->recordAction('mediaDetails')
             ->columns([
                 Grid::make(1)
-                    ->extraAttributes([
+                    ->extraAttributes(fn (ListMedia $livewire): array => [
                         'data-testid' => 'media-library-card',
-                        'class' => 'min-w-0 overflow-hidden',
+                        'class' => $livewire->cardsPerRow >= 4
+                            ? 'min-w-0 overflow-hidden podtext-card-dense'
+                            : 'min-w-0 overflow-hidden',
                     ])
                     ->schema([
                         Stack::make([
@@ -253,7 +255,7 @@ class MediaTable
                     ]),
             ])
             ->contentGrid(fn (ListMedia $livewire): array => [
-                'md' => 2,
+                'md' => min(2, $livewire->cardsPerRow),
                 'lg' => $livewire->cardsPerRow,
                 '2xl' => $livewire->cardsPerRow,
             ])
@@ -295,7 +297,7 @@ class MediaTable
                     ->icon(Heroicon::OutlinedMagnifyingGlass)
                     ->button()
                     ->color('gray'),
-                ActionGroup::make(collect([3, 4, 5])->map(
+                ActionGroup::make(collect([1, 2, 3, 4, 6, 8])->map(
                     fn (int $count): Action => Action::make("cardsPerRow{$count}")
                         ->label(__('admin.media_library.cards_per_row_option', ['count' => $count]))
                         ->action(fn (ListMedia $livewire) => $livewire->setCardsPerRow($count)),

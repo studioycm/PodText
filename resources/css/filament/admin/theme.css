@@ -25,6 +25,32 @@
     overflow-x: clip;
 }
 
+/* Dense gallery cards (4+ per row): minimal gaps, slim padding, the image
+   spans the card, and the selection checkbox overlays the top corner —
+   Filament's own checkbox input and handlers, only repositioned. */
+.fi-ta-content-grid:has(.podtext-card-dense) {
+    gap: 0.5rem;
+}
+
+.fi-ta-content-grid .fi-ta-record:has(.podtext-card-dense) {
+    position: relative;
+    padding: 0.375rem;
+}
+
+.fi-ta-content-grid .fi-ta-record:has(.podtext-card-dense) > .fi-ta-record-checkbox {
+    position: absolute;
+    top: 0.625rem;
+    inset-inline-start: 0.625rem;
+    z-index: 10;
+    margin: 0;
+    background-color: rgb(255 255 255 / 0.9);
+}
+
+.fi-ta-content-grid .fi-ta-record:has(.podtext-card-dense) .fi-input {
+    padding-block: 0.25rem;
+    font-size: 0.75rem;
+}
+
 /* The standalone picker modal (settings pickers, form fields) scrolls as
    one window, like the owner-image modal: the panel's internal scroll
    areas relax so the tall gallery can actually be reached. */

@@ -252,7 +252,7 @@ it('renders Media as a native responsive card gallery without losing table contr
         ->and($table->getRecordActionsPosition())->toBe(RecordActionsPosition::AfterContent)
         ->and($table->getFilters())->toHaveKeys(['type', 'reason'])
         ->and($table->getToolbarActions())->toHaveCount(1)
-        ->and($table->getDefaultPaginationPageOption())->toBe(25)
+        ->and($table->getDefaultPaginationPageOption())->toBe(12)
         ->and($table->getDefaultSortOptionLabel())
         ->toBe(__('admin.media_library.added_newest_first'));
 });
@@ -651,15 +651,14 @@ it('keeps Media card authorization reference queries bounded by page not record 
         }
     });
 
-    Livewire::test(ListMedia::class)
-        ->assertOk()
-        ->assertCanSeeTableRecords($records)
-        ->html();
+    $page = Livewire::test(ListMedia::class)->assertOk();
+    $page->html();
 
-    expect(count($queries))->toBeLessThanOrEqual(
-        20,
-        json_encode($queries, JSON_THROW_ON_ERROR),
-    );
+    expect($page->instance()->getTableRecords())->toHaveCount(min($recordCount, 12))
+        ->and(count($queries))->toBeLessThanOrEqual(
+            20,
+            json_encode($queries, JSON_THROW_ON_ERROR),
+        );
 })->with([1, 10, 25]);
 
 it('bounds resource pagination uploads and concurrent transfers', function (): void {
@@ -673,9 +672,9 @@ it('bounds resource pagination uploads and concurrent transfers', function (): v
                 && $action->getIcon() === Heroicon::ArrowUpTray;
         });
 
-    expect($list->instance()->getTableRecords())->toHaveCount(25)
-        ->and($list->instance()->getTable()->getDefaultPaginationPageOption())->toBe(25)
-        ->and($list->instance()->getTable()->getPaginationPageOptions())->toBe([25]);
+    expect($list->instance()->getTableRecords())->toHaveCount(12)
+        ->and($list->instance()->getTable()->getDefaultPaginationPageOption())->toBe(12)
+        ->and($list->instance()->getTable()->getPaginationPageOptions())->toBe([8, 12, 16, 24]);
 
     $create = Livewire::test(CreateMedia::class)
         ->assertSee(__('admin.media_library.batch_files_help'));
@@ -947,21 +946,42 @@ it('returns to the gallery after creating uploads instead of the first record ed
         ->assertRedirect(MediaResource::getUrl('index'));
 });
 
-it('lets the operator choose three to five gallery cards per desktop row', function (): void {
+it('lets the operator choose one to eight gallery cards per desktop row with a dense mode', function (): void {
     $this->actingAs(User::factory()->admin()->create());
     appOwnedMediaRecord();
 
     $component = Livewire::test(ListMedia::class)
         ->assertSet('cardsPerRow', 3)
-        ->callAction(TestAction::make('cardsPerRow5')->table())
-        ->assertSet('cardsPerRow', 5);
+        ->assertDontSee('podtext-card-dense')
+        ->callAction(TestAction::make('cardsPerRow8')->table())
+        ->assertSet('cardsPerRow', 8)
+        ->assertSee('podtext-card-dense');
 
     expect($component->instance()->getTable()->getContentGrid())
-        ->toBe(['md' => 2, 'lg' => 5, '2xl' => 5]);
+        ->toBe(['md' => 2, 'lg' => 8, '2xl' => 8]);
+
+    $component->call('setCardsPerRow', 1);
+
+    expect($component->get('cardsPerRow'))->toBe(1)
+        ->and($component->instance()->getTable()->getContentGrid())
+        ->toBe(['md' => 1, 'lg' => 1, '2xl' => 1]);
 
     $component->call('setCardsPerRow', 9);
 
-    expect($component->get('cardsPerRow'))->toBe(5);
+    expect($component->get('cardsPerRow'))->toBe(3);
+});
+
+it('offers selectable gallery page sizes with a dozen cards by default', function (): void {
+    $this->actingAs(User::factory()->admin()->create());
+    appOwnedMediaRecord();
+
+    $table = Livewire::test(ListMedia::class)
+        ->assertSet('tableRecordsPerPage', 12)
+        ->instance()
+        ->getTable();
+
+    expect($table->getPaginationPageOptions())->toBe([8, 12, 16, 24])
+        ->and($table->getDefaultPaginationPageOption())->toBe(12);
 });
 
 it('links the primary issue row and the details slide-over to the issue review page', function (): void {
