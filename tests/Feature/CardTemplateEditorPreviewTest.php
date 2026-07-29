@@ -8,6 +8,7 @@ use App\Models\Author;
 use App\Models\ContentGroup;
 use App\Models\ContentItem;
 use App\Models\Media;
+use App\Models\MediaAttachment;
 use App\Models\Transcription;
 use App\Models\User;
 use App\Settings\AdminUxSettings;
@@ -1316,9 +1317,9 @@ it('shows the same effective image ranking in automatic preload and searched ite
     $direct->featuredTranscription->update(['published_at' => now()->subDays(2)]);
     $inheritedGroup = ContentGroup::factory()->published()->create([
         'title' => 'Editor Ranking Inherited Group',
-        'cover_path' => 'content-groups/covers/editor-ranking.jpg',
     ]);
-    step5bEditorRegisterMedia((string) $inheritedGroup->cover_path);
+    $inheritedCover = step5bEditorRegisterMedia('content-groups/covers/editor-ranking.jpg');
+    MediaAttachment::query()->create(['media_id' => $inheritedCover->getKey(), 'attachable_type' => 'content_group', 'attachable_id' => $inheritedGroup->getKey(), 'role' => 'cover', 'position' => 0]);
     $inherited = step5bEditorPublicItem('Editor Ranking Inherited', $inheritedGroup);
     $inherited->featuredTranscription->update(['published_at' => now()->subDay()]);
     $configuredDefault = step5bEditorPublicItem('Editor Ranking Configured Default');

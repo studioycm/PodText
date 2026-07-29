@@ -3,19 +3,14 @@
 namespace App\Support\Media;
 
 use App\Enums\ImageUploadPurpose;
-use App\Enums\MediaAttachmentRole;
 use App\Enums\MediaMutationOperationType;
 use App\Enums\MediaMutationStatus;
-use App\Models\ContentGroup;
-use App\Models\ContentItem;
 use App\Models\Media;
-use App\Models\MediaAttachment;
 use App\Models\MediaMutationOperation;
 use App\Models\User;
 use App\Settings\PublicContentSettings;
 use App\Support\PublicFront\PublicFrontConfigCache;
 use App\Support\SettingsLifecycle\PublicContentSettingsWriteCoordinator;
-use Closure;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -39,8 +34,6 @@ class MediaFilesystemMutationCoordinator
         private readonly MediaMutationLease $lease,
         private readonly MediaMutationFence $fence,
         private readonly MediaCacheInvalidator $cacheInvalidator,
-        private readonly LegacyMediaRegistrationPlanner $registrationPlanner,
-        private readonly LegacyMediaReferenceSwitcher $registrationSwitcher,
         private readonly PublicFrontConfigCache $publicFrontConfigCache,
         private readonly SettingsCacheFactory $settingsCacheFactory,
         private readonly PublicContentSettingsWriteCoordinator $settingsWriteCoordinator,
@@ -120,121 +113,6 @@ class MediaFilesystemMutationCoordinator
             $operationType,
             $operationContext,
         )->firstOrFail();
-    }
-
-    public function registerExistingPublicAsset(
-        LegacyMediaRegistrationPlan $plan,
-        User $actor,
-        ?string $reviewedManifestDigest = null,
-    ): Media {
-        Gate::forUser($actor)->authorize('create', $this->mediaModel());
-        $fresh = $this->registrationPlanner->plan($plan->sourcePath);
-
-        if (
-            ! hash_equals($plan->fingerprint(), $fresh->fingerprint())
-            || ! hash_equals($plan->validatedImage->sha256, $fresh->validatedImage->sha256)
-        ) {
-            throw new RuntimeException('The legacy media registration plan changed before staging.');
-        }
-
-        $plan = $fresh;
-        $operationKey = (string) Str::ulid();
-        $stagingPath = "media-staging/{$operationKey}/normalized.{$plan->validatedImage->extension}";
-        $quarantinePath = "media-quarantine/{$operationKey}/".basename($plan->sourcePath);
-        $operation = MediaMutationOperation::query()->create([
-            'operation_key' => $operationKey,
-            'user_id' => $actor->getKey(),
-            'operation' => MediaMutationOperationType::Registration,
-            'status' => MediaMutationStatus::Staged,
-            'purpose' => $plan->purpose->value,
-            'idempotency_key' => hash('sha256', 'registration\0'.$plan->sourcePath.'\0'.$plan->sourceSha256),
-            'source_disk' => 'public',
-            'source_path' => $plan->sourcePath,
-            'source_sha256' => $plan->sourceSha256,
-            'destination_disk' => 'public',
-            'destination_sha256' => $plan->validatedImage->sha256,
-            'staging_disk' => 'local',
-            'staging_path' => $stagingPath,
-            'staging_sha256' => $plan->validatedImage->sha256,
-            'quarantine_disk' => 'local',
-            'quarantine_path' => $quarantinePath,
-            'quarantine_sha256' => $plan->sourceSha256,
-            'context' => [
-                'plan_fingerprint' => $plan->fingerprint(),
-                'content_group_ids' => $plan->contentGroupIds,
-                'content_item_ids' => $plan->contentItemIds,
-                'settings_locations' => $plan->settingsLocations(),
-                'expected_reference_count' => $plan->referenceCount(),
-                'source_directory' => dirname($plan->sourcePath),
-                'source_name' => pathinfo($plan->sourcePath, PATHINFO_FILENAME),
-                'source_last_modified' => $this->lastModified('public', $plan->sourcePath),
-                'reviewed_manifest_digest' => $reviewedManifestDigest,
-            ],
-            'attempts' => 1,
-            'lease_token' => (string) Str::ulid(),
-            'lease_expires_at' => now()->addMinutes(5),
-            'started_at' => now(),
-        ]);
-        $committed = false;
-
-        try {
-            $this->putVerified('local', $quarantinePath, $plan->sourceContents, $plan->sourceSha256);
-            $this->putVerified('local', $stagingPath, $plan->validatedImage->contents, $plan->validatedImage->sha256);
-            $destinationPath = $this->allocateDestination($plan->purpose, $plan->validatedImage->mimeType);
-            $this->fence->updateStaged($operation, ['destination_path' => $destinationPath]);
-            $this->putVerified(
-                'public',
-                $destinationPath,
-                Storage::disk('local')->get($stagingPath),
-                $plan->validatedImage->sha256,
-                visibility: 'public',
-            );
-            $this->fence->markCopied($operation);
-
-            $media = $this->withinSettingsWriteTransaction($plan, function () use ($plan, $actor, $destinationPath, $operation): Media {
-                $lockedOperation = $this->fence->lockForCommit($operation);
-                $mediaClass = $this->mediaModel();
-                /** @var Media $media */
-                $media = new $mediaClass;
-                $media->forceFill([
-                    'disk' => 'public',
-                    'directory' => $plan->purpose->root(),
-                    'visibility' => 'public',
-                    'name' => pathinfo($destinationPath, PATHINFO_FILENAME),
-                    'path' => $destinationPath,
-                    'width' => $plan->validatedImage->width,
-                    'height' => $plan->validatedImage->height,
-                    'size' => $plan->validatedImage->size,
-                    'type' => $plan->validatedImage->mimeType,
-                    'ext' => $plan->validatedImage->extension,
-                    'title' => Str::limit((string) $plan->validatedImage->displayFilename, 255, ''),
-                ]);
-                $this->lease->runCreation(fn (): bool => $media->save());
-                Gate::forUser($actor)->authorize('select', $media);
-                Gate::forUser($actor)->authorize('attach', $media);
-                $this->registrationSwitcher->switchWithinCoordinatedTransaction($plan, $media);
-                $lockedOperation->update([
-                    'media_id' => $media->getKey(),
-                    'media_id_snapshot' => $media->getKey(),
-                    'media_reference_key' => $media->reference_key,
-                    'status' => MediaMutationStatus::Committed,
-                    'committed_at' => now(),
-                ]);
-
-                return $media->refresh();
-            });
-            $committed = true;
-        } catch (Throwable $exception) {
-            if (! $committed) {
-                $this->compensateUncommitted($operation, $exception);
-            }
-
-            throw $exception;
-        }
-
-        $this->completeCommittedCleanup($operation);
-
-        return $media;
     }
 
     public function rename(Media $media, User $actor): Media
@@ -334,19 +212,6 @@ class MediaFilesystemMutationCoordinator
                 );
         }
 
-        $expectedGroupIds = ContentGroup::query()
-            ->where('cover_path', $trusted->path)
-            ->orderBy('id')
-            ->pluck('id')
-            ->map(fn (mixed $id): int => (int) $id)
-            ->all();
-        $expectedItemIds = ContentItem::query()
-            ->where('image_path', $trusted->path)
-            ->orderBy('id')
-            ->pluck('id')
-            ->map(fn (mixed $id): int => (int) $id)
-            ->all();
-
         $operationKey = (string) Str::ulid();
         $stagingPath = "media-staging/{$operationKey}/relocated.{$destinationImage->extension}";
         $quarantinePath = "media-quarantine/{$operationKey}/original.".(string) $trusted->ext;
@@ -367,8 +232,6 @@ class MediaFilesystemMutationCoordinator
             'quarantine_path' => $quarantinePath,
             'quarantine_sha256' => $sourceSha256,
             'context' => [
-                'relocation_group_ids' => $expectedGroupIds,
-                'relocation_item_ids' => $expectedItemIds,
                 'source_directory' => dirname((string) $trusted->path),
                 'source_name' => pathinfo((string) $trusted->path, PATHINFO_FILENAME),
                 'source_last_modified' => $this->lastModified('public', (string) $trusted->path),
@@ -388,7 +251,7 @@ class MediaFilesystemMutationCoordinator
             $this->putVerified('public', $destinationPath, Storage::disk('local')->get($stagingPath), $destinationImage->sha256, visibility: 'public');
             $this->fence->markCopied($operation);
 
-            $updated = DB::transaction(function () use ($trusted, $actor, $destinationImage, $destinationPath, $operation, $expectedGroupIds, $expectedItemIds): Media {
+            $updated = DB::transaction(function () use ($trusted, $actor, $destinationImage, $destinationPath, $operation): Media {
                 $locked = Media::query()->lockForUpdate()->findOrFail($trusted->getKey());
                 $lockedOperation = $this->fence->lockForCommit($operation);
                 Gate::forUser($actor)->authorize('relocate', $locked);
@@ -396,26 +259,6 @@ class MediaFilesystemMutationCoordinator
 
                 if ($locked->disk !== 'public' || $locked->path !== $trusted->path) {
                     throw new RuntimeException('The media record changed during mutation.');
-                }
-
-                $groups = ContentGroup::query()
-                    ->where('cover_path', $trusted->path)
-                    ->orderBy('id')
-                    ->lockForUpdate()
-                    ->get(['id', 'cover_path']);
-                $items = ContentItem::query()
-                    ->where('image_path', $trusted->path)
-                    ->orderBy('id')
-                    ->lockForUpdate()
-                    ->get(['id', 'image_path']);
-                $groupIds = $groups->modelKeys();
-                $itemIds = $items->modelKeys();
-
-                if (
-                    array_map(intval(...), $groupIds) !== $expectedGroupIds
-                    || array_map(intval(...), $itemIds) !== $expectedItemIds
-                ) {
-                    throw new RuntimeException('The relocation owner references changed before commit.');
                 }
 
                 $this->lease->run($locked, function () use ($locked, $destinationImage, $destinationPath): void {
@@ -434,26 +277,6 @@ class MediaFilesystemMutationCoordinator
                     ])->save();
                 });
 
-                foreach ($groups as $group) {
-                    MediaAttachment::query()->firstOrCreate([
-                        'media_id' => $locked->getKey(),
-                        'attachable_type' => 'content_group',
-                        'attachable_id' => $group->getKey(),
-                        'role' => MediaAttachmentRole::Cover,
-                    ], ['position' => 0]);
-                    $group->forceFill(['cover_path' => $destinationPath])->save();
-                }
-
-                foreach ($items as $item) {
-                    MediaAttachment::query()->firstOrCreate([
-                        'media_id' => $locked->getKey(),
-                        'attachable_type' => 'content_item',
-                        'attachable_id' => $item->getKey(),
-                        'role' => MediaAttachmentRole::PrimaryImage,
-                    ], ['position' => 0]);
-                    $item->forceFill(['image_path' => $destinationPath])->save();
-                }
-
                 $lockedOperation->update([
                     'status' => MediaMutationStatus::Committed,
                     'committed_at' => now(),
@@ -467,97 +290,6 @@ class MediaFilesystemMutationCoordinator
                 $this->compensateUncommitted($operation, $exception);
             }
 
-            throw $exception;
-        }
-
-        $this->completeCommittedCleanup($operation);
-
-        return $updated;
-    }
-
-    /**
-     * Transition one reviewed, currently unscoped Curator row in-place.
-     * Filesystem handling intentionally uses the same fenced journal and
-     * compensation/repair machinery as normal mutations.
-     */
-    public function transitionLegacyExisting(
-        LegacyMediaRegistrationPlan $reviewedPlan,
-        array $reviewedEntry,
-        User $actor,
-    ): Media {
-        $mediaId = $reviewedPlan->existingMediaId
-            ?? throw new RuntimeException('The reviewed transition plan does not name an existing Curator row.');
-        $current = Media::query()->findOrFail($mediaId);
-        $identity = ['disk' => (string) $current->disk, 'path' => (string) $current->path, 'reference_key' => $current->reference_key];
-
-        if (filled($identity['reference_key'])) {
-            throw new RuntimeException('The legacy media row is already trusted.');
-        }
-
-        $operationKey = (string) Str::ulid();
-        $stagingPath = "media-staging/{$operationKey}/normalized.{$reviewedPlan->validatedImage->extension}";
-        $quarantinePath = "media-quarantine/{$operationKey}/".basename($reviewedPlan->sourcePath);
-        $operation = $this->fence->beginLegacyTransition($mediaId, $identity, $actor, [
-            'operation_key' => $operationKey,
-            'operation' => MediaMutationOperationType::LegacyTransition,
-            'status' => MediaMutationStatus::Staged,
-            'purpose' => $reviewedPlan->purpose->value,
-            'idempotency_key' => hash('sha256', "legacy-transition\0{$mediaId}\0{$reviewedPlan->sourceSha256}"),
-            'source_disk' => 'public', 'source_path' => $reviewedPlan->sourcePath, 'source_sha256' => $reviewedPlan->sourceSha256,
-            'destination_disk' => 'public', 'destination_sha256' => $reviewedPlan->validatedImage->sha256,
-            'staging_disk' => 'local', 'staging_path' => $stagingPath, 'staging_sha256' => $reviewedPlan->validatedImage->sha256,
-            'quarantine_disk' => 'local', 'quarantine_path' => $quarantinePath, 'quarantine_sha256' => $reviewedPlan->sourceSha256,
-            'context' => array_merge(['plan_fingerprint' => $reviewedPlan->fingerprint(), 'legacy_transition' => true], $this->sourceContext($current)),
-            'attempts' => 1, 'lease_token' => (string) Str::ulid(), 'lease_expires_at' => now()->addMinutes(5), 'started_at' => now(),
-        ]);
-        $committed = false;
-
-        try {
-            $freshPlan = $this->registrationPlanner->plan($reviewedPlan->sourcePath, expectedExistingMediaId: $mediaId);
-            if (! hash_equals($reviewedPlan->fingerprint(), $freshPlan->fingerprint()) || $freshPlan->existingMediaId !== $mediaId) {
-                throw new RuntimeException('The reviewed legacy transition plan changed before staging.');
-            }
-            $this->putVerified('local', $quarantinePath, $freshPlan->sourceContents, $freshPlan->sourceSha256);
-            $this->putVerified('local', $stagingPath, $freshPlan->validatedImage->contents, $freshPlan->validatedImage->sha256);
-            $destinationPath = $this->allocateDestination($freshPlan->purpose, $freshPlan->validatedImage->mimeType);
-            $this->fence->updateStaged($operation, ['destination_path' => $destinationPath]);
-            $this->putVerified('public', $destinationPath, Storage::disk('local')->get($stagingPath), $freshPlan->validatedImage->sha256, 'public');
-            $this->fence->markCopied($operation);
-
-            $updated = $this->withinSettingsWriteTransaction($freshPlan, function () use ($mediaId, $identity, $actor, $freshPlan, $reviewedEntry, $destinationPath, $operation): Media {
-                $locked = Media::query()->whereKey($mediaId)->lockForUpdate()->firstOrFail();
-                $lockedOperation = $this->fence->lockForCommit($operation);
-                Gate::forUser($actor)->authorize('transitionLegacy', $locked);
-                if ($locked->disk !== $identity['disk'] || $locked->path !== $identity['path'] || $locked->reference_key !== null) {
-                    throw new RuntimeException('The legacy media row changed before commit.');
-                }
-                app(LegacyMediaTransitionPlanner::class)->assertEntryCurrent($reviewedEntry, ignoreOwnOpenJournal: true);
-                $replanned = $this->registrationPlanner->plan($freshPlan->sourcePath, expectedExistingMediaId: $mediaId);
-                if (! hash_equals($freshPlan->fingerprint(), $replanned->fingerprint()) || $replanned->existingMediaId !== $mediaId) {
-                    throw new RuntimeException('The legacy media owner or settings references changed before commit.');
-                }
-                $key = (string) Str::ulid();
-                $this->lease->run($locked, function () use ($locked, $freshPlan, $destinationPath, $key): void {
-                    $this->lease->runReferenceKeyIssuance(function () use ($locked, $freshPlan, $destinationPath, $key): void {
-                        $locked->forceFill([
-                            'reference_key' => $key, 'disk' => 'public', 'directory' => $freshPlan->purpose->root(),
-                            'visibility' => 'public', 'name' => pathinfo($destinationPath, PATHINFO_FILENAME), 'path' => $destinationPath,
-                            'width' => $freshPlan->validatedImage->width, 'height' => $freshPlan->validatedImage->height,
-                            'size' => $freshPlan->validatedImage->size, 'type' => $freshPlan->validatedImage->mimeType,
-                            'ext' => $freshPlan->validatedImage->extension, 'curations' => null,
-                        ])->save();
-                    });
-                });
-                $this->registrationSwitcher->switchWithinCoordinatedTransaction($replanned, $locked, inPlaceTransition: true, reviewedEntry: $reviewedEntry);
-                $lockedOperation->update(['media_reference_key' => $key, 'status' => MediaMutationStatus::Committed, 'committed_at' => now()]);
-
-                return $locked->refresh();
-            });
-            $committed = true;
-        } catch (Throwable $exception) {
-            if (! $committed) {
-                $this->compensateUncommitted($operation, $exception);
-            }
             throw $exception;
         }
 
@@ -1094,18 +826,6 @@ class MediaFilesystemMutationCoordinator
         $this->references->forgetSettingsPayloads();
     }
 
-    private function withinSettingsWriteTransaction(LegacyMediaRegistrationPlan $plan, Closure $callback): mixed
-    {
-        if ($plan->settingsSnapshots === []) {
-            return DB::transaction($callback);
-        }
-
-        return $this->settingsWriteCoordinator->transaction($callback);
-    }
-
-    /**
-     * @param  array<int, string>  $reserved
-     */
     private function allocateDestination(ImageUploadPurpose $purpose, string $mimeType, array $reserved = []): string
     {
         for ($attempt = 0; $attempt < 5; $attempt++) {

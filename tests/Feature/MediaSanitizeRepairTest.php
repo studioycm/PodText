@@ -5,11 +5,14 @@ use App\Filament\Resources\Media\Pages\ListMedia;
 use App\Filament\Resources\Media\Pages\ReviewMediaIssues;
 use App\Models\ContentGroup;
 use App\Models\Media;
+use App\Models\MediaAttachment;
 use App\Models\MediaMutationOperation;
 use App\Models\User;
+use App\Settings\PublicContentSettings;
 use App\Support\Media\MediaInventoryDiagnostics;
 use App\Support\Media\MediaIssueReviewPresenter;
 use App\Support\Media\MediaRecordScope;
+use App\Support\Media\MediaReferenceFinder;
 use App\Support\Media\PublicMediaDelivery;
 use App\Support\Media\SvgUploadSanitizer;
 use Filament\Actions\Testing\TestAction;
@@ -60,7 +63,7 @@ function sanitizeRepairNormalizableSvg(): string
         .(string) file_get_contents(base_path('tests/Fixtures/media/clean.svg'));
 }
 
-it('grants the repair ability only to managed unreferenced rows with the svg reason', function (): void {
+it('grants the repair ability for attachment-referenced svg rows while settings references still block', function (): void {
     $admin = User::factory()->admin()->create();
     $this->actingAs($admin);
     $gate = Gate::forUser($admin);
@@ -70,11 +73,26 @@ it('grants the repair ability only to managed unreferenced rows with the svg rea
     expect($gate->inspect('repair', $repairable)->allowed())->toBeTrue();
 
     $inUse = sanitizeRepairSvgRow('in-use', sanitizeRepairNormalizableSvg());
-    $group = ContentGroup::factory()->create(['title' => 'פודקאסט מחובר', 'cover_path' => $inUse->path]);
-    $inUseResponse = $gate->inspect('repair', $inUse);
+    $group = ContentGroup::factory()->create(['title' => 'פודקאסט מחובר']);
+    MediaAttachment::query()->create(['media_id' => $inUse->getKey(), 'attachable_type' => 'content_group', 'attachable_id' => $group->getKey(), 'role' => 'cover', 'position' => 0]);
 
-    expect($inUseResponse->allowed())->toBeFalse()
-        ->and($inUseResponse->message())->toContain($group->title);
+    expect($gate->inspect('repair', $inUse)->allowed())->toBeTrue();
+
+    $settingsReferenced = sanitizeRepairSvgRow('settings-referenced', sanitizeRepairNormalizableSvg());
+    DB::table('settings')->updateOrInsert(
+        ['group' => PublicContentSettings::group(), 'name' => 'menu_config'],
+        [
+            'locked' => false,
+            'payload' => json_encode(['logo' => ['light_path' => $settingsReferenced->path]]),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ],
+    );
+    app(MediaReferenceFinder::class)->forgetSettingsPayloads();
+    $settingsResponse = $gate->inspect('repair', $settingsReferenced);
+
+    expect($settingsResponse->allowed())->toBeFalse()
+        ->and($settingsResponse->message())->not->toBe('');
 
     $safeBytes = app(SvgUploadSanitizer::class)->sanitize(
         (string) file_get_contents(base_path('tests/Fixtures/media/clean.svg')),
@@ -107,13 +125,31 @@ it('projects truthful per-reason resolution states in the review presenter', fun
         ->and($review['has_current_media_repair_authority'])->toBeTrue()
         ->and($review['issues_have_resolution_content'])->toBeTrue();
 
-    $inUse = sanitizeRepairSvgRow('resolution-blocked', sanitizeRepairNormalizableSvg());
-    ContentGroup::factory()->create(['title' => 'בעלים חוסם', 'cover_path' => $inUse->path]);
-    $blockedReview = $presenter->review($inUse);
+    $inUse = sanitizeRepairSvgRow('resolution-attached', sanitizeRepairNormalizableSvg());
+    $attachedOwner = ContentGroup::factory()->create(['title' => 'בעלים מחובר']);
+    MediaAttachment::query()->create(['media_id' => $inUse->getKey(), 'attachable_type' => 'content_group', 'attachable_id' => $attachedOwner->getKey(), 'role' => 'cover', 'position' => 0]);
+    $attachedReview = $presenter->review($inUse);
+    $attachedIssue = collect($attachedReview['issues'])->firstWhere('value', MediaDiagnosticReason::UnsanitizedSvg->value);
+
+    expect($attachedIssue['resolution']['kind'])->toBe('action')
+        ->and($attachedReview['has_current_media_repair_authority'])->toBeTrue()
+        ->and($attachedReview['issues_have_resolution_content'])->toBeTrue();
+
+    $settingsBlocked = sanitizeRepairSvgRow('resolution-settings', sanitizeRepairNormalizableSvg());
+    DB::table('settings')->updateOrInsert(
+        ['group' => PublicContentSettings::group(), 'name' => 'menu_config'],
+        [
+            'locked' => false,
+            'payload' => json_encode(['logo' => ['light_path' => $settingsBlocked->path]]),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ],
+    );
+    app(MediaReferenceFinder::class)->forgetSettingsPayloads();
+    $blockedReview = $presenter->review($settingsBlocked);
     $blockedIssue = collect($blockedReview['issues'])->firstWhere('value', MediaDiagnosticReason::UnsanitizedSvg->value);
 
     expect($blockedIssue['resolution']['kind'])->toBe('blocked')
-        ->and($blockedIssue['resolution']['reason'])->toContain('בעלים חוסם')
         ->and($blockedReview['has_current_media_repair_authority'])->toBeFalse()
         ->and($blockedReview['issues_have_resolution_content'])->toBeTrue();
 

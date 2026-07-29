@@ -2,6 +2,7 @@
 
 use App\Enums\ExternalImageFailureReason;
 use App\Enums\ImageUploadPurpose;
+use App\Enums\MediaAttachmentRole;
 use App\Enums\UserRole;
 use App\Jobs\DownloadExternalContentGroupImage;
 use App\Jobs\DownloadExternalContentItemImage;
@@ -9,6 +10,7 @@ use App\Models\ContentGroup;
 use App\Models\ContentItem;
 use App\Models\Media;
 use App\Models\MediaAsset;
+use App\Models\MediaAttachment;
 use App\Models\MediaProviderBinding;
 use App\Models\User;
 use App\Support\Media\CuratorImageUploadPolicy;
@@ -404,7 +406,7 @@ it('downloads validates admits and attaches an external image idempotently', fun
 
     $item->refresh()->load('primaryImageMediaAttachment.media');
     expect($item->primaryImageMediaAttachment?->media)->toBeInstanceOf(Media::class)
-        ->and($item->image_path)->toBe($item->primaryImageMediaAttachment?->media?->path)
+        ->and($item->primaryImageMediaAttachment()->with('media')->first()?->media?->path)->toBe($item->primaryImageMediaAttachment?->media?->path)
         ->and($item->primaryImageMediaAttachment?->media?->directory)->toBe(ImageUploadPurpose::ContentItemPrimaryImage->root())
         ->and(Media::query()->count())->toBe(1)
         ->and(MediaAsset::query()->count())->toBe(1)
@@ -430,7 +432,7 @@ it('downloads a Spotify-produced podcast URL through the same queued admission p
     $group->refresh()->load('coverMediaAttachment.media');
 
     expect($group->coverMediaAttachment?->media)->toBeInstanceOf(Media::class)
-        ->and($group->cover_path)->toBe($group->coverMediaAttachment?->media?->path)
+        ->and($group->coverMediaAttachment()->with('media')->first()?->media?->path)->toBe($group->coverMediaAttachment?->media?->path)
         ->and(MediaAsset::query()->count())->toBe(1)
         ->and(MediaProviderBinding::query()->count())->toBe(1);
 });
@@ -468,8 +470,17 @@ it('keeps a newly admitted library item when owner identity changes during the f
     ]);
     $fetcher = Mockery::mock(SafeExternalImageFetcher::class);
     $fetcher->shouldReceive('fetch')->once()->andReturnUsing(function () use ($item): string {
-        ContentItem::query()->whereKey($item->getKey())->update([
-            'image_path' => 'content-items/images/concurrent-editor.jpg',
+        $concurrent = Media::factory()->create([
+            'directory' => 'content-items/images',
+            'name' => 'concurrent-editor',
+            'path' => 'content-items/images/concurrent-editor.jpg',
+        ]);
+        MediaAttachment::query()->create([
+            'media_id' => $concurrent->getKey(),
+            'attachable_type' => 'content_item',
+            'attachable_id' => $item->getKey(),
+            'role' => MediaAttachmentRole::PrimaryImage,
+            'position' => 0,
         ]);
 
         return curatorG1ExternalPng();
@@ -483,8 +494,8 @@ it('keeps a newly admitted library item when owner identity changes during the f
     )), 'handle']);
     $failureBody = (string) data_get($user->notifications()->sole()->data, 'body');
 
-    expect($item->refresh()->image_path)->toBe('content-items/images/concurrent-editor.jpg')
-        ->and(Media::query()->count())->toBe(1)
+    expect($item->primaryImageMediaAttachment()->with('media')->first()?->media?->path)->toBe('content-items/images/concurrent-editor.jpg')
+        ->and(Media::query()->count())->toBe(2)
         ->and(MediaAsset::query()->count())->toBe(1)
         ->and(MediaProviderBinding::query()->count())->toBe(1)
         ->and(Storage::disk('public')->allFiles())->toHaveCount(1)

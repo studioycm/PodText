@@ -23,7 +23,6 @@ class EditContentGroup extends EditRecord
     {
         return [
             ContentImageActions::contentGroupCover(),
-            ContentImageActions::detachUnsafeOwnerImage(MediaAttachmentRole::Cover),
             DeleteAction::make(),
         ];
     }

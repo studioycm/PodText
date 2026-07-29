@@ -135,11 +135,11 @@ class CuratorMediaPolicy
             return Response::deny(__('admin.media_issue_review.sanitize.not_applicable'));
         }
 
-        $references = app(MediaReferenceFinder::class)->referencesForMedia($media);
+        $settingsReferences = app(MediaReferenceFinder::class)->nonAttachmentReferencesForMedia($media);
 
-        if ($references !== []) {
+        if ($settingsReferences !== []) {
             return Response::deny(__('admin.media_library.op_blocked_in_use', [
-                'surfaces' => implode(', ', $references),
+                'surfaces' => implode(', ', $settingsReferences),
             ]));
         }
 
@@ -169,23 +169,6 @@ class CuratorMediaPolicy
     public function detach(User $user, Media $media): bool
     {
         return $this->isAdmin($user);
-    }
-
-    /**
-     * This is deliberately not a substitute for view/select/download.  It is
-     * the one narrow authority used by the reviewed legacy-transition fence,
-     * before a row is allowed back into the normal Curator scope.
-     */
-    public function transitionLegacy(User $user, Media $media): bool
-    {
-        return $this->isAdmin($user)
-            && blank($media->reference_key);
-    }
-
-    /** Narrow repair authority for an excluded row still held by an owner. */
-    public function repairLegacyOwner(User $user, Media $media): bool
-    {
-        return $this->isAdmin($user) && ! app(MediaRecordScope::class)->allows($media);
     }
 
     private function mutateFileResponse(User $user, Media $media): Response

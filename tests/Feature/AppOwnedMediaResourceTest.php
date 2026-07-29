@@ -1,6 +1,7 @@
 <?php
 
 use App\Enums\ImageUploadPurpose;
+use App\Enums\MediaAttachmentRole;
 use App\Enums\MediaDiagnosticReason;
 use App\Enums\MediaLibraryTask;
 use App\Enums\UserRole;
@@ -179,14 +180,16 @@ it('renders Media as a native responsive card gallery without losing table contr
         ->update(['reference_key' => null]);
     $media->refresh();
     Storage::disk('public')->put($media->path, 'card fixture');
-    ContentGroup::factory()->create([
-        'title' => 'First known reference',
-        'cover_path' => $media->path,
-    ]);
-    ContentGroup::factory()->create([
-        'title' => 'Second known reference',
-        'cover_path' => $media->path,
-    ]);
+    foreach (['First known reference', 'Second known reference'] as $referenceTitle) {
+        $referenceGroup = ContentGroup::factory()->create(['title' => $referenceTitle]);
+        MediaAttachment::query()->create([
+            'media_id' => $media->getKey(),
+            'attachable_type' => 'content_group',
+            'attachable_id' => $referenceGroup->getKey(),
+            'role' => 'cover',
+            'position' => 0,
+        ]);
+    }
     $reasons = app(MediaInventoryDiagnostics::class)->reasons($media);
 
     $component = Livewire::test(ListMedia::class)
@@ -210,8 +213,8 @@ it('renders Media as a native responsive card gallery without losing table contr
         __('admin.media_library.repair_portable_identity'),
         trans_choice('admin.media_library.additional_issue_count', 1, ['count' => 1]),
         '100×100',
-        __('admin.media_references.content_group_cover', ['title' => 'First known reference']),
-        __('admin.media_references.content_group_cover', ['title' => 'Second known reference']),
+        __('admin.settings_backup_snapshot_screens.podcast').': First known reference ('.__('admin.media_attachment_roles.cover').')',
+        __('admin.settings_backup_snapshot_screens.podcast').': Second known reference ('.__('admin.media_attachment_roles.cover').')',
         __('admin.media_library.needs_attention'),
     ]);
     $component->assertDontSee('image/jpeg ·')
@@ -888,7 +891,8 @@ it('discloses blocked file mutations and skips blocked rows in bulk deletion', f
         'name' => '01J00000000000000000000005',
         'path' => 'content-groups/covers/01J00000000000000000000005.jpg',
     ]);
-    ContentGroup::factory()->create(['cover_path' => $referenced->path]);
+    $referencedOwner = ContentGroup::factory()->create();
+    MediaAttachment::query()->create(['media_id' => $referenced->getKey(), 'attachable_type' => 'content_group', 'attachable_id' => $referencedOwner->getKey(), 'role' => MediaAttachmentRole::Cover, 'position' => 0]);
     Storage::disk('public')->put($deletable->path, 'delete fixture');
     Storage::disk('public')->put($referenced->path, 'referenced fixture');
 
@@ -1061,7 +1065,8 @@ it('explains blocked file operations with truthful policy reasons', function ():
         'name' => '01J00000000000000000000011',
         'path' => 'content-groups/covers/01J00000000000000000000011.jpg',
     ]);
-    $group = ContentGroup::factory()->create(['cover_path' => $referenced->path]);
+    $group = ContentGroup::factory()->create();
+    MediaAttachment::query()->create(['media_id' => $referenced->getKey(), 'attachable_type' => 'content_group', 'attachable_id' => $group->getKey(), 'role' => MediaAttachmentRole::Cover, 'position' => 0]);
 
     $gate = Gate::forUser($admin);
 
@@ -1189,8 +1194,10 @@ it('previews and applies a single-card owner title with bulk affixes available',
         'path' => 'content-groups/covers/01J00000000000000000000045.jpg',
         'title' => null,
     ]);
-    $group = ContentGroup::factory()->create(['title' => 'דרך הארץ', 'cover_path' => $media->path]);
-    ContentGroup::factory()->create(['title' => 'קול העיר', 'cover_path' => $affixed->path]);
+    $group = ContentGroup::factory()->create(['title' => 'דרך הארץ']);
+    MediaAttachment::query()->create(['media_id' => $media->getKey(), 'attachable_type' => 'content_group', 'attachable_id' => $group->getKey(), 'role' => MediaAttachmentRole::Cover, 'position' => 0]);
+    $affixedOwner = ContentGroup::factory()->create(['title' => 'קול העיר']);
+    MediaAttachment::query()->create(['media_id' => $affixed->getKey(), 'attachable_type' => 'content_group', 'attachable_id' => $affixedOwner->getKey(), 'role' => MediaAttachmentRole::Cover, 'position' => 0]);
 
     $html = Livewire::test(ListMedia::class)
         ->call('mountTableAction', 'titleByOwner', (string) $media->getKey())
@@ -1231,7 +1238,8 @@ it('scopes gallery search to title owner or filename', function (): void {
         'path' => 'content-groups/covers/01J00000000000000000000053.jpg',
         'title' => null,
     ]);
-    ContentGroup::factory()->create(['title' => 'שיחות עומק', 'cover_path' => $owned->path]);
+    $ownedOwner = ContentGroup::factory()->create(['title' => 'שיחות עומק']);
+    MediaAttachment::query()->create(['media_id' => $owned->getKey(), 'attachable_type' => 'content_group', 'attachable_id' => $ownedOwner->getKey(), 'role' => MediaAttachmentRole::Cover, 'position' => 0]);
 
     Livewire::test(ListMedia::class)
         ->set('searchScope', 'owner')
@@ -1262,7 +1270,7 @@ it('scopes gallery search to title owner or filename', function (): void {
     expect($component->get('searchScope'))->toBe('all');
 });
 
-it('renders one humanized owner reference when an attachment and its bridged legacy column coexist', function (): void {
+it('renders one humanized owner reference per attachment with an empty path-reference plane', function (): void {
     $this->actingAs(User::factory()->admin()->create());
     $media = appOwnedMediaRecord([
         'name' => '01J00000000000000000000071',
@@ -1270,7 +1278,6 @@ it('renders one humanized owner reference when an attachment and its bridged leg
     ]);
     $group = ContentGroup::factory()->create([
         'title' => 'טכנולוגיה בעברית',
-        'cover_path' => $media->path,
     ]);
     MediaAttachment::query()->create([
         'media_id' => $media->getKey(),
@@ -1289,9 +1296,7 @@ it('renders one humanized owner reference when an attachment and its bridged leg
     $finder->prime(collect([$media]));
 
     expect($finder->referencesForMedia($media))->toBe([$expectedLabel])
-        ->and($finder->legacyReferencesForMedia($media))->toBe([
-            __('admin.media_references.content_group_cover', ['title' => 'טכנולוגיה בעברית']),
-        ]);
+        ->and($finder->legacyReferencesForMedia($media))->toBe([]);
 
     $finder->clearPrime();
     $links = $finder->linkedReferencesForMedia($media);

@@ -1,6 +1,5 @@
 <?php
 
-use App\Enums\ImageUploadPurpose;
 use App\Filament\Pages\AboutSettings;
 use App\Filament\Pages\DisplaySettings;
 use App\Filament\Pages\EpisodePageSettings;
@@ -10,11 +9,8 @@ use App\Filament\Pages\MenuHeaderSettings;
 use App\Filament\Pages\PublicContentSettingsSubjectPage;
 use App\Filament\Pages\SettingsSubjectOwnershipRegistry;
 use App\Filament\Support\IntegerTextInputState;
-use App\Models\Media;
 use App\Models\User;
 use App\Settings\PublicContentSettings;
-use App\Support\Media\CuratorMediaAssetConverter;
-use App\Support\Media\LegacyMediaTransitionPlanner;
 use App\Support\PublicContent\PublicContentCardOptions;
 use App\Support\PublicFront\Cards\PublicFrontCardTemplateRegistry;
 use App\Support\PublicFront\ItemPage\PublicItemPageRegistry;
@@ -1406,72 +1402,6 @@ it('serializes normalization apply before recomputing its settings candidate', f
     } finally {
         $heldLock->release();
     }
-});
-
-it('serializes curator conversion before entering its settings transaction', function (): void {
-    app()->instance(
-        PublicContentSettingsWriteCoordinator::class,
-        new PublicContentSettingsWriteCoordinator(waitSeconds: 0),
-    );
-    $heldLock = Cache::lock(PublicContentSettingsWriteCoordinator::LOCK_KEY, 30);
-    expect($heldLock->get())->toBeTrue();
-
-    try {
-        expect(fn () => app(CuratorMediaAssetConverter::class)->convert())
-            ->toThrow(LockTimeoutException::class);
-    } finally {
-        $heldLock->release();
-    }
-});
-
-it('serializes settings media backfill before its revalidated commit transaction', function (): void {
-    app()->instance(
-        PublicContentSettingsWriteCoordinator::class,
-        new PublicContentSettingsWriteCoordinator(waitSeconds: 0),
-    );
-    $media = Media::factory()->create([
-        'directory' => ImageUploadPurpose::DefaultImage->root(),
-        'name' => 'coordinated-settings-default',
-        'path' => ImageUploadPurpose::DefaultImage->root().'/coordinated-settings-default.jpg',
-    ]);
-    $defaults = PublicFrontConfigRegistry::defaults()['default_images'];
-    $defaults['global'] = [
-        'mode' => 'custom',
-        'path' => $media->path,
-        'media_reference_key' => null,
-    ];
-    DB::table('settings')
-        ->where('group', PublicContentSettings::group())
-        ->where('name', 'default_images')
-        ->update([
-            'payload' => json_encode($defaults, JSON_THROW_ON_ERROR),
-        ]);
-    clearPublicFrontSettingsCache();
-    $digest = app(LegacyMediaTransitionPlanner::class)->manifest()->digest();
-    $heldLock = Cache::lock(PublicContentSettingsWriteCoordinator::LOCK_KEY, 30);
-    expect($heldLock->get())->toBeTrue();
-
-    try {
-        $this->artisan('media:backfill-settings-reference-keys', [
-            '--apply' => true,
-            '--digest' => $digest,
-        ])
-            ->expectsOutputToContain('Timed out acquiring the public content settings write lock.')
-            ->assertFailed();
-    } finally {
-        $heldLock->release();
-    }
-
-    $stored = json_decode(
-        DB::table('settings')
-            ->where('group', PublicContentSettings::group())
-            ->where('name', 'default_images')
-            ->value('payload'),
-        true,
-        flags: JSON_THROW_ON_ERROR,
-    );
-
-    expect($stored['global']['media_reference_key'])->toBeNull();
 });
 
 it('loads public front defaults when settings rows are missing', function (): void {

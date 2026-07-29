@@ -231,13 +231,13 @@ it('keeps automatic preload and search item ranking in effective image parity', 
         'Ranking Parity Local',
         transcriptionPublishedAt: $ownImageTie,
     );
-    $local->update(['image_path' => 'content-items/images/ranking-local.jpg']);
-    step5bRegisterPreviewMedia((string) $local->image_path);
+    $localImage = step5bRegisterPreviewMedia('content-items/images/ranking-local.jpg');
+    MediaAttachment::query()->create(['media_id' => $localImage->getKey(), 'attachable_type' => 'content_item', 'attachable_id' => $local->getKey(), 'role' => 'primary_image', 'position' => 0]);
     $inheritedGroup = ContentGroup::factory()->published()->create([
         'title' => 'Ranking Parity Inherited Group',
-        'cover_path' => 'content-groups/covers/ranking-inherited.jpg',
     ]);
-    step5bRegisterPreviewMedia((string) $inheritedGroup->cover_path);
+    $previewCover = step5bRegisterPreviewMedia('content-groups/covers/ranking-inherited.jpg');
+    MediaAttachment::query()->create(['media_id' => $previewCover->getKey(), 'attachable_type' => 'content_group', 'attachable_id' => $inheritedGroup->getKey(), 'role' => 'cover', 'position' => 0]);
     $inherited = step5bCreatePublicItem(
         'Ranking Parity Inherited',
         group: $inheritedGroup,
@@ -250,21 +250,18 @@ it('keeps automatic preload and search item ranking in effective image parity', 
 
     $draft = ContentItem::factory()->for($external->contentGroup)->create([
         'title' => 'Ranking Parity Draft',
-        'image_path' => 'content-items/images/ranking-draft.jpg',
     ]);
     $withoutTranscription = ContentItem::factory()
         ->for($external->contentGroup)
         ->published()
         ->create([
             'title' => 'Ranking Parity Without Transcription',
-            'image_path' => 'content-items/images/ranking-without-transcription.jpg',
         ]);
     $future = ContentItem::factory()
         ->for($external->contentGroup)
         ->published(now()->addDay())
         ->create([
             'title' => 'Ranking Parity Future',
-            'image_path' => 'content-items/images/ranking-future.jpg',
         ]);
     $futureTranscription = Transcription::factory()->for($future)->published()->create();
     $future->update(['featured_transcription_id' => $futureTranscription->getKey()]);
@@ -308,7 +305,6 @@ it('ranks an authoritative displayable attachment ahead of newer image-less samp
         transcriptionPublishedAt: now()->subDays(2),
     );
     $media = step5bRegisterPreviewMedia('legacy/nested/inventory-attachment.bin');
-    $attached->update(['image_path' => 'content-items/images/stale-owner-mirror.jpg']);
     MediaAttachment::factory()->create([
         'media_id' => $media->getKey(),
         'attachable_type' => 'content_item',
@@ -344,8 +340,8 @@ it('caps public sample search results at fifty in deterministic order', function
         $groups->push($group);
     }
 
-    $groups->last()->update(['cover_path' => 'content-groups/covers/group-51.jpg']);
-    step5bRegisterPreviewMedia((string) $groups->last()->cover_path);
+    $group51Cover = step5bRegisterPreviewMedia('content-groups/covers/group-51.jpg');
+    MediaAttachment::query()->create(['media_id' => $group51Cover->getKey(), 'attachable_type' => 'content_group', 'attachable_id' => $groups->last()->getKey(), 'role' => 'cover', 'position' => 0]);
 
     $options = app(CardTemplatePreviewer::class)->sampleOptions('content_group', 'Preview Group');
 
@@ -358,12 +354,12 @@ it('preloads ten image-first public samples independently from the fifty-result 
     foreach (range(1, 11) as $index) {
         $group = ContentGroup::factory()->published()->create([
             'title' => sprintf('Preload Group %02d', $index),
-            'cover_path' => $index === 11 ? 'content-groups/covers/preload-11.jpg' : null,
         ]);
         step5bCreatePublicItem("Preload Group Episode {$index}", group: $group);
 
         if ($index === 11) {
-            step5bRegisterPreviewMedia((string) $group->cover_path);
+            $preloadCover = step5bRegisterPreviewMedia('content-groups/covers/preload-11.jpg');
+            MediaAttachment::query()->create(['media_id' => $preloadCover->getKey(), 'attachable_type' => 'content_group', 'attachable_id' => $group->getKey(), 'role' => 'cover', 'position' => 0]);
         }
     }
 
@@ -390,9 +386,9 @@ it('uses validated global and none modes for item ranking and rendering', functi
 
     $coveredGroup = ContentGroup::factory()->published()->create([
         'title' => 'Mode Ranking Covered Group',
-        'cover_path' => 'content-groups/covers/ranking-covered.jpg',
     ]);
-    step5bRegisterPreviewMedia((string) $coveredGroup->cover_path);
+    $coveredCoverMedia = step5bRegisterPreviewMedia('content-groups/covers/ranking-covered.jpg');
+    MediaAttachment::query()->create(['media_id' => $coveredCoverMedia->getKey(), 'attachable_type' => 'content_group', 'attachable_id' => $coveredGroup->getKey(), 'role' => 'cover', 'position' => 0]);
     $noneItem = step5bCreatePublicItem('Mode Ranking None Item', group: $coveredGroup);
     step5bBindPreviewDefaultImages([
         'global' => ['mode' => 'custom', 'path' => 'default-images/ranking-hidden-global.jpg'],
@@ -418,9 +414,9 @@ it('keeps automatic preload and search group ranking in effective image parity',
 
     $ownGroup = ContentGroup::factory()->published()->create([
         'title' => 'Group Ranking Z Own',
-        'cover_path' => 'content-groups/covers/ranking-own-group.jpg',
     ]);
-    step5bRegisterPreviewMedia((string) $ownGroup->cover_path);
+    $ownCoverMedia = step5bRegisterPreviewMedia('content-groups/covers/ranking-own-group.jpg');
+    MediaAttachment::query()->create(['media_id' => $ownCoverMedia->getKey(), 'attachable_type' => 'content_group', 'attachable_id' => $ownGroup->getKey(), 'role' => 'cover', 'position' => 0]);
     step5bCreatePublicItem('Group Ranking Own Episode', group: $ownGroup);
     $defaultGroup = ContentGroup::factory()->published()->create([
         'title' => 'Group Ranking A Default',

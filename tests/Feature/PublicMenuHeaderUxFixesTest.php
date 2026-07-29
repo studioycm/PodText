@@ -592,7 +592,6 @@ it('presents a broken configured menu logo as safe evidence instead of absence',
 
     expect($choice->directState)->toBe('broken')
         ->and($choice->savedReferenceKey)->toBe($missingReferenceKey)
-        ->and($choice->expectedLegacyPath)->toBe($missingPath)
         ->and($choice->directMedia)->toBeNull()
         ->and($choice->shownNowMedia)->toBeNull()
         ->and($choice->shownNowPreviewUrl)->toBeNull()
@@ -728,7 +727,6 @@ it('fingerprints a malformed configured menu logo as broken without exposing its
 
     expect($choice->directState)->toBe('broken')
         ->and($choice->savedReferenceKey)->toBeNull()
-        ->and($choice->expectedLegacyPath)->toBeNull()
         ->and($choice->canChooseAutomatic)->toBeFalse()
         ->and($choice->directMedia)->toBeNull()
         ->and($choice->shownNowMedia)->toBeNull()

@@ -16,6 +16,7 @@ use App\Models\ContentGroup;
 use App\Models\ContentItem;
 use App\Models\ContentTag;
 use App\Models\Media;
+use App\Models\MediaAttachment;
 use App\Models\Transcription;
 use App\Models\User;
 use App\Support\Media\MediaAttachmentManager;
@@ -247,9 +248,9 @@ it('round trips group and item image attachments through portable media referenc
     $item = ContentItem::query()->where('reference_key', $itemReference)->firstOrFail();
 
     expect($group->coverMediaAttachment()->firstOrFail()->media_id)->toBe($cover->getKey())
-        ->and($group->refresh()->cover_path)->toBe($cover->path)
+        ->and($group->coverMediaAttachment()->with('media')->first()?->media?->path)->toBe($cover->path)
         ->and($item->primaryImageMediaAttachment()->firstOrFail()->media_id)->toBe($primary->getKey())
-        ->and($item->refresh()->image_path)->toBe($primary->path);
+        ->and($item->primaryImageMediaAttachment()->with('media')->first()?->media?->path)->toBe($primary->path);
 
     $exportedGroup = exportRecord(
         ContentGroupExporter::class,
@@ -282,7 +283,7 @@ it('round trips group and item image attachments through portable media referenc
     ], options: ['blank_update_behavior' => 'overwrite'], user: $admin);
 
     expect($group->refresh()->coverMediaAttachment()->exists())->toBeFalse()
-        ->and($group->cover_path)->toBeNull();
+        ->and($group->coverMediaAttachment()->exists())->toBeFalse();
 });
 
 it('allows cross-folder existing media while rejecting unresolved and nonselectable portable identities', function (): void {
@@ -304,7 +305,7 @@ it('allows cross-folder existing media while rejecting unresolved and nonselecta
 
     $crossFolder = ContentGroup::query()->where('title', 'Cross-folder portable group')->firstOrFail();
     expect($crossFolder->coverMediaAttachment()->value('media_id'))->toBe($wrongPurpose->getKey())
-        ->and($crossFolder->cover_path)->toBe($wrongPurpose->path);
+        ->and($crossFolder->coverMediaAttachment()->with('media')->first()?->media?->path)->toBe($wrongPurpose->path);
 
     foreach ([(string) Str::ulid(), $disallowed->reference_key] as $referenceKey) {
         expect(fn () => importRecord(ContentGroupImporter::class, [
@@ -317,13 +318,12 @@ it('allows cross-folder existing media while rejecting unresolved and nonselecta
     expect(ContentGroup::query()->where('title', 'Rejected portable group')->exists())->toBeFalse();
 });
 
-it('exports an authoritative attachment despite a stale path mirror and rejects a null-key legacy identity', function (): void {
+it('exports the authoritative attachment reference key and rejects a null-key attachment identity', function (): void {
     $admin = User::factory()->admin()->create();
     $media = Media::factory()->create();
     $group = ContentGroup::factory()->create();
     Storage::disk('public')->put($media->path, 'authoritative export fixture');
     app(MediaAttachmentManager::class)->attach($group, $media, MediaAttachmentRole::Cover, $admin);
-    $group->forceFill(['cover_path' => 'content-groups/covers/mismatch.jpg'])->saveQuietly();
 
     expect(exportRecord(
         ContentGroupExporter::class,
@@ -331,13 +331,20 @@ it('exports an authoritative attachment despite a stale path mirror and rejects 
         ['cover_media_reference_key' => 'cover_media_reference_key'],
     ))->toBe([$media->reference_key]);
 
-    $legacy = Media::factory()->create();
-    DB::table('curator')->where('id', $legacy->getKey())->update(['reference_key' => null]);
-    $legacyGroup = ContentGroup::factory()->create(['cover_path' => $legacy->path]);
+    $nullKeyMedia = Media::factory()->create();
+    DB::table('curator')->where('id', $nullKeyMedia->getKey())->update(['reference_key' => null]);
+    $nullKeyGroup = ContentGroup::factory()->create();
+    MediaAttachment::query()->create([
+        'media_id' => $nullKeyMedia->getKey(),
+        'attachable_type' => 'content_group',
+        'attachable_id' => $nullKeyGroup->getKey(),
+        'role' => MediaAttachmentRole::Cover,
+        'position' => 0,
+    ]);
 
     expect(fn () => exportRecord(
         ContentGroupExporter::class,
-        $legacyGroup,
+        $nullKeyGroup,
         ['cover_media_reference_key' => 'cover_media_reference_key'],
     ))->toThrow(InvalidArgumentException::class);
 });

@@ -3,6 +3,7 @@
 use App\Enums\ExternalImageFailureReason;
 use App\Enums\ImageUploadPurpose;
 use App\Enums\MediaAcquisitionDisposition;
+use App\Enums\MediaAttachmentRole;
 use App\Enums\UserRole;
 use App\Filament\Forms\Components\PathCuratorPicker;
 use App\Filament\Resources\Media\MediaResource;
@@ -11,6 +12,7 @@ use App\Livewire\Admin\MediaPickerPanel;
 use App\Models\ContentGroup;
 use App\Models\Media;
 use App\Models\MediaAsset;
+use App\Models\MediaAttachment;
 use App\Models\MediaProviderBinding;
 use App\Models\User;
 use App\Settings\AdminUxSettings;
@@ -1830,7 +1832,14 @@ it('projects per-file operation availability with truthful reasons', function ()
         'name' => '01J00000000000000000000031',
         'path' => 'content-groups/covers/01J00000000000000000000031.jpg',
     ]);
-    ContentGroup::factory()->create(['cover_path' => $referenced->path]);
+    $referencedOwner = ContentGroup::factory()->create();
+    MediaAttachment::query()->create([
+        'media_id' => $referenced->getKey(),
+        'attachable_type' => 'content_group',
+        'attachable_id' => $referencedOwner->getKey(),
+        'role' => MediaAttachmentRole::Cover,
+        'position' => 0,
+    ]);
 
     $component = pickerPanel();
     $files = collect($component->get('files'));
@@ -1861,7 +1870,14 @@ it('scopes the panel search including owner titles', function (): void {
         'path' => 'content-groups/covers/01J00000000000000000000062.jpg',
         'title' => null,
     ]);
-    ContentGroup::factory()->create(['title' => 'שיחות עומק', 'cover_path' => $owned->path]);
+    $ownedOwner = ContentGroup::factory()->create(['title' => 'שיחות עומק']);
+    MediaAttachment::query()->create([
+        'media_id' => $owned->getKey(),
+        'attachable_type' => 'content_group',
+        'attachable_id' => $ownedOwner->getKey(),
+        'role' => MediaAttachmentRole::Cover,
+        'position' => 0,
+    ]);
 
     $component = pickerPanel()
         ->set('searchScope', 'owner')

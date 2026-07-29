@@ -37,7 +37,6 @@ class MediaAttachmentManager
         MediaAttachmentRole $role,
         User $actor,
         ?int $expectedMediaId,
-        ?string $expectedLegacyPath,
     ): MediaAttachment {
         return $this->attachWithExpectedIdentity(
             $owner,
@@ -46,7 +45,6 @@ class MediaAttachmentManager
             $actor,
             enforceExpectedIdentity: true,
             expectedMediaId: $expectedMediaId,
-            expectedLegacyPath: $expectedLegacyPath,
         );
     }
 
@@ -57,9 +55,8 @@ class MediaAttachmentManager
         User $actor,
         bool $enforceExpectedIdentity = false,
         ?int $expectedMediaId = null,
-        ?string $expectedLegacyPath = null,
     ): MediaAttachment {
-        [$alias, $legacyColumn] = $this->ownerContract($owner, $role);
+        $alias = $this->ownerAlias($owner, $role);
         $targetMediaId = (int) $media->getKey();
 
         return DB::transaction(function () use (
@@ -68,10 +65,8 @@ class MediaAttachmentManager
             $role,
             $actor,
             $alias,
-            $legacyColumn,
             $enforceExpectedIdentity,
             $expectedMediaId,
-            $expectedLegacyPath,
         ): MediaAttachment {
             $lockedOwner = $owner->newQuery()->lockForUpdate()->findOrFail($owner->getKey());
             $existing = MediaAttachment::query()
@@ -104,11 +99,8 @@ class MediaAttachmentManager
 
             if ($enforceExpectedIdentity) {
                 $currentMediaId = $existing instanceof MediaAttachment ? (int) $existing->media_id : null;
-                $currentLegacyPath = is_string($lockedOwner->getAttribute($legacyColumn))
-                    ? $lockedOwner->getAttribute($legacyColumn)
-                    : null;
 
-                if ($currentMediaId !== $expectedMediaId || $currentLegacyPath !== $expectedLegacyPath) {
+                if ($currentMediaId !== $expectedMediaId) {
                     throw new OwnerImageChangedException;
                 }
             }
@@ -132,8 +124,6 @@ class MediaAttachmentManager
                     'position' => 0,
                 ],
             );
-
-            $lockedOwner->forceFill([$legacyColumn => $trustedMedia->path])->saveQuietly();
 
             return $attachment->load(['media', 'mediaAsset']);
         });
@@ -164,7 +154,6 @@ class MediaAttachmentManager
         MediaAttachmentRole $role,
         User $actor,
         ?int $expectedMediaId,
-        ?string $expectedLegacyPath,
     ): void {
         $this->detachWithExpectedIdentity(
             $owner,
@@ -172,7 +161,6 @@ class MediaAttachmentManager
             $actor,
             enforceExpectedIdentity: true,
             expectedMediaId: $expectedMediaId,
-            expectedLegacyPath: $expectedLegacyPath,
         );
     }
 
@@ -182,9 +170,8 @@ class MediaAttachmentManager
         User $actor,
         bool $enforceExpectedIdentity = false,
         ?int $expectedMediaId = null,
-        ?string $expectedLegacyPath = null,
     ): void {
-        [$alias, $legacyColumn] = $this->ownerContract($owner, $role);
+        $alias = $this->ownerAlias($owner, $role);
         Gate::forUser($actor)->authorize('viewAny', config('curator.model', Media::class));
 
         DB::transaction(function () use (
@@ -192,10 +179,8 @@ class MediaAttachmentManager
             $role,
             $actor,
             $alias,
-            $legacyColumn,
             $enforceExpectedIdentity,
             $expectedMediaId,
-            $expectedLegacyPath,
         ): void {
             $lockedOwner = $owner->newQuery()->lockForUpdate()->findOrFail($owner->getKey());
             $attachment = MediaAttachment::query()
@@ -207,18 +192,17 @@ class MediaAttachmentManager
 
             if ($enforceExpectedIdentity) {
                 $currentMediaId = $attachment instanceof MediaAttachment ? (int) $attachment->media_id : null;
-                $currentLegacyPath = is_string($lockedOwner->getAttribute($legacyColumn))
-                    ? $lockedOwner->getAttribute($legacyColumn)
-                    : null;
 
-                if ($currentMediaId !== $expectedMediaId || $currentLegacyPath !== $expectedLegacyPath) {
+                if ($currentMediaId !== $expectedMediaId) {
                     throw new OwnerImageChangedException;
                 }
             }
 
             if ($attachment instanceof MediaAttachment) {
                 $media = $this->mediaRecordScope
-                    ->lockInventoryForUpdateByIds([(int) $attachment->media_id])
+                    ->inventoryQuery()
+                    ->whereKey((int) $attachment->media_id)
+                    ->lockForUpdate()
                     ->first();
                 $this->mutationFence->assertAttachmentAvailable([(int) $attachment->media_id]);
 
@@ -228,19 +212,14 @@ class MediaAttachmentManager
 
                 $attachment->delete();
             }
-
-            $lockedOwner->forceFill([$legacyColumn => null])->saveQuietly();
         });
     }
 
-    /**
-     * @return array{string, string}
-     */
-    private function ownerContract(Model $owner, MediaAttachmentRole $role): array
+    private function ownerAlias(Model $owner, MediaAttachmentRole $role): string
     {
         return match (true) {
-            $owner instanceof ContentGroup && $role === MediaAttachmentRole::Cover => ['content_group', 'cover_path'],
-            $owner instanceof ContentItem && $role === MediaAttachmentRole::PrimaryImage => ['content_item', 'image_path'],
+            $owner instanceof ContentGroup && $role === MediaAttachmentRole::Cover => 'content_group',
+            $owner instanceof ContentItem && $role === MediaAttachmentRole::PrimaryImage => 'content_item',
             default => throw new InvalidArgumentException('The media attachment role is incompatible with this owner.'),
         };
     }

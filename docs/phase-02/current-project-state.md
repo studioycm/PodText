@@ -155,6 +155,46 @@ Recorded after the Markdown-only post-Prompt-10 prompt-progress centralization c
   original seeded for a future cycle. P3 (retirement code-off), P4
   (column drop) and P5 (sanitize lift) are now unblocked.
 
+- Package 5 P3+P4+P5 (legacy owner-column retirement, drop and sanitize
+  lift) is complete locally, commits held for operator push/deploy
+  approval per the 2026-07-29 gate. Implementation hash `TBD-P5-P3P4P5`.
+  Media ownership truth is now the `media_attachments` pivot alone:
+  `content_groups.cover_path` and `content_items.image_path` are dropped
+  by migration `2026_07_29_172340_drop_legacy_owner_media_path_columns`
+  (production census had proven 0 legacy-only rows). All dual-writes
+  stopped (`MediaAttachmentManager`, `MediaAttachmentFormState`, the
+  coordinator's relocate owner-rewrite/census, converter owner repair,
+  form-lifecycle pins); every reader is attachment-first with no column
+  fallback (identity resolver, reference finder, task query,
+  CardTemplatePreviewer ranking, export manager, integrity reporter —
+  whose `missing_legacy_path`/`legacy_path_mismatch` codes and
+  transition fields retired); the optimistic-concurrency token is
+  media-id-only (baseline payload v2), and the external-image download
+  actions key off `primaryImageMediaAttachment()` existence. The whole
+  legacy plane is deleted: transition/registration planners, switcher,
+  executor, manifest, unsafe-owner diagnostics/projector/repairer, the
+  converter, seven one-time artisan commands
+  (backfill-attachments/reference-keys/settings-reference-keys,
+  register-existing, transition, preflight, convert-curator) and the
+  unsafe badge/action surfaces. Kept as shared settings-plane kernel:
+  `MediaIdentityResolver`, `UnsafeLegacyOwnerMediaException`,
+  `LegacyOwnerMediaDiagnostic(+Code)`; `legacyReferencesForMedia` and
+  `referencesForPath` now report settings path references only. One real
+  regression was caught and fixed in-flight: detaching an attachment
+  whose Media row was hard-deleted now tolerates the missing row
+  (previously the unsafe repairer absorbed that case). P5 lift (D7=a):
+  `CuratorMediaPolicy::repair` allows «ניקוי בטיחותי» for
+  attachment-referenced rows (attachments follow the row id through the
+  byte/address change) and still denies with the settings carve-out
+  (path-based settings references would break); pinned by policy and
+  issue-review presenter tests including a settings-referenced deny.
+  Six legacy-machinery test files were deleted with the machinery, and
+  the surviving suites were converted attachment-first (fixtures,
+  signatures, token payloads, broken-state evidence now sourced from
+  the attachment media path). Gate: full suite 1385 tests / 18540
+  assertions with only the 4 known-environmental macOS browser
+  failures, FilaCheck full 0 issues, pint clean, build green.
+
 - Browser-suite storage URL hermeticity (bounded test chore, investigation
   of the two `CardTemplatePreviewBrowserTest` geometry failures flagged
   below): root cause found — card image `src` values come from

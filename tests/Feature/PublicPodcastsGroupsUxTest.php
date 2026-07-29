@@ -11,6 +11,7 @@ use App\Models\ContentGroup;
 use App\Models\ContentItem;
 use App\Models\Episode;
 use App\Models\Media;
+use App\Models\MediaAttachment;
 use App\Models\Podcast;
 use App\Settings\PublicContentSettings;
 use App\Support\PublicFront\PublicFrontConfigValidator;
@@ -205,7 +206,7 @@ it('filters podcasts by visible category toggles including descendants and group
 it('renders cover fallback categories counts and configured public labels', function (): void {
     Storage::fake('public');
     Storage::disk('public')->put('content-groups/covers/covered-show.jpg', 'podcast cover fixture');
-    Media::factory()->create([
+    $coveredShowMedia = Media::factory()->create([
         'path' => 'content-groups/covers/covered-show.jpg',
     ]);
 
@@ -221,8 +222,8 @@ it('renders cover fallback categories counts and configured public labels', func
     $category = Category::factory()->create(['name' => 'Configured Category']);
     $withCover = ContentGroup::factory()->published()->create([
         'title' => 'Covered Show',
-        'cover_path' => 'content-groups/covers/covered-show.jpg',
     ]);
+    MediaAttachment::query()->create(['media_id' => $coveredShowMedia->getKey(), 'attachable_type' => 'content_group', 'attachable_id' => $withCover->getKey(), 'role' => 'cover', 'position' => 0]);
     $withCover->categories()->attach($category);
     createStep8PublicItem($withCover);
 

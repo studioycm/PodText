@@ -31,7 +31,6 @@ readonly class OwnerImageChoicePresentation
         public bool $canChooseAutomatic,
         public ?int $expectedMediaId,
         public ?string $expectedLegacyPath,
-        public ?string $unsafeFingerprint,
         public array $commitBoundary,
         public array $warningCodes,
         public bool $savedMediaCanSelect = false,

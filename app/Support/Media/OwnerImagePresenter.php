@@ -50,14 +50,12 @@ class OwnerImagePresenter
             effectiveAlt: is_string($snapshot['effective']['alt']) ? $snapshot['effective']['alt'] : null,
             hasDirectAttachment: $snapshot['attachment'] instanceof MediaAttachment,
             brokenDirect: $snapshot['broken_direct'],
-            canRemoveDirect: $snapshot['attachment'] instanceof MediaAttachment || $snapshot['diagnostic'] !== null,
+            canRemoveDirect: $snapshot['attachment'] instanceof MediaAttachment,
             canImportExternal: $owner instanceof ContentItem
                 && $snapshot['effective_source'] === 'external_url'
                 && ! $snapshot['attachment'] instanceof MediaAttachment
                 && filled($owner->external_thumbnail_url),
             expectedMediaId: $snapshot['expected_media_id'],
-            expectedLegacyPath: $snapshot['expected_legacy_path'],
-            unsafeFingerprint: $snapshot['unsafe_fingerprint'],
             media: $snapshot['detail_media'] instanceof Media
                 ? $this->mediaMetadata($snapshot['detail_media'])
                 : null,
@@ -100,7 +98,6 @@ class OwnerImagePresenter
                 canChooseAutomatic: false,
                 expectedMediaId: null,
                 expectedLegacyPath: null,
-                unsafeFingerprint: null,
                 commitBoundary: $commitBoundary,
                 warningCodes: [],
             );
@@ -156,7 +153,6 @@ class OwnerImagePresenter
             directState: match (true) {
                 $attachment instanceof MediaAttachment && ($directMedia === null || $snapshot['broken_direct']) => 'broken',
                 $attachment instanceof MediaAttachment => 'present',
-                $snapshot['unsafe_fingerprint'] !== null => 'unsafe_legacy',
                 default => 'absent',
             },
             directMedia: $directMedia instanceof Media ? $this->choiceMedia($directMedia) : null,
@@ -174,8 +170,7 @@ class OwnerImagePresenter
             canClearPending: $pendingKind !== 'unchanged',
             canChooseAutomatic: $canChooseAutomatic,
             expectedMediaId: $snapshot['expected_media_id'],
-            expectedLegacyPath: $snapshot['expected_legacy_path'],
-            unsafeFingerprint: $snapshot['unsafe_fingerprint'],
+            expectedLegacyPath: null,
             commitBoundary: $commitBoundary,
             warningCodes: $snapshot['warning_codes'],
             pendingFallbackSource: $pendingFallbackSource,
@@ -215,7 +210,6 @@ class OwnerImagePresenter
      * @return array{
      *     attachment: MediaAttachment|null,
      *     direct_media: Media|null,
-     *     diagnostic: LegacyOwnerMediaDiagnostic|null,
      *     effective: array{url: string|null, source: string, path: string|null, alt: string|null},
      *     effective_source: string,
      *     effective_media: Media|null,
@@ -225,15 +219,13 @@ class OwnerImagePresenter
      *     broken_direct: bool,
      *     effective_preview_url: string|null,
      *     expected_media_id: int|null,
-     *     expected_legacy_path: string|null,
-     *     unsafe_fingerprint: string|null
      * }
      */
     private function projectPreparedOwner(
         ContentGroup|ContentItem $owner,
         MediaAttachmentRole $role,
     ): array {
-        [$attachmentRelation, $legacyColumn] = $this->ownerContract($owner, $role);
+        $attachmentRelation = $this->ownerRelation($owner, $role);
         $attachment = $owner->getRelation($attachmentRelation);
         $attachment = $attachment instanceof MediaAttachment ? $attachment : null;
         $directMedia = $attachment?->getRelation('media');
@@ -249,14 +241,11 @@ class OwnerImagePresenter
                 $this->inventoryDiagnostics->forget($media);
                 $this->defaultImageResolver->forget($media);
             });
-        $diagnostic = null;
         $identityMedia = null;
 
         try {
             $identityMedia = $this->identityResolver->resolve($owner, $role)['media'];
-        } catch (UnsafeLegacyOwnerMediaException $exception) {
-            $diagnostic = $exception->diagnostic;
-        } catch (UnresolvableMediaIdentityException|InvalidArgumentException) {
+        } catch (InvalidArgumentException) {
             // The effective resolver owns fallback behavior for unresolved identity.
         }
 
@@ -267,7 +256,6 @@ class OwnerImagePresenter
         $effectiveSource = $this->effectiveSource($owner, $attachment, $identityMedia, $effective['source']);
         $effectiveMedia = $this->effectiveMedia($owner, $role, $identityMedia, $effective);
         $warningCodes = collect([
-            $diagnostic?->code->value,
             ...($directMedia instanceof Media ? $this->inventoryDiagnostics->reasons($directMedia) : []),
         ])->filter()->unique()->values()->all();
         $brokenDirect = $attachment instanceof MediaAttachment
@@ -280,14 +268,10 @@ class OwnerImagePresenter
         $effectivePreviewUrl = $effectiveMedia instanceof Media
             ? $this->inventoryDiagnostics->previewUrl($effectiveMedia)
             : (is_string($effective['url']) && filled($effective['url']) ? $effective['url'] : null);
-        $expectedLegacyPath = is_string($owner->getAttribute($legacyColumn))
-            ? $owner->getAttribute($legacyColumn)
-            : null;
 
         return [
             'attachment' => $attachment,
             'direct_media' => $directMedia,
-            'diagnostic' => $diagnostic,
             'effective' => $effective,
             'effective_source' => $effectiveSource,
             'effective_media' => $effectiveMedia,
@@ -297,8 +281,6 @@ class OwnerImagePresenter
             'broken_direct' => $brokenDirect,
             'effective_preview_url' => $effectivePreviewUrl,
             'expected_media_id' => $attachment instanceof MediaAttachment ? (int) $attachment->media_id : null,
-            'expected_legacy_path' => $expectedLegacyPath,
-            'unsafe_fingerprint' => $diagnostic?->fingerprint,
         ];
     }
 
@@ -346,7 +328,6 @@ class OwnerImagePresenter
                 : null;
 
             return $owner->relationLoaded('coverMediaAttachment')
-                && $owner->relationLoaded('legacyCoverMediaRows')
                 && (! $attachment instanceof MediaAttachment || $attachment->relationLoaded('media'));
         }
 
@@ -363,11 +344,9 @@ class OwnerImagePresenter
 
             return $owner->relationLoaded('contentGroup')
                 && $owner->relationLoaded('primaryImageMediaAttachment')
-                && $owner->relationLoaded('legacyPrimaryImageMediaRows')
                 && (! $attachment instanceof MediaAttachment || $attachment->relationLoaded('media'))
                 && $group instanceof ContentGroup
                 && $group->relationLoaded('coverMediaAttachment')
-                && $group->relationLoaded('legacyCoverMediaRows')
                 && (! $groupAttachment instanceof MediaAttachment || $groupAttachment->relationLoaded('media'));
         }
 
@@ -455,6 +434,7 @@ class OwnerImagePresenter
         return [
             'id' => (int) $media->getKey(),
             'reference_key' => (string) $media->reference_key,
+            'path' => (string) $media->path,
             'label' => filled($media->title) ? (string) $media->title : (string) $media->name,
             'preview_url' => Gate::allows('view', $media) && ! $previewBlocked
                 ? $this->inventoryDiagnostics->previewUrl($media)
@@ -472,13 +452,10 @@ class OwnerImagePresenter
         $relations = match (true) {
             $owner instanceof ContentGroup && $role === MediaAttachmentRole::Cover => [
                 'coverMediaAttachment.media',
-                'legacyCoverMediaRows',
             ],
             $owner instanceof ContentItem && $role === MediaAttachmentRole::PrimaryImage => [
                 'contentGroup.coverMediaAttachment.media',
-                'contentGroup.legacyCoverMediaRows',
                 'primaryImageMediaAttachment.media',
-                'legacyPrimaryImageMediaRows',
             ],
             default => throw new InvalidArgumentException('The media attachment role is incompatible with this owner.'),
         };
@@ -519,7 +496,7 @@ class OwnerImagePresenter
                 )['media'];
 
                 return $groupMedia instanceof Media ? $groupMedia : null;
-            } catch (UnsafeLegacyOwnerMediaException|UnresolvableMediaIdentityException|InvalidArgumentException) {
+            } catch (InvalidArgumentException) {
                 return null;
             }
         }
@@ -618,11 +595,7 @@ class OwnerImagePresenter
         ?Media $directMedia,
         ?Media $effectiveMedia,
     ): array {
-        $legacyRelation = $owner instanceof ContentGroup
-            ? 'legacyCoverMediaRows'
-            : 'legacyPrimaryImageMediaRows';
         $candidates = collect([$directMedia, $effectiveMedia])
-            ->merge($owner->getRelation($legacyRelation))
             ->filter(fn (mixed $media): bool => $media instanceof Media)
             ->unique(fn (Media $media): int => (int) $media->getKey())
             ->filter(fn (Media $media): bool => Gate::allows('update', $media))
@@ -637,22 +610,13 @@ class OwnerImagePresenter
             ->all();
     }
 
-    /**
-     * @return array{string, string}
-     */
-    private function ownerContract(
+    private function ownerRelation(
         ContentGroup|ContentItem $owner,
         MediaAttachmentRole $role,
-    ): array {
+    ): string {
         return match (true) {
-            $owner instanceof ContentGroup && $role === MediaAttachmentRole::Cover => [
-                'coverMediaAttachment',
-                'cover_path',
-            ],
-            $owner instanceof ContentItem && $role === MediaAttachmentRole::PrimaryImage => [
-                'primaryImageMediaAttachment',
-                'image_path',
-            ],
+            $owner instanceof ContentGroup && $role === MediaAttachmentRole::Cover => 'coverMediaAttachment',
+            $owner instanceof ContentItem && $role === MediaAttachmentRole::PrimaryImage => 'primaryImageMediaAttachment',
             default => throw new InvalidArgumentException('The media attachment role is incompatible with this owner.'),
         };
     }

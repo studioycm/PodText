@@ -118,10 +118,8 @@ class MediaReferenceFinder
                 $itemTitles,
             ),
         );
-        $legacyDuplicates = $this->legacyDuplicateStrings($attachments, $groupTitles, $itemTitles);
 
         return collect($this->nonAttachmentReferencesForMedia($media))
-            ->reject(fn (string $reference): bool => in_array($reference, $legacyDuplicates, true))
             ->merge($attachmentReferences)
             ->unique()
             ->values()
@@ -158,54 +156,19 @@ class MediaReferenceFinder
         ]);
     }
 
-    /**
-     * The legacy path-column strings that describe the same usage an
-     * attachment already covers, so one real usage renders once.
-     *
-     * @param  Collection<int, object>  $attachments
-     * @param  Collection<int|string, string|null>  $groupTitles
-     * @param  Collection<int|string, string|null>  $itemTitles
-     * @return array<int, string>
-     */
-    private function legacyDuplicateStrings(
-        Collection $attachments,
-        Collection $groupTitles,
-        Collection $itemTitles,
-    ): array {
-        $duplicates = [];
-
-        foreach ($attachments as $attachment) {
-            $id = (int) $attachment->attachable_id;
-
-            if (
-                (string) $attachment->role === 'cover'
-                && in_array((string) $attachment->attachable_type, ['content_group', ContentGroup::class], true)
-                && filled($groupTitles[$id] ?? null)
-            ) {
-                $duplicates[] = __('admin.media_references.content_group_cover', ['title' => $groupTitles[$id]]);
-            }
-
-            if (
-                (string) $attachment->role === 'primary_image'
-                && in_array((string) $attachment->attachable_type, ['content_item', ContentItem::class], true)
-                && filled($itemTitles[$id] ?? null)
-            ) {
-                $duplicates[] = __('admin.media_references.content_item_image', ['title' => $itemTitles[$id]]);
-            }
-        }
-
-        return $duplicates;
+    private function attachableKindLabel(string $type): string
+    {
+        return match (true) {
+            in_array($type, ['content_group', ContentGroup::class], true) => __('admin.settings_backup_snapshot_screens.podcast'),
+            in_array($type, ['content_item', ContentItem::class], true) => __('admin.settings_backup_snapshot_screens.episode'),
+            default => class_basename($type),
+        };
     }
 
-    /**
-     * @return array<int, string>
-     */
     /** @return array<int, array{label: string, url: string|null}> */
     public function linkedReferencesForMedia(Media $media): array
     {
         $links = collect();
-        $attachedGroupIds = [];
-        $attachedItemIds = [];
 
         if (Schema::hasTable('media_attachments')) {
             $attachments = DB::table('media_attachments')
@@ -232,11 +195,6 @@ class MediaReferenceFinder
                     default => ["#{$id}", null],
                 };
 
-                if (in_array((string) $attachment->attachable_type, ['content_group', ContentGroup::class], true)) {
-                    $attachedGroupIds[] = $id;
-                } elseif (in_array((string) $attachment->attachable_type, ['content_item', ContentItem::class], true)) {
-                    $attachedItemIds[] = $id;
-                }
                 $links->push([
                     'label' => $this->attachableKindLabel((string) $attachment->attachable_type)
                         .': '.$title
@@ -247,31 +205,6 @@ class MediaReferenceFinder
         }
 
         $path = $this->normalize((string) $media->path);
-
-        if ($media->disk === 'public' && $path !== null) {
-            if (Schema::hasTable('content_groups')) {
-                ContentGroup::query()
-                    ->where('cover_path', $path)
-                    ->get(['id', 'title'])
-                    ->reject(fn (ContentGroup $group): bool => in_array((int) $group->getKey(), $attachedGroupIds, true))
-                    ->each(fn (ContentGroup $group) => $links->push([
-                        'label' => __('admin.media_references.content_group_cover', ['title' => (string) $group->title]),
-                        'url' => ContentGroupResource::getUrl('edit', ['record' => $group->getKey()], panel: 'admin'),
-                    ]));
-            }
-
-            if (Schema::hasTable('content_items') && Schema::hasColumn('content_items', 'image_path')) {
-                ContentItem::query()
-                    ->where('image_path', $path)
-                    ->get(['id', 'title'])
-                    ->reject(fn (ContentItem $item): bool => in_array((int) $item->getKey(), $attachedItemIds, true))
-                    ->each(fn (ContentItem $item) => $links->push([
-                        'label' => __('admin.media_references.content_item_image', ['title' => (string) $item->title]),
-                        'url' => ContentItemResource::getUrl('edit', ['record' => $item->getKey()], panel: 'admin'),
-                    ]));
-            }
-        }
-
         $settings = $this->settingsPayloads();
         $families = [
             ['menu_config', MenuHeaderSettings::class, fn (array $payload): array => $this->menuConfigIdentityReferences($path, $media->reference_key, $payload)],
@@ -309,9 +242,7 @@ class MediaReferenceFinder
         );
         $groupTitle = $groupAttachment !== null
             ? ContentGroup::query()->whereKey((int) $groupAttachment->attachable_id)->value('title')
-            : ($media->disk === 'public' && $path !== null && Schema::hasTable('content_groups')
-                ? ContentGroup::query()->where('cover_path', $path)->value('title')
-                : null);
+            : null;
 
         if (filled($groupTitle)) {
             return (string) $groupTitle;
@@ -322,10 +253,7 @@ class MediaReferenceFinder
         );
         $itemTitle = $itemAttachment !== null
             ? ContentItem::query()->whereKey((int) $itemAttachment->attachable_id)->value('title')
-            : ($media->disk === 'public' && $path !== null
-                && Schema::hasTable('content_items') && Schema::hasColumn('content_items', 'image_path')
-                ? ContentItem::query()->where('image_path', $path)->value('title')
-                : null);
+            : null;
 
         if (filled($itemTitle)) {
             return (string) $itemTitle;
@@ -338,15 +266,6 @@ class MediaReferenceFinder
         );
 
         return $settingsLabels[0] ?? null;
-    }
-
-    private function attachableKindLabel(string $type): string
-    {
-        return match (true) {
-            in_array($type, ['content_group', ContentGroup::class], true) => __('admin.settings_backup_snapshot_screens.podcast'),
-            in_array($type, ['content_item', ContentItem::class], true) => __('admin.settings_backup_snapshot_screens.episode'),
-            default => class_basename($type),
-        };
     }
 
     private function attachmentRoleLabel(string $role): string
@@ -400,11 +319,7 @@ class MediaReferenceFinder
             ->keyBy(fn (Media $record): int => (int) $record->getKey());
         $references = $records->map(fn (): array => [])->all();
         $legacyReferences = $records->map(fn (): array => [])->all();
-        $recordsByPath = $records->groupBy(fn (Media $record): string => (string) $record->path);
         $ids = $records->keys()->all();
-        $paths = $records->pluck('path')->filter()->unique()->values()->all();
-
-        $attachmentDuplicates = [];
 
         if ($ids !== [] && Schema::hasTable('media_attachments')) {
             $attachments = DB::table('media_attachments')
@@ -426,45 +341,7 @@ class MediaReferenceFinder
                     $groupTitles,
                     $itemTitles,
                 );
-                $attachmentDuplicates[$mediaId] = array_merge(
-                    $attachmentDuplicates[$mediaId] ?? [],
-                    $this->legacyDuplicateStrings(collect([$attachment]), $groupTitles, $itemTitles),
-                );
             }
-        }
-
-        if ($paths !== [] && Schema::hasTable('content_groups')) {
-            ContentGroup::query()
-                ->whereIn('cover_path', $paths)
-                ->get(['title', 'cover_path'])
-                ->each(function (ContentGroup $group) use ($recordsByPath, &$legacyReferences, &$references, $attachmentDuplicates): void {
-                    $recordsByPath->get((string) $group->cover_path, collect())->each(function (Media $media) use ($group, &$legacyReferences, &$references, $attachmentDuplicates): void {
-                        $reference = __('admin.media_references.content_group_cover', ['title' => $group->title]);
-
-                        if (! in_array($reference, $attachmentDuplicates[(int) $media->getKey()] ?? [], true)) {
-                            $references[(int) $media->getKey()][] = $reference;
-                        }
-
-                        $legacyReferences[(int) $media->getKey()][] = $reference;
-                    });
-                });
-        }
-
-        if ($paths !== [] && Schema::hasTable('content_items') && Schema::hasColumn('content_items', 'image_path')) {
-            ContentItem::query()
-                ->whereIn('image_path', $paths)
-                ->get(['title', 'image_path'])
-                ->each(function (ContentItem $item) use ($recordsByPath, &$legacyReferences, &$references, $attachmentDuplicates): void {
-                    $recordsByPath->get((string) $item->image_path, collect())->each(function (Media $media) use ($item, &$legacyReferences, &$references, $attachmentDuplicates): void {
-                        $reference = __('admin.media_references.content_item_image', ['title' => $item->title]);
-
-                        if (! in_array($reference, $attachmentDuplicates[(int) $media->getKey()] ?? [], true)) {
-                            $references[(int) $media->getKey()][] = $reference;
-                        }
-
-                        $legacyReferences[(int) $media->getKey()][] = $reference;
-                    });
-                });
         }
 
         $settings = $this->settingsPayloads();
@@ -511,10 +388,7 @@ class MediaReferenceFinder
             return [];
         }
 
-        return collect()
-            ->merge($this->contentGroupReferences($path, $excludingGroup))
-            ->merge($this->contentItemReferences($path, $excludingItem))
-            ->merge($this->settingsReferences($path))
+        return collect($this->settingsReferences($path))
             ->unique()
             ->values()
             ->all();
@@ -532,40 +406,6 @@ class MediaReferenceFinder
             ->where('disk', 'public')
             ->where('path', $path)
             ->exists();
-    }
-
-    /**
-     * @return array<int, string>
-     */
-    private function contentGroupReferences(string $path, ?ContentGroup $excludingGroup): array
-    {
-        if (! Schema::hasTable('content_groups')) {
-            return [];
-        }
-
-        return ContentGroup::query()
-            ->where('cover_path', $path)
-            ->when($excludingGroup?->getKey(), fn ($query): mixed => $query->whereKeyNot($excludingGroup->getKey()))
-            ->pluck('title')
-            ->map(fn (string $title): string => __('admin.media_references.content_group_cover', ['title' => $title]))
-            ->all();
-    }
-
-    /**
-     * @return array<int, string>
-     */
-    private function contentItemReferences(string $path, ?ContentItem $excludingItem): array
-    {
-        if (! Schema::hasTable('content_items') || ! Schema::hasColumn('content_items', 'image_path')) {
-            return [];
-        }
-
-        return ContentItem::query()
-            ->where('image_path', $path)
-            ->when($excludingItem?->getKey(), fn ($query): mixed => $query->whereKeyNot($excludingItem->getKey()))
-            ->pluck('title')
-            ->map(fn (string $title): string => __('admin.media_references.content_item_image', ['title' => $title]))
-            ->all();
     }
 
     /**

@@ -18,8 +18,6 @@ readonly class OwnerImagePresentation
         public bool $canRemoveDirect,
         public bool $canImportExternal,
         public ?int $expectedMediaId,
-        public ?string $expectedLegacyPath,
-        public ?string $unsafeFingerprint,
         public ?array $media,
         public array $reviewMedia,
         public array $warningCodes,

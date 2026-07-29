@@ -14,6 +14,7 @@ use App\Models\ContentGroup;
 use App\Models\ContentItem;
 use App\Models\ContentTag;
 use App\Models\Media;
+use App\Models\MediaAttachment;
 use App\Models\Transcription;
 use App\Models\User;
 use App\Settings\PublicContentSettings;
@@ -393,8 +394,10 @@ it('renders podcast identity with title row positioning and sampled podcast imag
     $group = ContentGroup::factory()->published()->create([
         'title' => 'Palette Podcast',
         'slug' => 'palette-podcast',
-        'cover_path' => $coverPath,
     ]);
+    $paletteCoverMedia = Media::query()->where('path', $coverPath)->first()
+        ?? Media::factory()->create(['path' => $coverPath, 'ext' => 'png', 'type' => 'image/png']);
+    MediaAttachment::query()->create(['media_id' => $paletteCoverMedia->getKey(), 'attachable_type' => 'content_group', 'attachable_id' => $group->getKey(), 'role' => 'cover', 'position' => 0]);
     [$item] = createPrompt12PublicItem([
         'title' => 'Palette Episode',
         'slug' => 'palette-episode',
@@ -435,14 +438,14 @@ it('renders podcast identity with title row positioning and sampled podcast imag
 it('uses the podcast cover as the item page image fallback', function (): void {
     Storage::fake('public');
     Storage::disk('public')->put('content-groups/covers/fallback-cover.jpg', 'podcast cover fixture');
-    Media::factory()->create([
+    $fallbackCoverMedia = Media::factory()->create([
         'path' => 'content-groups/covers/fallback-cover.jpg',
     ]);
 
     $group = ContentGroup::factory()->published()->create([
         'slug' => 'cover-fallback-podcast',
-        'cover_path' => 'content-groups/covers/fallback-cover.jpg',
     ]);
+    MediaAttachment::query()->create(['media_id' => $fallbackCoverMedia->getKey(), 'attachable_type' => 'content_group', 'attachable_id' => $group->getKey(), 'role' => 'cover', 'position' => 0]);
     [$item] = createPrompt12PublicItem([
         'slug' => 'cover-fallback-item',
         'external_thumbnail_url' => null,

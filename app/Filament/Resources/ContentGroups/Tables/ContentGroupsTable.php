@@ -2,15 +2,12 @@
 
 namespace App\Filament\Resources\ContentGroups\Tables;
 
-use App\Enums\MediaAttachmentRole;
 use App\Enums\PublicationStatus;
 use App\Filament\Actions\ContentImageActions;
 use App\Filament\Exports\ContentGroupExporter;
 use App\Filament\Imports\ContentGroupImporter;
 use App\Filament\Resources\Support\ResourceTableActions;
 use App\Filament\Tables\OwnerImageColumn;
-use App\Models\ContentGroup;
-use App\Support\Media\LegacyOwnerMediaDiagnosticProjector;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
@@ -28,19 +25,13 @@ class ContentGroupsTable
     public static function configure(Table $table): Table
     {
         return ResourceTableActions::iconOnly($table)
-            ->modifyQueryUsing(fn (Builder $query): Builder => $query->with(['coverMediaAttachment.media', 'legacyCoverMediaRows']))
+            ->modifyQueryUsing(fn (Builder $query): Builder => $query->with(['coverMediaAttachment.media']))
             ->columns([
                 OwnerImageColumn::contentGroup(),
                 TextColumn::make('title')
                     ->label(__('admin.fields.title'))
                     ->searchable()
                     ->sortable(),
-                TextColumn::make('legacy_media_warning')
-                    ->label(__('admin.labels.media'))
-                    ->state(fn (ContentGroup $record): ?string => app(LegacyOwnerMediaDiagnosticProjector::class)->hasUnsafe($record, MediaAttachmentRole::Cover) ? __('admin.labels.unsafe_legacy_media') : null)
-                    ->badge()
-                    ->color('warning')
-                    ->toggleable(),
                 TextColumn::make('group_type_label_singular')
                     ->label(__('admin.fields.group_type_label_singular'))
                     ->badge()
@@ -111,7 +102,6 @@ class ContentGroupsTable
             ])
             ->recordActions([
                 ContentImageActions::contentGroupCover(),
-                ContentImageActions::detachUnsafeOwnerImage(MediaAttachmentRole::Cover),
                 ContentImageActions::exportContentImagesRecord(),
                 EditAction::make(),
             ])

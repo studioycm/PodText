@@ -255,7 +255,7 @@ it('explains every current diagnostic reason with cause consequence and evidence
     }
 });
 
-it('separates canonical owner routes from bounded legacy and settings evidence', function (): void {
+it('separates canonical owner routes from bounded settings evidence', function (): void {
     $this->actingAs(User::factory()->admin()->create());
     $media = mediaIssueFixture('owner-impact', [], false);
     $group = ContentGroup::factory()->create(['title' => 'Canonical podcast owner']);
@@ -292,10 +292,6 @@ it('separates canonical owner routes from bounded legacy and settings evidence',
             'updated_at' => now(),
         ],
     ]);
-    ContentGroup::factory()->create([
-        'title' => 'Legacy path podcast',
-        'cover_path' => $media->path,
-    ]);
     mediaIssueSaveSetting('default_images', [
         'content_group' => [
             'path' => $media->path,
@@ -317,7 +313,9 @@ it('separates canonical owner routes from bounded legacy and settings evidence',
         )
         ->and($review['unresolved_attachment_count'])->toBe(2)
         ->and($review['non_attachment_references'])->toContain(
-            __('admin.media_references.content_group_cover', ['title' => 'Legacy path podcast']),
+            __('admin.media_references.default_image', [
+                'family' => __('admin.default_image_families.content_group'),
+            ]),
         )
         ->and($review['has_current_media_repair_authority'])->toBeFalse();
 });

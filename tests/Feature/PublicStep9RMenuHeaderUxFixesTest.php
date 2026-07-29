@@ -5,6 +5,7 @@ use App\Models\Author;
 use App\Models\ContentGroup;
 use App\Models\ContentItem;
 use App\Models\Media;
+use App\Models\MediaAttachment;
 use App\Models\Transcription;
 use App\Settings\PublicContentSettings;
 use App\Support\PublicFront\Menu\PublicMenuConfigReader;
@@ -278,14 +279,14 @@ it('suppresses homepage discovery chrome when root query parameters are present 
 it('uses group image fallback and finite badge title image styling settings on item cards', function (): void {
     Storage::fake('public');
     Storage::disk('public')->put('content-groups/covers/fallback-cover.jpg', 'podcast cover fixture');
-    Media::factory()->create([
+    $fallbackCoverMedia = Media::factory()->create([
         'path' => 'content-groups/covers/fallback-cover.jpg',
     ]);
 
     $group = ContentGroup::factory()->published()->create([
         'title' => 'Fallback Group',
-        'cover_path' => 'content-groups/covers/fallback-cover.jpg',
     ]);
+    MediaAttachment::query()->create(['media_id' => $fallbackCoverMedia->getKey(), 'attachable_type' => 'content_group', 'attachable_id' => $group->getKey(), 'role' => 'cover', 'position' => 0]);
 
     createStep9RPublicItem('Fallback Episode', $group);
 

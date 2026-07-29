@@ -7,7 +7,6 @@ use App\Models\ContentItem;
 use App\Models\Media;
 use App\Models\MediaAttachment;
 use App\Models\User;
-use App\Support\Media\LegacyOwnerMediaDiagnosticProjector;
 use App\Support\Media\MediaAttachmentIdentityResolver;
 use App\Support\Media\MediaFilesystemMutationCoordinator;
 use App\Support\PublicFront\About\PublicAboutPageRenderer;
@@ -37,8 +36,8 @@ it('keeps owner attachment resolution queries bounded for collections of one ten
             'name' => $primaryName,
             'path' => ImageUploadPurpose::ContentItemPrimaryImage->root()."/{$primaryName}.jpg",
         ]);
-        $group = ContentGroup::factory()->create(['cover_path' => $cover->path]);
-        $item = ContentItem::factory()->for($group)->create(['image_path' => $primary->path]);
+        $group = ContentGroup::factory()->create();
+        $item = ContentItem::factory()->for($group)->create();
         MediaAttachment::factory()->create([
             'media_id' => $cover->getKey(),
             'attachable_type' => 'content_group',
@@ -84,45 +83,6 @@ it('keeps owner attachment resolution queries bounded for collections of one ten
     });
 
     expect($queries)->toHaveCount(6);
-})->with([1, 10, 50]);
-
-it('keeps unique legacy owner resolution database-only after the table eager loads', function (int $ownerCount): void {
-    $groupIds = [];
-    $itemIds = [];
-    for ($index = 0; $index < $ownerCount; $index++) {
-        $cover = Media::factory()->create(['reference_key' => null]);
-        DB::table('curator')->where('id', $cover->getKey())->update(['reference_key' => null]);
-        $name = (string) Str::ulid();
-        $primary = Media::factory()->create(['reference_key' => null, 'directory' => ImageUploadPurpose::ContentItemPrimaryImage->root(), 'name' => $name, 'path' => ImageUploadPurpose::ContentItemPrimaryImage->root()."/{$name}.jpg"]);
-        DB::table('curator')->where('id', $primary->getKey())->update(['reference_key' => null]);
-        $group = ContentGroup::factory()->create(['cover_path' => $cover->path]);
-        $item = ContentItem::factory()->for($group)->create(['image_path' => $primary->path]);
-        $groupIds[] = $group->getKey();
-        $itemIds[] = $item->getKey();
-    }
-    $groups = ContentGroup::query()->with(['coverMediaAttachment.media', 'legacyCoverMediaRows'])->whereKey($groupIds)->get();
-    $items = ContentItem::query()->with([
-        'contentGroup.coverMediaAttachment.media',
-        'contentGroup.legacyCoverMediaRows',
-        'primaryImageMediaAttachment.media',
-        'legacyPrimaryImageMediaRows',
-    ])->whereKey($itemIds)->get();
-    $queries = [];
-    DB::listen(function ($query) use (&$queries): void {
-        $queries[] = $query->sql;
-    });
-    $projector = app(LegacyOwnerMediaDiagnosticProjector::class);
-    $resolver = app(MediaAttachmentIdentityResolver::class);
-    Storage::shouldReceive('disk')->never();
-    foreach ($groups as $group) {
-        expect($projector->hasUnsafe($group, MediaAttachmentRole::Cover))->toBeFalse()
-            ->and($resolver->resolve($group, MediaAttachmentRole::Cover)['media'])->toBeInstanceOf(Media::class);
-    }
-    foreach ($items as $item) {
-        expect($projector->hasUnsafe($item, MediaAttachmentRole::PrimaryImage))->toBeFalse()
-            ->and($resolver->resolve($item, MediaAttachmentRole::PrimaryImage)['media'])->toBeInstanceOf(Media::class);
-    }
-    expect($queries)->toHaveCount(0);
 })->with([1, 10, 50]);
 
 it('batches about and team settings identity queries for one ten and fifty records', function (int $recordCount): void {

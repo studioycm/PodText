@@ -82,8 +82,6 @@ class ContentImagesExportManager
                         $skipped,
                         $manifest,
                     );
-                } elseif (filled($group->cover_path)) {
-                    $skipped[] = "content_group:{$group->reference_key}:cover:legacy-only";
                 }
 
                 foreach ($group->contentItems as $item) {
@@ -96,10 +94,6 @@ class ContentImagesExportManager
                         : $this->attachmentIdentityResolver->resolve($item, MediaAttachmentRole::PrimaryImage)['media'];
 
                     if (! $media instanceof Media) {
-                        if (filled($item->image_path)) {
-                            $skipped[] = "content_item:{$item->reference_key}:primary_image:legacy-only";
-                        }
-
                         continue;
                     }
 

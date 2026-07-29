@@ -106,7 +106,6 @@ class MediaLibraryTaskQuery
      */
     public function applyOwnerTitleSearch(Builder $query, string $searchTerm): Builder
     {
-        $mediaTable = $query->getModel()->getTable();
         $mediaKey = $query->getModel()->getQualifiedKeyName();
 
         return $query
@@ -122,16 +121,6 @@ class MediaLibraryTaskQuery
                     ->join('content_items', 'content_items.id', '=', 'media_attachments.attachable_id')
                     ->whereColumn('media_attachments.media_id', $mediaKey)
                     ->whereIn('media_attachments.attachable_type', ['content_item', ContentItem::class])
-                    ->where('content_items.title', 'like', "%{$searchTerm}%");
-            })
-            ->orWhereExists(function ($sub) use ($mediaTable, $searchTerm): void {
-                $sub->from('content_groups')
-                    ->whereColumn('content_groups.cover_path', "{$mediaTable}.path")
-                    ->where('content_groups.title', 'like', "%{$searchTerm}%");
-            })
-            ->orWhereExists(function ($sub) use ($mediaTable, $searchTerm): void {
-                $sub->from('content_items')
-                    ->whereColumn('content_items.image_path', "{$mediaTable}.path")
                     ->where('content_items.title', 'like', "%{$searchTerm}%");
             });
     }
@@ -296,26 +285,6 @@ class MediaLibraryTaskQuery
                     }
                 });
             }
-
-            $query->orWhere(function (Builder $query) use ($table): void {
-                $query
-                    ->where("{$table}.disk", 'public')
-                    ->where(function (Builder $query) use ($table): void {
-                        $query
-                            ->whereIn(
-                                "{$table}.path",
-                                ContentGroup::query()
-                                    ->select('cover_path')
-                                    ->whereNotNull('cover_path'),
-                            )
-                            ->orWhereIn(
-                                "{$table}.path",
-                                ContentItem::query()
-                                    ->select('image_path')
-                                    ->whereNotNull('image_path'),
-                            );
-                    });
-            });
         });
     }
 

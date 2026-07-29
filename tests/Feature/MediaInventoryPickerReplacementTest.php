@@ -122,7 +122,7 @@ it('runs one exact SVG diagnostic snapshot only after Needs Attention is selecte
 
     $component = Livewire::test(ListMedia::class);
 
-    expect($sanitizeCalls)->toBe(25);
+    expect($sanitizeCalls)->toBe(12);
 
     $component
         ->set('activeTab', 'needs_attention')
@@ -180,7 +180,7 @@ it('starts the picker in its logical context and All Media clears that filter wi
         ->and(Storage::disk('local')->allFiles())->toBe($beforePrivateFiles);
 });
 
-it('renders the authoritative attached row despite legacy path and metadata drift but falls back when its file is missing', function (): void {
+it('renders the authoritative attached row despite metadata drift but falls back when its file is missing', function (): void {
     $media = p2StoredMedia('legacy/nested/current.bin', [
         'directory' => 'legacy',
         'name' => 'stale-name',
@@ -190,7 +190,7 @@ it('renders the authoritative attached row despite legacy path and metadata drif
         'width' => null,
         'height' => null,
     ]);
-    $group = ContentGroup::factory()->create(['cover_path' => 'stale/legacy-mirror.jpg']);
+    $group = ContentGroup::factory()->create();
     MediaAttachment::factory()->create([
         'media_id' => $media->getKey(),
         'attachable_type' => 'content_group',
@@ -215,23 +215,10 @@ it('renders the authoritative attached row despite legacy path and metadata drif
         ->and($missing['url'])->toBeNull();
 });
 
-it('falls back for rowless legacy owner paths regardless of old root or path-shape rules', function (string $legacyPath): void {
-    $group = ContentGroup::factory()->create(['cover_path' => $legacyPath]);
-
-    $image = app(PublicDefaultImageResolver::class)->contentGroupImage($group);
-
-    expect($image['source'])->toBe('fallback')
-        ->and($image['path'])->toBeNull()
-        ->and($image['url'])->toBeNull();
-})->with([
-    'wrong root' => 'legacy/wrong-root-cover.gif',
-    'malformed traversal' => '../outside-cover.jpg',
-]);
-
-it('replaces a rowless malformed legacy owner identity through the same-page action', function (): void {
+it('attaches a cover to a group without one through the same-page action', function (): void {
     $admin = User::factory()->admin()->create();
     $replacement = p2StoredMedia('content-groups/covers/'.Str::ulid().'.jpg');
-    $group = ContentGroup::factory()->create(['cover_path' => '../outside-cover.jpg']);
+    $group = ContentGroup::factory()->create();
 
     Livewire::actingAs($admin)->test(ListContentGroups::class)
         ->mountAction(TestAction::make('chooseContentGroupCover')->table($group))
@@ -240,7 +227,7 @@ it('replaces a rowless malformed legacy owner identity through the same-page act
         ->assertHasNoErrors();
 
     expect($group->coverMediaAttachment()->value('media_id'))->toBe($replacement->getKey())
-        ->and($group->refresh()->cover_path)->toBe($replacement->path);
+        ->and($group->coverMediaAttachment()->with('media')->first()?->media?->path)->toBe($replacement->path);
 });
 
 it('keeps Add or Replace Image visible on podcast and episode list and edit pages and cancel preserves the attachment', function (): void {
@@ -267,7 +254,7 @@ it('keeps Add or Replace Image visible on podcast and episode list and edit page
         ->unmountAction();
 
     expect($group->coverMediaAttachment()->value('media_id'))->toBe($cover->getKey())
-        ->and($group->refresh()->cover_path)->toBe($cover->path)
+        ->and($group->coverMediaAttachment()->with('media')->first()?->media?->path)->toBe($cover->path)
         ->and(Media::query()->orderBy('id')->get()->map->getAttributes()->all())->toBe($beforeRows)
         ->and(Storage::disk('public')->allFiles())->toBe($beforeFiles);
 
@@ -301,7 +288,7 @@ it('mounts and preserves authoritative attachments with nonportable keys on unre
         ->assertHasNoFormErrors();
 
     expect($group->refresh()->title)->toBe('After unrelated save')
-        ->and($group->cover_path)->toBe($media->path)
+        ->and($group->coverMediaAttachment()->with('media')->first()?->media?->path)->toBe($media->path)
         ->and($group->coverMediaAttachment()->value('media_id'))->toBe($media->getKey());
 })->with([
     'null key' => null,
@@ -331,7 +318,7 @@ it('replaces an owner attachment from All Media without copying moving renaming 
         ->assertHasNoErrors();
 
     expect($group->coverMediaAttachment()->value('media_id'))->toBe($replacement->getKey())
-        ->and($group->refresh()->cover_path)->toBe($replacement->path)
+        ->and($group->coverMediaAttachment()->with('media')->first()?->media?->path)->toBe($replacement->path)
         ->and(Media::query()->orderBy('id')->get()->map->getAttributes()->all())->toBe($beforeRows)
         ->and(Storage::disk('public')->allFiles())->toBe($beforeFiles)
         ->and(MediaMutationOperation::query()->count())->toBe(0);
@@ -355,7 +342,7 @@ it('rejects a forged nonselectable replacement at the action boundary', function
         ->assertSet('mountedActions.0.data.cover_media_reference_key', $current->getKey());
 
     expect($group->coverMediaAttachment()->value('media_id'))->toBe($current->getKey())
-        ->and($group->refresh()->cover_path)->toBe($current->path)
+        ->and($group->coverMediaAttachment()->with('media')->first()?->media?->path)->toBe($current->path)
         ->and(MediaMutationOperation::query()->count())->toBe(0);
 });
 
@@ -384,7 +371,7 @@ it('rechecks selection diagnostics under the attachment lock while preserving an
         ->toThrow(InvalidArgumentException::class, __('admin.media_library.selection_audience_denied'));
 
     expect($group->coverMediaAttachment()->value('media_id'))->toBe($current->getKey())
-        ->and($group->refresh()->cover_path)->toBe($current->path);
+        ->and($group->coverMediaAttachment()->with('media')->first()?->media?->path)->toBe($current->path);
 });
 
 it('ships Package 2 picker and replacement labels in Hebrew and English', function (): void {

@@ -24,7 +24,6 @@ use App\Models\User;
 use App\Policies\CuratorMediaPolicy;
 use App\Settings\AdminUxSettings;
 use App\Settings\PublicContentSettings;
-use App\Support\Media\LegacyOwnerMediaRepairer;
 use App\Support\Media\MediaAttachmentFormState;
 use App\Support\Media\MediaAttachmentManager;
 use App\Support\Media\OwnerImageChangedException;
@@ -335,7 +334,6 @@ it('presents a direct owner image with truthful canonical metadata and safe admi
         ->effectiveSource->toBe('direct_media')
         ->brokenDirect->toBeFalse()
         ->expectedMediaId->toBe($media->getKey())
-        ->expectedLegacyPath->toBe($media->path)
         ->and($presentation->media)->not->toBeNull()
         ->and($presentation->media['title'])->toBe('Direct episode art')
         ->and($presentation->media['original_filename'])->toBe('Interview final ORIGINAL.JPG')
@@ -398,7 +396,6 @@ it('projects episode direct shown and pending owner image state independently', 
         ->canClearPending->toBeTrue()
         ->canChooseAutomatic->toBeTrue()
         ->expectedMediaId->toBe($direct->getKey())
-        ->expectedLegacyPath->toBe($direct->path)
         ->and($choice->directMedia['id'])->toBe($direct->getKey())
         ->and($choice->directMedia['label'])->toBe('User direct image title')
         ->and($choice->shownNowMedia['id'])->toBe($direct->getKey())
@@ -408,6 +405,7 @@ it('projects episode direct shown and pending owner image state independently', 
         ->and(array_keys($choice->pendingMedia))->toBe([
             'id',
             'reference_key',
+            'path',
             'label',
             'preview_url',
             'details_url',
@@ -459,6 +457,7 @@ it('presents an admitted storage media row as a numeric pending episode image wi
         ->and($choice->pendingMedia)->toBe([
             'id' => $pending->getKey(),
             'reference_key' => $pending->reference_key,
+            'path' => $pending->path,
             'label' => 'Admitted storage episode image',
             'preview_url' => route('admin.media-files.view', ['media' => $pending]),
             'details_url' => MediaResource::getUrl('edit', ['record' => $pending]),
@@ -493,6 +492,7 @@ it('preserves admitted storage metadata for a preserved numeric pending episode 
     $expectedMetadata = [
         'id' => $media->getKey(),
         'reference_key' => $media->reference_key,
+        'path' => $media->path,
         'label' => 'Preserved admitted episode image',
         'preview_url' => route('admin.media-files.view', ['media' => $media]),
         'details_url' => MediaResource::getUrl('edit', ['record' => $media]),
@@ -518,7 +518,6 @@ it('preserves admitted storage metadata for a preserved numeric pending episode 
         ->pendingKind->toBe('unchanged')
         ->canClearPending->toBeFalse()
         ->expectedMediaId->toBe($media->getKey())
-        ->expectedLegacyPath->toBe($media->path)
         ->and($choice->directMedia)->toBe($expectedMetadata)
         ->and($choice->shownNowMedia)->toBe($expectedMetadata)
         ->and($choice->pendingMedia)->toBe($expectedMetadata)
@@ -578,7 +577,6 @@ it('projects each persisted owner choice from one refreshed owner snapshot', fun
         ->and($choice->savedMediaId)->toBe($media->getKey())
         ->and($choice->savedReferenceKey)->toBe($media->reference_key)
         ->and($choice->expectedMediaId)->toBe($media->getKey())
-        ->and($choice->expectedLegacyPath)->toBe($media->path)
         ->and($choice->shownNowMedia['id'])->toBe($media->getKey())
         ->and($choice->shownNowSource)->toBe('direct_media')
         ->and($choice->warningCodes)->toBe([]);
@@ -843,160 +841,6 @@ it('projects inherited external default global and empty shown-now states indepe
         ->shownNowPreviewUrl->toBeNull();
 });
 
-it('projects broken denied and unsafe owner states without unsafe chooser actions', function (): void {
-    $admin = User::factory()->admin()->create();
-    $moderator = User::factory()->moderator()->create();
-    $private = ownerImageMedia('private/choice-private.jpg', [
-        'disk' => 'local',
-        'directory' => 'private',
-        'visibility' => 'private',
-    ]);
-    $privateItem = ContentItem::factory()->for(ContentGroup::factory())->create([
-        'external_thumbnail_url' => 'https://cdn.example.test/private-fallback.jpg',
-    ]);
-    MediaAttachment::factory()->create([
-        'media_id' => $private->getKey(),
-        'attachable_type' => 'content_item',
-        'attachable_id' => $privateItem->getKey(),
-        'role' => MediaAttachmentRole::PrimaryImage,
-        'position' => 0,
-    ]);
-    $privateItem->forceFill(['image_path' => $private->path])->saveQuietly();
-    $unsafe = ownerImageMedia('content-groups/covers/unsafe-item-role.jpg');
-    ownerImageMedia('content-groups/covers/unsafe-item-role.jpg', [
-        'name' => 'duplicate-unsafe-item-role',
-        'title' => 'Duplicate unsafe item role',
-    ]);
-    $unsafeItem = ContentItem::factory()->for(ContentGroup::factory())->create([
-        'image_path' => $unsafe->path,
-        'external_thumbnail_url' => 'https://cdn.example.test/unsafe-fallback.jpg',
-    ]);
-    $svg = ownerImageMedia('content-items/images/choice-unsafe.svg', [
-        'type' => 'image/svg+xml',
-        'ext' => 'svg',
-        'width' => null,
-        'height' => null,
-    ], store: false);
-    Storage::disk('public')->put(
-        $svg->path,
-        '<svg xmlns="http://www.w3.org/2000/svg" onload="alert(1)"></svg>',
-    );
-    $svgItem = ContentItem::factory()->for(ContentGroup::factory())->create([
-        'image_path' => $svg->path,
-        'external_thumbnail_url' => 'https://cdn.example.test/svg-fallback.jpg',
-    ]);
-    MediaAttachment::factory()->create([
-        'media_id' => $svg->getKey(),
-        'attachable_type' => 'content_item',
-        'attachable_id' => $svgItem->getKey(),
-        'role' => MediaAttachmentRole::PrimaryImage,
-        'position' => 0,
-    ]);
-    $missing = ownerImageMedia('content-items/images/choice-missing.jpg');
-    Storage::disk('public')->delete($missing->path);
-    $missingItem = ContentItem::factory()->for(ContentGroup::factory())->create([
-        'image_path' => $missing->path,
-        'external_thumbnail_url' => 'https://cdn.example.test/missing-fallback.jpg',
-    ]);
-    MediaAttachment::factory()->create([
-        'media_id' => $missing->getKey(),
-        'attachable_type' => 'content_item',
-        'attachable_id' => $missingItem->getKey(),
-        'role' => MediaAttachmentRole::PrimaryImage,
-        'position' => 0,
-    ]);
-    $missingRow = ownerImageMedia('content-items/images/choice-missing-row.jpg');
-    $missingRowItem = ContentItem::factory()->for(ContentGroup::factory())->create([
-        'image_path' => $missingRow->path,
-        'external_thumbnail_url' => 'https://cdn.example.test/missing-row-fallback.jpg',
-    ]);
-    MediaAttachment::factory()->create([
-        'media_id' => $missingRow->getKey(),
-        'attachable_type' => 'content_item',
-        'attachable_id' => $missingRowItem->getKey(),
-        'role' => MediaAttachmentRole::PrimaryImage,
-        'position' => 0,
-    ]);
-    $missingRowId = $missingRow->getKey();
-    DB::statement('PRAGMA defer_foreign_keys = ON');
-    DB::table('curator')->where('id', $missingRowId)->delete();
-    $boundary = [
-        'commit' => 'Save',
-        'cancel' => 'Cancel',
-        'admission' => 'Permanent',
-    ];
-
-    $this->actingAs($admin);
-    $broken = app(OwnerImagePresenter::class)->choice(
-        $privateItem,
-        MediaAttachmentRole::PrimaryImage,
-        null,
-        $boundary,
-    );
-    $unsafeChoice = app(OwnerImagePresenter::class)->choice(
-        $unsafeItem,
-        MediaAttachmentRole::PrimaryImage,
-        null,
-        $boundary,
-    );
-    $unsafeSvg = app(OwnerImagePresenter::class)->choice(
-        $svgItem,
-        MediaAttachmentRole::PrimaryImage,
-        null,
-        $boundary,
-    );
-    $missingFile = app(OwnerImagePresenter::class)->choice(
-        $missingItem,
-        MediaAttachmentRole::PrimaryImage,
-        null,
-        $boundary,
-    );
-    $missingAttachmentMedia = app(OwnerImagePresenter::class)->choice(
-        $missingRowItem,
-        MediaAttachmentRole::PrimaryImage,
-        null,
-        $boundary,
-    );
-
-    $this->actingAs($moderator);
-    $denied = app(OwnerImagePresenter::class)->choice(
-        $privateItem,
-        MediaAttachmentRole::PrimaryImage,
-        $private->getKey(),
-        $boundary,
-    );
-
-    expect($broken)
-        ->directState->toBe('broken')
-        ->shownNowSource->toBe('external_url')
-        ->shownNowMedia->toBeNull()
-        ->canChooseAutomatic->toBeTrue()
-        ->and($broken->warningCodes)->toContain('audience_denied')
-        ->and($broken->directMedia['preview_url'])->toBeNull()
-        ->and($broken->directMedia['details_url'])->toBe(MediaResource::getUrl('edit', ['record' => $private]))
-        ->and($unsafeChoice)
-        ->directState->toBe('unsafe_legacy')
-        ->unsafeFingerprint->not->toBeNull()
-        ->canChooseAutomatic->toBeFalse()
-        ->and($unsafeSvg)
-        ->directState->toBe('broken')
-        ->canChooseAutomatic->toBeTrue()
-        ->and($unsafeSvg->warningCodes)->toContain('unsanitized_svg')
-        ->and($unsafeSvg->directMedia['preview_url'])->toBeNull()
-        ->and($missingFile)
-        ->directState->toBe('broken')
-        ->savedMediaId->toBe($missing->getKey())
-        ->and($missingFile->warningCodes)->toContain('missing_file')
-        ->and($missingFile->directMedia['preview_url'])->toBeNull()
-        ->and($missingAttachmentMedia)
-        ->directState->toBe('broken')
-        ->savedMediaId->toBe($missingRowId)
-        ->canChooseAutomatic->toBeTrue()
-        ->and($missingAttachmentMedia->warningCodes)->toContain('missing_attachment_media')
-        ->and($denied->directMedia['preview_url'])->toBeNull()
-        ->and($denied->directMedia['details_url'])->toBeNull();
-});
-
 it('renders shared owner choice state in the canonical owner action', function (): void {
     $admin = User::factory()->admin()->create();
     $group = ContentGroup::factory()->create();
@@ -1050,7 +894,6 @@ it('memoizes owner choice presentations per field and refreshes only the changed
         canChooseAutomatic: true,
         expectedMediaId: $savedMediaId,
         expectedLegacyPath: null,
-        unsafeFingerprint: null,
         commitBoundary: ['commit' => 'Save', 'cancel' => 'Cancel', 'admission' => 'Permanent'],
         warningCodes: [],
     );
@@ -1181,7 +1024,7 @@ it('keeps owner choice pending state server owned and restores the saved media i
     );
 
     expect($item->primaryImageMediaAttachment()->value('media_id'))->toBe($saved->getKey())
-        ->and($item->refresh()->image_path)->toBe($saved->path);
+        ->and($item->primaryImageMediaAttachment()->with('media')->first()?->media?->path)->toBe($saved->path);
 });
 
 it('keeps the picker opener on a non inline owner choice field without generic selected actions', function (): void {
@@ -1287,7 +1130,7 @@ it('rejects hostile generic schema actions in owner mode and keeps owner transit
     );
 
     expect($item->primaryImageMediaAttachment()->value('media_id'))->toBe($saved->getKey())
-        ->and($item->refresh()->image_path)->toBe($saved->path);
+        ->and($item->primaryImageMediaAttachment()->with('media')->first()?->media?->path)->toBe($saved->path);
 });
 
 it('opens the shared detail workspace from a table thumbnail without row navigation', function (): void {
@@ -1331,7 +1174,7 @@ it('binds the canonical owner baseline token to the action actor owner role and 
 
     expect($token)->toBeString()->not->toBe('')
         ->and(json_decode(Crypt::decryptString($token), true, flags: JSON_THROW_ON_ERROR))->toBe([
-            'v' => 1,
+            'v' => 2,
             'action' => 'chooseContentItemImage',
             'field' => 'primary_image_media_reference_key',
             'owner_type' => 'content_item',
@@ -1339,8 +1182,6 @@ it('binds the canonical owner baseline token to the action actor owner role and 
             'role' => MediaAttachmentRole::PrimaryImage->value,
             'actor_id' => $admin->getKey(),
             'expected_media_id' => $media->getKey(),
-            'expected_legacy_path' => $media->path,
-            'unsafe_fingerprint' => null,
         ]);
 });
 
@@ -1375,7 +1216,7 @@ it('ignores forged legacy expected fields and still requires a stale reconfirm',
         ->assertHasErrors(['mountedActions.0.data.cover_media_reference_key']);
 
     expect($group->coverMediaAttachment()->value('media_id'))->toBe($concurrent->getKey())
-        ->and($group->refresh()->cover_path)->toBe($concurrent->path);
+        ->and($group->coverMediaAttachment()->with('media')->first()?->media?->path)->toBe($concurrent->path);
 });
 
 it('rejects a modified owner baseline token without mutating the owner', function (): void {
@@ -1408,7 +1249,7 @@ it('rejects a modified owner baseline token without mutating the owner', functio
         ->assertHasErrors(['mountedActions.0.data.cover_media_reference_key']);
 
     expect($group->coverMediaAttachment()->value('media_id'))->toBe($current->getKey())
-        ->and($group->refresh()->cover_path)->toBe($current->path);
+        ->and($group->coverMediaAttachment()->with('media')->first()?->media?->path)->toBe($current->path);
 });
 
 it('rejects a valid owner baseline token from a different context', function (string $mismatch): void {
@@ -1453,7 +1294,7 @@ it('rejects a valid owner baseline token from a different context', function (st
         ->assertHasErrors(['mountedActions.0.data.cover_media_reference_key']);
 
     expect($group->coverMediaAttachment()->value('media_id'))->toBe($current->getKey())
-        ->and($group->refresh()->cover_path)->toBe($current->path);
+        ->and($group->coverMediaAttachment()->with('media')->first()?->media?->path)->toBe($current->path);
 })->with([
     'actor id' => ['actor'],
     'action name' => ['action'],
@@ -1606,7 +1447,7 @@ it('keeps an inline gallery choice pending when the owner action is cancelled', 
         ->unmountAction();
 
     expect($item->primaryImageMediaAttachment()->value('media_id'))->toBe($current->getKey())
-        ->and($item->refresh()->image_path)->toBe($current->path)
+        ->and($item->primaryImageMediaAttachment()->with('media')->first()?->media?->path)->toBe($current->path)
         ->and(Media::query()->whereKey($replacement)->exists())->toBeTrue();
 });
 
@@ -1638,7 +1479,7 @@ it('commits a relation manager episode image only when create is submitted', fun
     expect($created->primaryImageMediaAttachment()->value('media_id'))->toBe($replacement->getKey())
         ->and($created->mediaAttachments()->firstOrFail()->role)->toBe(MediaAttachmentRole::PrimaryImage)
         ->and($created->mediaAttachments()->count())->toBe(1)
-        ->and($created->image_path)->toBe($replacement->path);
+        ->and($created->primaryImageMediaAttachment()->with('media')->first()?->media?->path)->toBe($replacement->path);
 });
 
 it('rolls back a relation owner insert when post-create image persistence is denied', function (): void {
@@ -1670,7 +1511,6 @@ it('rolls back a relation owner insert when post-create image persistence is den
 
     expect($group->contentItems()->count())->toBe($ownerCount)
         ->and(ContentItem::query()->where('slug', 'denied-relation-create')->exists())->toBeFalse()
-        ->and(ContentItem::query()->where('slug', 'denied-relation-create')->value('image_path'))->toBeNull()
         ->and(MediaAttachment::query()->count())->toBe($attachmentCount)
         ->and(Media::query()->whereKey($replacement)->exists())->toBeTrue();
     Storage::disk((string) $replacement->disk)->assertExists((string) $replacement->path);
@@ -1702,7 +1542,7 @@ it('commits a relation manager episode image and record edit in one submit', fun
 
     expect($item->refresh()->title)->toBe('After relation edit')
         ->and($item->primaryImageMediaAttachment()->value('media_id'))->toBe($replacement->getKey())
-        ->and($item->image_path)->toBe($replacement->path);
+        ->and($item->primaryImageMediaAttachment()->with('media')->first()?->media?->path)->toBe($replacement->path);
 });
 
 it('leaves a relation manager episode image unchanged when edit is cancelled', function (): void {
@@ -1728,7 +1568,7 @@ it('leaves a relation manager episode image unchanged when edit is cancelled', f
         ->unmountAction();
 
     expect($item->primaryImageMediaAttachment()->value('media_id'))->toBe($current->getKey())
-        ->and($item->refresh()->image_path)->toBe($current->path)
+        ->and($item->primaryImageMediaAttachment()->with('media')->first()?->media?->path)->toBe($current->path)
         ->and(Media::query()->whereKey($replacement)->exists())->toBeTrue();
 });
 
@@ -1809,58 +1649,8 @@ it('clears a direct relation manager episode image through the shared persistenc
         ->assertHasNoErrors();
 
     expect($item->primaryImageMediaAttachment()->exists())->toBeFalse()
-        ->and($item->refresh()->image_path)->toBeNull()
+        ->and($item->primaryImageMediaAttachment()->with('media')->first()?->media?->path)->toBeNull()
         ->and(Media::query()->whereKey($current)->exists())->toBeTrue();
-});
-
-it('presents and replaces an unsafe legacy relation manager image truthfully', function (): void {
-    $admin = User::factory()->admin()->create();
-    $group = ContentGroup::factory()->create();
-    $unsafe = ownerImageMedia('content-items/images/relation-unsafe-legacy.jpg');
-    ownerImageMedia('content-items/images/relation-unsafe-legacy.jpg', [
-        'name' => 'relation-unsafe-legacy-duplicate',
-        'title' => 'Relation unsafe legacy duplicate',
-    ]);
-    $replacement = ownerImageMedia('content-items/images/relation-unsafe-replacement.jpg');
-    $item = ContentItem::factory()->for($group)->create([
-        'image_path' => $unsafe->path,
-    ]);
-
-    $component = Livewire::actingAs($admin)
-        ->test(ContentItemsRelationManager::class, [
-            'ownerRecord' => $group,
-            'pageClass' => EditContentGroup::class,
-        ])
-        ->mountAction(TestAction::make('edit')->table($item));
-    $picker = collect($component->instance()->getSchema('mountedActionSchema0')?->getFlatComponents(withHidden: true))
-        ->first(fn (mixed $schemaComponent): bool => $schemaComponent instanceof PathCuratorPicker);
-
-    assert($picker instanceof PathCuratorPicker);
-
-    expect($picker->getOwnerChoicePresentation())
-        ->directState->toBe('unsafe_legacy')
-        ->unsafeFingerprint->toBeString()->not->toBe('')
-        ->and($component->get('ownerImageUnsafeFingerprint'))->toBeString()->not->toBe('')
-        ->and($component->get('mountedActions.0.data.relation_owner_image_baseline_token'))->toBeString()->not->toBe('');
-
-    $component
-        ->call('callSchemaComponentMethod', $picker->getKey(), 'updateState', [[
-            'mediaId' => $replacement->getKey(),
-        ]])
-        ->assertSet('mountedActions.0.data.primary_image_media_reference_key', $replacement->getKey())
-        ->assertSet('mountedActions.0.data.relation_owner_image_pending_identity', $replacement->getKey());
-
-    expect($component->instance()->getSchema('mountedActionSchema0')?->getState())
-        ->primary_image_media_reference_key->toBe($replacement->reference_key)
-        ->relation_owner_image_pending_identity->toBe($replacement->getKey());
-
-    $component
-        ->callMountedAction()
-        ->assertHasNoErrors();
-
-    expect($item->refresh()->image_path)->toBe($replacement->path)
-        ->and($item->primaryImageMediaAttachment()->value('media_id'))->toBe($replacement->getKey())
-        ->and($item->mediaAttachments()->firstOrFail()->role)->toBe(MediaAttachmentRole::PrimaryImage);
 });
 
 it('rejects a tampered relation manager owner image baseline without changing the episode', function (): void {
@@ -1890,7 +1680,7 @@ it('rejects a tampered relation manager owner image baseline without changing th
         ->assertHasErrors(['mountedActions.0.data.primary_image_media_reference_key']);
 
     expect($item->refresh()->title)->toBe('Tamper baseline title')
-        ->and($item->image_path)->toBe($current->path)
+        ->and($item->primaryImageMediaAttachment()->with('media')->first()?->media?->path)->toBe($current->path)
         ->and($item->primaryImageMediaAttachment()->value('media_id'))->toBe($current->getKey());
 });
 
@@ -1923,7 +1713,7 @@ it('rolls back a stale relation manager edit refreshes its baseline and retries 
 
     expect($item->refresh()->title)->toBe('Before stale relation edit')
         ->and($item->primaryImageMediaAttachment()->value('media_id'))->toBe($concurrent->getKey())
-        ->and($item->image_path)->toBe($concurrent->path);
+        ->and($item->primaryImageMediaAttachment()->with('media')->first()?->media?->path)->toBe($concurrent->path);
 
     $component
         ->callMountedAction()
@@ -1931,7 +1721,7 @@ it('rolls back a stale relation manager edit refreshes its baseline and retries 
 
     expect($item->refresh()->title)->toBe('After stale relation edit')
         ->and($item->primaryImageMediaAttachment()->value('media_id'))->toBe($replacement->getKey())
-        ->and($item->image_path)->toBe($replacement->path);
+        ->and($item->primaryImageMediaAttachment()->with('media')->first()?->media?->path)->toBe($replacement->path);
 });
 
 it('commits selected owner images from every classic create surface', function (): void {
@@ -1980,11 +1770,11 @@ it('commits selected owner images from every classic create surface', function (
     $workspaceItem = ContentItem::query()->where('slug', 'workspace-create-episode')->firstOrFail();
 
     expect($group->coverMediaAttachment()->value('media_id'))->toBe($groupCover->getKey())
-        ->and($group->cover_path)->toBe($groupCover->path)
+        ->and($group->coverMediaAttachment()->with('media')->first()?->media?->path)->toBe($groupCover->path)
         ->and($classicItem->primaryImageMediaAttachment()->value('media_id'))->toBe($classicEpisodeImage->getKey())
-        ->and($classicItem->image_path)->toBe($classicEpisodeImage->path)
+        ->and($classicItem->primaryImageMediaAttachment()->with('media')->first()?->media?->path)->toBe($classicEpisodeImage->path)
         ->and($workspaceItem->primaryImageMediaAttachment()->value('media_id'))->toBe($workspaceEpisodeImage->getKey())
-        ->and($workspaceItem->image_path)->toBe($workspaceEpisodeImage->path);
+        ->and($workspaceItem->primaryImageMediaAttachment()->with('media')->first()?->media?->path)->toBe($workspaceEpisodeImage->path);
 });
 
 it('keeps a full-page create owner choice pending until save', function (string $surface): void {
@@ -2073,9 +1863,6 @@ it('rolls back every full-page owner insert when post-create image persistence i
 
     expect($isPodcast ? ContentGroup::query()->count() : ContentItem::query()->count())->toBe($ownerCount)
         ->and(($isPodcast ? ContentGroup::query() : ContentItem::query())->where('slug', $slug)->exists())->toBeFalse()
-        ->and(($isPodcast ? ContentGroup::query() : ContentItem::query())
-            ->where('slug', $slug)
-            ->value($isPodcast ? 'cover_path' : 'image_path'))->toBeNull()
         ->and($group?->contentItems()->count())->toBe($relationshipCount)
         ->and(MediaAttachment::query()->count())->toBe($attachmentCount)
         ->and(DB::table('transcriptions')->count())->toBe($transcriptionCount)
@@ -2121,16 +1908,14 @@ it('rolls back and refreshes a stale owner image save on every full edit surface
         ->assertSet("data.{$field}", $replacement->getKey());
 
     expect($record->refresh()->title)->toStartWith('Before stale')
-        ->and($record->mediaAttachments()->where('role', $role->value)->value('media_id'))->toBe($concurrent->getKey())
-        ->and($record->getAttribute($role === MediaAttachmentRole::Cover ? 'cover_path' : 'image_path'))->toBe($concurrent->path);
+        ->and($record->mediaAttachments()->where('role', $role->value)->value('media_id'))->toBe($concurrent->getKey());
 
     $component
         ->call('save')
         ->assertHasNoErrors();
 
     expect($record->refresh()->title)->toBe("After stale {$surface} save")
-        ->and($record->mediaAttachments()->where('role', $role->value)->value('media_id'))->toBe($replacement->getKey())
-        ->and($record->getAttribute($role === MediaAttachmentRole::Cover ? 'cover_path' : 'image_path'))->toBe($replacement->path);
+        ->and($record->mediaAttachments()->where('role', $role->value)->value('media_id'))->toBe($replacement->getKey());
 })->with([
     'podcast',
     'classic-episode',
@@ -2214,7 +1999,7 @@ it('commits one gallery choice only from the primary owner submit', function ():
         ->assertHasNoErrors();
 
     expect($item->primaryImageMediaAttachment()->value('media_id'))->toBe($replacement->getKey())
-        ->and($item->refresh()->image_path)->toBe($replacement->path)
+        ->and($item->primaryImageMediaAttachment()->with('media')->first()?->media?->path)->toBe($replacement->path)
         ->and($item->mediaAttachments()
             ->where('role', MediaAttachmentRole::PrimaryImage->value)
             ->count())->toBe(1);
@@ -2246,7 +2031,6 @@ it('rejects unauthorized and unselectable owner image submissions', function ():
         MediaAttachmentRole::Cover,
         $moderator,
         expectedMediaId: $current->getKey(),
-        expectedLegacyPath: $current->path,
         enforceExpectedIdentity: true,
     ))->toThrow(AuthorizationException::class);
 
@@ -2267,7 +2051,7 @@ it('rejects unauthorized and unselectable owner image submissions', function ():
         ->assertStatus(422);
 
     expect($group->coverMediaAttachment()->value('media_id'))->toBe($current->getKey())
-        ->and($group->refresh()->cover_path)->toBe($current->path);
+        ->and($group->coverMediaAttachment()->with('media')->first()?->media?->path)->toBe($current->path);
 });
 
 it('rejects an unauthorized attach through the mounted canonical owner action wiring', function (): void {
@@ -2297,7 +2081,7 @@ it('rejects an unauthorized attach through the mounted canonical owner action wi
     }
 
     expect($group->coverMediaAttachment()->value('media_id'))->toBe($current->getKey())
-        ->and($group->refresh()->cover_path)->toBe($current->path);
+        ->and($group->coverMediaAttachment()->with('media')->first()?->media?->path)->toBe($current->path);
 });
 
 it('reuses the same integrated workspace on podcast edit classic episode edit and episode workspace', function (): void {
@@ -2354,7 +2138,7 @@ it('removes only the direct image through the root workspace action', function (
         ->assertHasNoErrors();
 
     expect($group->coverMediaAttachment()->exists())->toBeFalse()
-        ->and($group->refresh()->cover_path)->toBeNull()
+        ->and($group->coverMediaAttachment()->with('media')->first()?->media?->path)->toBeNull()
         ->and(Media::query()->whereKey($media)->exists())->toBeTrue()
         ->and(Storage::disk('public')->exists($media->path))->toBeTrue();
 });
@@ -2389,7 +2173,7 @@ it('keeps external import separate from the canonical owner modal', function ():
     );
 
     expect($item->primaryImageMediaAttachment()->exists())->toBeFalse()
-        ->and($item->refresh()->image_path)->toBeNull();
+        ->and($item->primaryImageMediaAttachment()->with('media')->first()?->media?->path)->toBeNull();
 });
 
 it('identifies external and inherited effective sources without pretending an external URL is Media', function (): void {
@@ -2558,7 +2342,6 @@ it('keeps audience denial and unsafe SVG diagnostics separate from the effective
             ->for(ContentGroup::factory())
             ->create([
                 'external_thumbnail_url' => 'https://cdn.example.test/d01-fallback.jpg',
-                'image_path' => $media->path,
             ]);
         MediaAttachment::factory()->create([
             'media_id' => $media->getKey(),
@@ -2703,7 +2486,7 @@ it('mounts and detaches an attachment whose Media row disappeared', function ():
         ->assertHasNoErrors();
 
     expect($item->primaryImageMediaAttachment()->exists())->toBeFalse()
-        ->and($item->refresh()->image_path)->toBeNull();
+        ->and($item->primaryImageMediaAttachment()->with('media')->first()?->media?->path)->toBeNull();
 });
 
 it('halts a rowless stale automatic choice refreshes its authenticated baseline and detaches only on unchanged retry', function (): void {
@@ -2743,12 +2526,6 @@ it('halts a rowless stale automatic choice refreshes its authenticated baseline 
         ->where('attachable_id', $item->getKey())
         ->where('role', MediaAttachmentRole::PrimaryImage->value)
         ->update(['media_id' => $concurrent->getKey()]);
-    DB::table('content_items')
-        ->where('id', $item->getKey())
-        ->update(['image_path' => $concurrent->path]);
-
-    expect(DB::table('content_items')->where('id', $item->getKey())->value('image_path'))
-        ->toBe($concurrent->path);
 
     $component
         ->callMountedAction()
@@ -2767,52 +2544,15 @@ it('halts a rowless stale automatic choice refreshes its authenticated baseline 
 
     expect($refreshedToken)->toBeString()->not->toBe($originalToken)
         ->and($refreshedBaseline['expected_media_id'])->toBe($concurrent->getKey())
-        ->and($refreshedBaseline['expected_legacy_path'])->toBe($concurrent->path)
-        ->and($refreshedBaseline['unsafe_fingerprint'])->toBeNull()
         ->and($item->primaryImageMediaAttachment()->value('media_id'))->toBe($concurrent->getKey())
-        ->and($item->refresh()->image_path)->toBe($concurrent->path);
+        ->and($item->primaryImageMediaAttachment()->with('media')->first()?->media?->path)->toBe($concurrent->path);
 
     $component
         ->callMountedAction()
         ->assertHasNoErrors();
 
     expect($item->primaryImageMediaAttachment()->exists())->toBeFalse()
-        ->and($item->refresh()->image_path)->toBeNull();
-});
-
-it('keeps unrelated unsafe repair runtime failures distinct from owner image stale conflicts', function (): void {
-    $admin = User::factory()->admin()->create();
-    $missing = ownerImageMedia('content-items/images/rowless-runtime-a.jpg');
-    $item = ContentItem::factory()->for(ContentGroup::factory())->create();
-    app(MediaAttachmentManager::class)->attach(
-        $item,
-        $missing,
-        MediaAttachmentRole::PrimaryImage,
-        $admin,
-    );
-
-    DB::statement('PRAGMA defer_foreign_keys = ON');
-    DB::table('curator')->where('id', $missing->getKey())->delete();
-    $item = $item->fresh();
-    $fingerprint = app(MediaAttachmentFormState::class)
-        ->diagnostic($item, MediaAttachmentRole::PrimaryImage)?->fingerprint;
-
-    expect($fingerprint)->toBeString()->not->toBe('');
-
-    try {
-        app(LegacyOwnerMediaRepairer::class)->replace(
-            $item,
-            MediaAttachmentRole::PrimaryImage,
-            'MISSING-REPLACEMENT',
-            $fingerprint,
-            $admin,
-        );
-        $this->fail('The unavailable replacement should remain a distinct runtime failure.');
-    } catch (RuntimeException $exception) {
-        expect($exception)
-            ->not->toBeInstanceOf(OwnerImageChangedException::class)
-            ->and($exception->getMessage())->toBe('The requested replacement media is unavailable.');
-    }
+        ->and($item->primaryImageMediaAttachment()->with('media')->first()?->media?->path)->toBeNull();
 });
 
 it('rejects a stale normal replacement and preserves the newer owner image', function (): void {
@@ -2834,12 +2574,11 @@ it('rejects a stale normal replacement and preserves the newer owner image', fun
         MediaAttachmentRole::Cover,
         $admin,
         expectedMediaId: $snapshot->expectedMediaId,
-        expectedLegacyPath: $snapshot->expectedLegacyPath,
         enforceExpectedIdentity: true,
     ))->toThrow(OwnerImageChangedException::class);
 
     expect($group->coverMediaAttachment()->value('media_id'))->toBe($newer->getKey())
-        ->and($group->refresh()->cover_path)->toBe($newer->path);
+        ->and($group->coverMediaAttachment()->with('media')->first()?->media?->path)->toBe($newer->path);
 });
 
 it('halts a stale owner modal submit refreshes evidence and commits the pending choice once on retry', function (): void {
@@ -2880,17 +2619,15 @@ it('halts a stale owner modal submit refreshes evidence and commits the pending 
     );
 
     expect($group->coverMediaAttachment()->value('media_id'))->toBe($concurrent->getKey())
-        ->and($group->refresh()->cover_path)->toBe($concurrent->path)
-        ->and($refreshedBaseline['expected_media_id'])->toBe($concurrent->getKey())
-        ->and($refreshedBaseline['expected_legacy_path'])->toBe($concurrent->path)
-        ->and($refreshedBaseline['unsafe_fingerprint'])->toBeNull();
+        ->and($group->coverMediaAttachment()->with('media')->first()?->media?->path)->toBe($concurrent->path)
+        ->and($refreshedBaseline['expected_media_id'])->toBe($concurrent->getKey());
 
     $component
         ->callMountedAction()
         ->assertHasNoErrors();
 
     expect($group->coverMediaAttachment()->value('media_id'))->toBe($pending->getKey())
-        ->and($group->refresh()->cover_path)->toBe($pending->path)
+        ->and($group->coverMediaAttachment()->with('media')->first()?->media?->path)->toBe($pending->path)
         ->and($group->mediaAttachments()
             ->where('role', MediaAttachmentRole::Cover->value)
             ->count())->toBe(1);
@@ -2913,11 +2650,10 @@ it('rejects a stale direct removal and preserves the newer owner image', functio
         MediaAttachmentRole::Cover,
         $admin,
         $snapshot->expectedMediaId,
-        $snapshot->expectedLegacyPath,
     ))->toThrow(OwnerImageChangedException::class);
 
     expect($group->coverMediaAttachment()->value('media_id'))->toBe($newer->getKey())
-        ->and($group->refresh()->cover_path)->toBe($newer->path);
+        ->and($group->coverMediaAttachment()->with('media')->first()?->media?->path)->toBe($newer->path);
 });
 
 it('ships the Package 4 workspace labels and feedback in Hebrew and English', function (): void {

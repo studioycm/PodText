@@ -26,7 +26,6 @@ use Illuminate\Support\Str;
     'default_item_type_label_singular',
     'default_item_type_label_plural',
     'description_markdown',
-    'cover_path',
     'cover_alt_text',
     'original_language_code',
     'status',
@@ -67,12 +66,6 @@ class ContentGroup extends Model
         return $this->hasOne(MediaAttachment::class, 'attachable_id')
             ->where('attachable_type', 'content_group')
             ->where('role', MediaAttachmentRole::Cover->value);
-    }
-
-    /** Raw legacy lookup for admin diagnostics only; never a usable-media relation. */
-    public function legacyCoverMediaRows(): HasMany
-    {
-        return $this->hasMany(Media::class, 'path', 'cover_path')->orderBy('id');
     }
 
     public function categories(): BelongsToMany

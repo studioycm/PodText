@@ -17,15 +17,7 @@ trait InteractsWithOwnerImageFormLifecycle
     #[Locked]
     public ?int $ownerImageExpectedMediaId = null;
 
-    #[Locked]
-    public ?string $ownerImageExpectedLegacyPath = null;
-
-    #[Locked]
-    public ?string $ownerImageUnsafeFingerprint = null;
-
     private ?string $pendingOwnerImageReferenceKey = null;
-
-    private ?string $pendingOwnerImageUnsafeFingerprint = null;
 
     /**
      * @param  array<string, mixed>  $data
@@ -59,21 +51,12 @@ trait InteractsWithOwnerImageFormLifecycle
             $data['relation_owner_image_pending_identity'],
         );
 
-        $legacyColumn = $role === MediaAttachmentRole::Cover ? 'cover_path' : 'image_path';
-        $currentLegacyPath = $owner?->newQuery()
-            ->whereKey($owner->getKey())
-            ->value($legacyColumn);
-
-        [$data, $this->pendingOwnerImageReferenceKey, $this->pendingOwnerImageUnsafeFingerprint] = app(MediaAttachmentFormState::class)->prepare(
+        [$data, $this->pendingOwnerImageReferenceKey] = app(MediaAttachmentFormState::class)->prepare(
             $data,
             $field,
             $owner,
             $role,
         );
-
-        if ($owner !== null) {
-            $data[$legacyColumn] = $currentLegacyPath;
-        }
 
         return $data;
     }
@@ -91,12 +74,8 @@ trait InteractsWithOwnerImageFormLifecycle
                 $this->pendingOwnerImageReferenceKey,
                 $role,
                 $actor,
-                $enforceExpectedIdentity
-                    ? $this->ownerImageUnsafeFingerprint
-                    : $this->pendingOwnerImageUnsafeFingerprint,
                 $field,
                 $this->ownerImageExpectedMediaId,
-                $this->ownerImageExpectedLegacyPath,
                 enforceExpectedIdentity: $enforceExpectedIdentity,
             );
         } catch (OwnerImageChangedException) {
@@ -140,8 +119,6 @@ trait InteractsWithOwnerImageFormLifecycle
         );
 
         $this->ownerImageExpectedMediaId = $presentation->expectedMediaId;
-        $this->ownerImageExpectedLegacyPath = $presentation->expectedLegacyPath;
-        $this->ownerImageUnsafeFingerprint = $presentation->unsafeFingerprint;
 
         return $presentation;
     }

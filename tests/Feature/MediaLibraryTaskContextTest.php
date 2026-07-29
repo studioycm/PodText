@@ -4,7 +4,6 @@ use App\Enums\MediaDiagnosticReason;
 use App\Enums\MediaLibraryTask;
 use App\Filament\Resources\Media\MediaResource;
 use App\Models\ContentGroup;
-use App\Models\ContentItem;
 use App\Models\Media;
 use App\Models\MediaAttachment;
 use App\Settings\PublicContentSettings;
@@ -123,7 +122,7 @@ it('defines the canonical Media Library tasks and diagnostic reasons in stable o
     }
 });
 
-it('builds In Use from canonical attachments public legacy paths and settings identities', function (): void {
+it('builds In Use from canonical attachments and settings identities only', function (): void {
     $attachedPublic = mediaUx3M2Fixture('attached-public');
     $attachedPrivate = mediaUx3M2Fixture('attached-private', [
         'disk' => 'local',
@@ -146,13 +145,11 @@ it('builds In Use from canonical attachments public legacy paths and settings id
         'path' => $legacyPath,
         'visibility' => 'private',
     ]);
-    ContentGroup::factory()->create(['cover_path' => $legacyPath]);
 
     $itemLegacy = mediaUx3M2Fixture('item-legacy', [
         'directory' => 'content-items/images',
         'path' => 'content-items/images/item-legacy.jpg',
     ]);
-    ContentItem::factory()->create(['image_path' => $itemLegacy->path]);
 
     $settingsPath = mediaUx3M2Fixture('settings-path', [
         'directory' => 'default-images',
@@ -212,9 +209,6 @@ it('builds In Use from canonical attachments public legacy paths and settings id
     expect(mediaUx3M2TaskIds(MediaLibraryTask::InUse))->toBe(collect([
         $attachedPublic,
         $attachedPrivate,
-        $legacyPublic,
-        $legacyDuplicate,
-        $itemLegacy,
         $settingsPath,
         $settingsPrivateKey,
         $menuPath,

@@ -2,7 +2,6 @@
 
 namespace App\Filament\Resources\ContentItems\Tables;
 
-use App\Enums\MediaAttachmentRole;
 use App\Enums\PublicationStatus;
 use App\Filament\Actions\ContentImageActions;
 use App\Filament\Actions\EditEffectiveTranscriptionAction;
@@ -14,7 +13,6 @@ use App\Filament\Resources\Support\ResourceTableActions;
 use App\Filament\Tables\OwnerImageColumn;
 use App\Models\Author;
 use App\Models\ContentItem;
-use App\Support\Media\LegacyOwnerMediaDiagnosticProjector;
 use App\Support\Transcriptions\TranscriptionModeLabel;
 use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
@@ -44,11 +42,9 @@ class ContentItemsTable
             ->modifyQueryUsing(fn (Builder $query): Builder => $query
                 ->with([
                     'contentGroup.coverMediaAttachment.media',
-                    'contentGroup.legacyCoverMediaRows',
                     'featuredTranscription.authors',
                     'latestPublishedTranscription.authors',
                     'primaryImageMediaAttachment.media',
-                    'legacyPrimaryImageMediaRows',
                 ])
                 ->withCount('transcriptions'))
             ->columns([
@@ -57,12 +53,6 @@ class ContentItemsTable
                     ->label(__('admin.fields.title'))
                     ->searchable()
                     ->sortable(),
-                TextColumn::make('legacy_media_warning')
-                    ->label(__('admin.labels.media'))
-                    ->state(fn (ContentItem $record): ?string => app(LegacyOwnerMediaDiagnosticProjector::class)->hasUnsafe($record, MediaAttachmentRole::PrimaryImage) ? __('admin.labels.unsafe_legacy_media') : null)
-                    ->badge()
-                    ->color('warning')
-                    ->toggleable(),
                 TextColumn::make('contentGroup.title')
                     ->label(__('admin.fields.content_group'))
                     ->searchable()
@@ -202,7 +192,6 @@ class ContentItemsTable
             ])
             ->recordUrl(fn (ContentItem $record): string => ContentItemResource::getUrl('workspace', ['record' => $record]))
             ->recordActions([
-                ContentImageActions::detachUnsafeOwnerImage(MediaAttachmentRole::PrimaryImage),
                 Action::make('openEpisodeWorkspace')
                     ->label(__('admin.actions.open_episode_workspace'))
                     ->icon(Heroicon::OutlinedPencilSquare)

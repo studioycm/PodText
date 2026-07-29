@@ -73,14 +73,13 @@ it('shares one media record between owners while enforcing singleton roles', fun
     $manager->attach($secondOwner, $firstMedia, MediaAttachmentRole::Cover, $actor);
 
     expect($firstMedia->attachments()->count())->toBe(2)
-        ->and($firstOwner->refresh()->cover_path)->toBe($firstMedia->path)
-        ->and($secondOwner->refresh()->cover_path)->toBe($firstMedia->path);
+        ->and($firstOwner->coverMediaAttachment()->value('media_id'))->toBe($firstMedia->getKey())
+        ->and($secondOwner->coverMediaAttachment()->value('media_id'))->toBe($firstMedia->getKey());
 
     $manager->attach($firstOwner, $secondMedia, MediaAttachmentRole::Cover, $actor);
 
     expect($firstOwner->mediaAttachments()->count())->toBe(1)
         ->and($firstOwner->coverMediaAttachment()->firstOrFail()->media_id)->toBe($secondMedia->getKey())
-        ->and($firstOwner->refresh()->cover_path)->toBe($secondMedia->path)
         ->and($secondOwner->coverMediaAttachment()->firstOrFail()->media_id)->toBe($firstMedia->getKey());
 });
 
@@ -105,7 +104,7 @@ it('enforces role and owner compatibility and resolves stable morph aliases', fu
 
     expect($attachment->attachable_type)->toBe('content_item')
         ->and($attachment->attachable)->toBeInstanceOf(ContentItem::class)
-        ->and($item->refresh()->image_path)->toBe($primary->path);
+        ->and($item->primaryImageMediaAttachment()->value('media_id'))->toBe($primary->getKey());
 });
 
 it('enforces the owner role uniqueness constraint at the database boundary', function (): void {
@@ -184,8 +183,8 @@ it('shares and replaces singleton primary images for content items', function ()
         ->and($secondItem->primaryImageMediaAttachment()->firstOrFail()->media_id)->toBe($shared->getKey())
         ->and($firstItem->mediaAttachments()->count())->toBe(1)
         ->and($secondItem->mediaAttachments()->count())->toBe(1)
-        ->and($firstItem->refresh()->image_path)->toBe($replacement->path)
-        ->and($secondItem->refresh()->image_path)->toBe($shared->path);
+        ->and($firstItem->primaryImageMediaAttachment()->value('media_id'))->toBe($replacement->getKey())
+        ->and($secondItem->primaryImageMediaAttachment()->value('media_id'))->toBe($shared->getKey());
 });
 
 it('casts attachment positions and journal history while preserving stable morph aliases', function (): void {
@@ -241,11 +240,11 @@ it('enforces the restrictive media foreign key and cleans direct item attachment
         ->and(Media::query()->whereKey($media->getKey())->exists())->toBeTrue();
 });
 
-it('authorizes detach for both attached and legacy only owner state', function (): void {
+it('authorizes detach for both attached and attachment-free owner state', function (): void {
     $admin = User::factory()->admin()->create();
     $moderator = User::factory()->moderator()->create();
     $attachedGroup = ContentGroup::factory()->create();
-    $legacyGroup = ContentGroup::factory()->create(['cover_path' => 'content-groups/covers/legacy.jpg']);
+    $bareGroup = ContentGroup::factory()->create();
     $media = Media::factory()->create();
     Storage::disk('public')->put($media->path, 'detach media fixture');
     $manager = app(MediaAttachmentManager::class);
@@ -253,18 +252,15 @@ it('authorizes detach for both attached and legacy only owner state', function (
 
     expect(fn () => $manager->detach($attachedGroup, MediaAttachmentRole::Cover, $moderator))
         ->toThrow(AuthorizationException::class)
-        ->and(fn () => $manager->detach($legacyGroup, MediaAttachmentRole::Cover, $moderator))
+        ->and(fn () => $manager->detach($bareGroup, MediaAttachmentRole::Cover, $moderator))
         ->toThrow(AuthorizationException::class);
 
-    expect($attachedGroup->refresh()->cover_path)->toBe($media->path)
-        ->and($legacyGroup->refresh()->cover_path)->toBe('content-groups/covers/legacy.jpg');
+    expect($attachedGroup->coverMediaAttachment()->value('media_id'))->toBe($media->getKey());
 
     $manager->detach($attachedGroup, MediaAttachmentRole::Cover, $admin);
-    $manager->detach($legacyGroup, MediaAttachmentRole::Cover, $admin);
+    $manager->detach($bareGroup, MediaAttachmentRole::Cover, $admin);
 
-    expect($attachedGroup->refresh()->cover_path)->toBeNull()
-        ->and($legacyGroup->refresh()->cover_path)->toBeNull()
-        ->and(MediaAttachment::query()->count())->toBe(0);
+    expect(MediaAttachment::query()->count())->toBe(0);
 });
 
 it('keeps nullable legacy media out of trusted selection until its key is backfilled', function (): void {
@@ -287,7 +283,7 @@ it('locks and reloads media identity for attachment writes and rejects active mu
     Storage::disk('public')->put($newPath, 'locked media fixture');
 
     app(MediaAttachmentManager::class)->attach($owner, $media, MediaAttachmentRole::Cover, $actor);
-    expect($owner->refresh()->cover_path)->toBe($newPath);
+    expect($owner->coverMediaAttachment()->value('media_id'))->toBe($media->getKey());
 
     $operation = MediaMutationOperation::factory()->create([
         'media_id' => $media->getKey(),
@@ -307,12 +303,11 @@ it('locks and reloads media identity for attachment writes and rejects active mu
             ->not->toBeInstanceOf(OwnerImageChangedException::class)
             ->and($exception->getMessage())->toContain('active filesystem mutation');
     }
-    expect($owner->refresh()->cover_path)->toBe($newPath)
-        ->and($owner->coverMediaAttachment()->exists())->toBeTrue();
+    expect($owner->coverMediaAttachment()->exists())->toBeTrue();
 
     $operation->update(['status' => MediaMutationStatus::Failed]);
     app(MediaAttachmentManager::class)->detach($owner, MediaAttachmentRole::Cover, $actor);
-    expect($owner->refresh()->cover_path)->toBeNull();
+    expect($owner->coverMediaAttachment()->exists())->toBeFalse();
 });
 
 it('protects the expected attachment lifecycle for both owner image roles', function (
@@ -343,7 +338,7 @@ it('protects the expected attachment lifecycle for both owner image roles', func
     [$first, $second, $third] = $media->all();
     $manager = app(MediaAttachmentManager::class);
 
-    $manager->attachIfUnchanged($owner, $first, $role, $admin, null, null);
+    $manager->attachIfUnchanged($owner, $first, $role, $admin, null);
 
     expect(fn () => $manager->attachIfUnchanged(
         $owner,
@@ -351,14 +346,12 @@ it('protects the expected attachment lifecycle for both owner image roles', func
         $role,
         $moderator,
         $first->getKey(),
-        $first->path,
     ))->toThrow(AuthorizationException::class)
         ->and(fn () => $manager->detachIfUnchanged(
             $owner,
             $role,
             $moderator,
             $first->getKey(),
-            $first->path,
         ))->toThrow(AuthorizationException::class);
 
     $manager->attachIfUnchanged(
@@ -367,7 +360,6 @@ it('protects the expected attachment lifecycle for both owner image roles', func
         $role,
         $admin,
         $first->getKey(),
-        $first->path,
     );
 
     expect(fn () => $manager->attachIfUnchanged(
@@ -376,34 +368,28 @@ it('protects the expected attachment lifecycle for both owner image roles', func
         $role,
         $admin,
         $first->getKey(),
-        $first->path,
     ))->toThrow(OwnerImageChangedException::class)
         ->and(fn () => $manager->detachIfUnchanged(
             $owner,
             $role,
             $admin,
             $first->getKey(),
-            $first->path,
         ))->toThrow(OwnerImageChangedException::class);
 
     $attachmentRelation = $role === MediaAttachmentRole::Cover
         ? $owner->coverMediaAttachment()
         : $owner->primaryImageMediaAttachment();
-    $legacyColumn = $role === MediaAttachmentRole::Cover ? 'cover_path' : 'image_path';
 
-    expect($attachmentRelation->value('media_id'))->toBe($second->getKey())
-        ->and($owner->refresh()->getAttribute($legacyColumn))->toBe($second->path);
+    expect($attachmentRelation->value('media_id'))->toBe($second->getKey());
 
     $manager->detachIfUnchanged(
         $owner,
         $role,
         $admin,
         $second->getKey(),
-        $second->path,
     );
 
-    expect($attachmentRelation->exists())->toBeFalse()
-        ->and($owner->refresh()->getAttribute($legacyColumn))->toBeNull();
+    expect($attachmentRelation->exists())->toBeFalse();
 })->with([
     'podcast cover' => ['content_group', MediaAttachmentRole::Cover],
     'episode primary image' => ['content_item', MediaAttachmentRole::PrimaryImage],

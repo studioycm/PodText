@@ -8,6 +8,7 @@ use App\Models\ContentGroup;
 use App\Models\ContentItem;
 use App\Models\HomepageSection;
 use App\Models\Media;
+use App\Models\MediaAttachment;
 use App\Models\Transcription;
 use App\Models\User;
 use App\Settings\AdminUxSettings;
@@ -381,12 +382,12 @@ function step5bFu02BrowserSamples(): array
     $local = step5bFu02BrowserPublicItem(
         'FU02 Browser Local',
         transcriptionPublishedAt: now()->subDays(3),
-        attributes: ['image_path' => 'content-items/images/fu02-local.jpg'],
     );
+    MediaAttachment::query()->create(['media_id' => Media::query()->where('path', 'content-items/images/fu02-local.jpg')->value('id'), 'attachable_type' => 'content_item', 'attachable_id' => $local->getKey(), 'role' => 'primary_image', 'position' => 0]);
     $inheritedGroup = ContentGroup::factory()->published()->create([
         'title' => 'FU02 Browser Inherited Group',
-        'cover_path' => 'content-groups/covers/fu02-inherited.jpg',
     ]);
+    MediaAttachment::query()->create(['media_id' => Media::query()->where('path', 'content-groups/covers/fu02-inherited.jpg')->value('id'), 'attachable_type' => 'content_group', 'attachable_id' => $inheritedGroup->getKey(), 'role' => 'cover', 'position' => 0]);
     $inherited = step5bFu02BrowserPublicItem(
         'FU02 Browser Inherited',
         group: $inheritedGroup,

@@ -83,7 +83,7 @@ it('grants the relocate ability only to unmanaged rows with unique identity', fu
         ->and($managedResponse->message())->toBe(__('admin.media_library.op_blocked_already_managed'));
 });
 
-it('relocates a referenced root cover into the managed root rewriting its references in one commit', function (): void {
+it('relocates an attachment-referenced root cover keeping its references through the id in one commit', function (): void {
     $admin = User::factory()->admin()->create();
     $this->actingAs($admin);
     $bytes = relocationJpegBytes();
@@ -93,7 +93,13 @@ it('relocates a referenced root cover into the managed root rewriting its refere
     $referenceKey = (string) $media->reference_key;
     $group = ContentGroup::factory()->create([
         'title' => 'הפודקאסט הוותיק',
-        'cover_path' => $media->path,
+    ]);
+    MediaAttachment::query()->create([
+        'media_id' => $media->getKey(),
+        'attachable_type' => 'content_group',
+        'attachable_id' => $group->getKey(),
+        'role' => 'cover',
+        'position' => 0,
     ]);
 
     expect(app(MediaRecordScope::class)->allows($media))->toBeFalse();
@@ -106,7 +112,7 @@ it('relocates a referenced root cover into the managed root rewriting its refere
         ->and(app(MediaRecordScope::class)->allows($updated))->toBeTrue()
         ->and((string) Storage::disk('public')->get($updated->path))->toBe($bytes)
         ->and(Storage::disk('public')->exists('podcast_2.jpg'))->toBeFalse()
-        ->and((string) $group->refresh()->cover_path)->toBe((string) $updated->path)
+        ->and((string) $group->coverMediaAttachment()->with('media')->first()?->media?->path)->toBe((string) $updated->path)
         ->and(MediaAttachment::query()
             ->where('media_id', $media->getKey())
             ->where('attachable_type', 'content_group')
@@ -299,7 +305,8 @@ it('normalizes a mime extension mismatch during relocation via content-first val
         'type' => 'image/jpeg',
         'ext' => 'jpg',
     ]);
-    $group = ContentGroup::factory()->create(['title' => 'בעלים של הקובץ השגוי', 'cover_path' => $media->path]);
+    $group = ContentGroup::factory()->create(['title' => 'בעלים של הקובץ השגוי']);
+    MediaAttachment::query()->create(['media_id' => $media->getKey(), 'attachable_type' => 'content_group', 'attachable_id' => $group->getKey(), 'role' => 'cover', 'position' => 0]);
 
     $updated = app(MediaFilesystemMutationCoordinator::class)->relocate($media, $admin);
 
@@ -307,6 +314,6 @@ it('normalizes a mime extension mismatch during relocation via content-first val
         ->and((string) $updated->ext)->toBe('webp')
         ->and((string) Storage::disk('public')->get($updated->path))->toBe($webpBytes)
         ->and(app(MediaRecordScope::class)->allows($updated))->toBeTrue()
-        ->and((string) $group->refresh()->cover_path)->toBe((string) $updated->path)
+        ->and((string) $group->coverMediaAttachment()->with('media')->first()?->media?->path)->toBe((string) $updated->path)
         ->and(app(MediaInventoryDiagnostics::class)->reasons($updated->refresh()))->toBe([]);
 });

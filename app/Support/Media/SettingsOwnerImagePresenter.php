@@ -217,7 +217,6 @@ class SettingsOwnerImagePresenter
                 && $canChooseAutomatic,
             expectedMediaId: $savedMediaId,
             expectedLegacyPath: $expectedLegacyPath,
-            unsafeFingerprint: null,
             commitBoundary: $commitBoundary,
             warningCodes: [],
             savedMediaCanSelect: $savedMediaCanSelect,

@@ -12,7 +12,6 @@ use App\Filament\Resources\Support\ResourceTableActions;
 use App\Filament\Tables\OwnerImageColumn;
 use App\Models\ContentItem;
 use App\Models\User;
-use App\Support\Media\LegacyOwnerMediaDiagnosticProjector;
 use App\Support\Media\MediaAttachmentFormState;
 use App\Support\Media\MediaRecordScope;
 use App\Support\Media\OwnerImageChangedException;
@@ -42,7 +41,7 @@ use Livewire\Attributes\Locked;
 
 class ContentItemsRelationManager extends RelationManager
 {
-    private const int OWNER_IMAGE_BASELINE_VERSION = 1;
+    private const int OWNER_IMAGE_BASELINE_VERSION = 2;
 
     protected static string $relationship = 'contentItems';
 
@@ -51,16 +50,10 @@ class ContentItemsRelationManager extends RelationManager
     #[Locked]
     public ?int $ownerImageExpectedMediaId = null;
 
-    #[Locked]
-    public ?string $ownerImageExpectedLegacyPath = null;
-
-    #[Locked]
-    public ?string $ownerImageUnsafeFingerprint = null;
-
     private ?string $pendingPrimaryImageMediaReferenceKey = null;
 
     /**
-     * @var array{expected_media_id: int|null, expected_legacy_path: string|null, unsafe_fingerprint: string|null}|null
+     * @var array{expected_media_id: int|null}|null
      */
     private ?array $pendingOwnerImageBaseline = null;
 
@@ -78,12 +71,10 @@ class ContentItemsRelationManager extends RelationManager
                 ->with([
                     'categories',
                     'contentGroup.coverMediaAttachment.media',
-                    'contentGroup.legacyCoverMediaRows',
                     'tags',
                     'featuredTranscription.authors',
                     'latestPublishedTranscription.authors',
                     'primaryImageMediaAttachment.media',
-                    'legacyPrimaryImageMediaRows',
                 ])
                 ->withCount('transcriptions')
                 ->latest('published_at')
@@ -94,12 +85,6 @@ class ContentItemsRelationManager extends RelationManager
                     ->label(__('admin.fields.title'))
                     ->searchable()
                     ->sortable(),
-                TextColumn::make('legacy_media_warning')
-                    ->label(__('admin.labels.media'))
-                    ->state(fn (ContentItem $record): ?string => app(LegacyOwnerMediaDiagnosticProjector::class)->hasUnsafe($record, MediaAttachmentRole::PrimaryImage) ? __('admin.labels.unsafe_legacy_media') : null)
-                    ->badge()
-                    ->color('warning')
-                    ->toggleable(),
                 TextColumn::make('effective_type_label')
                     ->label(__('admin.fields.effective_type_label'))
                     ->state(fn (ContentItem $record): string => $record->effectiveTypeLabelSingular())
@@ -213,7 +198,6 @@ class ContentItemsRelationManager extends RelationManager
             ])
             ->recordUrl(fn (ContentItem $record): string => ContentItemResource::getUrl('workspace', ['record' => $record]))
             ->recordActions([
-                ContentImageActions::detachUnsafeOwnerImage(MediaAttachmentRole::PrimaryImage),
                 Action::make('openEpisodeWorkspace')
                     ->label(__('admin.actions.open_episode_workspace'))
                     ->icon(Heroicon::OutlinedPencilSquare)
@@ -273,14 +257,12 @@ class ContentItemsRelationManager extends RelationManager
                             $data['primary_image_media_reference_key'] = $media->reference_key;
                         }
 
-                        $legacyPath = $record->image_path;
                         [$data, $this->pendingPrimaryImageMediaReferenceKey] = app(MediaAttachmentFormState::class)->prepare(
                             $data,
                             'primary_image_media_reference_key',
                             $record,
                             MediaAttachmentRole::PrimaryImage,
                         );
-                        $data['image_path'] = $legacyPath;
 
                         return $data;
                     })
@@ -297,10 +279,8 @@ class ContentItemsRelationManager extends RelationManager
                                 $this->pendingPrimaryImageMediaReferenceKey,
                                 MediaAttachmentRole::PrimaryImage,
                                 $actor,
-                                $baseline['unsafe_fingerprint'],
                                 'primary_image_media_reference_key',
                                 $baseline['expected_media_id'],
-                                $baseline['expected_legacy_path'],
                                 enforceExpectedIdentity: true,
                             );
                         } catch (OwnerImageChangedException) {
@@ -356,8 +336,6 @@ class ContentItemsRelationManager extends RelationManager
         );
 
         $this->ownerImageExpectedMediaId = $presentation->expectedMediaId;
-        $this->ownerImageExpectedLegacyPath = $presentation->expectedLegacyPath;
-        $this->ownerImageUnsafeFingerprint = $presentation->unsafeFingerprint;
 
         return $presentation;
     }
@@ -378,13 +356,11 @@ class ContentItemsRelationManager extends RelationManager
             'role' => MediaAttachmentRole::PrimaryImage->value,
             'actor_id' => (int) $actor->getKey(),
             'expected_media_id' => $presentation->expectedMediaId,
-            'expected_legacy_path' => $presentation->expectedLegacyPath,
-            'unsafe_fingerprint' => $presentation->unsafeFingerprint,
         ], JSON_THROW_ON_ERROR));
     }
 
     /**
-     * @return array{expected_media_id: int|null, expected_legacy_path: string|null, unsafe_fingerprint: string|null}|null
+     * @return array{expected_media_id: int|null}|null
      */
     private function ownerImageBaseline(mixed $token, ContentItem $record, User $actor): ?array
     {
@@ -411,8 +387,6 @@ class ContentItemsRelationManager extends RelationManager
             'role',
             'actor_id',
             'expected_media_id',
-            'expected_legacy_path',
-            'unsafe_fingerprint',
         ]) {
             return null;
         }
@@ -426,16 +400,12 @@ class ContentItemsRelationManager extends RelationManager
             || $payload['role'] !== MediaAttachmentRole::PrimaryImage->value
             || $payload['actor_id'] !== (int) $actor->getKey()
             || (! is_int($payload['expected_media_id']) && $payload['expected_media_id'] !== null)
-            || (! is_string($payload['expected_legacy_path']) && $payload['expected_legacy_path'] !== null)
-            || (! is_string($payload['unsafe_fingerprint']) && $payload['unsafe_fingerprint'] !== null)
         ) {
             return null;
         }
 
         return [
             'expected_media_id' => $payload['expected_media_id'],
-            'expected_legacy_path' => $payload['expected_legacy_path'],
-            'unsafe_fingerprint' => $payload['unsafe_fingerprint'],
         ];
     }
 }

@@ -9,7 +9,6 @@ use App\Models\Media;
 use App\Models\MediaAttachment;
 use App\Support\PublicFront\PublicDefaultImageResolver;
 use Filament\Tables\Columns\ImageColumn;
-use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\HtmlString;
 
 final class OwnerImageColumn
@@ -69,7 +68,7 @@ final class OwnerImageColumn
     {
         $effective = app(PublicDefaultImageResolver::class)->contentGroupImage($group);
         $media = $effective['source'] === 'group'
-            ? self::loadedOwnerMedia($group, 'coverMediaAttachment', 'legacyCoverMediaRows', $effective['path'])
+            ? self::loadedOwnerMedia($group, 'coverMediaAttachment', $effective['path'])
             : null;
 
         return $media instanceof Media
@@ -84,14 +83,12 @@ final class OwnerImageColumn
             'item' => self::loadedOwnerMedia(
                 $item,
                 'primaryImageMediaAttachment',
-                'legacyPrimaryImageMediaRows',
                 $effective['path'],
             ),
             'group' => $item->contentGroup instanceof ContentGroup
                 ? self::loadedOwnerMedia(
                     $item->contentGroup,
                     'coverMediaAttachment',
-                    'legacyCoverMediaRows',
                     $effective['path'],
                 )
                 : null,
@@ -106,7 +103,6 @@ final class OwnerImageColumn
     private static function loadedOwnerMedia(
         ContentGroup|ContentItem $owner,
         string $attachmentRelation,
-        string $legacyRelation,
         ?string $effectivePath,
     ): ?Media {
         $attachment = $owner->relationLoaded($attachmentRelation)
@@ -116,22 +112,8 @@ final class OwnerImageColumn
             ? $attachment->getRelation('media')
             : null;
 
-        if ($media instanceof Media && $media->path === $effectivePath) {
-            return $media;
-        }
-
-        $legacyRows = $owner->relationLoaded($legacyRelation)
-            ? $owner->getRelation($legacyRelation)
-            : null;
-
-        if (! $legacyRows instanceof Collection || $legacyRows->count() !== 1) {
-            return null;
-        }
-
-        $legacyMedia = $legacyRows->sole();
-
-        return $legacyMedia instanceof Media && $legacyMedia->path === $effectivePath
-            ? $legacyMedia
+        return $media instanceof Media && $media->path === $effectivePath
+            ? $media
             : null;
     }
 }

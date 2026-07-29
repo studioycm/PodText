@@ -63,19 +63,16 @@ it('builds content image zip files with egress naming and skipped-file reporting
         'reference_key' => '01J0000000000000000000001',
         'title' => 'Alpha Podcast',
         'slug' => 'alpha-podcast',
-        'cover_path' => 'content-groups/covers/cover.jpg',
     ]);
     $item = ContentItem::factory()->for($group)->create([
         'reference_key' => '01J0000000000000000000002',
         'title' => 'Episode One',
         'slug' => 'episode-one',
-        'image_path' => 'content-items/images/episode.jpg',
     ]);
     ContentItem::factory()->for($group)->create([
         'reference_key' => '01J0000000000000000000003',
         'title' => 'Missing Episode',
         'slug' => 'missing-episode',
-        'image_path' => 'content-items/images/missing.jpg',
     ]);
     $coverMedia = Media::factory()->create([
         'disk' => 'public',
@@ -131,7 +128,7 @@ it('builds content image zip files with egress naming and skipped-file reporting
         ->and($zip->getFromName($coverEntry))->toBeString()
         ->and($zip->getFromName($itemEntry))->toBeString()
         ->and($result['included'])->toBe(2)
-        ->and($result['skipped'])->toContain('content_item:01J0000000000000000000003:primary_image:legacy-only');
+        ->and($result['skipped'])->toBe([]);
     $manifest = json_decode((string) $zip->getFromName('manifest.json'), true, flags: JSON_THROW_ON_ERROR);
     $coverManifest = collect($manifest['media'])->firstWhere('role', MediaAttachmentRole::Cover->value);
     $itemManifest = collect($manifest['media'])->firstWhere('role', MediaAttachmentRole::PrimaryImage->value);
@@ -199,7 +196,6 @@ it('sends a database notification when the queued content image export is ready'
 
     $user = User::factory()->create();
     $group = ContentGroup::factory()->create([
-        'cover_path' => 'content-groups/covers/ready.jpg',
     ]);
 
     (new ExportContentImagesZip(
@@ -259,13 +255,14 @@ it('downloads valid HTTPS external item images into local episode images', funct
     );
     app()->call([$job, 'handle']);
 
-    $path = $item->refresh()->image_path;
+    $attachment = $item->primaryImageMediaAttachment()->with('media')->first();
+    $path = $attachment?->media?->path;
 
-    expect($path)->toStartWith('content-items/images/')
+    expect($path)->toBeString()->toStartWith('content-items/images/')
         ->and(Media::query()->where('path', $path)->exists())->toBeTrue()
-        ->and($item->primaryImageMediaAttachment?->media?->path)->toBe($path)
+        ->and($attachment?->media_id)->toBe($attachment?->media?->getKey())
         ->and($user->notifications()->count())->toBe(1);
-    Storage::disk('public')->assertExists($path);
+    Storage::disk('public')->assertExists((string) $path);
 });
 
 it('rejects non-HTTPS oversized and non-raster external image downloads', function (): void {
@@ -298,9 +295,9 @@ it('rejects non-HTTPS oversized and non-raster external image downloads', functi
         )), 'handle']);
     }
 
-    expect($httpItem->refresh()->image_path)->toBeNull()
-        ->and($textItem->refresh()->image_path)->toBeNull()
-        ->and($oversizedItem->refresh()->image_path)->toBeNull()
+    expect($httpItem->primaryImageMediaAttachment()->with('media')->first()?->media?->path)->toBeNull()
+        ->and($textItem->primaryImageMediaAttachment()->with('media')->first()?->media?->path)->toBeNull()
+        ->and($oversizedItem->primaryImageMediaAttachment()->with('media')->first()?->media?->path)->toBeNull()
         ->and($user->notifications()->count())->toBe(3);
 });
 

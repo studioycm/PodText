@@ -8,6 +8,7 @@ use App\Models\Author;
 use App\Models\ContentGroup;
 use App\Models\ContentItem;
 use App\Models\Media;
+use App\Models\MediaAttachment;
 use App\Models\Transcription;
 use App\Models\User;
 use App\Settings\PublicContentSettings;
@@ -132,6 +133,8 @@ function createStep10V1aPublicItem(
     array $groupAttributes = [],
     array $itemAttributes = [],
     ?Author $author = null,
+    ?string $groupCoverPath = null,
+    ?string $itemImagePath = null,
 ): array {
     $group = ContentGroup::factory()->published()->create([
         'title' => "{$title} Podcast",
@@ -160,8 +163,34 @@ function createStep10V1aPublicItem(
         ]);
 
     $item->update(['featured_transcription_id' => $transcription->id]);
-    registerStep10V1aMediaPath($group->cover_path);
-    registerStep10V1aMediaPath($item->image_path);
+
+    if (is_string($groupCoverPath) && filled($groupCoverPath)) {
+        $coverMedia = registerStep10V1aMediaPath($groupCoverPath);
+
+        if ($coverMedia instanceof Media) {
+            MediaAttachment::query()->create([
+                'media_id' => $coverMedia->getKey(),
+                'attachable_type' => 'content_group',
+                'attachable_id' => $group->getKey(),
+                'role' => 'cover',
+                'position' => 0,
+            ]);
+        }
+    }
+
+    if (is_string($itemImagePath) && filled($itemImagePath)) {
+        $imageMedia = registerStep10V1aMediaPath($itemImagePath);
+
+        if ($imageMedia instanceof Media) {
+            MediaAttachment::query()->create([
+                'media_id' => $imageMedia->getKey(),
+                'attachable_type' => 'content_item',
+                'attachable_id' => $item->getKey(),
+                'role' => 'primary_image',
+                'position' => 0,
+            ]);
+        }
+    }
 
     return [
         'group' => $group->refresh(),
@@ -371,7 +400,6 @@ it('keeps opened default-image modes authoritative against a fresh owner snapsho
     expect($choice->directState)->toBe($mode)
         ->and($choice->savedMediaId)->toBe($openedMedia?->getKey())
         ->and($choice->savedReferenceKey)->toBe($openedMedia?->reference_key)
-        ->and($choice->expectedLegacyPath)->toBe($openedMedia?->path)
         ->and($choice->directMedia['id'] ?? null)->toBe($openedMedia?->getKey())
         ->and($choice->shownNowMedia['id'] ?? null)->toBe($freshMedia->getKey())
         ->and($choice->pendingMedia['id'] ?? null)->toBe($pendingMedia->getKey());
@@ -908,9 +936,7 @@ it('renders content item custom inherit and none fallbacks on cards and item pag
         ->assertSee('/storage/default-images/global.jpg', false)
         ->assertSee('data-item-page-image-source="global_default"', false);
 
-    $none = createStep10V1aPublicItem('V1A Item None', [
-        'cover_path' => 'content-groups/covers/should-not-render.jpg',
-    ]);
+    $none = createStep10V1aPublicItem('V1A Item None', groupCoverPath: 'content-groups/covers/should-not-render.jpg');
     saveStep10V1aRenderableSettings([
         'default_images' => step10V1aDefaultImages([
             'global' => ['mode' => 'custom', 'path' => 'default-images/global-hidden.jpg'],
@@ -932,20 +958,13 @@ it('renders content item custom inherit and none fallbacks on cards and item pag
 });
 
 it('keeps local item images external thumbnails and podcast covers ahead of configured item fallbacks', function (): void {
-    $local = createStep10V1aPublicItem('V1A Item Local', [
-        'cover_path' => 'content-groups/covers/ignored-local-cover.jpg',
-    ], [
+    $local = createStep10V1aPublicItem('V1A Item Local', [], [
         'external_thumbnail_url' => 'https://cdn.example.test/v1a-local-external.jpg',
-        'image_path' => 'content-items/images/v1a-local.jpg',
-    ]);
-    $external = createStep10V1aPublicItem('V1A Item Explicit', [
-        'cover_path' => 'content-groups/covers/ignored-cover.jpg',
-    ], [
+    ], groupCoverPath: 'content-groups/covers/ignored-local-cover.jpg', itemImagePath: 'content-items/images/v1a-local.jpg');
+    $external = createStep10V1aPublicItem('V1A Item Explicit', [], [
         'external_thumbnail_url' => 'https://cdn.example.test/v1a-explicit.jpg',
-    ]);
-    $cover = createStep10V1aPublicItem('V1A Item Cover', [
-        'cover_path' => 'content-groups/covers/preferred-cover.jpg',
-    ]);
+    ], groupCoverPath: 'content-groups/covers/ignored-cover.jpg');
+    $cover = createStep10V1aPublicItem('V1A Item Cover', groupCoverPath: 'content-groups/covers/preferred-cover.jpg');
 
     saveStep10V1aRenderableSettings([
         'default_images' => step10V1aDefaultImages([

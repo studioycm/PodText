@@ -72,9 +72,7 @@ class DownloadExternalContentGroupImage implements ShouldBeUnique, ShouldQueueAf
         $expectedMediaId = $group->coverMediaAttachment instanceof MediaAttachment
             ? (int) $group->coverMediaAttachment->media_id
             : null;
-        $expectedLegacyPath = is_string($group->cover_path) ? $group->cover_path : null;
-
-        if (! $this->overwrite && ($expectedMediaId !== null || filled($expectedLegacyPath))) {
+        if (! $this->overwrite && $expectedMediaId !== null) {
             return;
         }
 
@@ -98,7 +96,6 @@ class DownloadExternalContentGroupImage implements ShouldBeUnique, ShouldQueueAf
                 MediaAttachmentRole::Cover,
                 $user,
                 $expectedMediaId,
-                $expectedLegacyPath,
             );
         } catch (AuthorizationException $exception) {
             throw $exception;

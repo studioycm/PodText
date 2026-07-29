@@ -37,7 +37,7 @@ beforeEach(function (): void {
     Http::preventStrayRequests();
 });
 
-it('keeps exactly 37 general Resource table record actions icon only with authoritative labels and tooltips', function (): void {
+it('keeps exactly 34 general Resource table record actions icon only with authoritative labels and tooltips', function (): void {
     $this->actingAs(User::factory()->superAdmin()->create());
     $group = ContentGroup::factory()->create();
     $item = ContentItem::factory()->for($group)->create();
@@ -45,12 +45,12 @@ it('keeps exactly 37 general Resource table record actions icon only with author
     $surfaces = [
         'authors' => [Livewire::test(ListAuthors::class)->instance()->getTable()->getRecordActions(), 1],
         'categories' => [Livewire::test(ListCategories::class)->instance()->getTable()->getRecordActions(), 1],
-        'podcasts' => [Livewire::test(ListContentGroups::class)->instance()->getTable()->getRecordActions(), 4],
-        'episodes' => [Livewire::test(ListContentItems::class)->instance()->getTable()->getRecordActions(), 8],
+        'podcasts' => [Livewire::test(ListContentGroups::class)->instance()->getTable()->getRecordActions(), 3],
+        'episodes' => [Livewire::test(ListContentItems::class)->instance()->getTable()->getRecordActions(), 7],
         'podcast episodes' => [Livewire::test(ContentItemsRelationManager::class, [
             'ownerRecord' => $group,
             'pageClass' => EditContentGroup::class,
-        ])->instance()->getTable()->getRecordActions(), 10],
+        ])->instance()->getTable()->getRecordActions(), 9],
         'episode transcriptions' => [Livewire::test(TranscriptionsRelationManager::class, [
             'ownerRecord' => $item,
             'pageClass' => EditContentItem::class,
@@ -82,22 +82,22 @@ it('keeps exactly 37 general Resource table record actions icon only with author
         expect(array_unique($icons))->toHaveCount($expectedCount, "{$surface} duplicate icons");
     }
 
-    expect($actionCount)->toBe(37);
+    expect($actionCount)->toBe(34);
 });
 
-it('gives Media one visible details action and one quiet grouped action menu', function (): void {
+it('gives Media one visible details action one quiet grouped action menu and a status chip', function (): void {
     $this->actingAs(User::factory()->superAdmin()->create());
     $table = Livewire::test(ListMedia::class)->instance()->getTable();
     $recordActions = array_values($table->getRecordActions());
 
-    expect($recordActions)->toHaveCount(3)
+    expect($recordActions)->toHaveCount(4)
         ->and($recordActions[0]->getName())->toBe('mediaDetails')
         ->and($recordActions[1])->toBeInstanceOf(EditAction::class)
         ->and($recordActions[1]->getName())->toBe('edit')
-        ->and($recordActions[1]->isButton())->toBeTrue()
-        ->and($recordActions[1]->isLabelHidden())->toBeFalse()
-        ->and((string) $recordActions[1]->getLabel())->toBe(__('admin.media_library.open_details'))
-        ->and($recordActions[1]->getIcon())->toBe(Heroicon::OutlinedInformationCircle)
+        ->and($recordActions[1]->isIconButton())->toBeTrue()
+        ->and((string) $recordActions[1]->getLabel())->toBe(__('admin.media_library.open_edit_page'))
+        ->and((string) $recordActions[1]->getTooltip())->toBe(__('admin.media_library.open_edit_page'))
+        ->and($recordActions[1]->getIcon())->toBe(Heroicon::OutlinedPencilSquare)
         ->and($recordActions[2])->toBeInstanceOf(ActionGroup::class)
         ->and($recordActions[2]->isIconButton())->toBeTrue()
         ->and((string) $recordActions[2]->getLabel())->toBe(__('admin.media_library.more_actions'))
@@ -112,6 +112,7 @@ it('gives Media one visible details action and one quiet grouped action menu', f
             'swap',
             'delete',
         ])
+        ->and($recordActions[3]->getName())->toBe('cardStatus')
         ->and(array_keys($table->getFlatRecordActions()))->toBe([
             'mediaDetails',
             'edit',
@@ -122,6 +123,7 @@ it('gives Media one visible details action and one quiet grouped action menu', f
             'rename',
             'swap',
             'delete',
+            'cardStatus',
         ])
         ->and($table->getRecordActionsPosition())->toBe(RecordActionsPosition::AfterContent);
 });

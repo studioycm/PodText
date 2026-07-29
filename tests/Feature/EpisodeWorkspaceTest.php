@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\MediaAttachmentRole;
 use App\Enums\MediaNamingStrategy;
 use App\Enums\PublicationStatus;
 use App\Enums\Tb1PickerContainer;
@@ -18,6 +19,8 @@ use App\Jobs\DownloadExternalContentItemImage;
 use App\Models\ContentGroup;
 use App\Models\ContentItem;
 use App\Models\ImportConnection;
+use App\Models\Media;
+use App\Models\MediaAttachment;
 use App\Models\Transcription;
 use App\Models\User;
 use App\Settings\AdminUxSettings;
@@ -503,15 +506,24 @@ it('shows TB1 image actions and queues external image downloads from episode tab
 
     $withoutLocal = ContentItem::factory()->create([
         'external_thumbnail_url' => 'https://cdn.example.test/without-local.jpg',
-        'image_path' => null,
     ]);
     $withLocal = ContentItem::factory()->create([
         'external_thumbnail_url' => 'https://cdn.example.test/with-local.jpg',
-        'image_path' => 'content-items/images/local.jpg',
+    ]);
+    $localMedia = Media::factory()->create([
+        'directory' => 'content-items/images',
+        'name' => 'with-local',
+        'path' => 'content-items/images/with-local.jpg',
+    ]);
+    MediaAttachment::query()->create([
+        'media_id' => $localMedia->getKey(),
+        'attachable_type' => 'content_item',
+        'attachable_id' => $withLocal->getKey(),
+        'role' => MediaAttachmentRole::PrimaryImage,
+        'position' => 0,
     ]);
     $withoutExternal = ContentItem::factory()->create([
         'external_thumbnail_url' => null,
-        'image_path' => null,
     ]);
 
     Livewire::test(ListContentItems::class)

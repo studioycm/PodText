@@ -220,14 +220,18 @@
                 </p>
             @endif
 
-            @if (filled($presentation->expectedLegacyPath))
+            @php
+                $brokenPath = $presentation->directMedia['path'] ?? $presentation->expectedLegacyPath;
+            @endphp
+
+            @if (filled($brokenPath))
                 <p class="min-w-0">
                     <span class="font-medium">{{ __('admin.owner_image.broken_configured_path') }}:</span>
-                    <span class="break-all" dir="ltr">{{ $presentation->expectedLegacyPath }}</span>
+                    <span class="break-all" dir="ltr">{{ $brokenPath }}</span>
                 </p>
             @endif
 
-            @if (blank($presentation->savedReferenceKey) && blank($presentation->expectedLegacyPath))
+            @if (blank($presentation->savedReferenceKey) && blank($brokenPath))
                 <p>
                     {{ __('admin.owner_image.broken_configured_evidence_hidden') }}
                 </p>

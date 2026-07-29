@@ -83,9 +83,7 @@ class DownloadExternalContentItemImage implements ShouldBeUnique, ShouldQueueAft
         $expectedMediaId = $item->primaryImageMediaAttachment instanceof MediaAttachment
             ? (int) $item->primaryImageMediaAttachment->media_id
             : null;
-        $expectedLegacyPath = is_string($item->image_path) ? $item->image_path : null;
-
-        if (! $this->overwrite && ($expectedMediaId !== null || filled($expectedLegacyPath))) {
+        if (! $this->overwrite && $expectedMediaId !== null) {
             return;
         }
 
@@ -111,7 +109,6 @@ class DownloadExternalContentItemImage implements ShouldBeUnique, ShouldQueueAft
                 MediaAttachmentRole::PrimaryImage,
                 $user,
                 $expectedMediaId,
-                $expectedLegacyPath,
             );
         } catch (AuthorizationException $exception) {
             throw $exception;

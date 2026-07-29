@@ -42,7 +42,6 @@ use Spatie\Tags\HasTags;
     'external_title',
     'external_description',
     'external_thumbnail_url',
-    'image_path',
     'external_published_at',
     'media_metadata',
     'direct_media_url',
@@ -123,12 +122,6 @@ class ContentItem extends Model
         return $this->hasOne(MediaAttachment::class, 'attachable_id')
             ->where('attachable_type', 'content_item')
             ->where('role', MediaAttachmentRole::PrimaryImage->value);
-    }
-
-    /** Raw legacy lookup for admin diagnostics only; never a usable-media relation. */
-    public function legacyPrimaryImageMediaRows(): HasMany
-    {
-        return $this->hasMany(Media::class, 'path', 'image_path')->orderBy('id');
     }
 
     public function featuredTranscription(): BelongsTo

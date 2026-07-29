@@ -233,7 +233,6 @@ it('keeps default-false owner presentations on the initial hydration lookup and 
         canChooseAutomatic: false,
         expectedMediaId: (int) $saved->getKey(),
         expectedLegacyPath: (string) $saved->path,
-        unsafeFingerprint: null,
         commitBoundary: ['commit' => 'Save', 'cancel' => 'Cancel', 'admission' => 'Permanent'],
         warningCodes: [],
     );
@@ -502,7 +501,6 @@ it('preserves exact broken owner evidence without a media lookup', function (): 
         canChooseAutomatic: true,
         expectedMediaId: null,
         expectedLegacyPath: 'about/task7-broken.png',
-        unsafeFingerprint: null,
         commitBoundary: ['commit' => 'Save', 'cancel' => 'Cancel', 'admission' => 'Permanent'],
         warningCodes: [],
     );

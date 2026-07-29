@@ -29,7 +29,6 @@ use App\Support\PublicFront\PublicDefaultImageResolver;
 use App\Support\PublicFront\PublicFrontConfigRegistry;
 use App\Support\PublicFront\PublicFrontRenderContext;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\Facades\DB;
 use Illuminate\View\ComponentAttributeBag;
 
 class CardTemplatePreviewer
@@ -236,15 +235,6 @@ class CardTemplatePreviewer
         $previewGroup = 'preview_content_group';
         $query
             ->selectSub(
-                DB::table('media_attachments')
-                    ->selectRaw('1')
-                    ->where('attachable_type', 'content_item')
-                    ->where('role', MediaAttachmentRole::PrimaryImage->value)
-                    ->whereColumn('attachable_id', "{$contentItemsTable}.id")
-                    ->limit(1),
-                'preview_item_attachment_exists',
-            )
-            ->selectSub(
                 $this->mediaRecordScope
                     ->inventoryQuery()
                     ->selectRaw('1')
@@ -260,30 +250,6 @@ class CardTemplatePreviewer
             ->selectSub(
                 $this->mediaRecordScope
                     ->inventoryQuery()
-                    ->selectRaw('count(*)')
-                    ->where('curator.disk', 'public')
-                    ->where('curator.visibility', 'public')
-                    ->whereColumn('curator.path', "{$contentItemsTable}.image_path"),
-                'preview_item_legacy_count',
-            )
-            ->selectSub(
-                DB::table('curator')
-                    ->selectRaw('count(*)')
-                    ->whereColumn('curator.path', "{$contentItemsTable}.image_path"),
-                'preview_item_raw_legacy_count',
-            )
-            ->selectSub(
-                DB::table('media_attachments')
-                    ->selectRaw('1')
-                    ->where('attachable_type', 'content_group')
-                    ->where('role', MediaAttachmentRole::Cover->value)
-                    ->whereColumn('attachable_id', "{$contentItemsTable}.content_group_id")
-                    ->limit(1),
-                'preview_group_attachment_exists',
-            )
-            ->selectSub(
-                $this->mediaRecordScope
-                    ->inventoryQuery()
                     ->selectRaw('1')
                     ->join("media_attachments as {$groupAttachment}", "{$groupAttachment}.media_id", '=', 'curator.id')
                     ->join("{$contentGroupsTable} as {$previewGroup}", "{$previewGroup}.id", '=', "{$groupAttachment}.attachable_id")
@@ -294,45 +260,12 @@ class CardTemplatePreviewer
                     ->where('curator.visibility', 'public')
                     ->limit(1),
                 'preview_group_trusted_attachment_exists',
-            )
-            ->selectSub(
-                $this->mediaRecordScope
-                    ->inventoryQuery()
-                    ->selectRaw('count(*)')
-                    ->join("{$contentGroupsTable} as {$previewGroup}", function ($join) use ($contentItemsTable, $previewGroup): void {
-                        $join->whereColumn("{$previewGroup}.id", "{$contentItemsTable}.content_group_id");
-                    })
-                    ->where('curator.disk', 'public')
-                    ->where('curator.visibility', 'public')
-                    ->whereColumn('curator.path', "{$previewGroup}.cover_path"),
-                'preview_group_legacy_count',
-            )
-            ->selectSub(
-                DB::table('curator')
-                    ->selectRaw('count(*)')
-                    ->join("{$contentGroupsTable} as {$previewGroup}", function ($join) use ($contentItemsTable, $previewGroup): void {
-                        $join->whereColumn("{$previewGroup}.id", "{$contentItemsTable}.content_group_id");
-                    })
-                    ->whereColumn('curator.path', "{$previewGroup}.cover_path"),
-                'preview_group_raw_legacy_count',
             );
         $query->orderByRaw(
             "CASE
                 WHEN preview_item_trusted_attachment_exists = 1
-                    OR (
-                        COALESCE(preview_item_attachment_exists, 0) = 0
-                        AND preview_item_raw_legacy_count = 1
-                        AND preview_item_legacy_count = 1
-                    )
                     OR NULLIF(TRIM({$contentItemsTable}.external_thumbnail_url), '') IS NOT NULL THEN 0
-                WHEN ? = 1 AND (
-                    preview_group_trusted_attachment_exists = 1
-                    OR (
-                        COALESCE(preview_group_attachment_exists, 0) = 0
-                        AND preview_group_raw_legacy_count = 1
-                        AND preview_group_legacy_count = 1
-                    )
-                ) THEN 1
+                WHEN ? = 1 AND preview_group_trusted_attachment_exists = 1 THEN 1
                 WHEN ? = 1 THEN 2
                 ELSE 3
             END",
@@ -360,15 +293,6 @@ class CardTemplatePreviewer
         $attachment = 'preview_group_attachment';
         $query
             ->selectSub(
-                DB::table('media_attachments')
-                    ->selectRaw('1')
-                    ->where('attachable_type', 'content_group')
-                    ->where('role', MediaAttachmentRole::Cover->value)
-                    ->whereColumn('attachable_id', "{$contentGroupsTable}.id")
-                    ->limit(1),
-                'preview_group_attachment_exists',
-            )
-            ->selectSub(
                 $this->mediaRecordScope
                     ->inventoryQuery()
                     ->selectRaw('1')
@@ -380,30 +304,10 @@ class CardTemplatePreviewer
                     ->where('curator.visibility', 'public')
                     ->limit(1),
                 'preview_group_trusted_attachment_exists',
-            )
-            ->selectSub(
-                $this->mediaRecordScope
-                    ->inventoryQuery()
-                    ->selectRaw('count(*)')
-                    ->where('curator.disk', 'public')
-                    ->where('curator.visibility', 'public')
-                    ->whereColumn('curator.path', "{$contentGroupsTable}.cover_path"),
-                'preview_group_legacy_count',
-            )
-            ->selectSub(
-                DB::table('curator')
-                    ->selectRaw('count(*)')
-                    ->whereColumn('curator.path', "{$contentGroupsTable}.cover_path"),
-                'preview_group_raw_legacy_count',
             );
         $query->orderByRaw(
             'CASE
-                WHEN preview_group_trusted_attachment_exists = 1
-                    OR (
-                        COALESCE(preview_group_attachment_exists, 0) = 0
-                        AND preview_group_raw_legacy_count = 1
-                        AND preview_group_legacy_count = 1
-                    ) THEN 0
+                WHEN preview_group_trusted_attachment_exists = 1 THEN 0
                 WHEN ? = 1 THEN 2
                 ELSE 3
             END',

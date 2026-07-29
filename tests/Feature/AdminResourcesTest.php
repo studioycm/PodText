@@ -194,7 +194,7 @@ it('creates and edits content groups with defaults, cover library attachment, an
         ->and($group->default_item_type_label_singular)->toBe(__('public.labels.item'))
         ->and($group->default_item_type_label_plural)->toBe(__('public.labels.items'))
         ->and($group->status)->toBe(PublicationStatus::Published)
-        ->and($group->cover_path)->toBe($cover->path)
+        ->and($group->coverMediaAttachment()->with('media')->first()?->media?->path)->toBe($cover->path)
         ->and($group->coverMediaAttachment()->firstOrFail()->media_id)->toBe($cover->getKey());
 
     Storage::disk('public')->assertExists($group->cover_path);

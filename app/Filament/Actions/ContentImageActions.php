@@ -35,7 +35,7 @@ use JsonException;
 
 class ContentImageActions
 {
-    private const OWNER_IMAGE_BASELINE_VERSION = 1;
+    private const OWNER_IMAGE_BASELINE_VERSION = 2;
 
     public static function contentGroupCover(): Action
     {
@@ -96,7 +96,9 @@ class ContentImageActions
             ->icon($overwrite ? Heroicon::OutlinedArrowPath : Heroicon::OutlinedCloudArrowDown)
             ->color($overwrite ? 'warning' : 'gray')
             ->visible(fn (ContentItem $record): bool => filled($record->external_thumbnail_url)
-                && ($overwrite ? filled($record->image_path) : blank($record->image_path)))
+                && ($overwrite
+                    ? $record->primaryImageMediaAttachment()->exists()
+                    : ! $record->primaryImageMediaAttachment()->exists()))
             ->requiresConfirmation($overwrite)
             ->modalHeading($overwrite ? __('admin.modals.download_external_image_overwrite') : __('admin.modals.download_external_image'))
             ->action(function (ContentItem $record) use ($overwrite): void {
@@ -143,9 +145,7 @@ class ContentImageActions
                 $presentationFor($record),
             ))
             ->hiddenLabel()
-            ->helperText(fn (ContentGroup|ContentItem $record): string => $presentationFor($record)->unsafeFingerprint !== null
-                ? __('admin.helpers.unsafe_legacy_media_repair')
-                : $helper)
+            ->helperText($helper)
             ->inlineOwnerWorkspace()
             ->ownerChoice(fn (
                 PathCuratorPicker $component,
@@ -257,40 +257,29 @@ class ContentImageActions
                     return;
                 }
 
-                $fingerprint = $baseline['unsafe_fingerprint'];
                 $expectedMediaId = $baseline['expected_media_id'];
-                $expectedLegacyPath = $baseline['expected_legacy_path'];
 
                 try {
-                    if ($referenceKey === null && $expectedMediaId !== null && $fingerprint !== null) {
-                        app(MediaAttachmentFormState::class)->detachUnsafe(
-                            $record,
-                            $role,
-                            $fingerprint,
-                            $actor,
-                        );
-                    } else {
-                        app(MediaAttachmentFormState::class)->persist(
-                            $record,
-                            $referenceKey,
-                            $role,
-                            $actor,
-                            $fingerprint,
-                            $validationField,
-                            $expectedMediaId,
-                            $expectedLegacyPath,
-                            enforceExpectedIdentity: true,
-                        );
 
-                        if (($data['retitle_media_by_owner'] ?? false) && filled($referenceKey)) {
-                            app(MediaOwnerTitleApplier::class)->applyOwnerSelectionTitle(
-                                $record,
-                                $role,
-                                $referenceKey,
-                                $actor,
-                            );
-                        }
+                    app(MediaAttachmentFormState::class)->persist(
+                        $record,
+                        $referenceKey,
+                        $role,
+                        $actor,
+                        $validationField,
+                        $expectedMediaId,
+                        enforceExpectedIdentity: true,
+                    );
+
+                    if (($data['retitle_media_by_owner'] ?? false) && filled($referenceKey)) {
+                        app(MediaOwnerTitleApplier::class)->applyOwnerSelectionTitle(
+                            $record,
+                            $role,
+                            $referenceKey,
+                            $actor,
+                        );
                     }
+
                 } catch (OwnerImageChangedException) {
                     $presenter->refresh($record, $role);
                     $presentation = $presenter->choice(
@@ -350,13 +339,11 @@ class ContentImageActions
             'role' => $role->value,
             'actor_id' => (int) $actor->getKey(),
             'expected_media_id' => $presentation->expectedMediaId,
-            'expected_legacy_path' => $presentation->expectedLegacyPath,
-            'unsafe_fingerprint' => $presentation->unsafeFingerprint,
         ], JSON_THROW_ON_ERROR));
     }
 
     /**
-     * @return array{expected_media_id: int|null, expected_legacy_path: string|null, unsafe_fingerprint: string|null}|null
+     * @return array{expected_media_id: int|null}|null
      */
     private static function ownerImageBaseline(
         mixed $token,
@@ -389,8 +376,6 @@ class ContentImageActions
             'role',
             'actor_id',
             'expected_media_id',
-            'expected_legacy_path',
-            'unsafe_fingerprint',
         ]) {
             return null;
         }
@@ -404,39 +389,13 @@ class ContentImageActions
             || $payload['role'] !== $role->value
             || $payload['actor_id'] !== (int) $actor->getKey()
             || (! is_int($payload['expected_media_id']) && $payload['expected_media_id'] !== null)
-            || (! is_string($payload['expected_legacy_path']) && $payload['expected_legacy_path'] !== null)
-            || (! is_string($payload['unsafe_fingerprint']) && $payload['unsafe_fingerprint'] !== null)
         ) {
             return null;
         }
 
         return [
             'expected_media_id' => $payload['expected_media_id'],
-            'expected_legacy_path' => $payload['expected_legacy_path'],
-            'unsafe_fingerprint' => $payload['unsafe_fingerprint'],
         ];
-    }
-
-    public static function detachUnsafeOwnerImage(MediaAttachmentRole $role): Action
-    {
-        return Action::make($role === MediaAttachmentRole::Cover ? 'detachUnsafeCoverToDefault' : 'detachUnsafePrimaryImageToDefault')
-            ->label(__('admin.actions.detach_unsafe_media_to_default'))
-            ->icon(Heroicon::OutlinedLinkSlash)
-            ->color('warning')
-            ->requiresConfirmation()
-            ->fillForm(fn (ContentGroup|ContentItem $record): array => [
-                'legacy_media_repair_fingerprint' => app(MediaAttachmentFormState::class)->diagnostic($record, $role)?->fingerprint,
-            ])
-            ->schema([Hidden::make('legacy_media_repair_fingerprint')])
-            ->visible(fn (ContentGroup|ContentItem $record): bool => app(MediaAttachmentFormState::class)->diagnostic($record, $role) !== null)
-            ->action(function (ContentGroup|ContentItem $record, array $data) use ($role): void {
-                $actor = auth()->user();
-                abort_unless($actor instanceof User, 403);
-                $fingerprint = $data['legacy_media_repair_fingerprint'] ?? null;
-                abort_unless(is_string($fingerprint) && filled($fingerprint), 409);
-                app(MediaAttachmentFormState::class)->detachUnsafe($record, $role, $fingerprint, $actor);
-                Notification::make()->success()->title(__('admin.notifications.unsafe_media_detached_to_default'))->send();
-            });
     }
 
     private static function queueExternalImage(ContentItem $record, User $actor, bool $overwrite): void

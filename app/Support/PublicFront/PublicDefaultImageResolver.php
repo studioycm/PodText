@@ -11,7 +11,6 @@ use App\Models\Media;
 use App\Support\Media\MediaAttachmentIdentityResolver;
 use App\Support\Media\MediaIdentityResolver;
 use App\Support\Media\PublicMediaDelivery;
-use App\Support\Media\UnresolvableMediaIdentityException;
 use App\Support\Media\UnsafeLegacyOwnerMediaException;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Support\Facades\Storage;
@@ -350,10 +349,8 @@ class PublicDefaultImageResolver
     ): array {
         try {
             $identity = $this->attachmentIdentityResolver->resolve($owner, $role);
-        } catch (UnsafeLegacyOwnerMediaException) {
+        } catch (\InvalidArgumentException) {
             return [true, null];
-        } catch (UnresolvableMediaIdentityException) {
-            return [false, null];
         }
 
         return [$identity['has_attachment'], $identity['media']];

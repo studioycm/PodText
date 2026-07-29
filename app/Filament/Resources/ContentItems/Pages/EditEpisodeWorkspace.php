@@ -55,7 +55,6 @@ class EditEpisodeWorkspace extends EditRecord
     {
         return [
             ContentImageActions::contentItemImage(),
-            ContentImageActions::detachUnsafeOwnerImage(MediaAttachmentRole::PrimaryImage),
             ContentImageActions::downloadExternalImage(),
             ContentImageActions::downloadExternalImage(overwrite: true),
             $this->replaceWorkspaceTranscriptionAction(),
