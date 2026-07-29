@@ -131,12 +131,29 @@ Recorded after the Markdown-only post-Prompt-10 prompt-progress centralization c
   `php artisan media:relocate-root` printing the census report by
   default with `--apply --chunk --user` for the rehearsed run. Gate:
   full suite 1462 tests with only the 4 known-environmental browser
-  failures, FilaCheck 0, pint clean, build green. **Sequencing gate:**
-  P2 is the operator-run production relocation (CLI report rehearsal,
-  then apply or the admin action) and MUST complete before P3
-  (retirement code-off), P4 (column drop — the migration would break
-  the relocation engine's own cover_path rewrite if deployed first)
-  and P5 (sanitize zero-reference lift) are implemented and shipped.
+  failures, FilaCheck 0, pint clean, build green. **P2 executed on production 2026-07-29** under the
+  operator's Option-B protocol (check → roll-over stock → run →
+  integrity): pre-run backups at `/home/forge/backups/p5-relocation-*`
+  (gzipped DB dump verified to contain all 40 tables; tar of all root
+  files, 34M); the first apply moved 390/394 and truthfully failed the
+  four MIME/extension-mismatch rows, exposing that the engine validated
+  with the claimed filename — fixed the same hour (content-first
+  validation via `validateExternalBytes` with an extensionless name, so
+  mismatches NORMALIZE during relocation; non-svg admission failures
+  got their own batch label `relocation_fail_invalid`); the resumed
+  apply moved the final 4. Integrity sweep: 0 root rows, 419 total, 0
+  files missing on disk, 0 covers pointing nowhere, 394 relocation
+  journal operations all completed, mismatch rows normalized (webp ×3,
+  png), 305 attachments intact, the storage root holds directories
+  only, a sample relocated cover serves 200 publicly, and the census
+  reads 0 relocatable (the admin action auto-hides). The homepage 503
+  is the operator's deliberate maintenance mode. The same round shipped
+  the operator's limits decisions: ceilings raised to 4096KB/6000px,
+  the informational heavy-upload threshold setting
+  (`media_heavy_upload_warning_kilobytes`), pinned-bound tests moved
+  above the new ceilings, and resize-and-use with a marked kept-aside
+  original seeded for a future cycle. P3 (retirement code-off), P4
+  (column drop) and P5 (sanitize lift) are now unblocked.
 
 - Browser-suite storage URL hermeticity (bounded test chore, investigation
   of the two `CardTemplatePreviewBrowserTest` geometry failures flagged
