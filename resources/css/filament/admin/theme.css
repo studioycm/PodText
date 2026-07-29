@@ -170,9 +170,26 @@
     max-inline-size: 12rem;
 }
 
+/* The controls cluster flattens into the toolbar row so the
+   cards-per-row selector can order itself after the filters trigger,
+   while the pagination cell stays last. */
+.fi-ta-header-toolbar:has(.podtext-gallery-top-pagination) > .fi-ta-actions {
+    display: contents;
+}
+
+.fi-ta-header-toolbar:has(.podtext-gallery-top-pagination)
+    > .fi-ta-actions
+    > .podtext-cards-per-row-trigger,
+.fi-ta-header-toolbar:has(.podtext-gallery-top-pagination)
+    > .fi-ta-actions
+    > *:has(.podtext-cards-per-row-trigger) {
+    order: 1;
+}
+
 .podtext-gallery-top-pagination {
     flex: 1 1 24rem;
     min-width: 0;
+    order: 2;
 }
 
 .podtext-gallery-top-pagination .fi-pagination {

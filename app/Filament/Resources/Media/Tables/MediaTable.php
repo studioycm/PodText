@@ -559,7 +559,8 @@ class MediaTable
                     ]))
                     ->icon(Heroicon::OutlinedSquares2x2)
                     ->button()
-                    ->color('gray'),
+                    ->color('gray')
+                    ->extraAttributes(['class' => 'podtext-cards-per-row-trigger']),
                 BulkActionGroup::make([
                     BulkAction::make('deleteSelected')
                         ->label(__('admin.media_library.delete_selected_permanently'))
