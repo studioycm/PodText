@@ -3219,7 +3219,6 @@ it('retitles the selected media from the owner when the retitle checkbox is on',
     $group = ContentGroup::factory()->create(['title' => 'הפודקאסט המרכזי']);
     $item = ContentItem::factory()->for($group)->create(['title' => 'פרק שלוש']);
     $media = ownerImageMedia('content-items/images/retitle-target.jpg', ['title' => null]);
-    $primaryRole = __('admin.media_attachment_roles.primary_image');
 
     $component = Livewire::actingAs($admin)
         ->test(ListContentItems::class)
@@ -3231,8 +3230,8 @@ it('retitles the selected media from the owner when the retitle checkbox is on',
         ->set('mountedActions.0.data.primary_image_media_reference_key', $media->reference_key)
         ->callMountedAction();
 
-    expect($media->refresh()->title)->toBe('פרק שלוש — '.$primaryRole)
-        ->and($media->alt)->toBe('פרק שלוש — '.$primaryRole);
+    expect($media->refresh()->title)->toBe('פרק שלוש')
+        ->and($media->alt)->toBe('פרק שלוש');
 
     $keepTitle = ownerImageMedia('content-items/images/retitle-off.jpg', ['title' => 'כותרת שנבחרה ביד']);
     $component = Livewire::actingAs($admin)
@@ -3270,4 +3269,35 @@ it('opens the choice-strip details slide-over from plain form contexts without t
     expect($modalHtml)
         ->toContain('data-testid="media-details-slide-over"')
         ->toContain('תמונה לטופס');
+});
+
+it('opens the choice-strip details slide-over nested inside the owner image modal', function (): void {
+    $admin = User::factory()->admin()->create();
+    $group = ContentGroup::factory()->create();
+    $item = ContentItem::factory()->for($group)->create();
+    $media = ownerImageMedia('content-items/images/nested-details.jpg', ['title' => 'Nested details fixture']);
+    app(MediaAttachmentManager::class)->attach($item, $media, MediaAttachmentRole::PrimaryImage, $admin);
+
+    $component = Livewire::actingAs($admin)
+        ->test(ListContentItems::class)
+        ->mountAction(TestAction::make('chooseContentItemImage')->table($item));
+
+    $picker = collect($component->instance()->getSchema('mountedActionSchema0')?->getFlatComponents(withHidden: true))
+        ->first(fn (mixed $schemaComponent): bool => $schemaComponent instanceof PathCuratorPicker);
+
+    expect($picker)->toBeInstanceOf(PathCuratorPicker::class);
+
+    $component->call(
+        'mountAction',
+        'ownerMediaDetails',
+        ['id' => $media->getKey()],
+        [
+            'recordKey' => (string) $item->getKey(),
+            'schemaComponent' => (string) $picker->getKey(),
+        ],
+    );
+
+    expect($component->getMountedActionModalHtml())
+        ->toContain('data-testid="media-details-slide-over"')
+        ->toContain('Nested details fixture');
 });

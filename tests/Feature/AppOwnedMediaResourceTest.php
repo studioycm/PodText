@@ -1105,12 +1105,9 @@ it('derives owner titles by role priority and applies them in bulk', function ()
         )
         ->assertNotified(__('admin.media_library.title_by_owner_done_title'));
 
-    $coverRole = __('admin.media_attachment_roles.cover');
-    $primaryRole = __('admin.media_attachment_roles.primary_image');
-
-    expect($coverMedia->refresh()->title)->toBe('הפודקאסט שלנו — '.$coverRole)
-        ->and($coverMedia->alt)->toBe('הפודקאסט שלנו — '.$coverRole)
-        ->and($episodeMedia->refresh()->title)->toBe('פרק הפתיחה — '.$primaryRole)
+    expect($coverMedia->refresh()->title)->toBe('הפודקאסט שלנו')
+        ->and($coverMedia->alt)->toBe('הפודקאסט שלנו')
+        ->and($episodeMedia->refresh()->title)->toBe('פרק הפתיחה')
         ->and($orphan->refresh()->title)->toBeNull()
         ->and($user->notifications()->count())->toBe(1);
 });
@@ -1130,19 +1127,18 @@ it('previews and applies a single-card owner title with bulk affixes available',
     ]);
     $group = ContentGroup::factory()->create(['title' => 'דרך הארץ', 'cover_path' => $media->path]);
     ContentGroup::factory()->create(['title' => 'קול העיר', 'cover_path' => $affixed->path]);
-    $coverRole = __('admin.media_attachment_roles.cover');
 
     $html = Livewire::test(ListMedia::class)
         ->call('mountTableAction', 'titleByOwner', (string) $media->getKey())
         ->getMountedActionModalHtml();
 
-    expect($html)->toContain(e('דרך הארץ — '.$coverRole));
+    expect($html)->toContain(e('דרך הארץ'));
 
     Livewire::test(ListMedia::class)
         ->callAction(TestAction::make('titleByOwner')->table($media))
         ->assertNotified(__('admin.media_library.title_by_owner_done_title'));
 
-    expect($media->refresh()->title)->toBe('דרך הארץ — '.$coverRole);
+    expect($media->refresh()->title)->toBe('דרך הארץ');
 
     Livewire::test(ListMedia::class)
         ->selectTableRecords([$affixed])
@@ -1151,7 +1147,7 @@ it('previews and applies a single-card owner title with bulk affixes available',
             ['title_prefix' => 'עטיפת', 'title_suffix' => '(2026)'],
         );
 
-    expect($affixed->refresh()->title)->toBe('עטיפת קול העיר — '.$coverRole.' (2026)');
+    expect($affixed->refresh()->title)->toBe('עטיפת קול העיר (2026)');
 });
 
 it('scopes gallery search to title owner or filename', function (): void {

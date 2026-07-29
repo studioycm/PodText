@@ -659,10 +659,25 @@ class MediaFilesystemMutationCoordinator
             MediaMutationOperationType::Sanitize => 'repair',
             default => 'swap',
         };
-        $trusted = $this->scope->findOrFail($media->getKey());
+        $trusted = $operationType === MediaMutationOperationType::Sanitize
+            ? $this->scope->findInventoryOrFail($media->getKey())
+            : $this->scope->findOrFail($media->getKey());
         Gate::forUser($actor)->authorize($ability, $trusted);
         $this->assertUniqueStorageIdentity($trusted);
-        $purpose = $this->policy->purposeForPath((string) $trusted->path);
+
+        try {
+            $purpose = $this->policy->purposeForPath((string) $trusted->path);
+        } catch (\InvalidArgumentException $unmanagedSource) {
+            if ($operationType !== MediaMutationOperationType::Sanitize) {
+                throw $unmanagedSource;
+            }
+
+            // Sanitizing an unmanaged/root source relocates it: the clean
+            // copy lands in the covers root — the approved destination for
+            // unmanaged sources — so the repaired row re-enters the managed
+            // scope with both its safety and path reasons resolved.
+            $purpose = ImageUploadPurpose::ContentGroupCover;
+        }
 
         if (! Storage::disk('public')->exists((string) $trusted->path)) {
             throw new RuntimeException('The source media file is missing.');
@@ -1074,7 +1089,15 @@ class MediaFilesystemMutationCoordinator
             }
         }
 
-        $normalizedPath = $this->policy->normalizePath($path);
+        try {
+            $normalizedPath = $this->policy->normalizePath($path);
+            $sourcePurpose = $this->policy->purposeForPath($normalizedPath);
+        } catch (\InvalidArgumentException) {
+            // A root/unmanaged source (a sanitize that relocated it) has no
+            // curation directory to clean.
+            return;
+        }
+
         $sourceDirectory = dirname($normalizedPath);
         $name = pathinfo($normalizedPath, PATHINFO_FILENAME);
         $curationDirectory = "{$sourceDirectory}/{$name}";
@@ -1083,7 +1106,7 @@ class MediaFilesystemMutationCoordinator
         if (
             ! $purpose instanceof ImageUploadPurpose
             || $sourceDirectory !== $purpose->root()
-            || $this->policy->purposeForPath($normalizedPath) !== $purpose
+            || $sourcePurpose !== $purpose
         ) {
             throw new RuntimeException('The curation cleanup directory is outside the journaled purpose root.');
         }
@@ -1386,10 +1409,25 @@ class MediaFilesystemMutationCoordinator
                 throw new RuntimeException("The journaled {$pathField} disk is invalid.");
             }
 
-            $normalized = $this->policy->normalizePath((string) $path);
+            if (
+                $pathField === 'source_path'
+                && $operationType === MediaMutationOperationType::Sanitize
+            ) {
+                // A sanitize may originate from an unmanaged/root source; its
+                // syntax is still constrained, but no purpose root applies.
+                if (
+                    str_contains((string) $path, '..')
+                    || str_contains((string) $path, '//')
+                    || preg_match('/^[A-Za-z0-9][A-Za-z0-9._\/-]*$/', (string) $path) !== 1
+                ) {
+                    throw new RuntimeException('The journaled source_path syntax is invalid.');
+                }
+            } else {
+                $normalized = $this->policy->normalizePath((string) $path);
 
-            if ($normalized !== $path || $this->policy->purposeForPath($normalized) !== $purpose) {
-                throw new RuntimeException("The journaled {$pathField} is outside its purpose root.");
+                if ($normalized !== $path || $this->policy->purposeForPath($normalized) !== $purpose) {
+                    throw new RuntimeException("The journaled {$pathField} is outside its purpose root.");
+                }
             }
 
             $this->assertSha256($operation->getAttribute($checksumField), $checksumField);
@@ -1422,7 +1460,7 @@ class MediaFilesystemMutationCoordinator
         ], true)
             ? match ($operationType) {
                 MediaMutationOperationType::Delete => ['source_path', 'quarantine_path'],
-                MediaMutationOperationType::Rename, MediaMutationOperationType::Swap, MediaMutationOperationType::Registration, MediaMutationOperationType::LegacyTransition => [
+                MediaMutationOperationType::Rename, MediaMutationOperationType::Swap, MediaMutationOperationType::Sanitize, MediaMutationOperationType::Registration, MediaMutationOperationType::LegacyTransition => [
                     'source_path',
                     'destination_path',
                     'staging_path',

@@ -90,10 +90,8 @@ it('grants the repair ability only to managed unreferenced rows with the svg rea
         'path' => 'root-level.svg',
     ]);
     Storage::disk('public')->put('root-level.svg', sanitizeRepairNormalizableSvg());
-    $rootResponse = $gate->inspect('repair', $rootLevel);
 
-    expect($rootResponse->allowed())->toBeFalse()
-        ->and($rootResponse->message())->toBe(__('admin.media_library.op_blocked_unmanaged'));
+    expect($gate->inspect('repair', $rootLevel)->allowed())->toBeTrue();
 });
 
 it('projects truthful per-reason resolution states in the review presenter', function (): void {
@@ -287,4 +285,45 @@ it('settles an unsanitizable svg with an accountable trust mark and revokes it c
     expect($media->trusted_at)->toBeNull()
         ->and(app(MediaInventoryDiagnostics::class)->reasons($media))
         ->toContain(MediaDiagnosticReason::UnsanitizedSvg->value);
+});
+
+it('sanitizes a root-level svg and relocates it into the managed covers root in one step', function (): void {
+    $user = User::factory()->admin()->create();
+    $this->actingAs($user);
+    $contents = sanitizeRepairNormalizableSvg();
+    Storage::disk('public')->put('podcast_legacy_logo.svg', $contents);
+    $media = Media::factory()->create([
+        'reference_key' => (string) Str::ulid(),
+        'disk' => 'public',
+        'directory' => '',
+        'visibility' => 'public',
+        'name' => 'podcast_legacy_logo',
+        'path' => 'podcast_legacy_logo.svg',
+        'width' => null,
+        'height' => null,
+        'size' => strlen($contents),
+        'type' => 'image/svg+xml',
+        'ext' => 'svg',
+        'title' => 'לוגו מדור קודם',
+    ]);
+    $referenceKey = (string) $media->reference_key;
+    $reasonsBefore = app(MediaInventoryDiagnostics::class)->reasons($media);
+
+    expect($reasonsBefore)->toContain(MediaDiagnosticReason::UnsanitizedSvg->value)
+        ->and(app(MediaRecordScope::class)->allows($media))->toBeFalse();
+
+    Livewire::test(ReviewMediaIssues::class, ['record' => $media->getKey()])
+        ->assertSee(__('admin.media_issue_review.sanitize.action'))
+        ->callAction('sanitizeFile')
+        ->assertNotified(__('admin.media_issue_review.sanitize.done_title', ['name' => 'לוגו מדור קודם']));
+
+    $media->refresh();
+
+    expect((string) $media->directory)->toBe('content-groups/covers')
+        ->and((string) $media->reference_key)->toBe($referenceKey)
+        ->and(app(MediaRecordScope::class)->allows($media))->toBeTrue()
+        ->and(app(MediaInventoryDiagnostics::class)->reasons($media))->toBe([])
+        ->and(MediaMutationOperation::query()->where('operation', 'sanitize')->count())->toBe(1)
+        ->and(MediaMutationOperation::query()->where('operation', 'sanitize')->first()?->getRawOriginal('status'))->toBe('completed')
+        ->and(Storage::disk('public')->exists('podcast_legacy_logo.svg'))->toBeFalse();
 });

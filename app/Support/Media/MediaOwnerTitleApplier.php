@@ -33,7 +33,12 @@ class MediaOwnerTitleApplier
             return;
         }
 
-        $title = trim(((string) $owner->title).' — '.__('admin.media_attachment_roles.'.$role->value));
+        $title = trim((string) $owner->title);
+
+        if ($title === '') {
+            return;
+        }
+
         $media->forceFill(['title' => $title, 'alt' => $title])->save();
     }
 

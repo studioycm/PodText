@@ -105,10 +105,6 @@ class CuratorMediaPolicy
             return Response::deny();
         }
 
-        if (! app(MediaRecordScope::class)->allows($media)) {
-            return Response::deny(__('admin.media_library.op_blocked_unmanaged'));
-        }
-
         if (! in_array(
             MediaDiagnosticReason::UnsanitizedSvg->value,
             app(MediaInventoryDiagnostics::class)->reasons($media),

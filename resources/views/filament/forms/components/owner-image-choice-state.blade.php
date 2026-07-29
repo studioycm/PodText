@@ -157,7 +157,24 @@
                 @if (filled($choiceCard['details_url']) || $choiceCard['restore'] || $choiceCard['automatic'])
                     <span class="flex items-center gap-1">
                         @if (filled($choiceCard['details_url']) && is_array($choiceCard['media']))
-                            {{ ($field->getAction('ownerMediaDetails'))(['id' => $choiceCard['media']['id']]) }}
+                            @if ($field->isInlineOwnerWorkspace())
+                                {{-- The owner modal always mounts the picker panel, whose
+                                     slide-over listens for this event. --}}
+                                <button
+                                    type="button"
+                                    class="grid h-7 w-7 place-items-center rounded-md border border-gray-300 text-gray-500 hover:text-primary-600 dark:border-gray-600 dark:text-gray-400 dark:hover:text-primary-400"
+                                    x-on:click="$dispatch('open-media-details', { id: @js($choiceCard['media']['id']) })"
+                                    data-media-details-id="{{ $choiceCard['media']['id'] }}"
+                                    title="{{ __('admin.owner_image.actions.open_details') }}"
+                                    aria-label="{{ __('admin.owner_image.actions.open_details') }}"
+                                >
+                                    <x-filament::icon icon="heroicon-o-information-circle" class="h-4 w-4" />
+                                </button>
+                            @else
+                                {{-- Plain form and settings contexts have no panel; the
+                                     slide-over lives on the field itself. --}}
+                                {{ ($field->getAction('ownerMediaDetails'))(['id' => $choiceCard['media']['id']]) }}
+                            @endif
                         @endif
 
                         @if ($choiceCard['restore'])

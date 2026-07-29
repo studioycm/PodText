@@ -314,7 +314,7 @@ class MediaReferenceFinder
                 : null);
 
         if (filled($groupTitle)) {
-            return $groupTitle.' — '.$this->attachmentRoleLabel('cover');
+            return (string) $groupTitle;
         }
 
         $itemAttachment = $attachments->first(
@@ -328,7 +328,7 @@ class MediaReferenceFinder
                 : null);
 
         if (filled($itemTitle)) {
-            return $itemTitle.' — '.$this->attachmentRoleLabel('primary_image');
+            return (string) $itemTitle;
         }
 
         $settingsLabels = $this->settingsIdentityReferences(
