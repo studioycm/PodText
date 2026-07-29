@@ -25,6 +25,25 @@
     overflow-x: clip;
 }
 
+/* The standalone picker modal (settings pickers, form fields) scrolls as
+   one window, like the owner-image modal: the panel's internal scroll
+   areas relax so the tall gallery can actually be reached. */
+.fi-modal-window.podtext-media-picker-modal {
+    overflow-x: clip;
+    overflow-y: auto;
+    max-block-size: 100dvh;
+}
+
+.podtext-media-picker-modal [data-testid='media-picker'] {
+    block-size: auto;
+    max-inline-size: 100%;
+}
+
+.podtext-media-picker-modal [data-testid='media-picker-gallery'],
+.podtext-media-picker-modal [data-testid='media-picker-gallery'] + aside {
+    overflow: visible;
+}
+
 .podtext-owner-image-modal [data-testid='media-picker'] {
     block-size: auto;
     max-inline-size: 100%;

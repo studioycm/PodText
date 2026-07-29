@@ -411,6 +411,9 @@ class PathCuratorPicker extends Field
             ->modalSubmitAction(false)
             ->modalCancelAction(false)
             ->modalWidth(Width::Screen)
+            ->extraModalWindowAttributes([
+                'class' => 'podtext-media-picker-modal',
+            ])
             ->modalCloseButton(false)
             ->closeModalByClickingAway(false)
             ->closeModalByEscaping(false)
