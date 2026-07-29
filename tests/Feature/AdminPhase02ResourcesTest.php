@@ -314,6 +314,7 @@ it('orders every registered admin navigation resource and page through the centr
         null,
         AdminNavigationOrder::groupLabel(AdminNavigationOrder::CONTENT_MANAGEMENT),
         AdminNavigationOrder::groupLabel(AdminNavigationOrder::TAXONOMY_MANAGEMENT),
+        null,
     ]);
 
     $groupedNavigation = $navigation
@@ -328,24 +329,26 @@ it('orders every registered admin navigation resource and page through the centr
         }
     }
 
-    $itemLabelsFor = fn (?string $groupLabel): array => collect($navigation
-        ->first(fn ($group): bool => $group->getLabel() === $groupLabel)
-        ->getItems())
+    $itemLabelsIn = fn ($group): array => collect($group->getItems())
         ->map(fn ($item): string => $item->getLabel())
         ->values()
         ->all();
+    $itemLabelsFor = fn (string $groupLabel): array => $itemLabelsIn($navigation
+        ->first(fn ($group): bool => $group->getLabel() === $groupLabel));
 
-    expect($itemLabelsFor(null))->toBe([
+    expect($itemLabelsIn($navigation->first()))->toBe([
         Dashboard::getNavigationLabel(),
         __('admin.resources.content_item.workspace_navigation'),
         __('admin.resources.public_form_submission.navigation'),
         __('admin.curator.plural_label'),
-        __('admin.tools.pages.tools.navigation'),
-        __('admin.spotify_fetcher.pages.navigation'),
-        SettingsCluster::getNavigationLabel(),
-        SystemCluster::getNavigationLabel(),
-        __('admin.navigation.public_homepage'),
     ])
+        ->and($itemLabelsIn($navigation->last()))->toBe([
+            __('admin.tools.pages.tools.navigation'),
+            __('admin.spotify_fetcher.pages.navigation'),
+            SettingsCluster::getNavigationLabel(),
+            SystemCluster::getNavigationLabel(),
+            __('admin.navigation.public_homepage'),
+        ])
         ->and($itemLabelsFor(AdminNavigationOrder::groupLabel(AdminNavigationOrder::CONTENT_MANAGEMENT)))->toBe([
             __('admin.resources.content_group.navigation'),
             __('admin.resources.content_item.navigation'),
@@ -366,10 +369,7 @@ it('orders every registered admin navigation resource and page through the centr
             AdminUxSettingsPage::class,
         );
 
-    $ungroupedItems = collect($navigation
-        ->first(fn ($group): bool => $group->getLabel() === null)
-        ->getItems());
-    $publicHomepageItem = $ungroupedItems->last();
+    $publicHomepageItem = collect($navigation->last()->getItems())->last();
 
     expect($publicHomepageItem->getLabel())->toBe(__('admin.navigation.public_homepage'))
         ->and($publicHomepageItem->getUrl())->toBe(BrowseContentGroups::getUrl(panel: 'public'))

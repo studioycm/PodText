@@ -31,8 +31,11 @@ use App\Filament\Resources\PublicFormSubmissions\PublicFormSubmissionResource;
 use App\Filament\Resources\SettingsBackups\SettingsBackupResource;
 use App\Filament\Resources\Transcriptions\TranscriptionResource;
 use App\Filament\Resources\Users\UserResource;
+use Filament\Facades\Filament;
+use Filament\Navigation\NavigationBuilder;
 use Filament\Navigation\NavigationGroup;
 use Filament\Navigation\NavigationItem;
+use Filament\Resources\Resource;
 use Filament\Support\Icons\Heroicon;
 
 class AdminNavigationOrder
@@ -207,22 +210,67 @@ class AdminNavigationOrder
     }
 
     /**
-     * @return array<string, NavigationGroup>
+     * Compose the panel navigation explicitly: automatic building always renders
+     * every ungrouped item above the labeled groups, while the approved order puts
+     * the content and taxonomy groups directly after the media item.
      */
-    public static function panelNavigationGroups(): array
+    public static function panelNavigation(NavigationBuilder $builder): NavigationBuilder
     {
-        return collect(array_keys(self::GROUPS))
-            ->mapWithKeys(fn (string $group): array => [
-                $group => NavigationGroup::make(fn (): string => self::groupLabel($group))
-                    ->collapsible(),
-            ])
-            ->all();
+        // Static page URLs resolve against the current panel, and another panel
+        // can trigger this build (e.g. the public panel resolving the admin
+        // redirect URL for its user menu), so pin the admin context here.
+        $previousPanel = Filament::getCurrentPanel();
+        Filament::setCurrentPanel(Filament::getPanel('admin'));
+
+        try {
+            return self::composePanelNavigation($builder);
+        } finally {
+            Filament::setCurrentPanel($previousPanel);
+        }
+    }
+
+    private static function composePanelNavigation(NavigationBuilder $builder): NavigationBuilder
+    {
+        $groupsFollowSort = (int) self::sort(MediaResource::class);
+
+        $items = collect(array_keys(self::ITEMS))
+            ->filter(fn (string $class): bool => blank($class::getCluster())
+                && (! is_subclass_of($class, Resource::class) || blank($class::getParentResourceRegistration()))
+                && $class::shouldRegisterNavigation()
+                && $class::canAccess())
+            ->flatMap(fn (string $class): array => $class::getNavigationItems())
+            ->merge(self::externalNavigationItems())
+            ->sortBy(fn (NavigationItem $item): int => $item->getSort());
+
+        [$groupedItems, $ungroupedItems] = $items->partition(
+            fn (NavigationItem $item): bool => filled($item->getGroup()),
+        );
+        [$leadingItems, $trailingItems] = $ungroupedItems->partition(
+            fn (NavigationItem $item): bool => $item->getSort() <= $groupsFollowSort,
+        );
+
+        $builder->items($leadingItems->values()->all());
+
+        foreach (array_keys(self::GROUPS) as $group) {
+            $builder->group(
+                NavigationGroup::make(fn (): string => self::groupLabel($group))
+                    ->collapsible()
+                    ->items($groupedItems
+                        ->filter(fn (NavigationItem $item): bool => $item->getGroup() === self::groupLabel($group))
+                        ->values()
+                        ->all()),
+            );
+        }
+
+        return $builder->group(
+            NavigationGroup::make()->items($trailingItems->values()->all()),
+        );
     }
 
     /**
      * @return array<int, NavigationItem>
      */
-    public static function externalNavigationItems(): array
+    private static function externalNavigationItems(): array
     {
         return [
             NavigationItem::make(fn (): string => __('admin.navigation.public_homepage'))

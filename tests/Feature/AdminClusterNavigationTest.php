@@ -18,18 +18,31 @@ beforeEach(function (): void {
     $this->actingAs(User::factory()->admin()->create());
 });
 
-it('serves both clusters as first-level navigation without the retired groups', function (): void {
-    $navigation = Filament::getNavigation();
-    $groupLabels = collect($navigation)->map(fn ($group): string => (string) $group->getLabel())->filter()->values();
-    $ungroupedItems = collect($navigation)
-        ->first(fn ($group): bool => blank($group->getLabel()))
-        ?->getItems() ?? collect();
-    $itemLabels = collect($ungroupedItems)->map(fn ($item): string => (string) $item->getLabel())->values();
+it('serves both clusters as first-level navigation after the labeled groups', function (): void {
+    $navigation = collect(Filament::getNavigation());
 
-    expect($groupLabels)->not->toContain(__('admin.navigation.groups.settings'))
-        ->and($groupLabels)->not->toContain(__('admin.navigation.groups.system_management'))
-        ->and($itemLabels)->toContain(__('admin.navigation.groups.settings'))
-        ->and($itemLabels)->toContain(__('admin.navigation.groups.system_management'));
+    expect($navigation->map(fn ($group): ?string => $group->getLabel())->values()->all())->toBe([
+        null,
+        __('admin.navigation.groups.content_management'),
+        __('admin.navigation.groups.taxonomy_management'),
+        null,
+    ]);
+
+    $leadingLabels = collect($navigation->first()->getItems())
+        ->map(fn ($item): string => (string) $item->getLabel())
+        ->values();
+    $trailingLabels = collect($navigation->last()->getItems())
+        ->map(fn ($item): string => (string) $item->getLabel())
+        ->values();
+
+    expect($leadingLabels->last())->toBe(__('admin.curator.plural_label'))
+        ->and($trailingLabels->all())->toBe([
+            __('admin.tools.pages.tools.navigation'),
+            __('admin.spotify_fetcher.pages.navigation'),
+            SettingsCluster::getNavigationLabel(),
+            SystemCluster::getNavigationLabel(),
+            __('admin.navigation.public_homepage'),
+        ]);
 });
 
 it('routes cluster members under the cluster prefixes', function (): void {
@@ -82,4 +95,11 @@ it('renders the system pages with their top sub-navigation honoring the users ga
         ->get(MaintenanceSettings::getUrl())
         ->assertSuccessful()
         ->assertSee(__('admin.resources.user.navigation'));
+});
+
+it('resolves the admin panel url from another panel context while authenticated', function (): void {
+    Filament::setCurrentPanel(Filament::getPanel('public'));
+
+    expect(Filament::getPanel('admin')->getUrl())->toContain('/admin')
+        ->and(Filament::getCurrentPanel()?->getId())->toBe('public');
 });
