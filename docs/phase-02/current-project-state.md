@@ -106,7 +106,7 @@ Recorded after the Markdown-only post-Prompt-10 prompt-progress centralization c
   D4=b, D5=a, D6=b, D7=a (sanitize-only lift), D8=a, and the external
   hotlinks question answered «none» (access-log verification was
   honestly inconclusive: Forge sets `access_log off` for the site).
-  Implementation hash `P5P1_IMPLEMENTATION_HASH`. The engine:
+  Implementation hash `5a4c2f545f7a8af4d45e77f517292bae25f964bb`. The engine:
   `MediaFilesystemMutationCoordinator::relocate` moves an unmanaged/root
   file into the managed covers root through the full
   journal/fence/quarantine machinery — same row id, same immutable
