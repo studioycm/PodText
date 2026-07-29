@@ -52,7 +52,7 @@ class AdminPanelProvider extends PanelProvider
             )
             ->brandLogo(fn (): string => asset('images/podtext-logo.svg'))
             ->darkModeBrandLogo(fn (): string => asset('images/podtext-logo-dark.svg'))
-            ->brandLogoHeight('60px')
+            ->brandLogoHeight('48px')
             ->favicon(fn (): string => asset('favicon.svg'))
             ->renderHook(
                 PanelsRenderHook::RESOURCE_PAGES_LIST_RECORDS_TABLE_AFTER,
