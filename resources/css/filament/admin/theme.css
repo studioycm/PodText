@@ -184,6 +184,7 @@
     > .fi-ta-actions
     > *:has(.podtext-cards-per-row-trigger) {
     order: 1;
+    margin-inline-start: 0.5rem;
 }
 
 .podtext-gallery-top-pagination {
@@ -198,6 +199,8 @@
     align-items: center;
     gap: 0.5rem;
     container-type: normal;
+    border: none;
+    padding: 0;
 }
 
 .podtext-gallery-top-pagination .fi-pagination {
