@@ -4,6 +4,7 @@ namespace App\Providers\Filament;
 
 use App\Filament\Pages\Dashboard;
 use App\Filament\Resources\Media\MediaResource;
+use App\Filament\Resources\Media\Pages\ListMedia;
 use App\Filament\Support\AdminNavigationOrder;
 use Awcodes\Curator\CuratorPlugin;
 use Filament\Http\Middleware\Authenticate;
@@ -15,8 +16,10 @@ use Filament\PanelProvider;
 use Filament\Support\Colors\Color;
 use Filament\Support\Enums\Width;
 use Filament\Support\Icons\Heroicon;
+use Filament\View\PanelsRenderHook;
 use Filament\Widgets\AccountWidget;
 use Filament\Widgets\FilamentInfoWidget;
+use Illuminate\Contracts\View\View;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Cookie\Middleware\EncryptCookies;
 use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
@@ -50,6 +53,11 @@ class AdminPanelProvider extends PanelProvider
             ->darkModeBrandLogo(fn (): string => asset('images/podtext-logo-dark.svg'))
             ->brandLogoHeight('60px')
             ->favicon(fn (): string => asset('favicon.svg'))
+            ->renderHook(
+                PanelsRenderHook::RESOURCE_PAGES_LIST_RECORDS_TABLE_AFTER,
+                fn (): View => view('filament.resources.media.gallery-keyboard-nav'),
+                scopes: ListMedia::class,
+            )
             ->sidebarWidth('15rem')
             ->sidebarCollapsibleOnDesktop()
 //            ->sidebarFullyCollapsibleOnDesktop()

@@ -4,6 +4,7 @@ use App\Enums\ImageUploadPurpose;
 use App\Enums\MediaDiagnosticReason;
 use App\Enums\MediaLibraryTask;
 use App\Enums\UserRole;
+use App\Filament\Resources\ContentGroups\Pages\ListContentGroups;
 use App\Filament\Resources\Media\MediaResource;
 use App\Filament\Resources\Media\Pages\CreateMedia;
 use App\Filament\Resources\Media\Pages\EditMedia;
@@ -971,6 +972,18 @@ it('lets the operator choose one to eight gallery cards per desktop row with a d
     $component->call('setCardsPerRow', 9);
 
     expect($component->get('cardsPerRow'))->toBe(3);
+});
+
+it('arms arrow-key card navigation on the media gallery page only', function (): void {
+    $this->actingAs(User::factory()->admin()->create());
+    appOwnedMediaRecord();
+    Filament::bootCurrentPanel();
+
+    Livewire::test(ListMedia::class)
+        ->assertSee('data-podtext-gallery-keyboard-nav', false);
+
+    Livewire::test(ListContentGroups::class)
+        ->assertDontSee('data-podtext-gallery-keyboard-nav');
 });
 
 it('offers selectable gallery page sizes with a dozen cards by default', function (): void {
