@@ -79,7 +79,19 @@ Recorded after the Markdown-only post-Prompt-10 prompt-progress centralization c
   production targets until then), D3=a, D4=a, D5=Issue-Review-only plus
   card/slide-over Issue Review links, D6=a (fate chips, no Recheck),
   D7=a, D8=a. M4 P1–P3 are implemented locally (implementation hash
-  `24b13fb5ba3313d4ffe53ada418e62f7963a6678`); operator outcome review is the next step. Package 5 gained operator seeds: legacy
+  `24b13fb5ba3313d4ffe53ada418e62f7963a6678`). **Current gate:** the
+  operator closed M4 on 2026-07-28 («lets say M4 closed») after the
+  outcome-review corrections OR1 (accountable admin trust mark,
+  `33a659c`) and OR2 (fate-chip badge wording, `8bbd5e9`); the
+  standalone picker-modal scroll fix (`1713cbb`) was reclassified by
+  the operator as a general picker regression outside M4 scope. The M4
+  series is pushed and deployed (production release `74315264`, health
+  verified). Package 5 — storage/data truth (root-file relocation and
+  legacy owner-column retirement) — is open in UX research under the
+  mandatory cycle, seeded per the Package 5 seeds memory: the ~394-row
+  root-level production cohort including media 2, the census, the
+  operator's D3 lift (post-retirement in-use sanitize), and
+  relocation's expected side-effects on the intrinsic-issue rows. Package 5 gained operator seeds: legacy
   owner-column retirement (production census 2026-07-28: 294 covers all
   attachment-bridged, 0 legacy-only, `image_path` unused — code-only
   migration) alongside root-file relocation. A staged Eloquent
