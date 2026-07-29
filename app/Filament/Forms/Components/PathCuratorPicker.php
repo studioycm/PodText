@@ -8,6 +8,7 @@ use App\Livewire\Admin\MediaPickerPanel;
 use App\Models\Media;
 use App\Models\User;
 use App\Support\Media\MediaAttachmentFormState;
+use App\Support\Media\MediaDetailsViewModel;
 use App\Support\Media\MediaIdentityResolver;
 use App\Support\Media\MediaInventoryDiagnostics;
 use App\Support\Media\MediaRecordProjector;
@@ -65,6 +66,7 @@ class PathCuratorPicker extends Field
             fn (): Action => $this->getRemoveAllAction(),
             fn (): Action => $this->getViewAction(),
             fn (): Action => $this->getRemoveDirectOwnerImageAction(),
+            fn (): Action => $this->getOwnerMediaDetailsAction(),
             fn (): Action => $this->getPickerAction(),
         ]);
 
@@ -364,6 +366,36 @@ class PathCuratorPicker extends Field
 
                 return MediaResource::getUrl('edit', ['record' => $media]);
             }, true);
+    }
+
+    /**
+     * The choice-state strip's details slide-over lives on the field itself,
+     * so it works in every context the field renders in — forms and settings
+     * pages included — not only inside the owner-image modal, whose picker
+     * panel happens to listen for the window event the strip once dispatched.
+     */
+    public function getOwnerMediaDetailsAction(): Action
+    {
+        return Action::make('ownerMediaDetails')
+            ->label(__('admin.owner_image.actions.open_details'))
+            ->icon(Heroicon::OutlinedInformationCircle)
+            ->color('gray')
+            ->iconButton()
+            ->extraAttributes(fn (array $arguments): array => [
+                'data-media-details-id' => (string) ($arguments['id'] ?? ''),
+                'title' => __('admin.owner_image.actions.open_details'),
+            ])
+            ->slideOver()
+            ->modalWidth(Width::Medium)
+            ->modalHeading(__('admin.owner_image.actions.open_details'))
+            ->modalSubmitAction(false)
+            ->modalCancelActionLabel(__('admin.actions.close'))
+            ->modalContent(function (array $arguments) {
+                $media = app(MediaRecordScope::class)->findInventoryOrFail((int) ($arguments['id'] ?? 0));
+                Gate::authorize('view', $media);
+
+                return view('livewire.admin.media-details-slide-over', MediaDetailsViewModel::make($media));
+            });
     }
 
     public function getRemoveDirectOwnerImageAction(): Action

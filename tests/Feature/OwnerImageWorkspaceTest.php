@@ -3247,3 +3247,27 @@ it('retitles the selected media from the owner when the retitle checkbox is on',
 
     expect($keepTitle->refresh()->title)->toBe('כותרת שנבחרה ביד');
 });
+
+it('opens the choice-strip details slide-over from plain form contexts without the picker panel', function (): void {
+    $admin = User::factory()->admin()->create();
+    $media = ownerImageMedia('content-items/images/form-context-details.jpg', ['title' => 'תמונה לטופס']);
+
+    $component = Livewire::actingAs($admin)->test(CreateContentItem::class);
+    $picker = collect($component->instance()->getSchema('form')?->getFlatFields(withHidden: true))
+        ->first(fn (mixed $field): bool => $field instanceof PathCuratorPicker);
+
+    expect($picker)->toBeInstanceOf(PathCuratorPicker::class);
+
+    $component->mountAction(
+        TestAction::make('ownerMediaDetails')->schemaComponent(
+            (string) str($picker->getKey())->after('.'),
+        ),
+        arguments: ['id' => $media->getKey()],
+    );
+
+    $modalHtml = $component->getMountedActionModalHtml();
+
+    expect($modalHtml)
+        ->toContain('data-testid="media-details-slide-over"')
+        ->toContain('תמונה לטופס');
+});
