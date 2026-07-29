@@ -43,7 +43,11 @@
     inset-inline-start: 0.625rem;
     z-index: 10;
     margin: 0;
-    background-color: rgb(255 255 255 / 0.9);
+    outline: 0.1875rem solid rgb(255 255 255 / 0.85);
+}
+
+.dark .fi-ta-content-grid .fi-ta-record:has(.podtext-card-dense) > .fi-ta-record-checkbox {
+    outline-color: rgb(3 7 18 / 0.7);
 }
 
 .fi-ta-content-grid .fi-ta-record:has(.podtext-card-dense) .fi-input {
