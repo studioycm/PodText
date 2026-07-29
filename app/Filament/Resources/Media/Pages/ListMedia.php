@@ -5,11 +5,15 @@ namespace App\Filament\Resources\Media\Pages;
 use App\Enums\MediaLibraryTask;
 use App\Filament\Resources\Media\MediaResource;
 use App\Models\Media;
+use App\Models\User;
 use App\Support\Media\MediaLibraryContext;
 use App\Support\Media\MediaLibraryTaskQuery;
+use App\Support\Media\MediaOperationReceipts;
 use App\Support\Media\MediaReferenceFinder;
+use App\Support\Media\MediaRelocationBatch;
 use Filament\Actions\Action;
 use Filament\Actions\CreateAction;
+use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ListRecords;
 use Filament\Schemas\Components\Tabs\Tab;
 use Filament\Schemas\Concerns\RestrictsFileUploadsToSchemaComponents;
@@ -18,6 +22,7 @@ use Illuminate\Contracts\Pagination\CursorPaginator;
 use Illuminate\Contracts\Pagination\Paginator;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\Session;
 use Livewire\Attributes\Url;
 
@@ -39,6 +44,60 @@ class ListMedia extends ListRecords
         $this->searchScope = in_array($scope, ['all', 'title', 'owner', 'filename'], true)
             ? $scope
             : 'all';
+    }
+
+    /** @var array{moved: int, skipped: int, failed: array<int, array{id: int, name: string, reason: string}>}|null */
+    public ?array $relocationRun = null;
+
+    public function startRootRelocation(): void
+    {
+        $user = auth()->user();
+        abort_unless($user instanceof User, 403);
+        Gate::forUser($user)->authorize('deleteAny', static::getResource()::getModel());
+
+        $census = app(MediaRelocationBatch::class)->census($user);
+        $this->relocationRun = [
+            'moved' => 0,
+            'skipped' => count($census['skipped']),
+            'failed' => [],
+        ];
+        $this->continueRootRelocation();
+    }
+
+    public function continueRootRelocation(): void
+    {
+        $user = auth()->user();
+        abort_unless($user instanceof User && $this->relocationRun !== null, 403);
+
+        $result = app(MediaRelocationBatch::class)->executeChunk(
+            $user,
+            25,
+            array_column($this->relocationRun['failed'], 'id'),
+        );
+        $this->relocationRun['moved'] += $result['moved'];
+        $this->relocationRun['failed'] = array_merge($this->relocationRun['failed'], $result['failed']);
+
+        if ($result['remaining'] > 0 && $result['moved'] > 0) {
+            Notification::make()
+                ->title(__('admin.media_library.relocation_progress', [
+                    'moved' => $this->relocationRun['moved'],
+                    'remaining' => $result['remaining'],
+                ]))
+                ->send();
+            $this->js('$wire.continueRootRelocation()');
+
+            return;
+        }
+
+        $run = $this->relocationRun;
+        $this->relocationRun = null;
+        $this->forgetMediaTaskCaches();
+        app(MediaOperationReceipts::class)->relocationFinished(
+            $user,
+            $run['moved'],
+            $run['skipped'],
+            count($run['failed']),
+        );
     }
 
     use RestrictsFileUploadsToSchemaComponents;

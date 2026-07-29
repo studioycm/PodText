@@ -25,10 +25,13 @@ class MediaMutationFence
         array $attributes,
     ): MediaMutationOperation {
         return DB::transaction(function () use ($expected, $actor, $ability, $attributes): MediaMutationOperation {
-            // A sanitize may admit an unmanaged/root source (it relocates it
-            // into a managed root); every other mutation re-asserts managed
-            // membership under lock.
-            $locked = ($attributes['operation'] ?? null) === MediaMutationOperationType::Sanitize
+            // A sanitize or relocation may admit an unmanaged/root source (it
+            // moves it into a managed root); every other mutation re-asserts
+            // managed membership under lock.
+            $locked = in_array($attributes['operation'] ?? null, [
+                MediaMutationOperationType::Sanitize,
+                MediaMutationOperationType::Relocation,
+            ], true)
                 ? $this->scope->lockInventoryForUpdateByIds([$expected->getKey()])->firstOrFail()
                 : $this->scope->lockForUpdateByIds([$expected->getKey()])->firstOrFail();
             Gate::forUser($actor)->authorize($ability, $locked);

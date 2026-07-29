@@ -10,6 +10,7 @@ enum MediaMutationOperationType: string implements HasLabel
     case Rename = 'rename';
     case Swap = 'swap';
     case Sanitize = 'sanitize';
+    case Relocation = 'relocation';
     case Delete = 'delete';
     case ExternalImport = 'external_import';
     case Registration = 'registration';

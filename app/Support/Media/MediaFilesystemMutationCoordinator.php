@@ -3,9 +3,13 @@
 namespace App\Support\Media;
 
 use App\Enums\ImageUploadPurpose;
+use App\Enums\MediaAttachmentRole;
 use App\Enums\MediaMutationOperationType;
 use App\Enums\MediaMutationStatus;
+use App\Models\ContentGroup;
+use App\Models\ContentItem;
 use App\Models\Media;
+use App\Models\MediaAttachment;
 use App\Models\MediaMutationOperation;
 use App\Models\User;
 use App\Settings\PublicContentSettings;
@@ -246,6 +250,225 @@ class MediaFilesystemMutationCoordinator
     public function sanitize(Media $media, User $actor): Media
     {
         return $this->mutateExisting($media, $actor, MediaMutationOperationType::Sanitize);
+    }
+
+    /**
+     * Moves an unmanaged/root file into the managed covers root through the
+     * full journaled machinery, keeping the row id and reference key and
+     * rewriting the legacy path references inside the same commit. Bytes are
+     * preserved when they validate; only normalization-requiring content
+     * (SVG output) differs. Admin-trusted rows relocate verbatim.
+     */
+    public function relocate(Media $media, User $actor): Media
+    {
+        $trusted = $this->scope->findInventoryOrFail($media->getKey());
+        Gate::forUser($actor)->authorize('relocate', $trusted);
+        $this->assertUniqueStorageIdentity($trusted);
+
+        $sourceIsManaged = true;
+
+        try {
+            $this->policy->purposeForPath((string) $trusted->path);
+        } catch (\InvalidArgumentException) {
+            $sourceIsManaged = false;
+        }
+
+        if ($sourceIsManaged) {
+            throw new RuntimeException('The media record is already managed.');
+        }
+
+        if (! Storage::disk('public')->exists((string) $trusted->path)) {
+            throw new RuntimeException('The source media file is missing.');
+        }
+
+        $settingsPaths = $this->references->settingsIdentityCandidates()['paths'];
+
+        if (in_array((string) $trusted->path, $settingsPaths, true)) {
+            throw new RuntimeException('The relocation source is referenced by settings payloads.');
+        }
+
+        $purpose = ImageUploadPurpose::ContentGroupCover;
+        $sourceContents = $this->readBoundedArtifact('public', (string) $trusted->path);
+        $sourceSha256 = hash('sha256', $sourceContents);
+
+        if ($trusted->trusted_at !== null) {
+            $destinationImage = new ValidatedImage(
+                purpose: $purpose,
+                contents: $sourceContents,
+                mimeType: (string) $trusted->type,
+                extension: $this->policy->canonicalExtension((string) $trusted->type),
+                size: strlen($sourceContents),
+                width: is_numeric($trusted->width) && (int) $trusted->width > 0 ? (int) $trusted->width : null,
+                height: is_numeric($trusted->height) && (int) $trusted->height > 0 ? (int) $trusted->height : null,
+                sha256: $sourceSha256,
+                displayFilename: pathinfo((string) $trusted->path, PATHINFO_FILENAME),
+                originalFilename: basename((string) $trusted->path),
+            );
+        } else {
+            $proof = $this->validator->validateBytes(
+                $sourceContents,
+                basename((string) $trusted->path),
+                $purpose,
+            );
+
+            // D4b: original bytes are preserved when they validate; only
+            // normalization-requiring content (the SVG sanitizer's output)
+            // replaces them.
+            $destinationImage = $proof->mimeType === 'image/svg+xml'
+                ? $proof
+                : new ValidatedImage(
+                    purpose: $purpose,
+                    contents: $sourceContents,
+                    mimeType: $proof->mimeType,
+                    extension: $proof->extension,
+                    size: strlen($sourceContents),
+                    width: $proof->width,
+                    height: $proof->height,
+                    sha256: $sourceSha256,
+                    displayFilename: $proof->displayFilename,
+                    originalFilename: $proof->originalFilename,
+                );
+        }
+
+        $expectedGroupIds = ContentGroup::query()
+            ->where('cover_path', $trusted->path)
+            ->orderBy('id')
+            ->pluck('id')
+            ->map(fn (mixed $id): int => (int) $id)
+            ->all();
+        $expectedItemIds = ContentItem::query()
+            ->where('image_path', $trusted->path)
+            ->orderBy('id')
+            ->pluck('id')
+            ->map(fn (mixed $id): int => (int) $id)
+            ->all();
+
+        $operationKey = (string) Str::ulid();
+        $stagingPath = "media-staging/{$operationKey}/relocated.{$destinationImage->extension}";
+        $quarantinePath = "media-quarantine/{$operationKey}/original.".(string) $trusted->ext;
+        $operation = $this->fence->begin($trusted, $actor, 'relocate', [
+            'operation_key' => $operationKey,
+            'operation' => MediaMutationOperationType::Relocation,
+            'status' => MediaMutationStatus::Staged,
+            'purpose' => $purpose->value,
+            'source_disk' => 'public',
+            'source_path' => $trusted->path,
+            'source_sha256' => $sourceSha256,
+            'destination_disk' => 'public',
+            'destination_sha256' => $destinationImage->sha256,
+            'staging_disk' => 'local',
+            'staging_path' => $stagingPath,
+            'staging_sha256' => $destinationImage->sha256,
+            'quarantine_disk' => 'local',
+            'quarantine_path' => $quarantinePath,
+            'quarantine_sha256' => $sourceSha256,
+            'context' => [
+                'relocation_group_ids' => $expectedGroupIds,
+                'relocation_item_ids' => $expectedItemIds,
+                'source_directory' => dirname((string) $trusted->path),
+                'source_name' => pathinfo((string) $trusted->path, PATHINFO_FILENAME),
+                'source_last_modified' => $this->lastModified('public', (string) $trusted->path),
+            ],
+            'attempts' => 1,
+            'lease_token' => (string) Str::ulid(),
+            'lease_expires_at' => now()->addMinutes(5),
+            'started_at' => now(),
+        ]);
+        $committed = false;
+
+        try {
+            $this->putVerified('local', $quarantinePath, $sourceContents, $sourceSha256);
+            $this->putVerified('local', $stagingPath, $destinationImage->contents, $destinationImage->sha256);
+            $destinationPath = $this->allocateDestination($purpose, $destinationImage->mimeType);
+            $this->fence->updateStaged($operation, ['destination_path' => $destinationPath]);
+            $this->putVerified('public', $destinationPath, Storage::disk('local')->get($stagingPath), $destinationImage->sha256, visibility: 'public');
+            $this->fence->markCopied($operation);
+
+            $updated = DB::transaction(function () use ($trusted, $actor, $destinationImage, $destinationPath, $operation, $expectedGroupIds, $expectedItemIds): Media {
+                $locked = Media::query()->lockForUpdate()->findOrFail($trusted->getKey());
+                $lockedOperation = $this->fence->lockForCommit($operation);
+                Gate::forUser($actor)->authorize('relocate', $locked);
+                $this->assertUniqueStorageIdentity($locked);
+
+                if ($locked->disk !== 'public' || $locked->path !== $trusted->path) {
+                    throw new RuntimeException('The media record changed during mutation.');
+                }
+
+                $groups = ContentGroup::query()
+                    ->where('cover_path', $trusted->path)
+                    ->orderBy('id')
+                    ->lockForUpdate()
+                    ->get(['id', 'cover_path']);
+                $items = ContentItem::query()
+                    ->where('image_path', $trusted->path)
+                    ->orderBy('id')
+                    ->lockForUpdate()
+                    ->get(['id', 'image_path']);
+                $groupIds = $groups->modelKeys();
+                $itemIds = $items->modelKeys();
+
+                if (
+                    array_map(intval(...), $groupIds) !== $expectedGroupIds
+                    || array_map(intval(...), $itemIds) !== $expectedItemIds
+                ) {
+                    throw new RuntimeException('The relocation owner references changed before commit.');
+                }
+
+                $this->lease->run($locked, function () use ($locked, $destinationImage, $destinationPath): void {
+                    $locked->forceFill([
+                        'disk' => 'public',
+                        'directory' => $destinationImage->purpose->root(),
+                        'visibility' => 'public',
+                        'name' => pathinfo($destinationPath, PATHINFO_FILENAME),
+                        'path' => $destinationPath,
+                        'width' => $destinationImage->width,
+                        'height' => $destinationImage->height,
+                        'size' => $destinationImage->size,
+                        'type' => $destinationImage->mimeType,
+                        'ext' => $destinationImage->extension,
+                        'curations' => null,
+                    ])->save();
+                });
+
+                foreach ($groups as $group) {
+                    MediaAttachment::query()->firstOrCreate([
+                        'media_id' => $locked->getKey(),
+                        'attachable_type' => 'content_group',
+                        'attachable_id' => $group->getKey(),
+                        'role' => MediaAttachmentRole::Cover,
+                    ], ['position' => 0]);
+                    $group->forceFill(['cover_path' => $destinationPath])->save();
+                }
+
+                foreach ($items as $item) {
+                    MediaAttachment::query()->firstOrCreate([
+                        'media_id' => $locked->getKey(),
+                        'attachable_type' => 'content_item',
+                        'attachable_id' => $item->getKey(),
+                        'role' => MediaAttachmentRole::PrimaryImage,
+                    ], ['position' => 0]);
+                    $item->forceFill(['image_path' => $destinationPath])->save();
+                }
+
+                $lockedOperation->update([
+                    'status' => MediaMutationStatus::Committed,
+                    'committed_at' => now(),
+                ]);
+
+                return $locked->refresh();
+            });
+            $committed = true;
+        } catch (Throwable $exception) {
+            if (! $committed) {
+                $this->compensateUncommitted($operation, $exception);
+            }
+
+            throw $exception;
+        }
+
+        $this->completeCommittedCleanup($operation);
+
+        return $updated;
     }
 
     /**
@@ -806,7 +1029,7 @@ class MediaFilesystemMutationCoordinator
             $this->assertOperationShape($operation);
             $this->assertCommittedState($operation);
 
-            if (in_array($operation->operation, [MediaMutationOperationType::Rename, MediaMutationOperationType::Swap, MediaMutationOperationType::Sanitize, MediaMutationOperationType::Delete, MediaMutationOperationType::Registration, MediaMutationOperationType::LegacyTransition], true)) {
+            if (in_array($operation->operation, [MediaMutationOperationType::Rename, MediaMutationOperationType::Swap, MediaMutationOperationType::Sanitize, MediaMutationOperationType::Relocation, MediaMutationOperationType::Delete, MediaMutationOperationType::Registration, MediaMutationOperationType::LegacyTransition], true)) {
                 $context = is_array($operation->context) ? $operation->context : [];
 
                 if (! (bool) ($context['source_missing'] ?? false)) {
@@ -823,7 +1046,7 @@ class MediaFilesystemMutationCoordinator
                 $this->forgetRegistrationSettingsCaches();
             }
 
-            if (in_array($operation->operation, [MediaMutationOperationType::Rename, MediaMutationOperationType::Swap, MediaMutationOperationType::Sanitize, MediaMutationOperationType::Delete, MediaMutationOperationType::Registration, MediaMutationOperationType::LegacyTransition], true)) {
+            if (in_array($operation->operation, [MediaMutationOperationType::Rename, MediaMutationOperationType::Swap, MediaMutationOperationType::Sanitize, MediaMutationOperationType::Relocation, MediaMutationOperationType::Delete, MediaMutationOperationType::Registration, MediaMutationOperationType::LegacyTransition], true)) {
                 $this->cleanupCommittedSource($operation);
             }
 
@@ -1411,7 +1634,10 @@ class MediaFilesystemMutationCoordinator
 
             if (
                 $pathField === 'source_path'
-                && $operationType === MediaMutationOperationType::Sanitize
+                && in_array($operationType, [
+                    MediaMutationOperationType::Sanitize,
+                    MediaMutationOperationType::Relocation,
+                ], true)
             ) {
                 // A sanitize may originate from an unmanaged/root source; its
                 // syntax is still constrained, but no purpose root applies.
@@ -1460,7 +1686,7 @@ class MediaFilesystemMutationCoordinator
         ], true)
             ? match ($operationType) {
                 MediaMutationOperationType::Delete => ['source_path', 'quarantine_path'],
-                MediaMutationOperationType::Rename, MediaMutationOperationType::Swap, MediaMutationOperationType::Sanitize, MediaMutationOperationType::Registration, MediaMutationOperationType::LegacyTransition => [
+                MediaMutationOperationType::Rename, MediaMutationOperationType::Swap, MediaMutationOperationType::Sanitize, MediaMutationOperationType::Relocation, MediaMutationOperationType::Registration, MediaMutationOperationType::LegacyTransition => [
                     'source_path',
                     'destination_path',
                     'staging_path',

@@ -99,6 +99,45 @@ Recorded after the Markdown-only post-Prompt-10 prompt-progress centralization c
 
 ## Git State
 
+- Package 5 P1 (managed relocation engine and surfaces) is complete
+  locally under dossier `LS-20260729-PODTEXT-MEDIA-OPS-UX3-P5-01`,
+  operator approval «approve all p5» with decisions D1=b+a (admin batch
+  action plus a thin CLI wrapper over one engine core), D2=a, D3=a,
+  D4=b, D5=a, D6=b, D7=a (sanitize-only lift), D8=a, and the external
+  hotlinks question answered «none» (access-log verification was
+  honestly inconclusive: Forge sets `access_log off` for the site).
+  Implementation hash `P5P1_IMPLEMENTATION_HASH`. The engine:
+  `MediaFilesystemMutationCoordinator::relocate` moves an unmanaged/root
+  file into the managed covers root through the full
+  journal/fence/quarantine machinery — same row id, same immutable
+  reference key, `cover_path`/`image_path` references rewritten and
+  attachments ensured inside the same commit transaction (locked and
+  verified against the journaled census), original bytes preserved when
+  they validate (D4b — the validator re-encodes rasters, so originals
+  are written explicitly; only SVG takes the sanitizer output),
+  admin-trusted rows relocated verbatim keeping the mark (D5a),
+  refusal-class SVGs left untouched with nothing journaled. New
+  `MediaMutationOperationType::Relocation` joins the cleanup/shape
+  families with the same root-source relaxations as Sanitize; the new
+  `CuratorMediaPolicy::relocate` ability denies managed rows
+  («כבר בתיקיות המנוהלות») and duplicate identities.
+  `MediaRelocationBatch` provides the census (fates: oversized per D3a,
+  settings-referenced, policy-denied) and chunked execution that
+  excludes already-failed rows (no failure spinning) with census-based
+  resume (relocated rows drop out of the candidate query). Surfaces:
+  the gallery header action «העברה מנוהלת» (visible only while root
+  files exist) with a census modal, self-chaining chunked execution,
+  progress toasts and a durable three-count receipt; and
+  `php artisan media:relocate-root` printing the census report by
+  default with `--apply --chunk --user` for the rehearsed run. Gate:
+  full suite 1462 tests with only the 4 known-environmental browser
+  failures, FilaCheck 0, pint clean, build green. **Sequencing gate:**
+  P2 is the operator-run production relocation (CLI report rehearsal,
+  then apply or the admin action) and MUST complete before P3
+  (retirement code-off), P4 (column drop — the migration would break
+  the relocation engine's own cover_path rewrite if deployed first)
+  and P5 (sanitize zero-reference lift) are implemented and shipped.
+
 - Browser-suite storage URL hermeticity (bounded test chore, investigation
   of the two `CardTemplatePreviewBrowserTest` geometry failures flagged
   below): root cause found — card image `src` values come from

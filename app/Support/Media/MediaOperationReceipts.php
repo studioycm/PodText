@@ -91,6 +91,21 @@ class MediaOperationReceipts
         $this->durable($user, $notification);
     }
 
+    public function relocationFinished(User $user, int $moved, int $skipped, int $failed): void
+    {
+        $notification = Notification::make()
+            ->title(__('admin.media_library.relocation_done_title'))
+            ->body(__('admin.media_library.relocation_done_body', [
+                'moved' => $moved,
+                'skipped' => $skipped,
+                'failed' => $failed,
+            ]));
+
+        $failed > 0 ? $notification->warning() : $notification->success();
+
+        $this->durable($user, $notification);
+    }
+
     public function operationFailed(?string $reason = null): void
     {
         Notification::make()

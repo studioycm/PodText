@@ -65,6 +65,28 @@ class CuratorMediaPolicy
     }
 
     /**
+     * Managed relocation moves an unmanaged/root file into a managed purpose
+     * root, rewriting its legacy path references in the same journaled
+     * operation. Managed rows have nothing to relocate.
+     */
+    public function relocate(User $user, Media $media): Response
+    {
+        if (! $this->isAdmin($user)) {
+            return Response::deny();
+        }
+
+        if (app(MediaRecordScope::class)->allows($media)) {
+            return Response::deny(__('admin.media_library.op_blocked_already_managed'));
+        }
+
+        if (! app(MediaRecordScope::class)->hasUniqueStorageIdentity($media)) {
+            return Response::deny(__('admin.media_library.op_blocked_duplicate_identity'));
+        }
+
+        return Response::allow();
+    }
+
+    /**
      * Marking a file as admin-trusted (or revoking that mark) settles
      * validator-based display blocks; it never touches bytes or paths.
      */
