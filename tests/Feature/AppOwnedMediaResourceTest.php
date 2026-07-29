@@ -223,7 +223,8 @@ it('renders Media as a native responsive card gallery without losing table contr
     $summaryColumn = $table->getColumn('card_file_summary');
 
     expect($storedFilenameColumn?->record($media)->getTooltip())->toBe('stored-card-name.jpg')
-        ->and($summaryColumn?->record($media)->getTooltip())->toBe('JPG');
+        ->and($summaryColumn?->record($media)->getTooltip())->toBe('JPG')
+        ->and($summaryColumn?->getIcon(null))->toBe(Heroicon::OutlinedPhoto);
 
     expect($reasons)->toBe(['portable_identity', 'audience_denied'])
         ->and($table->getContentGrid())->toBe([

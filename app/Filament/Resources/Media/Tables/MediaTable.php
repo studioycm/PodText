@@ -169,6 +169,7 @@ class MediaTable
                                     ->wrap(),
                                 TextColumn::make('card_file_summary')
                                     ->label(__('admin.owner_image.media_metadata'))
+                                    ->icon(Heroicon::OutlinedPhoto)
                                     ->state(fn (Media $record): string => collect([
                                         ($record->width && $record->height)
                                             ? "{$record->width}×{$record->height}"
