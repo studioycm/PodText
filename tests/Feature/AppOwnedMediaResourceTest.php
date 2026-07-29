@@ -210,8 +210,10 @@ it('renders Media as a native responsive card gallery without losing table contr
         __('admin.media_library.needs_attention'),
         __('admin.media_library.repair_portable_identity'),
         trans_choice('admin.media_library.additional_issue_count', 1, ['count' => 1]),
-        'image/jpeg',
+        'JPG',
     ]);
+    $component->assertDontSee('image/jpeg ·')
+        ->assertDontSee('public · content-groups/covers');
 
     expect($reasons)->toBe(['portable_identity', 'audience_denied'])
         ->and($table->getContentGrid())->toBe([

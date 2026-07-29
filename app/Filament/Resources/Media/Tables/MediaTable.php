@@ -206,7 +206,6 @@ class MediaTable
                                 TextColumn::make('card_file_summary')
                                     ->label(__('admin.owner_image.media_metadata'))
                                     ->state(fn (Media $record): string => collect([
-                                        $record->type,
                                         filled($record->ext) ? mb_strtoupper((string) $record->ext) : null,
                                         ($record->width && $record->height)
                                             ? "{$record->width}×{$record->height}"
@@ -214,26 +213,12 @@ class MediaTable
                                         Number::fileSize((int) ($record->size ?? 0)),
                                     ])->filter()->implode(' · '))
                                     ->formatStateUsing(fn (string $state): HtmlString => new HtmlString(
-                                        '<span class="text-gray-500 dark:text-gray-400">'.e(__('admin.media_library.card_row_details')).': </span>'
-                                        .'<span dir="ltr" style="unicode-bidi: isolate;">'.e($state).'</span>',
+                                        '<span dir="ltr" style="unicode-bidi: isolate;">'.e($state).'</span>',
                                     ))
                                     ->html()
                                     ->extraAttributes([
                                         'data-testid' => 'media-library-card-file-summary',
                                     ])
-                                    ->color('gray')
-                                    ->wrap(),
-                                TextColumn::make('card_location')
-                                    ->label(__('admin.owner_image.metadata.directory'))
-                                    ->state(fn (Media $record): string => collect([
-                                        $record->disk,
-                                        $record->directory,
-                                    ])->filter()->implode(' · '))
-                                    ->formatStateUsing(fn (string $state): HtmlString => new HtmlString(
-                                        '<span class="text-gray-500 dark:text-gray-400">'.e(__('admin.media_library.card_row_location')).': </span>'
-                                        .'<span dir="ltr" style="unicode-bidi: isolate; overflow-wrap: anywhere;">'.e($state).'</span>',
-                                    ))
-                                    ->html()
                                     ->color('gray')
                                     ->wrap(),
                                 TextColumn::make('created_at')

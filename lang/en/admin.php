@@ -2816,8 +2816,6 @@ return [
         'card_row_original' => 'Original',
         'card_row_file' => 'File',
         'card_row_references' => 'References',
-        'card_row_details' => 'Details',
-        'card_row_location' => 'Location',
         'inline_title_placeholder' => 'Add a quick title…',
         'known_references' => 'Known references',
         'known_reference_count' => '{0} No known references|{1} 1 known reference|[2,*] :count known references',

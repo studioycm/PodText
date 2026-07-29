@@ -2816,8 +2816,6 @@ return [
         'card_row_original' => 'מקור',
         'card_row_file' => 'קובץ',
         'card_row_references' => 'הפניות',
-        'card_row_details' => 'פרטים',
-        'card_row_location' => 'מיקום',
         'inline_title_placeholder' => 'הוספת כותרת מהירה…',
         'known_references' => 'הפניות ידועות',
         'known_reference_count' => '{0} לא נמצאו הפניות ידועות|{1} הפניה ידועה אחת|[2,*] :count הפניות ידועות',
