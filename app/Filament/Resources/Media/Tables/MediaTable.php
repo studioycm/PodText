@@ -126,6 +126,7 @@ class MediaTable
                                         'data-testid' => 'media-library-card-stored-filename',
                                     ])
                                     ->copyable()
+                                    ->copyableState(fn (Media $record): string => basename((string) $record->path))
                                     ->copyMessage(__('admin.owner_image.copy_success')),
                                 TextColumn::make('card_primary_issue')
                                     ->label(__('admin.media_library.needs_attention'))
@@ -332,27 +333,6 @@ class MediaTable
                     }),
             ])
             ->recordActions([
-                Action::make('cardStatus')
-                    ->label(fn (Media $record): string => app(MediaInventoryDiagnostics::class)->needsRepair($record)
-                        ? __('admin.media_library.needs_attention')
-                        : __('admin.media_library.ready'))
-                    ->color(fn (Media $record): string => app(MediaInventoryDiagnostics::class)->needsRepair($record)
-                        ? 'warning'
-                        : 'success')
-                    ->outlined()
-                    ->size(Size::ExtraSmall)
-                    ->tooltip(fn (Media $record): ?string => ($reasons = app(MediaInventoryDiagnostics::class)->reasons($record)) === []
-                        ? null
-                        : collect($reasons)
-                            ->map(fn (string $reason): string => __("admin.media_library.repair_{$reason}"))
-                            ->implode(' · '))
-                    ->disabled(fn (Media $record): bool => ! app(MediaInventoryDiagnostics::class)->needsRepair($record))
-                    ->url(fn (Media $record): ?string => app(MediaInventoryDiagnostics::class)->needsRepair($record)
-                        ? MediaResource::getUrl('review-issues', ['record' => $record])
-                        : null)
-                    ->extraAttributes([
-                        'data-testid' => 'media-library-card-attention-status',
-                    ]),
                 Action::make('mediaDetails')
                     ->label(__('admin.owner_image.actions.open_details'))
                     ->icon(Heroicon::OutlinedInformationCircle)
@@ -535,6 +515,28 @@ class MediaTable
                     ->color('gray')
                     ->tooltip(__('admin.media_library.more_actions'))
                     ->iconButton(),
+                Action::make('cardStatus')
+                    ->label(fn (Media $record): string => app(MediaInventoryDiagnostics::class)->needsRepair($record)
+                        ? __('admin.media_library.needs_attention')
+                        : __('admin.media_library.ready'))
+                    ->color(fn (Media $record): string => app(MediaInventoryDiagnostics::class)->needsRepair($record)
+                        ? 'warning'
+                        : 'success')
+                    ->outlined()
+                    ->size(Size::ExtraSmall)
+                    ->tooltip(fn (Media $record): ?string => ($reasons = app(MediaInventoryDiagnostics::class)->reasons($record)) === []
+                        ? null
+                        : collect($reasons)
+                            ->map(fn (string $reason): string => __("admin.media_library.repair_{$reason}"))
+                            ->implode(' · '))
+                    ->disabled(fn (Media $record): bool => ! app(MediaInventoryDiagnostics::class)->needsRepair($record))
+                    ->url(fn (Media $record): ?string => app(MediaInventoryDiagnostics::class)->needsRepair($record)
+                        ? MediaResource::getUrl('review-issues', ['record' => $record])
+                        : null)
+                    ->extraAttributes([
+                        'data-testid' => 'media-library-card-attention-status',
+                        'style' => 'margin-inline-start: auto;',
+                    ]),
             ])
             ->emptyStateHeading(
                 fn (ListMedia $livewire): string => $livewire->hasMediaViewConstraints()

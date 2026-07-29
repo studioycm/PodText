@@ -232,16 +232,16 @@ it('renders Media as a native responsive card gallery without losing table contr
         ])
         ->and($columnsLayout[0] ?? null)->toBeInstanceOf(TableGrid::class)
         ->and($recordActions)->toHaveCount(4)
-        ->and($recordActions[0]->getName())->toBe('cardStatus')
-        ->and($recordActions[1]->getName())->toBe('mediaDetails')
-        ->and($recordActions[2])->toBeInstanceOf(EditAction::class)
-        ->and($recordActions[2]->getName())->toBe('edit')
-        ->and($recordActions[2]->isIconButton())->toBeTrue()
-        ->and((string) $recordActions[1]->getLabel())->toBe(__('admin.owner_image.actions.open_details'))
-        ->and((string) $recordActions[2]->getLabel())->toBe(__('admin.media_library.open_edit_page'))
-        ->and($recordActions[2]->getTooltip())->toBe(__('admin.media_library.open_edit_page'))
-        ->and($recordActions[3])->toBeInstanceOf(ActionGroup::class)
-        ->and(array_keys($recordActions[3]->getFlatActions()))->toBe([
+        ->and($recordActions[0]->getName())->toBe('mediaDetails')
+        ->and($recordActions[1])->toBeInstanceOf(EditAction::class)
+        ->and($recordActions[1]->getName())->toBe('edit')
+        ->and($recordActions[1]->isIconButton())->toBeTrue()
+        ->and((string) $recordActions[0]->getLabel())->toBe(__('admin.owner_image.actions.open_details'))
+        ->and((string) $recordActions[1]->getLabel())->toBe(__('admin.media_library.open_edit_page'))
+        ->and($recordActions[1]->getTooltip())->toBe(__('admin.media_library.open_edit_page'))
+        ->and($recordActions[2])->toBeInstanceOf(ActionGroup::class)
+        ->and($recordActions[3]->getName())->toBe('cardStatus')
+        ->and(array_keys($recordActions[2]->getFlatActions()))->toBe([
             'reviewIssues',
             'view',
             'download',
@@ -251,7 +251,6 @@ it('renders Media as a native responsive card gallery without losing table contr
             'delete',
         ])
         ->and(array_keys($table->getFlatRecordActions()))->toBe([
-            'cardStatus',
             'mediaDetails',
             'edit',
             'reviewIssues',
@@ -261,6 +260,7 @@ it('renders Media as a native responsive card gallery without losing table contr
             'rename',
             'swap',
             'delete',
+            'cardStatus',
         ])
         ->and($table->getRecordActionsPosition())->toBe(RecordActionsPosition::AfterContent)
         ->and($table->getFilters())->toHaveKeys(['type', 'reason'])
