@@ -124,53 +124,6 @@ class MediaTable
                                     ->copyable()
                                     ->copyMessage(__('admin.owner_image.copy_success'))
                                     ->wrap(),
-                                TextColumn::make('card_known_references')
-                                    ->label(__('admin.media_library.known_references'))
-                                    ->state(function (Media $record): HtmlString {
-                                        $diagnostics = app(MediaInventoryDiagnostics::class);
-                                        $needsRepair = $diagnostics->needsRepair($record);
-                                        $statusTitle = $needsRepair
-                                            ? collect($diagnostics->reasons($record))
-                                                ->map(fn (string $reason): string => __("admin.media_library.repair_{$reason}"))
-                                                ->implode(' · ')
-                                            : '';
-                                        $badge = '<span data-testid="media-library-card-attention-status" title="'.e($statusTitle).'" class="'.($needsRepair
-                                            ? 'text-warning-700 dark:text-warning-300 border border-warning-400 dark:border-warning-500'
-                                            : 'text-success-700 dark:text-success-300 border border-success-400 dark:border-success-500')
-                                            .' shrink-0 rounded-full px-2 text-[11px] font-bold">'
-                                            .e($needsRepair ? __('admin.media_library.needs_attention') : __('admin.media_library.ready'))
-                                            .'</span>';
-                                        $references = $record->disk === 'public'
-                                            ? app(MediaReferenceFinder::class)->referencesForMedia($record)
-                                            : null;
-                                        $values = match (true) {
-                                            $references === null => __('admin.media_library.known_reference_count_unavailable'),
-                                            $references === [] => __('admin.media_library.details_no_usages'),
-                                            default => implode(' · ', $references),
-                                        };
-
-                                        return new HtmlString(
-                                            '<span class="block min-w-0">'
-                                            .'<span class="block text-gray-500 dark:text-gray-400">'.e(__('admin.media_library.card_row_references')).':</span>'
-                                            .'<span class="block" dir="auto">'.e($values).'</span>'
-                                            .'<span class="mt-1 flex">'.$badge.'</span>'
-                                            .'</span>',
-                                        );
-                                    })
-                                    ->html()
-                                    ->tooltip(function (Media $record): ?string {
-                                        if ($record->disk !== 'public') {
-                                            return null;
-                                        }
-
-                                        $references = app(MediaReferenceFinder::class)->referencesForMedia($record);
-
-                                        return $references === [] ? null : implode("\n", $references);
-                                    })
-                                    ->extraAttributes([
-                                        'data-testid' => 'media-library-card-known-references',
-                                    ])
-                                    ->wrap(),
                                 TextColumn::make('card_primary_issue')
                                     ->label(__('admin.media_library.needs_attention'))
                                     ->state(function (Media $record): ?string {
@@ -231,6 +184,53 @@ class MediaTable
                                             ->orderBy('created_at', $direction)
                                             ->orderBy($query->getModel()->getQualifiedKeyName(), $direction),
                                     ),
+                                TextColumn::make('card_known_references')
+                                    ->label(__('admin.media_library.known_references'))
+                                    ->state(function (Media $record): HtmlString {
+                                        $diagnostics = app(MediaInventoryDiagnostics::class);
+                                        $needsRepair = $diagnostics->needsRepair($record);
+                                        $statusTitle = $needsRepair
+                                            ? collect($diagnostics->reasons($record))
+                                                ->map(fn (string $reason): string => __("admin.media_library.repair_{$reason}"))
+                                                ->implode(' · ')
+                                            : '';
+                                        $badge = '<span data-testid="media-library-card-attention-status" title="'.e($statusTitle).'" class="'.($needsRepair
+                                            ? 'text-warning-700 dark:text-warning-300 border border-warning-400 dark:border-warning-500'
+                                            : 'text-success-700 dark:text-success-300 border border-success-400 dark:border-success-500')
+                                            .' shrink-0 rounded-full px-2 text-[11px] font-bold">'
+                                            .e($needsRepair ? __('admin.media_library.needs_attention') : __('admin.media_library.ready'))
+                                            .'</span>';
+                                        $references = $record->disk === 'public'
+                                            ? app(MediaReferenceFinder::class)->referencesForMedia($record)
+                                            : null;
+                                        $values = match (true) {
+                                            $references === null => __('admin.media_library.known_reference_count_unavailable'),
+                                            $references === [] => __('admin.media_library.details_no_usages'),
+                                            default => implode(' · ', $references),
+                                        };
+
+                                        return new HtmlString(
+                                            '<span class="block min-w-0">'
+                                            .'<span class="block text-gray-500 dark:text-gray-400">'.e(__('admin.media_library.card_row_references')).':</span>'
+                                            .'<span class="block" dir="auto">'.e($values).'</span>'
+                                            .'<span class="mt-1 flex">'.$badge.'</span>'
+                                            .'</span>',
+                                        );
+                                    })
+                                    ->html()
+                                    ->tooltip(function (Media $record): ?string {
+                                        if ($record->disk !== 'public') {
+                                            return null;
+                                        }
+
+                                        $references = app(MediaReferenceFinder::class)->referencesForMedia($record);
+
+                                        return $references === [] ? null : implode("\n", $references);
+                                    })
+                                    ->extraAttributes([
+                                        'data-testid' => 'media-library-card-known-references',
+                                    ])
+                                    ->wrap(),
                             ])
                                 ->space(1)
                                 ->extraAttributes([

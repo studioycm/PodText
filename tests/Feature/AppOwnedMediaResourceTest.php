@@ -206,12 +206,12 @@ it('renders Media as a native responsive card gallery without losing table contr
     $component->assertSeeInOrder([
         'Original display filename.jpg',
         'stored-card-name.jpg',
-        __('admin.media_references.content_group_cover', ['title' => 'First known reference']),
-        __('admin.media_references.content_group_cover', ['title' => 'Second known reference']),
-        __('admin.media_library.needs_attention'),
         __('admin.media_library.repair_portable_identity'),
         trans_choice('admin.media_library.additional_issue_count', 1, ['count' => 1]),
         'JPG',
+        __('admin.media_references.content_group_cover', ['title' => 'First known reference']),
+        __('admin.media_references.content_group_cover', ['title' => 'Second known reference']),
+        __('admin.media_library.needs_attention'),
     ]);
     $component->assertDontSee('image/jpeg ·')
         ->assertDontSee('public · content-groups/covers');
