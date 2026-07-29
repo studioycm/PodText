@@ -84,6 +84,7 @@ class MediaTable
                                 TextInputColumn::make('title')
                                     ->label(__('admin.fields.title'))
                                     ->placeholder(__('admin.media_library.inline_title_placeholder'))
+                                    ->sortable()
                                     ->rules(['nullable', 'string', 'max:255'])
                                     ->disabled(fn (Media $record): bool => ! Gate::allows('update', $record))
                                     ->extraAttributes([
@@ -108,6 +109,8 @@ class MediaTable
                                 TextColumn::make('card_stored_filename')
                                     ->label(__('admin.owner_image.metadata.stored_filename'))
                                     ->state(fn (Media $record): string => basename((string) $record->path))
+                                    ->sortable(query: fn (Builder $query, string $direction): Builder => $query
+                                        ->orderBy('name', $direction))
                                     ->formatStateUsing(fn (string $state): HtmlString => new HtmlString(
                                         '<span class="text-gray-500 dark:text-gray-400">'.e(__('admin.media_library.card_row_file')).': </span>'
                                         .'<span dir="ltr" style="unicode-bidi: isolate; overflow-wrap: anywhere;">'.e($state).'</span>',

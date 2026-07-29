@@ -1278,3 +1278,25 @@ it('clamps the heavy upload warning threshold and informs without blocking on cr
 
     expect(Media::query()->where('size', strlen($heavyBytes))->exists())->toBeTrue();
 });
+
+it('sorts the gallery by title and by stored filename', function (): void {
+    $this->actingAs(User::factory()->admin()->create());
+    $bee = appOwnedMediaRecord([
+        'name' => 'bbb-file',
+        'path' => 'content-groups/covers/bbb-file.jpg',
+        'title' => 'אבטיח',
+    ]);
+    $aleph = appOwnedMediaRecord([
+        'name' => 'aaa-file',
+        'path' => 'content-groups/covers/aaa-file.jpg',
+        'title' => 'תפוח',
+    ]);
+
+    Livewire::test(ListMedia::class)
+        ->sortTable('title')
+        ->assertCanSeeTableRecords([$bee, $aleph], inOrder: true)
+        ->sortTable('card_stored_filename')
+        ->assertCanSeeTableRecords([$aleph, $bee], inOrder: true)
+        ->sortTable('card_stored_filename', 'desc')
+        ->assertCanSeeTableRecords([$bee, $aleph], inOrder: true);
+});
