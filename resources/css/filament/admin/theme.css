@@ -38,7 +38,7 @@
 
 .fi-ta-content-grid .fi-ta-record:has(.podtext-card-dense) {
     position: relative;
-    padding: 0.375rem;
+    padding: 0;
     flex-direction: column;
     align-items: stretch;
 }
@@ -46,8 +46,10 @@
 .fi-ta-content-grid .fi-ta-record:has(.podtext-card-dense) > .fi-ta-record-checkbox {
     width: 100%;
     height: 1.375rem;
-    margin: 0 0 0.375rem;
-    border-radius: 0.5rem;
+    margin: 0;
+    border-radius: 0;
+    border-start-start-radius: var(--radius-xl);
+    border-start-end-radius: var(--radius-xl);
     background-size: 1rem 1rem;
     background-position: center;
     background-repeat: no-repeat;
@@ -88,6 +90,45 @@
 .fi-ta-content-grid .fi-ta-record:has(.podtext-card-dense) .fi-input {
     padding-block: 0.25rem;
     font-size: 0.75rem;
+}
+
+/* The vendor grid card wrapper pads the whole content area; dense
+   cards go edge-to-edge instead. */
+.fi-ta-content-grid .fi-ta-record:has(.podtext-card-dense) .fi-ta-record-content-ctn {
+    padding: 0;
+    row-gap: 0.25rem;
+}
+
+.fi-ta-content-grid .fi-ta-record:has(.podtext-card-dense) .fi-ta-record-content {
+    padding: 0;
+}
+
+/* Dense title input bleeds through the slim stack padding, full width
+   like the image, with square corners. */
+.fi-ta-content-grid
+    .fi-ta-record:has(.podtext-card-dense)
+    [data-testid='media-library-card-title-input'] {
+    margin-inline: -0.375rem;
+    min-inline-size: 0;
+    max-inline-size: none;
+    inline-size: calc(100% + 0.75rem);
+}
+
+.fi-ta-content-grid
+    .fi-ta-record:has(.podtext-card-dense)
+    [data-testid='media-library-card-title-input']
+    .fi-input-wrp {
+    border-radius: 0;
+    inline-size: 100%;
+}
+
+/* One-line stored filename with an ellipsis needs shrinkable flex
+   ancestors inside the text column. */
+[data-testid='media-library-card-stored-filename'],
+[data-testid='media-library-card-stored-filename'] .fi-ta-text-item,
+[data-testid='media-library-card-stored-filename'] .fi-ta-text-item-label {
+    min-width: 0;
+    max-width: 100%;
 }
 
 /* The standalone picker modal (settings pickers, form fields) scrolls as

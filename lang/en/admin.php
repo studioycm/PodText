@@ -2814,7 +2814,6 @@ return [
             'filename' => 'Filename',
         ],
         'card_row_original' => 'Original',
-        'card_row_file' => 'File',
         'card_row_references' => 'References',
         'inline_title_placeholder' => 'Add a quick title…',
         'known_references' => 'Known references',

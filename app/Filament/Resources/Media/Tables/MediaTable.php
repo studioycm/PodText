@@ -77,10 +77,12 @@ class MediaTable
                                 ->imageHeight('12rem')
                                 ->imageWidth('100%')
                                 ->checkFileExistence(false)
-                                ->extraImgAttributes([
+                                ->extraImgAttributes(fn (ListMedia $livewire): array => [
                                     'data-testid' => 'media-library-card-image',
                                     'loading' => 'lazy',
-                                    'class' => 'w-full rounded-md bg-gray-50 object-contain dark:bg-gray-900',
+                                    'class' => $livewire->cardsPerRow >= 4
+                                        ? 'w-full bg-gray-50 object-contain dark:bg-gray-900'
+                                        : 'w-full rounded-md bg-gray-50 object-contain dark:bg-gray-900',
                                     'style' => 'object-fit: contain;',
                                 ]),
                             Stack::make([
@@ -114,17 +116,17 @@ class MediaTable
                                     ->state(fn (Media $record): string => basename((string) $record->path))
                                     ->sortable(query: fn (Builder $query, string $direction): Builder => $query
                                         ->orderBy('name', $direction))
+                                    ->icon(Heroicon::OutlinedDocument)
+                                    ->tooltip(fn (Media $record): string => basename((string) $record->path))
                                     ->formatStateUsing(fn (string $state): HtmlString => new HtmlString(
-                                        '<span class="text-gray-500 dark:text-gray-400">'.e(__('admin.media_library.card_row_file')).': </span>'
-                                        .'<span dir="ltr" style="unicode-bidi: isolate; overflow-wrap: anywhere;">'.e($state).'</span>',
+                                        '<span dir="ltr" style="unicode-bidi: isolate; display: block; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">'.e($state).'</span>',
                                     ))
                                     ->html()
                                     ->extraAttributes([
                                         'data-testid' => 'media-library-card-stored-filename',
                                     ])
                                     ->copyable()
-                                    ->copyMessage(__('admin.owner_image.copy_success'))
-                                    ->wrap(),
+                                    ->copyMessage(__('admin.owner_image.copy_success')),
                                 TextColumn::make('card_primary_issue')
                                     ->label(__('admin.media_library.needs_attention'))
                                     ->state(function (Media $record): ?string {
@@ -160,12 +162,14 @@ class MediaTable
                                 TextColumn::make('card_file_summary')
                                     ->label(__('admin.owner_image.media_metadata'))
                                     ->state(fn (Media $record): string => collect([
-                                        filled($record->ext) ? mb_strtoupper((string) $record->ext) : null,
                                         ($record->width && $record->height)
                                             ? "{$record->width}×{$record->height}"
                                             : null,
                                         Number::fileSize((int) ($record->size ?? 0)),
                                     ])->filter()->implode(' · '))
+                                    ->tooltip(fn (Media $record): ?string => filled($record->ext)
+                                        ? mb_strtoupper((string) $record->ext)
+                                        : null)
                                     ->formatStateUsing(fn (string $state): HtmlString => new HtmlString(
                                         '<span dir="ltr" style="unicode-bidi: isolate;">'.e($state).'</span>',
                                     ))
@@ -220,8 +224,8 @@ class MediaTable
                                     ->wrap(),
                             ])
                                 ->space(1)
-                                ->extraAttributes([
-                                    'class' => 'min-w-0 p-3',
+                                ->extraAttributes(fn (ListMedia $livewire): array => [
+                                    'class' => $livewire->cardsPerRow >= 4 ? 'min-w-0 p-1.5' : 'min-w-0 p-3',
                                 ]),
                         ])->space(2),
                     ]),

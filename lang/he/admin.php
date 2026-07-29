@@ -2814,7 +2814,6 @@ return [
             'filename' => 'שם קובץ',
         ],
         'card_row_original' => 'מקור',
-        'card_row_file' => 'קובץ',
         'card_row_references' => 'הפניות',
         'inline_title_placeholder' => 'הוספת כותרת מהירה…',
         'known_references' => 'הפניות ידועות',

@@ -208,13 +208,21 @@ it('renders Media as a native responsive card gallery without losing table contr
         'stored-card-name.jpg',
         __('admin.media_library.repair_portable_identity'),
         trans_choice('admin.media_library.additional_issue_count', 1, ['count' => 1]),
-        'JPG',
+        '100×100',
         __('admin.media_references.content_group_cover', ['title' => 'First known reference']),
         __('admin.media_references.content_group_cover', ['title' => 'Second known reference']),
         __('admin.media_library.needs_attention'),
     ]);
     $component->assertDontSee('image/jpeg ·')
-        ->assertDontSee('public · content-groups/covers');
+        ->assertDontSee('public · content-groups/covers')
+        ->assertDontSee('JPG · 100×100')
+        ->assertSee('text-overflow: ellipsis', false);
+
+    $storedFilenameColumn = $table->getColumn('card_stored_filename');
+    $summaryColumn = $table->getColumn('card_file_summary');
+
+    expect($storedFilenameColumn?->record($media)->getTooltip())->toBe('stored-card-name.jpg')
+        ->and($summaryColumn?->record($media)->getTooltip())->toBe('JPG');
 
     expect($reasons)->toBe(['portable_identity', 'audience_denied'])
         ->and($table->getContentGrid())->toBe([
