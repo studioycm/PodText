@@ -1041,6 +1041,15 @@ class PathCuratorPicker extends Field
         ];
     }
 
+    /**
+     * Drop the cached presentation so the next render re-evaluates it, e.g.
+     * after the owner save persisted the pending attachment choice.
+     */
+    public function refreshOwnerChoicePresentation(): void
+    {
+        $this->invalidateOwnerChoicePresentation();
+    }
+
     private function invalidateOwnerChoicePresentation(): void
     {
         $this->cachedOwnerChoicePresentation = null;

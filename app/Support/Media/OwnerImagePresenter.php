@@ -207,6 +207,18 @@ class OwnerImagePresenter
     }
 
     /**
+     * Drop the memoized snapshot and the owner's loaded attachment relation so
+     * later evaluations in the same request re-read the persisted state.
+     */
+    public function forgetOwnerState(
+        ContentGroup|ContentItem $owner,
+        MediaAttachmentRole $role,
+    ): void {
+        unset($this->preparedOwners[$this->preparedOwnerKey($owner, $role)]);
+        $owner->unsetRelation($this->ownerRelation($owner, $role));
+    }
+
+    /**
      * @return array{
      *     attachment: MediaAttachment|null,
      *     direct_media: Media|null,

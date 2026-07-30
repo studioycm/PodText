@@ -3037,3 +3037,20 @@ it('opens the choice-strip details slide-over nested inside the owner image moda
         ->toContain('data-testid="media-details-slide-over"')
         ->toContain('Nested details fixture');
 });
+
+it('renders the persisted owner choice truth in the save request response', function (): void {
+    $admin = User::factory()->admin()->create();
+    $group = ContentGroup::factory()->create();
+    $replacement = ownerImageMedia('content-groups/covers/save-render-truth.jpg');
+
+    Livewire::actingAs($admin)
+        ->test(EditContentGroup::class, ['record' => $group->getKey()])
+        ->set('data.cover_media_reference_key', $replacement->getKey())
+        ->call('save')
+        ->assertHasNoErrors()
+        ->assertSee(rtrim(__('admin.owner_image.choice.direct_states.present'), '.'))
+        ->assertSee(rtrim(__('admin.owner_image.choice.pending_states.unchanged'), '.'))
+        ->assertDontSee(rtrim(__('admin.owner_image.choice.pending_states.replacement'), '.'));
+
+    expect($group->refresh()->coverMediaAttachment()->value('media_id'))->toBe($replacement->getKey());
+});

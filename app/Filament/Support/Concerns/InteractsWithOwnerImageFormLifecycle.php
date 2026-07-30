@@ -3,6 +3,7 @@
 namespace App\Filament\Support\Concerns;
 
 use App\Enums\MediaAttachmentRole;
+use App\Filament\Forms\Components\PathCuratorPicker;
 use App\Models\ContentGroup;
 use App\Models\ContentItem;
 use App\Models\User;
@@ -96,10 +97,36 @@ trait InteractsWithOwnerImageFormLifecycle
             $this->halt(true);
         }
 
+        $this->forgetOwnerImageRenderState($owner, $role, $field);
+
         if ($enforceExpectedIdentity) {
             $presenter = app(OwnerImagePresenter::class);
             $presenter->refresh($owner, $role);
             $this->captureOwnerImageBaseline($presenter, $owner, $role);
+        }
+    }
+
+    /**
+     * The persisted attachment must win over state captured earlier in the
+     * save request: the owner's loaded relation and the picker field's cached
+     * presentation both predate the persist, so the same-request render would
+     * otherwise still show the pre-save pending choice.
+     */
+    private function forgetOwnerImageRenderState(
+        ContentGroup|ContentItem $owner,
+        MediaAttachmentRole $role,
+        string $field,
+    ): void {
+        app(OwnerImagePresenter::class)->forgetOwnerState($owner, $role);
+
+        $component = $this->form->getComponent(
+            fn (object $component): bool => $component instanceof PathCuratorPicker
+                && $component->getName() === $field,
+            withHidden: true,
+        );
+
+        if ($component instanceof PathCuratorPicker) {
+            $component->refreshOwnerChoicePresentation();
         }
     }
 
