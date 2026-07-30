@@ -87,8 +87,11 @@ These answers were provided after the research pack was created. Implementation 
 
 ## Research Access Questions
 
-19. Is `github.com/studioycm/FilamentExamples` private, renamed, or unavailable?
-   - Public GitHub API returned 404. Provide source access if this repository should be inspected.
+19. ~~Is `github.com/studioycm/FilamentExamples` private, renamed, or unavailable?~~
+   - **Closed 2026-07-30 by operator decision.** Not pursued. The
+     `filament-examples` MCP `search_examples` tool remains the sanctioned
+     research route and has been sufficient for every Filament surface built
+     since. Do not re-raise this as an open question.
 
-20. Should a future agent get authenticated FilamentExamples source access?
-   - The current MCP only returned snippets. Full source access would improve implementation detail for complex Builder/preview/table patterns.
+20. ~~Should a future agent get authenticated FilamentExamples source access?~~
+   - **Closed 2026-07-30 by operator decision**, together with question 19.

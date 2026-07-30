@@ -438,7 +438,15 @@ with a row, the amendment is current.
 - **`MUX3-F032`, `F034`–`F037` remain unstarted**, and `MUX3-F038`
   (Recheck/Retry) has now been declined twice — once by Mini-task 3 for failing
   the proof gate, once by Mini-task 4 via decision D6=a — without ever being
-  retired. `MUX3-F044` remains closed-but-unowned.
+  retired.
+- **`MUX3-F044` now has an owner (assigned 2026-07-30).** The unreproduced
+  Markdown-editor console exception is assigned to the **deferred admin Markdown
+  previewer task**, which is the work that will next touch `MarkdownEditor`
+  surfaces and is therefore the only task positioned to reproduce it. Reopen
+  route: if the exception recurs, record the exact route, locale, viewport and
+  console text against that task; do not route it back to Media. If the
+  previewer task is ever cancelled outright, `F044` must be terminally closed in
+  the same decision rather than returned to limbo.
 - **The `separate_phase` copy is stale.** Issue Review still tells operators
   that moving files into managed folders "is handled in a separate phase". That
   phase shipped, and sanitize now relocates a root-level source in the same
