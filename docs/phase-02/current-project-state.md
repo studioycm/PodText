@@ -195,6 +195,40 @@ Recorded after the Markdown-only post-Prompt-10 prompt-progress centralization c
   assertions with only the 4 known-environmental macOS browser
   failures, FilaCheck full 0 issues, pint clean, build green.
 
+- Post-P5 admin shell rounds (operator-directed, 2026-07-30) are
+  complete locally alongside the P3-P5 commits: the admin brand logo
+  renders 48px under the 64px header via `brandLogoHeight()`
+  (`a4be528`); the settings and system navigation retired their
+  sidebar groups for two first-level clusters «הגדרות» and «ניהול
+  מערכת» with top-tab sub-navigation and de-prefixed page slugs under
+  `/admin/settings/*` and `/admin/system/*` (`9259cb7`); and the
+  sidebar order was recomposed with Filament's NavigationBuilder
+  driven from `AdminNavigationOrder::ITEMS` so the content and
+  taxonomy groups follow the media item while tools, Spotify import,
+  both clusters and the public-site link trail in a header-less block
+  — automatic building always renders every ungrouped item above the
+  labeled groups, and the builder pins the admin panel context because
+  another panel resolving the admin redirect URL otherwise evaluates
+  page URLs against itself (`138d889`).
+
+- The four long-standing "known-environmental" macOS browser failures
+  were diagnosed to a verdict and the environmental ledger is now
+  EMPTY (`625becf`): all four `MediaPickerBrowserTest` cases were
+  stale tests pinning contracts retired by the media UX program (the
+  `wire:loading` close-guard wrapper superseded by Alpine
+  `returningSelection` bindings; the `media-picker-selected-item`
+  handoff testid superseded by owner-choice choice-state cards; the
+  nested card dropdown superseded by the owner details chip; plus
+  never-reached sections pinning the retired footer and non-owner grid
+  layout). The diagnosis surfaced one real defect — the owner save
+  request rendered the pre-persist pending choice because the picker
+  field's cached presentation and the owner's loaded attachment
+  relation predate the persist — fixed by forgetting both after a
+  successful persist, pinned by a revert-proven
+  `OwnerImageWorkspaceTest` save-request render test. Browser suite
+  47/47 for the first time on this machine; full gate 1344 non-browser
+  tests, FilaCheck full 0 issues, pint clean.
+
 - Browser-suite storage URL hermeticity (bounded test chore, investigation
   of the two `CardTemplatePreviewBrowserTest` geometry failures flagged
   below): root cause found — card image `src` values come from
