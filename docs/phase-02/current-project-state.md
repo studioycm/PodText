@@ -229,6 +229,22 @@ Recorded after the Markdown-only post-Prompt-10 prompt-progress centralization c
   47/47 for the first time on this machine; full gate 1344 non-browser
   tests, FilaCheck full 0 issues, pint clean.
 
+- Post-P5 sweep housekeeping (2026-07-30) closed four recorded loose ends
+  without behavior change: the panel no longer calls `discoverWidgets()` at a
+  directory that does not exist, `.env.example` documents the app-specific keys
+  it had been missing (Hebrew locale trio, media picker driver, settings-backup
+  retention and snapshot timeouts, Google importer plus throttle and log level,
+  Horizon path and supervisor timeout), the `model:show` baseline issue was
+  retested and closed, and `MUX3-F045` (are Media actions discoverable in every
+  state and viewport) is now proven rather than assumed — the gallery browser
+  test asserts the details action, the edit action, the action group and
+  in-viewport bounds at 390px in both locales, where it previously checked
+  layout only. Two sweep suspicions were disproven in code and left alone:
+  `playwright` is a production runtime dependency because settings-backup
+  snapshots shell out to `scripts/settings-snapshots.mjs`, and the
+  `MediaReferenceFinder` settings-payload invalidation is live, called from the
+  coordinator's registration cache reset.
+
 - Browser-suite storage URL hermeticity (bounded test chore, investigation
   of the two `CardTemplatePreviewBrowserTest` geometry failures flagged
   below): root cause found — card image `src` values come from
@@ -1122,7 +1138,7 @@ Recorded after the Markdown-only post-Prompt-10 prompt-progress centralization c
   SP4, LOG1, automatic P2-first execution, or the retired SP3 browser harness.
 
 - Prompt 13 dashboard metrics has not started and is intentionally blocked until Public Front v2 reaches the approved post-B3 readiness point or the user explicitly chooses dashboard metrics first.
-- The `model:show` baseline issue below remains unresolved and should be avoided until investigated.
+- The `model:show` baseline issue below was retested on 2026-07-30 and no longer reproduces; it is closed.
 - The active post-B3 implementation sequence is paused after Step 10R-S1b, urgent Step 10R-HF2, selected side quest Step 10R-UX3, Step 10R-S1c, Step 10R-MP1, Step 10R-S1d, Importer Workbench WB1, and Step 10R-HF3. WB1 opened the WB track; HF3 adopted the manual `7d80c99` import/export queue fix and completed exporter loading/lifecycle/tracer coverage. WB2 is the next WB step only when Yoni selects it. The main queue resumes at P2, P3, AX1, SL1, SL2, SL3, SL4, AX2, AX3, B4, C2, and 9F-A through 9F-C only when Yoni chooses. Urgent Step 10R-HF1, Step 10R-HF2, Step 10R-HF3, Step 10R-M1 through Step 10R-M6, Step 10R-IP1 through Step 10R-IP3, Step 10R-UX1 through Step 10R-UX3, Step 10R-V1a through Step 10R-V1c, Step 10R-P1, Step 10R-S2, Step 10R-S2V, Step 10R-S1a through Step 10R-S1d, Step 10R-MP1, and WB1 are complete. IP2 includes the podcast identity style/position/image-color review fix, IP3 includes local-only transcript reading controls, M6 marks the original Step 10R-C1 single-author attribution task as superseded, UX2 records the v4 ledger/sequence amendment with AX1-AX3 scheduled, UX3 adds Hebrew smart slugs and MySQL-safe key-contract alignment, S1c adds inline import locks and import-only D29 semantics, MP1 adds settings-controlled 503 maintenance mode with admin bypass, S1d adds import result reports plus MP1/panel hardening, WB1 adds importer connection foundations, HF3 adds imports-exports queue consumption/tracing/exporter eager loading, V1a adds default/no-image fallback settings, V1b adds enum-backed icon settings, V1c adds strict custom hex color settings plus a cached theme-safe podcast palette, P1 adds validated config caching with a settings-migration watermark, S2 adds settings backups/restores plus the first-run S2V docs insertion, S2V adds backup visual snapshots plus the S2 prune/file-cleanup correction, S1a adds settings export/import wizard core plus S2V audit corrections, S1b adds import locks/add-only mode, and HF2 bounds the S2V snapshot unique-index columns for MySQL. Step 9F/10F Footer + Rich Section Builder must wait until all prior 10R work, including AX1-AX3, SL1-SL4, B4, and C2, is complete. Step 11 Seeders, Demo Data, Assets, and Cleanup must wait for approved Step 10R and Step 9F/10F completion or explicit Yoni approval. Prompt 13 has not started. The full Step 2 transcription publication workflow remains deferred/reserved; M3/M4 only added the minimal public read/display/count policy.
 
 ## Deferred Items
@@ -1817,4 +1833,8 @@ real migrations or conversion in this task.
 
 ## Baseline Issue To Record
 
-`php artisan model:show App\Models\ContentItem` and `php artisan model:show App\Models\ContentGroup` previously failed with a class redeclare fatal. This documentation sync did not retest or fix that application issue. Future implementation prompts should avoid relying on `model:show` until the cause is investigated.
+Resolved 2026-07-30. `php artisan model:show App\Models\ContentItem` and
+`php artisan model:show App\Models\ContentGroup` previously failed with a class
+redeclare fatal, and that record stood unretested for months. Both commands were
+rerun during the post-P5 sweep and now exit 0, so the avoidance note is retired
+and `model:show` is safe to use again.

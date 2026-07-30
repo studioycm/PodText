@@ -188,12 +188,19 @@ it('renders the Media inventory as responsive accessible native cards', function
         ->and($wide['horizontal_overflow'])->toBeFalse();
 
     $page->resize(390, 844);
-    $narrow = $page->script(<<<'JS'
+    $narrow = $page->script(<<<JS
         async () => {
             await new Promise((resolve) => setTimeout(resolve, 250));
             const cards = Array.from(document.querySelectorAll(
                 '[data-testid="media-library-card"]',
             ));
+            const records = cards.map((card) => card.closest('.fi-ta-record'));
+            const isShown = (element) => Boolean(element) && element.getClientRects().length > 0;
+            const withinViewport = (element) => {
+                const rect = element.getBoundingClientRect();
+
+                return rect.left >= -1 && rect.right <= window.innerWidth + 1;
+            };
             const lefts = new Set(cards.map((card) => Math.round(
                 card.getBoundingClientRect().left,
             )));
@@ -216,6 +223,20 @@ it('renders the Media inventory as responsive accessible native cards', function
 
                     return metadata && metadata.getClientRects().length > 0;
                 }),
+                details_visible: records.every((record) => Array.from(
+                    record?.querySelectorAll('.fi-ta-actions a') ?? [],
+                ).some((action) => action.getAttribute('aria-label') === {$openDetails}
+                    && isShown(action))),
+                edit_visible: records.every((record) => isShown(
+                    record?.querySelector('[id^="media-record-"]'),
+                )),
+                action_group_visible: records.every((record) => Array.from(
+                    record?.querySelectorAll('button[aria-label]') ?? [],
+                ).some((button) => button.getAttribute('aria-label') === {$moreActions}
+                    && isShown(button))),
+                actions_within_viewport: records.every((record) => Array.from(
+                    record?.querySelectorAll('.fi-ta-actions a, .fi-ta-actions button') ?? [],
+                ).every((action) => ! isShown(action) || withinViewport(action))),
                 horizontal_overflow: document.documentElement.scrollWidth
                     > document.documentElement.clientWidth + 1,
             };
@@ -228,6 +249,10 @@ it('renders the Media inventory as responsive accessible native cards', function
         ->and($narrow['columns'])->toBe(1, json_encode($narrow, JSON_THROW_ON_ERROR))
         ->and($narrow['every_card_within_viewport'])->toBeTrue()
         ->and($narrow['metadata_visible'])->toBeTrue()
+        ->and($narrow['details_visible'])->toBeTrue(json_encode($narrow, JSON_THROW_ON_ERROR))
+        ->and($narrow['edit_visible'])->toBeTrue(json_encode($narrow, JSON_THROW_ON_ERROR))
+        ->and($narrow['action_group_visible'])->toBeTrue(json_encode($narrow, JSON_THROW_ON_ERROR))
+        ->and($narrow['actions_within_viewport'])->toBeTrue(json_encode($narrow, JSON_THROW_ON_ERROR))
         ->and($narrow['horizontal_overflow'])->toBeFalse();
 
     $page->assertNoJavaScriptErrors();
