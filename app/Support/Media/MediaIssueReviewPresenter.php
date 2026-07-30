@@ -146,7 +146,7 @@ class MediaIssueReviewPresenter
 
         if ($reason === MediaDiagnosticReason::Metadata->value && ! $this->pathIsPurposeManaged($media)) {
             return [
-                'kind' => 'separate_phase',
+                'kind' => 'relocation_available',
                 'description' => __('admin.media_issue_review.resolution.metadata_root'),
             ];
         }

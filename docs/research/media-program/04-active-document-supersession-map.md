@@ -97,7 +97,10 @@ create a new handoff at that path from the implemented inventory-first work.
   owner-layout, Storage-search/discovery and query/probe corrections. Its
   static topbar rule is capture-only; runtime topbar and Card Template Editor
   layout remain unchanged.
-- Package 5 pair: forecast only; fresh audit required.
+- Package 5 pair: forecast only; fresh audit required. The bounded root-file
+  relocation delivered by Storage Truth (`UX3-STORAGE-TRUTH`, shipped
+  2026-07-29) does not open this package; general move, Files Discovery, trash,
+  restore and purge stay forecast-only.
 
 The earlier Package 4 audit
 `LS-20260723-PODTEXT-MEDIA-P4-OWNER-IMAGE-UX-01` and options
@@ -106,8 +109,11 @@ The earlier Package 4 audit
 The post-Package-3 correction, Package 4 implementation and Package 4
 inline-picker correction are closed locally. The post-P3/Package 4 visual
 correction is also closed locally. Media Operations UX3 Mini-tasks 1–3 and 3A
-are implemented. Remaining UX3 work follows the forward route above; Package
-5 remains forecast-only and requires separate research, audit and approval.
+are implemented. Mini-tasks 3B, 3C and the replanned Mini-task 4 closed on
+2026-07-28, and Storage Truth (`UX3-STORAGE-TRUTH`) closed on 2026-07-30.
+Remaining UX3 work follows the forward route above; Package 5 — files and
+physical lifecycle — remains forecast-only and requires separate research,
+audit and approval.
 
 ## Related active track documents
 

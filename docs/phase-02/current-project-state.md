@@ -4,6 +4,34 @@ This is the single source of truth for rolling Phase 02 prompt progress. Other a
 
 Recorded after the Markdown-only post-Prompt-10 prompt-progress centralization cleanup. This document intentionally avoids local secrets and should be updated when later prompts change the active baseline.
 
+## Naming: "Storage Truth" versus "Package 5"
+
+Two unrelated pieces of work both reached the number five and were briefly
+called "Package 5". Disambiguated on 2026-07-30:
+
+- **Storage Truth** (`UX3-STORAGE-TRUTH`, phases P1–P5) is the work that
+  **shipped** on 2026-07-29/30: the managed relocation engine and surfaces,
+  the production root-file relocation, legacy owner-column retirement, the
+  column-drop migration, and the in-use sanitize lift. It was the fifth
+  outcome in the Media Operations UX3 queue, so it inherited "5" by position,
+  not by scope. Its external dossier ID
+  `LS-20260729-PODTEXT-MEDIA-OPS-UX3-P5-01` and its commit subjects
+  (`(UX3 P5 P1)`, `(UX3 P5 P3-P5)`) are immutable identifiers and keep their
+  original wording.
+- **Package 5 — Files and Physical Lifecycle** is the media-program package
+  that has **not started**: Files Discovery for rowless managed files, general
+  physical move, Trash with retention, Restore, Purge, and operator-visible
+  lifecycle recovery (`MUX3-F046`–`F051`). It stays forecast-only and needs its
+  own research, audit and approval. `docs/research/media-program/02-media-program-master-plan.md`
+  is the authoritative definition.
+
+Historical "no Package 5 action occurred" exclusions in the completed-outcome
+rows below refer to the lifecycle package and remain accurate as written.
+
+A third, unrelated use of "P5" survives: individual mini-tasks number their own
+phases, so `3B P1–P5` and `3C P5–P8` mean phase five of those mini-tasks. Bare
+"P5" is no longer used for a package.
+
 ## Active Media Operations UX3 Forward Route
 
 - The documentation-only **Program Reconciliation and Finding Coverage**
@@ -45,7 +73,7 @@ Recorded after the Markdown-only post-Prompt-10 prompt-progress centralization c
   OR1 through OR6 corrections, all implemented, committed and pushed
   (`07b7eab..cc5c294`). The operator closed the 3A outcome review on
   2026-07-28 («looks great» plus push approval). The selected continuation
-  sequence is 3B → 3C → replanned Mini-task 4 → Package 5, followed by a
+  sequence is 3B → 3C → replanned Mini-task 4 → Storage Truth, followed by a
   revision of the paused non-media queues, with bounded TDD (stash-baseline
   environment attribution, time-boxed failure chases, known-environmental
   ledger). **Current gate:** Mini-task 3B is closed by the operator on
@@ -75,7 +103,7 @@ Recorded after the Markdown-only post-Prompt-10 prompt-progress centralization c
   (`LS-20260728-PODTEXT-MEDIA-OPS-UX3-M4-01`, published artifact) was
   delivered and the operator approved «M4 all» = P1+P2+P3 with decisions
   D1=b («ניקוי בטיחותי»), D2=A (managed rows only — P4 dropped; media 2
-  waits for Package 5 relocation, accepted explicitly: zero live
+  waits for Storage Truth relocation, accepted explicitly: zero live
   production targets until then), D3=a, D4=a, D5=Issue-Review-only plus
   card/slide-over Issue Review links, D6=a (fate chips, no Recheck),
   D7=a, D8=a. M4 P1–P3 are implemented locally (implementation hash
@@ -86,12 +114,12 @@ Recorded after the Markdown-only post-Prompt-10 prompt-progress centralization c
   standalone picker-modal scroll fix (`1713cbb`) was reclassified by
   the operator as a general picker regression outside M4 scope. The M4
   series is pushed and deployed (production release `74315264`, health
-  verified). Package 5 — storage/data truth (root-file relocation and
+  verified). Storage Truth (root-file relocation and
   legacy owner-column retirement) — is open in UX research under the
-  mandatory cycle, seeded per the Package 5 seeds memory: the ~394-row
+  mandatory cycle, seeded per the Storage Truth seeds memory: the ~394-row
   root-level production cohort including media 2, the census, the
   operator's D3 lift (post-retirement in-use sanitize), and
-  relocation's expected side-effects on the intrinsic-issue rows. Package 5 gained operator seeds: legacy
+  relocation's expected side-effects on the intrinsic-issue rows. Storage Truth gained operator seeds: legacy
   owner-column retirement (production census 2026-07-28: 294 covers all
   attachment-bridged, 0 legacy-only, `image_path` unused — code-only
   migration) alongside root-file relocation. A staged Eloquent
@@ -99,7 +127,7 @@ Recorded after the Markdown-only post-Prompt-10 prompt-progress centralization c
 
 ## Git State
 
-- Package 5 P1 (managed relocation engine and surfaces) is complete
+- Storage Truth P1 (managed relocation engine and surfaces) is complete
   locally under dossier `LS-20260729-PODTEXT-MEDIA-OPS-UX3-P5-01`,
   operator approval «approve all p5» with decisions D1=b+a (admin batch
   action plus a thin CLI wrapper over one engine core), D2=a, D3=a,
@@ -155,7 +183,7 @@ Recorded after the Markdown-only post-Prompt-10 prompt-progress centralization c
   original seeded for a future cycle. P3 (retirement code-off), P4
   (column drop) and P5 (sanitize lift) are now unblocked.
 
-- Package 5 P3+P4+P5 (legacy owner-column retirement, drop and sanitize
+- Storage Truth P3+P4+P5 (legacy owner-column retirement, drop and sanitize
   lift) is complete locally, commits held for operator push/deploy
   approval per the 2026-07-29 gate. Implementation hash `d5be68f0662b5037a135089b126ee19dbb724808`.
   Media ownership truth is now the `media_attachments` pivot alone:
@@ -182,7 +210,8 @@ Recorded after the Markdown-only post-Prompt-10 prompt-progress centralization c
   `referencesForPath` now report settings path references only. One real
   regression was caught and fixed in-flight: detaching an attachment
   whose Media row was hard-deleted now tolerates the missing row
-  (previously the unsafe repairer absorbed that case). P5 lift (D7=a):
+  (previously the unsafe repairer absorbed that case). The P5 sanitize
+  lift (D7=a):
   `CuratorMediaPolicy::repair` allows «ניקוי בטיחותי» for
   attachment-referenced rows (attachments follow the row id through the
   byte/address change) and still denies with the settings carve-out
@@ -195,8 +224,8 @@ Recorded after the Markdown-only post-Prompt-10 prompt-progress centralization c
   assertions with only the 4 known-environmental macOS browser
   failures, FilaCheck full 0 issues, pint clean, build green.
 
-- Post-P5 admin shell rounds (operator-directed, 2026-07-30) are
-  complete locally alongside the P3-P5 commits: the admin brand logo
+- Post-Storage-Truth admin shell rounds (operator-directed, 2026-07-30) are
+  complete locally alongside the Storage Truth P3-P5 commits: the admin brand logo
   renders 48px under the 64px header via `brandLogoHeight()`
   (`a4be528`); the settings and system navigation retired their
   sidebar groups for two first-level clusters «הגדרות» and «ניהול
@@ -229,7 +258,7 @@ Recorded after the Markdown-only post-Prompt-10 prompt-progress centralization c
   47/47 for the first time on this machine; full gate 1344 non-browser
   tests, FilaCheck full 0 issues, pint clean.
 
-- Post-P5 sweep housekeeping (2026-07-30) closed four recorded loose ends
+- Post-Storage-Truth sweep housekeeping (2026-07-30) closed four recorded loose ends
   without behavior change: the panel no longer calls `discoverWidgets()` at a
   directory that does not exist, `.env.example` documents the app-specific keys
   it had been missing (Hebrew locale trio, media picker driver, settings-backup
@@ -244,6 +273,31 @@ Recorded after the Markdown-only post-Prompt-10 prompt-progress centralization c
   snapshots shell out to `scripts/settings-snapshots.mjs`, and the
   `MediaReferenceFinder` settings-payload invalidation is live, called from the
   coordinator's registration cache reset.
+
+- Naming disambiguation and M4 truth restoration (2026-07-30, docs and copy
+  only). Two unrelated bodies of work were both called "Package 5"; the shipped
+  one is renamed **Storage Truth** (`UX3-STORAGE-TRUTH`) and the name "Package
+  5" is returned to the unstarted files-and-physical-lifecycle package
+  (`MUX3-F046`-`F051`). A naming section at the top of this document states the
+  rule, including the third sense where `3B P1-P5` means a mini-task's own
+  phases; historical "no Package 5 action occurred" exclusions refer to the
+  lifecycle package and were left as written; the dossier ID and commit subjects
+  are immutable and keep their wording. The media-program master plan and
+  supersession map now record that a bounded relocation shipped without opening
+  the package, and the mini-step ledger's stale rows were corrected: 3B, 3C and
+  M4 no longer read "not started", Storage Truth gained the two rows it never
+  had, and the blanket migration/production exclusion was narrowed to
+  per-approval. The findings matrix received a dated post-acceptance amendment
+  rather than in-place edits to operator-accepted rows, recording that `F033` is
+  complete, `F031`/`F040` are satisfied for one reason of six, `F047` is
+  partially superseded by the production relocation, and `F048` has a live
+  consequence: committed mutations quarantine the original bytes and nothing
+  ever prunes them. Mini-task 4 finally has a handoff, reconstructed from the
+  repository and labelled as such. In code, the Issue Review copy that told
+  operators file moves were "handled in a separate phase" now points at the
+  Managed relocation action that exists, and the matching resolution kind was
+  renamed `separate_phase` to `relocation_available` across presenter, view and
+  test.
 
 - Browser-suite storage URL hermeticity (bounded test chore, investigation
   of the two `CardTemplatePreviewBrowserTest` geometry failures flagged
@@ -272,7 +326,7 @@ Recorded after the Markdown-only post-Prompt-10 prompt-progress centralization c
   parallel read-only agent by operator direction), operator approval
   «approve M4 all» with D1–D8 (D2 flipped to A: managed rows only, P4
   dropped — the production root-level cohort, including media 2, waits
-  for Package 5 relocation), and light audit
+  for Storage Truth relocation), and light audit
   `LS-20260728-PODTEXT-M4-IMPL-01` (no change). Implementation hash
   `24b13fb5ba3313d4ffe53ada418e62f7963a6678`. P1: the Issue Review page replaces the
   hard-coded no-authority blocker with truthful per-reason resolution
@@ -326,8 +380,8 @@ Recorded after the Markdown-only post-Prompt-10 prompt-progress centralization c
   restriction once legacy path columns retire — id-authority
   attachments plus the engine's settings-reference rewrite make it
   safe, and sanitizer output is app-derived, trusted bytes) is seeded
-  to Package 5. Deferred: intrinsic metadata-row repairs (natural
-  second cycle per D8), root-level reach (Package 5).
+  to Storage Truth. Deferred: intrinsic metadata-row repairs (natural
+  second cycle per D8), root-level reach (Storage Truth).
 - Staged Eloquent strict mode (bounded chore, implemented on worktree
   branch `claude/keen-gould-16e3a4`, rebased onto the 3C closure
   `9393fef`; implementation hash `72c29c5`, merged fast-forward into
@@ -427,7 +481,7 @@ Recorded after the Markdown-only post-Prompt-10 prompt-progress centralization c
   FilaCheck 0 issues, pint clean, `npm run build` green. Deferred/
   registered: retitle checkbox on the two other selection paths
   (relation manager, owner edit-page lifecycle — same applier, small
-  wiring each), quarantine-journal UI, root-file relocation (Package 5),
+  wiring each), quarantine-journal UI, root-file relocation (Storage Truth),
   lifting the rename/swap zero-reference restriction (drift, operator
   decision).
 - Media Operations UX3 Mini-task 3B (Sources, Acquisition and Results) is
@@ -1836,5 +1890,5 @@ real migrations or conversion in this task.
 Resolved 2026-07-30. `php artisan model:show App\Models\ContentItem` and
 `php artisan model:show App\Models\ContentGroup` previously failed with a class
 redeclare fatal, and that record stood unretested for months. Both commands were
-rerun during the post-P5 sweep and now exit 0, so the avoidance note is retired
+rerun during the post-Storage-Truth sweep and now exit 0, so the avoidance note is retired
 and `model:show` is safe to use again.

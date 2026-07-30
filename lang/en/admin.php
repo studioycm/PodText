@@ -2590,7 +2590,7 @@ return [
         ],
         'resolution' => [
             'no_action' => 'There is no repair action for this reason yet.',
-            'metadata_root' => 'The file is stored outside the managed library folders. Moving files into the managed folders is handled in a separate phase and is not part of this review.',
+            'metadata_root' => 'The file is stored outside the managed library folders. Use Managed relocation in the Media gallery to move it into a managed folder; this review does not move files.',
             'closed_status' => 'Closed',
             'remaining_status' => 'Remaining',
         ],

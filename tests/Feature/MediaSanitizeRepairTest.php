@@ -171,7 +171,7 @@ it('projects truthful per-reason resolution states in the review presenter', fun
     $metadataIssue = collect($rootReview['issues'])->firstWhere('value', MediaDiagnosticReason::Metadata->value);
 
     expect($metadataIssue)->not->toBeNull()
-        ->and($metadataIssue['resolution']['kind'])->toBe('separate_phase')
+        ->and($metadataIssue['resolution']['kind'])->toBe('relocation_available')
         ->and($metadataIssue['resolution']['description'])->toBe(__('admin.media_issue_review.resolution.metadata_root'))
         ->and($rootReview['has_current_media_repair_authority'])->toBeFalse();
 });

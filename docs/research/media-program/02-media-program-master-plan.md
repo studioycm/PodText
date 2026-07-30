@@ -248,6 +248,22 @@ Outcome: managed rowless files appear in Files Discovery; explicit import,
 move, rename, replace, trash, restore and purge use containment, reference
 protection and durable mutation journals.
 
+**Status note added 2026-07-30.** This package has still not started, and this
+section remains its authoritative definition. Two parts of the outcome above
+were delivered ahead of it by other work and should not be re-planned from
+zero: rename, replace and sanitize already run as journaled, contained
+mutations, and a *bounded* physical move — relocating root-level files into
+managed purpose folders — shipped under **Storage Truth**
+(`UX3-STORAGE-TRUTH`) and ran against production on 2026-07-29. Files
+Discovery, general operator-chosen-destination move, trash, restore and purge
+remain unbuilt.
+
+Do not confuse this package with Storage Truth. That work was the fifth outcome
+in the Media Operations UX3 queue and was briefly called "Package 5" for that
+reason alone; it covered root-file relocation, legacy owner-column retirement,
+the column-drop migration and the in-use sanitize lift. "Package 5" in this
+document always means the lifecycle program defined here.
+
 ## Verification and commits
 
 Every package is serial and test-first. Final order is requirements/drift

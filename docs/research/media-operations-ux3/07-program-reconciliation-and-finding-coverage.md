@@ -396,6 +396,54 @@ The six Package 5 findings close in this matrix with the terminal disposition
 `Package 5`; they reopen only under a separately authorized Package 5 research,
 design, audit and implementation program.
 
+**Naming note added 2026-07-30.** In this matrix, and in the media-program
+master plan, "Package 5" means only the files-and-physical-lifecycle program
+described above, which has not started. A different, unrelated body of work —
+the managed relocation engine, the production root-file relocation, legacy
+owner-column retirement, the column drop and the in-use sanitize lift — shipped
+on 2026-07-29/30 and was briefly also called "Package 5" because it was the
+fifth outcome in the Media Operations UX3 queue. That shipped work is now named
+**Storage Truth** (`UX3-STORAGE-TRUTH`). Its dossier ID
+`LS-20260729-PODTEXT-MEDIA-OPS-UX3-P5-01` and commit subjects keep their
+original wording as immutable identifiers.
+
+## Post-acceptance amendments
+
+The matrix above was accepted by the operator on 2026-07-26 and is preserved as
+accepted. The following facts changed afterwards; where an amendment conflicts
+with a row, the amendment is current.
+
+- **`MUX3-F033` is complete.** Replanned Mini-task 4 shipped SVG sanitize repair
+  with a journaled mutation, a refusal region with three continuation routes and
+  an admin trust mark (`24b13fb`, `33a659c`, `8bbd5e9`). Its row still reads
+  `pending — Mini-task 4`.
+- **`MUX3-F031` and `MUX3-F040` are partially satisfied.** Per-reason resolution
+  states, fate chips and receipts exist, but are wired to `unsanitized_svg`
+  only. The remaining five reasons stay review-only, so both rows are accurate
+  for those reasons and stale for SVG.
+- **`MUX3-F047` is partially superseded.** Its evidence line reads "broad
+  physical move is not authorized by UX3". A *bounded* journaled physical move
+  did ship under Storage Truth — relocation of root-level files into managed
+  purpose folders, with containment, quarantine, a durable mutation journal and
+  a three-count receipt — and ran against production on 2026-07-29, moving 394
+  rows and leaving zero root-level rows. What remains future-only is the general
+  case: an operator-chosen destination, moves between managed roots, and
+  name-preserving moves.
+- **`MUX3-F048` gained a live consequence.** Every committed rename, swap,
+  sanitize, relocation, delete and registration writes a verified copy of the
+  original bytes to `local:media-quarantine/…` and never removes it; deletion
+  happens only on the rollback path. There is no retention window, no prune
+  command and no schedule. This is already most of a Trash substrate, and until
+  the retention contract exists it is also an unbounded disk-growth path.
+- **`MUX3-F032`, `F034`–`F037` remain unstarted**, and `MUX3-F038`
+  (Recheck/Retry) has now been declined twice — once by Mini-task 3 for failing
+  the proof gate, once by Mini-task 4 via decision D6=a — without ever being
+  retired. `MUX3-F044` remains closed-but-unowned.
+- **The `separate_phase` copy is stale.** Issue Review still tells operators
+  that moving files into managed folders "is handled in a separate phase". That
+  phase shipped, and sanitize now relocates a root-level source in the same
+  operation.
+
 ## Later documentation-consolidation trigger
 
 **PodText Documentation Architecture and Consolidation Audit** is a separate

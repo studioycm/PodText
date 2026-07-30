@@ -229,10 +229,10 @@
                                 >
                                     {{ $issue['resolution']['reason'] }}
                                 </p>
-                            @elseif ($issue['resolution']['kind'] === 'separate_phase')
+                            @elseif ($issue['resolution']['kind'] === 'relocation_available')
                                 <p
                                     class="mt-5 rounded-lg bg-gray-50 p-3 text-sm text-gray-600 dark:bg-white/5 dark:text-gray-300"
-                                    data-testid="media-issue-resolution-separate-{{ $issue['value'] }}"
+                                    data-testid="media-issue-resolution-relocation-{{ $issue['value'] }}"
                                 >
                                     {{ $issue['resolution']['description'] }}
                                 </p>
