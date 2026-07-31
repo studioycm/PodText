@@ -10,8 +10,10 @@ use App\Livewire\Admin\MediaPickerPanel;
 use App\Models\ContentGroup;
 use App\Models\ContentItem;
 use App\Models\Media;
+use App\Models\Transcription;
 use App\Models\User;
 use App\Observers\CuratorMediaObserver;
+use App\Observers\EditorialMetricsCacheObserver;
 use App\Policies\CuratorMediaPolicy;
 use App\Settings\PublicContentSettings;
 use App\Support\Authorization\PackageMutationCommandGuard;
@@ -111,6 +113,11 @@ class AppServiceProvider extends ServiceProvider
         FilamentShield::prohibitDestructiveCommands($production);
         TranslationCommand::prohibit($production);
         PackageMutationCommandGuard::register();
+
+        // The dashboard snapshot must not outlive the writes it counts.
+        ContentItem::observe(EditorialMetricsCacheObserver::class);
+        ContentGroup::observe(EditorialMetricsCacheObserver::class);
+        Transcription::observe(EditorialMetricsCacheObserver::class);
 
         Model::preventLazyLoading(! $this->app->isProduction());
         Model::handleLazyLoadingViolationUsing(function (Model $model, string $relation): void {

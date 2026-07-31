@@ -1388,15 +1388,14 @@ phases, so `3B P1–P5` and `3C P5–P8` mean phase five of those mini-tasks. Ba
 
 - Prompt 13 dashboard metrics was explicitly chosen by the operator on 2026-07-31 (dashboard-first, then FETCH2, then 9F-mini). Phases 1-2 of 4 are complete; phases 3-4 (intake lens, RTL browser evidence) remain.
 
-- Phase 2 recorded an open definition conflict for phase 3/4 to settle: the
-  phase-1 handoff defines **blocked** as "status-published minus visible", but
-  `EditorialMetrics::blockedQuery()` implements "status-published carrying any
-  of the three reasons". Missing media and missing category do not actually
-  make an item invisible, so a visible episode can also be counted blocked.
-  The plan's Board 2 needs the three non-zero reason bars, so the code is the
-  intended behavior and the definition sentence is what needs correcting.
-- The `model:show` baseline issue below was retested on 2026-07-30 and no longer reproduces; it is closed.
-- The active post-B3 implementation sequence is paused after Step 10R-S1b, urgent Step 10R-HF2, selected side quest Step 10R-UX3, Step 10R-S1c, Step 10R-MP1, Step 10R-S1d, Importer Workbench WB1, and Step 10R-HF3. WB1 opened the WB track; HF3 adopted the manual `7d80c99` import/export queue fix and completed exporter loading/lifecycle/tracer coverage. WB2 is the next WB step only when Yoni selects it. The main queue resumes at P2, P3, AX1, SL1, SL2, SL3, SL4, AX2, AX3, B4, C2, and 9F-A through 9F-C only when Yoni chooses. Urgent Step 10R-HF1, Step 10R-HF2, Step 10R-HF3, Step 10R-M1 through Step 10R-M6, Step 10R-IP1 through Step 10R-IP3, Step 10R-UX1 through Step 10R-UX3, Step 10R-V1a through Step 10R-V1c, Step 10R-P1, Step 10R-S2, Step 10R-S2V, Step 10R-S1a through Step 10R-S1d, Step 10R-MP1, and WB1 are complete. IP2 includes the podcast identity style/position/image-color review fix, IP3 includes local-only transcript reading controls, M6 marks the original Step 10R-C1 single-author attribution task as superseded, UX2 records the v4 ledger/sequence amendment with AX1-AX3 scheduled, UX3 adds Hebrew smart slugs and MySQL-safe key-contract alignment, S1c adds inline import locks and import-only D29 semantics, MP1 adds settings-controlled 503 maintenance mode with admin bypass, S1d adds import result reports plus MP1/panel hardening, WB1 adds importer connection foundations, HF3 adds imports-exports queue consumption/tracing/exporter eager loading, V1a adds default/no-image fallback settings, V1b adds enum-backed icon settings, V1c adds strict custom hex color settings plus a cached theme-safe podcast palette, P1 adds validated config caching with a settings-migration watermark, S2 adds settings backups/restores plus the first-run S2V docs insertion, S2V adds backup visual snapshots plus the S2 prune/file-cleanup correction, S1a adds settings export/import wizard core plus S2V audit corrections, S1b adds import locks/add-only mode, and HF2 bounds the S2V snapshot unique-index columns for MySQL. Step 9F/10F Footer + Rich Section Builder must wait until all prior 10R work, including AX1-AX3, SL1-SL4, B4, and C2, is complete. Step 11 Seeders, Demo Data, Assets, and Cleanup must wait for approved Step 10R and Step 9F/10F completion or explicit Yoni approval. Prompt 13 has not started. The full Step 2 transcription publication workflow remains deferred/reserved; M3/M4 only added the minimal public read/display/count policy.
+- Phase 2R (`docs/phase-02/dashboard-metrics-phase-1-2-remediation-audit.md`)
+  closed the phase-1/2 gaps before Board 3: blocked split into two tiers
+  (invisible vs needs-attention) with the previously untracked
+  `unpublished_group` reason, full filawidgets data-contract adoption with a
+  Jerusalem-correct series helper, the legend actually scoping the flow widgets,
+  restored stream columns and full day-first date-times, `canView()` on every
+  widget, and cache invalidation on editorial writes. A4 (visible-series proxy)
+  and the phase-4 evidence items remain open.
 
 ## Deferred Items
 

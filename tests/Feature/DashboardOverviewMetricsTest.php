@@ -16,6 +16,9 @@ use App\Support\Dashboard\EditorialMetrics;
 use Filament\Actions\Imports\Models\Import;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
+use LaravelDaily\FilaWidgets\Data\BreakdownItemData;
+use LaravelDaily\FilaWidgets\Data\HeatmapCalendarWidgetData;
+use LaravelDaily\FilaWidgets\Data\SparklineTableRowData;
 
 uses(RefreshDatabase::class);
 
@@ -58,12 +61,15 @@ it('buckets funnel movement into jerusalem days aligned to the day keys', functi
     $series = app(EditorialMetrics::class)->funnelSeries(DashboardRange::Last7Days);
     $keys = DashboardRange::Last7Days->dayKeys();
 
-    expect($series['draft'])->toHaveCount(7)
-        ->and(array_combine($keys, $series['draft'])['2026-07-28'])->toBe(1)
-        ->and(array_combine($keys, $series['published'])['2026-07-29'])->toBe(1)
-        ->and(array_combine($keys, $series['transcribed'])['2026-07-30'])->toBe(1)
-        ->and(array_combine($keys, $series['visible'])['2026-07-29'])->toBe(1)
-        ->and(array_sum($series['published']))->toBe(1);
+    expect($series['draft'])->toBeInstanceOf(SparklineTableRowData::class)
+        ->and($series['draft']->sparkline)->toHaveCount(7)
+        ->and(array_combine($keys, $series['draft']->sparkline)['2026-07-28'])->toBe(1.0)
+        ->and(array_combine($keys, $series['published']->sparkline)['2026-07-29'])->toBe(1.0)
+        ->and(array_combine($keys, $series['transcribed']->sparkline)['2026-07-30'])->toBe(1.0)
+        ->and(array_combine($keys, $series['visible']->sparkline)['2026-07-29'])->toBe(1.0)
+        // value is period movement, previousValue the period before it.
+        ->and($series['published']->value)->toBe(1.0)
+        ->and($series['published']->previousValue)->toBe(0.0);
 });
 
 it('zero fills the publication heatmap across every day of the range', function (): void {
@@ -72,9 +78,10 @@ it('zero fills the publication heatmap across every day of the range', function 
 
     $heatmap = app(EditorialMetrics::class)->publicationHeatmap(DashboardRange::Last7Days);
 
-    expect($heatmap)->toHaveCount(7)
-        ->and($heatmap['2026-07-30'])->toBe(1)
-        ->and($heatmap['2026-07-29'])->toBe(0);
+    expect($heatmap)->toBeInstanceOf(HeatmapCalendarWidgetData::class)
+        ->and($heatmap->entries)->toHaveCount(7)
+        ->and($heatmap->entries['2026-07-30'])->toBe(1)
+        ->and($heatmap->entries['2026-07-29'])->toBe(0);
 });
 
 it('breaks podcast health into visible and blocked with a filtered doorway', function (): void {
@@ -86,13 +93,14 @@ it('breaks podcast health into visible and blocked with a filtered doorway', fun
 
     $health = app(EditorialMetrics::class)->podcastHealth();
 
+    // value = visible, previousValue = everything the podcast published.
     expect($health)->toHaveCount(1)
-        ->and($health[0]['label'])->toBe('Alpha Podcast')
-        ->and($health[0]['total'])->toBe(2)
-        ->and($health[0]['visible'])->toBe(1)
-        ->and($health[0]['blocked'])->toBe(1)
-        ->and($health[0]['percent'])->toBe(50)
-        ->and($health[0]['url'])->toContain('content-items');
+        ->and($health[0])->toBeInstanceOf(BreakdownItemData::class)
+        ->and($health[0]->label)->toBe('Alpha Podcast')
+        ->and($health[0]->value)->toBe(1.0)
+        ->and($health[0]->previousValue)->toBe(2.0)
+        ->and($health[0]->color)->toBe('danger')
+        ->and($health[0]->url)->toContain('content-items');
 });
 
 it('ranks transcribers by published transcriptions with words and a previous period', function (): void {
@@ -111,11 +119,12 @@ it('ranks transcribers by published transcriptions with words and a previous per
     $board = app(EditorialMetrics::class)->transcriberBoard(DashboardRange::Last7Days);
 
     expect($board)->toHaveCount(1)
-        ->and($board[0]['label'])->toBe('Dana')
-        ->and($board[0]['transcriptions'])->toBe(1)
-        ->and($board[0]['words'])->toBe(5)
-        ->and($board[0]['previous'])->toBe(0)
-        ->and($board[0]['url'])->toContain('transcriber_id');
+        ->and($board[0]['item'])->toBeInstanceOf(BreakdownItemData::class)
+        ->and($board[0]['item']->label)->toBe('Dana')
+        ->and($board[0]['item']->value)->toBe(1.0)
+        ->and($board[0]['item']->previousValue)->toBe(0.0)
+        ->and($board[0]['item']->url)->toContain('transcriber_id')
+        ->and($board[0]['words'])->toBe(5);
 });
 
 it('types the activity stream and filters it by chip and by day', function (): void {
@@ -161,7 +170,62 @@ it('types the activity stream and filters it by chip and by day', function (): v
         ->and($byDay[0]['type'])->toBe('submission');
 });
 
-it('reports blocker burn-down as remaining out of status-published', function (): void {
+it('separates invisible episodes from episodes that merely need attention', function (): void {
+    $group = ContentGroup::factory()->published()->create();
+
+    // Visible and complete.
+    unblockedItem($group);
+
+    // Invisible: published and otherwise complete, but no published transcript.
+    $noTranscript = ContentItem::factory()->for($group)->published(now()->subHour())->create([
+        'embed_url' => 'https://open.spotify.com/episode/no-transcript',
+    ]);
+    $noTranscript->categories()->attach(Category::factory()->create());
+
+    // Invisible for the reason nothing tracked before: the podcast is a draft.
+    $draftGroup = ContentGroup::factory()->create(['status' => PublicationStatus::Draft]);
+    $underDraft = ContentItem::factory()->for($draftGroup)->published(now()->subHour())->create([
+        'embed_url' => 'https://open.spotify.com/episode/draft-group',
+    ]);
+    $underDraft->categories()->attach(Category::factory()->create());
+    Transcription::factory()->for($underDraft)->published(now()->subHour())->create();
+
+    // Publicly visible, but missing a category: needs attention, not invisible.
+    $incomplete = ContentItem::factory()->for($group)->published(now()->subHour())->create([
+        'embed_url' => 'https://open.spotify.com/episode/no-category',
+    ]);
+    Transcription::factory()->for($incomplete)->published(now()->subHour())->create();
+
+    $snapshot = app(EditorialMetrics::class)->snapshot();
+
+    expect($snapshot['gap']['invisible'])->toBe(2)
+        ->and($snapshot['gap']['missing_transcription'])->toBe(1)
+        ->and($snapshot['gap']['unpublished_group'])->toBe(1)
+        ->and($snapshot['attention']['missing_category'])->toBe(1)
+        ->and($snapshot['attention']['missing_media'])->toBe(0)
+        ->and($snapshot['attention']['total'])->toBe(1)
+        // The needs-attention episode is visible: the two tiers do not overlap
+        // in meaning, and the funnel gap counts only the invisible ones.
+        ->and($snapshot['funnel']['visible'])->toBe(2)
+        ->and($snapshot['funnel']['published'] - $snapshot['funnel']['visible'])
+        ->toBe($snapshot['gap']['invisible']);
+});
+
+it('names the podcast-not-published reason on a queue row', function (): void {
+    $draftGroup = ContentGroup::factory()->create(['status' => PublicationStatus::Draft]);
+    $item = ContentItem::factory()->for($draftGroup)->published(now()->subHour())->create([
+        'embed_url' => 'https://open.spotify.com/episode/draft-group',
+    ]);
+    $item->categories()->attach(Category::factory()->create());
+    Transcription::factory()->for($item)->published(now()->subHour())->create();
+
+    $metrics = app(EditorialMetrics::class);
+
+    expect($metrics->blockerReasonsFor($item->fresh()))->toBe(['unpublished_group'])
+        ->and($metrics->queueQuery()->pluck('id')->all())->toBe([$item->getKey()]);
+});
+
+it('reports a burn-down per tier and forecasts only the transcribable one', function (): void {
     $group = ContentGroup::factory()->published()->create();
 
     unblockedItem($group);
@@ -169,8 +233,14 @@ it('reports blocker burn-down as remaining out of status-published', function ()
 
     $progress = app(EditorialMetrics::class)->blockersProgress();
 
-    expect($progress['remaining'])->toBe(1)
-        ->and($progress['total'])->toBe(2);
+    expect($progress['invisible']['remaining'])->toBe(1)
+        ->and($progress['invisible']['total'])->toBe(2)
+        ->and($progress['attention']['remaining'])->toBe(1)
+        ->and($progress['attention']['total'])->toBe(2)
+        // Transcripts carry a published_at to pace from; the category pivot has
+        // no timestamps, so only the invisible tier can forecast honestly.
+        ->and($progress['invisible'])->toHaveKey('forecast')
+        ->and($progress['attention'])->not->toHaveKey('forecast');
 });
 
 it('scopes every item-derived number to the selected podcast', function (): void {
@@ -187,10 +257,10 @@ it('scopes every item-derived number to the selected podcast', function (): void
 
     expect($alphaSnapshot['funnel']['visible'])->toBe(1)
         ->and($alphaSnapshot['funnel']['draft'])->toBe(0)
-        ->and($alphaSnapshot['blockers']['total'])->toBe(0)
+        ->and($alphaSnapshot['gap']['invisible'])->toBe(0)
         ->and($betaSnapshot['funnel']['visible'])->toBe(0)
         ->and($betaSnapshot['funnel']['draft'])->toBe(1)
-        ->and($betaSnapshot['blockers']['total'])->toBe(1)
+        ->and($betaSnapshot['gap']['invisible'])->toBe(1)
         ->and($metrics->snapshot()['funnel']['visible'])->toBe(1);
 });
 

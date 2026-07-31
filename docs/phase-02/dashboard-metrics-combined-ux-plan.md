@@ -157,6 +157,69 @@ functions. The technical key: the filawidgets data layer (`SparklineSeries`,
    local already has several podcasts and transcribers, and production volume
    alone is not a reason to drop a spec requirement.
 
+## Locked operator decisions (2026-07-31, round 2)
+
+Taken after phase 2 shipped, before phase 3 started. Where these contradict the
+text above, these win and the text above is corrected.
+
+1. **Blocked is split into two headline numbers.** Board 2 shows the true
+   publication gap *and* a separate needs-attention block, each with its own
+   reason bars and its own wording. No copy may describe a needs-attention
+   episode as invisible.
+   - **Invisible** (`חסום מהצגה`) = status-published minus visible, resolved
+     into two reasons: no published transcription, and **owning podcast not
+     published**. The second is new: `ContentItem::scopePublished()` requires a
+     published group but `blockedQuery()` never checked it, so an otherwise
+     complete episode under a draft podcast was invisible to the public and
+     counted in no metric and no queue. Adding it makes
+     invisible = status-published minus visible exactly, not approximately.
+   - **Needs attention** (`דורש טיפול`) = no media URL, no category. These
+     reduce quality but not visibility, and may apply to episodes the public
+     can already see.
+   - The funnel's published→visible gap uses the invisible number, so
+     פורסם ≠ גלוי stays exact.
+2. **filawidgets is fully adopted**, as the hybrid section always intended:
+   `BreakdownItemData` and `SparklineTableRowData` are the data contracts for
+   H3, H9 and Board 3's finding bars, inside our own Blade views. The package's
+   `SparklineSeries::daily()` and period math are **not** used — both compute
+   days on the database/server timezone, which contradicts the Jerusalem-walls
+   contract; a Jerusalem-correct series helper produces the shape the DTOs
+   expect. The cost line at the end of this document is corrected accordingly.
+3. **Board 3's sources filter is the provider** — Spotify / Google Drive /
+   manual, from `ImportConnectionProvider`.
+4. **The Spotify card echoes the connection test**, not a fetch: status plus
+   `last_tested_at`. No persisted last-fetch record exists, and none is added.
+5. **Media findings show all six `MediaDiagnosticReason` values**, with
+   zero-count rows hidden, rather than only the three the mockup drew.
+6. **The Intake work queue carries new submissions and failed import rows**,
+   with all / submissions / imports chips.
+7. **The range control is hidden on the Intake lens.** Nothing on Board 3 is
+   range-scoped, so gap-filler G1 applies exactly as it does on Blockers.
+8. **Board state persistence stays as built:** command-bar filters persist,
+   widget-local chip and day selections reset on reload.
+9. **The RTL browser test lives in its own group**, run on demand, so the main
+   gate stays deterministic.
+10. **Phase 4's consistency tests cover** all four pairs: visible across the
+    funnel, the stat card and the legend chip (rule 2's namesake case); heatmap
+    total vs the funnel's published series; blocked across the gap widget, the
+    queue and the burn-down; and per-podcast health totals against the scoped
+    funnel.
+11. **The legend scopes the flow widgets only.** A status chip narrows the
+    activity stream and the publication heatmap to that stage; the stock
+    widgets (funnel, composite cards, composition band) keep showing totals,
+    because a total scoped to one of its own segments is meaningless. This is
+    what synthesis rule 1 and H6 mean in practice — before this, the chip
+    highlighted a segment and filtered nothing.
+12. **The metrics cache is invalidated on editorial writes.** `ContentItem`,
+    `Transcription` and `ContentGroup` saves and deletes forget the snapshot, so
+    the board cannot contradict a change the editor just made. The 60-second
+    TTL stays as a backstop, and the scope echo still states the snapshot time.
+13. **H7 carries two burn-down bars**, one per tier. Both counts come from the
+    already-cached snapshot, so the second bar adds no queries. Only tier 1
+    carries a clearance forecast: transcripts have `published_at` to measure a
+    pace from, while the category pivot has no timestamps at all, so a
+    needs-attention forecast could not be honest and is not shown.
+
 ## What each approach contributed
 
 From the lenses: the structure, queue-before-graph ordering, and the
@@ -169,3 +232,9 @@ range filtering.
 package's data layer but use our own Blade views — roughly three extra hours up
 front and about an hour per Filament upgrade, in exchange for answering two
 questions per glance.
+
+*Corrected by round-2 decision 2:* "the package's data layer" means its data
+contracts (`BreakdownItemData`, `SparklineTableRowData`), not its period math or
+`SparklineSeries::daily()`. Both of those compute days on the database/server
+timezone and are therefore wrong for a Jerusalem-walls board; a Jerusalem-correct
+helper of ours produces the shape the DTOs expect.

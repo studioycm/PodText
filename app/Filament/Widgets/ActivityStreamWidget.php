@@ -2,6 +2,7 @@
 
 namespace App\Filament\Widgets;
 
+use App\Filament\Widgets\Concerns\AdminOnlyWidget;
 use App\Filament\Widgets\Concerns\ReadsDashboardFilters;
 use App\Support\Dashboard\EditorialMetrics;
 use Filament\Widgets\Concerns\InteractsWithPageFilters;
@@ -15,6 +16,7 @@ use Livewire\Attributes\On;
  */
 class ActivityStreamWidget extends Widget
 {
+    use AdminOnlyWidget;
     use InteractsWithPageFilters;
     use ReadsDashboardFilters;
 
@@ -44,15 +46,19 @@ class ActivityStreamWidget extends Widget
     /** @return array<string, mixed> */
     protected function getViewData(): array
     {
+        // H6 · a legend chip narrows this flow widget; an explicit chip here
+        // still wins, because it is the more specific choice.
+        $type = $this->type ?? EditorialMetrics::streamTypeForStatus($this->dashboardStatus());
+
         return [
             'events' => app(EditorialMetrics::class)->activityStream(
                 range: $this->dashboardRange(),
-                type: $this->type,
+                type: $type,
                 day: $this->day,
                 contentGroupId: $this->dashboardPodcastId(),
             ),
             'types' => ['transcription', 'import', 'media', 'submission'],
-            'activeType' => $this->type,
+            'activeType' => $type,
             'day' => $this->day,
             'badges' => [
                 'transcription' => 'bg-primary-50 text-primary-700 dark:bg-primary-500/10 dark:text-primary-300',

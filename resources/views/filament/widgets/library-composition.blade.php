@@ -35,13 +35,20 @@
                 @else
                     <dl class="mt-3 space-y-2 text-sm">
                         @foreach ($health as $podcast)
+                            @php
+                                $published = (int) ($podcast->previousValue ?? 0);
+                                $visible = (int) $podcast->value;
+                                $stuck = max(0, $published - $visible);
+                                $percent = $published > 0 ? (int) round(($visible / $published) * 100) : 0;
+                            @endphp
+
                             <div class="flex items-center gap-3" data-testid="podcast-health-row">
                                 <dt class="w-40 shrink-0 truncate">
                                     <a
-                                        href="{{ $podcast['url'] }}"
+                                        href="{{ $podcast->url }}"
                                         class="text-gray-700 hover:underline dark:text-gray-200"
                                     >
-                                        {{ $podcast['label'] }}
+                                        {{ $podcast->label }}
                                     </a>
                                 </dt>
                                 <dd class="flex flex-1 items-center gap-2">
@@ -49,24 +56,21 @@
                                         class="flex h-2.5 flex-1 overflow-hidden rounded-full bg-gray-100 dark:bg-white/5"
                                         dir="ltr"
                                     >
-                                        @if ($podcast['visible'] > 0)
-                                            <div
-                                                class="bg-success-500 h-2.5"
-                                                style="width: {{ $podcast['percent'] }}%"
-                                            ></div>
+                                        @if ($visible > 0)
+                                            <div class="bg-success-500 h-2.5" style="width: {{ $percent }}%"></div>
                                         @endif
-                                        @if ($podcast['blocked'] > 0)
+                                        @if ($stuck > 0)
                                             <div
                                                 class="bg-warning-500 h-2.5"
-                                                style="width: {{ 100 - $podcast['percent'] }}%"
+                                                style="width: {{ 100 - $percent }}%"
                                             ></div>
                                         @endif
                                     </div>
                                     <span class="w-36 shrink-0 text-end text-xs text-gray-500 tabular-nums dark:text-gray-400">
                                         {{
                                             __('admin.dashboard.composition.health_value', [
-                                                'percent' => $podcast['percent'],
-                                                'blocked' => $podcast['blocked'],
+                                                'percent' => $percent,
+                                                'blocked' => $stuck,
                                             ])
                                         }}
                                     </span>
@@ -93,20 +97,21 @@
                     <ul class="mt-3 space-y-2 text-sm">
                         @foreach ($transcribers as $transcriber)
                             @php
-                                $delta = $transcriber['transcriptions'] - $transcriber['previous'];
+                                $item = $transcriber['item'];
+                                $delta = (int) ($item->value - ($item->previousValue ?? 0));
                             @endphp
 
                             <li class="flex items-center gap-3" data-testid="transcriber-row">
                                 <a
-                                    href="{{ $transcriber['url'] }}"
+                                    href="{{ $item->url }}"
                                     class="w-32 shrink-0 truncate text-gray-700 hover:underline dark:text-gray-200"
                                 >
-                                    {{ $transcriber['label'] }}
+                                    {{ $item->label }}
                                 </a>
                                 <span class="flex-1 text-xs text-gray-500 dark:text-gray-400">
                                     {{
                                         __('admin.dashboard.composition.transcriber_value', [
-                                            'count' => $transcriber['transcriptions'],
+                                            'count' => (int) $item->value,
                                             'words' => number_format($transcriber['words']),
                                         ])
                                     }}

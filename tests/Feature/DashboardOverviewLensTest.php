@@ -3,6 +3,7 @@
 use App\Enums\DashboardLens;
 use App\Enums\PublicationStatus;
 use App\Enums\TranscriptionMode;
+use App\Enums\UserRole;
 use App\Filament\Pages\Dashboard;
 use App\Filament\Widgets\ActivityStreamWidget;
 use App\Filament\Widgets\BlockersQueueWidget;
@@ -17,6 +18,7 @@ use App\Models\ContentGroup;
 use App\Models\ContentItem;
 use App\Models\Transcription;
 use App\Models\User;
+use App\Support\Dashboard\EditorialMetrics;
 use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
@@ -186,6 +188,43 @@ it('ignores filter keys the command bar does not own', function (): void {
         ->assertSet('filters.evil', null)
         ->dispatch('dashboard-filter', key: 'podcast', value: '3')
         ->assertSet('filters.podcast', '3');
+});
+
+it('lets a legend chip scope the flow widgets', function (): void {
+    overviewFixture();
+
+    // A stage chip narrows the stream to the event kind that stage is made of.
+    Livewire::test(ActivityStreamWidget::class, ['pageFilters' => ['status' => 'transcribed']])
+        ->assertSet('type', null)
+        ->assertSee(__('admin.dashboard.stream.types.transcription'));
+
+    expect(EditorialMetrics::streamTypeForStatus('transcribed'))->toBe('transcription')
+        ->and(EditorialMetrics::streamTypeForStatus('visible'))->toBe('transcription')
+        ->and(EditorialMetrics::streamTypeForStatus('draft'))->toBeNull()
+        ->and(EditorialMetrics::streamTypeForStatus(null))->toBeNull();
+});
+
+it('refuses to render editorial widgets for a non-admin', function (): void {
+    expect(EditorialStatsWidget::canView())->toBeTrue();
+
+    $this->actingAs(User::factory()->create(['role' => UserRole::User]));
+
+    expect(EditorialStatsWidget::canView())->toBeFalse()
+        ->and(ActivityStreamWidget::canView())->toBeFalse()
+        ->and(BlockersQueueWidget::canView())->toBeFalse()
+        ->and(LibraryCompositionWidget::canView())->toBeFalse();
+});
+
+it('forgets the metrics snapshot when editorial content is written', function (): void {
+    $fixture = overviewFixture();
+    $metrics = app(EditorialMetrics::class);
+
+    expect($metrics->snapshot()['funnel']['draft'])->toBe(1);
+
+    // Without invalidation this would still read 1 for up to a minute.
+    ContentItem::factory()->for($fixture['group'])->create(['status' => PublicationStatus::Draft]);
+
+    expect($metrics->snapshot()['funnel']['draft'])->toBe(2);
 });
 
 it('lays the command bar out as two rows with explicit distinct keys', function (): void {

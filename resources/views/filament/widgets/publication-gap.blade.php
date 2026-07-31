@@ -1,11 +1,22 @@
+@php
+    $barColour = fn (?string $color): string => match ($color) {
+        'danger' => 'bg-danger-500',
+        'warning' => 'bg-warning-500',
+        'violet' => 'bg-violet-500',
+        default => 'bg-info-500',
+    };
+@endphp
+
 <x-filament-widgets::widget>
     <x-filament::section>
         <div class="flex items-center justify-between gap-3">
             <h2 class="text-sm font-semibold text-gray-950 dark:text-white">{{ __('admin.dashboard.gap.heading') }}</h2>
-            <span class="rounded-full border border-gray-300 px-2 py-0.5 text-xs font-medium text-gray-500 dark:border-white/10 dark:text-gray-400">
-                {{ __('admin.dashboard.tags.stock') }}
-            </span>
+            @include('filament.widgets.partials.stock-flow-tag')
         </div>
+
+        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400" data-testid="gap-rate">
+            {{ __('admin.dashboard.gap.rate', ['percent' => $rate->value]) }}
+        </p>
 
         <div class="mt-4 flex h-6 overflow-hidden rounded-lg text-xs font-semibold" dir="rtl" data-testid="gap-bar">
             @if ($visible > 0)
@@ -16,37 +27,67 @@
                     {{ __('admin.dashboard.legend.visible') }} {{ $visible }}
                 </div>
             @endif
-            @if ($blocked > 0)
+            @if ($invisible > 0)
                 <div
-                    class="bg-warning-100 text-warning-800 dark:bg-warning-500/20 dark:text-warning-300 flex items-center justify-center"
-                    style="flex: {{ $blocked }}"
+                    class="bg-danger-100 text-danger-800 dark:bg-danger-500/20 dark:text-danger-300 flex items-center justify-center"
+                    style="flex: {{ $invisible }}"
                 >
-                    {{ __('admin.dashboard.gap.blocked') }} {{ $blocked }}
+                    {{ __('admin.dashboard.gap.invisible') }} {{ $invisible }}
                 </div>
             @endif
-            @if ($visible === 0 && $blocked === 0)
+            @if ($visible === 0 && $invisible === 0)
                 <div class="flex w-full items-center justify-center bg-gray-50 text-gray-500 dark:bg-white/5 dark:text-gray-400">
                     {{ __('admin.dashboard.gap.nothing_published') }}
                 </div>
             @endif
         </div>
 
-        <dl class="mt-4 space-y-2 text-sm">
-            @foreach ($reasons as $reason => $data)
-                <div class="flex items-center gap-3" data-testid="gap-reason-{{ $reason }}">
+        {{-- Tier 1 · the public cannot see these at all. --}}
+        <h3 class="mt-5 text-xs font-semibold text-gray-700 dark:text-gray-200">
+            {{ __('admin.dashboard.gap.invisible_heading') }}
+        </h3>
+        <dl class="mt-2 space-y-2 text-sm">
+            @foreach ($gapReasons as $reason)
+                <div class="flex items-center gap-3" data-testid="gap-reason">
                     <dt class="w-44 shrink-0 text-gray-600 dark:text-gray-300">
-                        {{ __("admin.dashboard.reasons.{$reason}") }}
+                        <a href="{{ $reason->url }}" class="hover:underline">{{ $reason->label }}</a>
                     </dt>
                     <dd class="flex flex-1 items-center gap-2">
                         <div class="h-2.5 flex-1 overflow-hidden rounded-full bg-gray-100 dark:bg-white/5" dir="ltr">
-                            @if ($data['count'] > 0)
+                            @if ($reason->value > 0)
                                 <div
-                                    class="bg-{{ $data['color'] }}-500 h-2.5 rounded-full"
-                                    style="width: {{ min(100, $data['count'] * 10) }}%"
+                                    class="{{ $barColour($reason->color) }} h-2.5 rounded-full"
+                                    style="width: {{ min(100, $reason->value * 10) }}%"
                                 ></div>
                             @endif
                         </div>
-                        <span class="w-6 text-end font-semibold tabular-nums">{{ $data['count'] }}</span>
+                        <span class="w-6 text-end font-semibold tabular-nums">{{ (int) $reason->value }}</span>
+                    </dd>
+                </div>
+            @endforeach
+        </dl>
+
+        {{-- Tier 2 · publicly visible, but incomplete. Never called invisible. --}}
+        <h3 class="mt-5 text-xs font-semibold text-gray-700 dark:text-gray-200">
+            {{ __('admin.dashboard.gap.attention_heading', ['count' => $attention]) }}
+        </h3>
+        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ __('admin.dashboard.gap.attention_hint') }}</p>
+        <dl class="mt-2 space-y-2 text-sm">
+            @foreach ($attentionReasons as $reason)
+                <div class="flex items-center gap-3" data-testid="attention-reason">
+                    <dt class="w-44 shrink-0 text-gray-600 dark:text-gray-300">
+                        <a href="{{ $reason->url }}" class="hover:underline">{{ $reason->label }}</a>
+                    </dt>
+                    <dd class="flex flex-1 items-center gap-2">
+                        <div class="h-2.5 flex-1 overflow-hidden rounded-full bg-gray-100 dark:bg-white/5" dir="ltr">
+                            @if ($reason->value > 0)
+                                <div
+                                    class="{{ $barColour($reason->color) }} h-2.5 rounded-full"
+                                    style="width: {{ min(100, $reason->value * 10) }}%"
+                                ></div>
+                            @endif
+                        </div>
+                        <span class="w-6 text-end font-semibold tabular-nums">{{ (int) $reason->value }}</span>
                     </dd>
                 </div>
             @endforeach

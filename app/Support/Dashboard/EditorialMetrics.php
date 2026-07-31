@@ -20,6 +20,11 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
+use LaravelDaily\FilaWidgets\Data\BreakdownItemData;
+use LaravelDaily\FilaWidgets\Data\CompletionRateWidgetData;
+use LaravelDaily\FilaWidgets\Data\HeatmapCalendarWidgetData;
+use LaravelDaily\FilaWidgets\Data\ProgressWidgetData;
+use LaravelDaily\FilaWidgets\Data\SparklineTableRowData;
 
 /**
  * The single source of truth for every number on the dashboard: any figure
@@ -42,9 +47,14 @@ class EditorialMetrics
     private array $knownPodcasts = [];
 
     /**
+     * Two tiers, never merged: `gap` is what the public cannot see at all, and
+     * `attention` is what the public can see but is incomplete. An episode in
+     * `attention` may well be visible, so no copy may call it invisible.
+     *
      * @return array{
      *     funnel: array{draft: int, published: int, transcribed: int, visible: int},
-     *     blockers: array{missing_transcription: int, missing_media: int, missing_category: int, total: int},
+     *     gap: array{invisible: int, missing_transcription: int, unpublished_group: int},
+     *     attention: array{total: int, missing_media: int, missing_category: int},
      *     structure: array{items: int, groups: int, authors: int, categories: int, tags_enabled: int, tags_disabled: int, pinned: int, multi_transcription: int},
      *     generated_at: string
      * }
@@ -62,11 +72,15 @@ class EditorialMetrics
                     ->count(),
                 'visible' => $this->visible($contentGroupId)->count(),
             ],
-            'blockers' => [
+            'gap' => [
+                'invisible' => $this->invisibleQuery($contentGroupId)->count(),
                 'missing_transcription' => $this->missingTranscription($contentGroupId)->count(),
+                'unpublished_group' => $this->unpublishedGroup($contentGroupId)->count(),
+            ],
+            'attention' => [
+                'total' => $this->attentionQuery($contentGroupId)->count(),
                 'missing_media' => $this->missingMedia($contentGroupId)->count(),
                 'missing_category' => $this->missingCategory($contentGroupId)->count(),
-                'total' => $this->blockedQuery($contentGroupId)->count(),
             ],
             'structure' => [
                 'items' => $this->scoped(ContentItem::query(), $contentGroupId)->count(),
@@ -94,39 +108,66 @@ class EditorialMetrics
     }
 
     /**
-     * Daily movement through each funnel stage, aligned to the range's
-     * Jerusalem day keys. Draft counts episodes added, published counts
+     * Daily movement through each funnel stage as filawidgets rows, aligned to
+     * the range's Jerusalem day keys. `value`/`previousValue` are period
+     * movement, not stock — the stock count comes from the snapshot, so a row
+     * never mixes the two. Draft counts episodes added, published counts
      * publication dates, transcribed counts transcripts published, and visible
      * counts publication dates of episodes the public can currently see.
      *
-     * @return array{draft: array<int, int>, published: array<int, int>, transcribed: array<int, int>, visible: array<int, int>}
+     * @return array<string, SparklineTableRowData>
      */
     public function funnelSeries(DashboardRange $range, ?int $contentGroupId = null): array
     {
-        return [
-            'draft' => array_values($this->dailyMap($this->scoped(ContentItem::query(), $contentGroupId), 'created_at', $range)),
-            'published' => array_values($this->publicationsPerDay($range, $contentGroupId)),
-            'transcribed' => array_values($this->dailyMap($this->publishedTranscriptions($contentGroupId), 'published_at', $range)),
-            'visible' => array_values($this->dailyMap($this->visible($contentGroupId), 'published_at', $range)),
+        $sources = [
+            'draft' => [$this->scoped(ContentItem::query(), $contentGroupId), 'created_at'],
+            'published' => [$this->statusPublished($contentGroupId), 'published_at'],
+            'transcribed' => [$this->publishedTranscriptions($contentGroupId), 'published_at'],
+            'visible' => [$this->visible($contentGroupId), 'published_at'],
         ];
+
+        [$previousStart, $previousEnd] = $range->previousPeriod();
+        $rows = [];
+
+        foreach ($sources as $stage => [$query, $column]) {
+            $series = JerusalemDailySeries::values($query, $column, $range);
+
+            $rows[$stage] = new SparklineTableRowData(
+                label: __("admin.dashboard.legend.{$stage}"),
+                value: array_sum($series),
+                previousValue: JerusalemDailySeries::total($query, $column, $previousStart, $previousEnd),
+                sparkline: $series,
+                format: 'number',
+                precision: 0,
+            );
+        }
+
+        return $rows;
     }
 
     /**
      * The same publication flow the funnel's published segment reports, laid
-     * out as a calendar.
-     *
-     * @return array<string, int>
+     * out as a calendar. Each entry carries the day's own stream doorway.
      */
-    public function publicationHeatmap(DashboardRange $range, ?int $contentGroupId = null): array
+    public function publicationHeatmap(DashboardRange $range, ?int $contentGroupId = null): HeatmapCalendarWidgetData
     {
-        return $this->publicationsPerDay($range, $contentGroupId);
+        $entries = $this->publicationsPerDay($range, $contentGroupId);
+
+        return new HeatmapCalendarWidgetData(
+            entries: $entries,
+            description: __('admin.dashboard.heatmap.description', ['count' => array_sum($entries)]),
+        );
     }
 
     /**
      * Per-podcast publication health: how much of what a podcast published is
      * actually visible, and how much is stuck.
      *
-     * @return array<int, array{id: int, label: string, total: int, visible: int, blocked: int, percent: int, url: string}>
+     * `value` is what the public can see and `previousValue` is what the
+     * podcast published in total, so a filawidgets row reads as "visible out of
+     * published" rather than as a period delta.
+     *
+     * @return array<int, BreakdownItemData>
      */
     public function podcastHealth(?int $contentGroupId = null, int $limit = 6): array
     {
@@ -136,23 +177,26 @@ class EditorialMetrics
         return ContentGroup::query()
             ->whereKey($totals->keys())
             ->get(['id', 'title'])
-            ->map(function (ContentGroup $group) use ($totals, $visible): array {
+            ->map(function (ContentGroup $group) use ($totals, $visible): BreakdownItemData {
                 $total = (int) $totals->get($group->getKey(), 0);
                 $visibleCount = (int) $visible->get($group->getKey(), 0);
+                $percent = $total > 0 ? (int) round(($visibleCount / $total) * 100) : 0;
 
-                return [
-                    'id' => $group->getKey(),
-                    'label' => (string) $group->title,
-                    'total' => $total,
-                    'visible' => $visibleCount,
-                    'blocked' => $total - $visibleCount,
-                    'percent' => $total > 0 ? (int) round(($visibleCount / $total) * 100) : 0,
-                    'url' => ContentItemResource::getUrl('index', [
-                        'tableFilters' => ['content_group_id' => ['value' => $group->getKey()]],
+                return new BreakdownItemData(
+                    label: (string) $group->title,
+                    value: (float) $visibleCount,
+                    previousValue: (float) $total,
+                    color: match (true) {
+                        $percent >= 100 => 'success',
+                        $percent >= 75 => 'warning',
+                        default => 'danger',
+                    },
+                    url: ContentItemResource::getUrl('index', [
+                        'filters' => ['content_group_id' => ['value' => $group->getKey()]],
                     ]),
-                ];
+                );
             })
-            ->sortByDesc('total')
+            ->sortByDesc(fn (BreakdownItemData $item): float => $item->previousValue ?? 0)
             ->take($limit)
             ->values()
             ->all();
@@ -164,7 +208,7 @@ class EditorialMetrics
      * A multi-transcriber transcript counts in full for each of its
      * transcribers.
      *
-     * @return array<int, array{id: int, label: string, transcriptions: int, words: int, previous: int, url: string}>
+     * @return array<int, array{item: BreakdownItemData, words: int}>
      */
     public function transcriberBoard(DashboardRange $range, ?int $contentGroupId = null, int $limit = 6): array
     {
@@ -176,16 +220,19 @@ class EditorialMetrics
 
         return $current
             ->map(fn (array $row, int $authorId): array => [
-                'id' => $authorId,
-                'label' => $row['label'],
-                'transcriptions' => $row['transcriptions'],
+                // Words ride alongside: BreakdownItemData has no field for a
+                // second measure, and dropping it would lose a spec number.
                 'words' => $row['words'],
-                'previous' => (int) ($previous[$authorId]['transcriptions'] ?? 0),
-                'url' => TranscriptionResource::getUrl('index', [
-                    'tableFilters' => ['transcriber_id' => ['value' => $authorId]],
-                ]),
+                'item' => new BreakdownItemData(
+                    label: $row['label'],
+                    value: (float) $row['transcriptions'],
+                    previousValue: (float) ($previous[$authorId]['transcriptions'] ?? 0),
+                    url: TranscriptionResource::getUrl('index', [
+                        'filters' => ['transcriber_id' => ['value' => $authorId]],
+                    ]),
+                ),
             ])
-            ->sortByDesc('transcriptions')
+            ->sortByDesc(fn (array $row): float => $row['item']->value)
             ->take($limit)
             ->values()
             ->all();
@@ -227,19 +274,88 @@ class EditorialMetrics
     }
 
     /**
-     * H7's finish line: how many blocked episodes remain out of everything
-     * that is status-published.
+     * H7's finish lines, one per tier, as filawidgets progress data. Both
+     * counts come from the cached snapshot, so the second bar costs no queries.
+     * Only the invisible tier carries a projection: transcripts have a
+     * `published_at` to pace from, while the category pivot has no timestamps
+     * at all, so a needs-attention forecast could not be honest.
      *
-     * @return array{remaining: int, total: int}
+     * @return array{invisible: array{remaining: int, total: int, forecast: ?Carbon, data: ProgressWidgetData}, attention: array{remaining: int, total: int, data: ProgressWidgetData}}
      */
     public function blockersProgress(?int $contentGroupId = null): array
     {
         $snapshot = $this->snapshot($contentGroupId);
+        $total = $snapshot['funnel']['published'];
+        $invisible = $snapshot['gap']['invisible'];
+        $attention = $snapshot['attention']['total'];
+        $forecast = $this->clearanceForecast($contentGroupId);
 
         return [
-            'remaining' => $snapshot['blockers']['total'],
-            'total' => $snapshot['funnel']['published'],
+            'invisible' => [
+                'remaining' => $invisible,
+                'total' => $total,
+                'forecast' => $forecast,
+                'data' => new ProgressWidgetData(
+                    currentValue: (float) max(0, $total - $invisible),
+                    goalValue: (float) $total,
+                    projectionLabel: $forecast?->timezone(self::TIMEZONE)->format('d/m/Y'),
+                    description: __('admin.dashboard.queue.burndown_invisible', ['remaining' => $invisible, 'total' => $total]),
+                ),
+            ],
+            'attention' => [
+                'remaining' => $attention,
+                'total' => $total,
+                'data' => new ProgressWidgetData(
+                    currentValue: (float) max(0, $total - $attention),
+                    goalValue: (float) $total,
+                    description: __('admin.dashboard.queue.burndown_attention', ['remaining' => $attention, 'total' => $total]),
+                ),
+            ],
         ];
+    }
+
+    /**
+     * The gap and needs-attention reason bars as filawidgets breakdown items,
+     * each carrying the queue doorway filtered to that reason.
+     *
+     * @return array{gap: array<int, BreakdownItemData>, attention: array<int, BreakdownItemData>}
+     */
+    public function reasonBreakdown(?int $contentGroupId = null): array
+    {
+        $snapshot = $this->snapshot($contentGroupId);
+
+        $item = fn (string $reason, int $count, string $color): BreakdownItemData => new BreakdownItemData(
+            label: __("admin.dashboard.reasons.{$reason}"),
+            value: (float) $count,
+            color: $color,
+            url: ContentItemResource::getUrl('index', [
+                'filters' => ['content_group_id' => ['value' => $contentGroupId]],
+            ]),
+        );
+
+        return [
+            'gap' => [
+                $item('missing_transcription', $snapshot['gap']['missing_transcription'], 'danger'),
+                $item('unpublished_group', $snapshot['gap']['unpublished_group'], 'danger'),
+            ],
+            'attention' => [
+                $item('missing_media', $snapshot['attention']['missing_media'], 'warning'),
+                $item('missing_category', $snapshot['attention']['missing_category'], 'violet'),
+            ],
+        ];
+    }
+
+    /** H2's coverage gauge: how much of what is published the public can see. */
+    public function visibilityRate(?int $contentGroupId = null): CompletionRateWidgetData
+    {
+        $snapshot = $this->snapshot($contentGroupId);
+        $published = $snapshot['funnel']['published'];
+
+        return new CompletionRateWidgetData(
+            value: $published > 0 ? round(($snapshot['funnel']['visible'] / $published) * 100, 1) : 0.0,
+            description: __('admin.dashboard.gap.rate_description'),
+            isEmpty: $published === 0,
+        );
     }
 
     /** @return array<int, string> */
@@ -263,18 +379,49 @@ class EditorialMetrics
     }
 
     /**
-     * Status-published items carrying at least one publication blocker —
-     * the queue population behind the blockers lens.
+     * Status-published items the public cannot see at all — exactly
+     * status-published minus visible, resolved into two reasons.
      *
      * @return Builder<ContentItem>
      */
-    public function blockedQuery(?int $contentGroupId = null): Builder
+    public function invisibleQuery(?int $contentGroupId = null): Builder
     {
         return $this->statusPublished($contentGroupId)->where(function (Builder $query): void {
             $query
                 ->whereDoesntHave('transcriptions', fn (Builder $inner): Builder => $inner->published())
+                ->orWhereDoesntHave('contentGroup', fn (Builder $inner): Builder => $inner->published());
+        });
+    }
+
+    /**
+     * Status-published items that are incomplete but not therefore invisible —
+     * the public may well be seeing these already.
+     *
+     * @return Builder<ContentItem>
+     */
+    public function attentionQuery(?int $contentGroupId = null): Builder
+    {
+        return $this->statusPublished($contentGroupId)->where(function (Builder $query): void {
+            $query
+                ->where(fn (Builder $inner): Builder => $this->applyMissingMedia($inner))
+                ->orWhere(fn (Builder $inner): Builder => $this->applyMissingCategory($inner));
+        });
+    }
+
+    /**
+     * Everything either tier wants worked on — the queue population. Rows carry
+     * their own reasons, so the queue stays one list across both tiers.
+     *
+     * @return Builder<ContentItem>
+     */
+    public function queueQuery(?int $contentGroupId = null): Builder
+    {
+        return $this->statusPublished($contentGroupId)->where(function (Builder $query): void {
+            $query
+                ->whereDoesntHave('transcriptions', fn (Builder $inner): Builder => $inner->published())
+                ->orWhereDoesntHave('contentGroup', fn (Builder $inner): Builder => $inner->published())
                 ->orWhere(fn (Builder $inner): Builder => $this->applyMissingMedia($inner))
-                ->orWhere(fn (Builder $inner) => $this->applyMissingCategory($inner));
+                ->orWhere(fn (Builder $inner): Builder => $this->applyMissingCategory($inner));
         });
     }
 
@@ -285,6 +432,12 @@ class EditorialMetrics
 
         if (! $item->transcriptions()->published()->exists()) {
             $reasons[] = 'missing_transcription';
+        }
+
+        // `ContentItem::scopePublished()` requires a published group, so an
+        // otherwise complete episode under a draft podcast is invisible too.
+        if ($item->contentGroup === null || ! $item->contentGroup->newQuery()->published()->whereKey($item->content_group_id)->exists()) {
+            $reasons[] = 'unpublished_group';
         }
 
         if (blank($item->embed_url) && blank($item->media_url)) {
@@ -300,7 +453,7 @@ class EditorialMetrics
 
     public function clearanceForecast(?int $contentGroupId = null): ?Carbon
     {
-        $remaining = $this->snapshot($contentGroupId)['blockers']['missing_transcription'];
+        $remaining = $this->snapshot($contentGroupId)['gap']['missing_transcription'];
 
         if ($remaining < 1) {
             return null;
@@ -328,6 +481,7 @@ class EditorialMetrics
     {
         return match ($reason) {
             'missing_transcription' => $query->whereDoesntHave('transcriptions', fn (Builder $inner): Builder => $inner->published()),
+            'unpublished_group' => $query->whereDoesntHave('contentGroup', fn (Builder $inner): Builder => $inner->published()),
             'missing_media' => $this->applyMissingMedia($query),
             'missing_category' => $this->applyMissingCategory($query),
             default => $query,
@@ -378,34 +532,7 @@ class EditorialMetrics
     /** @return array<string, int> */
     private function publicationsPerDay(DashboardRange $range, ?int $contentGroupId): array
     {
-        return $this->dailyMap($this->statusPublished($contentGroupId), 'published_at', $range);
-    }
-
-    /**
-     * Zero-filled Jerusalem-day counts. Bucketing happens in PHP so the day
-     * boundaries stay Jerusalem walls on both MySQL and SQLite, and stay
-     * correct across daylight-saving shifts.
-     *
-     * @param  Builder<covariant \Illuminate\Database\Eloquent\Model>  $query
-     * @return array<string, int>
-     */
-    private function dailyMap(Builder $query, string $column, DashboardRange $range): array
-    {
-        [$start, $end] = $range->currentPeriod();
-        $buckets = array_fill_keys($range->dayKeys(), 0);
-
-        (clone $query)
-            ->whereBetween($column, [$start, $end])
-            ->pluck($column)
-            ->each(function ($value) use (&$buckets): void {
-                $day = Carbon::parse($value)->timezone(self::TIMEZONE)->format('Y-m-d');
-
-                if (array_key_exists($day, $buckets)) {
-                    $buckets[$day]++;
-                }
-            });
-
-        return $buckets;
+        return JerusalemDailySeries::map($this->statusPublished($contentGroupId), 'published_at', $range);
     }
 
     /**
@@ -455,19 +582,37 @@ class EditorialMetrics
         return blank($type) || $type === $candidate;
     }
 
+    /**
+     * Synthesis rule 1 in practice: a legend chip narrows the flow widgets to
+     * the event kind that stage is made of. Stock widgets keep their totals,
+     * because a total scoped to one of its own segments means nothing.
+     */
+    public static function streamTypeForStatus(?string $status): ?string
+    {
+        return match ($status) {
+            'transcribed', 'visible' => 'transcription',
+            default => null,
+        };
+    }
+
     /** @return Collection<int, array{type: string, title: string, subtitle: ?string, url: ?string, at: Carbon}> */
     private function transcriptionEvents(\DateTimeInterface $start, \DateTimeInterface $end, ?int $contentGroupId, int $limit): Collection
     {
         return $this->publishedTranscriptions($contentGroupId)
             ->whereBetween('published_at', [$start, $end])
-            ->with('contentItem:id,title')
+            ->with(['contentItem:id,title,status,content_group_id', 'contentItem.contentGroup:id,title'])
             ->latest('published_at')
             ->limit($limit)
             ->get(['id', 'content_item_id', 'published_at'])
             ->map(fn (Transcription $transcription): array => [
                 'type' => 'transcription',
                 'title' => (string) ($transcription->contentItem?->title ?? ''),
-                'subtitle' => null,
+                // The RecentPublishedItems columns the honesty audit promised
+                // this stream would carry: podcast and episode status.
+                'subtitle' => collect([
+                    $transcription->contentItem?->contentGroup?->title,
+                    $transcription->contentItem?->status?->getLabel(),
+                ])->filter()->implode(' · ') ?: null,
                 'url' => $transcription->content_item_id
                     ? ContentItemResource::getUrl('workspace', ['record' => $transcription->content_item_id])
                     : null,
@@ -543,6 +688,13 @@ class EditorialMetrics
     {
         return $this->statusPublished($contentGroupId)
             ->whereDoesntHave('transcriptions', fn (Builder $query): Builder => $query->published());
+    }
+
+    /** @return Builder<ContentItem> */
+    private function unpublishedGroup(?int $contentGroupId = null): Builder
+    {
+        return $this->statusPublished($contentGroupId)
+            ->whereDoesntHave('contentGroup', fn (Builder $query): Builder => $query->published());
     }
 
     /** @return Builder<ContentItem> */

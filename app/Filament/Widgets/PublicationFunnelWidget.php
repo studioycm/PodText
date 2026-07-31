@@ -4,6 +4,7 @@ namespace App\Filament\Widgets;
 
 use App\Enums\DashboardLens;
 use App\Filament\Resources\ContentItems\ContentItemResource;
+use App\Filament\Widgets\Concerns\AdminOnlyWidget;
 use App\Filament\Widgets\Concerns\ReadsDashboardFilters;
 use App\Support\Dashboard\EditorialMetrics;
 use Filament\Widgets\Concerns\InteractsWithPageFilters;
@@ -16,6 +17,7 @@ use Filament\Widgets\Widget;
  */
 class PublicationFunnelWidget extends Widget
 {
+    use AdminOnlyWidget;
     use InteractsWithPageFilters;
     use ReadsDashboardFilters;
 
@@ -57,9 +59,14 @@ class PublicationFunnelWidget extends Widget
         $stages = [];
 
         foreach ($bars as $stage => $barClass) {
+            $row = $series[$stage];
+            $delta = $row->value - ($row->previousValue ?? 0.0);
+
             $stages[$stage] = [
                 'count' => $snapshot['funnel'][$stage],
-                'series' => $series[$stage],
+                'row' => $row,
+                'series' => $row->sparkline,
+                'delta' => (int) $delta,
                 'bar' => $barClass,
                 'active' => $active === $stage,
                 'url' => ContentItemResource::getUrl('index', $this->scopedTableFilters(
@@ -73,7 +80,9 @@ class PublicationFunnelWidget extends Widget
         return [
             'stages' => $stages,
             'total' => max(1, array_sum(array_column($stages, 'count'))),
-            'gap' => $snapshot['funnel']['published'] - $snapshot['funnel']['visible'],
+            // The gap is exactly status-published minus visible: the invisible
+            // tier, never the needs-attention one.
+            'gap' => $snapshot['gap']['invisible'],
         ];
     }
 }

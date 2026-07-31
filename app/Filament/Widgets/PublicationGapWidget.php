@@ -2,6 +2,7 @@
 
 namespace App\Filament\Widgets;
 
+use App\Filament\Widgets\Concerns\AdminOnlyWidget;
 use App\Filament\Widgets\Concerns\ReadsDashboardFilters;
 use App\Support\Dashboard\EditorialMetrics;
 use Filament\Widgets\Concerns\InteractsWithPageFilters;
@@ -9,6 +10,7 @@ use Filament\Widgets\Widget;
 
 class PublicationGapWidget extends Widget
 {
+    use AdminOnlyWidget;
     use InteractsWithPageFilters;
     use ReadsDashboardFilters;
 
@@ -27,15 +29,17 @@ class PublicationGapWidget extends Widget
         $podcastId = $this->dashboardPodcastId();
         $snapshot = $metrics->snapshot($podcastId);
         $forecast = $metrics->clearanceForecast($podcastId);
+        $breakdown = $metrics->reasonBreakdown($podcastId);
 
         return [
             'visible' => $snapshot['funnel']['visible'],
-            'blocked' => $snapshot['blockers']['total'],
-            'reasons' => [
-                'missing_transcription' => ['count' => $snapshot['blockers']['missing_transcription'], 'color' => 'danger'],
-                'missing_media' => ['count' => $snapshot['blockers']['missing_media'], 'color' => 'warning'],
-                'missing_category' => ['count' => $snapshot['blockers']['missing_category'], 'color' => 'info'],
-            ],
+            'invisible' => $snapshot['gap']['invisible'],
+            'attention' => $snapshot['attention']['total'],
+            'rate' => $metrics->visibilityRate($podcastId),
+            // H2's two questions: how much is missing, and why — now split so a
+            // needs-attention episode is never described as invisible.
+            'gapReasons' => $breakdown['gap'],
+            'attentionReasons' => $breakdown['attention'],
             'forecast' => $forecast?->timezone('Asia/Jerusalem')->format('d/m/Y'),
         ];
     }

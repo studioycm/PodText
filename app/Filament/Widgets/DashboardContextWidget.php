@@ -3,6 +3,7 @@
 namespace App\Filament\Widgets;
 
 use App\Enums\DashboardLens;
+use App\Filament\Widgets\Concerns\AdminOnlyWidget;
 use App\Filament\Widgets\Concerns\ReadsDashboardFilters;
 use App\Models\ContentGroup;
 use App\Support\Dashboard\EditorialMetrics;
@@ -12,6 +13,7 @@ use Illuminate\Support\Carbon;
 
 class DashboardContextWidget extends Widget
 {
+    use AdminOnlyWidget;
     use InteractsWithPageFilters;
     use ReadsDashboardFilters;
 

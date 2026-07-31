@@ -3,6 +3,7 @@
 namespace App\Filament\Widgets;
 
 use App\Filament\Resources\ContentItems\ContentItemResource;
+use App\Filament\Widgets\Concerns\AdminOnlyWidget;
 use App\Filament\Widgets\Concerns\ReadsDashboardFilters;
 use App\Models\ContentItem;
 use App\Support\Dashboard\EditorialMetrics;
@@ -18,6 +19,7 @@ use Illuminate\Support\HtmlString;
 
 class BlockersQueueWidget extends TableWidget
 {
+    use AdminOnlyWidget;
     use InteractsWithPageFilters;
     use ReadsDashboardFilters;
 
@@ -41,7 +43,7 @@ class BlockersQueueWidget extends TableWidget
             ->description(fn (): HtmlString => $this->burnDown())
             ->query(
                 $metrics
-                    ->blockedQuery($podcastId)
+                    ->queueQuery($podcastId)
                     ->with(['contentGroup.categories', 'categories'])
                     ->latest('content_items.published_at'),
             )
@@ -75,6 +77,7 @@ class BlockersQueueWidget extends TableWidget
                     ->label(__('admin.dashboard.queue.reasons'))
                     ->options([
                         'missing_transcription' => __('admin.dashboard.reasons.missing_transcription'),
+                        'unpublished_group' => __('admin.dashboard.reasons.unpublished_group'),
                         'missing_media' => __('admin.dashboard.reasons.missing_media'),
                         'missing_category' => __('admin.dashboard.reasons.missing_category'),
                     ])
@@ -90,17 +93,18 @@ class BlockersQueueWidget extends TableWidget
             ]);
     }
 
-    /** H7 · the burn-down bar and clearance forecast in the queue header. */
+    /**
+     * H7 · one burn-down bar per tier. Both counts come from the cached
+     * snapshot, so the second bar adds no queries; only the invisible tier
+     * carries a forecast, because the category pivot has no timestamps to pace
+     * needs-attention work from.
+     */
     private function burnDown(): HtmlString
     {
-        $metrics = app(EditorialMetrics::class);
-        $podcastId = $this->dashboardPodcastId();
-        $progress = $metrics->blockersProgress($podcastId);
+        $progress = app(EditorialMetrics::class)->blockersProgress($this->dashboardPodcastId());
 
         return new HtmlString(view('filament.widgets.partials.queue-burndown', [
-            'remaining' => $progress['remaining'],
-            'total' => $progress['total'],
-            'forecast' => $metrics->clearanceForecast($podcastId)?->timezone('Asia/Jerusalem')->format('d/m/Y'),
+            'tiers' => $progress,
         ])->render());
     }
 }

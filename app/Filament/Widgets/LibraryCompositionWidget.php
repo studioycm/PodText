@@ -7,6 +7,7 @@ use App\Filament\Resources\Categories\CategoryResource;
 use App\Filament\Resources\ContentGroups\ContentGroupResource;
 use App\Filament\Resources\ContentItems\ContentItemResource;
 use App\Filament\Resources\ContentTags\ContentTagResource;
+use App\Filament\Widgets\Concerns\AdminOnlyWidget;
 use App\Filament\Widgets\Concerns\ReadsDashboardFilters;
 use App\Support\Dashboard\EditorialMetrics;
 use Filament\Widgets\Concerns\InteractsWithPageFilters;
@@ -20,6 +21,7 @@ use Filament\Widgets\Widget;
  */
 class LibraryCompositionWidget extends Widget
 {
+    use AdminOnlyWidget;
     use InteractsWithPageFilters;
     use ReadsDashboardFilters;
 

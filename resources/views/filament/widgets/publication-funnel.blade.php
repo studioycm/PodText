@@ -43,6 +43,18 @@
                         ])
                     </div>
 
+                    <p class="text-xs text-gray-500 dark:text-gray-400">
+                        {{ __('admin.dashboard.funnel.movement', ['count' => (int) $data['row']->value]) }}
+                        <span
+                            @class([
+                                'font-medium tabular-nums',
+                                'text-success-600 dark:text-success-400' => $data['delta'] > 0,
+                                'text-danger-600 dark:text-danger-400' => $data['delta'] < 0,
+                            ])
+                            dir="ltr"
+                        >{{ $data['delta'] > 0 ? '+' : '' }}{{ $data['delta'] }}</span>
+                    </p>
+
                     <button
                         type="button"
                         wire:click="selectStage('{{ $stage }}')"

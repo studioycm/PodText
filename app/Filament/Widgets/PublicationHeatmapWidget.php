@@ -2,6 +2,7 @@
 
 namespace App\Filament\Widgets;
 
+use App\Filament\Widgets\Concerns\AdminOnlyWidget;
 use App\Filament\Widgets\Concerns\ReadsDashboardFilters;
 use App\Support\Dashboard\EditorialMetrics;
 use Filament\Widgets\Concerns\InteractsWithPageFilters;
@@ -15,6 +16,7 @@ use Illuminate\Support\Carbon;
  */
 class PublicationHeatmapWidget extends Widget
 {
+    use AdminOnlyWidget;
     use InteractsWithPageFilters;
     use ReadsDashboardFilters;
 
@@ -38,9 +40,10 @@ class PublicationHeatmapWidget extends Widget
     /** @return array<string, mixed> */
     protected function getViewData(): array
     {
-        $days = app(EditorialMetrics::class)
+        $data = app(EditorialMetrics::class)
             ->publicationHeatmap($this->dashboardRange(), $this->dashboardPodcastId());
 
+        $days = $data->entries;
         $peak = max(1, ...array_values($days));
 
         return [
@@ -54,6 +57,7 @@ class PublicationHeatmapWidget extends Widget
                 ->values()
                 ->all(),
             'selectedDay' => $this->selectedDay,
+            'description' => $data->description,
             'total' => array_sum($days),
         ];
     }

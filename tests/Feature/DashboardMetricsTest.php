@@ -79,10 +79,12 @@ it('computes funnel and blocker counts from one source of truth', function (): v
         ->and($metrics['funnel']['published'])->toBe(2)
         ->and($metrics['funnel']['transcribed'])->toBe(1)
         ->and($metrics['funnel']['visible'])->toBe(1)
-        ->and($metrics['blockers']['missing_transcription'])->toBe(1)
-        ->and($metrics['blockers']['missing_media'])->toBe(1)
-        ->and($metrics['blockers']['missing_category'])->toBe(1)
-        ->and($metrics['blockers']['total'])->toBe(1);
+        ->and($metrics['gap']['invisible'])->toBe(1)
+        ->and($metrics['gap']['missing_transcription'])->toBe(1)
+        ->and($metrics['gap']['unpublished_group'])->toBe(0)
+        ->and($metrics['attention']['missing_media'])->toBe(1)
+        ->and($metrics['attention']['missing_category'])->toBe(1)
+        ->and($metrics['attention']['total'])->toBe(1);
 });
 
 it('lists blocked published items in the queue with the visible item absent', function (): void {

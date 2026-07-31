@@ -4,6 +4,7 @@ namespace App\Filament\Widgets;
 
 use App\Enums\DashboardLens;
 use App\Filament\Resources\ContentItems\ContentItemResource;
+use App\Filament\Widgets\Concerns\AdminOnlyWidget;
 use App\Filament\Widgets\Concerns\ReadsDashboardFilters;
 use App\Support\Dashboard\EditorialMetrics;
 use Filament\Widgets\Concerns\InteractsWithPageFilters;
@@ -16,6 +17,7 @@ use Filament\Widgets\Widget;
  */
 class EditorialStatsWidget extends Widget
 {
+    use AdminOnlyWidget;
     use InteractsWithPageFilters;
     use ReadsDashboardFilters;
 
@@ -37,12 +39,13 @@ class EditorialStatsWidget extends Widget
     {
         $snapshot = app(EditorialMetrics::class)->snapshot($this->dashboardPodcastId());
         $funnel = $snapshot['funnel'];
-        $blockers = $snapshot['blockers'];
+        $gap = $snapshot['gap'];
+        $attention = $snapshot['attention'];
         $structure = $snapshot['structure'];
 
         $items = $structure['items'];
         $visible = $funnel['visible'];
-        $notVisible = max(0, $funnel['published'] - $visible);
+        $notVisible = $gap['invisible'];
         $rest = max(0, $items - $visible);
 
         return [
@@ -68,14 +71,24 @@ class EditorialStatsWidget extends Widget
                         ['key' => 'other', 'value' => $rest, 'bar' => 'bg-gray-200 dark:bg-white/10'],
                     ],
                 ],
+                // Two tiers, never merged: invisible is what the public cannot
+                // see; needs-attention episodes may well be visible already.
                 [
-                    'key' => 'blocked',
-                    'value' => $blockers['total'],
+                    'key' => 'invisible',
+                    'value' => $gap['invisible'],
                     'action' => 'openBlockers',
                     'segments' => [
-                        ['key' => 'missing_transcription', 'value' => $blockers['missing_transcription'], 'bar' => 'bg-danger-500'],
-                        ['key' => 'missing_media', 'value' => $blockers['missing_media'], 'bar' => 'bg-warning-500'],
-                        ['key' => 'missing_category', 'value' => $blockers['missing_category'], 'bar' => 'bg-info-500'],
+                        ['key' => 'missing_transcription', 'value' => $gap['missing_transcription'], 'bar' => 'bg-danger-500'],
+                        ['key' => 'unpublished_group', 'value' => $gap['unpublished_group'], 'bar' => 'bg-danger-400'],
+                    ],
+                ],
+                [
+                    'key' => 'attention',
+                    'value' => $attention['total'],
+                    'action' => 'openBlockers',
+                    'segments' => [
+                        ['key' => 'missing_media', 'value' => $attention['missing_media'], 'bar' => 'bg-warning-500'],
+                        ['key' => 'missing_category', 'value' => $attention['missing_category'], 'bar' => 'bg-violet-500'],
                     ],
                 ],
                 [

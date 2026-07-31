@@ -7,9 +7,7 @@
             @include('filament.widgets.partials.stock-flow-tag', ['flow' => true])
         </div>
 
-        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-            {{ __('admin.dashboard.heatmap.description', ['count' => $total]) }}
-        </p>
+        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ $description }}</p>
 
         {{-- Time axis runs left to right inside the RTL board. --}}
         <div class="mt-4 flex flex-wrap gap-1" dir="ltr">

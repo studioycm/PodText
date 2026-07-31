@@ -71,7 +71,7 @@
                             dir="ltr"
                             datetime="{{ $event['at']->toIso8601String() }}"
                         >
-                            {{ $event['at']->copy()->timezone('Asia/Jerusalem')->format('d/m H:i') }}
+                            {{ $event['at']->copy()->timezone('Asia/Jerusalem')->format('d/m/Y H:i') }}
                         </time>
                     </li>
                 @endforeach
