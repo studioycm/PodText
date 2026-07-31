@@ -3,6 +3,7 @@
 namespace App\Support\Dashboard;
 
 use App\Enums\DashboardRange;
+use App\Enums\DashboardReason;
 use App\Enums\PublicationStatus;
 use App\Filament\Resources\ContentItems\ContentItemResource;
 use App\Filament\Resources\PublicFormSubmissions\PublicFormSubmissionResource;
@@ -365,25 +366,24 @@ class EditorialMetrics
     public function reasonBreakdown(?int $contentGroupId = null): array
     {
         $snapshot = $this->snapshot($contentGroupId);
+        $counts = $snapshot['gap'] + $snapshot['attention'];
 
-        $item = fn (string $reason, int $count, string $color): BreakdownRow => new BreakdownRow(
-            label: __("admin.dashboard.reasons.{$reason}"),
-            value: (float) $count,
-            color: $color,
-            url: ContentItemResource::getUrl('index', [
-                'filters' => ['content_group_id' => ['value' => $contentGroupId]],
-            ]),
+        $rows = fn (array $reasons): array => array_map(
+            fn (DashboardReason $reason): BreakdownRow => new BreakdownRow(
+                label: $reason->getLabel(),
+                value: (float) ($counts[$reason->value] ?? 0),
+                color: $reason->getColor(),
+                url: ContentItemResource::getUrl('index', [
+                    'filters' => ['content_group_id' => ['value' => $contentGroupId]],
+                ]),
+                meta: ['bar' => $reason->barClass()],
+            ),
+            $reasons,
         );
 
         return [
-            'gap' => [
-                $item('missing_transcription', $snapshot['gap']['missing_transcription'], 'danger'),
-                $item('unpublished_group', $snapshot['gap']['unpublished_group'], 'danger'),
-            ],
-            'attention' => [
-                $item('missing_media', $snapshot['attention']['missing_media'], 'warning'),
-                $item('missing_category', $snapshot['attention']['missing_category'], 'violet'),
-            ],
+            'gap' => $rows(DashboardReason::gap()),
+            'attention' => $rows(DashboardReason::attention()),
         ];
     }
 

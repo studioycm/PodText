@@ -3,6 +3,7 @@
 namespace App\Filament\Widgets;
 
 use App\Enums\DashboardLens;
+use App\Enums\FunnelStage;
 use App\Filament\Resources\ContentItems\ContentItemResource;
 use App\Filament\Widgets\Concerns\AdminOnlyWidget;
 use App\Filament\Widgets\Concerns\ReadsDashboardFilters;
@@ -51,27 +52,22 @@ class PublicationFunnelWidget extends Widget
         $series = $metrics->funnelSeries($this->dashboardRange(), $podcastId);
         $active = $this->dashboardStatus();
 
-        $bars = [
-            'draft' => 'bg-gray-400 dark:bg-gray-500',
-            'published' => 'bg-info-500',
-            'transcribed' => 'bg-primary-500',
-            'visible' => 'bg-success-500',
-        ];
-
         $stages = [];
 
-        foreach ($bars as $stage => $barClass) {
-            $row = $series[$stage];
+        foreach (FunnelStage::cases() as $stage) {
+            $row = $series[$stage->value];
 
-            $stages[$stage] = [
-                'count' => $snapshot['funnel'][$stage],
+            $stages[$stage->value] = [
+                'stage' => $stage,
+                'count' => $snapshot['funnel'][$stage->value],
                 'row' => $row,
                 'series' => $row->points,
                 'delta' => $row->delta(),
-                'bar' => $barClass,
-                'active' => $active === $stage,
+                'bar' => $stage->barClass(),
+                'stroke' => $stage->strokeClass(),
+                'active' => $active === $stage->value,
                 'url' => ContentItemResource::getUrl('index', $this->scopedTableFilters(
-                    $stage === 'draft'
+                    $stage === FunnelStage::Draft
                         ? ['status' => ['value' => 'draft']]
                         : ['status' => ['value' => 'published']],
                 )),

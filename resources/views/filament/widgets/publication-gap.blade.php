@@ -1,12 +1,3 @@
-@php
-    $barColour = fn (?string $color): string => match ($color) {
-        'danger' => 'bg-danger-500',
-        'warning' => 'bg-warning-500',
-        'violet' => 'bg-violet-500',
-        default => 'bg-info-500',
-    };
-@endphp
-
 <x-filament-widgets::widget>
     <x-filament::section>
         <div class="flex items-center justify-between gap-3">
@@ -56,7 +47,7 @@
                         <div class="h-2.5 flex-1 overflow-hidden rounded-full bg-gray-100 dark:bg-white/5" dir="ltr">
                             @if ($reason->value > 0)
                                 <div
-                                    class="{{ $barColour($reason->color) }} h-2.5 rounded-full"
+                                    class="{{ $reason->meta('bar', 'bg-info-500') }} h-2.5 rounded-full"
                                     style="width: {{ min(100, $reason->value * 10) }}%"
                                 ></div>
                             @endif
@@ -82,7 +73,7 @@
                         <div class="h-2.5 flex-1 overflow-hidden rounded-full bg-gray-100 dark:bg-white/5" dir="ltr">
                             @if ($reason->value > 0)
                                 <div
-                                    class="{{ $barColour($reason->color) }} h-2.5 rounded-full"
+                                    class="{{ $reason->meta('bar', 'bg-info-500') }} h-2.5 rounded-full"
                                     style="width: {{ min(100, $reason->value * 10) }}%"
                                 ></div>
                             @endif

@@ -3,6 +3,7 @@
 namespace App\Filament\Widgets;
 
 use App\Enums\DashboardLens;
+use App\Enums\FunnelStage;
 use App\Filament\Widgets\Concerns\AdminOnlyWidget;
 use App\Filament\Widgets\Concerns\ReadsDashboardFilters;
 use App\Filament\Widgets\Concerns\ShowsLoadingSkeleton;
@@ -48,12 +49,7 @@ class DashboardContextWidget extends Widget
             'podcast' => $podcastId === null
                 ? null
                 : ContentGroup::query()->whereKey($podcastId)->value('title'),
-            'chipClasses' => [
-                'draft' => 'border border-gray-300 text-gray-600 dark:border-white/10 dark:text-gray-300',
-                'published' => 'bg-info-50 text-info-700 dark:bg-info-500/10 dark:text-info-300',
-                'transcribed' => 'bg-primary-50 text-primary-700 dark:bg-primary-500/10 dark:text-primary-300',
-                'visible' => 'bg-success-50 text-success-700 dark:bg-success-500/10 dark:text-success-300',
-            ],
+            'stages' => FunnelStage::cases(),
             'generatedAt' => Carbon::parse($metrics['generated_at'])
                 ->timezone('Asia/Jerusalem')
                 ->format('H:i'),

@@ -3,18 +3,18 @@
         <div class="flex flex-wrap items-center gap-2 text-xs font-medium">
             <span class="text-gray-500 dark:text-gray-400">{{ __('admin.dashboard.context.legend') }}</span>
 
-            @foreach ($chipClasses as $stage => $classes)
+            @foreach ($stages as $stage)
                 <button
                     type="button"
-                    wire:click="selectStatus('{{ $stage }}')"
+                    wire:click="selectStatus('{{ $stage->value }}')"
                     @class([
                         'rounded-full px-2.5 py-0.5',
-                        $classes,
-                        'ring-primary-600 dark:ring-primary-400 ring-2' => $status === $stage,
+                        $stage->chipClass(),
+                        'ring-primary-600 dark:ring-primary-400 ring-2' => $status === $stage->value,
                     ])
-                    data-testid="legend-chip-{{ $stage }}"
+                    data-testid="legend-chip-{{ $stage->value }}"
                 >
-                    ● {{ __("admin.dashboard.legend.{$stage}") }} {{ $funnel[$stage] }}
+                    ● {{ $stage->getLabel() }} {{ $funnel[$stage->value] }}
                 </button>
             @endforeach
         </div>
@@ -26,7 +26,7 @@
             @endif
             · {{ $podcast ?? __('admin.dashboard.filters.all_podcasts') }}
             @if ($status)
-                · {{ __('admin.dashboard.context.status_scope', ['status' => __("admin.dashboard.legend.{$status}")]) }}
+                · {{ __('admin.dashboard.context.status_scope', ['status' => \App\Enums\FunnelStage::from($status)->getLabel()]) }}
             @endif
             · {{ __('admin.dashboard.context.as_of', ['time' => $generatedAt]) }}
         </p>

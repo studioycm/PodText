@@ -2,6 +2,7 @@
 
 namespace App\Filament\Widgets;
 
+use App\Enums\DashboardReason;
 use App\Filament\Resources\ContentItems\ContentItemResource;
 use App\Filament\Widgets\Concerns\AdminOnlyWidget;
 use App\Filament\Widgets\Concerns\ReadsDashboardFilters;
@@ -64,12 +65,9 @@ class BlockersQueueWidget extends TableWidget
                     ->label(__('admin.dashboard.queue.reasons'))
                     ->badge()
                     ->state(fn (ContentItem $record): array => app(EditorialMetrics::class)->blockerReasonsFor($record))
-                    ->formatStateUsing(fn (string $state): string => __("admin.dashboard.reasons.{$state}"))
-                    ->color(fn (string $state): string => match ($state) {
-                        'missing_transcription' => 'danger',
-                        'missing_media' => 'warning',
-                        default => 'info',
-                    }),
+                    ->formatStateUsing(fn (string $state): string => DashboardReason::from($state)->getLabel())
+                    ->color(fn (string $state): string => DashboardReason::from($state)->getColor())
+                    ->icon(fn (string $state): Heroicon => DashboardReason::from($state)->getIcon()),
                 TextColumn::make('published_at')
                     ->label(__('admin.fields.published_at'))
                     ->dateTime('d/m/Y H:i', 'Asia/Jerusalem'),
@@ -77,12 +75,7 @@ class BlockersQueueWidget extends TableWidget
             ->filters([
                 SelectFilter::make('reason')
                     ->label(__('admin.dashboard.queue.reasons'))
-                    ->options([
-                        'missing_transcription' => __('admin.dashboard.reasons.missing_transcription'),
-                        'unpublished_group' => __('admin.dashboard.reasons.unpublished_group'),
-                        'missing_media' => __('admin.dashboard.reasons.missing_media'),
-                        'missing_category' => __('admin.dashboard.reasons.missing_category'),
-                    ])
+                    ->options(DashboardReason::options())
                     ->query(fn (Builder $query, array $data): Builder => filled($data['value'] ?? null)
                         ? app(EditorialMetrics::class)->applyReason($query, $data['value'])
                         : $query),

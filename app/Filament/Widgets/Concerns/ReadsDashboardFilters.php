@@ -3,6 +3,7 @@
 namespace App\Filament\Widgets\Concerns;
 
 use App\Enums\DashboardRange;
+use App\Enums\FunnelStage;
 use App\Support\Dashboard\EditorialMetrics;
 use Filament\Widgets\Concerns\InteractsWithPageFilters;
 
@@ -17,9 +18,6 @@ use Filament\Widgets\Concerns\InteractsWithPageFilters;
  */
 trait ReadsDashboardFilters
 {
-    /** The four funnel stages a legend chip may focus the board on. */
-    private const STATUSES = ['draft', 'published', 'transcribed', 'visible'];
-
     protected function dashboardRange(): DashboardRange
     {
         // tryFrom() falls back to the default for anything unrecognised.
@@ -45,7 +43,7 @@ trait ReadsDashboardFilters
     {
         $status = $this->pageFilters['status'] ?? null;
 
-        return in_array($status, self::STATUSES, strict: true) ? $status : null;
+        return in_array($status, FunnelStage::values(), strict: true) ? $status : null;
     }
 
     /**

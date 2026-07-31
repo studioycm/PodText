@@ -334,3 +334,68 @@ because phase 2 extends no filawidgets widget class and imports nothing from
 `EditorialMetrics`'s own cache key, already namespaced per podcast scope
 (`dashboard:editorial-metrics:v2:{id|all}`); the other metric methods are
 uncached, so there is no second key surface to collide.
+
+### Follow-up pass: chart rendering, formatting and trend colour
+
+Run before the Prompt 13 chart-polish and formatter work, after filawidgets was
+removed. Two sources: the FilamentExamples MCP, and the package's own source
+read from the MIT-licensed release still in composer's cache
+(`LaravelDaily/FilaWidgets` @ `59bc019`). MIT means its techniques may be
+adapted directly with attribution rather than reimplemented blind.
+
+**Queries run:** `svg chart in blade widget`, `enum with label and color
+contract`, `alpine tooltip hover widget` (limit 1); earlier passes covered the
+filawidgets dashboard project itself.
+
+#### Finding 1 — filawidgets ships no JavaScript at all
+
+Five Blade views, 784 lines, **zero** `.js`, `.css`, `x-data`, `x-tooltip` or
+`x-on:`. Its charts are static server-rendered SVG and CSS bars. There is no
+"package-grade interactivity" to acquire — the premise that it had some was
+wrong, and PodText's own SVG partial already uses the same `<polyline>`
+technique (and adds `vector-effect="non-scaling-stroke"`, which the package
+lacks).
+
+#### Finding 2 — three real improvements to copy (option A)
+
+- **min/max normalisation.** The package maps `y` over `range = max - min` with
+  a 2px padding inset. PodText normalises against the peak only, so a series
+  like `[8, 9, 10]` renders almost flat when it should show a clear slope. This
+  is the single biggest visual win available.
+- **Trend-coloured stroke.** `WidgetMetricCalculator::comparison()` returns a
+  `trend` of `up`/`down`/`neutral`, and the view maps it to stroke classes, with
+  per-threshold-colour variants. `SeriesRow::delta()` already gives PodText the
+  trend; only the colour map is missing.
+- **Dashed-border empty state** and `x-filament::link` with
+  `heroicon-m-arrow-top-right-on-square` for doorways — panel-native styling we
+  currently hand-roll with plain `<a>`.
+
+#### Finding 3 — `Illuminate\Support\Number`, not `number_format()`
+
+`WidgetValueFormatter` wraps Laravel's `Number` helper, which is locale-aware —
+relevant for a Hebrew panel where PodText currently calls `number_format()`
+directly in Blade. `formatSignedPercentage()` shows the sign convention worth
+centralising (`Number::format(abs($v), maxPrecision: 1)` plus an explicit sign).
+
+#### Finding 4 — "group other" bucketing
+
+`WidgetMetricCalculator::breakdown()` supports `limit` + `groupOther`, rolling
+the tail into a single "Other" row. PodText's `podcastHealth()`/
+`transcriberBoard()` just `take($limit)` and silently drop the tail — which the
+tooling guideline's "no silent caps" rule argues against. Worth adopting.
+
+#### Finding 5 — Filament already bundles Chart.js (for option B/C later)
+
+`vendor/filament/widgets/dist/components/chart.js`, ~280 KB, lazy-loaded via
+`x-load` / `x-load-src="{{ FilamentAsset::getAlpineComponentSrc('chart', 'filament/widgets') }}"`,
+with `wire:ignore` on the wrapper and `x-ref` colour probe elements
+(`backgroundColorElement`, `borderColorElement`, `gridColorElement`,
+`textColorElement`) so CSS-derived theme colours reach Chart.js. Source:
+`v4/full-projects/dashboard-visitor-analytics`. Genuinely interactive charts
+therefore cost **no new dependency** — but a `ChartWidget` is a different base
+class from our own-Blade-views widgets, and Chart.js assumes LTR. Recorded for
+when a chart earns it; not adopted now.
+
+- Use now/later: findings 2–4 now; finding 5 later
+- Implementation prompt references: 13
+- Confidence: high (primary source read directly)

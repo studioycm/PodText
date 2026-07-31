@@ -3,6 +3,8 @@
 namespace App\Filament\Widgets;
 
 use App\Enums\DashboardLens;
+use App\Enums\DashboardReason;
+use App\Enums\FunnelStage;
 use App\Filament\Resources\ContentItems\ContentItemResource;
 use App\Filament\Widgets\Concerns\AdminOnlyWidget;
 use App\Filament\Widgets\Concerns\ReadsDashboardFilters;
@@ -57,9 +59,11 @@ class EditorialStatsWidget extends Widget
                     'value' => $items,
                     'url' => ContentItemResource::getUrl('index', $this->scopedTableFilters()),
                     'segments' => [
-                        ['key' => 'visible', 'value' => $visible, 'bar' => 'bg-success-500'],
-                        ['key' => 'blocked', 'value' => $notVisible, 'bar' => 'bg-warning-500'],
-                        ['key' => 'draft', 'value' => $funnel['draft'], 'bar' => 'bg-gray-400 dark:bg-gray-500'],
+                        ['key' => 'visible', 'value' => $visible, 'bar' => FunnelStage::Visible->barClass()],
+                        // Same number as the funnel's gap, so the same colour:
+                        // the invisible tier is danger, never warning.
+                        ['key' => 'blocked', 'value' => $notVisible, 'bar' => DashboardReason::MissingTranscription->barClass()],
+                        ['key' => 'draft', 'value' => $funnel['draft'], 'bar' => FunnelStage::Draft->barClass()],
                     ],
                 ],
                 [
@@ -69,7 +73,7 @@ class EditorialStatsWidget extends Widget
                         'status' => ['value' => 'published'],
                     ])),
                     'segments' => [
-                        ['key' => 'visible', 'value' => $visible, 'bar' => 'bg-success-500'],
+                        ['key' => 'visible', 'value' => $visible, 'bar' => FunnelStage::Visible->barClass()],
                         ['key' => 'other', 'value' => $rest, 'bar' => 'bg-gray-200 dark:bg-white/10'],
                     ],
                 ],
@@ -80,8 +84,8 @@ class EditorialStatsWidget extends Widget
                     'value' => $gap['invisible'],
                     'action' => 'openBlockers',
                     'segments' => [
-                        ['key' => 'missing_transcription', 'value' => $gap['missing_transcription'], 'bar' => 'bg-danger-500'],
-                        ['key' => 'unpublished_group', 'value' => $gap['unpublished_group'], 'bar' => 'bg-danger-400'],
+                        ['key' => 'missing_transcription', 'value' => $gap['missing_transcription'], 'bar' => DashboardReason::MissingTranscription->barClass()],
+                        ['key' => 'unpublished_group', 'value' => $gap['unpublished_group'], 'bar' => DashboardReason::UnpublishedGroup->barClass()],
                     ],
                 ],
                 [
@@ -89,8 +93,8 @@ class EditorialStatsWidget extends Widget
                     'value' => $attention['total'],
                     'action' => 'openBlockers',
                     'segments' => [
-                        ['key' => 'missing_media', 'value' => $attention['missing_media'], 'bar' => 'bg-warning-500'],
-                        ['key' => 'missing_category', 'value' => $attention['missing_category'], 'bar' => 'bg-violet-500'],
+                        ['key' => 'missing_media', 'value' => $attention['missing_media'], 'bar' => DashboardReason::MissingMedia->barClass()],
+                        ['key' => 'missing_category', 'value' => $attention['missing_category'], 'bar' => DashboardReason::MissingCategory->barClass()],
                     ],
                 ],
                 [
