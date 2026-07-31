@@ -222,7 +222,7 @@ it('uses spotify oembed reduced fallback when no credentials are selected', func
         ->assertSet('usedReducedMode', true)
         ->assertSet('rows.0.status', 'reduced')
         ->assertSet('rows.0.title', 'Reduced episode title')
-        ->assertSee(__('admin.spotify_fetcher.reduced_mode_label'));
+        ->assertSee(__('admin.spotify_fetcher.reduced_banner.title'));
 });
 
 it('isolates per row spotify errors and continues fetching later rows', function (): void {

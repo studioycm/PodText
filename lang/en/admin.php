@@ -2200,7 +2200,10 @@ return [
         'placeholders' => [
             'no_image' => 'No image',
         ],
-        'reduced_mode_label' => 'Reduced mode is active. Rows use public oEmbed plus static OpenGraph metadata.',
+        'reduced_banner' => [
+            'title' => 'Reduced mode was used for this fetch',
+            'body' => 'Some or all rows were fetched without Spotify API credentials, using public oEmbed and static OpenGraph metadata only. Descriptions, durations, and dates may be partial. Select a connected Spotify connection and fetch again for full API data.',
+        ],
         'reduced_reason' => 'Fetched through Spotify public oEmbed without API credentials.',
         'sections' => [
             'input' => 'Input',

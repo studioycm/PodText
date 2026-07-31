@@ -27,6 +27,7 @@ class MediaAcquisitionManager
         private readonly SafeExternalImageFetcher $externalFetcher,
         private readonly StorageImageCandidateBrowser $storageCandidates,
         private readonly CuratorImageUploadPolicy $policy,
+        private readonly MediaImageMetadataStripper $metadataStripper,
     ) {}
 
     /** @param array<string, mixed> $metadata */
@@ -203,6 +204,7 @@ class MediaAcquisitionManager
     /** @param array<string, mixed> $metadata */
     private function admitNewFile(ValidatedImage $image, User $actor, array $metadata): Media
     {
+        $image = $this->metadataStripper->stripForAdmission($image);
         $path = $this->namer->destination($image);
         $stored = Storage::disk('public')->put($path, $image->contents, ['visibility' => 'public']);
 

@@ -39,7 +39,7 @@ function acquisitionFixture(string $name = 'valid.jpg.base64'): string
         ?: throw new RuntimeException("Invalid fixture [{$name}].");
 }
 
-it('admits preserved bytes and creates the curator asset kernel atomically', function (): void {
+it('admits pixel-preserved bytes with admission metadata stripped and creates the curator asset kernel atomically', function (): void {
     $actor = User::factory()->admin()->create();
     $source = acquisitionFixture();
 
@@ -62,7 +62,13 @@ it('admits preserved bytes and creates the curator asset kernel atomically', fun
         ->and(MediaProviderBinding::query()->count())->toBe(1);
 
     Storage::disk('public')->assertExists($media->path);
-    expect(Storage::disk('public')->get($media->path))->toBe($source);
+
+    $stored = Storage::disk('public')->get($media->path);
+
+    expect(substr($stored, (int) strpos($stored, "\xFF\xDA")))
+        ->toBe(substr($source, (int) strpos($source, "\xFF\xDA")))
+        ->and($stored)->not->toContain('CREATOR: gd-jpeg')
+        ->and($media->size)->toBe(strlen($stored));
 });
 
 it('supports cleaned original collision safe naming without losing original metadata', function (): void {
@@ -435,12 +441,16 @@ it('copies public images input and sanitized public SVG without changing either 
         $actor,
     );
 
+    $copiedRaster = (string) Storage::disk('public')->get($privateMedia->media->path);
+
     expect($privateMedia->disposition)->toBe(MediaAcquisitionDisposition::Copied)
         ->and($svgMedia->disposition)->toBe(MediaAcquisitionDisposition::Copied)
         ->and($privateMedia->media->path)->toStartWith('content-groups/covers/')
         ->and($svgMedia->media->path)->toStartWith('content-groups/covers/')
         ->and($svgMedia->media->path)->not->toBe('media-imports/public.svg')
-        ->and(Storage::disk('public')->get($privateMedia->media->path))->toBe($raster)
+        ->and(substr($copiedRaster, (int) strpos($copiedRaster, "\xFF\xDA")))
+        ->toBe(substr($raster, (int) strpos($raster, "\xFF\xDA")))
+        ->and($copiedRaster)->not->toContain('CREATOR: gd-jpeg')
         ->and(Storage::disk('public')->get($svgMedia->media->path))->toContain('<svg');
     Storage::disk('public_assets')->assertExists('images/private.jpg');
     Storage::disk('public')->assertExists('media-imports/public.svg');

@@ -105,25 +105,32 @@
             </div>
         </x-filament::section>
 
-        @if($warnings !== [] || $usedReducedMode)
+        @if($usedReducedMode)
+            <div
+                data-spotify-reduced-banner
+                role="status"
+                class="rounded-xl border-2 border-warning-400 bg-warning-50 p-4 dark:border-warning-500/50 dark:bg-warning-500/10"
+            >
+                <p class="text-base font-bold text-warning-800 dark:text-warning-200">
+                    {{ __('admin.spotify_fetcher.reduced_banner.title') }}
+                </p>
+                <p class="mt-1 text-sm text-warning-700 dark:text-warning-300">
+                    {{ __('admin.spotify_fetcher.reduced_banner.body') }}
+                </p>
+            </div>
+        @endif
+
+        @if($warnings !== [])
             <x-filament::section>
                 <x-slot name="heading">
                     {{ __('admin.spotify_fetcher.sections.warnings') }}
                 </x-slot>
 
-                @if($usedReducedMode)
-                    <p class="text-sm font-medium text-warning-700 dark:text-warning-300">
-                        {{ __('admin.spotify_fetcher.reduced_mode_label') }}
-                    </p>
-                @endif
-
-                @if($warnings !== [])
-                    <ul class="mt-3 list-inside list-disc space-y-1 text-sm text-warning-800 dark:text-warning-200">
-                        @foreach($warnings as $warning)
-                            <li>{{ $warning }}</li>
-                        @endforeach
-                    </ul>
-                @endif
+                <ul class="list-inside list-disc space-y-1 text-sm text-warning-800 dark:text-warning-200">
+                    @foreach($warnings as $warning)
+                        <li>{{ $warning }}</li>
+                    @endforeach
+                </ul>
             </x-filament::section>
         @endif
 

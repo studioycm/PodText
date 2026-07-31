@@ -1343,7 +1343,11 @@ it('clamps the heavy upload warning threshold and informs without blocking on cr
         ->assertHasNoFormErrors()
         ->assertNotified(__('admin.media_library.upload_heavy_notice_title'));
 
-    expect(Media::query()->where('size', strlen($heavyBytes))->exists())->toBeTrue();
+    $media = Media::query()->latest('id')->first();
+
+    expect($media)->not->toBeNull()
+        ->and($media->size)->toBeGreaterThan(64 * 1024)
+        ->and($media->size)->toBeLessThanOrEqual(strlen($heavyBytes));
 });
 
 it('sorts the gallery by title and by stored filename', function (): void {

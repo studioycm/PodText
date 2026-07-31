@@ -2200,7 +2200,10 @@ return [
         'placeholders' => [
             'no_image' => 'אין תמונה',
         ],
-        'reduced_mode_label' => 'מצב מצומצם פעיל. השורות משתמשות ב-oEmbed ציבורי ובנתוני OpenGraph סטטיים.',
+        'reduced_banner' => [
+            'title' => 'השליפה בוצעה במצב מצומצם',
+            'body' => 'חלק מהשורות או כולן נשלפו ללא הרשאות Spotify API, באמצעות oEmbed ציבורי ונתוני OpenGraph סטטיים בלבד. ייתכן שתיאורים, משכים ותאריכים יהיו חלקיים. בחרו חיבור Spotify מחובר ושלפו שוב לקבלת נתוני API מלאים.',
+        ],
         'reduced_reason' => 'נשלף דרך oEmbed הציבורי של Spotify ללא פרטי גישה ל-API.',
         'sections' => [
             'input' => 'קלט',

@@ -136,6 +136,28 @@ it('returns null for failed or unsafe opengraph fetches and tolerates malformed 
         ->and($client->fetch('https://open.spotify.com/episode/malformedfix1')['title'])->toBe('Malformed OG');
 });
 
+it('renders an unmissable banner when any fetch used reduced mode', function (): void {
+    $this->actingAs(User::factory()->create());
+    Http::preventStrayRequests();
+    Http::fake([
+        'https://open.spotify.com/oembed*' => Http::response(fetch1Fixture('oembed-reduced.json'), 200, [
+            'Content-Type' => 'application/json',
+        ]),
+        'https://open.spotify.com/episode/reduced11111' => Http::response(fetch1Fixture('episode-head.html'), 200, [
+            'Content-Type' => 'text/html; charset=utf-8',
+        ]),
+    ]);
+
+    Livewire::test(SpotifyLinksFetcher::class)
+        ->assertDontSeeHtml('data-spotify-reduced-banner')
+        ->set('linksInput', 'https://open.spotify.com/episode/reduced11111')
+        ->call('fetch')
+        ->assertSet('usedReducedMode', true)
+        ->assertSeeHtml('data-spotify-reduced-banner')
+        ->assertSee(__('admin.spotify_fetcher.reduced_banner.title'))
+        ->assertSee(__('admin.spotify_fetcher.reduced_banner.body'));
+});
+
 it('merges reduced mode oembed and opengraph data per field and renders image previews', function (): void {
     $this->actingAs(User::factory()->create());
     Http::preventStrayRequests();

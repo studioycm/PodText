@@ -127,6 +127,48 @@ phases, so `3B P1–P5` and `3C P5–P8` mean phase five of those mini-tasks. Ba
 
 ## Git State
 
+- RECON2 R1 (post-Storage-Truth reconciliation, first phase, 2026-07-31) fixes
+  the two real bugs the RECON2 audit surfaced plus the Spotify reduced-mode
+  indication. **B1 `word_count`:** `Transcription` now derives `word_count` on
+  save through the shared `App\Support\Transcriptions\TranscriptWordCounter`
+  (the public viewer's proven definition, which the viewer now reuses as its
+  fallback); an explicitly provided value still wins, so factories, seeds and
+  deliberate imports keep their numbers, and editing the transcript body
+  recomputes a stale stored count. `php artisan
+  transcriptions:backfill-word-counts` repairs existing null rows without
+  touching timestamps. Public cards and podcast headers therefore stop
+  advertising zero words for admin- and import-created transcripts.
+  **B2 EXIF:** new-file media admission strips embedded metadata at byte level
+  with no pixel re-encode via `App\Support\Media\MediaImageMetadataStripper`
+  inside `MediaAcquisitionManager::admitNewFile` — JPEG APP1 (EXIF/GPS/XMP),
+  APP13 (IPTC) and COM segments; PNG tEXt/zTXt/iTXt/eXIf/tIME chunks; WebP
+  EXIF/XMP chunks with VP8X flags cleared. Upload, batch upload, picker bytes,
+  storage-candidate copy and external fetch all converge on that choke point;
+  display orientation survives through a minimal orientation-only EXIF payload;
+  the recorded hash/size are taken from the stripped bytes so journal
+  invariants stay consistent; the register-in-place Storage path intentionally
+  keeps existing disk bytes verbatim. MI-R044 was amended with a dated note in
+  `docs/research/media-program/00-media-program-requirements-decisions-and-method.md`,
+  and the acquisition tests' byte-verbatim assertions were deliberately amended
+  to pixel-verbatim-plus-metadata-strip. **Spotify reduced mode:** the Links
+  Fetcher now renders an unmissable warning banner
+  (`data-spotify-reduced-banner`) whenever any row used reduced mode — both
+  the no-connection case and silent per-row API fallback — replacing the
+  single line inside the warnings list; verifying the actual production
+  connection state remains operator-only. Tests:
+  `tests/Feature/TranscriptionWordCountTest.php`,
+  `tests/Feature/MediaAdmissionMetadataStripTest.php`, and the banner test in
+  `tests/Feature/SpotifyFetcherFetch1Test.php`. Gate: feature tests fully
+  green across the 1410-test full run (its 21 failures were browser-only and
+  attributable to a concurrent `npm run build` swapping hashed assets under
+  the live browser-test server mid-run — do not rebuild assets while browser
+  tests run); the browser suite re-run on stable assets passes 47/47,
+  including the picker test that flaked on the pre-edit baseline. Pint clean,
+  FilaCheck 0 issues, `npm run build` green. An unrelated concurrent
+  `.env.example` documentation overhaul appeared in the working tree
+  mid-phase (mtime 05:07); it is not part of RECON2 R1 and was left
+  uncommitted for its author.
+
 - Storage Truth P1 (managed relocation engine and surfaces) is complete
   locally under dossier `LS-20260729-PODTEXT-MEDIA-OPS-UX3-P5-01`,
   operator approval «approve all p5» with decisions D1=b+a (admin batch

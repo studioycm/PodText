@@ -10,6 +10,7 @@ use App\Support\PublicContent\PublicTranscriptionPolicy;
 use App\Support\PublicContent\PublicTranscriptionSelector;
 use App\Support\PublicFront\ItemPage\PublicItemPageRegistry;
 use App\Support\PublicFront\PublicFrontRenderContext;
+use App\Support\Transcriptions\TranscriptWordCounter;
 use App\Support\Transcripts\TranscriptSegmentParser;
 use Carbon\CarbonInterface;
 use Illuminate\Contracts\View\View;
@@ -113,17 +114,7 @@ class ContentItemTranscriptViewer extends Component
             return $transcription->word_count;
         }
 
-        $plainText = str((string) $transcription->transcript_markdown)
-            ->stripTags()
-            ->replaceMatches('/[\\[\\]()`*_#>:-]+/u', ' ')
-            ->squish()
-            ->toString();
-
-        if ($plainText === '') {
-            return 0;
-        }
-
-        return count(preg_split('/\s+/u', $plainText, flags: PREG_SPLIT_NO_EMPTY) ?: []);
+        return app(TranscriptWordCounter::class)->count($transcription->transcript_markdown);
     }
 
     protected function showActionsMenu(): bool
