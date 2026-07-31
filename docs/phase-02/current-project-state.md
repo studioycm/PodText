@@ -127,6 +127,21 @@ phases, so `3B P1–P5` and `3C P5–P8` mean phase five of those mini-tasks. Ba
 
 ## Git State
 
+- RECON2 R3 (FU06 copy cleanup, 2026-07-31) closes
+  `STEP5B-CARD-UX2-FU06-COPY-CLEANUP`: the twelve stale helper strings that
+  described live Card Template renderer behavior as "future renderers" (or as
+  still riding "the compatibility renderer") now state the present truth in
+  both locales — `card_template_layout`, `card_template_density`,
+  `card_template_image_size`, `card_template_title_size`,
+  `card_template_part_layout` and `card_template_part_visible` in
+  `lang/en/admin.php` and `lang/he/admin.php` — and the four provably dead
+  `card_template_part_order` keys (field label + helper, both locales, zero
+  code references) are deleted. `tests/Feature/CardTemplateCopyTruthTest.php`
+  pins the contract: those six helpers resolve in both locales without
+  future-renderer copy, and the dead keys stay retired. Gate: full suite 1421
+  tests / 18,796 assertions fully green including browser, pint clean,
+  FilaCheck 0 issues, no asset build needed (helper strings are server-side).
+
 - RECON2 R2 (quarantine retention, 2026-07-31) adds
   `php artisan media:prune-quarantine` — dry-run by default with `--apply` and
   `--days=`, matching the `media:repair-mutations` shape. It prunes **only**
