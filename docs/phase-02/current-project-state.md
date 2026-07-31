@@ -127,6 +127,32 @@ phases, so `3B P1–P5` and `3C P5–P8` mean phase five of those mini-tasks. Ba
 
 ## Git State
 
+- RECON2 R6 (P3 + P2, 2026-07-31) closes the reconciliation plan. **P2 scope
+  settled first, per the operator's tripwire instruction:** the ledger
+  (`docs/phase-02/back-log-triage-2026-07-13.md`) now pins P2 to the PHP-lazy
+  reading — Livewire-lazy/deferred option loading is out of P2's scope, the
+  drawer stays server-rendered inside `x-show`, and `MAINT-LW-UX1` (which has
+  never run) must still run before the SL2/SL4 slider arc. **P3 (executed
+  first — smaller blast radius, no tripwire):** `Transcription` now persists
+  `parsed_segments` on save through the same explicit-value-wins hook that
+  derives `word_count` (factories/imports that set the column keep it; body
+  edits re-derive), the public viewer renders persisted segments and only
+  falls back to `TranscriptSegmentParser` for never-derived rows — proven by
+  a tamper test that could not pass if the viewer re-parsed per view — and
+  `php artisan transcriptions:backfill-parsed-segments` repairs existing null
+  rows without touching timestamps, as the word-count sibling does. The
+  word-count half of P3 was already delivered by RECON2 R1. **P2:** the five
+  public search filter option lists (categories, tags, groups, transcribers,
+  providers — the last two being the expensive aggregate/ranking queries) are
+  served from a one-minute bounded cache keyed by kind and locale, so every
+  debounced keystroke stops paying for them; no Livewire lazy/deferred
+  mechanics were introduced. Deeper "bound listing fetch windows / opt-in
+  aggregates" sub-items of the original P2 row remain open under that row —
+  not silently claimed. Tests: `tests/Feature/TranscriptDerivedStateTest.php`
+  (persistence, explicit-wins, no-reparse tamper proof, backfill, cache).
+  Gate: full suite 1458 tests / 18,914 assertions fully green including all
+  browser tests, pint clean, FilaCheck 0 issues, no asset changes.
+
 - RECON2 R5 (reason-specific resolutions, 2026-07-31) implements the five M4
   Group A rulings the operator settled on 2026-07-31, extending Issue Review
   from one repairable reason (`unsanitized_svg`) to five. **Structured

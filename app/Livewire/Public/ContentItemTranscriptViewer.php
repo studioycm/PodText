@@ -51,7 +51,9 @@ class ContentItemTranscriptViewer extends Component
                 ? $this->transcriptDetails($selectedTranscription, $readingMinutes, $wordCount)
                 : null,
             'readingMinutes' => $readingMinutes,
-            'segments' => $selectedTranscription ? $parser->parse($selectedTranscription->transcript_markdown) : [],
+            'segments' => $selectedTranscription
+                ? ($selectedTranscription->parsed_segments ?? $parser->parse($selectedTranscription->transcript_markdown))
+                : [],
             'showActionsMenu' => $this->showActionsMenu(),
             'transcriptions' => $transcriptions,
             'wordCount' => $wordCount,

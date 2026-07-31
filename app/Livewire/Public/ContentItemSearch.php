@@ -23,6 +23,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
 use Livewire\Attributes\Url;
 use Livewire\Component;
@@ -285,15 +286,33 @@ class ContentItemSearch extends Component
     }
 
     /**
+     * The five filter option lists are rebuilt on every debounced search
+     * render otherwise; a one-minute bounded cache is the P2 "PHP-lazy"
+     * reading — no Livewire lazy/deferred loading (the MAINT-LW-UX1
+     * tripwire stays untripped).
+     *
+     * @param  \Closure(): array<int|string, string>  $builder
+     * @return array<int|string, string>
+     */
+    private function cachedFilterOptions(string $kind, \Closure $builder): array
+    {
+        return Cache::remember(
+            'public-search:filter-options:'.$kind.':'.app()->getLocale(),
+            now()->addMinute(),
+            $builder,
+        );
+    }
+
+    /**
      * @return array<int, string>
      */
     public function categoryOptions(): array
     {
-        return Category::query()
+        return $this->cachedFilterOptions('category', fn (): array => Category::query()
             ->visible()
             ->orderBy('name')
             ->pluck('name', 'id')
-            ->all();
+            ->all());
     }
 
     /**
@@ -301,13 +320,13 @@ class ContentItemSearch extends Component
      */
     public function tagOptions(): array
     {
-        return ContentTag::query()
+        return $this->cachedFilterOptions('tag', fn (): array => ContentTag::query()
             ->content()
             ->enabled()
             ->orderBy('name')
             ->get()
             ->mapWithKeys(fn (ContentTag $tag): array => [$tag->getKey() => (string) $tag->name])
-            ->all();
+            ->all());
     }
 
     /**
@@ -315,11 +334,11 @@ class ContentItemSearch extends Component
      */
     public function contentGroupOptions(): array
     {
-        return ContentGroup::query()
+        return $this->cachedFilterOptions('content_group', fn (): array => ContentGroup::query()
             ->published()
             ->orderBy('title')
             ->pluck('title', 'id')
-            ->all();
+            ->all());
     }
 
     /**
@@ -327,7 +346,7 @@ class ContentItemSearch extends Component
      */
     public function transcriberOptions(): array
     {
-        return PublicContributorDiscovery::transcriberOptions();
+        return $this->cachedFilterOptions('transcriber', fn (): array => PublicContributorDiscovery::transcriberOptions());
     }
 
     /**
@@ -335,12 +354,12 @@ class ContentItemSearch extends Component
      */
     public function providerOptions(): array
     {
-        return $this->basePublicQuery()
+        return $this->cachedFilterOptions('provider', fn (): array => $this->basePublicQuery()
             ->whereNotNull('embed_provider')
             ->distinct()
             ->orderBy('embed_provider')
             ->pluck('embed_provider', 'embed_provider')
-            ->all();
+            ->all());
     }
 
     /**

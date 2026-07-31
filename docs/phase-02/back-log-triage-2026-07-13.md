@@ -21,6 +21,20 @@ Prompt 13), DEFER-POST-13, WAITING-ON-YONI, CLOSED.
 
 **Recommended road to 13:** SP2 → FETCH1 → P2 → P3 → (9F-mini if approved) → Prompt 13.
 
+**P2 scope settled 2026-07-31 (RECON2 R6, per the operator's tripwire
+instruction):** P2's "lazy filter options" means **PHP-lazy** — memoize/cache
+the option builders so they resolve once per request instead of on every
+debounced render. Livewire-lazy or deferred option loading (`#[Lazy]`,
+`wire:init`, fetch-on-drawer-open) is **out of P2's scope**: the filter drawer
+is server-rendered inside `x-show`, so options ride the first payload
+regardless, and the client-lazy reading would trip the `MAINT-LW-UX1`
+tripwire ("run before any later public Livewire navigation/polling/lazy/
+deferred/stream/upload expansion"), which has never run. `MAINT-LW-UX1` must
+still run before the SL2/SL4 slider arc, which trips it unambiguously.
+**Execution order note:** P3 shipped first (smaller blast radius, no
+tripwire, and it contained the real `word_count` bug RECON2 R1 fixed);
+nothing technical couples P2 → P3.
+
 ## B. WB track (content machine)
 
 | Item | Status | Verdict |

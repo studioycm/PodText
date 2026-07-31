@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Enums\PublicationStatus;
 use App\Support\Transcriptions\SingleTranscriptionLens;
 use App\Support\Transcriptions\TranscriptWordCounter;
+use App\Support\Transcripts\TranscriptSegmentParser;
 use Database\Factories\TranscriptionFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
@@ -211,15 +212,15 @@ class Transcription extends Model
         });
 
         static::saving(function (Transcription $transcription): void {
-            if ($transcription->isDirty('word_count')) {
-                return;
+            $bodyIsFresh = ! $transcription->exists || $transcription->isDirty('transcript_markdown');
+
+            if ($bodyIsFresh && ! $transcription->isDirty('word_count')) {
+                $transcription->word_count = app(TranscriptWordCounter::class)->count($transcription->transcript_markdown);
             }
 
-            if ($transcription->exists && ! $transcription->isDirty('transcript_markdown')) {
-                return;
+            if ($bodyIsFresh && ! $transcription->isDirty('parsed_segments')) {
+                $transcription->parsed_segments = app(TranscriptSegmentParser::class)->parse($transcription->transcript_markdown);
             }
-
-            $transcription->word_count = app(TranscriptWordCounter::class)->count($transcription->transcript_markdown);
         });
 
         static::saved(function (Transcription $transcription): void {
