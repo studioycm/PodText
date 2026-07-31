@@ -35,6 +35,15 @@ still run before the SL2/SL4 slider arc, which trips it unambiguously.
 tripwire, and it contained the real `word_count` bug RECON2 R1 fixed);
 nothing technical couples P2 → P3.
 
+**Road updated 2026-07-31 (operator decisions, recorded same day):** the
+pre-13 queue is EMPTY — SP2, FETCH1, P2 and P3 have all shipped. The road is
+now: **Prompt 13 next, with nothing before it** → **FETCH2** (a second
+fetcher round; scope defined at its kickoff — the one inherited candidate is
+`MUX3-F022`, the Spotify show-artwork admission choice/receipt partial) →
+**9F-mini footer** (approved, but explicitly after 13) → the standing
+post-13 queue. This is Path A in effect: launch-first, content through the
+workspace/fetcher, WB machinery later.
+
 ## B. WB track (content machine)
 
 | Item | Status | Verdict |
@@ -70,7 +79,15 @@ nothing technical couples P2 → P3.
 
 ## D. Decisions needed from Yoni (compact)
 
-1. 9F-mini footer into the pre-13 path — yes/no.
-2. Path A (launch-first, recommended) vs Path B (WB-first).
-3. AX/SL arc stays post-13 — confirm.
-4. When the Google probe happens (unblocks WB2/WB4 planning regardless of path).
+**All answered 2026-07-31:**
+
+1. 9F-mini footer into the pre-13 path — **NO; runs after Prompt 13** (third
+   in the post-13 order, after FETCH2).
+2. Path A vs Path B — **Path A in effect**: the first work after Prompt 13 is
+   **FETCH2**, a second fetcher round (not WB2/WB4).
+3. AX/SL arc stays post-13 — **confirmed**.
+4. Google probe — **waiting on Google/externals**; unchanged gate for
+   WB2/WB4.
+5. (Added) Production incident closure check — **done 2026-07-31**: redis and
+   memcached now bind localhost only; the public exposure that was the prime
+   entry-vector suspect is closed. Incident fully remediated.
