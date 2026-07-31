@@ -31,7 +31,6 @@ class TranscriptionFactory extends Factory
             'transcript_markdown' => fake()->paragraphs(3, true),
             'status' => PublicationStatus::Draft,
             'published_at' => null,
-            'word_count' => fake()->numberBetween(50, 5000),
             'speakers' => null,
             'parsed_segments' => null,
         ];

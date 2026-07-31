@@ -427,7 +427,6 @@ class DemoHebrewContentSeeder extends Seeder
                 'transcript_markdown' => $this->transcriptFor($itemData['title'], $itemData['description']),
                 'status' => PublicationStatus::Published,
                 'published_at' => $publishedAt->copy()->addHours(3),
-                'word_count' => 96,
                 'speakers' => [
                     ['name' => 'מנחה'],
                     ['name' => 'אורח'],
