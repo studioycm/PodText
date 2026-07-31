@@ -220,6 +220,27 @@ text above, these win and the text above is corrected.
     pace from, while the category pivot has no timestamps at all, so a
     needs-attention forecast could not be honest and is not shown.
 
+## Further decisions (2026-08-01)
+
+Taken during phase 2R. See `dashboard-metrics-phase-2R-handoff.md` for the full
+state; these are the design-level ones.
+
+14. **filawidgets is removed.** Adopted per decision 2, then measured: three of
+    five payloads had to be bent, and the board renders none of its views. Five
+    in-house value objects under `App\Support\Dashboard\Data` replace it.
+15. **Chart interactivity is staged:** static correctness now (normalisation,
+    trend colour, panel-native empty states), Alpine hover/crosshair on our own
+    SVG when suitable, Chart.js only later, after WB and other priorities. The
+    SVG stays ours, so animation is a later CSS addition rather than a rewrite.
+16. **Formats get a localization home** — the UI timezone, date formats and
+    number formats belong together beside `App\Support\UiTimezone`, not in a
+    dashboard-only formatter.
+17. **`StreamEventType` becomes an enum** with label, colour and icon; phase 3's
+    work queue needs the same types, so it lands there.
+18. **Consolidations carry an anti-drift test** — scan source, permit one home,
+    assert zero occurrences elsewhere. Three colour drifts and a dropped date
+    year proved that "fixed once" is not enough.
+
 ## What each approach contributed
 
 From the lenses: the structure, queue-before-graph ordering, and the
