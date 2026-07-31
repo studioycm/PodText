@@ -5,18 +5,15 @@ namespace App\Support\Dashboard;
 use App\Enums\DashboardRange;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
-use LaravelDaily\FilaWidgets\Support\SparklineSeries;
 
 /**
- * The Jerusalem-walls replacement for filawidgets'
- * {@see SparklineSeries::daily()}.
+ * Daily counts bucketed on Jerusalem walls.
  *
- * The package helper groups with a raw SQL `DATE(column)`, which buckets on the
- * database timezone: wrong for a board whose editorial day is a Jerusalem day,
- * wrong across daylight-saving shifts, and different between production MySQL
- * and the SQLite test database. Bucketing therefore happens in PHP here, while
- * the output shape stays exactly what the package's DTOs expect — this is the
- * one piece of the package's data layer we deliberately do not use.
+ * Written because every off-the-shelf helper we looked at groups with a raw SQL
+ * `DATE(column)`, which buckets on the database timezone: wrong for a board
+ * whose editorial day is a Jerusalem day, wrong across daylight-saving shifts,
+ * and different between production MySQL and the SQLite test database.
+ * Bucketing therefore happens in PHP, where the timezone is explicit.
  */
 class JerusalemDailySeries
 {

@@ -6,6 +6,7 @@ use App\Enums\DashboardLens;
 use App\Filament\Resources\ContentItems\ContentItemResource;
 use App\Filament\Widgets\Concerns\AdminOnlyWidget;
 use App\Filament\Widgets\Concerns\ReadsDashboardFilters;
+use App\Filament\Widgets\Concerns\ShowsLoadingSkeleton;
 use App\Support\Dashboard\EditorialMetrics;
 use Filament\Widgets\Concerns\InteractsWithPageFilters;
 use Filament\Widgets\Widget;
@@ -20,6 +21,7 @@ class PublicationFunnelWidget extends Widget
     use AdminOnlyWidget;
     use InteractsWithPageFilters;
     use ReadsDashboardFilters;
+    use ShowsLoadingSkeleton;
 
     protected string $view = 'filament.widgets.publication-funnel';
 
@@ -60,13 +62,12 @@ class PublicationFunnelWidget extends Widget
 
         foreach ($bars as $stage => $barClass) {
             $row = $series[$stage];
-            $delta = $row->value - ($row->previousValue ?? 0.0);
 
             $stages[$stage] = [
                 'count' => $snapshot['funnel'][$stage],
                 'row' => $row,
-                'series' => $row->sparkline,
-                'delta' => (int) $delta,
+                'series' => $row->points,
+                'delta' => $row->delta(),
                 'bar' => $barClass,
                 'active' => $active === $stage,
                 'url' => ContentItemResource::getUrl('index', $this->scopedTableFilters(

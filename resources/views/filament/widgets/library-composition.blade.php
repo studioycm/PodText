@@ -36,10 +36,9 @@
                     <dl class="mt-3 space-y-2 text-sm">
                         @foreach ($health as $podcast)
                             @php
-                                $published = (int) ($podcast->previousValue ?? 0);
                                 $visible = (int) $podcast->value;
-                                $stuck = max(0, $published - $visible);
-                                $percent = $published > 0 ? (int) round(($visible / $published) * 100) : 0;
+                                $stuck = $podcast->remainder();
+                                $percent = $podcast->percent();
                             @endphp
 
                             <div class="flex items-center gap-3" data-testid="podcast-health-row">
@@ -97,8 +96,8 @@
                     <ul class="mt-3 space-y-2 text-sm">
                         @foreach ($transcribers as $transcriber)
                             @php
-                                $item = $transcriber['item'];
-                                $delta = (int) ($item->value - ($item->previousValue ?? 0));
+                                $item = $transcriber;
+                                $delta = $item->delta();
                             @endphp
 
                             <li class="flex items-center gap-3" data-testid="transcriber-row">
@@ -112,7 +111,7 @@
                                     {{
                                         __('admin.dashboard.composition.transcriber_value', [
                                             'count' => (int) $item->value,
-                                            'words' => number_format($transcriber['words']),
+                                            'words' => number_format((int) $item->meta('words', 0)),
                                         ])
                                     }}
                                 </span>

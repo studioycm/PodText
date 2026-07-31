@@ -17,7 +17,6 @@
         "laravel/horizon": "^5.47",
         "laravel/socialite": "^5.0",
         "laravel/tinker": "^3.0",
-        "laraveldaily/filawidgets": "0.1.2",
         "livewire/livewire": "^4.3",
         "resend/resend-laravel": "^1.4",
         "spatie/laravel-permission": "7.3.0",

@@ -8,7 +8,6 @@
 @source '../../../../resources/views/livewire/**/*';
 @source '../../../../resources/views/components/**/*';
 @source '../../../../vendor/awcodes/filament-curator/resources/**/*.blade.php';
-@source '../../../../vendor/laraveldaily/filawidgets/resources/views/**/*';
 
 @theme {
     --font-sans: 'Varela Round', ui-sans-serif, system-ui, sans-serif;

@@ -5,6 +5,7 @@ namespace App\Filament\Widgets;
 use App\Filament\Resources\ContentItems\ContentItemResource;
 use App\Filament\Widgets\Concerns\AdminOnlyWidget;
 use App\Filament\Widgets\Concerns\ReadsDashboardFilters;
+use App\Filament\Widgets\Concerns\ShowsLoadingSkeleton;
 use App\Models\ContentItem;
 use App\Support\Dashboard\EditorialMetrics;
 use Filament\Actions\Action;
@@ -22,6 +23,7 @@ class BlockersQueueWidget extends TableWidget
     use AdminOnlyWidget;
     use InteractsWithPageFilters;
     use ReadsDashboardFilters;
+    use ShowsLoadingSkeleton;
 
     protected static ?int $sort = -30;
 

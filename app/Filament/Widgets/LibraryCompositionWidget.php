@@ -9,6 +9,7 @@ use App\Filament\Resources\ContentItems\ContentItemResource;
 use App\Filament\Resources\ContentTags\ContentTagResource;
 use App\Filament\Widgets\Concerns\AdminOnlyWidget;
 use App\Filament\Widgets\Concerns\ReadsDashboardFilters;
+use App\Filament\Widgets\Concerns\ShowsLoadingSkeleton;
 use App\Support\Dashboard\EditorialMetrics;
 use Filament\Widgets\Concerns\InteractsWithPageFilters;
 use Filament\Widgets\Widget;
@@ -24,6 +25,7 @@ class LibraryCompositionWidget extends Widget
     use AdminOnlyWidget;
     use InteractsWithPageFilters;
     use ReadsDashboardFilters;
+    use ShowsLoadingSkeleton;
 
     protected string $view = 'filament.widgets.library-composition';
 

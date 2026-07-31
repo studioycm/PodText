@@ -13,6 +13,7 @@ return [
         ],
     ],
     'dashboard' => [
+        'loading' => 'הווידגט נטען…',
         'lenses' => [
             'overview' => 'סקירה',
             'blockers' => 'חסמים',

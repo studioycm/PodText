@@ -5,6 +5,7 @@ namespace App\Filament\Widgets;
 use App\Enums\DashboardLens;
 use App\Filament\Widgets\Concerns\AdminOnlyWidget;
 use App\Filament\Widgets\Concerns\ReadsDashboardFilters;
+use App\Filament\Widgets\Concerns\ShowsLoadingSkeleton;
 use App\Models\ContentGroup;
 use App\Support\Dashboard\EditorialMetrics;
 use Filament\Widgets\Concerns\InteractsWithPageFilters;
@@ -16,6 +17,7 @@ class DashboardContextWidget extends Widget
     use AdminOnlyWidget;
     use InteractsWithPageFilters;
     use ReadsDashboardFilters;
+    use ShowsLoadingSkeleton;
 
     protected string $view = 'filament.widgets.dashboard-context';
 

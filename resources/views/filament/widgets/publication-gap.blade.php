@@ -15,7 +15,7 @@
         </div>
 
         <p class="mt-1 text-xs text-gray-500 dark:text-gray-400" data-testid="gap-rate">
-            {{ __('admin.dashboard.gap.rate', ['percent' => $rate->value]) }}
+            {{ __('admin.dashboard.gap.rate', ['percent' => $rate->percent()]) }}
         </p>
 
         <div class="mt-4 flex h-6 overflow-hidden rounded-lg text-xs font-semibold" dir="rtl" data-testid="gap-bar">

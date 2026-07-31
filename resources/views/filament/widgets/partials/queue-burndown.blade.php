@@ -6,13 +6,8 @@
      renders inside Filament's <p class="fi-ta-header-description">. --}}
 <span class="inline-flex flex-col gap-1" data-testid="queue-burndown">
     @foreach ($tiers as $key => $tier)
-        @php
-            $data = $tier['data'];
-            $percent = $data->goalValue > 0 ? round(($data->currentValue / $data->goalValue) * 100) : 100;
-        @endphp
-
         <span class="inline-flex flex-wrap items-center gap-2" data-testid="queue-burndown-{{ $key }}">
-            <span class="font-medium">{{ $data->description }}</span>
+            <span class="font-medium">{{ $tier->description }}</span>
 
             <span
                 class="inline-flex h-1.5 w-32 overflow-hidden rounded-full bg-gray-100 align-middle dark:bg-white/10"
@@ -24,12 +19,14 @@
                         'bg-success-500' => $key === 'invisible',
                         'bg-warning-500' => $key !== 'invisible',
                     ])
-                    style="width: {{ $percent }}%"
+                    style="width: {{ $tier->percent() }}%"
                 ></span>
             </span>
 
-            @if ($data->projectionLabel)
-                <span>{{ __('admin.dashboard.gap.forecast', ['date' => $data->projectionLabel]) }}</span>
+            @if ($tier->forecast)
+                <span>
+                    {{ __('admin.dashboard.gap.forecast', ['date' => $tier->forecast->timezone('Asia/Jerusalem')->format('d/m/Y')]) }}
+                </span>
             @endif
         </span>
     @endforeach

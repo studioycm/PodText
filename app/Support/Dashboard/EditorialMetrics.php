@@ -15,16 +15,16 @@ use App\Models\ContentTag;
 use App\Models\MediaAttachment;
 use App\Models\PublicFormSubmission;
 use App\Models\Transcription;
+use App\Support\Dashboard\Data\BreakdownRow;
+use App\Support\Dashboard\Data\Burndown;
+use App\Support\Dashboard\Data\Heatmap;
+use App\Support\Dashboard\Data\Rate;
+use App\Support\Dashboard\Data\SeriesRow;
 use Filament\Actions\Imports\Models\Import;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
-use LaravelDaily\FilaWidgets\Data\BreakdownItemData;
-use LaravelDaily\FilaWidgets\Data\CompletionRateWidgetData;
-use LaravelDaily\FilaWidgets\Data\HeatmapCalendarWidgetData;
-use LaravelDaily\FilaWidgets\Data\ProgressWidgetData;
-use LaravelDaily\FilaWidgets\Data\SparklineTableRowData;
 
 /**
  * The single source of truth for every number on the dashboard: any figure
@@ -108,14 +108,14 @@ class EditorialMetrics
     }
 
     /**
-     * Daily movement through each funnel stage as filawidgets rows, aligned to
+     * Daily movement through each funnel stage aligned to
      * the range's Jerusalem day keys. `value`/`previousValue` are period
      * movement, not stock — the stock count comes from the snapshot, so a row
      * never mixes the two. Draft counts episodes added, published counts
      * publication dates, transcribed counts transcripts published, and visible
      * counts publication dates of episodes the public can currently see.
      *
-     * @return array<string, SparklineTableRowData>
+     * @return array<string, SeriesRow>
      */
     public function funnelSeries(DashboardRange $range, ?int $contentGroupId = null): array
     {
@@ -160,15 +160,14 @@ class EditorialMetrics
     /**
      * @param  array<int, float>  $series
      */
-    private function sparklineRow(string $stage, array $series, float $previous): SparklineTableRowData
+    private function sparklineRow(string $stage, array $series, float $previous): SeriesRow
     {
-        return new SparklineTableRowData(
+        return new SeriesRow(
+            key: $stage,
             label: __("admin.dashboard.legend.{$stage}"),
             value: array_sum($series),
-            previousValue: $previous,
-            sparkline: $series,
-            format: 'number',
-            precision: 0,
+            previous: $previous,
+            points: $series,
         );
     }
 
@@ -202,11 +201,11 @@ class EditorialMetrics
      * The same publication flow the funnel's published segment reports, laid
      * out as a calendar. Each entry carries the day's own stream doorway.
      */
-    public function publicationHeatmap(DashboardRange $range, ?int $contentGroupId = null): HeatmapCalendarWidgetData
+    public function publicationHeatmap(DashboardRange $range, ?int $contentGroupId = null): Heatmap
     {
         $entries = $this->publicationsPerDay($range, $contentGroupId);
 
-        return new HeatmapCalendarWidgetData(
+        return new Heatmap(
             entries: $entries,
             description: __('admin.dashboard.heatmap.description', ['count' => array_sum($entries)]),
         );
@@ -216,11 +215,11 @@ class EditorialMetrics
      * Per-podcast publication health: how much of what a podcast published is
      * actually visible, and how much is stuck.
      *
-     * `value` is what the public can see and `previousValue` is what the
-     * podcast published in total, so a filawidgets row reads as "visible out of
-     * published" rather than as a period delta.
+     * `value` is what the public can see and `of` is what the podcast published,
+     * so the row reads as "visible out of published" and `percent()` needs no
+     * arithmetic in the view.
      *
-     * @return array<int, BreakdownItemData>
+     * @return array<int, BreakdownRow>
      */
     public function podcastHealth(?int $contentGroupId = null, int $limit = 6): array
     {
@@ -230,15 +229,15 @@ class EditorialMetrics
         return ContentGroup::query()
             ->whereKey($totals->keys())
             ->get(['id', 'title'])
-            ->map(function (ContentGroup $group) use ($totals, $visible): BreakdownItemData {
+            ->map(function (ContentGroup $group) use ($totals, $visible): BreakdownRow {
                 $total = (int) $totals->get($group->getKey(), 0);
                 $visibleCount = (int) $visible->get($group->getKey(), 0);
                 $percent = $total > 0 ? (int) round(($visibleCount / $total) * 100) : 0;
 
-                return new BreakdownItemData(
+                return new BreakdownRow(
                     label: (string) $group->title,
                     value: (float) $visibleCount,
-                    previousValue: (float) $total,
+                    of: (float) $total,
                     color: match (true) {
                         $percent >= 100 => 'success',
                         $percent >= 75 => 'warning',
@@ -249,7 +248,7 @@ class EditorialMetrics
                     ]),
                 );
             })
-            ->sortByDesc(fn (BreakdownItemData $item): float => $item->previousValue ?? 0)
+            ->sortByDesc(fn (BreakdownRow $item): float => $item->of ?? 0)
             ->take($limit)
             ->values()
             ->all();
@@ -261,7 +260,7 @@ class EditorialMetrics
      * A multi-transcriber transcript counts in full for each of its
      * transcribers.
      *
-     * @return array<int, array{item: BreakdownItemData, words: int}>
+     * @return array<int, BreakdownRow>
      */
     public function transcriberBoard(DashboardRange $range, ?int $contentGroupId = null, int $limit = 6): array
     {
@@ -272,20 +271,16 @@ class EditorialMetrics
         $previous = $this->transcriptionsByTranscriber($previousStart, $previousEnd, $contentGroupId);
 
         return $current
-            ->map(fn (array $row, int $authorId): array => [
-                // Words ride alongside: BreakdownItemData has no field for a
-                // second measure, and dropping it would lose a spec number.
-                'words' => $row['words'],
-                'item' => new BreakdownItemData(
-                    label: $row['label'],
-                    value: (float) $row['transcriptions'],
-                    previousValue: (float) ($previous[$authorId]['transcriptions'] ?? 0),
-                    url: TranscriptionResource::getUrl('index', [
-                        'filters' => ['transcriber_id' => ['value' => $authorId]],
-                    ]),
-                ),
-            ])
-            ->sortByDesc(fn (array $row): float => $row['item']->value)
+            ->map(fn (array $row, int $authorId): BreakdownRow => new BreakdownRow(
+                label: $row['label'],
+                value: (float) $row['transcriptions'],
+                previous: (float) ($previous[$authorId]['transcriptions'] ?? 0),
+                url: TranscriptionResource::getUrl('index', [
+                    'filters' => ['transcriber_id' => ['value' => $authorId]],
+                ]),
+                meta: ['words' => $row['words']],
+            ))
+            ->sortByDesc(fn (BreakdownRow $row): float => $row->value)
             ->take($limit)
             ->values()
             ->all();
@@ -327,7 +322,7 @@ class EditorialMetrics
     }
 
     /**
-     * H7's finish lines, one per tier, as filawidgets progress data. Both
+     * H7's finish lines, one per tier. Both
      * counts come from the cached snapshot, so the second bar costs no queries.
      * Only the invisible tier carries a projection: transcripts have a
      * `published_at` to pace from, while the category pivot has no timestamps
@@ -341,43 +336,37 @@ class EditorialMetrics
         $total = $snapshot['funnel']['published'];
         $invisible = $snapshot['gap']['invisible'];
         $attention = $snapshot['attention']['total'];
-        $forecast = $this->clearanceForecast($contentGroupId);
 
         return [
-            'invisible' => [
-                'remaining' => $invisible,
-                'total' => $total,
-                'forecast' => $forecast,
-                'data' => new ProgressWidgetData(
-                    currentValue: (float) max(0, $total - $invisible),
-                    goalValue: (float) $total,
-                    projectionLabel: $forecast?->timezone(self::TIMEZONE)->format('d/m/Y'),
-                    description: __('admin.dashboard.queue.burndown_invisible', ['remaining' => $invisible, 'total' => $total]),
-                ),
-            ],
-            'attention' => [
-                'remaining' => $attention,
-                'total' => $total,
-                'data' => new ProgressWidgetData(
-                    currentValue: (float) max(0, $total - $attention),
-                    goalValue: (float) $total,
-                    description: __('admin.dashboard.queue.burndown_attention', ['remaining' => $attention, 'total' => $total]),
-                ),
-            ],
+            'invisible' => new Burndown(
+                key: 'invisible',
+                remaining: $invisible,
+                total: $total,
+                description: __('admin.dashboard.queue.burndown_invisible', ['remaining' => $invisible, 'total' => $total]),
+                forecast: $this->clearanceForecast($contentGroupId),
+            ),
+            // No forecast by design: the category pivot carries no timestamps,
+            // so needs-attention work cannot be paced without inventing a rate.
+            'attention' => new Burndown(
+                key: 'attention',
+                remaining: $attention,
+                total: $total,
+                description: __('admin.dashboard.queue.burndown_attention', ['remaining' => $attention, 'total' => $total]),
+            ),
         ];
     }
 
     /**
-     * The gap and needs-attention reason bars as filawidgets breakdown items,
+     * The gap and needs-attention reason bars,
      * each carrying the queue doorway filtered to that reason.
      *
-     * @return array{gap: array<int, BreakdownItemData>, attention: array<int, BreakdownItemData>}
+     * @return array{gap: array<int, BreakdownRow>, attention: array<int, BreakdownRow>}
      */
     public function reasonBreakdown(?int $contentGroupId = null): array
     {
         $snapshot = $this->snapshot($contentGroupId);
 
-        $item = fn (string $reason, int $count, string $color): BreakdownItemData => new BreakdownItemData(
+        $item = fn (string $reason, int $count, string $color): BreakdownRow => new BreakdownRow(
             label: __("admin.dashboard.reasons.{$reason}"),
             value: (float) $count,
             color: $color,
@@ -399,15 +388,14 @@ class EditorialMetrics
     }
 
     /** H2's coverage gauge: how much of what is published the public can see. */
-    public function visibilityRate(?int $contentGroupId = null): CompletionRateWidgetData
+    public function visibilityRate(?int $contentGroupId = null): Rate
     {
         $snapshot = $this->snapshot($contentGroupId);
-        $published = $snapshot['funnel']['published'];
 
-        return new CompletionRateWidgetData(
-            value: $published > 0 ? round(($snapshot['funnel']['visible'] / $published) * 100, 1) : 0.0,
+        return new Rate(
+            covered: $snapshot['funnel']['visible'],
+            of: $snapshot['funnel']['published'],
             description: __('admin.dashboard.gap.rate_description'),
-            isEmpty: $published === 0,
         );
     }
 

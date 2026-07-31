@@ -81,3 +81,25 @@ about an hour.
 If the board ever wants the package's rendered widgets — its JS sparklines, its
 heatmap view, its progress bar markup — adopt the whole thing rather than its
 data layer. Half-adoption is the one position with the costs of both.
+
+## Outcome (2026-07-31): recommendation accepted
+
+The dependency is removed. Five in-house value objects under
+`App\Support\Dashboard\Data` replace it, each fixing something the package
+could not express:
+
+| In-house | Replaces | What it fixes |
+|---|---|---|
+| `SeriesRow` | `SparklineTableRowData` | Keeps the previous-period idea, adds `delta()` so no view recomputes it, and states that `value` is movement, never stock. |
+| `BreakdownRow` | `BreakdownItemData` | Adds `of` (the whole) so `percent()`/`remainder()` are honest, and `meta` for a second measure — killing both the `previousValue`-means-total mistranslation and the transcriber-board wrapper array. `previous` now only ever means a period. |
+| `Heatmap` | `HeatmapCalendarWidgetData` | Adds `cells()`, returning day, count, day-first label and shading level, so the view stops computing peaks. |
+| `Burndown` | `ProgressWidgetData` | Speaks remaining-of-total, the domain's own direction, and carries the forecast as a `Carbon` so the view owns formatting. Forecast stays optional by design. |
+| `Rate` | `CompletionRateWidgetData` | Keeps `covered` and `of` alongside the percentage — a percentage without its denominator is exactly what this board exists to avoid — and folds the threshold bands in. |
+
+`JerusalemDailySeries` is unchanged; its docblock no longer references the
+package it once worked around.
+
+**What the package taught us, and we kept:** one value object per widget
+payload rather than loose arrays, `toArray()` for cache safety, and a
+first-class previous-period companion to every period figure. That last idea is
+the reason each funnel stage now shows a delta at all.

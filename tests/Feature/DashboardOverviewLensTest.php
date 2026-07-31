@@ -261,3 +261,14 @@ it('puts the burn-down finish line in the blockers queue header', function (): v
         ->assertSeeHtml('data-testid="queue-burndown"')
         ->assertSee('1');
 });
+
+it('shows a shaped skeleton while a lazy widget hydrates', function (): void {
+    // Filament's own lazy placeholder is screen-reader-only, so an un-hydrated
+    // board looks broken rather than pending.
+    $html = (new EditorialStatsWidget)->placeholder()->render();
+
+    expect($html)->toContain('data-testid="widget-skeleton"')
+        ->toContain('animate-pulse')
+        ->toContain('aria-busy="true"')
+        ->toContain(__('admin.dashboard.loading'));
+});

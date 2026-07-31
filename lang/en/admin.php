@@ -13,6 +13,7 @@ return [
         ],
     ],
     'dashboard' => [
+        'loading' => 'Loading widget…',
         'lenses' => [
             'overview' => 'Overview',
             'blockers' => 'Blockers',
