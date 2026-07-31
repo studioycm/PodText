@@ -20,7 +20,7 @@ suite is red. Nothing here is pushed; auto-deploy is untouched.
 | A1 ✅ | **`blocked` merged two unrelated failure kinds.** Missing media and missing category never affected visibility, yet were counted and captioned as "published but not publicly visible". | High — the dashboard asserted something false | Fix in flight (round-2 decision 1) |
 | A2 ✅ | **Nothing tracked "podcast not published".** `ContentItem::scopePublished()` requires a published group; `blockedQuery()` never checked it. A complete episode under a draft podcast was invisible to the public and appeared in **no metric and no queue**. `invisible` was therefore not equal to status-published minus visible. | High — a whole class of invisible episodes was unreportable | Fix in flight |
 | A3 ✅ | **`EditorialMetrics::forget()` is dead code.** Nothing calls it. The only refresh is the 60-second TTL, and there is no way to force one after an editorial write. | Medium — numbers can contradict a change the editor just made | Open, needs a decision |
-| A4 | **The funnel's `visible` series is a proxy.** It buckets currently-visible episodes by `published_at`, not by the day they became visible — an episode published in May whose transcript went live in July lands on the May cell. | Low — documented, but the sparkline is not what its label implies | Open, needs a decision |
+| A4 ✅ | **The funnel's `visible` series is a proxy.** It buckets currently-visible episodes by `published_at`, not by the day they became visible — an episode published in May whose transcript went live in July lands on the May cell. | Low — documented, but the sparkline is not what its label implies | Open, needs a decision |
 
 ## B · filawidgets — the locked decision was never implemented
 
@@ -115,9 +115,16 @@ Everything above except A4 and E1/E3 was fixed in phase 2R, on top of `894870e`:
 - **C4** — missing-category renders violet.
 - **D1** — `AdminOnlyWidget` on all eight widgets.
 
-**Still open:** A4 (the visible sparkline is a publication-date proxy), and
-E1/E3, which are phase 4's job.
+**A4 is now fixed too:** `becameVisibleAt()` derives the day an episode actually
+became visible — the later of its own publication and its effective transcript's
+publication — so an episode published in May and transcribed in July lands on
+the July cell. The old test's expectation had encoded the bug and was corrected.
+
+**Still open:** E1 and E3 only, which are phase 4's job.
 
 **Process note:** C1, D1 and A3 were implemented before their tests rather than
-after a red run — a TDD lapse in an otherwise test-first pass. Their tests exist
-and pass, but they did not earn a watched failure.
+after a red run. Each was afterwards verified retroactively by breaking the
+implementation and confirming its test fails — C1 by neutering
+`streamTypeForStatus()`, D1 by making `canView()` return true, A3 by
+unregistering the observer. All three went red, so the tests do constrain the
+behaviour even though they did not earn the failure first time.

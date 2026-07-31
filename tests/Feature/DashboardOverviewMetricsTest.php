@@ -66,10 +66,34 @@ it('buckets funnel movement into jerusalem days aligned to the day keys', functi
         ->and(array_combine($keys, $series['draft']->sparkline)['2026-07-28'])->toBe(1.0)
         ->and(array_combine($keys, $series['published']->sparkline)['2026-07-29'])->toBe(1.0)
         ->and(array_combine($keys, $series['transcribed']->sparkline)['2026-07-30'])->toBe(1.0)
-        ->and(array_combine($keys, $series['visible']->sparkline)['2026-07-29'])->toBe(1.0)
+        // Published on the 29th but only transcribed on the 30th, so the public
+        // could not see it until the 30th.
+        ->and(array_combine($keys, $series['visible']->sparkline)['2026-07-30'])->toBe(1.0)
+        ->and(array_combine($keys, $series['visible']->sparkline)['2026-07-29'])->toBe(0.0)
         // value is period movement, previousValue the period before it.
         ->and($series['published']->value)->toBe(1.0)
         ->and($series['published']->previousValue)->toBe(0.0);
+});
+
+it('buckets the visible series on the day the episode became visible', function (): void {
+    $group = ContentGroup::factory()->published()->create();
+
+    // Published long before the range; the transcript went live inside it, so
+    // this is the day the public could first see the episode.
+    $item = ContentItem::factory()->for($group)
+        ->published(Carbon::parse('2026-07-20 09:00', 'Asia/Jerusalem'))
+        ->create();
+    Transcription::factory()->for($item)
+        ->published(Carbon::parse('2026-07-30 09:00', 'Asia/Jerusalem'))
+        ->create();
+
+    $series = app(EditorialMetrics::class)->funnelSeries(DashboardRange::Last7Days);
+    $visible = array_combine(DashboardRange::Last7Days->dayKeys(), $series['visible']->sparkline);
+
+    expect($visible['2026-07-30'])->toBe(1.0)
+        ->and(array_sum($series['visible']->sparkline))->toBe(1.0)
+        // The publication date is outside the range and must not be used.
+        ->and(array_sum($series['published']->sparkline))->toBe(0.0);
 });
 
 it('zero fills the publication heatmap across every day of the range', function (): void {

@@ -49,6 +49,33 @@ class JerusalemDailySeries
     }
 
     /**
+     * The same bucketing for timestamps computed in PHP rather than read from a
+     * column — used where the meaningful instant is derived, such as the day an
+     * episode became visible.
+     *
+     * @param  iterable<int, \DateTimeInterface|string|null>  $timestamps
+     * @return array<string, int>
+     */
+    public static function fromTimestamps(iterable $timestamps, DashboardRange $range): array
+    {
+        $buckets = array_fill_keys($range->dayKeys(), 0);
+
+        foreach ($timestamps as $timestamp) {
+            if ($timestamp === null) {
+                continue;
+            }
+
+            $day = Carbon::parse($timestamp)->timezone(self::TIMEZONE)->format('Y-m-d');
+
+            if (array_key_exists($day, $buckets)) {
+                $buckets[$day]++;
+            }
+        }
+
+        return $buckets;
+    }
+
+    /**
      * The ordered float list `SparklineTableRowData::$sparkline` expects.
      *
      * @param  Builder<covariant \Illuminate\Database\Eloquent\Model>  $query

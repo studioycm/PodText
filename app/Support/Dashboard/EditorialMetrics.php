@@ -123,7 +123,6 @@ class EditorialMetrics
             'draft' => [$this->scoped(ContentItem::query(), $contentGroupId), 'created_at'],
             'published' => [$this->statusPublished($contentGroupId), 'published_at'],
             'transcribed' => [$this->publishedTranscriptions($contentGroupId), 'published_at'],
-            'visible' => [$this->visible($contentGroupId), 'published_at'],
         ];
 
         [$previousStart, $previousEnd] = $range->previousPeriod();
@@ -132,17 +131,71 @@ class EditorialMetrics
         foreach ($sources as $stage => [$query, $column]) {
             $series = JerusalemDailySeries::values($query, $column, $range);
 
-            $rows[$stage] = new SparklineTableRowData(
-                label: __("admin.dashboard.legend.{$stage}"),
-                value: array_sum($series),
-                previousValue: JerusalemDailySeries::total($query, $column, $previousStart, $previousEnd),
-                sparkline: $series,
-                format: 'number',
-                precision: 0,
+            $rows[$stage] = $this->sparklineRow(
+                $stage,
+                $series,
+                JerusalemDailySeries::total($query, $column, $previousStart, $previousEnd),
             );
         }
 
+        // Visible is the one stage whose day is derived, not stored: an episode
+        // becomes visible on the later of its publication and its effective
+        // transcript's publication, so bucketing by `published_at` would put a
+        // May episode transcribed in July on a May cell.
+        $becameVisible = $this->becameVisibleAt($contentGroupId);
+
+        $rows['visible'] = $this->sparklineRow(
+            'visible',
+            array_map(floatval(...), array_values(
+                JerusalemDailySeries::fromTimestamps($becameVisible, $range),
+            )),
+            (float) $becameVisible
+                ->filter(fn (Carbon $at): bool => $at->betweenIncluded($previousStart, $previousEnd))
+                ->count(),
+        );
+
         return $rows;
+    }
+
+    /**
+     * @param  array<int, float>  $series
+     */
+    private function sparklineRow(string $stage, array $series, float $previous): SparklineTableRowData
+    {
+        return new SparklineTableRowData(
+            label: __("admin.dashboard.legend.{$stage}"),
+            value: array_sum($series),
+            previousValue: $previous,
+            sparkline: $series,
+            format: 'number',
+            precision: 0,
+        );
+    }
+
+    /**
+     * The instant each visible episode actually became visible: the later of
+     * its own publication and its effective transcript's publication, since
+     * both must be true before the public can see it.
+     *
+     * @return Collection<int, Carbon>
+     */
+    private function becameVisibleAt(?int $contentGroupId): Collection
+    {
+        return $this->visible($contentGroupId)
+            ->withEffectiveTranscriptionPublishedAt()
+            ->get(['id', 'published_at'])
+            ->map(function (ContentItem $item): ?Carbon {
+                $transcript = $item->featured_transcription_published_at
+                    ?? $item->latest_transcription_published_at;
+
+                return collect([$item->published_at, $transcript])
+                    ->filter()
+                    ->map(fn ($value): Carbon => Carbon::parse($value))
+                    ->sortDesc()
+                    ->first();
+            })
+            ->filter()
+            ->values();
     }
 
     /**
