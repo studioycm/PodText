@@ -34,6 +34,13 @@ return [
         ],
     ],
 
+    'quarantine' => [
+        // Completed mutation quarantine copies older than this many days may be
+        // pruned by `media:prune-quarantine`. 0 keeps them forever. Incomplete
+        // operations are never pruned regardless of age.
+        'retention_days' => (int) env('MEDIA_QUARANTINE_RETENTION_DAYS', 90),
+    ],
+
     'embeds' => [
         'allowed_hosts' => [
             'embed.podcasts.apple.com',

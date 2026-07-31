@@ -358,6 +358,10 @@ class MediaFilesystemMutationCoordinator
             'quarantine_sha256' => $sourceSha256,
             'context' => array_merge($this->sourceContext($trusted), [
                 'source_missing' => ! is_string($sourceContents),
+                'alt' => $trusted->alt,
+                'title' => $trusted->title,
+                'caption' => $trusted->caption,
+                'description' => $trusted->description,
             ]),
             'attempts' => 1,
             'lease_token' => (string) Str::ulid(),

@@ -127,6 +127,39 @@ phases, so `3B P1–P5` and `3C P5–P8` mean phase five of those mini-tasks. Ba
 
 ## Git State
 
+- RECON2 R2 (quarantine retention, 2026-07-31) adds
+  `php artisan media:prune-quarantine` — dry-run by default with `--apply` and
+  `--days=`, matching the `media:repair-mutations` shape. It prunes **only**
+  journal rows at `status = completed` whose `completed_at` exceeds
+  `media.quarantine.retention_days` (env `MEDIA_QUARANTINE_RETENTION_DAYS`,
+  default 90; 0 = keep forever). Staged, copied, committed, cleanup-pending
+  and failed rows are never touched at any age — their quarantine copy is a
+  hard repair precondition, and the regression test proves an aged
+  `cleanup_pending` row survives the prune and `repair()` still returns
+  `completed_cleanup` afterwards. The prune re-derives the directory from
+  `operation_key` only after validating it against the ULID pattern and
+  checking the stored `quarantine_path` carries that exact prefix; rows that
+  fail either check are skipped for manual review (exit failure) and nothing
+  is deleted for them. Journal rows keep `quarantine_path`/`quarantine_sha256`
+  (`assertOperationShape` requires them) and gain a
+  `context.quarantine_pruned_at` marker so a future Trash surface cannot
+  believe pruned bytes still exist. The coordinator machinery is untouched
+  except the four-line delete-context widening: `delete()` now snapshots
+  `alt`/`title`/`caption`/`description` into the journal context, closing the
+  only substrate gap the RECON2 audit found between quarantine and a future
+  Trash restore. A `Schedule::command('media:prune-quarantine --apply')`
+  entry was added at `routes/console.php` (daily 03:30) — **it only runs if
+  the operator enables the hosting panel's scheduler to invoke
+  `schedule:run`; no scheduler is provisioned by the app itself** (the inline
+  fallback precedent is `SettingsBackupManager::prune()`). The
+  `MEDIA_QUARANTINE_RETENTION_DAYS` documentation line was appended to
+  `.env.example` in the working tree but is **not committed** with R2,
+  because the file carries an unrelated concurrent documentation overhaul
+  that belongs to its own author. Tests:
+  `tests/Feature/MediaQuarantinePruneTest.php`. Gate: full suite 1417 tests /
+  18,738 assertions fully green including all browser tests, pint clean,
+  FilaCheck 0 issues, no asset changes (no build needed).
+
 - RECON2 R1 (post-Storage-Truth reconciliation, first phase, 2026-07-31) fixes
   the two real bugs the RECON2 audit surfaced plus the Spotify reduced-mode
   indication. **B1 `word_count`:** `Transcription` now derives `word_count` on
