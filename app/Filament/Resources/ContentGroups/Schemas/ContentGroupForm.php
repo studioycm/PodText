@@ -12,6 +12,7 @@ use App\Filament\Resources\Support\RelationshipOptionForms;
 use App\Models\ContentGroup;
 use App\Support\Media\ImageFileNamer;
 use App\Support\Media\OwnerImagePresenter;
+use App\Support\UiTimezone;
 use Filament\Actions\Action;
 use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\Hidden;
@@ -147,7 +148,7 @@ class ContentGroupForm
                         DateTimePicker::make('published_at')
                             ->label(__('admin.fields.published_at'))
                             ->displayFormat('d/m/Y H:i')
-                            ->timezone('Asia/Jerusalem'),
+                            ->timezone(UiTimezone::name()),
                     ])
                     ->columns(2),
             ]);

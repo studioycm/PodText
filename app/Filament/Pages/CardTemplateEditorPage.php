@@ -16,6 +16,7 @@ use App\Support\Settings\CardTemplates\CardTemplateIdentity;
 use App\Support\Settings\CardTemplates\CardTemplatePreviewer;
 use App\Support\Settings\CardTemplates\CardTemplateWriteException;
 use App\Support\Settings\CardTemplates\CardTemplateWriteResult;
+use App\Support\UiTimezone;
 use BackedEnum;
 use Closure;
 use Filament\Actions\Action;
@@ -521,7 +522,7 @@ abstract class CardTemplateEditorPage extends SettingsPage
         $this->previewControls['sample_id'] = $preview['sample_id'];
         $this->previewSampleLabel = $preview['sample_label'];
         $this->previewHtml = $preview['html'];
-        $this->previewRefreshedAt = now()->timezone('Asia/Jerusalem')->format('d/m H:i');
+        $this->previewRefreshedAt = now()->timezone(UiTimezone::name())->format('d/m H:i');
     }
 
     public function focusInvalidDraftField(): void

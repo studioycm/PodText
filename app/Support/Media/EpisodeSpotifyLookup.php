@@ -7,6 +7,7 @@ use App\Enums\ImportConnectionStatus;
 use App\Models\ImportConnection;
 use App\Support\Importer\Spotify\SpotifyConnector;
 use App\Support\Importer\SpotifyLinks\SpotifyHtmlToMarkdown;
+use App\Support\UiTimezone;
 use Carbon\CarbonImmutable;
 use InvalidArgumentException;
 
@@ -153,7 +154,7 @@ class EpisodeSpotifyLookup
             return null;
         }
 
-        return CarbonImmutable::parse((string) $value, 'Asia/Jerusalem')->startOfDay();
+        return CarbonImmutable::parse((string) $value, UiTimezone::name())->startOfDay();
     }
 
     private function descriptionMarkdown(mixed $html, mixed $plainText): string

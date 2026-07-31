@@ -22,6 +22,7 @@ use App\Support\Dashboard\Data\Burndown;
 use App\Support\Dashboard\Data\Heatmap;
 use App\Support\Dashboard\Data\Rate;
 use App\Support\Dashboard\Data\SeriesRow;
+use App\Support\UiTimezone;
 use Filament\Actions\Imports\Models\Import;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
@@ -42,8 +43,6 @@ class EditorialMetrics
     private const CACHE_SECONDS = 60;
 
     private const CACHE_PREFIX = 'dashboard:editorial-metrics:v2';
-
-    private const TIMEZONE = 'Asia/Jerusalem';
 
     /** @var array<int, bool> */
     private array $knownPodcasts = [];
@@ -315,7 +314,7 @@ class EditorialMetrics
 
         return $events
             ->when(filled($day), fn (Collection $events): Collection => $events->filter(
-                fn (array $event): bool => $event['at']->copy()->timezone(self::TIMEZONE)->format('Y-m-d') === $day,
+                fn (array $event): bool => $event['at']->copy()->timezone(UiTimezone::name())->format('Y-m-d') === $day,
             ))
             ->sortByDesc(fn (array $event): int => $event['at']->getTimestamp())
             ->take($limit)

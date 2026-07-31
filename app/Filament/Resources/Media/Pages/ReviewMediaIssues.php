@@ -15,6 +15,7 @@ use App\Support\Media\MediaMissingFileResolver;
 use App\Support\Media\MediaOperationReceipts;
 use App\Support\Media\MediaRecordCorrections;
 use App\Support\Media\MediaRecordProjector;
+use App\Support\UiTimezone;
 use Filament\Actions\Action;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Select;
@@ -136,7 +137,7 @@ class ReviewMediaIssues extends Page
 
         if ($media->trusted_at !== null) {
             $trustedStrip = __('admin.media_issue_review.trust.strip', [
-                'date' => $media->trusted_at->timezone('Asia/Jerusalem')->format('d/m/Y H:i'),
+                'date' => $media->trusted_at->timezone(UiTimezone::name())->format('d/m/Y H:i'),
                 'user' => (string) (User::query()->find($media->trusted_by_user_id)?->name
                     ?? __('admin.media_issue_review.facts.unavailable')),
             ]);
@@ -144,7 +145,7 @@ class ReviewMediaIssues extends Page
 
         if ($media->audience_made_public_at !== null) {
             $audienceStrip = __('admin.media_issue_review.audience.strip', [
-                'date' => $media->audience_made_public_at->timezone('Asia/Jerusalem')->format('d/m/Y H:i'),
+                'date' => $media->audience_made_public_at->timezone(UiTimezone::name())->format('d/m/Y H:i'),
                 'user' => (string) (User::query()->find($media->audience_made_public_by_user_id)?->name
                     ?? __('admin.media_issue_review.facts.unavailable')),
             ]);

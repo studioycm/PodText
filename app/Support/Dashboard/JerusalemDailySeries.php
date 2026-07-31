@@ -3,6 +3,7 @@
 namespace App\Support\Dashboard;
 
 use App\Enums\DashboardRange;
+use App\Support\UiTimezone;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
 
@@ -17,8 +18,6 @@ use Illuminate\Support\Carbon;
  */
 class JerusalemDailySeries
 {
-    public const TIMEZONE = 'Asia/Jerusalem';
-
     /**
      * Zero-filled Jerusalem-day counts, keyed `Y-m-d` and aligned to
      * {@see DashboardRange::dayKeys()}.
@@ -35,7 +34,7 @@ class JerusalemDailySeries
             ->whereBetween($column, [$start, $end])
             ->pluck($column)
             ->each(function ($value) use (&$buckets): void {
-                $day = Carbon::parse($value)->timezone(self::TIMEZONE)->format('Y-m-d');
+                $day = Carbon::parse($value)->timezone(UiTimezone::name())->format('Y-m-d');
 
                 if (array_key_exists($day, $buckets)) {
                     $buckets[$day]++;
@@ -62,7 +61,7 @@ class JerusalemDailySeries
                 continue;
             }
 
-            $day = Carbon::parse($timestamp)->timezone(self::TIMEZONE)->format('Y-m-d');
+            $day = Carbon::parse($timestamp)->timezone(UiTimezone::name())->format('Y-m-d');
 
             if (array_key_exists($day, $buckets)) {
                 $buckets[$day]++;

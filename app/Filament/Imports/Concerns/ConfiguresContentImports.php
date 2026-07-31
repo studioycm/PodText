@@ -5,6 +5,7 @@ namespace App\Filament\Imports\Concerns;
 use App\Enums\RelationImportMode;
 use App\Models\Category;
 use App\Models\ContentTag;
+use App\Support\UiTimezone;
 use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
 use Carbon\Exceptions\InvalidFormatException;
@@ -243,7 +244,7 @@ trait ConfiguresContentImports
         }
 
         $state = trim((string) $state);
-        $timezone = 'Asia/Jerusalem';
+        $timezone = UiTimezone::name();
 
         foreach (['d/m/Y H:i', 'd/m/Y', 'Y-m-d H:i:s', 'Y-m-d H:i', 'Y-m-d'] as $format) {
             try {

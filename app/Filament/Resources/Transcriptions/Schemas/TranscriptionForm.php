@@ -5,6 +5,7 @@ namespace App\Filament\Resources\Transcriptions\Schemas;
 use App\Filament\Forms\Components\PublicationStatusSelect;
 use App\Filament\Resources\Support\RelationshipOptionForms;
 use App\Support\Transcriptions\TranscriptionModeLabel;
+use App\Support\UiTimezone;
 use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\MarkdownEditor;
 use Filament\Forms\Components\Select;
@@ -95,7 +96,7 @@ class TranscriptionForm
                         ->label(__('admin.fields.published_at'))
                         ->helperText(TranscriptionModeLabel::singleText('admin.helpers.transcription_published_at'))
                         ->displayFormat('d/m/Y H:i')
-                        ->timezone('Asia/Jerusalem'),
+                        ->timezone(UiTimezone::name()),
                 ])
                 ->columns(2),
         ];

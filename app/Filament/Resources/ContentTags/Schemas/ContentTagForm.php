@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\ContentTags\Schemas;
 
+use App\Support\UiTimezone;
 use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
@@ -45,7 +46,7 @@ class ContentTagForm
                             ->label(__('admin.fields.enabled_at'))
                             ->helperText(__('admin.helpers.enabled_at'))
                             ->displayFormat('d/m/Y H:i')
-                            ->timezone('Asia/Jerusalem'),
+                            ->timezone(UiTimezone::name()),
                         TextInput::make('order_column')
                             ->label(__('admin.fields.sort_order'))
                             ->helperText(__('admin.helpers.sort_order'))

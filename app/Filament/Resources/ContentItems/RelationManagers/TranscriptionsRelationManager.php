@@ -10,6 +10,7 @@ use App\Filament\Resources\Support\ResourceTableActions;
 use App\Filament\Resources\Transcriptions\TranscriptionResource;
 use App\Models\Transcription;
 use App\Support\Transcriptions\MultiTranscriptionSurfaces;
+use App\Support\UiTimezone;
 use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\CreateAction;
@@ -71,7 +72,7 @@ class TranscriptionsRelationManager extends RelationManager
                             ->label(__('admin.fields.published_at'))
                             ->helperText(__('admin.helpers.transcription_published_at'))
                             ->displayFormat('d/m/Y H:i')
-                            ->timezone('Asia/Jerusalem'),
+                            ->timezone(UiTimezone::name()),
                     ])
                     ->columns(2),
                 Section::make(__('admin.sections.transcript'))
@@ -112,7 +113,7 @@ class TranscriptionsRelationManager extends RelationManager
                     ->sortable(),
                 TextColumn::make('published_at')
                     ->label(__('admin.fields.published_at'))
-                    ->dateTime('d/m/Y H:i', 'Asia/Jerusalem')
+                    ->dateTime('d/m/Y H:i', UiTimezone::name())
                     ->sortable(),
                 TextColumn::make('language_code')
                     ->label(__('admin.fields.language_code'))
@@ -131,7 +132,7 @@ class TranscriptionsRelationManager extends RelationManager
                     ->color(fn (Transcription $record): string => $record->getKey() === $this->getOwnerRecord()->featured_transcription_id ? 'warning' : 'gray'),
                 TextColumn::make('updated_at')
                     ->label(__('admin.fields.updated_at'))
-                    ->dateTime('d/m/Y H:i', 'Asia/Jerusalem')
+                    ->dateTime('d/m/Y H:i', UiTimezone::name())
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
             ])

@@ -3,6 +3,7 @@
 namespace App\Support\Publication;
 
 use App\Enums\PublicationStatus;
+use App\Support\UiTimezone;
 use Carbon\CarbonInterface;
 
 class PublicationDateAutofill
@@ -13,7 +14,7 @@ class PublicationDateAutofill
             return $currentPublishedAt;
         }
 
-        return $now ?? now('Asia/Jerusalem');
+        return $now ?? now(UiTimezone::name());
     }
 
     private static function isPublished(mixed $status): bool

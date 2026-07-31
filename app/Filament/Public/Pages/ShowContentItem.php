@@ -18,6 +18,7 @@ use App\Support\PublicFront\ItemPage\PublicItemPageRegistry;
 use App\Support\PublicFront\PublicDefaultImageResolver;
 use App\Support\PublicFront\PublicFrontRenderContext;
 use App\Support\Transcriptions\TranscriptionModeLabel;
+use App\Support\UiTimezone;
 use Carbon\CarbonInterface;
 use Filament\Pages\Page;
 use Filament\Panel;
@@ -374,7 +375,7 @@ class ShowContentItem extends Page
             return null;
         }
 
-        return $date->timezone('Asia/Jerusalem')->format('d/m/Y');
+        return $date->timezone(UiTimezone::name())->format('d/m/Y');
     }
 
     private function badgeClass(?string $size, ?string $color): string

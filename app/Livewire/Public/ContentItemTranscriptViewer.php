@@ -12,6 +12,7 @@ use App\Support\PublicFront\ItemPage\PublicItemPageRegistry;
 use App\Support\PublicFront\PublicFrontRenderContext;
 use App\Support\Transcriptions\TranscriptWordCounter;
 use App\Support\Transcripts\TranscriptSegmentParser;
+use App\Support\UiTimezone;
 use Carbon\CarbonInterface;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Collection;
@@ -181,7 +182,7 @@ class ContentItemTranscriptViewer extends Component
             return null;
         }
 
-        return $date->timezone('Asia/Jerusalem')->format('d/m/Y');
+        return $date->timezone(UiTimezone::name())->format('d/m/Y');
     }
 
     private function detailBadgeClass(): string

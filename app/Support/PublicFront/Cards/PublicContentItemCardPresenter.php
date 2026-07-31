@@ -18,6 +18,7 @@ use App\Support\PublicFront\ContentItemDisplayTitle;
 use App\Support\PublicFront\PublicDefaultImageResolver;
 use App\Support\Transcriptions\MultiTranscriptionSurfaces;
 use App\Support\Transcriptions\TranscriptionModeLabel;
+use App\Support\UiTimezone;
 use Illuminate\Contracts\Pagination\Paginator;
 use Illuminate\Support\Facades\Storage;
 
@@ -102,9 +103,9 @@ class PublicContentItemCardPresenter
             'contentGroupSlug' => $item->contentGroup->slug,
         ], panel: 'public');
         $effectiveTranscription = $this->selectedTranscription($item, $contributorContext);
-        $effectiveDate = $effectiveTranscription?->published_at?->timezone('Asia/Jerusalem')->format('d/m/Y');
-        $sitePublishedDate = $item->published_at?->timezone('Asia/Jerusalem')->format('d/m/Y');
-        $originalDate = $item->original_published_at?->timezone('Asia/Jerusalem')->format('d/m/Y');
+        $effectiveDate = $effectiveTranscription?->published_at?->timezone(UiTimezone::name())->format('d/m/Y');
+        $sitePublishedDate = $item->published_at?->timezone(UiTimezone::name())->format('d/m/Y');
+        $originalDate = $item->original_published_at?->timezone(UiTimezone::name())->format('d/m/Y');
         $duration = $this->duration($item->duration_seconds);
         $image = $this->defaultImages->contentItemImage($item, $inheritGroupCover);
         $groupCoverPath = $this->defaultImages->contentGroupCoverPath($item->contentGroup);

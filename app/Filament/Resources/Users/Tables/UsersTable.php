@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Users\Tables;
 
 use App\Enums\UserRole;
 use App\Filament\Resources\Support\ResourceTableActions;
+use App\Support\UiTimezone;
 use Filament\Actions\EditAction;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
@@ -29,7 +30,7 @@ class UsersTable
                     ->sortable(),
                 TextColumn::make('created_at')
                     ->label(__('admin.fields.created_at'))
-                    ->dateTime('d/m/Y H:i', 'Asia/Jerusalem')
+                    ->dateTime('d/m/Y H:i', UiTimezone::name())
                     ->sortable(),
             ])
             ->filters([

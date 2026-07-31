@@ -9,6 +9,7 @@ use App\Filament\Clusters\SystemCluster;
 use App\Filament\Support\Concerns\UsesAdminNavigationOrder;
 use App\Models\ImportConnection;
 use App\Support\Importer\ConnectionTester;
+use App\Support\UiTimezone;
 use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Actions\Concerns\InteractsWithActions;
@@ -83,7 +84,7 @@ class ImporterSettings extends Page implements HasActions, HasSchemas, HasTable
                     ->sortable(),
                 TextColumn::make('last_tested_at')
                     ->label(__('admin.importer.fields.last_tested_at'))
-                    ->dateTime('d/m/Y H:i', 'Asia/Jerusalem')
+                    ->dateTime('d/m/Y H:i', UiTimezone::name())
                     ->placeholder(__('admin.placeholders.empty'))
                     ->sortable(),
             ])

@@ -18,6 +18,7 @@ use App\Support\Media\MediaOwnerTitleApplier;
 use App\Support\Media\MediaRecordProjector;
 use App\Support\Media\MediaRecordScope;
 use App\Support\Media\MediaReferenceFinder;
+use App\Support\UiTimezone;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\BulkAction;
@@ -190,7 +191,7 @@ class MediaTable
                                     ->wrap(),
                                 TextColumn::make('created_at')
                                     ->label(__('admin.media_library.added'))
-                                    ->dateTime('d/m/Y H:i', 'Asia/Jerusalem')
+                                    ->dateTime('d/m/Y H:i', UiTimezone::name())
                                     ->icon(Heroicon::OutlinedCalendarDays)
                                     ->color('gray')
                                     ->sortable(

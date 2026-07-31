@@ -37,7 +37,7 @@
         ? gmdate($durationSeconds >= 3600 ? 'H:i:s' : 'i:s', (int) $durationSeconds)
         : null;
     $publishedDate = $publishedAt instanceof \Illuminate\Support\Carbon
-        ? $publishedAt->timezone('Asia/Jerusalem')->format('d/m/Y')
+        ? $publishedAt->timezone(\App\Support\UiTimezone::name())->format('d/m/Y')
         : null;
 @endphp
 

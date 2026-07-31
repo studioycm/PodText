@@ -30,6 +30,7 @@ use App\Support\PublicFront\ContentItemDisplayTitle;
 use App\Support\Slugs\HebrewSlugger;
 use App\Support\Transcriptions\MultiTranscriptionSurfaces;
 use App\Support\Transcriptions\TranscriptionModeLabel;
+use App\Support\UiTimezone;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Checkbox;
 use Filament\Forms\Components\DateTimePicker;
@@ -254,11 +255,11 @@ class EpisodeWorkspaceForm
                         DateTimePicker::make('external_published_at')
                             ->label(__('admin.fields.external_published_at'))
                             ->displayFormat('d/m/Y H:i')
-                            ->timezone('Asia/Jerusalem'),
+                            ->timezone(UiTimezone::name()),
                         DateTimePicker::make('original_published_at')
                             ->label(__('admin.fields.original_published_at'))
                             ->displayFormat('d/m/Y H:i')
-                            ->timezone('Asia/Jerusalem'),
+                            ->timezone(UiTimezone::name()),
                         KeyValue::make('media_metadata')
                             ->label(__('admin.fields.media_metadata'))
                             ->helperText(__('admin.helpers.media_metadata'))
@@ -277,7 +278,7 @@ class EpisodeWorkspaceForm
                         DateTimePicker::make('published_at')
                             ->label(__('admin.fields.published_at'))
                             ->displayFormat('d/m/Y H:i')
-                            ->timezone('Asia/Jerusalem'),
+                            ->timezone(UiTimezone::name()),
                         Toggle::make('is_pinned')
                             ->label(__('admin.fields.is_pinned'))
                             ->helperText(__('admin.helpers.is_pinned')),
@@ -285,12 +286,12 @@ class EpisodeWorkspaceForm
                             ->label(__('admin.fields.pinned_at'))
                             ->helperText(__('admin.helpers.pinned_at'))
                             ->displayFormat('d/m/Y H:i')
-                            ->timezone('Asia/Jerusalem'),
+                            ->timezone(UiTimezone::name()),
                         DateTimePicker::make('pinned_until')
                             ->label(__('admin.fields.pinned_until'))
                             ->helperText(__('admin.helpers.pinned_until'))
                             ->displayFormat('d/m/Y H:i')
-                            ->timezone('Asia/Jerusalem'),
+                            ->timezone(UiTimezone::name()),
                         TextInput::make('pin_order')
                             ->label(__('admin.fields.pin_order'))
                             ->helperText(__('admin.helpers.pin_order'))
@@ -342,7 +343,7 @@ class EpisodeWorkspaceForm
                     ->label(__('admin.fields.published_at'))
                     ->helperText(TranscriptionModeLabel::text('admin.helpers.transcription_published_at'))
                     ->displayFormat('d/m/Y H:i')
-                    ->timezone('Asia/Jerusalem'),
+                    ->timezone(UiTimezone::name()),
                 MarkdownEditor::make('transcript_markdown')
                     ->label(__('admin.fields.transcript_markdown'))
                     ->helperText(__('admin.helpers.transcript_markdown'))

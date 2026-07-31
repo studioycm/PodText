@@ -2,6 +2,7 @@
 
 namespace App\Enums;
 
+use App\Support\UiTimezone;
 use Carbon\CarbonImmutable;
 use Filament\Support\Contracts\HasLabel;
 
@@ -10,8 +11,6 @@ enum DashboardRange: string implements HasLabel
     case Last7Days = 'last_7_days';
     case Last30Days = 'last_30_days';
     case Last60Days = 'last_60_days';
-
-    private const TIMEZONE = 'Asia/Jerusalem';
 
     public static function fromFilter(?string $value): self
     {
@@ -48,7 +47,7 @@ enum DashboardRange: string implements HasLabel
      */
     public function currentPeriod(): array
     {
-        $today = CarbonImmutable::now(self::TIMEZONE);
+        $today = CarbonImmutable::now(UiTimezone::name());
 
         return [
             $today->subDays($this->days() - 1)->startOfDay()->utc(),
@@ -65,7 +64,7 @@ enum DashboardRange: string implements HasLabel
      */
     public function dayKeys(): array
     {
-        $today = CarbonImmutable::now(self::TIMEZONE)->startOfDay();
+        $today = CarbonImmutable::now(UiTimezone::name())->startOfDay();
 
         return collect(range($this->days() - 1, 0))
             ->map(fn (int $daysAgo): string => $today->subDays($daysAgo)->format('Y-m-d'))
@@ -77,7 +76,7 @@ enum DashboardRange: string implements HasLabel
     {
         [$currentStart] = $this->currentPeriod();
         $previousEnd = $currentStart->subSecond();
-        $previousStart = $previousEnd->setTimezone(self::TIMEZONE)
+        $previousStart = $previousEnd->setTimezone(UiTimezone::name())
             ->subDays($this->days() - 1)
             ->startOfDay()
             ->utc();

@@ -7,6 +7,7 @@ use App\Filament\Forms\Components\SlugInput;
 use App\Models\Author;
 use App\Models\Transcription;
 use App\Support\Transcriptions\TranscriptionModeLabel;
+use App\Support\UiTimezone;
 use Filament\Actions\Action;
 use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\MarkdownEditor;
@@ -265,7 +266,7 @@ class RelationshipOptionForms
             DateTimePicker::make('published_at')
                 ->label(__('admin.fields.published_at'))
                 ->displayFormat('d/m/Y H:i')
-                ->timezone('Asia/Jerusalem'),
+                ->timezone(UiTimezone::name()),
         ];
     }
 
@@ -294,7 +295,7 @@ class RelationshipOptionForms
                 ->label(__('admin.fields.enabled_at'))
                 ->helperText(__('admin.helpers.enabled_at'))
                 ->displayFormat('d/m/Y H:i')
-                ->timezone('Asia/Jerusalem'),
+                ->timezone(UiTimezone::name()),
             TextInput::make('order_column')
                 ->label(__('admin.fields.sort_order'))
                 ->helperText(__('admin.helpers.sort_order'))

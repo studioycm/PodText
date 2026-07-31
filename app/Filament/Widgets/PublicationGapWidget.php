@@ -6,6 +6,7 @@ use App\Filament\Widgets\Concerns\AdminOnlyWidget;
 use App\Filament\Widgets\Concerns\ReadsDashboardFilters;
 use App\Filament\Widgets\Concerns\ShowsLoadingSkeleton;
 use App\Support\Dashboard\EditorialMetrics;
+use App\Support\UiTimezone;
 use Filament\Widgets\Concerns\InteractsWithPageFilters;
 use Filament\Widgets\Widget;
 
@@ -42,7 +43,7 @@ class PublicationGapWidget extends Widget
             // needs-attention episode is never described as invisible.
             'gapReasons' => $breakdown['gap'],
             'attentionReasons' => $breakdown['attention'],
-            'forecast' => $forecast?->timezone('Asia/Jerusalem')->format('d/m/Y'),
+            'forecast' => $forecast?->timezone(UiTimezone::name())->format('d/m/Y'),
         ];
     }
 }

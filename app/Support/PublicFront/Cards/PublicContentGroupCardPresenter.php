@@ -9,6 +9,7 @@ use App\Models\ContentGroup;
 use App\Support\PublicContent\PublicContentCardOptions;
 use App\Support\PublicFront\PublicDefaultImageResolver;
 use App\Support\Transcriptions\TranscriptionModeLabel;
+use App\Support\UiTimezone;
 use Carbon\Carbon;
 use Illuminate\Contracts\Pagination\Paginator;
 
@@ -514,7 +515,7 @@ class PublicContentGroupCardPresenter
             return null;
         }
 
-        return Carbon::parse($date)->timezone('Asia/Jerusalem')->format('d/m/Y');
+        return Carbon::parse($date)->timezone(UiTimezone::name())->format('d/m/Y');
     }
 
     private function partClass(PublicFrontCardPart $part): string

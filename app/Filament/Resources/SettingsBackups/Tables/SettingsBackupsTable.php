@@ -14,6 +14,7 @@ use App\Support\PublicFront\PublicFrontConfigRegistry;
 use App\Support\SettingsLifecycle\SettingsBackupManager;
 use App\Support\SettingsLifecycle\SettingsBackupSnapshotManager;
 use App\Support\SettingsLifecycle\SettingsImportReport;
+use App\Support\UiTimezone;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\DeleteAction;
@@ -54,7 +55,7 @@ class SettingsBackupsTable
                     ->extraImgAttributes(['class' => 'rounded-md object-cover']),
                 TextColumn::make('created_at')
                     ->label(__('admin.fields.created_at'))
-                    ->dateTime('d/m/Y H:i', 'Asia/Jerusalem')
+                    ->dateTime('d/m/Y H:i', UiTimezone::name())
                     ->sortable(),
                 TextColumn::make('source')
                     ->label(__('admin.fields.source'))

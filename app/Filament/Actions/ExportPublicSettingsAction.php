@@ -3,6 +3,7 @@
 namespace App\Filament\Actions;
 
 use App\Support\SettingsLifecycle\PublicSettingsPackage;
+use App\Support\UiTimezone;
 use Filament\Actions\Action;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Support\Str;
@@ -34,7 +35,7 @@ class ExportPublicSettingsAction extends Action
     private function downloadFilename(): string
     {
         $app = Str::slug((string) config('app.name', 'podtext'));
-        $timestamp = now('Asia/Jerusalem')->format('Ymd-His');
+        $timestamp = now(UiTimezone::name())->format('Ymd-His');
 
         return "{$app}-public-settings-{$timestamp}.json";
     }

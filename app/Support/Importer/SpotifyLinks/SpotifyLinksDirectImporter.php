@@ -6,6 +6,7 @@ use App\Enums\PublicationStatus;
 use App\Models\ContentGroup;
 use App\Models\ContentItem;
 use App\Support\Slugs\HebrewSlugger;
+use App\Support\UiTimezone;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
@@ -299,14 +300,14 @@ class SpotifyLinksDirectImporter
         $value = (string) $value;
 
         foreach (['d/m/Y H:i', 'Y-m-d H:i:s', 'Y-m-d'] as $format) {
-            $date = CarbonImmutable::createFromFormat($format, $value, 'Asia/Jerusalem');
+            $date = CarbonImmutable::createFromFormat($format, $value, UiTimezone::name());
 
             if ($date !== false) {
                 return $date;
             }
         }
 
-        return CarbonImmutable::parse($value, 'Asia/Jerusalem');
+        return CarbonImmutable::parse($value, UiTimezone::name());
     }
 
     private function requiredText(mixed $value, string $field): string

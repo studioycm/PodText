@@ -17,6 +17,7 @@ use App\Support\Media\MediaRecordScope;
 use App\Support\Media\OwnerImageChangedException;
 use App\Support\Media\OwnerImageChoicePresentation;
 use App\Support\Media\OwnerImagePresenter;
+use App\Support\UiTimezone;
 use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\CreateAction;
@@ -117,7 +118,7 @@ class ContentItemsRelationManager extends RelationManager
                     ->sortable(),
                 TextColumn::make('published_at')
                     ->label(__('admin.fields.published_at'))
-                    ->dateTime('d/m/Y H:i', 'Asia/Jerusalem')
+                    ->dateTime('d/m/Y H:i', UiTimezone::name())
                     ->sortable(),
                 TextColumn::make('featuredTranscription.title')
                     ->label(__('admin.fields.featured_transcription'))
@@ -137,7 +138,7 @@ class ContentItemsRelationManager extends RelationManager
                     ->toggleable(),
                 TextColumn::make('updated_at')
                     ->label(__('admin.fields.updated_at'))
-                    ->dateTime('d/m/Y H:i', 'Asia/Jerusalem')
+                    ->dateTime('d/m/Y H:i', UiTimezone::name())
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
             ])

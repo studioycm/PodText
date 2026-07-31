@@ -23,6 +23,7 @@ use App\Support\Importer\SpotifyLinks\SpotifyLinksImportSummary;
 use App\Support\Importer\SpotifyLinks\SpotifyOEmbedClient;
 use App\Support\Importer\SpotifyLinks\SpotifyOpenGraphClient;
 use App\Support\Media\EpisodeSpotifyLookup;
+use App\Support\UiTimezone;
 use BackedEnum;
 use Carbon\CarbonInterface;
 use Filament\Actions\Action;
@@ -749,6 +750,6 @@ class SpotifyLinksFetcher extends Page
             return '';
         }
 
-        return app(ImporterCsvBuilder::class)->importDate(Carbon::parse((string) $value, 'Asia/Jerusalem'));
+        return app(ImporterCsvBuilder::class)->importDate(Carbon::parse((string) $value, UiTimezone::name()));
     }
 }

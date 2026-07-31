@@ -16,6 +16,7 @@ use App\Rules\ApprovedEmbedUrl;
 use App\Support\Media\ContentItemMediaRules;
 use App\Support\Media\ImageFileNamer;
 use App\Support\Media\OwnerImagePresenter;
+use App\Support\UiTimezone;
 use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\KeyValue;
@@ -192,12 +193,12 @@ class ContentItemForm
                             ->label(__('admin.fields.pinned_at'))
                             ->helperText(__('admin.helpers.pinned_at'))
                             ->displayFormat('d/m/Y H:i')
-                            ->timezone('Asia/Jerusalem'),
+                            ->timezone(UiTimezone::name()),
                         DateTimePicker::make('pinned_until')
                             ->label(__('admin.fields.pinned_until'))
                             ->helperText(__('admin.helpers.pinned_until'))
                             ->displayFormat('d/m/Y H:i')
-                            ->timezone('Asia/Jerusalem'),
+                            ->timezone(UiTimezone::name()),
                         TextInput::make('pin_order')
                             ->label(__('admin.fields.pin_order'))
                             ->helperText(__('admin.helpers.pin_order'))
@@ -234,7 +235,7 @@ class ContentItemForm
                         DateTimePicker::make('external_published_at')
                             ->label(__('admin.fields.external_published_at'))
                             ->displayFormat('d/m/Y H:i')
-                            ->timezone('Asia/Jerusalem'),
+                            ->timezone(UiTimezone::name()),
                         TextInput::make('direct_media_url')
                             ->label(__('admin.fields.direct_media_url'))
                             ->helperText(__('admin.helpers.direct_media_url'))
@@ -264,11 +265,11 @@ class ContentItemForm
                         DateTimePicker::make('published_at')
                             ->label(__('admin.fields.published_at'))
                             ->displayFormat('d/m/Y H:i')
-                            ->timezone('Asia/Jerusalem'),
+                            ->timezone(UiTimezone::name()),
                         DateTimePicker::make('original_published_at')
                             ->label(__('admin.fields.original_published_at'))
                             ->displayFormat('d/m/Y H:i')
-                            ->timezone('Asia/Jerusalem'),
+                            ->timezone(UiTimezone::name()),
                     ])
                     ->columns(3),
             ]);

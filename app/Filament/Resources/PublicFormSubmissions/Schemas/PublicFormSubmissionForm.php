@@ -5,6 +5,7 @@ namespace App\Filament\Resources\PublicFormSubmissions\Schemas;
 use App\Enums\PublicFormSubmissionStatus;
 use App\Models\PublicFormSubmission;
 use App\Support\PublicFront\Forms\PublicFormSubmissionPresenter;
+use App\Support\UiTimezone;
 use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
@@ -39,7 +40,7 @@ class PublicFormSubmissionForm
                         DateTimePicker::make('submitted_at')
                             ->label(__('admin.fields.submitted_at'))
                             ->displayFormat('d/m/Y H:i')
-                            ->timezone('Asia/Jerusalem')
+                            ->timezone(UiTimezone::name())
                             ->disabled()
                             ->dehydrated(false),
                         TextInput::make('verification_channel')
@@ -52,7 +53,7 @@ class PublicFormSubmissionForm
                         DateTimePicker::make('verification_verified_at')
                             ->label(__('admin.fields.public_form_verification_verified_at'))
                             ->displayFormat('d/m/Y H:i')
-                            ->timezone('Asia/Jerusalem')
+                            ->timezone(UiTimezone::name())
                             ->disabled()
                             ->dehydrated(false),
                         TextInput::make('source_url')

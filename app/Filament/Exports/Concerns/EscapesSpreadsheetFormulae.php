@@ -3,6 +3,7 @@
 namespace App\Filament\Exports\Concerns;
 
 use App\Models\Category;
+use App\Support\UiTimezone;
 use BackedEnum;
 use Carbon\CarbonImmutable;
 use DateTimeInterface;
@@ -44,7 +45,7 @@ trait EscapesSpreadsheetFormulae
             return self::safeSpreadsheetText($state);
         }
 
-        return self::safeSpreadsheetText(CarbonImmutable::instance($state)->setTimezone('Asia/Jerusalem')->format('d/m/Y H:i'));
+        return self::safeSpreadsheetText(CarbonImmutable::instance($state)->setTimezone(UiTimezone::name())->format('d/m/Y H:i'));
     }
 
     protected static function safeSpreadsheetDate(mixed $state): ?string
@@ -53,7 +54,7 @@ trait EscapesSpreadsheetFormulae
             return self::safeSpreadsheetText($state);
         }
 
-        return self::safeSpreadsheetText(CarbonImmutable::instance($state)->setTimezone('Asia/Jerusalem')->format('d/m/Y'));
+        return self::safeSpreadsheetText(CarbonImmutable::instance($state)->setTimezone(UiTimezone::name())->format('d/m/Y'));
     }
 
     protected static function safeSpreadsheetJson(mixed $state): ?string

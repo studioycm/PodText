@@ -14,6 +14,7 @@ use App\Filament\Tables\OwnerImageColumn;
 use App\Models\Author;
 use App\Models\ContentItem;
 use App\Support\Transcriptions\TranscriptionModeLabel;
+use App\Support\UiTimezone;
 use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
@@ -94,7 +95,7 @@ class ContentItemsTable
                     ->sortable(),
                 TextColumn::make('published_at')
                     ->label(__('admin.fields.published_at'))
-                    ->dateTime('d/m/Y H:i', 'Asia/Jerusalem')
+                    ->dateTime('d/m/Y H:i', UiTimezone::name())
                     ->sortable(),
                 TextColumn::make('featuredTranscription.title')
                     ->label(__('admin.fields.featured_transcription'))
@@ -245,7 +246,7 @@ class ContentItemsTable
                     ->label(__('admin.fields.published_at'))
                     ->helperText(TranscriptionModeLabel::text('admin.helpers.transcription_published_at'))
                     ->displayFormat('d/m/Y H:i')
-                    ->timezone('Asia/Jerusalem'),
+                    ->timezone(UiTimezone::name()),
                 MarkdownEditor::make('transcript_markdown')
                     ->label(__('admin.fields.transcript_markdown'))
                     ->helperText(TranscriptionModeLabel::text('admin.helpers.transcript_markdown'))

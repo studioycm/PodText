@@ -4,6 +4,7 @@ namespace App\Filament\Resources\HomepageSections\Tables;
 
 use App\Enums\HomepageSectionType;
 use App\Filament\Resources\Support\ResourceTableActions;
+use App\Support\UiTimezone;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
@@ -56,7 +57,7 @@ class HomepageSectionsTable
                     ->boolean(),
                 TextColumn::make('updated_at')
                     ->label(__('admin.fields.updated_at'))
-                    ->dateTime('d/m/Y H:i', 'Asia/Jerusalem')
+                    ->dateTime('d/m/Y H:i', UiTimezone::name())
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
             ])

@@ -2,6 +2,7 @@
 
 namespace App\Support\Importer\SpotifyLinks;
 
+use App\Support\UiTimezone;
 use Carbon\CarbonInterface;
 use Filament\Actions\Imports\ImportColumn;
 use Illuminate\Support\Carbon;
@@ -50,14 +51,14 @@ class ImporterCsvBuilder
     public function importDate(mixed $value): string
     {
         if ($value instanceof CarbonInterface) {
-            return $value->copy()->timezone('Asia/Jerusalem')->format('d/m/Y H:i');
+            return $value->copy()->timezone(UiTimezone::name())->format('d/m/Y H:i');
         }
 
         if (blank($value)) {
             return '';
         }
 
-        return Carbon::parse((string) $value, 'Asia/Jerusalem')->format('d/m/Y H:i');
+        return Carbon::parse((string) $value, UiTimezone::name())->format('d/m/Y H:i');
     }
 
     private function cell(mixed $value): string

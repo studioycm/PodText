@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\SettingsBackupSource;
 use App\Support\SettingsLifecycle\PublicSettingsPackage;
+use App\Support\UiTimezone;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -81,7 +82,7 @@ class SettingsBackupVersion extends Model
 
     public function downloadFilename(): string
     {
-        $timestamp = $this->created_at?->copy()->timezone('Asia/Jerusalem')->format('Ymd-His') ?? (string) $this->getKey();
+        $timestamp = $this->created_at?->copy()->timezone(UiTimezone::name())->format('Ymd-His') ?? (string) $this->getKey();
 
         return "public-content-settings-backup-{$timestamp}.json";
     }

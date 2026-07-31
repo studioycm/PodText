@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use App\Enums\MediaMutationStatus;
 use App\Models\MediaMutationOperation;
+use App\Support\UiTimezone;
 use Illuminate\Console\Command;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Storage;
@@ -44,7 +45,7 @@ class PruneMediaQuarantine extends Command
                 $rows->map(fn (MediaMutationOperation $operation): array => [
                     $operation->operation_key,
                     (string) $operation->getRawOriginal('operation'),
-                    $operation->completed_at?->timezone('Asia/Jerusalem')->format('d/m/Y H:i') ?? '',
+                    $operation->completed_at?->timezone(UiTimezone::name())->format('d/m/Y H:i') ?? '',
                     (string) $operation->quarantine_path,
                     $this->rowState($operation),
                 ])->all(),
