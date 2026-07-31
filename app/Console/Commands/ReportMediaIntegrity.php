@@ -54,23 +54,10 @@ class ReportMediaIntegrity extends Command
                 $row['recommended_disposition'],
             ])->all(),
         );
-        if (($report['rowless_transition_candidates'] ?? []) !== []) {
-            $this->newLine();
-            $this->components->warn('Rowless transition candidates are not gallery media and cannot be browsed before commit.');
-            $this->table(
-                ['Path', 'Active refs', 'Next action', 'Reason'],
-                collect($report['rowless_transition_candidates'])->map(fn (array $row): array => [
-                    $row['path'] ?? '-', count($row['active_references'] ?? []), $row['disposition'] ?? '-', $row['reason'] ?? '-',
-                ])->all(),
-            );
-        }
         $this->components->info(collect([
-            'transition pending' => collect($report['media'])->filter(fn (array $row): bool => in_array($row['recommended_disposition'] ?? null, ['key_only', 'normalize_existing', 'sanitize_svg', 'import_exact_path'], true))->count()
-                + collect($report['rowless_transition_candidates'] ?? [])->where('disposition', 'import_exact_path')->count(),
-            'detach to default' => collect($report['media'])->where('recommended_disposition', 'detach_to_default')->count()
-                + collect($report['rowless_transition_candidates'] ?? [])->where('disposition', 'detach_to_default')->count(),
-            'blocked legacy rows' => collect($report['media'])->filter(fn (array $row): bool => str_starts_with((string) ($row['recommended_disposition'] ?? ''), 'blocked'))->count()
-                + collect($report['rowless_transition_candidates'] ?? [])->where('disposition', 'blocked')->count(),
+            'transition pending' => collect($report['media'])->filter(fn (array $row): bool => in_array($row['recommended_disposition'] ?? null, ['key_only', 'normalize_existing', 'sanitize_svg', 'import_exact_path'], true))->count(),
+            'detach to default' => collect($report['media'])->where('recommended_disposition', 'detach_to_default')->count(),
+            'blocked legacy rows' => collect($report['media'])->filter(fn (array $row): bool => str_starts_with((string) ($row['recommended_disposition'] ?? ''), 'blocked'))->count(),
             'duplicate locations' => count($report['duplicate_locations']),
             'attachment issues' => count($report['attachment_issues']),
             'orphan attachments' => count($report['orphan_attachments']),

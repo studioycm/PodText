@@ -452,6 +452,67 @@ with a row, the amendment is current.
   phase shipped, and sanitize now relocates a root-level source in the same
   operation.
 
+**Amendments added 2026-07-31 (RECON2 R4).** The RECON2 audit found that
+twelve rows above were still marked pending for work that shipped and was
+operator-closed in July. The root cause is recorded plainly: Mini-tasks 3B and
+3C were closed without handoff documents, and without handoffs the matrix was
+never amended. Reconstruction handoffs now exist at
+`../../phase-02/media-operations-ux3-mini3b-intake-acquisition-results-handoff.md`
+and
+`../../phase-02/media-operations-ux3-mini3c-safe-existing-file-operations-handoff.md`.
+
+- **`MUX3-F017`–`MUX3-F021` are implemented and operator-closed.** Mini-task 3B
+  shipped them (`bc95e21` P1–P4, `7e4eaf2` P5, OR corrections `4457bf0`,
+  `45078bc`, `8452108`, `8908b4a`, `a638fd4`) and the operator closed 3B on
+  2026-07-28 (`7bafd8d`). Their rows still read `pending — Mini-task 3B`; this
+  amendment is current.
+- **`MUX3-F022` is the genuine partial in the 3B block.** Spotify show artwork
+  still auto-admits (`app/Filament/Forms/SpotifyShowInput.php:84-91`) with no
+  admission choice and no per-item permanent receipt. The rest of the finding's
+  provider wording/continuity shipped with 3B.
+- **`MUX3-F024`–`MUX3-F030` are implemented and operator-closed.** Mini-task 3C
+  shipped them (`bc0ce8f` P1–P8, OR corrections `e529f48`, `88c6880`) and the
+  operator closed 3C on 2026-07-28 («3c is good», closure `9393fef`).
+- **`MUX3-F045` evidence gap is closed.** Media action discoverability was
+  proven per record state, permission, locale and viewport in `def171b`
+  (2026-07-30).
+- **`MUX3-F038` is deferred, not retired (operator ruling 2026-07-31).** The
+  Recheck/Retry control is wanted later. Its unmet proof gate stands as
+  written: explicit read set, bounds, authorization, stale semantics, result
+  lifetime and a no-Recheck fallback. Until a task meets that gate, the
+  finding is **deferred by decision** — it must stop being re-litigated as if
+  undecided, and it must not be retired.
+- **`MUX3-F048` retention update.** RECON2 R2 (2026-07-31) shipped the missing
+  retention contract: `media:prune-quarantine` (dry-run default, `--apply`),
+  `media.quarantine.retention_days` (default 90, 0 = keep forever), pruning
+  only `completed` rows by `completed_at`, never by file age or directory
+  sweep — for any row still `committed`/`cleanup_pending` the quarantine copy
+  is a hard repair precondition. Quarantine is recorded as an **asset**: the
+  journal already snapshots path, checksum, source, actor and timestamps, and
+  the delete operation now also snapshots `alt`/`title`/`caption`/
+  `description` into `context`, so the substrate for a future Package 5 Trash
+  is nearly complete.
+- **Operator rulings recorded 2026-07-31 for the remaining reason-specific
+  findings** (they unblock implementation without reopening research):
+  `MUX3-F035` — minting a missing portable reference key on an existing row is
+  a legitimate repair; `MUX3-F037` — audience flip to public is allowed,
+  super-admin only, carrying the same weight as the SVG trust mark (explicit
+  consequence dialog, recorded actor and timestamp, revocable);
+  `MUX3-F036` — a named disk that does not exist is an editable record defect,
+  correctable by a super-admin to an existing configured disk only, never a
+  free-text edit; `MUX3-F032` — provide both restore-by-upload and
+  detach-and-delete (confirmation plus danger styling), and the swap machinery
+  must be able to operate on referenced rows for exactly this cohort.
+- **Gate-record correction.** Commit `3694919` («close mini-task M4 and open
+  package 5 research gate») opened the research gate for what is now named
+  **Storage Truth**, not for Package 5 — Files and Physical Lifecycle. The
+  lifecycle package (`MUX3-F046`–`F051`) has therefore **never been gated**
+  and still requires its own research, audit and approval before any of its
+  findings advance. Two of them advanced without that gate (bounded physical
+  move shipped and ran under Storage Truth; every committed mutation writes
+  permanent quarantine copies); those facts are recorded in the `F047`/`F048`
+  amendments above and do not substitute for the missing gate.
+
 ## Later documentation-consolidation trigger
 
 **PodText Documentation Architecture and Consolidation Audit** is a separate

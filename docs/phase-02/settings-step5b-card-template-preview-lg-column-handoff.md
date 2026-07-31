@@ -288,6 +288,16 @@ O1 does not change any of these known findings:
 12. Wrapper padding and row-gap limitations remain part of O2's geometry work.
 13. Old HE/EN helper copy still describes future renderers; FU06 owns cleanup.
 
+**Amendment 2026-07-31 (RECON2 R4).** This deferred inventory was copied
+forward verbatim after later work shipped. Verified against code: items 3, 4,
+5, 6, 7, 11 and 12 are **resolved** (O2 `f56ef369`, FU02 `a8be0aa4`, FU03
+`659762f9`, renderer Tailwind `@source` coverage in both theme entrypoints,
+un-flattened validator paths, aligned sample ranking), and item 13 is
+**resolved** by RECON2 R3 (2026-07-31). Only item 8 (FU05 — per-request
+idempotence guard in `refreshPreview()`, keep both hooks) and item 9 (FU04 —
+shared effective-order helper plus boundary and import/edit regressions)
+remain open; item 10 stays excluded by design.
+
 ## Program-wide exclusions retained
 
 - legacy UX2 O2 inline-header editing;

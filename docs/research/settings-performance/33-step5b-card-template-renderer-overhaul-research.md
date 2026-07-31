@@ -206,6 +206,21 @@ O1 does not change any of these findings:
 13. Some HE/EN helper text still describes future renderers although rendering
     is live; FU06 owns that copy inventory and cleanup.
 
+**Amendment 2026-07-31 (RECON2 R4).** This inventory was copied forward
+verbatim after later work shipped, so it overstated what remained. Verified
+against code: items 3, 4, 5, 6, 7, 11 and 12 are **resolved** — O2
+(`f56ef369`), FU02 (`a8be0aa4`) and FU03 (`659762f9`) shipped, the renderer
+Tailwind `@source` coverage exists in both theme entrypoints
+(`resources/css/filament/admin/theme.css` and
+`resources/css/filament/public/theme.css`), structured validator paths are no
+longer flattened, and sample ranking is aligned. Item 13 is **resolved** by
+RECON2 R3 (2026-07-31), which rewrote the twelve stale helper strings and
+deleted the dead `card_template_part_order` keys. Still genuinely open: item 8
+(**FU05** — add a per-request idempotence guard inside `refreshPreview()`; do
+not delete either hook, they fire on different triggers) and item 9 (**FU04**
+— extract the shared effective-order helper, add the missing boundary tests
+and the import/edit order regression). Item 10 remains excluded by design.
+
 ## Complete seven-option program inventory
 
 | Sequence | Stable option | Reserved outcome | Status in this document |

@@ -42,7 +42,7 @@ Prompt 13), DEFER-POST-13, WAITING-ON-YONI, CLOSED.
 | MP2 maintenance-form fallback styling polish | Yoni report | **FETCH1** |
 | EP1: per-user presentation preference (R8) | EP1 deferral | Small; post-13 UX polish unless Yoni pulls it. |
 | EP1: transcript paste-cleanup + `[]` conventions | EP1 deferral | Waits on the format probe evidence (B). |
-| EXIF stripping | IMG arc | Waits for an image re-encoding step; recorded. |
+| EXIF stripping | IMG arc | **CLOSED 2026-07-31 (RECON2 R1)** — shipped as a metadata-only strip at admission (no pixel re-encode; orientation preserved). The old "waits for an image re-encoding step" note was misleading: that step existed and was deliberately removed from admission by MI-R044, so the fix took the byte-surgery shape instead. |
 | IMG-3 zip packages; C4 category images | IMG arc decisions | Deferred by decision; unchanged. |
 | Record-level clone (episodes/podcasts) | Yoni | **CLOSED** — dropped by decision. |
 | Playwright-scraping Spotify | Yoni proposal | **CLOSED** — rejected (ToS/fragility/weight); OG tier approved instead. |
@@ -50,7 +50,7 @@ Prompt 13), DEFER-POST-13, WAITING-ON-YONI, CLOSED.
 | Admin gate before any non-admin account | standing guardrail | **CLOSED BY ROLES1** — `UserRole` and admin+ panel access replace the earlier `is_admin` placeholder. |
 | Real mailer + from-address | env review | Before any mail-sending feature (password reset works only then). |
 | Production human checks | growing | Checklist file + per-run handoff lists; SP1 added six more items. |
-| Server housekeeping: remove `/home/forge/podtext.data4.work` dir + DNS record; confirm SESSION_SECURE_COOKIE landed | infra night | Yoni, when convenient. |
+| Server housekeeping: confirm SESSION_SECURE_COOKIE landed | infra night | Yoni, when convenient. **Corrected 2026-07-31 (operator):** `/home/forge/podtext.data4.work` is simply the original domain folder of this same app on the hosting panel — `podtext.co.il` is now the primary domain and the Google redirect URI was updated weeks ago. The earlier removal proposal was stale and confusing; there is nothing to remove. |
 | Spotify credentials on production | fetcher | When the fetcher is used on prod. |
 | MP2 gate numbers | process gap | **CLOSED-AS-DOCUMENTED** (permanent). |
 

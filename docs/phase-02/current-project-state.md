@@ -127,6 +127,43 @@ phases, so `3B P1–P5` and `3C P5–P8` mean phase five of those mini-tasks. Ba
 
 ## Git State
 
+- RECON2 R4 (record truth, 2026-07-31) makes the documentation layer match
+  the code again, as dated amendments — operator-accepted artifacts were
+  amended, never rewritten. In the findings matrix
+  (`docs/research/media-operations-ux3/07-program-reconciliation-and-finding-coverage.md`):
+  the twelve false-pending rows are corrected (`MUX3-F017`–`F021` closed by
+  3B, `F024`–`F030` closed by 3C, `F045` proven by `def171b`), `F022` is
+  recorded as the genuine partial (Spotify artwork auto-admission),
+  `MUX3-F038` is recorded as **deferred-not-retired** with its unmet proof
+  gate intact, the `F048` amendment gains the R2 retention contract and the
+  quarantine-as-asset record, the 2026-07-31 operator rulings for
+  `F032`/`F035`/`F036`/`F037` are recorded, and the gate-record correction
+  states plainly that `3694919` opened **Storage Truth's** research gate —
+  the Files-and-Physical-Lifecycle package remains ungated and needs its own
+  research, audit and approval. The **missing 3B and 3C handoffs now exist as
+  labelled reconstructions** following the Mini-task 4 precedent:
+  `docs/phase-02/media-operations-ux3-mini3b-intake-acquisition-results-handoff.md`
+  and
+  `docs/phase-02/media-operations-ux3-mini3c-safe-existing-file-operations-handoff.md`
+  (root cause recorded: no handoff → no matrix update). The M4 handoff gains
+  a dated **D2=A lapse** section: `3900645` removed the managed-scope guard
+  from `repair` (verified against `CuratorMediaPolicy` — `delete`/`swap`
+  still carry it) and the relocation gave sanitize live targets everywhere;
+  the operator accepts the resulting boundary. The Step 5B deferred
+  inventories in research 33 and the lg-column handoff are amended (items
+  3–7, 11–12 resolved by O2/FU02/FU03 and friends; item 13 resolved by R3;
+  only FU05's idempotence guard and FU04's order-compat closure remain). The
+  backlog triage doc: the EXIF line is closed by R1 with the misleading
+  precondition note corrected, and the `podtext.data4.work` line is corrected
+  per the operator (original domain folder of this same app; nothing to
+  remove). The ROLES1 handoff gains the first-super-admin closure (proof by
+  Users-resource visibility). Dead code: the always-empty
+  `rowless_transition_candidates` block in
+  `app/Console/Commands/ReportMediaIntegrity.php` is deleted (the reporter
+  key was retired in `d5be68f`; command smoke-verified locally, which also
+  reconfirmed the two known local `cleanup_pending` sanitize rows that
+  `media:repair-mutations --apply` can complete).
+
 - RECON2 R3 (FU06 copy cleanup, 2026-07-31) closes
   `STEP5B-CARD-UX2-FU06-COPY-CLEANUP`: the twelve stale helper strings that
   described live Card Template renderer behavior as "future renderers" (or as

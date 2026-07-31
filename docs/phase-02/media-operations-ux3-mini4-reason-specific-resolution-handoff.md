@@ -127,3 +127,24 @@ The findings matrix
 still carries the pre-M4 dispositions for all ten M4-family rows. A dated
 post-acceptance amendment section was added to that document on 2026-07-30
 rather than rewriting the operator-accepted rows in place.
+
+## Decision lapse recorded 2026-07-31 (RECON2 R4): D2=A no longer applies
+
+Decision D2=A restricted the sanitize repair to **managed rows only**, and the
+operator accepted that restriction as safe on an explicit factual basis:
+"media 2 waits for Storage Truth relocation … zero live production targets
+until then". Both halves of that basis have since changed:
+
+- Commit `3900645` (post-closure operator steer, listed above) removed the
+  managed-scope guard from the `repair` ability. Verification against current
+  code: `app/Policies/CuratorMediaPolicy.php` `repair` (lines 124–150) carries
+  no `MediaRecordScope::allows()` check, while `delete` and `swap` still do.
+- The Storage Truth relocation (2026-07-29) moved every root-level row into the
+  managed roots, so sanitize now has live targets everywhere it can run.
+
+D2=A is therefore **lapsed, not violated**: the guard removal was itself an
+operator steer, and on 2026-07-31 the operator accepted the resulting boundary
+— sanitize (with its journaled relocation side-effect) may reach any gallery
+row that passes the policy's remaining checks. This handoff's earlier D2=A
+narrative above is preserved as the decision history; from 2026-07-31 the
+operative boundary is the one described here.

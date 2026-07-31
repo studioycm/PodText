@@ -223,3 +223,12 @@ No Composer or npm dependency changes were made.
 
 `main...origin/main [ahead 1]` with ROLES1 code, tests, research, and docs
 modified or added; no Composer/npm files modified.
+
+## Addendum 2026-07-31 (RECON2 R4): first super-admin promoted
+
+The operator step this handoff left open — running
+`php artisan users:assign-role <email> super-admin` on production — is done.
+Proof by visibility: the operator sees the Users resource in the production
+admin, and `UserResource::canViewAny()` is `Gate::allows('super-admin')`, so
+the resource being visible is only possible for a super-admin. This item is
+closed; no first-super-admin work remains.
