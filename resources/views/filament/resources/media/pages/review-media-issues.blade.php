@@ -72,6 +72,26 @@
             </div>
         @endif
 
+        @if (filled($audienceStrip ?? null))
+            <div
+                class="rounded-xl border border-danger-300 bg-danger-50 p-4 text-danger-950 dark:border-danger-700 dark:bg-danger-950 dark:text-danger-100"
+                role="status"
+                data-testid="media-audience-strip"
+            >
+                <p class="text-sm">{{ $audienceStrip }}</p>
+                <div class="mt-3">
+                    <x-filament::button
+                        color="gray"
+                        icon="heroicon-o-lock-closed"
+                        wire:click="mountAction('revokePublicAudienceFile')"
+                        data-testid="media-revoke-audience-trigger"
+                    >
+                        {{ __('admin.media_issue_review.audience.revoke_action') }}
+                    </x-filament::button>
+                </div>
+            </div>
+        @endif
+
         @if ($this->sanitizeResult !== null)
             <div
                 class="rounded-xl border border-success-300 bg-success-50 p-4 text-success-900 dark:border-success-700 dark:bg-success-950 dark:text-success-100"
@@ -221,6 +241,29 @@
                                     <p class="mt-2 text-sm text-gray-600 dark:text-gray-300">
                                         {{ $issue['resolution']['description'] }}
                                     </p>
+                                </div>
+                            @elseif ($issue['resolution']['kind'] === 'actions')
+                                <div
+                                    class="mt-5 border-t border-dashed border-gray-200 pt-4 dark:border-gray-700"
+                                    data-testid="media-issue-resolution-action-{{ $issue['value'] }}"
+                                >
+                                    <div class="flex flex-col gap-4 sm:flex-row sm:flex-wrap">
+                                        @foreach ($issue['resolution']['actions'] as $resolutionAction)
+                                            <div class="max-w-md">
+                                                <x-filament::button
+                                                    :color="$resolutionAction['color']"
+                                                    :icon="$resolutionAction['icon']"
+                                                    wire:click="mountAction('{{ $resolutionAction['action'] }}')"
+                                                    data-testid="media-{{ $resolutionAction['action'] }}-trigger"
+                                                >
+                                                    {{ $resolutionAction['label'] }}
+                                                </x-filament::button>
+                                                <p class="mt-2 text-sm text-gray-600 dark:text-gray-300">
+                                                    {{ $resolutionAction['description'] }}
+                                                </p>
+                                            </div>
+                                        @endforeach
+                                    </div>
                                 </div>
                             @elseif ($issue['resolution']['kind'] === 'blocked')
                                 <p

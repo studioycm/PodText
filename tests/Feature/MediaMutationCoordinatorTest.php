@@ -494,15 +494,20 @@ it('rejects non-creation journal types at the validated image API boundary', fun
         ->and(Storage::disk('public')->allFiles())->toBe([]);
 });
 
-it('retains the media row and records failure when delete source bytes are missing', function (): void {
+it('deletes a row whose source bytes are missing and journals the absence instead of failing', function (): void {
+    // RECON2 R5 (operator ruling MUX3-F032): the row is the lie when the file
+    // is gone, so delete proceeds and the journal records source_missing.
     $actor = User::factory()->admin()->create();
     $media = Media::factory()->create();
 
-    expect(fn () => app(MediaFilesystemMutationCoordinator::class)->delete($media, $actor))
-        ->toThrow(RuntimeException::class, 'source media file is missing');
+    app(MediaFilesystemMutationCoordinator::class)->delete($media, $actor);
 
-    expect(Media::query()->whereKey($media->getKey())->exists())->toBeTrue()
-        ->and(MediaMutationOperation::query()->sole()->status)->toBe(MediaMutationStatus::Failed);
+    $operation = MediaMutationOperation::query()->sole();
+
+    expect(Media::query()->whereKey($media->getKey())->exists())->toBeFalse()
+        ->and($operation->status)->toBe(MediaMutationStatus::Completed)
+        ->and($operation->context['source_missing'] ?? null)->toBeTrue()
+        ->and($operation->quarantine_path)->toBeNull();
 });
 
 it('fences concurrent existing-media mutations and stale journal leases', function (): void {

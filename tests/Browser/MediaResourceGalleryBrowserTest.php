@@ -622,7 +622,10 @@ it('delivers a responsive accessible issue review and preserves its exact task o
         ->assertSee(__('admin.media_issue_review.reasons.missing_file.cause'))
         ->assertSee(__('admin.media_issue_review.reasons.missing_file.consequence'))
         ->assertSee(__('admin.media_issue_review.reasons.missing_file.evidence_limit'))
-        ->assertSee(__('admin.media_issue_review.blocker.heading'))
+        // RECON2 R5: the missing-file reason now carries real resolutions, so
+        // the honest-blocker copy no longer renders for this record.
+        ->assertSee(__('admin.media_issue_review.missing_file.restore_action'))
+        ->assertSee(__('admin.media_issue_review.missing_file.detach_delete_action'))
         ->assertSee(__('admin.media_issue_review.owners.presentation_only'));
 
     $reviewState = $page->script(<<<'JS'
@@ -636,7 +639,10 @@ it('delivers a responsive accessible issue review and preserves its exact task o
                 path: window.location.pathname,
                 identity_visible: visible(document.querySelector('[data-testid="media-issue-review"]')),
                 issue_visible: visible(document.querySelector('[data-testid="media-issue-reason-missing_file"]')),
-                blocker_visible: visible(action('media-issue-blocker')),
+                resolution_zone_visible: visible(action('media-issue-resolution-action-missing_file')),
+                restore_trigger_visible: visible(action('media-swapFile-trigger')),
+                detach_delete_trigger_visible: visible(action('media-detachAndDeleteFile-trigger')),
+                blocker_present: Boolean(action('media-issue-blocker')),
                 owner_route_visible: visible(ownerRoute),
                 owner_route_new_tab: ownerRoute?.getAttribute('target') === '_blank'
                     && ownerRoute?.getAttribute('rel')?.includes('noopener'),
@@ -658,7 +664,10 @@ it('delivers a responsive accessible issue review and preserves its exact task o
         ->and($reviewState['path'])->toContain('/admin/media/'.$current->getKey().'/review-issues')
         ->and($reviewState['identity_visible'])->toBeTrue()
         ->and($reviewState['issue_visible'])->toBeTrue()
-        ->and($reviewState['blocker_visible'])->toBeTrue()
+        ->and($reviewState['resolution_zone_visible'])->toBeTrue()
+        ->and($reviewState['restore_trigger_visible'])->toBeTrue()
+        ->and($reviewState['detach_delete_trigger_visible'])->toBeTrue()
+        ->and($reviewState['blocker_present'])->toBeFalse()
         ->and($reviewState['owner_route_visible'])->toBeTrue()
         ->and($reviewState['owner_route_new_tab'])->toBeTrue()
         ->and($reviewState['close_visible'])->toBeTrue()

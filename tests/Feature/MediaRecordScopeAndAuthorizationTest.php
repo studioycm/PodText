@@ -130,7 +130,9 @@ it('enforces every app media ability for admin or higher and denies record mutat
         ->and(Gate::forUser($admin)->allows('select', $media))->toBeTrue()
         ->and(Gate::forUser($admin)->allows('delete', $media))->toBeFalse()
         ->and(Gate::forUser($admin)->allows('rename', $media))->toBeFalse()
-        ->and(Gate::forUser($admin)->allows('swap', $media))->toBeFalse();
+        // The RECON2 R5 swap lift: byte replacement keeps media identity, so
+        // attachment-referenced rows are swappable (settings refs still block).
+        ->and(Gate::forUser($admin)->allows('swap', $media))->toBeTrue();
 });
 
 it('streams configured inventory files for admins with inline or attachment disposition and hardened headers', function (): void {

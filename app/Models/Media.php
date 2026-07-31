@@ -4,10 +4,12 @@ namespace App\Models;
 
 use App\Support\Media\MediaMutationLease;
 use Database\Factories\MediaFactory;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\HasOneThrough;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use LogicException;
 
@@ -23,6 +25,7 @@ class Media extends \Awcodes\Curator\Models\Media
     protected function casts(): array
     {
         return [
+            'audience_made_public_at' => 'datetime',
             'trusted_at' => 'datetime',
         ];
     }
@@ -71,6 +74,29 @@ class Media extends \Awcodes\Curator\Models\Media
             'id',
             'media_asset_id',
         )->where('provider', 'curator');
+    }
+
+    /**
+     * The vendor accessor resolves the disk unguarded, so a record whose disk
+     * is not configured (a diagnosable storage_disk defect) would crash any
+     * surface that arrays the model. A defective record must stay reviewable.
+     */
+    public function url(): Attribute
+    {
+        return Attribute::make(
+            get: fn (): ?string => array_key_exists((string) $this->disk, config('filesystems.disks', []))
+                ? static::resolveUrl($this->disk, $this->path, $this->visibility)
+                : null,
+        )->shouldCache();
+    }
+
+    public function fullPath(): Attribute
+    {
+        return Attribute::make(
+            get: fn (): string => array_key_exists((string) $this->disk, config('filesystems.disks', []))
+                ? Storage::disk($this->disk)->path($this->path)
+                : (string) $this->path,
+        );
     }
 
     protected static function booted(): void

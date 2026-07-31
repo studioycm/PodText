@@ -11,10 +11,13 @@ use App\Support\Media\MediaInventoryDiagnostics;
 use App\Support\Media\MediaIssueReviewPresenter;
 use App\Support\Media\MediaLibraryContext;
 use App\Support\Media\MediaLibraryTaskQuery;
+use App\Support\Media\MediaMissingFileResolver;
 use App\Support\Media\MediaOperationReceipts;
+use App\Support\Media\MediaRecordCorrections;
 use App\Support\Media\MediaRecordProjector;
 use Filament\Actions\Action;
 use Filament\Forms\Components\FileUpload;
+use Filament\Forms\Components\Select;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\Concerns\InteractsWithRecord;
 use Filament\Resources\Pages\Page;
@@ -129,6 +132,7 @@ class ReviewMediaIssues extends Page
     {
         $media = $this->media();
         $trustedStrip = null;
+        $audienceStrip = null;
 
         if ($media->trusted_at !== null) {
             $trustedStrip = __('admin.media_issue_review.trust.strip', [
@@ -138,9 +142,18 @@ class ReviewMediaIssues extends Page
             ]);
         }
 
+        if ($media->audience_made_public_at !== null) {
+            $audienceStrip = __('admin.media_issue_review.audience.strip', [
+                'date' => $media->audience_made_public_at->timezone('Asia/Jerusalem')->format('d/m/Y H:i'),
+                'user' => (string) (User::query()->find($media->audience_made_public_by_user_id)?->name
+                    ?? __('admin.media_issue_review.facts.unavailable')),
+            ]);
+        }
+
         return [
             'review' => app(MediaIssueReviewPresenter::class)->review($this->media()),
             'trustedStrip' => $trustedStrip,
+            'audienceStrip' => $audienceStrip,
             'detailsUrl' => $this->detailsUrl(),
             'returnUrl' => $this->mediaLibraryReturnUrl(),
             'nextUrl' => $this->nextIssueUrl(),
@@ -283,6 +296,172 @@ class ReviewMediaIssues extends Page
 
                 try {
                     app(MediaFilesystemMutationCoordinator::class)->delete($media, $user);
+                } catch (ValidationException $exception) {
+                    app(MediaOperationReceipts::class)->operationFailed($exception->getMessage());
+
+                    return;
+                } catch (RuntimeException) {
+                    app(MediaOperationReceipts::class)->operationFailed();
+
+                    return;
+                }
+
+                app(MediaInventoryDiagnostics::class)->forget($media);
+                app(MediaOperationReceipts::class)->deleteSucceeded($user, $name);
+                $this->redirect($this->mediaLibraryReturnUrl());
+            });
+    }
+
+    public function makePublicFileAction(): Action
+    {
+        return Action::make('makePublicFile')
+            ->label(__('admin.media_issue_review.audience.action'))
+            ->icon(Heroicon::OutlinedGlobeAlt)
+            ->color('danger')
+            ->requiresConfirmation()
+            ->modalHeading(__('admin.media_issue_review.audience.action'))
+            ->modalDescription(__('admin.media_issue_review.audience.consequence'))
+            ->modalSubmitActionLabel(__('admin.media_issue_review.audience.submit'))
+            ->action(function (): void {
+                $user = $this->actor();
+                $media = $this->media();
+                Gate::forUser($user)->authorize('makePublic', $media);
+                $name = (string) ($media->title ?: $media->name);
+
+                $updated = app(MediaRecordCorrections::class)->makePublic($media, $user);
+
+                app(MediaInventoryDiagnostics::class)->forget($media);
+                app(MediaInventoryDiagnostics::class)->forget($updated);
+                $this->record = $updated;
+                $this->sanitizeRefused = false;
+                $this->sanitizeResult = null;
+                app(MediaOperationReceipts::class)->audienceMadePublic($user, $name);
+            });
+    }
+
+    public function revokePublicAudienceFileAction(): Action
+    {
+        return Action::make('revokePublicAudienceFile')
+            ->label(__('admin.media_issue_review.audience.revoke_action'))
+            ->icon(Heroicon::OutlinedLockClosed)
+            ->color('gray')
+            ->requiresConfirmation()
+            ->modalHeading(__('admin.media_issue_review.audience.revoke_action'))
+            ->modalDescription(__('admin.media_issue_review.audience.revoke_consequence'))
+            ->action(function (): void {
+                $user = $this->actor();
+                $media = $this->media();
+                Gate::forUser($user)->authorize('makePublic', $media);
+                $name = (string) ($media->title ?: $media->name);
+
+                $updated = app(MediaRecordCorrections::class)->revokePublicAudience($media, $user);
+
+                app(MediaInventoryDiagnostics::class)->forget($media);
+                app(MediaInventoryDiagnostics::class)->forget($updated);
+                $this->record = $updated;
+                app(MediaOperationReceipts::class)->audienceRevoked($user, $name);
+            });
+    }
+
+    public function correctDiskFileAction(): Action
+    {
+        return Action::make('correctDiskFile')
+            ->label(__('admin.media_issue_review.storage_disk.action'))
+            ->icon(Heroicon::OutlinedServerStack)
+            ->color('warning')
+            ->modalHeading(__('admin.media_issue_review.storage_disk.action'))
+            ->modalDescription(__('admin.media_issue_review.storage_disk.consequence'))
+            ->modalSubmitActionLabel(__('admin.media_issue_review.storage_disk.submit'))
+            ->schema([
+                Select::make('disk')
+                    ->label(__('admin.media_issue_review.storage_disk.disk_label'))
+                    ->helperText(__('admin.media_issue_review.storage_disk.disk_helper'))
+                    ->options(fn (): array => collect(array_keys(config('filesystems.disks', [])))
+                        ->mapWithKeys(fn (string $disk): array => [$disk => $disk])
+                        ->all())
+                    ->required(),
+            ])
+            ->action(function (array $data): void {
+                $user = $this->actor();
+                $media = $this->media();
+                Gate::forUser($user)->authorize('correctDisk', $media);
+                $name = (string) ($media->title ?: $media->name);
+
+                try {
+                    $updated = app(MediaRecordCorrections::class)->correctDisk($media, $user, (string) ($data['disk'] ?? ''));
+                } catch (InvalidArgumentException $exception) {
+                    app(MediaOperationReceipts::class)->operationFailed($exception->getMessage());
+
+                    return;
+                }
+
+                app(MediaInventoryDiagnostics::class)->forget($media);
+                app(MediaInventoryDiagnostics::class)->forget($updated);
+                $this->record = $updated;
+                app(MediaOperationReceipts::class)->diskCorrected($user, $name, (string) $updated->disk);
+            });
+    }
+
+    public function mintReferenceKeyAction(): Action
+    {
+        return Action::make('mintReferenceKey')
+            ->label(__('admin.media_issue_review.portable_identity.mint_action'))
+            ->icon(Heroicon::OutlinedKey)
+            ->color('warning')
+            ->requiresConfirmation()
+            ->modalHeading(__('admin.media_issue_review.portable_identity.mint_action'))
+            ->modalDescription(__('admin.media_issue_review.portable_identity.mint_consequence'))
+            ->modalSubmitActionLabel(__('admin.media_issue_review.portable_identity.mint_submit'))
+            ->action(function (): void {
+                $user = $this->actor();
+                $media = $this->media();
+                Gate::forUser($user)->authorize('mintReferenceKey', $media);
+                $name = (string) ($media->title ?: $media->name);
+
+                try {
+                    $updated = app(MediaFilesystemMutationCoordinator::class)->mintReferenceKey($media, $user);
+                } catch (InvalidArgumentException $exception) {
+                    app(MediaOperationReceipts::class)->operationFailed($exception->getMessage());
+
+                    return;
+                } catch (ValidationException $exception) {
+                    app(MediaOperationReceipts::class)->operationFailed($exception->getMessage());
+
+                    return;
+                } catch (RuntimeException) {
+                    app(MediaOperationReceipts::class)->operationFailed();
+
+                    return;
+                }
+
+                app(MediaInventoryDiagnostics::class)->forget($media);
+                app(MediaInventoryDiagnostics::class)->forget($updated);
+                $this->record = $updated;
+                $this->sanitizeRefused = false;
+                $this->sanitizeResult = null;
+                app(MediaOperationReceipts::class)->referenceKeyMinted($user, $name, (string) $updated->reference_key);
+            });
+    }
+
+    public function detachAndDeleteFileAction(): Action
+    {
+        return Action::make('detachAndDeleteFile')
+            ->label(__('admin.media_issue_review.missing_file.detach_delete_action'))
+            ->icon(Heroicon::OutlinedTrash)
+            ->color('danger')
+            ->requiresConfirmation()
+            ->modalHeading(__('admin.media_issue_review.missing_file.detach_delete_action'))
+            ->modalDescription(__('admin.media_issue_review.missing_file.detach_delete_consequence'))
+            ->modalContent(fn (): View => $this->operationConsequence('delete'))
+            ->modalSubmitActionLabel(__('admin.media_issue_review.missing_file.detach_delete_submit'))
+            ->action(function (): void {
+                $user = $this->actor();
+                $media = $this->media();
+                Gate::forUser($user)->authorize('detachAndDelete', $media);
+                $name = (string) ($media->title ?: $media->name);
+
+                try {
+                    app(MediaMissingFileResolver::class)->detachAndDelete($media, $user);
                 } catch (ValidationException $exception) {
                     app(MediaOperationReceipts::class)->operationFailed($exception->getMessage());
 

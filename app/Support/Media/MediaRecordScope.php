@@ -231,69 +231,99 @@ class MediaRecordScope
 
     public function allows(Media $media, ?ImageUploadPurpose $purpose = null): bool
     {
-        return $this->allowsRecord($media, $purpose, requireReferenceKey: true);
+        return $this->recordFailureCodes($media, $purpose, requireReferenceKey: true) === [];
     }
 
     public function allowsForBackfill(Media $media, ?ImageUploadPurpose $purpose = null): bool
     {
-        return $this->allowsRecord($media, $purpose, requireReferenceKey: false);
+        return $this->backfillVerdict($media, $purpose)->passes();
     }
 
-    private function allowsRecord(
+    public function backfillVerdict(Media $media, ?ImageUploadPurpose $purpose = null): MediaRecordScopeVerdict
+    {
+        return new MediaRecordScopeVerdict(
+            $this->recordFailureCodes($media, $purpose, requireReferenceKey: false),
+        );
+    }
+
+    /** @return array<int, string> */
+    private function recordFailureCodes(
         Media $media,
         ?ImageUploadPurpose $purpose,
         bool $requireReferenceKey,
-    ): bool {
-        if ($media->disk !== 'public' || $media->visibility !== 'public') {
-            return false;
+    ): array {
+        $codes = [];
+
+        if ($media->disk !== 'public') {
+            $codes[] = 'disk_not_public';
+        }
+
+        if ($media->visibility !== 'public') {
+            $codes[] = 'visibility_not_public';
         }
 
         if (
             ($requireReferenceKey || filled($media->reference_key))
             && ! $this->hasPortableReferenceKey($media)
         ) {
-            return false;
+            $codes[] = 'reference_key_invalid';
         }
 
         try {
             $recordPurpose = $this->policy->purposeForPath((string) $media->path);
             $path = $this->policy->normalizePath((string) $media->path);
         } catch (InvalidArgumentException) {
-            return false;
+            $codes[] = 'path_outside_managed_roots';
+
+            return $codes;
         }
 
         if ($purpose instanceof ImageUploadPurpose && $recordPurpose !== $purpose) {
-            return false;
+            $codes[] = 'purpose_mismatch';
         }
 
         if ($media->directory !== $recordPurpose->root()) {
-            return false;
+            $codes[] = 'directory_mismatch';
         }
 
         if (! $this->policy->allowsMime($recordPurpose, (string) $media->type)) {
-            return false;
+            $codes[] = 'mime_not_allowed';
+
+            return $codes;
         }
 
         $canonicalExtension = $this->policy->canonicalExtension((string) $media->type);
 
-        if (
-            $media->ext !== $canonicalExtension
-            || mb_strtolower(pathinfo($path, PATHINFO_EXTENSION)) !== $canonicalExtension
-            || (string) $media->name !== pathinfo($path, PATHINFO_FILENAME)
-            || (int) $media->size < 1
-            || (int) $media->size > CuratorImageUploadPolicy::MAX_KILOBYTES * 1024
-        ) {
-            return false;
+        if ($media->ext !== $canonicalExtension) {
+            $codes[] = 'extension_mismatch';
+        }
+
+        if (mb_strtolower(pathinfo($path, PATHINFO_EXTENSION)) !== $canonicalExtension) {
+            $codes[] = 'path_extension_mismatch';
+        }
+
+        if ((string) $media->name !== pathinfo($path, PATHINFO_FILENAME)) {
+            $codes[] = 'name_mismatch';
+        }
+
+        if ((int) $media->size < 1 || (int) $media->size > CuratorImageUploadPolicy::MAX_KILOBYTES * 1024) {
+            $codes[] = 'size_out_of_bounds';
         }
 
         if ($media->type === 'image/svg+xml') {
-            return true;
+            return $codes;
         }
 
-        return (int) $media->width >= 1
-            && (int) $media->width <= CuratorImageUploadPolicy::MAX_DIMENSION_PIXELS
-            && (int) $media->height >= 1
-            && (int) $media->height <= CuratorImageUploadPolicy::MAX_DIMENSION_PIXELS;
+        if (
+            (int) $media->width < 1
+            || (int) $media->width > CuratorImageUploadPolicy::MAX_DIMENSION_PIXELS
+            || (int) $media->height < 1
+            || (int) $media->height > CuratorImageUploadPolicy::MAX_DIMENSION_PIXELS
+        ) {
+            $codes[] = 'dimensions_out_of_bounds';
+        }
+
+        return $codes;
     }
 
     /**

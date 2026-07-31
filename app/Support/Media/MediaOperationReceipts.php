@@ -63,6 +63,36 @@ class MediaOperationReceipts
             ])));
     }
 
+    public function audienceMadePublic(User $user, string $name): void
+    {
+        $this->durable($user, Notification::make()
+            ->warning()
+            ->title(__('admin.media_issue_review.audience.done_title', ['name' => $name])));
+    }
+
+    public function audienceRevoked(User $user, string $name): void
+    {
+        $this->durable($user, Notification::make()
+            ->success()
+            ->title(__('admin.media_issue_review.audience.revoke_done_title', ['name' => $name])));
+    }
+
+    public function diskCorrected(User $user, string $name, string $disk): void
+    {
+        $this->durable($user, Notification::make()
+            ->success()
+            ->title(__('admin.media_issue_review.storage_disk.done_title', ['name' => $name]))
+            ->body(__('admin.media_issue_review.storage_disk.done_body', ['disk' => $disk])));
+    }
+
+    public function referenceKeyMinted(User $user, string $name, string $referenceKey): void
+    {
+        $this->durable($user, Notification::make()
+            ->success()
+            ->title(__('admin.media_issue_review.portable_identity.minted_title', ['name' => $name]))
+            ->body(__('admin.media_issue_review.portable_identity.minted_body', ['key' => $referenceKey])));
+    }
+
     public function trustGranted(User $user, string $name): void
     {
         $this->durable($user, Notification::make()

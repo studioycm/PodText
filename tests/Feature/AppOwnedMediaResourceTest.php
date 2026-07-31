@@ -1081,12 +1081,16 @@ it('explains blocked file operations with truthful policy reasons', function ():
             ->and($legacyResponse->message())->toBe(__('admin.media_library.op_blocked_unmanaged'));
     }
 
-    foreach (['rename', 'swap', 'delete'] as $ability) {
+    foreach (['rename', 'delete'] as $ability) {
         $blockedResponse = $gate->inspect($ability, $referenced);
 
         expect($blockedResponse->allowed())->toBeFalse()
             ->and($blockedResponse->message())->toContain($group->title);
     }
+
+    // The RECON2 R5 swap lift: byte replacement keeps media identity, so
+    // attachment references no longer block swap (settings paths still do).
+    expect($gate->inspect('swap', $referenced)->allowed())->toBeTrue();
 });
 
 it('opens consequence dialogs for file operations with identity and impact truth', function (): void {

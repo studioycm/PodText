@@ -26,11 +26,13 @@ class MediaMutationFence
     ): MediaMutationOperation {
         return DB::transaction(function () use ($expected, $actor, $ability, $attributes): MediaMutationOperation {
             // A sanitize or relocation may admit an unmanaged/root source (it
-            // moves it into a managed root); every other mutation re-asserts
-            // managed membership under lock.
+            // moves it into a managed root), and a reference-key backfill
+            // exists precisely for rows the managed scope cannot see yet;
+            // every other mutation re-asserts managed membership under lock.
             $locked = in_array($attributes['operation'] ?? null, [
                 MediaMutationOperationType::Sanitize,
                 MediaMutationOperationType::Relocation,
+                MediaMutationOperationType::ReferenceKeyBackfill,
             ], true)
                 ? $this->scope->lockInventoryForUpdateByIds([$expected->getKey()])->firstOrFail()
                 : $this->scope->lockForUpdateByIds([$expected->getKey()])->firstOrFail();

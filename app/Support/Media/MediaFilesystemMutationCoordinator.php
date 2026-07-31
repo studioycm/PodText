@@ -6,7 +6,9 @@ use App\Enums\ImageUploadPurpose;
 use App\Enums\MediaMutationOperationType;
 use App\Enums\MediaMutationStatus;
 use App\Models\Media;
+use App\Models\MediaAsset;
 use App\Models\MediaMutationOperation;
+use App\Models\MediaProviderBinding;
 use App\Models\User;
 use App\Settings\PublicContentSettings;
 use App\Support\PublicFront\PublicFrontConfigCache;
@@ -313,6 +315,100 @@ class MediaFilesystemMutationCoordinator
     }
 
     /**
+     * Issues a portable reference key to a row that never had one — the only
+     * sanctioned re-opening of the key immutability invariant, running inside
+     * the lease issuance window with a journaled ReferenceKeyBackfill
+     * operation and, when the row predates the asset kernel, the missing
+     * MediaAsset and Curator provider binding.
+     */
+    public function mintReferenceKey(Media $media, User $actor): Media
+    {
+        $trusted = $this->scope->findInventoryOrFail($media->getKey());
+        Gate::forUser($actor)->authorize('mintReferenceKey', $trusted);
+
+        if (filled($trusted->reference_key)) {
+            throw new \InvalidArgumentException('The media record already has a reference key.');
+        }
+
+        $proof = app(StoredMediaValidator::class)->validateForReferenceKeyBackfill($trusted);
+        $purpose = $this->policy->purposeForPath((string) $trusted->path);
+        $operationKey = (string) Str::ulid();
+        $operation = $this->fence->begin($trusted, $actor, 'mintReferenceKey', [
+            'operation_key' => $operationKey,
+            'operation' => MediaMutationOperationType::ReferenceKeyBackfill,
+            'status' => MediaMutationStatus::Staged,
+            'purpose' => $purpose->value,
+            'destination_disk' => 'public',
+            'destination_path' => $trusted->path,
+            'destination_sha256' => $proof->sha256,
+            'context' => $this->sourceContext($trusted),
+            'attempts' => 1,
+            'lease_token' => (string) Str::ulid(),
+            'lease_expires_at' => now()->addMinutes(5),
+            'started_at' => now(),
+        ]);
+        $committed = false;
+
+        try {
+            $this->fence->markCopied($operation);
+
+            $updated = DB::transaction(function () use ($trusted, $actor, $operation): Media {
+                $locked = Media::query()->lockForUpdate()->findOrFail($trusted->getKey());
+                $lockedOperation = $this->fence->lockForCommit($operation);
+                Gate::forUser($actor)->authorize('mintReferenceKey', $locked);
+
+                if (
+                    filled($locked->reference_key)
+                    || $locked->disk !== $trusted->disk
+                    || $locked->path !== $trusted->path
+                ) {
+                    throw new RuntimeException('The media record changed during reference key minting.');
+                }
+
+                $referenceKey = (string) Str::ulid();
+                $this->lease->run($locked, fn (): mixed => $this->lease->runReferenceKeyIssuance(
+                    function () use ($locked, $referenceKey): void {
+                        $locked->forceFill(['reference_key' => $referenceKey])->save();
+                    },
+                ));
+
+                if (! MediaProviderBinding::query()
+                    ->where('provider', 'curator')
+                    ->where('provider_record_key', (string) $locked->getKey())
+                    ->exists()) {
+                    $asset = MediaAsset::query()->create(['reference_key' => $referenceKey]);
+                    MediaProviderBinding::query()->create([
+                        'media_asset_id' => $asset->getKey(),
+                        'provider' => 'curator',
+                        'provider_record_key' => (string) $locked->getKey(),
+                    ]);
+                }
+
+                $lockedOperation->update([
+                    'status' => MediaMutationStatus::Committed,
+                    'committed_at' => now(),
+                    // The journal opened on a key-less row; the issued key is
+                    // the committed identity truth.
+                    'media_reference_key' => $referenceKey,
+                ]);
+
+                return $locked->refresh();
+            });
+            $committed = true;
+        } catch (Throwable $exception) {
+            if (! $committed) {
+                $this->compensateUncommitted($operation, $exception);
+            }
+
+            throw $exception;
+        }
+
+        $this->completeCommittedCleanup($operation);
+
+        return $updated;
+    }
+
+    /**
      * @param  iterable<int, Media>  $media
      */
     public function deleteMany(iterable $media, User $actor): void
@@ -344,7 +440,9 @@ class MediaFilesystemMutationCoordinator
             : null;
         $sourceSha256 = is_string($sourceContents) ? hash('sha256', $sourceContents) : null;
         $operationKey = (string) Str::ulid();
-        $quarantinePath = "media-quarantine/{$operationKey}/".basename((string) $trusted->path);
+        $quarantinePath = is_string($sourceContents)
+            ? "media-quarantine/{$operationKey}/".basename((string) $trusted->path)
+            : null;
         $operation = $this->fence->begin($trusted, $actor, 'delete', [
             'operation_key' => $operationKey,
             'operation' => MediaMutationOperationType::Delete,
@@ -353,7 +451,7 @@ class MediaFilesystemMutationCoordinator
             'source_disk' => 'public',
             'source_path' => $trusted->path,
             'source_sha256' => $sourceSha256,
-            'quarantine_disk' => 'local',
+            'quarantine_disk' => is_string($sourceContents) ? 'local' : null,
             'quarantine_path' => $quarantinePath,
             'quarantine_sha256' => $sourceSha256,
             'context' => array_merge($this->sourceContext($trusted), [
@@ -371,11 +469,12 @@ class MediaFilesystemMutationCoordinator
         $committed = false;
 
         try {
-            if (! is_string($sourceContents)) {
-                throw new RuntimeException('The source media file is missing; deletion was not committed.');
+            // A missing source is deletable: the row is the lie, and the
+            // journal records the absence instead of a quarantine copy.
+            if (is_string($sourceContents)) {
+                $this->putVerified('local', (string) $quarantinePath, $sourceContents, $sourceSha256);
             }
 
-            $this->putVerified('local', $quarantinePath, $sourceContents, $sourceSha256);
             $this->fence->markCopied($operation);
 
             DB::transaction(function () use ($trusted, $actor, $operation): void {
@@ -642,24 +741,33 @@ class MediaFilesystemMutationCoordinator
             $purpose = ImageUploadPurpose::ContentGroupCover;
         }
 
-        if (! Storage::disk('public')->exists((string) $trusted->path)) {
+        $sourceMissing = ! Storage::disk('public')->exists((string) $trusted->path);
+
+        // A swap replaces the bytes anyway, so a missing source may not block
+        // its own restoration — that is the missing-file repair cohort.
+        // Operations that derive their output from the source keep the throw.
+        if ($sourceMissing && $replacement === null) {
             throw new RuntimeException('The source media file is missing.');
         }
 
-        $sourceContents = $this->readBoundedArtifact('public', (string) $trusted->path);
+        $sourceContents = $sourceMissing
+            ? null
+            : $this->readBoundedArtifact('public', (string) $trusted->path);
+        $sourceProof = null;
 
-        try {
-            $sourceProof = $this->validator->validateBytes($sourceContents, basename((string) $trusted->path), $purpose);
-        } catch (\InvalidArgumentException $sourceRejection) {
-            // A swap replaces the bytes anyway, so an unsafe source (for
-            // example a refusal-class SVG) may not block its own replacement;
-            // the raw source still lands in quarantine below. Operations that
-            // derive their output from the source keep the strict throw.
-            if ($replacement === null) {
-                throw $sourceRejection;
+        if (is_string($sourceContents)) {
+            try {
+                $sourceProof = $this->validator->validateBytes($sourceContents, basename((string) $trusted->path), $purpose);
+            } catch (\InvalidArgumentException $sourceRejection) {
+                // An unsafe source (for example a refusal-class SVG) may not
+                // block its own replacement; the raw source still lands in
+                // quarantine below.
+                if ($replacement === null) {
+                    throw $sourceRejection;
+                }
+
+                $sourceProof = null;
             }
-
-            $sourceProof = null;
         }
 
         if (
@@ -681,8 +789,10 @@ class MediaFilesystemMutationCoordinator
 
         $operationKey = (string) Str::ulid();
         $stagingPath = "media-staging/{$operationKey}/replacement.{$destinationImage->extension}";
-        $quarantinePath = "media-quarantine/{$operationKey}/original.".(string) $trusted->ext;
-        $sourceSha256 = hash('sha256', $sourceContents);
+        $quarantinePath = $sourceMissing
+            ? null
+            : "media-quarantine/{$operationKey}/original.".(string) $trusted->ext;
+        $sourceSha256 = is_string($sourceContents) ? hash('sha256', $sourceContents) : null;
         $operation = $this->fence->begin($trusted, $actor, $ability, [
             'operation_key' => $operationKey,
             'operation' => $operationType,
@@ -696,10 +806,12 @@ class MediaFilesystemMutationCoordinator
             'staging_disk' => 'local',
             'staging_path' => $stagingPath,
             'staging_sha256' => $destinationImage->sha256,
-            'quarantine_disk' => 'local',
+            'quarantine_disk' => $sourceMissing ? null : 'local',
             'quarantine_path' => $quarantinePath,
             'quarantine_sha256' => $sourceSha256,
-            'context' => $this->sourceContext($trusted),
+            'context' => array_merge($this->sourceContext($trusted), [
+                'source_missing' => $sourceMissing,
+            ]),
             'attempts' => 1,
             'lease_token' => (string) Str::ulid(),
             'lease_expires_at' => now()->addMinutes(5),
@@ -709,7 +821,9 @@ class MediaFilesystemMutationCoordinator
         $destinationPath = null;
 
         try {
-            $this->putVerified('local', $quarantinePath, $sourceContents, $sourceSha256);
+            if (is_string($sourceContents)) {
+                $this->putVerified('local', (string) $quarantinePath, $sourceContents, $sourceSha256);
+            }
             $this->putVerified('local', $stagingPath, $destinationImage->contents, $destinationImage->sha256);
             $destinationPath = $this->allocateDestination($purpose, $destinationImage->mimeType);
             $this->fence->updateStaged($operation, ['destination_path' => $destinationPath]);
@@ -1346,6 +1460,10 @@ class MediaFilesystemMutationCoordinator
             throw new RuntimeException('The media mutation purpose is invalid.');
         }
 
+        $context = is_array($operation->context) ? $operation->context : [];
+        $sourceMissingWaiver = (bool) ($context['source_missing'] ?? false)
+            && in_array($operationType, [MediaMutationOperationType::Swap, MediaMutationOperationType::Delete], true);
+
         foreach ([
             ['source_disk', 'source_path', 'source_sha256'],
             ['destination_disk', 'destination_path', 'destination_sha256'],
@@ -1382,6 +1500,12 @@ class MediaFilesystemMutationCoordinator
                 if ($normalized !== $path || $this->policy->purposeForPath($normalized) !== $purpose) {
                     throw new RuntimeException("The journaled {$pathField} is outside its purpose root.");
                 }
+            }
+
+            if ($pathField === 'source_path' && $sourceMissingWaiver) {
+                // The source never existed at operation time; there is no
+                // checksum truth to assert for it.
+                continue;
             }
 
             $this->assertSha256($operation->getAttribute($checksumField), $checksumField);
@@ -1427,6 +1551,13 @@ class MediaFilesystemMutationCoordinator
                 MediaMutationOperationType::ReferenceKeyBackfill => ['destination_path'],
             }
         : [];
+
+        // A swap that restored a missing file, or a delete of a missing file,
+        // has no original bytes to quarantine; the journal records that truth
+        // as context.source_missing instead of a quarantine copy.
+        if ($sourceMissingWaiver) {
+            $required = array_values(array_diff($required, ['quarantine_path']));
+        }
 
         foreach ($required as $field) {
             if (blank($operation->getAttribute($field))) {

@@ -127,6 +127,48 @@ phases, so `3B P1–P5` and `3C P5–P8` mean phase five of those mini-tasks. Ba
 
 ## Git State
 
+- RECON2 R5 (reason-specific resolutions, 2026-07-31) implements the five M4
+  Group A rulings the operator settled on 2026-07-31, extending Issue Review
+  from one repairable reason (`unsanitized_svg`) to five. **Structured
+  verdict:** `MediaRecordScope::backfillVerdict()` returns the exact failing
+  facts (`MediaRecordScopeVerdict` codes) instead of one folded boolean;
+  `allows`/`allowsForBackfill` semantics are unchanged and parity-tested.
+  **Missing file (`MUX3-F032`):** the reason card offers both rulings —
+  restore-by-upload rides the existing swap action, now that
+  `CuratorMediaPolicy::swap` lifts attachment references (settings paths and
+  duplicate identities still block; rename/delete unchanged), and
+  detach-and-delete (danger styling, confirmation) detaches every owner
+  through `MediaAttachmentManager` (dangling owners removed directly) then
+  deletes through the coordinator. The coordinator tolerates missing sources
+  for exactly swap and delete: the journal records `context.source_missing`
+  instead of a quarantine copy, `assertOperationShape` waives
+  `quarantine_path`/`source_sha256` only for that pair with that context, and
+  the pre-R5 "delete throws on missing source" contract was deliberately
+  replaced (the row is the lie when the file is gone). **Reference key
+  (`MUX3-F035`):** `mintReferenceKey` issues a key to key-less rows only,
+  through the fence (whitelisted for inventory locking), the lease issuance
+  window, `StoredMediaValidator::validateForReferenceKeyBackfill`, and a
+  journaled `ReferenceKeyBackfill` operation whose committed identity is the
+  issued key; the missing MediaAsset/provider-binding kernel is created in
+  the same transaction; filled-but-malformed keys stay immutably blocked.
+  **Audience (`MUX3-F037`):** super-admin-only make-public with trust-mark
+  weight — consequence dialog, `audience_made_public_at/by` columns
+  (migration on `curator`), a revocable strip mirroring the trusted strip,
+  and lease-wrapped visibility writes. **Disk (`MUX3-F036`):** super-admin
+  disk correction, offered only when the named disk does not exist, Select
+  limited to configured disks (helper text per cross-cutting rules), lease-
+  wrapped. The vendor Curator `url`/`full_path` accessors are overridden to
+  guard unknown disks so a storage_disk-defective row stays reviewable
+  instead of crashing any surface that arrays the model. The reason-card
+  action zone is now generic (presenter-driven multi-action lists). Tests:
+  `tests/Feature/MediaReasonResolutionsTest.php` (19 tests) plus deliberate
+  contract updates in the coordinator/authorization/issue-review suites and
+  the Issue Review browser contract (the missing-file record now proves the
+  resolution zone instead of the honest blocker). Gate: full suite 1453 tests
+  — feature slice fully green; the only two failures were the pre-update
+  browser blocker assertions, updated and re-proven (media gallery browser
+  suite 6/6, 230 assertions). Pint clean, FilaCheck 0 issues, build green.
+
 - RECON2 R4 (record truth, 2026-07-31) makes the documentation layer match
   the code again, as dated amendments — operator-accepted artifacts were
   amended, never rewritten. In the findings matrix

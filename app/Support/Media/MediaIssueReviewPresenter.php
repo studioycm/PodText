@@ -9,6 +9,7 @@ use App\Filament\Resources\ContentItems\ContentItemResource;
 use App\Models\ContentGroup;
 use App\Models\ContentItem;
 use App\Models\Media;
+use Filament\Support\Icons\Heroicon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -141,6 +142,94 @@ class MediaIssueReviewPresenter
 
             return filled($response->message())
                 ? ['kind' => 'blocked', 'reason' => (string) $response->message()]
+                : ['kind' => 'none'];
+        }
+
+        if ($reason === MediaDiagnosticReason::AudienceDenied->value) {
+            $response = Gate::inspect('makePublic', $media);
+
+            if ($response->allowed()) {
+                return ['kind' => 'actions', 'actions' => [[
+                    'action' => 'makePublicFile',
+                    'label' => __('admin.media_issue_review.audience.action'),
+                    'description' => __('admin.media_issue_review.audience.consequence'),
+                    'color' => 'danger',
+                    'icon' => Heroicon::OutlinedGlobeAlt,
+                ]]];
+            }
+
+            return filled($response->message())
+                ? ['kind' => 'blocked', 'reason' => (string) $response->message()]
+                : ['kind' => 'none'];
+        }
+
+        if ($reason === MediaDiagnosticReason::StorageDisk->value) {
+            $response = Gate::inspect('correctDisk', $media);
+
+            if ($response->allowed()) {
+                return ['kind' => 'actions', 'actions' => [[
+                    'action' => 'correctDiskFile',
+                    'label' => __('admin.media_issue_review.storage_disk.action'),
+                    'description' => __('admin.media_issue_review.storage_disk.consequence'),
+                    'color' => 'warning',
+                    'icon' => Heroicon::OutlinedServerStack,
+                ]]];
+            }
+
+            return filled($response->message())
+                ? ['kind' => 'blocked', 'reason' => (string) $response->message()]
+                : ['kind' => 'none'];
+        }
+
+        if ($reason === MediaDiagnosticReason::PortableIdentity->value) {
+            $response = Gate::inspect('mintReferenceKey', $media);
+
+            if ($response->allowed()) {
+                return ['kind' => 'actions', 'actions' => [[
+                    'action' => 'mintReferenceKey',
+                    'label' => __('admin.media_issue_review.portable_identity.mint_action'),
+                    'description' => __('admin.media_issue_review.portable_identity.mint_consequence'),
+                    'color' => 'warning',
+                    'icon' => Heroicon::OutlinedKey,
+                ]]];
+            }
+
+            return filled($response->message())
+                ? ['kind' => 'blocked', 'reason' => (string) $response->message()]
+                : ['kind' => 'none'];
+        }
+
+        if ($reason === MediaDiagnosticReason::MissingFile->value) {
+            $actions = [];
+
+            if (Gate::inspect('swap', $media)->allowed()) {
+                $actions[] = [
+                    'action' => 'swapFile',
+                    'label' => __('admin.media_issue_review.missing_file.restore_action'),
+                    'description' => __('admin.media_issue_review.missing_file.restore_consequence'),
+                    'color' => 'warning',
+                    'icon' => Heroicon::OutlinedArrowUpTray,
+                ];
+            }
+
+            $detachAndDelete = Gate::inspect('detachAndDelete', $media);
+
+            if ($detachAndDelete->allowed()) {
+                $actions[] = [
+                    'action' => 'detachAndDeleteFile',
+                    'label' => __('admin.media_issue_review.missing_file.detach_delete_action'),
+                    'description' => __('admin.media_issue_review.missing_file.detach_delete_consequence'),
+                    'color' => 'danger',
+                    'icon' => Heroicon::OutlinedTrash,
+                ];
+            }
+
+            if ($actions !== []) {
+                return ['kind' => 'actions', 'actions' => $actions];
+            }
+
+            return filled($detachAndDelete->message())
+                ? ['kind' => 'blocked', 'reason' => (string) $detachAndDelete->message()]
                 : ['kind' => 'none'];
         }
 

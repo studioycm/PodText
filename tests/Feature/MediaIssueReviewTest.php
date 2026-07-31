@@ -524,7 +524,11 @@ it('does not wrap the issue queue and handles null timestamp ordering determinis
 
 it('renders an honest blocker with no Fix Recheck Retry or Package 5 controls and performs no mutation', function (): void {
     $this->actingAs(User::factory()->admin()->create());
-    $media = mediaIssueFixture('mutation-free-review', [], false);
+    // A metadata-only defect (extension disagreeing with the stored type) is a
+    // reason that still has no repair action, so the honest blocker renders.
+    // The missing-file reason gained real resolutions in RECON2 R5, so it no
+    // longer represents the no-authority state this test pins.
+    $media = mediaIssueFixture('mutation-free-review', ['ext' => 'png']);
     MediaAttachment::factory()->create(['media_id' => $media]);
     $beforeMedia = $media->fresh()->getAttributes();
     $beforeAttachments = MediaAttachment::query()->where('media_id', $media->getKey())->get()->toArray();
