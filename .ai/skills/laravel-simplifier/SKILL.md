@@ -1,17 +1,20 @@
 ---
 name: laravel-simplifier
-description: "Audit and simplify PHP/Laravel changes in two mandatory stages. Use before any Laravel/PHP implementation or refactor. First perform a read-only dry-run audit and report the smallest safe approach. Only after explicit post-audit approval implement the approved scope, simplify touched code, and verify behavior."
+description: "Secondary simplification audit for PHP/Laravel changes. Invoke only after the ux-design-thinking skill has framed the work, and only when a simplification audit is explicitly wanted — never as the main development skill and never as an enforcement gate on ordinary implementation. When invoked: first a read-only dry-run audit reporting the smallest safe approach, then, after explicit approval, implement the approved scope."
 ---
 
 # Laravel Simplifier
 
-Use this skill as a two-stage state machine. Every new or materially changed
-scope starts at Stage 1. A valid, explicit approval for the current audit starts
-Stage 2.
+**Position (operator ruling 2026-07-31):** this is a secondary assistant, not
+the main development skill and not an enforcer. It runs only after
+`ux-design-thinking` has framed the product/UX shape of the work, and only
+when a simplification audit is explicitly requested. Ordinary Laravel/PHP
+implementation does not require this skill and is not gated by it.
 
-An initial request to implement, refactor, fix, or "audit then implement" does
-not skip Stage 1. Stage 1 ends the turn after reporting; it never flows directly
-into implementation.
+When invoked, use it as a two-stage state machine. The invoked scope starts at
+Stage 1. A valid, explicit approval for the current audit starts Stage 2.
+Stage 1 ends the turn after reporting; it never flows directly into
+implementation.
 
 ## Stage 1 — Read-only dry-run audit
 

@@ -10,13 +10,13 @@ Prompt 13), DEFER-POST-13, WAITING-ON-YONI, CLOSED.
 |---|---|---|---|
 | P2 — listing fetch windows + lazy filter options | Bound public listing queries; stop building filter options/form definitions on every search render; opt-in aggregates | **KEEP-PRE-13** | Still fully valid; the public-search render cost findings were never addressed; launch-relevant. First main-queue step after SP2/FETCH1. |
 | P3 — derived transcript segments/viewer economy | Persist/render derived segments + word counts instead of re-parsing Markdown per view | **KEEP-PRE-13 (second)** | Still valid; long-transcript pages are the product's core reading surface. |
-| AX1 — GSAP motion foundation | Approved gsap dependency, preset registry, reduced-motion | **DEFER-POST-13** | Visual polish epic; not launch-critical, not 13-blocking. |
+| AX1 — GSAP motion foundation | Approved gsap dependency, preset registry, reduced-motion | **DEFER-POST-13 (LAST — 2026-07-31)** | Visual polish epic; operator moved the whole AX1→AX2/AX3 arc to the end of the post-13 queue. Anything gated on AX (B4, and SL steps that need motion) inherits that position. |
 | SL1–SL4 — display templates, flip slider, flip/back face, quick-view modal | The slider/motion product arc | **DEFER-POST-13** | Coherent post-launch arc together with AX1-AX3; 5 steps of wow-factor that content-less launch does not need. Yoni may overrule for launch impact. |
 | AX2, AX3 — motion retrofit, scroll effects | Depends on AX1 | **DEFER-POST-13** | Rides the same arc. |
 | B4 — legacy card-options convergence | Code-debt convergence gated on M+P+SL+AX | **DEFER-POST-13** | Refactor debt; precondition list includes the deferred arc anyway. |
 | C2 — card layout markers/semantic tokens | Normalization incl. slider surfaces | **DEFER-POST-13** | Debt + slider-coupled; safe later. |
 | 9F-A/B/C — footer + rich section builder | Public footer + builder foundation | **SPLIT — WAITING-ON-YONI** | A minimal settings-driven FOOTER (links/contact/credits) is a real launch gap and a small step ("9F-mini"). The rich section builder defers post-13. Decide whether 9F-mini enters the pre-13 path. |
-| Step 11 — seeders/demo/assets/cleanup | Promote demo seed state | **DEFER (approval-gated)** | Real content arrives via workspace/fetcher/importers; demo seeding is not launch-critical. Revisit post-13. |
+| Step 11 — seeders/demo/assets/cleanup | Promote demo seed state | **DROPPED (2026-07-31)** | Deprecated by the operator, completely: real content arrives via workspace/fetcher/importers; demo seeding will never be promoted. Do not revisit. |
 | Prompt 13 — dashboard metrics | The target | **THE GOAL** | Runs after the pre-13 keeps; scope = editorial metrics over the now-rich schema (episodes, transcriptions, submissions badge, media, imports). |
 
 **Recommended road to 13:** SP2 → FETCH1 → P2 → P3 → (9F-mini if approved) → Prompt 13.
