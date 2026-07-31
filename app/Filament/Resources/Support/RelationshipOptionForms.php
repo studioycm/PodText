@@ -293,7 +293,7 @@ class RelationshipOptionForms
                 ->default(false),
             DateTimePicker::make('enabled_at')
                 ->label(__('admin.fields.enabled_at'))
-                ->helperText(__('admin.helpers.enabled_at'))
+                ->helperText(__('admin.helpers.enabled_at', ['timezone' => UiTimezone::name()]))
                 ->displayFormat('d/m/Y H:i')
                 ->timezone(UiTimezone::name()),
             TextInput::make('order_column')

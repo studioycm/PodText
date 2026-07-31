@@ -94,7 +94,7 @@ class TranscriptionForm
                         ->required(),
                     DateTimePicker::make('published_at')
                         ->label(__('admin.fields.published_at'))
-                        ->helperText(TranscriptionModeLabel::singleText('admin.helpers.transcription_published_at'))
+                        ->helperText(TranscriptionModeLabel::singleText('admin.helpers.transcription_published_at', ['timezone' => UiTimezone::name()]))
                         ->displayFormat('d/m/Y H:i')
                         ->timezone(UiTimezone::name()),
                 ])

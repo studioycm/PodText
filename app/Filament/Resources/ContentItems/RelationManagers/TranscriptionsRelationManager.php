@@ -70,7 +70,7 @@ class TranscriptionsRelationManager extends RelationManager
                             ->required(),
                         DateTimePicker::make('published_at')
                             ->label(__('admin.fields.published_at'))
-                            ->helperText(__('admin.helpers.transcription_published_at'))
+                            ->helperText(__('admin.helpers.transcription_published_at', ['timezone' => UiTimezone::name()]))
                             ->displayFormat('d/m/Y H:i')
                             ->timezone(UiTimezone::name()),
                     ])

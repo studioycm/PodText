@@ -244,7 +244,7 @@ class ContentItemsTable
                     ->required(),
                 DateTimePicker::make('published_at')
                     ->label(__('admin.fields.published_at'))
-                    ->helperText(TranscriptionModeLabel::text('admin.helpers.transcription_published_at'))
+                    ->helperText(TranscriptionModeLabel::text('admin.helpers.transcription_published_at', ['timezone' => UiTimezone::name()]))
                     ->displayFormat('d/m/Y H:i')
                     ->timezone(UiTimezone::name()),
                 MarkdownEditor::make('transcript_markdown')
