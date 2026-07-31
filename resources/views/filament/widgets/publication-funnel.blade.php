@@ -70,7 +70,7 @@
             <button
                 type="button"
                 wire:click="openBlockers"
-                class="bg-warning-50 text-warning-800 dark:bg-warning-500/10 dark:text-warning-300 mt-4 w-full rounded-lg px-3 py-2 text-start text-xs font-medium hover:underline"
+                class="{{ \App\Enums\DashboardTier::Invisible->bandClass() }} mt-4 w-full rounded-lg px-3 py-2 text-start text-xs font-medium hover:underline"
                 data-testid="funnel-gap"
             >
                 {{ __('admin.dashboard.funnel.gap', ['count' => $gap]) }}

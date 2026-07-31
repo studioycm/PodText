@@ -56,11 +56,14 @@
                                         dir="ltr"
                                     >
                                         @if ($visible > 0)
-                                            <div class="bg-success-500 h-2.5" style="width: {{ $percent }}%"></div>
+                                            <div
+                                                class="{{ \App\Enums\FunnelStage::Visible->barClass() }} h-2.5"
+                                                style="width: {{ $percent }}%"
+                                            ></div>
                                         @endif
                                         @if ($stuck > 0)
                                             <div
-                                                class="bg-warning-500 h-2.5"
+                                                class="{{ \App\Enums\DashboardTier::Invisible->barClass() }} h-2.5"
                                                 style="width: {{ 100 - $percent }}%"
                                             ></div>
                                         @endif

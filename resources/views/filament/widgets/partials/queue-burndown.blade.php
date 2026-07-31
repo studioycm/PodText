@@ -14,11 +14,7 @@
                 dir="ltr"
             >
                 <span
-                    @class([
-                        'inline-block h-1.5',
-                        'bg-success-500' => $key === 'invisible',
-                        'bg-warning-500' => $key !== 'invisible',
-                    ])
+                    class="{{ $tier->tier->barClass() }} inline-block h-1.5"
                     style="width: {{ $tier->percent() }}%"
                 ></span>
             </span>

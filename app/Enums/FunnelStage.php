@@ -75,6 +75,17 @@ enum FunnelStage: string implements HasColor, HasIcon, HasLabel
         };
     }
 
+    /** Tailwind classes for a soft-filled band in this stage's colour. */
+    public function bandClass(): string
+    {
+        return match ($this) {
+            self::Draft => 'bg-gray-100 text-gray-700 dark:bg-white/5 dark:text-gray-300',
+            self::Published => 'bg-info-100 text-info-800 dark:bg-info-500/20 dark:text-info-300',
+            self::Transcribed => 'bg-primary-100 text-primary-800 dark:bg-primary-500/20 dark:text-primary-300',
+            self::Visible => 'bg-success-100 text-success-800 dark:bg-success-500/20 dark:text-success-300',
+        };
+    }
+
     /** Tailwind stroke for a sparkline drawn in this stage's colour. */
     public function strokeClass(): string
     {

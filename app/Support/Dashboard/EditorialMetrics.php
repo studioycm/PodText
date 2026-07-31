@@ -4,6 +4,7 @@ namespace App\Support\Dashboard;
 
 use App\Enums\DashboardRange;
 use App\Enums\DashboardReason;
+use App\Enums\DashboardTier;
 use App\Enums\PublicationStatus;
 use App\Filament\Resources\ContentItems\ContentItemResource;
 use App\Filament\Resources\PublicFormSubmissions\PublicFormSubmissionResource;
@@ -340,7 +341,7 @@ class EditorialMetrics
 
         return [
             'invisible' => new Burndown(
-                key: 'invisible',
+                tier: DashboardTier::Invisible,
                 remaining: $invisible,
                 total: $total,
                 description: __('admin.dashboard.queue.burndown_invisible', ['remaining' => $invisible, 'total' => $total]),
@@ -349,7 +350,7 @@ class EditorialMetrics
             // No forecast by design: the category pivot carries no timestamps,
             // so needs-attention work cannot be paced without inventing a rate.
             'attention' => new Burndown(
-                key: 'attention',
+                tier: DashboardTier::Attention,
                 remaining: $attention,
                 total: $total,
                 description: __('admin.dashboard.queue.burndown_attention', ['remaining' => $attention, 'total' => $total]),

@@ -75,7 +75,7 @@ class BlockersQueueWidget extends TableWidget
             ->filters([
                 SelectFilter::make('reason')
                     ->label(__('admin.dashboard.queue.reasons'))
-                    ->options(DashboardReason::options())
+                    ->options(DashboardReason::class)
                     ->query(fn (Builder $query, array $data): Builder => filled($data['value'] ?? null)
                         ? app(EditorialMetrics::class)->applyReason($query, $data['value'])
                         : $query),

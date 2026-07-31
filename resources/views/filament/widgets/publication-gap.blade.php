@@ -12,7 +12,7 @@
         <div class="mt-4 flex h-6 overflow-hidden rounded-lg text-xs font-semibold" dir="rtl" data-testid="gap-bar">
             @if ($visible > 0)
                 <div
-                    class="bg-success-100 text-success-800 dark:bg-success-500/20 dark:text-success-300 flex items-center justify-center"
+                    class="{{ \App\Enums\FunnelStage::Visible->bandClass() }} flex items-center justify-center"
                     style="flex: {{ $visible }}"
                 >
                     {{ __('admin.dashboard.legend.visible') }} {{ $visible }}
@@ -20,10 +20,10 @@
             @endif
             @if ($invisible > 0)
                 <div
-                    class="bg-danger-100 text-danger-800 dark:bg-danger-500/20 dark:text-danger-300 flex items-center justify-center"
+                    class="{{ \App\Enums\DashboardTier::Invisible->bandClass() }} flex items-center justify-center"
                     style="flex: {{ $invisible }}"
                 >
-                    {{ __('admin.dashboard.gap.invisible') }} {{ $invisible }}
+                    {{ \App\Enums\DashboardTier::Invisible->getLabel() }} {{ $invisible }}
                 </div>
             @endif
             @if ($visible === 0 && $invisible === 0)
@@ -35,7 +35,7 @@
 
         {{-- Tier 1 · the public cannot see these at all. --}}
         <h3 class="mt-5 text-xs font-semibold text-gray-700 dark:text-gray-200">
-            {{ __('admin.dashboard.gap.invisible_heading') }}
+            {{ \App\Enums\DashboardTier::Invisible->getLabel() }}
         </h3>
         <dl class="mt-2 space-y-2 text-sm">
             @foreach ($gapReasons as $reason)
@@ -60,9 +60,11 @@
 
         {{-- Tier 2 · publicly visible, but incomplete. Never called invisible. --}}
         <h3 class="mt-5 text-xs font-semibold text-gray-700 dark:text-gray-200">
-            {{ __('admin.dashboard.gap.attention_heading', ['count' => $attention]) }}
+            {{ \App\Enums\DashboardTier::Attention->getLabel() }} ({{ $attention }})
         </h3>
-        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ __('admin.dashboard.gap.attention_hint') }}</p>
+        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+            {{ \App\Enums\DashboardTier::Attention->getDescription() }}
+        </p>
         <dl class="mt-2 space-y-2 text-sm">
             @foreach ($attentionReasons as $reason)
                 <div class="flex items-center gap-3" data-testid="attention-reason">

@@ -3,6 +3,7 @@
 namespace App\Enums;
 
 use Filament\Support\Contracts\HasColor;
+use Filament\Support\Contracts\HasDescription;
 use Filament\Support\Contracts\HasIcon;
 use Filament\Support\Contracts\HasLabel;
 use Filament\Support\Icons\Heroicon;
@@ -15,7 +16,7 @@ use Filament\Support\Icons\Heroicon;
  * this enum the four reasons were bare strings whose colours were redefined in
  * four places and whose tier lived only in the shape of two query methods.
  */
-enum DashboardReason: string implements HasColor, HasIcon, HasLabel
+enum DashboardReason: string implements HasColor, HasDescription, HasIcon, HasLabel
 {
     case MissingTranscription = 'missing_transcription';
     case UnpublishedGroup = 'unpublished_group';
@@ -48,20 +49,28 @@ enum DashboardReason: string implements HasColor, HasIcon, HasLabel
         ));
     }
 
-    /** @return array<string, string> */
-    public static function options(): array
+    /**
+     * The one place a reason declares which kind of trouble it causes. Both
+     * tiers and `hidesFromPublic()` derive from this, so adding a reason means
+     * answering one question rather than editing three lists.
+     */
+    public function tier(): DashboardTier
     {
-        return collect(self::cases())
-            ->mapWithKeys(fn (self $reason): array => [$reason->value => $reason->getLabel()])
-            ->all();
+        return match ($this) {
+            self::MissingTranscription, self::UnpublishedGroup => DashboardTier::Invisible,
+            self::MissingMedia, self::MissingCategory => DashboardTier::Attention,
+        };
     }
 
     public function hidesFromPublic(): bool
     {
-        return match ($this) {
-            self::MissingTranscription, self::UnpublishedGroup => true,
-            self::MissingMedia, self::MissingCategory => false,
-        };
+        return $this->tier() === DashboardTier::Invisible;
+    }
+
+    /** Why this reason matters, shown under the option in the queue filter. */
+    public function getDescription(): string
+    {
+        return __("admin.dashboard.reasons.{$this->value}_description");
     }
 
     public function getLabel(): string

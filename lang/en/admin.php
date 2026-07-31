@@ -139,11 +139,21 @@ return [
             'reasons' => 'Blocking reasons',
             'fix' => 'Fix',
         ],
+        'tiers' => [
+            'invisible' => 'Blocked from view',
+            'attention' => 'Needs attention',
+            'invisible_description' => 'Published, but the public cannot see the episode at all.',
+            'attention_description' => 'The public can see the episode; something about it is incomplete.',
+        ],
         'reasons' => [
             'missing_transcription' => 'No published transcription',
             'missing_media' => 'No media URL',
             'missing_category' => 'No category',
             'unpublished_group' => 'Podcast not published',
+            'missing_transcription_description' => 'No published transcript, so the episode has nothing public to show.',
+            'unpublished_group_description' => 'The owning podcast is still a draft, so none of its episodes are public.',
+            'missing_media_description' => 'No media or embed URL, so the episode page has no player.',
+            'missing_category_description' => 'No category on the episode or its podcast, so it is missing from category browsing.',
         ],
     ],
     'resources' => [

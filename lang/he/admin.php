@@ -139,11 +139,21 @@ return [
             'reasons' => 'סיבות חסימה',
             'fix' => 'טיפול',
         ],
+        'tiers' => [
+            'invisible' => 'חסום מהצגה',
+            'attention' => 'דורש טיפול',
+            'invisible_description' => 'פורסם, אך הציבור אינו רואה את הפרק כלל.',
+            'attention_description' => 'הציבור רואה את הפרק; משהו בו חסר.',
+        ],
         'reasons' => [
             'missing_transcription' => 'אין תמלול שפורסם',
             'missing_media' => 'אין כתובת מדיה',
             'missing_category' => 'אין קטגוריה',
             'unpublished_group' => 'הפודקאסט לא פורסם',
+            'missing_transcription_description' => 'אין תמלול שפורסם, ולכן אין לפרק תוכן ציבורי להציג.',
+            'unpublished_group_description' => 'הפודקאסט המכיל עדיין בטיוטה, ולכן אף אחד מפרקיו אינו ציבורי.',
+            'missing_media_description' => 'אין כתובת מדיה או הטמעה, ולכן בעמוד הפרק אין נגן.',
+            'missing_category_description' => 'אין קטגוריה לפרק או לפודקאסט שלו, ולכן הוא נעדר מדפדוף הקטגוריות.',
         ],
     ],
     'resources' => [

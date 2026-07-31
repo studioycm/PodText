@@ -2,6 +2,7 @@
 
 namespace App\Support\Dashboard\Data;
 
+use App\Enums\DashboardTier;
 use Illuminate\Support\Carbon;
 
 /**
@@ -19,7 +20,7 @@ use Illuminate\Support\Carbon;
 readonly class Burndown
 {
     public function __construct(
-        public string $key,
+        public DashboardTier $tier,
         public int $remaining,
         public int $total,
         public string $description,
@@ -43,11 +44,11 @@ readonly class Burndown
         return $this->remaining < 1;
     }
 
-    /** @return array{key: string, remaining: int, total: int, description: string, forecast: ?string} */
+    /** @return array{tier: string, remaining: int, total: int, description: string, forecast: ?string} */
     public function toArray(): array
     {
         return [
-            'key' => $this->key,
+            'tier' => $this->tier->value,
             'remaining' => $this->remaining,
             'total' => $this->total,
             'description' => $this->description,
