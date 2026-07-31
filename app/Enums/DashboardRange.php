@@ -56,6 +56,22 @@ enum DashboardRange: string implements HasLabel
         ];
     }
 
+    /**
+     * The Jerusalem days covered by the current period, oldest first. Every
+     * daily series on the board is aligned to this list, so a sparkline, a
+     * heatmap cell and a stream row all mean the same day.
+     *
+     * @return array<int, string>
+     */
+    public function dayKeys(): array
+    {
+        $today = CarbonImmutable::now(self::TIMEZONE)->startOfDay();
+
+        return collect(range($this->days() - 1, 0))
+            ->map(fn (int $daysAgo): string => $today->subDays($daysAgo)->format('Y-m-d'))
+            ->all();
+    }
+
     /** @return array{CarbonImmutable, CarbonImmutable} */
     public function previousPeriod(): array
     {

@@ -15,6 +15,7 @@ use App\Observers\CuratorMediaObserver;
 use App\Policies\CuratorMediaPolicy;
 use App\Settings\PublicContentSettings;
 use App\Support\Authorization\PackageMutationCommandGuard;
+use App\Support\Dashboard\EditorialMetrics;
 use App\Support\Importer\Contracts\GoogleDriveClientFactory;
 use App\Support\Importer\Contracts\SpotifyClientFactory;
 use App\Support\Importer\Google\GoogleApiDriveClientFactory;
@@ -77,6 +78,7 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(GoogleDriveClientFactory::class, GoogleApiDriveClientFactory::class);
         $this->app->bind(SpotifyClientFactory::class, SpotifyHttpClientFactory::class);
 
+        $this->app->scoped(EditorialMetrics::class);
         $this->app->scoped(SettingsLifecycleSchema::class);
         $this->app->scoped(PublicFrontCardTemplateResolver::class);
         $this->app->scoped(MediaInventoryDiagnostics::class);

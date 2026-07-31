@@ -3,6 +3,7 @@
 namespace App\Filament\Widgets;
 
 use App\Filament\Resources\ContentItems\ContentItemResource;
+use App\Filament\Widgets\Concerns\ReadsDashboardFilters;
 use App\Models\ContentItem;
 use App\Support\Dashboard\EditorialMetrics;
 use Filament\Actions\Action;
@@ -10,12 +11,17 @@ use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
+use Filament\Widgets\Concerns\InteractsWithPageFilters;
 use Filament\Widgets\TableWidget;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\HtmlString;
 
 class BlockersQueueWidget extends TableWidget
 {
-    protected static ?int $sort = -1;
+    use InteractsWithPageFilters;
+    use ReadsDashboardFilters;
+
+    protected static ?int $sort = -30;
 
     protected int|string|array $columnSpan = 'full';
 
@@ -23,12 +29,19 @@ class BlockersQueueWidget extends TableWidget
 
     public function table(Table $table): Table
     {
+        $metrics = app(EditorialMetrics::class);
+        $podcastId = $this->dashboardPodcastId();
+
         return $table
+            // The Dashboard page owns the bare `filters`, `search`, `sort` and
+            // `page` query-string keys through its own `#[Url] $filters`, so
+            // this table namespaces its own.
+            ->queryStringIdentifier('blockersQueue')
             ->heading(__('admin.dashboard.queue.heading'))
-            ->description(__('admin.dashboard.queue.description'))
+            ->description(fn (): HtmlString => $this->burnDown())
             ->query(
-                app(EditorialMetrics::class)
-                    ->blockedQuery()
+                $metrics
+                    ->blockedQuery($podcastId)
                     ->with(['contentGroup.categories', 'categories'])
                     ->latest('content_items.published_at'),
             )
@@ -75,5 +88,19 @@ class BlockersQueueWidget extends TableWidget
                     ->icon(Heroicon::OutlinedWrenchScrewdriver)
                     ->url(fn (ContentItem $record): string => ContentItemResource::getUrl('workspace', ['record' => $record])),
             ]);
+    }
+
+    /** H7 · the burn-down bar and clearance forecast in the queue header. */
+    private function burnDown(): HtmlString
+    {
+        $metrics = app(EditorialMetrics::class);
+        $podcastId = $this->dashboardPodcastId();
+        $progress = $metrics->blockersProgress($podcastId);
+
+        return new HtmlString(view('filament.widgets.partials.queue-burndown', [
+            'remaining' => $progress['remaining'],
+            'total' => $progress['total'],
+            'forecast' => $metrics->clearanceForecast($podcastId)?->timezone('Asia/Jerusalem')->format('d/m/Y'),
+        ])->render());
     }
 }

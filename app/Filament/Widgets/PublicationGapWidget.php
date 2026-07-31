@@ -2,14 +2,19 @@
 
 namespace App\Filament\Widgets;
 
+use App\Filament\Widgets\Concerns\ReadsDashboardFilters;
 use App\Support\Dashboard\EditorialMetrics;
+use Filament\Widgets\Concerns\InteractsWithPageFilters;
 use Filament\Widgets\Widget;
 
 class PublicationGapWidget extends Widget
 {
+    use InteractsWithPageFilters;
+    use ReadsDashboardFilters;
+
     protected string $view = 'filament.widgets.publication-gap';
 
-    protected static ?int $sort = -2;
+    protected static ?int $sort = -40;
 
     protected int|string|array $columnSpan = 'full';
 
@@ -19,8 +24,9 @@ class PublicationGapWidget extends Widget
     protected function getViewData(): array
     {
         $metrics = app(EditorialMetrics::class);
-        $snapshot = $metrics->snapshot();
-        $forecast = $metrics->clearanceForecast();
+        $podcastId = $this->dashboardPodcastId();
+        $snapshot = $metrics->snapshot($podcastId);
+        $forecast = $metrics->clearanceForecast($podcastId);
 
         return [
             'visible' => $snapshot['funnel']['visible'],

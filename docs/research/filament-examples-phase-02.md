@@ -22,6 +22,7 @@ This file records the Phase 02 research performed through the configured `filame
 | Settings | E-Shop Admin With Bootstrap Storefront | Now | Use `SettingsPage` pattern for approved Spatie Settings implementation |
 | Import/export | Inventory Stock with CSV Import/Export | Now | Keep native Importer/Exporter actions and relationship resolution |
 | Dashboard widgets | E-Shop widgets, Quiz leaderboard | Later | Use simple `StatsOverviewWidget` and `TableWidget` editorial warnings |
+| Lens-switched dashboard + filawidgets | Multi-Widget Analytics Dashboard with Presets | Now | The direct model for Prompt 13: preset-switched `getWidgets()`, range enum, filawidgets data layer |
 | Embedded Livewire/sidebar | Livewire Status Sidebar In Edit Page | Later | Useful for future studio planning; do not implement studio now |
 | Alpine in custom page | Quiz Application with Custom Take-Quiz Page | Later | Use only for local viewer controls, not persisted state |
 
@@ -255,3 +256,81 @@ This file records the Phase 02 research performed through the configured `filame
 - Adaptation notes for PodText: Prompt 12 may use Alpine for show/hide speakers/timestamps only
 - Implementation prompt references: 12, 14
 - Confidence: medium
+
+## Example: Multi-Widget Analytics Dashboard with Presets
+
+Recorded during Prompt 13 phase 2. Phase 1 ran its MCP passes during the design
+stage but never wrote them here, which the tooling guideline requires; this
+section and the next close that gap.
+
+- Source: `v4/full-projects/filawidgets-dashboard/` — `app/Filament/Pages/Dashboard.php`, `app/Filament/Widgets/RevenuePulseWidget.php`, `RevenueByRegionWidget.php`, `DailyRevenueWidget.php`, `RevenueGoalWidget.php`, `FulfillmentRateWidget.php`, `app/Enums/DashboardDateRange.php`, `app/Enums/DashboardPreset.php`
+- MCP search tool used: `mcp__filament-examples__search-examples`
+- MCP fetch/read/detail/source tool used: none exposed separately; source snippets returned by search
+- MCP fetched: no; full class bodies returned by `search-examples`
+- Access level: source snippets through `search-examples`
+- Filament version: v4 example, adapted to installed Filament v5
+- Query batches run: pass 1 — `stats overview widget chart`, `custom blade widget`, `widget page filters`, `heatmap calendar widget`, `activity timeline widget` (limit 8); pass 2 — `widget interacts with page filters`, `table widget resource url action`, `blade widget section heading badge` (limit 2, returned overlapping projects and no new dashboard material)
+- Files/classes inspected: the eight files listed above, read in full
+- Dependencies: `laraveldaily/filawidgets`, `HasFiltersForm`, `ToggleButtons`, page-level `$filters`
+- Why relevant: this is the same shape as PodText's lens dashboard — a preset enum switching `getWidgets()`, a range enum feeding every widget, and package widgets reading a shared range filter
+- Filament concepts used: `Dashboard implements HasFiltersForm`, grouped `ToggleButtons`, `getWidgetsForPreset()` `match`, `getColumns()`, `SparklineTableWidget`, `BreakdownWidget`, `HeatmapCalendarWidget`, `ProgressWidget`, `CompletionRateWidget`, `SparklineSeries::daily()`, `BreakdownItemData`
+- Pattern to copy: preset-enum-switched `getWidgets()`; a range enum with `currentPeriod()`/`previousPeriod()` feeding both the value and its previous-period delta; `BreakdownItemData` built by merging current and previous key sets so a transcriber who published last period but not this one still appears
+- Pattern to avoid: (1) the example's `DashboardDateRange` computes periods on the server default timezone — PodText needs Jerusalem walls, which is why `App\Enums\DashboardRange` is custom; (2) `SparklineSeries::daily()` groups with raw `DATE(column)`, i.e. database-timezone days, so PodText buckets in PHP instead and stays correct on both MySQL and the SQLite test database and across DST; (3) the example's widgets query models directly, which would break PodText's one-number-one-source rule
+- Testing ideas: assert the widget set per preset; assert period boundaries; assert previous-period deltas
+- Implementation risk: extending package widget classes couples the board to package view internals — PodText keeps the data layer and writes its own Blade views instead
+- Use now/later: now
+- Adaptation notes for PodText: `Dashboard::getWidgetsForLens()` mirrors `getWidgetsForPreset()`; every number routes through `App\Support\Dashboard\EditorialMetrics`; day bucketing uses `DashboardRange::dayKeys()` on Jerusalem walls
+- Implementation prompt references: 13
+- Confidence: high
+
+## Example: Segmented Button Filter for Chart Widget
+
+- Source: `v4/full-projects/chart-filter-buttons/app/Filament/Widgets/EngagementRateChart.php`, `app/Enums/TrafficSource.php`, `resources/views/filament/widgets/engagement-rate-chart.blade.php`
+- MCP search tool used: `mcp__filament-examples__search-examples`
+- MCP fetch/read/detail/source tool used: none exposed separately
+- MCP fetched: no; source snippets returned by search
+- Access level: source snippets through `search-examples`
+- Filament version: v4 example, adapted to installed Filament v5
+- Files/classes inspected: the three files listed above
+- Dependencies: widget-local public state, an enum of filter values, a custom widget Blade view
+- Why relevant: the activity stream's type chips and the heatmap's day selection are widget-local state, not page filters
+- Filament concepts used: custom widget `$view`, public widget properties, `wire:click` handlers on a Blade chip row
+- Pattern to copy: widget-local public state driven by `wire:click`, with the widget's own Blade view owning the chip row
+- Pattern to avoid: pushing every chip into page filters — only the legend's status chip belongs in `pageFilters` (H6); chip and day state stay widget-local
+- Testing ideas: `Livewire::test(Widget::class)->call('selectType', ...)->assertSet(...)`; cross-widget wiring via `->dispatch(...)`/`assertDispatched(...)`
+- Implementation risk: widget-local state is not URL-persisted, so a page reload loses the chip selection — accepted for phase 2
+- Use now/later: now
+- Adaptation notes for PodText: `ActivityStreamWidget::$type`/`$day` and `PublicationHeatmapWidget::$selectedDay`; the heatmap dispatches `dashboard-day-selected` and the stream listens with `#[On]`
+- Implementation prompt references: 13
+- Confidence: high
+
+### Follow-up pass: how the filawidgets example names its keys
+
+Re-queried during Prompt 13 phase 2 (`filawidgets operations pulse queue widget`,
+`filawidgets growth signals expansion target`). The MCP exposes eight files of
+that project; the other ten widget classes the example's `Dashboard` imports are
+not returned, so the searchable surface is exhausted.
+
+What the example and the installed package show about key naming:
+
+- Every widget subclass sets a **distinct `protected ?string $widgetLabel`**
+  (`'Revenue Pulse'`, `'Revenue by Region'`, `'Daily Revenue'`, `'Revenue Goal'`,
+  `'Fulfillment Rate'`). That is the package's per-widget identity.
+- `LaravelDaily\FilaWidgets\Widgets\Concerns\InteractsWithWidgetConfiguration`
+  also exposes `protected ?string $widgetCacheKey`, passed to
+  `WidgetDataCache::remember(key: ...)`.
+- `WidgetDataCache::key()` falls back to `implode(':', [$widget, class_basename($resolver)])`
+  plus a sha1 of filters + options when no explicit key is set. Two widgets
+  sharing a resolver and the same filters would therefore share a cache entry
+  unless each sets a distinct `$widgetCacheKey`.
+- The example's `filtersForm()` uses `ToggleButtons::make('preset')` and
+  `make('range')` with **no** explicit `->key()` — it relies on distinct field
+  names. PodText sets explicit keys anyway, because its dashboard renders its
+  own filters schema alongside widget-owned schemas.
+
+Applicability to PodText: **none of the package's key mechanisms are in play**,
+because phase 2 extends no filawidgets widget class and imports nothing from
+`LaravelDaily\FilaWidgets`. The equivalent surface in PodText is
+`EditorialMetrics`'s own cache key, already namespaced per podcast scope
+(`dashboard:editorial-metrics:v2:{id|all}`); the other metric methods are
+uncached, so there is no second key surface to collide.
