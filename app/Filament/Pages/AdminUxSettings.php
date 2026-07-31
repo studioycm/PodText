@@ -52,9 +52,7 @@ class AdminUxSettings extends SettingsPage
                             ->label(__('admin.fields.media_naming_strategy'))
                             ->helperText(__('admin.helpers.media_naming_strategy'))
                             ->options(fn (): array => collect(MediaNamingStrategy::cases())
-                                ->mapWithKeys(fn (MediaNamingStrategy $strategy): array => [
-                                    $strategy->value => __("admin.media_naming_strategies.{$strategy->value}"),
-                                ])
+                                ->mapWithKeys(fn (MediaNamingStrategy $case): array => [$case->value => $case->getLabel()])
                                 ->all())
                             ->default(MediaNamingStrategy::Slug->value)
                             ->native(false)
@@ -123,9 +121,7 @@ class AdminUxSettings extends SettingsPage
                             ->label(__('admin.fields.media_acquisition_filename_strategy'))
                             ->helperText(__('admin.helpers.media_acquisition_filename_strategy'))
                             ->options(fn (): array => collect(MediaAcquisitionFilenameStrategy::cases())
-                                ->mapWithKeys(fn (MediaAcquisitionFilenameStrategy $strategy): array => [
-                                    $strategy->value => __("admin.media_acquisition_filename_strategies.{$strategy->value}"),
-                                ])
+                                ->mapWithKeys(fn (MediaAcquisitionFilenameStrategy $case): array => [$case->value => $case->getLabel()])
                                 ->all())
                             ->default(MediaAcquisitionFilenameStrategy::AppGenerated->value)
                             ->native(false)

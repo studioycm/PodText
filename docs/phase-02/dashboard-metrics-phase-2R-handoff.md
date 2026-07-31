@@ -196,6 +196,30 @@ Two traps when copying it:
   described something the code did not do. That is now true of
   `DashboardTier::Invisible` specifically, not of the queue population.
 
+## Gotcha: `->options(Enum::class)` changes the state type
+
+Passing an enum class to `->options()` is the idiom both Povilas Korop enum
+videos recommend, and it is right for a table filter. It is **wrong for a field
+whose backing property is a string**: Filament then hands the property an enum
+instance, and a typed `string` property rejects it.
+
+E4 hit this on `AdminUxSettings::$mediaNamingStrategy` — the suite caught it
+immediately with `Cannot assign App\Enums\MediaNamingStrategy to property ...`.
+Settings pages backed by Spatie settings classes are the exposed surface here.
+
+The safe consolidation, used instead, keeps the state a string while still
+having exactly one label definition:
+
+```php
+->options(fn (): array => collect(MediaNamingStrategy::cases())
+    ->mapWithKeys(fn (MediaNamingStrategy $case): array => [$case->value => $case->getLabel()])
+    ->all())
+```
+
+The duplication that mattered — the same translation-key mapping copy-pasted
+across two files — is gone either way, because `getLabel()` is now the only
+place a label is defined. Only the *shape* of the call site differs.
+
 ## Gotchas a phase-3 session will hit
 
 - **Filament action-modal content is not in the Livewire HTML at `mountAction`

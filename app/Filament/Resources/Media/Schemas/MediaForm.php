@@ -35,7 +35,9 @@ class MediaForm
                 ->schema([
                     Select::make('purpose')
                         ->label(__('admin.fields.image_upload_purpose'))
-                        ->options(ImageUploadPurpose::options())
+                        ->options(fn (): array => collect(ImageUploadPurpose::cases())
+                            ->mapWithKeys(fn (ImageUploadPurpose $case): array => [$case->value => $case->getLabel()])
+                            ->all())
                         ->live()
                         ->required(),
                     FileUpload::make('uploads')

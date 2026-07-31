@@ -442,9 +442,7 @@ class ContentImageActions
                     ->label(__('admin.fields.media_naming_strategy'))
                     ->helperText(__('admin.helpers.media_naming_strategy'))
                     ->options(fn (): array => collect(MediaNamingStrategy::cases())
-                        ->mapWithKeys(fn (MediaNamingStrategy $strategy): array => [
-                            $strategy->value => __("admin.media_naming_strategies.{$strategy->value}"),
-                        ])
+                        ->mapWithKeys(fn (MediaNamingStrategy $case): array => [$case->value => $case->getLabel()])
                         ->all())
                     ->default(fn (): string => self::defaultEgressNamingStrategy()->value)
                     ->native(false)

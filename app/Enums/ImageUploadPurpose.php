@@ -2,7 +2,9 @@
 
 namespace App\Enums;
 
-enum ImageUploadPurpose: string
+use Filament\Support\Contracts\HasLabel;
+
+enum ImageUploadPurpose: string implements HasLabel
 {
     case ContentGroupCover = 'content_group_cover';
     case ContentItemPrimaryImage = 'content_item_primary_image';
@@ -28,15 +30,8 @@ enum ImageUploadPurpose: string
         return true;
     }
 
-    /**
-     * @return array<string, string>
-     */
-    public static function options(): array
+    public function getLabel(): string
     {
-        return collect(self::cases())
-            ->mapWithKeys(fn (self $purpose): array => [
-                $purpose->value => __("admin.image_upload_purposes.{$purpose->value}"),
-            ])
-            ->all();
+        return __("admin.image_upload_purposes.{$this->value}");
     }
 }

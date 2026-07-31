@@ -2,7 +2,9 @@
 
 namespace App\Enums;
 
-enum MediaNamingStrategy: string
+use Filament\Support\Contracts\HasLabel;
+
+enum MediaNamingStrategy: string implements HasLabel
 {
     case Slug = 'slug';
     case ReferenceKey = 'reference_key';
@@ -23,5 +25,10 @@ enum MediaNamingStrategy: string
             static fn (self $strategy): string => $strategy->value,
             self::cases(),
         );
+    }
+
+    public function getLabel(): string
+    {
+        return __("admin.media_naming_strategies.{$this->value}");
     }
 }
