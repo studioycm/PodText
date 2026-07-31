@@ -11,24 +11,33 @@
         controlsOpen: true,
         cardWidth: 100,
     }"
-    @if($modal) data-card-template-preview-modal @else data-card-template-preview-adjacent @endif
-    @if($modal) x-on:keydown.window.escape="setTimeout(() => document.querySelector('[data-test=card-template-preview-open]')?.focus(), 100)" @endif
+    @if ($modal) data-card-template-preview-modal @else data-card-template-preview-adjacent @endif
+    @if ($modal)
+        x-on:keydown.window.escape="
+            setTimeout(() => document.querySelector('[data-test=card-template-preview-open]')?.focus(), 100)
+        "
+    @endif
 >
     <header class="border-b border-gray-200 bg-white/95 p-3 backdrop-blur dark:border-white/10 dark:bg-gray-900/95">
         <h2
             id="card-template-preview-heading"
             class="sr-only"
             tabindex="-1"
-            @if($modal) x-init="setTimeout(() => $el.focus(), 100)" @endif
-            @unless($modal) x-ref="previewHeading" @endunless
+            @if ($modal) x-init="setTimeout(() => $el.focus(), 100)" @endif
+            @unless ($modal) x-ref="previewHeading" @endunless
         >
             {{ __('admin.settings_sp3c.preview.title') }}
         </h2>
 
         <div class="flex min-w-0 items-center justify-between gap-2">
-            <div class="flex min-w-0 items-center gap-x-2 text-xs" role="status" aria-live="polite" data-card-template-preview-status-row>
+            <div
+                class="flex min-w-0 items-center gap-x-2 text-xs"
+                role="status"
+                aria-live="polite"
+                data-card-template-preview-status-row
+            >
                 <span
-                    class="hidden shrink-0 font-medium text-warning-700 dark:text-warning-300"
+                    class="text-warning-700 dark:text-warning-300 hidden shrink-0 font-medium"
                     wire:dirty.class.remove="hidden"
                     wire:target="data"
                     title="{{ __('admin.settings_sp3c.preview.stale') }}"
@@ -50,7 +59,7 @@
                     {{ $this->previewIsStale() ? __('admin.settings_sp3c.preview.stale_short') : __('admin.settings_sp3c.preview.current_short') }}
                 </span>
 
-                @if($previewRefreshedAt)
+                @if ($previewRefreshedAt)
                     <span aria-hidden="true">&middot;</span>
                     <span
                         class="truncate text-gray-500 dark:text-gray-400"
@@ -84,7 +93,7 @@
             data-card-template-preview-controls
         >
             <div class="flex min-w-0 items-center gap-2" data-card-template-preview-controls-row>
-                @if($this->canChoosePreviewSample())
+                @if ($this->canChoosePreviewSample())
                     <div class="min-w-0 flex-1" data-card-template-preview-sample-select>
                         {{ $this->previewSampleForm }}
                     </div>
@@ -96,7 +105,7 @@
                         aria-label="{{ __('admin.settings_sp3c.preview.width') }}"
                         data-test="card-template-preview-width"
                     >
-                        @foreach([100, 90, 80, 70, 60] as $width)
+                        @foreach ([100, 90, 80, 70, 60] as $width)
                             <option value="{{ $width }}">{{ $width }}%</option>
                         @endforeach
                     </x-filament::input.select>
@@ -130,7 +139,7 @@
         </div>
 
         <div wire:loading.remove wire:target="refreshPreview, previewControls.sample_id">
-            @if($previewStatus === 'ready' && $previewHtml)
+            @if ($previewStatus === 'ready' && $previewHtml)
                 <div
                     class="mx-auto min-w-0"
                     x-bind:style="{ width: cardWidth + '%' }"
@@ -139,12 +148,19 @@
                 >
                     {!! $previewHtml !!}
                 </div>
-            @elseif($previewStatus === 'restricted')
-                <p class="rounded-lg bg-warning-50 p-4 text-sm text-warning-800 dark:bg-warning-950 dark:text-warning-200" data-test="card-template-preview-restricted">
+            @elseif ($previewStatus === 'restricted')
+                <p
+                    class="bg-warning-50 text-warning-800 dark:bg-warning-950 dark:text-warning-200 rounded-lg p-4 text-sm"
+                    data-test="card-template-preview-restricted"
+                >
                     {{ __('admin.settings_sp3c.preview.restricted') }}
                 </p>
-            @elseif($previewStatus === 'invalid_draft')
-                <div class="rounded-lg bg-danger-50 p-4 text-sm text-danger-800 dark:bg-danger-950 dark:text-danger-200" role="alert" data-test="card-template-preview-invalid">
+            @elseif ($previewStatus === 'invalid_draft')
+                <div
+                    class="bg-danger-50 text-danger-800 dark:bg-danger-950 dark:text-danger-200 rounded-lg p-4 text-sm"
+                    role="alert"
+                    data-test="card-template-preview-invalid"
+                >
                     <p>{{ __('admin.settings_sp3c.preview.invalid_draft') }}</p>
                     <x-filament::button
                         type="button"
@@ -159,18 +175,23 @@
                         {{ __('admin.settings_sp3c.preview.focus_invalid_field') }}
                     </x-filament::button>
                 </div>
-            @elseif($previewStatus === 'no_sample')
-                <p class="rounded-lg bg-gray-50 p-4 text-sm text-gray-700 dark:bg-white/5 dark:text-gray-200" data-test="card-template-preview-empty">
+            @elseif ($previewStatus === 'no_sample')
+                <p
+                    class="rounded-lg bg-gray-50 p-4 text-sm text-gray-700 dark:bg-white/5 dark:text-gray-200"
+                    data-test="card-template-preview-empty"
+                >
                     {{ $this->previewEmptyMessage() }}
                 </p>
-            @elseif($previewStatus === 'sample_error')
-                <p class="rounded-lg bg-danger-50 p-4 text-sm text-danger-800 dark:bg-danger-950 dark:text-danger-200" role="alert" data-test="card-template-preview-error">
+            @elseif ($previewStatus === 'sample_error')
+                <p
+                    class="bg-danger-50 text-danger-800 dark:bg-danger-950 dark:text-danger-200 rounded-lg p-4 text-sm"
+                    role="alert"
+                    data-test="card-template-preview-error"
+                >
                     {{ __('admin.settings_sp3c.preview.sample_error') }}
                 </p>
             @else
-                <p class="text-sm text-gray-600 dark:text-gray-300">
-                    {{ __('admin.settings_sp3c.preview.loading') }}
-                </p>
+                <p class="text-sm text-gray-600 dark:text-gray-300">{{ __('admin.settings_sp3c.preview.loading') }}</p>
             @endif
         </div>
     </div>

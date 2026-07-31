@@ -103,21 +103,26 @@
                             <span class="grid h-14 w-14 shrink-0 place-items-center rounded-md border border-gray-200 text-gray-400 dark:border-gray-700">—</span>
                         @endif
                         <span class="grid min-w-0 gap-0.5">
-                            <span @class([
-                                'text-[10px] leading-none',
-                                'text-gray-500 dark:text-gray-400' => ! $choiceCard['pending'],
-                                'text-warning-700 dark:text-warning-300' => $choiceCard['pending'],
-                            ])>{{ $choiceCard['label'] }}</span>
                             <span
                                 @class([
-                                    'text-xs',
-                                    'truncate' => ! $choiceCard['pending'],
-                                    'max-w-72 whitespace-normal' => $choiceCard['pending'],
-                                    'text-gray-700 dark:text-gray-200' => ! $choiceCard['pending'],
+                                    'text-[10px] leading-none',
+                                    'text-gray-500 dark:text-gray-400' => ! $choiceCard['pending'],
                                     'text-warning-700 dark:text-warning-300' => $choiceCard['pending'],
                                 ])
-                            >
-                                <span x-show="! copied">{{ $choiceCard['state'] }}@if (filled($choiceCard['state_suffix'] ?? null)) <span class="{{ $choiceCard['state_suffix_class'] ?? 'text-danger-600 dark:text-danger-400' }}">· {{ $choiceCard['state_suffix'] }}</span>@endif</span>
+                            >{{ $choiceCard['label'] }}</span>
+                            <span @class([
+                                'text-xs',
+                                'truncate' => ! $choiceCard['pending'],
+                                'max-w-72 whitespace-normal' => $choiceCard['pending'],
+                                'text-gray-700 dark:text-gray-200' => ! $choiceCard['pending'],
+                                'text-warning-700 dark:text-warning-300' => $choiceCard['pending'],
+                            ])>
+                                <span x-show="! copied"
+                                    >{{ $choiceCard['state'] }}
+                                    @if (filled($choiceCard['state_suffix'] ?? null))
+                                        <span class="{{ $choiceCard['state_suffix_class'] ?? 'text-danger-600 dark:text-danger-400' }}">· {{ $choiceCard['state_suffix'] }}</span>
+                                    @endif
+                                </span>
                                 <span x-cloak x-show="copied">{{ __('admin.owner_image.copy_success') }}</span>
                             </span>
                         </span>
@@ -138,18 +143,26 @@
                             <span class="grid h-14 w-14 shrink-0 place-items-center rounded-md border border-gray-200 text-gray-400 dark:border-gray-700">—</span>
                         @endif
                         <span class="grid min-w-0 gap-0.5">
-                            <span @class([
-                                'text-[10px] leading-none',
-                                'text-gray-500 dark:text-gray-400' => ! $choiceCard['pending'],
-                                'text-warning-700 dark:text-warning-300' => $choiceCard['pending'],
-                            ])>{{ $choiceCard['label'] }}</span>
-                            <span @class([
-                                'text-xs',
-                                'truncate' => ! $choiceCard['pending'],
-                                'max-w-72 whitespace-normal' => $choiceCard['pending'],
-                                'text-gray-700 dark:text-gray-200' => ! $choiceCard['pending'],
-                                'text-warning-700 dark:text-warning-300' => $choiceCard['pending'],
-                            ])>{{ $choiceCard['state'] }}@if (filled($choiceCard['state_suffix'] ?? null)) <span class="{{ $choiceCard['state_suffix_class'] ?? 'text-danger-600 dark:text-danger-400' }}">· {{ $choiceCard['state_suffix'] }}</span>@endif</span>
+                            <span
+                                @class([
+                                    'text-[10px] leading-none',
+                                    'text-gray-500 dark:text-gray-400' => ! $choiceCard['pending'],
+                                    'text-warning-700 dark:text-warning-300' => $choiceCard['pending'],
+                                ])
+                            >{{ $choiceCard['label'] }}</span>
+                            <span
+                                @class([
+                                    'text-xs',
+                                    'truncate' => ! $choiceCard['pending'],
+                                    'max-w-72 whitespace-normal' => $choiceCard['pending'],
+                                    'text-gray-700 dark:text-gray-200' => ! $choiceCard['pending'],
+                                    'text-warning-700 dark:text-warning-300' => $choiceCard['pending'],
+                                ])
+                                >{{ $choiceCard['state'] }}
+                                @if (filled($choiceCard['state_suffix'] ?? null))
+                                    <span class="{{ $choiceCard['state_suffix_class'] ?? 'text-danger-600 dark:text-danger-400' }}">· {{ $choiceCard['state_suffix'] }}</span>
+                                @endif
+                            </span>
                         </span>
                     </span>
                 @endif
@@ -162,7 +175,7 @@
                                      slide-over listens for this event. --}}
                                 <button
                                     type="button"
-                                    class="grid h-7 w-7 place-items-center rounded-md border border-gray-300 text-gray-500 hover:text-primary-600 dark:border-gray-600 dark:text-gray-400 dark:hover:text-primary-400"
+                                    class="hover:text-primary-600 dark:hover:text-primary-400 grid h-7 w-7 place-items-center rounded-md border border-gray-300 text-gray-500 dark:border-gray-600 dark:text-gray-400"
                                     x-on:click="$dispatch('open-media-details', { id: @js($choiceCard['media']['id']) })"
                                     data-media-details-id="{{ $choiceCard['media']['id'] }}"
                                     title="{{ __('admin.owner_image.actions.open_details') }}"
@@ -180,7 +193,7 @@
                         @if ($choiceCard['restore'])
                             <button
                                 type="button"
-                                class="grid h-7 w-7 place-items-center rounded-md border border-danger-400 text-danger-600 hover:text-danger-500 dark:border-danger-500 dark:text-danger-400"
+                                class="border-danger-400 text-danger-600 hover:text-danger-500 dark:border-danger-500 dark:text-danger-400 grid h-7 w-7 place-items-center rounded-md border"
                                 wire:click="callSchemaComponentMethod('{{ $field->getKey() }}', 'restoreSavedOwnerSelection', [[]])"
                                 data-testid="owner-image-restore-saved"
                                 title="{{ __('admin.owner_image.actions.restore_saved') }}"
@@ -202,16 +215,12 @@
     @if ($presentation->directState === 'broken')
         <div
             role="status"
-            class="space-y-2 rounded-lg border border-warning-300 bg-warning-50 p-3 text-sm text-warning-900 dark:border-warning-700 dark:bg-warning-950 dark:text-warning-100"
+            class="border-warning-300 bg-warning-50 text-warning-900 dark:border-warning-700 dark:bg-warning-950 dark:text-warning-100 space-y-2 rounded-lg border p-3 text-sm"
             data-testid="owner-image-broken-state"
         >
-            <p class="font-semibold">
-                {{ __('admin.owner_image.broken_configured_heading') }}
-            </p>
+            <p class="font-semibold">{{ __('admin.owner_image.broken_configured_heading') }}</p>
 
-            <p>
-                {{ __('admin.owner_image.broken_configured_body') }}
-            </p>
+            <p>{{ __('admin.owner_image.broken_configured_body') }}</p>
 
             @if (filled($presentation->savedReferenceKey))
                 <p class="min-w-0">
@@ -232,17 +241,12 @@
             @endif
 
             @if (blank($presentation->savedReferenceKey) && blank($brokenPath))
-                <p>
-                    {{ __('admin.owner_image.broken_configured_evidence_hidden') }}
-                </p>
+                <p>{{ __('admin.owner_image.broken_configured_evidence_hidden') }}</p>
             @endif
         </div>
     @endif
 
-    <p
-        class="text-[11px] leading-snug text-gray-600 dark:text-gray-300"
-        data-testid="owner-image-commit-boundary"
-    >
+    <p class="text-[11px] leading-snug text-gray-600 dark:text-gray-300" data-testid="owner-image-commit-boundary">
         <span>{{ __('admin.owner_image.choice.commit_boundary.commit', ['action' => $presentation->commitBoundary['commit']]) }}</span>
         <span aria-hidden="true">·</span>
         <span>{{ __('admin.owner_image.choice.commit_boundary.cancel', ['action' => $presentation->commitBoundary['cancel']]) }}</span>

@@ -14,21 +14,23 @@
             const target = event.target;
 
             if (
-                ! (target instanceof HTMLInputElement)
-                || ! target.classList.contains('fi-ta-record-checkbox')
-                || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey
+                !(target instanceof HTMLInputElement) ||
+                !target.classList.contains('fi-ta-record-checkbox') ||
+                event.altKey ||
+                event.ctrlKey ||
+                event.metaKey ||
+                event.shiftKey
             ) {
                 return;
             }
 
             const grid = target.closest('.fi-ta-content-grid');
 
-            if (! grid) {
+            if (!grid) {
                 return;
             }
 
-            const boxes = Array.from(grid.querySelectorAll('.fi-ta-record-checkbox'))
-                .filter((box) => ! box.disabled);
+            const boxes = Array.from(grid.querySelectorAll('.fi-ta-record-checkbox')).filter((box) => !box.disabled);
             const index = boxes.indexOf(target);
 
             if (index === -1) {
@@ -38,9 +40,7 @@
             const rtl = getComputedStyle(grid).direction === 'rtl';
             const records = boxes.map((box) => box.closest('.fi-ta-record'));
             const firstTop = records[0].offsetTop;
-            const columns = records.filter(
-                (record) => Math.abs(record.offsetTop - firstTop) < 2,
-            ).length;
+            const columns = records.filter((record) => Math.abs(record.offsetTop - firstTop) < 2).length;
             const step = {
                 ArrowRight: rtl ? -1 : 1,
                 ArrowLeft: rtl ? 1 : -1,

@@ -4,12 +4,15 @@
     'previewMode' => false,
 ])
 
-@switch($part['type'])
-    @case('image')
-        <x-public.content-group-card-image-part :part="$part" :presentation="$presentation" :preview-mode="$previewMode" />
+@switch ($part['type'])
+    @case ('image')
+        <x-public.content-group-card-image-part
+            :part="$part"
+            :presentation="$presentation"
+            :preview-mode="$previewMode"
+        />
         @break
-
-    @case('part_group')
+    @case ('part_group')
         <x-public.card-part-shell :part="$part" class="{{ $part['class'] }}">
             <div
                 class="{{ $part['children_class'] }}"
@@ -18,17 +21,20 @@
                 data-card-part-group-gap="{{ $part['gap'] }}"
                 data-card-part-group-alignment="{{ $part['alignment'] }}"
             >
-                @foreach($part['children'] as $child)
-                    <x-public.content-group-card-part :part="$child" :presentation="$presentation" :preview-mode="$previewMode" />
+                @foreach ($part['children'] as $child)
+                    <x-public.content-group-card-part
+                        :part="$child"
+                        :presentation="$presentation"
+                        :preview-mode="$previewMode"
+                    />
                 @endforeach
             </div>
         </x-public.card-part-shell>
         @break
-
-    @case('entity_attribute')
+    @case ('entity_attribute')
         <x-public.card-part-shell :part="$part" data-test="{{ $part['test'] }}">
             <div class="{{ $part['class'] }}">
-                @if($part['test'] === 'content-group-type-label')
+                @if ($part['test'] === 'content-group-type-label')
                     <x-public.type-label :label="$part['text']" />
                 @else
                     <span class="rounded-md bg-gray-100 px-2 py-1 text-xs text-gray-700 dark:bg-gray-800 dark:text-gray-200">
@@ -38,51 +44,52 @@
             </div>
         </x-public.card-part-shell>
         @break
-
-    @case('title')
+    @case ('title')
         <x-public.card-part-shell :part="$part">
             <h2 class="{{ $part['class'] }}">
-                @if($previewMode)
-                    <span data-test="content-group-title" aria-description="{{ __('admin.settings_sp3c.preview.link_disabled') }}">
+                @if ($previewMode)
+                    <span
+                        data-test="content-group-title"
+                        aria-description="{{ __('admin.settings_sp3c.preview.link_disabled') }}"
+                    >
                         {{ $part['text'] }}
                     </span>
                 @else
-                    <a href="{{ $part['url'] }}" data-test="content-group-title">
-                        {{ $part['text'] }}
-                    </a>
+                    <a href="{{ $part['url'] }}" data-test="content-group-title"> {{ $part['text'] }} </a>
                 @endif
             </h2>
         </x-public.card-part-shell>
         @break
-
-    @case('description')
+    @case ('description')
         <x-public.card-part-shell :part="$part">
-            <p class="{{ $part['class'] }}">
-                {{ $part['text'] }}
-            </p>
+            <p class="{{ $part['class'] }}">{{ $part['text'] }}</p>
         </x-public.card-part-shell>
         @break
-
-    @case('metadata_row')
+    @case ('metadata_row')
         <x-public.card-part-shell :part="$part">
             <div class="{{ $part['class'] }}">
-                @foreach($part['badges'] as $badge)
+                @foreach ($part['badges'] as $badge)
                     <span data-test="{{ $badge['test'] }}">{{ $badge['label'] }}</span>
                 @endforeach
             </div>
         </x-public.card-part-shell>
         @break
-
-    @case('taxonomy')
+    @case ('taxonomy')
         <x-public.card-part-shell :part="$part" data-test="{{ $part['test'] }}">
             <div class="{{ $part['class'] }}">
-                @foreach($part['links'] as $link)
-                    @if($previewMode)
-                        <span class="rounded-md border border-gray-200 px-2 py-1 text-xs text-gray-600 dark:border-gray-700 dark:text-gray-300" aria-description="{{ __('admin.settings_sp3c.preview.link_disabled') }}">
+                @foreach ($part['links'] as $link)
+                    @if ($previewMode)
+                        <span
+                            class="rounded-md border border-gray-200 px-2 py-1 text-xs text-gray-600 dark:border-gray-700 dark:text-gray-300"
+                            aria-description="{{ __('admin.settings_sp3c.preview.link_disabled') }}"
+                        >
                             {{ $link['label'] }}
                         </span>
                     @else
-                        <a href="{{ $link['url'] }}" class="rounded-md border border-gray-200 px-2 py-1 text-xs text-gray-600 hover:border-primary-300 hover:text-primary-700 dark:border-gray-700 dark:text-gray-300">
+                        <a
+                            href="{{ $link['url'] }}"
+                            class="hover:border-primary-300 hover:text-primary-700 rounded-md border border-gray-200 px-2 py-1 text-xs text-gray-600 dark:border-gray-700 dark:text-gray-300"
+                        >
                             {{ $link['label'] }}
                         </a>
                     @endif
@@ -90,12 +97,11 @@
             </div>
         </x-public.card-part-shell>
         @break
-
-    @case('action_link')
+    @case ('action_link')
         <x-public.card-part-shell :part="$part" class="{{ $part['class'] }}">
-            @if($previewMode)
+            @if ($previewMode)
                 <span
-                    class="inline-flex text-sm font-medium text-primary-700 dark:text-primary-300"
+                    class="text-primary-700 dark:text-primary-300 inline-flex text-sm font-medium"
                     data-test="content-group-action-link"
                     aria-description="{{ __('admin.settings_sp3c.preview.link_disabled') }}"
                 >
@@ -104,8 +110,8 @@
             @else
                 <a
                     href="{{ $part['url'] }}"
-                    @if($part['target']) target="{{ $part['target'] }}" rel="noopener noreferrer" @endif
-                    class="inline-flex text-sm font-medium text-primary-700 hover:text-primary-900 dark:text-primary-300 dark:hover:text-primary-100"
+                    @if ($part['target']) target="{{ $part['target'] }}" rel="noopener noreferrer" @endif
+                    class="text-primary-700 hover:text-primary-900 dark:text-primary-300 dark:hover:text-primary-100 inline-flex text-sm font-medium"
                     data-test="content-group-action-link"
                 >
                     {{ $part['text'] }}
@@ -113,22 +119,17 @@
             @endif
         </x-public.card-part-shell>
         @break
-
-    @case('custom_text')
+    @case ('custom_text')
         <x-public.card-part-shell :part="$part">
-            <p class="{{ $part['class'] }}" data-test="card-custom-text">
-                {{ $part['text'] }}
-            </p>
+            <p class="{{ $part['class'] }}" data-test="card-custom-text">{{ $part['text'] }}</p>
         </x-public.card-part-shell>
         @break
-
-    @case('divider')
+    @case ('divider')
         <x-public.card-part-shell :part="$part">
             <div class="{{ $part['class'] }}"></div>
         </x-public.card-part-shell>
         @break
-
-    @case('spacer')
+    @case ('spacer')
         <x-public.card-part-shell :part="$part">
             <div class="{{ $part['class'] }}"></div>
         </x-public.card-part-shell>

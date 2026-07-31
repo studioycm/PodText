@@ -7,8 +7,7 @@
             <div class="flex flex-wrap gap-2">
                 @foreach ($familyLocks as $family => $locked)
                     <x-filament::badge :color="$locked ? 'warning' : 'gray'">
-                        {{ __('admin.card_template_families.'.$family) }}:
-                        {{ $locked ? __('admin.settings_sp3c.import_locks.locked') : __('admin.settings_sp3c.import_locks.unlocked') }}
+                        {{ __('admin.card_template_families.'.$family) }}: {{ $locked ? __('admin.settings_sp3c.import_locks.locked') : __('admin.settings_sp3c.import_locks.unlocked') }}
                     </x-filament::badge>
                 @endforeach
             </div>

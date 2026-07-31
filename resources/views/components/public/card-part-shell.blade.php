@@ -35,40 +35,52 @@
     data-card-part-icon="{{ $iconKey ?? 'none' }}"
     data-card-part-icon-position="{{ $iconPosition }}"
 >
-    @if($hasLabel && $labelPosition === 'above')
-        <span class="mb-1 block text-xs font-medium text-gray-500 dark:text-gray-400 {{ $labelClass }}" data-card-part-label>
+    @if ($hasLabel && $labelPosition === 'above')
+        <span
+            class="mb-1 block text-xs font-medium text-gray-500 dark:text-gray-400 {{ $labelClass }}"
+            data-card-part-label
+        >
             {{ $label }}
         </span>
     @endif
 
     <div class="flex min-w-0 w-full items-center gap-1.5 {{ $inlineClass }}">
-        @if($hasIcon && $iconPosition === 'inline_before')
-            <x-filament::icon :icon="$icon" class="h-4 w-4 shrink-0 text-gray-500 dark:text-gray-400" data-card-part-icon-graphic />
+        @if ($hasIcon && $iconPosition === 'inline_before')
+            <x-filament::icon
+                :icon="$icon"
+                class="h-4 w-4 shrink-0 text-gray-500 dark:text-gray-400"
+                data-card-part-icon-graphic
+            />
         @endif
 
-        @if($hasLabel && $labelPosition === 'inline_before')
+        @if ($hasLabel && $labelPosition === 'inline_before')
             <span class="shrink-0 text-xs font-medium text-gray-500 dark:text-gray-400" data-card-part-label>
                 {{ $label }}
             </span>
         @endif
 
-        <div class="min-w-0 w-full">
-            {{ $slot }}
-        </div>
+        <div class="w-full min-w-0">{{ $slot }}</div>
 
-        @if($hasLabel && $labelPosition === 'inline_after')
+        @if ($hasLabel && $labelPosition === 'inline_after')
             <span class="shrink-0 text-xs font-medium text-gray-500 dark:text-gray-400" data-card-part-label>
                 {{ $label }}
             </span>
         @endif
 
-        @if($hasIcon && $iconPosition === 'inline_after')
-            <x-filament::icon :icon="$icon" class="h-4 w-4 shrink-0 text-gray-500 dark:text-gray-400" data-card-part-icon-graphic />
+        @if ($hasIcon && $iconPosition === 'inline_after')
+            <x-filament::icon
+                :icon="$icon"
+                class="h-4 w-4 shrink-0 text-gray-500 dark:text-gray-400"
+                data-card-part-icon-graphic
+            />
         @endif
     </div>
 
-    @if($hasLabel && $labelPosition === 'below')
-        <span class="mt-1 block text-xs font-medium text-gray-500 dark:text-gray-400 {{ $labelClass }}" data-card-part-label>
+    @if ($hasLabel && $labelPosition === 'below')
+        <span
+            class="mt-1 block text-xs font-medium text-gray-500 dark:text-gray-400 {{ $labelClass }}"
+            data-card-part-label
+        >
             {{ $label }}
         </span>
     @endif

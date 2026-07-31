@@ -15,7 +15,7 @@
         </p>
         <button
             type="button"
-            class="text-xs font-medium text-primary-600 hover:text-primary-500 dark:text-primary-400"
+            class="text-primary-600 hover:text-primary-500 dark:text-primary-400 text-xs font-medium"
             x-data="{ copied: false }"
             x-on:click="navigator.clipboard?.writeText(@js($projection['pretty_name'])); copied = true; setTimeout(() => copied = false, 1500)"
         >
@@ -28,22 +28,32 @@
         <div class="flex flex-wrap gap-1">
             <dt class="font-medium text-gray-950 dark:text-white">{{ __('admin.owner_image.metadata.mime') }}:</dt>
             <dd dir="ltr">{{ $mime }}</dd>
-            <dt class="font-medium text-gray-950 dark:text-white">· {{ __('admin.owner_image.metadata.dimensions') }}:</dt>
+            <dt class="font-medium text-gray-950 dark:text-white">
+                · {{ __('admin.owner_image.metadata.dimensions') }}:
+            </dt>
             <dd dir="ltr">{{ $projection['width'] }}×{{ $projection['height'] }}</dd>
-            <dt class="font-medium text-gray-950 dark:text-white">· {{ __('admin.owner_image.metadata.file_size') }}:</dt>
+            <dt class="font-medium text-gray-950 dark:text-white">
+                · {{ __('admin.owner_image.metadata.file_size') }}:
+            </dt>
             <dd dir="ltr">{{ \Illuminate\Support\Number::fileSize((int) $projection['size']) }}</dd>
         </div>
         <div class="flex flex-wrap gap-1">
-            <dt class="font-medium text-gray-950 dark:text-white">{{ __('admin.owner_image.metadata.stored_filename') }}:</dt>
+            <dt class="font-medium text-gray-950 dark:text-white">
+                {{ __('admin.owner_image.metadata.stored_filename') }}:
+            </dt>
             <dd class="break-all" dir="ltr">{{ $storedFilename }}</dd>
         </div>
         <div class="flex flex-wrap gap-1">
             <dt class="font-medium text-gray-950 dark:text-white">{{ __('admin.owner_image.metadata.directory') }}:</dt>
-            <dd class="break-all" dir="ltr">{{ filled($directory) ? $directory : __('admin.media_library.root_directory') }}</dd>
+            <dd class="break-all" dir="ltr">
+                {{ filled($directory) ? $directory : __('admin.media_library.root_directory') }}
+            </dd>
         </div>
         <div class="flex flex-wrap gap-1">
-            <dt class="font-medium text-gray-950 dark:text-white">{{ __('admin.owner_image.metadata.reference_key') }}:</dt>
-            <dd class="break-all font-mono text-[11px]" dir="ltr">{{ $projection['reference_key'] }}</dd>
+            <dt class="font-medium text-gray-950 dark:text-white">
+                {{ __('admin.owner_image.metadata.reference_key') }}:
+            </dt>
+            <dd class="font-mono text-[11px] break-all" dir="ltr">{{ $projection['reference_key'] }}</dd>
         </div>
     </dl>
 
@@ -62,7 +72,7 @@
                                 href="{{ $reference['url'] }}"
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                class="font-medium text-primary-600 hover:text-primary-500 dark:text-primary-400"
+                                class="text-primary-600 hover:text-primary-500 dark:text-primary-400 font-medium"
                             >{{ $reference['label'] }}</a>
                         @else
                             {{ $reference['label'] ?? $reference }}
@@ -74,11 +84,11 @@
     </div>
 
     @if ($projection['selectable'])
-        <p class="rounded-md bg-success-50 p-2.5 text-xs text-success-800 dark:bg-success-950 dark:text-success-200">
+        <p class="bg-success-50 text-success-800 dark:bg-success-950 dark:text-success-200 rounded-md p-2.5 text-xs">
             {{ __('admin.media_library.details_no_warnings') }}
         </p>
     @else
-        <p class="rounded-md bg-warning-50 p-2.5 text-xs text-warning-800 dark:bg-warning-950 dark:text-warning-200">
+        <p class="bg-warning-50 text-warning-800 dark:bg-warning-950 dark:text-warning-200 rounded-md p-2.5 text-xs">
             {{ $projection['selection_blocked_reason'] }}
         </p>
     @endif
@@ -87,7 +97,7 @@
         <p>
             <a
                 href="{{ $issueReviewUrl }}"
-                class="text-sm font-medium text-warning-700 hover:text-warning-600 dark:text-warning-300"
+                class="text-warning-700 hover:text-warning-600 dark:text-warning-300 text-sm font-medium"
                 data-testid="media-details-issue-review-link"
             >
                 {{ __('admin.media_issue_review.heading') }} ←
@@ -101,7 +111,7 @@
                 href="{{ $projection['details_url'] }}"
                 target="_blank"
                 rel="noopener noreferrer"
-                class="text-sm font-medium text-primary-600 hover:text-primary-500 dark:text-primary-400"
+                class="text-primary-600 hover:text-primary-500 dark:text-primary-400 text-sm font-medium"
             >
                 {{ __('admin.media_library.details_full_page') }} ↗
             </a>

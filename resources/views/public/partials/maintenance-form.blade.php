@@ -146,31 +146,40 @@
     <div class="podtext-maintenance-form__header">
         <h2 class="podtext-maintenance-form__title">{{ $definition['heading'] }}</h2>
 
-        @if(filled($definition['description']))
+        @if (filled($definition['description']))
             <p class="podtext-maintenance-form__description">{{ $definition['description'] }}</p>
         @endif
     </div>
 
-    @if(filled($formSuccessMessage))
-        <div class="podtext-maintenance-form__alert podtext-maintenance-form__alert--success" data-maintenance-form-success>
+    @if (filled($formSuccessMessage))
+        <div
+            class="podtext-maintenance-form__alert podtext-maintenance-form__alert--success"
+            data-maintenance-form-success
+        >
             {{ $formSuccessMessage }}
         </div>
     @endif
 
-    @if($formErrors->has('form'))
+    @if ($formErrors->has('form'))
         <div class="podtext-maintenance-form__alert podtext-maintenance-form__alert--error" data-maintenance-form-error>
             {{ $formErrors->first('form') }}
         </div>
     @endif
 
-    @if($formErrors->has('verification'))
-        <div class="podtext-maintenance-form__alert podtext-maintenance-form__alert--error" data-maintenance-form-verification-error>
+    @if ($formErrors->has('verification'))
+        <div
+            class="podtext-maintenance-form__alert podtext-maintenance-form__alert--error"
+            data-maintenance-form-verification-error
+        >
             {{ $formErrors->first('verification') }}
         </div>
     @endif
 
-    @if(filled($formVerificationMessage))
-        <div class="podtext-maintenance-form__alert podtext-maintenance-form__alert--success" data-maintenance-form-verification-message>
+    @if (filled($formVerificationMessage))
+        <div
+            class="podtext-maintenance-form__alert podtext-maintenance-form__alert--success"
+            data-maintenance-form-verification-message
+        >
             {{ $formVerificationMessage }}
         </div>
     @endif
@@ -178,22 +187,22 @@
     <form method="POST" action="{{ $actionUrl }}" data-maintenance-form-post>
         @csrf
 
-        <input type="hidden" name="source_url" value="{{ $sourceUrl }}">
-        <input type="hidden" name="form_key" value="{{ $definition['key'] }}">
+        <input type="hidden" name="source_url" value="{{ $sourceUrl }}" />
+        <input type="hidden" name="form_key" value="{{ $definition['key'] }}" />
 
-        @if(filled($formVerificationToken))
-            <input type="hidden" name="verification_token" value="{{ $formVerificationToken }}">
+        @if (filled($formVerificationToken))
+            <input type="hidden" name="verification_token" value="{{ $formVerificationToken }}" />
         @endif
 
         <div class="podtext-maintenance-form__honeypot" aria-hidden="true">
             <label>
                 {{ __('public.forms.honeypot') }}
-                <input type="text" name="maintenance_honeypot" tabindex="-1" autocomplete="off">
+                <input type="text" name="maintenance_honeypot" tabindex="-1" autocomplete="off" />
             </label>
         </div>
 
         <div class="podtext-maintenance-form__fields">
-            @foreach($fields as $field)
+            @foreach ($fields as $field)
                 @php
                     $fieldKey = $field['key'];
                     $fieldValue = $formData[$fieldKey] ?? ($field['type'] === 'checkbox' && $field['options'] !== [] ? [] : '');
@@ -202,13 +211,13 @@
                 <div class="podtext-maintenance-form__field">
                     <label class="podtext-maintenance-form__label" for="maintenance-form-{{ $fieldKey }}">
                         {{ $field['label'] }}
-                        @if($field['required'])
+                        @if ($field['required'])
                             <span class="podtext-maintenance-form__required" aria-hidden="true">*</span>
                         @endif
                     </label>
 
-                    @if(in_array($field['type'], ['text', 'email', 'phone', 'url'], true))
-                        @if($formVerificationRequired && $fieldKey === $formVerificationEmailFieldKey)
+                    @if (in_array($field['type'], ['text', 'email', 'phone', 'url'], true))
+                        @if ($formVerificationRequired && $fieldKey === $formVerificationEmailFieldKey)
                             <div
                                 class="podtext-maintenance-form__input-action"
                                 data-maintenance-form-email-verification-group
@@ -222,7 +231,7 @@
                                     placeholder="{{ $field['placeholder'] }}"
                                     data-maintenance-form-email
                                     @required($field['required'])
-                                >
+                                />
 
                                 <button
                                     class="podtext-maintenance-form__button podtext-maintenance-form__button--secondary"
@@ -243,9 +252,9 @@
                                 value="{{ is_scalar($fieldValue) ? $fieldValue : '' }}"
                                 placeholder="{{ $field['placeholder'] }}"
                                 @required($field['required'])
-                            >
+                            />
                         @endif
-                    @elseif($field['type'] === 'textarea')
+                    @elseif ($field['type'] === 'textarea')
                         <textarea
                             id="maintenance-form-{{ $fieldKey }}"
                             class="podtext-maintenance-form__textarea"
@@ -254,7 +263,7 @@
                             placeholder="{{ $field['placeholder'] }}"
                             @required($field['required'])
                         >{{ is_scalar($fieldValue) ? $fieldValue : '' }}</textarea>
-                    @elseif($field['type'] === 'select')
+                    @elseif ($field['type'] === 'select')
                         <select
                             id="maintenance-form-{{ $fieldKey }}"
                             class="podtext-maintenance-form__select"
@@ -262,22 +271,22 @@
                             @required($field['required'])
                         >
                             <option value="">{{ __('public.forms.choose_option') }}</option>
-                            @foreach($field['options'] as $option)
+                            @foreach ($field['options'] as $option)
                                 <option value="{{ $option['value'] }}" @selected($fieldValue === $option['value'])>
                                     {{ $option['label'] }}
                                 </option>
                             @endforeach
                         </select>
-                    @elseif($field['type'] === 'checkbox' && $field['options'] !== [])
+                    @elseif ($field['type'] === 'checkbox' && $field['options'] !== [])
                         <div class="podtext-maintenance-form__choices" id="maintenance-form-{{ $fieldKey }}">
-                            @foreach($field['options'] as $option)
+                            @foreach ($field['options'] as $option)
                                 <label class="podtext-maintenance-form__choice">
                                     <input
                                         type="checkbox"
                                         name="data[{{ $fieldKey }}][]"
                                         value="{{ $option['value'] }}"
                                         @checked(in_array($option['value'], (array) $fieldValue, true))
-                                    >
+                                    />
                                     <span>{{ $option['label'] }}</span>
                                 </label>
                             @endforeach
@@ -291,22 +300,25 @@
                                 value="1"
                                 @checked($booleanValue($fieldValue))
                                 @required($field['required'])
-                            >
+                            />
                             <span>{{ $field['placeholder'] ?: $field['label'] }}</span>
                         </label>
                     @endif
 
-                    @if(filled($field['help_text']))
+                    @if (filled($field['help_text']))
                         <div class="podtext-maintenance-form__help">{{ $field['help_text'] }}</div>
                     @endif
 
-                    @if($formErrors->has($fieldKey))
-                        <div class="podtext-maintenance-form__error" data-maintenance-form-field-error="{{ $fieldKey }}">
+                    @if ($formErrors->has($fieldKey))
+                        <div
+                            class="podtext-maintenance-form__error"
+                            data-maintenance-form-field-error="{{ $fieldKey }}"
+                        >
                             {{ $formErrors->first($fieldKey) }}
                         </div>
                     @endif
 
-                    @if($formVerificationRequired && $fieldKey === $formVerificationEmailFieldKey)
+                    @if ($formVerificationRequired && $fieldKey === $formVerificationEmailFieldKey)
                         <div class="podtext-maintenance-form__field" data-maintenance-form-verification>
                             <label class="podtext-maintenance-form__label" for="maintenance-form-verification-code">
                                 {{ __('public.forms.verification.code_label') }}
@@ -322,7 +334,7 @@
                                 value="{{ old('verification_code') }}"
                                 placeholder="{{ __('public.forms.verification.code_placeholder') }}"
                                 data-maintenance-form-code
-                            >
+                            />
 
                             <div class="podtext-maintenance-form__help">
                                 {{ __('public.forms.verification.maintenance_help') }}

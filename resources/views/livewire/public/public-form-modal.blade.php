@@ -1,5 +1,5 @@
 <div>
-    @if($definition !== null)
+    @if ($definition !== null)
         <div
             x-data="{ open: false }"
             x-on:open-public-form.window="if (! $event.detail?.formKey || $event.detail.formKey === @js($definition['key'])) open = true"
@@ -7,11 +7,11 @@
             data-form-key="{{ $definition['key'] }}"
             data-display-mode="{{ $displayMode }}"
         >
-            @if($showTrigger)
+            @if ($showTrigger)
                 <button
                     type="button"
                     x-on:click="open = true"
-                    class="inline-flex items-center justify-center rounded-md border border-primary-200 bg-primary-50 px-4 py-2 text-sm font-medium text-primary-800 transition hover:bg-primary-100 focus:outline-none focus:ring-2 focus:ring-primary-500 dark:border-primary-800 dark:bg-primary-950 dark:text-primary-100 dark:hover:bg-primary-900"
+                    class="border-primary-200 bg-primary-50 text-primary-800 hover:bg-primary-100 focus:ring-primary-500 dark:border-primary-800 dark:bg-primary-950 dark:text-primary-100 dark:hover:bg-primary-900 inline-flex items-center justify-center rounded-md border px-4 py-2 text-sm font-medium transition focus:ring-2 focus:outline-none"
                     data-test="public-form-open"
                 >
                     {{ $definition['name'] }}
@@ -43,7 +43,7 @@
                                 {{ $definition['heading'] }}
                             </h2>
 
-                            @if(filled($definition['description']))
+                            @if (filled($definition['description']))
                                 <p class="text-sm leading-6 text-gray-600 dark:text-gray-300">
                                     {{ $definition['description'] }}
                                 </p>
@@ -53,7 +53,7 @@
                         <button
                             type="button"
                             x-on:click="open = false"
-                            class="inline-flex size-9 shrink-0 items-center justify-center rounded-md border border-gray-300 text-gray-600 transition hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary-500 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800"
+                            class="focus:ring-primary-500 inline-flex size-9 shrink-0 items-center justify-center rounded-md border border-gray-300 text-gray-600 transition hover:bg-gray-50 focus:ring-2 focus:outline-none dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800"
                             aria-label="{{ __('public.actions.close') }}"
                             data-test="public-form-close"
                         >
@@ -61,14 +61,20 @@
                         </button>
                     </div>
 
-                    @if($successMessage)
-                        <div class="mt-4 rounded-md border border-success-200 bg-success-50 p-3 text-sm text-success-800 dark:border-success-800 dark:bg-success-950 dark:text-success-100" data-test="public-form-success">
+                    @if ($successMessage)
+                        <div
+                            class="border-success-200 bg-success-50 text-success-800 dark:border-success-800 dark:bg-success-950 dark:text-success-100 mt-4 rounded-md border p-3 text-sm"
+                            data-test="public-form-success"
+                        >
                             {{ $successMessage }}
                         </div>
                     @endif
 
-                    @if($errors->has('form'))
-                        <div class="mt-4 rounded-md border border-danger-200 bg-danger-50 p-3 text-sm text-danger-800 dark:border-danger-800 dark:bg-danger-950 dark:text-danger-100" data-test="public-form-error">
+                    @if ($errors->has('form'))
+                        <div
+                            class="border-danger-200 bg-danger-50 text-danger-800 dark:border-danger-800 dark:bg-danger-950 dark:text-danger-100 mt-4 rounded-md border p-3 text-sm"
+                            data-test="public-form-error"
+                        >
                             {{ $errors->first('form') }}
                         </div>
                     @endif
@@ -77,27 +83,30 @@
                         <div class="sr-only" aria-hidden="true">
                             <label>
                                 {{ __('public.forms.honeypot') }}
-                                <input type="text" tabindex="-1" autocomplete="off" wire:model="honeypot">
+                                <input type="text" tabindex="-1" autocomplete="off" wire:model="honeypot" />
                             </label>
                         </div>
 
-                        @foreach($fields as $field)
-                            @if($verificationRequired && $field['key'] === $emailVerificationFieldKey)
+                        @foreach ($fields as $field)
+                            @if ($verificationRequired && $field['key'] === $emailVerificationFieldKey)
                                 <div
-                                    class="space-y-2 rounded-md border border-primary-200 bg-primary-50 p-3 text-sm text-primary-950 dark:border-primary-800 dark:bg-primary-950 dark:text-primary-50"
+                                    class="border-primary-200 bg-primary-50 text-primary-950 dark:border-primary-800 dark:bg-primary-950 dark:text-primary-50 space-y-2 rounded-md border p-3 text-sm"
                                     wire:key="public-form-email-verification-{{ $emailVerificationAvailableAt ?? 0 }}"
                                     data-test="public-form-email-verification-group"
                                 >
                                     <div class="flex items-center justify-between gap-3">
                                         <label for="public-form-field-{{ $field['key'] }}">
                                             {{ $field['label'] }}
-                                            @if($field['required'])
+                                            @if ($field['required'])
                                                 <span class="text-danger-600" aria-hidden="true">*</span>
                                             @endif
                                         </label>
 
-                                        @if($emailVerificationVerified)
-                                            <span class="inline-flex items-center gap-1 rounded-full bg-success-100 px-2 py-1 text-xs font-medium text-success-800 dark:bg-success-900 dark:text-success-100" data-test="public-form-email-verified">
+                                        @if ($emailVerificationVerified)
+                                            <span
+                                                class="bg-success-100 text-success-800 dark:bg-success-900 dark:text-success-100 inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs font-medium"
+                                                data-test="public-form-email-verified"
+                                            >
                                                 <span aria-hidden="true">&#10003;</span>
                                                 {{ __('public.forms.verification.verified') }}
                                             </span>
@@ -107,16 +116,23 @@
                                     <div
                                         class="flex flex-row items-stretch gap-2"
                                         x-data="{ remaining: @js($emailVerificationCooldownSeconds) }"
-                                        x-init="if (remaining > 0) { const interval = setInterval(() => { remaining = Math.max(0, remaining - 1); if (remaining === 0) clearInterval(interval) }, 1000) }"
+                                        x-init="
+                                            if (remaining > 0) {
+                                                const interval = setInterval(() => {
+                                                    remaining = Math.max(0, remaining - 1);
+                                                    if (remaining === 0) clearInterval(interval);
+                                                }, 1000);
+                                            }
+                                        "
                                     >
                                         <input
                                             id="public-form-field-{{ $field['key'] }}"
                                             type="email"
                                             wire:model.live.debounce.350ms="data.{{ $field['key'] }}"
                                             placeholder="{{ $field['placeholder'] }}"
-                                            class="min-w-0 flex-1 rounded-md border-gray-300 text-sm shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:border-gray-700 dark:bg-gray-950"
+                                            class="focus:border-primary-500 focus:ring-primary-500 min-w-0 flex-1 rounded-md border-gray-300 text-sm shadow-sm dark:border-gray-700 dark:bg-gray-950"
                                             data-test="public-form-field-{{ $field['key'] }}"
-                                        >
+                                        />
 
                                         <button
                                             type="button"
@@ -125,31 +141,36 @@
                                             wire:target="sendEmailVerificationCode"
                                             x-bind:disabled="remaining > 0 || @js(! $emailVerificationEmailValid)"
                                             @disabled(! $emailVerificationEmailValid || $emailVerificationCooldownSeconds > 0)
-                                            class="inline-flex shrink-0 items-center justify-center rounded-md border border-primary-700 bg-primary-700 px-3 py-2 text-sm font-medium text-white transition hover:bg-primary-800 focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:cursor-not-allowed disabled:opacity-60"
+                                            class="border-primary-700 bg-primary-700 hover:bg-primary-800 focus:ring-primary-500 inline-flex shrink-0 items-center justify-center rounded-md border px-3 py-2 text-sm font-medium text-white transition focus:ring-2 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60"
                                             data-test="public-form-send-code"
                                             data-suffix-position="inline-end"
                                         >
                                             <span x-text="remaining > 0 ? @js(__('public.forms.verification.resend_in')).replace(':seconds', remaining) : @js(__('public.forms.verification.send_code'))">
-                                                {{ $emailVerificationCooldownSeconds > 0
+                                                {{
+                                                    $emailVerificationCooldownSeconds > 0
                                                     ? __('public.forms.verification.resend_in', ['seconds' => $emailVerificationCooldownSeconds])
-                                                    : __('public.forms.verification.send_code') }}
+                                                    : __('public.forms.verification.send_code')
+                                                }}
                                             </span>
                                         </button>
                                     </div>
 
-                                    @if(filled($field['help_text']))
+                                    @if (filled($field['help_text']))
                                         <p class="text-xs leading-5 text-gray-600 dark:text-gray-300">
                                             {{ $field['help_text'] }}
                                         </p>
                                     @endif
 
                                     @error('data.'.$field['key'])
-                                        <p class="text-xs text-danger-700 dark:text-danger-300" data-test="public-form-field-error-{{ $field['key'] }}">
+                                        <p
+                                            class="text-danger-700 dark:text-danger-300 text-xs"
+                                            data-test="public-form-field-error-{{ $field['key'] }}"
+                                        >
                                             {{ $message }}
                                         </p>
                                     @enderror
 
-                                    @if($emailVerificationCodeSent && ! $emailVerificationVerified)
+                                    @if ($emailVerificationCodeSent && ! $emailVerificationVerified)
                                         <div class="space-y-1" data-test="public-form-code-group">
                                             <label for="public-form-email-verification-code">
                                                 {{ __('public.forms.verification.code_label') }}
@@ -164,10 +185,10 @@
                                                     maxlength="6"
                                                     wire:model.live.debounce.150ms="emailVerificationCode"
                                                     wire:keydown.enter.prevent="verifyEmailCode"
-                                                    class="min-w-0 flex-1 rounded-md border-gray-300 text-sm shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:border-gray-700 dark:bg-gray-950"
+                                                    class="focus:border-primary-500 focus:ring-primary-500 min-w-0 flex-1 rounded-md border-gray-300 text-sm shadow-sm dark:border-gray-700 dark:bg-gray-950"
                                                     placeholder="{{ __('public.forms.verification.code_placeholder') }}"
                                                     data-test="public-form-code"
-                                                >
+                                                />
 
                                                 <button
                                                     type="button"
@@ -175,7 +196,7 @@
                                                     wire:loading.attr="disabled"
                                                     wire:target="verifyEmailCode"
                                                     @disabled(blank($emailVerificationCode))
-                                                    class="inline-flex shrink-0 items-center justify-center rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:cursor-not-allowed disabled:opacity-60 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200 dark:hover:bg-gray-800"
+                                                    class="focus:ring-primary-500 inline-flex shrink-0 items-center justify-center rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50 focus:ring-2 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200 dark:hover:bg-gray-800"
                                                     data-test="public-form-verify-code"
                                                     data-suffix-position="inline-end"
                                                 >
@@ -184,21 +205,39 @@
                                             </div>
 
                                             @error('emailVerificationCode')
-                                                <p class="text-xs text-danger-700 dark:text-danger-300" data-test="public-form-code-error">{{ $message }}</p>
+                                                <p
+                                                    class="text-danger-700 dark:text-danger-300 text-xs"
+                                                    data-test="public-form-code-error"
+                                                >
+                                                    {{ $message }}
+                                                </p>
                                             @enderror
 
-                                            <p class="text-xs text-gray-600 dark:text-gray-300" data-test="public-form-code-expiry-hint">
+                                            <p
+                                                class="text-xs text-gray-600 dark:text-gray-300"
+                                                data-test="public-form-code-expiry-hint"
+                                            >
                                                 {{ trans_choice('public.forms.verification.expires_hint', $emailVerificationExpiresAfterMinutes, ['count' => $emailVerificationExpiresAfterMinutes]) }}
                                             </p>
                                         </div>
                                     @endif
 
-                                    @if($emailVerificationStatus && ! $emailVerificationVerified)
-                                        <p class="text-xs text-primary-800 dark:text-primary-200" data-test="public-form-verification-status">{{ $emailVerificationStatus }}</p>
+                                    @if ($emailVerificationStatus && ! $emailVerificationVerified)
+                                        <p
+                                            class="text-primary-800 dark:text-primary-200 text-xs"
+                                            data-test="public-form-verification-status"
+                                        >
+                                            {{ $emailVerificationStatus }}
+                                        </p>
                                     @endif
 
                                     @error('verification')
-                                        <p class="text-xs text-danger-700 dark:text-danger-300" data-test="public-form-verification-error">{{ $message }}</p>
+                                        <p
+                                            class="text-danger-700 dark:text-danger-300 text-xs"
+                                            data-test="public-form-verification-error"
+                                        >
+                                            {{ $message }}
+                                        </p>
                                     @enderror
                                 </div>
                             @else
@@ -206,48 +245,50 @@
                                     <label class="grid gap-1 text-sm text-gray-700 dark:text-gray-200">
                                         <span>
                                             {{ $field['label'] }}
-                                            @if($field['required'])
+                                            @if ($field['required'])
                                                 <span class="text-danger-600" aria-hidden="true">*</span>
                                             @endif
                                         </span>
 
-                                        @if(in_array($field['type'], ['text', 'email', 'phone', 'url'], true))
+                                        @if (in_array($field['type'], ['text', 'email', 'phone', 'url'], true))
                                             <input
                                                 type="{{ $field['type'] === 'phone' ? 'tel' : $field['type'] }}"
                                                 wire:model="data.{{ $field['key'] }}"
                                                 placeholder="{{ $field['placeholder'] }}"
-                                                class="w-full rounded-md border-gray-300 text-sm shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:border-gray-700 dark:bg-gray-950"
+                                                class="focus:border-primary-500 focus:ring-primary-500 w-full rounded-md border-gray-300 text-sm shadow-sm dark:border-gray-700 dark:bg-gray-950"
                                                 data-test="public-form-field-{{ $field['key'] }}"
-                                            >
-                                        @elseif($field['type'] === 'textarea')
+                                            />
+                                        @elseif ($field['type'] === 'textarea')
                                             <textarea
                                                 wire:model="data.{{ $field['key'] }}"
                                                 placeholder="{{ $field['placeholder'] }}"
                                                 rows="5"
-                                                class="w-full rounded-md border-gray-300 text-sm shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:border-gray-700 dark:bg-gray-950"
+                                                class="focus:border-primary-500 focus:ring-primary-500 w-full rounded-md border-gray-300 text-sm shadow-sm dark:border-gray-700 dark:bg-gray-950"
                                                 data-test="public-form-field-{{ $field['key'] }}"
                                             ></textarea>
-                                        @elseif($field['type'] === 'select')
+                                        @elseif ($field['type'] === 'select')
                                             <select
                                                 wire:model="data.{{ $field['key'] }}"
-                                                class="w-full rounded-md border-gray-300 text-sm shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:border-gray-700 dark:bg-gray-950"
+                                                class="focus:border-primary-500 focus:ring-primary-500 w-full rounded-md border-gray-300 text-sm shadow-sm dark:border-gray-700 dark:bg-gray-950"
                                                 data-test="public-form-field-{{ $field['key'] }}"
                                             >
                                                 <option value="">{{ __('public.forms.choose_option') }}</option>
-                                                @foreach($field['options'] as $option)
-                                                    <option value="{{ $option['value'] }}">{{ $option['label'] }}</option>
+                                                @foreach ($field['options'] as $option)
+                                                    <option value="{{ $option['value'] }}">
+                                                        {{ $option['label'] }}
+                                                    </option>
                                                 @endforeach
                                             </select>
-                                        @elseif($field['type'] === 'checkbox' && $field['options'] !== [])
+                                        @elseif ($field['type'] === 'checkbox' && $field['options'] !== [])
                                             <span class="grid gap-2" data-test="public-form-field-{{ $field['key'] }}">
-                                                @foreach($field['options'] as $option)
+                                                @foreach ($field['options'] as $option)
                                                     <label class="inline-flex items-center gap-2 text-sm text-gray-700 dark:text-gray-200">
                                                         <input
                                                             type="checkbox"
                                                             value="{{ $option['value'] }}"
                                                             wire:model="data.{{ $field['key'] }}"
-                                                            class="rounded border-gray-300 text-primary-600 focus:ring-primary-500 dark:border-gray-700 dark:bg-gray-950"
-                                                        >
+                                                            class="text-primary-600 focus:ring-primary-500 rounded border-gray-300 dark:border-gray-700 dark:bg-gray-950"
+                                                        />
                                                         <span>{{ $option['label'] }}</span>
                                                     </label>
                                                 @endforeach
@@ -257,22 +298,25 @@
                                                 <input
                                                     type="checkbox"
                                                     wire:model="data.{{ $field['key'] }}"
-                                                    class="rounded border-gray-300 text-primary-600 focus:ring-primary-500 dark:border-gray-700 dark:bg-gray-950"
+                                                    class="text-primary-600 focus:ring-primary-500 rounded border-gray-300 dark:border-gray-700 dark:bg-gray-950"
                                                     data-test="public-form-field-{{ $field['key'] }}"
-                                                >
+                                                />
                                                 <span>{{ $field['placeholder'] ?: $field['label'] }}</span>
                                             </span>
                                         @endif
                                     </label>
 
-                                    @if(filled($field['help_text']))
+                                    @if (filled($field['help_text']))
                                         <p class="text-xs leading-5 text-gray-500 dark:text-gray-400">
                                             {{ $field['help_text'] }}
                                         </p>
                                     @endif
 
                                     @error('data.'.$field['key'])
-                                        <p class="text-xs text-danger-600 dark:text-danger-400" data-test="public-form-field-error-{{ $field['key'] }}">
+                                        <p
+                                            class="text-danger-600 dark:text-danger-400 text-xs"
+                                            data-test="public-form-field-error-{{ $field['key'] }}"
+                                        >
                                             {{ $message }}
                                         </p>
                                     @enderror
@@ -284,14 +328,14 @@
                             <button
                                 type="button"
                                 x-on:click="open = false"
-                                class="inline-flex items-center justify-center rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary-500 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800"
+                                class="focus:ring-primary-500 inline-flex items-center justify-center rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50 focus:ring-2 focus:outline-none dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800"
                             >
                                 {{ __('public.actions.close') }}
                             </button>
 
                             <button
                                 type="submit"
-                                class="inline-flex items-center justify-center rounded-md border border-primary-700 bg-primary-700 px-4 py-2 text-sm font-medium text-white transition hover:bg-primary-800 focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:cursor-not-allowed disabled:opacity-60"
+                                class="border-primary-700 bg-primary-700 hover:bg-primary-800 focus:ring-primary-500 inline-flex items-center justify-center rounded-md border px-4 py-2 text-sm font-medium text-white transition focus:ring-2 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60"
                                 wire:loading.attr="disabled"
                                 @disabled($verificationRequired && ! $emailVerificationVerified)
                                 data-test="public-form-submit"

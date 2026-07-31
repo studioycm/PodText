@@ -38,7 +38,7 @@
     data-grid-columns="{{ $resolvedColumns }}"
     data-grid-gap="{{ $gap }}"
 >
-    @foreach($cards as $card)
+    @foreach ($cards as $card)
         <div class="min-w-0" data-test="contributor-item-card-group">
             <x-public.content-item-card
                 :card="$card"
@@ -46,7 +46,6 @@
                 :card-template="$cardTemplate"
                 wire:key="contributor-content-item-card-{{ $card['id'] }}"
             />
-
         </div>
     @endforeach
 </div>

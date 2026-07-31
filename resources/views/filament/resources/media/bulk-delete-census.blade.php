@@ -1,10 +1,10 @@
 <div class="space-y-3" data-testid="media-bulk-delete-census">
     <div class="flex flex-wrap gap-2 text-xs font-medium">
-        <span class="rounded-full border border-success-500 px-2.5 py-0.5 text-success-700 dark:text-success-300">
+        <span class="border-success-500 text-success-700 dark:text-success-300 rounded-full border px-2.5 py-0.5">
             {{ __('admin.media_library.bulk_delete_census_eligible', ['count' => $eligibleCount]) }}
         </span>
         @if ($blocked !== [])
-            <span class="rounded-full border border-warning-500 px-2.5 py-0.5 text-warning-700 dark:text-warning-300">
+            <span class="border-warning-500 text-warning-700 dark:text-warning-300 rounded-full border px-2.5 py-0.5">
                 {{ __('admin.media_library.bulk_delete_census_blocked', ['count' => count($blocked)]) }}
             </span>
         @endif
@@ -22,11 +22,11 @@
     @endif
 
     @if ($eligibleCount > 0)
-        <p class="rounded-md bg-danger-50 p-2.5 text-xs text-danger-800 dark:bg-danger-950 dark:text-danger-200">
+        <p class="bg-danger-50 text-danger-800 dark:bg-danger-950 dark:text-danger-200 rounded-md p-2.5 text-xs">
             {{ __('admin.media_library.bulk_delete_consequence', ['count' => $eligibleCount]) }}
         </p>
     @else
-        <p class="rounded-md bg-warning-50 p-2.5 text-xs text-warning-800 dark:bg-warning-950 dark:text-warning-200">
+        <p class="bg-warning-50 text-warning-800 dark:bg-warning-950 dark:text-warning-200 rounded-md p-2.5 text-xs">
             {{ __('admin.media_library.bulk_delete_none_eligible') }}
         </p>
     @endif

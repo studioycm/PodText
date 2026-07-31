@@ -9,146 +9,151 @@
             validationRestoreTimer: null,
             validationRootActionModalId: null,
             init() {
-                this.media = window.matchMedia('(min-width: 1024px)')
+                this.media = window.matchMedia('(min-width: 1024px)');
                 this.listener = async (event) => {
                     if (! event.matches) {
-                        const adjacent = document.querySelector('[data-card-template-preview-adjacent]')
-                        const restoreToTrigger = Boolean(adjacent?.contains(document.activeElement))
+                        const adjacent = document.querySelector('[data-card-template-preview-adjacent]');
+                        const restoreToTrigger = Boolean(adjacent?.contains(document.activeElement));
 
-                        this.wide = false
+                        this.wide = false;
 
                         if (restoreToTrigger) {
-                            this.$nextTick(() => document.querySelector('[data-test=card-template-preview-open]')?.focus())
+                            this.$nextTick(() =>
+                                document.querySelector('[data-test=card-template-preview-open]')?.focus(),
+                            );
                         }
 
-                        return
+                        return;
                     }
 
-                    const modal = document.querySelector('[data-card-template-preview-modal]')
-                    const modalWindow = modal?.closest('[aria-modal=true]')
-                    const restoreToHeading = Boolean((modalWindow ?? modal)?.contains(document.activeElement))
+                    const modal = document.querySelector('[data-card-template-preview-modal]');
+                    const modalWindow = modal?.closest('[aria-modal=true]');
+                    const restoreToHeading = Boolean((modalWindow ?? modal)?.contains(document.activeElement));
 
                     if (modal) {
-                        await this.$wire.unmountAction()
+                        await this.$wire.unmountAction();
                     }
 
                     if (! this.media?.matches) {
                         if (restoreToHeading) {
-                            this.$nextTick(() => document.querySelector('[data-test=card-template-preview-open]')?.focus())
+                            this.$nextTick(() =>
+                                document.querySelector('[data-test=card-template-preview-open]')?.focus(),
+                            );
                         }
 
-                        return
+                        return;
                     }
 
-                    this.wide = true
+                    this.wide = true;
 
                     if (restoreToHeading) {
-                        this.$nextTick(() => document.querySelector('#card-template-preview-heading')?.focus())
+                        this.$nextTick(() => document.querySelector('#card-template-preview-heading')?.focus());
                     }
-                }
-                this.media.addEventListener('change', this.listener)
+                };
+                this.media.addEventListener('change', this.listener);
             },
             retryValidationFocus(statePath, attempt) {
                 if (attempt >= 20) {
-                    this.focusSafeValidationFallback(statePath)
+                    this.focusSafeValidationFallback(statePath);
 
-                    return
+                    return;
                 }
 
                 this.validationFocusTimer = window.setTimeout(
                     () => this.focusValidationTarget(statePath, attempt + 1),
                     50,
-                )
+                );
             },
             focusValidationTarget(statePath, attempt = 0) {
-                window.clearTimeout(this.validationFocusTimer)
+                window.clearTimeout(this.validationFocusTimer);
 
                 if (! statePath.startsWith('mountedActions.')) {
-                    this.validationRootActionModalId = null
+                    this.validationRootActionModalId = null;
                 }
 
-                const wrapper = Array.from(document.querySelectorAll('[data-field-wrapper]'))
-                    .find((element) => {
-                        const schemaComponent = element.closest('[x-data]')
+                const wrapper = Array.from(document.querySelectorAll('[data-field-wrapper]')).find((element) => {
+                    const schemaComponent = element.closest('[x-data]');
 
-                        return schemaComponent
-                            && window.Alpine?.$data(schemaComponent)?.$statePath === statePath
-                    })
+                    return schemaComponent && window.Alpine?.$data(schemaComponent)?.$statePath === statePath;
+                });
 
                 if (! wrapper) {
-                    this.retryValidationFocus(statePath, attempt)
+                    this.retryValidationFocus(statePath, attempt);
 
-                    return
+                    return;
                 }
 
                 if (wrapper.getClientRects().length === 0) {
-                    this.retryValidationFocus(statePath, attempt)
+                    this.retryValidationFocus(statePath, attempt);
 
-                    return
+                    return;
                 }
 
-                const actionModal = wrapper.closest('.fi-modal[id]')
+                const actionModal = wrapper.closest('.fi-modal[id]');
 
                 if (actionModal && statePath.startsWith('mountedActions.')) {
-                    this.validationRootActionModalId = actionModal.id.replace(/-action-\d+$/, '-action-0')
+                    this.validationRootActionModalId = actionModal.id.replace(/-action-\d+$/, '-action-0');
                 }
 
                 if (statePath === 'data.parts' || statePath.endsWith('.data.children')) {
-                    wrapper.setAttribute('tabindex', '-1')
-                    wrapper.focus()
+                    wrapper.setAttribute('tabindex', '-1');
+                    wrapper.focus();
 
                     if (document.activeElement !== wrapper) {
-                        this.focusSafeValidationFallback(statePath)
+                        this.focusSafeValidationFallback(statePath);
                     }
 
-                    return
+                    return;
                 }
 
-                const focusable = Array.from(wrapper.querySelectorAll(
-                    'input:not([type=hidden]):not([disabled]), select:not([disabled]), textarea:not([disabled]), button:not([disabled])',
-                )).find((element) => element.getClientRects().length > 0)
+                const focusable = Array.from(
+                    wrapper.querySelectorAll(
+                        'input:not([type=hidden]):not([disabled]), select:not([disabled]), textarea:not([disabled]), button:not([disabled])',
+                    ),
+                ).find((element) => element.getClientRects().length > 0);
 
                 if (! focusable) {
-                    wrapper.setAttribute('tabindex', '-1')
-                    wrapper.focus()
+                    wrapper.setAttribute('tabindex', '-1');
+                    wrapper.focus();
 
                     if (document.activeElement !== wrapper) {
-                        this.focusSafeValidationFallback(statePath)
+                        this.focusSafeValidationFallback(statePath);
                     }
 
-                    return
+                    return;
                 }
 
-                focusable.dispatchEvent(new CustomEvent('focus-input', { bubbles: true }))
+                focusable.dispatchEvent(new CustomEvent('focus-input', { bubbles: true }));
                 this.$nextTick(() => {
                     if (! wrapper.contains(document.activeElement)) {
-                        focusable.focus()
+                        focusable.focus();
                     }
 
                     if (! wrapper.contains(document.activeElement)) {
-                        this.retryValidationFocus(statePath, attempt)
+                        this.retryValidationFocus(statePath, attempt);
                     }
-                })
+                });
             },
             focusFirstVisible(selectors) {
                 for (const selector of selectors) {
-                    const target = Array.from(document.querySelectorAll(selector))
-                        .find((element) => element.getClientRects().length > 0 && ! element.hasAttribute('disabled'))
+                    const target = Array.from(document.querySelectorAll(selector)).find(
+                        (element) => element.getClientRects().length > 0 && ! element.hasAttribute('disabled'),
+                    );
 
                     if (target) {
-                        target.focus()
+                        target.focus();
 
-                        return true
+                        return true;
                     }
                 }
 
-                return false
+                return false;
             },
             focusSafeValidationFallback(statePath = null) {
-                const actionModal = document.querySelector('.fi-modal.fi-modal-open[id]')
+                const actionModal = document.querySelector('.fi-modal.fi-modal-open[id]');
 
                 if (actionModal && statePath?.startsWith('mountedActions.')) {
-                    this.validationRootActionModalId = actionModal.id.replace(/-action-\d+$/, '-action-0')
+                    this.validationRootActionModalId = actionModal.id.replace(/-action-\d+$/, '-action-0');
                 }
 
                 this.focusFirstVisible([
@@ -156,36 +161,39 @@
                     '[data-test=card-template-preview-focus-invalid]',
                     '[data-test=card-template-preview-open]',
                     '[data-card-template-editor] input, [data-card-template-editor] select, [data-card-template-editor] button',
-                ])
+                ]);
             },
             restoreValidationTrigger(event) {
                 if (event.detail.id !== this.validationRootActionModalId) {
-                    return
+                    return;
                 }
 
-                this.validationRootActionModalId = null
-                window.clearTimeout(this.validationRestoreTimer)
+                this.validationRootActionModalId = null;
+                window.clearTimeout(this.validationRestoreTimer);
                 this.validationRestoreTimer = window.setTimeout(
-                    () => this.focusFirstVisible([
-                        '[data-test=card-template-preview-focus-invalid]',
-                        '[data-test=card-template-preview-open]',
-                        '[data-card-template-editor] input, [data-card-template-editor] select, [data-card-template-editor] button',
-                    ]),
+                    () =>
+                        this.focusFirstVisible([
+                            '[data-test=card-template-preview-focus-invalid]',
+                            '[data-test=card-template-preview-open]',
+                            '[data-card-template-editor] input, [data-card-template-editor] select, [data-card-template-editor] button',
+                        ]),
                     100,
-                )
+                );
             },
             clearValidationActionIdentity(event) {
-                if (event.detail.newActionNestingIndex !== null
-                    || this.validationRootActionModalId !== `fi-${event.detail.id}-action-0`) {
-                    return
+                if (
+                    event.detail.newActionNestingIndex !== null ||
+                    this.validationRootActionModalId !== `fi-${event.detail.id}-action-0`
+                ) {
+                    return;
                 }
 
-                this.validationRootActionModalId = null
+                this.validationRootActionModalId = null;
             },
             destroy() {
-                this.media?.removeEventListener('change', this.listener)
-                window.clearTimeout(this.validationFocusTimer)
-                window.clearTimeout(this.validationRestoreTimer)
+                this.media?.removeEventListener('change', this.listener);
+                window.clearTimeout(this.validationFocusTimer);
+                window.clearTimeout(this.validationRestoreTimer);
             },
         }"
         x-on:card-template-validation-target.window="focusValidationTarget($event.detail.statePath)"
@@ -193,12 +201,14 @@
         x-on:sync-action-modals.window="clearValidationActionIdentity($event)"
     >
         <div class="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(16rem,20rem)] xl:grid-cols-[minmax(0,1fr)_minmax(20rem,26rem)]">
-            <div class="min-w-0" data-card-template-editor-column>
-                {{ $this->content }}
-            </div>
+            <div class="min-w-0" data-card-template-editor-column>{{ $this->content }}</div>
 
             <template x-if="wide">
-                <aside class="sticky top-[5.5rem] max-h-[calc(100vh-5.5rem)] min-w-0 overflow-y-auto" data-card-template-preview-column data-card-template-preview-wide-shell>
+                <aside
+                    class="sticky top-[5.5rem] max-h-[calc(100vh-5.5rem)] min-w-0 overflow-y-auto"
+                    data-card-template-preview-column
+                    data-card-template-preview-wide-shell
+                >
                     @include('filament.pages.card-template-preview', ['modal' => false])
                 </aside>
             </template>

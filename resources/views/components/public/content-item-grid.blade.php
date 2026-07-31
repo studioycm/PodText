@@ -38,7 +38,7 @@
     data-grid-columns="{{ $resolvedColumns }}"
     data-grid-gap="{{ $gap }}"
 >
-    @foreach($cards as $card)
+    @foreach ($cards as $card)
         <x-public.content-item-card
             :card="$card"
             :options="$cardOptions"

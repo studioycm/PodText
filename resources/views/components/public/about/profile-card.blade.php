@@ -41,29 +41,35 @@
     data-team-card-image-fit="{{ $imageFit }}"
     data-team-card-image-radius="{{ $imageRadius }}"
 >
-    @if($showImage && $imageUrl)
+    @if ($showImage && $imageUrl)
         <img
             src="{{ $imageUrl }}"
             alt="{{ $profile['name'] }}"
             class="{{ $imageSize }} {{ $imageRadiusClass }} {{ $imageFitClass }} shrink-0 bg-gray-100 dark:bg-gray-800"
             loading="lazy"
             data-test="about-team-profile-image"
-        >
+        />
     @endif
 
     <div class="min-w-0 space-y-2">
-        @if($showTitle && filled($profile['title'] ?? null))
-            <p class="text-xs font-medium uppercase tracking-normal text-primary-700 dark:text-primary-300">
+        @if ($showTitle && filled($profile['title'] ?? null))
+            <p class="text-primary-700 dark:text-primary-300 text-xs font-medium tracking-normal uppercase">
                 {{ $profile['title'] }}
             </p>
         @endif
 
-        <h3 class="text-lg font-semibold tracking-normal text-gray-950 dark:text-white" data-test="about-team-profile-name">
+        <h3
+            class="text-lg font-semibold tracking-normal text-gray-950 dark:text-white"
+            data-test="about-team-profile-name"
+        >
             {{ $profile['name'] }}
         </h3>
 
-        @if($showDescription && filled($profile['description'] ?? null))
-            <p class="text-sm leading-6 text-gray-600 dark:text-gray-300 {{ $descriptionClamp }}" data-test="about-team-profile-description">
+        @if ($showDescription && filled($profile['description'] ?? null))
+            <p
+                class="text-sm leading-6 text-gray-600 dark:text-gray-300 {{ $descriptionClamp }}"
+                data-test="about-team-profile-description"
+            >
                 {{ $profile['description'] }}
             </p>
         @endif

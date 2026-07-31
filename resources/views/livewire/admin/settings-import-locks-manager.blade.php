@@ -3,14 +3,14 @@
         <x-slot name="heading">{{ __('admin.settings_import_locks.heading') }}</x-slot>
         <x-slot name="description">{{ __('admin.settings_import_locks.description') }}</x-slot>
 
-        @if($resultMessage)
-            <div class="mb-4 rounded-lg border border-success-200 bg-success-50 px-4 py-3 text-sm text-success-700 dark:border-success-500/30 dark:bg-success-500/10 dark:text-success-300">
+        @if ($resultMessage)
+            <div class="border-success-200 bg-success-50 text-success-700 dark:border-success-500/30 dark:bg-success-500/10 dark:text-success-300 mb-4 rounded-lg border px-4 py-3 text-sm">
                 {{ $resultMessage }}
             </div>
         @endif
 
-        @if($retiredLockedPaths !== [])
-            <div class="mb-4 rounded-lg border border-warning-200 bg-warning-50 px-4 py-3 text-sm text-warning-700 dark:border-warning-500/30 dark:bg-warning-500/10 dark:text-warning-300">
+        @if ($retiredLockedPaths !== [])
+            <div class="border-warning-200 bg-warning-50 text-warning-700 dark:border-warning-500/30 dark:bg-warning-500/10 dark:text-warning-300 mb-4 rounded-lg border px-4 py-3 text-sm">
                 {{ __('admin.settings_import_locks.retired_report', ['count' => count($retiredLockedPaths)]) }}
             </div>
         @endif

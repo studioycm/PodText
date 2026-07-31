@@ -1,12 +1,12 @@
 <div class="space-y-4" data-test="top-transcribers-section" data-section-key="{{ $sectionKey }}">
-    @if($contributors->isNotEmpty())
+    @if ($contributors->isNotEmpty())
         <div
             class="flex snap-x gap-3 overflow-x-auto pb-2"
             data-test="top-transcribers-selector"
             data-layout="{{ $config['top_transcribers']['layout'] ?? 'horizontal' }}"
         >
-            @foreach($contributors as $author)
-                <div class="min-w-[14rem] max-w-[18rem] snap-start">
+            @foreach ($contributors as $author)
+                <div class="max-w-[18rem] min-w-[14rem] snap-start">
                     <x-public.contributor-card
                         :author="$author"
                         :full-page-url="$this->contributorUrl($author)"
@@ -24,22 +24,34 @@
             class="space-y-4 rounded-lg border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-gray-900"
             data-test="top-transcriber-preview"
         >
-            @if($selectedContributor)
+            @if ($selectedContributor)
                 <div class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
                     <div class="space-y-2">
-                        <p class="text-sm font-medium text-primary-600 dark:text-primary-400">
+                        <p class="text-primary-600 dark:text-primary-400 text-sm font-medium">
                             {{ __('public.pages.contributors.top_preview_kicker') }}
                         </p>
-                        <h3 class="text-xl font-semibold tracking-normal text-gray-950 dark:text-white" data-test="top-transcriber-preview-name">
+                        <h3
+                            class="text-xl font-semibold tracking-normal text-gray-950 dark:text-white"
+                            data-test="top-transcriber-preview-name"
+                        >
                             {{ $selectedContributor->name }}
                         </h3>
 
-                        @if($config['top_transcribers']['show_count_badge'] ?? true)
-                            <div class="flex flex-wrap gap-2 text-xs text-gray-600 dark:text-gray-300" data-test="top-transcriber-preview-counts">
-                                <span class="rounded-md bg-gray-100 px-2 py-1 dark:bg-gray-800" data-test="public-transcriptions-count">
+                        @if ($config['top_transcribers']['show_count_badge'] ?? true)
+                            <div
+                                class="flex flex-wrap gap-2 text-xs text-gray-600 dark:text-gray-300"
+                                data-test="top-transcriber-preview-counts"
+                            >
+                                <span
+                                    class="rounded-md bg-gray-100 px-2 py-1 dark:bg-gray-800"
+                                    data-test="public-transcriptions-count"
+                                >
                                     {{ \App\Support\Transcriptions\TranscriptionModeLabel::choice('public.labels.public_transcriptions_count', (int) $selectedContributor->public_transcriptions_count, ['count' => (int) $selectedContributor->public_transcriptions_count], 'public.labels.single.public_transcriptions_count_full') }}
                                 </span>
-                                <span class="rounded-md bg-gray-100 px-2 py-1 dark:bg-gray-800" data-test="public-content-items-count">
+                                <span
+                                    class="rounded-md bg-gray-100 px-2 py-1 dark:bg-gray-800"
+                                    data-test="public-content-items-count"
+                                >
                                     {{ trans_choice('public.labels.public_content_items_count', (int) $selectedContributor->public_content_items_count, ['count' => (int) $selectedContributor->public_content_items_count]) }}
                                 </span>
                             </div>
@@ -52,18 +64,18 @@
                             <select
                                 wire:model.live="previewPerPage"
                                 data-test="top-transcriber-preview-page-size"
-                                class="rounded-md border-gray-300 text-sm shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:border-gray-700 dark:bg-gray-950"
+                                class="focus:border-primary-500 focus:ring-primary-500 rounded-md border-gray-300 text-sm shadow-sm dark:border-gray-700 dark:bg-gray-950"
                             >
-                                @foreach($pageSizeOptions as $value => $label)
+                                @foreach ($pageSizeOptions as $value => $label)
                                     <option value="{{ $value }}">{{ $label }}</option>
                                 @endforeach
                             </select>
                         </label>
 
-                        @if($config['top_transcribers']['show_full_page_link'] ?? true)
+                        @if ($config['top_transcribers']['show_full_page_link'] ?? true)
                             <a
                                 href="{{ $this->contributorUrl($selectedContributor) }}"
-                                class="inline-flex items-center justify-center rounded-md bg-gray-950 px-3 py-2 text-sm font-medium text-white transition hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 dark:bg-gray-100 dark:text-gray-950 dark:hover:bg-primary-200"
+                                class="hover:bg-primary-700 focus:ring-primary-500 dark:hover:bg-primary-200 inline-flex items-center justify-center rounded-md bg-gray-950 px-3 py-2 text-sm font-medium text-white transition focus:ring-2 focus:outline-none dark:bg-gray-100 dark:text-gray-950"
                                 data-test="top-transcriber-full-page-link"
                             >
                                 {{ __('public.actions.view_all_contributor_items') }}
@@ -72,7 +84,7 @@
                     </div>
                 </div>
 
-                @if($previewItems->count() > 0)
+                @if ($previewItems->count() > 0)
                     <div data-test="top-transcriber-preview-items-grid">
                         <x-public.contributor-item-grid
                             :items="$previewItems"
@@ -84,8 +96,11 @@
                         />
                     </div>
 
-                    @if($previewItems->lastPage() > 1)
-                        <div class="flex items-center justify-center gap-2" data-test="top-transcriber-preview-pagination">
+                    @if ($previewItems->lastPage() > 1)
+                        <div
+                            class="flex items-center justify-center gap-2"
+                            data-test="top-transcriber-preview-pagination"
+                        >
                             <button
                                 type="button"
                                 wire:click="previousPreviewPage"
@@ -96,7 +111,10 @@
                                 {{ __('public.actions.previous') }}
                             </button>
 
-                            <span class="text-xs text-gray-500 dark:text-gray-400" data-test="top-transcriber-preview-page-indicator">
+                            <span
+                                class="text-xs text-gray-500 dark:text-gray-400"
+                                data-test="top-transcriber-preview-page-indicator"
+                            >
                                 {{ $previewItems->currentPage() }} / {{ $previewItems->lastPage() }}
                             </span>
 
@@ -112,14 +130,20 @@
                         </div>
                     @endif
                 @else
-                    <div class="rounded-lg border border-dashed border-gray-300 bg-white p-6 text-sm text-gray-600 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-300" data-test="empty-top-transcriber-preview">
+                    <div
+                        class="rounded-lg border border-dashed border-gray-300 bg-white p-6 text-sm text-gray-600 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-300"
+                        data-test="empty-top-transcriber-preview"
+                    >
                         {{ __('public.empty.contributor_preview') }}
                     </div>
                 @endif
             @endif
         </section>
     @else
-        <div class="rounded-lg border border-dashed border-gray-300 bg-white p-6 text-sm text-gray-600 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300" data-test="homepage-section-empty">
+        <div
+            class="rounded-lg border border-dashed border-gray-300 bg-white p-6 text-sm text-gray-600 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300"
+            data-test="homepage-section-empty"
+        >
             {{ __('public.empty.contributors') }}
         </div>
     @endif

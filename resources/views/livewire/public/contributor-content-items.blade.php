@@ -9,8 +9,11 @@
             </p>
         </div>
 
-        <div class="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-end" data-test="contributor-page-item-controls">
-            @if($config['page']['search_enabled'] ?? true)
+        <div
+            class="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-end"
+            data-test="contributor-page-item-controls"
+        >
+            @if ($config['page']['search_enabled'] ?? true)
                 <label class="grid gap-1 text-sm text-gray-700 dark:text-gray-200">
                     <span>{{ __('public.filters.search_related_items') }}</span>
                     <input
@@ -18,8 +21,8 @@
                         wire:model.live.debounce.300ms="search"
                         data-test="contributor-page-item-search"
                         placeholder="{{ __('public.filters.search_related_items_placeholder') }}"
-                        class="w-full rounded-md border-gray-300 text-sm shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:border-gray-700 dark:bg-gray-950 sm:w-64"
-                    >
+                        class="focus:border-primary-500 focus:ring-primary-500 w-full rounded-md border-gray-300 text-sm shadow-sm sm:w-64 dark:border-gray-700 dark:bg-gray-950"
+                    />
                 </label>
             @endif
 
@@ -28,9 +31,9 @@
                 <select
                     wire:model.live="sort"
                     data-test="contributor-page-item-sort"
-                    class="rounded-md border-gray-300 text-sm shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:border-gray-700 dark:bg-gray-950"
+                    class="focus:border-primary-500 focus:ring-primary-500 rounded-md border-gray-300 text-sm shadow-sm dark:border-gray-700 dark:bg-gray-950"
                 >
-                    @foreach($sortOptions as $value => $label)
+                    @foreach ($sortOptions as $value => $label)
                         <option value="{{ $value }}">{{ $label }}</option>
                     @endforeach
                 </select>
@@ -41,9 +44,9 @@
                 <select
                     wire:model.live="perPage"
                     data-test="contributor-page-item-page-size"
-                    class="rounded-md border-gray-300 text-sm shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:border-gray-700 dark:bg-gray-950"
+                    class="focus:border-primary-500 focus:ring-primary-500 rounded-md border-gray-300 text-sm shadow-sm dark:border-gray-700 dark:bg-gray-950"
                 >
-                    @foreach($pageSizeOptions as $value => $label)
+                    @foreach ($pageSizeOptions as $value => $label)
                         <option value="{{ $value }}">{{ $label }}</option>
                     @endforeach
                 </select>
@@ -53,14 +56,14 @@
                 type="button"
                 wire:click="clearItemSearch"
                 data-test="clear-contributor-page-item-search"
-                class="inline-flex items-center justify-center rounded-md border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary-500 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800"
+                class="focus:ring-primary-500 inline-flex items-center justify-center rounded-md border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50 focus:ring-2 focus:outline-none dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800"
             >
                 {{ __('public.actions.clear_filters') }}
             </button>
         </div>
     </div>
 
-    @if($items->isNotEmpty())
+    @if ($items->isNotEmpty())
         <x-public.contributor-item-grid
             :items="$items"
             :card-options="$cardOptions"
@@ -71,13 +74,14 @@
             layout="cards"
         />
 
-        @if($items->hasPages())
-            <div data-test="contributor-items-pagination">
-                {{ $items->links() }}
-            </div>
+        @if ($items->hasPages())
+            <div data-test="contributor-items-pagination">{{ $items->links() }}</div>
         @endif
     @else
-        <div class="rounded-lg border border-dashed border-gray-300 bg-white p-6 text-sm text-gray-600 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300" data-test="empty-contributor-items">
+        <div
+            class="rounded-lg border border-dashed border-gray-300 bg-white p-6 text-sm text-gray-600 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300"
+            data-test="empty-contributor-items"
+        >
             {{ __('public.empty.contributor_items') }}
         </div>
     @endif

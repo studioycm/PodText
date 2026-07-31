@@ -45,7 +45,7 @@
             <button
                 type="button"
                 x-on:click="open = false"
-                class="inline-flex size-9 items-center justify-center rounded-md border border-gray-300 text-gray-600 transition hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary-500 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
+                class="focus:ring-primary-500 inline-flex size-9 items-center justify-center rounded-md border border-gray-300 text-gray-600 transition hover:bg-gray-50 focus:ring-2 focus:outline-none dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
                 data-test="close-filter-drawer"
                 aria-label="{{ __('public.actions.close') }}"
             >
@@ -55,9 +55,11 @@
 
         <div class="flex-1 space-y-6 overflow-y-auto p-4">
             <section class="space-y-3" data-test="category-toggle-filter">
-                <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100">{{ __('public.filters.category') }}</h3>
+                <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                    {{ __('public.filters.category') }}
+                </h3>
                 <div class="flex flex-wrap gap-2">
-                    @foreach($categoryOptions as $value => $label)
+                    @foreach ($categoryOptions as $value => $label)
                         @php($active = in_array((int) $value, $activeCategoryIds, true))
                         <button
                             type="button"
@@ -75,7 +77,7 @@
             <section class="space-y-3" data-test="tag-toggle-filter">
                 <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100">{{ __('public.filters.tag') }}</h3>
                 <div class="flex flex-wrap gap-2">
-                    @foreach($tagOptions as $value => $label)
+                    @foreach ($tagOptions as $value => $label)
                         @php($active = in_array((int) $value, $activeTagIds, true))
                         <button
                             type="button"
@@ -93,9 +95,13 @@
             <section class="grid gap-3" data-test="drawer-select-filters">
                 <label class="grid gap-1 text-sm text-gray-700 dark:text-gray-200">
                     <span>{{ __('public.filters.group') }}</span>
-                    <select wire:model.live="filterContentGroupId" data-test="filter-group" class="rounded-md border-gray-300 text-sm shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:border-gray-700 dark:bg-gray-950">
+                    <select
+                        wire:model.live="filterContentGroupId"
+                        data-test="filter-group"
+                        class="focus:border-primary-500 focus:ring-primary-500 rounded-md border-gray-300 text-sm shadow-sm dark:border-gray-700 dark:bg-gray-950"
+                    >
                         <option value="">{{ __('public.filters.any') }}</option>
-                        @foreach($contentGroupOptions as $value => $label)
+                        @foreach ($contentGroupOptions as $value => $label)
                             <option value="{{ $value }}">{{ $label }}</option>
                         @endforeach
                     </select>
@@ -103,9 +109,13 @@
 
                 <label class="grid gap-1 text-sm text-gray-700 dark:text-gray-200">
                     <span>{{ __('public.filters.transcriber') }}</span>
-                    <select wire:model.live="filterTranscriberId" data-test="filter-transcriber" class="rounded-md border-gray-300 text-sm shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:border-gray-700 dark:bg-gray-950">
+                    <select
+                        wire:model.live="filterTranscriberId"
+                        data-test="filter-transcriber"
+                        class="focus:border-primary-500 focus:ring-primary-500 rounded-md border-gray-300 text-sm shadow-sm dark:border-gray-700 dark:bg-gray-950"
+                    >
                         <option value="">{{ __('public.filters.any') }}</option>
-                        @foreach($transcriberOptions as $value => $label)
+                        @foreach ($transcriberOptions as $value => $label)
                             <option value="{{ $value }}">{{ $label }}</option>
                         @endforeach
                     </select>
@@ -113,9 +123,13 @@
 
                 <label class="grid gap-1 text-sm text-gray-700 dark:text-gray-200">
                     <span>{{ __('public.filters.provider') }}</span>
-                    <select wire:model.live="filterProvider" data-test="filter-provider" class="rounded-md border-gray-300 text-sm shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:border-gray-700 dark:bg-gray-950">
+                    <select
+                        wire:model.live="filterProvider"
+                        data-test="filter-provider"
+                        class="focus:border-primary-500 focus:ring-primary-500 rounded-md border-gray-300 text-sm shadow-sm dark:border-gray-700 dark:bg-gray-950"
+                    >
                         <option value="">{{ __('public.filters.any') }}</option>
-                        @foreach($providerOptions as $value => $label)
+                        @foreach ($providerOptions as $value => $label)
                             <option value="{{ $value }}">{{ $label }}</option>
                         @endforeach
                     </select>
@@ -123,7 +137,11 @@
 
                 <label class="grid gap-1 text-sm text-gray-700 dark:text-gray-200">
                     <span>{{ __('public.filters.has_media') }}</span>
-                    <select wire:model.live="filterHasMedia" data-test="filter-has-media" class="rounded-md border-gray-300 text-sm shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:border-gray-700 dark:bg-gray-950">
+                    <select
+                        wire:model.live="filterHasMedia"
+                        data-test="filter-has-media"
+                        class="focus:border-primary-500 focus:ring-primary-500 rounded-md border-gray-300 text-sm shadow-sm dark:border-gray-700 dark:bg-gray-950"
+                    >
                         <option value="">{{ __('public.filters.any') }}</option>
                         <option value="yes">{{ __('public.labels.yes') }}</option>
                         <option value="no">{{ __('public.labels.no') }}</option>
@@ -134,32 +152,58 @@
             <section class="grid gap-3 md:grid-cols-2" data-test="advanced-filters">
                 <label class="grid gap-1 text-sm text-gray-700 dark:text-gray-200">
                     <span>{{ __('public.filters.effective_from') }}</span>
-                    <input type="date" wire:model.live="filterEffectiveFrom" class="rounded-md border-gray-300 text-sm shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:border-gray-700 dark:bg-gray-950">
+                    <input
+                        type="date"
+                        wire:model.live="filterEffectiveFrom"
+                        class="focus:border-primary-500 focus:ring-primary-500 rounded-md border-gray-300 text-sm shadow-sm dark:border-gray-700 dark:bg-gray-950"
+                    />
                 </label>
 
                 <label class="grid gap-1 text-sm text-gray-700 dark:text-gray-200">
                     <span>{{ __('public.filters.effective_until') }}</span>
-                    <input type="date" wire:model.live="filterEffectiveUntil" class="rounded-md border-gray-300 text-sm shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:border-gray-700 dark:bg-gray-950">
+                    <input
+                        type="date"
+                        wire:model.live="filterEffectiveUntil"
+                        class="focus:border-primary-500 focus:ring-primary-500 rounded-md border-gray-300 text-sm shadow-sm dark:border-gray-700 dark:bg-gray-950"
+                    />
                 </label>
 
                 <label class="grid gap-1 text-sm text-gray-700 dark:text-gray-200">
                     <span>{{ __('public.filters.original_from') }}</span>
-                    <input type="date" wire:model.live="filterOriginalFrom" class="rounded-md border-gray-300 text-sm shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:border-gray-700 dark:bg-gray-950">
+                    <input
+                        type="date"
+                        wire:model.live="filterOriginalFrom"
+                        class="focus:border-primary-500 focus:ring-primary-500 rounded-md border-gray-300 text-sm shadow-sm dark:border-gray-700 dark:bg-gray-950"
+                    />
                 </label>
 
                 <label class="grid gap-1 text-sm text-gray-700 dark:text-gray-200">
                     <span>{{ __('public.filters.original_until') }}</span>
-                    <input type="date" wire:model.live="filterOriginalUntil" class="rounded-md border-gray-300 text-sm shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:border-gray-700 dark:bg-gray-950">
+                    <input
+                        type="date"
+                        wire:model.live="filterOriginalUntil"
+                        class="focus:border-primary-500 focus:ring-primary-500 rounded-md border-gray-300 text-sm shadow-sm dark:border-gray-700 dark:bg-gray-950"
+                    />
                 </label>
 
                 <label class="grid gap-1 text-sm text-gray-700 dark:text-gray-200">
                     <span>{{ __('public.filters.duration_min') }}</span>
-                    <input type="number" min="0" wire:model.live="filterDurationMin" class="rounded-md border-gray-300 text-sm shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:border-gray-700 dark:bg-gray-950">
+                    <input
+                        type="number"
+                        min="0"
+                        wire:model.live="filterDurationMin"
+                        class="focus:border-primary-500 focus:ring-primary-500 rounded-md border-gray-300 text-sm shadow-sm dark:border-gray-700 dark:bg-gray-950"
+                    />
                 </label>
 
                 <label class="grid gap-1 text-sm text-gray-700 dark:text-gray-200">
                     <span>{{ __('public.filters.duration_max') }}</span>
-                    <input type="number" min="0" wire:model.live="filterDurationMax" class="rounded-md border-gray-300 text-sm shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:border-gray-700 dark:bg-gray-950">
+                    <input
+                        type="number"
+                        min="0"
+                        wire:model.live="filterDurationMax"
+                        class="focus:border-primary-500 focus:ring-primary-500 rounded-md border-gray-300 text-sm shadow-sm dark:border-gray-700 dark:bg-gray-950"
+                    />
                 </label>
             </section>
         </div>
@@ -169,7 +213,7 @@
                 type="button"
                 wire:click="clearFilters"
                 data-test="drawer-clear-filters"
-                class="inline-flex items-center justify-center rounded-md border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary-500 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800"
+                class="focus:ring-primary-500 inline-flex items-center justify-center rounded-md border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50 focus:ring-2 focus:outline-none dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800"
             >
                 {{ __('public.actions.clear_filters') }}
             </button>
@@ -177,7 +221,7 @@
             <button
                 type="button"
                 x-on:click="open = false"
-                class="inline-flex items-center justify-center rounded-md bg-primary-600 px-3 py-2 text-sm font-medium text-white transition hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 dark:bg-primary-500 dark:hover:bg-primary-400"
+                class="bg-primary-600 hover:bg-primary-700 focus:ring-primary-500 dark:bg-primary-500 dark:hover:bg-primary-400 inline-flex items-center justify-center rounded-md px-3 py-2 text-sm font-medium text-white transition focus:ring-2 focus:outline-none"
                 data-test="apply-filter-drawer"
             >
                 {{ __('public.actions.apply_filters') }}

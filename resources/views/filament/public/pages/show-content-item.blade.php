@@ -14,14 +14,14 @@
             fullscreen: false,
             playerHidden: localStorage.getItem('podtext.itemPage.playerHidden') === 'true',
             setPlayerHidden(value) {
-                this.playerHidden = value
-                localStorage.setItem('podtext.itemPage.playerHidden', JSON.stringify(value))
+                this.playerHidden = value;
+                localStorage.setItem('podtext.itemPage.playerHidden', JSON.stringify(value));
             },
             togglePlayer() {
-                this.setPlayerHidden(! this.playerHidden)
+                this.setPlayerHidden(! this.playerHidden);
             },
             toggleFullscreen() {
-                this.fullscreen = ! this.fullscreen
+                this.fullscreen = ! this.fullscreen;
             },
         }"
         x-on:keydown.escape.window="fullscreen = false"
@@ -34,14 +34,14 @@
             <button
                 type="button"
                 x-on:click="fullscreen = false"
-                class="rounded-md border border-gray-200 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 shadow-sm hover:border-primary-300 hover:text-primary-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-600 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200 dark:hover:border-primary-500"
+                class="hover:border-primary-300 hover:text-primary-700 focus-visible:outline-primary-600 dark:hover:border-primary-500 rounded-md border border-gray-200 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 shadow-sm focus-visible:outline-2 focus-visible:outline-offset-2 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200"
                 data-test="transcript-fullscreen-exit"
             >
                 {{ __('public.actions.close') }}
             </button>
         </div>
 
-        @if($this->showBreadcrumbs())
+        @if ($this->showBreadcrumbs())
             <nav
                 aria-label="{{ __('public.labels.breadcrumbs') }}"
                 class="flex flex-wrap items-center gap-2 text-sm text-gray-600 dark:text-gray-300"
@@ -49,14 +49,14 @@
             >
                 <a
                     href="{{ \App\Filament\Public\Pages\BrowseContentGroups::getUrl(panel: 'public') }}"
-                    class="font-medium text-primary-700 hover:text-primary-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-600 dark:text-primary-300 dark:hover:text-primary-100"
+                    class="text-primary-700 hover:text-primary-900 focus-visible:outline-primary-600 dark:text-primary-300 dark:hover:text-primary-100 font-medium focus-visible:outline-2 focus-visible:outline-offset-2"
                 >
                     {{ __('public.pages.browse.title') }}
                 </a>
                 <span aria-hidden="true">/</span>
                 <a
                     href="{{ \App\Filament\Public\Pages\ShowContentGroup::getUrl(['contentGroupSlug' => $contentGroup->slug], panel: 'public') }}"
-                    class="font-medium text-primary-700 hover:text-primary-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-600 dark:text-primary-300 dark:hover:text-primary-100"
+                    class="text-primary-700 hover:text-primary-900 focus-visible:outline-primary-600 dark:text-primary-300 dark:hover:text-primary-100 font-medium focus-visible:outline-2 focus-visible:outline-offset-2"
                 >
                     {{ $contentGroup->title }}
                 </a>
@@ -64,7 +64,7 @@
         @endif
 
         <header class="grid gap-6 md:grid-cols-[14rem_minmax(0,1fr)] md:items-start">
-            @if($pageImage)
+            @if ($pageImage)
                 <span
                     class="block aspect-square w-full overflow-hidden rounded-lg bg-gray-100 ring-1 ring-gray-950/10 dark:bg-gray-800 dark:ring-white/10"
                     data-test="item-page-image"
@@ -74,42 +74,48 @@
                         src="{{ $pageImage['url'] }}"
                         alt="{{ $pageImage['alt'] ?? '' }}"
                         class="h-full w-full object-cover"
-                    >
+                    />
                 </span>
             @endif
 
             <div class="min-w-0 space-y-4">
-                @if($podcastIdentity && ($podcastIdentity['position'] ?? 'above_title') === 'above_title')
+                @if ($podcastIdentity && ($podcastIdentity['position'] ?? 'above_title') === 'above_title')
                     <x-public.item-page-podcast-identity :podcast-identity="$podcastIdentity" />
                 @endif
 
-                @if($podcastIdentity && in_array($podcastIdentity['position'] ?? null, ['title_row_before', 'title_row_after'], true))
+                @if ($podcastIdentity && in_array($podcastIdentity['position'] ?? null, ['title_row_before', 'title_row_after'], true))
                     <div class="flex flex-wrap items-baseline gap-3" data-test="item-title-row">
-                        @if(($podcastIdentity['position'] ?? null) === 'title_row_before')
+                        @if (($podcastIdentity['position'] ?? null) === 'title_row_before')
                             <x-public.item-page-podcast-identity :podcast-identity="$podcastIdentity" />
                         @endif
 
-                        <h1 class="min-w-0 text-3xl font-semibold leading-tight text-gray-950 dark:text-white" data-test="item-page-title">
+                        <h1
+                            class="min-w-0 text-3xl leading-tight font-semibold text-gray-950 dark:text-white"
+                            data-test="item-page-title"
+                        >
                             {{ $displayTitle }}
                         </h1>
 
-                        @if(($podcastIdentity['position'] ?? null) === 'title_row_after')
+                        @if (($podcastIdentity['position'] ?? null) === 'title_row_after')
                             <x-public.item-page-podcast-identity :podcast-identity="$podcastIdentity" />
                         @endif
                     </div>
                 @else
-                    <h1 class="text-3xl font-semibold leading-tight text-gray-950 dark:text-white" data-test="item-page-title">
+                    <h1
+                        class="text-3xl leading-tight font-semibold text-gray-950 dark:text-white"
+                        data-test="item-page-title"
+                    >
                         {{ $displayTitle }}
                     </h1>
                 @endif
 
-                @if($podcastIdentity && ($podcastIdentity['position'] ?? null) === 'below_title')
+                @if ($podcastIdentity && ($podcastIdentity['position'] ?? null) === 'below_title')
                     <x-public.item-page-podcast-identity :podcast-identity="$podcastIdentity" />
                 @endif
 
-                @if($infoParts !== [])
+                @if ($infoParts !== [])
                     <dl class="flex flex-wrap items-center gap-2" data-test="item-info-line">
-                        @foreach($infoParts as $infoPart)
+                        @foreach ($infoParts as $infoPart)
                             @php
                                 $key = $infoPart['key'];
                                 $value = $infoPart['value'];
@@ -117,7 +123,9 @@
                             @endphp
 
                             <div>
-                                <dt class="sr-only">{{ $infoPart['part']['label'] ?? __("public.item_page.info_fields.{$key}_long") }}</dt>
+                                <dt class="sr-only">
+                                    {{ $infoPart['part']['label'] ?? __("public.item_page.info_fields.{$key}_long") }}
+                                </dt>
                                 <dd>
                                     <x-public.card-part-shell
                                         :part="$infoPart['part']"
@@ -125,17 +133,17 @@
                                         :style="$infoPart['style'] ?? null"
                                         data-test="{{ $infoPart['data_test'] }}"
                                     >
-                                        @if($isLinkList)
+                                        @if ($isLinkList)
                                             <span
                                                 class="flex min-w-0 flex-wrap items-center gap-1.5"
-                                                @if($key === 'categories') data-test="item-categories" @endif
-                                                @if($key === 'tags') data-test="item-tags" @endif
+                                                @if ($key === 'categories') data-test="item-categories" @endif
+                                                @if ($key === 'tags') data-test="item-tags" @endif
                                             >
-                                                @foreach($value as $link)
+                                                @foreach ($value as $link)
                                                     <a
                                                         href="{{ $link['url'] }}"
-                                                        class="font-medium underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-600"
-                                                        @if($key === 'transcribers') data-test="item-transcriber-link" @endif
+                                                        class="focus-visible:outline-primary-600 font-medium underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2"
+                                                        @if ($key === 'transcribers') data-test="item-transcriber-link" @endif
                                                     >
                                                         {{ $link['label'] }}
                                                     </a>
@@ -144,12 +152,12 @@
                                         @else
                                             <span
                                                 class="block min-w-0 truncate"
-                                                @if($key === 'duration') data-test="item-duration" @endif
-                                                @if($key === 'reading_time') data-test="reading-time" @endif
-                                                @if($key === 'word_count') data-test="transcript-length" @endif
-                                                @if($key === 'transcription_count') data-test="item-transcription-count" @endif
+                                                @if ($key === 'duration') data-test="item-duration" @endif
+                                                @if ($key === 'reading_time') data-test="reading-time" @endif
+                                                @if ($key === 'word_count') data-test="transcript-length" @endif
+                                                @if ($key === 'transcription_count') data-test="item-transcription-count" @endif
                                             >
-                                                @if($key === 'duration')
+                                                @if ($key === 'duration')
                                                     {{ __('public.labels.duration_value', ['duration' => $value]) }}
                                                 @else
                                                     {{ $value }}
@@ -195,14 +203,12 @@
                     }"
                     data-test="item-share-actions"
                 >
-                    <h2 class="text-sm font-semibold text-gray-950 dark:text-white">
-                        {{ __('public.labels.share') }}
-                    </h2>
+                    <h2 class="text-sm font-semibold text-gray-950 dark:text-white">{{ __('public.labels.share') }}</h2>
                     <div class="flex flex-wrap gap-2">
                         <button
                             type="button"
                             x-on:click="copyLink()"
-                            class="rounded-md border border-gray-200 px-3 py-1.5 text-sm font-medium text-gray-700 hover:border-primary-300 hover:text-primary-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-600 dark:border-gray-700 dark:text-gray-200 dark:hover:border-primary-500"
+                            class="hover:border-primary-300 hover:text-primary-700 focus-visible:outline-primary-600 dark:hover:border-primary-500 rounded-md border border-gray-200 px-3 py-1.5 text-sm font-medium text-gray-700 focus-visible:outline-2 focus-visible:outline-offset-2 dark:border-gray-700 dark:text-gray-200"
                             data-test="copy-item-link"
                         >
                             <span x-show="! copied">{{ __('public.actions.copy_link') }}</span>
@@ -211,7 +217,7 @@
                         <button
                             type="button"
                             x-on:click="shareLink()"
-                            class="rounded-md bg-primary-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-primary-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-600 dark:bg-primary-500 dark:hover:bg-primary-400"
+                            class="bg-primary-600 hover:bg-primary-700 focus-visible:outline-primary-600 dark:bg-primary-500 dark:hover:bg-primary-400 rounded-md px-3 py-1.5 text-sm font-medium text-white focus-visible:outline-2 focus-visible:outline-offset-2"
                             data-test="share-item-link"
                         >
                             {{ __('public.actions.share') }}

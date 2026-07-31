@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "2dc10c2c34a20fef22df5346515a10d8",
+    "content-hash": "2f2de692d8fa1cff978d183a77dbb97a",
     "packages": [
         {
             "name": "anourvalar/eloquent-serialize",
@@ -3531,6 +3531,53 @@
                 "source": "https://github.com/laravel/tinker/tree/v3.0.2"
             },
             "time": "2026-03-17T14:54:13+00:00"
+        },
+        {
+            "name": "laraveldaily/filawidgets",
+            "version": "v0.1.2",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/LaravelDaily/FilaWidgets.git",
+                "reference": "59bc01958ad5a6450c3655d758fb00cd1058d84c"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/LaravelDaily/FilaWidgets/zipball/59bc01958ad5a6450c3655d758fb00cd1058d84c",
+                "reference": "59bc01958ad5a6450c3655d758fb00cd1058d84c",
+                "shasum": ""
+            },
+            "require": {
+                "filament/filament": "^4.0|^5.0",
+                "laravel/framework": "^11.0|^12.0|^13.0",
+                "php": "^8.2"
+            },
+            "require-dev": {
+                "orchestra/testbench": "^9.0|^10.0",
+                "pestphp/pest": "^3.0"
+            },
+            "type": "library",
+            "extra": {
+                "laravel": {
+                    "providers": [
+                        "LaravelDaily\\FilaWidgets\\FilaWidgetsServiceProvider"
+                    ]
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "LaravelDaily\\FilaWidgets\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "description": "Reusable Filament dashboard widgets.",
+            "support": {
+                "issues": "https://github.com/LaravelDaily/FilaWidgets/issues",
+                "source": "https://github.com/LaravelDaily/FilaWidgets/tree/v0.1.2"
+            },
+            "time": "2026-03-24T18:37:29+00:00"
         },
         {
             "name": "league/commonmark",
@@ -11726,6 +11773,83 @@
             "time": "2026-06-07T11:47:49+00:00"
         },
         {
+            "name": "composer/semver",
+            "version": "3.4.4",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/composer/semver.git",
+                "reference": "198166618906cb2de69b95d7d47e5fa8aa1b2b95"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/composer/semver/zipball/198166618906cb2de69b95d7d47e5fa8aa1b2b95",
+                "reference": "198166618906cb2de69b95d7d47e5fa8aa1b2b95",
+                "shasum": ""
+            },
+            "require": {
+                "php": "^5.3.2 || ^7.0 || ^8.0"
+            },
+            "require-dev": {
+                "phpstan/phpstan": "^1.11",
+                "symfony/phpunit-bridge": "^3 || ^7"
+            },
+            "type": "library",
+            "extra": {
+                "branch-alias": {
+                    "dev-main": "3.x-dev"
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "Composer\\Semver\\": "src"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Nils Adermann",
+                    "email": "naderman@naderman.de",
+                    "homepage": "http://www.naderman.de"
+                },
+                {
+                    "name": "Jordi Boggiano",
+                    "email": "j.boggiano@seld.be",
+                    "homepage": "http://seld.be"
+                },
+                {
+                    "name": "Rob Bast",
+                    "email": "rob.bast@gmail.com",
+                    "homepage": "http://robbast.nl"
+                }
+            ],
+            "description": "Semver library that offers utilities, version constraint parsing and validation.",
+            "keywords": [
+                "semantic",
+                "semver",
+                "validation",
+                "versioning"
+            ],
+            "support": {
+                "irc": "ircs://irc.libera.chat:6697/composer",
+                "issues": "https://github.com/composer/semver/issues",
+                "source": "https://github.com/composer/semver/tree/3.4.4"
+            },
+            "funding": [
+                {
+                    "url": "https://packagist.com",
+                    "type": "custom"
+                },
+                {
+                    "url": "https://github.com/composer",
+                    "type": "github"
+                }
+            ],
+            "time": "2025-08-20T19:15:30+00:00"
+        },
+        {
             "name": "composer/xdebug-handler",
             "version": "3.0.5",
             "source": {
@@ -12348,6 +12472,76 @@
                 "source": "https://github.com/laravel/boost"
             },
             "time": "2026-07-17T14:28:57+00:00"
+        },
+        {
+            "name": "laravel/doctor",
+            "version": "v0.1.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/laravel/doctor.git",
+                "reference": "6e634a0746f70f9dd9abaf4d9c8a4b81ceebdd4c"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/laravel/doctor/zipball/6e634a0746f70f9dd9abaf4d9c8a4b81ceebdd4c",
+                "reference": "6e634a0746f70f9dd9abaf4d9c8a4b81ceebdd4c",
+                "shasum": ""
+            },
+            "require": {
+                "composer-runtime-api": "^2.0",
+                "composer/semver": "^3.0",
+                "illuminate/console": "^12.0|^13.0",
+                "illuminate/contracts": "^12.0|^13.0",
+                "illuminate/process": "^12.0|^13.0",
+                "illuminate/support": "^12.0|^13.0",
+                "laravel/agent-detector": "^2.0.1",
+                "laravel/prompts": "^0.3.21",
+                "php": "^8.3"
+            },
+            "require-dev": {
+                "laravel/pint": "^1.28.0",
+                "orchestra/testbench": "^10.0|^11.0",
+                "pestphp/pest": "^4.0",
+                "phpstan/phpstan": "^2.0",
+                "rector/rector": "^2.3"
+            },
+            "type": "library",
+            "extra": {
+                "laravel": {
+                    "providers": [
+                        "Laravel\\Doctor\\DoctorServiceProvider"
+                    ]
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "Laravel\\Doctor\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Taylor Otwell",
+                    "email": "taylor@laravel.com"
+                }
+            ],
+            "description": "First-party diagnostics for Laravel applications",
+            "homepage": "https://github.com/laravel/doctor",
+            "keywords": [
+                "configuration",
+                "diagnostics",
+                "doctor",
+                "health",
+                "laravel"
+            ],
+            "support": {
+                "issues": "https://github.com/laravel/doctor/issues",
+                "source": "https://github.com/laravel/doctor"
+            },
+            "time": "2026-07-22T17:39:59+00:00"
         },
         {
             "name": "laravel/mcp",

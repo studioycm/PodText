@@ -23,14 +23,14 @@
         theme: @js($selectedTheme),
     }"
 >
-    @if($snapshots->isEmpty())
+    @if ($snapshots->isEmpty())
         <div class="rounded-lg border border-dashed border-gray-300 p-4 text-sm text-gray-600 dark:border-gray-700 dark:text-gray-300">
             {{ __('admin.messages.settings_backup_no_snapshots') }}
         </div>
     @else
         <div class="flex flex-wrap items-center justify-between gap-3">
             <div class="flex flex-wrap gap-2" role="tablist" aria-label="{{ __('admin.fields.screen_key') }}">
-                @foreach($screens as $screenKey)
+                @foreach ($screens as $screenKey)
                     <button
                         type="button"
                         class="rounded-md border px-3 py-1.5 text-sm font-medium transition"
@@ -44,7 +44,7 @@
                 @endforeach
             </div>
 
-            @if($doneSnapshots->isNotEmpty())
+            @if ($doneSnapshots->isNotEmpty())
                 <a
                     href="{{ route('admin.settings-backups.snapshots-zip', $backup) }}"
                     class="inline-flex items-center justify-center rounded-md border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-900"
@@ -56,7 +56,7 @@
         </div>
 
         <div class="flex flex-wrap gap-2" role="group" aria-label="{{ __('admin.fields.snapshot_theme') }}">
-            @foreach($themes as $theme)
+            @foreach ($themes as $theme)
                 <button
                     type="button"
                     class="rounded-md border px-3 py-1.5 text-sm font-medium transition"
@@ -71,7 +71,7 @@
         </div>
 
         <div class="space-y-4">
-            @foreach($snapshots as $snapshot)
+            @foreach ($snapshots as $snapshot)
                 <article
                     class="rounded-lg border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-gray-950"
                     x-show="screen === @js($snapshot->screen_key) && theme === @js($snapshot->theme)"
@@ -114,7 +114,7 @@
                         </div>
 
                         <div class="flex flex-wrap gap-2">
-                            @if($snapshot->status === SettingsBackupSnapshot::STATUS_DONE && filled($snapshot->path))
+                            @if ($snapshot->status === SettingsBackupSnapshot::STATUS_DONE && filled($snapshot->path))
                                 <a
                                     href="{{ $snapshot->fileUrl(download: true) }}"
                                     class="rounded-md border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-700 transition hover:bg-gray-50 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-900"
@@ -124,12 +124,15 @@
                                 </a>
                             @endif
 
-                            @if(in_array($snapshot->status, [SettingsBackupSnapshot::STATUS_DONE, SettingsBackupSnapshot::STATUS_FAILED], true))
-                                <form method="POST" action="{{ route('admin.settings-backup-snapshots.retry', $snapshot) }}">
+                            @if (in_array($snapshot->status, [SettingsBackupSnapshot::STATUS_DONE, SettingsBackupSnapshot::STATUS_FAILED], true))
+                                <form
+                                    method="POST"
+                                    action="{{ route('admin.settings-backup-snapshots.retry', $snapshot) }}"
+                                >
                                     @csrf
                                     <button
                                         type="submit"
-                                        class="rounded-md border border-warning-500 px-3 py-1.5 text-xs font-medium text-warning-700 transition hover:bg-warning-50 dark:text-warning-200 dark:hover:bg-warning-950"
+                                        class="border-warning-500 text-warning-700 hover:bg-warning-50 dark:text-warning-200 dark:hover:bg-warning-950 rounded-md border px-3 py-1.5 text-xs font-medium transition"
                                         data-test="settings-backup-snapshot-retry"
                                     >
                                         {{ $snapshot->status === SettingsBackupSnapshot::STATUS_DONE ? __('admin.actions.recapture_snapshot') : __('admin.actions.retry_snapshot') }}
@@ -139,13 +142,13 @@
                         </div>
                     </div>
 
-                    @if($snapshot->status === SettingsBackupSnapshot::STATUS_FAILED && filled($snapshot->error))
-                        <p class="mt-3 rounded-md bg-danger-50 p-3 text-xs text-danger-800 dark:bg-danger-950 dark:text-danger-200">
+                    @if ($snapshot->status === SettingsBackupSnapshot::STATUS_FAILED && filled($snapshot->error))
+                        <p class="bg-danger-50 text-danger-800 dark:bg-danger-950 dark:text-danger-200 mt-3 rounded-md p-3 text-xs">
                             {{ $snapshot->error }}
                         </p>
                     @endif
 
-                    @if($snapshot->status === SettingsBackupSnapshot::STATUS_DONE && $snapshot->isImage() && filled($snapshot->fileUrl()))
+                    @if ($snapshot->status === SettingsBackupSnapshot::STATUS_DONE && $snapshot->isImage() && filled($snapshot->fileUrl()))
                         <div
                             class="mt-4 max-h-[70vh] overflow-auto rounded-md border border-gray-200 bg-gray-50 dark:border-gray-800 dark:bg-gray-900"
                             data-test="settings-backup-snapshot-scroll-container"
@@ -154,9 +157,9 @@
                                 src="{{ $snapshot->fileUrl() }}"
                                 alt="{{ __("admin.settings_backup_snapshot_screens.{$snapshot->screen_key}") }}"
                                 class="w-full min-w-[640px] bg-white dark:bg-gray-950"
-                            >
+                            />
                         </div>
-                    @elseif($snapshot->status === SettingsBackupSnapshot::STATUS_DONE && filled($snapshot->fileUrl()))
+                    @elseif ($snapshot->status === SettingsBackupSnapshot::STATUS_DONE && filled($snapshot->fileUrl()))
                         <a
                             href="{{ $snapshot->fileUrl() }}"
                             target="_blank"

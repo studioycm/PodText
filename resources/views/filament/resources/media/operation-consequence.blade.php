@@ -11,7 +11,9 @@
             <span class="grid h-14 w-14 flex-shrink-0 place-items-center rounded-md border border-gray-200 text-gray-400 dark:border-gray-700">—</span>
         @endif
         <div class="min-w-0">
-            <p class="truncate text-sm font-semibold text-gray-950 dark:text-white" dir="auto">{{ $projection['pretty_name'] }}</p>
+            <p class="truncate text-sm font-semibold text-gray-950 dark:text-white" dir="auto">
+                {{ $projection['pretty_name'] }}
+            </p>
             <p class="truncate text-xs text-gray-500 dark:text-gray-400" dir="ltr">
                 {{ $storedFilename }} · {{ $projection['width'] }}×{{ $projection['height'] }} · {{ \Illuminate\Support\Number::fileSize((int) $projection['size']) }}
             </p>

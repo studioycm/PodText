@@ -54,7 +54,10 @@
             {!! $embedHtml !!}
         </div>
     @elseif ($canRenderEmbed)
-        <div x-data="{ loaded: false }" class="relative aspect-video overflow-hidden rounded-lg bg-gray-100 ring-1 ring-gray-950/10 dark:bg-gray-800 dark:ring-white/10">
+        <div
+            x-data="{ loaded: false }"
+            class="relative aspect-video overflow-hidden rounded-lg bg-gray-100 ring-1 ring-gray-950/10 dark:bg-gray-800 dark:ring-white/10"
+        >
             <div
                 x-show="! loaded"
                 class="absolute inset-0 grid place-items-center text-sm text-gray-600 dark:text-gray-300"
@@ -68,7 +71,15 @@
                 class="h-full w-full"
                 loading="lazy"
                 referrerpolicy="strict-origin-when-cross-origin"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                allow="
+                    accelerometer;
+                    autoplay;
+                    clipboard-write;
+                    encrypted-media;
+                    gyroscope;
+                    picture-in-picture;
+                    web-share;
+                "
                 allowfullscreen
                 x-on:load="loaded = true"
             ></iframe>
@@ -78,51 +89,51 @@
             href="{{ $mediaUrl }}"
             target="_blank"
             rel="noopener noreferrer"
-            class="inline-flex w-fit rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-primary-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-600 dark:bg-primary-500 dark:hover:bg-primary-400"
+            class="bg-primary-600 hover:bg-primary-700 focus-visible:outline-primary-600 dark:bg-primary-500 dark:hover:bg-primary-400 inline-flex w-fit rounded-lg px-4 py-2 text-sm font-semibold text-white shadow-sm focus-visible:outline-2 focus-visible:outline-offset-2"
             data-test="media-source-link"
         >
             {{ __('public.media.open_source') }}
         </a>
     @endif
 
-    @if($providerLabel || filled($sourceTitle) || filled($sourceDescription) || $duration || $publishedDate || $safeMediaHost)
+    @if ($providerLabel || filled($sourceTitle) || filled($sourceDescription) || $duration || $publishedDate || $safeMediaHost)
         <dl class="space-y-2 text-sm text-gray-600 dark:text-gray-300">
-            @if($providerLabel)
+            @if ($providerLabel)
                 <div data-test="media-provider">
                     <dt class="sr-only">{{ __('public.media.provider') }}</dt>
                     <dd>{{ $providerLabel }}</dd>
                 </div>
             @endif
 
-            @if(filled($sourceTitle))
+            @if (filled($sourceTitle))
                 <div data-test="media-title">
                     <dt class="sr-only">{{ __('public.media.source_title') }}</dt>
                     <dd class="font-medium text-gray-900 dark:text-white">{{ $sourceTitle }}</dd>
                 </div>
             @endif
 
-            @if(filled($sourceDescription))
+            @if (filled($sourceDescription))
                 <div data-test="media-description">
                     <dt class="sr-only">{{ __('public.media.source_description') }}</dt>
                     <dd>{{ $sourceDescription }}</dd>
                 </div>
             @endif
 
-            @if($duration)
+            @if ($duration)
                 <div data-test="media-duration">
                     <dt class="sr-only">{{ __('public.labels.duration') }}</dt>
                     <dd>{{ __('public.labels.duration_value', ['duration' => $duration]) }}</dd>
                 </div>
             @endif
 
-            @if($publishedDate)
+            @if ($publishedDate)
                 <div data-test="media-published-at">
                     <dt class="sr-only">{{ __('public.labels.published_at') }}</dt>
                     <dd>{{ $publishedDate }}</dd>
                 </div>
             @endif
 
-            @if($safeMediaHost)
+            @if ($safeMediaHost)
                 <div data-test="media-source-host">
                     <dt class="sr-only">{{ __('public.media.source_host') }}</dt>
                     <dd>{{ $safeMediaHost }}</dd>

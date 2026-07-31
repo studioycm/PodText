@@ -185,8 +185,8 @@ it('serves public urls as maintenance responses with retry-after when enabled', 
             ->assertHeader('Retry-After', '21600')
             ->assertSee('lang="he"', false)
             ->assertSee('dir="rtl"', false)
-            ->assertSee('<meta charset="utf-8">', false)
-            ->assertSee('<meta name="viewport" content="width=device-width, initial-scale=1">', false)
+            ->assertSee('<meta charset="utf-8" />', false)
+            ->assertSee('<meta name="viewport" content="width=device-width, initial-scale=1" />', false)
             ->assertSee('data-maintenance-marker="mp1"', false)
             ->assertSee('MP1 maintenance marker')
             ->assertDontSee($item->title);

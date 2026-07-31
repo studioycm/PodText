@@ -15,14 +15,17 @@
     @php
         $title = $maintenance['title'] ?? null;
         $richHtml = $maintenance['rich_html'] ?? null;
+        $rendersMaintenanceForm = $maintenanceFormLocation === \App\Support\PublicFront\Maintenance\MaintenanceForm::LOCATION_RENDERED_PAGE && filled($maintenanceFormHtml);
+        $rendersMaintenanceFormBeforeContent = $rendersMaintenanceForm && $maintenanceFormPosition === \App\Support\PublicFront\Maintenance\MaintenanceForm::POSITION_BEFORE_CONTENT;
+        $rendersMaintenanceFormAfterContent = $rendersMaintenanceForm && $maintenanceFormPosition === \App\Support\PublicFront\Maintenance\MaintenanceForm::POSITION_AFTER_CONTENT;
     @endphp
 
     <!doctype html>
     <html lang="he" dir="rtl">
         <head>
-            <meta charset="utf-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1">
-            <meta name="robots" content="noindex, follow">
+            <meta charset="utf-8" />
+            <meta name="viewport" content="width=device-width, initial-scale=1" />
+            <meta name="robots" content="noindex, follow" />
             <title>{{ $title ?: __('public.maintenance.title') }}</title>
             <style>
                 :root {
@@ -55,7 +58,13 @@
                     place-items: center;
                     background: var(--maintenance-bg);
                     color: var(--maintenance-text);
-                    font-family: "Varela Round", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+                    font-family:
+                        'Varela Round',
+                        system-ui,
+                        -apple-system,
+                        BlinkMacSystemFont,
+                        'Segoe UI',
+                        sans-serif;
                     line-height: 1.7;
                 }
 
@@ -92,9 +101,7 @@
         </head>
         <body>
             <main>
-                @if ($maintenanceFormLocation === \App\Support\PublicFront\Maintenance\MaintenanceForm::LOCATION_RENDERED_PAGE
-                    && $maintenanceFormPosition === \App\Support\PublicFront\Maintenance\MaintenanceForm::POSITION_BEFORE_CONTENT
-                    && filled($maintenanceFormHtml))
+                @if ($rendersMaintenanceFormBeforeContent)
                     {!! $maintenanceFormHtml !!}
                 @endif
 
@@ -110,9 +117,7 @@
                     @endif
                 </div>
 
-                @if ($maintenanceFormLocation === \App\Support\PublicFront\Maintenance\MaintenanceForm::LOCATION_RENDERED_PAGE
-                    && $maintenanceFormPosition === \App\Support\PublicFront\Maintenance\MaintenanceForm::POSITION_AFTER_CONTENT
-                    && filled($maintenanceFormHtml))
+                @if ($rendersMaintenanceFormAfterContent)
                     {!! $maintenanceFormHtml !!}
                 @endif
             </main>

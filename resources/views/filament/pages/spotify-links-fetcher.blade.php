@@ -1,13 +1,13 @@
 <x-filament-panels::page>
-    <div data-tools1-spotify-fetcher data-tools1-rtl="{{ app()->getLocale() === 'he' ? 'rtl' : 'ltr' }}" class="space-y-6">
+    <div
+        data-tools1-spotify-fetcher
+        data-tools1-rtl="{{ app()->getLocale() === 'he' ? 'rtl' : 'ltr' }}"
+        class="space-y-6"
+    >
         <x-filament::section>
-            <x-slot name="heading">
-                {{ __('admin.spotify_fetcher.sections.input') }}
-            </x-slot>
+            <x-slot name="heading">{{ __('admin.spotify_fetcher.sections.input') }}</x-slot>
 
-            <x-slot name="description">
-                {{ __('admin.spotify_fetcher.descriptions.input') }}
-            </x-slot>
+            <x-slot name="description">{{ __('admin.spotify_fetcher.descriptions.input') }}</x-slot>
 
             <div class="grid grid-cols-1 gap-5 xl:grid-cols-[1fr_22rem]">
                 <label class="space-y-1">
@@ -18,7 +18,7 @@
                         wire:model.defer="linksInput"
                         rows="9"
                         dir="auto"
-                        class="block min-h-56 w-full rounded-lg border-gray-300 bg-white font-mono text-sm leading-6 text-gray-950 shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:border-white/10 dark:bg-gray-950 dark:text-white"
+                        class="focus:border-primary-500 focus:ring-primary-500 block min-h-56 w-full rounded-lg border-gray-300 bg-white font-mono text-sm leading-6 text-gray-950 shadow-sm dark:border-white/10 dark:bg-gray-950 dark:text-white"
                     ></textarea>
                 </label>
 
@@ -29,7 +29,7 @@
                         </span>
                         <select
                             wire:model.live="entityMode"
-                            class="block w-full rounded-lg border-gray-300 bg-white text-sm text-gray-950 shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:border-white/10 dark:bg-white/5 dark:text-white"
+                            class="focus:border-primary-500 focus:ring-primary-500 block w-full rounded-lg border-gray-300 bg-white text-sm text-gray-950 shadow-sm dark:border-white/10 dark:bg-white/5 dark:text-white"
                         >
                             <option value="episodes">{{ __('admin.spotify_fetcher.modes.episodes') }}</option>
                             <option value="shows">{{ __('admin.spotify_fetcher.modes.shows') }}</option>
@@ -45,7 +45,7 @@
                             min="1"
                             max="100"
                             wire:model.live="batchCap"
-                            class="block w-full rounded-lg border-gray-300 bg-white text-sm text-gray-950 shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:border-white/10 dark:bg-white/5 dark:text-white"
+                            class="focus:border-primary-500 focus:ring-primary-500 block w-full rounded-lg border-gray-300 bg-white text-sm text-gray-950 shadow-sm dark:border-white/10 dark:bg-white/5 dark:text-white"
                         />
                         <span class="text-xs text-gray-500 dark:text-gray-400">
                             {{ __('admin.spotify_fetcher.helpers.batch_cap') }}
@@ -58,10 +58,10 @@
                         </span>
                         <select
                             wire:model.live="connectionId"
-                            class="block w-full rounded-lg border-gray-300 bg-white text-sm text-gray-950 shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:border-white/10 dark:bg-white/5 dark:text-white"
+                            class="focus:border-primary-500 focus:ring-primary-500 block w-full rounded-lg border-gray-300 bg-white text-sm text-gray-950 shadow-sm dark:border-white/10 dark:bg-white/5 dark:text-white"
                         >
                             <option value="">{{ __('admin.spotify_fetcher.connection_options.reduced') }}</option>
-                            @foreach($this->spotifyConnections() as $id => $name)
+                            @foreach ($this->spotifyConnections() as $id => $name)
                                 <option value="{{ $id }}">{{ $name }}</option>
                             @endforeach
                         </select>
@@ -81,10 +81,10 @@
                             type="file"
                             wire:model="csvUpload"
                             accept=".csv,text/csv,text/plain"
-                            class="block w-full text-sm text-gray-700 file:me-3 file:rounded-lg file:border-0 file:bg-primary-600 file:px-3 file:py-2 file:text-sm file:font-semibold file:text-white hover:file:bg-primary-500 dark:text-gray-200"
+                            class="file:bg-primary-600 hover:file:bg-primary-500 block w-full text-sm text-gray-700 file:me-3 file:rounded-lg file:border-0 file:px-3 file:py-2 file:text-sm file:font-semibold file:text-white dark:text-gray-200"
                         />
                         @error('csvUpload')
-                            <span class="text-sm text-danger-600 dark:text-danger-400">{{ $message }}</span>
+                            <span class="text-danger-600 dark:text-danger-400 text-sm">{{ $message }}</span>
                         @enderror
                     </label>
                 </div>
@@ -95,7 +95,12 @@
                     {{ __('admin.spotify_fetcher.actions.parse') }}
                 </x-filament::button>
 
-                <x-filament::button type="button" icon="heroicon-o-arrow-path" wire:click="fetch" wire:loading.attr="disabled">
+                <x-filament::button
+                    type="button"
+                    icon="heroicon-o-arrow-path"
+                    wire:click="fetch"
+                    wire:loading.attr="disabled"
+                >
                     {{ __('admin.spotify_fetcher.actions.fetch') }}
                 </x-filament::button>
 
@@ -105,52 +110,48 @@
             </div>
         </x-filament::section>
 
-        @if($usedReducedMode)
+        @if ($usedReducedMode)
             <div
                 data-spotify-reduced-banner
                 role="status"
-                class="rounded-xl border-2 border-warning-400 bg-warning-50 p-4 dark:border-warning-500/50 dark:bg-warning-500/10"
+                class="border-warning-400 bg-warning-50 dark:border-warning-500/50 dark:bg-warning-500/10 rounded-xl border-2 p-4"
             >
-                <p class="text-base font-bold text-warning-800 dark:text-warning-200">
+                <p class="text-warning-800 dark:text-warning-200 text-base font-bold">
                     {{ __('admin.spotify_fetcher.reduced_banner.title') }}
                 </p>
-                <p class="mt-1 text-sm text-warning-700 dark:text-warning-300">
+                <p class="text-warning-700 dark:text-warning-300 mt-1 text-sm">
                     {{ __('admin.spotify_fetcher.reduced_banner.body') }}
                 </p>
             </div>
         @endif
 
-        @if($warnings !== [])
+        @if ($warnings !== [])
             <x-filament::section>
-                <x-slot name="heading">
-                    {{ __('admin.spotify_fetcher.sections.warnings') }}
-                </x-slot>
+                <x-slot name="heading">{{ __('admin.spotify_fetcher.sections.warnings') }}</x-slot>
 
-                <ul class="list-inside list-disc space-y-1 text-sm text-warning-800 dark:text-warning-200">
-                    @foreach($warnings as $warning)
+                <ul class="text-warning-800 dark:text-warning-200 list-inside list-disc space-y-1 text-sm">
+                    @foreach ($warnings as $warning)
                         <li>{{ $warning }}</li>
                     @endforeach
                 </ul>
             </x-filament::section>
         @endif
 
-        @if($parsedLinks !== [])
+        @if ($parsedLinks !== [])
             <x-filament::section>
-                <x-slot name="heading">
-                    {{ __('admin.spotify_fetcher.sections.parsed') }}
-                </x-slot>
+                <x-slot name="heading">{{ __('admin.spotify_fetcher.sections.parsed') }}</x-slot>
 
                 <div class="overflow-x-auto">
                     <table class="w-full min-w-[42rem] divide-y divide-gray-200 text-sm dark:divide-white/10">
                         <thead>
-                            <tr class="text-start text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">
+                            <tr class="text-start text-xs font-semibold text-gray-500 uppercase dark:text-gray-400">
                                 <th class="px-3 py-2">{{ __('admin.spotify_fetcher.fields.type') }}</th>
                                 <th class="px-3 py-2">{{ __('admin.spotify_fetcher.fields.external_id') }}</th>
                                 <th class="px-3 py-2">{{ __('admin.spotify_fetcher.fields.source') }}</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-gray-100 dark:divide-white/5">
-                            @foreach($parsedLinks as $link)
+                            @foreach ($parsedLinks as $link)
                                 <tr>
                                     <td class="px-3 py-2">{{ __("admin.spotify_fetcher.types.{$link['type']}") }}</td>
                                     <td class="px-3 py-2 font-mono">{{ $link['id'] }}</td>
@@ -163,50 +164,58 @@
             </x-filament::section>
         @endif
 
-        @if($rows !== [])
+        @if ($rows !== [])
             <x-filament::section>
-                <x-slot name="heading">
-                    {{ __('admin.spotify_fetcher.sections.results') }}
-                </x-slot>
+                <x-slot name="heading">{{ __('admin.spotify_fetcher.sections.results') }}</x-slot>
 
-	                <div class="mb-4 flex flex-wrap gap-2">
-	                    <x-filament::button type="button" color="gray" icon="heroicon-o-arrow-down-tray" wire:click="downloadEpisodesCsv">
-	                        {{ __('admin.spotify_fetcher.actions.download_episodes') }}
-	                    </x-filament::button>
+                <div class="mb-4 flex flex-wrap gap-2">
+                    <x-filament::button
+                        type="button"
+                        color="gray"
+                        icon="heroicon-o-arrow-down-tray"
+                        wire:click="downloadEpisodesCsv"
+                    >
+                        {{ __('admin.spotify_fetcher.actions.download_episodes') }}
+                    </x-filament::button>
 
-                    @if($podcastRows !== [])
-                        <x-filament::button type="button" color="gray" icon="heroicon-o-arrow-down-tray" wire:click="downloadPodcastsCsv">
+                    @if ($podcastRows !== [])
+                        <x-filament::button
+                            type="button"
+                            color="gray"
+                            icon="heroicon-o-arrow-down-tray"
+                            wire:click="downloadPodcastsCsv"
+                        >
                             {{ __('admin.spotify_fetcher.actions.download_podcasts') }}
-	                        </x-filament::button>
-	                    @endif
-	                </div>
+                        </x-filament::button>
+                    @endif
+                </div>
 
-	                <p class="mb-4 text-sm text-gray-500 dark:text-gray-400">
-	                    {{ __('admin.spotify_fetcher.helpers.csv_import_order') }}
-	                </p>
+                <p class="mb-4 text-sm text-gray-500 dark:text-gray-400">
+                    {{ __('admin.spotify_fetcher.helpers.csv_import_order') }}
+                </p>
 
-	                <div class="overflow-x-auto">
-	                    <table class="w-full min-w-[96rem] divide-y divide-gray-200 text-sm dark:divide-white/10">
-	                        <thead>
-	                            <tr class="text-start text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">
-	                                <th class="px-3 py-2">{{ __('admin.spotify_fetcher.fields.status') }}</th>
-	                                <th class="px-3 py-2">{{ __('admin.spotify_fetcher.fields.direct_import') }}</th>
-	                                <th class="px-3 py-2">{{ __('admin.spotify_fetcher.fields.source_tier') }}</th>
-	                                <th class="px-3 py-2">{{ __('admin.fields.title') }}</th>
-	                                <th class="px-3 py-2">{{ __('admin.fields.title_prefix') }}</th>
-	                                <th class="px-3 py-2">{{ __('admin.fields.description_markdown') }}</th>
+                <div class="overflow-x-auto">
+                    <table class="w-full min-w-[96rem] divide-y divide-gray-200 text-sm dark:divide-white/10">
+                        <thead>
+                            <tr class="text-start text-xs font-semibold text-gray-500 uppercase dark:text-gray-400">
+                                <th class="px-3 py-2">{{ __('admin.spotify_fetcher.fields.status') }}</th>
+                                <th class="px-3 py-2">{{ __('admin.spotify_fetcher.fields.direct_import') }}</th>
+                                <th class="px-3 py-2">{{ __('admin.spotify_fetcher.fields.source_tier') }}</th>
+                                <th class="px-3 py-2">{{ __('admin.fields.title') }}</th>
+                                <th class="px-3 py-2">{{ __('admin.fields.title_prefix') }}</th>
+                                <th class="px-3 py-2">{{ __('admin.fields.description_markdown') }}</th>
                                 <th class="px-3 py-2">{{ __('admin.fields.duration_seconds') }}</th>
-	                                <th class="px-3 py-2">{{ __('admin.fields.original_published_at') }}</th>
-	                                <th class="px-3 py-2">{{ __('admin.fields.external_id') }}</th>
-	                                <th class="px-3 py-2">{{ __('admin.fields.reference_key') }}</th>
-	                                <th class="px-3 py-2">{{ __('admin.import.columns.content_group_reference_key') }}</th>
-	                                <th class="px-3 py-2">{{ __('admin.spotify_fetcher.fields.image_preview') }}</th>
-	                                <th class="px-3 py-2">{{ __('admin.fields.external_thumbnail_url') }}</th>
-	                                <th class="px-3 py-2">{{ __('admin.spotify_fetcher.fields.show') }}</th>
-	                            </tr>
+                                <th class="px-3 py-2">{{ __('admin.fields.original_published_at') }}</th>
+                                <th class="px-3 py-2">{{ __('admin.fields.external_id') }}</th>
+                                <th class="px-3 py-2">{{ __('admin.fields.reference_key') }}</th>
+                                <th class="px-3 py-2">{{ __('admin.import.columns.content_group_reference_key') }}</th>
+                                <th class="px-3 py-2">{{ __('admin.spotify_fetcher.fields.image_preview') }}</th>
+                                <th class="px-3 py-2">{{ __('admin.fields.external_thumbnail_url') }}</th>
+                                <th class="px-3 py-2">{{ __('admin.spotify_fetcher.fields.show') }}</th>
+                            </tr>
                         </thead>
                         <tbody class="divide-y divide-gray-100 dark:divide-white/5">
-                            @foreach($rows as $index => $row)
+                            @foreach ($rows as $index => $row)
                                 <tr wire:key="spotify-row-{{ $index }}">
                                     <td class="px-3 py-2 align-top">
                                         <span @class([
@@ -217,31 +226,38 @@
                                         ])>
                                             {{ $row['status_label'] }}
                                         </span>
-	                                        @if(filled($row['reason'] ?? null))
-	                                            <p class="mt-1 max-w-48 text-xs text-gray-500 dark:text-gray-400">{{ $row['reason'] }}</p>
-	                                        @endif
-	                                    </td>
-	                                    <td class="px-3 py-2 align-top">
-	                                        @if(filled($row['direct_import_label'] ?? null))
-	                                            <span class="inline-flex rounded-md bg-gray-50 px-2 py-1 text-xs font-medium text-gray-700 dark:bg-white/10 dark:text-gray-200">
-	                                                {{ $row['direct_import_label'] }}
-	                                            </span>
-	                                            @if(filled($row['direct_import_item_id'] ?? null))
-	                                                <a class="mt-1 block text-xs text-primary-600 hover:underline dark:text-primary-400" href="{{ \App\Filament\Resources\ContentItems\ContentItemResource::getUrl('workspace', ['record' => $row['direct_import_item_id']]) }}">
-	                                                    {{ __('admin.actions.open_episode_workspace') }}
-	                                                </a>
-	                                            @endif
-	                                            @if(filled($row['direct_import_error'] ?? null))
-	                                                <p class="mt-1 max-w-48 text-xs text-danger-600 dark:text-danger-400">{{ $row['direct_import_error'] }}</p>
-	                                            @endif
-	                                        @else
-	                                            <span class="text-xs text-gray-500 dark:text-gray-400">{{ __('admin.labels.none') }}</span>
-	                                        @endif
-	                                    </td>
-	                                    <td class="px-3 py-2 align-top">
-	                                        @if(filled($row['source_label'] ?? null))
-	                                            <span @class([
-	                                                'inline-flex rounded-md px-2 py-1 text-xs font-medium',
+                                        @if (filled($row['reason'] ?? null))
+                                            <p class="mt-1 max-w-48 text-xs text-gray-500 dark:text-gray-400">
+                                                {{ $row['reason'] }}
+                                            </p>
+                                        @endif
+                                    </td>
+                                    <td class="px-3 py-2 align-top">
+                                        @if (filled($row['direct_import_label'] ?? null))
+                                            <span class="inline-flex rounded-md bg-gray-50 px-2 py-1 text-xs font-medium text-gray-700 dark:bg-white/10 dark:text-gray-200">
+                                                {{ $row['direct_import_label'] }}
+                                            </span>
+                                            @if (filled($row['direct_import_item_id'] ?? null))
+                                                <a
+                                                    class="text-primary-600 dark:text-primary-400 mt-1 block text-xs hover:underline"
+                                                    href="{{ \App\Filament\Resources\ContentItems\ContentItemResource::getUrl('workspace', ['record' => $row['direct_import_item_id']]) }}"
+                                                >
+                                                    {{ __('admin.actions.open_episode_workspace') }}
+                                                </a>
+                                            @endif
+                                            @if (filled($row['direct_import_error'] ?? null))
+                                                <p class="text-danger-600 dark:text-danger-400 mt-1 max-w-48 text-xs">
+                                                    {{ $row['direct_import_error'] }}
+                                                </p>
+                                            @endif
+                                        @else
+                                            <span class="text-xs text-gray-500 dark:text-gray-400">{{ __('admin.labels.none') }}</span>
+                                        @endif
+                                    </td>
+                                    <td class="px-3 py-2 align-top">
+                                        @if (filled($row['source_label'] ?? null))
+                                            <span @class([
+                                                'inline-flex rounded-md px-2 py-1 text-xs font-medium',
                                                 'bg-primary-50 text-primary-700 dark:bg-primary-500/10 dark:text-primary-300' => ($row['source'] ?? null) === 'api',
                                                 'bg-warning-50 text-warning-700 dark:bg-warning-500/10 dark:text-warning-300' => ($row['source'] ?? null) === 'reduced',
                                             ])>
@@ -250,37 +266,65 @@
                                         @endif
                                     </td>
                                     <td class="px-3 py-2 align-top">
-                                        <input type="text" wire:model.live.debounce.500ms="rows.{{ $index }}.title" class="w-56 rounded-lg border-gray-300 text-sm dark:border-white/10 dark:bg-white/5 dark:text-white" />
+                                        <input
+                                            type="text"
+                                            wire:model.live.debounce.500ms="rows.{{ $index }}.title"
+                                            class="w-56 rounded-lg border-gray-300 text-sm dark:border-white/10 dark:bg-white/5 dark:text-white"
+                                        />
                                     </td>
                                     <td class="px-3 py-2 align-top">
-                                        <input type="text" wire:model.live.debounce.500ms="rows.{{ $index }}.title_prefix" class="w-48 rounded-lg border-gray-300 text-sm dark:border-white/10 dark:bg-white/5 dark:text-white" />
+                                        <input
+                                            type="text"
+                                            wire:model.live.debounce.500ms="rows.{{ $index }}.title_prefix"
+                                            class="w-48 rounded-lg border-gray-300 text-sm dark:border-white/10 dark:bg-white/5 dark:text-white"
+                                        />
                                     </td>
                                     <td class="px-3 py-2 align-top">
-                                        <textarea rows="3" wire:model.live.debounce.500ms="rows.{{ $index }}.description_markdown" class="w-80 rounded-lg border-gray-300 text-sm dark:border-white/10 dark:bg-white/5 dark:text-white"></textarea>
-                                        @if(filled($row['description_preview'] ?? null))
-                                            <p class="mt-1 max-w-80 text-xs text-gray-500 dark:text-gray-400" title="{{ $row['description_markdown'] }}">
+                                        <textarea
+                                            rows="3"
+                                            wire:model.live.debounce.500ms="rows.{{ $index }}.description_markdown"
+                                            class="w-80 rounded-lg border-gray-300 text-sm dark:border-white/10 dark:bg-white/5 dark:text-white"
+                                        ></textarea>
+                                        @if (filled($row['description_preview'] ?? null))
+                                            <p
+                                                class="mt-1 max-w-80 text-xs text-gray-500 dark:text-gray-400"
+                                                title="{{ $row['description_markdown'] }}"
+                                            >
                                                 {{ $row['description_preview'] }}
                                             </p>
                                         @endif
                                     </td>
                                     <td class="px-3 py-2 align-top">
-                                        <input type="number" min="0" wire:model.live.debounce.500ms="rows.{{ $index }}.duration_seconds" class="w-28 rounded-lg border-gray-300 text-sm dark:border-white/10 dark:bg-white/5 dark:text-white" />
+                                        <input
+                                            type="number"
+                                            min="0"
+                                            wire:model.live.debounce.500ms="rows.{{ $index }}.duration_seconds"
+                                            class="w-28 rounded-lg border-gray-300 text-sm dark:border-white/10 dark:bg-white/5 dark:text-white"
+                                        />
                                     </td>
                                     <td class="px-3 py-2 align-top">
-                                        <input type="text" wire:model.live.debounce.500ms="rows.{{ $index }}.release_date" class="w-40 rounded-lg border-gray-300 text-sm dark:border-white/10 dark:bg-white/5 dark:text-white" />
+                                        <input
+                                            type="text"
+                                            wire:model.live.debounce.500ms="rows.{{ $index }}.release_date"
+                                            class="w-40 rounded-lg border-gray-300 text-sm dark:border-white/10 dark:bg-white/5 dark:text-white"
+                                        />
                                     </td>
-	                                    <td class="px-3 py-2 align-top">
-	                                        <input type="text" wire:model.live.debounce.500ms="rows.{{ $index }}.external_id" class="w-44 rounded-lg border-gray-300 font-mono text-sm dark:border-white/10 dark:bg-white/5 dark:text-white" />
-	                                    </td>
-	                                    <td class="px-3 py-2 align-top font-mono text-xs">
-	                                        {{ $row['reference_key'] ?? '' }}
-	                                    </td>
-	                                    <td class="px-3 py-2 align-top font-mono text-xs">
-	                                        {{ $row['content_group_reference_key'] ?? '' }}
-	                                    </td>
-	                                    <td class="px-3 py-2 align-top">
-	                                        @if(filled($row['external_thumbnail_url'] ?? null))
-	                                            <img
+                                    <td class="px-3 py-2 align-top">
+                                        <input
+                                            type="text"
+                                            wire:model.live.debounce.500ms="rows.{{ $index }}.external_id"
+                                            class="w-44 rounded-lg border-gray-300 font-mono text-sm dark:border-white/10 dark:bg-white/5 dark:text-white"
+                                        />
+                                    </td>
+                                    <td class="px-3 py-2 align-top font-mono text-xs">
+                                        {{ $row['reference_key'] ?? '' }}
+                                    </td>
+                                    <td class="px-3 py-2 align-top font-mono text-xs">
+                                        {{ $row['content_group_reference_key'] ?? '' }}
+                                    </td>
+                                    <td class="px-3 py-2 align-top">
+                                        @if (filled($row['external_thumbnail_url'] ?? null))
+                                            <img
                                                 data-spotify-image-preview
                                                 src="{{ $row['external_thumbnail_url'] }}"
                                                 alt="{{ $row['title'] ?? __('admin.spotify_fetcher.fields.image_preview') }}"
@@ -289,17 +333,32 @@
                                                 class="h-14 w-14 rounded-md border border-gray-200 object-cover dark:border-white/10"
                                             />
                                         @else
-                                            <span data-spotify-image-preview-empty class="text-xs text-gray-500 dark:text-gray-400">
+                                            <span
+                                                data-spotify-image-preview-empty
+                                                class="text-xs text-gray-500 dark:text-gray-400"
+                                            >
                                                 {{ __('admin.spotify_fetcher.placeholders.no_image') }}
                                             </span>
                                         @endif
                                     </td>
                                     <td class="px-3 py-2 align-top">
-                                        <input type="url" wire:model.live.debounce.500ms="rows.{{ $index }}.external_thumbnail_url" class="w-72 rounded-lg border-gray-300 text-sm dark:border-white/10 dark:bg-white/5 dark:text-white" />
+                                        <input
+                                            type="url"
+                                            wire:model.live.debounce.500ms="rows.{{ $index }}.external_thumbnail_url"
+                                            class="w-72 rounded-lg border-gray-300 text-sm dark:border-white/10 dark:bg-white/5 dark:text-white"
+                                        />
                                     </td>
                                     <td class="px-3 py-2 align-top">
-                                        <input type="text" wire:model.live.debounce.500ms="rows.{{ $index }}.show_name" class="w-48 rounded-lg border-gray-300 text-sm dark:border-white/10 dark:bg-white/5 dark:text-white" />
-                                        <input type="text" wire:model.live.debounce.500ms="rows.{{ $index }}.show_id" class="mt-2 w-48 rounded-lg border-gray-300 font-mono text-sm dark:border-white/10 dark:bg-white/5 dark:text-white" />
+                                        <input
+                                            type="text"
+                                            wire:model.live.debounce.500ms="rows.{{ $index }}.show_name"
+                                            class="w-48 rounded-lg border-gray-300 text-sm dark:border-white/10 dark:bg-white/5 dark:text-white"
+                                        />
+                                        <input
+                                            type="text"
+                                            wire:model.live.debounce.500ms="rows.{{ $index }}.show_id"
+                                            class="mt-2 w-48 rounded-lg border-gray-300 font-mono text-sm dark:border-white/10 dark:bg-white/5 dark:text-white"
+                                        />
                                     </td>
                                 </tr>
                             @endforeach
@@ -309,58 +368,69 @@
             </x-filament::section>
         @endif
 
-        @if($podcastRows !== [])
-	            <x-filament::section>
-	                <x-slot name="heading">
-	                    {{ __('admin.spotify_fetcher.sections.podcasts') }}
-	                </x-slot>
+        @if ($podcastRows !== [])
+            <x-filament::section>
+                <x-slot name="heading">{{ __('admin.spotify_fetcher.sections.podcasts') }}</x-slot>
 
-	                <x-slot name="description">
-	                    {{ __('admin.spotify_fetcher.helpers.csv_import_order') }}
-	                </x-slot>
+                <x-slot name="description">{{ __('admin.spotify_fetcher.helpers.csv_import_order') }}</x-slot>
 
-	                <div class="overflow-x-auto">
-	                    <table class="w-full min-w-[56rem] divide-y divide-gray-200 text-sm dark:divide-white/10">
-	                        <thead>
-	                            <tr class="text-start text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">
-	                                <th class="px-3 py-2">{{ __('admin.spotify_fetcher.fields.status') }}</th>
-	                                <th class="px-3 py-2">{{ __('admin.spotify_fetcher.fields.direct_import') }}</th>
-	                                <th class="px-3 py-2">{{ __('admin.fields.title') }}</th>
-	                                <th class="px-3 py-2">{{ __('admin.fields.description_markdown') }}</th>
-	                                <th class="px-3 py-2">{{ __('admin.fields.reference_key') }}</th>
-	                                <th class="px-3 py-2">{{ __('admin.spotify_fetcher.fields.show_id') }}</th>
-	                            </tr>
+                <div class="overflow-x-auto">
+                    <table class="w-full min-w-[56rem] divide-y divide-gray-200 text-sm dark:divide-white/10">
+                        <thead>
+                            <tr class="text-start text-xs font-semibold text-gray-500 uppercase dark:text-gray-400">
+                                <th class="px-3 py-2">{{ __('admin.spotify_fetcher.fields.status') }}</th>
+                                <th class="px-3 py-2">{{ __('admin.spotify_fetcher.fields.direct_import') }}</th>
+                                <th class="px-3 py-2">{{ __('admin.fields.title') }}</th>
+                                <th class="px-3 py-2">{{ __('admin.fields.description_markdown') }}</th>
+                                <th class="px-3 py-2">{{ __('admin.fields.reference_key') }}</th>
+                                <th class="px-3 py-2">{{ __('admin.spotify_fetcher.fields.show_id') }}</th>
+                            </tr>
                         </thead>
                         <tbody class="divide-y divide-gray-100 dark:divide-white/5">
-	                            @foreach($podcastRows as $index => $row)
-	                                <tr wire:key="spotify-podcast-row-{{ $index }}">
-	                                    <td class="px-3 py-2 align-top">{{ $row['status_label'] }}</td>
-	                                    <td class="px-3 py-2 align-top">
-	                                        @if(filled($row['direct_import_label'] ?? null))
-	                                            <span class="inline-flex rounded-md bg-gray-50 px-2 py-1 text-xs font-medium text-gray-700 dark:bg-white/10 dark:text-gray-200">
-	                                                {{ $row['direct_import_label'] }}
-	                                            </span>
-	                                            @if(filled($row['direct_import_group_id'] ?? null))
-	                                                <a class="mt-1 block text-xs text-primary-600 hover:underline dark:text-primary-400" href="{{ \App\Filament\Resources\ContentGroups\ContentGroupResource::getUrl('edit', ['record' => $row['direct_import_group_id']]) }}">
-	                                                    {{ __('admin.actions.edit_content_group') }}
-	                                                </a>
-	                                            @endif
-	                                            @if(filled($row['direct_import_error'] ?? null))
-	                                                <p class="mt-1 max-w-48 text-xs text-danger-600 dark:text-danger-400">{{ $row['direct_import_error'] }}</p>
-	                                            @endif
-	                                        @else
-	                                            <span class="text-xs text-gray-500 dark:text-gray-400">{{ __('admin.labels.none') }}</span>
-	                                        @endif
-	                                    </td>
-	                                    <td class="px-3 py-2 align-top">
-	                                        <input type="text" wire:model.live.debounce.500ms="podcastRows.{{ $index }}.title" class="w-56 rounded-lg border-gray-300 text-sm dark:border-white/10 dark:bg-white/5 dark:text-white" />
-	                                    </td>
-	                                    <td class="px-3 py-2 align-top">
-	                                        <textarea rows="3" wire:model.live.debounce.500ms="podcastRows.{{ $index }}.description_markdown" class="w-96 rounded-lg border-gray-300 text-sm dark:border-white/10 dark:bg-white/5 dark:text-white"></textarea>
-	                                    </td>
-	                                    <td class="px-3 py-2 align-top font-mono text-xs">{{ $row['reference_key'] ?? '' }}</td>
-	                                    <td class="px-3 py-2 align-top font-mono">{{ $row['show_id'] }}</td>
-	                                </tr>
+                            @foreach ($podcastRows as $index => $row)
+                                <tr wire:key="spotify-podcast-row-{{ $index }}">
+                                    <td class="px-3 py-2 align-top">{{ $row['status_label'] }}</td>
+                                    <td class="px-3 py-2 align-top">
+                                        @if (filled($row['direct_import_label'] ?? null))
+                                            <span class="inline-flex rounded-md bg-gray-50 px-2 py-1 text-xs font-medium text-gray-700 dark:bg-white/10 dark:text-gray-200">
+                                                {{ $row['direct_import_label'] }}
+                                            </span>
+                                            @if (filled($row['direct_import_group_id'] ?? null))
+                                                <a
+                                                    class="text-primary-600 dark:text-primary-400 mt-1 block text-xs hover:underline"
+                                                    href="{{ \App\Filament\Resources\ContentGroups\ContentGroupResource::getUrl('edit', ['record' => $row['direct_import_group_id']]) }}"
+                                                >
+                                                    {{ __('admin.actions.edit_content_group') }}
+                                                </a>
+                                            @endif
+                                            @if (filled($row['direct_import_error'] ?? null))
+                                                <p class="text-danger-600 dark:text-danger-400 mt-1 max-w-48 text-xs">
+                                                    {{ $row['direct_import_error'] }}
+                                                </p>
+                                            @endif
+                                        @else
+                                            <span class="text-xs text-gray-500 dark:text-gray-400">{{ __('admin.labels.none') }}</span>
+                                        @endif
+                                    </td>
+                                    <td class="px-3 py-2 align-top">
+                                        <input
+                                            type="text"
+                                            wire:model.live.debounce.500ms="podcastRows.{{ $index }}.title"
+                                            class="w-56 rounded-lg border-gray-300 text-sm dark:border-white/10 dark:bg-white/5 dark:text-white"
+                                        />
+                                    </td>
+                                    <td class="px-3 py-2 align-top">
+                                        <textarea
+                                            rows="3"
+                                            wire:model.live.debounce.500ms="podcastRows.{{ $index }}.description_markdown"
+                                            class="w-96 rounded-lg border-gray-300 text-sm dark:border-white/10 dark:bg-white/5 dark:text-white"
+                                        ></textarea>
+                                    </td>
+                                    <td class="px-3 py-2 align-top font-mono text-xs">
+                                        {{ $row['reference_key'] ?? '' }}
+                                    </td>
+                                    <td class="px-3 py-2 align-top font-mono">{{ $row['show_id'] }}</td>
+                                </tr>
                             @endforeach
                         </tbody>
                     </table>

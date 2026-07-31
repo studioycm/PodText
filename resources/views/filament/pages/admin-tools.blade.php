@@ -11,7 +11,11 @@
                 <button
                     type="button"
                     x-on:click="activeTab = 'markdown'"
-                    x-bind:class="activeTab === 'markdown' ? 'border-primary-600 text-primary-600 dark:border-primary-400 dark:text-primary-400' : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 dark:text-gray-400 dark:hover:border-white/20 dark:hover:text-gray-200'"
+                    x-bind:class="
+                        activeTab === 'markdown'
+                            ? 'border-primary-600 text-primary-600 dark:border-primary-400 dark:text-primary-400'
+                            : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 dark:text-gray-400 dark:hover:border-white/20 dark:hover:text-gray-200'
+                    "
                     class="border-b-2 px-1 py-3 text-sm font-medium"
                 >
                     {{ __('admin.tools.tabs.markdown') }}
@@ -21,20 +25,12 @@
 
         <section x-show="activeTab === 'markdown'" class="space-y-5">
             <x-filament::section>
-                <x-slot name="heading">
-                    {{ __('admin.tools.markdown.heading') }}
-                </x-slot>
+                <x-slot name="heading">{{ __('admin.tools.markdown.heading') }}</x-slot>
 
-                <x-slot name="description">
-                    {{ __('admin.tools.markdown.local_storage_hint') }}
-                </x-slot>
+                <x-slot name="description">{{ __('admin.tools.markdown.local_storage_hint') }}</x-slot>
 
                 <div class="flex flex-wrap items-center gap-2">
-                    <x-filament::button
-                        type="button"
-                        icon="heroicon-o-plus"
-                        x-on:click="addEditor()"
-                    >
+                    <x-filament::button type="button" icon="heroicon-o-plus" x-on:click="addEditor()">
                         {{ __('admin.tools.actions.add_editor') }}
                     </x-filament::button>
 
@@ -59,7 +55,7 @@
                     <span
                         x-show="copiedMessage"
                         x-text="copiedMessage"
-                        class="text-sm font-medium text-success-700 dark:text-success-400"
+                        class="text-success-700 dark:text-success-400 text-sm font-medium"
                     ></span>
                 </div>
             </x-filament::section>
@@ -72,7 +68,7 @@
                                 <input
                                     type="checkbox"
                                     x-model="editor.selected"
-                                    class="rounded border-gray-300 text-primary-600 shadow-sm focus:ring-primary-500 dark:border-white/10 dark:bg-white/5"
+                                    class="text-primary-600 focus:ring-primary-500 rounded border-gray-300 shadow-sm dark:border-white/10 dark:bg-white/5"
                                 />
                                 <span x-text="editor.title || @js(__('admin.tools.markdown.untitled_editor'))"></span>
                             </label>
@@ -106,7 +102,7 @@
                                 <input
                                     type="text"
                                     x-model.debounce.250ms="editor.title"
-                                    class="block w-full rounded-lg border-gray-300 bg-white text-sm text-gray-950 shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:border-white/10 dark:bg-white/5 dark:text-white"
+                                    class="focus:border-primary-500 focus:ring-primary-500 block w-full rounded-lg border-gray-300 bg-white text-sm text-gray-950 shadow-sm dark:border-white/10 dark:bg-white/5 dark:text-white"
                                 />
                             </label>
 
@@ -118,7 +114,7 @@
                                     x-model.debounce.250ms="editor.markdown"
                                     rows="12"
                                     dir="auto"
-                                    class="block min-h-72 w-full resize-y rounded-lg border-gray-300 bg-white font-mono text-sm leading-6 text-gray-950 shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:border-white/10 dark:bg-gray-950 dark:text-white"
+                                    class="focus:border-primary-500 focus:ring-primary-500 block min-h-72 w-full resize-y rounded-lg border-gray-300 bg-white font-mono text-sm leading-6 text-gray-950 shadow-sm dark:border-white/10 dark:bg-gray-950 dark:text-white"
                                 ></textarea>
                             </label>
                         </div>
@@ -137,12 +133,12 @@
                     editors: [],
                     storageKey: 'podtext.adminTools.markdownEditors.v1',
                     init() {
-                        this.editors = this.loadEditors()
-                        this.$watch('editors', () => this.persist(), { deep: true })
+                        this.editors = this.loadEditors();
+                        this.$watch('editors', () => this.persist(), { deep: true });
                     },
                     loadEditors() {
                         try {
-                            const stored = JSON.parse(localStorage.getItem(this.storageKey) || '[]')
+                            const stored = JSON.parse(localStorage.getItem(this.storageKey) || '[]');
 
                             if (Array.isArray(stored) && stored.length > 0) {
                                 return stored.map((editor) => ({
@@ -150,13 +146,13 @@
                                     markdown: editor.markdown || '',
                                     selected: Boolean(editor.selected),
                                     title: editor.title || '',
-                                }))
+                                }));
                             }
                         } catch (error) {
-                            localStorage.removeItem(this.storageKey)
+                            localStorage.removeItem(this.storageKey);
                         }
 
-                        return [this.newEditor()]
+                        return [this.newEditor()];
                     },
                     newEditor() {
                         return {
@@ -164,55 +160,61 @@
                             markdown: '',
                             selected: true,
                             title: '',
-                        }
+                        };
                     },
                     persist() {
-                        localStorage.setItem(this.storageKey, JSON.stringify(this.editors))
+                        localStorage.setItem(this.storageKey, JSON.stringify(this.editors));
                     },
                     addEditor() {
-                        this.editors.push(this.newEditor())
+                        this.editors.push(this.newEditor());
                     },
                     removeEditor(id) {
                         if (this.editors.length === 1) {
-                            return
+                            return;
                         }
 
-                        this.editors = this.editors.filter((editor) => editor.id !== id)
+                        this.editors = this.editors.filter((editor) => editor.id !== id);
                     },
                     cellPayload(editors) {
                         return editors
-                            .map((editor) => `"${String(editor.markdown || '').replace(/\r\n/g, '\n').replace(/\r/g, '\n').replace(/"/g, '""')}"`)
-                            .join('\n')
+                            .map(
+                                (editor) =>
+                                    `"${String(editor.markdown || '')
+                                        .replace(/\r\n/g, '\n')
+                                        .replace(/\r/g, '\n')
+                                        .replace(/"/g, '""')}"`,
+                            )
+                            .join('\n');
                     },
                     copyEditor(editor) {
-                        this.copyText(editor.markdown || '', @js(__('admin.tools.copied.markdown')))
+                        this.copyText(editor.markdown || '', @js(__('admin.tools.copied.markdown')));
                     },
                     copySelectedAsCells() {
-                        const selected = this.editors.filter((editor) => editor.selected)
-                        this.copyText(this.cellPayload(selected), @js(__('admin.tools.copied.selected_cells')))
+                        const selected = this.editors.filter((editor) => editor.selected);
+                        this.copyText(this.cellPayload(selected), @js(__('admin.tools.copied.selected_cells')));
                     },
                     copyAllAsCells() {
-                        this.copyText(this.cellPayload(this.editors), @js(__('admin.tools.copied.all_cells')))
+                        this.copyText(this.cellPayload(this.editors), @js(__('admin.tools.copied.all_cells')));
                     },
                     copyText(text, message) {
                         if (navigator.clipboard && navigator.clipboard.writeText) {
-                            navigator.clipboard.writeText(text)
+                            navigator.clipboard.writeText(text);
                         } else {
-                            const textarea = document.createElement('textarea')
-                            textarea.value = text
-                            textarea.style.position = 'fixed'
-                            textarea.style.opacity = '0'
-                            document.body.appendChild(textarea)
-                            textarea.select()
-                            document.execCommand('copy')
-                            textarea.remove()
+                            const textarea = document.createElement('textarea');
+                            textarea.value = text;
+                            textarea.style.position = 'fixed';
+                            textarea.style.opacity = '0';
+                            document.body.appendChild(textarea);
+                            textarea.select();
+                            document.execCommand('copy');
+                            textarea.remove();
                         }
 
-                        this.copiedMessage = message
-                        window.setTimeout(() => this.copiedMessage = '', 2200)
+                        this.copiedMessage = message;
+                        window.setTimeout(() => (this.copiedMessage = ''), 2200);
                     },
-                }))
-            })
+                }));
+            });
         </script>
     @endonce
 </x-filament-panels::page>

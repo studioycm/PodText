@@ -3,7 +3,7 @@
 <x-filament-panels::page>
     <div class="space-y-8" dir="{{ __('public.meta.dir') }}">
         <div class="space-y-3">
-            <p class="text-sm font-medium text-primary-600 dark:text-primary-400">
+            <p class="text-primary-600 dark:text-primary-400 text-sm font-medium">
                 {{ $podcastsPage['group_label_plural'] ?? __('public.labels.podcasts') }}
             </p>
 
@@ -11,7 +11,7 @@
                 {{ $podcastsPage['title'] ?? __('public.pages.podcasts.title') }}
             </h1>
 
-            @if(filled($podcastsPage['description'] ?? null))
+            @if (filled($podcastsPage['description'] ?? null))
                 <p class="max-w-3xl text-base leading-7 text-gray-600 dark:text-gray-300">
                     {{ $podcastsPage['description'] }}
                 </p>

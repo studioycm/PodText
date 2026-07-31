@@ -35,7 +35,7 @@
     $themeOptions = $themeMode === 'light_dark' ? ['light', 'dark'] : ['system', 'light', 'dark'];
 @endphp
 
-@if($enabled)
+@if ($enabled)
     <header
         class="border-b border-gray-200 bg-white/95 backdrop-blur dark:border-gray-800 dark:bg-gray-950/95"
         dir="{{ __('public.meta.dir') }}"
@@ -55,7 +55,10 @@
             },
             applyTheme() {
                 const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-                document.documentElement.classList.toggle('dark', this.theme === 'dark' || (this.theme === 'system' && prefersDark));
+                document.documentElement.classList.toggle(
+                    'dark',
+                    this.theme === 'dark' || (this.theme === 'system' && prefersDark),
+                );
             },
         }"
     >
@@ -68,24 +71,24 @@
                 data-logo-size="{{ $logo['size'] ?? 'medium' }}"
                 data-logo-fallback="{{ ($logo['fallback'] ?? false) ? 'true' : 'false' }}"
             >
-                @if($showLogoImage)
+                @if ($showLogoImage)
                     <img
                         src="{{ $logo['light_url'] }}"
                         alt="{{ $logo['alt_text'] }}"
                         class="{{ $logoSizeClass }} w-auto shrink-0 object-contain dark:hidden"
                         loading="eager"
                         data-test="public-header-logo-light"
-                    >
+                    />
                     <img
                         src="{{ $logo['dark_url'] }}"
                         alt="{{ $logo['alt_text'] }}"
                         class="{{ $logoSizeClass }} hidden w-auto shrink-0 object-contain dark:block"
                         loading="eager"
                         data-test="public-header-logo-dark"
-                    >
+                    />
                 @endif
 
-                @if($showLogoText)
+                @if ($showLogoText)
                     <span class="truncate text-base font-semibold text-gray-950 dark:text-white">
                         {{ $logo['alt_text'] }}
                     </span>
@@ -100,11 +103,11 @@
                 data-menu-alignment="{{ $itemsAlignment }}"
             >
                 <nav class="flex min-w-0 items-center gap-2" aria-label="{{ __('public.menu.primary_navigation') }}">
-                    @foreach($items as $item)
-                        @if(in_array($item['type'] ?? null, ['route', 'external_url'], true))
+                    @foreach ($items as $item)
+                        @if (in_array($item['type'] ?? null, ['route', 'external_url'], true))
                             <a
                                 href="{{ $item['url'] }}"
-                                @if(($item['open_in_new_tab'] ?? false) === true) target="_blank" rel="noopener noreferrer" @endif
+                                @if (($item['open_in_new_tab'] ?? false) === true) target="_blank" rel="noopener noreferrer" @endif
                                 @class([
                                     'rounded-md px-3 py-2 text-sm font-medium transition focus:outline-none focus:ring-2 focus:ring-primary-500',
                                     'bg-primary-50 text-primary-800 dark:bg-primary-950 dark:text-primary-100' => $isActive($item),
@@ -116,11 +119,11 @@
                             >
                                 {{ $item['label'] }}
                             </a>
-                        @elseif(($item['type'] ?? null) === 'public_form')
+                        @elseif (($item['type'] ?? null) === 'public_form')
                             <button
                                 type="button"
                                 x-on:click="window.dispatchEvent(new CustomEvent('open-public-form', { detail: { formKey: @js($item['form_key']) } }))"
-                                class="inline-flex items-center justify-center rounded-md border border-primary-700 bg-primary-700 px-3 py-2 text-sm font-medium text-white transition hover:bg-primary-800 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                                class="border-primary-700 bg-primary-700 hover:bg-primary-800 focus:ring-primary-500 inline-flex items-center justify-center rounded-md border px-3 py-2 text-sm font-medium text-white transition focus:ring-2 focus:outline-none"
                                 data-test="public-menu-form-action"
                                 data-menu-key="{{ $item['key'] }}"
                                 data-form-key="{{ $item['form_key'] }}"
@@ -133,11 +136,11 @@
                     @endforeach
                 </nav>
 
-                @if(($search['enabled'] ?? false) && filled($search['url'] ?? null))
+                @if (($search['enabled'] ?? false) && filled($search['url'] ?? null))
                     <form
                         action="{{ $search['url'] }}"
                         method="GET"
-                        class="relative min-w-48 max-w-xs"
+                        class="relative max-w-xs min-w-48"
                         data-test="public-header-search"
                     >
                         <x-heroicon-o-magnifying-glass class="pointer-events-none absolute inset-s-3 top-1/2 size-4 -translate-y-1/2 text-gray-400" />
@@ -146,19 +149,24 @@
                             name="{{ $search['query_param'] ?? 'q' }}"
                             value="{{ request((string) ($search['query_param'] ?? 'q')) }}"
                             placeholder="{{ $search['placeholder'] }}"
-                            class="w-full rounded-full border-gray-300 bg-white py-2 pe-3 ps-9 text-sm text-gray-950 shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:border-gray-700 dark:bg-gray-950 dark:text-white"
+                            class="focus:border-primary-500 focus:ring-primary-500 w-full rounded-full border-gray-300 bg-white py-2 ps-9 pe-3 text-sm text-gray-950 shadow-sm dark:border-gray-700 dark:bg-gray-950 dark:text-white"
                             data-test="public-header-search-input"
-                        >
+                        />
                     </form>
                 @endif
 
-                @if(($themeSelector['enabled'] ?? true) === true)
-                    @if($themeDisplayMode === 'trigger_icon_menu')
-                        <div class="relative" x-data="{ themeMenuOpen: false }" data-test="public-theme-selector" data-theme-display-mode="trigger_icon_menu">
+                @if (($themeSelector['enabled'] ?? true) === true)
+                    @if ($themeDisplayMode === 'trigger_icon_menu')
+                        <div
+                            class="relative"
+                            x-data="{ themeMenuOpen: false }"
+                            data-test="public-theme-selector"
+                            data-theme-display-mode="trigger_icon_menu"
+                        >
                             <button
                                 type="button"
                                 x-on:click="themeMenuOpen = ! themeMenuOpen"
-                                class="inline-flex size-10 items-center justify-center rounded-full border border-gray-200 bg-gray-50 text-gray-700 transition hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-primary-500 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-200 dark:hover:bg-gray-800"
+                                class="focus:ring-primary-500 inline-flex size-10 items-center justify-center rounded-full border border-gray-200 bg-gray-50 text-gray-700 transition hover:bg-gray-100 focus:ring-2 focus:outline-none dark:border-gray-800 dark:bg-gray-900 dark:text-gray-200 dark:hover:bg-gray-800"
                                 aria-label="{{ __('public.menu.theme') }}"
                                 data-test="public-theme-trigger"
                             >
@@ -171,7 +179,7 @@
                                 class="absolute inset-e-0 z-20 mt-2 grid min-w-36 gap-1 rounded-lg border border-gray-200 bg-white p-1 shadow-lg dark:border-gray-800 dark:bg-gray-950"
                                 data-test="public-theme-menu"
                             >
-                                @foreach($themeOptions as $themeOption)
+                                @foreach ($themeOptions as $themeOption)
                                     <button
                                         type="button"
                                         x-on:click="setTheme(@js($themeOption)); themeMenuOpen = false"
@@ -180,9 +188,9 @@
                                         data-test="public-theme-option"
                                         data-theme-option="{{ $themeOption }}"
                                     >
-                                        @if($themeOption === 'system')
+                                        @if ($themeOption === 'system')
                                             <x-heroicon-o-computer-desktop class="size-4" />
-                                        @elseif($themeOption === 'light')
+                                        @elseif ($themeOption === 'light')
                                             <x-heroicon-o-sun class="size-4" />
                                         @else
                                             <x-heroicon-o-moon class="size-4" />
@@ -193,8 +201,12 @@
                             </div>
                         </div>
                     @else
-                        <div class="flex items-center rounded-full border border-gray-200 bg-gray-50 p-1 dark:border-gray-800 dark:bg-gray-900" data-test="public-theme-selector" data-theme-display-mode="{{ $themeDisplayMode }}">
-                            @foreach($themeOptions as $themeOption)
+                        <div
+                            class="flex items-center rounded-full border border-gray-200 bg-gray-50 p-1 dark:border-gray-800 dark:bg-gray-900"
+                            data-test="public-theme-selector"
+                            data-theme-display-mode="{{ $themeDisplayMode }}"
+                        >
+                            @foreach ($themeOptions as $themeOption)
                                 <button
                                     type="button"
                                     x-on:click="setTheme(@js($themeOption))"
@@ -203,17 +215,17 @@
                                     data-test="public-theme-option"
                                     data-theme-option="{{ $themeOption }}"
                                 >
-                                    @if(in_array($themeDisplayMode, ['text_icon', 'icon'], true))
-                                        @if($themeOption === 'system')
+                                    @if (in_array($themeDisplayMode, ['text_icon', 'icon'], true))
+                                        @if ($themeOption === 'system')
                                             <x-heroicon-o-computer-desktop class="size-4" />
-                                        @elseif($themeOption === 'light')
+                                        @elseif ($themeOption === 'light')
                                             <x-heroicon-o-sun class="size-4" />
                                         @else
                                             <x-heroicon-o-moon class="size-4" />
                                         @endif
                                     @endif
 
-                                    @if(in_array($themeDisplayMode, ['text', 'text_icon'], true))
+                                    @if (in_array($themeDisplayMode, ['text', 'text_icon'], true))
                                         <span>{{ __("public.theme.{$themeOption}") }}</span>
                                     @else
                                         <span class="sr-only">{{ __("public.theme.{$themeOption}") }}</span>
@@ -228,7 +240,7 @@
             <button
                 type="button"
                 x-on:click="mobileOpen = ! mobileOpen"
-                class="ms-auto inline-flex size-10 items-center justify-center rounded-md border border-gray-300 text-gray-700 transition hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary-500 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-900 lg:hidden"
+                class="focus:ring-primary-500 ms-auto inline-flex size-10 items-center justify-center rounded-md border border-gray-300 text-gray-700 transition hover:bg-gray-50 focus:ring-2 focus:outline-none lg:hidden dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-900"
                 aria-label="{{ __('public.menu.toggle_navigation') }}"
                 data-test="public-menu-mobile-toggle"
             >
@@ -240,26 +252,26 @@
             x-show="mobileOpen"
             x-on:click.outside="mobileOpen = false"
             x-on:keydown.escape.window="mobileOpen = false"
-            class="border-t border-gray-200 px-4 py-3 dark:border-gray-800 lg:hidden"
+            class="border-t border-gray-200 px-4 py-3 lg:hidden dark:border-gray-800"
             data-test="public-mobile-menu"
         >
-            @if(($search['enabled'] ?? false) && filled($search['url'] ?? null))
+            @if (($search['enabled'] ?? false) && filled($search['url'] ?? null))
                 <form action="{{ $search['url'] }}" method="GET" class="mb-3" data-test="public-mobile-header-search">
                     <input
                         type="search"
                         name="{{ $search['query_param'] ?? 'q' }}"
                         placeholder="{{ $search['placeholder'] }}"
-                        class="w-full rounded-full border-gray-300 bg-white text-sm text-gray-950 shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:border-gray-700 dark:bg-gray-950 dark:text-white"
-                    >
+                        class="focus:border-primary-500 focus:ring-primary-500 w-full rounded-full border-gray-300 bg-white text-sm text-gray-950 shadow-sm dark:border-gray-700 dark:bg-gray-950 dark:text-white"
+                    />
                 </form>
             @endif
 
             <nav class="grid gap-2" aria-label="{{ __('public.menu.primary_navigation') }}">
-                @foreach($items as $item)
-                    @if(in_array($item['type'] ?? null, ['route', 'external_url'], true))
+                @foreach ($items as $item)
+                    @if (in_array($item['type'] ?? null, ['route', 'external_url'], true))
                         <a
                             href="{{ $item['url'] }}"
-                            @if(($item['open_in_new_tab'] ?? false) === true) target="_blank" rel="noopener noreferrer" @endif
+                            @if (($item['open_in_new_tab'] ?? false) === true) target="_blank" rel="noopener noreferrer" @endif
                             x-on:click="mobileOpen = false"
                             @class([
                                 'rounded-md px-3 py-2 text-sm font-medium transition',
@@ -272,20 +284,24 @@
                         >
                             {{ $item['label'] }}
                         </a>
-                    @elseif(($item['type'] ?? null) === 'public_form')
+                    @elseif (($item['type'] ?? null) === 'public_form')
                         <button
                             type="button"
                             x-on:click="mobileOpen = false; window.dispatchEvent(new CustomEvent('open-public-form', { detail: { formKey: @js($item['form_key']) } }))"
-                            class="inline-flex items-center justify-center rounded-md border border-primary-700 bg-primary-700 px-3 py-2 text-sm font-medium text-white transition hover:bg-primary-800 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                            class="border-primary-700 bg-primary-700 hover:bg-primary-800 focus:ring-primary-500 inline-flex items-center justify-center rounded-md border px-3 py-2 text-sm font-medium text-white transition focus:ring-2 focus:outline-none"
                             data-test="public-mobile-menu-form-action"
                             data-menu-key="{{ $item['key'] }}"
                             data-form-key="{{ $item['form_key'] }}"
                         >
                             {{ $item['label'] }}
                         </button>
-                    @elseif(($item['type'] ?? null) === 'theme_selector' && ($themeSelector['enabled'] ?? true) === true)
-                        <div class="flex items-center rounded-full border border-gray-200 bg-gray-50 p-1 dark:border-gray-800 dark:bg-gray-900" data-test="public-mobile-theme-selector" data-theme-display-mode="{{ $themeDisplayMode }}">
-                            @foreach($themeOptions as $themeOption)
+                    @elseif (($item['type'] ?? null) === 'theme_selector' && ($themeSelector['enabled'] ?? true) === true)
+                        <div
+                            class="flex items-center rounded-full border border-gray-200 bg-gray-50 p-1 dark:border-gray-800 dark:bg-gray-900"
+                            data-test="public-mobile-theme-selector"
+                            data-theme-display-mode="{{ $themeDisplayMode }}"
+                        >
+                            @foreach ($themeOptions as $themeOption)
                                 <button
                                     type="button"
                                     x-on:click="setTheme(@js($themeOption))"
@@ -294,9 +310,9 @@
                                     data-test="public-mobile-theme-option"
                                     data-theme-option="{{ $themeOption }}"
                                 >
-                                    @if($themeOption === 'system')
+                                    @if ($themeOption === 'system')
                                         <x-heroicon-o-computer-desktop class="size-4" />
-                                    @elseif($themeOption === 'light')
+                                    @elseif ($themeOption === 'light')
                                         <x-heroicon-o-sun class="size-4" />
                                     @else
                                         <x-heroicon-o-moon class="size-4" />
@@ -310,7 +326,7 @@
             </nav>
         </div>
 
-        @foreach($formMounts as $formMount)
+        @foreach ($formMounts as $formMount)
             <livewire:public.public-form-modal
                 :form-key="$formMount['form_key']"
                 :display-mode="$formMount['display_mode']"

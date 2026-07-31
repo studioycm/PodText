@@ -23,7 +23,7 @@
     <article class="space-y-8" dir="{{ __('public.meta.dir') }}">
         <a
             href="{{ \App\Filament\Public\Pages\BrowsePublicContentGroups::getUrl(panel: 'public') }}"
-            class="inline-flex text-sm font-medium text-primary-700 hover:text-primary-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-600 dark:text-primary-300 dark:hover:text-primary-100"
+            class="text-primary-700 hover:text-primary-900 focus-visible:outline-primary-600 dark:text-primary-300 dark:hover:text-primary-100 inline-flex text-sm font-medium focus-visible:outline-2 focus-visible:outline-offset-2"
         >
             {{ __('public.actions.back_to_podcasts', ['label' => $podcastsPage['group_label_plural'] ?? __('public.labels.podcasts')]) }}
         </a>
@@ -39,10 +39,13 @@
                         src="{{ $pageImage['url'] }}"
                         alt="{{ $pageImage['alt'] ?? '' }}"
                         class="h-full w-full object-cover"
-                    >
+                    />
                 </span>
             @else
-                <div class="flex aspect-square w-full items-center justify-center rounded-lg bg-gray-100 text-4xl font-semibold text-gray-500 ring-1 ring-gray-950/10 dark:bg-gray-800 dark:text-gray-300 dark:ring-white/10" data-test="content-group-detail-fallback">
+                <div
+                    class="flex aspect-square w-full items-center justify-center rounded-lg bg-gray-100 text-4xl font-semibold text-gray-500 ring-1 ring-gray-950/10 dark:bg-gray-800 dark:text-gray-300 dark:ring-white/10"
+                    data-test="content-group-detail-fallback"
+                >
                     {{ $initials }}
                 </div>
             @endif
@@ -50,47 +53,75 @@
             <div class="space-y-4">
                 <x-public.type-label :label="$podcastsPage['group_label_singular'] ?? $contentGroup->group_type_label_singular" />
 
-                <h1 class="text-3xl font-semibold leading-tight text-gray-950 dark:text-white">
+                <h1 class="text-3xl leading-tight font-semibold text-gray-950 dark:text-white">
                     {{ $contentGroup->title }}
                 </h1>
 
-                <dl class="flex flex-wrap gap-2 text-sm font-medium text-gray-700 dark:text-gray-200" data-test="content-group-public-stats">
-                    <div class="rounded-md bg-gray-100 px-2 py-1 dark:bg-gray-800" data-test="content-group-public-count">
+                <dl
+                    class="flex flex-wrap gap-2 text-sm font-medium text-gray-700 dark:text-gray-200"
+                    data-test="content-group-public-stats"
+                >
+                    <div
+                        class="rounded-md bg-gray-100 px-2 py-1 dark:bg-gray-800"
+                        data-test="content-group-public-count"
+                    >
                         <dt class="sr-only">{{ __('public.labels.items') }}</dt>
-                        <dd>{{ __('public.labels.public_group_items_count', ['count' => $publicItemsCount, 'label' => $itemLabel]) }}</dd>
+                        <dd>
+                            {{ __('public.labels.public_group_items_count', ['count' => $publicItemsCount, 'label' => $itemLabel]) }}
+                        </dd>
                     </div>
 
-                    @if($totalReadingMinutes > 0)
-                        <div class="rounded-md bg-gray-100 px-2 py-1 dark:bg-gray-800" data-test="content-group-total-reading-time">
+                    @if ($totalReadingMinutes > 0)
+                        <div
+                            class="rounded-md bg-gray-100 px-2 py-1 dark:bg-gray-800"
+                            data-test="content-group-total-reading-time"
+                        >
                             <dt class="sr-only">{{ __('public.labels.reading_time') }}</dt>
-                            <dd>{{ trans_choice('public.labels.public_group_reading_minutes_count', $totalReadingMinutes, ['count' => $totalReadingMinutes]) }}</dd>
+                            <dd>
+                                {{ trans_choice('public.labels.public_group_reading_minutes_count', $totalReadingMinutes, ['count' => $totalReadingMinutes]) }}
+                            </dd>
                         </div>
                     @endif
 
-                    <div class="rounded-md bg-gray-100 px-2 py-1 dark:bg-gray-800" data-test="content-group-transcription-count">
+                    <div
+                        class="rounded-md bg-gray-100 px-2 py-1 dark:bg-gray-800"
+                        data-test="content-group-transcription-count"
+                    >
                         <dt class="sr-only">{{ __('public.labels.transcriptions') }}</dt>
-                        <dd>{{ \App\Support\Transcriptions\TranscriptionModeLabel::choice('public.labels.public_transcriptions_count', $publicTranscriptionsCount, ['count' => $publicTranscriptionsCount], 'public.labels.single.public_transcriptions_count_full') }}</dd>
+                        <dd>
+                            {{ \App\Support\Transcriptions\TranscriptionModeLabel::choice('public.labels.public_transcriptions_count', $publicTranscriptionsCount, ['count' => $publicTranscriptionsCount], 'public.labels.single.public_transcriptions_count_full') }}
+                        </dd>
                     </div>
 
-                    <div class="rounded-md bg-gray-100 px-2 py-1 dark:bg-gray-800" data-test="content-group-transcriber-count">
+                    <div
+                        class="rounded-md bg-gray-100 px-2 py-1 dark:bg-gray-800"
+                        data-test="content-group-transcriber-count"
+                    >
                         <dt class="sr-only">{{ __('public.labels.transcribers') }}</dt>
-                        <dd>{{ trans_choice('public.labels.public_transcribers_count', $publicTranscriberCount, ['count' => $publicTranscriberCount]) }}</dd>
+                        <dd>
+                            {{ trans_choice('public.labels.public_transcribers_count', $publicTranscriberCount, ['count' => $publicTranscriberCount]) }}
+                        </dd>
                     </div>
 
-                    @if($latestTranscriptionDate)
-                        <div class="rounded-md bg-gray-100 px-2 py-1 dark:bg-gray-800" data-test="content-group-latest-transcription-date">
+                    @if ($latestTranscriptionDate)
+                        <div
+                            class="rounded-md bg-gray-100 px-2 py-1 dark:bg-gray-800"
+                            data-test="content-group-latest-transcription-date"
+                        >
                             <dt class="sr-only">{{ __('public.labels.published_at') }}</dt>
-                            <dd>{{ \App\Support\Transcriptions\TranscriptionModeLabel::text('public.labels.public_group_latest_transcription_date', ['date' => $latestTranscriptionDate]) }}</dd>
+                            <dd>
+                                {{ \App\Support\Transcriptions\TranscriptionModeLabel::text('public.labels.public_group_latest_transcription_date', ['date' => $latestTranscriptionDate]) }}
+                            </dd>
                         </div>
                     @endif
                 </dl>
 
-                @if(($groupPageConfig['show_categories'] ?? true) && $categories->isNotEmpty())
+                @if (($groupPageConfig['show_categories'] ?? true) && $categories->isNotEmpty())
                     <div class="flex flex-wrap gap-2" data-test="content-group-categories">
-                        @foreach($categories as $category)
+                        @foreach ($categories as $category)
                             <a
                                 href="{{ \App\Filament\Public\Pages\BrowseCategoryContentItems::getUrl(['categorySlug' => $category->slug], panel: 'public') }}"
-                                class="rounded-md border border-gray-200 px-2 py-1 text-xs text-gray-600 hover:border-primary-300 hover:text-primary-700 dark:border-gray-700 dark:text-gray-300"
+                                class="hover:border-primary-300 hover:text-primary-700 rounded-md border border-gray-200 px-2 py-1 text-xs text-gray-600 dark:border-gray-700 dark:text-gray-300"
                             >
                                 {{ $category->name }}
                             </a>
@@ -107,7 +138,7 @@
                         <button
                             type="button"
                             x-on:click="expanded = ! expanded"
-                            class="text-sm font-medium text-primary-700 hover:text-primary-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-600 dark:text-primary-300 dark:hover:text-primary-100"
+                            class="text-primary-700 hover:text-primary-900 focus-visible:outline-primary-600 dark:text-primary-300 dark:hover:text-primary-100 text-sm font-medium focus-visible:outline-2 focus-visible:outline-offset-2"
                         >
                             <span x-show="! expanded">{{ __('public.actions.expand') }}</span>
                             <span x-show="expanded">{{ __('public.actions.collapse') }}</span>

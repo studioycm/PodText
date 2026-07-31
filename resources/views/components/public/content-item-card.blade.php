@@ -29,16 +29,24 @@
     data-card-description-clamp="{{ $presentation['description_clamp'] }}"
     data-card-part-flow="{{ $presentation['part_flow'] }}"
 >
-    @foreach($card['part_runs'] as $run)
-        @if($run['region'] === 'body')
+    @foreach ($card['part_runs'] as $run)
+        @if ($run['region'] === 'body')
             <div class="{{ $presentation['body'] }}">
-                @foreach($run['parts'] as $part)
-                    <x-public.content-item-card-part :part="$part" :presentation="$presentation" :preview-mode="$previewMode" />
+                @foreach ($run['parts'] as $part)
+                    <x-public.content-item-card-part
+                        :part="$part"
+                        :presentation="$presentation"
+                        :preview-mode="$previewMode"
+                    />
                 @endforeach
             </div>
         @else
-            @foreach($run['parts'] as $part)
-                <x-public.content-item-card-image-part :part="$part" :presentation="$presentation" :preview-mode="$previewMode" />
+            @foreach ($run['parts'] as $part)
+                <x-public.content-item-card-image-part
+                    :part="$part"
+                    :presentation="$presentation"
+                    :preview-mode="$previewMode"
+                />
             @endforeach
         @endif
     @endforeach

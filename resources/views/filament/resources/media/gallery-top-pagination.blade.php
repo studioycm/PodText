@@ -13,10 +13,7 @@
     @endphp
 
     @if ($records instanceof \Illuminate\Contracts\Pagination\Paginator)
-        <div
-            class="podtext-gallery-top-pagination"
-            data-testid="media-top-pagination"
-        >
+        <div class="podtext-gallery-top-pagination" data-testid="media-top-pagination">
             <x-filament::pagination
                 :extreme-links="$table->hasExtremePaginationLinks()"
                 :page-options="$table->getPaginationPageOptions()"
