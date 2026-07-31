@@ -12,6 +12,66 @@ return [
             'system_management' => 'System management',
         ],
     ],
+    'dashboard' => [
+        'lenses' => [
+            'overview' => 'Overview',
+            'blockers' => 'Blockers',
+            'intake' => 'Intake',
+        ],
+        'ranges' => [
+            'last_7_days' => 'Last :days days',
+            'last_30_days' => 'Last :days days',
+            'last_60_days' => 'Last :days days',
+        ],
+        'context' => [
+            'legend' => 'Publication funnel:',
+            'showing' => 'Showing',
+            'as_of' => 'as of :time',
+        ],
+        'legend' => [
+            'draft' => 'Draft',
+            'published' => 'Published',
+            'transcribed' => 'Transcribed',
+            'visible' => 'Visible',
+        ],
+        'tags' => [
+            'stock' => 'Current state',
+            'flow' => 'Over time',
+        ],
+        'stats' => [
+            'visible' => 'Visible episodes',
+            'visible_hint' => 'Published with a public transcription',
+            'blocked' => 'Blocked episodes',
+            'blocked_hint' => 'Published but not publicly visible',
+            'draft' => 'Draft episodes',
+            'pinned' => 'Pinned episodes',
+            'groups' => 'Podcasts',
+            'authors' => 'Transcribers',
+            'categories' => 'Categories',
+            'tags' => 'Tags',
+            'tags_value' => ':enabled enabled / :disabled disabled',
+            'multi_transcription' => 'Multi-transcription episodes',
+        ],
+        'gap' => [
+            'heading' => 'Publication gap',
+            'blocked' => 'Blocked',
+            'nothing_published' => 'No published episodes yet',
+            'forecast' => 'At the recent transcription pace, the queue clears around :date.',
+        ],
+        'queue' => [
+            'heading' => 'Blocked episodes queue',
+            'description' => 'Published episodes the public cannot see yet, and why.',
+            'empty_heading' => 'No blocked episodes',
+            'empty_description' => 'Every published episode is publicly visible.',
+            'reasons' => 'Blocking reasons',
+            'fix' => 'Fix',
+        ],
+        'reasons' => [
+            'missing_transcription' => 'No published transcription',
+            'missing_media' => 'No media URL',
+            'missing_category' => 'No category',
+        ],
+    ],
     'resources' => [
         'author' => [
             'singular' => 'Author',

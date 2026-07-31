@@ -12,6 +12,66 @@ return [
             'system_management' => 'ניהול מערכת',
         ],
     ],
+    'dashboard' => [
+        'lenses' => [
+            'overview' => 'סקירה',
+            'blockers' => 'חסמים',
+            'intake' => 'קליטה',
+        ],
+        'ranges' => [
+            'last_7_days' => ':days הימים האחרונים',
+            'last_30_days' => ':days הימים האחרונים',
+            'last_60_days' => ':days הימים האחרונים',
+        ],
+        'context' => [
+            'legend' => 'משפך הפרסום:',
+            'showing' => 'מוצג',
+            'as_of' => 'נכון לשעה :time',
+        ],
+        'legend' => [
+            'draft' => 'טיוטה',
+            'published' => 'פורסם',
+            'transcribed' => 'תומלל',
+            'visible' => 'גלוי',
+        ],
+        'tags' => [
+            'stock' => 'מצב נוכחי',
+            'flow' => 'לאורך זמן',
+        ],
+        'stats' => [
+            'visible' => 'פרקים גלויים',
+            'visible_hint' => 'פורסמו עם תמלול ציבורי',
+            'blocked' => 'פרקים חסומים',
+            'blocked_hint' => 'פורסמו אך אינם גלויים לציבור',
+            'draft' => 'פרקים בטיוטה',
+            'pinned' => 'פרקים נעוצים',
+            'groups' => 'פודקאסטים',
+            'authors' => 'מתמללים',
+            'categories' => 'קטגוריות',
+            'tags' => 'תגיות',
+            'tags_value' => ':enabled פעילות / :disabled כבויות',
+            'multi_transcription' => 'פרקים מרובי תמלולים',
+        ],
+        'gap' => [
+            'heading' => 'פער הפרסום',
+            'blocked' => 'חסומים',
+            'nothing_published' => 'אין עדיין פרקים שפורסמו',
+            'forecast' => 'בקצב התמלול הנוכחי, התור יתפנה בסביבות :date.',
+        ],
+        'queue' => [
+            'heading' => 'תור פרקים חסומים',
+            'description' => 'פרקים שפורסמו אך הציבור עדיין לא רואה, והסיבה לכך.',
+            'empty_heading' => 'אין פרקים חסומים',
+            'empty_description' => 'כל פרק שפורסם גלוי לציבור.',
+            'reasons' => 'סיבות חסימה',
+            'fix' => 'טיפול',
+        ],
+        'reasons' => [
+            'missing_transcription' => 'אין תמלול שפורסם',
+            'missing_media' => 'אין כתובת מדיה',
+            'missing_category' => 'אין קטגוריה',
+        ],
+    ],
     'resources' => [
         'author' => [
             'singular' => 'מחבר',
