@@ -2185,3 +2185,52 @@ and `model:show` is safe to use again.
   batched-message repro is worth filing. Full record:
   `docs/research/media-picker-m2-cross-session-brief.md` (closure record) and
   the M2 entry in `docs/phase-02/dashboard-metrics-phase-2R-handoff.md`.
+
+## Admin Table Query-String Key Namespacing
+
+- The "admin table components claim bare URL query-string keys" family is
+  closed app-wide by a central convention, superseding the parked
+  per-page-string draft in worktree `.claude/worktrees/upbeat-ramanujan-61c4d4`.
+- Verified Filament 5.7.5 mechanics (vendor source, not folklore): outside
+  Resource `ListRecords`, table `filters`/`search`/`sort` are **not**
+  URL-bound at all — the only bare URL key a table component claims is its
+  Livewire paginator (`page`), registered lazily by
+  `SupportPagination::ensurePaginatorIsInitialized()` and named by
+  `getTablePaginationPageName()`. `ListRecords` binds bare
+  `filters`/`search`/`sort`/`grouping`/`reordering`/`tab` via static `#[Url]`
+  attributes that a `queryStringIdentifier()` cannot rename; relation
+  managers already derive `lcfirst(class_basename)` identifiers in
+  `InteractsWithRelationshipTable::makeTable()`; even a `->paginated(false)`
+  custom-data table (Card Template library) initializes a dormant paginator
+  and holds the bare `page` binding.
+- The convention: the admin-scoped `Table::configureUsing()` block in
+  `AppServiceProvider` now sets
+  `queryStringIdentifier(Str::lcfirst(class_basename($livewire)))` for every
+  admin table whose component is not a `ListRecords` page, mirroring
+  Filament's own relation-manager derivation. Explicit
+  `->queryStringIdentifier()` calls in a component's `table()` still win
+  (they run after the hook). `ListRecords` pages keep Filament's bare keys on
+  purpose: single-table screens, bookmark churn for zero benefit, and
+  `ListMedia::mount()` reads the bare `page` request parameter.
+- Effect: `BlockersQueueWidget` retrofitted off its bespoke
+  `'blockersQueue'` string onto the derived `blockersQueueWidget`
+  (`blockersQueueWidgetPage` URL key); `ImporterSettings` pagination now
+  reads/writes `importerSettingsPage` and ignores bare `page`;
+  `CardTemplateSettings`' dormant paginator moved off the bare `page`
+  binding; every future admin table widget or custom page is namespaced by
+  construction.
+- `tests/Feature/AdminTableQueryStringKeysTest.php` pins the behavior:
+  own-key-read vs bare-key-ignored pagination seeding for the importer page
+  and the widget, the widget staying off the Dashboard's `#[Url] $filters`
+  key, the dormant Card-Template binding, the `ListRecords` bare-key
+  exclusion (`ListAuthors` honors `?page=2`), the vendor-derived relation
+  manager identifier, and a sweep over `app/Filament` asserting every
+  concrete non-`ListRecords`/non-relation-manager `HasTable` component gets
+  a distinct non-null identifier. `DashboardOverviewLensTest` updated to the
+  convention values.
+- Gate 2026-08-02: pest 1542 passed (19315 assertions), pint clean, full
+  filacheck 0 issues, `npm run build` green. Research recorded in
+  `docs/research/filament-examples-phase-02.md` ("Admin Table URL-Key
+  Research", 2026-08-02): the FilamentExamples corpus has no precedent for
+  `queryStringIdentifier`/`Table::configureUsing`/`WithoutUrlPagination`;
+  decision rests on vendor source and official docs.

@@ -39,10 +39,6 @@ class BlockersQueueWidget extends TableWidget
         $podcastId = $this->dashboardPodcastId();
 
         return $table
-            // The Dashboard page owns the bare `filters`, `search`, `sort` and
-            // `page` query-string keys through its own `#[Url] $filters`, so
-            // this table namespaces its own.
-            ->queryStringIdentifier('blockersQueue')
             ->heading(__('admin.dashboard.queue.heading'))
             ->description(fn (): HtmlString => $this->burnDown())
             ->query(

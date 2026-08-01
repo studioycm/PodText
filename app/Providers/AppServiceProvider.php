@@ -42,6 +42,7 @@ use BezhanSalleh\FilamentShield\Facades\FilamentShield;
 use Filament\Actions\Action;
 use Filament\Facades\Filament;
 use Filament\Forms\Components\Select;
+use Filament\Resources\Pages\ListRecords;
 use Filament\Schemas\Components\Component as SchemaComponent;
 use Filament\Schemas\Components\Section;
 use Filament\Support\Enums\Width;
@@ -59,6 +60,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
+use Illuminate\Support\Str;
 use Livewire\Livewire;
 use Spatie\LaravelSettings\Events\SettingsSaved;
 
@@ -212,6 +214,20 @@ class AppServiceProvider extends ServiceProvider
             }
 
             $table->recordActionsPosition(RecordActionsPosition::BeforeColumns);
+
+            // Namespace each admin table's URL pagination key by its owning
+            // component (`{lcfirst basename}Page`), mirroring the identifier
+            // Filament derives for relation managers, so two paginated
+            // components on one screen never fight over the bare `page`
+            // parameter. Resource ListRecords pages keep Filament's bare keys:
+            // their `filters`/`search`/`sort` are static #[Url] bindings an
+            // identifier cannot rename, and ListMedia reads the bare `page`
+            // request parameter in mount(). An explicit
+            // ->queryStringIdentifier() in a component's table() still wins,
+            // because table() methods run after this hook.
+            if (! $table->getLivewire() instanceof ListRecords) {
+                $table->queryStringIdentifier(Str::lcfirst(class_basename($table->getLivewire()::class)));
+            }
         });
 
         Action::configureUsing(function (Action $action): void {

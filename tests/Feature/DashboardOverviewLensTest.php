@@ -247,10 +247,11 @@ it('keeps the queue table query string distinct from the dashboard filters', fun
 
     $widget = Livewire::test(BlockersQueueWidget::class)->instance();
 
-    // The Dashboard page binds `#[Url] public ?array $filters`; an unidentified
-    // table widget would claim the same query-string keys on the same page.
-    expect($widget->getTable()->getQueryStringIdentifier())->toBe('blockersQueue')
-        ->and($widget->getIdentifiedTableQueryStringPropertyNameFor('filters'))->toBe('blockersQueueFilters')
+    // The Dashboard page binds `#[Url] public ?array $filters`; the widget's
+    // table is namespaced by the admin-wide convention in AppServiceProvider,
+    // which derives the identifier from the component class.
+    expect($widget->getTable()->getQueryStringIdentifier())->toBe('blockersQueueWidget')
+        ->and($widget->getIdentifiedTableQueryStringPropertyNameFor('filters'))->toBe('blockersQueueWidgetFilters')
         ->and($widget->getIdentifiedTableQueryStringPropertyNameFor('search'))->not->toBe('search');
 });
 

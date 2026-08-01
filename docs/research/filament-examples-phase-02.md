@@ -526,3 +526,89 @@ public function addProductToTable(int $id, string $name, int $quantity): void
   picker` query resolves to the product-picker project above.
 - Only `search-examples` is exposed; no separate fetch/read/details tool,
   recorded per protocol.
+
+## Admin Table URL-Key Research: Query-String Namespacing (2026-08-02)
+
+Research for the app-wide closure of the "admin table components claim bare
+URL query-string keys" family (generalising the Dashboard `blockersQueue`
+fix from commit `894870e`). Protocol: pass 1 ran five short queries at
+`limit: 8` ("table widget dashboard", "query string identifier", "multiple
+tables on page", "custom page with table", "settings page table"); pass 2 ran
+two refined batches at `limit: 3` ("queryStringIdentifier",
+"WithoutUrlPagination", "dashboard multiple table widgets", "configureUsing
+table", "table widget pagination", "persist filters in session"). The corpus
+is small and result overlap between queries is heavy.
+
+### Headline corpus verdicts
+
+- No example demonstrates `queryStringIdentifier()`, a global
+  `Table::configureUsing()` default, or Livewire's `WithoutUrlPagination` —
+  all three had to be justified from official Filament/Livewire docs and
+  vendor source, not examples.
+- The corpus's de-facto convention for widgets and secondary tables is to
+  sidestep URL state entirely: `->paginated(false)` plus a query-level
+  `->limit(N)` and `->defaultSort()`.
+- The only multi-table-per-screen pattern is one child Livewire component per
+  table, each unpaginated (`sports-standings-tables`); no example shows two
+  paginated Filament tables coexisting on one screen.
+
+### Example: Teacher Payouts dashboard TableWidget
+
+- Source: `v4/full-projects/teachers-payouts` — `TeacherScheduleWidget`
+- MCP search tool used: `mcp__filament-examples__search-examples`
+- Access level: snippets through `search-examples` only
+- Pattern found: `extends TableWidget`, `->paginated(false)`, query
+  `->limit(10)`, `canView()` gate, `columnSpan 'full'`
+- Pattern to copy: unpaginated capped widgets where paging is not a job
+- Pattern to avoid: `->searchable()` columns on a 10-row unpaginated widget
+- Adaptation notes for PodText: the blockers queue is a real paged work queue
+  (10/25 page sizes), so the corpus's unpaginated stance does not fit it;
+  namespacing was kept instead
+- Confidence: high for what the corpus does
+
+### Example: Sports Group Standings multi-table screen
+
+- Source: `v4/tables/sports-standings-tables` — `GroupsOverview` page +
+  `GroupGamesOverview` child component per group
+- Pattern found: one `InteractsWithTable` child component per table, mounted
+  with `:key`, every table `->paginated(false)`
+- Adaptation notes for PodText: collision is avoided by killing pagination,
+  not by namespacing; gives no answer when pagination is required
+- Confidence: high
+
+### Example: Doctor Schedules page-level #[Url] beside a table
+
+- Source: `v4/full-projects/schedule-for-doctors` — `ManageDoctorSchedule`
+- Pattern found: `#[Url] public ?int $selectedDoctorId` page state coexisting
+  with a table on one component; table `->paginated(false)`
+- Adaptation notes for PodText: precedent that page params and table params
+  share one query string — exactly the surface the namespacing convention
+  protects
+- Confidence: high
+
+### Supporting examples
+
+- `box-score-form` `ManagePlayerStats` and
+  `create-form-and-table-on-the-same-page` `Category`: baseline
+  `Page implements HasTable` + `InteractsWithTable` stacks that leave table
+  URL params untouched (single table per screen).
+- `filawidgets-dashboard` `Dashboard`: `HasFiltersForm` + widgets reading
+  `$this->filters` — the shared-dashboard-filter pattern PodText already
+  uses; no table URL state involved.
+- `free-form-text-search` `ListParticipants`: canonical programmatic
+  `tableFilters` mutation sequence (`fill` + `updatedTableFilters()`),
+  confirming the property family behind the URL params.
+
+### Honest gaps
+
+- Only `search-examples` is exposed by the MCP; no source/read/fetch/details
+  tool, recorded per protocol. Pass 1 returned 134KB for 5 queries at
+  limit 8; pass 2 used limit 3 for that reason.
+- The corpus never exercises the collision this task closes (two paginated
+  table components on one screen), so the chosen mechanism rests on
+  Filament 5.7.5 vendor source (`SupportPagination`,
+  `InteractsWithRelationshipTable`, static `#[Url]` on `ListRecords`) and the
+  official 5.x/4.x docs sections "Preventing query string conflicts with the
+  pagination page" (tables overview), the custom-data
+  `LengthAwarePaginator` `pageName` caveat, and Livewire "Multiple
+  paginators" / `WithoutUrlPagination`.
