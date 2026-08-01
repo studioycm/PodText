@@ -2,7 +2,6 @@
 
 use App\Enums\ImageUploadPurpose;
 use App\Enums\MediaAttachmentRole;
-use App\Enums\Tb1PickerContainer;
 use App\Filament\Forms\Components\PathCuratorPicker;
 use App\Filament\Resources\ContentGroups\Pages\CreateContentGroup;
 use App\Filament\Resources\ContentGroups\Pages\EditContentGroup;
@@ -22,7 +21,6 @@ use App\Models\Media;
 use App\Models\MediaAttachment;
 use App\Models\User;
 use App\Policies\CuratorMediaPolicy;
-use App\Settings\AdminUxSettings;
 use App\Settings\PublicContentSettings;
 use App\Support\Media\MediaAttachmentFormState;
 use App\Support\Media\MediaAttachmentManager;
@@ -1348,9 +1346,6 @@ it('shows owner state before the inline source picker without tabs', function ()
 it('configures one owner specific canonical modal with one state then source schema', function (): void {
     app()->setLocale('en');
     $admin = User::factory()->admin()->create();
-    $settings = app(AdminUxSettings::class);
-    $settings->tb1_picker_container = Tb1PickerContainer::SlideOver->value;
-    $settings->save();
     $group = ContentGroup::factory()->create();
     $item = ContentItem::factory()->for($group)->create();
     $episodeImage = ownerImageMedia('content-items/images/canonical-owner-modal.jpg');

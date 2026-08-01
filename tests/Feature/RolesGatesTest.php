@@ -232,7 +232,7 @@ it('keeps hidden admin ux mode values byte-identical during forged admin saves',
 
         roles1ClearSettingsCache();
 
-        expect(app(AdminUxSettings::class)->transcription_mode)->toBe($storedMode->value);
+        expect(app(AdminUxSettings::class)->transcription_mode)->toBe($storedMode);
     }
 });
 
@@ -248,7 +248,7 @@ it('allows a super-admin to change the global transcription mode switch', functi
 
     roles1ClearSettingsCache();
 
-    expect(app(AdminUxSettings::class)->transcription_mode)->toBe(TranscriptionMode::Multi->value);
+    expect(app(AdminUxSettings::class)->transcription_mode)->toBe(TranscriptionMode::Multi);
 });
 
 it('keeps hidden public transcription policy values byte-identical during forged admin saves in both modes', function (): void {

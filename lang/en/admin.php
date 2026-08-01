@@ -752,7 +752,6 @@ return [
         'tags' => 'Tags',
         'title' => 'Title',
         'title_prefix' => 'Title prefix',
-        'tb1_picker_container' => 'Picker container',
         'transcript_markdown' => 'Transcript',
         'transcription_mode' => 'Transcription mode',
         'transcription_presentation_mode' => 'Transcription presentation',
@@ -1123,7 +1122,6 @@ return [
         'slug' => 'URL identifier. Leave it blank to generate one from the title/name. Manual edits are preserved; use regenerate to replace it from the current source.',
         'spotify_episode' => 'Paste a Spotify episode URL, URI, or ID, then fetch metadata into blank fields only.',
         'spotify_show' => 'Paste a Spotify show URL, URI, or ID, then fetch podcast metadata and artwork into blank fields.',
-        'tb1_picker_container' => 'Default container for TB1 picker interactions.',
         'title_prefix' => 'Optional display prefix. When empty, public combined titles fall back to the podcast/group title.',
         'transcription_mode' => 'Single mode hides multi-transcription controls and preserves the one-transcript workspace. Multi mode exposes eligible multi-transcription controls by role.',
         'transcription_presentation_mode' => 'Controls how the transcription section is presented inside the workspace form.',
@@ -1305,10 +1303,6 @@ return [
         'super-admin' => 'Super admin',
         'transcriber' => 'Transcriber',
         'user' => 'User',
-    ],
-    'tb1_picker_containers' => [
-        'modal' => 'Modal',
-        'slideover' => 'Slide-over',
     ],
     'placeholders' => [
         'empty' => 'Not set',

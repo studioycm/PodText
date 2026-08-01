@@ -89,7 +89,7 @@ it('classifies every public content setting property exactly once without using 
 
 it('fills each editable page with only its registry-owned roots', function (): void {
     $adminUx = app(AdminUxSettings::class);
-    $adminUx->transcription_mode = TranscriptionMode::Multi->value;
+    $adminUx->transcription_mode = TranscriptionMode::Multi;
     $adminUx->save();
     app()->forgetInstance(AdminUxSettings::class);
     app(SettingsContainer::class)->clearCache();

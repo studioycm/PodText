@@ -16,11 +16,7 @@ class MediaAcquisitionNamer
     public function destination(ValidatedImage $image): string
     {
         $key = (string) Str::ulid();
-        $strategy = MediaAcquisitionFilenameStrategy::tryFrom(
-            $this->settings->media_acquisition_filename_strategy,
-        ) ?? MediaAcquisitionFilenameStrategy::AppGenerated;
-
-        $name = match ($strategy) {
+        $name = match ($this->settings->media_acquisition_filename_strategy) {
             MediaAcquisitionFilenameStrategy::AppGenerated => $key,
             MediaAcquisitionFilenameStrategy::CleanedOriginal => $this->cleanedStem($image).'-'.$key,
         };

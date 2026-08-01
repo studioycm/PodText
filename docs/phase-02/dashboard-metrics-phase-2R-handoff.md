@@ -99,6 +99,11 @@ phase 2R, and they are binding:
 actually render in Filament UI. `ExternalImageFailureReason` and
 `MediaAcquisitionDisposition` matter for Board 3.
 
+**E5** · *Done.* The four enum-backed `AdminUxSettings` properties are typed as
+their enums, with a repair migration and mutation-checked read-site coverage. A
+fifth, `tb1_picker_container`, was removed outright. Adds a settings-row
+invariant test. See "Enum-typed settings properties (E5)" below.
+
 **F1** · The localization home (decision 7). Owns the UI timezone alongside date
 and number formats. `Illuminate\Support\Number` rather than `number_format()`,
 which currently ignores the Hebrew locale. **Plus the anti-drift guard** — see
@@ -122,6 +127,89 @@ provides the trend.
 **A3** · Panel-native empty states and `x-filament::link` doorways.
 
 **B1** · Alpine hover crosshair and tooltip on our SVG. ~4–6 h.
+
+**M1** · *Opened 2026-08-01, not started.* Media picker Storage panel — two
+findings raised while investigating the browser-test flake. **Whoever lands this
+must update this entry and the media-picker bullet under "Gotchas".**
+
+- **The de-dup filter everyone assumes exists does not.**
+  `StorageImageCandidateBrowser::browse()` never consults `Media`, so a file
+  already in the gallery keeps appearing in the Storage panel with no marker,
+  and can be "acquired" again. The acquisition itself is idempotent —
+  `MediaAcquisitionManager.php:165` reuses the existing record rather than
+  duplicating — so this is a UX gap, not data corruption. **Decided 2026-08-01:
+  hide them.** Already-registered files do not belong in a panel whose purpose
+  is finding files that are *not* yet in the library.
+- **The candidate list is a silent cap.** The `laravel_public` source uses
+  `root => ''` — the entire public disk — with `storage_candidate_limit` 50 and
+  breadth-first traversal, so files in deeper directories can be dropped with no
+  indication. That is the same no-silent-caps violation as F3, and on a real
+  disk it is the more likely of the two to bite. **Decided 2026-08-01:
+  paginate.** Not a raised limit and not a "showing 50 of N" label — the panel
+  gets real paging, so nothing is dropped at any disk size.
+
+**M2** · *Opened 2026-08-01, not started. Production defect, not a test flake.*
+Reopening the media picker leaves a **duplicate, uninitialised component root**
+in the DOM, after which every Filament partial update for the host component
+throws `Multiple elements found for partial [action-modals.1]` and the picker
+stops working for the rest of the page's life. **Whoever lands this must update
+this entry and the media-picker bullet under "Gotchas".**
+
+Reproduced in a real browser (not Pest) on `/admin/content-groups/1/edit` with
+ordinary clicks only. **It needs a nested mount**: the broken state had the
+picker at `mountedActionSchema1` and the error named `action-modals.1`, while a
+plain top-level open→close→reopen cycle is clean (child key registered on open,
+removed on close, re-registered on reopen). Captured state when broken:
+
+- two `[data-testid="media-picker"]` elements sharing one **`wire:id`** *and*
+  one `wire:key` — a real second mount would carry a fresh id, so one of them is
+  a **copy**, not an instance;
+- the copy kept `wire:id`, `wire:key` and `wire:snapshot` but lost the
+  `__livewire` property — the fingerprint of `cloneNode(true)`, since JS
+  properties do not survive cloning and attributes do;
+- because it is uninitialised, its `action-modals.1` partial resolves to the
+  *host page* component instead of to itself;
+- the host subtree therefore holds two `action-modals.1` containers that both
+  resolve to the host → Filament's `partials.js` throws.
+
+The `wire:id` duplication and the key are **one mechanism, not two**. The clone
+at `partials.js:70` is guarded by `if (child.hasAttribute('wire:snapshot'))
+return` — it only fires for an incoming child with *no* snapshot, which is
+exactly what Livewire emits when it **skips** a child whose key the parent has
+already seen. So: key already registered → server skips the child → emits it
+snapshot-less → Filament clones the live root to graft it in → the morph keeps
+both. Note also that Alpine's morph keys siblings by `wire:key`, so the live
+root and the clone collide there too.
+
+The mechanism is `filament/support/resources/js/partials.js:70`,
+`child.replaceWith(existingComponent.cloneNode(true))`. The clone keeps
+`wire:id` and `wire:snapshot` but not the `__livewire` property, the morph
+inserts it into the live DOM, and nothing ever initialises it. The Pest fixtures
+missed it because they have no media and so no nested item action, meaning no
+`action-modals.1` partial exists to collide.
+
+The likely cause is the child key, per Livewire's nesting docs: the parent keeps
+a list of rendered child keys and **skips** any child whose key it has already
+seen. The picker's `wire:key` is
+`{hostId}.mountedActionSchema{n}.media-picker-workspace-{componentKey}` — stable
+across unmount/remount at the same nesting index, so a remount can be skipped
+while fresh markup for it still arrives.
+
+Setting a different key is cheap and supported — `HasKey::key()` accepts a
+Closure evaluated per render, and `Schemas\Components\Livewire::toEmbeddedHtml()`
+passes the result straight to `Livewire::mount($component, $properties, $key)`
+as the `wire:key`. What Filament does *not* supply is a per-mount **value** to
+put in it: `mountedActions[]` entries hold only `name`/`arguments`/`context`,
+pushed on mount and popped on unmount, with nothing distinguishing a second open
+of the same action at the same index.
+
+**Do not design the fix around the key until the trigger is reproduced
+deliberately.** A stable key at index 0 behaves correctly (child registered on
+open, removed on close, re-registered on reopen — verified). The broken state
+had `launchPanel` at index 1, i.e. the picker action opened while
+`chooseContentGroupCover` was already mounted. Reproduce that on purpose first,
+then test whether a per-mount key actually fixes it. Weigh against an upstream
+Filament report.
 
 **Then push, then phase 3.**
 
@@ -163,6 +251,7 @@ Two traps when copying it:
 | Lazy widgets rendered as blank boxes | Fixed — loading skeleton |
 | `ActivityStreamWidget` hand-writes event-type colours | **Open** — becomes `StreamEventType` in phase 3 |
 | 12 enums implement no Filament contract | **Open** — E4 |
+| Enum-backed settings properties typed as `string` | Fixed — E5, `AdminUxSettings` |
 | Date/number formats scattered | **Open** — F1/F2 |
 | Silent `take($limit)` in breakdowns | **Open** — F3 |
 | Sparkline normalisation understates variation | **Open** — A1 |
@@ -196,29 +285,116 @@ Two traps when copying it:
   described something the code did not do. That is now true of
   `DashboardTier::Invisible` specifically, not of the queue population.
 
-## Gotcha: `->options(Enum::class)` changes the state type
+## Gotcha: `->options(Enum::class)` and the property type must agree
 
-Passing an enum class to `->options()` is the idiom both Povilas Korop enum
-videos recommend, and it is right for a table filter. It is **wrong for a field
-whose backing property is a string**: Filament then hands the property an enum
-instance, and a typed `string` property rejects it.
+**Superseded 2026-08-01 by E5 — see below. The workaround this section used to
+recommend is no longer the answer.**
 
-E4 hit this on `AdminUxSettings::$mediaNamingStrategy` — the suite caught it
-immediately with `Cannot assign App\Enums\MediaNamingStrategy to property ...`.
-Settings pages backed by Spatie settings classes are the exposed surface here.
+Passing an enum class to `->options()` makes Filament install an
+`EnumStateCast`, so the field's state becomes an enum instance. E4 hit this on
+`AdminUxSettings::$media_naming_strategy` and read it as "`->options(Enum::class)`
+is wrong for settings pages". The real rule is narrower: **the field's state type
+and the backing property's type have to agree.** A string property with
+`->options(Enum::class)` fails one way; an enum property with an array
+`->options()` fails the other.
 
-The safe consolidation, used instead, keeps the state a string while still
-having exactly one label definition:
+E5 made them agree by typing the property, which is the better half of the pair —
+see "Enum-typed settings properties (E5)" below. Do not reintroduce the
+`value => getLabel()` array map on `AdminUxSettings`; it is now the mismatched
+half.
 
-```php
-->options(fn (): array => collect(MediaNamingStrategy::cases())
-    ->mapWithKeys(fn (MediaNamingStrategy $case): array => [$case->value => $case->getLabel()])
-    ->all())
-```
+## Enum-typed settings properties (E5)
 
-The duplication that mattered — the same translation-key mapping copy-pasted
-across two files — is gone either way, because `getLabel()` is now the only
-place a label is defined. Only the *shape* of the call site differs.
+The four enum-backed `AdminUxSettings` properties are typed as their enums:
+`media_naming_strategy`, `media_acquisition_filename_strategy`,
+`transcription_presentation_mode`, `transcription_mode`. A fifth,
+`tb1_picker_container`, was typed and then removed outright — see below.
+
+What a future session needs to know before touching this:
+
+- **Spatie auto-casts backed-enum properties with no config.**
+  `SettingsCastFactory::createDefaultCast()` reaches `enum_exists()` and returns
+  an `EnumCast`. Nothing goes in `settings.global_casts`.
+- **`EnumCast::get()` uses `from()`, not `tryFrom()`.** A stored payload matching
+  no case throws a `ValueError` on *every* request that loads the group, not
+  only on the screen that reads it. Any new enum-typed setting needs a repair
+  migration for the same reason.
+- **A repair migration cannot use `$this->migrator->update()`.**
+  `SettingsMigrator::getPropertyPayload()` applies the cast while reading, so a
+  migrator-based repair throws on exactly the values it exists to fix. Go to the
+  repository below the cast — see
+  `database/settings/2026_08_01_000000_type_admin_ux_enum_settings.php`.
+- **`PublicContentSettings` was deliberately left alone.** Its ten string
+  properties are validated against private const arrays in
+  `PublicContentCardOptions`, not against `App\Enums\*`. `PublicFrontLayoutVariant`
+  is a grab-bag spanning four concepts and is not a per-property type. Typing
+  those means creating six enums first — separate work, not a follow-on.
+- **`SettingsBackupManager` assigns raw payload values** at
+  `$settings->{$property} = $value`. It is hard-guarded to `PublicContentSettings`,
+  so it is safe today. Widening that scope to `AdminUxSettings` would TypeError.
+- **A settings property with no default is a required database row.** A missing
+  row throws `MissingSettings` and takes down every screen that loads the group.
+  Adding a default softens this but does not remove it: `ensureNoMissingSettings`
+  folds `getDefaultValueLoadedProperties()` into the *saving* check, so a
+  default-loaded property still throws on save. Both directions were verified
+  against the running app, not read off the source.
+- **Orphan rows are harmless.** `SettingsMapper::load()` fetches only reflected
+  property names, so a row whose property no longer exists is never read. Code
+  may be deployed ahead of the migration that deletes the row.
+
+### `tb1_picker_container` removed (2026-08-01)
+
+It chose whether the TB1 table image picker opened as a modal or a slide-over,
+via `ContentImageActions::applyConfiguredContainer()`. Mini-task 3A (`6da7fda`)
+replaced that action with one canonical modal, declared the runtime choice
+obsolete, and kept the property, enum and row as inert data.
+
+The retained row was still *required* — the property had no default, so losing
+it fatally broke the whole `admin_ux` group over a value nothing read. The
+operator chose removal over retention, since restoring the capability would mean
+reversing 3A's accepted design. Property, enum, six translation keys and the row
+are gone; `2026_08_01_000001_drop_admin_ux_tb1_picker_container.php` deletes it.
+
+The historical seed in `2026_07_12_000001` is deliberately left intact — never
+edit a migration that has already run in production.
+
+`media_naming_strategy`, `show_episode_workspace_hint_line` and
+`show_episode_workspace_language_code` gained defaults matching what their seed
+migrations already write.
+
+A concern raised against the `media_naming_strategy` default — that a missing
+row would make exports quietly use `slug` — was checked and does not hold. Its
+only read site is `defaultEgressNamingStrategy()`, which feeds `->default()` on
+a visible, required Select in the export modal; the value the job receives comes
+from what the operator selected there, not from settings. A wrong default is on
+screen before submit.
+
+What *was* silent is now fixed: that method's bare `catch (\Throwable)` — the
+thing that hid the original E5 type mismatch — calls `report()` before falling
+back, so the modal stays usable and the misconfiguration is still visible.
+
+### The settings-row invariant
+
+`tests/Feature/SettingsRowInvariantTest.php` asserts, for `AdminUxSettings` and
+`PublicContentSettings`, that every declared property has a seeded row, that no
+row survives without a property, and that each group loads *and saves* as
+migrated. Both directions are mutation-checked.
+
+This exists because a property default softens the missing-row fatal but cannot
+remove it — `ensureNoMissingSettings()` folds `getDefaultValueLoadedProperties()`
+into the saving check, so a default-loaded property loads fine and then throws on
+save. That is Spatie's behaviour, not something app code can fix. The invariant
+moves the discovery from production to CI. The realistic trigger is adding a
+property and forgetting its seed migration; the orphan direction would have
+caught `tb1_picker_container`'s row had its delete migration been missed.
+
+The failure mode that made this worth doing was silent, not loud. Comparing an
+enum to `Enum::Case->value` is simply `false` — no error — so
+`MultiTranscriptionSurfaces::isMultiMode()` would have switched multi-mode off
+for everyone, permanently. `ContentImageActions::defaultEgressNamingStrategy()`
+was worse: it raised a `TypeError` and then swallowed it in its own
+`catch (\Throwable)`, silently returning `Slug`. Both are covered by mutation-checked
+tests in `tests/Feature/AdminUxSettingsEnumTypesTest.php`.
 
 ## Gotchas a phase-3 session will hit
 
@@ -229,9 +405,35 @@ place a label is defined. Only the *shape* of the call site differs.
 - **Mutation-check render assertions.** A bare `assertSee()` can be satisfied by
   unrelated page content. Strip the implementation and confirm the specific
   assertion fails before trusting it.
-- **A media browser test flakes** intermittently with "Multiple elements found
-  for partial [action-modals]". Re-run before investigating; it appeared twice
-  this session and was unrelated both times.
+- **`MediaPickerBrowserTest`'s acquisition-workspace test had two unrelated
+  intermittent failures. Do not re-run and move on** — the earlier advice to do
+  so was wrong, and it hid the second one. Both were investigated on 2026-08-01
+  over ~100 instrumented browser runs.
+  - *`return_guard_released` false at line 306 — fixed; it was a test defect.*
+    3/20 baseline runs, every other key in the payload true. The picker's
+    `returningSelection` guard released correctly every time: Alpine's
+    `uploading` and `returningSelection` were both `false`, and `inert`,
+    `aria-busy` and `aria-disabled` were all absent. The `false` came from
+    `disabled="true"` on the close button, written by the
+    `wire:loading.attr="disabled"` that Filament merges into every icon-button
+    (`filament/support/.../icon-button.blade.php:90`) for the duration of an
+    in-flight Livewire request. The snapshot read a DOM property with two
+    independent writers while gating only on the guard's own observables. Fixed
+    by settling Livewire (`window.__mediaPickerPendingRequests === 0`) inside
+    the wait: 0/30 after.
+  - *"Multiple elements found for partial [action-modals]" — real, still open,
+    and not a timing problem.* ~13% of runs; it breaks the picker for the rest
+    of the page's life (6 repeated errors, ~64s timeout), so no wait or timeout
+    can fix it. Two action-modal containers co-existing is **normal**: four do
+    when the picker is open, each resolving to a distinct component, including
+    `MediaPickerPanel`'s own nested inside its host's. Filament's `partials.js`
+    separates them only by `findClosestLivewireComponent(el) ===
+    message.component`, so if the picker root is ever uninitialised
+    (`__livewire` unset) while the host's partial updates, both match and it
+    throws. **Confirmed in production — see M2.** It is not a test artifact:
+    two ordinary open/close cycles of the picker in a real browser reproduce it.
+  - A third, rarer wait (1/30) timed out on the Storage panel listing its file,
+    with no JS errors. Unclassified.
 - **Never `git checkout` a file with uncommitted work in it** to undo a
   deliberate break — it takes the real work with it. Copy to a temp file instead.
 - **Doorway query key is `filters`, not `tableFilters`** — the alias

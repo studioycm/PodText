@@ -73,7 +73,7 @@ it('admits pixel-preserved bytes with admission metadata stripped and creates th
 
 it('supports cleaned original collision safe naming without losing original metadata', function (): void {
     $settings = app(AdminUxSettings::class);
-    $settings->media_acquisition_filename_strategy = MediaAcquisitionFilenameStrategy::CleanedOriginal->value;
+    $settings->media_acquisition_filename_strategy = MediaAcquisitionFilenameStrategy::CleanedOriginal;
     $settings->save();
 
     $media = app(MediaAcquisitionManager::class)->acquireBytes(
@@ -209,7 +209,7 @@ it('saves the bounded Package 3 acquisition settings', function (): void {
         ->and($settings->media_acquisition_upload_batch_limit)->toBe(12)
         ->and($settings->media_picker_browse_limit)->toBe(40)
         ->and($settings->media_picker_search_limit)->toBe(80)
-        ->and($settings->media_acquisition_filename_strategy)->toBe(MediaAcquisitionFilenameStrategy::CleanedOriginal->value);
+        ->and($settings->media_acquisition_filename_strategy)->toBe(MediaAcquisitionFilenameStrategy::CleanedOriginal);
 });
 
 it('recursively browses only the bounded Laravel public disk and public images source', function (): void {

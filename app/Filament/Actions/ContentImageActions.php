@@ -441,10 +441,8 @@ class ContentImageActions
                 Select::make('media_naming_strategy')
                     ->label(__('admin.fields.media_naming_strategy'))
                     ->helperText(__('admin.helpers.media_naming_strategy'))
-                    ->options(fn (): array => collect(MediaNamingStrategy::cases())
-                        ->mapWithKeys(fn (MediaNamingStrategy $case): array => [$case->value => $case->getLabel()])
-                        ->all())
-                    ->default(fn (): string => self::defaultEgressNamingStrategy()->value)
+                    ->options(MediaNamingStrategy::class)
+                    ->default(fn (): MediaNamingStrategy => self::defaultEgressNamingStrategy())
                     ->native(false)
                     ->required(),
             ])
@@ -462,7 +460,9 @@ class ContentImageActions
                 ExportContentImagesZip::dispatch(
                     userId: (int) $user->getKey(),
                     contentGroupId: $scopedGroupId,
-                    strategy: MediaNamingStrategy::fromSetting($data['media_naming_strategy'] ?? null)->value,
+                    strategy: (($data['media_naming_strategy'] ?? null) instanceof MediaNamingStrategy
+                        ? $data['media_naming_strategy']
+                        : self::defaultEgressNamingStrategy())->value,
                 );
 
                 Notification::make()
@@ -533,11 +533,20 @@ class ContentImageActions
         };
     }
 
+    /**
+     * Pre-selects the export modal's naming Select from the admin default.
+     *
+     * The fallback keeps the modal usable when settings cannot be read, but it
+     * reports rather than swallows: an unread setting is a misconfiguration
+     * worth seeing, and a bare `catch` here is what hid the E5 type mismatch.
+     */
     private static function defaultEgressNamingStrategy(): MediaNamingStrategy
     {
         try {
-            return MediaNamingStrategy::fromSetting(app(AdminUxSettings::class)->media_naming_strategy);
-        } catch (\Throwable) {
+            return app(AdminUxSettings::class)->media_naming_strategy;
+        } catch (\Throwable $exception) {
+            report($exception);
+
             return MediaNamingStrategy::Slug;
         }
     }

@@ -431,7 +431,6 @@ return [
         'spotify_show' => 'פודקאסט Spotify',
         'title' => 'כותרת',
         'title_prefix' => 'קידומת כותרת',
-        'tb1_picker_container' => 'מכל בורר',
         'transcript_markdown' => 'תמלול',
         'transcription_mode' => 'מצב תמלול',
         'transcription_presentation_mode' => 'תצוגת תמלול',
@@ -1068,7 +1067,6 @@ return [
         'show_episode_workspace_language_code' => 'מציג את שדה קוד השפה BCP-47 בתוך מקטע התמלול בסביבת העבודה.',
         'spotify_episode' => 'הדביקו כתובת, URI או מזהה של פרק Spotify ואז משכו מטא-דאטה לשדות ריקים בלבד.',
         'spotify_show' => 'הדביקו כתובת, URI או מזהה של פודקאסט Spotify ואז משכו מטא-דאטה ותמונה לשדות ריקים.',
-        'tb1_picker_container' => 'מכל ברירת המחדל לאינטראקציות בורר TB1.',
         'title_prefix' => 'קידומת תצוגה אופציונלית. כאשר היא ריקה, כותרות משולבות בצד הציבורי חוזרות לשם הפודקאסט.',
         'transcription_mode' => 'מצב יחיד מסתיר בקרות ריבוי תמלולים ושומר על סביבת עבודה עם תמלול אחד. מצב ריבוי חושף בקרות מתאימות לפי תפקיד.',
         'transcription_presentation_mode' => 'קובע איך מקטע התמלול מוצג בתוך טופס סביבת העבודה.',
@@ -1321,10 +1319,6 @@ return [
         'super-admin' => 'סופר-אדמין',
         'transcriber' => 'מתמלל',
         'user' => 'משתמש',
-    ],
-    'tb1_picker_containers' => [
-        'modal' => 'מודל',
-        'slideover' => 'לוח צד',
     ],
     'placeholders' => [
         'empty' => 'לא מוגדר',

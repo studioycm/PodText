@@ -2,11 +2,15 @@
 
 namespace App\Settings;
 
+use App\Enums\MediaAcquisitionFilenameStrategy;
+use App\Enums\MediaNamingStrategy;
+use App\Enums\TranscriptionMode;
+use App\Enums\TranscriptionPresentationMode;
 use Spatie\LaravelSettings\Settings;
 
 class AdminUxSettings extends Settings
 {
-    public string $media_naming_strategy;
+    public MediaNamingStrategy $media_naming_strategy = MediaNamingStrategy::Slug;
 
     public int $media_acquisition_max_kilobytes = 2048;
 
@@ -22,17 +26,15 @@ class AdminUxSettings extends Settings
 
     public int $media_picker_search_limit = 50;
 
-    public string $media_acquisition_filename_strategy = 'app_generated';
+    public MediaAcquisitionFilenameStrategy $media_acquisition_filename_strategy = MediaAcquisitionFilenameStrategy::AppGenerated;
 
-    public string $transcription_presentation_mode = 'collapsible';
+    public TranscriptionPresentationMode $transcription_presentation_mode = TranscriptionPresentationMode::Collapsible;
 
-    public string $transcription_mode = 'single';
+    public TranscriptionMode $transcription_mode = TranscriptionMode::Single;
 
-    public bool $show_episode_workspace_hint_line;
+    public bool $show_episode_workspace_hint_line = true;
 
-    public bool $show_episode_workspace_language_code;
-
-    public string $tb1_picker_container;
+    public bool $show_episode_workspace_language_code = false;
 
     public static function group(): string
     {

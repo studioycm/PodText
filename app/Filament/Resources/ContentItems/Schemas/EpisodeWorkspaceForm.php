@@ -5,6 +5,7 @@ namespace App\Filament\Resources\ContentItems\Schemas;
 use App\Enums\ImageUploadPurpose;
 use App\Enums\MediaAttachmentRole;
 use App\Enums\PublicationStatus;
+use App\Enums\TranscriptionPresentationMode;
 use App\Filament\Forms\Components\PublicationStatusSelect;
 use App\Filament\Forms\Components\SlugInput;
 use App\Filament\Forms\Components\TrustedHtmlCodeEditor;
@@ -308,6 +309,7 @@ class EpisodeWorkspaceForm
     private static function transcriptionSection(AdminUxSettings $settings): Section
     {
         $section = Section::make(TranscriptionModeLabel::text('admin.sections.episode_workspace_transcription'))
+            ->key('workspaceTranscriptionSection')
             ->description(TranscriptionModeLabel::text('admin.descriptions.episode_workspace_transcription'))
             ->relationship('workspaceTranscription')
             ->mutateRelationshipDataBeforeCreateUsing(fn (array $data): array => self::normalizeTranscriptionData($data))
@@ -353,12 +355,12 @@ class EpisodeWorkspaceForm
             ])
             ->extraAttributes([
                 'data-test' => 'episode-workspace-transcription',
-                'data-transcription-mode' => $settings->transcription_mode,
-                'data-transcription-presentation-mode' => $settings->transcription_presentation_mode,
+                'data-transcription-mode' => $settings->transcription_mode->value,
+                'data-transcription-presentation-mode' => $settings->transcription_presentation_mode->value,
             ])
             ->columns(2);
 
-        return $settings->transcription_presentation_mode === 'collapsible'
+        return $settings->transcription_presentation_mode === TranscriptionPresentationMode::Collapsible
             ? $section->collapsible()
             : $section;
     }

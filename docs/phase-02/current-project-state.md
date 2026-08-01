@@ -2094,3 +2094,60 @@ Resolved 2026-07-30. `php artisan model:show App\Models\ContentItem` and
 redeclare fatal, and that record stood unretested for months. Both commands were
 rerun during the post-Storage-Truth sweep and now exit 0, so the avoidance note is retired
 and `model:show` is safe to use again.
+
+## E5 Enum-Typed Settings Properties
+
+- The four enum-backed `AdminUxSettings` properties are typed as their enums
+  rather than `string`: `media_naming_strategy`,
+  `media_acquisition_filename_strategy`, `transcription_presentation_mode`,
+  `transcription_mode`. All four Filament call sites now use
+  `->options(Enum::class)`.
+- `PublicContentSettings` was audited and deliberately left unchanged. None of
+  its ten string properties map to an `App\Enums\*` case; their finite value sets
+  live as private const arrays in `PublicContentCardOptions`.
+- `database/settings/2026_08_01_000000_type_admin_ux_enum_settings.php` repairs
+  stored payloads that match no case. It is required, not cosmetic: Spatie's
+  `EnumCast::get()` resolves through `from()`, so an unrecognised value throws a
+  `ValueError` on every request that loads the group.
+- A repair migration for an enum-typed setting must go through the settings
+  repository, not `$this->migrator->update()` —
+  `SettingsMigrator::getPropertyPayload()` applies the cast while reading and so
+  throws on precisely the values being repaired.
+- The read sites that would have failed *silently* are covered by
+  mutation-checked tests in `tests/Feature/AdminUxSettingsEnumTypesTest.php`:
+  `MultiTranscriptionSurfaces::isMultiMode()`,
+  `ContentImageActions::defaultEgressNamingStrategy()`, the workspace
+  presentation-mode branch, and the `transcription_mode` visibility closure on
+  the settings page.
+- `EpisodeWorkspaceForm`'s transcription section gained
+  `->key('workspaceTranscriptionSection')` so the collapsible branch is
+  assertable. This re-keys the section's children, so component-key assertions
+  use `workspaceTranscriptionSection.<field>`; state paths
+  (`data.workspaceTranscription.<field>`) are unaffected.
+- `tb1_picker_container` was removed outright. It configured a modal-versus-
+  slide-over choice for the TB1 table image picker; mini-task 3A (`6da7fda`)
+  replaced that action with one canonical modal and kept the setting as inert
+  data. The retained row was still required, because the property had no
+  default, so losing it fatally broke the whole `admin_ux` group over a value
+  nothing read. Property, enum, six translation keys and the row are gone via
+  `2026_08_01_000001_drop_admin_ux_tb1_picker_container.php`. The historical
+  seed in `2026_07_12_000001` is intentionally untouched.
+- `media_naming_strategy`, `show_episode_workspace_hint_line` and
+  `show_episode_workspace_language_code` now carry defaults matching their seed
+  migrations. A settings property with no default is a required database row: a
+  missing row throws `MissingSettings` for the whole group. A default softens
+  that but does not remove it — `ensureNoMissingSettings` folds
+  `getDefaultValueLoadedProperties()` into the saving check, so a default-loaded
+  property still throws on save.
+- `tests/Feature/SettingsRowInvariantTest.php` enforces the invariant for both
+  settings classes: every declared property has a seeded row, no row outlives
+  its property, and each group loads and saves as migrated. Mutation-checked in
+  both directions. This moves a missing-row discovery from production to CI; the
+  realistic trigger is adding a property and forgetting its seed migration.
+- `ContentImageActions::defaultEgressNamingStrategy()` now calls `report()`
+  before its fallback. The bare `catch (\Throwable)` there is what hid the
+  original E5 type mismatch. Its `media_naming_strategy` read only pre-selects a
+  visible, required Select in the export modal — the job receives whatever the
+  operator selected, so a wrong default is never silent in the export itself.
+- Deleting a class file requires `composer dump-autoload`; the optimised
+  classmap otherwise still points at the removed file.

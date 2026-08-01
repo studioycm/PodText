@@ -205,7 +205,7 @@ it('saves the admin ux media naming strategy setting', function (): void {
 
     clearImgASettingsCache();
 
-    expect(app(AdminUxSettings::class)->media_naming_strategy)->toBe(MediaNamingStrategy::SlugKey->value);
+    expect(app(AdminUxSettings::class)->media_naming_strategy)->toBe(MediaNamingStrategy::SlugKey);
 });
 
 it('blocks deleting curator media that is still referenced by app surfaces', function (): void {

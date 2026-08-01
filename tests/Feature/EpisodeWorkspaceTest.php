@@ -3,7 +3,6 @@
 use App\Enums\MediaAttachmentRole;
 use App\Enums\MediaNamingStrategy;
 use App\Enums\PublicationStatus;
-use App\Enums\Tb1PickerContainer;
 use App\Enums\TranscriptionMode;
 use App\Enums\TranscriptionPresentationMode;
 use App\Filament\Pages\AdminUxSettings as AdminUxSettingsPage;
@@ -232,8 +231,8 @@ it('saves workspace admin ux settings and renders modal and slideover transcript
 
     $settings = app(AdminUxSettings::class);
 
-    expect($settings->transcription_presentation_mode)->toBe(TranscriptionPresentationMode::SlideOver->value)
-        ->and($settings->transcription_mode)->toBe(TranscriptionMode::Single->value)
+    expect($settings->transcription_presentation_mode)->toBe(TranscriptionPresentationMode::SlideOver)
+        ->and($settings->transcription_mode)->toBe(TranscriptionMode::Single)
         ->and($settings->show_episode_workspace_hint_line)->toBeTrue()
         ->and($settings->show_episode_workspace_language_code)->toBeTrue();
 
@@ -242,7 +241,7 @@ it('saves workspace admin ux settings and renders modal and slideover transcript
 
     Livewire::test(EditEpisodeWorkspace::class, ['record' => $item->getRouteKey()])
         ->assertSee('data-transcription-presentation-mode="slideover"', false)
-        ->assertSchemaComponentVisible('workspaceTranscription.language_code', 'form');
+        ->assertSchemaComponentVisible('workspaceTranscriptionSection.language_code', 'form');
 
     Livewire::test(AdminUxSettingsPage::class)
         ->set('data.transcription_presentation_mode', TranscriptionPresentationMode::Modal->value)
@@ -259,12 +258,7 @@ it('saves workspace admin ux settings and renders modal and slideover transcript
         ->assertSee(__('admin.sections.single.episode_workspace_transcription'));
 });
 
-it('keeps the legacy owner image container setting inert and removes only its selector', function (): void {
-    $settings = app(AdminUxSettings::class);
-    $settings->tb1_picker_container = Tb1PickerContainer::SlideOver->value;
-    $settings->save();
-    clearEpisodeWorkspaceSettingsCache();
-
+it('offers no owner image container selector on the admin ux page', function (): void {
     Livewire::test(AdminUxSettingsPage::class)
         ->assertSchemaComponentDoesNotExist('tb1_picker_container')
         ->set('data.media_naming_strategy', MediaNamingStrategy::ReferenceKey->value)
@@ -272,8 +266,7 @@ it('keeps the legacy owner image container setting inert and removes only its se
         ->assertHasNoFormErrors();
     clearEpisodeWorkspaceSettingsCache();
 
-    expect(app(AdminUxSettings::class)->tb1_picker_container)->toBe(Tb1PickerContainer::SlideOver->value)
-        ->and(app(AdminUxSettings::class)->media_naming_strategy)->toBe(MediaNamingStrategy::ReferenceKey->value);
+    expect(app(AdminUxSettings::class)->media_naming_strategy)->toBe(MediaNamingStrategy::ReferenceKey);
 });
 
 it('fills blank fields from spotify lookup and extracts iframe src values', function (): void {

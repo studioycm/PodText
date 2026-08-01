@@ -63,7 +63,7 @@ class MultiTranscriptionSurfaces
     public static function isMultiMode(): bool
     {
         try {
-            return app(AdminUxSettings::class)->transcription_mode === TranscriptionMode::Multi->value;
+            return app(AdminUxSettings::class)->transcription_mode === TranscriptionMode::Multi;
         } catch (Throwable) {
             return false;
         }

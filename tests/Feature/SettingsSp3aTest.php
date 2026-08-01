@@ -42,7 +42,7 @@ function setSp3aMode(TranscriptionMode $mode): void
 {
     clearSp3aSettingsState();
     $settings = app(AdminUxSettings::class);
-    $settings->transcription_mode = $mode->value;
+    $settings->transcription_mode = $mode;
     $settings->save();
     clearSp3aSettingsState();
 }
