@@ -149,6 +149,13 @@ must update this entry and the media-picker bullet under "Gotchas".**
   gets real paging, so nothing is dropped at any disk size.
 
 **M2** · *Opened 2026-08-01, not started. Production defect, not a test flake.*
+**Start here: `docs/research/media-picker-m2-cross-session-brief.md`** — the
+2026-08-01 consolidation of all four sessions' findings (mechanism verified in
+vendor source at both ends, ruled-out causes, the reproduction discrepancy to
+resolve, fix directions, upstream links). The entry below is the original
+capture and stands, with one later correction recorded in the brief and the
+gotchas bullet: after ~100 instrumented runs, two ordinary open/close cycles of
+the picker reproduce it in a real browser.
 Reopening the media picker leaves a **duplicate, uninitialised component root**
 in the DOM, after which every Filament partial update for the host component
 throws `Multiple elements found for partial [action-modals.1]` and the picker
