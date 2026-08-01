@@ -148,14 +148,35 @@ must update this entry and the media-picker bullet under "Gotchas".**
   paginate.** Not a raised limit and not a "showing 50 of N" label — the panel
   gets real paging, so nothing is dropped at any disk size.
 
-**M2** · *Opened 2026-08-01, not started. Production defect, not a test flake.*
-**Start here: `docs/research/media-picker-m2-cross-session-brief.md`** — the
-2026-08-01 consolidation of all four sessions' findings (mechanism verified in
-vendor source at both ends, ruled-out causes, the reproduction discrepancy to
-resolve, fix directions, upstream links). The entry below is the original
-capture and stands, with one later correction recorded in the brief and the
-gotchas bullet: after ~100 instrumented runs, two ordinary open/close cycles of
-the picker reproduce it in a real browser.
+**M2** · *Opened 2026-08-01. **CLOSED 2026-08-02** — fixed with per-mount
+workspace keys; regression suite `tests/Browser/MediaPickerCloneReproBrowserTest.php`.*
+The brief (`docs/research/media-picker-m2-cross-session-brief.md`) carries the
+full closure record: the missing piece was that the stub only fires when a
+remount's request still carries the child in the parent's memo. Ordinary
+settled cycles self-heal — Filament's partial morph removes the child's DOM and
+Livewire's client then deletes it from the parent's client-side memo, so a
+polite reopen mounts a genuinely fresh child (new `wire:id`, full snapshot;
+verified by instrumentation). The production failure is the **race**: a reopen
+that fires before that cleanup (fast clicks batch `unmountAction` +
+`mountAction` into one Livewire message) sends the stale memo, the server skips
+the child and ships the snapshot-less stub, and `partials.js` grafts an
+uninitialised `cloneNode` copy — reproduced deterministically, including the
+picker-dead-until-reload outcome. The ~13% was the click-timing distribution,
+not morph nondeterminism. Fix: `PathCuratorPicker` mints a nonce into the
+owning action's data on every mount (`media_picker_mount_nonce` on
+`launchPanel`, `owner_image_workspace_nonce` on the owner-image actions) and
+appends it to the `Livewire` schema-component key, so a remount can never match
+a stale memo entry — no stub, no clone, regardless of timing. Livewire's own
+documented lever ("change the key to force a re-render"), and the picker was
+already remounting fresh per open in the healthy path, so semantics are
+unchanged. Living-child stubs (sibling action cycles over the open inline
+workspace) remain by design and are healed by Filament's clone graft; the
+regression suite pins root integrity there. Upstream: the clone block
+(`partials.js`, introduced by filamentphp/filament PR #19242) is unchanged
+through 5.7.5 and 5.x HEAD, and this fingerprint is unreported — an upstream
+report with the race repro remains worth filing.
+
+The original capture below stands as history.
 Reopening the media picker leaves a **duplicate, uninitialised component root**
 in the DOM, after which every Filament partial update for the host component
 throws `Multiple elements found for partial [action-modals.1]` and the picker
@@ -210,15 +231,11 @@ put in it: `mountedActions[]` entries hold only `name`/`arguments`/`context`,
 pushed on mount and popped on unmount, with nothing distinguishing a second open
 of the same action at the same index.
 
-**Do not design the fix around the key until the trigger is reproduced
-deliberately.** A stable key at index 0 behaves correctly (child registered on
-open, removed on close, re-registered on reopen — verified). The broken state
-had `launchPanel` at index 1, i.e. the picker action opened while
-`chooseContentGroupCover` was already mounted. Reproduce that on purpose first,
-then test whether a per-mount key actually fixes it. Weigh against an upstream
-Filament report.
-
-**Then push, then phase 3.**
+*(Historical closing note, superseded by the closure above: the deliberate
+reproduction happened on 2026-08-02 — the missing per-mount value became the
+minted nonce riding the action's own data, and the index-1 requirement resolved
+into the stale-memo race, which needs any remount whose request precedes the
+client-side child cleanup.)*
 
 ### The anti-drift guard, and its trap
 
@@ -428,17 +445,18 @@ tests in `tests/Feature/AdminUxSettingsEnumTypesTest.php`.
     independent writers while gating only on the guard's own observables. Fixed
     by settling Livewire (`window.__mediaPickerPendingRequests === 0`) inside
     the wait: 0/30 after.
-  - *"Multiple elements found for partial [action-modals]" — real, still open,
-    and not a timing problem.* ~13% of runs; it breaks the picker for the rest
-    of the page's life (6 repeated errors, ~64s timeout), so no wait or timeout
-    can fix it. Two action-modal containers co-existing is **normal**: four do
-    when the picker is open, each resolving to a distinct component, including
-    `MediaPickerPanel`'s own nested inside its host's. Filament's `partials.js`
-    separates them only by `findClosestLivewireComponent(el) ===
-    message.component`, so if the picker root is ever uninitialised
-    (`__livewire` unset) while the host's partial updates, both match and it
-    throws. **Confirmed in production — see M2.** It is not a test artifact:
-    two ordinary open/close cycles of the picker in a real browser reproduce it.
+  - *"Multiple elements found for partial [action-modals]" — was real, and is
+    FIXED (M2, closed 2026-08-02).* It was never a timing problem in the waits:
+    an uninitialised picker root (`__livewire` unset) made partial attribution
+    ambiguous and broke the picker for the rest of the page's life. The trigger
+    was a remount racing the client-side child-memo cleanup (fast close/reopen
+    clicks batch into one Livewire message), which made the server skip the
+    child and ship a snapshot-less stub that `partials.js` grafts via
+    `cloneNode`. Two action-modal containers co-existing is still **normal**
+    (four when the picker is open, each resolving to a distinct component).
+    The fix is the per-mount workspace key nonce in `PathCuratorPicker` /
+    `ContentImageActions`; `MediaPickerCloneReproBrowserTest` drives the exact
+    race and scans for duplicate `wire:id`s and `__livewire`-less roots.
   - A third, rarer wait (1/30) timed out on the Storage panel listing its file,
     with no JS errors. Unclassified.
 - **Never `git checkout` a file with uncommitted work in it** to undo a

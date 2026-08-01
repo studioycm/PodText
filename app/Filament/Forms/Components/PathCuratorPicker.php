@@ -17,11 +17,14 @@ use App\Support\Media\OwnerImageChoicePresentation;
 use Closure;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Field;
+use Filament\Forms\Components\Hidden;
 use Filament\Schemas\Components\Livewire as LivewireSchemaComponent;
+use Filament\Schemas\Components\Utilities\Get;
 use Filament\Support\Components\Attributes\ExposedLivewireMethod;
 use Filament\Support\Enums\Width;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Str;
 use InvalidArgumentException;
 use Livewire\Attributes\Renderless;
 use LogicException;
@@ -450,6 +453,7 @@ class PathCuratorPicker extends Field
             ->closeModalByClickingAway(false)
             ->closeModalByEscaping(false)
             ->formWrapper(false)
+            ->fillForm(fn (): array => ['media_picker_mount_nonce' => Str::random(8)])
             ->schema(function (PathCuratorPicker $component): array {
                 $componentKey = $component->getKey();
                 $focusTargetId = $component->getPickerFocusTargetId();
@@ -543,11 +547,18 @@ class PathCuratorPicker extends Field
                     JS;
 
                 return [
+                    // The nonce makes the workspace key unique per mount, so a
+                    // remount can never match a stale child key kept in the
+                    // Livewire memo by Filament's partial rendering — the match
+                    // would make Livewire skip the child and emit a
+                    // snapshot-less stub that partials.js grafts as an
+                    // uninitialised cloneNode copy (M2).
+                    Hidden::make('media_picker_mount_nonce'),
                     LivewireSchemaComponent::make(
                         MediaPickerPanel::class,
                         fn (): array => $component->pickerComponentData(),
                     )
-                        ->key("media-picker-workspace-{$componentKey}")
+                        ->key(fn (Get $get): string => "media-picker-workspace-{$componentKey}-".($get('media_picker_mount_nonce') ?? 'boot'))
                         ->columnSpanFull()
                         ->extraAttributes([
                             'x-data' => '{ offlineClosePending: false, offlineCloseReconciling: false, returningSelection: false }',
@@ -573,7 +584,7 @@ class PathCuratorPicker extends Field
                 'isInlineOwnerWorkspace' => true,
             ],
         )
-            ->key(fn (): string => "inline-media-picker-workspace-{$this->getKey()}")
+            ->key(fn (Get $get): string => "inline-media-picker-workspace-{$this->getKey()}-".($get('owner_image_workspace_nonce') ?? 'session'))
             ->columnSpanFull()
             ->extraAttributes(function (): array {
                 $componentKey = $this->getKey();

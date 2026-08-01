@@ -184,4 +184,53 @@ elements when reusing a component).
   `docs/research/filament-examples-phase-02.md` per the tooling protocol.
 - On landing: update the M2 entry, the gotchas bullet, and this file's status.
 
-**Status: open — research brief only, no fix implemented.**
+## Closure record (2026-08-02)
+
+The discrepancy resolved into a **race**, not a geometry requirement. Verified
+by browser instrumentation (request/response memo capture plus a server-side
+`pre-mount` log) in `tests/Browser/MediaPickerCloneReproBrowserTest.php`:
+
+- Settled cycles self-heal at ANY nesting depth: when the partial morph removes
+  the child's DOM, Livewire's client also deletes the child from the parent's
+  client-side memo, so the next request reports no child and the server mounts
+  a genuinely fresh one (new `wire:id`, full snapshot). "Top-level is clean"
+  was true but under-scoped — settled nested reopens are clean too.
+- The stub fires exactly when a remount's request still carries the child in
+  the memo. Deterministic trigger: close and reopen in the same tick, so
+  `unmountAction` + `mountAction` batch into one Livewire message ("two
+  ordinary open/close cycles" — the second cycle's clicks — at click-speed
+  odds, hence ~13%). Reproduced both outcomes: the grafted uninitialised clone
+  and the picker-dead-until-reload state.
+- Living-child stubs are different and by design: sibling action cycles over
+  the OPEN inline workspace stub it on every whole-`action-modals` partial
+  (mount and unmount), and Filament's `partials.js` clone graft is the intended
+  heal (introduced by PR #19242 to preserve nested child state). Those cycles
+  healed 60/60 under instrumentation; the regression suite pins root integrity
+  there rather than stub absence.
+
+**Fix (direction 1, per-mount key):** the owning action mints a nonce into its
+own mounted data on every mount (`media_picker_mount_nonce` via `fillForm` +
+`Hidden` on `launchPanel` in `PathCuratorPicker`; `owner_image_workspace_nonce`
+in `ContentImageActions::imagePickerAction()`, the same pattern as the existing
+baseline-token Hidden), and the `Livewire` schema-component key appends it via
+a `Get $get` closure. A remount therefore never matches a stale memo entry —
+no stub, no clone, timing-independent. Within one mount session the key is
+stable, so sibling-action cycles keep the designed clone-heal and the
+workspace keeps its state.
+
+**Upstream (direction 2, checked 2026-08-01):** not fixed and unreported.
+`partials.js` is byte-identical from v5.7.5 through 5.x HEAD; the clone block
+was introduced by filamentphp/filament PR #19242 (fixing #18681) and mirrors
+Livewire core's own `morph.js` pattern. The only prior "Multiple elements
+found for partial" issue (#16679) was a different, already-fixed mechanism.
+`SupportNestingComponents` is unchanged through Livewire 4.x HEAD. An upstream
+report with the batched-message race repro is still worth filing; the demo
+repo (direction 3) contains no nested-Livewire-in-modal precedent at all, and
+the FilamentExamples corpus's only deliberate key on nested Livewire is
+data-varying — the same invalidation principle as the per-mount nonce (see
+`docs/research/filament-examples-phase-02.md`, M2 section).
+
+**Status: CLOSED 2026-08-02 — per-mount key fix landed with the regression
+suite `tests/Browser/MediaPickerCloneReproBrowserTest.php`; the M2 entry and
+media-picker gotcha in `docs/phase-02/dashboard-metrics-phase-2R-handoff.md`
+carry the same record.**

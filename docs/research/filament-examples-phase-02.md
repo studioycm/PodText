@@ -399,3 +399,130 @@ when a chart earns it; not adopted now.
 - Use now/later: findings 2–4 now; finding 5 later
 - Implementation prompt references: 13
 - Confidence: high (primary source read directly)
+
+## M2 Research: Nested Livewire in Action Modals — Keying Patterns (2026-08-01)
+
+Recorded while researching M2 (media picker panel dead after action-modal
+reopen: a stable `->key()` on a `Filament\Schemas\Components\Livewire` child
+stays in the parent memo across Filament partial renders, so on reopen
+Livewire emits a snapshot-less stub and partials.js grafts a dead clone).
+Goal: how do real FilamentExamples projects nest Livewire components in
+modals/action modals, and how do they key them.
+
+- MCP search tool used: `mcp__filament-examples__search-examples`
+- MCP fetch/read/detail/source tool used: none exposed as a separate tool;
+  full file bodies are returned directly by search
+- Query batches run: pass 1 (limit 8) — `livewire component in modal`,
+  `livewire component action modal`, `nested livewire component`;
+  `livewire schema component`, `media picker`, `modal wire:key`;
+  `livewire key modal`, `custom action modal content`, `modalContent
+  livewire`; `construction projects` (zero results). Pass 2 (limit 3) —
+  `construction`, `project management`, `kanban board drag drop`;
+  `ViewAction modal livewire component`, `Livewire make lazy`, `schema
+  component key`; `image gallery`, `comments section`, `chat messages`.
+  Later batches only re-returned the same three Livewire-hosting projects,
+  so the searchable surface for this topic is exhausted.
+
+Headline: exactly one project in the searchable corpus renders a Livewire
+component inside an action modal, and it sets **no key at all**. No example
+anywhere calls `->key()` on `Filament\Schemas\Components\Livewire`. The only
+deliberate key in the corpus is a **data-dependent** `key(...)` on a Blade
+`@livewire()` mount, composed so the key changes whenever the child must be
+remounted. A static stable key on a modal-nested Livewire child — the M2
+arrangement — has zero precedent in the corpus.
+
+### Example: Product Picker Livewire Table Inside an Action Slide-Over
+
+- Source: `v4/forms/quote-form-with-custom-table-field-and-product-picker-modal` — `app/Livewire/ListQuoteProducts.php`, `app/Livewire/ProductPickerTable.php`, `app/Filament/Tables/ProductsTable.php`, `app/Filament/Forms/Components/QuoteProductsField.php`, `resources/views/filament/forms/components/quote-products-field.blade.php`
+- MCP search tool used: `mcp__filament-examples__search-examples`
+- MCP fetch/read/detail/source tool used: none exposed; full sources via search
+- Access level: source files through `search-examples`
+- Filament version: v4 example; same schema `Livewire` component API as installed v5
+- Files/classes inspected: the five files above, read in full
+- Dependencies: Filament actions/tables/schemas, Livewire events, `#[Modelable]`/`#[Locked]` attributes
+- Why relevant: the only corpus example of `Livewire::make(...)` inside `Action->schema()` in a modal/slide-over — structurally the same shape as PodText's media picker panel
+- Pattern found (action modal, no key):
+
+```php
+Action::make('selectProducts')
+    ->slideOver()
+    ->modalSubmitAction(false)
+    ->schema([
+        Livewire::make(ProductPickerTable::class, [
+            'vehicleData' => $this->vehicleData,
+        ]),
+    ]),
+```
+
+- Pattern found (the project's only explicit key — data-dependent, on the
+  Blade `@livewire()` mount of the wrapper component; the key changes when
+  the data that must invalidate the child changes):
+
+```blade
+@livewire(\App\Livewire\ListQuoteProducts::class, [
+    'wire:model' => $getStatePath(),
+    'vehicleData' => $vehicleData,
+    'isReadOnly' => $isDisabled(),
+], key($getId() . '-' . ($vehicleData['vehicle_model_id'] ?? 'no-model')))
+```
+
+- Pattern found (partial-rendering escape hatch — after mutating state the
+  child table renders, the parent forces a full render instead of trusting
+  Filament partial rendering):
+
+```php
+#[On('addProductToTable')]
+public function addProductToTable(int $id, string $name, int $quantity): void
+{
+    $this->state[] = ['id' => $id, 'name' => $name, 'quantity' => $quantity];
+    $this->resetTable();
+    app(PartialsComponentHook::class)->forceRender($this);
+}
+```
+
+- Filament concepts used: `Filament\Schemas\Components\Livewire`, `slideOver()`, `modalSubmitAction(false)`, `#[Modelable]`, `#[Locked]` child input, child-to-parent `dispatch()` plus `#[On]`, `Filament\Support\Livewire\Partials\PartialsComponentHook::forceRender()`
+- Pattern to copy: pass data into the child as mount data and mark it `#[Locked]`; send the selection back with a Livewire event, not shared state; when a parent state change must reach DOM that partial rendering would skip, call `PartialsComponentHook::forceRender($this)`; when a child must be remounted on data change, derive the mount key from that data
+- Pattern to avoid: treating the keyless modal nesting as proven reopen-safe — the example hosts the action on a nested Livewire component (its own lifecycle, remounted with its host), nothing in the corpus demonstrates a page-level action-modal reopen cycle, so it may simply never hit M2's reopen path
+- Testing ideas: reopen cycle assertions on the mounted child (`wire:snapshot` present on second mount), event round-trip from child to parent
+- Implementation risk: `forceRender()` opts the whole component out of partial rendering for that request — measure before adopting wholesale
+- Use now/later: now (M2 fix reference)
+- Adaptation notes for PodText: the corpus's two working stances are "no explicit key" and "key varies with the data that must invalidate the child". A per-mount token key (changing on every modal mount) is the per-mount generalisation of the observed data-dependent key and consistent with corpus practice; a fixed string key is not observed anywhere
+- Implementation prompt references: M2 media-picker fix
+- Confidence: high for what the corpus does; medium for reopen behaviour (never exercised in the example)
+
+### Example: Ticket Sidebar — keyless long-lived Livewire refreshed by events
+
+- Source: `v4/forms/livewire-component-in-editform-sidebar` — `EditTicket::content()`, `TicketSidebar`
+- MCP search tool used: `mcp__filament-examples__search-examples`
+- Access level: source files through `search-examples`
+- Pattern found: `Livewire::make('ticket-sidebar')->data(fn (): array => ['record' => $this->getRecord()])` in persistent page content, **no key**; parent `afterSave()` dispatches `ticket-sidebar-refresh`, the child refreshes itself via `#[On]`
+- Why relevant: the corpus's stance for children that are never unmounted — keep them keyless and push updates through events rather than re-render/remount
+- Adaptation notes for PodText: stable identity plus event refresh is the pattern for permanently mounted children; a modal child is not that, so this pattern argues against carrying a stable identity across modal mounts
+- Confidence: high
+
+### Alternatives the corpus prefers over nesting Livewire in modals
+
+- Schema-native modal content: `ViewEntry::make(...)->view(...)` inside a
+  `slideOver()` action with data captured at schema build time
+  (`v4/forms/markdown-and-rich-editor-preview-forms`); plain form-component
+  schemas everywhere else — the AI CMS actions
+  (`v4/full-projects/laravel-ai-sdk-cms`) keep rich multi-step modals alive
+  by mutating `$livewire->mountedActions[$index]['data'][...]` and calling
+  `$action->halt()`, never by nesting a component.
+- Render-hook singleton: one page-level Livewire component registered at
+  `PanelsRenderHook::BODY_START` and driven from actions with
+  `->dispatchTo(...)` (`v4/full-projects/global-search-actions-clipboard`) —
+  the modal never owns the component, so modal lifecycle cannot kill it.
+
+### Honest gaps
+
+- `construction projects` (operator-named) returned zero results; the
+  variants `construction`, `project management`, and `kanban board drag
+  drop` surfaced only `kanban-board`, `table-reorderable-position`, and
+  `restaurant-menu`, none containing modal-nested Livewire. The named
+  example either is not in this MCP's corpus or carries a different name
+  beyond query reach.
+- No media-library/gallery picker example exists in the corpus; the `media
+  picker` query resolves to the product-picker project above.
+- Only `search-examples` is exposed; no separate fetch/read/details tool,
+  recorded per protocol.

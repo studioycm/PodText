@@ -2151,3 +2151,37 @@ and `model:show` is safe to use again.
   operator selected, so a wrong default is never silent in the export itself.
 - Deleting a class file requires `composer dump-autoload`; the optimised
   classmap otherwise still points at the removed file.
+
+## M2 Media Picker Duplicate-Root Fix
+
+- The `Multiple elements found for partial [action-modals.N]` defect (M2) is
+  closed. Root cause: a picker remount whose request still carried the child's
+  key in the parent's Livewire memo — the server skips such a child and ships a
+  snapshot-less stub, and Filament's `partials.js` grafts it as an
+  uninitialised `cloneNode` copy. Settled cycles self-heal because removing the
+  child's DOM also removes it from the client-side memo; the production
+  failure was the race where close and reopen batch into one Livewire message
+  (`unmountAction` + `mountAction`), which is why it appeared in ~13% of
+  browser runs and no wait could absorb it.
+- Fix: per-mount workspace keys. `PathCuratorPicker::getPickerAction()` mints
+  `media_picker_mount_nonce` (`fillForm` + `Hidden`) and appends it to the
+  `Livewire` schema component key via a `Get $get` closure;
+  `ContentImageActions::imagePickerAction()` does the same with
+  `owner_image_workspace_nonce` for the inline owner workspace. A remount can
+  never match a stale memo entry, so no stub and no clone, at any click speed.
+  Within one mount session the key is stable, so sibling-action cycles (details
+  slide-over over the open workspace) keep Filament's designed
+  state-preserving clone-heal.
+- `tests/Browser/MediaPickerCloneReproBrowserTest.php` is the regression
+  suite: it intercepts Livewire messages to detect snapshot-less stubs in
+  partials, scans the DOM after every step for duplicate `wire:id`s and roots
+  missing `__livewire`, drives the deterministic batched-message race in both
+  the relation-manager edit-modal geometry and the owner-image modal, and
+  asserts the workspace key changes per mount. 10/10 suite loops green
+  post-fix; the suite was red on all three contracts pre-fix.
+- Upstream status (checked 2026-08-01): unfixed and unreported through
+  Filament 5.7.5/5.x HEAD and Livewire 4.3.4/4.x HEAD; the clone block came
+  from filamentphp/filament PR #19242. An upstream report with the
+  batched-message repro is worth filing. Full record:
+  `docs/research/media-picker-m2-cross-session-brief.md` (closure record) and
+  the M2 entry in `docs/phase-02/dashboard-metrics-phase-2R-handoff.md`.

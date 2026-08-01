@@ -31,6 +31,7 @@ use Filament\Support\Enums\Width;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Contracts\Encryption\DecryptException;
 use Illuminate\Support\Facades\Crypt;
+use Illuminate\Support\Str;
 use JsonException;
 
 class ContentImageActions
@@ -218,10 +219,15 @@ class ContentImageActions
                         $field,
                         $presentation,
                     ),
+                    // Per-mount identity for the inline workspace's wire:key,
+                    // so a remount never matches a stale child key kept in the
+                    // Livewire memo by partial rendering (M2).
+                    'owner_image_workspace_nonce' => Str::random(8),
                 ];
             })
             ->schema([
                 Hidden::make('owner_image_baseline_token'),
+                Hidden::make('owner_image_workspace_nonce'),
                 $picker,
                 Checkbox::make('retitle_media_by_owner')
                     ->label(__('admin.media_library.retitle_checkbox'))
