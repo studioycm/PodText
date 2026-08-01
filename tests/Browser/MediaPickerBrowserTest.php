@@ -228,8 +228,12 @@ it('keeps the acquisition workspace accessible responsive and stateful', functio
             picker().dispatchEvent(new CustomEvent('livewire-upload-finish', {
                 detail: uploadDetail,
             }));
+            // Settle Livewire before snapshotting: the guard reads below are
+            // only meaningful once the workspace is quiet, and the blocks after
+            // this one assume the same.
             await waitFor(() =>
-                ! picker()?.querySelector('[data-testid="media-picker-source-upload"]')?.disabled
+                window.__mediaPickerPendingRequests === 0
+                && ! picker()?.querySelector('[data-testid="media-picker-source-upload"]')?.disabled
                 && ! picker()?.querySelector('[data-testid="media-picker-header"]')?.inert
                 && ! picker()?.querySelector('[data-testid="media-picker-upload-action-guard"]')?.inert
                 && picker()?.querySelector('[data-testid="media-picker-close"]')
@@ -251,8 +255,13 @@ it('keeps the acquisition workspace accessible responsive and stateful', functio
                 && (picker()?.getAttribute('x-bind:aria-busy') ?? '').includes('returningSelection')
                 && (guardProbeClose?.getAttribute('x-bind:disabled') ?? '').includes('returningSelection')
                 && (guardProbeClose?.getAttribute('x-bind:aria-disabled') ?? '').includes('returningSelection');
+            // Read `aria-disabled`, never the `disabled` property: Filament's
+            // icon-button ships its own `wire:loading.attr="disabled"`, so that
+            // property is also written for any in-flight request on this
+            // component and says nothing about the guard. `aria-disabled` is
+            // bound only by the picker, so it answers the question being asked.
             const returnGuardReleased = ! picker()?.inert
-                && ! guardProbeClose?.disabled
+                && guardProbeClose?.getAttribute('aria-disabled') !== 'true'
                 && picker()?.getAttribute('aria-busy') !== 'true';
 
             const modalRect = modalWindow?.getBoundingClientRect();
