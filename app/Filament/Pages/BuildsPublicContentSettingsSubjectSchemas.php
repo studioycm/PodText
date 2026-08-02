@@ -18,6 +18,7 @@ use App\Support\PublicFront\Colors\PublicFrontColor;
 use App\Support\PublicFront\Icons\PublicFrontIconRegistry;
 use App\Support\PublicFront\ItemPage\PublicItemPageRegistry;
 use App\Support\PublicFront\Maintenance\MaintenanceForm;
+use App\Support\PublicFront\PublicFormTargetStatus;
 use App\Support\PublicFront\PublicFrontConfigReader;
 use App\Support\PublicFront\PublicFrontConfigRegistry;
 use App\Support\PublicFront\PublicFrontConfigValidator;
@@ -690,6 +691,12 @@ trait BuildsPublicContentSettingsSubjectSchemas
                                                 ->preload(false)
                                                 ->optionsLimit(50)
                                                 ->native(false)
+                                                ->live()
+                                                ->hint(fn (?string $state): ?string => $this->publicFormTargetStatus()->warningFor($state))
+                                                ->hintColor('warning')
+                                                ->hintIcon(fn (?string $state): ?Heroicon => $this->publicFormTargetStatus()->warningFor($state) === null
+                                                    ? null
+                                                    : Heroicon::OutlinedExclamationTriangle)
                                                 ->required(fn (Get $get): bool => $get('type') === 'public_form')
                                                 ->visible(fn (Get $get): bool => $get('type') === 'public_form'),
                                             Select::make('display_mode')
@@ -2725,6 +2732,12 @@ trait BuildsPublicContentSettingsSubjectSchemas
                 ->preload(false)
                 ->optionsLimit(50)
                 ->native(false)
+                ->live()
+                ->hint(fn (?string $state): ?string => $this->publicFormTargetStatus()->warningFor($state))
+                ->hintColor('warning')
+                ->hintIcon(fn (?string $state): ?Heroicon => $this->publicFormTargetStatus()->warningFor($state) === null
+                    ? null
+                    : Heroicon::OutlinedExclamationTriangle)
                 ->required($type === 'form_cta')
                 ->visible($type === 'form_cta'),
             Select::make('display_mode')
@@ -3172,30 +3185,23 @@ trait BuildsPublicContentSettingsSubjectSchemas
         return $aboutPage;
     }
 
+    private ?PublicFormTargetStatus $publicFormTargetStatus = null;
+
+    /**
+     * Request-local instance so repeated option/hint closures share one
+     * validated-config read instead of re-validating per closure call.
+     */
+    private function publicFormTargetStatus(): PublicFormTargetStatus
+    {
+        return $this->publicFormTargetStatus ??= app(PublicFormTargetStatus::class);
+    }
+
     /**
      * @return array<string, string>
      */
     private function publicFormOptions(): array
     {
-        $publicForms = app(PublicFrontConfigReader::class)
-            ->read()
-            ->group('public_forms');
-
-        $configuredOptions = collect($publicForms['definitions'] ?? [])
-            ->filter(fn (mixed $definition): bool => is_array($definition) && filled($definition['key'] ?? null))
-            ->mapWithKeys(fn (array $definition): array => [
-                $definition['key'] => $definition['name'] ?? $definition['key'],
-            ])
-            ->all();
-
-        $defaultOptions = collect(PublicFrontConfigRegistry::defaultMenuItems())
-            ->filter(fn (array $item): bool => ($item['type'] ?? null) === 'public_form' && filled($item['form_key'] ?? null))
-            ->mapWithKeys(fn (array $item): array => [
-                $item['form_key'] => $item['label'] ?? $item['form_key'],
-            ])
-            ->all();
-
-        return [...$defaultOptions, ...$configuredOptions];
+        return $this->publicFormTargetStatus()->selectOptions();
     }
 
     /**

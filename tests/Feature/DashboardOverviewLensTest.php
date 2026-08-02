@@ -12,6 +12,7 @@ use App\Filament\Widgets\EditorialStatsWidget;
 use App\Filament\Widgets\LibraryCompositionWidget;
 use App\Filament\Widgets\PublicationFunnelWidget;
 use App\Filament\Widgets\PublicationHeatmapWidget;
+use App\Filament\Widgets\PublicFormTargetWarningsWidget;
 use App\Models\Author;
 use App\Models\Category;
 use App\Models\ContentGroup;
@@ -64,6 +65,7 @@ function overviewFixture(): array
 it('renders the overview board in board 1 order', function (): void {
     expect(Dashboard::getWidgetsForLens(DashboardLens::Overview))->toBe([
         DashboardContextWidget::class,
+        PublicFormTargetWarningsWidget::class,
         PublicationFunnelWidget::class,
         EditorialStatsWidget::class,
         PublicationHeatmapWidget::class,

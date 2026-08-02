@@ -13,6 +13,7 @@ use App\Filament\Widgets\LibraryCompositionWidget;
 use App\Filament\Widgets\PublicationFunnelWidget;
 use App\Filament\Widgets\PublicationGapWidget;
 use App\Filament\Widgets\PublicationHeatmapWidget;
+use App\Filament\Widgets\PublicFormTargetWarningsWidget;
 use App\Support\Dashboard\EditorialMetrics;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\ToggleButtons;
@@ -129,6 +130,7 @@ class Dashboard extends BaseDashboard
         return match ($lens) {
             DashboardLens::Overview, DashboardLens::Intake => [
                 DashboardContextWidget::class,
+                PublicFormTargetWarningsWidget::class,
                 PublicationFunnelWidget::class,
                 EditorialStatsWidget::class,
                 PublicationHeatmapWidget::class,

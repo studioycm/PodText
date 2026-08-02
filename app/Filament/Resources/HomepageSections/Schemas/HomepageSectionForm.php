@@ -7,7 +7,7 @@ use App\Filament\Forms\Components\SlugInput;
 use App\Filament\Resources\Support\RelationshipOptionForms;
 use App\Models\ContentItem;
 use App\Support\PublicFront\Cards\PublicFrontCardTemplateResolver;
-use App\Support\PublicFront\PublicFrontConfigReader;
+use App\Support\PublicFront\PublicFormTargetStatus;
 use App\Support\PublicFront\PublicFrontConfigRegistry;
 use App\Support\PublicFront\Sections\PublicDisplaySectionRegistry;
 use Filament\Forms\Components\Select;
@@ -19,6 +19,7 @@ use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
+use Filament\Support\Icons\Heroicon;
 
 class HomepageSectionForm
 {
@@ -230,6 +231,12 @@ class HomepageSectionForm
                             ->searchable()
                             ->preload(false)
                             ->optionsLimit(50)
+                            ->live()
+                            ->hint(fn (?string $state): ?string => app(PublicFormTargetStatus::class)->warningFor($state))
+                            ->hintColor('warning')
+                            ->hintIcon(fn (?string $state): ?Heroicon => app(PublicFormTargetStatus::class)->warningFor($state) === null
+                                ? null
+                                : Heroicon::OutlinedExclamationTriangle)
                             ->visible(fn (Get $get): bool => self::isSourceType($get, PublicDisplaySectionRegistry::CONTENT_BLOCK)),
                         Select::make('display_config.button_display_mode')
                             ->label(__('admin.fields.public_display_button_display_mode'))
@@ -380,25 +387,7 @@ class HomepageSectionForm
      */
     private static function publicFormOptions(): array
     {
-        $publicForms = app(PublicFrontConfigReader::class)
-            ->read()
-            ->group('public_forms');
-
-        $configuredOptions = collect($publicForms['definitions'] ?? [])
-            ->filter(fn (mixed $definition): bool => is_array($definition) && filled($definition['key'] ?? null))
-            ->mapWithKeys(fn (array $definition): array => [
-                $definition['key'] => $definition['name'] ?? $definition['key'],
-            ])
-            ->all();
-
-        $defaultOptions = collect(PublicFrontConfigRegistry::defaultMenuItems())
-            ->filter(fn (array $item): bool => ($item['type'] ?? null) === 'public_form' && filled($item['form_key'] ?? null))
-            ->mapWithKeys(fn (array $item): array => [
-                $item['form_key'] => $item['label'] ?? $item['form_key'],
-            ])
-            ->all();
-
-        return [...$defaultOptions, ...$configuredOptions];
+        return app(PublicFormTargetStatus::class)->selectOptions();
     }
 
     /**

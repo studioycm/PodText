@@ -127,6 +127,36 @@ phases, so `3B P1–P5` and `3C P5–P8` mean phase five of those mini-tasks. Ba
 
 ## Git State
 
+- Form-target observability (2026-08-02) adds admin-side visibility for
+  public-form CTAs whose form key has no enabled definition, without touching
+  the public skip behavior (`PublicMenuConfigReader::resolveItem()`, the
+  about-page block filter, and the homepage content-block button branch still
+  skip silently). `App\Support\PublicFront\PublicFormTargetStatus` is the
+  shared truth: status-suffixed select options (`(disabled)` for configured
+  but disabled definitions, `(not yet defined)` for registry-default keys
+  with no definition), per-key warnings, and misconfigured-CTA counts
+  (visible public-form menu items, visible about `form_cta` blocks, visible
+  content-block homepage sections with a broken `button_form_key`). The three
+  admin `form_key` selects (menu item and about block in
+  `BuildsPublicContentSettingsSubjectSchemas`, and
+  `display_config.button_form_key` in `HomepageSectionForm`) now share that
+  options source — the two duplicated `publicFormOptions()` merge helpers
+  delegate to it — are `live()`, and show a warning-colored hint with an icon
+  when the selected target will not render publicly; their helper texts
+  stopped claiming "only enabled forms are offered" (en+he).
+  `PublicFormTargetWarningsWidget` (Overview/Intake lens, directly after the
+  context widget, no polling) lists the three counts with links to
+  Menu/Header settings, About settings, and Homepage Sections, and hides
+  itself for guests and whenever every target resolves. The maintenance
+  `form_key` select keeps its stricter enabled-only options and was left
+  unchanged. Tests: `tests/Feature/PublicFormTargetObservabilityTest.php`
+  (12 tests — option suffixes, warnings, counts, page hints on
+  MenuHeaderSettings / AboutSettings / EditHomepageSection with
+  healthy-config mutation checks, widget render/links/visibility);
+  `DashboardOverviewLensTest` board-order expectation now includes the
+  widget. Gate: full suite green (1556 tests / 19,357 assertions), pint
+  clean, full FilaCheck 0 issues, `npm run build` clean.
+
 - RECON2 R6 (P3 + P2, 2026-07-31) closes the reconciliation plan. **P2 scope
   settled first, per the operator's tripwire instruction:** the ledger
   (`docs/phase-02/back-log-triage-2026-07-13.md`) now pins P2 to the PHP-lazy
