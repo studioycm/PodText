@@ -1296,6 +1296,7 @@ return [
         'public_form_target_missing_suffix' => '(עדיין לא הוגדר)',
         'public_form_target_warning_disabled' => 'הטופס הציבורי הזה מושבת כרגע, ולכן הפעולה מדולגת בשקט באתר הציבורי.',
         'public_form_target_warning_missing' => 'עדיין לא קיימת הגדרת טופס ציבורי למפתח הזה, ולכן הפעולה מדולגת בשקט באתר הציבורי.',
+        'public_target_inactive_label' => ':label — לא פעיל: היעד הציבורי אינו זמין',
         'spotify_match_preview' => ':name (:tier)',
         'verified' => 'אומת',
         'combined_title_preview' => 'כותרת משולבת: :title',

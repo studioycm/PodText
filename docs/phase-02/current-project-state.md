@@ -156,6 +156,25 @@ phases, so `3B P1–P5` and `3C P5–P8` mean phase five of those mini-tasks. Ba
   `DashboardOverviewLensTest` board-order expectation now includes the
   widget. Gate: full suite green (1556 tests / 19,357 assertions), pint
   clean, full FilaCheck 0 issues, `npm run build` clean.
+  **Follow-up (same day, operator decision: computed inactive badge, saves
+  stay permissive):** menu-item repeater headers and about `form_cta` block
+  headers now append a computed "inactive: public target unavailable" marker
+  whenever the public side would skip the item, via
+  `PublicMenuItemTargetHealth` — an admin-side mirror of
+  `PublicMenuConfigReader::resolveItem()` skip rules (route resolvable,
+  HTTPS external URL, enabled form definition; theme selector always
+  usable) computed from raw form state, sharing the page's memoized
+  form-target status. Nothing is persisted — re-enabling a form instantly
+  revives its CTAs. Note discovered en route: the config validator *drops*
+  saved route items with unknown keys and non-HTTPS external items before
+  the admin form hydrates, so the only saved broken state that reaches the
+  form is a dangling/disabled form key; the health class still covers
+  route/external for unsaved rows being edited. Hard-require-at-save was
+  rejected because registry defaults ship two form menu items with an empty
+  `public_forms.definitions` list (fresh installs are born dangling) and
+  because disabling a form definition is the intended one-click kill-switch
+  for its CTAs. Follow-up gate: full suite green (1560 tests / 19,375
+  assertions), pint clean, full FilaCheck 0 issues, `npm run build` clean.
 
 - RECON2 R6 (P3 + P2, 2026-07-31) closes the reconciliation plan. **P2 scope
   settled first, per the operator's tripwire instruction:** the ledger

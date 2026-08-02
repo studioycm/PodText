@@ -11,6 +11,7 @@ use App\Filament\Widgets\PublicFormTargetWarningsWidget;
 use App\Models\HomepageSection;
 use App\Models\User;
 use App\Settings\PublicContentSettings;
+use App\Support\PublicFront\Menu\PublicMenuItemTargetHealth;
 use App\Support\PublicFront\PublicFormTargetStatus;
 use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -246,6 +247,82 @@ it('stays quiet on the homepage section form when the content-block button targe
         ->test(EditHomepageSection::class, ['record' => $section->id])
         ->assertDontSee(__('admin.labels.public_form_target_warning_missing'))
         ->assertDontSee(__('admin.labels.public_form_target_warning_disabled'));
+});
+
+it('mirrors the public menu skip rules when judging admin menu item target health', function (): void {
+    saveFormTargetConfig(['public_forms' => formTargetPublicFormsConfig()]);
+
+    $health = app(PublicMenuItemTargetHealth::class);
+
+    expect($health->hasUsableTarget(['type' => 'route', 'route_key' => 'home']))->toBeTrue()
+        ->and($health->hasUsableTarget(['type' => 'route', 'route_key' => 'unknown_route']))->toBeFalse()
+        ->and($health->hasUsableTarget(['type' => 'route']))->toBeFalse()
+        ->and($health->hasUsableTarget(['type' => 'external_url', 'external_url' => 'https://example.test']))->toBeTrue()
+        ->and($health->hasUsableTarget(['type' => 'external_url', 'external_url' => 'http://example.test']))->toBeFalse()
+        ->and($health->hasUsableTarget(['type' => 'external_url']))->toBeFalse()
+        ->and($health->hasUsableTarget(['type' => 'public_form', 'form_key' => 'request_transcription']))->toBeTrue()
+        ->and($health->hasUsableTarget(['type' => 'public_form', 'form_key' => 'disabled_form']))->toBeFalse()
+        ->and($health->hasUsableTarget(['type' => 'public_form', 'form_key' => 'missing_form']))->toBeFalse()
+        ->and($health->hasUsableTarget(['type' => 'public_form']))->toBeFalse()
+        ->and($health->hasUsableTarget(['type' => 'theme_selector']))->toBeTrue()
+        ->and($health->hasUsableTarget([]))->toBeFalse();
+});
+
+it('marks menu items the public side would skip as inactive in their repeater headers', function (): void {
+    saveFormTargetConfig([
+        'public_forms' => formTargetPublicFormsConfig(),
+        'menu_config' => [
+            'enabled' => true,
+            'items' => [
+                ['key' => 'ok', 'type' => 'public_form', 'label' => 'Healthy menu CTA', 'form_key' => 'request_transcription', 'visible' => true, 'sort' => 10],
+                ['key' => 'broken', 'type' => 'public_form', 'label' => 'Broken menu CTA', 'form_key' => 'missing_form', 'visible' => true, 'sort' => 20],
+                ['key' => 'off', 'type' => 'public_form', 'label' => 'Disabled-form CTA', 'form_key' => 'disabled_form', 'visible' => true, 'sort' => 30],
+            ],
+        ],
+    ]);
+
+    Livewire::actingAs(User::factory()->admin()->create())
+        ->test(MenuHeaderSettings::class)
+        ->assertSee(__('admin.labels.public_target_inactive_label', ['label' => 'Broken menu CTA']))
+        ->assertSee(__('admin.labels.public_target_inactive_label', ['label' => 'Disabled-form CTA']))
+        ->assertSee('Healthy menu CTA')
+        ->assertDontSee(__('admin.labels.public_target_inactive_label', ['label' => 'Healthy menu CTA']));
+});
+
+it('marks about form CTA blocks the public side would skip as inactive in their block headers', function (): void {
+    saveFormTargetConfig([
+        'public_forms' => formTargetPublicFormsConfig(),
+        'about_page' => [
+            'enabled' => true,
+            'blocks' => [
+                ['key' => 'cta_broken', 'type' => 'form_cta', 'heading' => 'CTA', 'form_key' => 'missing_form', 'visible' => true],
+            ],
+        ],
+    ]);
+
+    Livewire::actingAs(User::factory()->admin()->create())
+        ->test(AboutSettings::class)
+        ->assertSee(__('admin.labels.public_target_inactive_label', [
+            'label' => __('admin.about_block_types.form_cta'),
+        ]));
+});
+
+it('keeps the plain block header for about form CTA blocks whose target is enabled', function (): void {
+    saveFormTargetConfig([
+        'public_forms' => formTargetPublicFormsConfig(),
+        'about_page' => [
+            'enabled' => true,
+            'blocks' => [
+                ['key' => 'cta_ok', 'type' => 'form_cta', 'heading' => 'CTA', 'form_key' => 'request_transcription', 'visible' => true],
+            ],
+        ],
+    ]);
+
+    Livewire::actingAs(User::factory()->admin()->create())
+        ->test(AboutSettings::class)
+        ->assertDontSee(__('admin.labels.public_target_inactive_label', [
+            'label' => __('admin.about_block_types.form_cta'),
+        ]));
 });
 
 it('shows the form target warnings widget with counts and settings links when visible CTAs are broken', function (): void {

@@ -18,6 +18,9 @@ use App\Support\PublicFront\Colors\PublicFrontColor;
 use App\Support\PublicFront\Icons\PublicFrontIconRegistry;
 use App\Support\PublicFront\ItemPage\PublicItemPageRegistry;
 use App\Support\PublicFront\Maintenance\MaintenanceForm;
+use App\Support\PublicFront\Menu\PublicMenuItemTargetHealth;
+use App\Support\PublicFront\Menu\PublicRouteRegistry;
+use App\Support\PublicFront\Menu\PublicUrlSanitizer;
 use App\Support\PublicFront\PublicFormTargetStatus;
 use App\Support\PublicFront\PublicFrontConfigReader;
 use App\Support\PublicFront\PublicFrontConfigRegistry;
@@ -710,7 +713,13 @@ trait BuildsPublicContentSettingsSubjectSchemas
                                         ->columns(3)
                                         ->columnSpanFull(),
                                 ])
-                                ->itemLabel(fn (array $state): ?string => $state['label'] ?? $state['key'] ?? __('admin.labels.untitled'))
+                                ->itemLabel(function (array $state): ?string {
+                                    $label = $state['label'] ?? $state['key'] ?? __('admin.labels.untitled');
+
+                                    return $this->menuItemTargetHealth()->hasUsableTarget($state)
+                                        ? $label
+                                        : __('admin.labels.public_target_inactive_label', ['label' => $label]);
+                                })
                                 ->defaultItems(0)
                                 ->reorderable()
                                 ->cloneable()
@@ -2629,7 +2638,19 @@ trait BuildsPublicContentSettingsSubjectSchemas
     {
         return collect(PublicFrontConfigRegistry::aboutBlockTypes())
             ->map(fn (string $type): Block => Block::make($type)
-                ->label(__("admin.about_block_types.{$type}"))
+                ->label(function (?array $state) use ($type): string {
+                    $label = __("admin.about_block_types.{$type}");
+
+                    if ($type !== 'form_cta' || $state === null) {
+                        return $label;
+                    }
+
+                    $formKey = $state['form_key'] ?? null;
+
+                    return $this->publicFormTargetStatus()->hasEnabledDefinition(is_string($formKey) ? $formKey : null)
+                        ? $label
+                        : __('admin.labels.public_target_inactive_label', ['label' => $label]);
+                })
                 ->schema($this->aboutPageBlockSchema($type))
                 ->columns(3))
             ->all();
@@ -3194,6 +3215,21 @@ trait BuildsPublicContentSettingsSubjectSchemas
     private function publicFormTargetStatus(): PublicFormTargetStatus
     {
         return $this->publicFormTargetStatus ??= app(PublicFormTargetStatus::class);
+    }
+
+    private ?PublicMenuItemTargetHealth $menuItemTargetHealth = null;
+
+    /**
+     * Shares the page's memoized form-target status so per-item header labels
+     * do not re-validate the settings config for every repeater row.
+     */
+    private function menuItemTargetHealth(): PublicMenuItemTargetHealth
+    {
+        return $this->menuItemTargetHealth ??= new PublicMenuItemTargetHealth(
+            app(PublicRouteRegistry::class),
+            app(PublicUrlSanitizer::class),
+            $this->publicFormTargetStatus(),
+        );
     }
 
     /**

@@ -1280,6 +1280,7 @@ return [
         'public_form_target_missing_suffix' => '(not yet defined)',
         'public_form_target_warning_disabled' => 'This public form is currently disabled, so this action is silently skipped on the public site.',
         'public_form_target_warning_missing' => 'No public form definition exists for this key yet, so this action is silently skipped on the public site.',
+        'public_target_inactive_label' => ':label — inactive: public target unavailable',
         'spotify_match_preview' => ':name (:tier)',
         'verified' => 'Verified',
         'combined_title_preview' => 'Combined title: :title',
