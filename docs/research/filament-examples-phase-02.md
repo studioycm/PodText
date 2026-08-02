@@ -612,3 +612,43 @@ is small and result overlap between queries is heavy.
   pagination page" (tables overview), the custom-data
   `LengthAwarePaginator` `pageName` caveat, and Livewire "Multiple
   paginators" / `WithoutUrlPagination`.
+
+## Public Form Modal Duplicate-Mount Research: One Dialog Per Open Event (2026-08-02)
+
+Research for deduping duplicate `PublicFormModal` mounts that all hear one
+`open-public-form` window event. Protocol: pass 1 ran four short queries at
+`limit: 8` ("modal open close alpine", "public form modal livewire", "window
+event listener component", "dispatch browser event button") and returned
+Custom Table Field With Product Picker Modal; Action Buttons in Global Search
+Results; Livewire Status Sidebar In Edit Page; Bulk Action Updating Value via
+Modal Form; AI-Powered CMS With Laravel AI SDK; Doctor Availability and
+Blocked-Time Scheduling; Fill Form Field Using OpenAI API; Drag-and-Drop
+Kanban Board Page. Pass 2 refined ("alpine x-data blade view", "custom
+javascript event blade", "guest public page livewire", "overlay dialog alpine
+show") and returned Google Maps Markers on a Custom Page; GitHub-Style
+Profile View Page with Heatmap; School Weekly Timetable Calendar Page;
+Drag-and-Drop Kanban Board Page; Monthly Attendance Grid Tracker; Register
+Form Password Strength Meter; Profile Page with Multiple Child Records;
+Custom-Designed Table with ViewColumn Cells.
+
+### Headline corpus verdicts
+
+- No example mounts the same Livewire modal component more than once on a
+  page or coordinates several listeners answering one window `CustomEvent`;
+  the duplicate-mount dedupe decision has no corpus precedent.
+- Closest adjacent pattern: the Google Maps custom page guards duplicate
+  global side effects with an idempotency flag (`mapsScriptLoaded` plus a
+  single global callback). The adopted fix reuses that shape as a per-event
+  claim marker (`$event.publicFormClaimed`) instead of a long-lived global.
+- Access level: only `search-examples` (snippets) was available; no
+  source/read/fetch tool.
+- Boost `search-docs` (livewire/livewire 4.x events/actions): the supported
+  contract is `x-on:<event>.window` with `$event.detail`; neither Livewire
+  nor Alpine offers a single-consumer event mechanism, so the claim lives in
+  the app-owned listener.
+- Adaptation notes for PodText: the fix stays inside the owned public modal
+  Blade listener (Alpine-only local UI behavior per the public-panel
+  guideline). A page-level mount registry/render hook was rejected because
+  the three mounting parents re-render in independent Livewire requests, so
+  request-scoped registries decide inconsistently across partial re-renders
+  (the M2 stale-child class).

@@ -1,8 +1,13 @@
 <div>
     @if ($definition !== null)
+        {{--
+            The same form key may be mounted by several parents (header, about CTA,
+            homepage sections) that all hear one window event, so the first matching
+            instance claims the event and the rest stay closed.
+        --}}
         <div
             x-data="{ open: false }"
-            x-on:open-public-form.window="if (! $event.detail?.formKey || $event.detail.formKey === @js($definition['key'])) open = true"
+            x-on:open-public-form.window="if ($event.detail?.formKey === @js($definition['key']) && ! $event.publicFormClaimed) { $event.publicFormClaimed = true; open = true }"
             data-test="public-form-modal"
             data-form-key="{{ $definition['key'] }}"
             data-display-mode="{{ $displayMode }}"

@@ -2234,3 +2234,43 @@ and `model:show` is safe to use again.
   Research", 2026-08-02): the FilamentExamples corpus has no precedent for
   `queryStringIdentifier`/`Table::configureUsing`/`WithoutUrlPagination`;
   decision rests on vendor source and official docs.
+
+## Public Form Modal Duplicate-Mount Dedupe
+
+- Defect: `PublicFormModal` is mounted per form key by three independent
+  parents — header `form_mounts`, about-page `formCtas`, and homepage
+  content-block sections. Each parent dedupes internally
+  (`->unique('form_key')`), but nothing deduped across parents, and every
+  mounted instance listened for `open-public-form` and opened on a matching
+  key: the same form mounted twice (header + homepage section, header +
+  about CTA) produced two stacked dialogs/backdrops/focus traps from one
+  click. The listener's `! $event.detail?.formKey ||` fallback additionally
+  opened every mounted modal for a key-less event; all dispatchers pass
+  `formKey`, so the fallback was dead code that only enabled the failure.
+- Fix (client-side dedupe): the listener in
+  `resources/views/livewire/public/public-form-modal.blade.php` now requires
+  `$event.detail?.formKey === <key>` and claims the event by stamping
+  `publicFormClaimed` on the `CustomEvent`. Window listeners for one event
+  run synchronously in DOM order, so exactly one matching instance opens per
+  event; the claim is per-event (not sticky), so close/reopen cycles keep
+  working and whichever duplicate instances remain after partial re-renders
+  still respond. Key-less events now open nothing.
+- Rejected alternative: page-level single mounting through a shared
+  registry/render hook. The three parents re-render in independent Livewire
+  update requests, so a request-scoped mount registry cannot decide
+  consistently across partial re-renders (the M2 stale-child class), and it
+  would move modal ownership onto a new page-level surface to solve a
+  client-side listener defect.
+- Tests: `tests/Browser/PublicFormModalBrowserTest.php` seeds the real
+  duplicate-mount homepage (menu form action + content-block section button
+  for the same enabled form) and pins: two mounted roots yield one visible
+  dialog per click; key-less and foreign-key dispatches open nothing;
+  a matching dispatch opens exactly one dialog; the claim resets across
+  close/reopen cycles.
+- Gate 2026-08-02: pest 1544 passed (19323 assertions), pint clean, full
+  filacheck 0 issues, `npm run build` green. FilamentExamples research
+  recorded in `docs/research/filament-examples-phase-02.md` ("Public Form
+  Modal Duplicate-Mount Research", 2026-08-02): the corpus has no
+  duplicate-mount/window-event precedent; only `search-examples` was
+  available; the decision rests on Livewire 4 event docs and the app-owned
+  component.
