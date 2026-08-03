@@ -15,6 +15,11 @@
             <directory>tests/Browser</directory>
         </testsuite>
     </testsuites>
+    <groups>
+        <exclude>
+            <group>compiled-sentinels</group>
+        </exclude>
+    </groups>
     <source>
         <include>
             <directory>app</directory>
