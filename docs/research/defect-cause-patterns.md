@@ -180,7 +180,7 @@ Mark each step with commit hash + gate result when done.
 | A3 | Dashed empty states + `x-filament::link` doorways | ☐ |
 | B1 | Alpine hover crosshair + tooltip on SVG sparklines | ☐ |
 | Docs | Refresh 2R-handoff commit table + gate; current-project-state Prompt-13 row; fold flags | ✅ minimal refresh 2026-08-03 pre-push; full fold again at route end |
-| Push gate | Full pest/pint/filacheck/build; push ONLY on operator's word (deploys production) | ⏳ operator instructed push 2026-08-03; audit running |
+| Push gate | Full pest/pint/filacheck/build; push ONLY on operator's word (deploys production) | ✅ 2026-08-03: pest 1563/19,386, full filacheck 0, build ok; pushed pinned `987b92f` (F's concurrent `b24490a` deliberately excluded); Forge release `74621206` = `987b92f`, `/up` 200 |
 
 ### V1 record (2026-08-03)
 
