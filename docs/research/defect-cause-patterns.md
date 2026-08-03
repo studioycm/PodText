@@ -272,9 +272,12 @@ commits) · where else to look (concrete greps/paths) · status.
   against the theme's `@source` globs; any future style home added outside
   `app/Filament`/`resources` needs a glob and a scan-scope pin.
 - **Status:** instance fixed + pinned (`b9825c6`); the general check rides
-  the scan-scope test. Related dormant note: `FunnelStage::Published->bandClass()`
-  (`bg-info-100`) has no rendering call site — the A session resolves
-  keep-vs-delete as a follow-up.
+  the scan-scope test. The related dormant-arm note is resolved (`1efeb35`):
+  `bandClass()` stays deliberately case-complete — only the visible band
+  renders today, the arms were born whole in `4bd4030` with no renderer ever
+  added or removed (`git -S`), a partial match would put
+  `UnhandledMatchError` in reach of future all-stages loops, and the docblock
+  now says so in place.
 
 ---
 
@@ -296,7 +299,7 @@ Mark each step with commit hash + gate result when done.
 | A1 | Sparkline min/max normalisation (defect) | ✅ `2831ee9` — min−max over a 2px-inset band, exact-coordinate tests watched red against peak-only maths |
 | A2 | Trend-coloured stroke from `SeriesRow::delta()` | ✅ `b9825c6` — `SparklineTrend` enum as the one palette home + source-scanning literal ban; also fixed/pinned P13 (theme `@source` scan scope) |
 | A3 | Dashed empty states + `x-filament::link` doorways | ✅ `103b728` — shared dashed empty-state partial (en+he), Heroicon doorways; F3 `href=""` pin intact |
-| A4 | Make the Board-2 reason-bar doorway promise true (P11 fix) | ✅ `c36f6c4` — on-board dispatch into the queue's reason filter (URL form vendor-proven infeasible); P11 closed. A gate claim: pest 1,587/19,563, pint, filacheck 0, build ok — orchestrator verification running |
+| A4 | Make the Board-2 reason-bar doorway promise true (P11 fix) | ✅ `c36f6c4` — on-board dispatch into the queue's reason filter (URL form vendor-proven infeasible); P11 closed. **Orchestrator-verified 2026-08-03: pest 1587/19,563 direct run (identical to claim), pint --test pass, full filacheck 0, tree clean.** Follow-up `1efeb35` resolved bandClass keep-vs-delete (keep, docblock-only, `git -S` evidence) |
 | B1 | Alpine hover crosshair + tooltip on SVG sparklines | ☐ |
 | Ledger research | Dedicated read-only bad-practices hunt (skills + guidelines + FilaCheck catalogue), report-only | ⏳ chip `task_8d7e8616` |
 | Operator decisions | Phase-3 plan "Open questions" Q1–Q6 (Q5 = P12 empty-state principles) — block phase-3 implementation, not A/B | ⏳ surfaced to operator 2026-08-03 |
