@@ -2122,7 +2122,17 @@ git commit -m "docs(dashboard): record phase 3 (Intake lens) as implemented"
 
 ## Open questions for the operator
 
-1. **Sources-filter semantics for unattributable imports (D-4).** Implemented:
+1. **Sources-filter semantics for unattributable imports (D-4).**
+   **DECIDED 2026-08-03: declare-at-upload now, fetch-run records in WB.**
+   Phase 3 adds a nullable provider column (+ optional `import_connection_id`)
+   on the `imports` table, stamped from a "source" select in the import
+   modal defaulting to manual (mechanism verified against Filament's
+   import-options plumbing by the implementer); the sources filter then
+   scopes imports for real, and Spotify stays honestly empty (its direct
+   fetch is not an import). WB's fetch-run records later supersede the
+   declaration as truth-at-origin — the column becomes derivable, not
+   removed. Fold the migration + modal + stamping task into the
+   reconciliation pass. **Original question:** Implemented:
    all/manual show the full queue; spotify/google_drive show an explanatory
    empty state (imports carry no provider — the table has no such column, and
    the Spotify fetcher's direct importer bypasses Filament imports entirely).

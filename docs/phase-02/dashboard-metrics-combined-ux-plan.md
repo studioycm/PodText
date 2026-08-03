@@ -275,6 +275,13 @@ replacement. Parenthetical contract/evidence notes are as authored.
 1. **ES-1 · כל מספר הוא דלת** — every stat carries a pre-filtered Resource
    URL; a dead-end number is a defect. *(Contract: Resource-URL rule;
    friction: today's dashboard answers nothing.)*
+   **Operator qualifier (2026-08-03):** ES-1 must never cost a metric its
+   place on the board. When no filtered Resource, page, or other
+   record-displaying surface exists for a number yet, the number still
+   ships — doorway-less — and the missing surface is registered as work
+   (a filtered Resource is not required; any surface that displays the
+   records filterably satisfies the door). The F3 roll-up "Other" row and
+   the pre-listing imports queue are the precedents.
 2. **ES-2 · פורסם ≠ גלוי** — the two facts never share one widget cell.
    *(Stage 3 defect.)*
 3. **ES-3 · אפס אמיתי, אפס שימושי** — empty/low-data states are designed
