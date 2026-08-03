@@ -36,8 +36,9 @@ commits) · where else to look (concrete greps/paths) · status.
   `grep -rn "number_format(" app resources` (5 dashboard); raw Tailwind palette
   classes outside enum homes (218 app-wide — parked, separate budget);
   duplicated literals across `lang/en` + `lang/he`.
-- **Status:** open — F1/F2 close the dashboard-scope formats this round;
-  app-wide sweep is parked deliberate work.
+- **Status:** dashboard-scope formats closed (`b24490a`, `UiFormats` +
+  guard); app-wide sweep (63 `d/m/Y` + 7 `number_format(` grep lines, plus
+  57 `H:i` lines that overlap heavily) stays parked deliberate work.
 
 ## P2 · An enum beside hand-written values protects nothing
 
@@ -96,7 +97,8 @@ commits) · where else to look (concrete greps/paths) · status.
   itself; the 12 deliberately-hardcoded-timezone test files are a **partial**
   oracle until F2 adds a near-midnight fixture (Jerusalem vs UTC only diverge
   within an hour of midnight).
-- **Status:** fixed instance; F2's fixture is the open guard.
+- **Status:** fixed instance; F2's near-midnight fixture landed (`b24490a`)
+  and was proven discriminating — the UTC-day expectation fails against it.
 
 ## P6 · Silent caps
 
@@ -107,7 +109,13 @@ commits) · where else to look (concrete greps/paths) · status.
   disk (M1, decided: real pagination).
 - **Where else:** `grep -rn "take(" app/Support/Dashboard app/Filament/Widgets`;
   `grep -rn "limit(" app/Support/Dashboard`; `storage_candidate_limit` users.
-- **Status:** open — F3 this round; M1 queued separately.
+- **Sighting (2026-08-03, F3):** assessed and cleared —
+  `EditorialMetrics::activityStream(limit: 12)` and its per-type
+  `limit($limit)` queries do truncate, but the stream presents as a latest-N
+  feed rather than a totality, so a roll-up row would be meaningless there.
+  Bounded-by-design, not a violation.
+- **Status:** breakdown caps closed (`b3d6de4`, `rollUpTail` + a reconciling
+  "Other" row on `BreakdownRow::meta`); M1 queued separately.
 
 ## P7 · "Flake" labels hiding real defects
 
@@ -133,7 +141,9 @@ commits) · where else to look (concrete greps/paths) · status.
   shape cannot be copied naively.
 - **Where else:** the F1 formats/colour guard (binding requirement); audit any
   existing source-scanning tests for line-anchored regexes.
-- **Status:** binding requirement on F1.
+- **Status:** met — F1's guard whitespace-collapses file contents before
+  matching (`b24490a`). The timezone guard needs no retrofit: its literal is
+  a single string that cannot split across lines.
 
 ## P9 · `->options(Enum::class)` changes state type, not just labels
 
@@ -165,7 +175,8 @@ commits) · where else to look (concrete greps/paths) · status.
 - **Where else:** stream event types (phase 3, `StreamEventType`); the
   "format" concept until F1's localization home; provider/source strings on
   intake paths (Board 3).
-- **Status:** recurring; F1 closes the formats instance this round.
+- **Status:** recurring; formats instance closed (`b24490a`, `UiFormats`).
+  `StreamEventType` (phase 3) and intake provider strings remain.
 
 ---
 
@@ -180,10 +191,10 @@ Mark each step with commit hash + gate result when done.
 | V2 | `OwnerImageWorkspaceTest` standalone ×10; close or spawn fix | ✅ 10/10 clean; closed in M2 brief |
 | V3 | Pagination-key + dashboard row keys didn't shift component-key assertions | ✅ pinned by tests, all green, no vacuous asserts |
 | V4 | Close M1/M2 in media brief; guard-or-document dynamic settings writes | ✅ guarded (SettingsRowInvariantTest) |
-| F1-pre | Pin format-count definition (pattern set, paths, recorded number) | ⏳ delegated (chip `task_cf5972af`, 2026-08-03) |
-| F1 | Localization home beside `UiTimezone` + statement-scanned anti-drift guard | ⏳ delegated (same chip) |
-| F2 | Adopt across widgets/Blade/DTOs + near-midnight fixture | ⏳ delegated (same chip) |
-| F3 | "Group other" bucketing via `BreakdownRow::meta` | ⏳ delegated (same chip) |
+| F1-pre | Pin format-count definition (pattern set, paths, recorded number) | ✅ pinned in the guard docblock (`b24490a`): `d/m/Y`+`H:i`+`number_format(`, 3 dashboard paths, 7 date + 5 number = 12 |
+| F1 | Localization home beside `UiTimezone` + statement-scanned anti-drift guard | ✅ `b24490a` — `UiFormats` + `UiFormatsPolicyTest`; guard watched red on exactly the 12 sites |
+| F2 | Adopt across widgets/Blade/DTOs + near-midnight fixture | ✅ `b24490a` — all 12 routed; 00:30 fixture proven discriminating (UTC-day expectation fails) |
+| F3 | "Group other" bucketing via `BreakdownRow::meta` | ✅ `b3d6de4` — `rollUpTail` in `EditorialMetrics`, totals reconcile; F gate: full pest 1,571/19,430, pint, filacheck 0, build ok |
 | A1 | Sparkline min/max normalisation (defect) | ☐ |
 | A2 | Trend-coloured stroke from `SeriesRow::delta()` | ☐ |
 | A3 | Dashed empty states + `x-filament::link` doorways | ☐ |
@@ -205,3 +216,42 @@ canView + render compute once (was two full recounts per render).
 (settings saves, `HomepageSection`) are outside `EditorialMetrics`' observer
 invalidation, so folding the counts into the cached snapshot would show a stale
 warning for up to 60s after the very edit that fixes it.
+
+### F record (2026-08-03)
+
+The F block ran in the delegated side-session (chip `task_cf5972af`), TDD
+with watched red throughout. Commits: `b24490a` (F1+F2), `b3d6de4` (F3);
+the side-session also committed the inherited delegation bookkeeping as
+`0ad1d68` before starting, to begin from a clean tree.
+
+**The pinned definition (F1-pre), verbatim from the guard docblock in
+`tests/Feature/UiFormatsPolicyTest.php`:** pattern set = literal `d/m/Y`,
+`d/m/Y H:i`, `H:i` + `number_format(` calls (scanned as the atoms `d/m/Y`,
+`H:i`, `number_format(`); scope = `app/Filament/Widgets`,
+`app/Support/Dashboard`, `resources/views/filament/widgets`; count at pin
+time = 7 date + 5 number = 12 sites. App-wide (63 `d/m/Y` + 7
+`number_format(` grep lines) parked. The earlier 7/10/12 + 52/64 count
+confusion came from mixing atoms-per-line, sites and file counts; the
+pinned unit is **format-string occurrences** (a `d/m/Y H:i` line is one
+site).
+
+Notes for the next session:
+
+- `UiFormats` mirrors `UiTimezone` exactly: final class, typed static
+  readers, values in `config/localization.php`. `number()` runs
+  `Illuminate\Support\Number::format` on the configured `he` locale —
+  output for non-negative integers is byte-identical to the old
+  `number_format()`, so **zero existing test expectations changed** in the
+  entire F block. Negatives gain an LTR mark under `he` (documented in the
+  class docblock); no dashboard surface renders negatives today.
+- The guard went red listing exactly the 12 pinned sites before adoption
+  and green after — the drift-proof loop decision 18 asks for.
+- The F3 roll-up lives in `EditorialMetrics`, not the widget: filawidgets
+  owned `groupOther` at the widget layer, but PodText widgets must not
+  compute. `rollUpTail` is shared by both breakdowns; the Other row has no
+  doorway URL and the composition view renders doorway-less rows as plain
+  text (never `href=""`).
+- The transcriber Other row sums `previous` from the tail rows themselves,
+  so its delta stays honest for the tail as displayed — it does not go
+  hunting for previous-period-only transcribers the current board never
+  listed.
