@@ -1,0 +1,171 @@
+# Defect cause-pattern ledger
+
+Started 2026-08-03 by the dashboard route-plan orchestrator session. Every
+defect found in the Prompt 13 round traces to a repeatable cause-pattern; each
+entry here turns one finding into a search prompt for similar cases elsewhere.
+
+**Protocol.** Side-sessions append candidate entries (or sightings under an
+existing entry) with evidence — file, commit, one-line mechanism — and return
+an "open flags + pattern evidence" section in their final report. The
+orchestrator merges and dedupes. When a pattern accumulates **2+ sightings
+beyond its founding evidence**, it gets a targeted sweep task of its own.
+
+Entry format: **name** · one-line cause · evidence (where it already bit, with
+commits) · where else to look (concrete greps/paths) · status.
+
+---
+
+## P1 · Value duplicated instead of routed through one home
+
+- **Cause:** a constant (colour, timezone, format string, label) is retyped at
+  each use site instead of read from one owner, so sites drift independently.
+- **Evidence:** dashboard colour drifts fixed by `FunnelStage`/`DashboardReason`
+  (`dc0cd7a`), three more by `DashboardTier` (`4bd4030`); `Asia/Jerusalem` in
+  ~50 files consolidated (`44219ad`); enum labels hand-written in two places
+  (E4, `96af988`); date/number formats still scattered (F1/F2 open).
+- **Where else:** `grep -rn "d/m/Y" app resources` (52 app-wide, 10 dashboard);
+  `grep -rn "number_format(" app resources` (5 dashboard); raw Tailwind palette
+  classes outside enum homes (218 app-wide — parked, separate budget);
+  duplicated literals across `lang/en` + `lang/he`.
+- **Status:** open — F1/F2 close the dashboard-scope formats this round;
+  app-wide sweep is parked deliberate work.
+
+## P2 · An enum beside hand-written values protects nothing
+
+- **Cause:** creating the enum is half the work; a value is only safe from
+  drift once **every call site** reads it from the enum. Unrouted sites keep
+  drifting next to a correct-looking type.
+- **Evidence:** proven three separate times in phase 2R (handoff contract
+  line); colour drifts persisted after the enums existed until call sites were
+  routed (`4bd4030`).
+- **Where else:** for each enum in `app/Enums`, grep its literal backing values
+  outside the enum file; `ActivityStreamWidget` hand-writes event-type colours
+  (known open → `StreamEventType`, phase 3).
+- **Status:** open as a rule; `StreamEventType` lands in phase 3.
+
+## P3 · Live unvalidated state read raw
+
+- **Cause:** state persisting across requests (`#[Url]`, session-persisted
+  filters, Filament `pageFilters`) is consumed without narrowing, so a stale or
+  hostile value reaches queries/rendering.
+- **Evidence:** `$this->pageFilters` consumed unvalidated (Filament docs warn
+  it is user input); fixed by narrowing in `ReadsDashboardFilters` (phase 2R).
+- **Where else:** `grep -rn "#\[Url" app`; `grep -rn "pageFilters" app`;
+  Livewire public properties fed into queries without validation;
+  session-persisted table filter state.
+- **Status:** dashboard fixed; app-wide sweep candidate (needs a second
+  sighting).
+
+## P4 · Shared implicit keys
+
+- **Cause:** components rely on a key (query-string, pagination, `wire:key`,
+  schema component key) that is implicitly derived, so it collides between
+  siblings or shifts when a list changes.
+- **Evidence:** blockers queue table shared the page's query-string keys
+  (fixed, `queryStringIdentifier`); pagination keys namespaced per component
+  (`2e786ed`); M2 stale-memo clone graft fixed by per-mount key nonce
+  (`0b99bf8`); `->key()` on a schema Section re-keys its **children** (`HasKey`
+  inheritance, E5 session finding).
+- **Where else:** admin tables lacking `queryStringIdentifier`; index-derived
+  Livewire widget keys that shift when a lens's widget list changes (V3 checks
+  this round); `grep -rn '\->key(' app/Filament`.
+- **Status:** multiple fixes landed; V3 verifies the residual this round.
+
+## P5 · Proxy metrics teach tests wrong expectations
+
+- **Cause:** a metric computed from a proxy column gets encoded into a test, so
+  the test asserts the bug and defends it against the fix.
+- **Evidence:** "became visible" bucketed by `published_at`; the test encoded
+  the proxy; fixed with `becameVisibleAt()` (`ce15d96`).
+- **Where else:** any day/count derived from a column that is not the event
+  itself; the 12 deliberately-hardcoded-timezone test files are a **partial**
+  oracle until F2 adds a near-midnight fixture (Jerusalem vs UTC only diverge
+  within an hour of midnight).
+- **Status:** fixed instance; F2's fixture is the open guard.
+
+## P6 · Silent caps
+
+- **Cause:** `take($limit)` / traversal caps drop the tail with no signal —
+  the display reads as "everything" when it is not (no-silent-caps rule).
+- **Evidence:** breakdown `take($limit)` drops podcasts beyond six (F3 open);
+  Storage panel candidate list caps at 50 breadth-first over the whole public
+  disk (M1, decided: real pagination).
+- **Where else:** `grep -rn "take(" app/Support/Dashboard app/Filament/Widgets`;
+  `grep -rn "limit(" app/Support/Dashboard`; `storage_candidate_limit` users.
+- **Status:** open — F3 this round; M1 queued separately.
+
+## P7 · "Flake" labels hiding real defects
+
+- **Cause:** an intermittent failure is the click/timing distribution of a
+  deterministic defect; the flake label stops the investigation.
+- **Evidence:** M2 at ~13% was called a flake twice before the deterministic
+  race repro (closed, `0b99bf8`); the `return_guard_released` "flake" was a
+  real test defect (`3cc4906`); `OwnerImageWorkspaceTest` fails ~1-in-4
+  standalone — unresolved (V2 this round); a 1/30 Storage-listing timeout
+  remains unclassified.
+- **Where else:** any browser test with a re-run habit; the parallel-worker
+  port/storage collision hypothesis (`local_51579218`) for the residual
+  intermittents.
+- **Status:** V2 runs the check this round.
+
+## P8 · Line-based guards miss multi-line call sites
+
+- **Cause:** an anti-drift guard that greps single lines misses the same call
+  formatted across lines; guards must scan statements, not lines.
+- **Evidence:** phase 2R anti-drift trap notes (handoff); the timezone guard's
+  shape cannot be copied naively.
+- **Where else:** the F1 formats/colour guard (binding requirement); audit any
+  existing source-scanning tests for line-anchored regexes.
+- **Status:** binding requirement on F1.
+
+## P9 · `->options(Enum::class)` changes state type, not just labels
+
+- **Cause:** passing an enum class to `->options()` installs an
+  `EnumStateCast`, so field state becomes an enum instance; a string-typed
+  backing property then mismatches (or the inverse). The field's state type and
+  the property's type must agree.
+- **Evidence:** E4 hit on `AdminUxSettings::$media_naming_strategy`; E5 typed
+  the four properties (`9859145`) with a repair migration and the settings-row
+  invariant test.
+- **Where else:** `grep -rn "options(.*::class" app/Filament` cross-checked
+  against backing property types; `PublicContentSettings`'s ten string
+  properties (deliberately untyped — six enums must exist first); dynamic
+  settings writers (`SettingsBackupManager:286`,
+  `NormalizePublicContentSettings:80`) — V4 decides guard-or-document.
+- **Status:** E5 closed; V4 decides the dynamic-writer residual.
+
+## P10 · Concept without a type home
+
+- **Cause:** a domain concept exists only as query shapes or array literals;
+  nothing owns its invariants until a type does, so every use site re-derives
+  them slightly differently.
+- **Evidence:** blocker tiers existed only as query shapes until
+  `DashboardTier` (`4bd4030`); reasons until `DashboardReason` (`dc0cd7a`).
+- **Where else:** stream event types (phase 3, `StreamEventType`); the
+  "format" concept until F1's localization home; provider/source strings on
+  intake paths (Board 3).
+- **Status:** recurring; F1 closes the formats instance this round.
+
+---
+
+## Route checklist (2026-08-03 round)
+
+Mark each step with commit hash + gate result when done.
+
+| Step | What | Status |
+|---|---|---|
+| Ledger | Create this file | ✅ this commit |
+| V1 | Audit `PublicFormTargetWarningsWidget` vs board contracts; re-run lens/order tests | ☐ |
+| V2 | `OwnerImageWorkspaceTest` standalone ×10; close or spawn fix | ☐ |
+| V3 | Pagination-key + dashboard row keys didn't shift component-key assertions | ☐ |
+| V4 | Close M1/M2 in media brief; guard-or-document dynamic settings writes | ☐ |
+| F1-pre | Pin format-count definition (pattern set, paths, recorded number) | ☐ |
+| F1 | Localization home beside `UiTimezone` + statement-scanned anti-drift guard | ☐ |
+| F2 | Adopt across widgets/Blade/DTOs + near-midnight fixture | ☐ |
+| F3 | "Group other" bucketing via `BreakdownRow::meta` | ☐ |
+| A1 | Sparkline min/max normalisation (defect) | ☐ |
+| A2 | Trend-coloured stroke from `SeriesRow::delta()` | ☐ |
+| A3 | Dashed empty states + `x-filament::link` doorways | ☐ |
+| B1 | Alpine hover crosshair + tooltip on SVG sparklines | ☐ |
+| Docs | Refresh 2R-handoff commit table + gate; current-project-state Prompt-13 row; fold flags | ☐ |
+| Push gate | Full pest/pint/filacheck/build; push ONLY on operator's word (deploys production) | ☐ |
