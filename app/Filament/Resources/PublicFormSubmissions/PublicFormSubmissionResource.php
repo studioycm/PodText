@@ -10,6 +10,7 @@ use App\Filament\Resources\PublicFormSubmissions\Tables\PublicFormSubmissionsTab
 use App\Filament\Support\AdminNavigationOrder;
 use App\Filament\Support\Concerns\UsesAdminNavigationOrder;
 use App\Models\PublicFormSubmission;
+use App\Support\UiFormats;
 use BackedEnum;
 use Filament\Navigation\NavigationItem;
 use Filament\Resources\Resource;
@@ -55,7 +56,7 @@ class PublicFormSubmissionResource extends Resource
                     ->status(PublicFormSubmissionStatus::New)
                     ->count();
 
-                return $newSubmissionsCount > 0 ? number_format($newSubmissionsCount) : null;
+                return $newSubmissionsCount > 0 ? UiFormats::number($newSubmissionsCount) : null;
             },
         );
     }

@@ -18,6 +18,7 @@ use App\Support\PublicFront\ContentItemDisplayTitle;
 use App\Support\PublicFront\PublicDefaultImageResolver;
 use App\Support\Transcriptions\MultiTranscriptionSurfaces;
 use App\Support\Transcriptions\TranscriptionModeLabel;
+use App\Support\UiFormats;
 use App\Support\UiTimezone;
 use Illuminate\Contracts\Pagination\Paginator;
 use Illuminate\Support\Facades\Storage;
@@ -578,7 +579,7 @@ class PublicContentItemCardPresenter
             'transcription.author_name', 'transcription.transcribers' => collect($data['transcribers'])->pluck('label')->join(', '),
             'transcription.published_at' => $data['transcription']['published_at'],
             'transcription.read_time', 'transcription.reading_time' => $data['transcription']['read_time'],
-            'transcription.word_count' => $data['transcription']['word_count'] !== null ? number_format((int) $data['transcription']['word_count']) : null,
+            'transcription.word_count' => $data['transcription']['word_count'] !== null ? UiFormats::number((int) $data['transcription']['word_count']) : null,
             default => null,
         };
     }
