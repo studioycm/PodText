@@ -57,6 +57,7 @@ return [
         'funnel' => [
             'heading' => 'Publication funnel',
             'focus' => 'Focus the board',
+            'spark_label' => ':stage — daily movement over the selected range',
             'movement' => ':count in range',
             'gap' => ':count published episodes are not publicly visible — open the blockers lens',
             'no_gap' => 'Every published episode is publicly visible.',

@@ -136,6 +136,7 @@ class EditorialMetrics
                 $stage,
                 $series,
                 JerusalemDailySeries::total($query, $column, $previousStart, $previousEnd),
+                $range,
             );
         }
 
@@ -153,6 +154,7 @@ class EditorialMetrics
             (float) $becameVisible
                 ->filter(fn (Carbon $at): bool => $at->betweenIncluded($previousStart, $previousEnd))
                 ->count(),
+            $range,
         );
 
         return $rows;
@@ -161,7 +163,7 @@ class EditorialMetrics
     /**
      * @param  array<int, float>  $series
      */
-    private function sparklineRow(string $stage, array $series, float $previous): SeriesRow
+    private function sparklineRow(string $stage, array $series, float $previous, DashboardRange $range): SeriesRow
     {
         return new SeriesRow(
             key: $stage,
@@ -169,6 +171,7 @@ class EditorialMetrics
             value: array_sum($series),
             previous: $previous,
             points: $series,
+            days: $range->dayKeys(),
         );
     }
 

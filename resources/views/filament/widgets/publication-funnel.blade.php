@@ -35,6 +35,8 @@
 
                     @include('filament.widgets.partials.sparkline', [
                         'points' => $data['series'],
+                        'days' => $data['row']->days,
+                        'label' => __('admin.dashboard.funnel.spark_label', ['stage' => $data['stage']->getLabel()]),
                         'testid' => "funnel-spark-{$stage}",
                         'stroke' => $data['row']->trend()->strokeClass(),
                     ])

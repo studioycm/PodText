@@ -16,13 +16,17 @@ use App\Enums\SparklineTrend;
  */
 readonly class SeriesRow
 {
-    /** @param array<int, float> $points one entry per Jerusalem day, oldest first */
+    /**
+     * @param  array<int, float>  $points  one entry per Jerusalem day, oldest first
+     * @param  array<int, string>  $days  the `Y-m-d` Jerusalem day of each point, aligned with $points
+     */
     public function __construct(
         public string $key,
         public string $label,
         public float $value,
         public float $previous = 0.0,
         public array $points = [],
+        public array $days = [],
     ) {}
 
     public function delta(): int
@@ -35,7 +39,7 @@ readonly class SeriesRow
         return SparklineTrend::fromDelta($this->delta());
     }
 
-    /** @return array{key: string, label: string, value: float, previous: float, points: array<int, float>} */
+    /** @return array{key: string, label: string, value: float, previous: float, points: array<int, float>, days: array<int, string>} */
     public function toArray(): array
     {
         return [
@@ -44,6 +48,7 @@ readonly class SeriesRow
             'value' => $this->value,
             'previous' => $this->previous,
             'points' => $this->points,
+            'days' => $this->days,
         ];
     }
 }

@@ -76,6 +76,23 @@ it('buckets funnel movement into jerusalem days aligned to the day keys', functi
         ->and($series['published']->delta())->toBe(1);
 });
 
+it('carries the range day keys on every funnel row aligned with its points', function (): void {
+    $group = ContentGroup::factory()->published()->create();
+    ContentItem::factory()->for($group)->published(Carbon::parse('2026-07-29 12:00', 'Asia/Jerusalem'))->create();
+
+    $series = app(EditorialMetrics::class)->funnelSeries(DashboardRange::Last7Days);
+    $keys = DashboardRange::Last7Days->dayKeys();
+
+    // The hover tooltip reads day labels positionally, so the days must ride
+    // the row itself — cache-safe through toArray() like every other field.
+    expect($series['draft']->toArray())->toHaveKey('days');
+
+    foreach ($series as $row) {
+        expect($row->days)->toBe($keys)
+            ->and($row->points)->toHaveCount(count($row->days));
+    }
+});
+
 it('buckets the visible series on the day the episode became visible', function (): void {
     $group = ContentGroup::factory()->published()->create();
 

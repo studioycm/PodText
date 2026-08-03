@@ -885,3 +885,55 @@ the canonical mutation path writes through the filter form's field state
 — pagination's page name — so `blockersQueueWidgetFilters` names a
 property, not a URL binding, and no query string hydrates a widget's
 table filters.
+
+## Prompt 13 phase-2R B-block research (2026-08-03, B1 session)
+
+Protocol run for B1 (Alpine hover crosshair + tooltip on the funnel
+sparklines). Two query batches against `search-examples` — batch 1
+(`limit: 8`): "widget chart tooltip", "custom widget blade view alpine",
+"sparkline svg widget", "dashboard stats chart hover"; batch 2 (`limit: 3`,
+refined): "alpine tooltip hover", "svg rendering blade", "keyboard
+navigation accessibility", "widget popover title attribute". Batch 1
+overflowed the tool-result budget (~205 KB) and was read from the saved
+dump. Only `search-examples` is exposed — no fetch/read/details tool, so
+per-file inspection beyond returned snippets was not possible.
+
+### Informing patterns
+
+- `v4/full-projects/gantt-like-fleet-availability-dashboard-widget-draft/resources/views/filament/widgets/fleet-availability.blade.php`
+  — per-cell hover text precomputed server-side in the view's `@php`
+  block and attached to the cell element. The server-side-label idiom
+  carried into B1 as `UiFormats`-formatted `data-day`/`data-value`
+  attributes; its native `title="…"` tooltip mechanism was rejected
+  (mouse-only — no keyboard path, no SR path, no RTL/edge positioning
+  control), as were its hand-written view-local colour maps (P1/P2).
+- `v4/full-projects/github-style-user-profile-with-activity-heatmap/resources/views/filament/resources/users/pages/view-user.blade.php`
+  — same `title="{{ $day['tooltip'] }}"` idiom with tooltip strings
+  built in `getViewData()`. Confirms the corpus builds tooltip text
+  server-side; rejected for the same accessibility reasons.
+
+### Rejected outright
+
+- `v4/full-projects/dashboard-visitor-analytics/.../VisitorsChart.php` +
+  view — `ChartWidget` + Chart.js via `wire:ignore x-data="chart({…})"`.
+  Chart.js is decision 4's option C, explicitly out of B1 scope ("our
+  SVG stays ours"); this was the corpus's only `x-data` occurrence in
+  chart context, and it bootstraps a JS library rather than modelling a
+  hover interaction.
+- Corpus-wide: across both batches there is **no Alpine
+  crosshair/tooltip-on-SVG example and no keyboard-accessible chart
+  tooltip at all** — zero `aria-` occurrences and zero `x-tooltip` in
+  every chart-adjacent result. B1's interaction layer is therefore
+  designed from the Alpine/Livewire vendor docs and PodText's own
+  contracts rather than copied from an example.
+
+### Boost verifications for the same block
+
+Boost `search-docs` (2026-08-03): Livewire 4 Alpine chapter (local
+`x-data` state inside Livewire components is first-class and survives
+morphs; Alpine ships bundled — no new JS dependency), `x-on:` event
+syntax, and the CSP note (no CSP-safe mode in this app, so inline
+expressions are fine). Pest 4 browser chapter: real-pointer `hover()`,
+element-targeted `keys()`, `script()` evaluation — the B1 browser test
+drives the real interaction with these instead of synthetic
+`dispatchEvent` where possible.

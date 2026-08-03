@@ -1,6 +1,7 @@
 <?php
 
 use App\Enums\DashboardLens;
+use App\Enums\FunnelStage;
 use App\Enums\PublicationStatus;
 use App\Enums\SparklineTrend;
 use App\Enums\TranscriptionMode;
@@ -25,6 +26,7 @@ use App\Support\Dashboard\EditorialMetrics;
 use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Lang;
 use Livewire\Livewire;
 
 uses(RefreshDatabase::class);
@@ -122,6 +124,28 @@ it('renders the living funnel with per-stage sparklines and a gap doorway', func
         ->assertDontSeeHtml('wire:poll')
         ->call('openBlockers')
         ->assertDispatched('dashboard-filter');
+});
+
+it('wires each funnel sparkline for hover with server-formatted day labels', function (): void {
+    overviewFixture();
+
+    // The fixture publishes on 30/07, so that day's label must reach the
+    // hover data formatted day-first on the server — the browser never
+    // re-formats a date. The accessible name carries the series' meaning
+    // for screen-reader users who cannot hover.
+    $component = Livewire::test(PublicationFunnelWidget::class);
+
+    // The panel renders in the app's real locale, so the expected label is
+    // resolved after the render; the hasForLocale pins below keep this from
+    // passing vacuously on a missing key echoed back as its own name.
+    $component
+        ->assertSeeHtml('data-day="30/07/2026"')
+        ->assertSeeHtml('data-testid="funnel-spark-published-hover"')
+        ->assertSeeHtml('aria-live="polite"')
+        ->assertSeeHtml('aria-label="'.__('admin.dashboard.funnel.spark_label', ['stage' => FunnelStage::Published->getLabel()]).'"');
+
+    expect(Lang::hasForLocale('admin.dashboard.funnel.spark_label', 'en'))->toBeTrue()
+        ->and(Lang::hasForLocale('admin.dashboard.funnel.spark_label', 'he'))->toBeTrue();
 });
 
 it('shows composite stat cards with a composition strip and a filtered doorway', function (): void {
