@@ -316,11 +316,25 @@ commits) · where else to look (concrete greps/paths) · status.
   cross-checked against "binding"/"principles"/"declared" claims near the
   links; any spec sentence of the form "as designed in the mockup" with no
   repo copy.
-- **Status:** open — operator decision requested (phase-3 plan open question
-  5): supply the original ES-1–ES-7 text into the combined plan, or accept the
-  plan's restated empty states as the binding source. A3's empty-state work
-  should follow whichever is chosen. (A3 landed the concrete dashed idiom
-  without reinventing principles — compliant either way.)
+- **Sighting #2 (2026-08-03, ACTUAL — media program):** the media UX
+  redesign's own design principles — "P1 Answer before ask … P7 Three kinds
+  of trouble, three chips" (v2 adds "P8 Leave seats for what's coming") —
+  exist ONLY in operator-local PDFs
+  (`~/Downloads/podtext-media-ux-redesign{,-v2}.pdf`; v1 has six, v2 has
+  eight), in **no repo doc** (grep: "Answer before ask" / "One green thread"
+  / "Quiet by default" — zero hits under `docs/`), while the media UX3
+  handoffs build on that redesign. Also the FIFTH bare `P<n>` family found,
+  vindicating the naming convention. Text extracted 2026-08-03 (session
+  scratchpad, `pdf-v1/v2/codex.txt`) — archival into a repo doc offered to
+  the operator. Checked and negative: none of the three PDFs contains the
+  *dashboard* empty-state list (zero dashboard/widget mentions; the Q5
+  hypothesis tested 2026-08-03).
+- **Status:** open — TWO sightings → sweep-eligible; the sweep = hunt
+  binding references to unarchived externals (`grep -rn
+  "claude.ai/code/artifact" docs/` cross-checked against binding claims,
+  plus operator-local design PDFs cited by handoffs) and archive what binds.
+  Q5 (the dashboard ES-1–ES-7 source) remains an open operator decision:
+  supply the original text or bless the phase-3 plan's restatement.
 
 ## unscanned-home · Style home outside the compiler's scan scope *(alias P13)*
 
