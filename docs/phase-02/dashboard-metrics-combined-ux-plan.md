@@ -116,7 +116,7 @@ Mockup content:
 | **Spotify connection card** with reduced-mode echo — present in the original Intake mockup, dropped in the merge. | Restored to Intake. |
 | **RecentPublishedItems spec columns** — absorbed into the stream. | The stream filtered to "transcription published" shows exactly those columns. |
 | **"Transcriptions by author"** — an explicit spec requirement, wrongly deferred as a premature leaderboard. | Enters as **H9 · transcriber board**. The deferral was defensible on production volume only, never on the spec. |
-| **Empty-state designs and principles P1–P7** — not restated, therefore at risk of quiet loss. | Declared binding for every widget's build spec. |
+| **Empty-state designs and principles ES-1–ES-7** (design-pass numbering, formerly "P1–P7"; the text itself is unrecovered — ledger pattern `unarchived-binding`) — not restated, therefore at risk of quiet loss. | Declared binding for every widget's build spec. |
 
 ## Hybrid widgets — one component, two outcomes
 

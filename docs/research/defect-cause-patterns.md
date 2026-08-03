@@ -5,7 +5,7 @@ defect found in the Prompt 13 round traces to a repeatable cause-pattern; each
 entry here turns one finding into a search prompt for similar cases elsewhere.
 
 **Protocol.** This file has **one owner** — the orchestrator session curates
-it (operator-confirmed 2026-08-03; two writers on one ledger would be P1
+it (operator-confirmed 2026-08-03; two writers on one ledger would be one-home
 itself). Side-sessions contribute candidate entries and sightings via the
 "open flags + pattern evidence" section of their final reports — with
 evidence: file:line or commit, one-line mechanism, ACTUAL vs POTENTIAL — and
@@ -27,12 +27,31 @@ draft held for reconciliation — is registered at the moment the deferral is
 decided, stating what, why, and what unblocks it. A finding or deferral that
 exists only in a conversation does not exist.
 
+**Naming convention (operator directive, 2026-08-03).** Bare letter+number
+ids (`P1`, `A4`, `F2`…) collided across at least five families in this repo
+(ledger patterns, empty-state design principles, media-program packages,
+route steps, research findings). The rules now:
+
+- **Cause-patterns:** the canonical id is the kebab **slug** in each entry's
+  header (`silent-cap`, `unscanned-home`). The old `P<n>` ids survive as
+  *(alias P\<n\>)* markers because pre-2026-08-03 commit messages use them —
+  they are historical aliases, never to be minted again.
+- **Other families carry a family prefix:** `ES-<n>` = the empty-state
+  design principles (formerly "P1–P7"); `Q<n>` = operator decision questions
+  (phase-3 plan register); research-session findings are report-local
+  (`F-<n>` etc.) and must be renamed to slugs or folded on curation, never
+  cited bare outside their report.
+- **Route steps** (V/F/A/B + digit) are scoped to one round's checklist and
+  are only meaningful next to it.
+- **Never mint a bare letter+digit id for a new family.** New registries get
+  either slugs or a distinct prefix.
+
 Entry format: **name** · one-line cause · evidence (where it already bit, with
 commits) · where else to look (concrete greps/paths) · status.
 
 ---
 
-## P1 · Value duplicated instead of routed through one home
+## one-home · Value duplicated instead of routed through one home *(alias P1)*
 
 - **Cause:** a constant (colour, timezone, format string, label) is retyped at
   each use site instead of read from one owner, so sites drift independently.
@@ -62,7 +81,7 @@ commits) · where else to look (concrete greps/paths) · status.
   the post-B1 batch. Census re-verified by git: 63 literals at `987b92f`,
   57 from `b24490a` through HEAD — F2 removed six, no growth since.
 
-## P2 · An enum beside hand-written values protects nothing
+## unrouted-enum · An enum beside hand-written values protects nothing *(alias P2)*
 
 - **Cause:** creating the enum is half the work; a value is only safe from
   drift once **every call site** reads it from the enum. Unrouted sites keep
@@ -102,11 +121,11 @@ commits) · where else to look (concrete greps/paths) · status.
   inverting the default; that is an operator decision (registered in the
   decisions row).
 - **Status:** open as a rule; `StreamEventType` lands in phase 3. Four+
-  sightings — the **P2 sweep is now unblocked** (research report landed) and
+  sightings — the **unrouted-enum sweep is now unblocked** (research report landed) and
   is queued as its own task after B1 verifies: route unrouted enum literals,
   and decide the two tier-variant guards.
 
-## P3 · Live unvalidated state read raw
+## raw-state · Live unvalidated state read raw *(alias P3)*
 
 - **Cause:** state persisting across requests (`#[Url]`, session-persisted
   filters, Filament `pageFilters`) is consumed without narrowing, so a stale or
@@ -123,7 +142,7 @@ commits) · where else to look (concrete greps/paths) · status.
   against `enabled()`, dates try/catch, `perPage` is clamped. No second
   sighting exists; pattern moves to watch.
 
-## P4 · Shared implicit keys
+## implicit-keys · Shared implicit keys *(alias P4)*
 
 - **Cause:** components rely on a key (query-string, pagination, `wire:key`,
   schema component key) that is implicitly derived, so it collides between
@@ -149,7 +168,7 @@ commits) · where else to look (concrete greps/paths) · status.
 - **Status:** multiple fixes landed; V3 verified the residual; Blade-tier
   rule registered as a handoff contract.
 
-## P5 · Proxy metrics teach tests wrong expectations
+## proxy-oracle · Proxy metrics teach tests wrong expectations *(alias P5)*
 
 - **Cause:** a metric computed from a proxy column gets encoded into a test, so
   the test asserts the bug and defends it against the fix.
@@ -162,7 +181,7 @@ commits) · where else to look (concrete greps/paths) · status.
 - **Status:** fixed instance; F2's near-midnight fixture landed (`b24490a`)
   and was proven discriminating — the UTC-day expectation fails against it.
 
-## P6 · Silent caps
+## silent-cap · Silent caps *(alias P6)*
 
 - **Cause:** `take($limit)` / traversal caps drop the tail with no signal —
   the display reads as "everything" when it is not (no-silent-caps rule).
@@ -186,7 +205,7 @@ commits) · where else to look (concrete greps/paths) · status.
 - **Status:** breakdown caps closed (`b3d6de4`, `rollUpTail` + a reconciling
   "Other" row on `BreakdownRow::meta`); M1 queued separately.
 
-## P7 · "Flake" labels hiding real defects
+## flake-label · "Flake" labels hiding real defects *(alias P7)*
 
 - **Cause:** an intermittent failure is the click/timing distribution of a
   deterministic defect; the flake label stops the investigation.
@@ -202,7 +221,7 @@ commits) · where else to look (concrete greps/paths) · status.
 - **Status:** V2 closed the owner-image sighting; only the unclassified 1/30
   timeout remains under watch.
 
-## P8 · Line-based guards miss multi-line call sites
+## line-guard · Line-based guards miss multi-line call sites *(alias P8)*
 
 - **Cause:** an anti-drift guard that greps single lines misses the same call
   formatted across lines; guards must scan statements, not lines.
@@ -214,12 +233,12 @@ commits) · where else to look (concrete greps/paths) · status.
   matching (`b24490a`). The timezone guard needs no retrofit: its literal is
   a single string that cannot split across lines. Research verification
   (2026-08-03): both project guards confirmed statement-safe; note FilaCheck
-  itself is AST-based (PhpParser), so P8 applies to the project's grep-style
+  itself is AST-based (PhpParser), so line-guard applies to the project's grep-style
   guards only — FilaCheck's real blind spots are path scope (`app/Filament`
   only), closure-built options, service hops, and authorization (see
-  P14/P15).
+  decorative-cap/service-hop-cost).
 
-## P9 · `->options(Enum::class)` changes state type, not just labels
+## options-state-cast · `->options(Enum::class)` changes state type, not just labels *(alias P9)*
 
 - **Cause:** passing an enum class to `->options()` installs an
   `EnumStateCast`, so field state becomes an enum instance; a string-typed
@@ -239,7 +258,7 @@ commits) · where else to look (concrete greps/paths) · status.
   sanity-checked against `AdminUxSettings`. Both writer sites carry the
   constraint note.
 
-## P10 · Concept without a type home
+## no-type-home · Concept without a type home *(alias P10)*
 
 - **Cause:** a domain concept exists only as query shapes or array literals;
   nothing owns its invariants until a type does, so every use site re-derives
@@ -252,7 +271,7 @@ commits) · where else to look (concrete greps/paths) · status.
 - **Status:** recurring; formats instance closed (`b24490a`, `UiFormats`).
   `StreamEventType` (phase 3) and intake provider strings remain.
 
-## P11 · Docblock promises behavior no test pins
+## unpinned-promise · Docblock promises behavior no test pins *(alias P11)*
 
 *(Promoted 2026-08-03 from a phase-3-session candidate, `7ffcaa5`.)*
 
@@ -278,37 +297,37 @@ commits) · where else to look (concrete greps/paths) · status.
   them all backed by receiving filters (`TranscriptionsTable.php:93`,
   `ContentItemsTable.php:138`) — no further instances.
 
-## P12 · Binding-by-reference to an unarchived source
+## unarchived-binding · Binding-by-reference to an unarchived source *(alias P12)*
 
 *(Promoted 2026-08-03 from a phase-3-session candidate, `7ffcaa5`.)*
 
 - **Cause:** a doc declares an external artifact's content binding without
   restating it, so the "contract" has no readable text to enforce — kin of
-  P2's generalized form: a contract enforced only where its text happens to
+  unrouted-enum's generalized form: a contract enforced only where its text happens to
   exist protects nothing.
 - **Evidence (ACTUAL):** `dashboard-metrics-combined-ux-plan.md`'s
-  honesty-audit row declares "Empty-state designs and principles P1–P7 …
-  binding for every widget's build spec", but the P1–P7 text exists in no
+  honesty-audit row declares "Empty-state designs and principles ES-1–ES-7 …
+  binding for every widget's build spec", but the ES-1–ES-7 text exists in no
   repo file, and neither linked artifact contains it (both fetched and
   searched 2026-08-03 by the phase-3 session; the principles were authored
   in an earlier, unlinked design pass). The phase-3 plan restates concrete
-  per-widget empty states instead of citing P1–P7.
+  per-widget empty states instead of citing ES-1–ES-7.
 - **Where else:** `grep -rn "claude.ai/code/artifact" docs/phase-02`
   cross-checked against "binding"/"principles"/"declared" claims near the
   links; any spec sentence of the form "as designed in the mockup" with no
   repo copy.
 - **Status:** open — operator decision requested (phase-3 plan open question
-  5): supply the original P1–P7 text into the combined plan, or accept the
+  5): supply the original ES-1–ES-7 text into the combined plan, or accept the
   plan's restated empty states as the binding source. A3's empty-state work
   should follow whichever is chosen. (A3 landed the concrete dashed idiom
   without reinventing principles — compliant either way.)
 
-## P13 · Style home outside the compiler's scan scope
+## unscanned-home · Style home outside the compiler's scan scope *(alias P13)*
 
 *(Promoted 2026-08-03 from the A-block session's report; found and fixed in
 `b9825c6`.)*
 
-- **Cause:** consolidating class literals into a PHP home (P1/P2's cure)
+- **Cause:** consolidating class literals into a PHP home (one-home/unrouted-enum's cure)
   silently fails if the asset compiler's scan scope does not include that
   home — Tailwind only emits classes it can read, so a routed-but-unscanned
   class renders as no styling at all. Routing protects nothing the compiler
@@ -319,7 +338,7 @@ commits) · where else to look (concrete greps/paths) · status.
   bar (`bg-gray-400`) and the unpublished-group / missing-category reason
   bars (`bg-danger-400`, `bg-violet-500`) rendered **colourless in
   production** — verified absent from the live compiled theme, present
-  post-fix. Every call site read from the enum (P2 satisfied) and it still
+  post-fix. Every call site read from the enum (unrouted-enum satisfied) and it still
   broke. Pinned by the scan-scope test at `DashboardEnumsTest.php:102`.
 - **Where else:** every PHP surface that emits class strings — enums,
   data objects, `HtmlString` builders, Livewire component classes — checked
@@ -337,7 +356,7 @@ commits) · where else to look (concrete greps/paths) · status.
   `Invisible->bandClass()` renders (gap bar, funnel gap button); kept
   case-complete with the mirrored docblock.
 
-## P14 · Guard incantation attached to a mechanism that isn't in play
+## decorative-cap · Guard incantation attached to a mechanism that isn't in play *(alias P14)*
 
 *(Promoted 2026-08-03 from the research session's F-2, "decorative-cap".)*
 
@@ -364,7 +383,7 @@ commits) · where else to look (concrete greps/paths) · status.
 - **Status:** open — fix queued in the post-B1 batch (rewire the three
   filters to the capped shape).
 
-## P15 · Per-row cost hidden one service hop away
+## service-hop-cost · Per-row cost hidden one service hop away *(alias P15)*
 
 *(Promoted 2026-08-03 from the research session's F-3.)*
 
@@ -390,7 +409,7 @@ commits) · where else to look (concrete greps/paths) · status.
   like `MediaInventoryDiagnostics`, or fold reasons into `queueQuery()`
   selects; plus the query-budget test).
 
-## P16 · Cross-step payload carried through the client
+## client-payload · Cross-step payload carried through the client *(alias P16)*
 
 *(Promoted 2026-08-03 from the research session's F-5.)*
 
@@ -431,14 +450,14 @@ Mark each step with commit hash + gate result when done.
 | F2 | Adopt across widgets/Blade/DTOs + near-midnight fixture | ✅ `b24490a` — all 12 routed; 00:30 fixture proven discriminating (UTC-day expectation fails) |
 | F3 | "Group other" bucketing via `BreakdownRow::meta` | ✅ `b3d6de4` — `rollUpTail` in `EditorialMetrics`, totals reconcile; F gate: full pest 1,571/19,430, pint, filacheck 0, build ok. **Orchestrator-verified 2026-08-03: identical numbers from a direct run (pest 1571/19,430, pint --test pass, full filacheck 0, tree clean)** |
 | A1 | Sparkline min/max normalisation (defect) | ✅ `2831ee9` — min−max over a 2px-inset band, exact-coordinate tests watched red against peak-only maths |
-| A2 | Trend-coloured stroke from `SeriesRow::delta()` | ✅ `b9825c6` — `SparklineTrend` enum as the one palette home + source-scanning literal ban; also fixed/pinned P13 (theme `@source` scan scope) |
+| A2 | Trend-coloured stroke from `SeriesRow::delta()` | ✅ `b9825c6` — `SparklineTrend` enum as the one palette home + source-scanning literal ban; also fixed/pinned unscanned-home (theme `@source` scan scope) |
 | A3 | Dashed empty states + `x-filament::link` doorways | ✅ `103b728` — shared dashed empty-state partial (en+he), Heroicon doorways; F3 `href=""` pin intact |
-| A4 | Make the Board-2 reason-bar doorway promise true (P11 fix) | ✅ `c36f6c4` — on-board dispatch into the queue's reason filter (URL form vendor-proven infeasible); P11 closed. **Orchestrator-verified 2026-08-03: pest 1587/19,563 direct run (identical to claim), pint --test pass, full filacheck 0, tree clean.** Follow-up `1efeb35` resolved bandClass keep-vs-delete (keep, docblock-only, `git -S` evidence) |
+| A4 | Make the Board-2 reason-bar doorway promise true (unpinned-promise fix) | ✅ `c36f6c4` — on-board dispatch into the queue's reason filter (URL form vendor-proven infeasible); unpinned-promise closed. **Orchestrator-verified 2026-08-03: pest 1587/19,563 direct run (identical to claim), pint --test pass, full filacheck 0, tree clean.** Follow-up `1efeb35` resolved bandClass keep-vs-delete (keep, docblock-only, `git -S` evidence) |
 | B1 | Alpine hover crosshair + tooltip on SVG sparklines | ☐ |
-| Ledger research | Dedicated read-only bad-practices hunt (skills + guidelines + FilaCheck catalogue), report-only | ✅ merged 2026-08-03 — 7 findings + flags curated: P14/P15/P16 promoted, P2 gained two tier-variant sightings, P3 public-tier all-clear, P4 queryStringIdentifier grep retired, security battery zero ACTUAL. Coverage gaps it declared: ~74/89 Blade views grep-only, importer connector internals, browser-test contents |
-| Operator decisions | Phase-3 plan "Open questions" Q1–Q6 (Q5 = P12 empty-state principles) **+ Q7 (from research F-4): invert the global Select default to `preload(false)` and opt bounded sets in?** — block phase-3 implementation, not B1 | ⏳ surfaced to operator 2026-08-03 |
-| Post-B1 fix batch | P14 rewire (three decorative-cap filters → capped shape) · P15 fix (batch-prime blocker reasons + query-budget test) · P1 stragglers (two `number_format()` sites → `UiFormats::number()`, one public-facing) · P2 sweep (unrouted enum literals + tier-variant guard decisions incl. F-1 structural policy test) | 📌 registered 2026-08-03, chips go out after B1 verifies |
-| Deferred register | P1 app-wide format/colour sweeps (parked, budgeted separately) · M2 upstream Filament report (worth filing, unfiled — M2 brief/handoff) · phase-3 plan reconciliation (after B1) · 1/30 Storage-listing timeout (P7 watch) · P16 wizard architecture (watch-tier, out of dashboard scope) · research watch items: `embed_provider` full-table `distinct` per render (`ContentItemsTable.php:173`), 9 enums without Filament contracts (E4 residual), Blade string-icon duplication, importer authz panel-only | 📌 standing register per the registration discipline |
+| Ledger research | Dedicated read-only bad-practices hunt (skills + guidelines + FilaCheck catalogue), report-only | ✅ merged 2026-08-03 — 7 findings + flags curated: decorative-cap/service-hop-cost/client-payload promoted, unrouted-enum gained two tier-variant sightings, raw-state public-tier all-clear, implicit-keys queryStringIdentifier grep retired, security battery zero ACTUAL. Coverage gaps it declared: ~74/89 Blade views grep-only, importer connector internals, browser-test contents |
+| Operator decisions | Phase-3 plan "Open questions" Q1–Q6 (Q5 = unarchived-binding empty-state principles) **+ Q7 (from research F-4): invert the global Select default to `preload(false)` and opt bounded sets in?** — block phase-3 implementation, not B1 | ⏳ surfaced to operator 2026-08-03 |
+| Post-B1 fix batch | decorative-cap rewire (three decorative-cap filters → capped shape) · service-hop-cost fix (batch-prime blocker reasons + query-budget test) · one-home stragglers (two `number_format()` sites → `UiFormats::number()`, one public-facing) · unrouted-enum sweep (unrouted enum literals + tier-variant guard decisions incl. F-1 structural policy test) | 📌 registered 2026-08-03, chips go out after B1 verifies |
+| Deferred register | one-home app-wide format/colour sweeps (parked, budgeted separately) · M2 upstream Filament report (worth filing, unfiled — M2 brief/handoff) · phase-3 plan reconciliation (after B1) · 1/30 Storage-listing timeout (flake-label watch) · client-payload wizard architecture (watch-tier, out of dashboard scope) · research watch items: `embed_provider` full-table `distinct` per render (`ContentItemsTable.php:173`), 9 enums without Filament contracts (E4 residual), Blade string-icon duplication, importer authz panel-only | 📌 standing register per the registration discipline |
 | Phase-3 re-plan | Board 3 researched and planned fresh against locked decisions | 🟡 plan landed (`7183996`) but ran pre-A/B (orchestrator sequencing error — "after push" followed literally once the push moved mid-route); held as DRAFT, reconciliation pass against landed A/B patterns at route end |
 | Docs | Refresh 2R-handoff commit table + gate; current-project-state Prompt-13 row; fold flags | ✅ minimal refresh 2026-08-03 pre-push; full fold again at route end |
 | Push gate | Full pest/pint/filacheck/build; push ONLY on operator's word (deploys production) | ✅ 2026-08-03: pest 1563/19,386, full filacheck 0, build ok; pushed pinned `987b92f` (F's concurrent `b24490a` deliberately excluded); Forge release `74621206` = `987b92f`, `/up` 200 |
@@ -498,5 +517,5 @@ Notes for the next session:
 ---
 
 *Curation note (2026-08-03): the phase-3 session's contributed candidates
-(`7ffcaa5`) were promoted to P11/P12 and its P2 sighting folded in above;
+(`7ffcaa5`) were promoted to unpinned-promise/unarchived-binding and its unrouted-enum sighting folded in above;
 the raw candidate section was absorbed and removed.*

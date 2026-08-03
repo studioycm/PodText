@@ -173,7 +173,7 @@ the gap bar; `x-filament::link` + `Heroicon` enum doorways for composition
 chips, stat-card opens, funnel stage labels/focus and heatmap clear. Data
 rows and roll-up "Other" rows stay plain deliberately.
 
-**A4** · *Done 2026-08-03 (`c36f6c4`), P11 closure.* The reason-bar doorway
+**A4** · *Done 2026-08-03 (`c36f6c4`), unpinned-promise closure.* The reason-bar doorway
 promise is now true on-board: `reasonBreakdown()` rows carry their reason
 key (no URL — widget table filters are never URL-hydrated), the gap view
 renders panel-native `wire:click` bars, and `BlockersQueueWidget` receives
@@ -334,7 +334,7 @@ Two traps when copying it:
 | Date/number formats scattered | **Open** — F1/F2 |
 | Silent `take($limit)` in breakdowns | **Open** — F3 |
 | Sparkline normalisation understates variation | Fixed — A1 (`2831ee9`), min/max over an inset band |
-| Reason bars all opened the same unfiltered list (P11) | Fixed — A4 (`c36f6c4`), on-board dispatch doorway |
+| Reason bars all opened the same unfiltered list (unpinned-promise) | Fixed — A4 (`c36f6c4`), on-board dispatch doorway |
 | Enum-only colour literals never compiled (`app/Enums` unscanned) | Fixed — A2 (`b9825c6`), `@source` glob + pin test |
 
 ## Still deferred, unchanged
@@ -522,11 +522,11 @@ tests in `tests/Feature/AdminUxSettingsEnumTypesTest.php`.
   `ListRecords` declares. Passing `tableFilters` maps inconsistently.
 - **A Blade loop that re-renders under filters gets a stable-id `wire:key`
   before it gets interactive content** (research finding 2026-08-03, ledger
-  P4 Blade-tier sighting). Today's unkeyed widget loops are plain HTML and
+  implicit-keys Blade-tier sighting). Today's unkeyed widget loops are plain HTML and
   positional morphing is cosmetic; the moment a row gains Alpine state or a
   nested Livewire child, unkeyed morphing joins M2's defect family.
 - **Multi-step flow state does not ride public Livewire properties**
-  (ledger P16). `SettingsImportWizard` currently carries the whole decoded
+  (ledger client-payload). `SettingsImportWizard` currently carries the whole decoded
   package + diff rows through the client per step — bounded and admin-only
   today. New wizards hold server-side (cache/temp file keyed by a token
   prop) and re-derive rows per render.

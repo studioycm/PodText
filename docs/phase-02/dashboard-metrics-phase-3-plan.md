@@ -13,7 +13,7 @@
 
 **Goal:** Give the Intake lens its own board — work queue (new submissions + failed import rows), Spotify connection card, media-by-finding bars — plus the `StreamEventType` enum and the Board-3 E4 enum contracts, on the phase-2R foundations.
 
-**Architecture:** Three new custom `Filament\Widgets\Widget` classes fed exclusively by `EditorialMetrics` (new intake surface with its own cache key, invalidated by registering the existing `EditorialMetricsCacheObserver` on the intake models), a `source` command-bar filter narrowed in `ReadsDashboardFilters`, and an `ImportPolicy` so any admin can use the failed-rows CSV doorway. `StreamEventType` becomes the typed home of the stream/queue event vocabulary (P2/P10 closure); `ExternalImageFailureReason` and `MediaAcquisitionDisposition` get their Filament label contracts (E4, Board-3 pair).
+**Architecture:** Three new custom `Filament\Widgets\Widget` classes fed exclusively by `EditorialMetrics` (new intake surface with its own cache key, invalidated by registering the existing `EditorialMetricsCacheObserver` on the intake models), a `source` command-bar filter narrowed in `ReadsDashboardFilters`, and an `ImportPolicy` so any admin can use the failed-rows CSV doorway. `StreamEventType` becomes the typed home of the stream/queue event vocabulary (unrouted-enum/no-type-home closure); `ExternalImageFailureReason` and `MediaAcquisitionDisposition` get their Filament label contracts (E4, Board-3 pair).
 
 **Tech stack:** Filament 5.7.x widgets/schemas, Livewire 4, Pest 4. No new dependencies, no schema changes.
 
@@ -77,7 +77,7 @@ Copied from the 2R handoff contracts; every task inherits them.
 6. Bars are built on `BreakdownRow`; `UiFormats` and `StreamEventType` are in
    place from the start — `StreamEventType` (transcription / import / media /
    submission, `HasLabel`+`HasColor`+`HasIcon`) lands here, replacing
-   `ActivityStreamWidget`'s hand-written colours (decision 17, pattern P2).
+   `ActivityStreamWidget`'s hand-written colours (decision 17, pattern unrouted-enum).
 7. E4 scope for Board 3: `ExternalImageFailureReason` and
    `MediaAcquisitionDisposition` get Filament contracts.
 8. Intake gets its own widget list in `Dashboard::getWidgetsForLens()`.
@@ -104,7 +104,7 @@ proceeds on the recommendation so implementation is never blocked.
   (the same artifact the completion notification offers) carries every failed
   row with its error, and re-import is per-file. The entry shows
   `failed of total` via `Import::getFailedRowsCount()` semantics
-  (`failed_rows_count` aggregate), so no row is silently dropped (P6).
+  (`failed_rows_count` aggregate), so no row is silently dropped (silent-cap).
 - **D-3 · The failed-rows doorway is the vendor's own signed download URL**,
   built exactly as `ImportAction` builds it
   (`vendor/filament/actions/src/ImportAction.php:317`):
@@ -117,7 +117,7 @@ proceeds on the recommendation so implementation is never blocked.
   provider: the `imports` table has no provider/connection column, ImportAction
   cannot know a CSV's origin, and the Spotify fetcher's direct importer never
   writes `Import` records. Inventing attribution (e.g. by importer class) would
-  be a proxy metric (P5). Recommended semantics, implemented here: `source`
+  be a proxy metric (proxy-oracle). Recommended semantics, implemented here: `source`
   empty (all) and `manual` show the full queue (both kinds — submissions and
   CSV imports are both manual acts today); `spotify`/`google_drive` show an
   explanatory provider empty state instead of rows. The card and the findings
@@ -160,11 +160,11 @@ proceeds on the recommendation so implementation is never blocked.
   copied).
 - **D-9 · Chip vocabulary reuse.** The queue's submissions/imports chips are
   `StreamEventType::Submission` / `StreamEventType::Import` labels — one enum
-  home for the same concepts the stream chips already show (P10 closure).
+  home for the same concepts the stream chips already show (no-type-home closure).
 - **D-10 · `options(X::options())`, never `options(Enum::class)`, in the
   command bar.** The filters array is URL-bound and session-persisted;
   `options(Enum::class)` installs an `EnumStateCast` and the state type would
-  no longer be the string the URL carries (the E5/P9 lesson). The existing
+  no longer be the string the URL carries (the E5/options-state-cast lesson). The existing
   lens/range fields already use the `::options()` array idiom.
 
 ---
@@ -205,7 +205,7 @@ it('narrows selectType to StreamEventType values', function (): void {
 });
 
 it('keeps stream chip colours in StreamEventType only', function (): void {
-    // Decision 18's anti-drift guard, statement-scanned (P8) and scoped to
+    // Decision 18's anti-drift guard, statement-scanned (line-guard) and scoped to
     // the stream surface only — FunnelStage legitimately owns identical
     // literals for its own chips, so this must never become app-wide.
     $sources = [
@@ -246,7 +246,7 @@ use Filament\Support\Icons\Heroicon;
  *
  * Decision 17 made durable: before this enum the stream's type list and chip
  * colours were hand-written in `ActivityStreamWidget` next to translation
- * keys derived by string interpolation — the exact drift shape (P2) the
+ * keys derived by string interpolation — the exact drift shape (unrouted-enum) the
  * funnel fixed with `FunnelStage`. The values are the `activityStream()`
  * vocabulary and must not change: they ride Livewire state and the
  * legend-to-stream mapping.
@@ -312,7 +312,7 @@ use App\Enums\StreamEventType;
 
     public function selectType(?string $type = null): void
     {
-        // Livewire-callable with a browser-supplied argument: narrow it (P3).
+        // Livewire-callable with a browser-supplied argument: narrow it (raw-state).
         $this->type = StreamEventType::tryFrom((string) $type)?->value;
     }
 ```
@@ -1101,7 +1101,7 @@ class IntakeQueueWidget extends Widget
 
     public function selectKind(?string $kind = null): void
     {
-        // Livewire-callable with a browser-supplied argument: narrow it (P3).
+        // Livewire-callable with a browser-supplied argument: narrow it (raw-state).
         // Only the two queue kinds are selectable; anything else means "all".
         $this->kind = in_array($kind, [StreamEventType::Submission->value, StreamEventType::Import->value], strict: true)
             ? $kind
@@ -1224,7 +1224,7 @@ class IntakeQueueWidget extends Widget
 </x-filament-widgets::widget>
 ```
 
-The cap note satisfies the no-silent-caps rule (P6): the list truncates at 10
+The cap note satisfies the no-silent-caps rule (silent-cap): the list truncates at 10
 but says so, states the true total from the snapshot, and offers the
 submissions doorway (imports have no list surface until WB — each entry
 already carries its own CSV doorway; this asymmetry is stated in the open
@@ -1936,7 +1936,7 @@ git commit -m "feat(dashboard): Intake lens gets its own widget list and command
   strings the call sites already show. Labels only: nothing renders these
   enums with colour or icon today, and E4's scope is contracts for what
   actually renders — adding unused `HasColor`/`HasIcon` would be dead
-  vocabulary (the inverse of P2).
+  vocabulary (the inverse of unrouted-enum).
 
 - [ ] **Step 1: Write the failing tests**:
 
@@ -1979,7 +1979,7 @@ use Filament\Support\Contracts\HasLabel;
  * Why a safe external-image fetch was refused or failed. The label is the
  * operator-facing message the picker notifications show; it lived as a
  * string-interpolated key in ExternalImageFailureMessage until E4 gave the
- * enum its contract (one home, every call site routed — P2).
+ * enum its contract (one home, every call site routed — unrouted-enum).
  */
 enum ExternalImageFailureReason: string implements HasLabel
 {
@@ -2091,31 +2091,31 @@ git commit -m "docs(dashboard): record phase 3 (Intake lens) as implemented"
 
 ---
 
-## Cause-pattern guardrails (why this plan does not re-create P1–P10)
+## Cause-pattern guardrails (why this plan does not re-create the ledger patterns (aliases one-home–no-type-home))
 
-- **P1/P2 (duplicated values / unrouted enums):** `StreamEventType` and the E4
+- **one-home/unrouted-enum (duplicated values / unrouted enums):** `StreamEventType` and the E4
   pair land with every call site routed in the same task, each with an
   anti-drift or contract test; chip classes exist in exactly one home per
   vocabulary (`FunnelStage` for stages, `StreamEventType` for event kinds).
-- **P3 (raw live state):** the new `source` key is narrowed in
+- **raw-state (raw live state):** the new `source` key is narrowed in
   `ReadsDashboardFilters::dashboardSource()` (`tryFrom`), `selectKind()` and
   `selectType()` narrow their browser-supplied arguments.
-- **P4 (shared implicit keys):** no new tables or query-string surfaces; the
+- **implicit-keys (shared implicit keys):** no new tables or query-string surfaces; the
   queue is a plain widget; new filters ride the page's existing `filters`
   state with explicit component `->key()`s in the schema.
-- **P5 (proxy metrics):** no provider attribution is invented for imports
+- **proxy-oracle (proxy metrics):** no provider attribution is invented for imports
   (D-4); the connection card shows persisted test state only; queue
   timestamps are the events themselves (`submitted_at`, import `created_at`).
-- **P6 (silent caps):** the queue states "showing latest N of M" from the
+- **silent-cap (silent caps):** the queue states "showing latest N of M" from the
   snapshot's true totals; findings bars are complete (six reasons, zero-count
   hidden by design, with the clean-rate denominator shown).
-- **P7 (flake labels):** no browser tests here; any intermittent feature-test
+- **flake-label (flake labels):** no browser tests here; any intermittent feature-test
   failure gets investigated, not re-run (tooling gate rule).
-- **P8 (line-based guards):** the Task-1 drift guard scans file contents for
+- **line-guard (line-based guards):** the Task-1 drift guard scans file contents for
   literals, not line-anchored regexes, and is scoped to the stream surface.
-- **P9 (`options(Enum::class)` state type):** the command bar keeps the
+- **options-state-cast (`options(Enum::class)` state type):** the command bar keeps the
   `::options()` array idiom (D-10).
-- **P10 (concept without a type home):** the stream/queue event vocabulary
+- **no-type-home (concept without a type home):** the stream/queue event vocabulary
   (`StreamEventType`) and the intake channel (`ImportConnectionProvider`
   narrowed reader) now have typed homes; the ledger's "provider/source strings
   on intake paths" candidate is answered.
@@ -2144,11 +2144,11 @@ git commit -m "docs(dashboard): record phase 3 (Intake lens) as implemented"
    the filtered Resource; imports have no admin listing until WB. Acceptable
    asymmetry, or should phase 3 add a minimal read-only imports listing?
    (Plan's position: WB scope, not dashboard scope.)
-5. **Empty-state principles P1–P7 are unrecoverable as text.** They exist only
+5. **Empty-state principles ES-1–ES-7 are unrecoverable as text.** They exist only
    by reference in the combined plan (the artifact they came from does not
    contain them either — verified by fetching both linked artifacts). This
    plan restates concrete empty states per widget instead. If the operator has
-   the original P1–P7 text, it should be committed into
+   the original ES-1–ES-7 text, it should be committed into
    `docs/phase-02/dashboard-metrics-combined-ux-plan.md`; any conflict with
    the empty states specced here should be resolved before Task 4.
 6. **`PublicFormTargetWarningsWidget` stays on Intake** (self-hiding,
