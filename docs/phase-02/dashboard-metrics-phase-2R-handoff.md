@@ -22,9 +22,14 @@ earlier dashboard doc, this document wins and the earlier one is historical.
 
 ## Commit state
 
-Nine commits on `main`, **none pushed**. `origin/main` is still at `7bba038`
-(phase 1). Auto-deploy is on, so pushing deploys production; the plan is to push
-once, immediately before phase 3 begins.
+**Updated 2026-08-03.** The stack grew to 23 commits on `main` past
+`origin/main` (`7bba038`, phase 1) and is being **pushed on 2026-08-03 on the
+operator's explicit instruction**, mid-route after the verify block — not at
+the original "once, immediately before phase 3" point. Auto-deploy is on, so
+the push deploys production; the F/A/B route steps continue after the deploy
+is verified.
+
+The original phase-2R table, still correct as history:
 
 | Commit | What |
 |---|---|
@@ -38,9 +43,27 @@ once, immediately before phase 3 begins.
 
 (Two further commits in that range are the docs commits `f417323` and this one.)
 
-**Last verified gate**, run directly rather than taken on report:
-pest **1,512 passed / 19,201 assertions**, pint passed, filacheck **0 issues**,
-`npm run build` ok.
+Commits since this handoff was written, oldest first:
+
+| Commit | What |
+|---|---|
+| `96af988` | E4 — labels for Filament-rendered enums |
+| `9859145` | E5 — enum-typed `AdminUxSettings` properties |
+| `3cc4906` | Media-picker test asserts the guard's own attribute |
+| `318496c` | M2 cross-session research brief |
+| `0b99bf8` | **M2 fix** — per-mount workspace key nonces |
+| `2e786ed` | Admin table pagination keys namespaced per component |
+| `fd3a852` | Public-forms modal claims its open event once |
+| `62c7a2d` | Public-form CTA target warnings (admin observability) |
+| `60de741` | Unusable public-form targets marked inactive |
+| `7728a51` | Defect cause-pattern ledger seeded (route checklist inside) |
+| `0e80c84` | V1 — stock/flow tag gaps closed, status scoped per request |
+| `bf0c063` | V2–V4 — flake closed, keys verified, raw-writer invariant |
+
+**Last verified gate** (2026-08-03, run directly for the push audit): see the
+route checklist in `docs/research/defect-cause-patterns.md`; the audit
+immediately preceding the push is recorded there and in the push commit
+lineage.
 
 ## Decisions ledger
 
@@ -94,6 +117,19 @@ phase 2R, and they are binding:
   render LTR inside the RTL board.
 
 ## Open queue
+
+**Route status 2026-08-03:** the orchestrated route's verify block is done —
+V1 closed two board-contract gaps the warnings widget shipped with (missing
+stock/flow tag, also never present on `BlockersQueueWidget`; the tag test is
+now a structural loop over lens registrations) and scoped
+`PublicFormTargetStatus` per request; V2 soaked
+`OwnerImageWorkspaceBrowserTest` ×10 post-M2 — 10/10 green, the ~1-in-4 flake
+was the same per-mount-key mechanism, closed in the M2 brief; V3 confirmed the
+pagination-key namespacing and dashboard row keys shifted no component-key
+assertion paths; V4 pinned the raw-payload settings-writer invariant in
+`SettingsRowInvariantTest`. F1–F3 below are **delegated and in flight**
+(side-session, 2026-08-03); A1–A3 and B1 follow it. The cause-pattern ledger
+lives at `docs/research/defect-cause-patterns.md`.
 
 **E4** · The 12 enums implementing no Filament contract, scoped to those that
 actually render in Filament UI. `ExternalImageFailureReason` and

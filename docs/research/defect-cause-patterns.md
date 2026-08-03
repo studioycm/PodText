@@ -179,8 +179,8 @@ Mark each step with commit hash + gate result when done.
 | A2 | Trend-coloured stroke from `SeriesRow::delta()` | ☐ |
 | A3 | Dashed empty states + `x-filament::link` doorways | ☐ |
 | B1 | Alpine hover crosshair + tooltip on SVG sparklines | ☐ |
-| Docs | Refresh 2R-handoff commit table + gate; current-project-state Prompt-13 row; fold flags | ☐ |
-| Push gate | Full pest/pint/filacheck/build; push ONLY on operator's word (deploys production) | ☐ |
+| Docs | Refresh 2R-handoff commit table + gate; current-project-state Prompt-13 row; fold flags | ✅ minimal refresh 2026-08-03 pre-push; full fold again at route end |
+| Push gate | Full pest/pint/filacheck/build; push ONLY on operator's word (deploys production) | ⏳ operator instructed push 2026-08-03; audit running |
 
 ### V1 record (2026-08-03)
 
