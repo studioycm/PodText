@@ -95,7 +95,13 @@ commits) · where else to look (concrete greps/paths) · status.
   the override right above it stops nothing. Same shape:
   `PublicFormSubmissionResource.php:105`, `SettingsBackupResource.php:43`.
   Suggested guard: structural loop over resource registrations (policy exists
-  OR no mutation actions exposed).
+  OR no mutation actions exposed). **Correction (2026-08-03, fix-batch
+  session, ACTUAL):** the "no mutation surface exists" line was wrong for
+  `SettingsBackupResource` — `SettingsBackupsTable:191` carries a live,
+  policy-less `DeleteAction`, allowed to every panel user in non-strict
+  mode. `ResourcePolicyCoverageTest` (`73e4c17`) carries it as the single
+  allow-listed entry with its why; the SettingsBackupPolicy decision is on
+  the operator board.
 - **Sighting (2026-08-03, research session, POTENTIAL — default-tier
   variant):** `AppServiceProvider.php:169-173` sets
   `Select::configureUsing(->preload()->optionsLimit(50))` — the global
@@ -399,6 +405,33 @@ family, kin of `flake-label`'s discipline rather than an app defect.)*
   sweep trigger is registered in the deferred register. Both lessons also
   live in the `browser-script-step-labels` memory.
 
+## shared-index-entanglement · Targeted adds don't protect commits in a shared tree
+
+*(Registered 2026-08-03; found by the fix-batch session's flag, cause owned
+by the orchestrator.)*
+
+- **Cause:** `git add <paths>` discipline protects against another writer's
+  *unstaged* files, but `git commit -m` commits the whole index — another
+  session's already-STAGED files ride along silently. Two writers, one
+  index.
+- **Evidence (ACTUAL):** `11afc21` ("co-created widget and governance
+  principle sets", a docs commit) swept the fix-batch session's 18 staged
+  Q7 files (the preload-default inversion in `AppServiceProvider`, ~30
+  per-site `preload(false)` opt-out removals, cap-test additions). Nothing
+  lost — the full suite passed on exactly that state — but the docs-labelled
+  commit carries unmentioned app-behavior changes (`provenance-stated`
+  breach, recorded below). Ruling: leave-and-record; no history surgery in
+  the shared live tree (hash citations everywhere, active sessions).
+- **Where else:** every orchestrator/delegate commit in the shared tree.
+- **Suggested guard (adopted immediately):** commit with an explicit
+  pathspec — `git commit <paths> -m …` — which commits only those paths
+  regardless of index state; inspect `git status` staged section when in
+  doubt.
+- **Status:** instance recorded; practice adopted. **Provenance register:**
+  `11afc21` additionally carries the Q7 code batch; `ce23313` (opt-in-wins
+  pin test) is the fix-batch session's. The handoff commit table states
+  this at the docs fold.
+
 ## decorative-cap · Guard incantation attached to a mechanism that isn't in play *(alias P14)*
 
 *(Promoted 2026-08-03 from the research session's F-2, "decorative-cap".)*
@@ -501,8 +534,8 @@ Mark each step with commit hash + gate result when done.
 | Scan-scope research | How Filament/FilamentExamples/LaravelDaily recommend Tailwind source scanning for class-emitting PHP (enums, Livewire, presenters, DB-driven templates) → policy + guard recommendation (`unscanned-home` follow-through) | ⏳ chip `task_30ef637c` |
 | Principles docs | Co-created widget principles (14, merged ES + route-earned) + dashboard governance principles (7) with pointers and ledger shrink | ✅ 2026-08-03, this commit |
 | Ledger research | Dedicated read-only bad-practices hunt (skills + guidelines + FilaCheck catalogue), report-only | ✅ merged 2026-08-03 — 7 findings + flags curated: decorative-cap/service-hop-cost/client-payload promoted, unrouted-enum gained two tier-variant sightings, raw-state public-tier all-clear, implicit-keys queryStringIdentifier grep retired, security battery zero ACTUAL. Coverage gaps it declared: ~74/89 Blade views grep-only, importer connector internals, browser-test contents |
-| Operator decisions | **Decided 2026-08-03:** Q2 per-failed-import · Q3 podcast filter hidden on Intake · Q4 **overruled — phase 3 adds a minimal read-only imports listing** · Q6 warnings widget stays on both lenses · **Q7 INVERT the global Select preload default** (bounded sets opt in; scope-extended to the running fix-batch session). **Q5 RESOLVED 2026-08-03:** the dossier principles were recovered from the phase-1 session transcript and archived into the combined plan; no conflict with the built board. **Q1 DECIDED 2026-08-03:** declare-at-upload now (provider column + modal source select, folded into the phase-3 reconciliation), fetch-run records in WB supersede later. **ES-1 operator qualifier registered** in the combined plan: a doorway-less number ships rather than being dropped when no filterable surface exists yet. No operator decisions remain open | 🟡 updated 2026-08-03 |
-| Post-B1 fix batch | decorative-cap rewire (three decorative-cap filters → capped shape) · service-hop-cost fix (batch-prime blocker reasons + query-budget test) · one-home stragglers (two `number_format()` sites → `UiFormats::number()`, one public-facing) · unrouted-enum sweep (unrouted enum literals + the page-tier structural policy guard; Q7 default inversion excluded, pending operator) | ⏳ delegated (chip `task_e539317b`, 2026-08-03) |
+| Operator decisions | **Decided 2026-08-03:** Q2 per-failed-import · Q3 podcast filter hidden on Intake · Q4 **overruled — phase 3 adds a minimal read-only imports listing** · Q6 warnings widget stays on both lenses · **Q7 INVERT the global Select preload default** (bounded sets opt in; scope-extended to the running fix-batch session). **Q5 RESOLVED 2026-08-03:** the dossier principles were recovered from the phase-1 session transcript and archived into the combined plan; no conflict with the built board. **Q1 DECIDED 2026-08-03:** declare-at-upload now (provider column + modal source select, folded into the phase-3 reconciliation), fetch-run records in WB supersede later. **ES-1 operator qualifier registered** in the combined plan: a doorway-less number ships rather than being dropped when no filterable surface exists yet. **New (2026-08-03, from the fix-batch guard):** SettingsBackupPolicy — create a policy for `SettingsBackupResource`'s live DeleteAction, or keep it allow-listed-with-why in `ResourcePolicyCoverageTest` under the all-admins-equal model | 🟡 updated 2026-08-03 |
+| Post-B1 fix batch | decorative-cap rewire · service-hop-cost fix (105→3 queries/page claimed) · one-home stragglers · unrouted-enum sweep (37 enums) + page-tier policy guard · **Q7 preload-default inversion (scope-extended)** | 🟡 landed: `abd46f3`, `c129f5f`, `9a761a2`, `73e4c17`, Q7 riding `11afc21` (see `shared-index-entanglement`), `ce23313`. Claimed gate 1605/19,661 — orchestrator verification running |
 | Deferred register | one-home app-wide format/colour sweeps (parked, budgeted separately) · M2 upstream Filament report (worth filing, unfiled — M2 brief/handoff) · phase-3 plan reconciliation (after B1) · 1/30 Storage-listing timeout (flake-label watch) · client-payload wizard architecture (watch-tier, out of dashboard scope) · `single-read-race` sweep (trigger: a second sighting; recon scope = 6 browser files × 15 `x-show` views, unchecked) · governance globalization (operator ruling: dashboard-only for now; wider adoption is its own future thinking and plan) · research watch items: `embed_provider` full-table `distinct` per render (`ContentItemsTable.php:173`), 9 enums without Filament contracts (E4 residual), Blade string-icon duplication, importer authz panel-only | 📌 standing register per the registration discipline |
 | Phase-3 re-plan | Board 3 researched and planned fresh against locked decisions | 🟡 plan landed (`7183996`) but ran pre-A/B (orchestrator sequencing error — "after push" followed literally once the push moved mid-route); held as DRAFT, reconciliation pass against landed A/B patterns at route end |
 | Docs | Refresh 2R-handoff commit table + gate; current-project-state Prompt-13 row; fold flags | ✅ minimal refresh 2026-08-03 pre-push; full fold again at route end |
