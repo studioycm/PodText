@@ -8,10 +8,10 @@ use App\Models\User;
 
 /**
  * Backups are shared panel-maintenance artifacts written only by the
- * settings lifecycle managers. Reading follows the panel gate; deletion is
- * ordinary destructive maintenance and follows the CuratorMediaPolicy
- * convention (panel admins); creating or editing rows by hand is never
- * allowed, matching the resource's create-less, edit-less surface.
+ * settings lifecycle managers. Reading follows the panel gate; deletion
+ * destroys a shared recovery artifact and is reserved for super-admins
+ * (operator ruling 2026-08-03, "for now"); creating or editing rows by hand
+ * is never allowed, matching the resource's create-less, edit-less surface.
  */
 class SettingsBackupPolicy
 {
@@ -37,12 +37,17 @@ class SettingsBackupPolicy
 
     public function delete(User $user, SettingsBackupVersion $backup): bool
     {
-        return $this->isAdmin($user);
+        return $this->isSuperAdmin($user);
     }
 
     public function deleteAny(User $user): bool
     {
-        return $this->isAdmin($user);
+        return $this->isSuperAdmin($user);
+    }
+
+    private function isSuperAdmin(User $user): bool
+    {
+        return $user->hasRoleAtLeast(UserRole::SuperAdmin);
     }
 
     private function isAdmin(User $user): bool

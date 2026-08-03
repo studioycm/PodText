@@ -33,13 +33,15 @@ it('scopes settings-backup authority through a real policy', function (): void {
 
     // The table DeleteAction authorizes through the model policy, so the
     // authority must be explicit — not the non-strict allow-on-missing
-    // default. Delete follows the CuratorMediaPolicy convention: ordinary
-    // destructive maintenance belongs to panel admins (the panel gate is
-    // already admin-or-above); creation stays impossible because backups are
-    // written by the lifecycle managers, never by hand.
+    // default. Operator ruling 2026-08-03: deleting a backup destroys a
+    // shared recovery artifact, so it is reserved for super-admins for now;
+    // reading stays panel-wide, and creation stays impossible because
+    // backups are written by the lifecycle managers, never by hand.
     expect(Gate::getPolicyFor(SettingsBackupVersion::class))->not->toBeNull()
-        ->and(Gate::forUser(User::factory()->admin()->create())->allows('delete', $backup))->toBeTrue()
+        ->and(Gate::forUser(User::factory()->admin()->create())->allows('delete', $backup))->toBeFalse()
+        ->and(Gate::forUser(User::factory()->admin()->create())->allows('deleteAny', SettingsBackupVersion::class))->toBeFalse()
         ->and(Gate::forUser(User::factory()->superAdmin()->create())->allows('delete', $backup))->toBeTrue()
+        ->and(Gate::forUser(User::factory()->superAdmin()->create())->allows('deleteAny', SettingsBackupVersion::class))->toBeTrue()
         ->and(Gate::forUser(User::factory()->moderator()->create())->allows('delete', $backup))->toBeFalse()
         ->and(Gate::forUser(User::factory()->admin()->create())->allows('viewAny', SettingsBackupVersion::class))->toBeTrue()
         ->and(Gate::forUser(User::factory()->admin()->create())->allows('view', $backup))->toBeTrue()
@@ -47,10 +49,17 @@ it('scopes settings-backup authority through a real policy', function (): void {
         ->and(Gate::forUser(User::factory()->admin()->create())->allows('update', $backup))->toBeFalse();
 });
 
-it('still lets a panel admin delete a backup through the table action', function (): void {
+it('hides the backups delete action from plain admins and lets super-admins delete', function (): void {
     $backup = settingsBackupRow();
 
     $this->actingAs(User::factory()->admin()->create());
+
+    Livewire::test(ListSettingsBackups::class)
+        ->assertActionHidden(TestAction::make('delete')->table($backup));
+
+    expect(SettingsBackupVersion::query()->whereKey($backup->getKey())->exists())->toBeTrue();
+
+    $this->actingAs(User::factory()->superAdmin()->create());
 
     Livewire::test(ListSettingsBackups::class)
         ->callAction(TestAction::make('delete')->table($backup));
