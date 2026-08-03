@@ -328,7 +328,10 @@ commits) · where else to look (concrete greps/paths) · status.
   scratchpad, `pdf-v1/v2/codex.txt`) — archival into a repo doc offered to
   the operator. Checked and negative: none of the three PDFs contains the
   *dashboard* empty-state list (zero dashboard/widget mentions; the Q5
-  hypothesis tested 2026-08-03).
+  hypothesis tested 2026-08-03). **Sighting #2 CLOSED same day:** principles
+  archived verbatim (Hebrew un-reversed) into
+  `docs/research/media-program/media-ux-design-principles.md` on operator
+  instruction.
 - **Status:** open — TWO sightings → sweep-eligible; the sweep = hunt
   binding references to unarchived externals (`grep -rn
   "claude.ai/code/artifact" docs/` cross-checked against binding claims,
