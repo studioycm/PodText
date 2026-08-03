@@ -40,8 +40,16 @@
         <dl class="mt-2 space-y-2 text-sm">
             @foreach ($gapReasons as $reason)
                 <div class="flex items-center gap-3" data-testid="gap-reason">
-                    <dt class="w-44 shrink-0 text-gray-600 dark:text-gray-300">
-                        <a href="{{ $reason->url }}" class="hover:underline">{{ $reason->label }}</a>
+                    <dt class="w-44 shrink-0">
+                        <x-filament::link
+                            tag="button"
+                            size="sm"
+                            color="gray"
+                            :icon="\App\Enums\DashboardReason::from($reason->meta('reason'))->getIcon()"
+                            wire:click="selectReason('{{ $reason->meta('reason') }}')"
+                        >
+                            {{ $reason->label }}
+                        </x-filament::link>
                     </dt>
                     <dd class="flex flex-1 items-center gap-2">
                         <div class="h-2.5 flex-1 overflow-hidden rounded-full bg-gray-100 dark:bg-white/5" dir="ltr">
@@ -68,8 +76,16 @@
         <dl class="mt-2 space-y-2 text-sm">
             @foreach ($attentionReasons as $reason)
                 <div class="flex items-center gap-3" data-testid="attention-reason">
-                    <dt class="w-44 shrink-0 text-gray-600 dark:text-gray-300">
-                        <a href="{{ $reason->url }}" class="hover:underline">{{ $reason->label }}</a>
+                    <dt class="w-44 shrink-0">
+                        <x-filament::link
+                            tag="button"
+                            size="sm"
+                            color="gray"
+                            :icon="\App\Enums\DashboardReason::from($reason->meta('reason'))->getIcon()"
+                            wire:click="selectReason('{{ $reason->meta('reason') }}')"
+                        >
+                            {{ $reason->label }}
+                        </x-filament::link>
                     </dt>
                     <dd class="flex flex-1 items-center gap-2">
                         <div class="h-2.5 flex-1 overflow-hidden rounded-full bg-gray-100 dark:bg-white/5" dir="ltr">

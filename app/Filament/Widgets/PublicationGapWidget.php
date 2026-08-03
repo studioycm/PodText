@@ -2,6 +2,7 @@
 
 namespace App\Filament\Widgets;
 
+use App\Enums\DashboardReason;
 use App\Filament\Widgets\Concerns\AdminOnlyWidget;
 use App\Filament\Widgets\Concerns\ReadsDashboardFilters;
 use App\Filament\Widgets\Concerns\ShowsLoadingSkeleton;
@@ -25,6 +26,21 @@ class PublicationGapWidget extends Widget
     protected int|string|array $columnSpan = 'full';
 
     protected ?string $pollingInterval = null;
+
+    /**
+     * Board 2's designed flow — from the gap to the row, through the reason:
+     * a reason bar hands its reason to the blockers queue below, the same way
+     * a heatmap day narrows the stream. Actions are browser-callable, so an
+     * unknown value dispatches nothing.
+     */
+    public function selectReason(string $reason): void
+    {
+        if (DashboardReason::tryFrom($reason) === null) {
+            return;
+        }
+
+        $this->dispatch('dashboard-reason-selected', reason: $reason);
+    }
 
     /** @return array<string, mixed> */
     protected function getViewData(): array

@@ -409,8 +409,13 @@ class EditorialMetrics
     }
 
     /**
-     * The gap and needs-attention reason bars,
-     * each carrying the queue doorway filtered to that reason.
+     * The gap and needs-attention reason bars. Each row carries its reason key
+     * in `meta`, and the Board-2 view wires it to the blockers queue on the
+     * same board: clicking a bar dispatches `dashboard-reason-selected`, which
+     * the queue widget receives into its own reason filter. The rows carry no
+     * URL — the queue is not a separate page, and a widget table's filters are
+     * not URL-hydrated, so a Resource link here could only open an unfiltered
+     * list and break the bar's promise.
      *
      * @return array{gap: array<int, BreakdownRow>, attention: array<int, BreakdownRow>}
      */
@@ -424,10 +429,10 @@ class EditorialMetrics
                 label: $reason->getLabel(),
                 value: (float) ($counts[$reason->value] ?? 0),
                 color: $reason->getColor(),
-                url: ContentItemResource::getUrl('index', [
-                    'filters' => ['content_group_id' => ['value' => $contentGroupId]],
-                ]),
-                meta: ['bar' => $reason->barClass()],
+                meta: [
+                    'bar' => $reason->barClass(),
+                    'reason' => $reason->value,
+                ],
             ),
             $reasons,
         );

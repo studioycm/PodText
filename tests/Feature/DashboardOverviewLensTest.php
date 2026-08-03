@@ -12,6 +12,7 @@ use App\Filament\Widgets\DashboardContextWidget;
 use App\Filament\Widgets\EditorialStatsWidget;
 use App\Filament\Widgets\LibraryCompositionWidget;
 use App\Filament\Widgets\PublicationFunnelWidget;
+use App\Filament\Widgets\PublicationGapWidget;
 use App\Filament\Widgets\PublicationHeatmapWidget;
 use App\Filament\Widgets\PublicFormTargetWarningsWidget;
 use App\Models\Author;
@@ -314,4 +315,48 @@ it('shows a shaped skeleton while a lazy widget hydrates', function (): void {
         ->toContain('animate-pulse')
         ->toContain('aria-busy="true"')
         ->toContain(__('admin.dashboard.loading'));
+});
+
+it('turns each reason bar into an on-board doorway that filters the queue', function (): void {
+    overviewFixture();
+
+    // The docblock promise P11 caught: a reason bar must land the operator on
+    // the queue filtered to that reason. On-board that means a dispatch, not
+    // a URL — widget table filters are not URL-hydrated on first load.
+    Livewire::test(PublicationGapWidget::class)
+        ->assertSeeHtml("selectReason('missing_transcription')")
+        ->assertSeeHtml("selectReason('missing_category')")
+        ->call('selectReason', 'missing_media')
+        ->assertDispatched('dashboard-reason-selected', reason: 'missing_media')
+        ->call('selectReason', '../../evil')
+        ->assertNotDispatched('dashboard-reason-selected');
+});
+
+it('filters the queue to the reason arriving from a reason bar', function (): void {
+    $group = ContentGroup::factory()->published()->create();
+    $category = Category::factory()->create();
+
+    // Two queue rows with disjoint reasons, so the filter's effect is visible.
+    $noTranscript = ContentItem::factory()->for($group)->published(now()->subHour())->create([
+        'embed_url' => 'https://open.spotify.com/episode/reason-doorway-1',
+    ]);
+    $noTranscript->categories()->attach($category);
+
+    $noMedia = ContentItem::factory()->for($group)->published(now()->subHour())->create([
+        'embed_url' => null,
+        'media_url' => '',
+    ]);
+    $noMedia->categories()->attach($category);
+    Transcription::factory()->for($noMedia)->published(now()->subHour())->create();
+
+    Livewire::test(BlockersQueueWidget::class)
+        ->assertCanSeeTableRecords([$noTranscript, $noMedia])
+        ->dispatch('dashboard-reason-selected', reason: 'missing_media')
+        ->assertCanSeeTableRecords([$noMedia])
+        ->assertCanNotSeeTableRecords([$noTranscript])
+        // Dispatches can be forged from the browser: an unknown reason is
+        // ignored rather than written into the filter state.
+        ->dispatch('dashboard-reason-selected', reason: '../../evil')
+        ->assertCanSeeTableRecords([$noMedia])
+        ->assertCanNotSeeTableRecords([$noTranscript]);
 });

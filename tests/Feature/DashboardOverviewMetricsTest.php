@@ -414,3 +414,19 @@ it('offers podcast filter options keyed by id', function (): void {
     expect(app(EditorialMetrics::class)->podcastOptions())
         ->toBe([$group->getKey() => 'Zeta Show']);
 });
+
+it('gives every reason bar its reason key instead of a doorway url', function (): void {
+    $group = ContentGroup::factory()->published()->create();
+    ContentItem::factory()->for($group)->published(now()->subHour())->create();
+
+    $breakdown = app(EditorialMetrics::class)->reasonBreakdown();
+    $rows = [...$breakdown['gap'], ...$breakdown['attention']];
+
+    // The queue lives on the same board and widget table filters are not
+    // URL-hydrated, so a Resource URL here could only lie — the row carries
+    // the reason key and the Board-2 view wires it to the queue's filter.
+    expect(array_map(fn (BreakdownRow $row): mixed => $row->meta('reason'), $rows))
+        ->toBe(['missing_transcription', 'unpublished_group', 'missing_media', 'missing_category'])
+        ->and(array_map(fn (BreakdownRow $row): ?string => $row->url, $rows))
+        ->toBe([null, null, null, null]);
+});

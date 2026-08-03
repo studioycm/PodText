@@ -20,6 +20,7 @@ use Filament\Widgets\Concerns\InteractsWithPageFilters;
 use Filament\Widgets\TableWidget;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\HtmlString;
+use Livewire\Attributes\On;
 
 class BlockersQueueWidget extends TableWidget
 {
@@ -33,6 +34,38 @@ class BlockersQueueWidget extends TableWidget
     protected int|string|array $columnSpan = 'full';
 
     protected ?string $pollingInterval = null;
+
+    /**
+     * A Board-2 reason bar lands the operator here, on the queue filtered to
+     * that reason. The write goes through the filter form's own field state —
+     * the vendor's `removeTableFilter()` route — so the select shows the
+     * arriving value, and the deferred branch applies it the way the form's
+     * own apply button would, since filters defer by default. Events can be
+     * dispatched from the browser, so an unknown reason is ignored rather
+     * than written.
+     */
+    #[On('dashboard-reason-selected')]
+    public function filterByReason(?string $reason = null): void
+    {
+        if ($reason !== null && DashboardReason::tryFrom($reason) === null) {
+            return;
+        }
+
+        $fields = $this->getTableFiltersForm()
+            ->getComponentByStatePath('reason')
+            ?->getChildSchema()
+            ->getFlatFields() ?? [];
+
+        ($fields['value'] ?? null)?->state($reason);
+
+        if ($this->getTable()->hasDeferredFilters()) {
+            $this->applyTableFilters();
+
+            return;
+        }
+
+        $this->updatedTableFilters();
+    }
 
     public function table(Table $table): Table
     {
