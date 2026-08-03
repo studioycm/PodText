@@ -30,6 +30,7 @@ use App\Support\Media\MediaMutationLease;
 use App\Support\Media\MediaReferenceFinder;
 use App\Support\PublicContent\PublicTranscriptionPolicy;
 use App\Support\PublicFront\Cards\PublicFrontCardTemplateResolver;
+use App\Support\PublicFront\PublicFormTargetStatus;
 use App\Support\PublicFront\PublicFrontConfigCache;
 use App\Support\PublicFront\PublicFrontRenderContext;
 use App\Support\PublicFront\PublicFrontRenderContextFactory;
@@ -89,6 +90,7 @@ class AppServiceProvider extends ServiceProvider
         $this->app->scoped(MediaReferenceFinder::class);
         $this->app->scoped(MediaLibraryTaskQuery::class);
         $this->app->scoped(MediaMutationLease::class);
+        $this->app->scoped(PublicFormTargetStatus::class);
 
         $this->app->scoped(
             PublicFrontRenderContext::class,

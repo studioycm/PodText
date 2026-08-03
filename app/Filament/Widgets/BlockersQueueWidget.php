@@ -39,7 +39,12 @@ class BlockersQueueWidget extends TableWidget
         $podcastId = $this->dashboardPodcastId();
 
         return $table
-            ->heading(__('admin.dashboard.queue.heading'))
+            ->heading(new HtmlString(
+                '<span class="inline-flex items-center gap-3">'
+                .e(__('admin.dashboard.queue.heading'))
+                .view('filament.widgets.partials.stock-flow-tag')->render()
+                .'</span>',
+            ))
             ->description(fn (): HtmlString => $this->burnDown())
             ->query(
                 $metrics

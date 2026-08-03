@@ -9,11 +9,19 @@ use App\Support\PublicFront\Sections\PublicDisplaySectionRegistry;
  * Admin-side observability for public-form CTA targets. Public renderers
  * silently skip CTAs whose form key has no enabled definition; this class
  * surfaces that state to editors without changing the public skip behavior.
+ *
+ * Scoped per request: definitions and counts are memoized for the request's
+ * life, so the warnings widget's canView() + render pair computes once. A
+ * same-request settings write must forgetInstance() to recount (the test
+ * helpers do; production settings writes answer on their own request).
  */
 class PublicFormTargetStatus
 {
     /** @var array<string, array<string, mixed>>|null */
     private ?array $definitions = null;
+
+    /** @var array{menu_items: int, about_blocks: int, homepage_buttons: int, total: int}|null */
+    private ?array $misconfiguredCounts = null;
 
     public function __construct(
         private readonly PublicFrontConfigReader $configReader = new PublicFrontConfigReader,
@@ -85,6 +93,10 @@ class PublicFormTargetStatus
      */
     public function misconfiguredCounts(): array
     {
+        if ($this->misconfiguredCounts !== null) {
+            return $this->misconfiguredCounts;
+        }
+
         $menuItems = collect($this->configReader->group('menu_config')['items'] ?? [])
             ->filter(fn (mixed $item): bool => is_array($item)
                 && ($item['type'] ?? null) === 'public_form'
@@ -110,7 +122,7 @@ class PublicFormTargetStatus
             })
             ->count();
 
-        return [
+        return $this->misconfiguredCounts = [
             'menu_items' => $menuItems,
             'about_blocks' => $aboutBlocks,
             'homepage_buttons' => $homepageButtons,

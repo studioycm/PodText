@@ -153,14 +153,30 @@ it('renders the library composition band with podcast health and the transcriber
         ->assertDontSeeHtml('wire:poll');
 });
 
-it('tags every overview widget as stock or flow', function (): void {
+it('tags every lens widget as stock or flow', function (): void {
     overviewFixture();
 
-    Livewire::test(PublicationFunnelWidget::class)->assertSeeHtml('data-testid="widget-tag-stock"');
-    Livewire::test(EditorialStatsWidget::class)->assertSeeHtml('data-testid="widget-tag-stock"');
-    Livewire::test(LibraryCompositionWidget::class)->assertSeeHtml('data-testid="widget-tag-stock"');
-    Livewire::test(PublicationHeatmapWidget::class)->assertSeeHtml('data-testid="widget-tag-flow"');
-    Livewire::test(ActivityStreamWidget::class)->assertSeeHtml('data-testid="widget-tag-flow"');
+    // Rule 3: every widget declares whether the range moves it. The command
+    // bar is the one exemption — it IS the range, not a metric. Looping the
+    // lens registrations means a widget added to any lens cannot ship
+    // untagged, the way PublicFormTargetWarningsWidget briefly did.
+    $flow = [PublicationHeatmapWidget::class, ActivityStreamWidget::class];
+    $exempt = [DashboardContextWidget::class];
+
+    $widgets = collect(DashboardLens::cases())
+        ->flatMap(fn (DashboardLens $lens): array => Dashboard::getWidgetsForLens($lens))
+        ->unique()
+        ->reject(fn (string $widget): bool => in_array($widget, $exempt, strict: true));
+
+    expect($widgets->count())->toBeGreaterThanOrEqual(7);
+
+    foreach ($widgets as $widget) {
+        Livewire::test($widget)->assertSeeHtml(
+            in_array($widget, $flow, strict: true)
+                ? 'data-testid="widget-tag-flow"'
+                : 'data-testid="widget-tag-stock"',
+        );
+    }
 });
 
 it('validates unvalidated page filter data before querying with it', function (): void {

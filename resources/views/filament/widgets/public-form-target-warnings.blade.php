@@ -1,9 +1,17 @@
 <x-filament-widgets::widget>
-    <x-filament::section
-        :heading="__('admin.dashboard.form_targets.heading')"
-        :description="__('admin.dashboard.form_targets.description')"
-    >
-        <ul class="space-y-2" data-testid="form-target-warnings">
+    <x-filament::section>
+        <div class="flex items-center justify-between gap-3">
+            <h2 class="text-sm font-semibold text-gray-950 dark:text-white">
+                {{ __('admin.dashboard.form_targets.heading') }}
+            </h2>
+            @include('filament.widgets.partials.stock-flow-tag')
+        </div>
+
+        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+            {{ __('admin.dashboard.form_targets.description') }}
+        </p>
+
+        <ul class="mt-4 space-y-2" data-testid="form-target-warnings">
             @foreach ($rows as $row)
                 <li
                     class="flex flex-wrap items-center justify-between gap-3"

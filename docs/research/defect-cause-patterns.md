@@ -41,6 +41,12 @@ commits) · where else to look (concrete greps/paths) · status.
 - **Where else:** for each enum in `app/Enums`, grep its literal backing values
   outside the enum file; `ActivityStreamWidget` hand-writes event-type colours
   (known open → `StreamEventType`, phase 3).
+- **Sighting (2026-08-03, V1):** the generalized form — a *contract* enforced
+  only on hand-listed members protects nothing outside the list. The stock/flow
+  tag rule was asserted per named widget, so `PublicFormTargetWarningsWidget`
+  shipped untagged and `BlockersQueueWidget` had never been tagged. Fixed with
+  a structural loop over every lens registration in
+  `DashboardOverviewLensTest`.
 - **Status:** open as a rule; `StreamEventType` lands in phase 3.
 
 ## P3 · Live unvalidated state read raw
@@ -154,8 +160,8 @@ Mark each step with commit hash + gate result when done.
 
 | Step | What | Status |
 |---|---|---|
-| Ledger | Create this file | ✅ this commit |
-| V1 | Audit `PublicFormTargetWarningsWidget` vs board contracts; re-run lens/order tests | ☐ |
+| Ledger | Create this file | ✅ `7728a51` |
+| V1 | Audit `PublicFormTargetWarningsWidget` vs board contracts; re-run lens/order tests | ✅ see below |
 | V2 | `OwnerImageWorkspaceTest` standalone ×10; close or spawn fix | ☐ |
 | V3 | Pagination-key + dashboard row keys didn't shift component-key assertions | ☐ |
 | V4 | Close M1/M2 in media brief; guard-or-document dynamic settings writes | ☐ |
@@ -169,3 +175,16 @@ Mark each step with commit hash + gate result when done.
 | B1 | Alpine hover crosshair + tooltip on SVG sparklines | ☐ |
 | Docs | Refresh 2R-handoff commit table + gate; current-project-state Prompt-13 row; fold flags | ☐ |
 | Push gate | Full pest/pint/filacheck/build; push ONLY on operator's word (deploys production) | ☐ |
+
+### V1 record (2026-08-03)
+
+`PublicFormTargetWarningsWidget` audit: `AdminOnlyWidget` ✅, no polling ✅,
+skeleton ✅, en+he keys ✅, lens/order tests green after the index shift ✅.
+Fixed: missing stock/flow tag (and the same gap on `BlockersQueueWidget`),
+replaced the hand-listed tag test with a structural loop over every lens
+registration; `PublicFormTargetStatus` scoped per request with a counts memo so
+canView + render compute once (was two full recounts per render).
+**EditorialMetrics verdict: legitimately domain-owned.** Its write paths
+(settings saves, `HomepageSection`) are outside `EditorialMetrics`' observer
+invalidation, so folding the counts into the cached snapshot would show a stale
+warning for up to 60s after the very edit that fixes it.

@@ -43,6 +43,7 @@ function saveFormTargetConfig(array $config): void
     }
 
     app()->forgetInstance(PublicContentSettings::class);
+    app()->forgetInstance(PublicFormTargetStatus::class);
     app(SettingsContainer::class)->clearCache();
 }
 
@@ -391,4 +392,46 @@ it('hides the form target warnings widget from guests even when CTAs are broken'
     ]);
 
     expect(PublicFormTargetWarningsWidget::canView())->toBeFalse();
+});
+
+it('tags the form target warnings widget as a stock widget', function (): void {
+    saveFormTargetConfig([
+        'public_forms' => formTargetPublicFormsConfig(),
+        'menu_config' => [
+            'enabled' => true,
+            'items' => [
+                ['key' => 'broken', 'type' => 'public_form', 'form_key' => 'missing_form', 'visible' => true, 'sort' => 10],
+            ],
+        ],
+    ]);
+
+    $this->actingAs(User::factory()->admin()->create());
+
+    Livewire::test(PublicFormTargetWarningsWidget::class)
+        ->assertSeeHtml('data-testid="widget-tag-stock"');
+});
+
+it('memoizes form target status per request so a widget render counts once', function (): void {
+    saveFormTargetConfig([
+        'public_forms' => formTargetPublicFormsConfig(),
+        'menu_config' => [
+            'enabled' => true,
+            'items' => [
+                ['key' => 'broken', 'type' => 'public_form', 'form_key' => 'missing_form', 'visible' => true, 'sort' => 10],
+            ],
+        ],
+    ]);
+
+    expect(app(PublicFormTargetStatus::class))->toBe(app(PublicFormTargetStatus::class));
+
+    $first = app(PublicFormTargetStatus::class)->misconfiguredCounts();
+
+    DB::flushQueryLog();
+    DB::enableQueryLog();
+    $second = app(PublicFormTargetStatus::class)->misconfiguredCounts();
+    $queriesDuringSecondCall = DB::getQueryLog();
+    DB::disableQueryLog();
+
+    expect($second)->toBe($first)
+        ->and($queriesDuringSecondCall)->toBe([]);
 });
