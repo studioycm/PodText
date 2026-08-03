@@ -207,8 +207,19 @@ commits) · where else to look (concrete greps/paths) · status.
 - **Where else:** any browser test with a re-run habit; the parallel-worker
   port/storage collision hypothesis (`local_51579218`) for the residual
   intermittents (now only the 1/30 Storage-listing timeout).
-- **Status:** V2 closed the owner-image sighting; only the unclassified 1/30
-  timeout remains under watch.
+- **Sighting (2026-08-03, fix-batch hardening round, residual family):**
+  `OwnerImageWorkspaceBrowserTest` "Hebrew RTL iPhone 15" hit one Playwright
+  30s timeout during a FULL run executed while another session's uncommitted
+  work sat in the shared tree (the scan-scope session's phpunit.xml/theme
+  edits — not the round's diffs; stash-baseline discipline applied), then
+  passed standalone 12/12. Second data point for the parallel-worker/
+  concurrent-activity contention hypothesis (`local_51518218`-era).
+- **Status:** V2 closed the owner-image mechanism sighting. The contention
+  hypothesis now has TWO residual data points (the 1/30 Storage-listing
+  timeout; this RTL timeout under concurrent tree activity) →
+  investigation-eligible per the 2+ rule; registered in the deferred
+  register (route-end+: reproduce browser-suite timeouts under induced
+  concurrent tree activity vs a quiesced tree).
 
 ## line-guard · Line-based guards miss multi-line call sites *(alias P8)*
 
@@ -425,6 +436,27 @@ family, kin of `flake-label`'s discipline rather than an app defect.)*
   sweep trigger is registered in the deferred register. Both lessons also
   live in the `browser-script-step-labels` memory.
 
+## test-residue · Suites leave real-disk artifacts later runs trip over
+
+*(Registered 2026-08-03 from the fix-batch hardening round's report.)*
+
+- **Cause:** browser/feature fixtures that write to the real storage disk
+  outlive their run; a later test asserting disk state (or a copy-failure
+  path) trips over the stray file — cross-run, cross-session pollution that
+  reads as a flake.
+- **Evidence (ACTUAL, once):** `MediaMutationCoordinatorTest`'s copy-failure
+  test failed on a stray `content-groups/covers/browser-owner-podcast.jpg`
+  (a browser-fixture name from earlier browser verification), green after
+  the disk state cycled; file-level and standalone reruns green.
+- **Where else:** browser tests writing under `storage/app/public` with
+  fixed names; any feature test asserting absence/failure on paths a
+  browser fixture also uses.
+- **Suggested guard:** per-run unique fixture path segments + teardown
+  cleanup in browser tests, or scoped/fake disks where the flow allows;
+  cheapest first step — a fixed-name census (`grep -rn "browser-owner-"
+  tests/Browser`) and renaming to run-scoped names.
+- **Status:** one sighting; registered, no sweep yet (2+ rule).
+
 ## shared-index-entanglement · Targeted adds don't protect commits in a shared tree
 
 *(Registered 2026-08-03; found by the fix-batch session's flag, cause owned
@@ -556,8 +588,8 @@ Mark each step with commit hash + gate result when done.
 | Principles docs | Co-created widget principles (14, merged ES + route-earned) + dashboard governance principles (7) with pointers and ledger shrink | ✅ 2026-08-03, this commit |
 | Ledger research | Dedicated read-only bad-practices hunt (skills + guidelines + FilaCheck catalogue), report-only | ✅ merged 2026-08-03 — 7 findings + flags curated: decorative-cap/service-hop-cost/client-payload promoted, unrouted-enum gained two tier-variant sightings, raw-state public-tier all-clear, implicit-keys queryStringIdentifier grep retired, security battery zero ACTUAL. Coverage gaps it declared: ~74/89 Blade views grep-only, importer connector internals, browser-test contents |
 | Operator decisions | **Decided 2026-08-03:** Q2 per-failed-import · Q3 podcast filter hidden on Intake · Q4 **overruled — phase 3 adds a minimal read-only imports listing** · Q6 warnings widget stays on both lenses · **Q7 INVERT the global Select preload default** (bounded sets opt in; scope-extended to the running fix-batch session). **Q5 RESOLVED 2026-08-03:** the dossier principles were recovered from the phase-1 session transcript and archived into the combined plan; no conflict with the built board. **Q1 DECIDED 2026-08-03:** declare-at-upload now (provider column + modal source select, folded into the phase-3 reconciliation), fetch-run records in WB supersede later. **ES-1 operator qualifier registered** in the combined plan: a doorway-less number ships rather than being dropped when no filterable surface exists yet. **SettingsBackupPolicy DECIDED + LANDED 2026-08-03:** the fix-batch session had already created the policy at admin level (`73e4c17`); the operator ruled delete is **super-admin only for now** — flipped watched-red by the orchestrator (policy `delete`/`deleteAny` → `hasRoleAtLeast(SuperAdmin)`, table action hidden from plain admins and proven working for super-admins). No operator decisions remain open | 🟡 updated 2026-08-03 |
-| Post-B1 fix batch | decorative-cap rewire · service-hop-cost fix (105→3 queries/page claimed) · one-home stragglers · unrouted-enum sweep (37 enums) + page-tier policy guard · **Q7 preload-default inversion (scope-extended)** | 🟡 landed: `abd46f3`, `c129f5f`, `9a761a2`, `73e4c17`, Q7 riding `11afc21` (see `shared-index-entanglement`), `ce23313`. Claimed gate 1605/19,661. **Orchestrator-verified 2026-08-03 at `ce23313`: pest 1605/19,663 direct run (test count identical, +2 assertions vs claim, zero failures), pint --test pass, full filacheck 0, tree clean** |
-| Deferred register | one-home app-wide format/colour sweeps (parked, budgeted separately) · M2 upstream Filament report (worth filing, unfiled — M2 brief/handoff) · phase-3 plan reconciliation (after B1) · 1/30 Storage-listing timeout (flake-label watch) · client-payload wizard architecture (watch-tier, out of dashboard scope) · `single-read-race` sweep (trigger: a second sighting; recon scope = 6 browser files × 15 `x-show` views, unchecked) · governance globalization (operator ruling: dashboard-only for now; wider adoption is its own future thinking and plan) · enum theme-scope partition (operator: symmetric superset now; partition later only if size matters, by directory so globs/guard can see it) · badge-home split (`ShowContentItem` base literals vs `PublicItemPageRegistry` maps — one-home cleanup candidate once globs land) · dead `resources/css/app.css` entry kept as future non-panel seat (operator ruling) · research watch items: `embed_provider` full-table `distinct` per render (`ContentItemsTable.php:173`), 9 enums without Filament contracts (E4 residual), Blade string-icon duplication, importer authz panel-only | 📌 standing register per the registration discipline |
+| Post-B1 fix batch | decorative-cap rewire · service-hop-cost fix (105→3 queries/page claimed) · one-home stragglers · unrouted-enum sweep (37 enums) + page-tier policy guard · **Q7 preload-default inversion (scope-extended)** | 🟡 landed: `abd46f3`, `c129f5f`, `9a761a2`, `73e4c17`, Q7 riding `11afc21` (see `shared-index-entanglement`), `ce23313`. Claimed gate 1605/19,661. **Orchestrator-verified 2026-08-03 at `ce23313`: pest 1605/19,663 direct run, pint --test pass, full filacheck 0.** **Hardening round (operator-directed, same session) landed after:** `7768442` (SettingsBackupPolicy, admin-level) + `5da7acc` (missing-category one home + filter↔badge parity pin) + `f494f0a` (two type-homes: `MediaMutationRepairResult`/`SettingsImportRowOutcome`; inert optionsLimit dropped; relation-manager language filter scoped to owner; slide_over vocabulary documented-only — spelling change = data migration) + orchestrator `ce95a35` (super-admin ruling flip, watched red). Round's claimed gate: 1608/19,696 with ONE standalone-green browser timeout, run on a tree mixed with the scan-scope session's uncommitted work — **verification folds into the single full-suite run at the combined HEAD when the scan-scope fix lands** |
+| Deferred register | one-home app-wide format/colour sweeps (parked, budgeted separately) · M2 upstream Filament report (worth filing, unfiled — M2 brief/handoff) · phase-3 plan reconciliation (after B1) · 1/30 Storage-listing timeout (flake-label watch) · client-payload wizard architecture (watch-tier, out of dashboard scope) · `single-read-race` sweep (trigger: a second sighting; recon scope = 6 browser files × 15 `x-show` views, unchecked) · browser-timeout contention investigation (2 residual data points — the 1/30 Storage-listing timeout and the RTL timeout under concurrent tree activity; route-end+: induced-concurrency vs quiesced reproduction) · `test-residue` fixed-name census (one sighting; grep browser fixture names) · governance globalization (operator ruling: dashboard-only for now; wider adoption is its own future thinking and plan) · enum theme-scope partition (operator: symmetric superset now; partition later only if size matters, by directory so globs/guard can see it) · badge-home split (`ShowContentItem` base literals vs `PublicItemPageRegistry` maps — one-home cleanup candidate once globs land) · dead `resources/css/app.css` entry kept as future non-panel seat (operator ruling) · research watch items: `embed_provider` full-table `distinct` per render (`ContentItemsTable.php:173`), 9 enums without Filament contracts (E4 residual), Blade string-icon duplication, importer authz panel-only | 📌 standing register per the registration discipline |
 | Phase-3 re-plan | Board 3 researched and planned fresh against locked decisions | 🟡 plan landed (`7183996`) but ran pre-A/B (orchestrator sequencing error — "after push" followed literally once the push moved mid-route); held as DRAFT, reconciliation pass against landed A/B patterns at route end |
 | Docs | Refresh 2R-handoff commit table + gate; current-project-state Prompt-13 row; fold flags | ✅ minimal refresh 2026-08-03 pre-push; full fold again at route end |
 | Push gate | Full pest/pint/filacheck/build; push ONLY on operator's word (deploys production) | ✅ 2026-08-03: pest 1563/19,386, full filacheck 0, build ok; pushed pinned `987b92f` (F's concurrent `b24490a` deliberately excluded); Forge release `74621206` = `987b92f`, `/up` 200 |
