@@ -1,13 +1,10 @@
 # Dashboard Phase 3 — Board 3 · Intake Lens Implementation Plan
 
-> **STATUS: DRAFT — do not implement yet.** This plan was produced before the
-> A-block (A1 sparkline min/max normalisation, A2 trend stroke, A3 panel-native
-> empty states + `x-filament::link` doorways) and B1 (Alpine hover) landed, so
-> its widget-spec visual idioms reference the pre-A/B substrate. The data-layer
-> half (EditorialMetrics intake surface, `StreamEventType`, E4 contracts, queue
-> composition, provider filter) is unaffected. The orchestrator reconciles this
-> plan against the landed A/B patterns at route end and removes this banner;
-> only then is it implementable.
+> **STATUS: RECONCILED 2026-08-03 — implementable.** Written before the
+> A/B blocks landed, then reconciled by the orchestrator at route end; the
+> draft hold is lifted. Binding addenda from the reconciliation are in
+> "Route-end reconciliation addenda" below and prevail over the older prose
+> where they touch the same surface.
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
@@ -2119,6 +2116,32 @@ git commit -m "docs(dashboard): record phase 3 (Intake lens) as implemented"
   (`StreamEventType`) and the intake channel (`ImportConnectionProvider`
   narrowed reader) now have typed homes; the ledger's "provider/source strings
   on intake paths" candidate is answered.
+
+## Route-end reconciliation addenda (2026-08-03, binding)
+
+1. **Visual substrate is the landed A/B idiom, not the pre-A prose.** Widget
+   specs in Tasks 4–6 build ON: the shared dashed empty-state partial
+   (`resources/views/filament/widgets/partials/empty-state.blade.php`, A3),
+   `x-filament::link` + `Heroicon` doorways (A3), min–max normalised
+   sparklines with the `SparklineTrend` stroke home (A1/A2) and the Alpine
+   hover layer (B1) wherever a sparkline renders, and `UiFormats` for every
+   date/number. The why-layer is
+   `docs/phase-02/dashboard-widget-principles.md` — Tasks 4–6 conform to it
+   (the structural tag/lens loop tests enforce several principles already).
+2. **New task (Q1 ruling): imports provider declare-at-upload.** Migration
+   adding nullable provider (+ optional `import_connection_id`) to
+   `imports`; a "source" select in the import modal defaulting to manual;
+   a stamping hook verified against Filament's import-options plumbing.
+   The sources filter then scopes imports for real; Spotify stays honestly
+   empty. WB's fetch-run records later supersede as truth-at-origin.
+3. **New task (Q4 ruling): minimal read-only imports listing** so the queue
+   has a "view all" doorway for imports — listing only, not management.
+4. **Decisions Q1–Q6 are all closed** and annotated in place above (Q5's
+   ES-1–ES-7 were recovered — see the combined plan's provenance section;
+   the plan's restated empty states stand as ES-3's concrete application).
+5. **Board-3 pair note:** `SettingsBackupPolicy` now exists (super-admin
+   delete) and `ResourcePolicyCoverageTest` runs with an empty allow-list —
+   Task 3's `ImportPolicy` follows that landed precedent.
 
 ## Open questions for the operator
 
