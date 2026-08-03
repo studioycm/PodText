@@ -707,3 +707,118 @@ Presets (`filawidgets-dashboard`), and Drag-to-Resize Collapsible Sidebar.
   the established, guarded idiom here.
 - Access level: only `search-examples` (snippets) was available; no
   source/read/fetch tool.
+
+## Board 3 · Intake Lens Research (2026-08-03, phase-3 re-plan session)
+
+Research for the from-scratch phase-3 plan
+(`docs/phase-02/dashboard-metrics-phase-3-plan.md`): the intake work queue,
+the Spotify connection card, the media findings bars, and the chip/source
+filters. Protocol: pass 1 ran two batches at `limit: 8` — batch A
+("dashboard table widget", "stats overview widget", "custom widget blade
+view", "widget page filters"), batch B ("failed import rows", "import action
+csv", "navigation badge count", "toggle buttons enum filter"); pass 2
+refined at `limit: 8` against the gaps pass 1 exposed ("connection test
+status", "empty state", "download csv action", "inbox pending widget").
+Each batch overflowed the MCP result limit and was saved to a file; every
+file was read to 100% (156K + 191K + 164K chars — 24 distinct examples,
+182 file blocks) via dedicated read-only digest agents, with per-file
+coverage statements recorded. Access level: only `search-examples`
+(snippets) was available; no source/read/fetch/details tool.
+
+### Headline corpus verdicts
+
+- **The corpus has no connection-test / API-health card precedent.** Greps
+  across all three payloads for connection/health/ping/tested_at returned
+  no real hits. The closest analogues: `laravel-ai-sdk-cms`'s
+  `SuggestTitleAction` (run external call in a modal, echo result inline,
+  `$action->halt()` to keep it visible), `teachers-payouts`'
+  `TeacherPayoutsTable` (boolean status column + `…_at` timestamp stamped
+  by the action that changed the state), and `AiConfig::isProviderConfigured()`
+  (key-presence check filtering provider options). The Spotify card
+  therefore stands on PodText's own precedent — `ImporterSettings`' test
+  action persisting `status` + `last_tested_at` through
+  `ImportConnection::markTested()` — with `ImportConnectionStatus`'s
+  existing `HasLabel`+`HasColor` contract styling the badge.
+- **Queue-widget shape.** Best references: `teachers-payouts`
+  `TeacherScheduleWidget` (`TableWidget` + `canView()` gate + `limit(10)` +
+  `paginated(false)`), `material-theme` `LatestOrders`
+  (`defaultPaginationPageOption(5)` + per-row `Action->url()`),
+  `laravel-ai-sdk-cms` `RecentAiActivityWidget` (badge column + `->since()`).
+  All are single-model tables; none unions two models. PodText's intake
+  queue spans `PublicFormSubmission` + Filament `Import`, so it follows the
+  board's own `ActivityStreamWidget` custom-`Widget` pattern (typed rows
+  merged in the metrics service, chips as widget-local Livewire state)
+  rather than forcing a cross-model `TableWidget`.
+- **The cache+invalidate twin.** `ecommerce-admin-panel`'s
+  `DashboardMetrics` (`Cache::remember`/`Cache::forget`, `CACHE_KEY`/
+  `CACHE_SECONDS` consts) plus `OrderObserver` forgetting caches on model
+  events is structurally identical to PodText's `EditorialMetrics` +
+  `EditorialMetricsCacheObserver`. Confirms the phase-3 choice: extend the
+  observer registration to the intake models rather than inventing
+  per-widget caches. Same example's `Stat->url(Resource::getUrl('index',
+  ['tab' => 'fulfillment_queue']))` is the count-to-prefiltered-queue
+  doorway idiom the media findings bars use (`tab` + `filters`).
+- **Empty states.** The only real `emptyStateHeading()`/`emptyStateDescription()`
+  usage is `filter-or-search-only-table` (with a caveat its own copy shows:
+  one undifferentiated string for two different reasons of emptiness).
+  `teachers-payouts`' attendance Blade demonstrates the better concept —
+  two distinct empty branches with distinct icon/heading/description —
+  but implements it by copying `fi-ta-empty-state-*` internal classes
+  (pattern to reject; PodText widgets keep their own owned empty-state
+  markup, as the stream/gap views already do). Phase 3 adopts the
+  two-reason concept: the queue's "nothing to handle" empty state is
+  distinct from its "this source produces no queue rows" state.
+- **Failed-rows CSV.** No corpus example touches `FailedImportRow` or the
+  failure-CSV download at all (grep-verified zero hits across payloads);
+  `stock-management` stops at `getCompletedNotificationBody()` +
+  `getFailedRowsCount()`. The load-bearing citation is vendor code, not the
+  corpus: `ImportAction.php:317` builds
+  `URL::signedRoute('filament.imports.failed-rows.download',
+  ['authGuard' => …, 'import' => …], absolute: false)`, and
+  `DownloadImportFailureCsv` honours a `view` policy on the `Import` model
+  before falling back to owner-only — which is why the plan adds
+  `ImportPolicy::view` for admins.
+- **Chip filters.** No `ToggleButtons->options(Enum::class)` exists in the
+  corpus; the composable parts are `HomesTable`'s `ToggleButtons->live()
+  ->grouped()` and the widespread `SelectFilter->options(Enum::class)`.
+  PodText's command bar keeps its established `options(X::options())`
+  value=>label array idiom instead of `options(Enum::class)` — the filter
+  state is URL-bound and session-persisted, and an `EnumStateCast` there
+  would repeat the E5/P9 state-type mismatch. `chart-filter-buttons`'
+  segmented-control Blade (wire:click + @class active pill) matches the
+  chip row the stream widget already ships; no change of idiom needed.
+
+### Patterns to reject, recorded
+
+- `MessageResource::getNavigationBadge()` (internal-messaging-inbox):
+  hydrates every topic+message and counts in PHP per render — the shape
+  PodText's cached `PublicFormSubmission` badge already avoids.
+- `TopicsTable->recordClasses()` recomputing a whole-table aggregate inside
+  the per-row closure, with `'!=='` passed to Eloquent `where()` as an
+  operator (silently wrong).
+- `VisitorsPerCountry` (dashboard-visitor-analytics): `rendering()`
+  re-query per Livewire round-trip, `wire:poll.20s`, and a `limit(10)`
+  with no tail signal — three board-contract violations in one widget
+  (polling ban, silent cap P6, widget-owned queries).
+- `FleetAvailability`'s Blade-side `$cellColors`/`$cellTitles` maps keyed
+  by status string — hand-written colour maps beside typed state (P1/P2);
+  enum `barClass()`/`chipClass()` is the PodText replacement.
+- `orders-table-complex` `OrderStatus::getColor()` returning CSS class
+  names while not implementing `HasColor` (and `filawidgets-dashboard`'s
+  base classes presented as core Filament — `getRangeFilter()`,
+  `$widgetLabel` are package API, not Filament).
+- v3-era leftovers flagged by the digests: unused `use Filament\Tables;`
+  imports, `getActions()` on a custom page (never called in v4/v5 —
+  invisible action), `->reactive()` instead of `->live()`, raw string
+  modal widths, copying `fi-*` internal class names into app Blade.
+
+### Version idioms
+
+All 24 examples are v4-namespaced; zero `Filament\Tables\Actions`,
+`Filament\Forms\Form`, `->actions([`/`->bulkActions([` hits. Confirmed
+idioms match the installed 5.7.x surface PodText already uses:
+`Filament\Actions\*`, `->recordActions()`, `Filament\Schemas\Schema`,
+schema-namespace layout components, non-static widget `$heading`/`$view`
+with static `$sort`, `Heroicon` enum icons, and `ListRecords` tab binding
+via `#[Url(as: 'tab')]` (verified in the installed vendor sources, which is
+what makes `['tab' => …, 'filters' => …]` the gallery doorway shape).
