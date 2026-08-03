@@ -339,8 +339,10 @@ commits) · where else to look (concrete greps/paths) · status.
   dossier principles (ES-1–ES-7), recovered" with a reconciliation showing
   every principle already enforced by a live contract. Correction folded in:
   they were the dashboard's seven *design principles* (only ES-3 is the
-  empty-state one); the empty-state mockup *designs* remain lost, with the
-  phase-3 plan's concrete empty states as the standing replacement. Q5 is
+  empty-state one); deep-search verdict 2026-08-03: no separate empty-state
+  design spec ever existed — the Hebrew audit row's "(אפס אמיתי)" names ES-3
+  itself, verified by exhausting the dossier session, both mockup artifacts,
+  and the six-options document. Q5 is
   thereby RESOLVED (original text supplied, no conflict found).
 - **Status:** both sightings closed; the sweep remains registered — hunt
   binding references to unarchived externals (`grep -rn

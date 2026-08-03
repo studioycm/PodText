@@ -116,7 +116,7 @@ Mockup content:
 | **Spotify connection card** with reduced-mode echo — present in the original Intake mockup, dropped in the merge. | Restored to Intake. |
 | **RecentPublishedItems spec columns** — absorbed into the stream. | The stream filtered to "transcription published" shows exactly those columns. |
 | **"Transcriptions by author"** — an explicit spec requirement, wrongly deferred as a premature leaderboard. | Enters as **H9 · transcriber board**. The deferral was defensible on production volume only, never on the spec. |
-| **Empty-state designs and principles ES-1–ES-7** (design-pass numbering, formerly "P1–P7") — not restated, therefore at risk of quiet loss. | Declared binding for every widget's build spec. **Recovered 2026-08-03** — the full text now lives in "The dossier principles (ES-1–ES-7), recovered" below; the empty-state mockup *designs* remain lost, with the phase-3 plan's concrete per-widget empty states as their standing replacement. |
+| **Empty-state designs and principles ES-1–ES-7** (design-pass numbering, formerly "P1–P7") — not restated, therefore at risk of quiet loss. | Declared binding for every widget's build spec. **Recovered 2026-08-03** — the full text lives in "The dossier principles (ES-1–ES-7), recovered" below. Deep-search verdict (same day): no separate empty-state design spec ever existed — the Hebrew row's "עיצובי הריק (אפס אמיתי)" names principle ES-3 itself; one lost thing phrased as two. ES-3's fulfillment is the A3 dashed idiom + the phase-3 plan's per-widget empty states. |
 
 ## Hybrid widgets — one component, two outcomes
 
@@ -267,10 +267,14 @@ Recovered 2026-08-03 from the phase-1 design session's transcript
 `local_c94db27d`) — the "original dossier" this document's honesty audit
 declared binding without restating (ledger pattern `unarchived-binding`,
 sighting #1, closed by this section). These were authored as the dashboard's
-seven design principles; only ES-3 is the empty-state principle — the
-empty-state mockup *designs* the audit row also names remain lost, with the
-phase-3 plan's concrete per-widget empty states as their standing
-replacement. Parenthetical contract/evidence notes are as authored.
+seven design principles; only ES-3 is the empty-state principle. The audit
+row's "empty-state designs (אפס אמיתי)" was ES-3 referenced by its own name,
+not a separate lost spec — verified 2026-08-03 by exhausting the dossier
+session (Stage 6's screen annotations carry no empty-state block, and no
+empty-state design phrasing exists anywhere in it beyond ES-3), both mockup
+artifacts, and the six-options document. ES-3 is fulfilled by the A3 dashed
+idiom and the phase-3 plan's per-widget empty states. Parenthetical
+contract/evidence notes are as authored.
 
 1. **ES-1 · כל מספר הוא דלת** — every stat carries a pre-filtered Resource
    URL; a dead-end number is a defect. *(Contract: Resource-URL rule;
