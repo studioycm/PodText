@@ -75,6 +75,9 @@ class NormalizePublicContentSettings extends Command
                 null,
             );
 
+            // Raw assignment, no cast layer — safe only while every
+            // PublicContentSettings property is raw-assignable from its JSON
+            // payload, the invariant SettingsRowInvariantTest pins.
             foreach ($freshNormalizedGroups as $key => $value) {
                 if (property_exists($settings, $key)) {
                     $settings->{$key} = $value;

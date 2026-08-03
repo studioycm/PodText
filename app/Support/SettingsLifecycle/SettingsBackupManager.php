@@ -271,6 +271,13 @@ class SettingsBackupManager
         }
     }
 
+    /**
+     * Raw assignment, no cast layer: safe only while every
+     * PublicContentSettings property is raw-assignable from its JSON payload —
+     * the invariant SettingsRowInvariantTest pins. An enum-typed property here
+     * would TypeError, which is why this writer must not widen to
+     * AdminUxSettings.
+     */
     private function applyPayload(array $payload, ?User $user): array
     {
         $this->forgetFreshSettingsInstance();

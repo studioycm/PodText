@@ -82,3 +82,51 @@ it('keeps every settings group loadable and saveable as migrated', function (str
     AdminUxSettings::class,
     PublicContentSettings::class,
 ]);
+
+/**
+ * @return array<int, string>
+ */
+function enumTypedSettingsProperties(string $settingsClass): array
+{
+    return collect((new ReflectionClass($settingsClass))->getProperties(ReflectionProperty::IS_PUBLIC))
+        ->reject(fn (ReflectionProperty $property): bool => $property->isStatic())
+        ->filter(fn (ReflectionProperty $property): bool => $property->getDeclaringClass()->getName() === $settingsClass)
+        ->filter(function (ReflectionProperty $property): bool {
+            $type = $property->getType();
+
+            $namedTypes = match (true) {
+                $type instanceof ReflectionNamedType => [$type],
+                $type instanceof ReflectionUnionType => $type->getTypes(),
+                default => [],
+            };
+
+            foreach ($namedTypes as $namedType) {
+                if ($namedType instanceof ReflectionNamedType && ! $namedType->isBuiltin() && enum_exists($namedType->getName())) {
+                    return true;
+                }
+            }
+
+            return false;
+        })
+        ->map(fn (ReflectionProperty $property): string => $property->getName())
+        ->values()
+        ->all();
+}
+
+it('keeps raw-payload settings writers pointed at raw-assignable properties only', function (): void {
+    // SettingsBackupManager::applyPayload() and NormalizePublicContentSettings
+    // assign decoded JSON straight to `$settings->{$property}` with no cast
+    // layer. That is safe exactly as long as every PublicContentSettings
+    // property accepts its raw payload value; an enum-typed property would
+    // TypeError on the rarely-exercised restore/normalize paths.
+    $enumTyped = enumTypedSettingsProperties(PublicContentSettings::class);
+
+    expect($enumTyped)->toBe([], sprintf(
+        'PublicContentSettings now has enum-typed properties (%s), but SettingsBackupManager::applyPayload() and NormalizePublicContentSettings assign raw JSON payloads to it. Route those writers through casts before typing the properties.',
+        implode(', ', $enumTyped),
+    ));
+
+    // Detector sanity: AdminUxSettings HAS enum-typed properties (E5), so an
+    // empty result above cannot be the detector failing to detect.
+    expect(enumTypedSettingsProperties(AdminUxSettings::class))->not->toBe([]);
+});

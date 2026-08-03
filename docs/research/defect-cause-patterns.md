@@ -105,14 +105,16 @@ commits) · where else to look (concrete greps/paths) · status.
 - **Cause:** an intermittent failure is the click/timing distribution of a
   deterministic defect; the flake label stops the investigation.
 - **Evidence:** M2 at ~13% was called a flake twice before the deterministic
-  race repro (closed, `0b99bf8`); the `return_guard_released` "flake" was a
-  real test defect (`3cc4906`); `OwnerImageWorkspaceTest` fails ~1-in-4
-  standalone — unresolved (V2 this round); a 1/30 Storage-listing timeout
-  remains unclassified.
+  race repro (closed, `0b99bf8`); the `return_guard_released` "flake"
+  was a real test defect (`3cc4906`); `OwnerImageWorkspaceBrowserTest` failed
+  ~1-in-4 standalone — **resolved 2026-08-03: 10/10 clean post-M2**, same
+  per-mount-key mechanism; a 1/30 Storage-listing timeout remains
+  unclassified.
 - **Where else:** any browser test with a re-run habit; the parallel-worker
   port/storage collision hypothesis (`local_51579218`) for the residual
-  intermittents.
-- **Status:** V2 runs the check this round.
+  intermittents (now only the 1/30 Storage-listing timeout).
+- **Status:** V2 closed the owner-image sighting; only the unclassified 1/30
+  timeout remains under watch.
 
 ## P8 · Line-based guards miss multi-line call sites
 
@@ -136,9 +138,13 @@ commits) · where else to look (concrete greps/paths) · status.
 - **Where else:** `grep -rn "options(.*::class" app/Filament` cross-checked
   against backing property types; `PublicContentSettings`'s ten string
   properties (deliberately untyped — six enums must exist first); dynamic
-  settings writers (`SettingsBackupManager:286`,
-  `NormalizePublicContentSettings:80`) — V4 decides guard-or-document.
-- **Status:** E5 closed; V4 decides the dynamic-writer residual.
+  settings writers (`SettingsBackupManager::applyPayload()`,
+  `NormalizePublicContentSettings`) — V4 decided: **guarded**.
+- **Status:** E5 closed; V4 (2026-08-03) added the raw-writer invariant to
+  `SettingsRowInvariantTest` — CI fails if `PublicContentSettings` ever gains
+  an enum-typed property while the raw writers exist, with the detector
+  sanity-checked against `AdminUxSettings`. Both writer sites carry the
+  constraint note.
 
 ## P10 · Concept without a type home
 
@@ -162,9 +168,9 @@ Mark each step with commit hash + gate result when done.
 |---|---|---|
 | Ledger | Create this file | ✅ `7728a51` |
 | V1 | Audit `PublicFormTargetWarningsWidget` vs board contracts; re-run lens/order tests | ✅ see below |
-| V2 | `OwnerImageWorkspaceTest` standalone ×10; close or spawn fix | ☐ |
-| V3 | Pagination-key + dashboard row keys didn't shift component-key assertions | ☐ |
-| V4 | Close M1/M2 in media brief; guard-or-document dynamic settings writes | ☐ |
+| V2 | `OwnerImageWorkspaceTest` standalone ×10; close or spawn fix | ✅ 10/10 clean; closed in M2 brief |
+| V3 | Pagination-key + dashboard row keys didn't shift component-key assertions | ✅ pinned by tests, all green, no vacuous asserts |
+| V4 | Close M1/M2 in media brief; guard-or-document dynamic settings writes | ✅ guarded (SettingsRowInvariantTest) |
 | F1-pre | Pin format-count definition (pattern set, paths, recorded number) | ☐ |
 | F1 | Localization home beside `UiTimezone` + statement-scanned anti-drift guard | ☐ |
 | F2 | Adopt across widgets/Blade/DTOs + near-midnight fixture | ☐ |

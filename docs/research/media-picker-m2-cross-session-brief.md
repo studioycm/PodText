@@ -141,7 +141,10 @@ elements when reusing a component).
   `OwnerImageWorkspaceTest` "it proves canonical dedicated owner actions across
   locale and device contracts" fails ~1-in-4 standalone — check whether it is
   the same clone mechanism; recorded the M1 decisions (below). E5 commit
-  `9859145`.
+  `9859145`. **CLOSED 2026-08-03:** post-M2-fix soak of
+  `OwnerImageWorkspaceBrowserTest` standalone ×10 — 10/10 green (12 tests /
+  617 assertions per run). The flake was the same per-mount-key mechanism and
+  is gone with `0b99bf8`; no separate fix task needed.
 - **"Fix Asia/Jerusalem hardcoded in admin helper text"** (`local_aa1f7d69`) —
   `86f7e85`; re-verified the typed `isMultiMode()` path (13/13); corrected its
   own commit message's "known flake" framing after M2 was reclassified.
@@ -157,7 +160,10 @@ elements when reusing a component).
   `tests/Feature/AdminTableQueryStringKeysTest.php`. Its scope is page/table
   **query-string** key collisions (cousin of the already-fixed
   `queryStringIdentifier` item), not component `wire:key`s. Coordinate before
-  touching the same files.
+  touching the same files. **CLOSED 2026-08-03:** superseded — `2e786ed`
+  landed the app-wide pagination-key namespacing including
+  `AdminTableQueryStringKeysTest` and the `ImporterSettings` identifier, and
+  the worktree no longer exists (`git worktree list` shows only main).
 
 ## Adjacent decisions already taken (do not reopen)
 
