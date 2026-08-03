@@ -253,10 +253,10 @@ Mark each step with commit hash + gate result when done.
 | F1 | Localization home beside `UiTimezone` + statement-scanned anti-drift guard | ✅ `b24490a` — `UiFormats` + `UiFormatsPolicyTest`; guard watched red on exactly the 12 sites |
 | F2 | Adopt across widgets/Blade/DTOs + near-midnight fixture | ✅ `b24490a` — all 12 routed; 00:30 fixture proven discriminating (UTC-day expectation fails) |
 | F3 | "Group other" bucketing via `BreakdownRow::meta` | ✅ `b3d6de4` — `rollUpTail` in `EditorialMetrics`, totals reconcile; F gate: full pest 1,571/19,430, pint, filacheck 0, build ok. **Orchestrator-verified 2026-08-03: identical numbers from a direct run (pest 1571/19,430, pint --test pass, full filacheck 0, tree clean)** |
-| A1 | Sparkline min/max normalisation (defect) | ☐ |
-| A2 | Trend-coloured stroke from `SeriesRow::delta()` | ☐ |
-| A3 | Dashed empty states + `x-filament::link` doorways | ☐ |
-| A4 | Make the Board-2 reason-bar doorway promise true (P11 fix) | ☐ added 2026-08-03 from `7ffcaa5` finding |
+| A1 | Sparkline min/max normalisation (defect) | ⏳ delegated (chip `task_eae85161`, 2026-08-03) |
+| A2 | Trend-coloured stroke from `SeriesRow::delta()` | ⏳ delegated (same chip) |
+| A3 | Dashed empty states + `x-filament::link` doorways | ⏳ delegated (same chip) |
+| A4 | Make the Board-2 reason-bar doorway promise true (P11 fix) | ⏳ delegated (same chip; added 2026-08-03 from `7ffcaa5` finding) |
 | B1 | Alpine hover crosshair + tooltip on SVG sparklines | ☐ |
 | Ledger research | Dedicated read-only bad-practices hunt (skills + guidelines + FilaCheck catalogue), report-only | ⏳ chip `task_8d7e8616` |
 | Phase-3 re-plan | Board 3 researched and planned fresh against locked decisions | 🟡 plan landed (`7183996`) but ran pre-A/B (orchestrator sequencing error — "after push" followed literally once the push moved mid-route); held as DRAFT, reconciliation pass against landed A/B patterns at route end |
