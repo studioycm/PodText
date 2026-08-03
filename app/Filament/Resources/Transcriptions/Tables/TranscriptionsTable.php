@@ -7,8 +7,6 @@ use App\Enums\UserRole;
 use App\Filament\Exports\TranscriptionExporter;
 use App\Filament\Imports\TranscriptionImporter;
 use App\Filament\Resources\Support\ResourceTableActions;
-use App\Models\Author;
-use App\Models\ContentGroup;
 use App\Models\Transcription;
 use App\Support\Transcriptions\MultiTranscriptionSurfaces;
 use App\Support\Transcriptions\SingleTranscriptionLens;
@@ -92,25 +90,16 @@ class TranscriptionsTable
                     ->options(PublicationStatus::class),
                 SelectFilter::make('transcriber_id')
                     ->label(__('admin.fields.transcribers'))
-                    ->options(fn (): array => Author::query()
-                        ->orderBy('name')
-                        ->pluck('name', 'id')
-                        ->all())
+                    ->relationship('authors', 'name')
                     ->searchable()
                     ->preload(false)
-                    ->optionsLimit(50)
-                    ->query(fn (Builder $query, array $data): Builder => filled($data['value'] ?? null)
-                        ? $query->whereHas('authors', fn (Builder $query): Builder => $query->whereKey($data['value']))
-                        : $query),
+                    ->optionsLimit(50),
                 SelectFilter::make('content_group_id')
                     ->label(__('admin.fields.content_group'))
-                    ->options(fn (): array => ContentGroup::query()
-                        ->orderBy('title')
-                        ->pluck('title', 'id')
-                        ->all())
-                    ->query(fn (Builder $query, array $data): Builder => filled($data['value'] ?? null)
-                        ? $query->whereHas('contentItem', fn (Builder $query): Builder => $query->where('content_group_id', $data['value']))
-                        : $query),
+                    ->relationship('contentItem.contentGroup', 'title')
+                    ->searchable()
+                    ->preload(false)
+                    ->optionsLimit(50),
             ])
             ->headerActions([
                 ImportAction::make()

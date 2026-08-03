@@ -11,7 +11,6 @@ use App\Filament\Resources\ContentItems\ContentItemResource;
 use App\Filament\Resources\Support\RelationshipOptionForms;
 use App\Filament\Resources\Support\ResourceTableActions;
 use App\Filament\Tables\OwnerImageColumn;
-use App\Models\Author;
 use App\Models\ContentItem;
 use App\Support\Transcriptions\TranscriptionModeLabel;
 use App\Support\UiTimezone;
@@ -146,16 +145,10 @@ class ContentItemsTable
                     ->options(PublicationStatus::class),
                 SelectFilter::make('transcriber_id')
                     ->label(__('admin.fields.transcribers'))
-                    ->options(fn (): array => Author::query()
-                        ->orderBy('name')
-                        ->pluck('name', 'id')
-                        ->all())
+                    ->relationship('transcriptions.authors', 'name')
                     ->searchable()
                     ->preload(false)
-                    ->optionsLimit(50)
-                    ->query(fn (Builder $query, array $data): Builder => filled($data['value'] ?? null)
-                        ? $query->whereHas('transcriptions.authors', fn (Builder $query): Builder => $query->whereKey($data['value']))
-                        : $query),
+                    ->optionsLimit(50),
                 SelectFilter::make('categories')
                     ->label(__('admin.fields.categories'))
                     ->relationship('categories', 'name')
