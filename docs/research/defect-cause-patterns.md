@@ -215,10 +215,14 @@ commits) · where else to look (concrete greps/paths) · status.
   (`grep -rn "filtered to\|doorway" app/Support/Dashboard app/Filament/Widgets`)
   cross-checked against URL-shape assertions in tests; any comment of the
   form "so that X happens" with no test named for X.
-- **Status:** open — the fix is routed into this route's **A block as A4**
-  (make the promise true, preferring real reason filtering; else correct the
-  docblock and the UX). The phase-3 plan already asserts its own doorway URL
-  shapes because of this sighting.
+- **Status:** **closed** (A4, `c36f6c4`) — reason bars are on-board doorways
+  dispatching `dashboard-reason-selected` into the queue's existing reason
+  SelectFilter (the URL form was proven infeasible in vendor source: widget
+  `tableFilters` carries no `#[Url]` binding), both ends validate via
+  `DashboardReason::tryFrom`, and the docblock now states exactly what tests
+  pin. The A session's sweep of the remaining dashboard doorway URLs found
+  them all backed by receiving filters (`TranscriptionsTable.php:93`,
+  `ContentItemsTable.php:138`) — no further instances.
 
 ## P12 · Binding-by-reference to an unarchived source
 
@@ -242,7 +246,35 @@ commits) · where else to look (concrete greps/paths) · status.
 - **Status:** open — operator decision requested (phase-3 plan open question
   5): supply the original P1–P7 text into the combined plan, or accept the
   plan's restated empty states as the binding source. A3's empty-state work
-  should follow whichever is chosen.
+  should follow whichever is chosen. (A3 landed the concrete dashed idiom
+  without reinventing principles — compliant either way.)
+
+## P13 · Style home outside the compiler's scan scope
+
+*(Promoted 2026-08-03 from the A-block session's report; found and fixed in
+`b9825c6`.)*
+
+- **Cause:** consolidating class literals into a PHP home (P1/P2's cure)
+  silently fails if the asset compiler's scan scope does not include that
+  home — Tailwind only emits classes it can read, so a routed-but-unscanned
+  class renders as no styling at all. Routing protects nothing the compiler
+  doesn't also read.
+- **Evidence (ACTUAL, fixed):** `app/Enums` was absent from the admin theme's
+  `@source` globs (`resources/css/filament/admin/theme.css`), so colour
+  classes living only in enum homes were never compiled: the draft funnel
+  bar (`bg-gray-400`) and the unpublished-group / missing-category reason
+  bars (`bg-danger-400`, `bg-violet-500`) rendered **colourless in
+  production** — verified absent from the live compiled theme, present
+  post-fix. Every call site read from the enum (P2 satisfied) and it still
+  broke. Pinned by the scan-scope test at `DashboardEnumsTest.php:102`.
+- **Where else:** every PHP surface that emits class strings — enums,
+  data objects, `HtmlString` builders, Livewire component classes — checked
+  against the theme's `@source` globs; any future style home added outside
+  `app/Filament`/`resources` needs a glob and a scan-scope pin.
+- **Status:** instance fixed + pinned (`b9825c6`); the general check rides
+  the scan-scope test. Related dormant note: `FunnelStage::Published->bandClass()`
+  (`bg-info-100`) has no rendering call site — the A session resolves
+  keep-vs-delete as a follow-up.
 
 ---
 
@@ -261,10 +293,10 @@ Mark each step with commit hash + gate result when done.
 | F1 | Localization home beside `UiTimezone` + statement-scanned anti-drift guard | ✅ `b24490a` — `UiFormats` + `UiFormatsPolicyTest`; guard watched red on exactly the 12 sites |
 | F2 | Adopt across widgets/Blade/DTOs + near-midnight fixture | ✅ `b24490a` — all 12 routed; 00:30 fixture proven discriminating (UTC-day expectation fails) |
 | F3 | "Group other" bucketing via `BreakdownRow::meta` | ✅ `b3d6de4` — `rollUpTail` in `EditorialMetrics`, totals reconcile; F gate: full pest 1,571/19,430, pint, filacheck 0, build ok. **Orchestrator-verified 2026-08-03: identical numbers from a direct run (pest 1571/19,430, pint --test pass, full filacheck 0, tree clean)** |
-| A1 | Sparkline min/max normalisation (defect) | ⏳ delegated (chip `task_eae85161`, 2026-08-03) |
-| A2 | Trend-coloured stroke from `SeriesRow::delta()` | ⏳ delegated (same chip) |
-| A3 | Dashed empty states + `x-filament::link` doorways | ⏳ delegated (same chip) |
-| A4 | Make the Board-2 reason-bar doorway promise true (P11 fix) | ⏳ delegated (same chip; added 2026-08-03 from `7ffcaa5` finding) |
+| A1 | Sparkline min/max normalisation (defect) | ✅ `2831ee9` — min−max over a 2px-inset band, exact-coordinate tests watched red against peak-only maths |
+| A2 | Trend-coloured stroke from `SeriesRow::delta()` | ✅ `b9825c6` — `SparklineTrend` enum as the one palette home + source-scanning literal ban; also fixed/pinned P13 (theme `@source` scan scope) |
+| A3 | Dashed empty states + `x-filament::link` doorways | ✅ `103b728` — shared dashed empty-state partial (en+he), Heroicon doorways; F3 `href=""` pin intact |
+| A4 | Make the Board-2 reason-bar doorway promise true (P11 fix) | ✅ `c36f6c4` — on-board dispatch into the queue's reason filter (URL form vendor-proven infeasible); P11 closed. A gate claim: pest 1,587/19,563, pint, filacheck 0, build ok — orchestrator verification running |
 | B1 | Alpine hover crosshair + tooltip on SVG sparklines | ☐ |
 | Ledger research | Dedicated read-only bad-practices hunt (skills + guidelines + FilaCheck catalogue), report-only | ⏳ chip `task_8d7e8616` |
 | Operator decisions | Phase-3 plan "Open questions" Q1–Q6 (Q5 = P12 empty-state principles) — block phase-3 implementation, not A/B | ⏳ surfaced to operator 2026-08-03 |
