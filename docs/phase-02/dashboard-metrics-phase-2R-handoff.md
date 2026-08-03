@@ -22,12 +22,34 @@ earlier dashboard doc, this document wins and the earlier one is historical.
 
 ## Commit state
 
-**Updated 2026-08-03.** The stack grew to 23 commits on `main` past
-`origin/main` (`7bba038`, phase 1) and is being **pushed on 2026-08-03 on the
-operator's explicit instruction**, mid-route after the verify block — not at
-the original "once, immediately before phase 3" point. Auto-deploy is on, so
-the push deploys production; the F/A/B route steps continue after the deploy
-is verified.
+**Updated 2026-08-03 (route end).** A mid-route push shipped `987b92f`
+(Forge release `74621206`, `/up` 200); since then the local stack grew to
+**~60 commits past `origin/main`**, all route work, with the route-end push
+pending on the operator's word after this docs fold. Auto-deploy is on —
+that push deploys production and ships, among everything else, the public
+prose-styling cure (`12285a7`) and the super-admin backups policy
+(`ce95a35`).
+
+**Provenance note (`shared-index-entanglement`):** commit `11afc21`
+("co-created widget and governance principle sets", docs-labelled) also
+carries the fix-batch session's staged Q7 code — the global Select
+preload-default inversion, ~30 per-site `preload(false)` opt-out removals,
+and cap-test additions. Ruling: leave-and-record; the full suite passed on
+exactly that state. `ce23313` (opt-in-wins pin) is the fix-batch session's.
+
+Instead of a per-commit table (the ledger's route checklist maps every step
+to its hashes and verification stamps), the route in blocks:
+
+| Block | Key commits |
+|---|---|
+| Verify (V1–V4) | `0e80c84`, `bf0c063` |
+| F — formats home + bucketing | `b24490a`, `b3d6de4` |
+| A — sparklines, empty states, doorway truth | `2831ee9`, `b9825c6`, `c36f6c4`, `103b728`, `1efeb35` |
+| B1 — Alpine hover | `168a618`, `87aa8bf` |
+| Fix batch + hardening | `abd46f3`, `c129f5f`, `9a761a2`, `73e4c17`, `7768442`, `5da7acc`, `f494f0a`, Q7 in `11afc21`+`ce23313`, `ce95a35` |
+| Scan-scope fix | `12285a7`, `ecc9eda` |
+| Principles + governance | `11afc21` |
+| Phase-3 plan + reconciliation | `597b57e`, `7183996`, `35aa226` |
 
 The original phase-2R table, still correct as history:
 
@@ -60,10 +82,13 @@ Commits since this handoff was written, oldest first:
 | `0e80c84` | V1 — stock/flow tag gaps closed, status scoped per request |
 | `bf0c063` | V2–V4 — flake closed, keys verified, raw-writer invariant |
 
-**Last verified gate** (2026-08-03, run directly for the push audit): see the
-route checklist in `docs/research/defect-cause-patterns.md`; the audit
-immediately preceding the push is recorded there and in the push commit
-lineage.
+**Last verified gate** (2026-08-03, the route-end combined verification,
+run directly by the orchestrator): pest **1608 passed / 19,724 assertions, zero
+failures** (arbitrating the two block claims of 19,696 mixed-tree and
+19,719 — test count identical throughout), pint --test pass, **full**
+filacheck 0 issues, `npm run build` ✓ 1.68s, `compiled-sentinels` group
+6/6 (34 assertions) after a fresh build. Per-block
+verification stamps live in the ledger's route checklist.
 
 ## Decisions ledger
 
@@ -122,36 +147,46 @@ widget principles co-created 2026-08-03. New widgets read it first.)*
 
 ## Open queue
 
-**Route status 2026-08-03:** the orchestrated route's verify block is done —
-V1 closed two board-contract gaps the warnings widget shipped with (missing
-stock/flow tag, also never present on `BlockersQueueWidget`; the tag test is
-now a structural loop over lens registrations) and scoped
-`PublicFormTargetStatus` per request; V2 soaked
-`OwnerImageWorkspaceBrowserTest` ×10 post-M2 — 10/10 green, the ~1-in-4 flake
-was the same per-mount-key mechanism, closed in the M2 brief; V3 confirmed the
-pagination-key namespacing and dashboard row keys shifted no component-key
-assertion paths; V4 pinned the raw-payload settings-writer invariant in
-`SettingsRowInvariantTest`. F1–F3 below are **delegated and in flight**
-(side-session, 2026-08-03); A1–A3 and B1 follow it. The cause-pattern ledger
-lives at `docs/research/defect-cause-patterns.md`.
+**Route status 2026-08-03 (route complete, push pending):** every block of
+the orchestrated route is landed and orchestrator-verified — V1–V4 (verify),
+F1–F3 (`b24490a`, `b3d6de4`), A1–A4 (`2831ee9`…`103b728`), B1 (`168a618`,
+`87aa8bf`), the research-driven fix batch + operator-directed hardening
+round (`abd46f3`…`f494f0a`, `7768442`, `5da7acc`, Q7 preload inversion
+riding `11afc21`, super-admin backups ruling `ce95a35`), and the scan-scope
+fix closing two live public styling gaps (`12285a7`, `ecc9eda`). Two
+co-created principle docs bind future work
+(`dashboard-widget-principles.md`, `dashboard-governance-principles.md`);
+the phase-3 plan is reconciled and implementable. The cause-pattern ledger
+(`docs/research/defect-cause-patterns.md`) carries the full route
+checklist, 18 patterns, and every register.
 
-**E4** · The 12 enums implementing no Filament contract, scoped to those that
-actually render in Filament UI. `ExternalImageFailureReason` and
-`MediaAcquisitionDisposition` matter for Board 3.
+**E4** · *Partially closed along the route:* `SparklineTrend` (A2) and the
+two hardening-round vocabularies (`MediaMutationRepairResult`,
+`SettingsImportRowOutcome`, `f494f0a`) carry contracts; the Board-3 pair
+(`ExternalImageFailureReason`, `MediaAcquisitionDisposition`) is phase-3
+plan Task 8; 9 remaining contract-less enums are registered as an
+internal-only watch (research 2026-08-03). Original entry: the 12 enums
+implementing no Filament contract, scoped to those that actually render in
+Filament UI.
 
 **E5** · *Done.* The four enum-backed `AdminUxSettings` properties are typed as
 their enums, with a repair migration and mutation-checked read-site coverage. A
 fifth, `tb1_picker_container`, was removed outright. Adds a settings-row
 invariant test. See "Enum-typed settings properties (E5)" below.
 
-**F1** · The localization home (decision 7). Owns the UI timezone alongside date
+**F1** · *Done 2026-08-03 (`b24490a`) — `App\Support\UiFormats` beside the
+timezone home, statement-scanned guard `UiFormatsPolicyTest` with the pinned
+7+5=12 definition.* Original entry: the localization home (decision 7). Owns the UI timezone alongside date
 and number formats. `Illuminate\Support\Number` rather than `number_format()`,
 which currently ignores the Hebrew locale. **Plus the anti-drift guard** — see
 the trap below. ~2–2.5 h.
 
-**F2** · Adopt it across widgets, views and DTOs. ~1–1.5 h.
+**F2** · *Done 2026-08-03 (`b24490a`) — all 12 sites routed; near-midnight
+fixture proven discriminating.* Original entry: adopt it across widgets, views and DTOs. ~1–1.5 h.
 
-**F3** · "Group other" bucketing in breakdowns. Confirmed a correctness item —
+**F3** · *Done 2026-08-03 (`b3d6de4`) — `rollUpTail` in `EditorialMetrics`,
+reconciling "Other" row on `BreakdownRow::meta`, doorway-less by design.*
+Original entry: "Group other" bucketing in breakdowns. Confirmed a correctness item —
 we have more than six podcasts and `take($limit)` silently drops the tail, which
 the tooling guideline's no-silent-caps rule forbids. `BreakdownRow::meta` can
 carry what an "Other" row rolled up. ~45 min.
@@ -542,6 +577,19 @@ tests in `tests/Feature/AdminUxSettingsEnumTypesTest.php`.
   deliberate break — it takes the real work with it. Copy to a temp file instead.
 - **Doorway query key is `filters`, not `tableFilters`** — the alias
   `ListRecords` declares. Passing `tableFilters` maps inconsistently.
+- **A signed `filament.actions` URL is not an authorization boundary** — the
+  route group is `['web']` only; the signature selects the auth guard and is
+  never enforced as access control. Authorize via policy (the failure-CSV
+  download honors a `view` policy, else owner-only). Verified in vendor
+  source by the phase-3 planning session.
+- **Vendor `Import`/`FailedImportRow` are `Prunable` but `model:prune` is
+  not scheduled** — queue rows never expire today; if pruning is ever
+  scheduled, the intake queue's population assumptions must be revisited.
+- **In the shared tree, commit with an explicit pathspec** (`git commit
+  <paths> -m …`) — a bare commit sweeps other sessions' staged files
+  (ledger: `shared-index-entanglement`; it produced `11afc21`'s mixed
+  cargo). And in browser tests, **wait `x-show` visibility as a labelled
+  condition, never single-read** (ledger: `single-read-race`).
 - **A Blade loop that re-renders under filters gets a stable-id `wire:key`
   before it gets interactive content** (research finding 2026-08-03, ledger
   implicit-keys Blade-tier sighting). Today's unkeyed widget loops are plain HTML and
@@ -554,6 +602,11 @@ tests in `tests/Feature/AdminUxSettingsEnumTypesTest.php`.
   prop) and re-derive rows per render.
 
 ## Why phase 3 must be re-planned from scratch
+
+*(Resolved: the re-plan happened 2026-08-03 —
+`docs/phase-02/dashboard-metrics-phase-3-plan.md`, reconciled at route end
+and implementable. This section stands as the rationale it was written
+from.)*
 
 Board 3's brief predates every decision above. It should be researched and
 planned fresh, because at minimum:
