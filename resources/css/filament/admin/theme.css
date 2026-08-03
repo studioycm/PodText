@@ -4,7 +4,11 @@
 @source '../../../../app/Filament/**/*';
 @source '../../../../app/Enums/**/*';
 @source '../../../../app/Livewire/**/*';
+@source '../../../../app/Support/Markdown/**/*';
+@source '../../../../app/Support/PublicContent/**/*';
 @source '../../../../app/Support/PublicFront/Cards/**/*';
+@source '../../../../app/Support/PublicFront/Icons/**/*';
+@source '../../../../app/Support/PublicFront/ItemPage/**/*';
 @source '../../../../resources/views/filament/**/*';
 @source '../../../../resources/views/livewire/**/*';
 @source '../../../../resources/views/components/**/*';

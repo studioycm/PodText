@@ -1,9 +1,12 @@
 @import '../../../../vendor/filament/filament/resources/css/theme.css';
 
+@source '../../../../app/Enums/**/*';
 @source '../../../../app/Filament/Public/**/*';
 @source '../../../../app/Livewire/Public/**/*';
+@source '../../../../app/Support/Markdown/**/*';
 @source '../../../../app/Support/PublicContent/**/*';
 @source '../../../../app/Support/PublicFront/Cards/**/*';
+@source '../../../../app/Support/PublicFront/ItemPage/**/*';
 @source '../../../../resources/views/components/public/**/*';
 @source '../../../../resources/views/filament/public/**/*';
 @source '../../../../resources/views/filament/tables/**/*';
