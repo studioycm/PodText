@@ -75,7 +75,16 @@ enum FunnelStage: string implements HasColor, HasIcon, HasLabel
         };
     }
 
-    /** Tailwind classes for a soft-filled band in this stage's colour. */
+    /**
+     * Tailwind classes for a soft-filled band in this stage's colour.
+     *
+     * Deliberately case-complete like every stage vocabulary here, although
+     * only the visible band renders today (born whole in the E3 drift
+     * consolidation; no other arm ever had a call site). A partial match
+     * would put UnhandledMatchError in reach of any future all-stages loop —
+     * the pattern the funnel view already uses for barClass() — and the
+     * admin theme's app/Enums @source glob keeps the dormant arms compiled.
+     */
     public function bandClass(): string
     {
         return match ($this) {
