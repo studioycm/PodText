@@ -116,7 +116,7 @@ Mockup content:
 | **Spotify connection card** with reduced-mode echo — present in the original Intake mockup, dropped in the merge. | Restored to Intake. |
 | **RecentPublishedItems spec columns** — absorbed into the stream. | The stream filtered to "transcription published" shows exactly those columns. |
 | **"Transcriptions by author"** — an explicit spec requirement, wrongly deferred as a premature leaderboard. | Enters as **H9 · transcriber board**. The deferral was defensible on production volume only, never on the spec. |
-| **Empty-state designs and principles ES-1–ES-7** (design-pass numbering, formerly "P1–P7"; the text itself is unrecovered — ledger pattern `unarchived-binding`) — not restated, therefore at risk of quiet loss. | Declared binding for every widget's build spec. |
+| **Empty-state designs and principles ES-1–ES-7** (design-pass numbering, formerly "P1–P7") — not restated, therefore at risk of quiet loss. | Declared binding for every widget's build spec. **Recovered 2026-08-03** — the full text now lives in "The dossier principles (ES-1–ES-7), recovered" below; the empty-state mockup *designs* remain lost, with the phase-3 plan's concrete per-widget empty states as their standing replacement. |
 
 ## Hybrid widgets — one component, two outcomes
 
@@ -259,3 +259,45 @@ contracts (`BreakdownItemData`, `SparklineTableRowData`), not its period math or
 `SparklineSeries::daily()`. Both of those compute days on the database/server
 timezone and are therefore wrong for a Jerusalem-walls board; a Jerusalem-correct
 helper of ours produces the shape the DTOs expect.
+
+## The dossier principles (ES-1–ES-7), recovered
+
+Recovered 2026-08-03 from the phase-1 design session's transcript
+(`RECON2 post-Storage-Truth reconciliation + Dashboard phase 1`,
+`local_c94db27d`) — the "original dossier" this document's honesty audit
+declared binding without restating (ledger pattern `unarchived-binding`,
+sighting #1, closed by this section). These were authored as the dashboard's
+seven design principles; only ES-3 is the empty-state principle — the
+empty-state mockup *designs* the audit row also names remain lost, with the
+phase-3 plan's concrete per-widget empty states as their standing
+replacement. Parenthetical contract/evidence notes are as authored.
+
+1. **ES-1 · כל מספר הוא דלת** — every stat carries a pre-filtered Resource
+   URL; a dead-end number is a defect. *(Contract: Resource-URL rule;
+   friction: today's dashboard answers nothing.)*
+2. **ES-2 · פורסם ≠ גלוי** — the two facts never share one widget cell.
+   *(Stage 3 defect.)*
+3. **ES-3 · אפס אמיתי, אפס שימושי** — empty/low-data states are designed
+   first-class; in the filling era most numbers are small and the queue is
+   the hero. *(Evidence: 1 transcription in prod.)*
+4. **ES-4 · טרי מספיק, בלי דופק** — cached aggregates, TTL 60–300s, explicit
+   `pollingInterval = null` everywhere, small "נכון ל־HH:mm" marker instead
+   of live polling.
+5. **ES-5 · יום ירושלים** — ranges and "today" computed on Asia/Jerusalem
+   days; all dates day-first.
+6. **ES-6 · RTL היא המגרש הביתי** — layout RTL-native; time axes inside
+   charts stay left→right (standard Hebrew chart convention) unless the
+   operator rules otherwise — flagged as a decision *(later locked: LTR
+   axes stand)*.
+7. **ES-7 · עדשה אחת, שאלה אחת** — no widget serves two lenses; the three
+   blueprint widgets map cleanly (EditorialStats → סקירה stats row;
+   RecentPublishedItems → סקירה list; EditorialWarnings → the חסמים queue).
+
+**Reconciliation against the built board (2026-08-03):** every principle is
+already enforced by a live contract — ES-1 by the doorway rules (and the
+`unpinned-promise` A4 fix), ES-2 by the tier split, ES-4 by no-polling plus
+the scope echo, ES-5 by `JerusalemDailySeries`/`UiFormats` day-first, ES-6
+by the RTL board with LTR axes, ES-7 by the lens registrations. ES-3's
+empty-state half is implemented by the A3 dashed idiom and the phase-3
+plan's per-widget empty states; its queue-is-the-hero half by H7. No
+conflict found; the principles bind as written.

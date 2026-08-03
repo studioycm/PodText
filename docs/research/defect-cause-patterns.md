@@ -332,12 +332,22 @@ commits) · where else to look (concrete greps/paths) · status.
   archived verbatim (Hebrew un-reversed) into
   `docs/research/media-program/media-ux-design-principles.md` on operator
   instruction.
-- **Status:** open — TWO sightings → sweep-eligible; the sweep = hunt
+- **Sighting #1 CLOSED (2026-08-03):** the ES-1–ES-7 text was RECOVERED
+  from the phase-1 design session's transcript (`local_c94db27d` — the
+  "original dossier" the HE combined artifact cites) via chained transcript
+  searches, and archived into `dashboard-metrics-combined-ux-plan.md` § "The
+  dossier principles (ES-1–ES-7), recovered" with a reconciliation showing
+  every principle already enforced by a live contract. Correction folded in:
+  they were the dashboard's seven *design principles* (only ES-3 is the
+  empty-state one); the empty-state mockup *designs* remain lost, with the
+  phase-3 plan's concrete empty states as the standing replacement. Q5 is
+  thereby RESOLVED (original text supplied, no conflict found).
+- **Status:** both sightings closed; the sweep remains registered — hunt
   binding references to unarchived externals (`grep -rn
   "claude.ai/code/artifact" docs/` cross-checked against binding claims,
-  plus operator-local design PDFs cited by handoffs) and archive what binds.
-  Q5 (the dashboard ES-1–ES-7 source) remains an open operator decision:
-  supply the original text or bless the phase-3 plan's restatement.
+  plus operator-local design PDFs and session transcripts cited by
+  handoffs) and archive what binds. Recovery method worth reusing: chained
+  snippet-window searches over session transcripts reconstruct lost text.
 
 ## unscanned-home · Style home outside the compiler's scan scope *(alias P13)*
 
@@ -505,7 +515,7 @@ Mark each step with commit hash + gate result when done.
 | Naming | Retire bare P-number ids: pattern slugs + aliases, ES- prefix for design principles, convention block | ✅ `27c5f3b` |
 | Scan-scope research | How Filament/FilamentExamples/LaravelDaily recommend Tailwind source scanning for class-emitting PHP (enums, Livewire, presenters, DB-driven templates) → policy + guard recommendation (`unscanned-home` follow-through) | ⏳ chip `task_30ef637c` |
 | Ledger research | Dedicated read-only bad-practices hunt (skills + guidelines + FilaCheck catalogue), report-only | ✅ merged 2026-08-03 — 7 findings + flags curated: decorative-cap/service-hop-cost/client-payload promoted, unrouted-enum gained two tier-variant sightings, raw-state public-tier all-clear, implicit-keys queryStringIdentifier grep retired, security battery zero ACTUAL. Coverage gaps it declared: ~74/89 Blade views grep-only, importer connector internals, browser-test contents |
-| Operator decisions | **Decided 2026-08-03:** Q2 per-failed-import · Q3 podcast filter hidden on Intake · Q4 **overruled — phase 3 adds a minimal read-only imports listing** · Q6 warnings widget stays on both lenses · **Q7 INVERT the global Select preload default** (bounded sets opt in; scope-extended to the running fix-batch session). **Still open:** Q1 (provider attribution for imports — schema-grounded options presented) · Q5 (ES-1–ES-7 binding source — explanation requested, re-asked) | 🟡 updated 2026-08-03 |
+| Operator decisions | **Decided 2026-08-03:** Q2 per-failed-import · Q3 podcast filter hidden on Intake · Q4 **overruled — phase 3 adds a minimal read-only imports listing** · Q6 warnings widget stays on both lenses · **Q7 INVERT the global Select preload default** (bounded sets opt in; scope-extended to the running fix-batch session). **Q5 RESOLVED 2026-08-03:** the dossier principles were recovered from the phase-1 session transcript and archived into the combined plan; no conflict with the built board. **Still open:** Q1 (provider attribution for imports — schema-grounded options presented, awaiting operator) | 🟡 updated 2026-08-03 |
 | Post-B1 fix batch | decorative-cap rewire (three decorative-cap filters → capped shape) · service-hop-cost fix (batch-prime blocker reasons + query-budget test) · one-home stragglers (two `number_format()` sites → `UiFormats::number()`, one public-facing) · unrouted-enum sweep (unrouted enum literals + the page-tier structural policy guard; Q7 default inversion excluded, pending operator) | ⏳ delegated (chip `task_e539317b`, 2026-08-03) |
 | Deferred register | one-home app-wide format/colour sweeps (parked, budgeted separately) · M2 upstream Filament report (worth filing, unfiled — M2 brief/handoff) · phase-3 plan reconciliation (after B1) · 1/30 Storage-listing timeout (flake-label watch) · client-payload wizard architecture (watch-tier, out of dashboard scope) · `single-read-race` sweep (trigger: a second sighting; recon scope = 6 browser files × 15 `x-show` views, unchecked) · research watch items: `embed_provider` full-table `distinct` per render (`ContentItemsTable.php:173`), 9 enums without Filament contracts (E4 residual), Blade string-icon duplication, importer authz panel-only | 📌 standing register per the registration discipline |
 | Phase-3 re-plan | Board 3 researched and planned fresh against locked decisions | 🟡 plan landed (`7183996`) but ran pre-A/B (orchestrator sequencing error — "after push" followed literally once the push moved mid-route); held as DRAFT, reconciliation pass against landed A/B patterns at route end |

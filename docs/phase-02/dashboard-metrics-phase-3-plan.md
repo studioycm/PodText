@@ -2149,7 +2149,13 @@ git commit -m "docs(dashboard): record phase 3 (Intake lens) as implemented"
    scope stays minimal — listing, not management).** Original question:**
    submissions overflow doorways to the filtered Resource; imports have no
    admin listing until WB.
-5. **Empty-state principles ES-1–ES-7 are unrecoverable as text.** They exist only
+5. **Empty-state principles ES-1–ES-7 are unrecoverable as text.**
+   **RESOLVED 2026-08-03: recovered after all** — from the phase-1 design
+   session's transcript, archived in
+   `dashboard-metrics-combined-ux-plan.md` § "The dossier principles
+   (ES-1–ES-7), recovered", reconciled with no conflict (this plan's
+   restated empty states stand as ES-3's concrete application).
+   **Original question:** They exist only
    by reference in the combined plan (the artifact they came from does not
    contain them either — verified by fetching both linked artifacts). This
    plan restates concrete empty states per widget instead. If the operator has
