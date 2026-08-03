@@ -147,7 +147,8 @@ class TranscriptionsRelationManager extends RelationManager
                     ->optionsLimit(50),
                 SelectFilter::make('language_code')
                     ->label(__('admin.fields.language_code'))
-                    ->options(fn (): array => Transcription::query()
+                    ->options(fn (): array => $this->getOwnerRecord()
+                        ->transcriptions()
                         ->whereNotNull('language_code')
                         ->distinct()
                         ->orderBy('language_code')

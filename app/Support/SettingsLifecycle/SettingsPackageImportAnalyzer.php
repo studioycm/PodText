@@ -3,6 +3,7 @@
 namespace App\Support\SettingsLifecycle;
 
 use App\Enums\SettingsImportMode;
+use App\Enums\SettingsImportRowOutcome;
 use App\Support\PublicFront\PublicFrontConfigCache;
 use App\Support\PublicFront\PublicFrontConfigRegistry;
 use App\Support\PublicFront\PublicFrontConfigValidator;
@@ -193,13 +194,13 @@ class SettingsPackageImportAnalyzer
                 $state = $this->state($currentExists, $importedExists, $currentValue, $importedValue);
                 $error = $this->rowError($unit, $importedExists, $importedValue);
                 $locked = in_array($unit->path, $lockedPaths, true);
-                $outcome = $error === null ? $this->outcome($state, $importedExists, $mode, $locked, $currentExists, $currentValue, $importedValue) : 'error';
+                $outcome = $error === null ? $this->outcome($state, $importedExists, $mode, $locked, $currentExists, $currentValue, $importedValue) : SettingsImportRowOutcome::Error->value;
                 $sensitive = in_array('sensitive', $unit->semantics, true);
                 $selectable = $error === null
                     && ! $locked
                     && $state !== 'unchanged'
                     && ($importedExists || ($mode === SettingsImportMode::Replace && str_contains($unit->path, '.')))
-                    && $outcome !== 'skip_exists';
+                    && $outcome !== SettingsImportRowOutcome::SkipExists->value;
 
                 return [
                     'group' => $unit->section,
@@ -215,7 +216,7 @@ class SettingsPackageImportAnalyzer
                     'current_preview' => $this->preview($currentValue, $currentExists),
                     'imported_preview' => $this->preview($importedValue, $importedExists),
                     'selectable' => $selectable,
-                    'selected' => $selectable && ! $sensitive && in_array($outcome, ['replace', 'add_new'], true),
+                    'selected' => $selectable && ! $sensitive && in_array($outcome, [SettingsImportRowOutcome::Replace->value, SettingsImportRowOutcome::AddNew->value], true),
                     'locked' => $locked,
                     'error' => $error,
                 ];
@@ -260,24 +261,24 @@ class SettingsPackageImportAnalyzer
     private function outcome(string $state, bool $importedExists, SettingsImportMode $mode, bool $locked, bool $currentExists, mixed $currentValue, mixed $importedValue): string
     {
         if ($locked && $state !== 'unchanged') {
-            return 'skip_locked';
+            return SettingsImportRowOutcome::SkipLocked->value;
         }
 
         if ($state === 'unchanged') {
-            return 'skip_unchanged';
+            return SettingsImportRowOutcome::SkipUnchanged->value;
         }
 
         if ($mode === SettingsImportMode::AddOnly) {
             return $this->mergeEngine->shouldApplyAddOnly($currentValue, $currentExists, $importedValue, $importedExists)
-                ? 'add_new'
-                : 'skip_exists';
+                ? SettingsImportRowOutcome::AddNew->value
+                : SettingsImportRowOutcome::SkipExists->value;
         }
 
         if (! $importedExists) {
-            return 'remove';
+            return SettingsImportRowOutcome::Remove->value;
         }
 
-        return 'replace';
+        return SettingsImportRowOutcome::Replace->value;
     }
 
     private function preview(mixed $value, bool $exists): string

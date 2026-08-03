@@ -3,6 +3,7 @@
 namespace App\Livewire\Admin;
 
 use App\Enums\SettingsImportMode;
+use App\Enums\SettingsImportRowOutcome;
 use App\Filament\Pages\ManageSettingsImportLocks;
 use App\Models\SettingsBackupVersion;
 use App\Models\User;
@@ -175,13 +176,13 @@ class SettingsImportWizard extends SettingsLifecycleSelectionTable
 
         return [
             'selected' => count($this->selectedPaths),
-            'added' => $rows->where('outcome', 'add_new')->count(),
+            'added' => $rows->where('outcome', SettingsImportRowOutcome::AddNew->value)->count(),
             'changed' => $rows
-                ->filter(fn (array $row): bool => ($row['outcome'] ?? null) === 'replace' && ($row['state'] ?? null) === 'changed')
+                ->filter(fn (array $row): bool => ($row['outcome'] ?? null) === SettingsImportRowOutcome::Replace->value && ($row['state'] ?? null) === 'changed')
                 ->count(),
-            'locked' => $rows->where('outcome', 'skip_locked')->count(),
-            'errors' => $rows->where('outcome', 'error')->count(),
-            'skip_exists' => $rows->where('outcome', 'skip_exists')->count(),
+            'locked' => $rows->where('outcome', SettingsImportRowOutcome::SkipLocked->value)->count(),
+            'errors' => $rows->where('outcome', SettingsImportRowOutcome::Error->value)->count(),
+            'skip_exists' => $rows->where('outcome', SettingsImportRowOutcome::SkipExists->value)->count(),
         ];
     }
 
@@ -191,7 +192,7 @@ class SettingsImportWizard extends SettingsLifecycleSelectionTable
     public function lockedExcludedRows(): array
     {
         return collect($this->rows)
-            ->where('outcome', 'skip_locked')
+            ->where('outcome', SettingsImportRowOutcome::SkipLocked->value)
             ->values()
             ->all();
     }

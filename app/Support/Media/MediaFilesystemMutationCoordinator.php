@@ -4,6 +4,7 @@ namespace App\Support\Media;
 
 use App\Enums\ImageUploadPurpose;
 use App\Enums\MediaMutationOperationType;
+use App\Enums\MediaMutationRepairResult;
 use App\Enums\MediaMutationStatus;
 use App\Models\Media;
 use App\Models\MediaAsset;
@@ -520,15 +521,15 @@ class MediaFilesystemMutationCoordinator
         } catch (Throwable $exception) {
             $this->recordRepairConflict($operation, $exception);
 
-            return 'manual_review_required';
+            return MediaMutationRepairResult::ManualReviewRequired->value;
         }
 
         if (in_array($operation->status, [MediaMutationStatus::Committed, MediaMutationStatus::CleanupPending], true)) {
             $this->completeCommittedCleanup($operation);
 
             return $operation->fresh()->status === MediaMutationStatus::Completed
-                ? 'completed_cleanup'
-                : 'cleanup_pending';
+                ? MediaMutationRepairResult::CompletedCleanup->value
+                : MediaMutationRepairResult::CleanupPending->value;
         }
 
         if ($this->databaseReflectsCommittedMutation($operation)) {
@@ -538,7 +539,7 @@ class MediaFilesystemMutationCoordinator
             ]);
 
             if (! $operation instanceof MediaMutationOperation) {
-                return 'lease_lost';
+                return MediaMutationRepairResult::LeaseLost->value;
             }
 
             $this->completeCommittedCleanup($operation);
@@ -546,9 +547,9 @@ class MediaFilesystemMutationCoordinator
             $status = $operation->fresh()->status;
 
             return match ($status) {
-                MediaMutationStatus::Completed => 'recovered_committed',
-                MediaMutationStatus::CleanupPending => 'cleanup_pending',
-                default => 'lease_lost',
+                MediaMutationStatus::Completed => MediaMutationRepairResult::RecoveredCommitted->value,
+                MediaMutationStatus::CleanupPending => MediaMutationRepairResult::CleanupPending->value,
+                default => MediaMutationRepairResult::LeaseLost->value,
             };
         }
 
@@ -574,8 +575,8 @@ class MediaFilesystemMutationCoordinator
             ]);
 
             return $updated instanceof MediaMutationOperation
-                ? 'manual_review_required'
-                : 'lease_lost';
+                ? MediaMutationRepairResult::ManualReviewRequired->value
+                : MediaMutationRepairResult::LeaseLost->value;
         }
 
         $updated = $this->updateClaimedRepairOperation($operation, [
@@ -587,8 +588,8 @@ class MediaFilesystemMutationCoordinator
         ]);
 
         return $updated instanceof MediaMutationOperation
-            ? 'rolled_back_uncommitted'
-            : 'lease_lost';
+            ? MediaMutationRepairResult::RolledBackUncommitted->value
+            : MediaMutationRepairResult::LeaseLost->value;
     }
 
     /**
@@ -1054,11 +1055,11 @@ class MediaFilesystemMutationCoordinator
             $status = MediaMutationStatus::tryFrom((string) $locked->getRawOriginal('status'));
 
             if ($status === MediaMutationStatus::Completed) {
-                return 'already_complete';
+                return MediaMutationRepairResult::AlreadyComplete->value;
             }
 
             if ($locked->lease_expires_at?->isFuture()) {
-                return 'lease_active';
+                return MediaMutationRepairResult::LeaseActive->value;
             }
 
             $locked->forceFill([

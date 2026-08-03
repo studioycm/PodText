@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Enums\MediaMutationOperationType;
+use App\Enums\MediaMutationRepairResult;
 use App\Enums\MediaMutationStatus;
 use App\Models\MediaMutationOperation;
 use App\Support\Media\MediaFilesystemMutationCoordinator;
@@ -79,10 +80,10 @@ class RepairMediaMutations extends Command
         $this->components->info('Media mutation repair complete'.($summary !== '' ? ": {$summary}" : '.'));
 
         return collect($results)->keys()->intersect([
-            'cleanup_pending',
-            'lease_active',
-            'lease_lost',
-            'manual_review_required',
+            MediaMutationRepairResult::CleanupPending->value,
+            MediaMutationRepairResult::LeaseActive->value,
+            MediaMutationRepairResult::LeaseLost->value,
+            MediaMutationRepairResult::ManualReviewRequired->value,
         ])->isEmpty()
             ? self::SUCCESS
             : self::FAILURE;
