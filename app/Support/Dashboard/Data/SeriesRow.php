@@ -2,6 +2,8 @@
 
 namespace App\Support\Dashboard\Data;
 
+use App\Enums\SparklineTrend;
+
 /**
  * One flow measure over the selected range: how much moved, how that compares
  * with the period before it, and the daily shape.
@@ -26,6 +28,11 @@ readonly class SeriesRow
     public function delta(): int
     {
         return (int) round($this->value - $this->previous);
+    }
+
+    public function trend(): SparklineTrend
+    {
+        return SparklineTrend::fromDelta($this->delta());
     }
 
     /** @return array{key: string, label: string, value: float, previous: float, points: array<int, float>} */

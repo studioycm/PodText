@@ -85,15 +85,4 @@ enum FunnelStage: string implements HasColor, HasIcon, HasLabel
             self::Visible => 'bg-success-100 text-success-800 dark:bg-success-500/20 dark:text-success-300',
         };
     }
-
-    /** Tailwind stroke for a sparkline drawn in this stage's colour. */
-    public function strokeClass(): string
-    {
-        return match ($this) {
-            self::Draft => 'stroke-gray-400 dark:stroke-gray-500',
-            self::Published => 'stroke-info-500 dark:stroke-info-400',
-            self::Transcribed => 'stroke-primary-500 dark:stroke-primary-400',
-            self::Visible => 'stroke-success-500 dark:stroke-success-400',
-        };
-    }
 }

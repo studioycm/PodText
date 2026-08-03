@@ -2,6 +2,7 @@
 
 use App\Enums\DashboardLens;
 use App\Enums\PublicationStatus;
+use App\Enums\SparklineTrend;
 use App\Enums\TranscriptionMode;
 use App\Enums\UserRole;
 use App\Filament\Pages\Dashboard;
@@ -108,9 +109,13 @@ it('scopes the stats spine to the selected podcast', function (): void {
 it('renders the living funnel with per-stage sparklines and a gap doorway', function (): void {
     overviewFixture();
 
+    // The fixture publishes one episode in range against an empty previous
+    // period, so the published stage trends up and its sparkline stroke and
+    // movement delta both wear the enum's rising colour.
     Livewire::test(PublicationFunnelWidget::class)
         ->assertSeeHtml('data-testid="funnel-segment-visible"')
         ->assertSeeHtml('data-testid="funnel-spark-transcribed"')
+        ->assertSeeHtml(SparklineTrend::Up->strokeClass())
         ->assertSeeHtml('data-testid="funnel-gap"')
         ->assertDontSeeHtml('wire:poll')
         ->call('openBlockers')
@@ -145,11 +150,14 @@ it('filters the activity stream to a heatmap day and to a chip', function (): vo
 it('renders the library composition band with podcast health and the transcriber board', function (): void {
     overviewFixture();
 
+    // Dana's one transcript against an empty previous period trends up, and
+    // the delta colour comes from the trend enum, not a view literal.
     Livewire::test(LibraryCompositionWidget::class)
         ->assertSee('Alpha Podcast')
         ->assertSee('Dana')
         ->assertSeeHtml('data-testid="podcast-health-row"')
         ->assertSeeHtml('data-testid="transcriber-row"')
+        ->assertSeeHtml(SparklineTrend::Up->textClass())
         ->assertDontSeeHtml('wire:poll');
 });
 

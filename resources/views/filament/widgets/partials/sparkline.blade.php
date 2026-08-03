@@ -1,6 +1,7 @@
 @props([
     'points' => [],
     'testid' => null,
+    'stroke' => null,
 ])
 
 @php
@@ -36,6 +37,7 @@
     @if ($count > 1)
         <polyline
             points="{{ $polyline }}"
+            @if ($stroke) class="{{ $stroke }}" @endif
             fill="none"
             stroke="currentColor"
             stroke-width="1.5"

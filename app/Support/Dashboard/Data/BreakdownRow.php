@@ -2,6 +2,8 @@
 
 namespace App\Support\Dashboard\Data;
 
+use App\Enums\SparklineTrend;
+
 /**
  * One labelled row of a breakdown, with an optional whole it is part of.
  *
@@ -45,6 +47,14 @@ readonly class BreakdownRow
         return $this->previous === null
             ? null
             : (int) round($this->value - $this->previous);
+    }
+
+    /** Null when there is no previous period: no comparison, not a neutral one. */
+    public function trend(): ?SparklineTrend
+    {
+        $delta = $this->delta();
+
+        return $delta === null ? null : SparklineTrend::fromDelta($delta);
     }
 
     public function meta(string $key, int|float|string|null $default = null): int|float|string|null

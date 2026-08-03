@@ -1,5 +1,8 @@
 <?php
 
+use App\Enums\SparklineTrend;
+use Illuminate\Support\Facades\File;
+
 /**
  * The sparkline partial's geometry contract: min/max normalisation over a
  * 2px-inset band, so a series' own variation fills the box instead of being
@@ -47,4 +50,36 @@ it('draws no line for a single point or an empty series', function (): void {
     // svg deliberate, and the y-maths must not divide by the zero span.
     expect(renderSparkline([7]))->not->toContain('<polyline')
         ->and(renderSparkline([]))->not->toContain('<polyline');
+});
+
+it('strokes the polyline with the trend class the caller supplies', function (): void {
+    $html = view('filament.widgets.partials.sparkline', [
+        'points' => [1, 2],
+        'testid' => 'spark-under-test',
+        'stroke' => SparklineTrend::Up->strokeClass(),
+    ])->render();
+
+    // The class must land on the polyline itself, where it overrides the
+    // currentColor fallback; without a caller-supplied trend the line keeps
+    // inheriting its wrapper's colour.
+    expect($html)->toContain('class="'.SparklineTrend::Up->strokeClass().'"')
+        ->and(renderSparkline([1, 2]))->not->toContain('class="stroke-');
+});
+
+it('keeps the trend palette out of widget view sources', function (): void {
+    // The trend colours live in SparklineTrend alone. A hand-written copy in
+    // a view would render identically today and drift silently later, so this
+    // scans the widget view sources rather than any rendered output.
+    $literals = ['stroke-success', 'stroke-danger', 'stroke-gray', 'text-success-600', 'text-danger-600'];
+
+    foreach (File::allFiles(resource_path('views/filament/widgets')) as $file) {
+        $source = $file->getContents();
+
+        foreach ($literals as $literal) {
+            expect(str_contains($source, $literal))->toBeFalse(
+                "views/filament/widgets/{$file->getRelativePathname()} hand-writes {$literal};"
+                .' trend colours must come from SparklineTrend.',
+            );
+        }
+    }
 });

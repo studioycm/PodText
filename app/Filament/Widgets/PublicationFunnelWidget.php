@@ -64,7 +64,6 @@ class PublicationFunnelWidget extends Widget
                 'series' => $row->points,
                 'delta' => $row->delta(),
                 'bar' => $stage->barClass(),
-                'stroke' => $stage->strokeClass(),
                 'active' => $active === $stage->value,
                 'url' => ContentItemResource::getUrl('index', $this->scopedTableFilters(
                     $stage === FunnelStage::Draft

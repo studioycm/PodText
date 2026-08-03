@@ -4,10 +4,14 @@ use App\Enums\DashboardReason;
 use App\Enums\DashboardTier;
 use App\Enums\FunnelStage;
 use App\Enums\MediaDiagnosticReason;
+use App\Enums\SparklineTrend;
+use App\Support\Dashboard\Data\BreakdownRow;
+use App\Support\Dashboard\Data\SeriesRow;
 use Filament\Support\Contracts\HasColor;
 use Filament\Support\Contracts\HasDescription;
 use Filament\Support\Contracts\HasIcon;
 use Filament\Support\Contracts\HasLabel;
+use Illuminate\Support\Facades\File;
 
 it('gives every funnel stage one definition of its label, colour and bar', function (): void {
     expect(FunnelStage::Draft)->toBeInstanceOf(HasLabel::class)
@@ -68,4 +72,38 @@ it('lets every reason name its own tier and explain itself', function (): void {
     foreach (DashboardReason::cases() as $reason) {
         expect($reason->getDescription())->toBeString()->not->toBeEmpty();
     }
+});
+
+it('owns the sparkline trend colour in one enum home derived from deltas', function (): void {
+    expect(SparklineTrend::fromDelta(3))->toBe(SparklineTrend::Up)
+        ->and(SparklineTrend::fromDelta(-1))->toBe(SparklineTrend::Down)
+        ->and(SparklineTrend::fromDelta(0))->toBe(SparklineTrend::Neutral)
+        ->and(SparklineTrend::Up->strokeClass())->toContain('stroke-success')
+        ->and(SparklineTrend::Down->strokeClass())->toContain('stroke-danger')
+        ->and(SparklineTrend::Neutral->strokeClass())->toContain('stroke-gray')
+        ->and(SparklineTrend::Up->textClass())->toContain('text-success')
+        ->and(SparklineTrend::Down->textClass())->toContain('text-danger')
+        ->and(SparklineTrend::Neutral->textClass())->toContain('text-gray');
+
+    // Both data objects derive the trend from their own delta, so a view never
+    // re-implements the comparison.
+    $rising = new SeriesRow(key: 'published', label: 'Published', value: 5.0, previous: 2.0);
+    $flat = new SeriesRow(key: 'draft', label: 'Draft', value: 2.0, previous: 2.0);
+    $ranked = new BreakdownRow(label: 'Dana', value: 1.0, previous: 3.0);
+    $unranked = new BreakdownRow(label: 'Alpha', value: 1.0);
+
+    expect($rising->trend())->toBe(SparklineTrend::Up)
+        ->and($flat->trend())->toBe(SparklineTrend::Neutral)
+        ->and($ranked->trend())->toBe(SparklineTrend::Down)
+        // No previous period means no comparison, not a neutral one.
+        ->and($unranked->trend())->toBeNull();
+});
+
+it('scans the enum colour homes into the admin theme', function (): void {
+    // The dashboard enums return Tailwind classes, but Tailwind only emits a
+    // utility whose literal appears in a scanned source. Before this glob the
+    // draft funnel bar (bg-gray-400) and two reason bars (bg-danger-400,
+    // bg-violet-500) compiled to nothing and rendered colourless.
+    expect(File::get(resource_path('css/filament/admin/theme.css')))
+        ->toContain("@source '../../../../app/Enums/**/*';");
 });

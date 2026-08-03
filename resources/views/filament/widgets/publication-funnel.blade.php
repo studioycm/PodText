@@ -36,23 +36,16 @@
                         ></div>
                     </div>
 
-                    <div class="text-gray-400 dark:text-gray-500">
-                        @include('filament.widgets.partials.sparkline', [
-                            'points' => $data['series'],
-                            'testid' => "funnel-spark-{$stage}",
-                        ])
-                    </div>
+                    @include('filament.widgets.partials.sparkline', [
+                        'points' => $data['series'],
+                        'testid' => "funnel-spark-{$stage}",
+                        'stroke' => $data['row']->trend()->strokeClass(),
+                    ])
 
                     <p class="text-xs text-gray-500 dark:text-gray-400">
                         {{ __('admin.dashboard.funnel.movement', ['count' => (int) $data['row']->value]) }}
-                        <span
-                            @class([
-                                'font-medium tabular-nums',
-                                'text-success-600 dark:text-success-400' => $data['delta'] > 0,
-                                'text-danger-600 dark:text-danger-400' => $data['delta'] < 0,
-                            ])
-                            dir="ltr"
-                        >{{ $data['delta'] > 0 ? '+' : '' }}{{ $data['delta'] }}</span>
+                        <span class="font-medium tabular-nums {{ $data['row']->trend()->textClass() }}" dir="ltr"
+                            >{{ $data['delta'] > 0 ? '+' : '' }}{{ $data['delta'] }}</span>
                     </p>
 
                     <button

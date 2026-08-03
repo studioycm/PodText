@@ -129,12 +129,7 @@
                                     }}
                                 </span>
                                 <span
-                                    @class([
-                                        'text-xs font-medium tabular-nums',
-                                        'text-success-600 dark:text-success-400' => $delta > 0,
-                                        'text-danger-600 dark:text-danger-400' => $delta < 0,
-                                        'text-gray-400 dark:text-gray-500' => $delta === 0,
-                                    ])
+                                    class="text-xs font-medium tabular-nums {{ $item->trend()?->textClass() }}"
                                     dir="ltr"
                                 >
                                     {{ $delta > 0 ? '+' : '' }}{{ $delta }}
