@@ -68,6 +68,7 @@ Spatie Settings for bounded global policy, normal database records for independe
 
 - `docs/phase-02/homepage-settings-spec.md`
 - `docs/phase-02/dashboard-metrics-spec.md`
+- `docs/phase-02/dashboard-widget-principles.md`
 - `docs/phase-02/blueprints/08-taxonomy-tags-pinning-settings-media-foundation-blueprint.md`
 - `docs/phase-02/blueprints/13-dashboard-metrics-blueprint.md`
 - `docs/research/filament-examples-phase-02.md`

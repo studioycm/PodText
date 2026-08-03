@@ -9,6 +9,7 @@ use App\Models\Transcription;
 use App\Models\User;
 use Filament\Facades\Filament;
 use Filament\Forms\Components\Select;
+use Filament\Tables\Filters\SelectFilter;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Features\SupportTesting\Testable;
 use Livewire\Livewire;
@@ -43,6 +44,16 @@ function cappedFilterSelect(Testable $component, string $filterKey): Select
 
     return $select;
 }
+
+it('defaults selects and select filters to search-driven options without preload', function (): void {
+    // Q7 (decided 2026-08-03): the global default encodes the safe branch —
+    // growing sets stay search-driven, and bounded sets opt in per-site with
+    // an explicit ->preload().
+    expect(Select::make('probe')->isPreloaded())->toBeFalse()
+        ->and(SelectFilter::make('probe')->isPreloaded())->toBeFalse()
+        ->and(Select::make('probe')->getOptionsLimit())->toBe(50)
+        ->and(SelectFilter::make('probe')->getOptionsLimit())->toBe(50);
+});
 
 it('serves items-list transcriber filter options only through bounded search', function (): void {
     Author::factory()

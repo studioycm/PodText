@@ -98,6 +98,10 @@ phase 2R, and they are binding:
 
 ## Contracts phase 3 must not redefine
 
+*(The why-layer above these contracts is
+`docs/phase-02/dashboard-widget-principles.md` — the merged, guard-named
+widget principles co-created 2026-08-03. New widgets read it first.)*
+
 - **Visible** = the full `ContentItem::scopePublished()` contract.
 - **Invisible** = status-published minus visible, *exactly* — which is why
   `unpublished_group` had to be added as a fourth reason.

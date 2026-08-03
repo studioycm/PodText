@@ -83,7 +83,6 @@ class Dashboard extends BaseDashboard
                             ->helperText(__('admin.dashboard.filters.podcast_hint'))
                             ->options(fn (): array => app(EditorialMetrics::class)->podcastOptions())
                             ->searchable()
-                            ->preload(false)
                             ->optionsLimit(50),
                     ]),
             ]);

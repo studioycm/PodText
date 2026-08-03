@@ -693,7 +693,6 @@ trait BuildsPublicContentSettingsSubjectSchemas
                                                 ->helperText(__('admin.helpers.public_menu_item_form_key'))
                                                 ->options(fn (): array => $this->publicFormOptions())
                                                 ->searchable()
-                                                ->preload(false)
                                                 ->optionsLimit(50)
                                                 ->native(false)
                                                 ->live()
@@ -848,7 +847,6 @@ trait BuildsPublicContentSettingsSubjectSchemas
                                 ->helperText(__('admin.helpers.podcasts_page_template_key'))
                                 ->options(fn (Get $get): array => $this->cardTemplateOptions('content_group', $get('card_templates')))
                                 ->searchable()
-                                ->preload(false)
                                 ->optionsLimit(50)
                                 ->placeholder(__('admin.labels.none'))
                                 ->native(false),
@@ -857,7 +855,6 @@ trait BuildsPublicContentSettingsSubjectSchemas
                                 ->helperText(__('admin.helpers.podcasts_page_item_template_key'))
                                 ->options(fn (Get $get): array => $this->cardTemplateOptions('content_item', $get('card_templates')))
                                 ->searchable()
-                                ->preload(false)
                                 ->optionsLimit(50)
                                 ->placeholder(__('admin.labels.none'))
                                 ->native(false),
@@ -1579,7 +1576,6 @@ trait BuildsPublicContentSettingsSubjectSchemas
                                 ->options(fn (): array => $this->enabledPublicFormOptions())
                                 ->native(false)
                                 ->searchable()
-                                ->preload(false)
                                 ->optionsLimit(50)
                                 ->live(),
                             Select::make('maintenance.form_location')
@@ -2752,7 +2748,6 @@ trait BuildsPublicContentSettingsSubjectSchemas
                 ->helperText(__('admin.helpers.about_block_form_key'))
                 ->options(fn (): array => $this->publicFormOptions())
                 ->searchable()
-                ->preload(false)
                 ->optionsLimit(50)
                 ->native(false)
                 ->live()

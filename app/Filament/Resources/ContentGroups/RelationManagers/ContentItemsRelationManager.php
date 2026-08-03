@@ -151,14 +151,12 @@ class ContentItemsRelationManager extends RelationManager
                     ->relationship('categories', 'name')
                     ->multiple()
                     ->searchable()
-                    ->preload(false)
                     ->optionsLimit(50),
                 SelectFilter::make('content_tags')
                     ->label(__('admin.fields.tags'))
                     ->relationship('tags', 'name', modifyQueryUsing: fn (Builder $query): Builder => $query->where('type', 'content'))
                     ->multiple()
                     ->searchable()
-                    ->preload(false)
                     ->optionsLimit(50),
                 TernaryFilter::make('is_pinned')
                     ->label(__('admin.fields.is_pinned')),

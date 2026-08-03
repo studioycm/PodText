@@ -77,7 +77,6 @@ class EpisodeWorkspaceForm
                                 ->helperText(__('admin.helpers.content_item_content_group'))
                                 ->relationship('contentGroup', 'title')
                                 ->searchable()
-                                ->preload(false)
                                 ->optionsLimit(50)
                                 ->live()
                                 ->afterStateUpdated(function (Set $set, Get $get, mixed $state): void {
@@ -200,7 +199,6 @@ class EpisodeWorkspaceForm
                                 ->relationship('categories', 'name')
                                 ->multiple()
                                 ->searchable()
-                                ->preload(false)
                                 ->optionsLimit(50)
                                 ->helperText(__('admin.helpers.item_categories')),
                             allowEdit: false,

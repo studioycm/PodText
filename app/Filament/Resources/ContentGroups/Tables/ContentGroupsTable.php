@@ -87,7 +87,6 @@ class ContentGroupsTable
                     ->relationship('categories', 'name')
                     ->multiple()
                     ->searchable()
-                    ->preload(false)
                     ->optionsLimit(50),
             ])
             ->headerActions([

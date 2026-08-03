@@ -50,7 +50,6 @@ class RelationshipOptionForms
                 ->relationship('authors', 'name')
                 ->multiple()
                 ->searchable()
-                ->preload(false)
                 ->optionsLimit(50)
                 ->required()
                 ->loadStateFromRelationshipsUsing(static function (Select $component): void {
@@ -94,7 +93,6 @@ class RelationshipOptionForms
                     : __('admin.helpers.transcription_transcribers'))
                 ->multiple()
                 ->searchable()
-                ->preload(false)
                 ->optionsLimit(50)
                 ->getSearchResultsUsing(fn (?string $search): array => Author::query()
                     ->when(filled($search), fn ($query) => $query->where('name', 'like', '%'.trim((string) $search).'%'))

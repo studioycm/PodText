@@ -262,6 +262,11 @@ helper of ours produces the shape the DTOs expect.
 
 ## The dossier principles (ES-1–ES-7), recovered
 
+> **Superseded as a living rulebook (2026-08-03):** the merged, guard-named
+> successor set lives in `docs/phase-02/dashboard-widget-principles.md`
+> (each entry notes which ES it absorbs). This section remains the recovered
+> historical record.
+
 Recovered 2026-08-03 from the phase-1 design session's transcript
 (`RECON2 post-Storage-Truth reconciliation + Dashboard phase 1`,
 `local_c94db27d`) — the "original dossier" this document's honesty audit

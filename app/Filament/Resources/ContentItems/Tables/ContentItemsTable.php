@@ -138,7 +138,6 @@ class ContentItemsTable
                     ->label(__('admin.fields.content_group'))
                     ->relationship('contentGroup', 'title')
                     ->searchable()
-                    ->preload(false)
                     ->optionsLimit(50),
                 SelectFilter::make('status')
                     ->label(__('admin.fields.status'))
@@ -147,21 +146,18 @@ class ContentItemsTable
                     ->label(__('admin.fields.transcribers'))
                     ->relationship('transcriptions.authors', 'name')
                     ->searchable()
-                    ->preload(false)
                     ->optionsLimit(50),
                 SelectFilter::make('categories')
                     ->label(__('admin.fields.categories'))
                     ->relationship('categories', 'name')
                     ->multiple()
                     ->searchable()
-                    ->preload(false)
                     ->optionsLimit(50),
                 SelectFilter::make('content_tags')
                     ->label(__('admin.fields.tags'))
                     ->relationship('tags', 'name', modifyQueryUsing: fn (Builder $query): Builder => $query->where('type', 'content'))
                     ->multiple()
                     ->searchable()
-                    ->preload(false)
                     ->optionsLimit(50),
                 SelectFilter::make('embed_provider')
                     ->label(__('admin.fields.embed_provider'))

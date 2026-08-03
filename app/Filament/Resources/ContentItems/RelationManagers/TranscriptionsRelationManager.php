@@ -144,7 +144,6 @@ class TranscriptionsRelationManager extends RelationManager
                     ->label(__('admin.fields.transcribers'))
                     ->relationship('authors', 'name')
                     ->searchable()
-                    ->preload(false)
                     ->optionsLimit(50),
                 SelectFilter::make('language_code')
                     ->label(__('admin.fields.language_code'))

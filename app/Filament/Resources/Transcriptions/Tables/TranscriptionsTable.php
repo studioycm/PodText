@@ -92,13 +92,11 @@ class TranscriptionsTable
                     ->label(__('admin.fields.transcribers'))
                     ->relationship('authors', 'name')
                     ->searchable()
-                    ->preload(false)
                     ->optionsLimit(50),
                 SelectFilter::make('content_group_id')
                     ->label(__('admin.fields.content_group'))
                     ->relationship('contentItem.contentGroup', 'title')
                     ->searchable()
-                    ->preload(false)
                     ->optionsLimit(50),
             ])
             ->headerActions([

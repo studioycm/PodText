@@ -19,32 +19,15 @@ delegates' evidence sections so duplicates converge. When a pattern
 accumulates **2+ sightings beyond its founding evidence**, it gets a targeted
 sweep task of its own.
 
-**Registration discipline (operator directive, 2026-08-03).** Every new
-sighting or finding is registered in this ledger (or the rightful doc for its
-domain) when it is found — not batched, not held in chat. Every *deferral*
-decision — a postponed sweep, parked work, an unfiled upstream report, a
-draft held for reconciliation — is registered at the moment the deferral is
-decided, stating what, why, and what unblocks it. A finding or deferral that
-exists only in a conversation does not exist.
-
-**Naming convention (operator directive, 2026-08-03).** Bare letter+number
-ids (`P1`, `A4`, `F2`…) collided across at least five families in this repo
-(ledger patterns, empty-state design principles, media-program packages,
-route steps, research findings). The rules now:
-
-- **Cause-patterns:** the canonical id is the kebab **slug** in each entry's
-  header (`silent-cap`, `unscanned-home`). The old `P<n>` ids survive as
-  *(alias P\<n\>)* markers because pre-2026-08-03 commit messages use them —
-  they are historical aliases, never to be minted again.
-- **Other families carry a family prefix:** `ES-<n>` = the empty-state
-  design principles (formerly "P1–P7"); `Q<n>` = operator decision questions
-  (phase-3 plan register); research-session findings are report-local
-  (`F-<n>` etc.) and must be renamed to slugs or folded on curation, never
-  cited bare outside their report.
-- **Route steps** (V/F/A/B + digit) are scoped to one round's checklist and
-  are only meaningful next to it.
-- **Never mint a bare letter+digit id for a new family.** New registries get
-  either slugs or a distinct prefix.
+**Governance (2026-08-03).** The general rules this ledger runs under —
+`register-at-the-moment` (findings at discovery, deferrals at decision, in
+the rightful doc), `names-carry-family` (slugs canonical, `P<n>` historical
+aliases, no new bare letter+digit families), `one-owner-registry`,
+`readable-binding`, `pinned-promise`, `provenance-stated`,
+`verify-dont-trust` — now live in their one home,
+`docs/phase-02/dashboard-governance-principles.md` (dashboard-scoped by
+operator ruling). Ledger-specific mechanics stay here: entry format, the
+side-session report-contribution flow, and the 2+-sightings sweep trigger.
 
 Entry format: **name** · one-line cause · evidence (where it already bit, with
 commits) · where else to look (concrete greps/paths) · status.
@@ -516,10 +499,11 @@ Mark each step with commit hash + gate result when done.
 | B1 | Alpine hover crosshair + tooltip on SVG sparklines | ✅ `168a618` (hover layer) + `87aa8bf` (browser evidence) + `cbee0d3` (docs). **Orchestrator-verified 2026-08-03: pest 1594/19,614 direct run (identical to claim), pint --test pass, full filacheck 0, tree clean** |
 | Naming | Retire bare P-number ids: pattern slugs + aliases, ES- prefix for design principles, convention block | ✅ `27c5f3b` |
 | Scan-scope research | How Filament/FilamentExamples/LaravelDaily recommend Tailwind source scanning for class-emitting PHP (enums, Livewire, presenters, DB-driven templates) → policy + guard recommendation (`unscanned-home` follow-through) | ⏳ chip `task_30ef637c` |
+| Principles docs | Co-created widget principles (14, merged ES + route-earned) + dashboard governance principles (7) with pointers and ledger shrink | ✅ 2026-08-03, this commit |
 | Ledger research | Dedicated read-only bad-practices hunt (skills + guidelines + FilaCheck catalogue), report-only | ✅ merged 2026-08-03 — 7 findings + flags curated: decorative-cap/service-hop-cost/client-payload promoted, unrouted-enum gained two tier-variant sightings, raw-state public-tier all-clear, implicit-keys queryStringIdentifier grep retired, security battery zero ACTUAL. Coverage gaps it declared: ~74/89 Blade views grep-only, importer connector internals, browser-test contents |
 | Operator decisions | **Decided 2026-08-03:** Q2 per-failed-import · Q3 podcast filter hidden on Intake · Q4 **overruled — phase 3 adds a minimal read-only imports listing** · Q6 warnings widget stays on both lenses · **Q7 INVERT the global Select preload default** (bounded sets opt in; scope-extended to the running fix-batch session). **Q5 RESOLVED 2026-08-03:** the dossier principles were recovered from the phase-1 session transcript and archived into the combined plan; no conflict with the built board. **Q1 DECIDED 2026-08-03:** declare-at-upload now (provider column + modal source select, folded into the phase-3 reconciliation), fetch-run records in WB supersede later. **ES-1 operator qualifier registered** in the combined plan: a doorway-less number ships rather than being dropped when no filterable surface exists yet. No operator decisions remain open | 🟡 updated 2026-08-03 |
 | Post-B1 fix batch | decorative-cap rewire (three decorative-cap filters → capped shape) · service-hop-cost fix (batch-prime blocker reasons + query-budget test) · one-home stragglers (two `number_format()` sites → `UiFormats::number()`, one public-facing) · unrouted-enum sweep (unrouted enum literals + the page-tier structural policy guard; Q7 default inversion excluded, pending operator) | ⏳ delegated (chip `task_e539317b`, 2026-08-03) |
-| Deferred register | one-home app-wide format/colour sweeps (parked, budgeted separately) · M2 upstream Filament report (worth filing, unfiled — M2 brief/handoff) · phase-3 plan reconciliation (after B1) · 1/30 Storage-listing timeout (flake-label watch) · client-payload wizard architecture (watch-tier, out of dashboard scope) · `single-read-race` sweep (trigger: a second sighting; recon scope = 6 browser files × 15 `x-show` views, unchecked) · research watch items: `embed_provider` full-table `distinct` per render (`ContentItemsTable.php:173`), 9 enums without Filament contracts (E4 residual), Blade string-icon duplication, importer authz panel-only | 📌 standing register per the registration discipline |
+| Deferred register | one-home app-wide format/colour sweeps (parked, budgeted separately) · M2 upstream Filament report (worth filing, unfiled — M2 brief/handoff) · phase-3 plan reconciliation (after B1) · 1/30 Storage-listing timeout (flake-label watch) · client-payload wizard architecture (watch-tier, out of dashboard scope) · `single-read-race` sweep (trigger: a second sighting; recon scope = 6 browser files × 15 `x-show` views, unchecked) · governance globalization (operator ruling: dashboard-only for now; wider adoption is its own future thinking and plan) · research watch items: `embed_provider` full-table `distinct` per render (`ContentItemsTable.php:173`), 9 enums without Filament contracts (E4 residual), Blade string-icon duplication, importer authz panel-only | 📌 standing register per the registration discipline |
 | Phase-3 re-plan | Board 3 researched and planned fresh against locked decisions | 🟡 plan landed (`7183996`) but ran pre-A/B (orchestrator sequencing error — "after push" followed literally once the push moved mid-route); held as DRAFT, reconciliation pass against landed A/B patterns at route end |
 | Docs | Refresh 2R-handoff commit table + gate; current-project-state Prompt-13 row; fold flags | ✅ minimal refresh 2026-08-03 pre-push; full fold again at route end |
 | Push gate | Full pest/pint/filacheck/build; push ONLY on operator's word (deploys production) | ✅ 2026-08-03: pest 1563/19,386, full filacheck 0, build ok; pushed pinned `987b92f` (F's concurrent `b24490a` deliberately excluded); Forge release `74621206` = `987b92f`, `/up` 200 |

@@ -166,11 +166,14 @@ class AppServiceProvider extends ServiceProvider
             ->visibility('public')
             ->preserveFilenames(false);
 
+        // Q7 (2026-08-03): the global default encodes the safe branch —
+        // searchable selects load options through their capped server search,
+        // and bounded option sets opt in per-site with an explicit preload().
         Select::configureUsing(fn (Select $select): Select => $select
-            ->preload()
+            ->preload(false)
             ->optionsLimit(50));
         SelectFilter::configureUsing(fn (SelectFilter $filter): SelectFilter => $filter
-            ->preload()
+            ->preload(false)
             ->optionsLimit(50));
 
         Gate::policy(Media::class, CuratorMediaPolicy::class);
