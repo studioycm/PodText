@@ -822,3 +822,66 @@ schema-namespace layout components, non-static widget `$heading`/`$view`
 with static `$sort`, `Heroicon` enum icons, and `ListRecords` tab binding
 via `#[Url(as: 'tab')]` (verified in the installed vendor sources, which is
 what makes `['tab' => …, 'filters' => …]` the gallery doorway shape).
+
+## A Block · Sparkline, Doorways, Empty States, Reason Doorway (2026-08-03)
+
+Protocol run for the A-block session (A1 normalisation, A2 trend stroke,
+A3 empty states + panel-native doorways, A4 reason-bar doorway). Two query
+batches against `search-examples` — batch 1 (`limit: 8`): "widget empty
+state", "custom dashboard widget blade view", "table select filter default
+value", "livewire dispatch event between widgets"; batch 2 (`limit: 3`,
+refined): "empty state custom widget", "svg sparkline blade", "link to
+filtered table url", "badge link blade component view". Batch 1 overflowed
+the tool-result budget (~150 KB) and was read from the saved dump. Only
+`search-examples` is exposed — no fetch/read/details tool, so per-file
+inspection beyond returned snippets was not possible.
+
+### Informing patterns
+
+- `v4/full-projects/chart-filter-buttons/resources/views/filament/widgets/engagement-rate-chart.blade.php`
+  — segmented chip buttons inside a widget section driving server state via
+  `wire:click` — the same interaction family as the A4 reason bars.
+  Confirmed the server-driven idiom; PodText differs in routing the click
+  through a validated public method that dispatches to a *different*
+  widget, because the receiver (the blockers queue) is not the emitter.
+- `v4/full-projects/school-timetable-calendar/app/Filament/Resources/Users/Tables/UsersTable.php`
+  — `Action::url(fn () => Page::getUrl([...]))` param-carrying doorways.
+  Fed the A4 design evaluation: URL params reach only surfaces with a
+  `#[Url]` binding to receive them (`ListRecords`), which widgets lack.
+- `v4/full-projects/github-style-user-profile-with-activity-heatmap/resources/views/filament/resources/users/pages/view-user.blade.php`
+  — bordered stat-tile idiom (`rounded-xl border … dark:border-white/10`)
+  matching PodText's card grid; its inline `number_format()` and
+  `<x-heroicon-o-*>` component tags rejected (`UiFormats` + `Heroicon`
+  enum icons are the house contracts).
+- `v4/tables/table-customized-design-viewcolumn` — chip/pill UI extracted
+  into `@props` Blade partials, the same shape as the new
+  `partials/empty-state.blade.php`; its hex-literal colour system rejected
+  (P1).
+
+### Rejected outright
+
+- `v4/full-projects/dashboard-visitor-analytics/.../visitors-per-country.blade.php`
+  — `wire:poll.20s`, inline `style="background: rgb(...)"` literals, and a
+  nested `@livewire()` chart: three board-contract violations in one view.
+- Corpus-wide: no dashed empty-state idiom, no inline-SVG sparkline, and
+  zero `x-filament::link` usage (hand-rolled anchors throughout). The
+  panel-native doorway idiom therefore came from the installed vendor
+  component itself (`vendor/filament/support/resources/views/components/link.blade.php`
+  — verified props: `tag`, `icon`, `size`, `color`, `badge`, and the
+  `wire:click`-aware loading indicator) plus PodText's own precedent in
+  `public-form-target-warnings.blade.php`.
+
+### Boost + vendor verifications for the same block
+
+Boost `search-docs` (2026-08-03): Livewire 4 `#[On]`/`dispatch()`;
+Filament 5 blade `button`/`icon-button`/`link` components (`tag`
+attribute); `SelectFilter::default()`; filters overview. Verified against
+installed vendor sources, not assumed: table filters are deferred by
+default (`Tables\Table\Concerns\HasFilters::$hasDeferredFilters = true`),
+so a programmatic filter write must end in `applyTableFilters()`;
+the canonical mutation path writes through the filter form's field state
+(`Tables\Concerns\HasFilters::removeTableFilter()`); and
+`getIdentifiedTableQueryStringPropertyNameFor()` has exactly one consumer
+— pagination's page name — so `blockersQueueWidgetFilters` names a
+property, not a URL binding, and no query string hydrates a widget's
+table filters.

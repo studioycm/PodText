@@ -152,15 +152,34 @@ we have more than six podcasts and `take($limit)` silently drops the tail, which
 the tooling guideline's no-silent-caps rule forbids. `BreakdownRow::meta` can
 carry what an "Other" row rolled up. ~45 min.
 
-**A1** · Sparkline normalisation. Ours normalises against the peak only, so
-`[8, 9, 10]` renders almost flat. Normalise across `max − min` with a padding
-inset. **This is a defect, not polish** — every sparkline currently understates
-its own variation.
+**A1** · *Done 2026-08-03 (`2831ee9`).* Sparklines normalise over `max − min`
+inside a 2px-inset band; spanless series (all-equal, all-zero, single point)
+sit on the midline. Exact-coordinate tests in `DashboardSparklineTest`,
+watched red against the peak-only maths.
 
-**A2** · Trend-coloured stroke (up/down/neutral). `SeriesRow::delta()` already
-provides the trend.
+**A2** · *Done 2026-08-03 (`b9825c6`).* `SparklineTrend` enum owns the
+up/down/neutral stroke and delta-text palette, derived via
+`SeriesRow::trend()` / `BreakdownRow::trend()`; a source-scanning test bans
+hand-written trend literals in widget views. Fallout fixed en route:
+`app/Enums` was outside the admin theme's `@source` globs, so enum-only
+colour literals (`bg-gray-400` draft bar, `bg-danger-400`, `bg-violet-500`
+reason bars) never compiled and rendered colourless — glob added and pinned
+by test. `FunnelStage::strokeClass()` deleted (only call site was an unused
+view-data entry).
 
-**A3** · Panel-native empty states and `x-filament::link` doorways.
+**A3** · *Done 2026-08-03 (`103b728`).* Shared dashed empty-state partial
+(icon + heading + description) in the stream, both composition halves and
+the gap bar; `x-filament::link` + `Heroicon` enum doorways for composition
+chips, stat-card opens, funnel stage labels/focus and heatmap clear. Data
+rows and roll-up "Other" rows stay plain deliberately.
+
+**A4** · *Done 2026-08-03 (`c36f6c4`), P11 closure.* The reason-bar doorway
+promise is now true on-board: `reasonBreakdown()` rows carry their reason
+key (no URL — widget table filters are never URL-hydrated), the gap view
+renders panel-native `wire:click` bars, and `BlockersQueueWidget` receives
+`dashboard-reason-selected` into its existing reason filter through the
+filter form's field state, honouring the deferred-filters default. Both
+ends validate the value; tests pin rows, dispatch and queue narrowing.
 
 **B1** · Alpine hover crosshair and tooltip on our SVG. ~4–6 h.
 
@@ -314,7 +333,9 @@ Two traps when copying it:
 | Enum-backed settings properties typed as `string` | Fixed — E5, `AdminUxSettings` |
 | Date/number formats scattered | **Open** — F1/F2 |
 | Silent `take($limit)` in breakdowns | **Open** — F3 |
-| Sparkline normalisation understates variation | **Open** — A1 |
+| Sparkline normalisation understates variation | Fixed — A1 (`2831ee9`), min/max over an inset band |
+| Reason bars all opened the same unfiltered list (P11) | Fixed — A4 (`c36f6c4`), on-board dispatch doorway |
+| Enum-only colour literals never compiled (`app/Enums` unscanned) | Fixed — A2 (`b9825c6`), `@source` glob + pin test |
 
 ## Still deferred, unchanged
 
