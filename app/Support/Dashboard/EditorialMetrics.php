@@ -524,7 +524,6 @@ class EditorialMetrics
             ->withExists([
                 'transcriptions as has_published_transcription' => fn (Builder $inner): Builder => $inner->published(),
                 'contentGroup as has_published_group' => fn (Builder $inner): Builder => $inner->published(),
-                'contentGroup as has_content_group',
                 'contentGroup as has_group_category' => fn (Builder $inner): Builder => $inner->whereHas('categories'),
                 'categories as has_own_category',
             ])
@@ -564,9 +563,11 @@ class EditorialMetrics
             $reasons[] = DashboardReason::MissingMedia->value;
         }
 
+        // Same truth table as {@see applyMissingCategory}: no own category AND
+        // no categorised group — one predicate, two readers, pinned against
+        // each other by the queue/badge parity test.
         if (
             ! $this->blockerFact($item, 'has_own_category', fn (): bool => $item->categories()->exists())
-            && $this->blockerFact($item, 'has_content_group', fn (): bool => $item->contentGroup()->exists())
             && ! $this->blockerFact($item, 'has_group_category', fn (): bool => $item->contentGroup()->whereHas('categories')->exists())
         ) {
             $reasons[] = DashboardReason::MissingCategory->value;
@@ -854,6 +855,11 @@ class EditorialMetrics
     }
 
     /**
+     * The one home of the missing-category truth: no own category AND no
+     * categorised group. {@see blockerReasonsFor} answers the same question
+     * per row from its EXISTS facts; the queue/badge parity test holds the
+     * two readers together.
+     *
      * @param  Builder<ContentItem>  $query
      * @return Builder<ContentItem>
      */

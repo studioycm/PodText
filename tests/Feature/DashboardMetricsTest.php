@@ -2,6 +2,7 @@
 
 use App\Enums\DashboardLens;
 use App\Enums\DashboardRange;
+use App\Enums\DashboardReason;
 use App\Enums\PublicationStatus;
 use App\Enums\TranscriptionMode;
 use App\Filament\Pages\Dashboard;
@@ -168,6 +169,21 @@ it('computes identical blocker reasons from primed queue rows and bare records',
 
         expect($metrics->blockerReasonsFor($row))->toBe($reasons)
             ->and($metrics->blockerReasonsFor($row->fresh()))->toBe($reasons);
+    }
+
+    // The badge and the reason filter read one truth: a row wears a reason
+    // badge exactly when applyReason() would keep it.
+    foreach (array_keys($expected) as $id) {
+        foreach (DashboardReason::cases() as $reason) {
+            $matchesFilter = $metrics->applyReason($metrics->queueQuery(), $reason->value)
+                ->whereKey($id)
+                ->exists();
+
+            expect(in_array($reason->value, $metrics->blockerReasonsFor($rows->get($id)), true))->toBe(
+                $matchesFilter,
+                "Row {$id} disagrees with the {$reason->value} filter.",
+            );
+        }
     }
 });
 
