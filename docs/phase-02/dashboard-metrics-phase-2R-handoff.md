@@ -520,6 +520,16 @@ tests in `tests/Feature/AdminUxSettingsEnumTypesTest.php`.
   deliberate break — it takes the real work with it. Copy to a temp file instead.
 - **Doorway query key is `filters`, not `tableFilters`** — the alias
   `ListRecords` declares. Passing `tableFilters` maps inconsistently.
+- **A Blade loop that re-renders under filters gets a stable-id `wire:key`
+  before it gets interactive content** (research finding 2026-08-03, ledger
+  P4 Blade-tier sighting). Today's unkeyed widget loops are plain HTML and
+  positional morphing is cosmetic; the moment a row gains Alpine state or a
+  nested Livewire child, unkeyed morphing joins M2's defect family.
+- **Multi-step flow state does not ride public Livewire properties**
+  (ledger P16). `SettingsImportWizard` currently carries the whole decoded
+  package + diff rows through the client per step — bounded and admin-only
+  today. New wizards hold server-side (cache/temp file keyed by a token
+  prop) and re-derive rows per render.
 
 ## Why phase 3 must be re-planned from scratch
 

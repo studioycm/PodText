@@ -51,6 +51,16 @@ commits) · where else to look (concrete greps/paths) · status.
   prevents drift-back of the consolidated formats but would not catch a
   *novel* format literal (e.g. `j.n.Y`) — acceptable for a drift guard;
   worth revisiting if the app-wide sweep ever lands a broader pattern set.
+  Research addendum (2026-08-03): the guard also hunts only the *correct*
+  literal — a wrong `m/d/Y` in dashboard scope would sail through; a
+  positive-form atom (any literal inside `->date(`/`->dateTime(` in scanned
+  paths) would close that half. Routing debt outside the guard's scope:
+  exactly two `number_format()` sites bypass `UiFormats::number()` —
+  `PublicFormSubmissionResource.php:58` (admin nav badge) and
+  `PublicContentItemCardPresenter.php:581` (**public-facing** word counts,
+  the Hebrew-grouping case the home exists for). Queued as a quick fix with
+  the post-B1 batch. Census re-verified by git: 63 literals at `987b92f`,
+  57 from `b24490a` through HEAD — F2 removed six, no growth since.
 
 ## P2 · An enum beside hand-written values protects nothing
 
@@ -74,10 +84,27 @@ commits) · where else to look (concrete greps/paths) · status.
   ternary `'reused' : 'created'` beside `MediaAcquisitionDisposition` (line
   674 already uses the enum instance) — an unrouted call site of an existing
   enum. The phase-3 plan's Task 8 (E4 pair) routes it through the enum.
-- **Status:** open as a rule; `StreamEventType` lands in phase 3. Two
-  sightings now on the ledger — per protocol this pattern is **sweep-eligible**;
-  the sweep is deferred until the bad-practices research report lands so one
-  sweep covers all its instances.
+- **Sighting (2026-08-03, research session, POTENTIAL — page-tier variant):**
+  authorization intent parked in resource `can*()` overrides with **no policy
+  behind it**. In Filament v5, record/bulk actions authorize via policy, not
+  the resource's `can*()`; `UserResource.php:47-77` encodes everything in
+  static overrides (`canDelete(): false`) with no `UserPolicy` — safe today
+  only because no delete surface exists; the day a `DeleteAction` is added,
+  the override right above it stops nothing. Same shape:
+  `PublicFormSubmissionResource.php:105`, `SettingsBackupResource.php:43`.
+  Suggested guard: structural loop over resource registrations (policy exists
+  OR no mutation actions exposed).
+- **Sighting (2026-08-03, research session, POTENTIAL — default-tier
+  variant):** `AppServiceProvider.php:169-173` sets
+  `Select::configureUsing(->preload()->optionsLimit(50))` — the global
+  default encodes the unsafe branch (growing sets preload) and safety lives
+  in 10+ hand-written per-site `preload(false)` opt-outs. The durable fix is
+  inverting the default; that is an operator decision (registered in the
+  decisions row).
+- **Status:** open as a rule; `StreamEventType` lands in phase 3. Four+
+  sightings — the **P2 sweep is now unblocked** (research report landed) and
+  is queued as its own task after B1 verifies: route unrouted enum literals,
+  and decide the two tier-variant guards.
 
 ## P3 · Live unvalidated state read raw
 
@@ -89,8 +116,12 @@ commits) · where else to look (concrete greps/paths) · status.
 - **Where else:** `grep -rn "#\[Url" app`; `grep -rn "pageFilters" app`;
   Livewire public properties fed into queries without validation;
   session-persisted table filter state.
-- **Status:** dashboard fixed; app-wide sweep candidate (needs a second
-  sighting).
+- **Status:** dashboard fixed. **Public tier swept clean 2026-08-03**
+  (research session): all 7 public Livewire components narrow `#[Url]` state
+  — tampered transcript keys resolve against the published set only
+  (`ContentItemTranscriptViewer.php:84-113`), search tag IDs re-validate
+  against `enabled()`, dates try/catch, `perPage` is clamped. No second
+  sighting exists; pattern moves to watch.
 
 ## P4 · Shared implicit keys
 
@@ -102,10 +133,21 @@ commits) · where else to look (concrete greps/paths) · status.
   (`2e786ed`); M2 stale-memo clone graft fixed by per-mount key nonce
   (`0b99bf8`); `->key()` on a schema Section re-keys its **children** (`HasKey`
   inheritance, E5 session finding).
-- **Where else:** admin tables lacking `queryStringIdentifier`; index-derived
-  Livewire widget keys that shift when a lens's widget list changes (V3 checks
-  this round); `grep -rn '\->key(' app/Filament`.
-- **Status:** multiple fixes landed; V3 verifies the residual this round.
+- **Where else:** index-derived Livewire widget keys that shift when a lens's
+  widget list changes (V3 checked this round); `grep -rn '\->key(' app/Filament`.
+  *(Retired 2026-08-03: the "admin tables lacking `queryStringIdentifier`"
+  grep — `AppServiceProvider.php:228-231` now assigns it globally from the
+  component class via `Table::configureUsing`, a structural default.)*
+- **Sighting (2026-08-03, research session, POTENTIAL — Blade tier):**
+  filter-driven widget views re-render unkeyed dynamic loops (e.g.
+  `activity-stream.blade.php:48`; 11 widget views, zero `wire:key`s; also
+  `public-header.blade.php`). Cosmetic today (plain-HTML rows, no Alpine
+  state inside) — converts to M2's family the day a row gains Alpine state
+  or a nested Livewire child. Contract note added to the handoff: a loop
+  that re-renders under filters gets a stable-id `wire:key` before it gets
+  interactive content.
+- **Status:** multiple fixes landed; V3 verified the residual; Blade-tier
+  rule registered as a handoff contract.
 
 ## P5 · Proxy metrics teach tests wrong expectations
 
@@ -134,6 +176,13 @@ commits) · where else to look (concrete greps/paths) · status.
   `limit($limit)` queries do truncate, but the stream presents as a latest-N
   feed rather than a totality, so a roll-up row would be meaningless there.
   Bounded-by-design, not a violation.
+- **Sighting (2026-08-03, research session, POTENTIAL — silent-fallback
+  cousin):** the `relationLoaded('enabledContentTags') ? loaded : query()`
+  shape (`ContentItemSearch.php:845`, `ShowContentItem.php:227`,
+  `PublicContentItemCardPresenter.php:665`, `ContentItemExporter.php:163`)
+  gracefully absorbs a future missing eager-load into an invisible per-card
+  N+1 instead of surfacing it. All current paths load correctly — a fallback
+  that reads as correct while degrading. Watch.
 - **Status:** breakdown caps closed (`b3d6de4`, `rollUpTail` + a reconciling
   "Other" row on `BreakdownRow::meta`); M1 queued separately.
 
@@ -163,7 +212,12 @@ commits) · where else to look (concrete greps/paths) · status.
   existing source-scanning tests for line-anchored regexes.
 - **Status:** met — F1's guard whitespace-collapses file contents before
   matching (`b24490a`). The timezone guard needs no retrofit: its literal is
-  a single string that cannot split across lines.
+  a single string that cannot split across lines. Research verification
+  (2026-08-03): both project guards confirmed statement-safe; note FilaCheck
+  itself is AST-based (PhpParser), so P8 applies to the project's grep-style
+  guards only — FilaCheck's real blind spots are path scope (`app/Filament`
+  only), closure-built options, service hops, and authorization (see
+  P14/P15).
 
 ## P9 · `->options(Enum::class)` changes state type, not just labels
 
@@ -279,6 +333,82 @@ commits) · where else to look (concrete greps/paths) · status.
   `UnhandledMatchError` in reach of future all-stages loops, and the docblock
   now says so in place.
 
+## P14 · Guard incantation attached to a mechanism that isn't in play
+
+*(Promoted 2026-08-03 from the research session's F-2, "decorative-cap".)*
+
+- **Cause:** when the sanctioned pattern doesn't fit, the fallback API
+  silently lacks the cap semantics — and pasting the guard boilerplate anyway
+  makes the site *look* compliant, so reviews pass it. Filament specifics:
+  `->preload(false)->optionsLimit(50)` are **inert** on a static
+  `->options(closure)` — they only govern `getSearchResultsUsing()` /
+  relationship selects.
+- **Evidence (ACTUAL, mechanism verified):** transcriber filters at
+  `ContentItemsTable.php:147-156` and `TranscriptionsTable.php:93-102` pluck
+  the full authors table on every render while wearing both modifiers;
+  `TranscriptionsTable.php:105-113` plucks **all** groups uncapped while the
+  same concept on the items table (`ContentItemsTable.php:138-143`) uses the
+  correct capped `relationship()` shape. The in-repo correct non-relationship
+  pattern exists: `IconSelect.php:18-19` (`getSearchResultsUsing()` +
+  `getOptionLabelUsing()`).
+- **Where else:** `grep -rn -A6 "SelectFilter::make" app | grep -B2 "::query()"`;
+  any `->options(fn` adjacent to `optionsLimit(`; future provider/connection
+  filters.
+- **Suggested guard:** FilaCheck-style AST rule — flag `optionsLimit()`/
+  `preload()` co-occurring with static `->options()` and no
+  `getSearchResultsUsing()`.
+- **Status:** open — fix queued in the post-B1 batch (rewire the three
+  filters to the capped shape).
+
+## P15 · Per-row cost hidden one service hop away
+
+*(Promoted 2026-08-03 from the research session's F-3.)*
+
+- **Cause:** a per-row table closure calls a service whose query cost is
+  invisible at the call site; an eager load added at the query level doesn't
+  help because the service calls relation *methods* (fresh queries), not
+  loaded relations. Sub-mechanism: `eager-load-defeated-by-relation-method-call`
+  (`->categories()` vs `->categories`).
+- **Evidence (ACTUAL):** `BlockersQueueWidget.php:70` `->state(fn ($record) =>
+  …blockerReasonsFor($record))` → `EditorialMetrics.php:521-541` runs up to
+  4 queries per rendered row (30–100 per render at page size 10–25, re-run on
+  every Livewire update) — while the table eager-loads
+  `contentGroup.categories`+`categories` as dead weight. The repo's own
+  correct pattern: `MediaInventoryDiagnostics.php:25-28` memoizes per record
+  and batch-primes. Export-scope twins (same shape, cheaper):
+  `ContentItemExporter.php:62`, `ContentGroupExporter.php:50`.
+- **Where else:** `grep -rn -e '->state(fn' -e '->tooltip(fn' -e '->color(fn'
+  app/Filament | grep 'app('`; any new `EditorialMetrics` per-record method
+  reached from a column.
+- **Suggested guard:** query-count regression test — render the widget with a
+  25-row fixture under `DB::listen`, assert a fixed budget.
+- **Status:** open — fix queued in the post-B1 batch (batch-prime the reasons
+  like `MediaInventoryDiagnostics`, or fold reasons into `queueQuery()`
+  selects; plus the query-budget test).
+
+## P16 · Cross-step payload carried through the client
+
+*(Promoted 2026-08-03 from the research session's F-5.)*
+
+- **Cause:** multi-step flow state (a whole uploaded document plus derived
+  rows) held in public Livewire properties serializes into every snapshot and
+  round-trips per step — a payload cost and a client-writable surface at
+  once.
+- **Evidence (ACTUAL mechanism, admin-scope, bounded):**
+  `SettingsImportWizard.php:31` holds the entire decoded settings package
+  (≤2 MB validated) in `public array $packageArray`; `:244`/`:260` assign
+  full diff-row arrays to public `$rows`. Tamper value low (admin-only; the
+  apply path is the V4-guarded writer). Same family:
+  `CardTemplateEditorPage.php:135` (`public ?string $previewHtml`).
+  Coupled note: the wizard re-runs `analyzeArray` on every step transition
+  (`:240`, `:258`) — CPU-only today.
+- **Where else:** `grep -rn "public array" app/Livewire app/Filament/Pages`
+  reviewed against what fills them.
+- **Suggested guard:** handoff contract note (server-side holding: cache/temp
+  file keyed by a token prop; rows re-derived per render) — architectural,
+  registered in the handoff.
+- **Status:** open, watch-tier; no route fix queued (out of dashboard scope).
+
 ---
 
 ## Route checklist (2026-08-03 round)
@@ -301,9 +431,10 @@ Mark each step with commit hash + gate result when done.
 | A3 | Dashed empty states + `x-filament::link` doorways | ✅ `103b728` — shared dashed empty-state partial (en+he), Heroicon doorways; F3 `href=""` pin intact |
 | A4 | Make the Board-2 reason-bar doorway promise true (P11 fix) | ✅ `c36f6c4` — on-board dispatch into the queue's reason filter (URL form vendor-proven infeasible); P11 closed. **Orchestrator-verified 2026-08-03: pest 1587/19,563 direct run (identical to claim), pint --test pass, full filacheck 0, tree clean.** Follow-up `1efeb35` resolved bandClass keep-vs-delete (keep, docblock-only, `git -S` evidence) |
 | B1 | Alpine hover crosshair + tooltip on SVG sparklines | ☐ |
-| Ledger research | Dedicated read-only bad-practices hunt (skills + guidelines + FilaCheck catalogue), report-only | ⏳ chip `task_8d7e8616` |
-| Operator decisions | Phase-3 plan "Open questions" Q1–Q6 (Q5 = P12 empty-state principles) — block phase-3 implementation, not A/B | ⏳ surfaced to operator 2026-08-03 |
-| Deferred register | P2 sweep (until research report lands) · P1 app-wide format/colour sweeps (parked, budgeted separately) · M2 upstream Filament report (worth filing, unfiled — M2 brief/handoff) · phase-3 plan reconciliation (after A/B) · 1/30 Storage-listing timeout (P7 watch) | 📌 standing register per the registration discipline |
+| Ledger research | Dedicated read-only bad-practices hunt (skills + guidelines + FilaCheck catalogue), report-only | ✅ merged 2026-08-03 — 7 findings + flags curated: P14/P15/P16 promoted, P2 gained two tier-variant sightings, P3 public-tier all-clear, P4 queryStringIdentifier grep retired, security battery zero ACTUAL. Coverage gaps it declared: ~74/89 Blade views grep-only, importer connector internals, browser-test contents |
+| Operator decisions | Phase-3 plan "Open questions" Q1–Q6 (Q5 = P12 empty-state principles) **+ Q7 (from research F-4): invert the global Select default to `preload(false)` and opt bounded sets in?** — block phase-3 implementation, not B1 | ⏳ surfaced to operator 2026-08-03 |
+| Post-B1 fix batch | P14 rewire (three decorative-cap filters → capped shape) · P15 fix (batch-prime blocker reasons + query-budget test) · P1 stragglers (two `number_format()` sites → `UiFormats::number()`, one public-facing) · P2 sweep (unrouted enum literals + tier-variant guard decisions incl. F-1 structural policy test) | 📌 registered 2026-08-03, chips go out after B1 verifies |
+| Deferred register | P1 app-wide format/colour sweeps (parked, budgeted separately) · M2 upstream Filament report (worth filing, unfiled — M2 brief/handoff) · phase-3 plan reconciliation (after B1) · 1/30 Storage-listing timeout (P7 watch) · P16 wizard architecture (watch-tier, out of dashboard scope) · research watch items: `embed_provider` full-table `distinct` per render (`ContentItemsTable.php:173`), 9 enums without Filament contracts (E4 residual), Blade string-icon duplication, importer authz panel-only | 📌 standing register per the registration discipline |
 | Phase-3 re-plan | Board 3 researched and planned fresh against locked decisions | 🟡 plan landed (`7183996`) but ran pre-A/B (orchestrator sequencing error — "after push" followed literally once the push moved mid-route); held as DRAFT, reconciliation pass against landed A/B patterns at route end |
 | Docs | Refresh 2R-handoff commit table + gate; current-project-state Prompt-13 row; fold flags | ✅ minimal refresh 2026-08-03 pre-push; full fold again at route end |
 | Push gate | Full pest/pint/filacheck/build; push ONLY on operator's word (deploys production) | ✅ 2026-08-03: pest 1563/19,386, full filacheck 0, build ok; pushed pinned `987b92f` (F's concurrent `b24490a` deliberately excluded); Forge release `74621206` = `987b92f`, `/up` 200 |
