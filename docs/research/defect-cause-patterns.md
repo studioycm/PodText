@@ -356,6 +356,37 @@ commits) · where else to look (concrete greps/paths) · status.
   `Invisible->bandClass()` renders (gap bar, funnel gap button); kept
   case-complete with the mirrored docblock.
 
+## single-read-race · One-shot reads of `x-show` state race Alpine's frame cadence
+
+*(Registered 2026-08-03 from the B1 session's report-only relay; test-authoring
+family, kin of `flake-label`'s discipline rather than an app defect.)*
+
+- **Cause:** after an Alpine state write, sibling `x-bind:style` effects apply
+  in the flush while `x-show`'s display flip lands on Alpine's frame cadence —
+  so a one-shot read (`getComputedStyle`, `offsetParent`) of an `x-show`
+  element right after an interaction can see stale visibility in headless
+  Playwright. Visibility must be *waited as a labelled condition*, never
+  single-read.
+- **Evidence (ACTUAL, found and fixed pre-commit):**
+  `tests/Browser/DashboardSparklineBrowserTest.php:161-165` (`87aa8bf`) — the
+  post-Escape crosshair check failed on a single `getComputedStyle` read while
+  the tooltip (style-bound off the same `active` write) had already hidden; a
+  reactive probe driving `$data.active` both ways proved both effect
+  directions healthy — pure frame timing. Nothing broken was committed.
+  Sub-finding, same commit: Alpine boot probes must target the `x-data`
+  element — `_x_dataStack` never exists on children
+  (`DashboardSparklineBrowserTest.php:81` uses `closest('[x-data]')`).
+- **Where else:** the B1 session's recon — 6 other browser-test files read
+  visibility via `offsetParent`/`getComputedStyle`
+  (`PublicFormModalBrowserTest`, `MediaPickerBrowserTest`,
+  `GalleryKeyboardNavBrowserTest`, `MediaResourceGalleryBrowserTest`,
+  `OwnerImageWorkspaceBrowserTest`, `CardTemplatePreviewBrowserTest`) against
+  15 views using `x-show`; whether any is a post-interaction single-read of an
+  `x-show` element is UNCHECKED — that is the sweep question.
+- **Status:** first sighting; per the 2+-sightings rule no sweep yet — the
+  sweep trigger is registered in the deferred register. Both lessons also
+  live in the `browser-script-step-labels` memory.
+
 ## decorative-cap · Guard incantation attached to a mechanism that isn't in play *(alias P14)*
 
 *(Promoted 2026-08-03 from the research session's F-2, "decorative-cap".)*
@@ -453,13 +484,13 @@ Mark each step with commit hash + gate result when done.
 | A2 | Trend-coloured stroke from `SeriesRow::delta()` | ✅ `b9825c6` — `SparklineTrend` enum as the one palette home + source-scanning literal ban; also fixed/pinned unscanned-home (theme `@source` scan scope) |
 | A3 | Dashed empty states + `x-filament::link` doorways | ✅ `103b728` — shared dashed empty-state partial (en+he), Heroicon doorways; F3 `href=""` pin intact |
 | A4 | Make the Board-2 reason-bar doorway promise true (unpinned-promise fix) | ✅ `c36f6c4` — on-board dispatch into the queue's reason filter (URL form vendor-proven infeasible); unpinned-promise closed. **Orchestrator-verified 2026-08-03: pest 1587/19,563 direct run (identical to claim), pint --test pass, full filacheck 0, tree clean.** Follow-up `1efeb35` resolved bandClass keep-vs-delete (keep, docblock-only, `git -S` evidence) |
-| B1 | Alpine hover crosshair + tooltip on SVG sparklines | ⏳ delegated (chip `task_92e7305d`, session running) |
+| B1 | Alpine hover crosshair + tooltip on SVG sparklines | ✅ `168a618` (hover layer) + `87aa8bf` (browser evidence) + `cbee0d3` (docs); B1 gate claim: pest 1,594/19,614, pint --test, filacheck 0, build ok — orchestrator verification running |
 | Naming | Retire bare P-number ids: pattern slugs + aliases, ES- prefix for design principles, convention block | ✅ `27c5f3b` |
 | Scan-scope research | How Filament/FilamentExamples/LaravelDaily recommend Tailwind source scanning for class-emitting PHP (enums, Livewire, presenters, DB-driven templates) → policy + guard recommendation (`unscanned-home` follow-through) | ⏳ chip `task_30ef637c` |
 | Ledger research | Dedicated read-only bad-practices hunt (skills + guidelines + FilaCheck catalogue), report-only | ✅ merged 2026-08-03 — 7 findings + flags curated: decorative-cap/service-hop-cost/client-payload promoted, unrouted-enum gained two tier-variant sightings, raw-state public-tier all-clear, implicit-keys queryStringIdentifier grep retired, security battery zero ACTUAL. Coverage gaps it declared: ~74/89 Blade views grep-only, importer connector internals, browser-test contents |
 | Operator decisions | Phase-3 plan "Open questions" Q1–Q6 (Q5 = unarchived-binding empty-state principles) **+ Q7 (from research F-4): invert the global Select default to `preload(false)` and opt bounded sets in?** — block phase-3 implementation, not B1 | ⏳ surfaced to operator 2026-08-03 |
 | Post-B1 fix batch | decorative-cap rewire (three decorative-cap filters → capped shape) · service-hop-cost fix (batch-prime blocker reasons + query-budget test) · one-home stragglers (two `number_format()` sites → `UiFormats::number()`, one public-facing) · unrouted-enum sweep (unrouted enum literals + tier-variant guard decisions incl. F-1 structural policy test) | 📌 registered 2026-08-03, chips go out after B1 verifies |
-| Deferred register | one-home app-wide format/colour sweeps (parked, budgeted separately) · M2 upstream Filament report (worth filing, unfiled — M2 brief/handoff) · phase-3 plan reconciliation (after B1) · 1/30 Storage-listing timeout (flake-label watch) · client-payload wizard architecture (watch-tier, out of dashboard scope) · research watch items: `embed_provider` full-table `distinct` per render (`ContentItemsTable.php:173`), 9 enums without Filament contracts (E4 residual), Blade string-icon duplication, importer authz panel-only | 📌 standing register per the registration discipline |
+| Deferred register | one-home app-wide format/colour sweeps (parked, budgeted separately) · M2 upstream Filament report (worth filing, unfiled — M2 brief/handoff) · phase-3 plan reconciliation (after B1) · 1/30 Storage-listing timeout (flake-label watch) · client-payload wizard architecture (watch-tier, out of dashboard scope) · `single-read-race` sweep (trigger: a second sighting; recon scope = 6 browser files × 15 `x-show` views, unchecked) · research watch items: `embed_provider` full-table `distinct` per render (`ContentItemsTable.php:173`), 9 enums without Filament contracts (E4 residual), Blade string-icon duplication, importer authz panel-only | 📌 standing register per the registration discipline |
 | Phase-3 re-plan | Board 3 researched and planned fresh against locked decisions | 🟡 plan landed (`7183996`) but ran pre-A/B (orchestrator sequencing error — "after push" followed literally once the push moved mid-route); held as DRAFT, reconciliation pass against landed A/B patterns at route end |
 | Docs | Refresh 2R-handoff commit table + gate; current-project-state Prompt-13 row; fold flags | ✅ minimal refresh 2026-08-03 pre-push; full fold again at route end |
 | Push gate | Full pest/pint/filacheck/build; push ONLY on operator's word (deploys production) | ✅ 2026-08-03: pest 1563/19,386, full filacheck 0, build ok; pushed pinned `987b92f` (F's concurrent `b24490a` deliberately excluded); Forge release `74621206` = `987b92f`, `/up` 200 |
