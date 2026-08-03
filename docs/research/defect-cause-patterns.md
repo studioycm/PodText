@@ -19,6 +19,14 @@ delegates' evidence sections so duplicates converge. When a pattern
 accumulates **2+ sightings beyond its founding evidence**, it gets a targeted
 sweep task of its own.
 
+**Registration discipline (operator directive, 2026-08-03).** Every new
+sighting or finding is registered in this ledger (or the rightful doc for its
+domain) when it is found — not batched, not held in chat. Every *deferral*
+decision — a postponed sweep, parked work, an unfiled upstream report, a
+draft held for reconciliation — is registered at the moment the deferral is
+decided, stating what, why, and what unblocks it. A finding or deferral that
+exists only in a conversation does not exist.
+
 Entry format: **name** · one-line cause · evidence (where it already bit, with
 commits) · where else to look (concrete greps/paths) · status.
 
@@ -259,6 +267,8 @@ Mark each step with commit hash + gate result when done.
 | A4 | Make the Board-2 reason-bar doorway promise true (P11 fix) | ⏳ delegated (same chip; added 2026-08-03 from `7ffcaa5` finding) |
 | B1 | Alpine hover crosshair + tooltip on SVG sparklines | ☐ |
 | Ledger research | Dedicated read-only bad-practices hunt (skills + guidelines + FilaCheck catalogue), report-only | ⏳ chip `task_8d7e8616` |
+| Operator decisions | Phase-3 plan "Open questions" Q1–Q6 (Q5 = P12 empty-state principles) — block phase-3 implementation, not A/B | ⏳ surfaced to operator 2026-08-03 |
+| Deferred register | P2 sweep (until research report lands) · P1 app-wide format/colour sweeps (parked, budgeted separately) · M2 upstream Filament report (worth filing, unfiled — M2 brief/handoff) · phase-3 plan reconciliation (after A/B) · 1/30 Storage-listing timeout (P7 watch) | 📌 standing register per the registration discipline |
 | Phase-3 re-plan | Board 3 researched and planned fresh against locked decisions | 🟡 plan landed (`7183996`) but ran pre-A/B (orchestrator sequencing error — "after push" followed literally once the push moved mid-route); held as DRAFT, reconciliation pass against landed A/B patterns at route end |
 | Docs | Refresh 2R-handoff commit table + gate; current-project-state Prompt-13 row; fold flags | ✅ minimal refresh 2026-08-03 pre-push; full fold again at route end |
 | Push gate | Full pest/pint/filacheck/build; push ONLY on operator's word (deploys production) | ✅ 2026-08-03: pest 1563/19,386, full filacheck 0, build ok; pushed pinned `987b92f` (F's concurrent `b24490a` deliberately excluded); Forge release `74621206` = `987b92f`, `/up` 200 |
