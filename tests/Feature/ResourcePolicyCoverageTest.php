@@ -1,6 +1,5 @@
 <?php
 
-use App\Filament\Resources\SettingsBackups\SettingsBackupResource;
 use App\Models\User;
 use Filament\Actions\Action;
 use Filament\Actions\CreateAction;
@@ -37,10 +36,9 @@ uses(RefreshDatabase::class);
  */
 it('backs can-override resources with a policy or keeps their mutation surface page-tier', function (): void {
     // Every entry must name its one-line why, and must still trip the
-    // detector below — a stale entry fails the test.
-    $allowList = [
-        SettingsBackupResource::class => 'Backup rows are shared panel-maintenance artifacts: the table DeleteAction runs behind the panel role gate alone today (no per-record authority distinction has been designed), and canCreate(false) only removes the meaningless create form. Flagged in the post-B1 report for an explicit SettingsBackupPolicy decision.',
-    ];
+    // detector below — a stale entry fails the test. Empty since
+    // SettingsBackupPolicy closed the one gap this guard shipped with.
+    $allowList = [];
 
     $this->actingAs(User::factory()->superAdmin()->create());
 

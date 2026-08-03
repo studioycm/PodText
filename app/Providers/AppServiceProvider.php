@@ -10,11 +10,13 @@ use App\Livewire\Admin\MediaPickerPanel;
 use App\Models\ContentGroup;
 use App\Models\ContentItem;
 use App\Models\Media;
+use App\Models\SettingsBackupVersion;
 use App\Models\Transcription;
 use App\Models\User;
 use App\Observers\CuratorMediaObserver;
 use App\Observers\EditorialMetricsCacheObserver;
 use App\Policies\CuratorMediaPolicy;
+use App\Policies\SettingsBackupPolicy;
 use App\Settings\PublicContentSettings;
 use App\Support\Authorization\PackageMutationCommandGuard;
 use App\Support\Dashboard\EditorialMetrics;
@@ -177,6 +179,7 @@ class AppServiceProvider extends ServiceProvider
             ->optionsLimit(50));
 
         Gate::policy(Media::class, CuratorMediaPolicy::class);
+        Gate::policy(SettingsBackupVersion::class, SettingsBackupPolicy::class);
         Gate::define(UserRole::SuperAdmin->value, fn (User $user): bool => $user->hasRoleAtLeast(UserRole::SuperAdmin));
         Gate::define('multi-transcription', function (User $user, UserRole|string|null $minimum = null): bool {
             $minimumRole = $minimum instanceof UserRole
