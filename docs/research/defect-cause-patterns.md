@@ -4,11 +4,20 @@ Started 2026-08-03 by the dashboard route-plan orchestrator session. Every
 defect found in the Prompt 13 round traces to a repeatable cause-pattern; each
 entry here turns one finding into a search prompt for similar cases elsewhere.
 
-**Protocol.** Side-sessions append candidate entries (or sightings under an
-existing entry) with evidence — file, commit, one-line mechanism — and return
-an "open flags + pattern evidence" section in their final report. The
-orchestrator merges and dedupes. When a pattern accumulates **2+ sightings
-beyond its founding evidence**, it gets a targeted sweep task of its own.
+**Protocol.** This file has **one owner** — the orchestrator session curates
+it (operator-confirmed 2026-08-03; two writers on one ledger would be P1
+itself). Side-sessions contribute candidate entries and sightings via the
+"open flags + pattern evidence" section of their final reports — with
+evidence: file:line or commit, one-line mechanism, ACTUAL vs POTENTIAL — and
+the orchestrator merges, dedupes, and curates. (Exception noted: the F-block
+delegate was instructed pre-rule that it may append directly; its appends get
+curated on merge at verification.) A dedicated read-only bad-practices
+research task (chip `task_8d7e8616`) crunches the subject systematically via
+the Filament/Livewire audit skills, the Boost/CLAUDE.md guidelines, and
+FilaCheck's rule catalogue; its findings are held against the route
+delegates' evidence sections so duplicates converge. When a pattern
+accumulates **2+ sightings beyond its founding evidence**, it gets a targeted
+sweep task of its own.
 
 Entry format: **name** · one-line cause · evidence (where it already bit, with
 commits) · where else to look (concrete greps/paths) · status.
@@ -179,6 +188,8 @@ Mark each step with commit hash + gate result when done.
 | A2 | Trend-coloured stroke from `SeriesRow::delta()` | ☐ |
 | A3 | Dashed empty states + `x-filament::link` doorways | ☐ |
 | B1 | Alpine hover crosshair + tooltip on SVG sparklines | ☐ |
+| Ledger research | Dedicated read-only bad-practices hunt (skills + guidelines + FilaCheck catalogue), report-only | ⏳ chip `task_8d7e8616` |
+| Phase-3 re-plan | Board 3 researched and planned fresh against locked decisions | ⏳ chip `task_60498699` |
 | Docs | Refresh 2R-handoff commit table + gate; current-project-state Prompt-13 row; fold flags | ✅ minimal refresh 2026-08-03 pre-push; full fold again at route end |
 | Push gate | Full pest/pint/filacheck/build; push ONLY on operator's word (deploys production) | ✅ 2026-08-03: pest 1563/19,386, full filacheck 0, build ok; pushed pinned `987b92f` (F's concurrent `b24490a` deliberately excluded); Forge release `74621206` = `987b92f`, `/up` 200 |
 
