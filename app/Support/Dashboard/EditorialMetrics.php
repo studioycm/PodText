@@ -218,7 +218,9 @@ class EditorialMetrics
      *
      * `value` is what the public can see and `of` is what the podcast published,
      * so the row reads as "visible out of published" and `percent()` needs no
-     * arithmetic in the view.
+     * arithmetic in the view. Podcasts beyond `$limit` roll into one labelled
+     * "other" row rather than being dropped, so the band's totals keep
+     * agreeing with the funnel.
      *
      * @return array<int, BreakdownRow>
      */
@@ -227,7 +229,7 @@ class EditorialMetrics
         $totals = $this->countsByGroup($this->statusPublished($contentGroupId));
         $visible = $this->countsByGroup($this->visible($contentGroupId));
 
-        return ContentGroup::query()
+        $rows = ContentGroup::query()
             ->whereKey($totals->keys())
             ->get(['id', 'title'])
             ->map(function (ContentGroup $group) use ($totals, $visible): BreakdownRow {
@@ -239,27 +241,37 @@ class EditorialMetrics
                     label: (string) $group->title,
                     value: (float) $visibleCount,
                     of: (float) $total,
-                    color: match (true) {
-                        $percent >= 100 => 'success',
-                        $percent >= 75 => 'warning',
-                        default => 'danger',
-                    },
+                    color: $this->healthColor($percent),
                     url: ContentItemResource::getUrl('index', [
                         'filters' => ['content_group_id' => ['value' => $group->getKey()]],
                     ]),
                 );
             })
             ->sortByDesc(fn (BreakdownRow $item): float => $item->of ?? 0)
-            ->take($limit)
-            ->values()
-            ->all();
+            ->values();
+
+        return $this->rollUpTail($rows, $limit, function (Collection $tail): BreakdownRow {
+            $value = $tail->sum(fn (BreakdownRow $row): float => $row->value);
+            $of = $tail->sum(fn (BreakdownRow $row): float => $row->of ?? 0.0);
+            $percent = $of > 0 ? (int) round(($value / $of) * 100) : 0;
+
+            return new BreakdownRow(
+                label: __('admin.dashboard.composition.other_podcasts', ['count' => $tail->count()]),
+                value: $value,
+                of: $of,
+                color: $this->healthColor($percent),
+                meta: ['rolled_up' => $tail->count()],
+            );
+        })->all();
     }
 
     /**
      * The spec's "transcriptions by author": who published transcripts in the
      * range, how many words, and how that compares with the previous period.
      * A multi-transcriber transcript counts in full for each of its
-     * transcribers.
+     * transcribers. Transcribers beyond `$limit` roll into one labelled
+     * "other" row whose transcripts, words and previous period stay summed,
+     * so the board still accounts for everyone who published.
      *
      * @return array<int, BreakdownRow>
      */
@@ -271,7 +283,7 @@ class EditorialMetrics
         $current = $this->transcriptionsByTranscriber($currentStart, $currentEnd, $contentGroupId);
         $previous = $this->transcriptionsByTranscriber($previousStart, $previousEnd, $contentGroupId);
 
-        return $current
+        $rows = $current
             ->map(fn (array $row, int $authorId): BreakdownRow => new BreakdownRow(
                 label: $row['label'],
                 value: (float) $row['transcriptions'],
@@ -282,9 +294,48 @@ class EditorialMetrics
                 meta: ['words' => $row['words']],
             ))
             ->sortByDesc(fn (BreakdownRow $row): float => $row->value)
-            ->take($limit)
-            ->values()
-            ->all();
+            ->values();
+
+        return $this->rollUpTail($rows, $limit, fn (Collection $tail): BreakdownRow => new BreakdownRow(
+            label: __('admin.dashboard.composition.other_transcribers', ['count' => $tail->count()]),
+            value: $tail->sum(fn (BreakdownRow $row): float => $row->value),
+            previous: $tail->sum(fn (BreakdownRow $row): float => $row->previous ?? 0.0),
+            meta: [
+                'words' => (int) $tail->sum(fn (BreakdownRow $row): int => (int) $row->meta('words', 0)),
+                'rolled_up' => $tail->count(),
+            ],
+        ))->all();
+    }
+
+    /**
+     * The no-silent-caps rule applied to breakdowns: rows beyond the limit
+     * are rolled into one summarising row built by `$makeOther`, never
+     * silently dropped, so what is on screen still sums to the whole. The
+     * roll-up row carries a `rolled_up` count in `meta` and no doorway URL,
+     * since it stands for several records at once.
+     *
+     * @param  Collection<int, BreakdownRow>  $rows
+     * @param  \Closure(Collection<int, BreakdownRow>): BreakdownRow  $makeOther
+     * @return Collection<int, BreakdownRow>
+     */
+    private function rollUpTail(Collection $rows, int $limit, \Closure $makeOther): Collection
+    {
+        if ($rows->count() <= $limit) {
+            return $rows;
+        }
+
+        $tail = $rows->slice($limit)->values();
+
+        return $rows->take($limit)->push($makeOther($tail))->values();
+    }
+
+    private function healthColor(int $percent): string
+    {
+        return match (true) {
+            $percent >= 100 => 'success',
+            $percent >= 75 => 'warning',
+            default => 'danger',
+        };
     }
 
     /**

@@ -43,12 +43,17 @@
 
                             <div class="flex items-center gap-3" data-testid="podcast-health-row">
                                 <dt class="w-40 shrink-0 truncate">
-                                    <a
-                                        href="{{ $podcast->url }}"
-                                        class="text-gray-700 hover:underline dark:text-gray-200"
-                                    >
-                                        {{ $podcast->label }}
-                                    </a>
+                                    @if ($podcast->url)
+                                        <a
+                                            href="{{ $podcast->url }}"
+                                            class="text-gray-700 hover:underline dark:text-gray-200"
+                                        >
+                                            {{ $podcast->label }}
+                                        </a>
+                                    @else
+                                        {{-- The rolled-up "other" row spans several podcasts, so it has no single doorway. --}}
+                                        <span class="text-gray-700 dark:text-gray-200">{{ $podcast->label }}</span>
+                                    @endif
                                 </dt>
                                 <dd class="flex flex-1 items-center gap-2">
                                     <div
@@ -104,12 +109,17 @@
                             @endphp
 
                             <li class="flex items-center gap-3" data-testid="transcriber-row">
-                                <a
-                                    href="{{ $item->url }}"
-                                    class="w-32 shrink-0 truncate text-gray-700 hover:underline dark:text-gray-200"
-                                >
-                                    {{ $item->label }}
-                                </a>
+                                @if ($item->url)
+                                    <a
+                                        href="{{ $item->url }}"
+                                        class="w-32 shrink-0 truncate text-gray-700 hover:underline dark:text-gray-200"
+                                    >
+                                        {{ $item->label }}
+                                    </a>
+                                @else
+                                    {{-- The rolled-up "other" row spans several transcribers, so it has no single doorway. --}}
+                                    <span class="w-32 shrink-0 truncate text-gray-700 dark:text-gray-200">{{ $item->label }}</span>
+                                @endif
                                 <span class="flex-1 text-xs text-gray-500 dark:text-gray-400">
                                     {{
                                         __('admin.dashboard.composition.transcriber_value', [

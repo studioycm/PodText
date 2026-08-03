@@ -153,6 +153,22 @@ it('renders the library composition band with podcast health and the transcriber
         ->assertDontSeeHtml('wire:poll');
 });
 
+it('rolls podcasts beyond the board limit into an other row', function (): void {
+    overviewFixture();
+
+    foreach (range(1, 6) as $index) {
+        $group = ContentGroup::factory()->published()->create(['title' => "Filler {$index}"]);
+        ContentItem::factory()->for($group)->published(now()->subHour())->create();
+    }
+
+    // Seven podcasts against the default limit of six: the tail must surface
+    // as a labelled roll-up row, and its doorway-less label must render as
+    // plain text, never as an empty-href anchor.
+    Livewire::test(LibraryCompositionWidget::class)
+        ->assertSee(__('admin.dashboard.composition.other_podcasts', ['count' => 1]))
+        ->assertDontSeeHtml('href=""');
+});
+
 it('tags every lens widget as stock or flow', function (): void {
     overviewFixture();
 

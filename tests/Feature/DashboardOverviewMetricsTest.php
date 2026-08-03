@@ -151,6 +151,60 @@ it('breaks podcast health into visible and blocked with a filtered doorway', fun
         ->and($health[0]->url)->toContain('content-items');
 });
 
+it('rolls the podcast health tail into one reconciling other row', function (): void {
+    $mixes = [
+        'Top A' => ['published' => 4, 'visible' => 4],
+        'Top B' => ['published' => 3, 'visible' => 0],
+        'Tail C' => ['published' => 2, 'visible' => 1],
+        'Tail D' => ['published' => 1, 'visible' => 0],
+    ];
+
+    foreach ($mixes as $title => $mix) {
+        $group = ContentGroup::factory()->published()->create(['title' => $title]);
+
+        foreach (range(1, $mix['published']) as $index) {
+            $item = ContentItem::factory()->for($group)->published(now()->subHour())->create();
+
+            if ($index <= $mix['visible']) {
+                Transcription::factory()->for($item)->published(now()->subHour())->create();
+            }
+        }
+    }
+
+    $metrics = app(EditorialMetrics::class);
+    $health = $metrics->podcastHealth(limit: 2);
+    $snapshot = $metrics->snapshot();
+    $other = $health[2] ?? null;
+
+    expect($health)->toHaveCount(3)
+        ->and([$health[0]->label, $health[1]->label])->toBe(['Top A', 'Top B'])
+        ->and(trans()->has('admin.dashboard.composition.other_podcasts', 'en'))->toBeTrue()
+        ->and(trans()->has('admin.dashboard.composition.other_podcasts', 'he'))->toBeTrue()
+        ->and($other->label)->toBe(__('admin.dashboard.composition.other_podcasts', ['count' => 2]))
+        ->and($other->value)->toBe(1.0)
+        ->and($other->of)->toBe(3.0)
+        ->and($other->percent())->toBe(33)
+        ->and($other->color)->toBe('danger')
+        ->and($other->url)->toBeNull()
+        ->and($other->meta('rolled_up'))->toBe(2)
+        // One number, one source: the band's totals must still agree with the
+        // funnel after the roll-up, or the cap merely became a quieter lie.
+        ->and(collect($health)->sum(fn (BreakdownRow $row): float => $row->of ?? 0.0))->toBe((float) $snapshot['funnel']['published'])
+        ->and(collect($health)->sum(fn (BreakdownRow $row): float => $row->value))->toBe((float) $snapshot['funnel']['visible']);
+});
+
+it('keeps every podcast row without an other row when the count fits the limit', function (): void {
+    foreach (['Solo A', 'Solo B'] as $title) {
+        $group = ContentGroup::factory()->published()->create(['title' => $title]);
+        ContentItem::factory()->for($group)->published(now()->subHour())->create();
+    }
+
+    $health = app(EditorialMetrics::class)->podcastHealth(limit: 2);
+
+    expect($health)->toHaveCount(2)
+        ->and(collect($health)->every(fn (BreakdownRow $row): bool => $row->meta('rolled_up') === null))->toBeTrue();
+});
+
 it('ranks transcribers by published transcriptions with words and a previous period', function (): void {
     $group = ContentGroup::factory()->published()->create();
     $item = ContentItem::factory()->for($group)->published(now()->subDay())->create();
@@ -175,6 +229,45 @@ it('ranks transcribers by published transcriptions with words and a previous per
         ->and($board[0]->delta())->toBe(1)
         ->and($board[0]->url)->toContain('transcriber_id')
         ->and($board[0]->meta('words'))->toBe(5);
+});
+
+it('rolls the transcriber board tail into one row keeping words and deltas', function (): void {
+    $group = ContentGroup::factory()->published()->create();
+    $item = ContentItem::factory()->for($group)->published(now()->subDay())->create();
+    $inRange = Carbon::parse('2026-07-30 09:00', 'Asia/Jerusalem');
+
+    foreach (['Dana' => 3, 'Ben' => 2, 'Carol' => 1, 'Dave' => 1] as $name => $count) {
+        $author = Author::factory()->create(['name' => $name]);
+
+        foreach (range(1, $count) as $ignored) {
+            Transcription::factory()->for($item)->forAuthor($author)
+                ->published($inRange)
+                ->create(['transcript_markdown' => 'one two three']);
+        }
+    }
+
+    // Carol also published in the previous period, so the rolled-up row must
+    // keep an honest previous/delta rather than resetting the tail to zero.
+    Transcription::factory()->for($item)
+        ->forAuthor(Author::query()->where('name', 'Carol')->firstOrFail())
+        ->published(Carbon::parse('2026-07-22 09:00', 'Asia/Jerusalem'))
+        ->create(['transcript_markdown' => 'earlier transcript body']);
+
+    $board = app(EditorialMetrics::class)->transcriberBoard(DashboardRange::Last7Days, limit: 2);
+    $other = $board[2] ?? null;
+
+    expect($board)->toHaveCount(3)
+        ->and([$board[0]->label, $board[1]->label])->toBe(['Dana', 'Ben'])
+        ->and(trans()->has('admin.dashboard.composition.other_transcribers', 'en'))->toBeTrue()
+        ->and(trans()->has('admin.dashboard.composition.other_transcribers', 'he'))->toBeTrue()
+        ->and($other->label)->toBe(__('admin.dashboard.composition.other_transcribers', ['count' => 2]))
+        ->and($other->value)->toBe(2.0)
+        ->and($other->previous)->toBe(1.0)
+        ->and($other->delta())->toBe(1)
+        ->and($other->meta('words'))->toBe(6)
+        ->and($other->meta('rolled_up'))->toBe(2)
+        ->and($other->url)->toBeNull()
+        ->and(collect($board)->sum(fn (BreakdownRow $row): float => $row->value))->toBe(7.0);
 });
 
 it('types the activity stream and filters it by chip and by day', function (): void {

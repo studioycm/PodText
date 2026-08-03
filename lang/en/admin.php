@@ -127,6 +127,8 @@ return [
             'transcribers_hint' => 'Transcripts published in range, against the previous period.',
             'transcribers_empty' => 'No transcripts were published in this range.',
             'transcriber_value' => ':count transcripts · :words words',
+            'other_podcasts' => 'Other podcasts (:count)',
+            'other_transcribers' => 'Other transcribers (:count)',
         ],
         'gap' => [
             'heading' => 'Publication gap',

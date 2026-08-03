@@ -127,6 +127,8 @@ return [
             'transcribers_hint' => 'תמלולים שפורסמו בטווח, מול התקופה הקודמת.',
             'transcribers_empty' => 'לא פורסמו תמלולים בטווח הזה.',
             'transcriber_value' => ':count תמלולים · :words מילים',
+            'other_podcasts' => 'פודקאסטים נוספים (:count)',
+            'other_transcribers' => 'מתמללים נוספים (:count)',
         ],
         'gap' => [
             'heading' => 'פער הפרסום',
