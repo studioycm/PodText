@@ -362,8 +362,28 @@ commits) · where else to look (concrete greps/paths) · status.
   data objects, `HtmlString` builders, Livewire component classes — checked
   against the theme's `@source` globs; any future style home added outside
   `app/Filament`/`resources` needs a glob and a scan-scope pin.
-- **Status:** instance fixed + pinned (`b9825c6`); the general check rides
-  the scan-scope test. The related dormant-arm note is resolved (`1efeb35`):
+- **Sightings #2 + #3 (2026-08-03, scan-scope research, ACTUAL — live in
+  production now, predating this route's push):**
+  `SafeMarkdownRenderer.php:30,35` — the entire public prose contract
+  (`[&_h1]:`, `[&_a]:`, `[&_blockquote]:` …) is absent from BOTH compiled
+  themes (0 hits in the built assets), so public markdown/about/transcript
+  prose renders with Preflight-flattened defaults; and
+  `PublicItemPageRegistry.php:249-280` — badge size/colour/identity maps
+  absent from the compiled public theme (the *delegation variant*: the
+  scanned page `ShowContentItem.php:381-401` delegates to the unscanned
+  registry — the literal's home decides scanning, not the renderer's).
+  POTENTIAL, accidental-coverage-only: `PublicFrontIconRegistry.php:276+`
+  and `PublicContentCardOptions.php:111-146` (admin). Structural: admin
+  scans `app/Enums`, public does not. Full analysis, policy (targeted globs
+  as a shared root list + DB-token invariant + discovery guard
+  `ThemeScanScopeTest`), and the FilaCheck blind-spot proof (its single
+  theme rule is Blade-only and permanently silent once any theme exists):
+  `docs/research/tailwind-scan-scope-research.md` (`57027b1`).
+- **Status:** first instance fixed + pinned (`b9825c6`); research merged
+  2026-08-03 — the **scan-scope fix chip** (four glob additions to the two
+  themes, `npm run build`, the discovery guard, sentinel probes per operator
+  choice) is queued to ride BEFORE the route-end push so the push ships the
+  public-prose fix. The related dormant-arm note is resolved (`1efeb35`):
   `bandClass()` stays deliberately case-complete — only the visible band
   renders today, the arms were born whole in `4bd4030` with no renderer ever
   added or removed (`git -S`), a partial match would put
@@ -531,7 +551,8 @@ Mark each step with commit hash + gate result when done.
 | A4 | Make the Board-2 reason-bar doorway promise true (unpinned-promise fix) | ✅ `c36f6c4` — on-board dispatch into the queue's reason filter (URL form vendor-proven infeasible); unpinned-promise closed. **Orchestrator-verified 2026-08-03: pest 1587/19,563 direct run (identical to claim), pint --test pass, full filacheck 0, tree clean.** Follow-up `1efeb35` resolved bandClass keep-vs-delete (keep, docblock-only, `git -S` evidence) |
 | B1 | Alpine hover crosshair + tooltip on SVG sparklines | ✅ `168a618` (hover layer) + `87aa8bf` (browser evidence) + `cbee0d3` (docs). **Orchestrator-verified 2026-08-03: pest 1594/19,614 direct run (identical to claim), pint --test pass, full filacheck 0, tree clean** |
 | Naming | Retire bare P-number ids: pattern slugs + aliases, ES- prefix for design principles, convention block | ✅ `27c5f3b` |
-| Scan-scope research | How Filament/FilamentExamples/LaravelDaily recommend Tailwind source scanning for class-emitting PHP (enums, Livewire, presenters, DB-driven templates) → policy + guard recommendation (`unscanned-home` follow-through) | ⏳ chip `task_30ef637c` |
+| Scan-scope research | Tailwind source-scanning research → policy + guard recommendation (`unscanned-home` follow-through) | ✅ merged 2026-08-03 — deliverable `57027b1`; found 2 ACTUAL live public-styling gaps + 2 POTENTIAL + the FilaCheck blind-spot proof; policy chosen: targeted globs hardened by a discovery guard |
+| Scan-scope fix | Four glob additions (both themes) + build + `ThemeScanScopeTest` discovery guard (+ operator-scoped extras) — ships the public-prose fix with the route-end push | ⏳ queued; scoping decisions with operator |
 | Principles docs | Co-created widget principles (14, merged ES + route-earned) + dashboard governance principles (7) with pointers and ledger shrink | ✅ 2026-08-03, this commit |
 | Ledger research | Dedicated read-only bad-practices hunt (skills + guidelines + FilaCheck catalogue), report-only | ✅ merged 2026-08-03 — 7 findings + flags curated: decorative-cap/service-hop-cost/client-payload promoted, unrouted-enum gained two tier-variant sightings, raw-state public-tier all-clear, implicit-keys queryStringIdentifier grep retired, security battery zero ACTUAL. Coverage gaps it declared: ~74/89 Blade views grep-only, importer connector internals, browser-test contents |
 | Operator decisions | **Decided 2026-08-03:** Q2 per-failed-import · Q3 podcast filter hidden on Intake · Q4 **overruled — phase 3 adds a minimal read-only imports listing** · Q6 warnings widget stays on both lenses · **Q7 INVERT the global Select preload default** (bounded sets opt in; scope-extended to the running fix-batch session). **Q5 RESOLVED 2026-08-03:** the dossier principles were recovered from the phase-1 session transcript and archived into the combined plan; no conflict with the built board. **Q1 DECIDED 2026-08-03:** declare-at-upload now (provider column + modal source select, folded into the phase-3 reconciliation), fetch-run records in WB supersede later. **ES-1 operator qualifier registered** in the combined plan: a doorway-less number ships rather than being dropped when no filterable surface exists yet. **New (2026-08-03, from the fix-batch guard):** SettingsBackupPolicy — create a policy for `SettingsBackupResource`'s live DeleteAction, or keep it allow-listed-with-why in `ResourcePolicyCoverageTest` under the all-admins-equal model | 🟡 updated 2026-08-03 |
