@@ -62,7 +62,15 @@ enum DashboardTier: string implements HasColor, HasDescription, HasIcon, HasLabe
         };
     }
 
-    /** Tailwind classes for a soft-filled band in this tier's colour. */
+    /**
+     * Tailwind classes for a soft-filled band in this tier's colour.
+     *
+     * Deliberately case-complete like every tier vocabulary here, although
+     * only the invisible band renders today (gap bar and funnel gap button).
+     * A partial match would put UnhandledMatchError in reach of any future
+     * all-tiers loop, and the admin theme's app/Enums @source glob keeps the
+     * dormant arm compiled — same resolution as FunnelStage::bandClass().
+     */
     public function bandClass(): string
     {
         return match ($this) {

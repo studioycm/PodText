@@ -331,7 +331,11 @@ commits) · where else to look (concrete greps/paths) · status.
   renders today, the arms were born whole in `4bd4030` with no renderer ever
   added or removed (`git -S`), a partial match would put
   `UnhandledMatchError` in reach of future all-stages loops, and the docblock
-  now says so in place.
+  now says so in place. Same-shaped sibling (A-session report-only nudge,
+  verified by grep and resolved identically 2026-08-03):
+  `DashboardTier::Attention->bandClass()` is dormant — only
+  `Invisible->bandClass()` renders (gap bar, funnel gap button); kept
+  case-complete with the mirrored docblock.
 
 ## P14 · Guard incantation attached to a mechanism that isn't in play
 
