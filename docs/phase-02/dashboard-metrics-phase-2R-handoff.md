@@ -181,7 +181,25 @@ renders panel-native `wire:click` bars, and `BlockersQueueWidget` receives
 filter form's field state, honouring the deferred-filters default. Both
 ends validate the value; tests pin rows, dispatch and queue narrowing.
 
-**B1** · Alpine hover crosshair and tooltip on our SVG. ~4–6 h.
+**B1** · *Done 2026-08-03 (`168a618`, browser evidence `87aa8bf`).* The
+funnel sparklines carry an Alpine-local hover layer in the partial (its
+single home): a crosshair line inside the existing svg snapping to the
+nearest point, a tooltip whose day-first labels and grouped values are
+rendered server-side through `UiFormats` into per-point data attributes
+(`SeriesRow` now carries the range's Jerusalem `days` aligned with
+`points`, via `EditorialMetrics::sparklineRow()`), and keyboard/SR
+access — the layer is focusable with a visible ring, focus lands on the
+latest day, arrows walk the LTR axis (Home/End jump, Escape dismisses),
+`role="img"` + `aria-label` names the series on the focusable element,
+and an `aria-live` region *outside* that subtree (the role hides its own
+children) announces each day–value. Edge points anchor the tooltip
+inward so it cannot overflow the card. A misaligned or absent day list
+renders the bare svg — a wrong day can never reach a tooltip — and the
+A1/A2 geometry and literal-ban tests are untouched. Browser test drives
+hover, arrow walk, live announcements and Escape on the RTL board
+(labelled waits, Alpine boot settled, ×5 soak); the one browser nuance
+found: `x-show` applies on Alpine's frame cadence, so visibility is
+waited on as a condition, never single-read.
 
 **M1** · *Opened 2026-08-01, not started.* Media picker Storage panel — two
 findings raised while investigating the browser-test flake. **Whoever lands this
