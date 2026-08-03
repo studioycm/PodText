@@ -39,6 +39,10 @@ commits) · where else to look (concrete greps/paths) · status.
 - **Status:** dashboard-scope formats closed (`b24490a`, `UiFormats` +
   guard); app-wide sweep (63 `d/m/Y` + 7 `number_format(` grep lines, plus
   57 `H:i` lines that overlap heavily) stays parked deliberate work.
+  Orchestrator review note: the guard scans the pinned atoms only, so it
+  prevents drift-back of the consolidated formats but would not catch a
+  *novel* format literal (e.g. `j.n.Y`) — acceptable for a drift guard;
+  worth revisiting if the app-wide sweep ever lands a broader pattern set.
 
 ## P2 · An enum beside hand-written values protects nothing
 
@@ -57,7 +61,15 @@ commits) · where else to look (concrete greps/paths) · status.
   shipped untagged and `BlockersQueueWidget` had never been tagged. Fixed with
   a structural loop over every lens registration in
   `DashboardOverviewLensTest`.
-- **Status:** open as a rule; `StreamEventType` lands in phase 3.
+- **Sighting (2026-08-03, phase-3 session, ACTUAL):**
+  `app/Livewire/Admin/MediaPickerPanel.php:1305` hand-writes the disposition
+  ternary `'reused' : 'created'` beside `MediaAcquisitionDisposition` (line
+  674 already uses the enum instance) — an unrouted call site of an existing
+  enum. The phase-3 plan's Task 8 (E4 pair) routes it through the enum.
+- **Status:** open as a rule; `StreamEventType` lands in phase 3. Two
+  sightings now on the ledger — per protocol this pattern is **sweep-eligible**;
+  the sweep is deferred until the bad-practices research report lands so one
+  sweep covers all its instances.
 
 ## P3 · Live unvalidated state read raw
 
@@ -178,6 +190,52 @@ commits) · where else to look (concrete greps/paths) · status.
 - **Status:** recurring; formats instance closed (`b24490a`, `UiFormats`).
   `StreamEventType` (phase 3) and intake provider strings remain.
 
+## P11 · Docblock promises behavior no test pins
+
+*(Promoted 2026-08-03 from a phase-3-session candidate, `7ffcaa5`.)*
+
+- **Cause:** a docblock/comment states a behavioral invariant that no test
+  asserts, so the code drifts from the promise and every reader inherits a
+  false belief.
+- **Evidence (ACTUAL):** `EditorialMetrics::reasonBreakdown()` promises rows
+  carry "the queue doorway filtered to that reason", but the built URL is
+  `ContentItemResource::getUrl('index', ['filters' => ['content_group_id' => …]])`
+  — no reason key, and `ContentItemsTable` has no reason filter to receive
+  one, so all four Board-2 reason bars open the same unfiltered list.
+  User-visible on Board 2.
+- **Where else:** dashboard docblocks claiming doorway/filter behavior
+  (`grep -rn "filtered to\|doorway" app/Support/Dashboard app/Filament/Widgets`)
+  cross-checked against URL-shape assertions in tests; any comment of the
+  form "so that X happens" with no test named for X.
+- **Status:** open — the fix is routed into this route's **A block as A4**
+  (make the promise true, preferring real reason filtering; else correct the
+  docblock and the UX). The phase-3 plan already asserts its own doorway URL
+  shapes because of this sighting.
+
+## P12 · Binding-by-reference to an unarchived source
+
+*(Promoted 2026-08-03 from a phase-3-session candidate, `7ffcaa5`.)*
+
+- **Cause:** a doc declares an external artifact's content binding without
+  restating it, so the "contract" has no readable text to enforce — kin of
+  P2's generalized form: a contract enforced only where its text happens to
+  exist protects nothing.
+- **Evidence (ACTUAL):** `dashboard-metrics-combined-ux-plan.md`'s
+  honesty-audit row declares "Empty-state designs and principles P1–P7 …
+  binding for every widget's build spec", but the P1–P7 text exists in no
+  repo file, and neither linked artifact contains it (both fetched and
+  searched 2026-08-03 by the phase-3 session; the principles were authored
+  in an earlier, unlinked design pass). The phase-3 plan restates concrete
+  per-widget empty states instead of citing P1–P7.
+- **Where else:** `grep -rn "claude.ai/code/artifact" docs/phase-02`
+  cross-checked against "binding"/"principles"/"declared" claims near the
+  links; any spec sentence of the form "as designed in the mockup" with no
+  repo copy.
+- **Status:** open — operator decision requested (phase-3 plan open question
+  5): supply the original P1–P7 text into the combined plan, or accept the
+  plan's restated empty states as the binding source. A3's empty-state work
+  should follow whichever is chosen.
+
 ---
 
 ## Route checklist (2026-08-03 round)
@@ -194,10 +252,11 @@ Mark each step with commit hash + gate result when done.
 | F1-pre | Pin format-count definition (pattern set, paths, recorded number) | ✅ pinned in the guard docblock (`b24490a`): `d/m/Y`+`H:i`+`number_format(`, 3 dashboard paths, 7 date + 5 number = 12 |
 | F1 | Localization home beside `UiTimezone` + statement-scanned anti-drift guard | ✅ `b24490a` — `UiFormats` + `UiFormatsPolicyTest`; guard watched red on exactly the 12 sites |
 | F2 | Adopt across widgets/Blade/DTOs + near-midnight fixture | ✅ `b24490a` — all 12 routed; 00:30 fixture proven discriminating (UTC-day expectation fails) |
-| F3 | "Group other" bucketing via `BreakdownRow::meta` | ✅ `b3d6de4` — `rollUpTail` in `EditorialMetrics`, totals reconcile; F gate: full pest 1,571/19,430, pint, filacheck 0, build ok |
+| F3 | "Group other" bucketing via `BreakdownRow::meta` | ✅ `b3d6de4` — `rollUpTail` in `EditorialMetrics`, totals reconcile; F gate: full pest 1,571/19,430, pint, filacheck 0, build ok. **Orchestrator-verified 2026-08-03: identical numbers from a direct run (pest 1571/19,430, pint --test pass, full filacheck 0, tree clean)** |
 | A1 | Sparkline min/max normalisation (defect) | ☐ |
 | A2 | Trend-coloured stroke from `SeriesRow::delta()` | ☐ |
 | A3 | Dashed empty states + `x-filament::link` doorways | ☐ |
+| A4 | Make the Board-2 reason-bar doorway promise true (P11 fix) | ☐ added 2026-08-03 from `7ffcaa5` finding |
 | B1 | Alpine hover crosshair + tooltip on SVG sparklines | ☐ |
 | Ledger research | Dedicated read-only bad-practices hunt (skills + guidelines + FilaCheck catalogue), report-only | ⏳ chip `task_8d7e8616` |
 | Phase-3 re-plan | Board 3 researched and planned fresh against locked decisions | 🟡 plan landed (`7183996`) but ran pre-A/B (orchestrator sequencing error — "after push" followed literally once the push moved mid-route); held as DRAFT, reconciliation pass against landed A/B patterns at route end |
@@ -258,58 +317,6 @@ Notes for the next session:
 
 ---
 
-## Candidate entries — phase-3 re-plan session, 2026-08-03 (for orchestrator curation)
-
-Contributed per the side-session protocol; not numbered, so existing entries
-stay stable. Evidence detail also appears in the session's final-report
-"open flags + pattern evidence" section.
-
-### Candidate · Binding-by-reference to an unarchived source
-
-- **Cause:** a doc declares an external artifact's content binding without
-  restating it, so the "contract" has no readable text to enforce — kin of
-  P2's generalized form (a contract enforced only where its text happens to
-  exist protects nothing).
-- **Evidence (ACTUAL):** `dashboard-metrics-combined-ux-plan.md` honesty-audit
-  row declares "Empty-state designs and principles P1–P7 … binding for every
-  widget's build spec", but the P1–P7 text exists nowhere in the repo, and
-  neither linked artifact contains it (both fetched and searched 2026-08-03:
-  the EN combined design and the six-visual-options mockups reference or
-  omit the list; the principles were authored in an earlier, unlinked design
-  pass). The phase-3 plan restates concrete per-widget empty states instead
-  of citing P1–P7.
-- **Where else:** grep active docs for binding references to artifact-only
-  content (`grep -rn "claude.ai/code/artifact" docs/phase-02` cross-checked
-  against "binding"/"principles"/"declared" claims near them); any spec
-  sentence of the form "as designed in the mockup" with no repo copy.
-- **Status:** candidate; operator asked (phase-3 plan open question 5) to
-  either supply the original text into the combined plan or accept the
-  restated empty states as the binding source.
-
-### Candidate · Docblock promises a doorway filter the URL does not carry
-
-- **Cause:** a docblock/comment states a behavioral invariant ("filtered to
-  that reason") that no test pins, so the code drifts from the promise and
-  every reader inherits a false belief.
-- **Evidence (ACTUAL):** `EditorialMetrics::reasonBreakdown()` says the rows
-  each carry "the queue doorway filtered to that reason", but the built URL
-  is `ContentItemResource::getUrl('index', ['filters' => ['content_group_id' => …]])`
-  — no reason key, and `ContentItemsTable` has no reason filter to receive
-  one, so all four reason bars open the same unfiltered list. User-visible on
-  Board 2.
-- **Where else:** dashboard docblocks claiming doorway/filter behavior
-  (`grep -rn "filtered to\|doorway" app/Support/Dashboard app/Filament/Widgets`)
-  cross-checked against URL-shape assertions in tests; the phase-3 plan
-  asserts its own doorway URLs (gallery `tab`+`filters[reason]`, submissions
-  `filters[status]`) precisely because of this sighting.
-- **Status:** candidate; the Board-2 fix itself is orchestrator-owned (either
-  filter the doorway for real — needs a ContentItems reason filter — or
-  correct the docblock).
-
-### Sighting under P2 (not a new entry)
-
-- `app/Livewire/Admin/MediaPickerPanel.php:1305` hand-writes the disposition
-  ternary `'reused' : 'created'` beside `MediaAcquisitionDisposition`
-  (line 674 already uses the enum instance) — an unrouted call site of an
-  existing enum, ACTUAL. The phase-3 plan's Task 8 (E4 pair) routes it
-  through the enum and adds the label contracts.
+*Curation note (2026-08-03): the phase-3 session's contributed candidates
+(`7ffcaa5`) were promoted to P11/P12 and its P2 sighting folded in above;
+the raw candidate section was absorbed and removed.*
