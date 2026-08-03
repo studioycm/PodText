@@ -2130,20 +2130,25 @@ git commit -m "docs(dashboard): record phase 3 (Intake lens) as implemented"
    always show imports; (c) scope nothing and drop the filter until WB records
    provider at import time. If (c), delete the `source` key and the Select —
    the plan isolates them for exactly that reversal.
-2. **Queue granularity (D-2).** Implemented: one entry per failed import
+2. **Queue granularity (D-2).** **DECIDED 2026-08-03: per failed import, as
+   planned.** Implemented: one entry per failed import
    (failure CSV as the fix artifact). Alternative: one entry per
    `FailedImportRow` with `validation_error` as the line — honest only if the
    row-number-less display is acceptable, and it floods the queue on a bad
    CSV. Flip = swap the `imports` branch of `intakeQueue()` to query
    `FailedImportRow` directly.
-3. **Podcast filter hidden on Intake (D-5).** Decision 7 locked only the
+3. **Podcast filter hidden on Intake (D-5).** **DECIDED 2026-08-03: hidden,
+   as planned.** Decision 7 locked only the
    range; hiding the podcast select follows G1 and the mockup. If the operator
    wants it visible-but-inert instead, remove the podcast `->visible()`
    closure — nothing else changes.
-4. **Imports have no "view all" surface.** Submissions overflow doorways to
-   the filtered Resource; imports have no admin listing until WB. Acceptable
-   asymmetry, or should phase 3 add a minimal read-only imports listing?
-   (Plan's position: WB scope, not dashboard scope.)
+4. **Imports have no "view all" surface.** **DECIDED 2026-08-03: the plan's
+   position is OVERRULED — phase 3 adds a minimal read-only imports listing**
+   so the queue has a "view all" doorway for imports too. Fold into the
+   reconciliation pass as a new task (read-only Resource or simple page;
+   scope stays minimal — listing, not management).** Original question:**
+   submissions overflow doorways to the filtered Resource; imports have no
+   admin listing until WB.
 5. **Empty-state principles ES-1–ES-7 are unrecoverable as text.** They exist only
    by reference in the combined plan (the artifact they came from does not
    contain them either — verified by fetching both linked artifacts). This
@@ -2152,8 +2157,8 @@ git commit -m "docs(dashboard): record phase 3 (Intake lens) as implemented"
    `docs/phase-02/dashboard-metrics-combined-ux-plan.md`; any conflict with
    the empty states specced here should be resolved before Task 4.
 6. **`PublicFormTargetWarningsWidget` stays on Intake** (self-hiding,
-   intake-adjacent). Confirm or drop from the Intake list (one-line change in
-   `getWidgetsForLens()`).
+   intake-adjacent). **DECIDED 2026-08-03: confirmed — stays on Overview and
+   Intake.**
 
 ## Research references
 
