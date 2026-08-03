@@ -171,10 +171,10 @@ Mark each step with commit hash + gate result when done.
 | V2 | `OwnerImageWorkspaceTest` standalone ×10; close or spawn fix | ✅ 10/10 clean; closed in M2 brief |
 | V3 | Pagination-key + dashboard row keys didn't shift component-key assertions | ✅ pinned by tests, all green, no vacuous asserts |
 | V4 | Close M1/M2 in media brief; guard-or-document dynamic settings writes | ✅ guarded (SettingsRowInvariantTest) |
-| F1-pre | Pin format-count definition (pattern set, paths, recorded number) | ☐ |
-| F1 | Localization home beside `UiTimezone` + statement-scanned anti-drift guard | ☐ |
-| F2 | Adopt across widgets/Blade/DTOs + near-midnight fixture | ☐ |
-| F3 | "Group other" bucketing via `BreakdownRow::meta` | ☐ |
+| F1-pre | Pin format-count definition (pattern set, paths, recorded number) | ⏳ delegated (chip `task_cf5972af`, 2026-08-03) |
+| F1 | Localization home beside `UiTimezone` + statement-scanned anti-drift guard | ⏳ delegated (same chip) |
+| F2 | Adopt across widgets/Blade/DTOs + near-midnight fixture | ⏳ delegated (same chip) |
+| F3 | "Group other" bucketing via `BreakdownRow::meta` | ⏳ delegated (same chip) |
 | A1 | Sparkline min/max normalisation (defect) | ☐ |
 | A2 | Trend-coloured stroke from `SeriesRow::delta()` | ☐ |
 | A3 | Dashed empty states + `x-filament::link` doorways | ☐ |
