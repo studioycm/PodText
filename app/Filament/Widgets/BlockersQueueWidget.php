@@ -83,7 +83,7 @@ class BlockersQueueWidget extends TableWidget
             ->query(
                 $metrics
                     ->queueQuery($podcastId)
-                    ->with(['contentGroup.categories', 'categories'])
+                    ->with('contentGroup')
                     ->latest('content_items.published_at'),
             )
             ->paginated([10, 25])

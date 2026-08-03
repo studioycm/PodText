@@ -17,6 +17,7 @@ use App\Models\User;
 use App\Support\Dashboard\EditorialMetrics;
 use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Livewire\Livewire;
 
 uses(RefreshDatabase::class);
@@ -94,6 +95,80 @@ it('lists blocked published items in the queue with the visible item absent', fu
     Livewire::test(BlockersQueueWidget::class)
         ->assertCanSeeTableRecords([$fixture['blocked']])
         ->assertCanNotSeeTableRecords([$fixture['visible'], $fixture['draft']]);
+});
+
+it('renders a blockers queue page within a fixed query budget', function (): void {
+    $group = ContentGroup::factory()->published()->create();
+
+    // 25 queue rows shaped like the ones that made the reasons column spend
+    // four queries per record: published under a published group, no
+    // transcription, no media, no category anywhere.
+    ContentItem::factory()
+        ->count(25)
+        ->for($group)
+        ->published(now()->subHour())
+        ->create(['embed_url' => null, 'media_url' => '']);
+
+    $this->actingAs(User::factory()->admin()->create());
+
+    $component = Livewire::test(BlockersQueueWidget::class);
+
+    $queries = 0;
+    DB::listen(function () use (&$queries): void {
+        $queries++;
+    });
+
+    $component->set('tableRecordsPerPage', 25);
+
+    // One table update at 25 rows must stay flat: the page fetch carries the
+    // blocker facts itself, so the reasons column adds nothing per record.
+    // Measured 3 queries against the fix; the per-row shape spent 105. Any
+    // per-record query returning here adds 25+ and fails loudly.
+    expect($queries)->toBeLessThanOrEqual(6);
+});
+
+it('computes identical blocker reasons from primed queue rows and bare records', function (): void {
+    $publishedGroup = ContentGroup::factory()->published()->create();
+
+    $bare = ContentItem::factory()->for($publishedGroup)->published(now()->subHour())
+        ->create(['embed_url' => null, 'media_url' => '']);
+
+    $withOwnCategory = ContentItem::factory()->for($publishedGroup)->published(now()->subHour())
+        ->create(['embed_url' => null, 'media_url' => '']);
+    $withOwnCategory->categories()->attach(Category::factory()->create());
+
+    $draftGroup = ContentGroup::factory()->create();
+    $underDraftGroup = ContentItem::factory()->for($draftGroup)->published(now()->subHour())
+        ->create(['embed_url' => 'https://open.spotify.com/episode/complete']);
+    $underDraftGroup->categories()->attach(Category::factory()->create());
+    Transcription::factory()->for($underDraftGroup)->published(now()->subHour())->create();
+
+    $groupWithCategory = ContentGroup::factory()->published()->create();
+    $groupWithCategory->categories()->attach(Category::factory()->create());
+    $inheritsCategory = ContentItem::factory()->for($groupWithCategory)->published(now()->subHour())
+        ->create(['embed_url' => null, 'media_url' => '']);
+
+    $expected = [
+        $bare->getKey() => ['missing_transcription', 'missing_media', 'missing_category'],
+        $withOwnCategory->getKey() => ['missing_transcription', 'missing_media'],
+        $underDraftGroup->getKey() => ['unpublished_group'],
+        $inheritsCategory->getKey() => ['missing_transcription', 'missing_media'],
+    ];
+
+    $metrics = app(EditorialMetrics::class);
+    $rows = $metrics->queueQuery()->get()->keyBy(fn (ContentItem $row): int => $row->getKey());
+
+    expect($rows->keys()->sort()->values()->all())->toBe(array_keys($expected));
+
+    // A queue row answers from its own fetched facts; a bare record answers
+    // from bounded per-record queries. Both sourcing paths must agree, in the
+    // DashboardReason contract order.
+    foreach ($expected as $id => $reasons) {
+        $row = $rows->get($id);
+
+        expect($metrics->blockerReasonsFor($row))->toBe($reasons)
+            ->and($metrics->blockerReasonsFor($row->fresh()))->toBe($reasons);
+    }
 });
 
 it('never polls and links stats to resource urls', function (): void {

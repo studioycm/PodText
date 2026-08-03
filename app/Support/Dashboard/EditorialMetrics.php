@@ -23,6 +23,7 @@ use App\Support\Dashboard\Data\Heatmap;
 use App\Support\Dashboard\Data\Rate;
 use App\Support\Dashboard\Data\SeriesRow;
 use App\Support\UiTimezone;
+use Closure;
 use Filament\Actions\Imports\Models\Import;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
@@ -318,10 +319,10 @@ class EditorialMetrics
      * since it stands for several records at once.
      *
      * @param  Collection<int, BreakdownRow>  $rows
-     * @param  \Closure(Collection<int, BreakdownRow>): BreakdownRow  $makeOther
+     * @param  Closure(Collection<int, BreakdownRow>): BreakdownRow  $makeOther
      * @return Collection<int, BreakdownRow>
      */
-    private function rollUpTail(Collection $rows, int $limit, \Closure $makeOther): Collection
+    private function rollUpTail(Collection $rows, int $limit, Closure $makeOther): Collection
     {
         if ($rows->count() <= $limit) {
             return $rows;
@@ -509,34 +510,53 @@ class EditorialMetrics
     }
 
     /**
-     * Everything either tier wants worked on — the queue population. Rows carry
-     * their own reasons, so the queue stays one list across both tiers.
+     * Everything either tier wants worked on — the queue population. Rows
+     * carry their own reasons literally: the page fetch computes the blocker
+     * facts as EXISTS columns, so {@see blockerReasonsFor} answers for a whole
+     * rendered page without another query. The widget's query-budget test
+     * pins that flatness.
      *
      * @return Builder<ContentItem>
      */
     public function queueQuery(?int $contentGroupId = null): Builder
     {
-        return $this->statusPublished($contentGroupId)->where(function (Builder $query): void {
-            $query
-                ->whereDoesntHave('transcriptions', fn (Builder $inner): Builder => $inner->published())
-                ->orWhereDoesntHave('contentGroup', fn (Builder $inner): Builder => $inner->published())
-                ->orWhere(fn (Builder $inner): Builder => $this->applyMissingMedia($inner))
-                ->orWhere(fn (Builder $inner): Builder => $this->applyMissingCategory($inner));
-        });
+        return $this->statusPublished($contentGroupId)
+            ->withExists([
+                'transcriptions as has_published_transcription' => fn (Builder $inner): Builder => $inner->published(),
+                'contentGroup as has_published_group' => fn (Builder $inner): Builder => $inner->published(),
+                'contentGroup as has_content_group',
+                'contentGroup as has_group_category' => fn (Builder $inner): Builder => $inner->whereHas('categories'),
+                'categories as has_own_category',
+            ])
+            ->where(function (Builder $query): void {
+                $query
+                    ->whereDoesntHave('transcriptions', fn (Builder $inner): Builder => $inner->published())
+                    ->orWhereDoesntHave('contentGroup', fn (Builder $inner): Builder => $inner->published())
+                    ->orWhere(fn (Builder $inner): Builder => $this->applyMissingMedia($inner))
+                    ->orWhere(fn (Builder $inner): Builder => $this->applyMissingCategory($inner));
+            });
     }
 
-    /** @return array<int, string> */
+    /**
+     * A {@see queueQuery} row answers from the EXISTS facts its own fetch
+     * carried; a bare record falls back to bounded per-record relation
+     * queries (never a lazy relation attribute — multi-row hydration arms the
+     * lazy-loading guard). The reasons keep the DashboardReason order, and
+     * the parity test holds both sourcing paths to identical answers.
+     *
+     * @return array<int, string>
+     */
     public function blockerReasonsFor(ContentItem $item): array
     {
         $reasons = [];
 
-        if (! $item->transcriptions()->published()->exists()) {
+        if (! $this->blockerFact($item, 'has_published_transcription', fn (): bool => $item->transcriptions()->published()->exists())) {
             $reasons[] = 'missing_transcription';
         }
 
         // `ContentItem::scopePublished()` requires a published group, so an
         // otherwise complete episode under a draft podcast is invisible too.
-        if ($item->contentGroup === null || ! $item->contentGroup->newQuery()->published()->whereKey($item->content_group_id)->exists()) {
+        if (! $this->blockerFact($item, 'has_published_group', fn (): bool => $item->contentGroup()->published()->exists())) {
             $reasons[] = 'unpublished_group';
         }
 
@@ -544,11 +564,24 @@ class EditorialMetrics
             $reasons[] = 'missing_media';
         }
 
-        if ($item->categories()->doesntExist() && $item->contentGroup?->categories()->doesntExist()) {
+        if (
+            ! $this->blockerFact($item, 'has_own_category', fn (): bool => $item->categories()->exists())
+            && $this->blockerFact($item, 'has_content_group', fn (): bool => $item->contentGroup()->exists())
+            && ! $this->blockerFact($item, 'has_group_category', fn (): bool => $item->contentGroup()->whereHas('categories')->exists())
+        ) {
             $reasons[] = 'missing_category';
         }
 
         return $reasons;
+    }
+
+    private function blockerFact(ContentItem $item, string $attribute, Closure $fallback): bool
+    {
+        if (array_key_exists($attribute, $item->getAttributes())) {
+            return (bool) $item->getAttribute($attribute);
+        }
+
+        return $fallback();
     }
 
     public function clearanceForecast(?int $contentGroupId = null): ?Carbon
