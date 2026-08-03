@@ -9,6 +9,7 @@ use App\Filament\Widgets\Concerns\ReadsDashboardFilters;
 use App\Filament\Widgets\Concerns\ShowsLoadingSkeleton;
 use App\Models\ContentItem;
 use App\Support\Dashboard\EditorialMetrics;
+use App\Support\UiFormats;
 use App\Support\UiTimezone;
 use Filament\Actions\Action;
 use Filament\Support\Icons\Heroicon;
@@ -72,7 +73,7 @@ class BlockersQueueWidget extends TableWidget
                     ->icon(fn (string $state): Heroicon => DashboardReason::from($state)->getIcon()),
                 TextColumn::make('published_at')
                     ->label(__('admin.fields.published_at'))
-                    ->dateTime('d/m/Y H:i', UiTimezone::name()),
+                    ->dateTime(UiFormats::dateTime(), UiTimezone::name()),
             ])
             ->filters([
                 SelectFilter::make('reason')

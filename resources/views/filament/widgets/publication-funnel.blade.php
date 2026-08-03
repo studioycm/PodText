@@ -25,7 +25,7 @@
                             {{ $data['stage']->getLabel() }}
                         </a>
                         <span class="text-xl font-semibold text-gray-950 tabular-nums dark:text-white">
-                            {{ number_format($data['count']) }}
+                            {{ \App\Support\UiFormats::number($data['count']) }}
                         </span>
                     </div>
 

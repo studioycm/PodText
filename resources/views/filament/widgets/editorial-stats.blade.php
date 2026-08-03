@@ -18,7 +18,7 @@
                         {{ __("admin.dashboard.stats.{$card['key']}") }}
                     </p>
                     <p class="mt-1 text-2xl font-semibold text-gray-950 tabular-nums dark:text-white">
-                        {{ number_format($card['value']) }}
+                        {{ \App\Support\UiFormats::number($card['value']) }}
                     </p>
 
                     <div
@@ -31,7 +31,7 @@
                                 <div
                                     class="{{ $segment['bar'] }} h-1.5"
                                     style="width: {{ round(($segment['value'] / $total) * 100, 2) }}%"
-                                    title="{{ __("admin.dashboard.stats.segments.{$segment['key']}") }}: {{ number_format($segment['value']) }}"
+                                    title="{{ __("admin.dashboard.stats.segments.{$segment['key']}") }}: {{ \App\Support\UiFormats::number($segment['value']) }}"
                                 ></div>
                             @endif
                         @endforeach
@@ -41,7 +41,7 @@
                         {{
                             collect($card['segments'])
                                 ->filter(fn (array $segment): bool => $segment['value'] > 0)
-                                ->map(fn (array $segment): string => __("admin.dashboard.stats.segments.{$segment['key']}").' '.number_format($segment['value']))
+                                ->map(fn (array $segment): string => __("admin.dashboard.stats.segments.{$segment['key']}").' '.\App\Support\UiFormats::number($segment['value']))
                                 ->implode(' · ')
                         }}
                     </p>

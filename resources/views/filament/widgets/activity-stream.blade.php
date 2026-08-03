@@ -36,7 +36,7 @@
 
             @if ($day)
                 <span class="text-gray-500 dark:text-gray-400" data-testid="stream-day">
-                    {{ __('admin.dashboard.stream.on_day', ['date' => \Illuminate\Support\Carbon::parse($day)->format('d/m/Y')]) }}
+                    {{ __('admin.dashboard.stream.on_day', ['date' => \Illuminate\Support\Carbon::parse($day)->format(\App\Support\UiFormats::date())]) }}
                 </span>
             @endif
         </div>
@@ -71,7 +71,7 @@
                             dir="ltr"
                             datetime="{{ $event['at']->toIso8601String() }}"
                         >
-                            {{ $event['at']->copy()->timezone(\App\Support\UiTimezone::name())->format('d/m/Y H:i') }}
+                            {{ $event['at']->copy()->timezone(\App\Support\UiTimezone::name())->format(\App\Support\UiFormats::dateTime()) }}
                         </time>
                     </li>
                 @endforeach

@@ -109,6 +109,25 @@ it('zero fills the publication heatmap across every day of the range', function 
         ->and($heatmap->entries['2026-07-29'])->toBe(0);
 });
 
+it('buckets a near-midnight publication on its jerusalem day, not its utc day', function (): void {
+    $group = ContentGroup::factory()->published()->create();
+
+    // 00:30 on the 31st on Jerusalem walls is 21:30 on the 30th in stored
+    // UTC — inside the only window where the two days disagree. The fixed-
+    // timezone test files are a partial oracle without a fixture here: a
+    // midday timestamp buckets identically under both policies.
+    ContentItem::factory()->for($group)
+        ->published(Carbon::parse('2026-07-31 00:30', 'Asia/Jerusalem'))
+        ->create();
+
+    $heatmap = app(EditorialMetrics::class)->publicationHeatmap(DashboardRange::Last7Days);
+    $labels = collect($heatmap->cells())->pluck('label', 'day');
+
+    expect($heatmap->entries['2026-07-31'])->toBe(1)
+        ->and($heatmap->entries['2026-07-30'])->toBe(0)
+        ->and($labels['2026-07-31'])->toBe('31/07/2026');
+});
+
 it('breaks podcast health into visible and blocked with a filtered doorway', function (): void {
     $group = ContentGroup::factory()->published()->create(['title' => 'Alpha Podcast']);
 

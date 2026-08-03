@@ -114,7 +114,7 @@
                                     {{
                                         __('admin.dashboard.composition.transcriber_value', [
                                             'count' => (int) $item->value,
-                                            'words' => number_format((int) $item->meta('words', 0)),
+                                            'words' => \App\Support\UiFormats::number((int) $item->meta('words', 0)),
                                         ])
                                     }}
                                 </span>

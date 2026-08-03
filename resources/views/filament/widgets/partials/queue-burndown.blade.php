@@ -21,7 +21,7 @@
 
             @if ($tier->forecast)
                 <span>
-                    {{ __('admin.dashboard.gap.forecast', ['date' => $tier->forecast->timezone(\App\Support\UiTimezone::name())->format('d/m/Y')]) }}
+                    {{ __('admin.dashboard.gap.forecast', ['date' => $tier->forecast->timezone(\App\Support\UiTimezone::name())->format(\App\Support\UiFormats::date())]) }}
                 </span>
             @endif
         </span>

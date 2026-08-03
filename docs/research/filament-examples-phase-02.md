@@ -652,3 +652,58 @@ Custom-Designed Table with ViewColumn Cells.
   the three mounting parents re-render in independent Livewire requests, so
   request-scoped registries decide inconsistently across partial re-renders
   (the M2 stale-child class).
+
+## F1/F2 Localization Home + F3 Group-Other Research (2026-08-03)
+
+Research for the F-block: the `UiFormats` localization home beside
+`UiTimezone` (dates day-first, numbers via `Illuminate\Support\Number`), its
+statement-scanned anti-drift guard, and the F3 "group other" tail roll-up in
+`EditorialMetrics` breakdowns. Protocol: pass 1 ran four short queries at
+`limit: 8` ("dashboard stats overview widget", "table column date time
+format", "custom widget blade view data", "number formatting in table
+column") and returned Star Rating Column with ViewColumn and Modal;
+Investment Holdings Table with Styled Columns; Custom-Designed Table with
+ViewColumn Cells; Sports Group Standings Tables; Complex Orders Table with
+Query Builder Filters; Google-Analytics-Style Dashboard Widgets; Dynamic
+Checkbox Columns from Database Rows; Gantt-Style Fleet Availability Widget.
+Pass 1's 73 KB result was inspected via a structure map (all example
+names/paths) plus full snippet reads of the four surface-relevant examples
+(VisitorsPerCountry widget + view, orders StatsOverview, wealthfolio
+Performance column + HoldingsTable); the other snippets were not read in
+full. Pass 2 refined at `limit: 3` ("top list widget with other row",
+"locale aware date display", "breakdown percentage bar widget") and returned
+the Google-Analytics dashboard again, Multi-Widget Analytics Dashboard with
+Presets (`filawidgets-dashboard`), and Drag-to-Resize Collapsible Sidebar.
+
+### Headline corpus verdicts
+
+- **The F3 concept has corpus precedent in the package PodText removed.**
+  `filawidgets-dashboard`'s `RevenueByRegionWidget` sets
+  `protected ?int $itemLimit = 4` with `protected bool $groupOther = true` —
+  filawidgets' BreakdownWidget owns tail roll-up at the widget/presentation
+  layer. PodText adopted then removed that package (plan decision 14), and
+  the in-house rewrite dropped the group-other capability, leaving the bare
+  `take($limit)` cap F3 now closes. Adaptation: the roll-up moves into
+  `EditorialMetrics` (data layer), because PodText widgets must not compute;
+  `BreakdownRow::meta` carries the rolled-up row count and aggregates.
+- **The corpus demonstrates the defect patterns, not the cure.**
+  `VisitorsPerCountry` truncates with `limit(10)` and no tail signal (the
+  exact silent-cap shape), polls every 20s, and queries models from the
+  widget — all three against PodText board contracts. The orders
+  `StatsOverview` inlines `number_format()` with no locale routing — the
+  pattern F1/F2 replace. No example owns date/number formats in one home;
+  the `UiFormats` shape extends PodText's own `UiTimezone` idiom instead.
+- **Filament-native per-column number/locale formatting exists** for future
+  table-column numbers: wealthfolio's `HoldingsTable` uses
+  `TextColumn::numeric()` and `->money(fn ($record) => $record->market_locale->value)`,
+  and Boost docs confirm `->numeric(locale: ...)`. PodText's five number
+  sites are all in owned Blade views, so they route through
+  `UiFormats::number()`; `->numeric()` remains the right lever if a numeric
+  TextColumn appears later.
+- Boost `search-docs` confirmed `->dateTime($format, timezone: ...)` stays
+  the supported column signature (the F2 change swaps only the literal for
+  `UiFormats::dateTime()`), and surfaced `FilamentTimezone::set()` as a
+  panel-wide default — noted, not adopted: per-site `UiTimezone::name()` is
+  the established, guarded idiom here.
+- Access level: only `search-examples` (snippets) was available; no
+  source/read/fetch tool.

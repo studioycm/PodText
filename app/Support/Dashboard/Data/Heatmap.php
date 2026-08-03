@@ -2,6 +2,7 @@
 
 namespace App\Support\Dashboard\Data;
 
+use App\Support\UiFormats;
 use Illuminate\Support\Carbon;
 
 /**
@@ -42,7 +43,7 @@ readonly class Heatmap
             ->map(fn (int $count, string $day): array => [
                 'day' => $day,
                 'count' => $count,
-                'label' => Carbon::parse($day)->format('d/m/Y'),
+                'label' => Carbon::parse($day)->format(UiFormats::date()),
                 'level' => $count === 0 ? 0 : (int) max(1, ceil(($count / $peak) * self::LEVELS)),
                 'url' => $this->urls[$day] ?? null,
             ])
