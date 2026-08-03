@@ -7,15 +7,12 @@
             @include('filament.widgets.partials.stock-flow-tag')
         </div>
 
-        <div class="mt-4 flex flex-wrap gap-2 text-xs">
+        <div class="mt-4 flex flex-wrap gap-x-5 gap-y-2">
             @foreach ($chips as $chip)
-                <a
-                    href="{{ $chip['url'] }}"
-                    class="rounded-full border border-gray-300 px-2.5 py-1 text-gray-600 hover:border-gray-400 dark:border-white/10 dark:text-gray-300"
-                >
+                <x-filament::link :href="$chip['url']" size="sm" color="gray" :icon="$chip['icon']">
                     {{ __("admin.dashboard.composition.{$chip['key']}") }}
                     <span class="font-semibold tabular-nums">{{ $chip['value'] }}</span>
-                </a>
+                </x-filament::link>
             @endforeach
         </div>
 
@@ -29,9 +26,14 @@
                 </p>
 
                 @if (count($health) === 0)
-                    <p class="mt-3 text-xs text-gray-500 dark:text-gray-400">
-                        {{ __('admin.dashboard.composition.health_empty') }}
-                    </p>
+                    <div class="mt-3">
+                        @include('filament.widgets.partials.empty-state', [
+                            'heading' => __('admin.dashboard.composition.health_empty'),
+                            'description' => __('admin.dashboard.composition.health_empty_description'),
+                            'icon' => \Filament\Support\Icons\Heroicon::OutlinedChartBar,
+                            'testid' => 'composition-health-empty',
+                        ])
+                    </div>
                 @else
                     <dl class="mt-3 space-y-2 text-sm">
                         @foreach ($health as $podcast)
@@ -97,9 +99,14 @@
                 </p>
 
                 @if (count($transcribers) === 0)
-                    <p class="mt-3 text-xs text-gray-500 dark:text-gray-400">
-                        {{ __('admin.dashboard.composition.transcribers_empty') }}
-                    </p>
+                    <div class="mt-3">
+                        @include('filament.widgets.partials.empty-state', [
+                            'heading' => __('admin.dashboard.composition.transcribers_empty'),
+                            'description' => __('admin.dashboard.composition.transcribers_empty_description'),
+                            'icon' => \Filament\Support\Icons\Heroicon::OutlinedUsers,
+                            'testid' => 'composition-transcribers-empty',
+                        ])
+                    </div>
                 @else
                     <ul class="mt-3 space-y-2 text-sm">
                         @foreach ($transcribers as $transcriber)

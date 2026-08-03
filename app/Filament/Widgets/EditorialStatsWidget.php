@@ -4,19 +4,23 @@ namespace App\Filament\Widgets;
 
 use App\Enums\DashboardLens;
 use App\Enums\DashboardReason;
+use App\Enums\DashboardTier;
 use App\Enums\FunnelStage;
 use App\Filament\Resources\ContentItems\ContentItemResource;
 use App\Filament\Widgets\Concerns\AdminOnlyWidget;
 use App\Filament\Widgets\Concerns\ReadsDashboardFilters;
 use App\Filament\Widgets\Concerns\ShowsLoadingSkeleton;
 use App\Support\Dashboard\EditorialMetrics;
+use Filament\Support\Icons\Heroicon;
 use Filament\Widgets\Concerns\InteractsWithPageFilters;
 use Filament\Widgets\Widget;
 
 /**
  * H5 · composite stat cards. Each card carries the number, a mini composition
  * strip explaining what the number is made of, and a doorway into the Resource
- * table filtered to the same slice.
+ * table filtered to the same slice. Doorway icons come from the subject's
+ * enum home where one exists (funnel stage, tier); the rest wear the funnel
+ * icon, since their doorway opens a filtered list.
  */
 class EditorialStatsWidget extends Widget
 {
@@ -57,6 +61,7 @@ class EditorialStatsWidget extends Widget
                 [
                     'key' => 'items',
                     'value' => $items,
+                    'icon' => Heroicon::OutlinedFunnel,
                     'url' => ContentItemResource::getUrl('index', $this->scopedTableFilters()),
                     'segments' => [
                         ['key' => 'visible', 'value' => $visible, 'bar' => FunnelStage::Visible->barClass()],
@@ -69,6 +74,7 @@ class EditorialStatsWidget extends Widget
                 [
                     'key' => 'visible',
                     'value' => $visible,
+                    'icon' => FunnelStage::Visible->getIcon(),
                     'url' => ContentItemResource::getUrl('index', $this->scopedTableFilters([
                         'status' => ['value' => 'published'],
                     ])),
@@ -82,6 +88,7 @@ class EditorialStatsWidget extends Widget
                 [
                     'key' => 'invisible',
                     'value' => $gap['invisible'],
+                    'icon' => DashboardTier::Invisible->getIcon(),
                     'action' => 'openBlockers',
                     'segments' => [
                         ['key' => 'missing_transcription', 'value' => $gap['missing_transcription'], 'bar' => DashboardReason::MissingTranscription->barClass()],
@@ -91,6 +98,7 @@ class EditorialStatsWidget extends Widget
                 [
                     'key' => 'attention',
                     'value' => $attention['total'],
+                    'icon' => DashboardTier::Attention->getIcon(),
                     'action' => 'openBlockers',
                     'segments' => [
                         ['key' => 'missing_media', 'value' => $attention['missing_media'], 'bar' => DashboardReason::MissingMedia->barClass()],
@@ -100,6 +108,7 @@ class EditorialStatsWidget extends Widget
                 [
                     'key' => 'pinned',
                     'value' => $structure['pinned'],
+                    'icon' => Heroicon::OutlinedStar,
                     'url' => ContentItemResource::getUrl('index', $this->scopedTableFilters([
                         'is_pinned' => ['value' => true],
                     ])),
@@ -111,6 +120,7 @@ class EditorialStatsWidget extends Widget
                 [
                     'key' => 'multi_transcription',
                     'value' => $structure['multi_transcription'],
+                    'icon' => Heroicon::OutlinedDocumentDuplicate,
                     'url' => ContentItemResource::getUrl('index', $this->scopedTableFilters()),
                     'segments' => [
                         ['key' => 'multi_transcription', 'value' => $structure['multi_transcription'], 'bar' => 'bg-info-500'],

@@ -9,29 +9,35 @@
             {{ __('admin.dashboard.gap.rate', ['percent' => $rate->percent()]) }}
         </p>
 
-        <div class="mt-4 flex h-6 overflow-hidden rounded-lg text-xs font-semibold" dir="rtl" data-testid="gap-bar">
-            @if ($visible > 0)
-                <div
-                    class="{{ \App\Enums\FunnelStage::Visible->bandClass() }} flex items-center justify-center"
-                    style="flex: {{ $visible }}"
-                >
-                    {{ __('admin.dashboard.legend.visible') }} {{ $visible }}
-                </div>
-            @endif
-            @if ($invisible > 0)
-                <div
-                    class="{{ \App\Enums\DashboardTier::Invisible->bandClass() }} flex items-center justify-center"
-                    style="flex: {{ $invisible }}"
-                >
-                    {{ \App\Enums\DashboardTier::Invisible->getLabel() }} {{ $invisible }}
-                </div>
-            @endif
-            @if ($visible === 0 && $invisible === 0)
-                <div class="flex w-full items-center justify-center bg-gray-50 text-gray-500 dark:bg-white/5 dark:text-gray-400">
-                    {{ __('admin.dashboard.gap.nothing_published') }}
-                </div>
-            @endif
-        </div>
+        @if ($visible === 0 && $invisible === 0)
+            <div class="mt-4">
+                @include('filament.widgets.partials.empty-state', [
+                    'heading' => __('admin.dashboard.gap.nothing_published'),
+                    'description' => __('admin.dashboard.gap.nothing_published_description'),
+                    'icon' => \Filament\Support\Icons\Heroicon::OutlinedInbox,
+                    'testid' => 'gap-empty',
+                ])
+            </div>
+        @else
+            <div class="mt-4 flex h-6 overflow-hidden rounded-lg text-xs font-semibold" dir="rtl" data-testid="gap-bar">
+                @if ($visible > 0)
+                    <div
+                        class="{{ \App\Enums\FunnelStage::Visible->bandClass() }} flex items-center justify-center"
+                        style="flex: {{ $visible }}"
+                    >
+                        {{ __('admin.dashboard.legend.visible') }} {{ $visible }}
+                    </div>
+                @endif
+                @if ($invisible > 0)
+                    <div
+                        class="{{ \App\Enums\DashboardTier::Invisible->bandClass() }} flex items-center justify-center"
+                        style="flex: {{ $invisible }}"
+                    >
+                        {{ \App\Enums\DashboardTier::Invisible->getLabel() }} {{ $invisible }}
+                    </div>
+                @endif
+            </div>
+        @endif
 
         {{-- Tier 1 · the public cannot see these at all. --}}
         <h3 class="mt-5 text-xs font-semibold text-gray-700 dark:text-gray-200">

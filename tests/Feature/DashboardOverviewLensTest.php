@@ -118,6 +118,7 @@ it('renders the living funnel with per-stage sparklines and a gap doorway', func
         ->assertSeeHtml('data-testid="funnel-spark-transcribed"')
         ->assertSeeHtml(SparklineTrend::Up->strokeClass())
         ->assertSeeHtml('data-testid="funnel-gap"')
+        ->assertSeeHtml('fi-link')
         ->assertDontSeeHtml('wire:poll')
         ->call('openBlockers')
         ->assertDispatched('dashboard-filter');
@@ -126,9 +127,13 @@ it('renders the living funnel with per-stage sparklines and a gap doorway', func
 it('shows composite stat cards with a composition strip and a filtered doorway', function (): void {
     overviewFixture();
 
+    // The open control is a panel-native link for URL doorways and a
+    // panel-native button for the on-board lens switches.
     Livewire::test(EditorialStatsWidget::class)
         ->assertSeeHtml('data-testid="stat-composition-visible"')
-        ->assertSeeHtml('filters%5Bstatus%5D%5Bvalue%5D=published');
+        ->assertSeeHtml('filters%5Bstatus%5D%5Bvalue%5D=published')
+        ->assertSeeHtml('fi-link')
+        ->assertSeeHtml('wire:click="openBlockers"');
 });
 
 it('filters the activity stream to a heatmap day and to a chip', function (): void {
@@ -152,13 +157,17 @@ it('renders the library composition band with podcast health and the transcriber
     overviewFixture();
 
     // Dana's one transcript against an empty previous period trends up, and
-    // the delta colour comes from the trend enum, not a view literal.
+    // the delta colour comes from the trend enum, not a view literal. The
+    // structure chips are panel-native links carrying enum icons, so their
+    // doorway chrome is Filament's, not a hand-rolled anchor's.
     Livewire::test(LibraryCompositionWidget::class)
         ->assertSee('Alpha Podcast')
         ->assertSee('Dana')
         ->assertSeeHtml('data-testid="podcast-health-row"')
         ->assertSeeHtml('data-testid="transcriber-row"')
         ->assertSeeHtml(SparklineTrend::Up->textClass())
+        ->assertSeeHtml('fi-link')
+        ->assertSeeHtml('fi-icon')
         ->assertDontSeeHtml('wire:poll');
 });
 

@@ -47,20 +47,19 @@
                     </p>
 
                     @if (isset($card['action']))
-                        <button
-                            type="button"
+                        <x-filament::link
+                            tag="button"
+                            size="sm"
+                            :icon="$card['icon']"
                             wire:click="{{ $card['action'] }}"
-                            class="text-primary-600 dark:text-primary-400 mt-2 text-xs hover:underline"
+                            class="mt-2"
                         >
                             {{ __('admin.dashboard.stats.open') }}
-                        </button>
+                        </x-filament::link>
                     @else
-                        <a
-                            href="{{ $card['url'] }}"
-                            class="text-primary-600 dark:text-primary-400 mt-2 inline-block text-xs hover:underline"
-                        >
+                        <x-filament::link :href="$card['url']" size="sm" :icon="$card['icon']" class="mt-2">
                             {{ __('admin.dashboard.stats.open') }}
-                        </a>
+                        </x-filament::link>
                     @endif
                 </div>
             @endforeach

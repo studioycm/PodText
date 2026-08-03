@@ -35,13 +35,15 @@
         </div>
 
         @if ($selectedDay)
-            <button
-                type="button"
+            <x-filament::link
+                tag="button"
+                size="sm"
+                :icon="\Filament\Support\Icons\Heroicon::OutlinedXMark"
                 wire:click="selectDay(null)"
-                class="text-primary-600 dark:text-primary-400 mt-3 text-xs hover:underline"
+                class="mt-3"
             >
                 {{ __('admin.dashboard.heatmap.clear') }}
-            </button>
+            </x-filament::link>
         @endif
     </x-filament::section>
 </x-filament-widgets::widget>

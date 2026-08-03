@@ -17,13 +17,10 @@
                     ])
                     data-testid="funnel-segment-{{ $stage }}"
                 >
-                    <div class="flex items-baseline justify-between gap-2">
-                        <a
-                            href="{{ $data['url'] }}"
-                            class="text-xs font-medium text-gray-600 hover:underline dark:text-gray-300"
-                        >
+                    <div class="flex items-center justify-between gap-2">
+                        <x-filament::link :href="$data['url']" size="sm" color="gray" :icon="$data['stage']->getIcon()">
                             {{ $data['stage']->getLabel() }}
-                        </a>
+                        </x-filament::link>
                         <span class="text-xl font-semibold text-gray-950 tabular-nums dark:text-white">
                             {{ \App\Support\UiFormats::number($data['count']) }}
                         </span>
@@ -48,13 +45,15 @@
                             >{{ $data['delta'] > 0 ? '+' : '' }}{{ $data['delta'] }}</span>
                     </p>
 
-                    <button
-                        type="button"
+                    <x-filament::link
+                        tag="button"
+                        size="sm"
+                        :icon="\Filament\Support\Icons\Heroicon::OutlinedFunnel"
                         wire:click="selectStage('{{ $stage }}')"
-                        class="text-primary-600 dark:text-primary-400 mt-1 text-xs hover:underline"
+                        class="mt-1"
                     >
                         {{ __('admin.dashboard.funnel.focus') }}
-                    </button>
+                    </x-filament::link>
                 </div>
             @endforeach
         </div>

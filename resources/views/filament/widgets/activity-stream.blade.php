@@ -42,7 +42,14 @@
         </div>
 
         @if (count($events) === 0)
-            <p class="mt-4 text-xs text-gray-500 dark:text-gray-400">{{ __('admin.dashboard.stream.empty') }}</p>
+            <div class="mt-4">
+                @include('filament.widgets.partials.empty-state', [
+                    'heading' => __('admin.dashboard.stream.empty'),
+                    'description' => __('admin.dashboard.stream.empty_description'),
+                    'icon' => \Filament\Support\Icons\Heroicon::OutlinedBolt,
+                    'testid' => 'stream-empty',
+                ])
+            </div>
         @else
             <ul class="mt-4 divide-y divide-gray-100 dark:divide-white/5">
                 @foreach ($events as $event)

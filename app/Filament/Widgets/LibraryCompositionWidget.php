@@ -11,6 +11,7 @@ use App\Filament\Widgets\Concerns\AdminOnlyWidget;
 use App\Filament\Widgets\Concerns\ReadsDashboardFilters;
 use App\Filament\Widgets\Concerns\ShowsLoadingSkeleton;
 use App\Support\Dashboard\EditorialMetrics;
+use Filament\Support\Icons\Heroicon;
 use Filament\Widgets\Concerns\InteractsWithPageFilters;
 use Filament\Widgets\Widget;
 
@@ -18,7 +19,8 @@ use Filament\Widgets\Widget;
  * The structural counts the merged boards had lost, restored as quiet chips —
  * plus H3 (podcast health breakdown) and H9 (transcriber board, the spec's
  * "transcriptions by author"). The chips describe the whole library, so they
- * ignore the podcast scope by design; H3 and H9 honour it.
+ * ignore the podcast scope by design; H3 and H9 honour it. A chip that opens
+ * a Resource wears that Resource's own navigation icon.
  */
 class LibraryCompositionWidget extends Widget
 {
@@ -44,9 +46,24 @@ class LibraryCompositionWidget extends Widget
 
         return [
             'chips' => [
-                ['key' => 'groups', 'value' => $structure['groups'], 'url' => ContentGroupResource::getUrl('index')],
-                ['key' => 'authors', 'value' => $structure['authors'], 'url' => AuthorResource::getUrl('index')],
-                ['key' => 'categories', 'value' => $structure['categories'], 'url' => CategoryResource::getUrl('index')],
+                [
+                    'key' => 'groups',
+                    'value' => $structure['groups'],
+                    'url' => ContentGroupResource::getUrl('index'),
+                    'icon' => ContentGroupResource::getNavigationIcon(),
+                ],
+                [
+                    'key' => 'authors',
+                    'value' => $structure['authors'],
+                    'url' => AuthorResource::getUrl('index'),
+                    'icon' => AuthorResource::getNavigationIcon(),
+                ],
+                [
+                    'key' => 'categories',
+                    'value' => $structure['categories'],
+                    'url' => CategoryResource::getUrl('index'),
+                    'icon' => CategoryResource::getNavigationIcon(),
+                ],
                 [
                     'key' => 'tags',
                     'value' => __('admin.dashboard.stats.tags_value', [
@@ -54,12 +71,19 @@ class LibraryCompositionWidget extends Widget
                         'disabled' => $structure['tags_disabled'],
                     ]),
                     'url' => ContentTagResource::getUrl('index'),
+                    'icon' => ContentTagResource::getNavigationIcon(),
                 ],
-                ['key' => 'pinned', 'value' => $structure['pinned'], 'url' => ContentItemResource::getUrl('index')],
+                [
+                    'key' => 'pinned',
+                    'value' => $structure['pinned'],
+                    'url' => ContentItemResource::getUrl('index'),
+                    'icon' => Heroicon::OutlinedStar,
+                ],
                 [
                     'key' => 'multi_transcription',
                     'value' => $structure['multi_transcription'],
                     'url' => ContentItemResource::getUrl('index'),
+                    'icon' => Heroicon::OutlinedDocumentDuplicate,
                 ],
             ],
             'health' => $metrics->podcastHealth($podcastId),

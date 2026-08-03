@@ -101,6 +101,7 @@ return [
         'stream' => [
             'heading' => 'Activity stream',
             'empty' => 'No editorial activity in this range.',
+            'empty_description' => 'Transcript publications, imports, media and submissions appear here as they happen in the selected range.',
             'on_day' => 'on :date',
             'import_rows' => ':successful of :total rows',
             'types' => [
@@ -122,10 +123,12 @@ return [
             'health_heading' => 'Podcast health',
             'health_hint' => 'Of what each podcast published, how much the public can see.',
             'health_empty' => 'No podcast has published an episode yet.',
+            'health_empty_description' => 'Rows appear once a podcast has published episodes.',
             'health_value' => ':percent% visible · :blocked stuck',
             'transcribers_heading' => 'Transcriber board',
             'transcribers_hint' => 'Transcripts published in range, against the previous period.',
             'transcribers_empty' => 'No transcripts were published in this range.',
+            'transcribers_empty_description' => 'Rows appear when transcripts are published inside the selected range.',
             'transcriber_value' => ':count transcripts · :words words',
             'other_podcasts' => 'Other podcasts (:count)',
             'other_transcribers' => 'Other transcribers (:count)',
@@ -139,6 +142,7 @@ return [
             'rate' => ':percent% of published episodes are publicly visible.',
             'rate_description' => 'Share of published episodes the public can see',
             'nothing_published' => 'No published episodes yet',
+            'nothing_published_description' => 'The published-versus-visible gap appears once episodes are published.',
             'forecast' => 'At the recent transcription pace, the queue clears around :date.',
         ],
         'queue' => [

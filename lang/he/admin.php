@@ -101,6 +101,7 @@ return [
         'stream' => [
             'heading' => 'זרם פעילות',
             'empty' => 'אין פעילות עריכתית בטווח הזה.',
+            'empty_description' => 'פרסומי תמלולים, ייבוא, מדיה ופניות יופיעו כאן כשיתרחשו בטווח הנבחר.',
             'on_day' => 'בתאריך :date',
             'import_rows' => ':successful מתוך :total שורות',
             'types' => [
@@ -122,10 +123,12 @@ return [
             'health_heading' => 'בריאות הפודקאסטים',
             'health_hint' => 'מתוך מה שכל פודקאסט פרסם, כמה הציבור באמת רואה.',
             'health_empty' => 'אף פודקאסט עדיין לא פרסם פרק.',
+            'health_empty_description' => 'שורות יופיעו ברגע שפודקאסט יפרסם פרקים.',
             'health_value' => ':percent% גלויים · :blocked תקועים',
             'transcribers_heading' => 'לוח המתמללים',
             'transcribers_hint' => 'תמלולים שפורסמו בטווח, מול התקופה הקודמת.',
             'transcribers_empty' => 'לא פורסמו תמלולים בטווח הזה.',
+            'transcribers_empty_description' => 'שורות יופיעו כשיפורסמו תמלולים בטווח הנבחר.',
             'transcriber_value' => ':count תמלולים · :words מילים',
             'other_podcasts' => 'פודקאסטים נוספים (:count)',
             'other_transcribers' => 'מתמללים נוספים (:count)',
@@ -139,6 +142,7 @@ return [
             'rate' => ':percent% מהפרקים שפורסמו גלויים לציבור.',
             'rate_description' => 'שיעור הפרקים שפורסמו והציבור רואה',
             'nothing_published' => 'אין עדיין פרקים שפורסמו',
+            'nothing_published_description' => 'הפער בין פורסם לגלוי יופיע ברגע שיפורסמו פרקים.',
             'forecast' => 'בקצב התמלול הנוכחי, התור יתפנה בסביבות :date.',
         ],
         'queue' => [
