@@ -255,3 +255,61 @@ Notes for the next session:
   so its delta stays honest for the tail as displayed — it does not go
   hunting for previous-period-only transcribers the current board never
   listed.
+
+---
+
+## Candidate entries — phase-3 re-plan session, 2026-08-03 (for orchestrator curation)
+
+Contributed per the side-session protocol; not numbered, so existing entries
+stay stable. Evidence detail also appears in the session's final-report
+"open flags + pattern evidence" section.
+
+### Candidate · Binding-by-reference to an unarchived source
+
+- **Cause:** a doc declares an external artifact's content binding without
+  restating it, so the "contract" has no readable text to enforce — kin of
+  P2's generalized form (a contract enforced only where its text happens to
+  exist protects nothing).
+- **Evidence (ACTUAL):** `dashboard-metrics-combined-ux-plan.md` honesty-audit
+  row declares "Empty-state designs and principles P1–P7 … binding for every
+  widget's build spec", but the P1–P7 text exists nowhere in the repo, and
+  neither linked artifact contains it (both fetched and searched 2026-08-03:
+  the EN combined design and the six-visual-options mockups reference or
+  omit the list; the principles were authored in an earlier, unlinked design
+  pass). The phase-3 plan restates concrete per-widget empty states instead
+  of citing P1–P7.
+- **Where else:** grep active docs for binding references to artifact-only
+  content (`grep -rn "claude.ai/code/artifact" docs/phase-02` cross-checked
+  against "binding"/"principles"/"declared" claims near them); any spec
+  sentence of the form "as designed in the mockup" with no repo copy.
+- **Status:** candidate; operator asked (phase-3 plan open question 5) to
+  either supply the original text into the combined plan or accept the
+  restated empty states as the binding source.
+
+### Candidate · Docblock promises a doorway filter the URL does not carry
+
+- **Cause:** a docblock/comment states a behavioral invariant ("filtered to
+  that reason") that no test pins, so the code drifts from the promise and
+  every reader inherits a false belief.
+- **Evidence (ACTUAL):** `EditorialMetrics::reasonBreakdown()` says the rows
+  each carry "the queue doorway filtered to that reason", but the built URL
+  is `ContentItemResource::getUrl('index', ['filters' => ['content_group_id' => …]])`
+  — no reason key, and `ContentItemsTable` has no reason filter to receive
+  one, so all four reason bars open the same unfiltered list. User-visible on
+  Board 2.
+- **Where else:** dashboard docblocks claiming doorway/filter behavior
+  (`grep -rn "filtered to\|doorway" app/Support/Dashboard app/Filament/Widgets`)
+  cross-checked against URL-shape assertions in tests; the phase-3 plan
+  asserts its own doorway URLs (gallery `tab`+`filters[reason]`, submissions
+  `filters[status]`) precisely because of this sighting.
+- **Status:** candidate; the Board-2 fix itself is orchestrator-owned (either
+  filter the doorway for real — needs a ContentItems reason filter — or
+  correct the docblock).
+
+### Sighting under P2 (not a new entry)
+
+- `app/Livewire/Admin/MediaPickerPanel.php:1305` hand-writes the disposition
+  ternary `'reused' : 'created'` beside `MediaAcquisitionDisposition`
+  (line 674 already uses the enum instance) — an unrouted call site of an
+  existing enum, ACTUAL. The phase-3 plan's Task 8 (E4 pair) routes it
+  through the enum and adds the label contracts.
