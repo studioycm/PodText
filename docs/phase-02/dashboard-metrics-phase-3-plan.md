@@ -1,5 +1,14 @@
 # Dashboard Phase 3 — Board 3 · Intake Lens Implementation Plan
 
+> **STATUS: DRAFT — do not implement yet.** This plan was produced before the
+> A-block (A1 sparkline min/max normalisation, A2 trend stroke, A3 panel-native
+> empty states + `x-filament::link` doorways) and B1 (Alpine hover) landed, so
+> its widget-spec visual idioms reference the pre-A/B substrate. The data-layer
+> half (EditorialMetrics intake surface, `StreamEventType`, E4 contracts, queue
+> composition, provider filter) is unaffected. The orchestrator reconciles this
+> plan against the landed A/B patterns at route end and removes this banner;
+> only then is it implementable.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Give the Intake lens its own board — work queue (new submissions + failed import rows), Spotify connection card, media-by-finding bars — plus the `StreamEventType` enum and the Board-3 E4 enum contracts, on the phase-2R foundations.
