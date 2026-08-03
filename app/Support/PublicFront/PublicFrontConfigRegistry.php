@@ -583,7 +583,7 @@ class PublicFrontConfigRegistry
         return [
             [
                 'key' => 'home',
-                'type' => 'route',
+                'type' => PublicMenuItemType::Route->value,
                 'label' => __('public.menu.routes.home'),
                 'route_key' => 'home',
                 'visible' => true,
@@ -591,7 +591,7 @@ class PublicFrontConfigRegistry
             ],
             [
                 'key' => 'podcasts',
-                'type' => 'route',
+                'type' => PublicMenuItemType::Route->value,
                 'label' => __('public.menu.routes.podcasts'),
                 'route_key' => 'podcasts',
                 'visible' => true,
@@ -599,7 +599,7 @@ class PublicFrontConfigRegistry
             ],
             [
                 'key' => 'about',
-                'type' => 'route',
+                'type' => PublicMenuItemType::Route->value,
                 'label' => __('public.menu.routes.about'),
                 'route_key' => 'about',
                 'visible' => true,
@@ -607,7 +607,7 @@ class PublicFrontConfigRegistry
             ],
             [
                 'key' => 'request_transcription',
-                'type' => 'public_form',
+                'type' => PublicMenuItemType::PublicForm->value,
                 'label' => __('public.menu.forms.request_transcription'),
                 'form_key' => 'request_transcription',
                 'display_mode' => 'slide_over',
@@ -616,7 +616,7 @@ class PublicFrontConfigRegistry
             ],
             [
                 'key' => 'volunteer_transcriber',
-                'type' => 'public_form',
+                'type' => PublicMenuItemType::PublicForm->value,
                 'label' => __('public.menu.forms.volunteer_transcriber'),
                 'form_key' => 'volunteer_transcriber',
                 'display_mode' => 'modal',
@@ -625,7 +625,7 @@ class PublicFrontConfigRegistry
             ],
             [
                 'key' => 'theme_selector',
-                'type' => 'theme_selector',
+                'type' => PublicMenuItemType::ThemeSelector->value,
                 'label' => __('public.menu.theme'),
                 'visible' => true,
                 'sort' => 60,

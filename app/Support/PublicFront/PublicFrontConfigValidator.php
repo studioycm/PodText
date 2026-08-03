@@ -2,6 +2,7 @@
 
 namespace App\Support\PublicFront;
 
+use App\Enums\PublicFormFieldType;
 use App\Enums\PublicMenuItemType;
 use App\Support\PublicContent\PublicTranscriptionPolicy;
 use App\Support\PublicFront\About\PublicAboutBlockKey;
@@ -1219,7 +1220,7 @@ class PublicFrontConfigValidator
 
         $options = $this->normalizePublicFormFieldOptions($fieldItem['options'] ?? [], "{$fieldPath}.options", $invalidConfig);
 
-        if ($type === 'select' && $options === []) {
+        if ($type === PublicFormFieldType::Select->value && $options === []) {
             $invalidConfig[] = PublicFrontInvalidConfig::make("{$fieldPath}.options", 'options_required', $fieldItem['options'] ?? []);
 
             return null;
@@ -1241,7 +1242,7 @@ class PublicFrontConfigValidator
         }
 
         if ($this->hasOptionalValue($fieldItem['max_length'] ?? null)) {
-            $field['max_length'] = $this->integerRange($fieldItem['max_length'], "{$fieldPath}.max_length", 1, 5000, $type === 'textarea' ? 5000 : 255, $invalidConfig);
+            $field['max_length'] = $this->integerRange($fieldItem['max_length'], "{$fieldPath}.max_length", 1, 5000, $type === PublicFormFieldType::Textarea->value ? 5000 : 255, $invalidConfig);
         }
 
         if (($field['min_length'] ?? 0) > ($field['max_length'] ?? 5000)) {

@@ -257,13 +257,13 @@
 
                                         @if (in_array($field['type'], ['text', 'email', 'phone', 'url'], true))
                                             <input
-                                                type="{{ $field['type'] === 'phone' ? 'tel' : $field['type'] }}"
+                                                type="{{ $field['type'] === \App\Enums\PublicFormFieldType::Phone->value ? 'tel' : $field['type'] }}"
                                                 wire:model="data.{{ $field['key'] }}"
                                                 placeholder="{{ $field['placeholder'] }}"
                                                 class="focus:border-primary-500 focus:ring-primary-500 w-full rounded-md border-gray-300 text-sm shadow-sm dark:border-gray-700 dark:bg-gray-950"
                                                 data-test="public-form-field-{{ $field['key'] }}"
                                             />
-                                        @elseif ($field['type'] === 'textarea')
+                                        @elseif ($field['type'] === \App\Enums\PublicFormFieldType::Textarea->value)
                                             <textarea
                                                 wire:model="data.{{ $field['key'] }}"
                                                 placeholder="{{ $field['placeholder'] }}"
@@ -271,7 +271,7 @@
                                                 class="focus:border-primary-500 focus:ring-primary-500 w-full rounded-md border-gray-300 text-sm shadow-sm dark:border-gray-700 dark:bg-gray-950"
                                                 data-test="public-form-field-{{ $field['key'] }}"
                                             ></textarea>
-                                        @elseif ($field['type'] === 'select')
+                                        @elseif ($field['type'] === \App\Enums\PublicFormFieldType::Select->value)
                                             <select
                                                 wire:model="data.{{ $field['key'] }}"
                                                 class="focus:border-primary-500 focus:ring-primary-500 w-full rounded-md border-gray-300 text-sm shadow-sm dark:border-gray-700 dark:bg-gray-950"
@@ -284,7 +284,7 @@
                                                     </option>
                                                 @endforeach
                                             </select>
-                                        @elseif ($field['type'] === 'checkbox' && $field['options'] !== [])
+                                        @elseif ($field['type'] === \App\Enums\PublicFormFieldType::Checkbox->value && $field['options'] !== [])
                                             <span class="grid gap-2" data-test="public-form-field-{{ $field['key'] }}">
                                                 @foreach ($field['options'] as $option)
                                                     <label class="inline-flex items-center gap-2 text-sm text-gray-700 dark:text-gray-200">

@@ -551,17 +551,17 @@ class EditorialMetrics
         $reasons = [];
 
         if (! $this->blockerFact($item, 'has_published_transcription', fn (): bool => $item->transcriptions()->published()->exists())) {
-            $reasons[] = 'missing_transcription';
+            $reasons[] = DashboardReason::MissingTranscription->value;
         }
 
         // `ContentItem::scopePublished()` requires a published group, so an
         // otherwise complete episode under a draft podcast is invisible too.
         if (! $this->blockerFact($item, 'has_published_group', fn (): bool => $item->contentGroup()->published()->exists())) {
-            $reasons[] = 'unpublished_group';
+            $reasons[] = DashboardReason::UnpublishedGroup->value;
         }
 
         if (blank($item->embed_url) && blank($item->media_url)) {
-            $reasons[] = 'missing_media';
+            $reasons[] = DashboardReason::MissingMedia->value;
         }
 
         if (
@@ -569,7 +569,7 @@ class EditorialMetrics
             && $this->blockerFact($item, 'has_content_group', fn (): bool => $item->contentGroup()->exists())
             && ! $this->blockerFact($item, 'has_group_category', fn (): bool => $item->contentGroup()->whereHas('categories')->exists())
         ) {
-            $reasons[] = 'missing_category';
+            $reasons[] = DashboardReason::MissingCategory->value;
         }
 
         return $reasons;
@@ -612,11 +612,11 @@ class EditorialMetrics
      */
     public function applyReason(Builder $query, string $reason): Builder
     {
-        return match ($reason) {
-            'missing_transcription' => $query->whereDoesntHave('transcriptions', fn (Builder $inner): Builder => $inner->published()),
-            'unpublished_group' => $query->whereDoesntHave('contentGroup', fn (Builder $inner): Builder => $inner->published()),
-            'missing_media' => $this->applyMissingMedia($query),
-            'missing_category' => $this->applyMissingCategory($query),
+        return match (DashboardReason::tryFrom($reason)) {
+            DashboardReason::MissingTranscription => $query->whereDoesntHave('transcriptions', fn (Builder $inner): Builder => $inner->published()),
+            DashboardReason::UnpublishedGroup => $query->whereDoesntHave('contentGroup', fn (Builder $inner): Builder => $inner->published()),
+            DashboardReason::MissingMedia => $this->applyMissingMedia($query),
+            DashboardReason::MissingCategory => $this->applyMissingCategory($query),
             default => $query,
         };
     }

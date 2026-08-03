@@ -2,6 +2,7 @@
 
 namespace App\Support\PublicFront\Sections;
 
+use App\Enums\PublicFrontLayoutVariant;
 use App\Models\HomepageSection;
 use App\Support\PublicFront\Cards\PublicFrontCardTemplate;
 use App\Support\PublicFront\PublicFrontInvalidConfig;
@@ -50,7 +51,7 @@ class PublicDisplaySectionResult
 
     public function layout(string $fallback = 'cards'): string
     {
-        return $this->cardTemplate?->layout === 'rows' ? 'rows' : $fallback;
+        return $this->cardTemplate?->layout === PublicFrontLayoutVariant::Rows->value ? PublicFrontLayoutVariant::Rows->value : $fallback;
     }
 
     /**

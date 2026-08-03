@@ -124,7 +124,7 @@ class CuratorMediaPolicy
      */
     public function makePublic(User $user, Media $media): Response
     {
-        if (! $this->isAdmin($user) || ! Gate::forUser($user)->allows('super-admin')) {
+        if (! $this->isAdmin($user) || ! Gate::forUser($user)->allows(UserRole::SuperAdmin->value)) {
             return Response::deny(__('admin.media_issue_review.audience.super_admin_only'));
         }
 
@@ -150,7 +150,7 @@ class CuratorMediaPolicy
      */
     public function correctDisk(User $user, Media $media): Response
     {
-        if (! $this->isAdmin($user) || ! Gate::forUser($user)->allows('super-admin')) {
+        if (! $this->isAdmin($user) || ! Gate::forUser($user)->allows(UserRole::SuperAdmin->value)) {
             return Response::deny(__('admin.media_issue_review.audience.super_admin_only'));
         }
 

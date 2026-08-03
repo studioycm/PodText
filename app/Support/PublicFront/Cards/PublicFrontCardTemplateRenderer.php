@@ -2,6 +2,8 @@
 
 namespace App\Support\PublicFront\Cards;
 
+use App\Enums\PublicFrontLayoutVariant;
+
 class PublicFrontCardTemplateRenderer
 {
     private const CONTROLLED_CONTENT_ITEM_PARTS = [
@@ -93,13 +95,13 @@ class PublicFrontCardTemplateRenderer
      */
     public function contentItemPresentation(PublicFrontCardTemplate $template, string $fallbackLayout = 'cards'): array
     {
-        $layout = $template->layout === 'rows' ? 'rows' : $fallbackLayout;
+        $layout = $template->layout === PublicFrontLayoutVariant::Rows->value ? PublicFrontLayoutVariant::Rows->value : $fallbackLayout;
 
-        if ($template->imageSize === 'large') {
+        if ($template->imageSize === PublicFrontLayoutVariant::Large->value) {
             $layout = 'cards';
         }
 
-        $padding = $template->density === 'compact' ? 'p-3' : 'p-4';
+        $padding = $template->density === PublicFrontLayoutVariant::Compact->value ? 'p-3' : 'p-4';
         $titleClamp = $this->lineClamp($template, 'title', 2);
         $descriptionClamp = $this->lineClamp($template, 'description', 3);
         $titleClass = match ($template->titleSize) {
@@ -146,8 +148,8 @@ class PublicFrontCardTemplateRenderer
      */
     public function contentGroupPresentation(PublicFrontCardTemplate $template): array
     {
-        $layout = $template->layout === 'rows' ? 'rows' : 'cards';
-        $padding = $template->density === 'compact' ? 'p-3' : 'p-4';
+        $layout = $template->layout === PublicFrontLayoutVariant::Rows->value ? PublicFrontLayoutVariant::Rows->value : PublicFrontLayoutVariant::Cards->value;
+        $padding = $template->density === PublicFrontLayoutVariant::Compact->value ? 'p-3' : 'p-4';
         $titleClamp = $this->lineClamp($template, 'title', 2);
         $descriptionClamp = $this->lineClamp($template, 'description', 3);
         $titleClass = match ($template->titleSize) {
@@ -230,8 +232,8 @@ class PublicFrontCardTemplateRenderer
      */
     public function contributorPresentation(PublicFrontCardTemplate $template, bool $compact = false): array
     {
-        $layout = $template->layout === 'rows' ? 'rows' : 'cards';
-        $padding = $template->density === 'compact' ? 'p-3' : 'p-4';
+        $layout = $template->layout === PublicFrontLayoutVariant::Rows->value ? PublicFrontLayoutVariant::Rows->value : PublicFrontLayoutVariant::Cards->value;
+        $padding = $template->density === PublicFrontLayoutVariant::Compact->value ? 'p-3' : 'p-4';
         $titleClamp = $this->lineClamp($template, 'title', 2);
         $descriptionClamp = $this->lineClamp($template, 'description', 3);
         $titleClass = match ($template->titleSize) {
@@ -265,7 +267,7 @@ class PublicFrontCardTemplateRenderer
     {
         return collect($template->visibleParts())
             ->filter(fn (PublicFrontCardPart $part): bool => in_array($part->type, self::CONTROLLED_CONTENT_ITEM_PARTS, true))
-            ->reject(fn (PublicFrontCardPart $part): bool => $part->type === 'image' && $template->imageSize === 'hidden')
+            ->reject(fn (PublicFrontCardPart $part): bool => $part->type === 'image' && $template->imageSize === PublicFrontLayoutVariant::Hidden->value)
             ->values()
             ->all();
     }
@@ -277,7 +279,7 @@ class PublicFrontCardTemplateRenderer
     {
         return collect($template->visibleParts())
             ->filter(fn (PublicFrontCardPart $part): bool => in_array($part->type, self::CONTROLLED_CONTENT_GROUP_PARTS, true))
-            ->reject(fn (PublicFrontCardPart $part): bool => $part->type === 'image' && $template->imageSize === 'hidden')
+            ->reject(fn (PublicFrontCardPart $part): bool => $part->type === 'image' && $template->imageSize === PublicFrontLayoutVariant::Hidden->value)
             ->values()
             ->all();
     }
@@ -289,7 +291,7 @@ class PublicFrontCardTemplateRenderer
     {
         return collect($template->visibleParts())
             ->filter(fn (PublicFrontCardPart $part): bool => in_array($part->type, self::CONTROLLED_CONTRIBUTOR_PARTS, true))
-            ->reject(fn (PublicFrontCardPart $part): bool => $part->type === 'image' && $template->imageSize === 'hidden')
+            ->reject(fn (PublicFrontCardPart $part): bool => $part->type === 'image' && $template->imageSize === PublicFrontLayoutVariant::Hidden->value)
             ->reject(fn (PublicFrontCardPart $part): bool => $compact && in_array($part->type, ['action_link', 'description'], true))
             ->values()
             ->all();
@@ -297,7 +299,7 @@ class PublicFrontCardTemplateRenderer
 
     private function articleClasses(string $layout, string $padding): string
     {
-        if ($layout === 'rows') {
+        if ($layout === PublicFrontLayoutVariant::Rows->value) {
             return "grid min-w-0 gap-4 overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm transition hover:border-primary-300 hover:shadow-md dark:border-gray-800 dark:bg-gray-900 dark:hover:border-primary-700 md:grid-cols-[minmax(8rem,12rem)_minmax(0,1fr)] {$padding}";
         }
 
@@ -306,7 +308,7 @@ class PublicFrontCardTemplateRenderer
 
     private function imageClasses(string $layout): string
     {
-        if ($layout === 'rows') {
+        if ($layout === PublicFrontLayoutVariant::Rows->value) {
             return 'aspect-square w-full shrink-0 md:h-full md:w-auto';
         }
 
@@ -335,7 +337,7 @@ class PublicFrontCardTemplateRenderer
             $layout = 'cards';
         }
 
-        $padding = $presentation['density'] === 'compact' ? 'p-3' : 'p-4';
+        $padding = $presentation['density'] === PublicFrontLayoutVariant::Compact->value ? 'p-3' : 'p-4';
 
         $presentation = [
             ...$presentation,
@@ -414,7 +416,7 @@ class PublicFrontCardTemplateRenderer
 
     private function contentGroupArticleClasses(string $layout, string $padding): string
     {
-        if ($layout === 'rows') {
+        if ($layout === PublicFrontLayoutVariant::Rows->value) {
             return "group grid h-full min-w-0 gap-4 overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm transition hover:border-primary-300 hover:shadow-md dark:border-gray-800 dark:bg-gray-900 dark:hover:border-primary-500 md:grid-cols-[minmax(8rem,12rem)_minmax(0,1fr)] {$padding}";
         }
 

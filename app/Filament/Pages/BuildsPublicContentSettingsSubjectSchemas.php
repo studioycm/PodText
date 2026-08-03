@@ -3,6 +3,8 @@
 namespace App\Filament\Pages;
 
 use App\Enums\ImageUploadPurpose;
+use App\Enums\PublicFormFieldType;
+use App\Enums\PublicMenuItemType;
 use App\Enums\UserRole;
 use App\Filament\Forms\Components\IconSelect;
 use App\Filament\Forms\Components\TrustedHtmlCodeEditor;
@@ -672,20 +674,20 @@ trait BuildsPublicContentSettingsSubjectSchemas
                                                 ->options(fn (): array => PublicFrontConfigRegistry::routeOptions())
                                                 ->searchable()
                                                 ->native(false)
-                                                ->required(fn (Get $get): bool => $get('type') === 'route')
-                                                ->visible(fn (Get $get): bool => $get('type') === 'route'),
+                                                ->required(fn (Get $get): bool => $get('type') === PublicMenuItemType::Route->value)
+                                                ->visible(fn (Get $get): bool => $get('type') === PublicMenuItemType::Route->value),
                                             TextInput::make('external_url')
                                                 ->label(__('admin.fields.public_menu_item_external_url'))
                                                 ->helperText(__('admin.helpers.public_menu_item_external_url'))
                                                 ->url()
                                                 ->maxLength(2048)
-                                                ->required(fn (Get $get): bool => $get('type') === 'external_url')
-                                                ->visible(fn (Get $get): bool => $get('type') === 'external_url'),
+                                                ->required(fn (Get $get): bool => $get('type') === PublicMenuItemType::ExternalUrl->value)
+                                                ->visible(fn (Get $get): bool => $get('type') === PublicMenuItemType::ExternalUrl->value),
                                             Toggle::make('open_in_new_tab')
                                                 ->label(__('admin.fields.public_menu_item_open_in_new_tab'))
                                                 ->helperText(__('admin.helpers.public_menu_item_open_in_new_tab'))
                                                 ->default(false)
-                                                ->visible(fn (Get $get): bool => $get('type') === 'external_url'),
+                                                ->visible(fn (Get $get): bool => $get('type') === PublicMenuItemType::ExternalUrl->value),
                                             Select::make('form_key')
                                                 ->label(__('admin.fields.public_menu_item_form_key'))
                                                 ->helperText(__('admin.helpers.public_menu_item_form_key'))
@@ -700,15 +702,15 @@ trait BuildsPublicContentSettingsSubjectSchemas
                                                 ->hintIcon(fn (?string $state): ?Heroicon => $this->publicFormTargetStatus()->warningFor($state) === null
                                                     ? null
                                                     : Heroicon::OutlinedExclamationTriangle)
-                                                ->required(fn (Get $get): bool => $get('type') === 'public_form')
-                                                ->visible(fn (Get $get): bool => $get('type') === 'public_form'),
+                                                ->required(fn (Get $get): bool => $get('type') === PublicMenuItemType::PublicForm->value)
+                                                ->visible(fn (Get $get): bool => $get('type') === PublicMenuItemType::PublicForm->value),
                                             Select::make('display_mode')
                                                 ->label(__('admin.fields.public_menu_item_display_mode'))
                                                 ->helperText(__('admin.helpers.public_menu_item_display_mode'))
                                                 ->options(fn (): array => PublicFrontConfigRegistry::publicFormDisplayModeOptions())
                                                 ->default('modal')
                                                 ->native(false)
-                                                ->visible(fn (Get $get): bool => $get('type') === 'public_form'),
+                                                ->visible(fn (Get $get): bool => $get('type') === PublicMenuItemType::PublicForm->value),
                                         ])
                                         ->columns(3)
                                         ->columnSpanFull(),
@@ -2804,7 +2806,7 @@ trait BuildsPublicContentSettingsSubjectSchemas
                 ->label(__('admin.fields.public_form_field_placeholder'))
                 ->helperText(__('admin.helpers.public_form_field_placeholder'))
                 ->maxLength(160)
-                ->visible($type !== 'checkbox'),
+                ->visible($type !== PublicFormFieldType::Checkbox->value),
             TextInput::make('help_text')
                 ->label(__('admin.fields.public_form_field_help_text'))
                 ->helperText(__('admin.helpers.public_form_field_help_text'))
@@ -2838,12 +2840,12 @@ trait BuildsPublicContentSettingsSubjectSchemas
                     TextInput::make('value')
                         ->label(__('admin.fields.public_form_option_value'))
                         ->helperText(__('admin.helpers.public_form_option_value'))
-                        ->required($type === 'select')
+                        ->required($type === PublicFormFieldType::Select->value)
                         ->maxLength(80)
                         ->rules(['regex:/^[a-z][a-z0-9_-]*$/']),
                     TextInput::make('label')
                         ->label(__('admin.fields.public_form_option_label'))
-                        ->required($type === 'select')
+                        ->required($type === PublicFormFieldType::Select->value)
                         ->maxLength(120),
                 ])
                 ->defaultItems(0)

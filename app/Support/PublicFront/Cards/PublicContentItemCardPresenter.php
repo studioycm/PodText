@@ -2,6 +2,7 @@
 
 namespace App\Support\PublicFront\Cards;
 
+use App\Enums\PublicFrontLayoutVariant;
 use App\Filament\Public\Pages\BrowseCategoryContentItems;
 use App\Filament\Public\Pages\BrowseTagContentItems;
 use App\Filament\Public\Pages\ShowContentGroup;
@@ -287,7 +288,7 @@ class PublicContentItemCardPresenter
      */
     private function imagePart(array $base, array $data, array $presentation): ?array
     {
-        if ($presentation['image_size'] === 'hidden') {
+        if ($presentation['image_size'] === PublicFrontLayoutVariant::Hidden->value) {
             return null;
         }
 

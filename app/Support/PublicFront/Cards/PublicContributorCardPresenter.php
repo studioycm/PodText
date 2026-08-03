@@ -2,6 +2,7 @@
 
 namespace App\Support\PublicFront\Cards;
 
+use App\Enums\PublicFrontLayoutVariant;
 use App\Models\Author;
 use App\Support\PublicFront\PublicDefaultImageResolver;
 use App\Support\Transcriptions\TranscriptionModeLabel;
@@ -186,7 +187,7 @@ class PublicContributorCardPresenter
             'class' => $presentation['title'],
             'initial' => $data['initial'],
             'image' => $data['image'],
-            'show_avatar' => ! $compact && $presentation['image_size'] === 'hidden',
+            'show_avatar' => ! $compact && $presentation['image_size'] === PublicFrontLayoutVariant::Hidden->value,
         ];
     }
 

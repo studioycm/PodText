@@ -3,6 +3,7 @@
 namespace App\Support\PublicFront\Forms;
 
 use App\Enums\PublicFormEmailVerificationMode;
+use App\Enums\PublicFormFieldType;
 use App\Support\PublicFront\PublicFrontConfigReader;
 use Illuminate\Support\Str;
 
@@ -40,7 +41,7 @@ class PublicFormVerificationPolicy
                 continue;
             }
 
-            if (($field['type'] ?? null) === 'email' || ($field['validation_semantics'] ?? null) === 'email') {
+            if (($field['type'] ?? null) === PublicFormFieldType::Email->value || ($field['validation_semantics'] ?? null) === 'email') {
                 return $field;
             }
         }

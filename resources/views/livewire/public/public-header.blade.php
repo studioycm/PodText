@@ -1,7 +1,7 @@
 @php
     $path = request()->path();
     $isActive = function (array $item) use ($path): bool {
-        if (($item['type'] ?? null) !== 'route') {
+        if (($item['type'] ?? null) !== \App\Enums\PublicMenuItemType::Route->value) {
             return false;
         }
 
@@ -104,7 +104,7 @@
             >
                 <nav class="flex min-w-0 items-center gap-2" aria-label="{{ __('public.menu.primary_navigation') }}">
                     @foreach ($items as $item)
-                        @if (in_array($item['type'] ?? null, ['route', 'external_url'], true))
+                        @if (in_array($item['type'] ?? null, [\App\Enums\PublicMenuItemType::Route->value, \App\Enums\PublicMenuItemType::ExternalUrl->value], true))
                             <a
                                 href="{{ $item['url'] }}"
                                 @if (($item['open_in_new_tab'] ?? false) === true) target="_blank" rel="noopener noreferrer" @endif
@@ -119,7 +119,7 @@
                             >
                                 {{ $item['label'] }}
                             </a>
-                        @elseif (($item['type'] ?? null) === 'public_form')
+                        @elseif (($item['type'] ?? null) === \App\Enums\PublicMenuItemType::PublicForm->value)
                             <button
                                 type="button"
                                 x-on:click="window.dispatchEvent(new CustomEvent('open-public-form', { detail: { formKey: @js($item['form_key']) } }))"
@@ -268,7 +268,7 @@
 
             <nav class="grid gap-2" aria-label="{{ __('public.menu.primary_navigation') }}">
                 @foreach ($items as $item)
-                    @if (in_array($item['type'] ?? null, ['route', 'external_url'], true))
+                    @if (in_array($item['type'] ?? null, [\App\Enums\PublicMenuItemType::Route->value, \App\Enums\PublicMenuItemType::ExternalUrl->value], true))
                         <a
                             href="{{ $item['url'] }}"
                             @if (($item['open_in_new_tab'] ?? false) === true) target="_blank" rel="noopener noreferrer" @endif
@@ -284,7 +284,7 @@
                         >
                             {{ $item['label'] }}
                         </a>
-                    @elseif (($item['type'] ?? null) === 'public_form')
+                    @elseif (($item['type'] ?? null) === \App\Enums\PublicMenuItemType::PublicForm->value)
                         <button
                             type="button"
                             x-on:click="mobileOpen = false; window.dispatchEvent(new CustomEvent('open-public-form', { detail: { formKey: @js($item['form_key']) } }))"
@@ -295,7 +295,7 @@
                         >
                             {{ $item['label'] }}
                         </button>
-                    @elseif (($item['type'] ?? null) === 'theme_selector' && ($themeSelector['enabled'] ?? true) === true)
+                    @elseif (($item['type'] ?? null) === \App\Enums\PublicMenuItemType::ThemeSelector->value && ($themeSelector['enabled'] ?? true) === true)
                         <div
                             class="flex items-center rounded-full border border-gray-200 bg-gray-50 p-1 dark:border-gray-800 dark:bg-gray-900"
                             data-test="public-mobile-theme-selector"

@@ -16,7 +16,7 @@
         ? $settings['image_radius']
         : 'circle';
     $imageRadiusClass = \App\Support\PublicContent\PublicContentCardOptions::radiusClass($imageRadius);
-    $densityClasses = ($settings['density'] ?? 'comfortable') === 'compact'
+    $densityClasses = ($settings['density'] ?? \App\Enums\PublicFrontLayoutVariant::Comfortable->value) === \App\Enums\PublicFrontLayoutVariant::Compact->value
         ? 'gap-3 p-3'
         : 'gap-4 p-4';
     $descriptionLines = max(0, min(6, (int) ($settings['description_lines'] ?? 3)));

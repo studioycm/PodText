@@ -2,6 +2,7 @@
 
 namespace App\Filament\Support;
 
+use App\Enums\PublicFormFieldType;
 use App\Models\PublicFormSubmission;
 use App\Support\PublicFront\PublicFrontConfigRegistry;
 use App\Support\Settings\SettingsItemCloner;
@@ -250,7 +251,7 @@ class PublicFormsSettingsForm
                 ->label(__('admin.fields.public_form_field_placeholder'))
                 ->helperText(__('admin.helpers.public_form_field_placeholder'))
                 ->maxLength(160)
-                ->visible($type !== 'checkbox'),
+                ->visible($type !== PublicFormFieldType::Checkbox->value),
             TextInput::make('help_text')
                 ->label(__('admin.fields.public_form_field_help_text'))
                 ->helperText(__('admin.helpers.public_form_field_help_text'))
@@ -286,14 +287,14 @@ class PublicFormsSettingsForm
                     TextInput::make('value')
                         ->label(__('admin.fields.public_form_option_value'))
                         ->helperText(__('admin.helpers.public_form_option_value'))
-                        ->required($type === 'select')
+                        ->required($type === PublicFormFieldType::Select->value)
                         ->distinct()
                         ->maxLength(80)
                         ->rules(['regex:/^[a-z][a-z0-9_-]*$/']),
                     TextInput::make('label')
                         ->label(__('admin.fields.public_form_option_label'))
                         ->helperText(__('admin.helpers.public_form_option_label'))
-                        ->required($type === 'select')
+                        ->required($type === PublicFormFieldType::Select->value)
                         ->maxLength(120),
                 ])
                 ->defaultItems(0)

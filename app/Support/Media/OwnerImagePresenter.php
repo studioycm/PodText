@@ -3,6 +3,7 @@
 namespace App\Support\Media;
 
 use App\Enums\MediaAttachmentRole;
+use App\Enums\MediaDiagnosticReason;
 use App\Filament\Resources\Media\MediaResource;
 use App\Models\ContentGroup;
 use App\Models\ContentItem;
@@ -441,7 +442,12 @@ class OwnerImagePresenter
     private function choiceMedia(Media $media): array
     {
         $previewBlocked = collect($this->inventoryDiagnostics->reasons($media))
-            ->intersect(['storage_disk', 'missing_file', 'audience_denied', 'unsanitized_svg'])
+            ->intersect([
+                MediaDiagnosticReason::StorageDisk->value,
+                MediaDiagnosticReason::MissingFile->value,
+                MediaDiagnosticReason::AudienceDenied->value,
+                MediaDiagnosticReason::UnsanitizedSvg->value,
+            ])
             ->isNotEmpty();
 
         return [

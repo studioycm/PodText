@@ -2,6 +2,7 @@
 
 namespace App\Support\Media;
 
+use App\Enums\MediaAttachmentRole;
 use App\Filament\Pages\AboutSettings;
 use App\Filament\Pages\DisplaySettings;
 use App\Filament\Pages\MenuHeaderSettings;
@@ -270,7 +271,7 @@ class MediaReferenceFinder
 
     private function attachmentRoleLabel(string $role): string
     {
-        return in_array($role, ['cover', 'primary_image'], true)
+        return in_array($role, [MediaAttachmentRole::Cover->value, MediaAttachmentRole::PrimaryImage->value], true)
             ? __("admin.media_attachment_roles.{$role}")
             : $role;
     }

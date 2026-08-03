@@ -2,6 +2,7 @@
 
 namespace App\Support\PublicFront\Sections;
 
+use App\Enums\HomepageSectionType;
 use App\Support\PublicFront\Cards\PublicFrontCardTemplateRegistry;
 
 class PublicDisplaySectionRegistry
@@ -132,11 +133,11 @@ class PublicDisplaySectionRegistry
     public static function defaultSourceTypeForLegacyType(?string $legacyType): ?string
     {
         return match ($legacyType) {
-            'latest' => self::LATEST_CONTENT_ITEMS,
-            'category' => self::CATEGORY_CONTENT_ITEMS,
-            'tag' => self::TAG_CONTENT_ITEMS,
-            'content_group' => self::CONTENT_GROUP_ITEMS,
-            'top_transcribers' => self::TOP_TRANSCRIBERS,
+            HomepageSectionType::Latest->value => self::LATEST_CONTENT_ITEMS,
+            HomepageSectionType::Category->value => self::CATEGORY_CONTENT_ITEMS,
+            HomepageSectionType::Tag->value => self::TAG_CONTENT_ITEMS,
+            HomepageSectionType::ContentGroup->value => self::CONTENT_GROUP_ITEMS,
+            HomepageSectionType::TopTranscribers->value => self::TOP_TRANSCRIBERS,
             default => null,
         };
     }

@@ -9,9 +9,9 @@
 ])
 
 @php
-    $resolvedLayout = $cardTemplate?->imageSize === 'large'
+    $resolvedLayout = $cardTemplate?->imageSize === \App\Enums\PublicFrontLayoutVariant::Large->value
         ? 'cards'
-        : ($cardTemplate?->layout === 'rows' ? 'rows' : $layout);
+        : ($cardTemplate?->layout === \App\Enums\PublicFrontLayoutVariant::Rows->value ? \App\Enums\PublicFrontLayoutVariant::Rows->value : $layout);
     $resolvedColumns = max(1, min(4, (int) $columns));
     $gapClass = match ($gap) {
         'compact' => 'gap-3',
@@ -24,7 +24,7 @@
         4 => 'grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4',
         default => 'grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3',
     };
-    $gridClasses = $resolvedLayout === 'rows'
+    $gridClasses = $resolvedLayout === \App\Enums\PublicFrontLayoutVariant::Rows->value
         ? "grid grid-cols-1 {$gapClass}"
         : "{$cardGridClasses} {$gapClass}";
     $cards = app(\App\Support\PublicFront\Cards\PublicContentItemCardPresenter::class)

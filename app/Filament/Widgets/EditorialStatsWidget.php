@@ -91,8 +91,8 @@ class EditorialStatsWidget extends Widget
                     'icon' => DashboardTier::Invisible->getIcon(),
                     'action' => 'openBlockers',
                     'segments' => [
-                        ['key' => 'missing_transcription', 'value' => $gap['missing_transcription'], 'bar' => DashboardReason::MissingTranscription->barClass()],
-                        ['key' => 'unpublished_group', 'value' => $gap['unpublished_group'], 'bar' => DashboardReason::UnpublishedGroup->barClass()],
+                        ['key' => DashboardReason::MissingTranscription->value, 'value' => $gap['missing_transcription'], 'bar' => DashboardReason::MissingTranscription->barClass()],
+                        ['key' => DashboardReason::UnpublishedGroup->value, 'value' => $gap['unpublished_group'], 'bar' => DashboardReason::UnpublishedGroup->barClass()],
                     ],
                 ],
                 [
@@ -101,8 +101,8 @@ class EditorialStatsWidget extends Widget
                     'icon' => DashboardTier::Attention->getIcon(),
                     'action' => 'openBlockers',
                     'segments' => [
-                        ['key' => 'missing_media', 'value' => $attention['missing_media'], 'bar' => DashboardReason::MissingMedia->barClass()],
-                        ['key' => 'missing_category', 'value' => $attention['missing_category'], 'bar' => DashboardReason::MissingCategory->barClass()],
+                        ['key' => DashboardReason::MissingMedia->value, 'value' => $attention['missing_media'], 'bar' => DashboardReason::MissingMedia->barClass()],
+                        ['key' => DashboardReason::MissingCategory->value, 'value' => $attention['missing_category'], 'bar' => DashboardReason::MissingCategory->barClass()],
                     ],
                 ],
                 [

@@ -2,6 +2,8 @@
 
 namespace App\Livewire\Public;
 
+use App\Enums\HomepageSectionType;
+use App\Enums\PublicFrontLayoutVariant;
 use App\Filament\Public\Pages\ShowContentGroup;
 use App\Filament\Public\Pages\ShowContentItem;
 use App\Models\Category;
@@ -688,7 +690,7 @@ class ContentItemSearch extends Component
         }
 
         return $sections
-            ->reject(fn (HomepageSection $section): bool => $section->type?->value === 'latest' && ! (bool) $this->renderContext()->setting('show_latest_section', true))
+            ->reject(fn (HomepageSection $section): bool => $section->type === HomepageSectionType::Latest && ! (bool) $this->renderContext()->setting('show_latest_section', true))
             ->pipe(fn (Collection $sections): Collection => $this->sectionResolver()->resolveMany($sections))
             ->values();
     }
@@ -747,7 +749,7 @@ class ContentItemSearch extends Component
 
     protected function resultLayout(): string
     {
-        return $this->renderContext()->setting('default_result_layout') === 'rows' ? 'rows' : 'cards';
+        return $this->renderContext()->setting('default_result_layout') === PublicFrontLayoutVariant::Rows->value ? PublicFrontLayoutVariant::Rows->value : PublicFrontLayoutVariant::Cards->value;
     }
 
     protected function renderContext(): PublicFrontRenderContext

@@ -86,8 +86,12 @@
                     wire:model.live="importMode"
                     class="fi-select-input rounded-lg border-gray-300 bg-white text-sm text-gray-950 shadow-sm dark:border-white/10 dark:bg-gray-900 dark:text-white"
                 >
-                    <option value="replace">{{ __('admin.settings_import.modes.replace') }}</option>
-                    <option value="add_only">{{ __('admin.settings_import.modes.add_only') }}</option>
+                    <option value="{{ \App\Enums\SettingsImportMode::Replace->value }}">
+                        {{ __('admin.settings_import.modes.replace') }}
+                    </option>
+                    <option value="{{ \App\Enums\SettingsImportMode::AddOnly->value }}">
+                        {{ __('admin.settings_import.modes.add_only') }}
+                    </option>
                 </select>
             </div>
 
@@ -110,7 +114,7 @@
                 <x-filament::badge :color="$dryRunSummary['errors'] > 0 ? 'danger' : 'gray'">
                     {{ __('admin.settings_import.summary.errors', ['count' => $dryRunSummary['errors']]) }}
                 </x-filament::badge>
-                @if ($importMode === 'add_only')
+                @if ($importMode === \App\Enums\SettingsImportMode::AddOnly->value)
                     <x-filament::badge color="gray">
                         {{ __('admin.settings_import.summary.skip_exists', ['count' => $dryRunSummary['skip_exists']]) }}
                     </x-filament::badge>

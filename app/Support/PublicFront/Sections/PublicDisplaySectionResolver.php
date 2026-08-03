@@ -2,6 +2,7 @@
 
 namespace App\Support\PublicFront\Sections;
 
+use App\Enums\PublicationStatus;
 use App\Filament\Public\Pages\BrowseCategoryContentItems;
 use App\Filament\Public\Pages\BrowseContributors;
 use App\Filament\Public\Pages\BrowseTagContentItems;
@@ -213,7 +214,7 @@ class PublicDisplaySectionResolver
         }
 
         if ($section->relationLoaded('contentGroup') && $section->contentGroup instanceof ContentGroup) {
-            return $section->contentGroup->status?->value === 'published' ? $section->contentGroup : null;
+            return $section->contentGroup->status === PublicationStatus::Published ? $section->contentGroup : null;
         }
 
         $key = (string) $contentGroupId;

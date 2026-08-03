@@ -2,6 +2,8 @@
 
 namespace App\Support\PublicFront\Forms;
 
+use App\Enums\PublicFormFieldType;
+
 class PublicFormSchemaFactory
 {
     /**
@@ -32,7 +34,7 @@ class PublicFormSchemaFactory
                     'validation_semantics' => $field['validation_semantics'] ?? 'none',
                     'is_option_field' => in_array($type, ['select', 'checkbox'], true),
                     'is_boolean_field' => in_array($type, ['toggle'], true)
-                        || ($type === 'checkbox' && blank($field['options'] ?? [])),
+                        || ($type === PublicFormFieldType::Checkbox->value && blank($field['options'] ?? [])),
                 ];
             })
             ->filter(fn (array $field): bool => filled($field['key']))

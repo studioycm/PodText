@@ -174,7 +174,7 @@ class AppServiceProvider extends ServiceProvider
             ->optionsLimit(50));
 
         Gate::policy(Media::class, CuratorMediaPolicy::class);
-        Gate::define('super-admin', fn (User $user): bool => $user->hasRoleAtLeast(UserRole::SuperAdmin));
+        Gate::define(UserRole::SuperAdmin->value, fn (User $user): bool => $user->hasRoleAtLeast(UserRole::SuperAdmin));
         Gate::define('multi-transcription', function (User $user, UserRole|string|null $minimum = null): bool {
             $minimumRole = $minimum instanceof UserRole
                 ? $minimum
@@ -190,7 +190,7 @@ class AppServiceProvider extends ServiceProvider
 
         SchemaComponent::macro('superAdminOnly', function () {
             /** @var SchemaComponent $this */
-            return $this->hidden(fn (): bool => Gate::denies('super-admin'));
+            return $this->hidden(fn (): bool => Gate::denies(UserRole::SuperAdmin->value));
         });
 
         Action::macro('multiTranscription', function (?UserRole $minimum = null) {
@@ -200,7 +200,7 @@ class AppServiceProvider extends ServiceProvider
 
         Action::macro('superAdminOnly', function () {
             /** @var Action $this */
-            return $this->hidden(fn (): bool => Gate::denies('super-admin'));
+            return $this->hidden(fn (): bool => Gate::denies(UserRole::SuperAdmin->value));
         });
 
         Media::observe(CuratorMediaObserver::class);

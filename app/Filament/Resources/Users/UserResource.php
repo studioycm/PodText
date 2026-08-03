@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Users;
 
+use App\Enums\UserRole;
 use App\Filament\Clusters\SystemCluster;
 use App\Filament\Resources\Users\Pages\EditUser;
 use App\Filament\Resources\Users\Pages\ListUsers;
@@ -46,17 +47,17 @@ class UserResource extends Resource
 
     public static function canViewAny(): bool
     {
-        return Gate::allows('super-admin');
+        return Gate::allows(UserRole::SuperAdmin->value);
     }
 
     public static function canView(Model $record): bool
     {
-        return Gate::allows('super-admin');
+        return Gate::allows(UserRole::SuperAdmin->value);
     }
 
     public static function canEdit(Model $record): bool
     {
-        return Gate::allows('super-admin');
+        return Gate::allows(UserRole::SuperAdmin->value);
     }
 
     public static function canCreate(): bool

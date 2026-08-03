@@ -205,7 +205,7 @@
             @foreach ($fields as $field)
                 @php
                     $fieldKey = $field['key'];
-                    $fieldValue = $formData[$fieldKey] ?? ($field['type'] === 'checkbox' && $field['options'] !== [] ? [] : '');
+                    $fieldValue = $formData[$fieldKey] ?? ($field['type'] === \App\Enums\PublicFormFieldType::Checkbox->value && $field['options'] !== [] ? [] : '');
                 @endphp
 
                 <div class="podtext-maintenance-form__field">
@@ -247,14 +247,14 @@
                             <input
                                 id="maintenance-form-{{ $fieldKey }}"
                                 class="podtext-maintenance-form__input"
-                                type="{{ $field['type'] === 'phone' ? 'tel' : $field['type'] }}"
+                                type="{{ $field['type'] === \App\Enums\PublicFormFieldType::Phone->value ? 'tel' : $field['type'] }}"
                                 name="data[{{ $fieldKey }}]"
                                 value="{{ is_scalar($fieldValue) ? $fieldValue : '' }}"
                                 placeholder="{{ $field['placeholder'] }}"
                                 @required($field['required'])
                             />
                         @endif
-                    @elseif ($field['type'] === 'textarea')
+                    @elseif ($field['type'] === \App\Enums\PublicFormFieldType::Textarea->value)
                         <textarea
                             id="maintenance-form-{{ $fieldKey }}"
                             class="podtext-maintenance-form__textarea"
@@ -263,7 +263,7 @@
                             placeholder="{{ $field['placeholder'] }}"
                             @required($field['required'])
                         >{{ is_scalar($fieldValue) ? $fieldValue : '' }}</textarea>
-                    @elseif ($field['type'] === 'select')
+                    @elseif ($field['type'] === \App\Enums\PublicFormFieldType::Select->value)
                         <select
                             id="maintenance-form-{{ $fieldKey }}"
                             class="podtext-maintenance-form__select"
@@ -277,7 +277,7 @@
                                 </option>
                             @endforeach
                         </select>
-                    @elseif ($field['type'] === 'checkbox' && $field['options'] !== [])
+                    @elseif ($field['type'] === \App\Enums\PublicFormFieldType::Checkbox->value && $field['options'] !== [])
                         <div class="podtext-maintenance-form__choices" id="maintenance-form-{{ $fieldKey }}">
                             @foreach ($field['options'] as $option)
                                 <label class="podtext-maintenance-form__choice">

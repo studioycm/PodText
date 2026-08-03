@@ -2,6 +2,7 @@
 
 namespace App\Support\PublicFront\Forms;
 
+use App\Enums\PublicFormFieldType;
 use Closure;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Validator;
@@ -54,7 +55,7 @@ class PublicFormPayloadValidator
             $key = (string) $field['key'];
             $rules[$key] = $this->rulesForField($field);
 
-            if (($field['type'] ?? null) === 'checkbox' && $this->optionValues($field) !== []) {
+            if (($field['type'] ?? null) === PublicFormFieldType::Checkbox->value && $this->optionValues($field) !== []) {
                 $rules["{$key}.*"] = [Rule::in($this->optionValues($field))];
             }
         }
@@ -84,15 +85,15 @@ class PublicFormPayloadValidator
         $required = (bool) ($field['required'] ?? false);
         $rules = [$required ? 'required' : 'nullable'];
 
-        if ($type === 'toggle') {
+        if ($type === PublicFormFieldType::Toggle->value) {
             return $required ? ['accepted'] : ['nullable', 'boolean'];
         }
 
-        if ($type === 'checkbox' && $this->optionValues($field) === []) {
+        if ($type === PublicFormFieldType::Checkbox->value && $this->optionValues($field) === []) {
             return $required ? ['accepted'] : ['nullable', 'boolean'];
         }
 
-        if ($type === 'checkbox') {
+        if ($type === PublicFormFieldType::Checkbox->value) {
             return [
                 $required ? 'required' : 'nullable',
                 'array',
@@ -100,7 +101,7 @@ class PublicFormPayloadValidator
             ];
         }
 
-        if ($type === 'select') {
+        if ($type === PublicFormFieldType::Select->value) {
             return [
                 ...$rules,
                 'string',
@@ -109,21 +110,21 @@ class PublicFormPayloadValidator
         }
 
         $rules[] = 'string';
-        $rules[] = 'max:'.($field['max_length'] ?? ($type === 'textarea' ? 5000 : 255));
+        $rules[] = 'max:'.($field['max_length'] ?? ($type === PublicFormFieldType::Textarea->value ? 5000 : 255));
 
         if (filled($field['min_length'] ?? null)) {
             $rules[] = 'min:'.$field['min_length'];
         }
 
-        if ($type === 'email' || ($field['validation_semantics'] ?? null) === 'email') {
+        if ($type === PublicFormFieldType::Email->value || ($field['validation_semantics'] ?? null) === 'email') {
             $rules[] = 'email:rfc';
         }
 
-        if ($type === 'phone' || ($field['validation_semantics'] ?? null) === 'phone') {
+        if ($type === PublicFormFieldType::Phone->value || ($field['validation_semantics'] ?? null) === 'phone') {
             $rules[] = 'regex:/^[0-9+().\\-\\s]{6,40}$/';
         }
 
-        if ($type === 'url' || ($field['validation_semantics'] ?? null) === 'url') {
+        if ($type === PublicFormFieldType::Url->value || ($field['validation_semantics'] ?? null) === 'url') {
             $rules[] = 'url';
             $rules[] = $this->httpUrlRule();
         }

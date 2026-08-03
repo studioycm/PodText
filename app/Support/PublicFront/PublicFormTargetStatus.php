@@ -2,6 +2,7 @@
 
 namespace App\Support\PublicFront;
 
+use App\Enums\PublicMenuItemType;
 use App\Models\HomepageSection;
 use App\Support\PublicFront\Sections\PublicDisplaySectionRegistry;
 
@@ -39,7 +40,7 @@ class PublicFormTargetStatus
         $definitions = $this->definitions();
 
         $options = collect(PublicFrontConfigRegistry::defaultMenuItems())
-            ->filter(fn (array $item): bool => ($item['type'] ?? null) === 'public_form' && filled($item['form_key'] ?? null))
+            ->filter(fn (array $item): bool => ($item['type'] ?? null) === PublicMenuItemType::PublicForm->value && filled($item['form_key'] ?? null))
             ->mapWithKeys(fn (array $item): array => [
                 (string) $item['form_key'] => (string) ($item['label'] ?? $item['form_key']),
             ]);
@@ -99,7 +100,7 @@ class PublicFormTargetStatus
 
         $menuItems = collect($this->configReader->group('menu_config')['items'] ?? [])
             ->filter(fn (mixed $item): bool => is_array($item)
-                && ($item['type'] ?? null) === 'public_form'
+                && ($item['type'] ?? null) === PublicMenuItemType::PublicForm->value
                 && ($item['visible'] ?? true) === true
                 && ! $this->hasEnabledDefinition($this->stringOrNull($item['form_key'] ?? null)))
             ->count();
