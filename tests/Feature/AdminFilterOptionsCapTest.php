@@ -48,11 +48,13 @@ function cappedFilterSelect(Testable $component, string $filterKey): Select
 it('defaults selects and select filters to search-driven options without preload', function (): void {
     // Q7 (decided 2026-08-03): the global default encodes the safe branch —
     // growing sets stay search-driven, and bounded sets opt in per-site with
-    // an explicit ->preload().
+    // an explicit ->preload(), which must keep winning over the default.
     expect(Select::make('probe')->isPreloaded())->toBeFalse()
         ->and(SelectFilter::make('probe')->isPreloaded())->toBeFalse()
         ->and(Select::make('probe')->getOptionsLimit())->toBe(50)
-        ->and(SelectFilter::make('probe')->getOptionsLimit())->toBe(50);
+        ->and(SelectFilter::make('probe')->getOptionsLimit())->toBe(50)
+        ->and(Select::make('probe')->preload()->isPreloaded())->toBeTrue()
+        ->and(SelectFilter::make('probe')->preload()->isPreloaded())->toBeTrue();
 });
 
 it('serves items-list transcriber filter options only through bounded search', function (): void {
