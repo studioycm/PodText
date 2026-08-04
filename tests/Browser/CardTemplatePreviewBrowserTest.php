@@ -85,15 +85,36 @@ beforeEach(function (): void {
 });
 
 afterEach(function (): void {
-    Storage::disk('public')->delete([
-        'default-images/o2-item-default.jpg',
-        'default-images/o2-group-default.jpg',
-        'content-items/images/fu02-local.jpg',
-        'content-groups/covers/fu02-inherited.jpg',
-        'default-images/fu02-family.jpg',
-        'default-images/fu02-global.jpg',
-    ]);
+    Storage::disk('public')->delete(step5bBrowserRegisteredMediaPaths());
 });
+
+/**
+ * This suite writes fixtures to the real public disk (previews must serve
+ * images through the public/storage symlink, so a faked disk cannot host
+ * them). Paths carry a per-run unique token so a crashed run can never leave
+ * a fixture behind under a name a later run (or another suite) asserts on.
+ */
+function step5bBrowserMediaPath(string $directory, string $stem): string
+{
+    static $runToken = null;
+    $runToken ??= uniqid();
+
+    return "{$directory}/{$stem}-{$runToken}.jpg";
+}
+
+/**
+ * @return array<int, string>
+ */
+function step5bBrowserRegisteredMediaPaths(?string $recordPath = null): array
+{
+    static $paths = [];
+
+    if ($recordPath !== null && ! in_array($recordPath, $paths, true)) {
+        $paths[] = $recordPath;
+    }
+
+    return $paths;
+}
 
 /**
  * @param  array<int, array<string, mixed>>  $parts
@@ -116,6 +137,7 @@ function step5bO2BrowserTemplate(string $family, string $key, string $layout, ar
 function step5bRegisterBrowserMedia(string $path, string $contents): Media
 {
     Storage::disk('public')->put($path, $contents);
+    step5bBrowserRegisteredMediaPaths($path);
 
     return Media::query()->where('path', $path)->first()
         ?? Media::factory()->create([
@@ -183,8 +205,8 @@ function step5bO2BrowserSurfaces(): array
     $group = $item->contentGroup;
     $templates = [];
     $defaultImageFixture = file_get_contents(public_path('images/podtext-logo.jpg'));
-    $itemDefaultMedia = step5bRegisterBrowserMedia('default-images/o2-item-default.jpg', $defaultImageFixture);
-    $groupDefaultMedia = step5bRegisterBrowserMedia('default-images/o2-group-default.jpg', $defaultImageFixture);
+    $itemDefaultMedia = step5bRegisterBrowserMedia(step5bBrowserMediaPath('default-images', 'o2-item-default'), $defaultImageFixture);
+    $groupDefaultMedia = step5bRegisterBrowserMedia(step5bBrowserMediaPath('default-images', 'o2-group-default'), $defaultImageFixture);
 
     foreach (['content_item', 'content_group'] as $family) {
         $source = $family;
@@ -215,12 +237,12 @@ function step5bO2BrowserSurfaces(): array
             'global' => ['mode' => 'inherit', 'path' => null],
             'content_item' => [
                 'mode' => 'custom',
-                'path' => 'default-images/o2-item-default.jpg',
+                'path' => $itemDefaultMedia->path,
                 'media_reference_key' => $itemDefaultMedia->reference_key,
             ],
             'content_group' => [
                 'mode' => 'custom',
-                'path' => 'default-images/o2-group-default.jpg',
+                'path' => $groupDefaultMedia->path,
                 'media_reference_key' => $groupDefaultMedia->reference_key,
             ],
             'contributor' => ['mode' => 'inherit', 'path' => null],
@@ -365,13 +387,13 @@ function step5bFu02BrowserSamples(): array
     Storage::forgetDisk('public');
 
     $imageFixture = file_get_contents(public_path('images/podtext-logo.jpg'));
-    step5bRegisterBrowserMedia('content-items/images/fu02-local.jpg', $imageFixture);
-    step5bRegisterBrowserMedia('content-groups/covers/fu02-inherited.jpg', $imageFixture);
-    step5bRegisterBrowserMedia('default-images/fu02-family.jpg', $imageFixture);
-    step5bRegisterBrowserMedia('default-images/fu02-global.jpg', $imageFixture);
+    step5bRegisterBrowserMedia(step5bBrowserMediaPath('content-items/images', 'fu02-local'), $imageFixture);
+    step5bRegisterBrowserMedia(step5bBrowserMediaPath('content-groups/covers', 'fu02-inherited'), $imageFixture);
+    step5bRegisterBrowserMedia(step5bBrowserMediaPath('default-images', 'fu02-family'), $imageFixture);
+    step5bRegisterBrowserMedia(step5bBrowserMediaPath('default-images', 'fu02-global'), $imageFixture);
 
     step5bFu02BrowserSaveDefaultImages([
-        'content_item' => ['mode' => 'custom', 'path' => 'default-images/fu02-family.jpg'],
+        'content_item' => ['mode' => 'custom', 'path' => step5bBrowserMediaPath('default-images', 'fu02-family')],
     ]);
 
     $external = step5bFu02BrowserPublicItem(
@@ -383,11 +405,11 @@ function step5bFu02BrowserSamples(): array
         'FU02 Browser Local',
         transcriptionPublishedAt: now()->subDays(3),
     );
-    MediaAttachment::query()->create(['media_id' => Media::query()->where('path', 'content-items/images/fu02-local.jpg')->value('id'), 'attachable_type' => 'content_item', 'attachable_id' => $local->getKey(), 'role' => 'primary_image', 'position' => 0]);
+    MediaAttachment::query()->create(['media_id' => Media::query()->where('path', step5bBrowserMediaPath('content-items/images', 'fu02-local'))->value('id'), 'attachable_type' => 'content_item', 'attachable_id' => $local->getKey(), 'role' => 'primary_image', 'position' => 0]);
     $inheritedGroup = ContentGroup::factory()->published()->create([
         'title' => 'FU02 Browser Inherited Group',
     ]);
-    MediaAttachment::query()->create(['media_id' => Media::query()->where('path', 'content-groups/covers/fu02-inherited.jpg')->value('id'), 'attachable_type' => 'content_group', 'attachable_id' => $inheritedGroup->getKey(), 'role' => 'cover', 'position' => 0]);
+    MediaAttachment::query()->create(['media_id' => Media::query()->where('path', step5bBrowserMediaPath('content-groups/covers', 'fu02-inherited'))->value('id'), 'attachable_type' => 'content_group', 'attachable_id' => $inheritedGroup->getKey(), 'role' => 'cover', 'position' => 0]);
     $inherited = step5bFu02BrowserPublicItem(
         'FU02 Browser Inherited',
         group: $inheritedGroup,
@@ -1688,7 +1710,7 @@ it('keeps automatic preload search and effective image ranking aligned in the au
     $page->assertNoSmoke()->assertNoJavaScriptErrors();
 
     step5bFu02BrowserSaveDefaultImages([
-        'global' => ['mode' => 'custom', 'path' => 'default-images/fu02-global.jpg'],
+        'global' => ['mode' => 'custom', 'path' => step5bBrowserMediaPath('default-images', 'fu02-global')],
         'content_item' => ['mode' => 'inherit', 'path' => null],
     ]);
     $page->refresh();
@@ -1740,7 +1762,7 @@ it('keeps automatic preload search and effective image ranking aligned in the au
     $page->assertNoSmoke()->assertNoJavaScriptErrors();
 
     step5bFu02BrowserSaveDefaultImages([
-        'global' => ['mode' => 'custom', 'path' => 'default-images/fu02-global.jpg'],
+        'global' => ['mode' => 'custom', 'path' => step5bBrowserMediaPath('default-images', 'fu02-global')],
         'content_item' => ['mode' => 'none', 'path' => null],
     ]);
     $page->refresh();
