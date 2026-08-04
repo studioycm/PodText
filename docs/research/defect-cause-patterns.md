@@ -521,7 +521,9 @@ family, kin of `flake-label`'s discipline rather than an app defect.)*
   focus-stealing; bounded 120 frames; stops if the workspace leaves the
   DOM). Pinned by `MediaPickerUploadFocusReturnBrowserTest` (watched red
   on the held-disabled case; no-steal boundary pinned). Claimed gate
-  1615/19,741 zero failures — orchestrator reproduction running. Note:
+  1615/19,741 zero failures — **orchestrator-reproduced 2026-08-04:
+  1615/19,741 identical, zero failures, pint --test pass, full filacheck
+  0, tree clean, no interleaves.** Note:
   pint's blade fixer reformatted `media-picker-panel.blade.php`
   wholesale; the behavioral diff is the root `x-data` block only.
 
@@ -731,7 +733,7 @@ real protecting.
 | Item | What | Status |
 |---|---|---|
 | Browser-test hygiene | `test-residue` census + `single-read-race` sweep | 🟡 released post-collection; `a14d50a` (census, card-preview) + `171deeb` (one sweep conversion) landed; final report + remaining conversions pending; **rename does NOT close the purge mechanism — boundary enforced in its release order** |
-| Contention investigation | Mechanism hunt for the three timeout data points | ✅ **DONE end-to-end, both defects fixed:** `fake-root-purge` proven (108 runs) + fixed (`a3fa4f2`, verified identical 1612/19,734); residual diagnosed AND fixed (`914de1c` two-phase verified focus restore, operator-directed; pattern enriched with the succeed-then-lose shape + focus-trap mover); deliverable + docs landed (`9318e62`, `4e7c68f`). Final claim 1615/19,741 — orchestrator reproduction running |
+| Contention investigation | Mechanism hunt for the three timeout data points | ✅ **DONE end-to-end, both defects fixed:** `fake-root-purge` proven (108 runs) + fixed (`a3fa4f2`, verified identical 1612/19,734); residual diagnosed AND fixed (`914de1c` two-phase verified focus restore, operator-directed; pattern enriched with the succeed-then-lose shape + focus-trap mover); deliverable + docs landed (`9318e62`, `4e7c68f`). Final claim 1615/19,741 — **orchestrator-reproduced identical** |
 | Phase-3 fresh re-reconciliation | Claim-by-claim re-verification against post-push HEAD | 🟡 landed `adaaa77`; orchestrator collection/verification pending |
 | Episodes/nav mini-project | Design for episodes as the main lens of content managing — one-place consolidation (corrected intent), list + create/edit scope, sheet as context only | 🟡 landed: research `6668cae` + spec `641b429` (EQ-1..EQ-12); orchestrator collection pending; **operator decisions on the EQ list are the next gate** |
 
