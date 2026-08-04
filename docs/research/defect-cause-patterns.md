@@ -218,14 +218,15 @@ commits) · where else to look (concrete greps/paths) · status.
   edits — not the round's diffs; stash-baseline discipline applied), then
   passed standalone 12/12. Second data point for the parallel-worker/
   concurrent-activity contention hypothesis (`local_51518218`-era).
-- **Status:** V2 closed the owner-image mechanism sighting. The contention
-  hypothesis now has THREE residual data points (the 1/30 Storage-listing
-  timeout; the RTL timeout under concurrent tree activity; the scan-scope
-  session's first full run hitting the Storage-listing timeout on 2
-  datasets — isolated 4/4 and a clean second full run, possibly confounded
-  by concurrent mid-run tree churn) → investigation registered in the
-  deferred register (route-end+: induced-concurrency vs quiesced
-  reproduction).
+- **Status:** V2 closed the owner-image mechanism sighting. **The
+  contention hypothesis is RESOLVED (2026-08-04):** all three residual
+  data points are explained by `fake-root-purge` (see that entry; 108-run
+  investigation, controls clean). ONE new, genuinely separate residual
+  registered: quiesced baseline acq run 11 failed (~4%, 1/24) at the
+  post-upload settle wait (`MediaPickerBrowserTest:234`, the
+  `picker().contains(document.activeElement)` condition), not the
+  storage-listing wait, predating all window commits — NEW watch,
+  unexplained, one sighting.
 
 ## line-guard · Line-based guards miss multi-line call sites *(alias P8)*
 
@@ -471,7 +472,42 @@ family, kin of `flake-label`'s discipline rather than an app defect.)*
   cleanup in browser tests, or scoped/fake disks where the flow allows;
   cheapest first step — a fixed-name census (`grep -rn "browser-owner-"
   tests/Browser`) and renaming to run-scoped names.
-- **Status:** one sighting; registered, no sweep yet (2+ rule).
+- **Status:** census executed by the hygiene session (`a14d50a`,
+  card-preview fixtures run-scoped). **Boundary note (2026-08-04):**
+  distinct from `fake-root-purge` — residue is stale REAL-disk files;
+  the purge is live deletion of the FAKE root; renames fix only the
+  former.
+
+## fake-root-purge · Storage::fake purges a shared root under concurrent runs
+
+*(Registered 2026-08-04 from the contention investigation's verdict — the
+mechanism behind all three registered browser-timeout data points.)*
+
+- **Cause:** `Storage::fake('public')` cleans the shared root
+  `storage/framework/testing/disks/public` on every call; the
+  `ParallelTesting::token()` root suffix that would isolate processes only
+  exists under paratest, which is not installed — so ANY concurrent process
+  faking the disk deletes an in-flight browser test's files mid-run, and
+  the victim's waits time out.
+- **Evidence (ACTUAL, 108 logged runs):** quiesced baseline acq 23/24,
+  owner 12/12; a second pest process looping ONE public-faking feature test
+  → acq **0/10** at load ~3; distilled purge loop → acq 0/10, owner 0/5
+  with the RTL "Hebrew iPhone 15" 30s timeout reproduced exactly (3/5) and
+  failures concentrated on precisely the 4 storage-driven owner datasets;
+  controls exonerate mere concurrency (non-faking second pest 10/10), tree
+  churn (10/10), and realistic CPU load (mild 9/10; only absurd load 24–65
+  starves). Explains DP1 (1/30 Storage-listing), DP2 (RTL timeout), DP3
+  (scan-scope first-run failures).
+- **Where else:** every feature test calling `Storage::fake('public')`
+  while browser suites may run; any future parallelization.
+- **Suggested guard/fix:** per-process fake-root isolation (TestCase-level
+  root suffix keyed to PID) — makes concurrent sessions structurally safe
+  instead of hold-disciplined; ranked fixes in
+  `docs/research/browser-timeout-contention-investigation.md`.
+  **Distinct from `test-residue`** (stale REAL-disk files): fixture renames
+  do not touch this mechanism.
+- **Status:** mechanism proven; fix proposal pending the deliverable's
+  final ranking → implementation chip after review.
 
 ## shared-index-entanglement · Targeted adds don't protect commits in a shared tree
 
@@ -625,14 +661,18 @@ the target's next turn boundary, proven when hygiene's `a14d50a`
 unaffected, investigation told to verify) landed after the first hold;
 for hard freezes the operator's own pause is the instant lever, and the
 investigation is instructed to trust its own quiet-checks over order
-timestamps.
+timestamps. Refinement (same day): chip sessions typically execute their
+ENTIRE task as one turn, so a queued hold can land only after the task is
+done — holds are effectively advisory for single-turn chip sessions; the
+experiment survived because its own gate checks and target md5s did the
+real protecting.
 
 | Item | What | Status |
 |---|---|---|
-| Browser-test hygiene | `test-residue` census + rename, then the `single-read-race` sweep (6 files × 15 `x-show` views) — one session, test-only, commits stay LOCAL (test-only never pushes alone) | ⏳ chip `task_0e72bb0c` |
-| Contention investigation | Induced-concurrency vs quiesced reproduction of the three registered timeout data points; requires a QUIET machine — self-gates on it (run it ALONE) | ⏳ chip `task_d395ead7` |
-| Phase-3 fresh re-reconciliation | Re-verify the reconciled plan claim-by-claim against final post-push HEAD from a fresh perspective; amend/flag; docs-only | ⏳ chip `task_7dc6d969` |
-| Episodes/nav mini-project | NEW main mini-project: research + UX design for episodes as **the main lens of PodText content managing**. Operator intent (corrected 2026-08-04, supersedes the earlier "replace the sheet" framing): **all important/main related data shows on episode records — in one place** — not a traditional three-page CRUD (podcasts / episodes / transcriptions); consolidation, not replacement. Scope covers the **list page AND create/edit surfaces**. The client's Google Sheet (records = episodes) stays as mental-model context, not a yardstick. Nav moves/renames toward the client's vocabulary qualify even as simple wins. Spec `docs/phase-02/episodes-lens-design-spec.md`, `EQ-<n>` questions, NO implementation | ⏳ chip `task_345ddb95`, session running; both clarifications relayed |
+| Browser-test hygiene | `test-residue` census + `single-read-race` sweep | 🟡 released post-collection; `a14d50a` (census, card-preview) + `171deeb` (one sweep conversion) landed; final report + remaining conversions pending; **rename does NOT close the purge mechanism — boundary enforced in its release order** |
+| Contention investigation | Mechanism hunt for the three timeout data points | ✅ **COLLECTION COMPLETE, MECHANISM PROVEN: `fake-root-purge`** (108 runs; all three DPs explained; controls exonerate concurrency/churn/realistic CPU). Verdict doc in progress; new ~4% settle-wait residual registered; fix chip follows the deliverable |
+| Phase-3 fresh re-reconciliation | Claim-by-claim re-verification against post-push HEAD | 🟡 landed `adaaa77`; orchestrator collection/verification pending |
+| Episodes/nav mini-project | Design for episodes as the main lens of content managing — one-place consolidation (corrected intent), list + create/edit scope, sheet as context only | 🟡 landed: research `6668cae` + spec `641b429` (EQ-1..EQ-12); orchestrator collection pending; **operator decisions on the EQ list are the next gate** |
 
 ### V1 record (2026-08-03)
 
