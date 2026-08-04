@@ -161,7 +161,11 @@ co-created principle docs bind future work
 (`dashboard-widget-principles.md`, `dashboard-governance-principles.md`);
 the phase-3 plan is reconciled and implementable. The cause-pattern ledger
 (`docs/research/defect-cause-patterns.md`) carries the full route
-checklist, 18 patterns, and every register.
+checklist, 18 patterns, and every register. **Phase 3 (Intake lens) landed
+2026-08-04 and shipped the same day (`dabb70d` deployed, verified); phase 4
+(Evidence) landed 2026-08-05 — the decision-10 consistency suite
+(`DashboardConsistencyTest`, green-first, zero inconsistencies) and the
+on-demand `rtl-board` browser group — closing Prompt 13.**
 
 **E4** · *Partially closed along the route:* `SparklineTrend` (A2) and the
 two hardening-round vocabularies (`MediaMutationRepairResult`,
