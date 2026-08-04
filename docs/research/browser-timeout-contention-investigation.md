@@ -13,10 +13,12 @@ root out from under an in-flight browser test. It is not port collision, not
 tree churn, not CPU starvation, and not `test-residue`. Reproduced
 deterministically (0/10 pass under induced load vs 23/24 quiesced).
 
-**Status: fixed and landed** — per-process fake-disk roots, `a3fa4f2`, watched
-red then green, full suite 1612/19,734 clean (Fix 1 below). A separate
-intermittent surfaced by the quiesced baseline was diagnosed to a real
-app-side focus defect and is **proposed, not applied** (open flag 1).
+**Status: both defects fixed and landed.** The contention defect: per-process
+fake-disk roots, `a3fa4f2`, watched red then green, full suite 1612/19,734
+clean (Fix 1 below). The separate intermittent surfaced by the quiesced
+baseline — a two-writer focus-restore defect in the picker — is fixed in
+`914de1c`, watched red then green, full suite 1615/19,741 clean (open flag 1,
+which records a second failure shape found during the fix itself).
 
 ## The three data points
 
@@ -248,8 +250,9 @@ starvation, and raising budgets would just lengthen the feedback loop.
 
 ## Open flags
 
-1. **The residual quiesced intermittent is now explained — and it is an app
-   defect, not a test artifact. Not fixed; proposed below.** Baseline acq run 11
+1. **The residual quiesced intermittent is now explained, and FIXED
+   (`914de1c`, operator-directed).** It was an app defect, not a test
+   artifact. Baseline acq run 11
    failed on a fully quiet machine (1/25, ~4%) at the **post-upload settle
    wait** (`tests/Browser/MediaPickerBrowserTest.php:234`), fixture present,
    no JS errors, predating both peer commits in the window.
@@ -284,16 +287,27 @@ starvation, and raising budgets would just lengthen the feedback loop.
    accessibility regression: finish an upload while any request is in flight
    and the keyboard user loses their place to `<body>`.
 
-   **Proposed fix (small, app-side, not applied — media-picker domain owner's
-   call):** make the restore verify instead of assume — after focusing, if
-   `document.activeElement` is still outside `$root`, retry on the next frames
-   for a bounded number of attempts, or aim at a target that no loading
-   binding disables. Pair it with a test that finishes an upload with a
-   request in flight and asserts focus lands inside the picker; the probe above
-   is the recipe. Probe caveat, stated so nobody over-reads it: the probe
-   forced `disabled` by direct DOM writes, which Alpine does not re-evaluate,
-   so the button stayed disabled after release — an artifact of the probe. The
-   load-bearing observation is the no-op restore itself.
+   **Fix as landed (`914de1c`):** the fixing pass surfaced a SECOND failure
+   shape the diagnosis had not predicted, caught by frame-level tracing during
+   watched-red: the restore can succeed and *then* lose — the late `disabled`
+   write blurs the just-focused control to `<body>`, and a fire-and-forget
+   restore never notices (the trace showed `return:after` focused, then BODY).
+   A third mover also joined the cast: the modal focus trap parks body-focus
+   on dialog chrome, so "focus is on a real element" does not mean "a person
+   chose it". The restore therefore works the settle window in two phases:
+   first return focus into the workspace, verified and retried per frame until
+   a target (remembered element → upload source → close) actually takes it;
+   after it lands once, only genuine drops to `<body>` are recovered — any
+   element focused after that, inside the workspace or out, is somebody's
+   choice and is never taken away. Bounded at 120 frames, stops if the
+   workspace leaves the DOM.
+
+   `MediaPickerUploadFocusReturnBrowserTest` pins all three behaviors and
+   went watched-red on the held-disabled case before the fix
+   (`focus_returned: false`, `active_element: BODY`). Gate: full suite
+   1615/19,741 zero failures, picker 6/6, owner 12/12, clone-repro 3/3,
+   new file standalone ×3, pint (blade fixer reformatted the file — the
+   behavioral change is the root `x-data` block), filacheck 0, build ok.
 
    **Test-side, separate and additive:** that wait conjoins seven conditions,
    so a timeout does not say which one failed — which is why this cost an
