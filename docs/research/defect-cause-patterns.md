@@ -620,7 +620,7 @@ release `74682025`):
 | Browser-test hygiene | `test-residue` census + rename, then the `single-read-race` sweep (6 files × 15 `x-show` views) — one session, test-only, commits stay LOCAL (test-only never pushes alone) | ⏳ chip `task_0e72bb0c` |
 | Contention investigation | Induced-concurrency vs quiesced reproduction of the three registered timeout data points; requires a QUIET machine — self-gates on it (run it ALONE) | ⏳ chip `task_d395ead7` |
 | Phase-3 fresh re-reconciliation | Re-verify the reconciled plan claim-by-claim against final post-push HEAD from a fresh perspective; amend/flag; docs-only | ⏳ chip `task_7dc6d969` |
-| Episodes/nav mini-project | NEW main mini-project: research + UX design for episodes-as-primary-lens — design chip first, NO implementation; spec deliverable `docs/phase-02/episodes-lens-design-spec.md` with `EQ-<n>` decision questions | ⏳ chip `task_345ddb95` |
+| Episodes/nav mini-project | NEW main mini-project: research + UX design for episodes as **the main lens of PodText content managing** — operator clarification 2026-08-04 (relayed to the running session): the client manages this data in a Google Sheet whose records are episodes; the list page's North Star is replacing that sheet as the daily driver (dense scannable grid, first-class inline edits as the migration path, quick scopes ≈ sheet tabs/filter views, nav renamed to the client's vocabulary — even simple nav moves/renames qualify). Spec `docs/phase-02/episodes-lens-design-spec.md`, `EQ-<n>` questions, NO implementation | ⏳ chip `task_345ddb95`, session running |
 
 ### V1 record (2026-08-03)
 
