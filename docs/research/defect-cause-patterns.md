@@ -613,7 +613,14 @@ Mark each step with commit hash + gate result when done.
 ## Post-route round (2026-08-04)
 
 Operator-directed follow-on work after the route-end push (`64479eb`,
-release `74682025`):
+release `74682025`). **Sequencing (delegated to the orchestrator
+2026-08-04, all four sessions on the one shared tree):** contention
+investigation has GO with collection priority (docs-only peers allowed as
+background; suspect batches redone); browser-test hygiene is ON HOLD until
+the investigation reports data collection complete (it edits the exact
+files under measurement) and resumes only on an explicit GO from the
+orchestrator or operator; re-reconciliation and episodes design run
+concurrently under no-tests/no-builds + batched-commits constraints.
 
 | Item | What | Status |
 |---|---|---|
