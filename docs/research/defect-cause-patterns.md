@@ -544,7 +544,10 @@ mechanism behind all three registered browser-timeout data points.)*
   28 stale parallel roots deleted; pinned by `TestDiskIsolationTest`
   (watched red 4/4 with the token disabled). Under the previously-fatal
   interferers: acq 6/6 + 6/6, owner 3/3; claimed full suite 1612/19,734
-  zero failures (orchestrator reproduction running). Blast radius
+  zero failures — **orchestrator-reproduced 2026-08-04: 1612/19,734
+  identical, zero failures, pint --test pass, full filacheck 0** (run
+  bracketed hygiene's `af33122` landing; counts match the pre-`af33122`
+  claim exactly). Blast radius
   MEASURED, not assumed: cache prefix, compiled views and database
   byte-identical with/without the token outside the parallel runner.
   Consequence for process: concurrent sessions are now structurally safe
