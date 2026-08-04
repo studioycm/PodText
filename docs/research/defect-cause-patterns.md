@@ -613,14 +613,19 @@ Mark each step with commit hash + gate result when done.
 ## Post-route round (2026-08-04)
 
 Operator-directed follow-on work after the route-end push (`64479eb`,
-release `74682025`). **Sequencing (delegated to the orchestrator
-2026-08-04, all four sessions on the one shared tree):** contention
-investigation has GO with collection priority (docs-only peers allowed as
-background; suspect batches redone); browser-test hygiene is ON HOLD until
-the investigation reports data collection complete (it edits the exact
-files under measurement) and resumes only on an explicit GO from the
-orchestrator or operator; re-reconciliation and episodes design run
-concurrently under no-tests/no-builds + batched-commits constraints.
+release `74682025`). **Sequencing (delegated to the orchestrator 2026-08-04; TIGHTENED same
+day on operator observation):** contention investigation alone has GO —
+ALL three peers hold for its collection window (the docs-only background
+allowance is withdrawn; an unmeasured "negligible" has no place in a
+timing experiment). Release authority: explicit GO from orchestrator or
+operator after collection-complete. **Process lesson (registered):
+cross-session orders are TURN-GRANULAR** — a queued HOLD lands only at
+the target's next turn boundary, proven when hygiene's `a14d50a`
+(card-preview fixture renames, item-1 partial — target suites
+unaffected, investigation told to verify) landed after the first hold;
+for hard freezes the operator's own pause is the instant lever, and the
+investigation is instructed to trust its own quiet-checks over order
+timestamps.
 
 | Item | What | Status |
 |---|---|---|
