@@ -78,6 +78,13 @@ class EpisodeListScopeQuery
      * label (the alternative — hand-written CASE WHEN conditions — would be
      * a second home for the same predicates).
      *
+     * Deliberately uncached and deliberately library-wide: the badges answer
+     * "how many drafts exist", not "how many match my current filter", and
+     * one aggregate per render is cheap at this library's size. Revisit both
+     * choices — a short cache, or filter-aware counts — if the catalogue
+     * passes a few thousand episodes or the anti-joins start showing up in
+     * query timings.
+     *
      * @return array<string, int>
      */
     public function counts(): array
