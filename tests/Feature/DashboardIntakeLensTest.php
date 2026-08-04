@@ -1,13 +1,19 @@
 <?php
 
+use App\Enums\ImportConnectionAuthType;
 use App\Enums\ImportConnectionProvider;
+use App\Enums\ImportConnectionStatus;
 use App\Enums\StreamEventType;
 use App\Enums\TranscriptionMode;
+use App\Filament\Pages\ImporterSettings;
 use App\Filament\Widgets\IntakeQueueWidget;
+use App\Filament\Widgets\SpotifyConnectionWidget;
+use App\Models\ImportConnection;
 use App\Models\PublicFormSubmission;
 use App\Models\User;
 use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
 
@@ -51,4 +57,47 @@ it('shows the empty state when nothing needs intake attention', function (): voi
     Livewire::test(IntakeQueueWidget::class)
         ->assertSee(__('admin.dashboard.intake.empty_heading'))
         ->assertDontSeeHtml('data-testid="intake-row"');
+});
+
+it('echoes the Spotify connection test with a day-first timestamp', function (): void {
+    ImportConnection::factory()->create([
+        'name' => 'Main Spotify',
+        'provider' => ImportConnectionProvider::Spotify,
+        'auth_type' => ImportConnectionAuthType::ClientCredentials,
+        'status' => ImportConnectionStatus::Connected,
+        // Stored wall time is UTC (the repo's storage convention — casts do
+        // not tz-convert on write); the board renders it in Jerusalem, +3 in
+        // summer, exactly like the stream's existing 10:00→13:00 pin.
+        'last_tested_at' => Carbon::parse('2026-07-31 07:55'),
+    ]);
+
+    Livewire::test(SpotifyConnectionWidget::class)
+        ->assertSee('Main Spotify')
+        ->assertSee(__('admin.importer.statuses.connected'))
+        ->assertSee('31/07/2026 10:55')
+        ->assertSeeHtml('data-testid="widget-tag-stock"')
+        ->assertDontSee(__('admin.dashboard.connection.reduced_note'))
+        ->assertDontSeeHtml('wire:poll');
+});
+
+it('shows the reduced-mode empty state without a Spotify connection', function (): void {
+    Livewire::test(SpotifyConnectionWidget::class)
+        ->assertSee(__('admin.dashboard.connection.none_heading'))
+        ->assertSee(__('admin.dashboard.connection.none_description'))
+        ->assertSeeHtml(ImporterSettings::getUrl());
+});
+
+it('marks a failed connection reduced', function (): void {
+    ImportConnection::factory()->create([
+        'name' => 'Main Spotify',
+        'provider' => ImportConnectionProvider::Spotify,
+        'auth_type' => ImportConnectionAuthType::ClientCredentials,
+        'status' => ImportConnectionStatus::Failed,
+        'last_tested_at' => null,
+    ]);
+
+    Livewire::test(SpotifyConnectionWidget::class)
+        ->assertSee(__('admin.importer.statuses.failed'))
+        ->assertSee(__('admin.dashboard.connection.never_tested'))
+        ->assertSee(__('admin.dashboard.connection.reduced_note'));
 });

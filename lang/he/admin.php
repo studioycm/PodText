@@ -34,6 +34,16 @@ return [
             'all_podcasts' => 'כל הפודקאסטים',
             'podcast_hint' => 'מצמצם כל מספר של פרקים בלוח. מוני הספרייה נשארים ברמת כל הספרייה.',
         ],
+        'connection' => [
+            'heading' => 'חיבור Spotify',
+            'last_tested' => 'נבדק לאחרונה · :date',
+            'never_tested' => 'טרם נבדק',
+            'reduced_note' => 'אין חיבור פעיל — שליפות ירוצו במצב מצומצם.',
+            'none_heading' => 'אין חיבור Spotify',
+            'none_description' => 'שליפות מ־Spotify ירוצו במצב מצומצם עד שיוגדר חיבור תקין.',
+            'manage' => 'ניהול חיבורים',
+            'open_fetcher' => 'לכלי השליפה',
+        ],
         'intake' => [
             'heading' => 'תור טיפול',
             'chips_all' => 'הכול',

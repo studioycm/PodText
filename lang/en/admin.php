@@ -34,6 +34,16 @@ return [
             'all_podcasts' => 'All podcasts',
             'podcast_hint' => 'Scopes every episode number on the board. Library counts stay library-wide.',
         ],
+        'connection' => [
+            'heading' => 'Spotify connection',
+            'last_tested' => 'Last tested · :date',
+            'never_tested' => 'Never tested',
+            'reduced_note' => 'No connected connection — fetches run in reduced mode.',
+            'none_heading' => 'No Spotify connection',
+            'none_description' => 'Spotify fetches run in reduced mode until a working connection exists.',
+            'manage' => 'Manage connections',
+            'open_fetcher' => 'Open the links fetcher',
+        ],
         'intake' => [
             'heading' => 'Work queue',
             'chips_all' => 'All',
