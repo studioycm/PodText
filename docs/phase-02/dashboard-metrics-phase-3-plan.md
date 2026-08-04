@@ -15,7 +15,7 @@
 
 **Architecture:** Three new custom `Filament\Widgets\Widget` classes fed exclusively by `EditorialMetrics` (new intake surface with its own cache key, invalidated by registering the existing `EditorialMetricsCacheObserver` on the intake models), a `source` command-bar filter narrowed in `ReadsDashboardFilters`, and an `ImportPolicy` so any admin can use the failed-rows CSV doorway. `StreamEventType` becomes the typed home of the stream/queue event vocabulary (unrouted-enum/no-type-home closure); `ExternalImageFailureReason` and `MediaAcquisitionDisposition` get their Filament label contracts (E4, Board-3 pair).
 
-**Tech stack:** Filament 5.7.x widgets/schemas, Livewire 4, Pest 4. No new dependencies. One schema change, owned by the reconciliation task `imports-provider-declare` (Q1 ruling): two nullable columns on `imports`. Everything else is schema-free.
+**Tech stack:** Filament 5.7.x widgets/schemas, Livewire 4, Pest 4. No new dependencies. One schema change, owned by the reconciliation task `imports-provider-stamp` (Q1 ruling): three nullable columns on `imports` (`provider`, `name`, `import_connection_id`). Everything else is schema-free.
 
 **Planning provenance (2026-08-03).** Written from scratch per
 `dashboard-metrics-phase-2R-handoff.md` § "Why phase 3 must be re-planned from
@@ -2329,16 +2329,24 @@ git commit docs/phase-02/current-project-state.md docs/phase-02/dashboard-metric
 >
 > **Fleshed to full depth (below, after the addenda list):** the two
 > reconciliation tasks were 2–3 lines; they now carry Task-1–9-grade specs
-> as `imports-provider-declare` and `imports-listing-minimal`, on plumbing
-> verified in vendor source: the import modal merges
-> `Importer::getOptionsFormComponents()` into its schema
-> (`ImportAction.php:181`) — the app's `ConfiguresContentImports` already
-> ships three selects through exactly this seam — every extra modal field's
-> state lands in `$options` (`ImportAction.php:238`,
+> as `imports-provider-stamp` (renamed from `imports-provider-declare`)
+> and `imports-listing-minimal`, on plumbing verified in vendor source:
+> the import modal merges `Importer::getOptionsFormComponents()` into its
+> schema (`ImportAction.php:181`) — the app's `ConfiguresContentImports`
+> already ships three selects through exactly this seam — every extra
+> modal field's state lands in `$options` (`ImportAction.php:238`,
 > `Arr::except($data, ['file', 'columnMap'])`), and `ImportStarted`
 > (`:262`) carries the saved `$import` + `$options` (getter access) as the
 > stamping seam. Execution order: Tasks 1–8, then
-> `imports-provider-declare`, then `imports-listing-minimal`, then Task 9.
+> `imports-provider-stamp`, then `imports-listing-minimal`, then Task 9.
+>
+> **Operator rulings 2026-08-04 (post-amendment):** `import_connection_id`
+> confirmed add-now (WB-reserved); the Q1 declare mechanism OVERRIDDEN —
+> source is process-decided, never user-declared: no source select, the
+> modal offers only an optional custom import name (`imports.name`,
+> displayed `name ?: file_name`), and the modal's listener stamps
+> `manual` unconditionally; the podcast-select decorative-cap sighting
+> stays register-only (ledger-owner's call, out of phase-3 scope).
 
 1. **Visual substrate is the landed A/B idiom, not the pre-A prose.** Widget
    specs in Tasks 4–6 build ON: the shared dashed empty-state partial
@@ -2355,8 +2363,11 @@ git commit docs/phase-02/current-project-state.md docs/phase-02/dashboard-metric
    a stamping hook verified against Filament's import-options plumbing.
    The sources filter then scopes imports for real; Spotify stays honestly
    empty. WB's fetch-run records later supersede as truth-at-origin.
-   *(Fleshed 2026-08-04 to full task depth — see "Reconciliation task
-   `imports-provider-declare`" below.)*
+   *(Fleshed 2026-08-04 to full task depth, then mechanism OVERRIDDEN by
+   the operator the same day: source is process-decided, never
+   user-declared — no source select; the modal gains only an optional
+   custom import name. See "Reconciliation task `imports-provider-stamp`"
+   below.)*
 3. **New task (Q4 ruling): minimal read-only imports listing** so the queue
    has a "view all" doorway for imports — listing only, not management.
    *(Fleshed 2026-08-04 to full task depth — see "Reconciliation task
@@ -2370,18 +2381,29 @@ git commit docs/phase-02/current-project-state.md docs/phase-02/dashboard-metric
 
 ---
 
-### Reconciliation task `imports-provider-declare` (Q1 ruling; fleshed 2026-08-04)
+### Reconciliation task `imports-provider-stamp` (Q1 ruling; fleshed 2026-08-04)
+
+*(Renamed 2026-08-04 — historical alias: `imports-provider-declare`. The
+operator overrode the declare mechanism the same day: **source is decided
+by the source process, never user-declared** — the modal offers NO source
+select; the user's only control is an optional custom import NAME. This
+supersedes the Q1 DECIDED wording "a 'source' select in the import modal
+defaulting to manual"; the orchestrator is recording the override in the
+ledger.)*
 
 **Run after Task 8, before `imports-listing-minimal`.** Supersedes D-4's
-interim hardcoded gate: the sources filter scopes imports by a DECLARED
-provider column instead of returning a blanket empty state.
+interim hardcoded gate: the sources filter scopes imports by a
+PROCESS-STAMPED provider column instead of returning a blanket empty
+state. The Filament import modal IS the manual process, so every import it
+starts is stamped `manual`; WB's fetch processes later stamp their own
+provider at creation.
 
 **Files:**
 - Create: `database/migrations/<stamp>_add_provider_to_imports_table.php`
 - Modify: `app/Filament/Imports/Concerns/ConfiguresContentImports.php`
-  (append the source select to the existing `getOptionsFormComponents()` —
-  the shared home all five importers already route their modal options
-  through)
+  (append the optional name TextInput to the existing
+  `getOptionsFormComponents()` — the shared home all five importers
+  already route their modal options through; NO source select)
 - Create: `app/Listeners/StampImportSource.php`
 - Modify: `app/Providers/AppServiceProvider.php` (one `Event::listen` line —
   the app registers listeners explicitly; precedent at line 259)
@@ -2390,7 +2412,7 @@ provider column instead of returning a blanket empty state.
 - Modify: `app/Filament/Widgets/IntakeQueueWidget.php` +
   `resources/views/filament/widgets/intake-queue.blade.php`
 - Modify: `lang/en/admin.php` + `lang/he/admin.php`
-  (`admin.import.options.source*`)
+  (`admin.import.options.name*`)
 - Test: `tests/Feature/DashboardIntakeMetricsTest.php` +
   `tests/Feature/DashboardIntakeLensTest.php` (additions)
 - Record a short FilamentExamples research pass (import-modal options
@@ -2412,50 +2434,59 @@ action with the saved `$import` and `$options` (getter access:
 `forceFill()->save()` — which also fires the Task-2 observer.
 
 **Interfaces:**
-- Consumes: `ImportConnectionProvider::options()` (Task 7),
-  `EditorialMetricsCacheObserver` on `Import` (Task 2), the vendor seams
-  above.
-- Produces: `imports.provider` (nullable string, enum-backed values;
-  null = legacy/pre-column, read as manual);
+- Consumes: `EditorialMetricsCacheObserver` on `Import` (Task 2), the
+  vendor seams above.
+- Produces: `imports.provider` (nullable string, enum-backed values,
+  SYSTEM-stamped only; null = legacy/pre-column, read as manual);
+  `imports.name` (nullable string — the operator's optional custom label;
+  display rule everywhere: `name ?: file_name`);
   `imports.import_connection_id` (nullable FK, WB-reserved — nothing
   writes it in phase 3; created now so WB needs no second `imports`
-  migration, per the Q1 ruling's "(+ optional `import_connection_id`)");
+  migration; add-now confirmed by the operator 2026-08-04);
   `ImportConnectionProvider::fromImportValue(?string): self`;
   provider-scoped `intakeQueue()`.
 
 **Semantics (supersede the D-4 gate):** source empty (all) = full queue,
 snapshot counts, unchanged. Manual = submissions + imports whose provider
 is `manual` OR NULL (a legacy import is a manual act — D-4's own
-rationale). `google_drive` = imports declared google_drive, no submissions
-(submissions are manual acts). `spotify` = the same rule, empty in
-practice because the direct fetcher never writes `Import` records — the
-empty state is now earned by data, not hardcoded. Under any non-null
+rationale). `google_drive`/`spotify` = imports stamped by those producing
+processes — none exist until WB, so both connected providers are honestly
+empty AND user-unreachable (an invariant, stronger than the dead select
+would have given: no UI path can mislabel a CSV). Under any non-null
 source the counts are computed live from the scoped queries (the cached
 snapshot counts are channel-blind); the widget shows the provider empty
-state only when the SCOPED queue is actually empty. The column is a
-**declaration, not provenance** (proxy-oracle guard) — the migration
-docblock says so, and WB's fetch-run records supersede it as
-truth-at-origin.
+state only when the SCOPED queue is actually empty. Queue import rows
+title as `name ?: file_name`. The column is a **process stamp, not
+provenance** (proxy-oracle guard) — the migration docblock says so, and
+WB's fetch-run records supersede it as truth-at-origin.
 
 - [ ] **Step 1: Write the failing tests.** Append to
   `DashboardIntakeMetricsTest.php`:
 
 ```php
-it('stamps the declared source onto the import row', function (): void {
+it('stamps modal imports manual with the optional custom name', function (): void {
+    // The Filament import modal is the only producer of ImportStarted
+    // today and IS the manual process: the stamp is unconditional.
     $import = failedImport();
-    event(new \Filament\Actions\Imports\Events\ImportStarted($import, [], ['source' => 'google_drive']));
-    expect($import->fresh()->provider)->toBe('google_drive');
+    event(new \Filament\Actions\Imports\Events\ImportStarted($import, [], ['name' => 'July backfill']));
+    expect($import->fresh()->provider)->toBe('manual')
+        ->and($import->fresh()->name)->toBe('July backfill');
 
-    // raw-state: the modal value is browser-supplied — nonsense stays null.
+    // raw-state: the name is browser-supplied free text — blank,
+    // non-string or oversized values stay null; the manual stamp lands
+    // regardless.
     $other = failedImport(fileName: 'other.csv');
-    event(new \Filament\Actions\Imports\Events\ImportStarted($other, [], ['source' => 'not-a-provider']));
-    expect($other->fresh()->provider)->toBeNull();
+    event(new \Filament\Actions\Imports\Events\ImportStarted($other, [], ['name' => str_repeat('x', 500)]));
+    expect($other->fresh()->provider)->toBe('manual')
+        ->and($other->fresh()->name)->toBeNull();
 });
 
-it('offers the source select in every importer modal schema', function (): void {
+it('offers only the optional name field in every importer modal schema', function (): void {
     // Source-level assertion by design: action-modal prose is NOT in the
     // Livewire HTML at mountAction time (2R gotcha), so the schema is
-    // asserted where it is built, non-vacuously.
+    // asserted where it is built, non-vacuously. No importer may offer a
+    // source select — source is process-decided (operator override
+    // 2026-08-04).
     foreach ([
         \App\Filament\Imports\ContentItemImporter::class,
         \App\Filament\Imports\AuthorImporter::class,
@@ -2463,16 +2494,27 @@ it('offers the source select in every importer modal schema', function (): void 
         \App\Filament\Imports\ContentGroupImporter::class,
         \App\Filament\Imports\CategoryImporter::class,
     ] as $importer) {
-        $source = collect($importer::getOptionsFormComponents())
-            ->first(fn ($component): bool => $component->getName() === 'source');
+        $components = collect($importer::getOptionsFormComponents());
 
-        expect($source)->not->toBeNull()
-            ->and($source->getOptions())->toBe(ImportConnectionProvider::options())
-            ->and($source->getDefaultState())->toBe(ImportConnectionProvider::Manual->value);
+        expect($components->first(fn ($component): bool => $component->getName() === 'name'))
+            ->toBeInstanceOf(\Filament\Forms\Components\TextInput::class)
+            ->and($components->first(fn ($component): bool => $component->getName() === 'source'))
+            ->toBeNull();
     }
 });
 
-it('scopes the queue by declared provider', function (): void {
+it('titles queue import rows by custom name over file name', function (): void {
+    failedImport(fileName: 'episodes.csv')->forceFill(['name' => 'July backfill'])->save();
+
+    $row = collect(app(EditorialMetrics::class)->intakeQueue()['rows'])
+        ->firstWhere('type', StreamEventType::Import);
+
+    expect($row['title'])->toBe('July backfill');
+    // The Task-2 test pinning a name-less import's title to its file name
+    // stays green — that is the fallback half of the same rule.
+});
+
+it('scopes the queue by stamped provider', function (): void {
     PublicFormSubmission::factory()->create();
     failedImport();                                          // legacy: provider null
     failedImport(fileName: 'drive.csv')->forceFill(['provider' => 'google_drive'])->save();
@@ -2506,16 +2548,21 @@ it('renders declared-provider rows under their source filter', function (): void
   their assertions verbatim — spotify stays empty by data and manual still
   counts the legacy null-provider import.
 
-- [ ] **Step 2: Run, watch red** — unknown column `provider`, listener not
-  registered, no `source` component.
+- [ ] **Step 2: Run, watch red** — unknown columns `provider`/`name`,
+  listener not registered, no `name` component.
 
 - [ ] **Step 3: Implement.** Migration:
 
 ```php
     Schema::table('imports', function (Blueprint $table): void {
-        // A DECLARATION of intake channel, not provenance: stamped from
-        // the import modal's source select (default manual). Null =
-        // pre-column legacy rows, read as manual
+        // The operator's optional custom label for this import (modal
+        // "name" field). Display rule everywhere: name ?: file_name.
+        $table->string('name')->nullable()->after('file_name');
+        // A PROCESS STAMP of intake channel, not provenance: the import
+        // modal's listener stamps manual unconditionally (the modal IS
+        // the manual process — operator override 2026-08-04, no user
+        // select); future fetch processes write their own provider at
+        // creation. Null = pre-column legacy rows, read as manual
         // (ImportConnectionProvider::fromImportValue()). WB's fetch-run
         // records supersede this as truth-at-origin (Q1 ruling
         // 2026-08-03).
@@ -2530,22 +2577,18 @@ it('renders declared-provider rows under their source filter', function (): void
     });
 ```
 
-  (The column stays uncast on the vendor model — read sites narrow through
+  (The columns stay uncast on the vendor model — read sites narrow through
   the enum; binding an app subclass into `app(Import::class)` was
-  considered and rejected as scope.) The select, appended inside the
-  existing `getOptionsFormComponents()` array (import the enum in the
-  concern):
+  considered and rejected as scope.) The optional name field, appended
+  inside the existing `getOptionsFormComponents()` array (import
+  `TextInput` in the concern; technical field → helper text per the
+  cross-cutting rule):
 
 ```php
-            Select::make('source')
-                ->label(__('admin.import.options.source'))
-                ->helperText(__('admin.import.options.source_helper'))
-                // Three fixed options: native select, no search
-                // (settings-dashboard tiny-set rule); ::options() array
-                // idiom (D-10).
-                ->options(ImportConnectionProvider::options())
-                ->default(ImportConnectionProvider::Manual->value)
-                ->required(),
+            TextInput::make('name')
+                ->label(__('admin.import.options.name'))
+                ->helperText(__('admin.import.options.name_helper'))
+                ->maxLength(120),
 ```
 
   The listener (`app/Listeners/StampImportSource.php`), registered in
@@ -2557,17 +2600,22 @@ final class StampImportSource
 {
     public function handle(ImportStarted $event): void
     {
-        // raw-state: modal state is browser-supplied; narrow before writing.
-        $provider = ImportConnectionProvider::tryFrom(
-            (string) ($event->getOptions()['source'] ?? ''),
-        );
+        // The Filament import modal is the only producer of this event
+        // today, and the modal IS the manual process: stamp manual
+        // unconditionally (operator override 2026-08-04 — source is
+        // process-decided, never user-declared). Future programmatic
+        // producers (WB fetch runs) write their own provider at creation
+        // and never rely on this listener.
+        $name = $event->getOptions()['name'] ?? null;
 
-        if ($provider === null) {
-            return;
-        }
+        // raw-state: the name is browser-supplied free text — narrow it.
+        $name = is_string($name) ? trim($name) : '';
 
         // Fires saved → EditorialMetricsCacheObserver invalidates (Task 2).
-        $event->getImport()->forceFill(['provider' => $provider->value])->save();
+        $event->getImport()->forceFill([
+            'provider' => ImportConnectionProvider::Manual->value,
+            'name' => ($name !== '' && mb_strlen($name) <= 120) ? $name : null,
+        ])->save();
     }
 }
 ```
@@ -2601,7 +2649,10 @@ final class StampImportSource
 ```
 
   The submissions branch gains `$withSubmissions &&` in front of its
-  existing kind gate; the imports branch builds from `$importsQuery()`;
+  existing kind gate; the imports branch builds from `$importsQuery()` and
+  its row title becomes `(string) ($import->name ?: $import->file_name)`
+  (the display rule — Task 2's name-less title assertion pins the
+  fallback half);
   counts under `$source === null` stay snapshot-based, otherwise they are
   computed first and the array keeps Task 2's `all/submissions/imports`
   key order (the shape assertions are `toBe`, which is order-sensitive):
@@ -2644,17 +2695,18 @@ final class StampImportSource
 
 ```php
 // en
-'source' => 'Source',
-'source_helper' => 'Which intake channel produced this file. Manual fits hand-prepared CSVs; the dashboard queue and its sources filter read this.',
+'name' => 'Import name',
+'name_helper' => 'Optional label for this import. Shown in the intake queue and the imports listing instead of the file name.',
 // he
-'source' => 'מקור',
-'source_helper' => 'מאיזה ערוץ קליטה הגיע הקובץ. "ידני" מתאים לקובצי CSV שהוכנו ידנית; תור הטיפול ומסנן המקורות בלוח קוראים את הערך הזה.',
+'name' => 'שם הייבוא',
+'name_helper' => 'תווית אופציונלית לייבוא הזה. תוצג בתור הטיפול וברשימת הייבואים במקום שם הקובץ.',
 ```
 
 - [ ] **Step 4: Run green, mutation-check, format, commit.**
   Mutation-checks: comment out the `Event::listen` line → the stamp test
   fails; drop the `orWhereNull('provider')` arm → the manual-scope count
-  fails. Run the full Dashboard filter plus
+  fails; drop the name-length guard in the listener → the oversized-name
+  test fails. Run the full Dashboard filter plus
   `vendor/bin/filacheck --fix --dirty` (the concern is under
   `app/Filament`).
 
@@ -2666,7 +2718,7 @@ git commit database/migrations app/Filament/Imports/Concerns/ConfiguresContentIm
 
 ### Reconciliation task `imports-listing-minimal` (Q4 ruling; fleshed 2026-08-04)
 
-**Run after `imports-provider-declare`, before Task 9.** Listing only, not
+**Run after `imports-provider-stamp`, before Task 9.** Listing only, not
 management (the ruling's scope): a read-only Resource so the queue's cap
 note has a "view all" doorway for imports too.
 
@@ -2690,7 +2742,7 @@ note has a "view all" doorway for imports too.
 - Consumes: vendor `Import` model; `ImportPolicy` (Task 3);
   `EditorialMetrics::failedRowsDownloadUrl()` (Task 2 — the one URL home,
   now with a third consumer that can never diverge from the notification);
-  `ImportConnectionProvider::fromImportValue()` (`imports-provider-declare`);
+  `ImportConnectionProvider::fromImportValue()` (`imports-provider-stamp`);
   `UiFormats`/`UiTimezone` day-first date columns.
 - Produces: `ImportResource` with a `ListImports` page;
   `ImportPolicy::viewAny()`.
@@ -2708,7 +2760,9 @@ note has a "view all" doorway for imports too.
   correct static property types). `ResourcePolicyCoverageTest` is satisfied
   structurally: the resource carries a `can*` override AND a registered
   policy.
-- **Table:** `file_name` searchable; importer column via `class_basename`;
+- **Table:** leading title column renders `name ?: file_name` (the display
+  rule from `imports-provider-stamp`); `file_name` searchable in its own
+  column; importer column via `class_basename`;
   provider badge via
   `ImportConnectionProvider::fromImportValue($state)->getLabel()` (one
   home for the null rule); failed rows via `->counts('failedRows')` badge,
@@ -2798,7 +2852,10 @@ git commit app/Filament/Resources/Imports app/Policies/ImportPolicy.php app/Fila
    declaration as truth-at-origin — the column becomes derivable, not
    removed. Fold the migration + modal + stamping task into the
    reconciliation pass *(done — fleshed 2026-08-04 as
-   `imports-provider-declare` in the addenda section)*. **Original question:** Implemented:
+   `imports-provider-stamp` in the addenda section; same-day operator
+   override: the "source select" wording is superseded — source is
+   process-decided, the modal offers only an optional custom import
+   name)*. **Original question:** Implemented:
    all/manual show the full queue; spotify/google_drive show an explanatory
    empty state (imports carry no provider — the table has no such column, and
    the Spotify fetcher's direct importer bypasses Filament imports entirely).
