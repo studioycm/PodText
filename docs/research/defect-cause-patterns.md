@@ -221,12 +221,9 @@ commits) · where else to look (concrete greps/paths) · status.
 - **Status:** V2 closed the owner-image mechanism sighting. **The
   contention hypothesis is RESOLVED (2026-08-04):** all three residual
   data points are explained by `fake-root-purge` (see that entry; 108-run
-  investigation, controls clean). ONE new, genuinely separate residual
-  registered: quiesced baseline acq run 11 failed (~4%, 1/24) at the
-  post-upload settle wait (`MediaPickerBrowserTest:234`, the
-  `picker().contains(document.activeElement)` condition), not the
-  storage-listing wait, predating all window commits — NEW watch,
-  unexplained, one sighting.
+  investigation, controls clean). The ~4% settle-wait residual
+  is now DIAGNOSED (2026-08-04): a real app-side accessibility defect —
+  see `two-writer-channel` sighting #2. Watch closed into that entry.
 
 ## line-guard · Line-based guards miss multi-line call sites *(alias P8)*
 
@@ -478,6 +475,40 @@ family, kin of `flake-label`'s discipline rather than an app defect.)*
   the purge is live deletion of the FAKE root; renames fix only the
   former.
 
+## two-writer-channel · Single-writer consumers on a two-writer property
+
+*(Founded 2026-08-04 from the contention session's residual diagnosis
+(`9318e62`); first sighting was test-side, second is the APP as consumer.)*
+
+- **Cause:** a property with TWO independent writers — Alpine `x-bind` and
+  Filament's `wire:loading.attr="disabled"` on every icon-button — is
+  consumed as if single-writer: a one-shot read or one-shot action aimed at
+  it silently misfires whenever the other writer holds the channel.
+- **Evidence:** (1, test-side, fixed) `return_guard_released` read
+  `disabled` while Filament's loading writer held it — fixed by asserting
+  the guard's own observable (`3cc4906`). (2, APP-side, ACTUAL, diagnosed
+  NOT fixed) the media picker's post-upload focus restore: FilePond's inner
+  input never takes focus (`activeElement` stays BODY → `uploadFocusId`
+  always null), so the restore always takes its fallback — a single
+  `$nextTick` `focus()` on `media-picker-source-upload`
+  (`media-picker-panel.blade.php:17-28`), a button that is `disabled` at
+  the very instant `livewire-upload-finish` fires; held disabled across
+  that tick, the restore silently no-ops and the keyboard user lands on
+  `<body>`. A genuine accessibility regression, ~4% under quiesced timing,
+  worse under load. Diagnosis + proposed fix (verify-and-retry, or target
+  an element no loading binding disables):
+  `docs/research/browser-timeout-contention-investigation.md` (`9318e62`).
+- **Where else:** every consumer (app or test) of `disabled`/loading-bound
+  attributes near Filament icon-buttons; any one-shot focus/scroll/click
+  aimed at elements with loading bindings.
+- **Suggested guard:** consumers target single-writer observables or
+  verify-and-retry across ticks; test-side, per-condition labelled waits
+  (the hygiene session now owns converting the seven-condition settle wait
+  that hid this).
+- **Status:** app fix REGISTERED as queued work for the media-picker
+  domain (chip on operator word); test-side conversion assigned to the
+  hygiene sweep.
+
 ## fake-root-purge · Storage::fake purges a shared root under concurrent runs
 
 *(Registered 2026-08-04 from the contention investigation's verdict — the
@@ -506,8 +537,19 @@ mechanism behind all three registered browser-timeout data points.)*
   `docs/research/browser-timeout-contention-investigation.md`.
   **Distinct from `test-residue`** (stale REAL-disk files): fixture renames
   do not touch this mechanism.
-- **Status:** mechanism proven; fix proposal pending the deliverable's
-  final ranking → implementation chip after review.
+- **Status:** **FIXED (`a3fa4f2`, operator-authorized 2026-08-04):**
+  `tests/Pest.php` fills `TEST_TOKEN` with `p<pid>` when the runner
+  supplies none (paratest keeps its own); cleanup at BOTH ends (shutdown
+  hook for own roots + boot sweep for dead-PID roots past an age floor);
+  28 stale parallel roots deleted; pinned by `TestDiskIsolationTest`
+  (watched red 4/4 with the token disabled). Under the previously-fatal
+  interferers: acq 6/6 + 6/6, owner 3/3; claimed full suite 1612/19,734
+  zero failures (orchestrator reproduction running). Blast radius
+  MEASURED, not assumed: cache prefix, compiled views and database
+  byte-identical with/without the token outside the parallel runner.
+  Consequence for process: concurrent sessions are now structurally safe
+  against test-storage interference — hold discipline for TEST runs is
+  retired; tree/commit hygiene rules stand.
 
 ## shared-index-entanglement · Targeted adds don't protect commits in a shared tree
 
@@ -641,7 +683,7 @@ Mark each step with commit hash + gate result when done.
 | Ledger research | Dedicated read-only bad-practices hunt (skills + guidelines + FilaCheck catalogue), report-only | ✅ merged 2026-08-03 — 7 findings + flags curated: decorative-cap/service-hop-cost/client-payload promoted, unrouted-enum gained two tier-variant sightings, raw-state public-tier all-clear, implicit-keys queryStringIdentifier grep retired, security battery zero ACTUAL. Coverage gaps it declared: ~74/89 Blade views grep-only, importer connector internals, browser-test contents |
 | Operator decisions | **Decided 2026-08-03:** Q2 per-failed-import · Q3 podcast filter hidden on Intake · Q4 **overruled — phase 3 adds a minimal read-only imports listing** · Q6 warnings widget stays on both lenses · **Q7 INVERT the global Select preload default** (bounded sets opt in; scope-extended to the running fix-batch session). **Q5 RESOLVED 2026-08-03:** the dossier principles were recovered from the phase-1 session transcript and archived into the combined plan; no conflict with the built board. **Q1 DECIDED 2026-08-03:** declare-at-upload now (provider column + modal source select, folded into the phase-3 reconciliation), fetch-run records in WB supersede later. **ES-1 operator qualifier registered** in the combined plan: a doorway-less number ships rather than being dropped when no filterable surface exists yet. **SettingsBackupPolicy DECIDED + LANDED 2026-08-03:** the fix-batch session had already created the policy at admin level (`73e4c17`); the operator ruled delete is **super-admin only for now** — flipped watched-red by the orchestrator (policy `delete`/`deleteAny` → `hasRoleAtLeast(SuperAdmin)`, table action hidden from plain admins and proven working for super-admins). No operator decisions remain open | 🟡 updated 2026-08-03 |
 | Post-B1 fix batch | decorative-cap rewire · service-hop-cost fix (105→3 queries/page claimed) · one-home stragglers · unrouted-enum sweep (37 enums) + page-tier policy guard · **Q7 preload-default inversion (scope-extended)** | 🟡 landed: `abd46f3`, `c129f5f`, `9a761a2`, `73e4c17`, Q7 riding `11afc21` (see `shared-index-entanglement`), `ce23313`. Claimed gate 1605/19,661. **Orchestrator-verified 2026-08-03 at `ce23313`: pest 1605/19,663 direct run, pint --test pass, full filacheck 0.** **Hardening round (operator-directed, same session) landed after:** `7768442` (SettingsBackupPolicy, admin-level) + `5da7acc` (missing-category one home + filter↔badge parity pin) + `f494f0a` (two type-homes: `MediaMutationRepairResult`/`SettingsImportRowOutcome`; inert optionsLimit dropped; relation-manager language filter scoped to owner; slide_over vocabulary documented-only — spelling change = data migration) + orchestrator `ce95a35` (super-admin ruling flip, watched red). Round's claimed gate: 1608/19,696 with ONE standalone-green browser timeout, run on a tree mixed with the scan-scope session's uncommitted work — **Orchestrator-verified 2026-08-03 in the combined route-end run (pest 1608/19,724 zero failures — no flake reproduced; both claims arbitrated).** Sweep judgment calls RATIFIED by the operator 2026-08-03 (snapshot shape keys stay literal; stats-widget card ids stay widget-own; no app-wide literal ban inside the batch) — fold as settled |
-| Deferred register | one-home app-wide format/colour sweeps (parked, budgeted separately) · M2 upstream Filament report (worth filing, unfiled — M2 brief/handoff) · phase-3 plan reconciliation (after B1) · 1/30 Storage-listing timeout (flake-label watch) · client-payload wizard architecture (watch-tier, out of dashboard scope) · `single-read-race` sweep (trigger: a second sighting; recon scope = 6 browser files × 15 `x-show` views, unchecked) · *(promoted to the post-route round 2026-08-04: contention investigation, `test-residue` census, `single-read-race` sweep — see the round table)* · **app-wide enum-literal ban guard** (operator-approved 2026-08-03; what = repo-wide enum-literal drift guard; why = guard-widening parked during the batch, now approved; unblocks = operator declares the dashboard program done/OK. **First chip run consumed 2026-08-03 without starting** — the session verified its timing gate against route state, found it closed (verification/fold/reconciliation ahead of the push; phases 3–4 open), and stood down producing nothing; a FRESH launch with the same constraints — homonym surface, UiFormatsPolicyTest/A2 precedents, statement-scan rule, ratified exceptions, mutation-check, no push — is needed at unblock time) · M2 upstream Filament report: IN MOTION, **do not file yet** (located 2026-08-03: the original M2 session built a pinned-stack reproduction scaffold that does NOT reproduce yet — the batched-message race is necessary but not sufficient; missing ingredient hypothesis = the live child sitting outside the replaced partial container, three ranked candidates, ~one more focused session, state saved in that session's `REPRO.md`; a healing repro would be closed unread) · governance globalization (operator ruling: dashboard-only for now; wider adoption is its own future thinking and plan) · enum theme-scope partition (operator: symmetric superset now; partition later only if size matters, by directory so globs/guard can see it) · badge-home split (`ShowContentItem` base literals vs `PublicItemPageRegistry` maps — one-home cleanup candidate once globs land) · dead `resources/css/app.css` entry kept as future non-panel seat (operator ruling) · research watch items: `embed_provider` full-table `distinct` per render (`ContentItemsTable.php:173`), 9 enums without Filament contracts (E4 residual), Blade string-icon duplication, importer authz panel-only | 📌 standing register per the registration discipline |
+| Deferred register | one-home app-wide format/colour sweeps (parked, budgeted separately) · M2 upstream Filament report (worth filing, unfiled — M2 brief/handoff) · phase-3 plan reconciliation (after B1) · 1/30 Storage-listing timeout (flake-label watch) · client-payload wizard architecture (watch-tier, out of dashboard scope) · `single-read-race` sweep (trigger: a second sighting; recon scope = 6 browser files × 15 `x-show` views, unchecked) · *(promoted to the post-route round 2026-08-04: contention investigation, `test-residue` census, `single-read-race` sweep — see the round table)* · **media-picker focus-restore accessibility fix** (the `two-writer-channel` app defect: verify-and-retry the restore or target a non-loading-bound element; proposal in the investigation doc; chip on operator word — the test-side per-condition wait lands first via hygiene and will surface the defect at ~4% until fixed) · **app-wide enum-literal ban guard** (operator-approved 2026-08-03; what = repo-wide enum-literal drift guard; why = guard-widening parked during the batch, now approved; unblocks = operator declares the dashboard program done/OK. **First chip run consumed 2026-08-03 without starting** — the session verified its timing gate against route state, found it closed (verification/fold/reconciliation ahead of the push; phases 3–4 open), and stood down producing nothing; a FRESH launch with the same constraints — homonym surface, UiFormatsPolicyTest/A2 precedents, statement-scan rule, ratified exceptions, mutation-check, no push — is needed at unblock time) · M2 upstream Filament report: IN MOTION, **do not file yet** (located 2026-08-03: the original M2 session built a pinned-stack reproduction scaffold that does NOT reproduce yet — the batched-message race is necessary but not sufficient; missing ingredient hypothesis = the live child sitting outside the replaced partial container, three ranked candidates, ~one more focused session, state saved in that session's `REPRO.md`; a healing repro would be closed unread) · governance globalization (operator ruling: dashboard-only for now; wider adoption is its own future thinking and plan) · enum theme-scope partition (operator: symmetric superset now; partition later only if size matters, by directory so globs/guard can see it) · badge-home split (`ShowContentItem` base literals vs `PublicItemPageRegistry` maps — one-home cleanup candidate once globs land) · dead `resources/css/app.css` entry kept as future non-panel seat (operator ruling) · research watch items: `embed_provider` full-table `distinct` per render (`ContentItemsTable.php:173`), 9 enums without Filament contracts (E4 residual), Blade string-icon duplication, importer authz panel-only | 📌 standing register per the registration discipline |
 | Phase-3 re-plan | Board 3 researched and planned fresh against locked decisions | 🟡 plan landed (`7183996`) but ran pre-A/B (orchestrator sequencing error — "after push" followed literally once the push moved mid-route); held as DRAFT, reconciliation pass against landed A/B patterns at route end |
 | Docs | Refresh 2R-handoff commit table + gate; current-project-state Prompt-13 row; fold flags | ✅ FULL fold 2026-08-03 at route end: handoff block map + `11afc21` provenance note + gate; six session reports folded; project-state row rewritten; phase-3 plan reconciled (`35aa226`) |
 | Push gate | Full pest/pint/filacheck/build; push ONLY on operator's word (deploys production) | ✅ mid-route push 2026-08-03: pest 1563/19,386, full filacheck 0, build ok; pushed pinned `987b92f`; Forge release `74621206` = `987b92f`, `/up` 200. **Route-end push DONE 2026-08-03 on the operator's word:** pushed pinned `64479eb` (`987b92f..64479eb`, 59 commits); Forge release `74682025` = `64479eb`, `/up` 200; production compiled themes verified carrying the prose contract (`_blockquote`) and badge palette (`text-sky-700`) — the `unscanned-home` cure is live |
@@ -670,7 +712,7 @@ real protecting.
 | Item | What | Status |
 |---|---|---|
 | Browser-test hygiene | `test-residue` census + `single-read-race` sweep | 🟡 released post-collection; `a14d50a` (census, card-preview) + `171deeb` (one sweep conversion) landed; final report + remaining conversions pending; **rename does NOT close the purge mechanism — boundary enforced in its release order** |
-| Contention investigation | Mechanism hunt for the three timeout data points | ✅ **COLLECTION COMPLETE, MECHANISM PROVEN: `fake-root-purge`** (108 runs; all three DPs explained; controls exonerate concurrency/churn/realistic CPU). Verdict doc in progress; new ~4% settle-wait residual registered; fix chip follows the deliverable |
+| Contention investigation | Mechanism hunt for the three timeout data points | ✅ **DONE end-to-end:** `fake-root-purge` proven (108 runs) AND fixed (`a3fa4f2`, operator-authorized, interferer-proof); residual diagnosed as the `two-writer-channel` app defect (`9318e62`, fix proposed not applied — queued for the media-picker domain); deliverable doc landed. Orchestrator full-suite reproduction running |
 | Phase-3 fresh re-reconciliation | Claim-by-claim re-verification against post-push HEAD | 🟡 landed `adaaa77`; orchestrator collection/verification pending |
 | Episodes/nav mini-project | Design for episodes as the main lens of content managing — one-place consolidation (corrected intent), list + create/edit scope, sheet as context only | 🟡 landed: research `6668cae` + spec `641b429` (EQ-1..EQ-12); orchestrator collection pending; **operator decisions on the EQ list are the next gate** |
 
