@@ -128,3 +128,60 @@ it('reconciles the heatmap total with the funnel published series', function ():
     expect($heatmap->total())->toBe((int) array_sum($publishedSeries->points))
         ->and($heatmap->total())->toBe(4);
 });
+
+it('reconciles blocked across the gap rows, the queue and the burn-down', function (): void {
+    consistencyFixture();
+
+    $metrics = app(EditorialMetrics::class);
+    $snapshot = $metrics->snapshot();
+
+    // The gap rows carry exactly the invisible tier, reason by reason —
+    // the fixture is built overlap-free, so the per-row pins are exact.
+    $gapRows = collect($metrics->reasonBreakdown()['gap'])
+        ->mapWithKeys(fn ($row): array => [$row->meta('reason') => (int) $row->value]);
+
+    expect($snapshot['gap']['invisible'])->toBe(2)
+        ->and($gapRows->get('missing_transcription'))->toBe(1)
+        ->and($gapRows->get('unpublished_group'))->toBe(1);
+
+    // Attention reasons OVERLAP by design (one episode, two findings):
+    // total counts episodes, the rows count findings — total ≤ sum (D-2).
+    expect($snapshot['attention']['total'])->toBe(1)
+        ->and($snapshot['attention']['missing_media'])->toBe(1)
+        ->and($snapshot['attention']['missing_category'])->toBe(1);
+
+    // The queue holds BOTH tiers as distinct episodes (verified in
+    // queueQuery(): the union of all four blocker reasons over
+    // status-published — the phase-1 handoff correction made real).
+    expect($metrics->queueQuery()->count())->toBe(3);
+
+    // The burn-down bars read the same tier numbers.
+    $progress = $metrics->blockersProgress();
+    expect($progress['invisible']->remaining)->toBe($snapshot['gap']['invisible'])
+        ->and($progress['attention']->remaining)->toBe($snapshot['attention']['total'])
+        ->and($progress['invisible']->total)->toBe($snapshot['funnel']['published']);
+});
+
+it('reconciles per-podcast health totals against the scoped funnel', function (): void {
+    $fixture = consistencyFixture();
+
+    $metrics = app(EditorialMetrics::class);
+    $rows = collect($metrics->podcastHealth())
+        ->keyBy(fn ($row): string => $row->label);
+
+    foreach ([
+        'Alpha Podcast' => $fixture['alpha'],
+        'Shelved Podcast' => $fixture['draftGroup'],
+    ] as $label => $group) {
+        $scoped = $metrics->snapshot($group->getKey())['funnel'];
+
+        expect((int) $rows->get($label)->value)->toBe($scoped['visible'])
+            ->and((int) $rows->get($label)->of)->toBe($scoped['published']);
+    }
+
+    // Anchor the absolute numbers once so the loop cannot pass on 0 == 0.
+    expect((int) $rows->get('Alpha Podcast')->of)->toBe(3)
+        ->and((int) $rows->get('Alpha Podcast')->value)->toBe(2)
+        ->and((int) $rows->get('Shelved Podcast')->of)->toBe(1)
+        ->and((int) $rows->get('Shelved Podcast')->value)->toBe(0);
+});
