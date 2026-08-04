@@ -24,7 +24,12 @@
             @if ($range)
                 · {{ $range->getLabel() }}
             @endif
-            · {{ $podcast ?? __('admin.dashboard.filters.all_podcasts') }}
+            @if ($showPodcast)
+                · {{ $podcast ?? __('admin.dashboard.filters.all_podcasts') }}
+            @endif
+            @if ($showSource)
+                · {{ $source?->getLabel() ?? __('admin.dashboard.filters.all_sources') }}
+            @endif
             @if ($status)
                 · {{ __('admin.dashboard.context.status_scope', ['status' => \App\Enums\FunnelStage::from($status)->getLabel()]) }}
             @endif

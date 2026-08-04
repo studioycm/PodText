@@ -231,7 +231,10 @@ it('tags every lens widget as stock or flow', function (): void {
         ->unique()
         ->reject(fn (string $widget): bool => in_array($widget, $exempt, strict: true));
 
-    expect($widgets->count())->toBeGreaterThanOrEqual(7);
+    // 7 Overview + 2 Blockers-only + 3 Intake-only = 12 unique, minus the
+    // exempt context widget = exactly 11. A floor of 10 would let ONE
+    // forgotten Intake registration pass silently.
+    expect($widgets->count())->toBeGreaterThanOrEqual(11);
 
     foreach ($widgets as $widget) {
         Livewire::test($widget)->assertSeeHtml(
@@ -319,8 +322,8 @@ it('lays the command bar out as two rows with explicit distinct keys', function 
 
     // Row 1 is lens navigation, row 2 the contextual filters (gap-filler G1).
     expect($rowKeys)->toBe(['dashboardLensRow', 'dashboardScopeRow'])
-        ->and($fieldKeys)->toBe(['dashboardLens', 'dashboardRange', 'dashboardPodcast'])
-        ->and(array_unique([...$rowKeys, ...$fieldKeys]))->toHaveCount(5);
+        ->and($fieldKeys)->toBe(['dashboardLens', 'dashboardRange', 'dashboardPodcast', 'dashboardSource'])
+        ->and(array_unique([...$rowKeys, ...$fieldKeys]))->toHaveCount(6);
 });
 
 it('keeps the queue table query string distinct from the dashboard filters', function (): void {

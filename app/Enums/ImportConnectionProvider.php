@@ -15,6 +15,14 @@ enum ImportConnectionProvider: string implements HasLabel
         return __("admin.importer.providers.{$this->value}");
     }
 
+    /** @return array<string, string> */
+    public static function options(): array
+    {
+        return collect(self::cases())
+            ->mapWithKeys(fn (self $provider): array => [$provider->value => $provider->getLabel()])
+            ->all();
+    }
+
     public function defaultAuthType(): ImportConnectionAuthType
     {
         return match ($this) {

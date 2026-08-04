@@ -33,6 +33,8 @@ return [
         'filters' => [
             'all_podcasts' => 'All podcasts',
             'podcast_hint' => 'Scopes every episode number on the board. Library counts stay library-wide.',
+            'all_sources' => 'All sources',
+            'source_hint' => 'Narrows the work queue to one intake channel.',
         ],
         'media_findings' => [
             'heading' => 'Media by finding',

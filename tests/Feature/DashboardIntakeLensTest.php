@@ -1,5 +1,7 @@
 <?php
 
+use App\Enums\DashboardLens;
+use App\Enums\DashboardRange;
 use App\Enums\ImportConnectionAuthType;
 use App\Enums\ImportConnectionProvider;
 use App\Enums\ImportConnectionStatus;
@@ -7,9 +9,12 @@ use App\Enums\MediaDiagnosticReason;
 use App\Enums\MediaLibraryTask;
 use App\Enums\StreamEventType;
 use App\Enums\TranscriptionMode;
+use App\Filament\Pages\Dashboard;
 use App\Filament\Pages\ImporterSettings;
+use App\Filament\Widgets\DashboardContextWidget;
 use App\Filament\Widgets\IntakeQueueWidget;
 use App\Filament\Widgets\MediaFindingsWidget;
+use App\Filament\Widgets\PublicFormTargetWarningsWidget;
 use App\Filament\Widgets\SpotifyConnectionWidget;
 use App\Models\ImportConnection;
 use App\Models\PublicFormSubmission;
@@ -126,4 +131,36 @@ it('hides zero-count findings and celebrates a clean library', function (): void
     Livewire::test(MediaFindingsWidget::class)
         ->assertSee(__('admin.dashboard.media_findings.empty'))
         ->assertDontSeeHtml('data-testid="media-finding-row"');
+});
+
+it('renders the intake board in board 3 order', function (): void {
+    expect(Dashboard::getWidgetsForLens(DashboardLens::Intake))->toBe([
+        DashboardContextWidget::class,
+        PublicFormTargetWarningsWidget::class,
+        IntakeQueueWidget::class,
+        SpotifyConnectionWidget::class,
+        MediaFindingsWidget::class,
+    ]);
+});
+
+it('hides range and podcast on intake and shows the sources filter', function (): void {
+    Livewire::test(Dashboard::class)
+        ->dispatch('dashboard-filter', key: 'lens', value: DashboardLens::Intake->value)
+        ->assertDontSee(__('admin.dashboard.filters.podcast_hint'))
+        ->assertSee(__('admin.dashboard.filters.all_sources'))
+        ->assertDontSee(DashboardRange::Last7Days->getLabel());
+});
+
+it('accepts only command-bar keys for the source filter', function (): void {
+    Livewire::test(Dashboard::class)
+        ->dispatch('dashboard-filter', key: 'source', value: ImportConnectionProvider::Spotify->value)
+        ->assertSet('filters.source', ImportConnectionProvider::Spotify->value);
+});
+
+it('echoes the source scope instead of podcast and range on intake', function (): void {
+    Livewire::test(DashboardContextWidget::class, [
+        'pageFilters' => ['lens' => DashboardLens::Intake->value, 'source' => ImportConnectionProvider::Spotify->value],
+    ])
+        ->assertSee(ImportConnectionProvider::Spotify->getLabel())
+        ->assertDontSee(__('admin.dashboard.filters.all_podcasts'));
 });

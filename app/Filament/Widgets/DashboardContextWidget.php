@@ -46,11 +46,16 @@ class DashboardContextWidget extends Widget
         return [
             'funnel' => $metrics['funnel'],
             'lens' => $lens,
-            'range' => $lens === DashboardLens::Blockers ? null : $this->dashboardRange(),
+            'range' => in_array($lens, [DashboardLens::Blockers, DashboardLens::Intake], strict: true)
+                ? null
+                : $this->dashboardRange(),
             'status' => $this->dashboardStatus(),
-            'podcast' => $podcastId === null
+            'podcast' => $lens === DashboardLens::Intake || $podcastId === null
                 ? null
                 : ContentGroup::query()->whereKey($podcastId)->value('title'),
+            'showPodcast' => $lens !== DashboardLens::Intake,
+            'source' => $lens === DashboardLens::Intake ? $this->dashboardSource() : null,
+            'showSource' => $lens === DashboardLens::Intake,
             'stages' => FunnelStage::cases(),
             'generatedAt' => Carbon::parse($metrics['generated_at'])
                 ->timezone(UiTimezone::name())
