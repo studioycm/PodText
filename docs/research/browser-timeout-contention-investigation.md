@@ -11,9 +11,12 @@ changes.
 process that calls `Storage::fake('public')` **deletes** the shared fake-disk
 root out from under an in-flight browser test. It is not port collision, not
 tree churn, not CPU starvation, and not `test-residue`. Reproduced
-deterministically (0/10 pass under induced load vs 23/24 quiesced) and a
-per-process isolation fix was verified end-to-end (10/10 pass under the exact
-interferer that produced 0/10).
+deterministically (0/10 pass under induced load vs 23/24 quiesced).
+
+**Status: fixed and landed** — per-process fake-disk roots, `a3fa4f2`, watched
+red then green, full suite 1612/19,734 clean (Fix 1 below). A separate
+intermittent surfaced by the quiesced baseline was diagnosed to a real
+app-side focus defect and is **proposed, not applied** (open flag 1).
 
 ## The three data points
 
@@ -203,19 +206,28 @@ Run-scoped fixture *names* cannot help: the purge deletes the directory
 wholesale, whatever the files are called. Both patterns are real and both need
 their own cure.
 
-**Fix 1 — per-process fake-disk root isolation (recommended).** Set a
-per-process `$_SERVER['TEST_TOKEN']` (PID-derived) in `Tests\TestCase` /
-`tests/Pest.php` bootstrap, so concurrent sessions become structurally safe
-instead of depending on hold discipline. Proven by arm E. Small and
-framework-sanctioned (it is the seam Laravel already uses). Open decisions for
-whoever lands it — deliberately not settled here: (a) always-on versus gated on
-an env flag; (b) garbage collection, since per-PID roots accumulate under
-`storage/framework/testing/disks/` and need cleanup (the residue already there
-from past `--parallel` runs — `public_test_1..8`, `local_test_*`,
-`tmp-for-tests_test_*` — shows the shape); (c) whether to isolate every disk or
-only `public`/`local`/`tmp-for-tests`. **Required before landing: a full-suite
-run with the token set** — arm E only exercised the two target surfaces (15
-runs, all green).
+**Fix 1 — per-process fake-disk root isolation. LANDED (`a3fa4f2`).**
+`tests/Pest.php` fills `TEST_TOKEN` with `p<pid>` when the runner supplies
+none, so paratest keeps its own token if it ever arrives. Operator decisions
+taken 2026-08-04: **always-on** (not env-gated — a flag people forget is how
+these three timeouts happened); **both cleanup ends** (a shutdown hook removes
+this process's roots, plus a boot sweep for roots whose PID is gone past an
+age floor no single run can reach, so a live session's root is never removed);
+and the 28 stale roots from past `--parallel` runs deleted (124K → 20K).
+
+Verification as landed: `TestDiskIsolationTest` watched **red 4/4** with the
+token assignment disabled and green after; under the interferers that
+previously gave 0/10 — a concurrent pest process faking `public`, and the 1s
+purge loop — the acquisition surface now passes **6/6 and 6/6** and owner
+**3/3**; full suite **1612 passed / 19,734 assertions, zero failures**; pint
+clean; filacheck 0; isolation test standalone ×3 green. The shutdown hook was
+observed cleaning its own roots after a real browser run.
+
+Blast radius was measured, not assumed: with a token set, `view.compiled`,
+`cache.prefix` and the database are byte-identical to without it, because the
+parallel cache/view/database callbacks are registered but never invoked
+outside the parallel runner. Pest's own worker detection reads `PARATEST`, not
+`TEST_TOKEN`, so the browser plugin still starts its own servers.
 
 **Fix 2 — cheap interim guard for humans.** Document in the handoff/gotchas
 that concurrent pest processes across sessions corrupt browser runs, so
@@ -236,17 +248,59 @@ starvation, and raising budgets would just lengthen the feedback loop.
 
 ## Open flags
 
-1. **A residual quiesced intermittent exists and is NOT explained by this
-   investigation.** Baseline acq run 11 failed on a fully quiet machine (1/25,
-   ~4%) at the **post-upload settle wait**
-   (`tests/Browser/MediaPickerBrowserTest.php:234`), not the storage-listing
-   wait — the fixture was present in the disk snapshot and there were no JS
-   errors. It predates both peer commits that landed in my window, so it is not
-   peer contamination. That wait conjoins five conditions including
-   `picker().contains(document.activeElement)`, and focus is exactly the kind of
-   state the `single-read-race` family concerns. Candidate for the
-   `single-read-race` sweep; it is a **second sighting-shaped observation**, and
-   whether it trips that pattern's 2+ trigger is the orchestrator's call.
+1. **The residual quiesced intermittent is now explained — and it is an app
+   defect, not a test artifact. Not fixed; proposed below.** Baseline acq run 11
+   failed on a fully quiet machine (1/25, ~4%) at the **post-upload settle
+   wait** (`tests/Browser/MediaPickerBrowserTest.php:234`), fixture present,
+   no JS errors, predating both peer commits in the window.
+
+   Diagnosed by probe (temporary instrumented browser test, since removed;
+   three findings, each observed):
+
+   - `uploadInput.focus()` **never takes** — `#media-picker-upload-input` is
+     FilePond's inner input and `document.activeElement` stays `BODY`. So the
+     picker's `livewire-upload-start` handler
+     (`resources/views/livewire/admin/media-picker-panel.blade.php:9-16`)
+     records `uploadFocusId = null` every time, and the restore always takes
+     the **fallback** path.
+   - The fallback is `$root.querySelector('[data-testid=media-picker-source-upload]')`
+     focused inside a single `$nextTick` (`:17-28`). At the instant
+     `livewire-upload-finish` fires, that button **is disabled** (observed
+     `fallback_disabled_at_finish: true` in both probe modes). The restore
+     normally succeeds only because Alpine's `uploading=false` flush beats the
+     one tick it gets.
+   - Held disabled across that tick, the restore **silently no-ops**:
+     `document.activeElement` stays `BODY`, and because nothing re-attempts,
+     focus never returns — `focus_inside_picker: false` for the full budget.
+     A 7s settle timeout with no JS errors is exactly this shape.
+
+   **Cause:** a one-shot focus restore aimed at a property with **two
+   writers** — Alpine's `x-bind:disabled="uploading || returningSelection"` and
+   Filament's `wire:loading.attr="disabled"`, which every icon-button carries
+   for the duration of any in-flight request on the component. `.focus()` on a
+   disabled button is a no-op that reports nothing. This is the **same
+   two-writer trap** the already-fixed `return_guard_released` test defect hit
+   (`3cc4906`), except here the *app* is the consumer, so the cost is a real
+   accessibility regression: finish an upload while any request is in flight
+   and the keyboard user loses their place to `<body>`.
+
+   **Proposed fix (small, app-side, not applied — media-picker domain owner's
+   call):** make the restore verify instead of assume — after focusing, if
+   `document.activeElement` is still outside `$root`, retry on the next frames
+   for a bounded number of attempts, or aim at a target that no loading
+   binding disables. Pair it with a test that finishes an upload with a
+   request in flight and asserts focus lands inside the picker; the probe above
+   is the recipe. Probe caveat, stated so nobody over-reads it: the probe
+   forced `disabled` by direct DOM writes, which Alpine does not re-evaluate,
+   so the button stayed disabled after release — an artifact of the probe. The
+   load-bearing observation is the no-op restore itself.
+
+   **Test-side, separate and additive:** that wait conjoins seven conditions,
+   so a timeout does not say which one failed — which is why this cost an
+   investigation rather than reporting itself. Converting it to labelled
+   per-condition waits belongs to the `single-read-race`/labelled-wait sweep
+   the hygiene session already owns for this file; I deliberately did not edit
+   `MediaPickerBrowserTest` to avoid colliding with it.
 2. **DP1's original rate is now suspect as a measurement.** 1/30 was recorded
    on 2026-08-01 during a session that ran ~100 browser runs; if any other
    process faked `public` in that window, the rate reflects interference
