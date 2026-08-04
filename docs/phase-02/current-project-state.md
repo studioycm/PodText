@@ -127,6 +127,70 @@ phases, so `3B P1–P5` and `3C P5–P8` mean phase five of those mini-tasks. Ba
 
 ## Git State
 
+- **Episodes-lens R1 (native-first) is implemented locally, 2026-08-05.**
+  The mini-project's design phase closed with every decision answered
+  (EQ-1…EQ-12, principles P-EL1–P-EL8, plus three operator-authored rules);
+  the authoritative record is the decision annex in
+  `docs/phase-02/episodes-lens-design-spec.md` §12, the exact-code plan is
+  `docs/phase-02/episodes-lens-r1-implementation-plan.md`, the research is
+  `docs/research/episodes-lens-design-research.md`, and the reviewed option
+  boards are archived at `docs/research/episodes-lens/episodes-lens-boards.html`.
+  R2 (custom-forward: chip strip, grouping/sort toggle rows, three-segment
+  visibility cell, saved views) is a **later phase and has not started**.
+  Shipped in R1:
+  - **Publication-date home** (`App\Models\Concerns\InteractsWithPublicationDate`
+    on `ContentItem`, `ContentGroup`, `Transcription`): saving a record as
+    published with a null date stamps `now()`; an explicit date is never
+    overwritten and unpublishing keeps it. `effective_published_at` resolves
+    published-but-dateless rows to `created_at` (read-side only — **no
+    backfill**; production currently has zero such rows), and
+    `orderByEffectivePublishedAt()` folds the same fallback into SQL.
+  - **`ContentItemPolicy`**: uniform admin CRUD (which is what arms the
+    inline column's `Gate`-based `disabled()`), delete/deleteAny reserved for
+    super-admins — the episodes bulk delete and workspace delete follow.
+  - **Six quick-scope tabs** (`EpisodeListScope` + `EpisodeListScopeQuery`):
+    הכל / טיוטות / גלויים / מתוזמנים / חסומים / מוצמדים, an exact partition
+    (drafts+visible+scheduled+blocked = all) with `visible` riding the model's
+    own `published()` scope, count badges resolved in one round trip of
+    counting subqueries built from the same predicates, forged tab values
+    narrowed at the door, and a scope-naming subheading.
+  - **The table**: `EpisodePublicState` badge (batch-primed from a
+    `withExists` flag) answering each row before it offers actions; status as
+    an inline `SelectColumn` with a truthful visibility notification; the
+    publish-date cell itself opening a Jerusalem-timezone reschedule modal;
+    contextual remedy doors (publish-the-podcast, server re-checked; open-the-
+    transcript); occasional actions in an `ActionGroup` with a new
+    edit-podcast door; every column but the title toggleable with
+    `reorderableColumns()`; filters open above the table with a grouped
+    `ToggleButtons` pinned filter and a Jerusalem-walled published-date range;
+    podcast + status grouping; `updated_at desc` default sort. The podcast
+    page's episodes relation manager shares the same builders.
+  - **Navigation**: episodes moved to the ungrouped front door (sort 15,
+    under «פרק חדש»); the labelled groups reorder to taxonomy → content, with
+    the content group (podcasts + transcripts) collapsed by default and both
+    groups given icons (a collapsible desktop sidebar drops the label and
+    spills items from an icon-less group). The transcripts item hides in
+    single mode for non-super-admins — decluttering only; the URL and
+    `canAccess()` are untouched.
+  Two defects were found and fixed during implementation: the outcome
+  notification read a stale `withExists` attribute through `refresh()` (now a
+  clean re-read), and the transcriber fallback relation caused a 10×
+  `authors` N+1 (now eager-loaded, pinned by a fixed-query-budget test).
+  A vendor gotcha is recorded in code: `NavigationGroup::collapsed()` also
+  *sets* collapsibility, so passing `false` strips an expanded group's toggle.
+  Three existing guards were deliberately re-pinned (cluster navigation order,
+  the 28-action icon-only fleet with the episode surfaces' ActionGroup, and
+  the multi-mode timezone helper check, which had been driving the workspace
+  as a guest). Tests: `PublicationDateRuleTest`, `ContentItemPolicyTest`,
+  `EpisodeListScopeTest`, `EpisodesTableR1Test`, `EpisodesLensNavigationTest`
+  (mutation-checked red on the stamping rule, the accessor, the delete tier,
+  the blocked predicate, the nav visibility rule and the collapsed flag).
+  Gate: full suite **1704 tests / 20,146 assertions green** (including all 56
+  browser tests — one ResizeObserver flake under full-run load passed 3/3 in
+  isolation and 56/56 in the browser suite), pint clean, full FilaCheck 0
+  issues, `npm run build` clean. **Commits are local and unpushed**, awaiting
+  the operator's push word (auto-deploy is on).
+
 - Form-target observability (2026-08-02) adds admin-side visibility for
   public-form CTAs whose form key has no enabled definition, without touching
   the public skip behavior (`PublicMenuConfigReader::resolveItem()`, the
