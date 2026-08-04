@@ -1466,9 +1466,25 @@ it('keeps card width and sample choice transient inside the compact preview cont
             const statusRow = document.querySelector('[data-card-template-preview-status-row]');
             const refreshed = document.querySelector('[data-test="card-template-preview-refreshed"]');
             const toggle = document.querySelector('[data-test="card-template-preview-controls-toggle"]');
-            toggle?.click();
-            await new Promise((resolve) => setTimeout(resolve, 500));
             const controls = document.querySelector('[data-card-template-preview-controls]');
+            const waitFor = async (callback, step, timeout = 8000) => {
+                const waitStarted = performance.now();
+                while (performance.now() - waitStarted < timeout) {
+                    const value = callback();
+                    if (value) { return value; }
+                    await new Promise((resolve) => setTimeout(resolve, 50));
+                }
+                throw new Error(`timeout at step: ${step}`);
+            };
+            toggle?.click();
+            // The controls block is x-show + x-collapse: its display/height
+            // settle on Alpine's frame cadence, so the collapsed state must be
+            // waited as a labelled condition, never read once after the click.
+            await waitFor(
+                () => toggle?.getAttribute('aria-expanded') === 'false'
+                    && (getComputedStyle(controls).display === 'none' || controls.getBoundingClientRect().height <= 1),
+                'preview-controls-collapse',
+            );
             const ready = document.querySelector('[data-test="card-template-preview-ready"]');
 
             return {
