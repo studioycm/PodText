@@ -221,6 +221,14 @@ return [
             'pinned' => 'Episodes currently pinned.',
         ],
     ],
+    'episode_public_state' => [
+        'visible' => 'Visible',
+        'scheduled' => 'Scheduled',
+        'draft' => 'Draft',
+        'blocked_group' => 'Blocked: podcast not published',
+        'blocked_transcription' => 'Blocked: no published transcript',
+        'scheduled_tooltip' => 'Goes live on :date',
+    ],
     'episodes' => [
         'subheading_scoped_to_podcast' => ':scope Showing the podcast ":podcast".',
     ],
@@ -443,6 +451,7 @@ return [
         'user_role' => 'Only super admins can assign roles. Admin-panel access begins at Admin; multi-transcription controls require the configured role gates and multi mode.',
     ],
     'fields' => [
+        'public_state' => 'Public state',
         'single' => [
             'content_item' => 'Episode',
         ],
@@ -860,6 +869,10 @@ return [
         'spotify_overwrite_non_empty_fields' => 'Overwrite non-empty fields',
     ],
     'helpers' => [
+        'change_published_at' => 'An empty date publishes immediately once the episode is published; a future date schedules it.',
+        'published_at_timezone' => 'Times are entered in the :timezone timezone.',
+        'effective_published_at_fallback' => 'No publish date is stored — showing the creation date',
+        'publish_blocking_podcast' => 'The podcast itself is unpublished, which hides this episode. Publishing the podcast makes every published episode in it visible.',
         'single' => [
             'transcript_markdown' => 'Store the episode transcript as Markdown only. Attachments and raw embeds are disabled.',
             'transcription_content_item' => 'Choose the episode that owns this transcript.',
@@ -1221,6 +1234,10 @@ return [
         'type_label_singular_override' => 'Leave blank to inherit the group default.',
     ],
     'actions' => [
+        'change_published_at' => 'Change publish date',
+        'publish_blocking_podcast' => 'Publish the podcast',
+        'open_blocked_transcript' => 'Open the transcript',
+        'edit_podcast' => 'Edit podcast',
         'single' => [
             'add_transcription' => 'Add episode transcript',
             'open_transcription_resource' => 'Open episode transcript',
@@ -1304,6 +1321,8 @@ return [
         'validate_import_package' => 'Validate upload',
     ],
     'modals' => [
+        'change_published_at' => 'Change publish date',
+        'publish_blocking_podcast' => 'Publish the podcast?',
         'create_author' => 'Create author',
         'create_category' => 'Create category',
         'create_content_group' => 'Create content group',
@@ -1877,6 +1896,13 @@ return [
         'he' => 'Hebrew',
     ],
     'notifications' => [
+        'episode_visible' => 'Published — visible on the site',
+        'episode_scheduled' => 'Published — scheduled for :date',
+        'episode_unpublished' => 'Moved to draft — removed from the site',
+        'episode_blocked_group' => 'Published — not visible yet: the podcast is not published',
+        'episode_blocked_transcription' => 'Published — not visible yet: no published transcript',
+        'published_at_stamped' => 'Publish date set to :date',
+        'podcast_not_blocking' => 'The podcast is no longer the blocker — nothing changed',
         'single' => [
             'effective_transcription_saved' => 'Episode transcript saved.',
             'first_transcription_featured' => 'The episode transcript was selected automatically.',
@@ -2246,6 +2272,15 @@ return [
     ],
     'filters' => [
         'transcription_history' => 'Transcript history',
+        'pinned_options' => [
+            'all' => 'All',
+            'pinned' => 'Pinned',
+            'unpinned' => 'Not pinned',
+        ],
+        'published_from' => 'Published from',
+        'published_until' => 'Published until',
+        'published_from_indicator' => 'Published from :date',
+        'published_until_indicator' => 'Published until :date',
     ],
     'import' => [
         'columns' => [

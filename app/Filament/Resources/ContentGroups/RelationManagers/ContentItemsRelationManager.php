@@ -17,8 +17,8 @@ use App\Support\Media\MediaRecordScope;
 use App\Support\Media\OwnerImageChangedException;
 use App\Support\Media\OwnerImageChoicePresentation;
 use App\Support\Media\OwnerImagePresenter;
-use App\Support\UiTimezone;
 use Filament\Actions\Action;
+use Filament\Actions\ActionGroup;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\CreateAction;
 use Filament\Actions\DeleteAction;
@@ -31,7 +31,6 @@ use Filament\Support\Enums\Width;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
-use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Table;
 use Illuminate\Contracts\Encryption\DecryptException;
 use Illuminate\Database\Eloquent\Builder;
@@ -68,16 +67,8 @@ class ContentItemsRelationManager extends RelationManager
         return ResourceTableActions::iconOnly($table)
             ->heading(__('admin.relations.episodes'))
             ->recordTitleAttribute('title')
-            ->modifyQueryUsing(fn (Builder $query): Builder => $query
-                ->with([
-                    'categories',
-                    'contentGroup.coverMediaAttachment.media',
-                    'tags',
-                    'featuredTranscription.authors',
-                    'latestPublishedTranscription.authors',
-                    'primaryImageMediaAttachment.media',
-                ])
-                ->withCount('transcriptions')
+            ->modifyQueryUsing(fn (Builder $query): Builder => ContentItemsTable::primeEpisodeQuery($query)
+                ->with(['categories', 'tags'])
                 ->latest('published_at')
                 ->latest('id'))
             ->columns([
@@ -89,12 +80,16 @@ class ContentItemsRelationManager extends RelationManager
                 TextColumn::make('effective_type_label')
                     ->label(__('admin.fields.effective_type_label'))
                     ->state(fn (ContentItem $record): string => $record->effectiveTypeLabelSingular())
-                    ->badge(),
+                    ->badge()
+                    // R1: the public-state badge earns the default slot; the
+                    // type label stays one toggle away, as on the main table.
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('effective_transcribers')
                     ->label(__('admin.fields.transcribers'))
                     ->state(fn (ContentItem $record): string => implode(', ', $record->effectiveTranscription()?->transcriberNames() ?? []))
                     ->badge()
                     ->separator(', '),
+                ContentItemsTable::publicStateColumn(),
                 TextColumn::make('effective_transcription_context')
                     ->label(__('admin.fields.effective_transcription'))
                     ->state(fn (ContentItem $record): ?string => EditEffectiveTranscriptionAction::contextStateFor($record))
@@ -112,14 +107,8 @@ class ContentItemsRelationManager extends RelationManager
                     ->badge()
                     ->separator(', ')
                     ->toggleable(isToggledHiddenByDefault: true),
-                TextColumn::make('status')
-                    ->label(__('admin.fields.status'))
-                    ->badge()
-                    ->sortable(),
-                TextColumn::make('published_at')
-                    ->label(__('admin.fields.published_at'))
-                    ->dateTime('d/m/Y H:i', UiTimezone::name())
-                    ->sortable(),
+                ContentItemsTable::statusSelectColumn(),
+                ContentItemsTable::effectivePublishedAtColumn(),
                 TextColumn::make('featuredTranscription.title')
                     ->label(__('admin.fields.featured_transcription'))
                     ->placeholder(__('admin.labels.none'))
@@ -136,11 +125,7 @@ class ContentItemsRelationManager extends RelationManager
                     ->badge()
                     ->color(fn (ContentItem $record): string => $record->isCurrentlyPinned() ? 'warning' : 'gray')
                     ->toggleable(),
-                TextColumn::make('updated_at')
-                    ->label(__('admin.fields.updated_at'))
-                    ->dateTime('d/m/Y H:i', UiTimezone::name())
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
+                ContentItemsTable::updatedAtSinceColumn(),
             ])
             ->filters([
                 SelectFilter::make('status')
@@ -158,8 +143,7 @@ class ContentItemsRelationManager extends RelationManager
                     ->multiple()
                     ->searchable()
                     ->optionsLimit(50),
-                TernaryFilter::make('is_pinned')
-                    ->label(__('admin.fields.is_pinned')),
+                ContentItemsTable::pinnedToggleFilter(),
             ])
             ->headerActions([
                 CreateAction::make()
@@ -201,108 +185,111 @@ class ContentItemsRelationManager extends RelationManager
                     ->label(__('admin.actions.open_episode_workspace'))
                     ->icon(Heroicon::OutlinedPencilSquare)
                     ->url(fn (ContentItem $record): string => ContentItemResource::getUrl('workspace', ['record' => $record])),
-                ContentImageActions::contentItemImage(),
-                ContentImageActions::downloadExternalImage(),
-                ContentImageActions::downloadExternalImage(overwrite: true),
                 EditEffectiveTranscriptionAction::make(),
-                ContentItemsTable::addTranscriptionAction(),
-                EditAction::make()
-                    ->label(__('admin.actions.classic_edit'))
-                    ->icon(Heroicon::OutlinedDocumentText)
-                    ->modalHeading(__('admin.modals.edit_episode'))
-                    ->modalWidth(Width::SevenExtraLarge)
-                    ->databaseTransaction()
-                    ->mutateRecordDataUsing(function (array $data, ContentItem $record): array {
-                        $presentation = $this->captureOwnerImageBaseline($record);
-                        $pickerIdentity = app(OwnerImagePresenter::class)->pickerIdentity(
-                            $record,
-                            MediaAttachmentRole::PrimaryImage,
-                        );
-                        $data['primary_image_media_reference_key'] = $pickerIdentity;
-                        $data['relation_owner_image_pending_identity'] = $pickerIdentity;
-                        $data['relation_owner_image_baseline_token'] = $this->ownerImageBaselineToken(
-                            $record,
-                            $presentation,
-                        );
-
-                        return $data;
-                    })
-                    ->mutateDataUsing(function (array $data, ContentItem $record, EditAction $action): array {
-                        $actor = auth()->user();
-                        abort_unless($actor instanceof User, 403);
-                        $this->pendingOwnerImageBaseline = $this->ownerImageBaseline(
-                            $data['relation_owner_image_baseline_token'] ?? null,
-                            $record,
-                            $actor,
-                        );
-                        $rawIdentity = $data['relation_owner_image_pending_identity'] ?? null;
-                        unset($data['relation_owner_image_baseline_token']);
-                        unset($data['relation_owner_image_pending_identity']);
-
-                        if ($this->pendingOwnerImageBaseline === null) {
-                            $index = $action->getNestingIndex() ?? 0;
-                            $action->getLivewire()->addError(
-                                "mountedActions.{$index}.data.primary_image_media_reference_key",
-                                __('admin.validation.owner_image_baseline_invalid'),
-                            );
-                            $action->halt(true);
-                        }
-
-                        if (
-                            blank($data['primary_image_media_reference_key'] ?? null)
-                            && (is_int($rawIdentity) || (is_string($rawIdentity) && ctype_digit($rawIdentity)))
-                        ) {
-                            $media = app(MediaRecordScope::class)->findInventoryOrFail((int) $rawIdentity);
-                            $data['primary_image_media_reference_key'] = $media->reference_key;
-                        }
-
-                        [$data, $this->pendingPrimaryImageMediaReferenceKey] = app(MediaAttachmentFormState::class)->prepare(
-                            $data,
-                            'primary_image_media_reference_key',
-                            $record,
-                            MediaAttachmentRole::PrimaryImage,
-                        );
-
-                        return $data;
-                    })
-                    ->after(function (ContentItem $record, EditAction $action): void {
-                        $actor = auth()->user();
-                        abort_unless($actor instanceof User, 403);
-
-                        try {
-                            $baseline = $this->pendingOwnerImageBaseline;
-                            abort_unless(is_array($baseline), 409);
-
-                            app(MediaAttachmentFormState::class)->persist(
-                                $record,
-                                $this->pendingPrimaryImageMediaReferenceKey,
-                                MediaAttachmentRole::PrimaryImage,
-                                $actor,
-                                'primary_image_media_reference_key',
-                                $baseline['expected_media_id'],
-                                enforceExpectedIdentity: true,
-                            );
-                        } catch (OwnerImageChangedException) {
+                ...ContentItemsTable::remedyActions(),
+                ActionGroup::make([
+                    ContentImageActions::contentItemImage(),
+                    ContentImageActions::downloadExternalImage(),
+                    ContentImageActions::downloadExternalImage(overwrite: true),
+                    ContentItemsTable::addTranscriptionAction(),
+                    EditAction::make()
+                        ->label(__('admin.actions.classic_edit'))
+                        ->icon(Heroicon::OutlinedDocumentText)
+                        ->modalHeading(__('admin.modals.edit_episode'))
+                        ->modalWidth(Width::SevenExtraLarge)
+                        ->databaseTransaction()
+                        ->mutateRecordDataUsing(function (array $data, ContentItem $record): array {
                             $presentation = $this->captureOwnerImageBaseline($record);
-                            $livewire = $action->getLivewire();
-                            $livewire->mountedActions[$action->getNestingIndex() ?? 0]['data']['relation_owner_image_baseline_token'] = $this->ownerImageBaselineToken(
+                            $pickerIdentity = app(OwnerImagePresenter::class)->pickerIdentity(
+                                $record,
+                                MediaAttachmentRole::PrimaryImage,
+                            );
+                            $data['primary_image_media_reference_key'] = $pickerIdentity;
+                            $data['relation_owner_image_pending_identity'] = $pickerIdentity;
+                            $data['relation_owner_image_baseline_token'] = $this->ownerImageBaselineToken(
                                 $record,
                                 $presentation,
                             );
-                            $index = $action->getNestingIndex() ?? 0;
-                            $livewire->addError(
-                                "mountedActions.{$index}.data.primary_image_media_reference_key",
-                                __('admin.validation.owner_image_changed'),
+
+                            return $data;
+                        })
+                        ->mutateDataUsing(function (array $data, ContentItem $record, EditAction $action): array {
+                            $actor = auth()->user();
+                            abort_unless($actor instanceof User, 403);
+                            $this->pendingOwnerImageBaseline = $this->ownerImageBaseline(
+                                $data['relation_owner_image_baseline_token'] ?? null,
+                                $record,
+                                $actor,
                             );
-                            $action->halt(true);
-                        }
-                    }),
-                Action::make('openResource')
-                    ->label(__('admin.actions.open_content_item_resource'))
-                    ->icon(Heroicon::OutlinedArrowTopRightOnSquare)
-                    ->url(fn (ContentItem $record): string => ContentItemResource::getUrl('edit', ['record' => $record]))
-                    ->openUrlInNewTab(false),
-                DeleteAction::make(),
+                            $rawIdentity = $data['relation_owner_image_pending_identity'] ?? null;
+                            unset($data['relation_owner_image_baseline_token']);
+                            unset($data['relation_owner_image_pending_identity']);
+
+                            if ($this->pendingOwnerImageBaseline === null) {
+                                $index = $action->getNestingIndex() ?? 0;
+                                $action->getLivewire()->addError(
+                                    "mountedActions.{$index}.data.primary_image_media_reference_key",
+                                    __('admin.validation.owner_image_baseline_invalid'),
+                                );
+                                $action->halt(true);
+                            }
+
+                            if (
+                                blank($data['primary_image_media_reference_key'] ?? null)
+                                && (is_int($rawIdentity) || (is_string($rawIdentity) && ctype_digit($rawIdentity)))
+                            ) {
+                                $media = app(MediaRecordScope::class)->findInventoryOrFail((int) $rawIdentity);
+                                $data['primary_image_media_reference_key'] = $media->reference_key;
+                            }
+
+                            [$data, $this->pendingPrimaryImageMediaReferenceKey] = app(MediaAttachmentFormState::class)->prepare(
+                                $data,
+                                'primary_image_media_reference_key',
+                                $record,
+                                MediaAttachmentRole::PrimaryImage,
+                            );
+
+                            return $data;
+                        })
+                        ->after(function (ContentItem $record, EditAction $action): void {
+                            $actor = auth()->user();
+                            abort_unless($actor instanceof User, 403);
+
+                            try {
+                                $baseline = $this->pendingOwnerImageBaseline;
+                                abort_unless(is_array($baseline), 409);
+
+                                app(MediaAttachmentFormState::class)->persist(
+                                    $record,
+                                    $this->pendingPrimaryImageMediaReferenceKey,
+                                    MediaAttachmentRole::PrimaryImage,
+                                    $actor,
+                                    'primary_image_media_reference_key',
+                                    $baseline['expected_media_id'],
+                                    enforceExpectedIdentity: true,
+                                );
+                            } catch (OwnerImageChangedException) {
+                                $presentation = $this->captureOwnerImageBaseline($record);
+                                $livewire = $action->getLivewire();
+                                $livewire->mountedActions[$action->getNestingIndex() ?? 0]['data']['relation_owner_image_baseline_token'] = $this->ownerImageBaselineToken(
+                                    $record,
+                                    $presentation,
+                                );
+                                $index = $action->getNestingIndex() ?? 0;
+                                $livewire->addError(
+                                    "mountedActions.{$index}.data.primary_image_media_reference_key",
+                                    __('admin.validation.owner_image_changed'),
+                                );
+                                $action->halt(true);
+                            }
+                        }),
+                    Action::make('openResource')
+                        ->label(__('admin.actions.open_content_item_resource'))
+                        ->icon(Heroicon::OutlinedArrowTopRightOnSquare)
+                        ->url(fn (ContentItem $record): string => ContentItemResource::getUrl('edit', ['record' => $record]))
+                        ->openUrlInNewTab(false),
+                    DeleteAction::make(),
+                ]),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([

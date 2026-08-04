@@ -221,6 +221,14 @@ return [
             'pinned' => 'פרקים מוצמדים כרגע.',
         ],
     ],
+    'episode_public_state' => [
+        'visible' => 'גלוי',
+        'scheduled' => 'מתוזמן',
+        'draft' => 'טיוטה',
+        'blocked_group' => 'חסום: הפודקאסט לא פורסם',
+        'blocked_transcription' => 'חסום: אין תמלול מפורסם',
+        'scheduled_tooltip' => 'יעלה לאוויר ב־:date',
+    ],
     'episodes' => [
         'subheading_scoped_to_podcast' => ':scope מציג את הפודקאסט «:podcast».',
     ],
@@ -388,6 +396,7 @@ return [
         'visibility_order' => 'נראות וסדר',
     ],
     'fields' => [
+        'public_state' => 'מצב ציבורי',
         'single' => [
             'content_item' => 'פרק',
         ],
@@ -805,6 +814,10 @@ return [
         'spotify_overwrite_non_empty_fields' => 'דריסת שדות שאינם ריקים',
     ],
     'helpers' => [
+        'change_published_at' => 'תאריך ריק מפרסם מיידית ברגע שהפרק מפורסם; תאריך עתידי מתזמן אותו.',
+        'published_at_timezone' => 'הזמנים מוזנים באזור הזמן :timezone.',
+        'effective_published_at_fallback' => 'לא נשמר תאריך פרסום — מוצג תאריך היצירה',
+        'publish_blocking_podcast' => 'הפודקאסט עצמו אינו מפורסם ולכן הפרק מוסתר. פרסום הפודקאסט יציג כל פרק מפורסם שבו.',
         'single' => [
             'transcript_markdown' => 'יש לשמור את תמלול הפרק כ-Markdown בלבד. קבצים מצורפים והטמעות גולמיות מושבתים.',
             'transcription_content_item' => 'בחרו את הפרק שאליו שייך התמלול.',
@@ -1237,6 +1250,10 @@ return [
         'transcription_publication' => 'רק תמלולים שפורסמו יכולים להפוך לפעילים. טיוטות נשארות למנהלים בלבד.',
     ],
     'actions' => [
+        'change_published_at' => 'שינוי תאריך פרסום',
+        'publish_blocking_podcast' => 'פרסום הפודקאסט',
+        'open_blocked_transcript' => 'פתיחת התמלול',
+        'edit_podcast' => 'עריכת הפודקאסט',
         'single' => [
             'add_transcription' => 'הוספת תמלול לפרק',
             'open_transcription_resource' => 'פתיחת תמלול הפרק',
@@ -1320,6 +1337,8 @@ return [
         'validate_import_package' => 'בדיקת קובץ',
     ],
     'modals' => [
+        'change_published_at' => 'שינוי תאריך פרסום',
+        'publish_blocking_podcast' => 'לפרסם את הפודקאסט?',
         'create_author' => 'יצירת מחבר',
         'create_category' => 'יצירת קטגוריה',
         'create_content_group' => 'יצירת פודקאסט',
@@ -1889,6 +1908,13 @@ return [
         'url' => 'כתובת URL',
     ],
     'notifications' => [
+        'episode_visible' => 'פורסם — גלוי באתר',
+        'episode_scheduled' => 'פורסם — מתוזמן ל־:date',
+        'episode_unpublished' => 'הועבר לטיוטה — ירד מהאתר',
+        'episode_blocked_group' => 'פורסם — עדיין לא גלוי: הפודקאסט לא פורסם',
+        'episode_blocked_transcription' => 'פורסם — עדיין לא גלוי: אין תמלול מפורסם',
+        'published_at_stamped' => 'תאריך הפרסום נקבע ל־:date',
+        'podcast_not_blocking' => 'הפודקאסט כבר אינו החסם — לא בוצע שינוי',
         'single' => [
             'effective_transcription_saved' => 'תמלול הפרק נשמר.',
             'first_transcription_featured' => 'תמלול הפרק נבחר אוטומטית.',
@@ -2246,6 +2272,15 @@ return [
     ],
     'filters' => [
         'transcription_history' => 'היסטוריית תמלולים',
+        'pinned_options' => [
+            'all' => 'הכל',
+            'pinned' => 'מוצמדים',
+            'unpinned' => 'לא מוצמדים',
+        ],
+        'published_from' => 'פורסם מ־',
+        'published_until' => 'פורסם עד',
+        'published_from_indicator' => 'פורסם מ־:date',
+        'published_until_indicator' => 'פורסם עד :date',
     ],
     'import' => [
         'columns' => [

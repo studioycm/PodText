@@ -71,6 +71,7 @@ use App\Models\User;
 use App\Settings\AdminUxSettings;
 use App\Settings\PublicContentSettings;
 use Filament\Actions\Action;
+use Filament\Actions\ActionGroup;
 use Filament\Actions\Testing\TestAction;
 use Filament\Facades\Filament;
 use Filament\Notifications\Notification;
@@ -80,6 +81,7 @@ use Filament\Support\Enums\Width;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Enums\RecordActionsPosition;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
@@ -418,11 +420,18 @@ it('labels episode workspace actions as the defaults and classic actions as syst
         ->assertOk()
         ->instance();
 
-    $headerActions = collect($listPage->getCachedHeaderActions())
+    // R1 (2026-08-05, P-EL4 two-daily-actions): occasional row actions —
+    // classic edit among them — now live inside an ActionGroup dropdown, so
+    // the label contract is asserted over the flattened action tree.
+    $flatten = fn (array $actions): Collection => collect($actions)
+        ->flatMap(fn (Action|ActionGroup $action): array => $action instanceof ActionGroup
+            ? $action->getFlatActions()
+            : [$action])
         ->keyBy(fn (Action $action): string => $action->getName());
 
-    $tableActions = collect($listPage->getTable()->getRecordActions())
-        ->keyBy(fn (Action $action): string => $action->getName());
+    $headerActions = $flatten($listPage->getCachedHeaderActions());
+
+    $tableActions = $flatten($listPage->getTable()->getRecordActions());
 
     expect($headerActions->get('createEpisodeWorkspace')->getLabel())->toBe(__('admin.actions.create_episode_workspace'))
         ->and($headerActions->get('create')->getLabel())->toBe(__('admin.actions.classic_create'))
@@ -437,10 +446,8 @@ it('labels episode workspace actions as the defaults and classic actions as syst
         ->instance()
         ->getTable();
 
-    $relationHeaderActions = collect($relationManagerTable->getHeaderActions())
-        ->keyBy(fn (Action $action): string => $action->getName());
-    $relationRecordActions = collect($relationManagerTable->getRecordActions())
-        ->keyBy(fn (Action $action): string => $action->getName());
+    $relationHeaderActions = $flatten($relationManagerTable->getHeaderActions());
+    $relationRecordActions = $flatten($relationManagerTable->getRecordActions());
 
     expect($relationHeaderActions->get('create')->getLabel())->toBe(__('admin.actions.classic_create'))
         ->and($relationRecordActions->get('openEpisodeWorkspace')->getLabel())->toBe(__('admin.actions.open_episode_workspace'))
