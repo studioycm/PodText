@@ -198,20 +198,34 @@ it('keeps the acquisition workspace accessible responsive and stateful', functio
             picker().dispatchEvent(new CustomEvent('livewire-upload-start', {
                 detail: uploadDetail,
             }));
-            await waitFor(() => {
-                const sourceButtons = [
-                    picker()?.querySelector('[data-testid="media-picker-source-upload"]'),
-                    picker()?.querySelector('[data-testid="media-picker-source-url"]'),
-                    picker()?.querySelector('[data-testid="media-picker-source-storage"]'),
-                ];
-
-                return sourceButtons.every((button) => button?.disabled)
-                    && picker()?.querySelector('[data-testid="media-picker-header"]')?.inert
-                    && picker()?.querySelector('[data-testid="media-picker-upload-action-guard"]')?.inert
-                    && picker()?.querySelector('[data-testid="media-picker-close"]')
-                        ?.getAttribute('aria-disabled') === 'true'
-                    && picker()?.getAttribute('aria-busy') === 'true';
-            });
+            const uploadSourceButtons = () => [
+                picker()?.querySelector('[data-testid="media-picker-source-upload"]'),
+                picker()?.querySelector('[data-testid="media-picker-source-url"]'),
+                picker()?.querySelector('[data-testid="media-picker-source-storage"]'),
+            ];
+            // Mirror of the settle split below: each engage condition waits
+            // under its own label so a timeout names the guard that never
+            // engaged.
+            await waitFor(() => uploadSourceButtons().every((button) => button?.disabled),
+                'upload-start: source buttons disabled');
+            await waitFor(() => picker()?.querySelector('[data-testid="media-picker-header"]')?.inert,
+                'upload-start: header inert engaged');
+            await waitFor(() => picker()?.querySelector('[data-testid="media-picker-upload-action-guard"]')?.inert,
+                'upload-start: action guard inert engaged');
+            await waitFor(() => picker()?.querySelector('[data-testid="media-picker-close"]')
+                ?.getAttribute('aria-disabled') === 'true',
+                'upload-start: close aria-disabled engaged');
+            await waitFor(() => picker()?.getAttribute('aria-busy') === 'true',
+                'upload-start: aria-busy engaged');
+            // The engage contract is the conjunction: re-wait it whole so the
+            // snapshot below sees every guard engaged at one instant.
+            await waitFor(() => uploadSourceButtons().every((button) => button?.disabled)
+                && picker()?.querySelector('[data-testid="media-picker-header"]')?.inert
+                && picker()?.querySelector('[data-testid="media-picker-upload-action-guard"]')?.inert
+                && picker()?.querySelector('[data-testid="media-picker-close"]')
+                    ?.getAttribute('aria-disabled') === 'true'
+                && picker()?.getAttribute('aria-busy') === 'true',
+                'upload-start: all guard conditions hold simultaneously');
             const uploadGuardedWorkspace = [
                 picker()?.querySelector('[data-testid="media-picker-source-upload"]'),
                 picker()?.querySelector('[data-testid="media-picker-source-url"]'),
@@ -802,20 +816,30 @@ it('closes a field picker locally while truly offline and reconciles the action 
 
     $offline = $page->script(<<<'JS'
         async () => {
-            const started = performance.now();
+            const waitFor = async (callback, step, timeout = 7000) => {
+                const started = performance.now();
+
+                while (performance.now() - started < timeout) {
+                    const result = callback();
+
+                    if (result) {
+                        return result;
+                    }
+
+                    await new Promise((resolve) => setTimeout(resolve, 25));
+                }
+
+                throw new Error(`timeout at step: ${step}`);
+            };
             const picker = () => document.querySelector(
                 '[aria-modal="true"].fi-modal-open [data-testid="media-picker"]',
             );
 
-            while (performance.now() - started < 7000) {
+            await waitFor(() => {
                 const notice = picker()?.querySelector('[wire\\:offline]');
 
-                if (notice && getComputedStyle(notice).display !== 'none') {
-                    break;
-                }
-
-                await new Promise((resolve) => setTimeout(resolve, 25));
-            }
+                return notice && getComputedStyle(notice).display !== 'none';
+            }, 'offline-close: wire:offline notice visible');
 
             const close = picker()?.querySelector('[data-testid="media-picker-close"]');
             const modal = close?.closest('[data-fi-modal-id]');
@@ -831,20 +855,13 @@ it('closes a field picker locally while truly offline and reconciles the action 
             });
             close?.click();
 
-            while (picker() && performance.now() - started < 7000) {
-                await new Promise((resolve) => setTimeout(resolve, 25));
-            }
-
-            while (parentId
-                && ! document.getElementById(parentId)?.classList.contains('fi-modal-open')
-                && performance.now() - started < 7000) {
-                await new Promise((resolve) => setTimeout(resolve, 25));
-            }
-
-            while (! document.activeElement?.closest('[data-testid="media-picker-open"]')
-                && performance.now() - started < 7000) {
-                await new Promise((resolve) => setTimeout(resolve, 25));
-            }
+            await waitFor(() => picker() === null,
+                'offline-close: picker closed');
+            await waitFor(() => parentId === null
+                || document.getElementById(parentId)?.classList.contains('fi-modal-open'),
+                'offline-close: parent modal restored');
+            await waitFor(() => document.activeElement?.closest('[data-testid="media-picker-open"]'),
+                'offline-close: focus returned to the opener');
 
             await new Promise((resolve) => setTimeout(resolve, 100));
             stopRecordingRequests();
@@ -876,7 +893,7 @@ it('closes a field picker locally while truly offline and reconciles the action 
 
     $reconnected = $page->script(<<<'JS'
         async () => {
-            const waitFor = async (callback, timeout = 7000) => {
+            const waitFor = async (callback, step, timeout = 7000) => {
                 const started = performance.now();
 
                 while (performance.now() - started < timeout) {
@@ -889,7 +906,7 @@ it('closes a field picker locally while truly offline and reconciles the action 
                     await new Promise((resolve) => setTimeout(resolve, 25));
                 }
 
-                throw new Error('Timed out while reconciling the offline media picker close.');
+                throw new Error(`timeout at step: ${step}`);
             };
             const openPicker = () => document.querySelector(
                 '[aria-modal="true"].fi-modal-open [data-testid="media-picker"]',
@@ -902,24 +919,26 @@ it('closes a field picker locally while truly offline and reconciles the action 
                 && window.__mediaPickerPendingRequests === 0
             );
 
-            await waitFor(() => navigator.onLine);
-            await waitFor(() => requestsSettledAfter(0));
-            await waitFor(() => document.querySelector('[data-testid="media-picker"]') === null);
-            const opener = await waitFor(() => visibleOpener());
+            await waitFor(() => navigator.onLine, 'reconnect: navigator back online');
+            await waitFor(() => requestsSettledAfter(0), 'reconnect: initial requests settled');
+            await waitFor(() => document.querySelector('[data-testid="media-picker"]') === null,
+                'reconnect: previous picker fully closed');
+            const opener = await waitFor(() => visibleOpener(), 'reconnect: visible opener available');
             let completed = window.__mediaPickerCompletedRequests;
             opener.click();
-            await waitFor(() => openPicker());
-            await waitFor(() => requestsSettledAfter(completed));
+            await waitFor(() => openPicker(), 'reconnect: picker reopened');
+            await waitFor(() => requestsSettledAfter(completed), 'reconnect: reopen requests settled');
             await new Promise((resolve) => setTimeout(resolve, 250));
             const reopenedCount = document.querySelectorAll(
                 '[aria-modal="true"].fi-modal-open [data-testid="media-picker"]',
             ).length;
             completed = window.__mediaPickerCompletedRequests;
             openPicker().querySelector('[data-testid="media-picker-close"]')?.click();
-            await waitFor(() => openPicker() === null);
-            await waitFor(() => requestsSettledAfter(completed));
+            await waitFor(() => openPicker() === null, 'reconnect: picker closed again');
+            await waitFor(() => requestsSettledAfter(completed), 'reconnect: close requests settled');
             await waitFor(
                 () => document.activeElement?.closest('[data-testid="media-picker-open"]'),
+                'reconnect: focus returned to the opener',
             );
             const focusReturned = Boolean(
                 document.activeElement?.closest('[data-testid="media-picker-open"]'),
@@ -939,11 +958,13 @@ it('closes a field picker locally while truly offline and reconciles the action 
 
                 completed = window.__mediaPickerCompletedRequests;
                 cancel.click();
-                await waitFor(() => document.querySelector('[aria-modal="true"].fi-modal-open') === null);
-                await waitFor(() => requestsSettledAfter(completed));
+                await waitFor(() => document.querySelector('[aria-modal="true"].fi-modal-open') === null,
+                    'reconnect: parent action modal closed');
+                await waitFor(() => requestsSettledAfter(completed), 'reconnect: parent close requests settled');
             }
 
-            await waitFor(() => document.documentElement.style.overflow !== 'hidden');
+            await waitFor(() => document.documentElement.style.overflow !== 'hidden',
+                'reconnect: scroll lock released');
 
             return {
                 parent_closed: document.querySelector('[aria-modal="true"].fi-modal-open') === null,

@@ -49,21 +49,22 @@ it('navigates card selection checkboxes with arrow keys and toggles with space',
 
     $setup = $page->script(<<<'JS'
         async () => {
-            const waitFor = async (callback, timeout = 8000) => {
+            const waitFor = async (callback, step, timeout = 8000) => {
                 const started = performance.now();
                 while (performance.now() - started < timeout) {
                     const value = callback();
                     if (value) { return value; }
                     await new Promise((resolve) => setTimeout(resolve, 100));
                 }
-                throw new Error('timeout');
+                throw new Error(`timeout at step: ${step}`);
             };
 
             const listPage = await waitFor(() => window.Livewire?.all()?.find(
                 (component) => component.el?.querySelector('.fi-ta'),
-            ));
+            ), 'setup: gallery list page component found');
             await listPage.$wire.call('setCardsPerRow', 4);
-            await waitFor(() => document.querySelectorAll('.podtext-card-dense').length === 8);
+            await waitFor(() => document.querySelectorAll('.podtext-card-dense').length === 8,
+                'setup: eight dense cards rendered');
 
             document.querySelectorAll('.fi-ta-record-checkbox')[0].focus();
 
@@ -88,18 +89,19 @@ it('navigates card selection checkboxes with arrow keys and toggles with space',
     $page->keys('.fi-ta-record-checkbox:focus', 'Space');
     $afterSpace = $page->script(<<<'JS'
         async () => {
-            const waitFor = async (callback, timeout = 8000) => {
+            const waitFor = async (callback, step, timeout = 8000) => {
                 const started = performance.now();
                 while (performance.now() - started < timeout) {
                     const value = callback();
                     if (value) { return value; }
                     await new Promise((resolve) => setTimeout(resolve, 100));
                 }
-                throw new Error('timeout');
+                throw new Error(`timeout at step: ${step}`);
             };
             const boxes = () => document.querySelectorAll('.fi-ta-record-checkbox');
-            await waitFor(() => boxes()[1].checked);
-            await waitFor(() => boxes()[1].closest('.fi-ta-record').classList.contains('fi-selected'));
+            await waitFor(() => boxes()[1].checked, 'selection: second checkbox checked');
+            await waitFor(() => boxes()[1].closest('.fi-ta-record').classList.contains('fi-selected'),
+                'selection: second record marked selected');
 
             return {
                 secondChecked: boxes()[1].checked,
