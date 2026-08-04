@@ -21,10 +21,12 @@ beforeEach(function (): void {
 it('serves both clusters as first-level navigation after the labeled groups', function (): void {
     $navigation = collect(Filament::getNavigation());
 
+    // R1 EQ-1 (2026-08-05): episodes left this block for the ungrouped front
+    // door, so taxonomy leads and the content group trails it.
     expect($navigation->map(fn ($group): ?string => $group->getLabel())->values()->all())->toBe([
         null,
-        __('admin.navigation.groups.content_management'),
         __('admin.navigation.groups.taxonomy_management'),
+        __('admin.navigation.groups.content_management'),
         null,
     ]);
 

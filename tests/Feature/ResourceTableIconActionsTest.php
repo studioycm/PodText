@@ -37,7 +37,7 @@ beforeEach(function (): void {
     Http::preventStrayRequests();
 });
 
-it('keeps exactly 34 general Resource table record actions icon only with authoritative labels and tooltips', function (): void {
+it('keeps exactly 28 general Resource table record actions icon only with authoritative labels and tooltips', function (): void {
     $this->actingAs(User::factory()->superAdmin()->create());
     $group = ContentGroup::factory()->create();
     $item = ContentItem::factory()->for($group)->create();
@@ -46,11 +46,14 @@ it('keeps exactly 34 general Resource table record actions icon only with author
         'authors' => [Livewire::test(ListAuthors::class)->instance()->getTable()->getRecordActions(), 1],
         'categories' => [Livewire::test(ListCategories::class)->instance()->getTable()->getRecordActions(), 1],
         'podcasts' => [Livewire::test(ListContentGroups::class)->instance()->getTable()->getRecordActions(), 3],
-        'episodes' => [Livewire::test(ListContentItems::class)->instance()->getTable()->getRecordActions(), 7],
+        // R1 (P-EL4 two-daily-actions): both episode surfaces keep the two
+        // daily icons plus the two contextual remedy doors, and moved the
+        // occasional actions into an ActionGroup asserted below.
+        'episodes' => [Livewire::test(ListContentItems::class)->instance()->getTable()->getRecordActions(), 5],
         'podcast episodes' => [Livewire::test(ContentItemsRelationManager::class, [
             'ownerRecord' => $group,
             'pageClass' => EditContentGroup::class,
-        ])->instance()->getTable()->getRecordActions(), 9],
+        ])->instance()->getTable()->getRecordActions(), 5],
         'episode transcriptions' => [Livewire::test(TranscriptionsRelationManager::class, [
             'ownerRecord' => $item,
             'pageClass' => EditContentItem::class,
@@ -70,6 +73,17 @@ it('keeps exactly 34 general Resource table record actions icon only with author
         $icons = [];
 
         foreach ($actions as $action) {
+            // Grouped actions render labelled inside their dropdown, so the
+            // icon-only contract covers the ungrouped ones (the same shape
+            // the Media table already uses).
+            if ($action instanceof ActionGroup) {
+                expect($action->isIconButton())->toBeTrue();
+
+                $icons[] = 'action-group';
+
+                continue;
+            }
+
             expect($action)->toBeInstanceOf(Action::class)
                 ->and($action->isIconButton())->toBeTrue()
                 ->and($action->isLabelHidden())->toBeTrue()
@@ -82,7 +96,7 @@ it('keeps exactly 34 general Resource table record actions icon only with author
         expect(array_unique($icons))->toHaveCount($expectedCount, "{$surface} duplicate icons");
     }
 
-    expect($actionCount)->toBe(34);
+    expect($actionCount)->toBe(28);
 });
 
 it('gives Media one visible details action one quiet grouped action menu and a status chip', function (): void {

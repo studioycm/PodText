@@ -4,6 +4,7 @@ use App\Enums\TranscriptionMode;
 use App\Filament\Resources\ContentItems\Pages\CreateEpisodeWorkspace;
 use App\Filament\Resources\ContentTags\Pages\CreateContentTag;
 use App\Filament\Resources\Transcriptions\Pages\CreateTranscription;
+use App\Models\User;
 use App\Support\UiTimezone;
 use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -100,6 +101,10 @@ it('renders the configured UI timezone in the single-mode transcription publishe
 it('renders the configured UI timezone in the multi-mode transcription published-at helper text', function (): void {
     setTestTranscriptionMode(TranscriptionMode::Multi);
     config()->set('localization.ui_timezone', 'Europe/Berlin');
+
+    // The episode workspace authorizes through ContentItemPolicy (R1 EQ-6),
+    // so this helper-text check runs as an admin rather than as a guest.
+    $this->actingAs(User::factory()->admin()->create());
 
     Livewire::test(CreateEpisodeWorkspace::class)
         ->assertOk()
