@@ -40,8 +40,17 @@ class PublicFormSubmission extends Model
             $submission->submitted_at ??= now();
         });
 
-        static::saved(fn (): bool => Cache::forget(self::NEW_SUBMISSIONS_NAVIGATION_BADGE_CACHE_KEY));
-        static::deleted(fn (): bool => Cache::forget(self::NEW_SUBMISSIONS_NAVIGATION_BADGE_CACHE_KEY));
+        // Void on purpose: Cache::forget() returns false for an absent key,
+        // and a model-event listener returning exactly false HALTS the
+        // dispatcher's listener loop (Dispatcher::dispatch, break-on-false) —
+        // which silently skipped every later eloquent.saved listener, such
+        // as the dashboard's EditorialMetricsCacheObserver.
+        static::saved(function (): void {
+            Cache::forget(self::NEW_SUBMISSIONS_NAVIGATION_BADGE_CACHE_KEY);
+        });
+        static::deleted(function (): void {
+            Cache::forget(self::NEW_SUBMISSIONS_NAVIGATION_BADGE_CACHE_KEY);
+        });
     }
 
     public function markReviewed(): void

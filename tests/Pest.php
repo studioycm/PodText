@@ -2,8 +2,12 @@
 
 use App\Enums\TranscriptionMode;
 use App\Enums\UserRole;
+use App\Filament\Imports\ContentItemImporter;
 use App\Jobs\SettingsBackupSnapshotJob;
+use App\Models\Media;
+use App\Models\User;
 use App\Settings\AdminUxSettings;
+use Filament\Actions\Imports\Models\Import;
 use Illuminate\Filesystem\Filesystem;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -208,4 +212,43 @@ function expectAuthzPackageAssignmentsEmpty(): void
 {
     expect(DB::table('model_has_roles')->count())->toBe(0)
         ->and(DB::table('model_has_permissions')->count())->toBe(0);
+}
+
+/** A completed vendor import carrying real failed rows — the intake queue's import fixture. */
+function failedImport(int $failed = 2, int $total = 5, string $fileName = 'episodes.csv'): Import
+{
+    $import = new Import;
+    $import->forceFill([
+        'file_name' => $fileName,
+        'file_path' => "imports/{$fileName}",
+        'importer' => ContentItemImporter::class,
+        'total_rows' => $total,
+        'processed_rows' => $total,
+        'successful_rows' => $total - $failed,
+        'user_id' => User::factory()->admin()->create()->getKey(),
+    ])->save();
+
+    foreach (range(1, $failed) as $index) {
+        $import->failedRows()->create([
+            'data' => ['title' => "row {$index}"],
+            'validation_error' => 'missing identifier',
+        ]);
+    }
+
+    return $import;
+}
+
+/** A media row whose file genuinely exists on the (faked) public disk — no findings. */
+function cleanMedia(): Media
+{
+    $media = Media::factory()->create();
+    Storage::disk('public')->put($media->path, 'binary');
+
+    return $media;
+}
+
+/** A media row whose file is absent — exactly the missing_file finding. */
+function missingFileMedia(): Media
+{
+    return Media::factory()->create();
 }

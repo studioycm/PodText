@@ -9,7 +9,9 @@ use App\Livewire\Admin\DisabledVendorCuratorSurface;
 use App\Livewire\Admin\MediaPickerPanel;
 use App\Models\ContentGroup;
 use App\Models\ContentItem;
+use App\Models\ImportConnection;
 use App\Models\Media;
+use App\Models\PublicFormSubmission;
 use App\Models\SettingsBackupVersion;
 use App\Models\Transcription;
 use App\Models\User;
@@ -43,6 +45,8 @@ use Awcodes\Curator\Facades\Curator;
 use BezhanSalleh\FilamentShield\Commands\TranslationCommand;
 use BezhanSalleh\FilamentShield\Facades\FilamentShield;
 use Filament\Actions\Action;
+use Filament\Actions\Imports\Models\FailedImportRow;
+use Filament\Actions\Imports\Models\Import;
 use Filament\Facades\Filament;
 use Filament\Forms\Components\Select;
 use Filament\Resources\Pages\ListRecords;
@@ -124,6 +128,16 @@ class AppServiceProvider extends ServiceProvider
         ContentItem::observe(EditorialMetricsCacheObserver::class);
         ContentGroup::observe(EditorialMetricsCacheObserver::class);
         Transcription::observe(EditorialMetricsCacheObserver::class);
+
+        // Board 3's snapshot sources. Vendor import models are observable
+        // like any Eloquent model; failedRows()->createMany() saves each
+        // row through Eloquent, so the observer's saved hook fires per row
+        // and import failures invalidate immediately.
+        PublicFormSubmission::observe(EditorialMetricsCacheObserver::class);
+        Media::observe(EditorialMetricsCacheObserver::class);
+        ImportConnection::observe(EditorialMetricsCacheObserver::class);
+        Import::observe(EditorialMetricsCacheObserver::class);
+        FailedImportRow::observe(EditorialMetricsCacheObserver::class);
 
         Model::preventLazyLoading(! $this->app->isProduction());
         Model::handleLazyLoadingViolationUsing(function (Model $model, string $relation): void {

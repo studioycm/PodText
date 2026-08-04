@@ -5,9 +5,15 @@ namespace App\Support\Dashboard;
 use App\Enums\DashboardRange;
 use App\Enums\DashboardReason;
 use App\Enums\DashboardTier;
+use App\Enums\ImportConnectionProvider;
+use App\Enums\ImportConnectionStatus;
+use App\Enums\MediaDiagnosticReason;
+use App\Enums\MediaLibraryTask;
 use App\Enums\PublicationStatus;
+use App\Enums\PublicFormSubmissionStatus;
 use App\Enums\StreamEventType;
 use App\Filament\Resources\ContentItems\ContentItemResource;
+use App\Filament\Resources\Media\MediaResource;
 use App\Filament\Resources\PublicFormSubmissions\PublicFormSubmissionResource;
 use App\Filament\Resources\Transcriptions\TranscriptionResource;
 use App\Models\Author;
@@ -15,6 +21,8 @@ use App\Models\Category;
 use App\Models\ContentGroup;
 use App\Models\ContentItem;
 use App\Models\ContentTag;
+use App\Models\ImportConnection;
+use App\Models\Media;
 use App\Models\MediaAttachment;
 use App\Models\PublicFormSubmission;
 use App\Models\Transcription;
@@ -23,13 +31,18 @@ use App\Support\Dashboard\Data\Burndown;
 use App\Support\Dashboard\Data\Heatmap;
 use App\Support\Dashboard\Data\Rate;
 use App\Support\Dashboard\Data\SeriesRow;
+use App\Support\Media\MediaInventoryDiagnostics;
+use App\Support\Media\MediaRecordScope;
 use App\Support\UiTimezone;
 use Closure;
+use Filament\Actions\Imports\Models\FailedImportRow;
 use Filament\Actions\Imports\Models\Import;
+use Filament\Facades\Filament;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\URL;
 
 /**
  * The single source of truth for every number on the dashboard: any figure
@@ -45,6 +58,8 @@ class EditorialMetrics
     private const CACHE_SECONDS = 60;
 
     private const CACHE_PREFIX = 'dashboard:editorial-metrics:v2';
+
+    private const INTAKE_CACHE_KEY = self::CACHE_PREFIX.':intake';
 
     /** @var array<int, bool> */
     private array $knownPodcasts = [];
@@ -104,10 +119,193 @@ class EditorialMetrics
     public function forget(): void
     {
         Cache::forget($this->cacheKey(null));
+        Cache::forget(self::INTAKE_CACHE_KEY);
 
         ContentGroup::query()
             ->pluck('id')
             ->each(fn (int $id): bool => Cache::forget($this->cacheKey($id)));
+    }
+
+    /**
+     * Board 3's cached numbers. Global by design: submissions, imports,
+     * connections and library-wide media findings have no podcast dimension,
+     * so the intake snapshot takes no scope argument.
+     *
+     * The media block rides the inventory diagnostics scan (file existence
+     * checks, lazyById) — the reason these counts are cached at all.
+     *
+     * @return array{queue: array{submissions: int, imports: int, failed_rows: int}, media: array{findings: array<string, int>, flagged: int, total: int}, generated_at: string}
+     */
+    public function intakeSnapshot(): array
+    {
+        return Cache::remember(self::INTAKE_CACHE_KEY, self::CACHE_SECONDS, function (): array {
+            $diagnostics = app(MediaInventoryDiagnostics::class);
+            $inventory = fn (): Builder => app(MediaRecordScope::class)->inventoryQuery();
+
+            return [
+                'queue' => [
+                    'submissions' => PublicFormSubmission::query()->status(PublicFormSubmissionStatus::New)->count(),
+                    'imports' => Import::query()->whereHas('failedRows')->count(),
+                    'failed_rows' => FailedImportRow::query()->count(),
+                ],
+                'media' => [
+                    'findings' => collect(MediaDiagnosticReason::cases())
+                        ->mapWithKeys(fn (MediaDiagnosticReason $reason): array => [
+                            $reason->value => $diagnostics->applyReasonFilter($inventory(), $reason)->count(),
+                        ])
+                        ->all(),
+                    'flagged' => $diagnostics->applyReasonFilter($inventory())->count(),
+                    'total' => $inventory()->count(),
+                ],
+                'generated_at' => now()->toIso8601String(),
+            ];
+        });
+    }
+
+    /**
+     * The intake work queue: new submissions and imports with failed rows,
+     * newest first. One entry per failed import, not per failed row — the
+     * failure CSV is the actionable artifact and carries every row, so the
+     * queue never silently truncates failures (D-2).
+     *
+     * `$source` follows D-4: only the manual channel has attributable rows
+     * today, so a connected-provider source yields an empty, honest queue.
+     *
+     * @return array{rows: array<int, array{type: StreamEventType, title: string, subtitle: ?string, url: string, at: Carbon}>, counts: array{all: int, submissions: int, imports: int}}
+     */
+    public function intakeQueue(?ImportConnectionProvider $source = null, ?StreamEventType $kind = null, int $limit = 10): array
+    {
+        if ($source !== null && $source !== ImportConnectionProvider::Manual) {
+            return ['rows' => [], 'counts' => ['all' => 0, 'submissions' => 0, 'imports' => 0]];
+        }
+
+        $snapshot = $this->intakeSnapshot()['queue'];
+
+        $submissions = $kind === StreamEventType::Import ? collect() : PublicFormSubmission::query()
+            ->status(PublicFormSubmissionStatus::New)
+            ->latest('submitted_at')
+            ->limit($limit)
+            ->get(['id', 'form_key', 'form_name_snapshot', 'submitted_at'])
+            ->map(fn (PublicFormSubmission $submission): array => [
+                'type' => StreamEventType::Submission,
+                'title' => (string) ($submission->form_name_snapshot ?: $submission->form_key),
+                'subtitle' => null,
+                'url' => PublicFormSubmissionResource::getUrl('edit', ['record' => $submission->getKey()]),
+                'at' => Carbon::parse($submission->submitted_at),
+            ]);
+
+        $imports = $kind === StreamEventType::Submission ? collect() : Import::query()
+            ->whereHas('failedRows')
+            ->withCount('failedRows')
+            ->latest('created_at')
+            ->limit($limit)
+            ->get()
+            ->map(fn (Import $import): array => [
+                'type' => StreamEventType::Import,
+                'title' => (string) $import->file_name,
+                'subtitle' => __('admin.dashboard.intake.failed_rows', [
+                    'failed' => (int) $import->failed_rows_count,
+                    'total' => (int) $import->total_rows,
+                ]),
+                'url' => $this->failedRowsDownloadUrl($import),
+                'at' => Carbon::parse($import->created_at),
+            ]);
+
+        return [
+            'rows' => $submissions->concat($imports)
+                ->sortByDesc(fn (array $row): int => $row['at']->getTimestamp())
+                ->take($limit)
+                ->values()
+                ->all(),
+            'counts' => [
+                'all' => $snapshot['submissions'] + $snapshot['imports'],
+                'submissions' => $snapshot['submissions'],
+                'imports' => $snapshot['imports'],
+            ],
+        ];
+    }
+
+    /**
+     * The exact URL the import-completion notification offers, so the queue
+     * doorway and the notification can never diverge
+     * (vendor `ImportAction.php:317`). Authorization stays with
+     * `DownloadImportFailureCsv` + `ImportPolicy::view`.
+     */
+    public function failedRowsDownloadUrl(Import $import): string
+    {
+        return URL::signedRoute('filament.imports.failed-rows.download', [
+            'authGuard' => Filament::getAuthGuard(),
+            'import' => $import,
+        ], absolute: false);
+    }
+
+    /**
+     * Decision 4's card data: the persisted connection-test echo, nothing
+     * else. `reduced` mirrors the fetcher's own rule — it only offers
+     * Connected Spotify connections and warns it will run reduced otherwise
+     * (`SpotifyLinksFetcher::selectedConnection()`).
+     *
+     * @return array{connections: array<int, array{name: string, status: ImportConnectionStatus, last_tested_at: ?Carbon}>, reduced: bool}
+     */
+    public function spotifyConnectionEcho(): array
+    {
+        $connections = ImportConnection::query()
+            ->where('provider', ImportConnectionProvider::Spotify)
+            ->orderBy('name')
+            ->get(['id', 'name', 'status', 'last_tested_at']);
+
+        return [
+            'connections' => $connections
+                ->map(fn (ImportConnection $connection): array => [
+                    'name' => (string) $connection->name,
+                    'status' => $connection->status,
+                    'last_tested_at' => $connection->last_tested_at === null
+                        ? null
+                        : Carbon::parse($connection->last_tested_at),
+                ])
+                ->all(),
+            'reduced' => ! $connections->contains(
+                fn (ImportConnection $connection): bool => $connection->status === ImportConnectionStatus::Connected,
+            ),
+        ];
+    }
+
+    /**
+     * Decision 5's bars: every diagnostic reason with a non-zero count,
+     * largest first, each carrying the gallery doorway into the
+     * needs-attention task pre-filtered to that reason — where the repair
+     * actions live. The rate is the "97% clean" caption.
+     *
+     * @return array{rows: array<int, BreakdownRow>, rate: Rate}
+     */
+    public function mediaFindings(): array
+    {
+        $media = $this->intakeSnapshot()['media'];
+
+        $rows = collect(MediaDiagnosticReason::cases())
+            ->map(fn (MediaDiagnosticReason $reason): BreakdownRow => new BreakdownRow(
+                label: $reason->getLabel(),
+                value: (float) ($media['findings'][$reason->value] ?? 0),
+                color: $reason->getColor(),
+                url: MediaResource::getUrl('index', [
+                    'tab' => MediaLibraryTask::NeedsAttention->value,
+                    'filters' => ['reason' => ['value' => $reason->value]],
+                ]),
+                meta: ['bar' => $reason->barClass(), 'reason' => $reason->value],
+            ))
+            ->filter(fn (BreakdownRow $row): bool => $row->value > 0)
+            ->sortByDesc(fn (BreakdownRow $row): float => $row->value)
+            ->values()
+            ->all();
+
+        return [
+            'rows' => $rows,
+            'rate' => new Rate(
+                covered: max(0, $media['total'] - $media['flagged']),
+                of: $media['total'],
+                description: __('admin.dashboard.media_findings.rate_description'),
+            ),
+        ];
     }
 
     /**
