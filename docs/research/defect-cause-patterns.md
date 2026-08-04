@@ -617,10 +617,10 @@ release `74682025`):
 
 | Item | What | Status |
 |---|---|---|
-| Browser-test hygiene | `test-residue` census + rename, then the `single-read-race` sweep (6 files × 15 `x-show` views) — one session, test-only, commits stay LOCAL (test-only never pushes alone) | ⏳ chip spawned 2026-08-04 |
-| Contention investigation | Induced-concurrency vs quiesced reproduction of the three registered timeout data points; requires a QUIET machine — self-gates on it | ⏳ chip spawned 2026-08-04 |
-| Phase-3 fresh re-reconciliation | Re-verify the reconciled plan claim-by-claim against final post-push HEAD from a fresh perspective; amend/flag; docs-only | ⏳ chip spawned 2026-08-04 |
-| Episodes/nav mini-project | NEW main mini-project: research + UX design for episodes-as-primary-lens (nav minimization, columns, record actions, filters/sort/grouping, cross-entity + inline-edit columns, quick-scope toggle UX) — design chip first, NO implementation | ⏳ chip spawned 2026-08-04 |
+| Browser-test hygiene | `test-residue` census + rename, then the `single-read-race` sweep (6 files × 15 `x-show` views) — one session, test-only, commits stay LOCAL (test-only never pushes alone) | ⏳ chip `task_0e72bb0c` |
+| Contention investigation | Induced-concurrency vs quiesced reproduction of the three registered timeout data points; requires a QUIET machine — self-gates on it (run it ALONE) | ⏳ chip `task_d395ead7` |
+| Phase-3 fresh re-reconciliation | Re-verify the reconciled plan claim-by-claim against final post-push HEAD from a fresh perspective; amend/flag; docs-only | ⏳ chip `task_7dc6d969` |
+| Episodes/nav mini-project | NEW main mini-project: research + UX design for episodes-as-primary-lens — design chip first, NO implementation; spec deliverable `docs/phase-02/episodes-lens-design-spec.md` with `EQ-<n>` decision questions | ⏳ chip `task_345ddb95` |
 
 ### V1 record (2026-08-03)
 
