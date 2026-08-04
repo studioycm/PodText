@@ -330,8 +330,10 @@ starvation, and raising budgets would just lengthen the feedback loop.
    `adaaa77`, at 17:44 and 17:46). Both are recorded above; `171deeb` touched
    only `CardTemplatePreviewBrowserTest` and the runs it bracketed (baseline
    owner 10-12) all passed, so per the sequencing rule no batch was redone.
-   Batch-level timestamps are in the session's scratchpad logs if anyone wants
-   to re-audit the correlation.
+   Per-run timestamps, durations, and load averages for every batch —
+   including the fix-verification arms E/F/G — are archived verbatim in
+   `browser-timeout-contention-run-log.md` for anyone re-auditing the
+   correlation.
 
 ## Reproduction recipe
 
