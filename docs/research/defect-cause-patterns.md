@@ -224,7 +224,11 @@ was already on record from the A-block.)*
   label/colour tests; URL-shape tests built from the same builder.
 - **Suggested guard:** the widget-principles' mutation-check rule is the
   detector (strip the home, watch the test); pin independent literals or
-  fixtures for vocabulary contracts.
+  fixtures for vocabulary contracts. Doctrine refinement (Task 4,
+  `55a30b6`): a SURVIVING mutation is not always a vacuous test — it can
+  mean a masking upper layer (the blade's provider gate masked the service
+  gate); attribute each kill to its own layer and pin each layer with its
+  own suite.
 - **Status:** two evidence points at founding; watch for a third before a
   sweep.
 
