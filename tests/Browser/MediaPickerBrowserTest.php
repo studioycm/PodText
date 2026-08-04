@@ -97,7 +97,7 @@ it('keeps the acquisition workspace accessible responsive and stateful', functio
 
     $wide = $page->script(<<<'JS'
         async () => {
-            const waitFor = async (callback, timeout = 7000) => {
+            const waitFor = async (callback, step = null, timeout = 7000) => {
                 const started = performance.now();
 
                 while (performance.now() - started < timeout) {
@@ -110,7 +110,9 @@ it('keeps the acquisition workspace accessible responsive and stateful', functio
                     await new Promise((resolve) => setTimeout(resolve, 25));
                 }
 
-                throw new Error('Timed out while waiting for media picker browser evidence.');
+                throw new Error(step
+                    ? `timeout at step: ${step}`
+                    : 'Timed out while waiting for media picker browser evidence.');
             };
             const dialog = () => document.querySelector('[aria-modal="true"].fi-modal-open');
             const picker = () => dialog()?.querySelector('[data-testid="media-picker"]');
@@ -230,7 +232,32 @@ it('keeps the acquisition workspace accessible responsive and stateful', functio
             }));
             // Settle Livewire before snapshotting: the guard reads below are
             // only meaningful once the workspace is quiet, and the blocks after
-            // this one assume the same.
+            // this one assume the same. Each condition is waited under its own
+            // label so a timeout names the condition that never settled,
+            // instead of hiding it inside a compound predicate.
+            await waitFor(() => window.__mediaPickerPendingRequests === 0,
+                'upload-finish: pending requests drained');
+            await waitFor(() => ! picker()?.querySelector('[data-testid="media-picker-source-upload"]')?.disabled,
+                'upload-finish: source buttons re-enabled');
+            await waitFor(() => ! picker()?.querySelector('[data-testid="media-picker-header"]')?.inert,
+                'upload-finish: header inert released');
+            await waitFor(() => ! picker()?.querySelector('[data-testid="media-picker-upload-action-guard"]')?.inert,
+                'upload-finish: action guard inert released');
+            await waitFor(() => picker()?.querySelector('[data-testid="media-picker-close"]')
+                ?.getAttribute('aria-disabled') !== 'true',
+                'upload-finish: close aria-disabled released');
+            await waitFor(() => picker()?.getAttribute('aria-busy') !== 'true',
+                'upload-finish: aria-busy released');
+            // KNOWN registered app defect (contention investigation, 9318e62,
+            // docs/research/browser-timeout-contention-investigation.md): the
+            // one-shot focus restore can lose to Filament's wire:loading
+            // disabled writer, so this condition may time out (~4% quiesced)
+            // until the verify-after-focus app fix lands. A timeout here is
+            // that defect, not this test — do not paper over it.
+            await waitFor(() => picker()?.contains(document.activeElement),
+                'upload-finish: focus returned inside the picker');
+            // The settle contract is the conjunction: re-wait it whole so the
+            // snapshot below sees every condition true at one instant.
             await waitFor(() =>
                 window.__mediaPickerPendingRequests === 0
                 && ! picker()?.querySelector('[data-testid="media-picker-source-upload"]')?.disabled
@@ -239,8 +266,8 @@ it('keeps the acquisition workspace accessible responsive and stateful', functio
                 && picker()?.querySelector('[data-testid="media-picker-close"]')
                     ?.getAttribute('aria-disabled') !== 'true'
                 && picker()?.getAttribute('aria-busy') !== 'true'
-                && picker()?.contains(document.activeElement)
-            );
+                && picker()?.contains(document.activeElement),
+                'upload-finish: all settle conditions hold simultaneously');
             const uploadGuardReleased = ! picker()?.querySelector('[data-testid="media-picker-source-upload"]')?.disabled
                 && ! picker()?.querySelector('[data-testid="media-picker-header"]')?.inert
                 && picker()?.querySelector('[data-testid="media-picker-close"]')
