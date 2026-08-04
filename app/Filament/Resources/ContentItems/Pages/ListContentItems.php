@@ -46,13 +46,28 @@ class ListContentItems extends ListRecords
             ->all();
     }
 
+    public function mount(): void
+    {
+        parent::mount();
+
+        // The real door: `$activeTab` is `#[Url(as: 'tab')]`, and Livewire
+        // does not fire `updated*` hooks for URL hydration — narrowing only
+        // in the update hook would leave the query-string path unguarded.
+        $this->narrowActiveTab();
+    }
+
     public function updatedActiveTab(): void
     {
-        // state-narrows-at-the-door: the tab key is URL/browser-writable.
-        $this->activeTab = EpisodeListScope::tryFrom((string) $this->activeTab)?->value
-            ?? EpisodeListScope::All->value;
+        $this->narrowActiveTab();
 
         parent::updatedActiveTab();
+    }
+
+    /** state-narrows-at-the-door: the tab key is URL/browser-writable. */
+    private function narrowActiveTab(): void
+    {
+        $this->activeTab = EpisodeListScope::tryFrom((string) $this->activeTab)?->value
+            ?? EpisodeListScope::All->value;
     }
 
     public function getSubheading(): ?string

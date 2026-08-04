@@ -1,5 +1,7 @@
 <?php
 
+use App\Enums\EpisodeListScope;
+use App\Enums\EpisodePinScope;
 use App\Enums\EpisodePublicState;
 use App\Enums\PublicationStatus;
 use App\Filament\Resources\ContentItems\Pages\ListContentItems;
@@ -196,6 +198,71 @@ it('filters by the pinned toggle group and the Jerusalem-walled date range', fun
         ->filterTable('published_between', ['published_from' => '2026-08-05'])
         ->assertCanSeeTableRecords([$nearMidnight])
         ->assertCanNotSeeTableRecords([$earlier]);
+});
+
+it('narrows forged filter dates instead of crashing the list', function (mixed $forged): void {
+    $episode = ContentItem::factory()->published('2026-08-01 06:00:00')->create();
+
+    // Table filter state is raw browser input — reachable straight from the
+    // query string — so garbage must narrow, never reach Carbon.
+    Livewire::test(ListContentItems::class)
+        ->set('tableFilters.published_between.published_from', $forged)
+        ->assertSuccessful()
+        ->assertCanSeeTableRecords([$episode]);
+})->with([
+    'unparsable string' => ['forged-date'],
+    'array' => [['x']],
+    'integer' => [42],
+    'boolean' => [true],
+]);
+
+it('narrows a forged tab arriving through the query string', function (): void {
+    $episode = ContentItem::factory()->create();
+
+    // `$activeTab` is #[Url]-bound, and Livewire does not fire updated*
+    // hooks for URL hydration — the mount door is the one that matters.
+    Livewire::withQueryParams(['tab' => 'forged-scope'])
+        ->test(ListContentItems::class)
+        ->assertSet('activeTab', EpisodeListScope::All->value)
+        ->assertCanSeeTableRecords([$episode]);
+});
+
+it('publishes a podcast that blocks by a future date, not just a draft one', function (): void {
+    Carbon::setTestNow('2026-08-05 16:00:00');
+
+    $futureDatedGroup = ContentGroup::factory()->published('2026-12-01 00:00:00')->create();
+    $blocked = ContentItem::factory()->published('2026-08-01 08:00:00')
+        ->for($futureDatedGroup, 'contentGroup')
+        ->withTranscription(['status' => PublicationStatus::Published, 'published_at' => '2026-08-01 08:00:00'])
+        ->create();
+
+    expect(EpisodePublicState::for($blocked->fresh()->load('contentGroup')))
+        ->toBe(EpisodePublicState::BlockedGroup);
+
+    Livewire::test(ListContentItems::class)
+        ->callAction(TestAction::make('publishBlockingPodcast')->table($blocked))
+        ->assertNotified(__('admin.notifications.episode_visible'));
+
+    // The remedy must actually unblock — a confirmation that changes nothing
+    // is worse than no remedy at all.
+    expect(EpisodePublicState::for($blocked->fresh()->load('contentGroup')))
+        ->toBe(EpisodePublicState::Visible)
+        ->and($futureDatedGroup->refresh()->published_at->toDateTimeString())
+        ->toBe('2026-08-05 16:00:00');
+});
+
+it('filters unpinned episodes and returns to all when the pin filter is reset', function (): void {
+    $pinned = ContentItem::factory()->pinned()->create();
+    $plain = ContentItem::factory()->create();
+
+    Livewire::test(ListContentItems::class)
+        ->filterTable('is_pinned', ['value' => EpisodePinScope::Unpinned->value])
+        ->assertCanSeeTableRecords([$plain])
+        ->assertCanNotSeeTableRecords([$pinned])
+        ->removeTableFilter('is_pinned')
+        // Resetting returns the toggle to «הכל» rather than leaving it blank.
+        ->assertSet('tableFilters.is_pinned.value', EpisodePinScope::All->value)
+        ->assertCanSeeTableRecords([$pinned, $plain]);
 });
 
 it('speaks both languages for the public-state vocabulary', function (): void {

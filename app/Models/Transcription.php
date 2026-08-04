@@ -7,6 +7,7 @@ use App\Models\Concerns\InteractsWithPublicationDate;
 use App\Support\Transcriptions\SingleTranscriptionLens;
 use App\Support\Transcriptions\TranscriptWordCounter;
 use App\Support\Transcripts\TranscriptSegmentParser;
+use Carbon\CarbonInterface;
 use Database\Factories\TranscriptionFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
@@ -150,14 +151,27 @@ class Transcription extends Model
 
     public function scopePublished(Builder $query): Builder
     {
+        return $query->releasedBy(now());
+    }
+
+    /**
+     * The same release contract as `published()`, asked about a different
+     * moment — used by the admin's scheduled/blocked verdicts, which need to
+     * know whether a transcript will be out by an episode's air time.
+     * A string `$moment` names a column to compare against instead of a value.
+     */
+    public function scopeReleasedBy(Builder $query, CarbonInterface|string $moment): Builder
+    {
         return $query
             ->where('status', PublicationStatus::Published)
             ->whereNotNull('transcript_markdown')
             ->where('transcript_markdown', '!=', '')
-            ->where(function (Builder $query): void {
-                $query
-                    ->whereNull('published_at')
-                    ->orWhere('published_at', '<=', now());
+            ->where(function (Builder $query) use ($moment): void {
+                $query->whereNull($query->qualifyColumn('published_at'));
+
+                is_string($moment)
+                    ? $query->orWhereColumn($query->qualifyColumn('published_at'), '<=', $moment)
+                    : $query->orWhere($query->qualifyColumn('published_at'), '<=', $moment);
             });
     }
 

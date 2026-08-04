@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\ContentItems\Tables;
 
+use App\Enums\EpisodePinScope;
 use App\Enums\EpisodePublicState;
 use App\Enums\PublicationStatus;
 use App\Filament\Actions\ContentImageActions;
@@ -15,7 +16,9 @@ use App\Filament\Resources\Support\ResourceTableActions;
 use App\Filament\Tables\OwnerImageColumn;
 use App\Models\ContentItem;
 use App\Support\Transcriptions\TranscriptionModeLabel;
+use App\Support\UiFormats;
 use App\Support\UiTimezone;
+use Carbon\Exceptions\InvalidFormatException;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\BulkActionGroup;
@@ -45,6 +48,7 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rules\File;
+use InvalidArgumentException;
 
 class ContentItemsTable
 {
@@ -242,7 +246,13 @@ class ContentItemsTable
             ])
             ->withCount('transcriptions')
             ->withExists([
-                'transcriptions as has_published_transcription' => fn (Builder $transcriptions): Builder => $transcriptions->published(),
+                // The verdict judges prerequisites at the later of now and the
+                // air time, so both flags are primed and the resolver picks
+                // the one its row needs — portable, and no per-row query.
+                'transcriptions as has_transcription_now' => fn (Builder $transcriptions): Builder => $transcriptions
+                    ->releasedBy(now()),
+                'transcriptions as has_transcription_by_air_time' => fn (Builder $transcriptions): Builder => $transcriptions
+                    ->releasedBy('content_items.published_at'),
             ]);
     }
 
@@ -254,7 +264,7 @@ class ContentItemsTable
             ->badge()
             ->tooltip(fn (ContentItem $record): ?string => EpisodePublicState::for($record) === EpisodePublicState::Scheduled
                 ? __('admin.episode_public_state.scheduled_tooltip', [
-                    'date' => $record->published_at?->timezone(UiTimezone::name())->format('d/m/Y H:i'),
+                    'date' => $record->published_at?->timezone(UiTimezone::name())->format(UiFormats::dateTime()),
                 ])
                 : null)
             ->toggleable();
@@ -278,7 +288,7 @@ class ContentItemsTable
     {
         return TextColumn::make('effective_published_at')
             ->label(__('admin.fields.published_at'))
-            ->dateTime('d/m/Y H:i', UiTimezone::name())
+            ->dateTime(UiFormats::dateTime(), UiTimezone::name())
             ->placeholder(__('admin.labels.none'))
             ->sortable(query: fn (Builder $query, string $direction): Builder => $query->orderByEffectivePublishedAt($direction))
             ->tooltip(fn (ContentItem $record): ?string => $record->published_at === null && $record->status === PublicationStatus::Published
@@ -293,7 +303,7 @@ class ContentItemsTable
         return TextColumn::make('updated_at')
             ->label(__('admin.fields.updated_at'))
             ->since(UiTimezone::name())
-            ->dateTimeTooltip('d/m/Y H:i', UiTimezone::name())
+            ->dateTimeTooltip(UiFormats::dateTime(), UiTimezone::name())
             ->sortable()
             ->toggleable();
     }
@@ -311,7 +321,7 @@ class ContentItemsTable
                     ->label(__('admin.fields.published_at'))
                     ->helperText(__('admin.helpers.published_at_timezone', ['timezone' => UiTimezone::name()]))
                     ->seconds(false)
-                    ->displayFormat('d/m/Y H:i')
+                    ->displayFormat(UiFormats::dateTime())
                     ->timezone(UiTimezone::name()),
             ])
             ->fillForm(fn (ContentItem $record): array => [
@@ -352,7 +362,16 @@ class ContentItemsTable
                         return;
                     }
 
-                    $group->update(['status' => PublicationStatus::Published]);
+                    // A podcast can block either by being a draft or by
+                    // carrying a future date — publishing it has to answer
+                    // both, or the operator clicks through a confirmation
+                    // that changes nothing.
+                    $group->update([
+                        'status' => PublicationStatus::Published,
+                        'published_at' => $group->published_at?->gt(now())
+                            ? now()
+                            : $group->published_at,
+                    ]);
 
                     self::notifyPublicationOutcome($record);
                 }),
@@ -386,7 +405,7 @@ class ContentItemsTable
             ->title(match ($state) {
                 EpisodePublicState::Visible => __('admin.notifications.episode_visible'),
                 EpisodePublicState::Scheduled => __('admin.notifications.episode_scheduled', [
-                    'date' => $fresh->published_at?->timezone(UiTimezone::name())->format('d/m/Y H:i'),
+                    'date' => $fresh->published_at?->timezone(UiTimezone::name())->format(UiFormats::dateTime()),
                 ]),
                 EpisodePublicState::Draft => __('admin.notifications.episode_unpublished'),
                 EpisodePublicState::BlockedGroup => __('admin.notifications.episode_blocked_group'),
@@ -399,7 +418,7 @@ class ContentItemsTable
 
         if ($record->wasChanged('published_at') && $fresh->published_at !== null) {
             $notification->body(__('admin.notifications.published_at_stamped', [
-                'date' => $fresh->published_at->timezone(UiTimezone::name())->format('d/m/Y H:i'),
+                'date' => $fresh->published_at->timezone(UiTimezone::name())->format(UiFormats::dateTime()),
             ]));
         }
 
@@ -412,24 +431,20 @@ class ContentItemsTable
             ->schema([
                 ToggleButtons::make('value')
                     ->label(__('admin.fields.is_pinned'))
-                    ->options([
-                        'all' => __('admin.filters.pinned_options.all'),
-                        'pinned' => __('admin.filters.pinned_options.pinned'),
-                        'unpinned' => __('admin.filters.pinned_options.unpinned'),
-                    ])
-                    ->default('all')
+                    ->options(EpisodePinScope::options())
+                    ->default(EpisodePinScope::All->value)
                     ->grouped(),
             ])
-            ->query(fn (Builder $query, array $data): Builder => match ($data['value'] ?? 'all') {
-                'pinned' => $query->currentlyPinned(),
-                'unpinned' => $query->whereNot(fn (Builder $pinned): Builder => $pinned->currentlyPinned()),
-                default => $query,
+            // Without an explicit reset state, clearing the filter leaves the
+            // ToggleButtons with nothing selected instead of returning to
+            // «הכל» (Filament resets a string-state field to null).
+            ->resetState(['value' => EpisodePinScope::All->value])
+            ->query(fn (Builder $query, array $data): Builder => match (EpisodePinScope::fromFilter($data['value'] ?? null)) {
+                EpisodePinScope::Pinned => $query->currentlyPinned(),
+                EpisodePinScope::Unpinned => $query->whereNot(fn (Builder $pinned): Builder => $pinned->currentlyPinned()),
+                EpisodePinScope::All => $query,
             })
-            ->indicateUsing(fn (array $data): ?string => match ($data['value'] ?? 'all') {
-                'pinned' => __('admin.filters.pinned_options.pinned'),
-                'unpinned' => __('admin.filters.pinned_options.unpinned'),
-                default => null,
-            });
+            ->indicateUsing(fn (array $data): ?string => EpisodePinScope::fromFilter($data['value'] ?? null)->indicator());
     }
 
     public static function publishedBetweenFilter(): Filter
@@ -439,52 +454,84 @@ class ContentItemsTable
                 DatePicker::make('published_from')
                     ->label(__('admin.filters.published_from'))
                     ->native(false)
-                    ->displayFormat('d/m/Y'),
+                    ->displayFormat(UiFormats::date()),
                 DatePicker::make('published_until')
                     ->label(__('admin.filters.published_until'))
                     ->native(false)
-                    ->displayFormat('d/m/Y'),
+                    ->displayFormat(UiFormats::date()),
             ])
             ->columnSpan(2)
             ->columns(2)
             ->query(function (Builder $query, array $data): Builder {
                 // Jerusalem day walls converted to UTC instants — never a raw
-                // whereDate over the UTC column (jerusalem-walls).
+                // whereDate over the UTC column (jerusalem-walls). The
+                // published date the operator sees is the effective one, so
+                // the range compares against the same COALESCE expression the
+                // column sorts by, not the raw column beside it.
                 return $query
                     ->when(
-                        $data['published_from'] ?? null,
-                        fn (Builder $query, string $date): Builder => $query->where(
-                            'published_at',
-                            '>=',
-                            Carbon::parse($date, UiTimezone::name())->startOfDay()->utc(),
+                        self::filterDay($data['published_from'] ?? null),
+                        fn (Builder $query, Carbon $day): Builder => $query->whereRaw(
+                            self::effectivePublishedAtExpression().' >= ?',
+                            // The status binding belongs to the CASE inside
+                            // the expression, so it comes first.
+                            [PublicationStatus::Published->value, $day->startOfDay()->utc()],
                         ),
                     )
                     ->when(
-                        $data['published_until'] ?? null,
-                        fn (Builder $query, string $date): Builder => $query->where(
-                            'published_at',
-                            '<=',
-                            Carbon::parse($date, UiTimezone::name())->endOfDay()->utc(),
+                        self::filterDay($data['published_until'] ?? null),
+                        fn (Builder $query, Carbon $day): Builder => $query->whereRaw(
+                            self::effectivePublishedAtExpression().' <= ?',
+                            [PublicationStatus::Published->value, $day->endOfDay()->utc()],
                         ),
                     );
             })
             ->indicateUsing(function (array $data): array {
                 $indicators = [];
 
-                if (filled($data['published_from'] ?? null)) {
-                    $indicators[] = Indicator::make(__('admin.filters.published_from_indicator', [
-                        'date' => Carbon::parse($data['published_from'])->format('d/m/Y'),
-                    ]))->removeField('published_from');
-                }
+                foreach (['published_from', 'published_until'] as $field) {
+                    $day = self::filterDay($data[$field] ?? null);
 
-                if (filled($data['published_until'] ?? null)) {
-                    $indicators[] = Indicator::make(__('admin.filters.published_until_indicator', [
-                        'date' => Carbon::parse($data['published_until'])->format('d/m/Y'),
-                    ]))->removeField('published_until');
+                    if (! $day instanceof Carbon) {
+                        continue;
+                    }
+
+                    $indicators[] = Indicator::make(__("admin.filters.{$field}_indicator", [
+                        'date' => $day->format(UiFormats::date()),
+                    ]))->removeField($field);
                 }
 
                 return $indicators;
             });
+    }
+
+    /**
+     * Table filter state is raw browser input — Filament hands back whatever
+     * the query string or a `$wire.set` put there, with no schema validation
+     * on this path. Anything that is not a parsable date narrows to null
+     * instead of reaching Carbon and 500ing the page.
+     */
+    private static function filterDay(mixed $value): ?Carbon
+    {
+        if (! is_string($value) || blank($value)) {
+            return null;
+        }
+
+        try {
+            return Carbon::parse($value, UiTimezone::name());
+        } catch (InvalidFormatException|InvalidArgumentException) {
+            return null;
+        }
+    }
+
+    /**
+     * The SQL twin of `effective_published_at`: published rows with no date
+     * fall back to their creation date. Callers bind the published status
+     * value after their own bindings.
+     */
+    private static function effectivePublishedAtExpression(): string
+    {
+        return 'coalesce(published_at, case when status = ? then created_at end)';
     }
 
     public static function addTranscriptionAction(): Action
@@ -516,7 +563,7 @@ class ContentItemsTable
                 DateTimePicker::make('published_at')
                     ->label(__('admin.fields.published_at'))
                     ->helperText(TranscriptionModeLabel::text('admin.helpers.transcription_published_at', ['timezone' => UiTimezone::name()]))
-                    ->displayFormat('d/m/Y H:i')
+                    ->displayFormat(UiFormats::dateTime())
                     ->timezone(UiTimezone::name()),
                 MarkdownEditor::make('transcript_markdown')
                     ->label(__('admin.fields.transcript_markdown'))

@@ -26,21 +26,50 @@ class EpisodeListScopeQuery
             EpisodeListScope::Visible => $query->published(),
             EpisodeListScope::Scheduled => $query
                 ->where('status', PublicationStatus::Published)
-                ->where('published_at', '>', now()),
+                ->where('published_at', '>', now())
+                ->where(fn (Builder $query): Builder => $this->wherePrerequisitesMetByAirTime($query)),
             EpisodeListScope::Blocked => $query
                 ->where('status', PublicationStatus::Published)
                 ->where(function (Builder $query): void {
+                    // Released rows that are not visible, plus scheduled rows
+                    // whose prerequisites will still be missing on the day —
+                    // both are the operator's actionable tier.
                     $query
-                        ->whereNull('published_at')
-                        ->orWhere('published_at', '<=', now());
-                })
-                ->where(function (Builder $query): void {
-                    $query
-                        ->whereDoesntHave('contentGroup', fn (Builder $group): Builder => $group->published())
-                        ->orWhereDoesntHave('transcriptions', fn (Builder $transcription): Builder => $transcription->published());
+                        ->where(fn (Builder $released): Builder => $released
+                            ->where(fn (Builder $q): Builder => $this->whereReleased($q))
+                            ->whereNot(fn (Builder $q): Builder => $this->wherePrerequisitesMetNow($q)))
+                        ->orWhere(fn (Builder $scheduled): Builder => $scheduled
+                            ->where('published_at', '>', now())
+                            ->whereNot(fn (Builder $q): Builder => $this->wherePrerequisitesMetByAirTime($q)));
                 }),
             EpisodeListScope::Pinned => $query->currentlyPinned(),
         };
+    }
+
+    /** The episode's own air time has arrived. */
+    private function whereReleased(Builder $query): Builder
+    {
+        return $query->where(function (Builder $query): void {
+            $query
+                ->whereNull('published_at')
+                ->orWhere('published_at', '<=', now());
+        });
+    }
+
+    /** Podcast and transcript are out right now. */
+    private function wherePrerequisitesMetNow(Builder $query): Builder
+    {
+        return $query
+            ->whereHas('contentGroup', fn (Builder $group): Builder => $group->releasedBy(now()))
+            ->whereHas('transcriptions', fn (Builder $transcription): Builder => $transcription->releasedBy(now()));
+    }
+
+    /** Podcast and transcript will be out by the episode's own air time. */
+    private function wherePrerequisitesMetByAirTime(Builder $query): Builder
+    {
+        return $query
+            ->whereHas('contentGroup', fn (Builder $group): Builder => $group->releasedBy('content_items.published_at'))
+            ->whereHas('transcriptions', fn (Builder $transcription): Builder => $transcription->releasedBy('content_items.published_at'));
     }
 
     /**

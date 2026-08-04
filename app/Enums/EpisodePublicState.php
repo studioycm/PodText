@@ -3,6 +3,7 @@
 namespace App\Enums;
 
 use App\Models\ContentItem;
+use Carbon\CarbonInterface;
 use Filament\Support\Contracts\HasColor;
 use Filament\Support\Contracts\HasLabel;
 
@@ -27,39 +28,57 @@ enum EpisodePublicState: string implements HasColor, HasLabel
             return self::Draft;
         }
 
-        if ($record->published_at !== null && $record->published_at->gt(now())) {
-            return self::Scheduled;
-        }
+        // Blockers outrank the clock. A scheduled episode whose podcast or
+        // transcript will still be unpublished when its date arrives is not
+        // "scheduled" — it is broken, and saying so now is the only moment
+        // the operator can still fix it. Prerequisites are therefore judged
+        // as of the episode's own air time, so a legitimately co-scheduled
+        // podcast or transcript does not raise a false alarm.
+        $airsAt = $record->published_at ?? now();
+
+        // Judged at the later of now and the air time: a row already past its
+        // date is asked "are you visible now?", a future-dated one is asked
+        // "will you be visible then?". Using the air time alone would call an
+        // episode blocked because its podcast happened to publish after the
+        // episode's own (past) date, even though both are live today.
+        $judgeAt = $airsAt->gt(now()) ? $airsAt : now();
 
         $group = $record->contentGroup;
-        $groupVisible = $group !== null
+        $groupReleased = $group !== null
             && $group->status === PublicationStatus::Published
-            && ($group->published_at === null || $group->published_at->lte(now()));
+            && ($group->published_at === null || $group->published_at->lte($judgeAt));
 
-        if (! $groupVisible) {
+        if (! $groupReleased) {
             return self::BlockedGroup;
         }
 
-        if (! self::hasPublishedTranscription($record)) {
+        if (! self::hasTranscriptionReleasedBy($record, $judgeAt)) {
             return self::BlockedTranscription;
         }
 
-        return self::Visible;
+        return $airsAt->gt(now())
+            ? self::Scheduled
+            : self::Visible;
     }
 
-    private static function hasPublishedTranscription(ContentItem $record): bool
+    private static function hasTranscriptionReleasedBy(ContentItem $record, CarbonInterface $judgeAt): bool
     {
-        // Batch path: the table query withExists()es this flag; the single-
-        // record path (action notifications) falls back to one exists query.
-        $flag = $record->hasAttribute('has_published_transcription')
-            ? $record->getAttribute('has_published_transcription')
+        // Batch path: the table query primes both release flags and the row
+        // picks the one its own judging moment needs. Single-record callers
+        // (action notifications) pay for one exists query instead.
+        $attribute = $judgeAt->gt(now())
+            ? 'has_transcription_by_air_time'
+            : 'has_transcription_now';
+
+        $flag = $record->hasAttribute($attribute)
+            ? $record->getAttribute($attribute)
             : null;
 
         if ($flag !== null) {
             return (bool) $flag;
         }
 
-        return $record->transcriptions()->published()->exists();
+        return $record->transcriptions()->releasedBy($judgeAt)->exists();
     }
 
     public function getLabel(): string

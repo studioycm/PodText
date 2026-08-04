@@ -7,6 +7,7 @@ use App\Enums\PublicationStatus;
 use App\Models\Concerns\InteractsWithPublicationDate;
 use App\Observers\ContentGroupObserver;
 use App\Support\Slugs\HebrewSlugger;
+use Carbon\CarbonInterface;
 use Database\Factories\ContentGroupFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\ObservedBy;
@@ -78,12 +79,25 @@ class ContentGroup extends Model
 
     public function scopePublished(Builder $query): Builder
     {
+        return $query->releasedBy(now());
+    }
+
+    /**
+     * The same release contract as `published()`, asked about a different
+     * moment — used by the admin's scheduled/blocked verdicts, which need to
+     * know whether a podcast will be out by an episode's air time.
+     * A string `$moment` names a column to compare against instead of a value.
+     */
+    public function scopeReleasedBy(Builder $query, CarbonInterface|string $moment): Builder
+    {
         return $query
             ->where('status', PublicationStatus::Published)
-            ->where(function (Builder $query): void {
-                $query
-                    ->whereNull('published_at')
-                    ->orWhere('published_at', '<=', now());
+            ->where(function (Builder $query) use ($moment): void {
+                $query->whereNull($query->qualifyColumn('published_at'));
+
+                is_string($moment)
+                    ? $query->orWhereColumn($query->qualifyColumn('published_at'), '<=', $moment)
+                    : $query->orWhere($query->qualifyColumn('published_at'), '<=', $moment);
             });
     }
 

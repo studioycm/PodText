@@ -1,6 +1,7 @@
 <?php
 
 use App\Enums\EpisodeListScope;
+use App\Enums\EpisodePublicState;
 use App\Enums\PublicationStatus;
 use App\Filament\Resources\ContentItems\Pages\ListContentItems;
 use App\Models\ContentGroup;
@@ -116,6 +117,64 @@ it('describes the active scope in the subheading and names the scoped podcast', 
         ->assertSee(EpisodeListScope::All->description())
         ->filterTable('content_group_id', $podcast->getKey())
         ->assertSee('קול הבוקר');
+});
+
+it('keeps the row badge in parity with the scope queries for every state', function (): void {
+    $fixtures = episodeScopeFixtures();
+
+    // A scheduled episode whose prerequisites are themselves scheduled for
+    // the same moment: it really will go live, so it must read as scheduled.
+    $coScheduledGroup = ContentGroup::factory()->published(now()->addDays(2));
+    $fixtures['co_scheduled'] = ContentItem::factory()
+        ->published(now()->addDays(2))
+        ->for($coScheduledGroup, 'contentGroup')
+        ->withTranscription(['status' => PublicationStatus::Published, 'published_at' => now()->addDays(2)])
+        ->create();
+
+    // A scheduled episode whose transcript is still a draft: it will NOT go
+    // live on its date, so the badge must say so while it is still fixable.
+    $fixtures['scheduled_but_blocked'] = ContentItem::factory()
+        ->published(now()->addDays(2))
+        ->for(ContentGroup::factory()->published(), 'contentGroup')
+        ->withTranscription(['status' => PublicationStatus::Draft, 'published_at' => null])
+        ->create();
+
+    $service = app(EpisodeListScopeQuery::class);
+
+    // The badge (PHP) and the tabs (SQL) are two derivations of one contract.
+    // This is the guard that keeps them from drifting apart.
+    $scopeOf = fn (ContentItem $item): EpisodeListScope => collect([
+        EpisodeListScope::Drafts,
+        EpisodeListScope::Visible,
+        EpisodeListScope::Scheduled,
+        EpisodeListScope::Blocked,
+    ])->sole(fn (EpisodeListScope $scope): bool => $service
+        ->apply(ContentItem::query(), $scope)
+        ->whereKey($item->getKey())
+        ->exists());
+
+    $badgeToScope = [
+        EpisodePublicState::Draft->value => EpisodeListScope::Drafts,
+        EpisodePublicState::Visible->value => EpisodeListScope::Visible,
+        EpisodePublicState::Scheduled->value => EpisodeListScope::Scheduled,
+        EpisodePublicState::BlockedGroup->value => EpisodeListScope::Blocked,
+        EpisodePublicState::BlockedTranscription->value => EpisodeListScope::Blocked,
+    ];
+
+    foreach ($fixtures as $name => $item) {
+        $badge = EpisodePublicState::for($item->fresh()->load('contentGroup'));
+
+        expect($badgeToScope[$badge->value])->toBe(
+            $scopeOf($item),
+            "badge {$badge->value} disagrees with the scope query for fixture [{$name}]",
+        );
+    }
+
+    // And the two cases the parity alone cannot express:
+    expect(EpisodePublicState::for($fixtures['co_scheduled']->fresh()->load('contentGroup')))
+        ->toBe(EpisodePublicState::Scheduled)
+        ->and(EpisodePublicState::for($fixtures['scheduled_but_blocked']->fresh()->load('contentGroup')))
+        ->toBe(EpisodePublicState::BlockedTranscription);
 });
 
 it('gives every scope en+he labels and descriptions', function (): void {
