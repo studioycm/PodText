@@ -4,6 +4,7 @@ namespace App\Filament\Widgets\Concerns;
 
 use App\Enums\DashboardRange;
 use App\Enums\FunnelStage;
+use App\Enums\ImportConnectionProvider;
 use App\Support\Dashboard\EditorialMetrics;
 use Filament\Widgets\Concerns\InteractsWithPageFilters;
 
@@ -36,6 +37,12 @@ trait ReadsDashboardFilters
         return app(EditorialMetrics::class)->podcastExists((int) $podcast)
             ? (int) $podcast
             : null;
+    }
+
+    /** The intake source scope, if the command bar holds a valid provider. */
+    protected function dashboardSource(): ?ImportConnectionProvider
+    {
+        return ImportConnectionProvider::tryFrom((string) ($this->pageFilters['source'] ?? ''));
     }
 
     /** The legend chip currently driving the board, if any. */

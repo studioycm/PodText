@@ -34,6 +34,17 @@ return [
             'all_podcasts' => 'All podcasts',
             'podcast_hint' => 'Scopes every episode number on the board. Library counts stay library-wide.',
         ],
+        'intake' => [
+            'heading' => 'Work queue',
+            'chips_all' => 'All',
+            'failed_rows' => ':failed of :total rows failed',
+            'download_hint' => 'The link downloads the failure CSV — every failed row with its error, ready to fix and re-import.',
+            'showing_latest' => 'Showing the latest :count of :total',
+            'view_new_submissions' => 'All new submissions',
+            'empty_heading' => 'Nothing needs intake attention',
+            'empty_description' => 'No new submissions and no failed import rows.',
+            'source_empty' => ':source intake produces no queue rows yet — import failures surface here as CSV imports.',
+        ],
         'form_targets' => [
             'heading' => 'Form actions pointing at missing forms',
             'description' => 'These visible actions target public forms without an enabled definition, so the public site silently skips them.',
