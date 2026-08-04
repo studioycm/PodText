@@ -7,6 +7,7 @@ use App\Enums\MediaDiagnosticReason;
 use App\Enums\MediaLibraryTask;
 use App\Enums\StreamEventType;
 use App\Enums\TranscriptionMode;
+use App\Enums\UserRole;
 use App\Models\ImportConnection;
 use App\Models\Media;
 use App\Models\PublicFormSubmission;
@@ -120,4 +121,26 @@ it('forgets the intake snapshot on intake writes', function (): void {
     // Media/connection writes must also invalidate — the snapshot may never
     // contradict a change the editor just made (decision 12's contract).
     expect(app(EditorialMetrics::class)->intakeSnapshot()['media']['total'])->toBe(1);
+});
+
+it('gates the failure CSV to admins or the owner', function (): void {
+    // Vendor fact shaping these assertions: the filament.actions route group
+    // is ['web'] only (ActionsServiceProvider.php:35) — the signature is not
+    // enforced by middleware; it only selects the auth guard. The real
+    // protection is authentication plus the policy/owner branch.
+    $import = failedImport();   // owned by a freshly created other admin
+    $url = app(EditorialMetrics::class)->failedRowsDownloadUrl($import);
+
+    // Signed in as the beforeEach() admin, who does NOT own the import.
+    $this->get($url)->assertOk();
+
+    // A non-admin who does not own the import is refused by the policy.
+    // (The user factory defaults to the admin role — the plain role must be
+    // explicit here or this asserts nothing.)
+    $this->actingAs(User::factory()->role(UserRole::User)->create());
+    $this->get($url)->assertForbidden();
+
+    // A guest is refused before the policy runs.
+    auth()->logout();
+    $this->get($url)->assertUnauthorized();
 });
