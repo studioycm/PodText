@@ -34,6 +34,14 @@ return [
             'all_podcasts' => 'All podcasts',
             'podcast_hint' => 'Scopes every episode number on the board. Library counts stay library-wide.',
         ],
+        'media_findings' => [
+            'heading' => 'Media by finding',
+            'rate' => ':percent% clean',
+            'rate_description' => 'Media files with no maintenance findings',
+            'caption' => 'Each bar exits into the gallery\'s needs-attention task filtered to that finding',
+            'empty' => 'No findings — every media file is clean.',
+            'no_media' => 'No media files yet.',
+        ],
         'connection' => [
             'heading' => 'Spotify connection',
             'last_tested' => 'Last tested · :date',

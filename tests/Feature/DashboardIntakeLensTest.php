@@ -3,10 +3,13 @@
 use App\Enums\ImportConnectionAuthType;
 use App\Enums\ImportConnectionProvider;
 use App\Enums\ImportConnectionStatus;
+use App\Enums\MediaDiagnosticReason;
+use App\Enums\MediaLibraryTask;
 use App\Enums\StreamEventType;
 use App\Enums\TranscriptionMode;
 use App\Filament\Pages\ImporterSettings;
 use App\Filament\Widgets\IntakeQueueWidget;
+use App\Filament\Widgets\MediaFindingsWidget;
 use App\Filament\Widgets\SpotifyConnectionWidget;
 use App\Models\ImportConnection;
 use App\Models\PublicFormSubmission;
@@ -100,4 +103,27 @@ it('marks a failed connection reduced', function (): void {
         ->assertSee(__('admin.importer.statuses.failed'))
         ->assertSee(__('admin.dashboard.connection.never_tested'))
         ->assertSee(__('admin.dashboard.connection.reduced_note'));
+});
+
+it('renders finding bars styled by the enum with gallery doorways', function (): void {
+    cleanMedia();
+    missingFileMedia();
+
+    Livewire::test(MediaFindingsWidget::class)
+        ->assertSee(__('admin.media_library.repair_missing_file'))
+        ->assertSeeHtml('data-testid="media-finding-row"')
+        ->assertSeeHtml(MediaDiagnosticReason::MissingFile->barClass())
+        ->assertSeeHtml('tab='.MediaLibraryTask::NeedsAttention->value)
+        ->assertSeeHtml('filters%5Breason%5D%5Bvalue%5D='.MediaDiagnosticReason::MissingFile->value)
+        ->assertSee(__('admin.dashboard.media_findings.rate', ['percent' => 50.0]))
+        ->assertSeeHtml('data-testid="widget-tag-stock"')
+        ->assertDontSeeHtml('wire:poll');
+});
+
+it('hides zero-count findings and celebrates a clean library', function (): void {
+    cleanMedia();
+
+    Livewire::test(MediaFindingsWidget::class)
+        ->assertSee(__('admin.dashboard.media_findings.empty'))
+        ->assertDontSeeHtml('data-testid="media-finding-row"');
 });
