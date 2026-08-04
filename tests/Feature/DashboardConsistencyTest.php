@@ -3,18 +3,21 @@
 use App\Enums\DashboardRange;
 use App\Enums\PublicationStatus;
 use App\Enums\TranscriptionMode;
+use App\Filament\Widgets\ActivityStreamWidget;
 use App\Filament\Widgets\DashboardContextWidget;
 use App\Filament\Widgets\EditorialStatsWidget;
 use App\Filament\Widgets\PublicationFunnelWidget;
 use App\Models\Category;
 use App\Models\ContentGroup;
 use App\Models\ContentItem;
+use App\Models\PublicFormSubmission;
 use App\Models\Transcription;
 use App\Models\User;
 use App\Support\Dashboard\EditorialMetrics;
 use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
 
 uses(RefreshDatabase::class);
@@ -184,4 +187,71 @@ it('reconciles per-podcast health totals against the scoped funnel', function ()
         ->and((int) $rows->get('Alpha Podcast')->value)->toBe(2)
         ->and((int) $rows->get('Shelved Podcast')->of)->toBe(1)
         ->and((int) $rows->get('Shelved Podcast')->value)->toBe(0);
+});
+
+it('reconciles the intake queue chips with the intake snapshot', function (): void {
+    Storage::fake('public');
+    PublicFormSubmission::factory()->count(2)->create();
+    failedImport(failed: 2);
+
+    $metrics = app(EditorialMetrics::class);
+    $snapshot = $metrics->intakeSnapshot()['queue'];
+    $counts = $metrics->intakeQueue()['counts'];
+
+    expect($counts)->toBe([
+        'all' => $snapshot['submissions'] + $snapshot['imports'],
+        'submissions' => $snapshot['submissions'],
+        'imports' => $snapshot['imports'],
+    ])
+        ->and($snapshot)->toBe(['submissions' => 2, 'imports' => 1, 'failed_rows' => 2]);
+});
+
+it('keeps the media findings relations honest', function (): void {
+    Storage::fake('public');
+    cleanMedia();
+    missingFileMedia();
+    missingFileMedia();
+
+    $metrics = app(EditorialMetrics::class);
+    $media = $metrics->intakeSnapshot()['media'];
+    $findings = $metrics->mediaFindings();
+
+    // flagged counts DISTINCT media; per-reason counts can overlap on a
+    // multi-finding file — the honest relations, not a forced equality (D-2).
+    expect($media['flagged'])->toBeLessThanOrEqual(array_sum($media['findings']))
+        ->and($media['flagged'])->toBeLessThanOrEqual($media['total'])
+        ->and($findings['rate']->covered)->toBe($media['total'] - $media['flagged'])
+        ->and($findings['rate']->of)->toBe($media['total'])
+        ->and($media['total'])->toBe(3);
+});
+
+it('keeps stock totals still while a flow widget follows the range and the legend', function (): void {
+    consistencyFixture();
+
+    $metrics = app(EditorialMetrics::class);
+
+    // Stock: the funnel's totals are range-blind by contract. The widget
+    // surfaces stages[stage][count] (Testable::viewData — Livewire v4 has
+    // no component-level assertViewHas).
+    $stockAtThirty = $metrics->snapshot()['funnel'];
+
+    $stageCounts = fn (array $stages): array => collect($stages)
+        ->map(fn (array $stage): int => $stage['count'])
+        ->all();
+
+    expect($stageCounts(Livewire::test(PublicationFunnelWidget::class, ['pageFilters' => ['range' => DashboardRange::Last7Days->value]])->viewData('stages')))
+        ->toBe($stockAtThirty);
+
+    // Flow: the heatmap's total moves with the range and stays reconciled
+    // with the series under the SAME narrowed window.
+    expect($metrics->publicationHeatmap(DashboardRange::Last7Days)->total())
+        ->toBe((int) array_sum($metrics->funnelSeries(DashboardRange::Last7Days)['published']->points));
+
+    // Legend-as-filter: a status chip narrows the STREAM (flow) and leaves
+    // the funnel (stock) untouched — synthesis rule 1 across two widgets.
+    expect(Livewire::test(ActivityStreamWidget::class, ['pageFilters' => ['status' => 'visible']])->viewData('activeType'))
+        ->toBe('transcription');
+
+    expect($stageCounts(Livewire::test(PublicationFunnelWidget::class, ['pageFilters' => ['status' => 'visible']])->viewData('stages')))
+        ->toBe($stockAtThirty);
 });
