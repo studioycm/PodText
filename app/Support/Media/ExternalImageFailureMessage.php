@@ -17,7 +17,7 @@ class ExternalImageFailureMessage
             default => ExternalImageFailureReason::Unexpected,
         };
 
-        return __("admin.media_library.url_failure_{$reason->value}");
+        return $reason->getLabel();
     }
 
     public static function isExpected(Throwable $exception): bool

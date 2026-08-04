@@ -671,7 +671,7 @@ class MediaPickerPanel extends Component implements HasActions, HasSchemas
 
                 Notification::make()
                     ->success()
-                    ->title(__("admin.media_library.storage_{$result->disposition->value}"))
+                    ->title($result->disposition->getLabel())
                     ->body($this->acquisitionSuccessBody(
                         reused: $result->disposition === MediaAcquisitionDisposition::Reused,
                     ))
@@ -1302,7 +1302,7 @@ class MediaPickerPanel extends Component implements HasActions, HasSchemas
     private function acquisitionSuccessBody(int $count = 1, bool $reused = false): string
     {
         $mode = $this->isMultiple ? 'multiple' : 'single';
-        $disposition = $reused ? 'reused' : 'created';
+        $disposition = ($reused ? MediaAcquisitionDisposition::Reused : MediaAcquisitionDisposition::Created)->value;
 
         return __("admin.media_library.acquisition_{$disposition}_{$mode}", [
             'count' => $count,

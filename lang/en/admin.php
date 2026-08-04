@@ -3094,6 +3094,7 @@ return [
         'storage_acquired' => 'Storage image added to the library.',
         'storage_busy' => 'This Storage image is being added by another request. Try again.',
         'storage_copied' => 'Storage image copied to the library.',
+        'storage_created' => 'New image added to the library.',
         'source_navigation' => 'Add an image from a source',
         'storage_empty' => 'The configured Storage sources contain no image candidates.',
         'storage_invalid' => 'The selected Storage image is unavailable or invalid.',

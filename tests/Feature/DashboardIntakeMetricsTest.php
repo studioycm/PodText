@@ -1,8 +1,10 @@
 <?php
 
+use App\Enums\ExternalImageFailureReason;
 use App\Enums\ImportConnectionAuthType;
 use App\Enums\ImportConnectionProvider;
 use App\Enums\ImportConnectionStatus;
+use App\Enums\MediaAcquisitionDisposition;
 use App\Enums\MediaDiagnosticReason;
 use App\Enums\MediaLibraryTask;
 use App\Enums\StreamEventType;
@@ -13,8 +15,11 @@ use App\Models\Media;
 use App\Models\PublicFormSubmission;
 use App\Models\User;
 use App\Support\Dashboard\EditorialMetrics;
+use App\Support\Media\ExternalImageFailureMessage;
 use Filament\Facades\Filament;
+use Filament\Support\Contracts\HasLabel;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Lang;
 use Illuminate\Support\Facades\Storage;
 
 uses(RefreshDatabase::class);
@@ -143,4 +148,43 @@ it('gates the failure CSV to admins or the owner', function (): void {
     // A guest is refused before the policy runs.
     auth()->logout();
     $this->get($url)->assertUnauthorized();
+});
+
+it('labels the Board-3 E4 enums through their Filament contracts', function (): void {
+    expect(ExternalImageFailureReason::TimedOut->getLabel())
+        ->toBe(__('admin.media_library.url_failure_timed_out'))
+        ->and(MediaAcquisitionDisposition::Reused->getLabel())
+        ->toBe(__('admin.media_library.storage_reused'));
+
+    // The contract is the interface, not just the method (the corpus's
+    // OrderStatus bug-shape: getColor() without implements HasColor).
+    expect(ExternalImageFailureReason::TimedOut)
+        ->toBeInstanceOf(HasLabel::class)
+        ->and(MediaAcquisitionDisposition::Reused)
+        ->toBeInstanceOf(HasLabel::class);
+});
+
+it('has a real translation behind every E4 label in both locales', function (): void {
+    // speaks-both-languages, non-vacuously: getLabel() composing a key that
+    // does not exist returns the raw key and every equality assert against
+    // __() passes anyway. Lang::has() is the only honest probe — this is
+    // what catches the storage_created gap (missing in BOTH locales until
+    // this task adds it).
+    foreach (['en', 'he'] as $locale) {
+        foreach (ExternalImageFailureReason::cases() as $reason) {
+            expect(Lang::hasForLocale("admin.media_library.url_failure_{$reason->value}", $locale))->toBeTrue();
+        }
+
+        foreach (MediaAcquisitionDisposition::cases() as $disposition) {
+            expect(Lang::hasForLocale("admin.media_library.storage_{$disposition->value}", $locale))->toBeTrue();
+        }
+    }
+});
+
+it('routes the failure message and picker notification through the enums', function (): void {
+    $message = ExternalImageFailureMessage::for(
+        new InvalidArgumentException('bad image'),
+    );
+
+    expect($message)->toBe(__('admin.media_library.url_failure_invalid_image'));
 });
