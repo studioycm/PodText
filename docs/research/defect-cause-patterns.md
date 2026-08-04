@@ -274,6 +274,11 @@ was already on record from the A-block.)*
   `limit($limit)` queries do truncate, but the stream presents as a latest-N
   feed rather than a totality, so a roll-up row would be meaningless there.
   Bounded-by-design, not a violation.
+- **Kin note (2026-08-04, phase-3 Task 8, self-reported):** a pest
+  pathspec that matches NOTHING silently runs the FULL suite — silent
+  scope-WIDENING, the cap's inverse; a glob typo briefly launched a full
+  run mid-task (killed, no state impact — sqlite/array drivers). Rule: 
+  explicit paths, and notice a suspiciously large test count immediately.
 - **Sighting (2026-08-03, research session, POTENTIAL — silent-fallback
   cousin):** the `relationLoaded('enabledContentTags') ? loaded : query()`
   shape (`ContentItemSearch.php:845`, `ShowContentItem.php:227`,
