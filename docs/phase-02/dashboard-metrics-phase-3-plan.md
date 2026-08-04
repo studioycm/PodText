@@ -4,7 +4,10 @@
 > A/B blocks landed, then reconciled by the orchestrator at route end; the
 > draft hold is lifted. Binding addenda from the reconciliation are in
 > "Route-end reconciliation addenda" below and prevail over the older prose
-> where they touch the same surface.
+> where they touch the same surface. **Fresh re-reconciliation 2026-08-04:**
+> a fresh session re-verified every vendor/app cite against post-push HEAD
+> and amended in place — see the note block at the top of the addenda
+> section for what changed and what was verified clean.
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
@@ -12,7 +15,7 @@
 
 **Architecture:** Three new custom `Filament\Widgets\Widget` classes fed exclusively by `EditorialMetrics` (new intake surface with its own cache key, invalidated by registering the existing `EditorialMetricsCacheObserver` on the intake models), a `source` command-bar filter narrowed in `ReadsDashboardFilters`, and an `ImportPolicy` so any admin can use the failed-rows CSV doorway. `StreamEventType` becomes the typed home of the stream/queue event vocabulary (unrouted-enum/no-type-home closure); `ExternalImageFailureReason` and `MediaAcquisitionDisposition` get their Filament label contracts (E4, Board-3 pair).
 
-**Tech stack:** Filament 5.7.x widgets/schemas, Livewire 4, Pest 4. No new dependencies, no schema changes.
+**Tech stack:** Filament 5.7.x widgets/schemas, Livewire 4, Pest 4. No new dependencies. One schema change, owned by the reconciliation task `imports-provider-declare` (Q1 ruling): two nullable columns on `imports`. Everything else is schema-free.
 
 **Planning provenance (2026-08-03).** Written from scratch per
 `dashboard-metrics-phase-2R-handoff.md` § "Why phase 3 must be re-planned from
@@ -60,6 +63,11 @@ Copied from the 2R handoff contracts; every task inherits them.
   `vendor/bin/filacheck --fix --dirty` locally (never bare `--fix` beyond it).
 - NEVER `git push` — auto-deploy is ON; pushing deploys production. Commit
   locally only; the operator owns pushes.
+- In the shared tree, commit with an explicit pathspec (`git commit <paths>
+  -m …`), never a bare `git commit` — the bare form sweeps other sessions'
+  already-staged files (ledger: `shared-index-entanglement`; it produced
+  `11afc21`'s mixed cargo). The per-task commit blocks below are written
+  pathspec-style.
 
 ## Locked decisions this plan implements (do not re-litigate)
 
@@ -100,8 +108,12 @@ proceeds on the recommendation so implementation is never blocked.
   and `validation_error`. The actionable unit is the import — its failure CSV
   (the same artifact the completion notification offers) carries every failed
   row with its error, and re-import is per-file. The entry shows
-  `failed of total` via `Import::getFailedRowsCount()` semantics
-  (`failed_rows_count` aggregate), so no row is silently dropped (silent-cap).
+  `failed of total` from a real `failedRows` relation count (`withCount`),
+  so no row is silently dropped (silent-cap). *(Corrected 2026-08-04: the
+  vendor's own `Import::getFailedRowsCount()` is `total_rows −
+  successful_rows` (`Import.php:140`) — a subtraction that equals the real
+  failed-row count only once the import completes; the queue counts actual
+  rows and does not use it.)*
 - **D-3 · The failed-rows doorway is the vendor's own signed download URL**,
   built exactly as `ImportAction` builds it
   (`vendor/filament/actions/src/ImportAction.php:317`):
@@ -128,11 +140,13 @@ proceeds on the recommendation so implementation is never blocked.
   range, so this is flagged as an open question with "hide" implemented.
 - **D-6 · The Spotify card lists every Spotify connection** (name, status
   badge, `last_tested_at`), usually one. Picking "the" connection would invent
-  a selection rule; the fetcher itself offers all Connected ones
-  (`SpotifyLinksFetcher::connectionOptions()`). `reduced = no Connected
+  a selection rule; the fetcher itself offers Connected ones only (its
+  connection select's options query, `SpotifyLinksFetcher.php:277`, and
+  `selectedConnection()` re-validates at `:379` — corrected 2026-08-04: no
+  `connectionOptions()` method exists). `reduced = no Connected
   Spotify connection exists` mirrors the fetcher's own
-  `reduced_without_connection` warning — the "reduced-mode echo" derived from
-  persisted state only.
+  `reduced_without_connection` warning (`:160`) — the "reduced-mode echo"
+  derived from persisted state only.
 - **D-7 · Intake numbers live in a separate cached snapshot**
   (`intakeSnapshot()`, own cache key, global — no podcast dimension), and the
   existing observer class is registered on the intake models
@@ -152,9 +166,11 @@ proceeds on the recommendation so implementation is never blocked.
   caching the six per-reason counts + flagged + total for 60s/invalidated
   keeps the board off that scan on most renders. The gallery doorway carries
   the reason genuinely (`tab` + `filters[reason][value]` — `MediaTable` has a
-  real `reason` `SelectFilter`), unlike `reasonBreakdown()`'s
-  comment-vs-URL mismatch on Board 2 (flagged to the orchestrator; not
-  copied).
+  real `reason` `SelectFilter` at `MediaTable.php:277`), unlike the
+  `reasonBreakdown()` comment-vs-URL mismatch this flagged on Board 2
+  *(stale as of 2026-08-04: A4 (`c36f6c4`) closed that mismatch at route
+  end — the reason bars are now on-board dispatch doorways and the docblock
+  states exactly what the tests pin; the contrast stands as history only)*.
 - **D-9 · Chip vocabulary reuse.** The queue's submissions/imports chips are
   `StreamEventType::Submission` / `StreamEventType::Import` labels — one enum
   home for the same concepts the stream chips already show (no-type-home closure).
@@ -368,8 +384,31 @@ returns the enum's value instead of a literal:
     }
 ```
 
+**Also route the in-service literal sites (added 2026-08-04).** The
+vocabulary's backing values are hand-written at eight more places inside
+`EditorialMetrics`, and the guardrail this task claims ("every call site
+routed in the same task") is only true once they read from the enum too:
+the four `wants($type, '…')` comparisons in `activityStream()`
+(`EditorialMetrics.php:361–368`) and the four `'type' => '…'` entries in
+`transcriptionEvents()` / `mediaEvents()` / `importEvents()` /
+`submissionEvents()` (`:742`, `:773`, `:792`, `:812`) become
+`StreamEventType::Transcription->value` (etc.):
+
+```php
+            ->when($this->wants($type, StreamEventType::Transcription->value), fn (Collection $events): Collection => $events
+                ->concat($this->transcriptionEvents($start, $end, $contentGroupId, $limit)))
+```
+
+```php
+            ->map(fn (Transcription $transcription): array => [
+                'type' => StreamEventType::Transcription->value,
+```
+
 (`activityStream()`'s `$type` parameter stays a string — its values are now
-documented as `StreamEventType` values, narrowed at the widget edge.)
+documented as `StreamEventType` values, narrowed at the widget edge. A
+typo'd literal here failed loud before — the blade's `from()` throws — but
+loud-on-render is not routed; drift safety is the enum being the only
+spelling in the service.)
 
 - [ ] **Step 5: Run green, mutation-check, format, commit**
 
@@ -379,8 +418,7 @@ chips test fails; restore. Run `vendor/bin/pint --dirty --format agent`, then
 `vendor/bin/filacheck --fix --dirty` (expect 0).
 
 ```bash
-git add app/Enums/StreamEventType.php app/Filament/Widgets/ActivityStreamWidget.php resources/views/filament/widgets/activity-stream.blade.php app/Support/Dashboard/EditorialMetrics.php tests/Feature/DashboardOverviewLensTest.php
-git commit -m "feat(dashboard): StreamEventType owns the stream vocabulary (decision 17)"
+git commit app/Enums/StreamEventType.php app/Filament/Widgets/ActivityStreamWidget.php resources/views/filament/widgets/activity-stream.blade.php app/Support/Dashboard/EditorialMetrics.php tests/Feature/DashboardOverviewLensTest.php -m "feat(dashboard): StreamEventType owns the stream vocabulary (decision 17)"
 ```
 
 ---
@@ -390,7 +428,7 @@ git commit -m "feat(dashboard): StreamEventType owns the stream vocabulary (deci
 **Files:**
 - Modify: `app/Support/Dashboard/EditorialMetrics.php`
 - Modify: `app/Providers/AppServiceProvider.php` (observer registrations, next
-  to the existing three at lines 122–124)
+  to the existing three at lines 124–126)
 - Test: `tests/Feature/DashboardIntakeMetricsTest.php` (create)
 
 **Interfaces:**
@@ -587,7 +625,10 @@ Notes for the implementer: `PublicFormSubmission::factory()` exists
 `new`; `Media::factory()` produces a `public`-disk row with a `reference_key`
 whose file does not exist until you `put()` it — exactly the missing-file
 finding. If a factory default differs, adjust the fixture, never the assertion
-direction.
+direction. Population assumption worth writing down (2R handoff gotcha):
+vendor `Import`/`FailedImportRow` are `Prunable` but `model:prune` is not
+scheduled (verified 2026-08-04) — queue rows never expire today; if pruning
+is ever scheduled, this queue's population assumptions must be revisited.
 
 - [ ] **Step 2: Run, watch red**
 
@@ -810,12 +851,13 @@ Extend `forget()`:
 
 Register the observer on the intake models in
 `app/Providers/AppServiceProvider.php`, directly under the existing three
-registrations (line 124), with vendor-model imports added:
+registrations (lines 124–126), with vendor-model imports added:
 
 ```php
         // Board 3's snapshot sources. Vendor import models are observable
-        // like any Eloquent model; failedRows()->createMany() fires a
-        // created event per row, so import failures invalidate immediately.
+        // like any Eloquent model; failedRows()->createMany() saves each
+        // row through Eloquent, so the observer's saved hook fires per row
+        // and import failures invalidate immediately.
         PublicFormSubmission::observe(EditorialMetricsCacheObserver::class);
         Media::observe(EditorialMetricsCacheObserver::class);
         ImportConnection::observe(EditorialMetricsCacheObserver::class);
@@ -830,8 +872,7 @@ Also run `--filter=DashboardOverviewLensTest` (the shared `forget()` changed).
 `vendor/bin/pint --dirty --format agent`.
 
 ```bash
-git add app/Support/Dashboard/EditorialMetrics.php app/Providers/AppServiceProvider.php tests/Feature/DashboardIntakeMetricsTest.php
-git commit -m "feat(dashboard): intake metrics surface with observer-invalidated snapshot"
+git commit app/Support/Dashboard/EditorialMetrics.php app/Providers/AppServiceProvider.php tests/Feature/DashboardIntakeMetricsTest.php -m "feat(dashboard): intake metrics surface with observer-invalidated snapshot"
 ```
 
 ---
@@ -841,7 +882,8 @@ git commit -m "feat(dashboard): intake metrics surface with observer-invalidated
 **Files:**
 - Create: `app/Policies/ImportPolicy.php`
 - Modify: `app/Providers/AppServiceProvider.php` (one `Gate::policy` line next
-  to the existing `CuratorMediaPolicy` registration at line 176)
+  to the existing `CuratorMediaPolicy`/`SettingsBackupPolicy` registrations
+  at lines 181–182)
 - Test: `tests/Feature/DashboardIntakeMetricsTest.php` (additions)
 
 **Interfaces:**
@@ -913,11 +955,19 @@ class ImportPolicy
 }
 ```
 
-Register in `AppServiceProvider::boot()` beside the existing policy line:
+Register in `AppServiceProvider::boot()` beside the existing policy lines
+(181–182):
 
 ```php
         Gate::policy(Import::class, ImportPolicy::class);
 ```
+
+(Scope note, 2026-08-04: with the policy registered, a policy method that
+does not exist is a DENY, not a fall-through — safe today because no panel
+surface authorizes against `Import` (it is not a panel resource, so
+`ResourcePolicyCoverageTest` does not interact with this task either), but
+the `imports-listing-minimal` reconciliation task MUST extend this class
+with `viewAny()` before its List page can render — specced there.)
 
 - [ ] **Step 4: Run green, format, commit**
 
@@ -925,8 +975,7 @@ Run: `php artisan test --compact --filter=DashboardIntakeMetricsTest` → PASS.
 `vendor/bin/pint --dirty --format agent`.
 
 ```bash
-git add app/Policies/ImportPolicy.php app/Providers/AppServiceProvider.php tests/Feature/DashboardIntakeMetricsTest.php
-git commit -m "feat(dashboard): admins may download import failure CSVs (ImportPolicy::view)"
+git commit app/Policies/ImportPolicy.php app/Providers/AppServiceProvider.php tests/Feature/DashboardIntakeMetricsTest.php -m "feat(dashboard): admins may download import failure CSVs (ImportPolicy::view)"
 ```
 
 ---
@@ -948,6 +997,12 @@ git commit -m "feat(dashboard): admins may download import failure CSVs (ImportP
   widget step; see Step 3).
 - Produces: `App\Filament\Widgets\IntakeQueueWidget` (registered on the lens
   in Task 7), Livewire-callable `selectKind(?string $kind)`.
+- Visual substrate (addendum 1; added 2026-08-04): **stock** header tag via a
+  bare `@include('filament.widgets.partials.stock-flow-tag')` (the partial
+  defaults `flow => false`); the queue empty state through the shared A3
+  partial `filament.widgets.partials.empty-state`
+  (`heading`/`description`/`icon`/`testid` API); timestamps through
+  `UiTimezone` + `UiFormats`. The structural lens-loop test enforces the tag.
 
 **Lang keys added in this task** (en / he values; `trans` arrays in both
 files, inside the existing `'dashboard' => [...]` section):
@@ -1176,9 +1231,13 @@ class IntakeQueueWidget extends Widget
             </div>
 
             @if (count($rows) === 0)
-                <div class="mt-4" data-testid="intake-empty">
-                    <p class="text-sm font-medium text-gray-700 dark:text-gray-200">{{ __('admin.dashboard.intake.empty_heading') }}</p>
-                    <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ __('admin.dashboard.intake.empty_description') }}</p>
+                <div class="mt-4">
+                    @include('filament.widgets.partials.empty-state', [
+                        'heading' => __('admin.dashboard.intake.empty_heading'),
+                        'description' => __('admin.dashboard.intake.empty_description'),
+                        'icon' => \Filament\Support\Icons\Heroicon::OutlinedInbox,
+                        'testid' => 'intake-empty',
+                    ])
                 </div>
             @else
                 <ul class="mt-4 divide-y divide-gray-100 dark:divide-white/5">
@@ -1223,9 +1282,11 @@ class IntakeQueueWidget extends Widget
 
 The cap note satisfies the no-silent-caps rule (silent-cap): the list truncates at 10
 but says so, states the true total from the snapshot, and offers the
-submissions doorway (imports have no list surface until WB — each entry
-already carries its own CSV doorway; this asymmetry is stated in the open
-questions).
+submissions doorway. *(Amended 2026-08-04 per the Q4 ruling: the imports
+side of the asymmetry closes IN this phase — the `imports-listing-minimal`
+reconciliation task adds the read-only listing and wires the second
+doorway into this cap note; until that task runs, each import entry's own
+CSV doorway is the only imports exit.)*
 
 **Also in this step:** add `dashboardSource()` to
 `app/Filament/Widgets/Concerns/ReadsDashboardFilters.php` (Task 7 wires the
@@ -1249,8 +1310,7 @@ source-filter test fails; restore. `vendor/bin/pint --dirty --format agent`,
 `vendor/bin/filacheck --fix --dirty` → 0.
 
 ```bash
-git add app/Filament/Widgets/IntakeQueueWidget.php app/Filament/Widgets/Concerns/ReadsDashboardFilters.php resources/views/filament/widgets/intake-queue.blade.php lang/en/admin.php lang/he/admin.php tests/Feature/DashboardIntakeLensTest.php tests/Pest.php tests/Feature/DashboardIntakeMetricsTest.php
-git commit -m "feat(dashboard): intake work queue widget with kind chips and honest caps"
+git commit app/Filament/Widgets/IntakeQueueWidget.php app/Filament/Widgets/Concerns/ReadsDashboardFilters.php resources/views/filament/widgets/intake-queue.blade.php lang/en/admin.php lang/he/admin.php tests/Feature/DashboardIntakeLensTest.php tests/Pest.php tests/Feature/DashboardIntakeMetricsTest.php -m "feat(dashboard): intake work queue widget with kind chips and honest caps"
 ```
 
 ---
@@ -1269,6 +1329,10 @@ git commit -m "feat(dashboard): intake work queue widget with kind chips and hon
   `ImporterSettings::getUrl()`, `SpotifyLinksFetcher::getUrl()` (Filament page
   URL helpers, same mechanism `PublicFormTargetWarningsWidget` already uses).
 - Produces: `App\Filament\Widgets\SpotifyConnectionWidget`.
+- Visual substrate (addendum 1; added 2026-08-04): **stock** header tag (bare
+  stock-flow-tag include); the no-connection state through the shared A3
+  empty-state partial; `last_tested_at` through `UiTimezone` + `UiFormats`;
+  status badges through `ImportConnectionStatus`'s own contracts.
 
 **Lang keys** (`dashboard.connection`):
 
@@ -1413,9 +1477,13 @@ class SpotifyConnectionWidget extends Widget
         </div>
 
         @if (count($connections) === 0)
-            <div class="mt-4" data-testid="connection-empty">
-                <p class="text-sm font-medium text-gray-700 dark:text-gray-200">{{ __('admin.dashboard.connection.none_heading') }}</p>
-                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ __('admin.dashboard.connection.none_description') }}</p>
+            <div class="mt-4">
+                @include('filament.widgets.partials.empty-state', [
+                    'heading' => __('admin.dashboard.connection.none_heading'),
+                    'description' => __('admin.dashboard.connection.none_description'),
+                    'icon' => \Filament\Support\Icons\Heroicon::OutlinedSignalSlash,
+                    'testid' => 'connection-empty',
+                ])
             </div>
         @else
             <ul class="mt-4 divide-y divide-gray-100 dark:divide-white/5">
@@ -1468,8 +1536,7 @@ Mutation-check: make `reduced` always `false` in `spotifyConnectionEcho()` →
 the failed-connection test fails; restore.
 
 ```bash
-git add app/Filament/Widgets/SpotifyConnectionWidget.php resources/views/filament/widgets/spotify-connection.blade.php lang/en/admin.php lang/he/admin.php tests/Feature/DashboardIntakeLensTest.php
-git commit -m "feat(dashboard): Spotify connection card echoing the persisted test"
+git commit app/Filament/Widgets/SpotifyConnectionWidget.php resources/views/filament/widgets/spotify-connection.blade.php lang/en/admin.php lang/he/admin.php tests/Feature/DashboardIntakeLensTest.php -m "feat(dashboard): Spotify connection card echoing the persisted test"
 ```
 
 ---
@@ -1487,6 +1554,11 @@ git commit -m "feat(dashboard): Spotify connection card echoing the persisted te
   (`value`, `url`, `meta('bar')`, `meta('reason')`), `Rate`
   (`percent()`, `isEmpty()`), `MediaDiagnosticReason::getIcon()`.
 - Produces: `App\Filament\Widgets\MediaFindingsWidget`.
+- Visual substrate (addendum 1; added 2026-08-04): **stock** header tag (bare
+  stock-flow-tag include); both zero states (no media / clean library)
+  through the shared A3 empty-state partial; bars styled by
+  `MediaDiagnosticReason`'s own contracts (`barClass()`/`getIcon()`), counts
+  through `UiFormats::number()`.
 
 **Lang keys** (`dashboard.media_findings`):
 
@@ -1609,11 +1681,21 @@ six-item library and a six-thousand-item library both read):
         @endif
 
         @if ($rate->isEmpty())
-            <p class="mt-4 text-xs text-gray-500 dark:text-gray-400">{{ __('admin.dashboard.media_findings.no_media') }}</p>
+            <div class="mt-4">
+                @include('filament.widgets.partials.empty-state', [
+                    'heading' => __('admin.dashboard.media_findings.no_media'),
+                    'icon' => \Filament\Support\Icons\Heroicon::OutlinedPhoto,
+                    'testid' => 'media-no-media',
+                ])
+            </div>
         @elseif (count($rows) === 0)
-            <p class="mt-4 text-xs text-gray-500 dark:text-gray-400" data-testid="media-findings-empty">
-                {{ __('admin.dashboard.media_findings.empty') }}
-            </p>
+            <div class="mt-4">
+                @include('filament.widgets.partials.empty-state', [
+                    'heading' => __('admin.dashboard.media_findings.empty'),
+                    'icon' => \Filament\Support\Icons\Heroicon::OutlinedCheckCircle,
+                    'testid' => 'media-findings-empty',
+                ])
+            </div>
         @else
             @php($peak = max(array_map(fn ($row): float => $row->value, $rows)))
             <dl class="mt-4 space-y-2 text-sm">
@@ -1651,8 +1733,7 @@ Mutation-check: drop the `->filter(...)` zero-hiding line in
 `mediaFindings()` → the clean-library test fails; restore.
 
 ```bash
-git add app/Filament/Widgets/MediaFindingsWidget.php resources/views/filament/widgets/media-findings.blade.php lang/en/admin.php lang/he/admin.php tests/Feature/DashboardIntakeLensTest.php
-git commit -m "feat(dashboard): media findings bars with gallery doorways"
+git commit app/Filament/Widgets/MediaFindingsWidget.php resources/views/filament/widgets/media-findings.blade.php lang/en/admin.php lang/he/admin.php tests/Feature/DashboardIntakeLensTest.php -m "feat(dashboard): media findings bars with gallery doorways"
 ```
 
 ---
@@ -1728,10 +1809,15 @@ In `tests/Feature/DashboardOverviewLensTest.php`, raise the structural-loop
 floor so the three new widgets are provably inside the loop:
 
 ```php
-    expect($widgets->count())->toBeGreaterThanOrEqual(10);
+    expect($widgets->count())->toBeGreaterThanOrEqual(11);
 ```
 
-(The `$flow` list is untouched: all three Board-3 widgets are stock, and the
+(Floor arithmetic, corrected 2026-08-04: the loop flat-maps all three lens
+lists, `unique()`s, and rejects the exempt `DashboardContextWidget` — 7
+Overview + 2 Blockers-only + 3 Intake-only = 12 unique, minus the exemption
+= exactly 11. The plan's earlier floor of 10 would let ONE forgotten
+registration pass silently; 11 fails if any of the three is missing. The
+`$flow` list is untouched: all three Board-3 widgets are stock, and the
 loop asserts the stock tag for anything not listed as flow — a new Intake
 widget cannot ship untagged.)
 
@@ -1799,7 +1885,6 @@ absent; echo shows podcast.
                             ->helperText(__('admin.dashboard.filters.podcast_hint'))
                             ->options(fn (): array => app(EditorialMetrics::class)->podcastOptions())
                             ->searchable()
-                            ->preload(false)
                             ->optionsLimit(50)
                             // No Intake widget has a podcast dimension (D-5).
                             ->visible(fn (Get $get): bool => DashboardLens::fromFilter($get('lens')) !== DashboardLens::Intake),
@@ -1903,13 +1988,16 @@ echo swaps the podcast segment for the source segment on Intake:
 - [ ] **Step 4: Run green, run the full dashboard suites, format, commit**
 
 Run: `php artisan test --compact --filter="Dashboard"` → PASS (Overview,
-Blockers behavior unchanged; structural loop now covers 10+ widgets).
+Blockers behavior unchanged; structural loop now covers the 11-widget
+union). Note (2026-08-04): the snippet above intentionally carries no
+`->preload(false)` — the Q7 batch inverted the global Select default
+(`AppServiceProvider.php:174–178`; bounded sets now opt IN with an explicit
+`preload()`), and HEAD's podcast field has no per-site opt-out to preserve.
 `vendor/bin/pint --dirty --format agent`, `vendor/bin/filacheck --fix --dirty`
 → 0.
 
 ```bash
-git add app/Filament/Pages/Dashboard.php app/Filament/Widgets/DashboardContextWidget.php resources/views/filament/widgets/dashboard-context.blade.php app/Enums/ImportConnectionProvider.php lang/en/admin.php lang/he/admin.php tests/Feature/DashboardIntakeLensTest.php tests/Feature/DashboardOverviewLensTest.php
-git commit -m "feat(dashboard): Intake lens gets its own widget list and command bar"
+git commit app/Filament/Pages/Dashboard.php app/Filament/Widgets/DashboardContextWidget.php resources/views/filament/widgets/dashboard-context.blade.php app/Enums/ImportConnectionProvider.php lang/en/admin.php lang/he/admin.php tests/Feature/DashboardIntakeLensTest.php tests/Feature/DashboardOverviewLensTest.php -m "feat(dashboard): Intake lens gets its own widget list and command bar"
 ```
 
 ---
@@ -1921,14 +2009,22 @@ git commit -m "feat(dashboard): Intake lens gets its own widget list and command
 - Modify: `app/Enums/MediaAcquisitionDisposition.php`
 - Modify: `app/Support/Media/ExternalImageFailureMessage.php`
 - Modify: `app/Livewire/Admin/MediaPickerPanel.php` (lines 674 and 1305)
+- Modify: `lang/en/admin.php` + `lang/he/admin.php` (ONE missing key — see
+  below)
 - Test: `tests/Feature/DashboardIntakeMetricsTest.php` (additions; or the
   existing media-picker feature test file if the implementer finds the
   assertions fit better there — keep them mutation-checked either way)
 
 **Interfaces:**
 - Consumes: existing lang keys `admin.media_library.url_failure_*` (all 7
-  exist) and `admin.media_library.storage_{copied,created,registered,reused}`
-  (all 4 exist) — **no lang changes**.
+  exist, both locales) and `admin.media_library.storage_{copied,registered,reused}`.
+  **Corrected 2026-08-04: `storage_created` exists in NEITHER locale** (the
+  storage block carries only the other three) — yet `Created` is a real
+  produced case (`MediaAcquisitionManager.php:88`, the upload-admission
+  flow), so a blanket `storage_{value}` label would return a raw key for it.
+  This task therefore ADDS `storage_created` to both locales (copy below)
+  so the label contract is total, and pins presence for every case key in
+  both locales.
 - Produces: both enums implement `HasLabel`; `getLabel()` returns the same
   strings the call sites already show. Labels only: nothing renders these
   enums with colour or icon today, and E4's scope is contracts for what
@@ -1952,6 +2048,23 @@ it('labels the Board-3 E4 enums through their Filament contracts', function (): 
         ->toBeInstanceOf(\Filament\Support\Contracts\HasLabel::class);
 });
 
+it('has a real translation behind every E4 label in both locales', function (): void {
+    // speaks-both-languages, non-vacuously: getLabel() composing a key that
+    // does not exist returns the raw key and every equality assert against
+    // __() passes anyway. Lang::has() is the only honest probe — this is
+    // what catches the storage_created gap (missing in BOTH locales until
+    // this task adds it).
+    foreach (['en', 'he'] as $locale) {
+        foreach (\App\Enums\ExternalImageFailureReason::cases() as $reason) {
+            expect(\Illuminate\Support\Facades\Lang::has("admin.media_library.url_failure_{$reason->value}", $locale))->toBeTrue();
+        }
+
+        foreach (\App\Enums\MediaAcquisitionDisposition::cases() as $disposition) {
+            expect(\Illuminate\Support\Facades\Lang::has("admin.media_library.storage_{$disposition->value}", $locale))->toBeTrue();
+        }
+    }
+});
+
 it('routes the failure message and picker notification through the enums', function (): void {
     $message = \App\Support\Media\ExternalImageFailureMessage::for(
         new \InvalidArgumentException('bad image'),
@@ -1961,7 +2074,8 @@ it('routes the failure message and picker notification through the enums', funct
 });
 ```
 
-- [ ] **Step 2: Run, watch red** — `getLabel` undefined.
+- [ ] **Step 2: Run, watch red** — `getLabel` undefined; the presence test
+  fails on `storage_created` in both locales.
 
 - [ ] **Step 3: Implement**
 
@@ -2020,6 +2134,16 @@ enum MediaAcquisitionDisposition: string implements HasLabel
 }
 ```
 
+Add the missing key to both locales, beside `storage_copied` in the
+existing `media_library` storage block (en `lang/en/admin.php:3065` area):
+
+```php
+// en
+'storage_created' => 'New image added to the library.',
+// he
+'storage_created' => 'תמונה חדשה נוספה לספרייה.',
+```
+
 Route the call sites:
 
 - `ExternalImageFailureMessage::for()` last line becomes
@@ -2041,8 +2165,7 @@ Expected: PASS (the picker suites prove the routed call sites still render the
 same strings).
 
 ```bash
-git add app/Enums/ExternalImageFailureReason.php app/Enums/MediaAcquisitionDisposition.php app/Support/Media/ExternalImageFailureMessage.php app/Livewire/Admin/MediaPickerPanel.php tests/Feature/DashboardIntakeMetricsTest.php
-git commit -m "feat(enums): Filament label contracts for the Board-3 E4 pair"
+git commit app/Enums/ExternalImageFailureReason.php app/Enums/MediaAcquisitionDisposition.php app/Support/Media/ExternalImageFailureMessage.php app/Livewire/Admin/MediaPickerPanel.php lang/en/admin.php lang/he/admin.php tests/Feature/DashboardIntakeMetricsTest.php -m "feat(enums): Filament label contracts for the Board-3 E4 pair"
 ```
 
 ---
@@ -2078,8 +2201,7 @@ already configures; do not pass `-d` flags expecting them to reach subprocesses.
 - [ ] **Step 3: Commit docs**
 
 ```bash
-git add docs/phase-02/current-project-state.md docs/phase-02/dashboard-metrics-phase-2R-handoff.md
-git commit -m "docs(dashboard): record phase 3 (Intake lens) as implemented"
+git commit docs/phase-02/current-project-state.md docs/phase-02/dashboard-metrics-phase-2R-handoff.md -m "docs(dashboard): record phase 3 (Intake lens) as implemented"
 ```
 
 - [ ] **Step 4: Final report** — classify every requirement above as
@@ -2116,8 +2238,107 @@ git commit -m "docs(dashboard): record phase 3 (Intake lens) as implemented"
   (`StreamEventType`) and the intake channel (`ImportConnectionProvider`
   narrowed reader) now have typed homes; the ledger's "provider/source strings
   on intake paths" candidate is answered.
+- **unscanned-home (style home outside the compiler's scan scope) — added
+  2026-08-04:** Task 1 moves the chip-class literals out of a scanned Blade
+  view into `app/Enums/StreamEventType.php` — the exact move that founded
+  this pattern. Covered structurally at HEAD: `app/Enums/**/*` is in BOTH
+  themes' `@source` globs (`resources/css/filament/admin/theme.css:5`,
+  `resources/css/filament/public/theme.css:3`, the operator's symmetric-
+  superset ruling) and `ThemeScanScopeTest` is the discovery guard. Tasks
+  4–6 emit classes only from Blade views under
+  `resources/views/filament/widgets` (scanned) and from enum homes already
+  in the globs; no task may add a class-emitting PHP home outside them
+  without a glob + the guard.
+- **shared-index-entanglement (commits in the shared tree) — added
+  2026-08-04:** every per-task commit block is pathspec-style
+  (`git commit <paths> -m …`); a bare `git commit` is forbidden here.
 
 ## Route-end reconciliation addenda (2026-08-03, binding)
+
+> ### Fresh re-reconciliation (2026-08-04)
+>
+> A fresh session (no inherited reading) re-derived the plan claim-by-claim
+> against final post-push HEAD (`fb0ec95`; route-end push `64479eb`
+> deployed). Tags: **[V]** = re-verified against the installed sources at
+> HEAD; **[DRIFTED]** = cite or claim corrected in place.
+>
+> **Re-verified clean [V]:** every vendor cite — `ListRecords.php:39/54`
+> (`filters`/`tab` aliases), `ImportAction.php:317` (signed-route shape,
+> character-exact), actions `routes/web.php:16`,
+> `ActionsServiceProvider.php:35` (`['web']`-only group — signature selects
+> the guard, never authorizes), `DownloadImportFailureCsv`'s
+> policy-else-owner branch (guest 401 / non-owner 403, exactly as Task 3's
+> boundary tests assume), `ImportCsv.php:126` `failedRows()->createMany()`
+> and the eventless query-builder counter `update()`s; Filament v5.7.5 /
+> Livewire v4.3.4. App premises: `DashboardLens::Intake` exists and shares
+> the Overview match arm (Task 7's red state is real); `FILTER_KEYS` +
+> `dashboard-filter` listener; `ReadsDashboardFilters`' methods;
+> `applyReasonFilter(Builder, ?MediaDiagnosticReason)` signature-exact;
+> `MediaRecordScope::inventoryQuery()`; all six `MediaDiagnosticReason`
+> cases with `repair_*` labels + `barClass()`/`getIcon()`;
+> `MediaLibraryTask::NeedsAttention`; the real `reason` `SelectFilter`
+> (`MediaTable.php:277`); `PublicFormSubmission.submitted_at` +
+> `scopeStatus` + factory `reviewed()` state; `ImportConnection`
+> model/factory/`validateProviderAuthType`; both E4 enums' exact cases and
+> the picker call sites at exactly `MediaPickerPanel.php:674`/`:1305`;
+> `ExternalImageFailureMessage::for()`; the A3 empty-state and
+> stock/flow-tag partials (bare include = stock tag);
+> `ShowsLoadingSkeleton::skeletonRows()` hook; `Rate`/`BreakdownRow` APIs
+> incl. `meta($key, $default)`; all four Task-1 Heroicon cases;
+> `app/Enums` in BOTH themes' `@source` globs; `tests/Pest.php` as the
+> helper home; `ResourcePolicyCoverageTest` running with the EMPTY
+> allow-list (vendor `Import` is not a panel resource — Task 3 never meets
+> the guard; the imports listing will, and satisfies it by registration);
+> en+he presence of every "already present" lang key the plan names —
+> except one ([DRIFTED] list); `Import`/`FailedImportRow` `$guarded = []`;
+> `model:prune` unscheduled.
+>
+> **Corrected in place [DRIFTED]:** (1) `Import::getFailedRowsCount()` is
+> `total_rows − successful_rows` (`Import.php:140`), not a
+> `failed_rows_count` aggregate — D-2 reworded; the queue's `withCount` is
+> the honest count and stays. (2) `SpotifyLinksFetcher::connectionOptions()`
+> does not exist — D-6 now cites the Connected-only options query
+> (`SpotifyLinksFetcher.php:277`) and `selectedConnection()` (`:379`).
+> (3) `admin.media_library.storage_created` exists in NEITHER locale while
+> `Created` is a real produced case (`MediaAcquisitionManager.php:88`) —
+> Task 8's "all 4 exist, no lang changes" was wrong; the task now adds the
+> key (en+he) and pins presence per case per locale. (4) Line drift fixed
+> silently: observer trio 122–124 → 124–126; `CuratorMediaPolicy`
+> registration 176 → 181 (now beside `SettingsBackupPolicy` at 182).
+> (5) D-8's `reasonBreakdown()` "comment-vs-URL mismatch" contrast is
+> history — A4 (`c36f6c4`) closed it at route end. (6) Task 7's podcast
+> Select snippet carried a stale `->preload(false)` — the Q7 inversion
+> (`AppServiceProvider.php:174–178`) made that the global default and HEAD
+> has no per-site opt-out; dropped.
+>
+> **Soundness amendments:** Task 1 now routes the EIGHT in-service literal
+> sites (`wants()` ×4 at `EditorialMetrics.php:361–368`, `'type' =>` ×4 at
+> `:742/:773/:792/:812`) — as specced before, the task's own "every call
+> site routed" guardrail was untrue. Task 7's structural-loop floor raised
+> 10 → 11 (12 unique widgets − 1 exempt = exactly 11; 10 let one forgotten
+> registration pass). Tasks 4–6 route their empty states through the A3
+> shared partial per addendum 1 (they hand-wrote plain paragraphs) and
+> declare their stock tag + consumed partials in their Interfaces blocks.
+> Global constraints + every commit block converted to pathspec commits
+> (`shared-index-entanglement`); a Prunable/model:prune population note
+> added to Task 2; the guardrails section gained the missing
+> `unscanned-home` entry (Task 1 is that pattern's founding move — covered
+> by the symmetric `app/Enums` globs + `ThemeScanScopeTest`); the
+> tech-stack line no longer says "no schema changes" (addendum 2 owns one
+> migration).
+>
+> **Fleshed to full depth (below, after the addenda list):** the two
+> reconciliation tasks were 2–3 lines; they now carry Task-1–9-grade specs
+> as `imports-provider-declare` and `imports-listing-minimal`, on plumbing
+> verified in vendor source: the import modal merges
+> `Importer::getOptionsFormComponents()` into its schema
+> (`ImportAction.php:181`) — the app's `ConfiguresContentImports` already
+> ships three selects through exactly this seam — every extra modal field's
+> state lands in `$options` (`ImportAction.php:238`,
+> `Arr::except($data, ['file', 'columnMap'])`), and `ImportStarted`
+> (`:262`) carries the saved `$import` + `$options` (getter access) as the
+> stamping seam. Execution order: Tasks 1–8, then
+> `imports-provider-declare`, then `imports-listing-minimal`, then Task 9.
 
 1. **Visual substrate is the landed A/B idiom, not the pre-A prose.** Widget
    specs in Tasks 4–6 build ON: the shared dashed empty-state partial
@@ -2134,14 +2355,435 @@ git commit -m "docs(dashboard): record phase 3 (Intake lens) as implemented"
    a stamping hook verified against Filament's import-options plumbing.
    The sources filter then scopes imports for real; Spotify stays honestly
    empty. WB's fetch-run records later supersede as truth-at-origin.
+   *(Fleshed 2026-08-04 to full task depth — see "Reconciliation task
+   `imports-provider-declare`" below.)*
 3. **New task (Q4 ruling): minimal read-only imports listing** so the queue
    has a "view all" doorway for imports — listing only, not management.
+   *(Fleshed 2026-08-04 to full task depth — see "Reconciliation task
+   `imports-listing-minimal`" below.)*
 4. **Decisions Q1–Q6 are all closed** and annotated in place above (Q5's
    ES-1–ES-7 were recovered — see the combined plan's provenance section;
    the plan's restated empty states stand as ES-3's concrete application).
 5. **Board-3 pair note:** `SettingsBackupPolicy` now exists (super-admin
    delete) and `ResourcePolicyCoverageTest` runs with an empty allow-list —
    Task 3's `ImportPolicy` follows that landed precedent.
+
+---
+
+### Reconciliation task `imports-provider-declare` (Q1 ruling; fleshed 2026-08-04)
+
+**Run after Task 8, before `imports-listing-minimal`.** Supersedes D-4's
+interim hardcoded gate: the sources filter scopes imports by a DECLARED
+provider column instead of returning a blanket empty state.
+
+**Files:**
+- Create: `database/migrations/<stamp>_add_provider_to_imports_table.php`
+- Modify: `app/Filament/Imports/Concerns/ConfiguresContentImports.php`
+  (append the source select to the existing `getOptionsFormComponents()` —
+  the shared home all five importers already route their modal options
+  through)
+- Create: `app/Listeners/StampImportSource.php`
+- Modify: `app/Providers/AppServiceProvider.php` (one `Event::listen` line —
+  the app registers listeners explicitly; precedent at line 259)
+- Modify: `app/Enums/ImportConnectionProvider.php` (add `fromImportValue()`)
+- Modify: `app/Support/Dashboard/EditorialMetrics.php` (`intakeQueue()`)
+- Modify: `app/Filament/Widgets/IntakeQueueWidget.php` +
+  `resources/views/filament/widgets/intake-queue.blade.php`
+- Modify: `lang/en/admin.php` + `lang/he/admin.php`
+  (`admin.import.options.source*`)
+- Test: `tests/Feature/DashboardIntakeMetricsTest.php` +
+  `tests/Feature/DashboardIntakeLensTest.php` (additions)
+- Record a short FilamentExamples research pass (import-modal options
+  patterns) in `docs/research/filament-examples-phase-02.md` per the
+  tooling protocol before the Filament edits.
+
+**Verified plumbing (2026-08-04, installed v5.7.5):** the import modal
+merges `Importer::getOptionsFormComponents()` into its own schema
+(`vendor/filament/actions/src/ImportAction.php:181`) — `mode`,
+`relation_mode` and `blank_update_behavior` already ride exactly this seam
+from `ConfiguresContentImports`; every extra modal field's state lands in
+the importer options (`ImportAction.php:238`,
+`array_merge($action->getOptions(), Arr::except($data, ['file', 'columnMap']))`);
+options are NOT persisted on the `imports` row — they ride the jobs — and
+`ImportStarted` (`ImportAction.php:262`) fires synchronously inside the
+action with the saved `$import` and `$options` (getter access:
+`getImport()` / `getOptions()`), which is the stamping seam. Vendor
+`Import` has `$guarded = []` (`Import.php:53`), so the stamp is a plain
+`forceFill()->save()` — which also fires the Task-2 observer.
+
+**Interfaces:**
+- Consumes: `ImportConnectionProvider::options()` (Task 7),
+  `EditorialMetricsCacheObserver` on `Import` (Task 2), the vendor seams
+  above.
+- Produces: `imports.provider` (nullable string, enum-backed values;
+  null = legacy/pre-column, read as manual);
+  `imports.import_connection_id` (nullable FK, WB-reserved — nothing
+  writes it in phase 3; created now so WB needs no second `imports`
+  migration, per the Q1 ruling's "(+ optional `import_connection_id`)");
+  `ImportConnectionProvider::fromImportValue(?string): self`;
+  provider-scoped `intakeQueue()`.
+
+**Semantics (supersede the D-4 gate):** source empty (all) = full queue,
+snapshot counts, unchanged. Manual = submissions + imports whose provider
+is `manual` OR NULL (a legacy import is a manual act — D-4's own
+rationale). `google_drive` = imports declared google_drive, no submissions
+(submissions are manual acts). `spotify` = the same rule, empty in
+practice because the direct fetcher never writes `Import` records — the
+empty state is now earned by data, not hardcoded. Under any non-null
+source the counts are computed live from the scoped queries (the cached
+snapshot counts are channel-blind); the widget shows the provider empty
+state only when the SCOPED queue is actually empty. The column is a
+**declaration, not provenance** (proxy-oracle guard) — the migration
+docblock says so, and WB's fetch-run records supersede it as
+truth-at-origin.
+
+- [ ] **Step 1: Write the failing tests.** Append to
+  `DashboardIntakeMetricsTest.php`:
+
+```php
+it('stamps the declared source onto the import row', function (): void {
+    $import = failedImport();
+    event(new \Filament\Actions\Imports\Events\ImportStarted($import, [], ['source' => 'google_drive']));
+    expect($import->fresh()->provider)->toBe('google_drive');
+
+    // raw-state: the modal value is browser-supplied — nonsense stays null.
+    $other = failedImport(fileName: 'other.csv');
+    event(new \Filament\Actions\Imports\Events\ImportStarted($other, [], ['source' => 'not-a-provider']));
+    expect($other->fresh()->provider)->toBeNull();
+});
+
+it('offers the source select in every importer modal schema', function (): void {
+    // Source-level assertion by design: action-modal prose is NOT in the
+    // Livewire HTML at mountAction time (2R gotcha), so the schema is
+    // asserted where it is built, non-vacuously.
+    foreach ([
+        \App\Filament\Imports\ContentItemImporter::class,
+        \App\Filament\Imports\AuthorImporter::class,
+        \App\Filament\Imports\TranscriptionImporter::class,
+        \App\Filament\Imports\ContentGroupImporter::class,
+        \App\Filament\Imports\CategoryImporter::class,
+    ] as $importer) {
+        $source = collect($importer::getOptionsFormComponents())
+            ->first(fn ($component): bool => $component->getName() === 'source');
+
+        expect($source)->not->toBeNull()
+            ->and($source->getOptions())->toBe(ImportConnectionProvider::options())
+            ->and($source->getDefaultState())->toBe(ImportConnectionProvider::Manual->value);
+    }
+});
+
+it('scopes the queue by declared provider', function (): void {
+    PublicFormSubmission::factory()->create();
+    failedImport();                                          // legacy: provider null
+    failedImport(fileName: 'drive.csv')->forceFill(['provider' => 'google_drive'])->save();
+
+    $metrics = app(EditorialMetrics::class);
+
+    expect($metrics->intakeQueue(source: ImportConnectionProvider::Manual)['counts'])
+        ->toBe(['all' => 2, 'submissions' => 1, 'imports' => 1])
+        ->and(collect($metrics->intakeQueue(source: ImportConnectionProvider::GoogleDrive)['rows'])->pluck('title')->all())
+        ->toBe(['drive.csv'])
+        ->and($metrics->intakeQueue(source: ImportConnectionProvider::GoogleDrive)['counts'])
+        ->toBe(['all' => 1, 'submissions' => 0, 'imports' => 1])
+        ->and($metrics->intakeQueue(source: ImportConnectionProvider::Spotify)['rows'])->toBe([]);
+});
+```
+
+  Append to `DashboardIntakeLensTest.php` (plus `Lang::has` presence
+  assertions for the two new keys in both locales, the F3 pattern):
+
+```php
+it('renders declared-provider rows under their source filter', function (): void {
+    failedImport(fileName: 'drive.csv')->forceFill(['provider' => 'google_drive'])->save();
+
+    Livewire::test(IntakeQueueWidget::class, ['pageFilters' => ['source' => ImportConnectionProvider::GoogleDrive->value]])
+        ->assertSee('drive.csv')
+        ->assertDontSeeHtml('data-testid="intake-source-empty"');
+});
+```
+
+  Task 4's spotify empty-state test and Task 2's kind/source test keep
+  their assertions verbatim — spotify stays empty by data and manual still
+  counts the legacy null-provider import.
+
+- [ ] **Step 2: Run, watch red** — unknown column `provider`, listener not
+  registered, no `source` component.
+
+- [ ] **Step 3: Implement.** Migration:
+
+```php
+    Schema::table('imports', function (Blueprint $table): void {
+        // A DECLARATION of intake channel, not provenance: stamped from
+        // the import modal's source select (default manual). Null =
+        // pre-column legacy rows, read as manual
+        // (ImportConnectionProvider::fromImportValue()). WB's fetch-run
+        // records supersede this as truth-at-origin (Q1 ruling
+        // 2026-08-03).
+        $table->string('provider')->nullable()->after('importer');
+        // Reserved for WB fetch-run attribution; nothing writes it in
+        // phase 3.
+        $table->foreignId('import_connection_id')
+            ->nullable()
+            ->after('provider')
+            ->constrained('import_connections')
+            ->nullOnDelete();
+    });
+```
+
+  (The column stays uncast on the vendor model — read sites narrow through
+  the enum; binding an app subclass into `app(Import::class)` was
+  considered and rejected as scope.) The select, appended inside the
+  existing `getOptionsFormComponents()` array (import the enum in the
+  concern):
+
+```php
+            Select::make('source')
+                ->label(__('admin.import.options.source'))
+                ->helperText(__('admin.import.options.source_helper'))
+                // Three fixed options: native select, no search
+                // (settings-dashboard tiny-set rule); ::options() array
+                // idiom (D-10).
+                ->options(ImportConnectionProvider::options())
+                ->default(ImportConnectionProvider::Manual->value)
+                ->required(),
+```
+
+  The listener (`app/Listeners/StampImportSource.php`), registered in
+  `AppServiceProvider::boot()` beside the existing `Event::listen`
+  (line 259): `Event::listen(ImportStarted::class, StampImportSource::class);`
+
+```php
+final class StampImportSource
+{
+    public function handle(ImportStarted $event): void
+    {
+        // raw-state: modal state is browser-supplied; narrow before writing.
+        $provider = ImportConnectionProvider::tryFrom(
+            (string) ($event->getOptions()['source'] ?? ''),
+        );
+
+        if ($provider === null) {
+            return;
+        }
+
+        // Fires saved → EditorialMetricsCacheObserver invalidates (Task 2).
+        $event->getImport()->forceFill(['provider' => $provider->value])->save();
+    }
+}
+```
+
+  The enum helper — the ONE home of the null-means-manual rule (the
+  listing task consumes it too):
+
+```php
+    /** Null `imports.provider` = a pre-column legacy row, read as manual. */
+    public static function fromImportValue(?string $value): self
+    {
+        return self::tryFrom((string) $value) ?? self::Manual;
+    }
+```
+
+  `intakeQueue()` — the D-4 gate (`if ($source !== null && $source !==
+  Manual) return empty`) is REMOVED and replaced by scoping:
+
+```php
+        $withSubmissions = $source === null || $source === ImportConnectionProvider::Manual;
+
+        $importsQuery = fn (): Builder => Import::query()
+            ->whereHas('failedRows')
+            ->when($source === ImportConnectionProvider::Manual, fn (Builder $query): Builder => $query->where(
+                fn (Builder $inner) => $inner
+                    ->where('provider', ImportConnectionProvider::Manual->value)
+                    ->orWhereNull('provider'),
+            ))
+            ->when($source !== null && $source !== ImportConnectionProvider::Manual, fn (Builder $query): Builder => $query
+                ->where('provider', $source->value));
+```
+
+  The submissions branch gains `$withSubmissions &&` in front of its
+  existing kind gate; the imports branch builds from `$importsQuery()`;
+  counts under `$source === null` stay snapshot-based, otherwise they are
+  computed first and the array keeps Task 2's `all/submissions/imports`
+  key order (the shape assertions are `toBe`, which is order-sensitive):
+
+```php
+        $submissionsCount = $withSubmissions
+            ? PublicFormSubmission::query()->status(PublicFormSubmissionStatus::New)->count()
+            : 0;
+        $importsCount = $importsQuery()->count();
+
+        // …
+            'counts' => [
+                'all' => $submissionsCount + $importsCount,
+                'submissions' => $submissionsCount,
+                'imports' => $importsCount,
+            ],
+```
+
+  In the widget blade,
+  the blanket `@if ($source !== null && $source !== Manual)` gate is
+  removed; rows render under every source, and the provider empty state
+  shows only when the scoped queue is empty under a non-manual source,
+  through the A3 partial:
+
+```blade
+            @if (count($rows) === 0 && $source !== null && $source !== \App\Enums\ImportConnectionProvider::Manual)
+                <div class="mt-4">
+                    @include('filament.widgets.partials.empty-state', [
+                        'heading' => __('admin.dashboard.intake.empty_heading'),
+                        'description' => __('admin.dashboard.intake.source_empty', ['source' => $source->getLabel()]),
+                        'icon' => \Filament\Support\Icons\Heroicon::OutlinedInbox,
+                        'testid' => 'intake-source-empty',
+                    ])
+                </div>
+            @elseif (count($rows) === 0)
+                … the Task-4 intake-empty partial block, unchanged …
+```
+
+  Lang (en/he, in the existing `admin.import.options` block):
+
+```php
+// en
+'source' => 'Source',
+'source_helper' => 'Which intake channel produced this file. Manual fits hand-prepared CSVs; the dashboard queue and its sources filter read this.',
+// he
+'source' => 'מקור',
+'source_helper' => 'מאיזה ערוץ קליטה הגיע הקובץ. "ידני" מתאים לקובצי CSV שהוכנו ידנית; תור הטיפול ומסנן המקורות בלוח קוראים את הערך הזה.',
+```
+
+- [ ] **Step 4: Run green, mutation-check, format, commit.**
+  Mutation-checks: comment out the `Event::listen` line → the stamp test
+  fails; drop the `orWhereNull('provider')` arm → the manual-scope count
+  fails. Run the full Dashboard filter plus
+  `vendor/bin/filacheck --fix --dirty` (the concern is under
+  `app/Filament`).
+
+```bash
+git commit database/migrations app/Filament/Imports/Concerns/ConfiguresContentImports.php app/Listeners/StampImportSource.php app/Providers/AppServiceProvider.php app/Enums/ImportConnectionProvider.php app/Support/Dashboard/EditorialMetrics.php app/Filament/Widgets/IntakeQueueWidget.php resources/views/filament/widgets/intake-queue.blade.php lang/en/admin.php lang/he/admin.php tests/Feature/DashboardIntakeMetricsTest.php tests/Feature/DashboardIntakeLensTest.php docs/research/filament-examples-phase-02.md -m "feat(imports): declare-at-upload provider column scopes the intake queue (Q1)"
+```
+
+---
+
+### Reconciliation task `imports-listing-minimal` (Q4 ruling; fleshed 2026-08-04)
+
+**Run after `imports-provider-declare`, before Task 9.** Listing only, not
+management (the ruling's scope): a read-only Resource so the queue's cap
+note has a "view all" doorway for imports too.
+
+**Files:**
+- Create: `app/Filament/Resources/Imports/ImportResource.php` +
+  `Pages/ListImports.php` + `Tables/ImportsTable.php` (mirror the
+  SettingsBackups read-only shape — `canCreate(): false`, List page only)
+- Modify: `app/Policies/ImportPolicy.php` (extend per the
+  `SettingsBackupPolicy` precedent)
+- Modify: `app/Filament/Widgets/IntakeQueueWidget.php` +
+  `resources/views/filament/widgets/intake-queue.blade.php` (cap note
+  gains the imports doorway)
+- Modify: `lang/en/admin.php` + `lang/he/admin.php` (`admin.imports.*`
+  resource labels/columns + `admin.dashboard.intake.view_imports`)
+- Test: `tests/Feature/ImportsListingTest.php` (create) +
+  `tests/Feature/DashboardIntakeLensTest.php` (cap-note doorway)
+- Record the FilamentExamples research pass (read-only resource / list-only
+  patterns) in `docs/research/filament-examples-phase-02.md` first.
+
+**Interfaces:**
+- Consumes: vendor `Import` model; `ImportPolicy` (Task 3);
+  `EditorialMetrics::failedRowsDownloadUrl()` (Task 2 — the one URL home,
+  now with a third consumer that can never diverge from the notification);
+  `ImportConnectionProvider::fromImportValue()` (`imports-provider-declare`);
+  `UiFormats`/`UiTimezone` day-first date columns.
+- Produces: `ImportResource` with a `ListImports` page;
+  `ImportPolicy::viewAny()`.
+
+**Spec:**
+- **Policy first (deny-by-default mechanics):** with `ImportPolicy`
+  registered (Task 3), a policy method that does not exist is a DENY — so
+  the List page cannot render until the policy grows `viewAny(User): bool`
+  (admin). Add `create`/`update`/`delete` returning `false` explicitly
+  (`SettingsBackupPolicy` precedent: read-only surface, explicit denials).
+  `view` stays admin-or-owner from Task 3.
+- **Resource:** model = `Filament\Actions\Imports\Models\Import`;
+  `canCreate(): false`; pages = `['index' => ListImports]` only; follow the
+  sibling resources' navigation conventions (group/order/icon — enum icons,
+  correct static property types). `ResourcePolicyCoverageTest` is satisfied
+  structurally: the resource carries a `can*` override AND a registered
+  policy.
+- **Table:** `file_name` searchable; importer column via `class_basename`;
+  provider badge via
+  `ImportConnectionProvider::fromImportValue($state)->getLabel()` (one
+  home for the null rule); failed rows via `->counts('failedRows')` badge,
+  danger when > 0 (the REAL count — never the vendor's
+  `getFailedRowsCount()` subtraction, per the corrected D-2);
+  `successful_rows`/`total_rows`; `created_at` + `completed_at` day-first
+  through the house date-column idiom. Default sort: newest first.
+  Filters: provider `SelectFilter` (`::options()`, three options, native)
+  and a has-failures `TernaryFilter` — both carry built-in indicators
+  (FilaCheck). Row action: `downloadFailedRows` linking
+  `failedRowsDownloadUrl($record)`, `->openUrlInNewTab()`, visible when
+  `failed_rows_count > 0` (the aggregate is on the row — no per-row
+  service hop, `service-hop-cost`). `queryStringIdentifier` is assigned
+  globally by `Table::configureUsing` — nothing to do (implicit-keys).
+  Pagination is the vendor default — a paginated listing is not a silent
+  cap.
+- **Queue cap note:** gains the imports doorway beside the submissions
+  one — `ImportResource::getUrl('index')`, label
+  `admin.dashboard.intake.view_imports` (en 'All imports' / he
+  'לכל הייבואים') — closing the asymmetry Task 4's note carried.
+
+- [ ] **Step 1: Write the failing tests** (`ImportsListingTest.php`;
+  same `beforeEach` idiom as the intake suites; plus `Lang::has` presence
+  assertions for the new keys, both locales):
+
+```php
+it('lists imports read-only for admins with honest failure counts', function (): void {
+    $failed = failedImport(failed: 2, total: 5);
+    failedImport(failed: 1, fileName: 'drive.csv')->forceFill(['provider' => 'google_drive'])->save();
+
+    Livewire::test(\App\Filament\Resources\Imports\Pages\ListImports::class)
+        ->assertCanSeeTableRecords(\Filament\Actions\Imports\Models\Import::all())
+        ->assertSee('episodes.csv')
+        ->assertSee('drive.csv')
+        // null provider reads as manual — the one home rule.
+        ->assertSee(ImportConnectionProvider::Manual->getLabel())
+        ->assertSee(ImportConnectionProvider::GoogleDrive->getLabel());
+});
+
+it('denies the listing to non-admins', function (): void {
+    $this->actingAs(User::factory()->create());
+
+    Livewire::test(\App\Filament\Resources\Imports\Pages\ListImports::class)
+        ->assertForbidden();
+});
+
+it('links the signed failure CSV from the row action', function (): void {
+    $import = failedImport();
+
+    Livewire::test(\App\Filament\Resources\Imports\Pages\ListImports::class)
+        ->assertSeeHtml('failed-rows/download')
+        ->assertSeeHtml('signature=');
+});
+```
+
+  In `DashboardIntakeLensTest.php`: extend the cap-note test (11 new
+  submissions fixture) to also assert the imports doorway URL renders.
+
+- [ ] **Step 2: Run, watch red** — class not found; then (after scaffolding
+  without the policy change) 403 on the admin listing: the registered
+  policy has no `viewAny`, and a missing method is a deny — watching this
+  red proves the mechanics the spec claims.
+
+- [ ] **Step 3: Implement** per the spec block above (resource scaffold via
+  the Filament artisan generator with `--no-interaction`, then trimmed to
+  the List-only shape; policy methods appended).
+
+- [ ] **Step 4: Run green, mutation-check, format, commit.**
+  Mutation-checks: revert `viewAny` → the admin listing test fails; swap
+  the provider column to raw `$state` → the null-reads-as-manual assertion
+  fails. `vendor/bin/filacheck --fix --dirty` → 0.
+
+```bash
+git commit app/Filament/Resources/Imports app/Policies/ImportPolicy.php app/Filament/Widgets/IntakeQueueWidget.php resources/views/filament/widgets/intake-queue.blade.php lang/en/admin.php lang/he/admin.php tests/Feature/ImportsListingTest.php tests/Feature/DashboardIntakeLensTest.php docs/research/filament-examples-phase-02.md -m "feat(imports): minimal read-only imports listing with queue doorway (Q4)"
+```
 
 ## Open questions for the operator
 
@@ -2155,7 +2797,8 @@ git commit -m "docs(dashboard): record phase 3 (Intake lens) as implemented"
    fetch is not an import). WB's fetch-run records later supersede the
    declaration as truth-at-origin — the column becomes derivable, not
    removed. Fold the migration + modal + stamping task into the
-   reconciliation pass. **Original question:** Implemented:
+   reconciliation pass *(done — fleshed 2026-08-04 as
+   `imports-provider-declare` in the addenda section)*. **Original question:** Implemented:
    all/manual show the full queue; spotify/google_drive show an explanatory
    empty state (imports carry no provider — the table has no such column, and
    the Spotify fetcher's direct importer bypasses Filament imports entirely).
@@ -2179,7 +2822,9 @@ git commit -m "docs(dashboard): record phase 3 (Intake lens) as implemented"
    position is OVERRULED — phase 3 adds a minimal read-only imports listing**
    so the queue has a "view all" doorway for imports too. Fold into the
    reconciliation pass as a new task (read-only Resource or simple page;
-   scope stays minimal — listing, not management).** Original question:**
+   scope stays minimal — listing, not management; *fleshed 2026-08-04 as
+   `imports-listing-minimal` in the addenda section — Resource form chosen,
+   List page only*).** Original question:**
    submissions overflow doorways to the filtered Resource; imports have no
    admin listing until WB.
 5. **Empty-state principles ES-1–ES-7 are unrecoverable as text.**
@@ -2215,3 +2860,12 @@ git commit -m "docs(dashboard): record phase 3 (Intake lens) as implemented"
   SelectFilter `options()`/`default()`, table widgets, Livewire lazy
   placeholders — and the doc warning that filter `options()` are a UI
   affordance, not an authorization boundary (why `dashboardSource()` narrows).
+- Fresh re-reconciliation verifications (2026-08-04, installed v5.7.5):
+  `Importer::getOptionsFormComponents()` modal merge
+  (`ImportAction.php:181`), modal-state-to-options merge (`:238`),
+  `ImportStarted` stamping seam (`:262`, getter access);
+  `Import::$guarded = []` (`Import.php:53`) and
+  `getFailedRowsCount()` = `total_rows − successful_rows` (`:140`);
+  `MediaTable.php:277` reason filter; `SpotifyLinksFetcher.php:277/:379`
+  Connected-only offer; `MediaAcquisitionManager.php:88` produces the
+  `Created` disposition; `model:prune` unscheduled.
