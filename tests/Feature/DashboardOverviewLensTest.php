@@ -4,8 +4,10 @@ use App\Enums\DashboardLens;
 use App\Enums\FunnelStage;
 use App\Enums\PublicationStatus;
 use App\Enums\SparklineTrend;
+use App\Enums\StreamEventType;
 use App\Enums\TranscriptionMode;
 use App\Enums\UserRole;
+use App\Filament\Imports\ContentItemImporter;
 use App\Filament\Pages\Dashboard;
 use App\Filament\Widgets\ActivityStreamWidget;
 use App\Filament\Widgets\BlockersQueueWidget;
@@ -20,9 +22,12 @@ use App\Models\Author;
 use App\Models\Category;
 use App\Models\ContentGroup;
 use App\Models\ContentItem;
+use App\Models\MediaAttachment;
+use App\Models\PublicFormSubmission;
 use App\Models\Transcription;
 use App\Models\User;
 use App\Support\Dashboard\EditorialMetrics;
+use Filament\Actions\Imports\Models\Import;
 use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
@@ -392,4 +397,78 @@ it('filters the queue to the reason arriving from a reason bar', function (): vo
         ->dispatch('dashboard-reason-selected', reason: '../../evil')
         ->assertCanSeeTableRecords([$noMedia])
         ->assertCanNotSeeTableRecords([$noTranscript]);
+});
+
+it('renders the stream chips from StreamEventType', function (): void {
+    // One event of every kind, so each case's chip class provably reaches
+    // the HTML — a single-kind fixture would leave three classes unpinned
+    // and the anti-drift mutation check toothless for them.
+    $fixture = overviewFixture();
+
+    PublicFormSubmission::factory()->create();
+
+    $import = new Import;
+    $import->forceFill([
+        'file_name' => 'episodes.csv',
+        'file_path' => 'imports/episodes.csv',
+        'importer' => ContentItemImporter::class,
+        'total_rows' => 5,
+        'processed_rows' => 5,
+        'successful_rows' => 5,
+        'user_id' => User::factory()->admin()->create()->getKey(),
+    ])->save();
+
+    // The FQN morph shape is what the app writes today (the map is
+    // FQN-first; aliases only resolve legacy rows) — and what
+    // mediaEvents() matches.
+    MediaAttachment::factory()->create([
+        'attachable_type' => ContentItem::class,
+        'attachable_id' => $fixture['visible']->getKey(),
+    ]);
+
+    $component = Livewire::test(ActivityStreamWidget::class);
+
+    // The shipped palette, pinned as independent literals — asserting
+    // $type->chipClass() would read the expectation from the very home
+    // under test and follow any mutation (tautology).
+    $expected = [
+        'transcription' => 'bg-primary-50 text-primary-700 dark:bg-primary-500/10 dark:text-primary-300',
+        'import' => 'bg-info-50 text-info-700 dark:bg-info-500/10 dark:text-info-300',
+        'media' => 'bg-warning-50 text-warning-700 dark:bg-warning-500/10 dark:text-warning-300',
+        'submission' => 'bg-success-50 text-success-700 dark:bg-success-500/10 dark:text-success-300',
+    ];
+
+    foreach (StreamEventType::cases() as $type) {
+        $component->assertSeeHtml($expected[$type->value]);
+    }
+});
+
+it('narrows selectType to StreamEventType values', function (): void {
+    Livewire::test(ActivityStreamWidget::class)
+        ->call('selectType', 'submission')
+        ->assertSet('type', 'submission')
+        ->call('selectType', 'not-a-type')
+        ->assertSet('type', null);
+});
+
+it('keeps stream chip colours in StreamEventType only', function (): void {
+    // Decision 18's anti-drift guard, statement-scanned (line-guard: the
+    // whitespace collapse catches a literal wrapped across lines) and
+    // scoped to the stream surface only — FunnelStage legitimately owns
+    // identical literals for its own chips, so this must never become
+    // app-wide. The banned atoms are two-token pairs because the bare
+    // `bg-primary-50` prefix is a substring of the legitimate
+    // `dark:bg-primary-500` active-button style.
+    $sources = [
+        file_get_contents(app_path('Filament/Widgets/ActivityStreamWidget.php')),
+        file_get_contents(resource_path('views/filament/widgets/activity-stream.blade.php')),
+    ];
+
+    foreach ($sources as $source) {
+        expect(preg_replace('/\s+/', ' ', $source))
+            ->not->toContain('bg-primary-50 text-primary-700')
+            ->not->toContain('bg-info-50 text-info-700')
+            ->not->toContain('bg-warning-50 text-warning-700')
+            ->not->toContain('bg-success-50 text-success-700');
+    }
 });

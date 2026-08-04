@@ -2,6 +2,7 @@
 
 namespace App\Filament\Widgets;
 
+use App\Enums\StreamEventType;
 use App\Filament\Widgets\Concerns\AdminOnlyWidget;
 use App\Filament\Widgets\Concerns\ReadsDashboardFilters;
 use App\Filament\Widgets\Concerns\ShowsLoadingSkeleton;
@@ -36,7 +37,8 @@ class ActivityStreamWidget extends Widget
 
     public function selectType(?string $type = null): void
     {
-        $this->type = $type;
+        // Livewire-callable with a browser-supplied argument: narrow it (raw-state).
+        $this->type = StreamEventType::tryFrom((string) $type)?->value;
     }
 
     #[On('dashboard-day-selected')]
@@ -59,15 +61,9 @@ class ActivityStreamWidget extends Widget
                 day: $this->day,
                 contentGroupId: $this->dashboardPodcastId(),
             ),
-            'types' => ['transcription', 'import', 'media', 'submission'],
+            'types' => StreamEventType::cases(),
             'activeType' => $type,
             'day' => $this->day,
-            'badges' => [
-                'transcription' => 'bg-primary-50 text-primary-700 dark:bg-primary-500/10 dark:text-primary-300',
-                'import' => 'bg-info-50 text-info-700 dark:bg-info-500/10 dark:text-info-300',
-                'media' => 'bg-warning-50 text-warning-700 dark:bg-warning-500/10 dark:text-warning-300',
-                'submission' => 'bg-success-50 text-success-700 dark:bg-success-500/10 dark:text-success-300',
-            ],
         ];
     }
 }

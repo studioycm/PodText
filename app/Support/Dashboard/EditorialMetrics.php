@@ -6,6 +6,7 @@ use App\Enums\DashboardRange;
 use App\Enums\DashboardReason;
 use App\Enums\DashboardTier;
 use App\Enums\PublicationStatus;
+use App\Enums\StreamEventType;
 use App\Filament\Resources\ContentItems\ContentItemResource;
 use App\Filament\Resources\PublicFormSubmissions\PublicFormSubmissionResource;
 use App\Filament\Resources\Transcriptions\TranscriptionResource;
@@ -358,13 +359,13 @@ class EditorialMetrics
         [$start, $end] = $range->currentPeriod();
 
         $events = collect()
-            ->when($this->wants($type, 'transcription'), fn (Collection $events): Collection => $events
+            ->when($this->wants($type, StreamEventType::Transcription->value), fn (Collection $events): Collection => $events
                 ->concat($this->transcriptionEvents($start, $end, $contentGroupId, $limit)))
-            ->when($this->wants($type, 'media'), fn (Collection $events): Collection => $events
+            ->when($this->wants($type, StreamEventType::Media->value), fn (Collection $events): Collection => $events
                 ->concat($this->mediaEvents($start, $end, $contentGroupId, $limit)))
-            ->when($this->wants($type, 'import'), fn (Collection $events): Collection => $events
+            ->when($this->wants($type, StreamEventType::Import->value), fn (Collection $events): Collection => $events
                 ->concat($this->importEvents($start, $end, $limit)))
-            ->when($this->wants($type, 'submission'), fn (Collection $events): Collection => $events
+            ->when($this->wants($type, StreamEventType::Submission->value), fn (Collection $events): Collection => $events
                 ->concat($this->submissionEvents($start, $end, $limit)));
 
         return $events
@@ -724,7 +725,7 @@ class EditorialMetrics
     public static function streamTypeForStatus(?string $status): ?string
     {
         return match ($status) {
-            'transcribed', 'visible' => 'transcription',
+            'transcribed', 'visible' => StreamEventType::Transcription->value,
             default => null,
         };
     }
@@ -739,7 +740,7 @@ class EditorialMetrics
             ->limit($limit)
             ->get(['id', 'content_item_id', 'published_at'])
             ->map(fn (Transcription $transcription): array => [
-                'type' => 'transcription',
+                'type' => StreamEventType::Transcription->value,
                 'title' => (string) ($transcription->contentItem?->title ?? ''),
                 // The RecentPublishedItems columns the honesty audit promised
                 // this stream would carry: podcast and episode status.
@@ -770,7 +771,7 @@ class EditorialMetrics
             ->limit($limit)
             ->get(['id', 'attachable_type', 'attachable_id', 'created_at'])
             ->map(fn (MediaAttachment $attachment): array => [
-                'type' => 'media',
+                'type' => StreamEventType::Media->value,
                 'title' => (string) ($attachment->attachable?->title ?? ''),
                 'subtitle' => null,
                 'url' => $attachment->attachable_id
@@ -789,7 +790,7 @@ class EditorialMetrics
             ->limit($limit)
             ->get()
             ->map(fn (Import $import): array => [
-                'type' => 'import',
+                'type' => StreamEventType::Import->value,
                 'title' => (string) $import->file_name,
                 'subtitle' => __('admin.dashboard.stream.import_rows', [
                     'successful' => (int) $import->successful_rows,
@@ -809,7 +810,7 @@ class EditorialMetrics
             ->limit($limit)
             ->get(['id', 'form_name_snapshot', 'form_key', 'created_at'])
             ->map(fn (PublicFormSubmission $submission): array => [
-                'type' => 'submission',
+                'type' => StreamEventType::Submission->value,
                 'title' => (string) ($submission->form_name_snapshot ?: $submission->form_key),
                 'subtitle' => null,
                 'url' => PublicFormSubmissionResource::getUrl('edit', ['record' => $submission->getKey()]),

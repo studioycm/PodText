@@ -23,14 +23,14 @@
             @foreach ($types as $type)
                 <button
                     type="button"
-                    wire:click="selectType('{{ $type }}')"
+                    wire:click="selectType('{{ $type->value }}')"
                     @class([
                         'rounded-full px-2.5 py-0.5',
-                        'bg-primary-600 text-white dark:bg-primary-500' => $activeType === $type,
-                        'border border-gray-300 text-gray-600 dark:border-white/10 dark:text-gray-300' => $activeType !== $type,
+                        'bg-primary-600 text-white dark:bg-primary-500' => $activeType === $type->value,
+                        'border border-gray-300 text-gray-600 dark:border-white/10 dark:text-gray-300' => $activeType !== $type->value,
                     ])
                 >
-                    {{ __("admin.dashboard.stream.types.{$type}") }}
+                    {{ $type->getLabel() }}
                 </button>
             @endforeach
 
@@ -53,9 +53,10 @@
         @else
             <ul class="mt-4 divide-y divide-gray-100 dark:divide-white/5">
                 @foreach ($events as $event)
+                    @php($eventType = \App\Enums\StreamEventType::from($event['type']))
                     <li class="flex flex-wrap items-center gap-2 py-2 text-sm" data-testid="stream-row">
-                        <span class="{{ $badges[$event['type']] }} rounded-full px-2 py-0.5 text-xs font-medium">
-                            {{ __("admin.dashboard.stream.types.{$event['type']}") }}
+                        <span class="{{ $eventType->chipClass() }} rounded-full px-2 py-0.5 text-xs font-medium">
+                            {{ $eventType->getLabel() }}
                         </span>
 
                         @if ($event['url'])
