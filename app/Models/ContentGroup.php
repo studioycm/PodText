@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\MediaAttachmentRole;
 use App\Enums\PublicationStatus;
+use App\Models\Concerns\InteractsWithPublicationDate;
 use App\Observers\ContentGroupObserver;
 use App\Support\Slugs\HebrewSlugger;
 use Database\Factories\ContentGroupFactory;
@@ -37,6 +38,8 @@ class ContentGroup extends Model
 {
     /** @use HasFactory<ContentGroupFactory> */
     use HasFactory;
+
+    use InteractsWithPublicationDate;
 
     protected $attributes = [
         'group_type_label_singular' => 'Podcast',

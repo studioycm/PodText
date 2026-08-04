@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\PublicationStatus;
+use App\Models\Concerns\InteractsWithPublicationDate;
 use App\Support\Transcriptions\SingleTranscriptionLens;
 use App\Support\Transcriptions\TranscriptWordCounter;
 use App\Support\Transcripts\TranscriptSegmentParser;
@@ -34,6 +35,8 @@ class Transcription extends Model
 {
     /** @use HasFactory<TranscriptionFactory> */
     use HasFactory;
+
+    use InteractsWithPublicationDate;
 
     protected $attributes = [
         'language_code' => 'he',

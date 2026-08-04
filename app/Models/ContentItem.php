@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\MediaAttachmentRole;
 use App\Enums\PublicationStatus;
+use App\Models\Concerns\InteractsWithPublicationDate;
 use App\Observers\ContentItemObserver;
 use App\Support\Media\ContentItemMediaRules;
 use App\Support\Slugs\HebrewSlugger;
@@ -61,6 +62,7 @@ class ContentItem extends Model
     use HasFactory;
 
     use HasTags;
+    use InteractsWithPublicationDate;
 
     protected $attributes = [
         'is_pinned' => false,
