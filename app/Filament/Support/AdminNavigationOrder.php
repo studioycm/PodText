@@ -26,6 +26,7 @@ use App\Filament\Resources\ContentGroups\ContentGroupResource;
 use App\Filament\Resources\ContentItems\ContentItemResource;
 use App\Filament\Resources\ContentTags\ContentTagResource;
 use App\Filament\Resources\HomepageSections\HomepageSectionResource;
+use App\Filament\Resources\Imports\ImportResource;
 use App\Filament\Resources\Media\MediaResource;
 use App\Filament\Resources\PublicFormSubmissions\PublicFormSubmissionResource;
 use App\Filament\Resources\SettingsBackups\SettingsBackupResource;
@@ -132,6 +133,10 @@ class AdminNavigationOrder
         ],
         ImporterSettings::class => [
             'sort' => 320,
+            'group' => null,
+        ],
+        ImportResource::class => [
+            'sort' => 325,
             'group' => null,
         ],
         ManagePublicForms::class => [

@@ -40,7 +40,10 @@
                             <a href="{{ $row->url }}" class="truncate hover:underline">{{ $row->label }}</a>
                         </dt>
                         <dd class="flex flex-1 items-center gap-2">
-                            <div class="h-2.5 flex-1 overflow-hidden rounded-full bg-gray-100 dark:bg-white/5" dir="ltr">
+                            <div
+                                class="h-2.5 flex-1 overflow-hidden rounded-full bg-gray-100 dark:bg-white/5"
+                                dir="ltr"
+                            >
                                 <div
                                     class="{{ $row->meta('bar', 'bg-info-500') }} h-2.5 rounded-full"
                                     style="width: {{ max(6, (int) round(($row->value / $peak) * 100)) }}%"

@@ -43,7 +43,7 @@
             </ul>
 
             @if ($reduced)
-                <p class="mt-2 text-xs text-warning-600 dark:text-warning-400" data-testid="connection-reduced">
+                <p class="text-warning-600 dark:text-warning-400 mt-2 text-xs" data-testid="connection-reduced">
                     {{ __('admin.dashboard.connection.reduced_note') }}
                 </p>
             @endif
@@ -51,7 +51,8 @@
 
         <p class="mt-3 text-xs text-gray-500 dark:text-gray-400">
             <a href="{{ $manageUrl }}" class="hover:underline">{{ __('admin.dashboard.connection.manage') }}</a>
-            · <a href="{{ $fetcherUrl }}" class="hover:underline">{{ __('admin.dashboard.connection.open_fetcher') }}</a>
+            ·
+            <a href="{{ $fetcherUrl }}" class="hover:underline">{{ __('admin.dashboard.connection.open_fetcher') }}</a>
         </p>
     </x-filament::section>
 </x-filament-widgets::widget>

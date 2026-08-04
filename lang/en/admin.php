@@ -2284,8 +2284,8 @@ return [
                 'upsert' => 'Create and update',
             ],
             'relation_mode' => 'Relation import mode',
-        'name' => 'Import name',
-        'name_helper' => 'Optional label for this import. Shown in the intake queue and the imports listing instead of the file name.',
+            'name' => 'Import name',
+            'name_helper' => 'Optional label for this import. Shown in the intake queue and the imports listing instead of the file name.',
             'relation_mode_helper' => 'Replace treats provided relation cells as the complete enabled set. Add only attaches missing values and never detaches. Blank relation cells leave existing categories, tags, and transcribers unchanged in both modes.',
             'relation_modes' => [
                 'add_only' => 'Add only',

@@ -2,6 +2,7 @@
 
 use App\Enums\MediaAttachmentRole;
 use App\Enums\PublicationStatus;
+use App\Enums\UserRole;
 use App\Filament\Exports\AuthorExporter;
 use App\Filament\Exports\CategoryExporter;
 use App\Filament\Exports\ContentGroupExporter;
@@ -651,7 +652,12 @@ it('exports relationship reference keys and escapes spreadsheet formula text', f
 
 it('denies public access to admin import and export surfaces and protects generated files by owner', function (): void {
     $owner = User::factory()->create();
-    $other = User::factory()->create();
+    // A PLAIN-role stranger: the user factory defaults to the admin role,
+    // and since ImportPolicy::view (phase 3) an admin non-owner is
+    // legitimately ALLOWED to read failure CSVs — the owner-protection
+    // boundary this test pins is the non-admin one. (The admin-allowed
+    // direction is pinned in DashboardIntakeMetricsTest.)
+    $other = User::factory()->role(UserRole::User)->create();
 
     $export = Export::query()->create([
         'file_disk' => 'local',

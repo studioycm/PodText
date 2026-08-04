@@ -49,6 +49,7 @@ use App\Filament\Resources\HomepageSections\HomepageSectionResource;
 use App\Filament\Resources\HomepageSections\Pages\CreateHomepageSection;
 use App\Filament\Resources\HomepageSections\Pages\EditHomepageSection;
 use App\Filament\Resources\HomepageSections\Pages\ListHomepageSections;
+use App\Filament\Resources\Imports\ImportResource;
 use App\Filament\Resources\Media\MediaResource;
 use App\Filament\Resources\PublicFormSubmissions\PublicFormSubmissionResource;
 use App\Filament\Resources\SettingsBackups\SettingsBackupResource;
@@ -229,6 +230,10 @@ it('orders every registered admin navigation resource and page through the centr
         ],
         ImporterSettings::class => [
             'sort' => 320,
+            'group' => null,
+        ],
+        ImportResource::class => [
+            'sort' => 325,
             'group' => null,
         ],
         ManagePublicForms::class => [
