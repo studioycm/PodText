@@ -205,6 +205,25 @@ return [
             'missing_category_description' => 'No category on the episode or its podcast, so it is missing from category browsing.',
         ],
     ],
+    'episode_scopes' => [
+        'all' => 'All',
+        'drafts' => 'Drafts',
+        'visible' => 'Visible',
+        'scheduled' => 'Scheduled',
+        'blocked' => 'Blocked',
+        'pinned' => 'Pinned',
+        'descriptions' => [
+            'all' => 'Every episode in the library.',
+            'drafts' => 'Episodes still in draft.',
+            'visible' => 'Episodes live on the public site right now.',
+            'scheduled' => 'Published episodes waiting for their publish date.',
+            'blocked' => 'Published episodes the public cannot see yet — the podcast or the transcript is not published.',
+            'pinned' => 'Episodes currently pinned.',
+        ],
+    ],
+    'episodes' => [
+        'subheading_scoped_to_podcast' => ':scope Showing the podcast ":podcast".',
+    ],
     'resources' => [
         'author' => [
             'singular' => 'Author',

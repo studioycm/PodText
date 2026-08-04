@@ -205,6 +205,25 @@ return [
             'missing_category_description' => 'אין קטגוריה לפרק או לפודקאסט שלו, ולכן הוא נעדר מדפדוף הקטגוריות.',
         ],
     ],
+    'episode_scopes' => [
+        'all' => 'הכל',
+        'drafts' => 'טיוטות',
+        'visible' => 'גלויים',
+        'scheduled' => 'מתוזמנים',
+        'blocked' => 'חסומים',
+        'pinned' => 'מוצמדים',
+        'descriptions' => [
+            'all' => 'כל הפרקים בספרייה.',
+            'drafts' => 'פרקים שעדיין בטיוטה.',
+            'visible' => 'פרקים שגלויים באתר כרגע.',
+            'scheduled' => 'פרקים מפורסמים שממתינים לתאריך הפרסום.',
+            'blocked' => 'פרקים מפורסמים שהציבור עדיין לא רואה — הפודקאסט או התמלול אינם מפורסמים.',
+            'pinned' => 'פרקים מוצמדים כרגע.',
+        ],
+    ],
+    'episodes' => [
+        'subheading_scoped_to_podcast' => ':scope מציג את הפודקאסט «:podcast».',
+    ],
     'resources' => [
         'author' => [
             'singular' => 'מחבר',
