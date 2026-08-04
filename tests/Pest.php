@@ -4,6 +4,7 @@ use App\Enums\TranscriptionMode;
 use App\Enums\UserRole;
 use App\Jobs\SettingsBackupSnapshotJob;
 use App\Settings\AdminUxSettings;
+use Illuminate\Filesystem\Filesystem;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Queue;
@@ -25,6 +26,69 @@ foreach ([
     putenv("{$key}={$value}");
     $_ENV[$key] = $value;
     $_SERVER[$key] = $value;
+}
+
+/*
+|--------------------------------------------------------------------------
+| Process-scoped fake disk roots
+|--------------------------------------------------------------------------
+|
+| `Storage::fake($disk)` roots every faked disk at
+| storage/framework/testing/disks/<disk> and `cleanDirectory()`s it. Without a
+| token that root is shared by every pest process on the machine, so a second
+| run faking the same disk deletes fixtures out from under an in-flight browser
+| test: the Storage panel lists nothing, DOM waits expire, and the failure
+| reads as a flake with no JS errors. Proven mechanism and measurements:
+| docs/research/browser-timeout-contention-investigation.md.
+|
+| The token suffix Laravel already supports is the cure. Paratest sets
+| TEST_TOKEN per worker, so only fill it in when it is absent, and verify
+| before changing this: a token affects the fake disk root ONLY — cache prefix,
+| compiled view path and database are identical with and without it, because
+| the parallel cache/view/database callbacks are never invoked outside the
+| parallel runner.
+|
+*/
+
+$testingDisksPath = dirname(__DIR__).'/storage/framework/testing/disks';
+
+if ((string) ($_SERVER['TEST_TOKEN'] ?? '') === '') {
+    $processToken = 'p'.getmypid();
+
+    putenv("TEST_TOKEN={$processToken}");
+    $_ENV['TEST_TOKEN'] = $processToken;
+    $_SERVER['TEST_TOKEN'] = $processToken;
+
+    register_shutdown_function(static function () use ($testingDisksPath, $processToken): void {
+        foreach ((array) glob($testingDisksPath.'/*_test_'.$processToken) as $root) {
+            if (is_string($root) && is_dir($root)) {
+                (new Filesystem)->deleteDirectory($root);
+            }
+        }
+    });
+}
+
+/*
+ * Sweep roots orphaned by runs that died before their shutdown hook (SIGKILL,
+ * crashes). Only this scheme's `p<pid>` roots are considered, only when their
+ * process is gone, and only past an age floor that no single run can reach —
+ * a live concurrent session's root must never be removed.
+ */
+foreach ((array) glob($testingDisksPath.'/*_test_p[0-9]*') as $orphanCandidate) {
+    if (! is_string($orphanCandidate) || ! is_dir($orphanCandidate)) {
+        continue;
+    }
+
+    $ownerPid = (int) mb_substr((string) mb_strrchr($orphanCandidate, 'p'), 1);
+    $modifiedAt = (int) @filemtime($orphanCandidate);
+
+    if ($ownerPid > 0 && posix_kill($ownerPid, 0)) {
+        continue;
+    }
+
+    if ($modifiedAt > 0 && $modifiedAt < time() - 3600) {
+        (new Filesystem)->deleteDirectory($orphanCandidate);
+    }
 }
 
 /*
