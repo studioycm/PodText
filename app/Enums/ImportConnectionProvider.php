@@ -23,6 +23,12 @@ enum ImportConnectionProvider: string implements HasLabel
             ->all();
     }
 
+    /** The one home of "a null imports.provider reads as manual" (legacy pre-column rows). */
+    public static function fromImportValue(?string $value): self
+    {
+        return self::tryFrom((string) $value) ?? self::Manual;
+    }
+
     public function defaultAuthType(): ImportConnectionAuthType
     {
         return match ($this) {

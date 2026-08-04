@@ -164,3 +164,11 @@ it('echoes the source scope instead of podcast and range on intake', function ()
         ->assertSee(ImportConnectionProvider::Spotify->getLabel())
         ->assertDontSee(__('admin.dashboard.filters.all_podcasts'));
 });
+
+it('renders declared-provider rows under their source filter', function (): void {
+    failedImport(fileName: 'drive.csv')->forceFill(['provider' => 'google_drive'])->save();
+
+    Livewire::test(IntakeQueueWidget::class, ['pageFilters' => ['source' => ImportConnectionProvider::GoogleDrive->value]])
+        ->assertSee('drive.csv')
+        ->assertDontSeeHtml('data-testid="intake-source-empty"');
+});

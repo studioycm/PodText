@@ -10,13 +10,20 @@ use App\Enums\MediaLibraryTask;
 use App\Enums\StreamEventType;
 use App\Enums\TranscriptionMode;
 use App\Enums\UserRole;
+use App\Filament\Imports\AuthorImporter;
+use App\Filament\Imports\CategoryImporter;
+use App\Filament\Imports\ContentGroupImporter;
+use App\Filament\Imports\ContentItemImporter;
+use App\Filament\Imports\TranscriptionImporter;
 use App\Models\ImportConnection;
 use App\Models\Media;
 use App\Models\PublicFormSubmission;
 use App\Models\User;
 use App\Support\Dashboard\EditorialMetrics;
 use App\Support\Media\ExternalImageFailureMessage;
+use Filament\Actions\Imports\Events\ImportStarted;
 use Filament\Facades\Filament;
+use Filament\Forms\Components\TextInput;
 use Filament\Support\Contracts\HasLabel;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Lang;
@@ -187,4 +194,77 @@ it('routes the failure message and picker notification through the enums', funct
     );
 
     expect($message)->toBe(__('admin.media_library.url_failure_invalid_image'));
+});
+
+it('stamps modal imports manual with the optional custom name', function (): void {
+    // The Filament import modal is the only producer of ImportStarted
+    // today and IS the manual process: the stamp is unconditional
+    // (operator override 2026-08-04 — source is process-decided, never
+    // user-declared).
+    $import = failedImport();
+    event(new ImportStarted($import, [], ['name' => 'July backfill']));
+    expect($import->fresh()->provider)->toBe('manual')
+        ->and($import->fresh()->name)->toBe('July backfill');
+
+    // raw-state: the name is browser-supplied free text — blank,
+    // non-string or oversized values stay null; the manual stamp lands
+    // regardless.
+    $other = failedImport(fileName: 'other.csv');
+    event(new ImportStarted($other, [], ['name' => str_repeat('x', 500)]));
+    expect($other->fresh()->provider)->toBe('manual')
+        ->and($other->fresh()->name)->toBeNull();
+});
+
+it('offers only the optional name field in every importer modal schema', function (): void {
+    // Source-level assertion by design: action-modal prose is NOT in the
+    // Livewire HTML at mountAction time (2R gotcha), so the schema is
+    // asserted where it is built, non-vacuously. No importer may offer a
+    // source select — source is process-decided (operator override
+    // 2026-08-04).
+    foreach ([
+        ContentItemImporter::class,
+        AuthorImporter::class,
+        TranscriptionImporter::class,
+        ContentGroupImporter::class,
+        CategoryImporter::class,
+    ] as $importer) {
+        $components = collect($importer::getOptionsFormComponents());
+
+        expect($components->first(fn ($component): bool => $component->getName() === 'name'))
+            ->toBeInstanceOf(TextInput::class)
+            ->and($components->first(fn ($component): bool => $component->getName() === 'source'))
+            ->toBeNull();
+    }
+
+    foreach (['en', 'he'] as $locale) {
+        expect(Lang::hasForLocale('admin.import.options.name', $locale))->toBeTrue()
+            ->and(Lang::hasForLocale('admin.import.options.name_helper', $locale))->toBeTrue();
+    }
+});
+
+it('titles queue import rows by custom name over file name', function (): void {
+    failedImport(fileName: 'episodes.csv')->forceFill(['name' => 'July backfill'])->save();
+
+    $row = collect(app(EditorialMetrics::class)->intakeQueue()['rows'])
+        ->firstWhere('type', StreamEventType::Import);
+
+    expect($row['title'])->toBe('July backfill');
+    // The merges-queue test pinning a name-less import's title to its file
+    // name stays green — that is the fallback half of the same rule.
+});
+
+it('scopes the queue by stamped provider', function (): void {
+    PublicFormSubmission::factory()->create();
+    failedImport();                                          // legacy: provider null
+    failedImport(fileName: 'drive.csv')->forceFill(['provider' => 'google_drive'])->save();
+
+    $metrics = app(EditorialMetrics::class);
+
+    expect($metrics->intakeQueue(source: ImportConnectionProvider::Manual)['counts'])
+        ->toBe(['all' => 2, 'submissions' => 1, 'imports' => 1])
+        ->and(collect($metrics->intakeQueue(source: ImportConnectionProvider::GoogleDrive)['rows'])->pluck('title')->all())
+        ->toBe(['drive.csv'])
+        ->and($metrics->intakeQueue(source: ImportConnectionProvider::GoogleDrive)['counts'])
+        ->toBe(['all' => 1, 'submissions' => 0, 'imports' => 1])
+        ->and($metrics->intakeQueue(source: ImportConnectionProvider::Spotify)['rows'])->toBe([]);
 });

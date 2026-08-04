@@ -14,6 +14,7 @@ use Filament\Actions\Imports\Importer;
 use Filament\Actions\Imports\Models\FailedImportRow;
 use Filament\Actions\Imports\Models\Import;
 use Filament\Forms\Components\Select;
+use Filament\Forms\Components\TextInput;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Support\Collection;
@@ -60,6 +61,14 @@ trait ConfiguresContentImports
                 ])
                 ->default('preserve')
                 ->required(),
+            // The only user-facing intake control: an optional custom label.
+            // Source is process-decided (operator override 2026-08-04) —
+            // this modal never offers a source select; StampImportSource
+            // stamps every modal import manual.
+            TextInput::make('name')
+                ->label(__('admin.import.options.name'))
+                ->helperText(__('admin.import.options.name_helper'))
+                ->maxLength(120),
         ];
     }
 

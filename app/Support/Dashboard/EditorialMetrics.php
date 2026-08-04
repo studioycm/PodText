@@ -175,14 +175,26 @@ class EditorialMetrics
      */
     public function intakeQueue(?ImportConnectionProvider $source = null, ?StreamEventType $kind = null, int $limit = 10): array
     {
-        if ($source !== null && $source !== ImportConnectionProvider::Manual) {
-            return ['rows' => [], 'counts' => ['all' => 0, 'submissions' => 0, 'imports' => 0]];
-        }
+        // Submissions are manual acts, so only the manual channel (or no
+        // channel) lists them; imports scope by their PROCESS-STAMPED
+        // provider, where null means a pre-column legacy row — a manual
+        // act by definition (the Q1 override: source is process-decided).
+        $withSubmissions = $source === null || $source === ImportConnectionProvider::Manual;
 
-        $snapshot = $this->intakeSnapshot()['queue'];
+        $submissionsQuery = fn (): Builder => PublicFormSubmission::query()
+            ->status(PublicFormSubmissionStatus::New);
 
-        $submissions = $kind === StreamEventType::Import ? collect() : PublicFormSubmission::query()
-            ->status(PublicFormSubmissionStatus::New)
+        $importsQuery = fn (): Builder => Import::query()
+            ->whereHas('failedRows')
+            ->when($source === ImportConnectionProvider::Manual, fn (Builder $query): Builder => $query->where(
+                fn (Builder $inner) => $inner
+                    ->where('provider', ImportConnectionProvider::Manual->value)
+                    ->orWhereNull('provider'),
+            ))
+            ->when($source !== null && $source !== ImportConnectionProvider::Manual, fn (Builder $query): Builder => $query
+                ->where('provider', $source->value));
+
+        $submissions = (! $withSubmissions || $kind === StreamEventType::Import) ? collect() : $submissionsQuery()
             ->latest('submitted_at')
             ->limit($limit)
             ->get(['id', 'form_key', 'form_name_snapshot', 'submitted_at'])
@@ -194,15 +206,14 @@ class EditorialMetrics
                 'at' => Carbon::parse($submission->submitted_at),
             ]);
 
-        $imports = $kind === StreamEventType::Submission ? collect() : Import::query()
-            ->whereHas('failedRows')
+        $imports = $kind === StreamEventType::Submission ? collect() : $importsQuery()
             ->withCount('failedRows')
             ->latest('created_at')
             ->limit($limit)
             ->get()
             ->map(fn (Import $import): array => [
                 'type' => StreamEventType::Import,
-                'title' => (string) $import->file_name,
+                'title' => (string) ($import->name ?: $import->file_name),
                 'subtitle' => __('admin.dashboard.intake.failed_rows', [
                     'failed' => (int) $import->failed_rows_count,
                     'total' => (int) $import->total_rows,
@@ -211,6 +222,17 @@ class EditorialMetrics
                 'at' => Carbon::parse($import->created_at),
             ]);
 
+        if ($source === null) {
+            $snapshot = $this->intakeSnapshot()['queue'];
+            $submissionsCount = $snapshot['submissions'];
+            $importsCount = $snapshot['imports'];
+        } else {
+            // The cached snapshot counts are channel-blind; a scoped view
+            // counts its own slice live (two cheap counts).
+            $submissionsCount = $withSubmissions ? $submissionsQuery()->count() : 0;
+            $importsCount = $importsQuery()->count();
+        }
+
         return [
             'rows' => $submissions->concat($imports)
                 ->sortByDesc(fn (array $row): int => $row['at']->getTimestamp())
@@ -218,9 +240,9 @@ class EditorialMetrics
                 ->values()
                 ->all(),
             'counts' => [
-                'all' => $snapshot['submissions'] + $snapshot['imports'],
-                'submissions' => $snapshot['submissions'],
-                'imports' => $snapshot['imports'],
+                'all' => $submissionsCount + $importsCount,
+                'submissions' => $submissionsCount,
+                'imports' => $importsCount,
             ],
         ];
     }

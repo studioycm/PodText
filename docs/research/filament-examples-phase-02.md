@@ -937,3 +937,35 @@ expressions are fine). Pest 4 browser chapter: real-pointer `hover()`,
 element-targeted `keys()`, `script()` evaluation — the B1 browser test
 drives the real interaction with these instead of synthetic
 `dispatchEvent` where possible.
+
+## Reconciliation tasks · imports-provider-stamp + imports-listing-minimal (2026-08-04)
+
+Protocol run by the phase-3 implementation session before the Filament
+edits of the two reconciliation tasks. Six scattered queries
+(`import action options form components`, `importer custom modal options`,
+`read only resource list page`, `resource without create edit actions`,
+`table action download url signed`, `event listener stamp model column`,
+limit 8) against the `filament-examples` MCP (`search-examples` only —
+name-level scan of the returned corpus; full sources not read).
+
+**Verdict: no direct corpus precedent for either surface.** The hits are
+full-project pages/tables (schedule-for-doctors, teachers-payouts
+`ListTeacherPayouts`, box-score-form) — nothing touches
+`Importer::getOptionsFormComponents()`, import-modal option plumbing, or a
+read-only Resource over a vendor model. Patterns adopted instead, in-repo
+and vendor-verified (which outrank corpus examples per the protocol's own
+spirit):
+
+- **Copied (in-repo):** `ConfiguresContentImports::getOptionsFormComponents()`
+  already ships three selects through the exact vendor merge seam
+  (`ImportAction.php:181`; state → options via `:238`) — the new optional
+  `name` TextInput appends there. `SettingsBackupResource` is the read-only
+  resource shape (`canCreate(): false`, List page only, explicit policy
+  denials). `Event::listen` registration precedent at
+  `AppServiceProvider` (SettingsSaved listener).
+- **Rejected:** overriding `ImportAction::schema()` (would replace the
+  vendor modal wholesale); binding an app `Import` subclass into
+  `app(Import::class)` for casts (scope creep — read sites narrow via the
+  enum instead).
+- **Limitation recorded honestly:** only `search-examples` exists on this
+  MCP; the 197KB result was scanned at heading level only.

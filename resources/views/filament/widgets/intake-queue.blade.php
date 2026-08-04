@@ -7,11 +7,6 @@
             @include('filament.widgets.partials.stock-flow-tag')
         </div>
 
-        @if ($source !== null && $source !== \App\Enums\ImportConnectionProvider::Manual)
-            <p class="mt-4 text-xs text-gray-500 dark:text-gray-400" data-testid="intake-source-empty">
-                {{ __('admin.dashboard.intake.source_empty', ['source' => $source->getLabel()]) }}
-            </p>
-        @else
             <div class="mt-3 flex flex-wrap items-center gap-2 text-xs font-medium">
                 <button
                     type="button"
@@ -42,7 +37,19 @@
                 @endforeach
             </div>
 
-            @if (count($rows) === 0)
+            @if (count($rows) === 0 && $source !== null && $source !== \App\Enums\ImportConnectionProvider::Manual)
+                {{-- A provider scope with no stamped rows: honest, and
+                     user-unreachable for connected providers until WB
+                     stamps real fetch imports (Q1 override). --}}
+                <div class="mt-4">
+                    @include('filament.widgets.partials.empty-state', [
+                        'heading' => __('admin.dashboard.intake.empty_heading'),
+                        'description' => __('admin.dashboard.intake.source_empty', ['source' => $source->getLabel()]),
+                        'icon' => \Filament\Support\Icons\Heroicon::OutlinedInbox,
+                        'testid' => 'intake-source-empty',
+                    ])
+                </div>
+            @elseif (count($rows) === 0)
                 <div class="mt-4">
                     @include('filament.widgets.partials.empty-state', [
                         'heading' => __('admin.dashboard.intake.empty_heading'),
@@ -87,6 +94,5 @@
                     </p>
                 @endif
             @endif
-        @endif
     </x-filament::section>
 </x-filament-widgets::widget>
