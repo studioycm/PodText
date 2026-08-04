@@ -17,6 +17,7 @@ use App\Models\Transcription;
 use App\Models\User;
 use App\Observers\CuratorMediaObserver;
 use App\Observers\EditorialMetricsCacheObserver;
+use App\Policies\ContentItemPolicy;
 use App\Policies\CuratorMediaPolicy;
 use App\Policies\ImportPolicy;
 use App\Policies\SettingsBackupPolicy;
@@ -196,6 +197,7 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(Media::class, CuratorMediaPolicy::class);
         Gate::policy(SettingsBackupVersion::class, SettingsBackupPolicy::class);
         Gate::policy(Import::class, ImportPolicy::class);
+        Gate::policy(ContentItem::class, ContentItemPolicy::class);
         Gate::define(UserRole::SuperAdmin->value, fn (User $user): bool => $user->hasRoleAtLeast(UserRole::SuperAdmin));
         Gate::define('multi-transcription', function (User $user, UserRole|string|null $minimum = null): bool {
             $minimumRole = $minimum instanceof UserRole
