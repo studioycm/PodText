@@ -83,6 +83,43 @@ inherits them.
   evidence" section for the orchestrator-owned ledger; the ledger is never
   edited directly.
 
+## Evidence labels (per `planned-fixture-drift` — orchestrator directive 2026-08-04)
+
+Every fixture-level claim below is labelled so the implementer inherits
+hypotheses as hypotheses, not assumptions dressed as facts. The promised
+tests serve named guards: `two-truths-two-cells` (pairs 1/3/4),
+`bounded-or-rolled-up` (pair 2, D-3), `rtl-home-field` (Task 4).
+
+**VERIFIED against HEAD in the authoring session:**
+`EditorialStatsWidget` cards shape (`key`/`value`, one card keyed
+`visible`); `Heatmap::total()`; `podcastHealth()` rows as `BreakdownRow`
+with `value` = visible / `of` = published; `blockersProgress()` returning
+`Burndown` with `public int $remaining` / `public int $total`;
+`SeriesRow::$points` as `array<int, float>` (hence the `(int)` cast);
+`funnelSeries()` keys `draft|published|transcribed`; the he
+`burndown_invisible` string and the `queue-burndown`/`queue-burndown-{key}`
+testids; `uses()->group('…')` as the exact in-repo group idiom
+(`CompiledThemeSentinelTest.php:37`); the phpunit.xml `<groups><exclude>`
+block; UTC-wall cast semantics (pinned empirically by the phase-3 Task-5
+test); all factory idioms used by `consistencyFixture()` (they are the
+phase-3 suites' own, run green this week); every `data-testid` the browser
+suite targets (created/asserted by the phase-3 suites).
+
+**UNVERIFIED HYPOTHESES (implementer verifies at red/green, adjusts the
+FIXTURE or the labelled fallback — never the assertion direction):**
+1. Queue population = both tiers as distinct episodes (expected count 3) —
+   inferred from the phase-1 handoff correction, `queueQuery()`'s body was
+   NOT read; if the queue holds a different population, reconcile the pin
+   against the actual query and report the discrepancy.
+2. `->repeat(3)` as the soak spelling (fallback already stated in Task 4).
+3. `$page->script()` returning an associative array to PHP (idiom inferred
+   from the B1 suite; adapt to scalar probes if marshalling differs).
+4. Lens-pill click-by-label (fallback already stated: labelled-waitFor
+   script click).
+5. `publicationHeatmap()` counting exactly the published_at events the
+   series counts — the pair-2 test IS the check; if it reds, that is the
+   decision-10 finding, not a fixture bug.
+
 ## Decision 10, verbatim (the four pairs)
 
 > **Phase 4's consistency tests cover** all four pairs: visible across the
@@ -281,7 +318,9 @@ it('reconciles the heatmap total with the funnel published series', function ():
     $heatmap = $metrics->publicationHeatmap($range);
 
     // Two independently implemented aggregations of the same events.
-    expect($heatmap->total())->toBe(array_sum($publishedSeries->points))
+    // SeriesRow::$points is array<int, float> (verified) — cast the sum or
+    // the strict toBe() fails on 4.0 vs 4.
+    expect($heatmap->total())->toBe((int) array_sum($publishedSeries->points))
         ->and($heatmap->total())->toBe(4);
 });
 ```
