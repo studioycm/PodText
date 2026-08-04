@@ -185,3 +185,45 @@ Two batches, 10 queries total, scoped to `filament/filament`. Confirmed:
   18 transcriptions, 0 drafts, 3 users. Production is the filling era
   (dashboard program evidence); design targets tens→low hundreds of episodes,
   single-digit→tens of podcasts, 2-3 admin users.
+
+## Addendum (2026-08-04/05) — second-look research rounds
+
+- **Corpus second look** (operator-pointed): refined queries surfaced what
+  the first passes missed — `menu-paywall-restrict` (a `$shouldRegisterNavigation
+  = false` page, per-user-state `getNavigationIcon()`/`getNavigationBadge()`)
+  and `cms-blog-system-shield` (policy-driven field visibility with a custom
+  `publish` ability). The two operator-named "grouping" projects were both
+  checked: `sports-standings` groups via one Livewire table per group (NOT
+  the `->groups()` API — its own project page confirms), and
+  `teachers-payouts` shows no grouping API in any returned file or the public
+  page (tutorial paywalled; useful anyway for role-conditional
+  `recordActions()`, a defaulted month `SelectFilter`, and skipped-count bulk
+  actions). `SelectColumn` and `Grouping\Group` objects remained absent from
+  the corpus after four passes — vendor/docs verification stands.
+- **LaravelDaily round**: the live-editing lesson (F3, paywalled preview)
+  confirms instant saves; the grouping+summarizers lesson exists; two column
+  gotchas registered — `formatStateUsing()` skips null state (use
+  `default()`/`placeholder()`), and `state()`/`formatStateUsing()` need the
+  column in the query's selects.
+- **Targeted 5.x doc pages** (operator-listed): SelectColumn (implicit `in`
+  rule; `selectablePlaceholder(false)` required for non-nullable columns;
+  security note verbatim), custom columns (`make:filament-table-column`,
+  `$getState()`/`$record`, `evaluate()` for closure config), columns
+  overview (cell clicks override `recordUrl` per cell; `disabledClick()`;
+  column `action()`; per-column `searchable(isIndividual:)`;
+  `persistSortInSession`), grouping (full closure set incl.
+  `groupQueryUsing`; summaries per group), form lifecycle
+  (`live(onBlur/debounce)`, partial-render levers, `afterStateUpdatedJs`),
+  enums (auto label/color/icon in SelectColumn/TextColumn/ToggleButtons AND
+  group titles), `FilamentTimezone::set()` global default, `->since()` +
+  `->dateTimeTooltip()`.
+- **Editable-column testing API** (vendor): `updateTableColumnState($column,
+  $recordKey, $input)` (`tables/src/Concerns/HasColumns.php:43`),
+  `callTableColumnAction` (`:16`), `assertTableColumnStateSet`
+  (`Testing/TestsColumns.php:203`). Also `Filter::toggle()`
+  (`Filters/Filter.php:32`).
+- **R1/R2 verification workflow** (2 agents, 2026-08-05): 14/14 vendor API
+  claims confirmed with file:line evidence; boards' decision fidelity 8/9
+  with the one real violation (R2 mock missing the EQ-7 panel) fixed and
+  republished. Boards archived at
+  `docs/research/episodes-lens/episodes-lens-boards.html`.

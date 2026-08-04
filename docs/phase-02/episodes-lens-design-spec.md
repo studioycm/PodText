@@ -689,3 +689,58 @@ project).
 This session was read-only: no app code, migrations, dependencies, or tests
 were changed; deliverables are this spec and the research doc. Operator EQ
 answers + phase selection are required before any implementation planning.
+
+---
+
+## 12 · Decision annex — ALL decisions answered (2026-08-04/05)
+
+The operator answered the full register across three interview rounds plus
+the boards round. This annex is the authoritative record; where it refines
+§7/§8, it wins.
+
+**EQ answers.** EQ-1: episodes ungrouped on top; podcasts + transcriptions in
+«ניהול תוכן», **collapsed**, and the group moves **below «ניהול סיווג»**.
+EQ-2: transcriptions item hidden while `single` mode **for non-super-admins**
+(returns in multi mode; super-admins always see it). EQ-3: dashboard stays
+the `/admin` landing. EQ-4: **six scopes — exact partition**
+הכל = טיוטות + גלויים + מתוזמנים + חסומים (plus מוצמדים as a pin-window
+scope). EQ-5: inline status `SelectColumn` (option a). EQ-6: policy with
+**delete = super-admin only** (option a; bulk-delete + workspace-delete
+follow). EQ-7: **open filter panel above the table**
+(`FiltersLayout::AboveContentCollapsible` — supersedes §7.7's dropdown
+recommendation). EQ-8: podcast + status grouping now (option a; month stays
+Jerusalem-gated). EQ-9: remedy doors + page link (option a). EQ-10: default
+sort `updated_at` desc. EQ-11: labels unchanged until the client's
+vocabulary arrives. EQ-12: workspace strip = read + doors (option a).
+
+**Boards round.** Base = board A; from B: compact stat-chip strip (1 row max)
++ grouping toggles + sort toggles; from C: all four pieces. Column rule:
+**only the title column is non-toggleable**; the column manager
+(`reorderableColumns()`) owns everything else.
+
+**New model rules (operator-authored).**
+1. `publish-stamps-date`: saving any record as published with a null
+   publish-date stamps it `now()`; an explicit date is never overwritten;
+   unpublishing keeps the date. Applies to every status+published-date pair —
+   `ContentItem`, `ContentGroup`, `Transcription`. (Amends contract C1's
+   "no automation" corollary.)
+2. `effective-published-date` resolver: where a publish date is *read*,
+   published rows with a null date fall back to `created_at` — one
+   centralized home (Eloquent `Attribute` accessor + a `COALESCE` sort
+   scope), read-side only, **no backfill**.
+
+**Principles.** P-EL1–P-EL6 ratified as-is; two new principles adopted:
+**P-EL7 `toggles-over-selects`** (tiny bounded value sets render as grouped
+ToggleButtons; selects only for growing sets) and **P-EL8
+`manager-owns-columns`** (every non-identity column toggleable + reorderable;
+the column manager is the density control; structural loop guard).
+
+**Realizations.** Two operator-reviewed realizations of the blueprint exist —
+R1 native-first (stock APIs + custom columns/actions only) and R2
+custom-forward (chip strip, toggle rows, three-segment visibility cell,
+saved views, per-column search, sticky prefs). Adopted path: **R1 ships
+first** (see `episodes-lens-r1-implementation-plan.md`), R2 follows as its
+own phase. A 2-agent verification pass confirmed all 14 vendor API claims
+(file:line) and the boards' decision fidelity. The boards artifact is
+archived at `docs/research/episodes-lens/episodes-lens-boards.html`
+(readable-binding: this annex, not the artifact, is the contract).

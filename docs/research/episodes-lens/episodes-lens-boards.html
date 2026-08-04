@@ -1,0 +1,666 @@
+<title>Episodes Lens — Control Boards</title>
+<style>
+  :root {
+    --page: #f6f7f9;
+    --card: #ffffff;
+    --ink: #101828;
+    --ink-2: #475467;
+    --ink-3: #98a2b3;
+    --line: #e4e7ec;
+    --line-2: #eef0f4;
+    --amber: #b45309;
+    --amber-bg: #fef3c7;
+    --amber-solid: #f59e0b;
+    --success: #067647;
+    --success-bg: #d1fadf;
+    --danger: #b42318;
+    --danger-bg: #fee4e2;
+    --info: #175cd3;
+    --info-bg: #d1e9ff;
+    --warn: #b54708;
+    --warn-bg: #fef0c7;
+    --gray-badge: #475467;
+    --gray-badge-bg: #f2f4f7;
+    --mock-topbar: #ffffff;
+    --mock-side: #f9fafb;
+    --row-hover: #fcfcfd;
+    --tag-native: #067647;
+    --tag-wired: #b54708;
+    --tag-custom: #175cd3;
+    --shadow: 0 1px 2px rgba(16,24,40,.06), 0 1px 3px rgba(16,24,40,.1);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --page: #0c111d;
+      --card: #161b26;
+      --ink: #f0f2f5;
+      --ink-2: #b3bac6;
+      --ink-3: #667085;
+      --line: #293041;
+      --line-2: #1f2637;
+      --amber: #fbbf24;
+      --amber-bg: #3a2c10;
+      --amber-solid: #f59e0b;
+      --success: #47cd89;
+      --success-bg: #123c2a;
+      --danger: #f97066;
+      --danger-bg: #48211d;
+      --info: #6fa4f2;
+      --info-bg: #172c4d;
+      --warn: #f7b27a;
+      --warn-bg: #45300f;
+      --gray-badge: #b3bac6;
+      --gray-badge-bg: #232939;
+      --mock-topbar: #161b26;
+      --mock-side: #121724;
+      --row-hover: #1a2030;
+      --tag-native: #47cd89;
+      --tag-wired: #f7b27a;
+      --tag-custom: #6fa4f2;
+      --shadow: 0 1px 2px rgba(0,0,0,.4);
+    }
+  }
+  :root[data-theme="dark"] {
+    --page: #0c111d; --card: #161b26; --ink: #f0f2f5; --ink-2: #b3bac6; --ink-3: #667085;
+    --line: #293041; --line-2: #1f2637; --amber: #fbbf24; --amber-bg: #3a2c10; --amber-solid: #f59e0b;
+    --success: #47cd89; --success-bg: #123c2a; --danger: #f97066; --danger-bg: #48211d;
+    --info: #6fa4f2; --info-bg: #172c4d; --warn: #f7b27a; --warn-bg: #45300f;
+    --gray-badge: #b3bac6; --gray-badge-bg: #232939; --mock-topbar: #161b26; --mock-side: #121724;
+    --row-hover: #1a2030; --tag-native: #47cd89; --tag-wired: #f7b27a; --tag-custom: #6fa4f2;
+    --shadow: 0 1px 2px rgba(0,0,0,.4);
+  }
+  :root[data-theme="light"] {
+    --page: #f6f7f9; --card: #ffffff; --ink: #101828; --ink-2: #475467; --ink-3: #98a2b3;
+    --line: #e4e7ec; --line-2: #eef0f4; --amber: #b45309; --amber-bg: #fef3c7; --amber-solid: #f59e0b;
+    --success: #067647; --success-bg: #d1fadf; --danger: #b42318; --danger-bg: #fee4e2;
+    --info: #175cd3; --info-bg: #d1e9ff; --warn: #b54708; --warn-bg: #fef0c7;
+    --gray-badge: #475467; --gray-badge-bg: #f2f4f7; --mock-topbar: #ffffff; --mock-side: #f9fafb;
+    --row-hover: #fcfcfd; --tag-native: #067647; --tag-wired: #b54708; --tag-custom: #175cd3;
+    --shadow: 0 1px 2px rgba(16,24,40,.06), 0 1px 3px rgba(16,24,40,.1);
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    background: var(--page); color: var(--ink);
+    font-family: "Varela Round", "Segoe UI", system-ui, -apple-system, sans-serif;
+    margin: 0; line-height: 1.55;
+  }
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 40px 24px 80px; }
+
+  header.top { margin-bottom: 8px; }
+  .eyebrow { text-transform: uppercase; letter-spacing: .12em; font-size: 11px; color: var(--amber); font-weight: 700; }
+  h1 { font-size: 26px; margin: 6px 0 4px; text-wrap: balance; }
+  .sub { color: var(--ink-2); max-width: 68ch; margin: 0 0 18px; font-size: 14.5px; }
+
+  .legend-key { display: flex; gap: 14px; flex-wrap: wrap; font-size: 12.5px; color: var(--ink-2);
+    border: 1px solid var(--line); border-radius: 10px; padding: 10px 14px; background: var(--card); margin-bottom: 34px; }
+  .tag { display: inline-flex; align-items: center; gap: 5px; font-weight: 700; font-size: 11.5px; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+  .dot.native { background: var(--tag-native); } .dot.wired { background: var(--tag-wired); } .dot.custom { background: var(--tag-custom); }
+
+  section.board { margin-bottom: 56px; }
+  .board-head { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; margin-bottom: 4px; }
+  .board-letter { font-size: 13px; font-weight: 800; color: var(--amber); border: 1.5px solid var(--amber); border-radius: 7px; padding: 1px 9px; }
+  h2 { font-size: 19px; margin: 0; }
+  .board-blurb { color: var(--ink-2); font-size: 13.5px; margin: 4px 0 14px; max-width: 75ch; }
+
+  /* ---------- mock frame ---------- */
+  .mock { direction: rtl; border: 1px solid var(--line); border-radius: 12px; overflow: hidden;
+    background: var(--page); box-shadow: var(--shadow); font-size: 12.5px; }
+  .mock .topbar { display: flex; align-items: center; gap: 10px; padding: 8px 14px;
+    background: var(--mock-topbar); border-bottom: 1px solid var(--line); }
+  .brand { font-weight: 800; color: var(--amber-solid); font-size: 13px; }
+  .mock-body { display: flex; min-height: 340px; }
+  .side { width: 148px; flex: 0 0 148px; background: var(--mock-side); border-inline-end: 1px solid var(--line); padding: 10px 8px; font-size: 11.5px; }
+  .side .item { padding: 5px 9px; border-radius: 7px; color: var(--ink-2); margin-bottom: 1px; display: flex; justify-content: space-between; align-items: center; }
+  .side .item.active { background: var(--amber-bg); color: var(--amber); font-weight: 700; }
+  .side .grp { margin-top: 9px; color: var(--ink-3); font-size: 10px; letter-spacing: .06em; padding: 0 9px 2px; display: flex; justify-content: space-between; }
+  .side .muted { color: var(--ink-3); }
+  .main { flex: 1; padding: 12px 16px 16px; min-width: 0; }
+  .page-title-row { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 3px; }
+  .page-title { font-size: 16.5px; font-weight: 800; }
+  .btn { border-radius: 8px; padding: 5px 11px; font-weight: 700; font-size: 11.5px; border: 1px solid var(--line); background: var(--card); color: var(--ink-2); white-space: nowrap; }
+  .btn.primary { background: var(--amber-solid); border-color: var(--amber-solid); color: #422006; }
+  .subheading { color: var(--ink-2); font-size: 12px; margin-bottom: 10px; }
+  .subheading b { color: var(--ink); }
+
+  .tabs { display: flex; gap: 2px; border-bottom: 1.5px solid var(--line); margin-bottom: 10px; flex-wrap: wrap; }
+  .tab { padding: 6px 12px; color: var(--ink-2); border-bottom: 2px solid transparent; display: flex; gap: 6px; align-items: center; font-weight: 600; }
+  .tab.active { color: var(--amber); border-bottom-color: var(--amber-solid); font-weight: 800; }
+  .count-pill { background: var(--gray-badge-bg); color: var(--gray-badge); border-radius: 999px; font-size: 10.5px; padding: 0 7px; font-weight: 700; }
+  .tab.active .count-pill { background: var(--amber-bg); color: var(--amber); }
+
+  .chips { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; margin-bottom: 10px; }
+  .chips .lbl { color: var(--ink-3); font-size: 11px; }
+  .chip { display: inline-flex; align-items: center; gap: 6px; background: var(--amber-bg); color: var(--amber);
+    border-radius: 999px; padding: 2.5px 10px; font-weight: 700; font-size: 11px; }
+  .chip .x { opacity: .75; font-weight: 900; }
+  .chip.neutral { background: var(--gray-badge-bg); color: var(--gray-badge); }
+
+  .toolbar { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 8px; flex-wrap: wrap; }
+  .toolbar .search { border: 1px solid var(--line); background: var(--card); border-radius: 8px; padding: 5px 10px; color: var(--ink-3); flex: 1; max-width: 240px; }
+  .toolbar .tools { display: flex; gap: 6px; }
+
+  table.grid { width: 100%; border-collapse: collapse; background: var(--card); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; font-variant-numeric: tabular-nums; }
+  .grid th { text-align: right; font-size: 10.5px; color: var(--ink-3); font-weight: 700; padding: 7px 10px; border-bottom: 1px solid var(--line); background: var(--mock-side); white-space: nowrap; }
+  .grid td { padding: 7px 10px; border-bottom: 1px solid var(--line-2); vertical-align: middle; white-space: nowrap; }
+  .grid tr:last-child td { border-bottom: 0; }
+  .grid-scroll { overflow-x: auto; border-radius: 10px; }
+  .thumb { width: 26px; height: 26px; border-radius: 6px; background: linear-gradient(135deg, var(--amber-solid), #fcd34d); display: inline-block; vertical-align: middle; }
+  .ep-title { font-weight: 700; color: var(--ink); }
+  .badge { display: inline-flex; align-items: center; border-radius: 999px; padding: 1.5px 9px; font-size: 10.5px; font-weight: 700; }
+  .b-success { background: var(--success-bg); color: var(--success); }
+  .b-danger  { background: var(--danger-bg); color: var(--danger); }
+  .b-info    { background: var(--info-bg); color: var(--info); }
+  .b-warn    { background: var(--warn-bg); color: var(--warn); }
+  .b-gray    { background: var(--gray-badge-bg); color: var(--gray-badge); }
+  .row-actions { display: inline-flex; gap: 5px; align-items: center; color: var(--ink-3); }
+  .icon-btn { width: 22px; height: 22px; border-radius: 6px; border: 1px solid var(--line); display: inline-flex; align-items: center; justify-content: center; font-size: 11px; background: var(--card); }
+  .sel { display: inline-flex; align-items: center; gap: 7px; border: 1px solid var(--line); border-radius: 7px; padding: 2.5px 8px; background: var(--card); font-size: 11px; color: var(--ink); }
+  .sel .chev { color: var(--ink-3); font-size: 9px; }
+  .pagi { display: flex; justify-content: space-between; align-items: center; margin-top: 9px; color: var(--ink-2); font-size: 11.5px; flex-wrap: wrap; gap: 6px; }
+  .pagi b { color: var(--ink); }
+  .pagi .pages { display: inline-flex; gap: 3px; }
+  .pg { border: 1px solid var(--line); background: var(--card); border-radius: 6px; min-width: 22px; text-align: center; padding: 2px 5px; }
+  .pg.on { background: var(--amber-bg); color: var(--amber); border-color: var(--amber-solid); font-weight: 800; }
+
+  .group-head td { background: var(--mock-side); font-weight: 800; color: var(--ink-2); font-size: 11.5px; }
+  .group-head .car { color: var(--ink-3); margin-inline-end: 5px; }
+
+  .tgl-row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-bottom: 10px; }
+  .tgl-lbl { font-size: 11px; color: var(--ink-3); }
+  .tgl { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: var(--card); }
+  .tgl span { padding: 4px 11px; font-size: 11px; font-weight: 700; color: var(--ink-2); border-inline-end: 1px solid var(--line); }
+  .tgl span:last-child { border-inline-end: 0; }
+  .tgl span.on { background: var(--amber-bg); color: var(--amber); }
+
+  .stat-row { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-bottom: 12px; }
+  .stat { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 8px 11px; }
+  .stat.on { border-color: var(--amber-solid); background: var(--amber-bg); }
+  .stat .n { font-size: 17px; font-weight: 800; }
+  .stat .t { font-size: 10.5px; color: var(--ink-2); font-weight: 700; }
+  .stat.on .t, .stat.on .n { color: var(--amber); }
+  .stat .d { font-size: 9.5px; color: var(--ink-3); }
+
+  .filter-panel { border: 1px solid var(--line); background: var(--card); border-radius: 10px; padding: 10px 12px; margin-bottom: 10px; }
+  .filter-panel .fp-head { display: flex; justify-content: space-between; color: var(--ink-2); font-weight: 700; font-size: 11.5px; margin-bottom: 8px; }
+  .fp-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px 14px; }
+  .fp-field .fl { font-size: 10px; color: var(--ink-3); margin-bottom: 3px; font-weight: 700; }
+  .fp-sel { border: 1px solid var(--line); border-radius: 7px; padding: 4px 9px; color: var(--ink-2); display: flex; justify-content: space-between; background: var(--page); }
+
+  /* ---------- compact stat strip (chosen composite) ---------- */
+  .statchips { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 9px; }
+  .schip { display: inline-flex; align-items: baseline; gap: 6px; border: 1px solid var(--line); background: var(--card);
+    border-radius: 999px; padding: 3px 12px; font-size: 11px; font-weight: 700; color: var(--ink-2); }
+  .schip .num { font-size: 13.5px; font-weight: 800; color: var(--ink); }
+  .schip.on { background: var(--amber-bg); border-color: var(--amber-solid); color: var(--amber); }
+  .schip.on .num { color: var(--amber); }
+  .schip .u { font-size: 9.5px; color: var(--ink-3); }
+  .date-cell { border-bottom: 1px dashed var(--ink-3); cursor: pointer; }
+  .chosen-banner { border: 1.5px solid var(--amber-solid); background: var(--amber-bg); color: var(--amber);
+    border-radius: 10px; padding: 8px 14px; font-weight: 700; font-size: 13px; margin-bottom: 14px; }
+
+  .colsearch { display: block; border: 1px solid var(--line); border-radius: 6px; background: var(--card);
+    color: var(--ink-3); font-size: 9.5px; padding: 1.5px 6px; margin-top: 3px; font-weight: 400; }
+  .seg-row { display: inline-flex; gap: 2.5px; align-items: center; }
+  .seg { width: 16px; height: 7px; border-radius: 3px; display: inline-block; }
+  .seg.ok { background: var(--success); } .seg.bad { background: var(--danger); } .seg.pend { background: var(--ink-3); opacity: .45; }
+  .variant-note { border: 1px dashed var(--line); border-radius: 10px; padding: 8px 12px; color: var(--ink-2); font-size: 12.5px; margin-top: 12px; }
+
+  /* ---------- callout legend ---------- */
+  ol.callouts { list-style: none; margin: 14px 0 0; padding: 0; display: grid; gap: 7px; font-size: 13px; }
+  ol.callouts li { display: flex; gap: 10px; align-items: baseline; }
+  .co-n { flex: 0 0 auto; width: 20px; height: 20px; border-radius: 50%; background: var(--amber-solid); color: #422006;
+    font-weight: 800; font-size: 11px; display: inline-flex; align-items: center; justify-content: center; transform: translateY(3px); }
+  .co-mech { color: var(--ink-3); font-size: 11.5px; direction: ltr; unicode-bidi: isolate; font-family: ui-monospace, "SF Mono", Menlo, monospace; }
+  .co-eq { font-size: 11px; font-weight: 800; color: var(--info); }
+  .co-pin { display: inline-flex; width: 17px; height: 17px; border-radius: 50%; background: var(--amber-solid); color: #422006;
+    font-weight: 800; font-size: 10px; align-items: center; justify-content: center; vertical-align: middle;
+    box-shadow: 0 0 0 2px var(--card); margin-inline-start: 4px; flex: 0 0 auto; }
+
+  /* ---------- combine table ---------- */
+  .combine h2 { margin-bottom: 4px; }
+  .combine-scroll { overflow-x: auto; }
+  table.cmb { width: 100%; border-collapse: collapse; background: var(--card); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; font-size: 12.5px; }
+  .cmb th { text-align: left; padding: 8px 12px; font-size: 10.5px; color: var(--ink-3); background: var(--mock-side); border-bottom: 1px solid var(--line); }
+  .cmb td { padding: 8px 12px; border-bottom: 1px solid var(--line-2); vertical-align: top; }
+  .cmb tr:last-child td { border-bottom: 0; }
+  .cmb .he { direction: rtl; unicode-bidi: isolate; font-weight: 700; }
+  .boards-cell { color: var(--ink-3); font-weight: 700; }
+
+  footer.note { margin-top: 44px; border-top: 1px solid var(--line); padding-top: 16px; color: var(--ink-2); font-size: 13px; max-width: 78ch; }
+  @media (max-width: 760px) {
+    .side { display: none; }
+    .stat-row { grid-template-columns: repeat(2, 1fr); }
+    .fp-grid { grid-template-columns: 1fr; }
+  }
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div class="eyebrow">PodText · Episodes-lens mini-project · Stage-6 boards</div>
+    <h1>Episodes list — three control layouts to pick from or combine</h1>
+    <p class="sub">Each board is the same page in a different control posture, mocked in product fidelity (RTL, real labels, real states). Every numbered callout names the exact Filament mechanism and its cost. The demo scenario on all three boards: you arrived from the podcast «קול הבוקר» via its «פרקי הפודקאסט» action — the page must say so, and say how many.</p>
+  </header>
+
+  <div class="legend-key">
+    <span class="tag"><span class="dot native"></span> native — Filament API as-is</span>
+    <span class="tag"><span class="dot wired"></span> wired — native pieces + small glue (house precedent exists)</span>
+    <span class="tag"><span class="dot custom"></span> custom — real build, spec'd separately</span>
+    <span style="margin-inline-start:auto">EQ-n → decision it belongs to</span>
+  </div>
+
+  <!-- ═══════════════════════ CHOSEN COMPOSITE ═══════════════════════ -->
+  <section class="board">
+    <div class="board-head"><span class="board-letter">✓</span><h2>The chosen composite — A base + B controls + all of C</h2></div>
+    <div class="chosen-banner">FULLY DECIDED 2026-08-04/05 — the functional blueprint: A base · compact SIX-chip strip (exact partition: טיוטות + גלויים + מתוזמנים + חסומים = הכל, plus מוצמדים as a window) · grouping + sort toggles · open filter panel above the table (EQ-7 flip) · inline status select · clickable date cell · remedy doors · podcast group headers · only the title column fixed, all else in the column manager · default sort עודכן לאחרונה. Navigation: episodes ungrouped on top; «ניהול תוכן» (podcasts + transcriptions) collapsed and moved BELOW «ניהול סיווג»; transcriptions item hidden in single mode for non-super-admins; dashboard stays the landing; labels unchanged. Model rules: publish stamps a null published-date (never overwrites, all status+date models); a central effective-published-date resolver falls back to created_at for published rows with null dates (read-side accessor + COALESCE sort scope — no backfill). Policy: ContentItemPolicy with delete = super-admin only. Principles P-EL1–P-EL8 ratified. The two boards below are the two REALIZATIONS of this blueprint — pick one or phase 1→2.</div>
+
+    <div class="mock">
+      <div class="topbar"><span class="brand">PodText</span><span style="font-size:11px; color:var(--ink-3)">ניהול</span></div>
+      <div class="mock-body">
+        <div class="side">
+          <div class="item"><span>➕ פרק חדש</span></div>
+          <div class="item active"><span>🎙️ פרקים</span><span class="count-pill">87</span></div>
+          <div class="item"><span>📋 רשומות טפסים</span></div>
+          <div class="item"><span>🖼️ מדיה</span></div>
+          <div class="grp"><span>ניהול תוכן</span><span>▸</span></div>
+        </div>
+        <div class="main">
+          <div class="page-title-row">
+            <span class="page-title">פרקים</span>
+            <span><span class="btn">ייבוא</span> <span class="btn primary">פרק חדש</span></span>
+          </div>
+          <div class="subheading">מציג <b>12 פרקים</b> של הפודקאסט <b>«קול הבוקר»</b><span class="co-pin">2</span></div>
+          <div class="statchips">
+            <span class="schip on"><span class="num">12</span> הכל<span class="co-pin">1</span></span>
+            <span class="schip"><span class="num">2</span> טיוטות</span>
+            <span class="schip"><span class="num">7</span> גלויים <span class="u">באתר עכשיו</span></span>
+            <span class="schip"><span class="num">1</span> מתוזמנים</span>
+            <span class="schip"><span class="num">2</span> חסומים</span>
+            <span class="schip"><span class="num">1</span> מוצמדים</span>
+          </div>
+          <div class="tgl-row">
+            <span class="tgl-lbl">קיבוץ:<span class="co-pin">3</span></span>
+            <span class="tgl"><span>ללא</span><span class="on">פודקאסט</span><span>סטטוס</span></span>
+            <span class="tgl-lbl">מיון:</span>
+            <span class="tgl"><span class="on">עודכן לאחרונה</span><span>פורסם לאחרונה</span><span>כותרת</span></span>
+            <span style="margin-inline-start:auto" class="tools"><span class="btn">מסננים ▾</span><span class="btn">עמודות ▾</span></span>
+          </div>
+          <div class="chips">
+            <span class="lbl">מסננים:</span>
+            <span class="chip">פודקאסט: קול הבוקר <span class="x">✕</span></span>
+            <span class="chip neutral">ניקוי הכל</span>
+          </div>
+          <div class="grid-scroll"><table class="grid">
+            <tr><th></th><th></th><th>כותרת</th><th>מצב ציבורי</th><th>סטטוס</th><th>פורסם</th></tr>
+            <tr class="group-head"><td colspan="6"><span class="car">▾</span>קול הבוקר <span class="count-pill">12</span></td></tr>
+            <tr><td class="row-actions"><span class="icon-btn">✏️</span><span class="icon-btn">💬</span><span class="icon-btn">⋯</span></td><td><span class="thumb"></span></td><td class="ep-title">פרק 12 — שיחה עם אורחת</td><td><span class="badge b-success">גלוי</span></td><td><span class="sel">מפורסם <span class="chev">▾</span></span><span class="co-pin">4</span></td><td><span class="date-cell">03/08/2026 08:30</span><span class="co-pin">5</span></td></tr>
+            <tr><td class="row-actions"><span class="icon-btn">✏️</span><span class="icon-btn">💬</span><span class="icon-btn">⋯</span></td><td><span class="thumb"></span></td><td class="ep-title">פרק 11 — סיכום החודש</td><td><span class="badge b-danger">חסום: תמלול טיוטה</span> <span class="badge b-info">פתיחת התמלול ↗</span><span class="co-pin">6</span></td><td><span class="sel">מפורסם <span class="chev">▾</span></span></td><td><span class="date-cell">27/07/2026 09:00</span></td></tr>
+            <tr><td class="row-actions"><span class="icon-btn">✏️</span><span class="icon-btn">💬</span><span class="icon-btn">⋯</span></td><td><span class="thumb"></span></td><td class="ep-title">פרק 9 — טיוטת עבודה</td><td><span class="badge b-gray">טיוטה</span></td><td><span class="sel">טיוטה <span class="chev">▾</span></span></td><td><span class="date-cell" style="color:var(--ink-3)">—</span></td></tr>
+          </table></div>
+          <div class="pagi">
+            <span>מציג <b>1–3</b> מתוך <b>12</b> פרקים <span style="color:var(--ink-3)">(בסך הכל 87)</span></span>
+            <span class="pages"><span class="pg on">1</span><span class="pg">2</span></span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <ol class="callouts">
+      <li><span class="co-n">1</span><span>Compact stat-chip strip — one row, number-first doors; same tab mechanism underneath (URL-kept, exact counts, honest math). <span class="co-mech">getTabs() state + header chip strip → ?tab=</span> <span class="tag"><span class="dot wired"></span></span></span></li>
+      <li><span class="co-n">2</span><span>Scope sentence answers the podcast-arrival scenario in words + count. <span class="co-mech">getSubheading()</span> <span class="tag"><span class="dot wired"></span></span></span></li>
+      <li><span class="co-n">3</span><span>Grouping + sort as one-click toggle rows; native dropdowns retired from the daily path. <span class="co-mech">custom controls → ?grouping= / ?sort=</span> <span class="tag"><span class="dot custom"></span></span></span></li>
+      <li><span class="co-n">4</span><span>Inline status select — policy-gated, no null option, truthful toast; publishing STAMPS a null published-date with now (existing dates untouched) — the new model rule, shared by episodes, podcasts and transcripts. <span class="co-mech">SelectColumn + model StampsPublishedAt hook</span> <span class="tag"><span class="dot wired"></span></span></span></li>
+      <li><span class="co-n">5</span><span>Date cell is clickable (dashed underline = editable) → day-first reschedule modal; drafts show «—» until published or set. <span class="co-mech">column ->action() → DateTimePicker</span> <span class="tag"><span class="dot wired"></span></span></span></li>
+      <li><span class="co-n">6</span><span>Remedy door rides the reason on blocked rows; server re-validates on click. <span class="co-mech">contextual Action</span> <span class="tag"><span class="dot wired"></span></span></span></li>
+    </ol>
+    <p class="board-blurb" style="margin-top:10px">Column rule: only «כותרת» is fixed; every other column — image, podcast, visibility, transcript, status, dates, pin — is toggleable and reorderable through «עמודות ▾» (the v5 column manager), enforced by a structural loop test over the column set. The EQ-7 open filter panel is mocked in R1/R2 below — this blueprint mock predates that flip and keeps the compact button for space.</p>
+  </section>
+
+
+  <!-- ═══════════════════════ REALIZATION 1 — NATIVE-FIRST ═══════════════════════ -->
+  <section class="board">
+    <div class="board-head"><span class="board-letter">R1</span><h2>Realization 1 — Native-first (+ custom columns only)</h2></div>
+    <p class="board-blurb">Every locked decision delivered with stock Filament mechanics. The six scopes are native tabs styled compact; grouping and sorting use the native controls; the only custom code is computed columns, actions, and the subheading — no custom Livewire controls anywhere. Ships fastest, upgrades safest.</p>
+    <div class="mock">
+      <div class="topbar"><span class="brand">PodText</span><span style="font-size:11px; color:var(--ink-3)">ניהול</span></div>
+      <div class="mock-body">
+        <div class="side">
+          <div class="item"><span>➕ פרק חדש</span></div>
+          <div class="item active"><span>🎙️ פרקים</span><span class="count-pill">87</span></div>
+          <div class="item"><span>📋 רשומות טפסים</span></div>
+          <div class="item"><span>🖼️ מדיה</span></div>
+          <div class="grp"><span>ניהול סיווג</span><span>▾</span></div>
+          <div class="grp"><span>ניהול תוכן</span><span>▸</span></div>
+          <div class="item muted"><span>🛠️ כלי ניהול</span></div>
+        </div>
+        <div class="main">
+          <div class="page-title-row">
+            <span class="page-title">פרקים</span>
+            <span><span class="btn">ייבוא</span> <span class="btn primary">פרק חדש</span></span>
+          </div>
+          <div class="subheading">מציג <b>12 פרקים</b> של <b>«קול הבוקר»</b></div>
+          <div class="tabs">
+            <span class="tab active">הכל <span class="count-pill">12</span><span class="co-pin">1</span></span>
+            <span class="tab">טיוטות <span class="count-pill">2</span></span>
+            <span class="tab">גלויים <span class="count-pill">7</span></span>
+            <span class="tab">מתוזמנים <span class="count-pill">1</span></span>
+            <span class="tab">חסומים <span class="count-pill">2</span></span>
+            <span class="tab">מוצמדים <span class="count-pill">1</span></span>
+          </div>
+          <div class="filter-panel">
+            <div class="fp-head"><span>מסננים<span class="co-pin">2</span></span><span>איפוס · החלה ▸</span></div>
+            <div class="fp-grid">
+              <div class="fp-field"><div class="fl">פודקאסט</div><div class="fp-sel"><span>קול הבוקר</span><span>▾</span></div></div>
+              <div class="fp-field"><div class="fl">הצמדה</div><span class="tgl"><span class="on">הכל</span><span>מוצמדים</span><span>לא מוצמדים</span></span></div>
+              <div class="fp-field"><div class="fl">טווח פרסום</div><div class="fp-sel"><span>01/07/2026 – 05/08/2026</span><span>📅</span></div></div>
+            </div>
+          </div>
+          <div class="toolbar">
+            <span class="search">🔍 חיפוש פרקים…</span>
+            <span class="tools"><span class="btn">קיבוץ: פודקאסט ▾<span class="co-pin">3</span></span><span class="btn">עמודות ▾</span></span>
+          </div>
+          <div class="grid-scroll"><table class="grid">
+            <tr><th></th><th></th><th>כותרת</th><th>מצב ציבורי</th><th>סטטוס</th><th>פורסם</th></tr>
+            <tr class="group-head"><td colspan="6"><span class="car">▾</span>קול הבוקר <span class="count-pill">12</span></td></tr>
+            <tr><td class="row-actions"><span class="icon-btn">✏️</span><span class="icon-btn">💬</span><span class="icon-btn">⋯</span></td><td><span class="thumb"></span></td><td class="ep-title">פרק 12 — שיחה עם אורחת</td><td><span class="badge b-success">גלוי</span><span class="co-pin">4</span></td><td><span class="sel">מפורסם <span class="chev">▾</span></span></td><td><span class="date-cell">03/08/2026 08:30</span></td></tr>
+            <tr><td class="row-actions"><span class="icon-btn">✏️</span><span class="icon-btn">💬</span><span class="icon-btn">⋯</span></td><td><span class="thumb"></span></td><td class="ep-title">פרק 11 — סיכום החודש</td><td><span class="badge b-danger">חסום: תמלול טיוטה</span> <span class="badge b-info">פתיחת התמלול ↗</span></td><td><span class="sel">מפורסם <span class="chev">▾</span></span></td><td><span class="date-cell">27/07/2026 09:00</span></td></tr>
+            <tr><td class="row-actions"><span class="icon-btn">✏️</span><span class="icon-btn">💬</span><span class="icon-btn">⋯</span></td><td><span class="thumb"></span></td><td class="ep-title">פרק 7 — הקלטה מוקדמת</td><td><span class="badge b-info">מתוזמן ל־10/08/2026</span></td><td><span class="sel">מפורסם <span class="chev">▾</span></span></td><td><span class="date-cell">10/08/2026 07:00</span><span class="co-pin">5</span></td></tr>
+          </table></div>
+          <div class="pagi"><span>מציג <b>1–3</b> מתוך <b>12</b> פרקים <span style="color:var(--ink-3)">(בסך הכל 87)</span></span><span class="pages"><span class="pg on">1</span><span class="pg">2</span></span></div>
+        </div>
+      </div>
+    </div>
+    <ol class="callouts">
+      <li><span class="co-n">1</span><span>Six scopes as NATIVE list tabs, compact via theme CSS — badges, URL state, counts service; no custom strip component. <span class="co-mech">getTabs() + Tab::badge() · CSS only</span> <span class="tag"><span class="dot native"></span></span></span></li>
+      <li><span class="co-n">2</span><span>Open filter panel — native layout, three columns, toggle groups INSIDE filter schemas, deferred Apply. <span class="co-mech">FiltersLayout::AboveContentCollapsible + filtersFormColumns(3) + Filter::schema([ToggleButtons])</span> <span class="tag"><span class="dot native"></span></span></span></li>
+      <li><span class="co-n">3</span><span>Grouping via the native trigger, labeled with the active group; sorting = defaultSort עודכן לאחרונה + column headers. No toggle rows in R1. <span class="co-mech">groups() + groupRecordsTriggerAction() · defaultSort()</span> <span class="tag"><span class="dot native"></span></span></span></li>
+      <li><span class="co-n">4</span><span>The custom-logic columns: visibility badge (batch-primed reasons), inline status select with the publish-stamps-date hook, remedy-door actions. This is the "some custom components" budget of R1. <span class="co-mech">TextColumn::badge() · SelectColumn · shared model concern</span> <span class="tag"><span class="dot wired"></span></span></span></li>
+      <li><span class="co-n">5</span><span>Scheduled rows: own tab, own badge; date cell clickable everywhere; null dates on published rows RESOLVE to created_at via the central accessor. <span class="co-mech">effective-published-date resolver + COALESCE sort scope</span> <span class="tag"><span class="dot wired"></span></span></span></li>
+    </ol>
+    <div class="variant-note"><b>R1 cost profile:</b> no custom Livewire, no vendor-internal writes; everything rides documented APIs already proven in-house (ListMedia tabs, MediaTable inline column). The compromise: scopes look like tabs (not chips), and grouping/sort sit in native controls instead of one-click toggle rows.</div>
+  </section>
+
+  <!-- ═══════════════════════ REALIZATION 2 — CUSTOM-FORWARD ═══════════════════════ -->
+  <section class="board">
+    <div class="board-head"><span class="board-letter">R2</span><h2>Realization 2 — Custom-forward (more abilities, more freedom)</h2></div>
+    <p class="board-blurb">The same blueprint with custom control surfaces: the chip strip and toggle rows as app-owned components writing table state, a three-segment visibility cell, per-column search under the title header, sticky preferences, and the sheet's killer ability — saved views. More build, more upkeep, closest to the sheet.</p>
+    <div class="mock">
+      <div class="topbar"><span class="brand">PodText</span><span style="font-size:11px; color:var(--ink-3)">ניהול</span></div>
+      <div class="mock-body">
+        <div class="side">
+          <div class="item"><span>➕ פרק חדש</span></div>
+          <div class="item active"><span>🎙️ פרקים</span><span class="count-pill">87</span></div>
+          <div class="item"><span>📋 רשומות טפסים</span></div>
+          <div class="item"><span>🖼️ מדיה</span></div>
+          <div class="grp"><span>ניהול סיווג</span><span>▾</span></div>
+          <div class="grp"><span>ניהול תוכן</span><span>▸</span></div>
+        </div>
+        <div class="main">
+          <div class="page-title-row">
+            <span class="page-title">פרקים</span>
+            <span><span class="btn">תצוגות שמורות ▾<span class="co-pin">1</span></span> <span class="btn">ייבוא</span> <span class="btn primary">פרק חדש</span></span>
+          </div>
+          <div class="subheading">מציג <b>12 פרקים</b> של <b>«קול הבוקר»</b> · <span style="color:var(--amber); font-weight:700">הסרת הסינון ✕</span></div>
+          <div class="statchips">
+            <span class="schip on"><span class="num">12</span> הכל<span class="co-pin">2</span></span>
+            <span class="schip"><span class="num">2</span> טיוטות</span>
+            <span class="schip"><span class="num">7</span> גלויים</span>
+            <span class="schip"><span class="num">1</span> מתוזמנים</span>
+            <span class="schip"><span class="num">2</span> חסומים</span>
+            <span class="schip"><span class="num">1</span> מוצמדים</span>
+          </div>
+          <div class="tgl-row">
+            <span class="tgl-lbl">קיבוץ:<span class="co-pin">3</span></span>
+            <span class="tgl"><span>ללא</span><span class="on">פודקאסט</span><span>סטטוס</span></span>
+            <span class="tgl-lbl">מיון:</span>
+            <span class="tgl"><span class="on">עודכן לאחרונה</span><span>פורסם לאחרונה</span><span>כותרת</span></span>
+            <span style="margin-inline-start:auto" class="tools"><span class="btn">עמודות ▾</span></span>
+          </div>
+          <div class="filter-panel">
+            <div class="fp-head"><span>מסננים</span><span>איפוס · החלה ▸</span></div>
+            <div class="fp-grid">
+              <div class="fp-field"><div class="fl">פודקאסט</div><div class="fp-sel"><span>קול הבוקר</span><span>▾</span></div></div>
+              <div class="fp-field"><div class="fl">הצמדה</div><span class="tgl"><span class="on">הכל</span><span>מוצמדים</span><span>לא מוצמדים</span></span></div>
+              <div class="fp-field"><div class="fl">טווח פרסום</div><div class="fp-sel"><span>01/07/2026 – 05/08/2026</span><span>📅</span></div></div>
+            </div>
+          </div>
+          <div class="grid-scroll"><table class="grid">
+            <tr><th></th><th></th><th>כותרת<span class="colsearch">🔍 חיפוש בכותרת…<span class="co-pin">4</span></span></th><th>מצב ציבורי</th><th>סטטוס</th><th>פורסם</th></tr>
+            <tr class="group-head"><td colspan="6"><span class="car">▾</span>קול הבוקר <span class="count-pill">12</span></td></tr>
+            <tr><td class="row-actions"><span class="icon-btn">✏️</span><span class="icon-btn">💬</span><span class="icon-btn">⋯</span></td><td><span class="thumb"></span></td><td class="ep-title">פרק 12 — שיחה עם אורחת</td><td><span class="seg-row"><span class="seg ok" title="פודקאסט פורסם"></span><span class="seg ok" title="הפרק פורסם"></span><span class="seg ok" title="תמלול פורסם"></span></span> <span class="badge b-success">גלוי</span><span class="co-pin">5</span></td><td><span class="sel">מפורסם <span class="chev">▾</span></span></td><td><span class="date-cell">03/08/2026 08:30</span></td></tr>
+            <tr><td class="row-actions"><span class="icon-btn">✏️</span><span class="icon-btn">💬</span><span class="icon-btn">⋯</span></td><td><span class="thumb"></span></td><td class="ep-title">פרק 11 — סיכום החודש</td><td><span class="seg-row"><span class="seg ok"></span><span class="seg ok"></span><span class="seg bad" title="תמלול טיוטה"></span></span> <span class="badge b-danger">חסום</span> <span class="badge b-info">פתיחת התמלול ↗</span></td><td><span class="sel">מפורסם <span class="chev">▾</span></span></td><td><span class="date-cell">27/07/2026 09:00</span></td></tr>
+            <tr><td class="row-actions"><span class="icon-btn">✏️</span><span class="icon-btn">💬</span><span class="icon-btn">⋯</span></td><td><span class="thumb"></span></td><td class="ep-title">פרק 9 — טיוטת עבודה</td><td><span class="seg-row"><span class="seg ok"></span><span class="seg pend" title="טיוטה"></span><span class="seg pend"></span></span> <span class="badge b-gray">טיוטה</span></td><td><span class="sel">טיוטה <span class="chev">▾</span></span></td><td><span class="date-cell" style="color:var(--ink-3)">—</span></td></tr>
+          </table></div>
+          <div class="pagi"><span>מציג <b>1–3</b> מתוך <b>12</b> <span style="color:var(--ink-3)">(בסך הכל 87)</span></span><span class="pages"><span class="pg on">1</span><span class="pg">2</span></span></div>
+        </div>
+      </div>
+    </div>
+    <ol class="callouts">
+      <li><span class="co-n">1</span><span>Saved views — the sheet's "filter views": one click stores the current scope + filters + sort + grouping + columns as a named view; stored in AdminUxSettings (shared) or per-user. The freedom-tier ability. <span class="co-mech">custom: view registry + apply/save actions</span> <span class="tag"><span class="dot custom"></span></span></span></li>
+      <li><span class="co-n">2</span><span>Six-chip strip as an app-owned header component — number-first, one row, active ring; writes the same tab state. <span class="co-mech">custom Blade/Livewire strip → activeTab</span> <span class="tag"><span class="dot custom"></span></span></span></li>
+      <li><span class="co-n">3</span><span>Grouping + sort toggle rows — one-click, URL-kept, native dropdowns retired from the daily path. <span class="co-mech">custom controls → ?grouping= / ?sort=</span> <span class="tag"><span class="dot custom"></span></span></span></li>
+      <li><span class="co-n">4</span><span>Per-column search under the title header — native API, sheet feel. <span class="co-mech">searchable(isIndividual: true)</span> <span class="tag"><span class="dot native"></span></span></span></li>
+      <li><span class="co-n">5</span><span>Three-segment visibility cell (podcast / episode / transcript) + verdict badge — a custom column class with its Blade view; each segment tooltips its truth, the badge keeps the reason. <span class="co-mech">make:filament-table-column + batch-primed state</span> <span class="tag"><span class="dot custom"></span></span></span></li>
+    </ol>
+    <div class="variant-note"><b>R2 cost profile:</b> three custom components (chip strip, toggle rows, visibility cell) + the saved-views feature. The strip/toggles write table state the vendor owns — each needs a narrow, tested seam (the dashboard's FILTER_KEYS narrowing is the precedent) and a re-check on Filament upgrades. Sticky sort/search (persistSortInSession) turns on here too.</div>
+  </section>
+
+  <!-- ═══════════════════════ R1 vs R2 ═══════════════════════ -->
+  <section class="combine">
+    <div class="board-head"><span class="board-letter">⇄</span><h2>R1 vs R2 — same blueprint, two postures</h2></div>
+    <div class="combine-scroll">
+    <table class="cmb">
+      <tr><th>Aspect</th><th>R1 · Native-first</th><th>R2 · Custom-forward</th></tr>
+      <tr><td>Scope strip</td><td>Native tabs, compact CSS, badges</td><td>App-owned six-chip strip (same state underneath)</td></tr>
+      <tr><td>Grouping / sort controls</td><td>Native קיבוץ trigger + column headers</td><td>One-click toggle rows</td></tr>
+      <tr><td>Visibility cell</td><td>Reason badge (TextColumn)</td><td>Three-segment checklist + badge (custom column)</td></tr>
+      <tr><td>Filter panel</td><td colspan="2">Identical — open above the table, toggle groups inside, deferred Apply (locked EQ-7)</td></tr>
+      <tr><td>Inline editing + remedy doors + group headers</td><td colspan="2">Identical — SelectColumn, clickable date cell, remedy actions, collapsible podcast headers (locked)</td></tr>
+      <tr><td>Extras</td><td>—</td><td>Saved views · per-column title search · sticky sort/search</td></tr>
+      <tr><td>New components to build & maintain</td><td>0 custom controls (columns/actions logic only)</td><td>3 custom components + saved-views storage</td></tr>
+      <tr><td>Vendor-upgrade exposure</td><td>Documented APIs only</td><td>Strip/toggles write vendor-owned table state — narrow seams, re-verified per upgrade</td></tr>
+      <tr><td>Relative build size</td><td>≈1×</td><td>≈2–2.5×</td></tr>
+    </table>
+    </div>
+    <div class="variant-note"><b>Recommendation:</b> these are phases, not rivals — ship R1 as the first milestone (every locked decision live, native mechanics), then upgrade the strip, toggle rows, visibility cell and saved views as the R2 phase. Nothing in R1 is thrown away: R2 swaps skins over the same state, queries and tests.</div>
+  </section>
+
+  <!-- ═══════════════════════ BOARD A ═══════════════════════ -->
+  <section class="board">
+    <div class="board-head"><span class="board-letter">A</span><h2>Command row — the native path</h2></div>
+    <p class="board-blurb">Scope tabs above the table, a scope sentence under the title, filter chips with one-click clear, and a loud count in the pagination line. Everything here ships on stock Filament APIs — lowest cost, fastest to land.</p>
+
+    <div class="mock anno">
+      <div class="topbar"><span class="brand">PodText</span><span class="muted" style="font-size:11px; color:var(--ink-3)">ניהול</span></div>
+      <div class="mock-body">
+        <div class="side">
+          <div class="item"><span>➕ פרק חדש</span></div>
+          <div class="item active"><span>🎙️ פרקים</span><span class="count-pill">87</span></div>
+          <div class="item"><span>📋 רשומות טפסים</span></div>
+          <div class="item"><span>🖼️ מדיה</span></div>
+          <div class="grp"><span>ניהול תוכן</span><span>▸</span></div>
+          <div class="grp"><span>ניהול סיווג</span><span>▸</span></div>
+          <div class="item muted"><span>🛠️ כלי ניהול</span></div>
+        </div>
+        <div class="main">
+          <div class="page-title-row">
+            <span class="page-title">פרקים</span>
+            <span><span class="btn">ייבוא</span> <span class="btn primary">פרק חדש</span></span>
+          </div>
+          <div class="subheading">מציג <b>12 פרקים</b> של הפודקאסט <b>«קול הבוקר»</b><span class="co-pin">2</span></div>
+          <div class="tabs">
+            <span class="tab active">הכל <span class="count-pill">12</span><span class="co-pin">1</span></span>
+            <span class="tab">טיוטות <span class="count-pill">2</span></span>
+            <span class="tab">גלויים <span class="count-pill">8</span></span>
+            <span class="tab">חסומים <span class="count-pill">2</span></span>
+            <span class="tab">מוצמדים <span class="count-pill">1</span></span>
+          </div>
+          <div class="chips">
+            <span class="lbl">מסננים:</span>
+            <span class="chip">פודקאסט: קול הבוקר <span class="x">✕</span></span>
+            <span class="chip neutral">ניקוי הכל</span><span class="co-pin">3</span>
+          </div>
+          <div class="toolbar">
+            <span class="search">🔍 חיפוש פרקים…</span>
+            <span class="tools"><span class="btn">מסננים ▾</span><span class="btn">קיבוץ ▾</span><span class="btn">עמודות ▾</span></span>
+          </div>
+          <div class="grid-scroll"><table class="grid">
+            <tr><th></th><th></th><th>כותרת</th><th>מצב ציבורי</th><th>תמלול</th><th>סטטוס</th><th>פורסם</th></tr>
+            <tr><td class="row-actions"><span class="icon-btn">✏️</span><span class="icon-btn">💬</span><span class="icon-btn">⋯</span></td><td><span class="thumb"></span></td><td class="ep-title">פרק 12 — שיחה עם אורחת</td><td><span class="badge b-success">גלוי</span><span class="co-pin">4</span></td><td><span class="badge b-success">תמלול מפורסם</span></td><td><span class="badge b-success">מפורסם</span></td><td>03/08/2026 08:30</td></tr>
+            <tr><td class="row-actions"><span class="icon-btn">✏️</span><span class="icon-btn">💬</span><span class="icon-btn">⋯</span></td><td><span class="thumb"></span></td><td class="ep-title">פרק 11 — סיכום החודש</td><td><span class="badge b-danger">חסום: תמלול טיוטה</span></td><td><span class="badge b-gray">טיוטה</span></td><td><span class="badge b-success">מפורסם</span></td><td>27/07/2026 09:00</td></tr>
+            <tr><td class="row-actions"><span class="icon-btn">✏️</span><span class="icon-btn">💬</span><span class="icon-btn">⋯</span></td><td><span class="thumb"></span></td><td class="ep-title">פרק 10 — מאחורי הקלעים</td><td><span class="badge b-info">מתוזמן ל־10/08/2026</span></td><td><span class="badge b-success">תמלול מפורסם</span></td><td><span class="badge b-success">מפורסם</span></td><td>10/08/2026 07:00</td></tr>
+            <tr><td class="row-actions"><span class="icon-btn">✏️</span><span class="icon-btn">💬</span><span class="icon-btn">⋯</span></td><td><span class="thumb"></span></td><td class="ep-title">פרק 9 — טיוטת עבודה</td><td><span class="badge b-gray">טיוטה</span></td><td><span class="badge b-gray">אין תמלול</span></td><td><span class="badge b-gray">טיוטה</span></td><td>—</td></tr>
+          </table></div>
+          <div class="pagi">
+            <span>מציג <b>1–4</b> מתוך <b>12</b> פרקים <span style="color:var(--ink-3)">(מסך «קול הבוקר»; בסך הכל 87 פרקים)</span><span class="co-pin">5</span></span>
+            <span class="pages"><span class="pg on">1</span><span class="pg">2</span><span class="pg">3</span></span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <ol class="callouts">
+      <li><span class="co-n">1</span><span>Scope tabs with exact counts — one click, URL-kept, badge = door. <span class="co-mech">getTabs() + Tab::badge() · counts service</span> <span class="tag"><span class="dot native"></span></span> <span class="co-eq">EQ-4</span></span></li>
+      <li><span class="co-n">2</span><span>Scope sentence under the title — says what the table currently shows and how many, in words. <span class="co-mech">getSubheading() (ListMedia precedent)</span> <span class="tag"><span class="dot wired"></span></span></span></li>
+      <li><span class="co-n">3</span><span>Active-filter chips with per-chip ✕ and «ניקוי הכל» — this is how the podcast-action arrival announces itself. <span class="co-mech">filter indicators · indicateUsing()</span> <span class="tag"><span class="dot native"></span></span></span></li>
+      <li><span class="co-n">4</span><span>Row answers before actions: visibility badge (with the blocking reason), transcript state, status, day-first date. <span class="co-mech">TextColumn::badge() · batch-primed service</span> <span class="tag"><span class="dot wired"></span></span> <span class="co-eq">spec §7.2</span></span></li>
+      <li><span class="co-n">5</span><span>Count line reads as a sentence: scoped count + total library size, next to the pager. <span class="co-mech">paginator slot + subheading data</span> <span class="tag"><span class="dot wired"></span></span></span></li>
+    </ol>
+  </section>
+
+  <!-- ═══════════════════════ BOARD B ═══════════════════════ -->
+  <section class="board">
+    <div class="board-head"><span class="board-letter">B</span><h2>Stat doors — numbers first, table second</h2></div>
+    <p class="board-blurb">The scope row becomes five clickable stat cards above the table (header widgets), so the page opens like a mini-board: state of the library at a glance, and every number is the door into its slice. Grouping and sort become grouped toggle buttons — fewer dropdowns on the daily path.</p>
+
+    <div class="mock anno">
+      <div class="topbar"><span class="brand">PodText</span><span style="font-size:11px; color:var(--ink-3)">ניהול</span></div>
+      <div class="mock-body">
+        <div class="side">
+          <div class="item"><span>➕ פרק חדש</span></div>
+          <div class="item active"><span>🎙️ פרקים</span><span class="count-pill">87</span></div>
+          <div class="item"><span>📋 רשומות טפסים</span></div>
+          <div class="item"><span>🖼️ מדיה</span></div>
+          <div class="grp"><span>ניהול תוכן</span><span>▸</span></div>
+        </div>
+        <div class="main">
+          <div class="page-title-row">
+            <span class="page-title">פרקים</span>
+            <span><span class="btn">ייבוא</span> <span class="btn primary">פרק חדש</span></span>
+          </div>
+          <div class="subheading">מציג <b>12 פרקים</b> של <b>«קול הבוקר»</b> · <span style="color:var(--amber); font-weight:700">הסרת הסינון ✕</span></div>
+          <div class="stat-row">
+            <div class="stat on"><div class="n">12</div><div class="t">הכל<span class="co-pin">1</span></div><div class="d">בטווח הסינון</div></div>
+            <div class="stat"><div class="n">2</div><div class="t">טיוטות</div><div class="d">בעבודה</div></div>
+            <div class="stat"><div class="n">8</div><div class="t">גלויים</div><div class="d">באתר עכשיו</div></div>
+            <div class="stat"><div class="n">2</div><div class="t">חסומים</div><div class="d">מפורסמים, לא גלויים</div></div>
+            <div class="stat"><div class="n">1</div><div class="t">מוצמדים</div><div class="d">כרגע</div></div>
+          </div>
+          <div class="tgl-row">
+            <span class="tgl-lbl">קיבוץ:<span class="co-pin">2</span></span>
+            <span class="tgl"><span class="on">ללא</span><span>פודקאסט</span><span>סטטוס</span></span>
+            <span class="tgl-lbl">מיון:<span class="co-pin">3</span></span>
+            <span class="tgl"><span class="on">עודכן לאחרונה</span><span>פורסם לאחרונה</span><span>כותרת</span></span>
+            <span style="margin-inline-start:auto" class="tools"><span class="btn">מסננים ▾</span><span class="btn">עמודות ▾</span></span>
+          </div>
+          <div class="grid-scroll"><table class="grid">
+            <tr><th></th><th></th><th>כותרת</th><th>מצב ציבורי</th><th>סטטוס</th><th>עודכן</th></tr>
+            <tr><td class="row-actions"><span class="icon-btn">✏️</span><span class="icon-btn">💬</span><span class="icon-btn">⋯</span></td><td><span class="thumb"></span></td><td class="ep-title">פרק 11 — סיכום החודש</td><td><span class="badge b-danger">חסום: תמלול טיוטה</span></td><td><span class="badge b-success">מפורסם</span></td><td>אתמול 21:14</td></tr>
+            <tr><td class="row-actions"><span class="icon-btn">✏️</span><span class="icon-btn">💬</span><span class="icon-btn">⋯</span></td><td><span class="thumb"></span></td><td class="ep-title">פרק 12 — שיחה עם אורחת</td><td><span class="badge b-success">גלוי</span></td><td><span class="badge b-success">מפורסם</span></td><td>03/08/2026 10:02</td></tr>
+            <tr><td class="row-actions"><span class="icon-btn">✏️</span><span class="icon-btn">💬</span><span class="icon-btn">⋯</span></td><td><span class="thumb"></span></td><td class="ep-title">פרק 9 — טיוטת עבודה</td><td><span class="badge b-gray">טיוטה</span></td><td><span class="badge b-gray">טיוטה</span></td><td>01/08/2026 15:40</td></tr>
+          </table></div>
+          <div class="pagi"><span>מציג <b>1–3</b> מתוך <b>12</b></span><span class="pages"><span class="pg on">1</span><span class="pg">2</span></span></div>
+        </div>
+      </div>
+    </div>
+    <ol class="callouts">
+      <li><span class="co-n">1</span><span>Stat cards = the scope set rendered as doors; clicking a card activates that scope (same mechanism as tabs underneath, different clothes). Honest math: <span dir="rtl" style="unicode-bidi: isolate">הכל = טיוטות + גלויים + חסומים (+מתוזמנים)</span>. <span class="co-mech">getHeaderWidgets() → links to ?tab= · same counts service</span> <span class="tag"><span class="dot wired"></span></span> <span class="co-eq">EQ-4</span></span></li>
+      <li><span class="co-n">2</span><span>Grouping as grouped toggle buttons instead of the dropdown — «ללא / פודקאסט / סטטוס», one click. <span class="co-mech">custom control writing table grouping state (?grouping=)</span> <span class="tag"><span class="dot custom"></span></span> <span class="co-eq">EQ-8</span></span></li>
+      <li><span class="co-n">3</span><span>Known sorts as toggle buttons — the two-three sorts that matter daily, instead of hunting column headers. Column-header sort still works. <span class="co-mech">custom control writing ?sort=</span> <span class="tag"><span class="dot custom"></span></span> <span class="co-eq">EQ-10</span></span></li>
+    </ol>
+  </section>
+
+  <!-- ═══════════════════════ BOARD C ═══════════════════════ -->
+  <section class="board">
+    <div class="board-head"><span class="board-letter">C</span><h2>Dense sheet — grouped rows, inline cells, filters open</h2></div>
+    <p class="board-blurb">The sheet posture: table grouped by podcast with counted group headers, status editable in the row, date behind a pencil, and the occasional filters living in a collapsible panel above the content — toggle-button groups where the value set is tiny, selects only where the list grows (podcast, category).</p>
+
+    <div class="mock anno">
+      <div class="topbar"><span class="brand">PodText</span><span style="font-size:11px; color:var(--ink-3)">ניהול</span></div>
+      <div class="mock-body">
+        <div class="side">
+          <div class="item"><span>➕ פרק חדש</span></div>
+          <div class="item active"><span>🎙️ פרקים</span><span class="count-pill">87</span></div>
+          <div class="item"><span>🖼️ מדיה</span></div>
+          <div class="grp"><span>ניהול תוכן</span><span>▸</span></div>
+        </div>
+        <div class="main">
+          <div class="page-title-row">
+            <span class="page-title">פרקים</span>
+            <span><span class="btn">ייבוא</span> <span class="btn primary">פרק חדש</span></span>
+          </div>
+          <div class="tabs">
+            <span class="tab">הכל <span class="count-pill">87</span></span>
+            <span class="tab">טיוטות <span class="count-pill">6</span></span>
+            <span class="tab">גלויים <span class="count-pill">64</span></span>
+            <span class="tab active">חסומים <span class="count-pill">9</span></span>
+            <span class="tab">מוצמדים <span class="count-pill">4</span></span>
+          </div>
+          <div class="filter-panel">
+            <div class="fp-head"><span>מסננים<span class="co-pin">1</span></span><span>איפוס · החלה ▸</span></div>
+            <div class="fp-grid">
+              <div class="fp-field"><div class="fl">פודקאסט</div><div class="fp-sel"><span>קול הבוקר</span><span>▾</span></div></div>
+              <div class="fp-field"><div class="fl">הצמדה</div><span class="tgl"><span class="on">הכל</span><span>מוצמדים</span><span>לא מוצמדים</span></span></div>
+              <div class="fp-field"><div class="fl">טווח פרסום</div><div class="fp-sel"><span>01/07/2026 – 04/08/2026</span><span>📅</span></div></div>
+            </div>
+          </div>
+          <div class="grid-scroll"><table class="grid">
+            <tr><th></th><th></th><th>כותרת</th><th>מצב ציבורי</th><th>סטטוס</th><th>פורסם</th></tr>
+            <tr class="group-head"><td colspan="6"><span class="car">▾</span>קול הבוקר <span class="count-pill">2 חסומים</span><span class="co-pin">2</span></td></tr>
+            <tr><td class="row-actions"><span class="icon-btn">✏️</span><span class="icon-btn">💬</span><span class="icon-btn">⋯</span></td><td><span class="thumb"></span></td><td class="ep-title">פרק 11 — סיכום החודש</td><td><span class="badge b-danger">חסום: תמלול טיוטה</span> <span class="badge b-info">פתיחת התמלול ↗</span><span class="co-pin">3</span></td><td><span class="sel">מפורסם <span class="chev">▾</span></span><span class="co-pin">4</span></td><td>27/07/2026 09:00 <span class="icon-btn" title="שינוי תאריך">🖉</span></td></tr>
+            <tr><td class="row-actions"><span class="icon-btn">✏️</span><span class="icon-btn">💬</span><span class="icon-btn">⋯</span></td><td><span class="thumb"></span></td><td class="ep-title">פרק 8 — ראיון כפול</td><td><span class="badge b-danger">חסום: הפודקאסט לא פורסם</span> <span class="badge b-warn">פרסום הפודקאסט ↗</span></td><td><span class="sel">מפורסם <span class="chev">▾</span></span></td><td>20/07/2026 08:00 <span class="icon-btn" title="שינוי תאריך">🖉</span></td></tr>
+            <tr class="group-head"><td colspan="6"><span class="car">▸</span>שיחות על הדרך <span class="count-pill">7 חסומים</span></td></tr>
+          </table></div>
+          <div class="pagi"><span>מציג <b>9</b> פרקים חסומים · בסך הכל <b>87</b></span><span class="pages"><span class="pg on">1</span></span></div>
+        </div>
+      </div>
+    </div>
+    <ol class="callouts">
+      <li><span class="co-n">1</span><span>Filters open above the content, three columns; tiny value sets are toggle groups (pinned: הכל/מוצמדים/לא מוצמדים), growing sets stay searchable selects (podcast). Deferred Apply per the v5 default. <span class="co-mech">FiltersLayout::AboveContentCollapsible + filtersFormColumns(3) · Filter::schema([ToggleButtons])</span> <span class="tag"><span class="dot native"></span></span> <span class="co-eq">EQ-7</span></span></li>
+      <li><span class="co-n">2</span><span>Collapsible group headers with per-group counts — the sheet's sections. Grouped by podcast here; the count pill speaks the active scope's unit («חסומים»). <span class="co-mech">groups([Group::make('contentGroup.title')->collapsible()])</span> <span class="tag"><span class="dot native"></span></span> <span class="co-eq">EQ-8</span></span></li>
+      <li><span class="co-n">3</span><span>Blocked rows carry their remedy door inline: «פתיחת התמלול» / «פרסום הפודקאסט» — the fix is one click from the reason. <span class="co-mech">contextual Action · server-side re-validation</span> <span class="tag"><span class="dot wired"></span></span> <span class="co-eq">EQ-9</span></span></li>
+      <li><span class="co-n">4</span><span>Inline cells: status is a real select in the row (policy-gated, truthful toast after); the date CELL itself is clickable and opens the day-first picker modal — sheet behavior, click the cell you want to change. Cell clicks override the row's workspace link per Filament's rule; `disabledClick()` is the valve if any cell ever fights the row. <span class="co-mech">SelectColumn + selectablePlaceholder(false) · date column ->action() → DateTimePicker modal</span> <span class="tag"><span class="dot wired"></span></span> <span class="co-eq">EQ-5 · EQ-6</span></span></li>
+    </ol>
+  </section>
+
+  <!-- ═══════════════════════ COMBINE MENU ═══════════════════════ -->
+  <section class="combine">
+    <div class="board-head"><span class="board-letter">＋</span><h2>Combine menu — every piece is independent</h2></div>
+    <p class="board-blurb">The boards are postures, not packages. Pick per row; "fits with" flags the only real interactions.</p>
+    <div class="combine-scroll">
+    <table class="cmb">
+      <tr><th>Piece</th><th>Answers</th><th>Mechanism</th><th>Cost</th><th>Boards</th><th>Fits with / notes</th></tr>
+      <tr><td class="he">לשוניות סינון עם ספירה</td><td>"Which slice, how many" in one click</td><td>getTabs() + badges + counts service</td><td><span class="tag"><span class="dot native"></span> native</span></td><td class="boards-cell">A · C</td><td>Foundation piece — recommended in every combination (EQ-4)</td></tr>
+      <tr><td class="he">משפט הקשר מתחת לכותרת</td><td>Announces arrival scope in words + count</td><td>getSubheading()</td><td><span class="tag"><span class="dot wired"></span> wired</span></td><td class="boards-cell">A · B</td><td>The "view episodes of podcast X" answer; pairs with chips</td></tr>
+      <tr><td class="he">שבבי מסננים פעילים + ניקוי</td><td>What's filtering the table right now</td><td>native indicators + indicateUsing()</td><td><span class="tag"><span class="dot native"></span> native</span></td><td class="boards-cell">A · B · C</td><td>Free; every custom filter must define its indicator</td></tr>
+      <tr><td class="he">כרטיסי מספרים־דלתות</td><td>Library state at a glance, numbers as doors</td><td>getHeaderWidgets() → ?tab= links</td><td><span class="tag"><span class="dot wired"></span> wired</span></td><td class="boards-cell">B</td><td>Replaces the tab STRIP visually, keeps the tab mechanism; don't run both strips</td></tr>
+      <tr><td class="he">קיבוץ בכפתורי מצב</td><td>One-click grouping switch</td><td>custom control → ?grouping=</td><td><span class="tag"><span class="dot custom"></span> custom</span></td><td class="boards-cell">B</td><td>Native dropdown («קיבוץ ▾») is the zero-cost fallback (board A)</td></tr>
+      <tr><td class="he">מיון בכפתורי מצב</td><td>The 2–3 daily sorts, visible</td><td>custom control → ?sort=</td><td><span class="tag"><span class="dot custom"></span> custom</span></td><td class="boards-cell">B</td><td>Column-header sorting stays regardless; defaultSort ships first (EQ-10)</td></tr>
+      <tr><td class="he">כותרות קבוצה מתקפלות</td><td>Sheet-style sections with counts</td><td>groups([Group::make()->collapsible()])</td><td><span class="tag"><span class="dot native"></span> native</span></td><td class="boards-cell">C</td><td>Podcast/status now; month gated on Jerusalem-safe keys (EQ-8)</td></tr>
+      <tr><td class="he">פאנל מסננים פתוח מעל</td><td>Occasional filters, discoverable</td><td>FiltersLayout::AboveContentCollapsible</td><td><span class="tag"><span class="dot native"></span> native</span></td><td class="boards-cell">C</td><td>Alternative to the dropdown (EQ-7); costs vertical space</td></tr>
+      <tr><td class="he">כפתורי מצב בתוך מסננים</td><td>Tiny value sets without a select</td><td>Filter::schema([ToggleButtons]) + indicateUsing</td><td><span class="tag"><span class="dot native"></span> native</span></td><td class="boards-cell">C</td><td>Your "less select, more toggle" rule inside any layout</td></tr>
+      <tr><td class="he">תא סטטוס נערך בשורה</td><td>Publish/unpublish where you see it</td><td>SelectColumn + policy disabled() + toast</td><td><span class="tag"><span class="dot wired"></span> wired</span></td><td class="boards-cell">C</td><td>Needs ContentItemPolicy first (EQ-5 + EQ-6)</td></tr>
+      <tr><td class="he">תא תאריך לחיץ</td><td>Reschedule by clicking the date cell</td><td>column ->action() → DateTimePicker modal (day-first, Jerusalem)</td><td><span class="tag"><span class="dot wired"></span> wired</span></td><td class="boards-cell">C</td><td>No native date column exists — cell-click opens the modal; cell clicks override the row link per the columns overview</td></tr>
+      <tr><td class="he">חיפוש פר־עמודה בכותרת</td><td>Sheet-style search box under the title header</td><td>searchable(isIndividual: true)</td><td><span class="tag"><span class="dot native"></span> native</span></td><td class="boards-cell">—</td><td>Optional extra; global search already covers title/podcast/slug</td></tr>
+      <tr><td class="he">מיון/חיפוש דביקים בין ביקורים</td><td>The list reopens the way you left it</td><td>persistSortInSession() · persistSearchInSession()</td><td><span class="tag"><span class="dot native"></span> native</span></td><td class="boards-cell">—</td><td>Off by default in the design (URL stays the truth); opt-in if the daily rhythm wants it</td></tr>
+      <tr><td class="he">דלתות תיקון בשורות חסומות</td><td>The fix, one click from the reason</td><td>contextual Actions, server-validated</td><td><span class="tag"><span class="dot wired"></span> wired</span></td><td class="boards-cell">C</td><td>Rides the visibility badge's reason (EQ-9)</td></tr>
+      <tr><td class="he">שורת ספירה מודגשת</td><td>"Showing X of Y" as a sentence</td><td>paginator + scope data</td><td><span class="tag"><span class="dot wired"></span> wired</span></td><td class="boards-cell">A · B · C</td><td>Cheap everywhere; keep the total library number visible when scoped</td></tr>
+      <tr><td class="he">מנהל עמודות</td><td>Self-serve column order + visibility</td><td>reorderableColumns() + toggleable()</td><td><span class="tag"><span class="dot native"></span> native</span></td><td class="boards-cell">A · B · C</td><td>Ships in every combination</td></tr>
+    </table>
+    </div>
+  </section>
+
+  <footer class="note">
+    <b>Status:</b> ALL decisions answered (2026-08-05): EQ-1…EQ-12 closed, P-EL1–P-EL8 ratified, plus the publish-stamps-date rule, the effective-published-date resolver (created_at fallback), the six-chip exact partition, and the open filter panel (EQ-7 flip). The blueprint board carries the full register; R1/R2 are the two realizations awaiting the operator's pick (or phase order R1 → R2). Boards A/B/C remain as source references.<br><br>
+    <b>Original how-to-answer (kept for the record):</b> name a board («A», «B», «C»), or pick rows from the combine menu — e.g. "A + inline status + group headers" is a valid answer and maps cleanly onto EQ-4/5/7/8/9/10. A sane default if you want my pick: <b>A as the base, plus the inline-status cell and remedy doors from C</b>; B's stat cards can replace the tab strip later without rework (same mechanism underneath). All boards assume the navigation change (episodes ungrouped at top) already decided in EQ-1. Design-only — nothing here is implemented; decisions ride the EQ register in <span style="direction:ltr; unicode-bidi:isolate; font-family:ui-monospace, Menlo, monospace; font-size:12px">docs/phase-02/episodes-lens-design-spec.md</span>.
+  </footer>
+</div>
