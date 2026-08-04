@@ -172,6 +172,49 @@ phases, so `3B P1–P5` and `3C P5–P8` mean phase five of those mini-tasks. Ba
     spills items from an icon-less group). The transcripts item hides in
     single mode for non-super-admins — decluttering only; the URL and
     `canAccess()` are untouched.
+  **A three-dimension adversarial review of the R1 diff** (correctness,
+  house patterns, Filament API fidelity — 23 claims, each put through a
+  refutation pass; 14 confirmed, 9 refuted) ran before the work was called
+  done, and every confirmed finding is fixed and mutation-checked:
+  - **raw-state, reproduced 500**: table filter state is raw browser input,
+    so a forged `?tableFilters[published_between][published_from]=` reached
+    `Carbon::parse` and crashed the list. Dates narrow at the door now, the
+    range compares against the same effective-date expression the column
+    beside it displays (a legacy dateless row was previously invisible to
+    its own displayed date), and the indicator shares the query's timezone.
+  - **Truthful scheduling**: a future-dated episode whose podcast or
+    transcript would still be unpublished on the day reported «מתוזמן» and
+    sat outside the blocked tier — the one window in which it was still
+    fixable. Prerequisites are now judged at the later of now and the air
+    time, so such a row reads «חסום» immediately, a legitimately
+    co-scheduled podcast/transcript raises no false alarm, and an
+    already-live episode whose podcast published later stays visible.
+    `ContentGroup` and `Transcription` gained a `releasedBy()` scope that
+    `published()` delegates to — one contract asked about two moments.
+  - **A no-op remedy**: publish-the-podcast set a status that was already
+    published when the podcast blocked by a *future date*; it pulls the date
+    back now.
+  - **`resetState`**: clearing the pinned filter left its toggle blank
+    instead of returning to «הכל»; the tri-state also gained a type home
+    (`EpisodePinScope`) and its unpinned arm a test.
+  - **The narrowing was at the wrong door**: `updatedActiveTab()` never
+    fires for `#[Url]` hydration, so a query-string tab bypassed it. `mount()`
+    narrows now, proven by a query-string forgery test.
+  - **unpinned-promise**: `EpisodePublicState`'s docblock claimed a parity
+    guard that did not exist. It exists now — every fixture's badge must
+    match the scope query that owns it, which also ties the three
+    derivations of the visibility contract together.
+  - **one-home**: the seven `d/m/Y` literals this diff added route through
+    `UiFormats`; the file is back to zero (the parked app-wide sweep is
+    untouched).
+  Two trade-offs were reviewed and **kept deliberately**, with the reasoning
+  and a revisit trigger recorded in the code: the badge aggregate is
+  uncached and library-wide (it answers "how many drafts exist", not "how
+  many match this filter"). One vendor limitation is worth knowing:
+  `NavigationGroup::collapsed()` seeds `collapsedGroups` in localStorage
+  only when the key is absent, so an admin whose browser already has that
+  key keeps the group expanded until they collapse it once themselves.
+
   Two defects were found and fixed during implementation: the outcome
   notification read a stale `withExists` attribute through `refresh()` (now a
   clean re-read), and the transcriber fallback relation caused a 10×
@@ -185,7 +228,7 @@ phases, so `3B P1–P5` and `3C P5–P8` mean phase five of those mini-tasks. Ba
   `EpisodeListScopeTest`, `EpisodesTableR1Test`, `EpisodesLensNavigationTest`
   (mutation-checked red on the stamping rule, the accessor, the delete tier,
   the blocked predicate, the nav visibility rule and the collapsed flag).
-  Gate: full suite **1704 tests / 20,146 assertions green** (including all 56
+  Gate: full suite **1712 tests / 20,182 assertions green** (including all 56
   browser tests — one ResizeObserver flake under full-run load passed 3/3 in
   isolation and 56/56 in the browser suite), pint clean, full FilaCheck 0
   issues, `npm run build` clean. **Commits are local and unpushed**, awaiting
