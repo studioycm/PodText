@@ -103,9 +103,14 @@ commits) · where else to look (concrete greps/paths) · status.
   allow-listed entry with its why (superseded: the policy landed `7768442`
   and the ruling flip `ce95a35`; the guard now runs with an EMPTY
   allow-list, and the session's sweep confirmed no other resource has a
-  policy-less mutation surface — Users and PublicFormSubmissions expose
-  none; everything else deliberately shares uniform panel-admin authority,
-  enforced structurally from now on).
+  policy-less mutation surface). **Tier-semantics pin (2026-08-04,
+  `c399eaa`, proven by a deny-test mutation):** "registered policy +
+  missing method = deny" is TRUE for bare `Gate` but FALSE at Filament's
+  resource tier — Filament ALLOWS on a missing policy method in non-strict
+  mode. A policy method like `ImportPolicy::viewAny` is therefore
+  load-bearing only for its deny direction; never reason about Filament
+  authorization from bare-Gate semantics (the coverage-test docblock
+  states this correctly).
 - **Sighting (2026-08-03, research session, POTENTIAL — default-tier
   variant):** `AppServiceProvider.php:169-173` sets
   `Select::configureUsing(->preload()->optionsLimit(50))` — the global
@@ -293,6 +298,10 @@ was already on record from the A-block.)*
   gate) or a DUPLICATED mechanism (`double-registration`'s redundant
   listener wiring). A survivor demands identification: vacuous test,
   masking layer, or redundancy defect — each has a different fix.
+  Concrete vacuous-assertion instance (`c399eaa`): `assertSee` on provider
+  labels was satisfied by the SelectFilter's own option labels elsewhere in
+  the page HTML — the fix is the precise-state assertion
+  (`assertTableColumnStateSet`), after which the mutation kills.
 - **Status:** two evidence points at founding; watch for a third before a
   sweep.
 
