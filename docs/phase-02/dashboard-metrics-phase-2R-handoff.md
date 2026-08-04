@@ -119,6 +119,9 @@ phase 2R, and they are binding:
 8. **`StreamEventType` enum will be created** (new, 2026-08-01), covering
    transcription / import / media / submission with `HasLabel`+`HasColor`+`HasIcon`.
    Phase 3's work queue needs the same types, so it lands there.
+   *(Done 2026-08-04, phase 3 `e2010b8` — created with every call site
+   routed, including the eight in-service literals, and a palette-pinning
+   guard.)*
 9. **Push once, immediately before phase 3.**
 
 ## Contracts phase 3 must not redefine
@@ -163,9 +166,12 @@ checklist, 18 patterns, and every register.
 **E4** · *Partially closed along the route:* `SparklineTrend` (A2) and the
 two hardening-round vocabularies (`MediaMutationRepairResult`,
 `SettingsImportRowOutcome`, `f494f0a`) carry contracts; the Board-3 pair
-(`ExternalImageFailureReason`, `MediaAcquisitionDisposition`) is phase-3
-plan Task 8; 9 remaining contract-less enums are registered as an
-internal-only watch (research 2026-08-03). Original entry: the 12 enums
+(`ExternalImageFailureReason`, `MediaAcquisitionDisposition`) landed
+2026-08-04 (phase 3 `0e80cc0` — labels only, call sites routed, and the
+genuinely missing `storage_created` key added to BOTH locales with a
+per-locale `Lang::hasForLocale` presence guard); 9 remaining
+contract-less enums are registered as an internal-only watch
+(research 2026-08-03). Original entry: the 12 enums
 implementing no Filament contract, scoped to those that actually render in
 Filament UI.
 
@@ -385,7 +391,7 @@ Two traps when copying it:
 | `Asia/Jerusalem` in 50 files, three duplicate constants | Fixed — `44219ad` |
 | Timezone named in six helper-text strings | Fixed — `86f7e85` |
 | Lazy widgets rendered as blank boxes | Fixed — loading skeleton |
-| `ActivityStreamWidget` hand-writes event-type colours | **Open** — becomes `StreamEventType` in phase 3 |
+| `ActivityStreamWidget` hand-writes event-type colours | Fixed — `StreamEventType` (phase 3, `e2010b8`) |
 | 12 enums implement no Filament contract | **Open** — E4 |
 | Enum-backed settings properties typed as `string` | Fixed — E5, `AdminUxSettings` |
 | Date/number formats scattered | **Open** — F1/F2 |
@@ -605,8 +611,9 @@ tests in `tests/Feature/AdminUxSettingsEnumTypesTest.php`.
 
 *(Resolved: the re-plan happened 2026-08-03 —
 `docs/phase-02/dashboard-metrics-phase-3-plan.md`, reconciled at route end
-and implementable. This section stands as the rationale it was written
-from.)*
+and implementable; freshly re-reconciled and then IMPLEMENTED 2026-08-04,
+`e2010b8`..`bdc0b78`, full gate green. This section stands as the
+rationale it was written from.)*
 
 Board 3's brief predates every decision above. It should be researched and
 planned fresh, because at minimum:
