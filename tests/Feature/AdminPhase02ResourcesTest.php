@@ -170,9 +170,11 @@ it('orders every registered admin navigation resource and page through the centr
             'sort' => 100,
             'group' => AdminNavigationOrder::CONTENT_MANAGEMENT,
         ],
+        // R1 EQ-1 (2026-08-05): episodes are the front door — ungrouped,
+        // directly under the «פרק חדש» item.
         ContentItemResource::class => [
-            'sort' => 110,
-            'group' => AdminNavigationOrder::CONTENT_MANAGEMENT,
+            'sort' => 15,
+            'group' => null,
         ],
         TranscriptionResource::class => [
             'sort' => 120,
@@ -317,24 +319,36 @@ it('orders every registered admin navigation resource and page through the centr
         ->values()
         ->all();
 
+    // R1 EQ-1: taxonomy leads the labelled groups and the content group
+    // (podcasts + transcripts) trails it, collapsed by default.
     expect($navigationLabels)->toBe([
         null,
-        AdminNavigationOrder::groupLabel(AdminNavigationOrder::CONTENT_MANAGEMENT),
         AdminNavigationOrder::groupLabel(AdminNavigationOrder::TAXONOMY_MANAGEMENT),
+        AdminNavigationOrder::groupLabel(AdminNavigationOrder::CONTENT_MANAGEMENT),
         null,
     ]);
 
     $groupedNavigation = $navigation
         ->filter(fn ($group): bool => $group->getLabel() !== null);
 
+    // Group icons are required by the collapsible desktop sidebar: without
+    // one, a collapsed sidebar drops the group label and spills its items.
     foreach ($groupedNavigation as $group) {
-        expect($group->getIcon())->toBeNull()
+        expect($group->getIcon())->not->toBeNull()
             ->and($group->isCollapsible())->toBeTrue();
 
         foreach ($group->getItems() as $item) {
             expect($item->getIcon())->not->toBeNull();
         }
     }
+
+    $groupByKey = fn (string $key) => $navigation
+        ->first(fn ($group): bool => $group->getLabel() === AdminNavigationOrder::groupLabel($key));
+
+    expect($groupByKey(AdminNavigationOrder::CONTENT_MANAGEMENT)->isCollapsed())->toBeTrue()
+        ->and($groupByKey(AdminNavigationOrder::TAXONOMY_MANAGEMENT)->isCollapsed())->toBeFalse()
+        ->and($groupByKey(AdminNavigationOrder::CONTENT_MANAGEMENT)->getIcon())
+        ->toBe(AdminNavigationOrder::groupIcon(AdminNavigationOrder::CONTENT_MANAGEMENT));
 
     $itemLabelsIn = fn ($group): array => collect($group->getItems())
         ->map(fn ($item): string => $item->getLabel())
@@ -346,6 +360,7 @@ it('orders every registered admin navigation resource and page through the centr
     expect($itemLabelsIn($navigation->first()))->toBe([
         Dashboard::getNavigationLabel(),
         __('admin.resources.content_item.workspace_navigation'),
+        __('admin.resources.content_item.navigation'),
         __('admin.resources.public_form_submission.navigation'),
         __('admin.curator.plural_label'),
     ])
@@ -358,7 +373,6 @@ it('orders every registered admin navigation resource and page through the centr
         ])
         ->and($itemLabelsFor(AdminNavigationOrder::groupLabel(AdminNavigationOrder::CONTENT_MANAGEMENT)))->toBe([
             __('admin.resources.content_group.navigation'),
-            __('admin.resources.content_item.navigation'),
             __('admin.resources.transcription.navigation'),
         ])
         ->and($itemLabelsFor(AdminNavigationOrder::groupLabel(AdminNavigationOrder::TAXONOMY_MANAGEMENT)))->toBe([

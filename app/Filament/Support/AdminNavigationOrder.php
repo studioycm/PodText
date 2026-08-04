@@ -48,14 +48,27 @@ class AdminNavigationOrder
     public const EPISODE_WORKSPACE_CREATE_SORT = 10;
 
     /**
-     * @var array<string, array{label: string}>
+     * Group order is the sidebar order. Episodes left this block for the
+     * ungrouped front door (EQ-1, 2026-08-05), so taxonomy — the more
+     * frequently opened of the two survivors — leads, and the content group
+     * (podcasts + transcripts) trails, collapsed by default.
+     *
+     * The icons are not decoration: with `sidebarCollapsibleOnDesktop()`, a
+     * group without an icon loses its label and spills its items when the
+     * sidebar collapses; with one, it becomes a single icon opening a
+     * dropdown.
+     *
+     * @var array<string, array{label: string, icon: Heroicon, collapsed?: bool}>
      */
     private const GROUPS = [
-        self::CONTENT_MANAGEMENT => [
-            'label' => 'admin.navigation.groups.content_management',
-        ],
         self::TAXONOMY_MANAGEMENT => [
             'label' => 'admin.navigation.groups.taxonomy_management',
+            'icon' => Heroicon::OutlinedTag,
+        ],
+        self::CONTENT_MANAGEMENT => [
+            'label' => 'admin.navigation.groups.content_management',
+            'icon' => Heroicon::OutlinedRectangleGroup,
+            'collapsed' => true,
         ],
     ];
 
@@ -71,9 +84,11 @@ class AdminNavigationOrder
             'sort' => 100,
             'group' => self::CONTENT_MANAGEMENT,
         ],
+        // The front door (EQ-1): episodes lead the ungrouped block, directly
+        // under «פרק חדש», above the form submissions and media items.
         ContentItemResource::class => [
-            'sort' => 110,
-            'group' => self::CONTENT_MANAGEMENT,
+            'sort' => 15,
+            'group' => null,
         ],
         TranscriptionResource::class => [
             'sort' => 120,
@@ -209,6 +224,16 @@ class AdminNavigationOrder
         return __(self::GROUPS[$group]['label']);
     }
 
+    public static function groupIcon(string $group): Heroicon
+    {
+        return self::GROUPS[$group]['icon'];
+    }
+
+    public static function isGroupCollapsed(string $group): bool
+    {
+        return self::GROUPS[$group]['collapsed'] ?? false;
+    }
+
     public static function hasDeferredBadge(string $class): bool
     {
         return self::ITEMS[$class]['badge_deferred'] ?? false;
@@ -257,14 +282,22 @@ class AdminNavigationOrder
         $builder->items($leadingItems->values()->all());
 
         foreach (array_keys(self::GROUPS) as $group) {
-            $builder->group(
-                NavigationGroup::make(fn (): string => self::groupLabel($group))
-                    ->collapsible()
-                    ->items($groupedItems
-                        ->filter(fn (NavigationItem $item): bool => $item->getGroup() === self::groupLabel($group))
-                        ->values()
-                        ->all()),
-            );
+            $navigationGroup = NavigationGroup::make(fn (): string => self::groupLabel($group))
+                ->icon(self::groupIcon($group))
+                ->collapsible()
+                ->items($groupedItems
+                    ->filter(fn (NavigationItem $item): bool => $item->getGroup() === self::groupLabel($group))
+                    ->values()
+                    ->all());
+
+            // `collapsed()` also *sets* collapsibility from the same value in
+            // Filament 5, so calling it with false would strip an expanded
+            // group's collapse toggle. Only the collapsed groups say it.
+            if (self::isGroupCollapsed($group)) {
+                $navigationGroup->collapsed();
+            }
+
+            $builder->group($navigationGroup);
         }
 
         return $builder->group(

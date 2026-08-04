@@ -6,14 +6,15 @@ use App\Enums\EpisodeListScope;
 use App\Enums\PublicationStatus;
 use App\Models\ContentItem;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\DB;
 
 /**
  * The one home for episode quick-scope membership (EQ-4). `visible` rides
  * the model's own published() scope so the public contract is never
  * re-derived; `scheduled`/`blocked` split the remaining published tier so
  * drafts + visible + scheduled + blocked = all, exactly. Counts reuse the
- * same predicates (correctness by construction over a hand-built aggregate;
- * a single-pass aggregate is a future seat if scale ever asks).
+ * same predicates through counting subqueries, so every badge resolves in a
+ * single round trip without a second home for the conditions.
  */
 class EpisodeListScopeQuery
 {
@@ -43,14 +44,26 @@ class EpisodeListScopeQuery
     }
 
     /**
+     * Every badge in one round trip: each scope becomes a counting subquery
+     * built from `apply()`, so the numbers can never drift from the tab they
+     * label (the alternative — hand-written CASE WHEN conditions — would be
+     * a second home for the same predicates).
+     *
      * @return array<string, int>
      */
     public function counts(): array
     {
-        return collect(EpisodeListScope::cases())
-            ->mapWithKeys(fn (EpisodeListScope $scope): array => [
-                $scope->value => $this->apply(ContentItem::query(), $scope)->count(),
-            ])
+        $query = DB::query();
+
+        foreach (EpisodeListScope::cases() as $scope) {
+            $query->selectSub(
+                $this->apply(ContentItem::query(), $scope)->toBase()->selectRaw('count(*)'),
+                $scope->value,
+            );
+        }
+
+        return collect((array) $query->first())
+            ->map(fn (mixed $count): int => (int) $count)
             ->all();
     }
 }
