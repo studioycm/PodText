@@ -27,6 +27,7 @@
         "filament-performance-audit",
         "laravel-simplifier",
         "spatie-laravel-php",
-        "technical-debt-manager-php-laravel"
+        "technical-debt-manager-php-laravel",
+        "ux-design-thinking"
     ]
 }
