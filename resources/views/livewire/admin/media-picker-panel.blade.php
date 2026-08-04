@@ -5,120 +5,147 @@
         'min-h-[60vh]' => $isInlineOwnerWorkspace,
         'min-h-[70vh]' => ! $isInlineOwnerWorkspace,
     ])
-    x-data="{ uploading: false, uploadFocusId: null }"
-    x-on:livewire-upload-start="
-        const active = document.activeElement;
-        uploadFocusId =
-            active !== document.body && $root.contains(active)
-                ? (active.id ||= 'media-picker-upload-return-target')
-                : null;
-        uploading = true;
-    "
-    x-on:livewire-upload-finish="
-        uploading = false;
-        $nextTick(() => {
-            const candidate = uploadFocusId ? document.getElementById(uploadFocusId) : null;
-            const target =
-                candidate?.isConnected && ! candidate.disabled && candidate.getClientRects().length
-                    ? candidate
-                    : $root.querySelector('[data-testid=media-picker-source-upload]');
-            target?.focus();
-            uploadFocusId = null;
-        });
-    "
-    x-on:livewire-upload-error="
-        uploading = false;
-        $nextTick(() => {
-            const candidate = uploadFocusId ? document.getElementById(uploadFocusId) : null;
-            const target =
-                candidate?.isConnected && ! candidate.disabled && candidate.getClientRects().length
-                    ? candidate
-                    : $root.querySelector('[data-testid=media-picker-source-upload]');
-            target?.focus();
-            uploadFocusId = null;
-        });
-    "
-    x-on:livewire-upload-cancel="
-        uploading = false;
-        $nextTick(() => {
-            const candidate = uploadFocusId ? document.getElementById(uploadFocusId) : null;
-            const target =
-                candidate?.isConnected && ! candidate.disabled && candidate.getClientRects().length
-                    ? candidate
-                    : $root.querySelector('[data-testid=media-picker-source-upload]');
-            target?.focus();
-            uploadFocusId = null;
-        });
-    "
+    x-data="{
+        uploading: false,
+        uploadFocusId: null,
+        focusReturnFrames: 0,
+        focusReturned: false,
+        rememberUploadFocus() {
+            const active = document.activeElement;
+            this.uploadFocusId =
+                active !== document.body && this.$root.contains(active)
+                    ? (active.id ||= 'media-picker-upload-return-target')
+                    : null;
+            this.uploading = true;
+        },
+        settleUpload() {
+            this.uploading = false;
+            this.focusReturnFrames = 0;
+            this.focusReturned = false;
+            this.$nextTick(() => this.returnUploadFocus());
+        },
+        placeUploadFocus() {
+            const candidate = this.uploadFocusId ? document.getElementById(this.uploadFocusId) : null;
+
+            return [
+                candidate,
+                this.$root.querySelector('[data-testid=media-picker-source-upload]'),
+                this.$root.querySelector('[data-testid=media-picker-close]'),
+            ].some((element) => {
+                if (! element?.isConnected || element.disabled || ! element.getClientRects().length) {
+                    return false;
+                }
+
+                element.focus();
+
+                return document.activeElement === element;
+            });
+        },
+        returnUploadFocus() {
+            // `disabled` on the return targets has two writers — this
+            // component's upload guard and Filament's wire:loading.attr, which
+            // every icon button carries while a request is in flight — and the
+            // modal focus trap is a third mover. A single unverified focus()
+            // therefore fails two ways: the target can be disabled at the
+            // instant of the call (focus() silently no-ops, the trap then
+            // parks focus on dialog chrome), or the second writer can disable
+            // it right AFTER focus lands, which blurs it to <body>. So the
+            // restore works the settle window frame by frame: first bring
+            // focus back into the workspace, verified and retried until a
+            // target can actually take it; after it has landed once, only
+            // recover genuine drops to <body> — an element focused after
+            // that, inside the workspace or out, was somebody's choice and is
+            // never taken away.
+            if (!this.$root.isConnected || this.focusReturnFrames++ >= 120) {
+                this.uploadFocusId = null;
+
+                return;
+            }
+
+            const active = document.activeElement;
+
+            if (!this.focusReturned) {
+                this.focusReturned = this.$root.contains(active) || this.placeUploadFocus();
+            } else if (!active || active === document.body) {
+                this.placeUploadFocus();
+            }
+
+            requestAnimationFrame(() => this.returnUploadFocus());
+        },
+    }"
+    x-on:livewire-upload-start="rememberUploadFocus()"
+    x-on:livewire-upload-finish="settleUpload()"
+    x-on:livewire-upload-error="settleUpload()"
+    x-on:livewire-upload-cancel="settleUpload()"
     x-bind:aria-busy="uploading || returningSelection ? 'true' : null"
     x-bind:inert="returningSelection"
     x-on:open-media-details.window="$wire.mountAction('mediaDetails', { id: $event.detail.id })"
     wire:loading.attr="aria-busy"
 >
     @if (! ($isOwnerChoice && $isInlineOwnerWorkspace))
-        <div
-            data-testid="media-picker-header"
-            class="sticky top-0 z-20 flex flex-wrap items-center justify-between gap-3 border-b border-gray-200 bg-white px-4 py-3 dark:border-gray-800 dark:bg-gray-900"
-            x-bind:inert="uploading || returningSelection"
-        >
-            <div class="flex flex-wrap items-center gap-2">
-                @if (! $isOwnerChoice)
-                    <x-filament::button
-                        size="xs"
-                        :color="$allMedia ? 'gray' : 'primary'"
-                        wire:click="showContextMedia"
-                        wire:loading.attr="disabled"
-                        wire:offline.attr="disabled"
-                    >
-                        {{ __('admin.media_library.context_media') }}
-                    </x-filament::button>
-                    <x-filament::button
-                        size="xs"
-                        :color="$allMedia ? 'primary' : 'gray'"
-                        wire:click="showAllMedia"
-                        wire:loading.attr="disabled"
-                        wire:offline.attr="disabled"
-                    >
-                        {{ __('admin.media_library.all_media') }}
-                    </x-filament::button>
-                @endif
-            </div>
-
-            @if (! $isInlineOwnerWorkspace)
-                <x-filament::icon-button
-                    data-testid="media-picker-close"
-                    x-on:click="$dispatch('close-media-picker')"
-                    x-bind:aria-disabled="uploading || returningSelection ? 'true' : null"
-                    x-bind:disabled="uploading || returningSelection"
-                    icon="heroicon-o-x-mark"
-                    color="gray"
-                    :label="__('admin.actions.close')"
-                />
+    <div
+        data-testid="media-picker-header"
+        class="sticky top-0 z-20 flex flex-wrap items-center justify-between gap-3 border-b border-gray-200 bg-white px-4 py-3 dark:border-gray-800 dark:bg-gray-900"
+        x-bind:inert="uploading || returningSelection"
+    >
+        <div class="flex flex-wrap items-center gap-2">
+            @if (! $isOwnerChoice)
+            <x-filament::button
+                size="xs"
+                :color="$allMedia ? 'gray' : 'primary'"
+                wire:click="showContextMedia"
+                wire:loading.attr="disabled"
+                wire:offline.attr="disabled"
+            >
+                {{ __('admin.media_library.context_media') }}
+            </x-filament::button>
+            <x-filament::button
+                size="xs"
+                :color="$allMedia ? 'primary' : 'gray'"
+                wire:click="showAllMedia"
+                wire:loading.attr="disabled"
+                wire:offline.attr="disabled"
+            >
+                {{ __('admin.media_library.all_media') }}
+            </x-filament::button>
             @endif
         </div>
+
+        @if (! $isInlineOwnerWorkspace)
+        <x-filament::icon-button
+            data-testid="media-picker-close"
+            x-on:click="$dispatch('close-media-picker')"
+            x-bind:aria-disabled="uploading || returningSelection ? 'true' : null"
+            x-bind:disabled="uploading || returningSelection"
+            icon="heroicon-o-x-mark"
+            color="gray"
+            :label="__('admin.actions.close')"
+        />
+        @endif
+    </div>
     @endif
 
     @if ($isOwnerChoice)
-        <x-filament::tabs
-            :label="__('admin.media_library.source_navigation')"
-            contained
-            class="mx-4 mt-2 overflow-x-auto"
-            data-testid="media-picker-owner-source-navigation"
-            wire:loading.attr="inert"
+    <x-filament::tabs
+        :label="__('admin.media_library.source_navigation')"
+        contained
+        class="mx-4 mt-2 overflow-x-auto"
+        data-testid="media-picker-owner-source-navigation"
+        wire:loading.attr="inert"
+    >
+        @foreach (['gallery', 'upload', 'url', 'storage'] as $source)
+        <x-filament::tabs.item
+            :active="$activeSource === $source"
+            id="media-picker-source-{{ $source }}"
+            data-testid="media-picker-source-{{ $source }}"
+            wire:click="activateSource('{{ $source }}')"
+            x-bind:disabled="uploading"
+            wire:offline.attr="disabled"
         >
-            @foreach (['gallery', 'upload', 'url', 'storage'] as $source)
-                <x-filament::tabs.item
-                    :active="$activeSource === $source"
-                    id="media-picker-source-{{ $source }}"
-                    data-testid="media-picker-source-{{ $source }}"
-                    wire:click="activateSource('{{ $source }}')"
-                    x-bind:disabled="uploading"
-                    wire:offline.attr="disabled"
-                >
-                    {{ __("admin.media_library.{$source}_source") }}
-                </x-filament::tabs.item>
-            @endforeach
-        </x-filament::tabs>
+            {{ __("admin.media_library.{$source}_source") }}
+        </x-filament::tabs.item>
+        @endforeach
+    </x-filament::tabs>
     @endif
 
     <div
@@ -138,7 +165,7 @@
             x-bind:inert="uploading"
         >
             @unless ($isOwnerChoice)
-                <h2 class="mb-3 font-semibold">{{ __('admin.media_library.gallery_source') }}</h2>
+            <h2 class="mb-3 font-semibold">{{ __('admin.media_library.gallery_source') }}</h2>
             @endunless
 
             <div data-testid="media-picker-gallery-toolbar" class="mb-3 flex flex-wrap items-center gap-3">
@@ -169,33 +196,33 @@
                             wire:model.live="searchScope"
                         >
                             @foreach (['all', 'title', 'owner', 'filename'] as $scopeOption)
-                                <option value="{{ $scopeOption }}">
-                                    {{ __("admin.media_library.search_scopes.{$scopeOption}") }}
-                                </option>
+                            <option value="{{ $scopeOption }}">
+                                {{ __("admin.media_library.search_scopes.{$scopeOption}") }}
+                            </option>
                             @endforeach
                         </x-filament::input.select>
                     </x-filament::input.wrapper>
                 </div>
                 @if ($isOwnerChoice || $allMedia)
-                    <div wire:loading.attr="inert">
-                        <label for="media-picker-directory-filter" class="sr-only">
-                            {{ __('admin.media_library.directory_filter_label') }}
-                        </label>
-                        <x-filament::input.wrapper>
-                            <x-filament::input.select
-                                id="media-picker-directory-filter"
-                                data-testid="media-picker-directory-filter"
-                                wire:model.live="directoryFilter"
-                                wire:loading.attr="disabled"
-                                wire:offline.attr="disabled"
-                            >
-                                <option value="">{{ __('admin.media_library.all_media') }}</option>
-                                @foreach ($this->directoryOptions() as $value => $label)
-                                    <option value="{{ $value }}" dir="ltr">{{ $label }}</option>
-                                @endforeach
-                            </x-filament::input.select>
-                        </x-filament::input.wrapper>
-                    </div>
+                <div wire:loading.attr="inert">
+                    <label for="media-picker-directory-filter" class="sr-only">
+                        {{ __('admin.media_library.directory_filter_label') }}
+                    </label>
+                    <x-filament::input.wrapper>
+                        <x-filament::input.select
+                            id="media-picker-directory-filter"
+                            data-testid="media-picker-directory-filter"
+                            wire:model.live="directoryFilter"
+                            wire:loading.attr="disabled"
+                            wire:offline.attr="disabled"
+                        >
+                            <option value="">{{ __('admin.media_library.all_media') }}</option>
+                            @foreach ($this->directoryOptions() as $value => $label)
+                            <option value="{{ $value }}" dir="ltr">{{ $label }}</option>
+                            @endforeach
+                        </x-filament::input.select>
+                    </x-filament::input.wrapper>
+                </div>
                 @endif
                 <span
                     class="text-sm text-gray-500"
@@ -207,31 +234,31 @@
                     {{ __('admin.media_library.selected_count', ['count' => count($selectedIds)]) }}
                 </span>
                 @if ($currentPage > 1 && blank($search))
-                    <x-filament::button
-                        size="xs"
-                        color="gray"
-                        wire:click="loadPreviousFiles"
-                        wire:loading.attr="disabled"
-                        wire:offline.attr="disabled"
-                    >
-                        {{ __('admin.media_library.previous_page') }}
-                    </x-filament::button>
+                <x-filament::button
+                    size="xs"
+                    color="gray"
+                    wire:click="loadPreviousFiles"
+                    wire:loading.attr="disabled"
+                    wire:offline.attr="disabled"
+                >
+                    {{ __('admin.media_library.previous_page') }}
+                </x-filament::button>
                 @endif
                 @if ($currentPage < $lastPage && blank($search))
-                    <x-filament::button
-                        size="xs"
-                        color="gray"
-                        wire:click="loadMoreFiles"
-                        wire:loading.attr="disabled"
-                        wire:offline.attr="disabled"
-                    >
-                        {{ __('admin.media_library.next_page') }}
-                    </x-filament::button>
+                <x-filament::button
+                    size="xs"
+                    color="gray"
+                    wire:click="loadMoreFiles"
+                    wire:loading.attr="disabled"
+                    wire:offline.attr="disabled"
+                >
+                    {{ __('admin.media_library.next_page') }}
+                </x-filament::button>
                 @endif
                 @if ($lastPage > 1 && blank($search))
-                    <span class="text-sm text-gray-500">
-                        {{ __('admin.media_library.page_count', ['current' => $currentPage, 'last' => $lastPage]) }}
-                    </span>
+                <span class="text-sm text-gray-500">
+                    {{ __('admin.media_library.page_count', ['current' => $currentPage, 'last' => $lastPage]) }}
+                </span>
                 @endif
             </div>
             <ul @class([
@@ -240,99 +267,103 @@
                 'sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-6' => ! $isOwnerChoice,
             ])>
                 @forelse ($files as $file)
-                    @php
-                        $selected = in_array($file['id'], $selectedIds, true);
-                        $ownerSelected = $isOwnerChoice && $selected;
-                        $selectionDisabled = ! $file['selectable'] || $ownerSelected;
-                        $blockedReasonId = "media-picker-blocked-{$file['id']}";
-                        $selectionLabel = $ownerSelected
-                            ? __('admin.media_library.current_image').': '.$file['pretty_name']
-                            : __(
-                                $selected
-                                    ? 'admin.media_library.deselect_image'
-                                    : 'admin.media_library.select_image',
-                                ['name' => $file['pretty_name']],
-                            );
-                    @endphp
-                    <li
-                        wire:key="media-picker-{{ $file['id'] }}"
-                        class="group relative aspect-square overflow-hidden rounded-md border border-gray-300 bg-gray-100 dark:border-gray-700 dark:bg-gray-900"
+                @php
+                    $selected = in_array($file['id'], $selectedIds, true);
+                    $ownerSelected = $isOwnerChoice && $selected;
+                    $selectionDisabled = ! $file['selectable'] || $ownerSelected;
+                    $blockedReasonId = "media-picker-blocked-{$file['id']}";
+                    $selectionLabel = $ownerSelected
+                        ? __('admin.media_library.current_image').': '.$file['pretty_name']
+                        : __(
+                            $selected
+                                ? 'admin.media_library.deselect_image'
+                                : 'admin.media_library.select_image',
+                            ['name' => $file['pretty_name']],
+                        );
+                @endphp
+                <li
+                    wire:key="media-picker-{{ $file['id'] }}"
+                    class="group relative aspect-square overflow-hidden rounded-md border border-gray-300 bg-gray-100 dark:border-gray-700 dark:bg-gray-900"
+                >
+                    <button
+                        type="button"
+                        wire:click="toggleSelection({{ $file['id'] }})"
+                        wire:loading.attr="disabled"
+                        wire:offline.attr="disabled"
+                        aria-label="{{ $selectionLabel }}"
+                        aria-pressed="{{ $selected ? 'true' : 'false' }}"
+                        @if ($selectionDisabled)
+                        aria-disabled="true"
+                        @endif
+                        @if (! $file['selectable'])
+                        aria-describedby="{{ $blockedReasonId }}"
+                        @endif
+                        @disabled($selectionDisabled)
+                        @class([
+                            'block h-full w-full focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-inset focus-visible:ring-primary-500',
+                            'cursor-not-allowed opacity-70' => ! $file['selectable'],
+                        ])
                     >
+                        @if (filled($file['preview_url']))
+                        <x-curator::display
+                            :item="$file"
+                            :src="$file['preview_url']"
+                            :alt="$file['alt'] ?? ''"
+                            :lazy="true"
+                            class="h-full w-full object-cover"
+                        />
+                        @else
+                        <span class="grid h-full place-items-center px-3 text-center text-xs text-gray-500">
+                            {{ __('admin.media_library.preview_unavailable') }}
+                        </span>
+                        @endif
+                        @if ($selected)
+                        <span class="bg-primary-500/20 ring-primary-500 absolute inset-0 grid place-items-center ring-2 ring-inset">
+                            <x-filament::icon icon="heroicon-s-check-circle" class="text-primary-600 h-9 w-9" />
+                        </span>
+                        @endif
+                    </button>
+
+                    @if (! $file['selectable'])
+                    <div
+                        id="{{ $blockedReasonId }}"
+                        class="bg-warning-50/95 text-warning-800 dark:bg-warning-950/95 dark:text-warning-200 absolute inset-x-1 top-1 rounded p-1 text-[0.65rem] leading-tight shadow-sm"
+                    >
+                        <p>{{ $file['selection_blocked_reason'] }}</p>
+                        @if ($isOwnerChoice)
+                        @if (filled($file['details_url'] ?? null))
                         <button
                             type="button"
-                            wire:click="toggleSelection({{ $file['id'] }})"
-                            wire:loading.attr="disabled"
-                            wire:offline.attr="disabled"
-                            aria-label="{{ $selectionLabel }}"
-                            aria-pressed="{{ $selected ? 'true' : 'false' }}"
-                            @if ($selectionDisabled) aria-disabled="true" @endif
-                            @if (! $file['selectable']) aria-describedby="{{ $blockedReasonId }}" @endif
-                            @disabled($selectionDisabled)
-                            @class([
-                                'block h-full w-full focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-inset focus-visible:ring-primary-500',
-                                'cursor-not-allowed opacity-70' => ! $file['selectable'],
-                            ])
+                            wire:click="mountAction('mediaDetails', { id: {{ $file['id'] }} })"
+                            class="font-medium underline"
+                            data-testid="media-picker-owner-details-{{ $file['id'] }}"
                         >
-                            @if (filled($file['preview_url']))
-                                <x-curator::display
-                                    :item="$file"
-                                    :src="$file['preview_url']"
-                                    :alt="$file['alt'] ?? ''"
-                                    :lazy="true"
-                                    class="h-full w-full object-cover"
-                                />
-                            @else
-                                <span class="grid h-full place-items-center px-3 text-center text-xs text-gray-500">
-                                    {{ __('admin.media_library.preview_unavailable') }}
-                                </span>
-                            @endif
-                            @if ($selected)
-                                <span class="bg-primary-500/20 ring-primary-500 absolute inset-0 grid place-items-center ring-2 ring-inset">
-                                    <x-filament::icon icon="heroicon-s-check-circle" class="text-primary-600 h-9 w-9" />
-                                </span>
-                            @endif
+                            {{ __('admin.media_library.open_details') }}
                         </button>
-
-                        @if (! $file['selectable'])
-                            <div
-                                id="{{ $blockedReasonId }}"
-                                class="bg-warning-50/95 text-warning-800 dark:bg-warning-950/95 dark:text-warning-200 absolute inset-x-1 top-1 rounded p-1 text-[0.65rem] leading-tight shadow-sm"
-                            >
-                                <p>{{ $file['selection_blocked_reason'] }}</p>
-                                @if ($isOwnerChoice)
-                                    @if (filled($file['details_url'] ?? null))
-                                        <button
-                                            type="button"
-                                            wire:click="mountAction('mediaDetails', { id: {{ $file['id'] }} })"
-                                            class="font-medium underline"
-                                            data-testid="media-picker-owner-details-{{ $file['id'] }}"
-                                        >
-                                            {{ __('admin.media_library.open_details') }}
-                                        </button>
-                                    @endif
-                                @else
-                                    <a href="{{ $file['review_url'] }}" class="font-medium underline">
-                                        {{ __('admin.media_library.review_media') }}
-                                    </a>
-                                @endif
-                            </div>
                         @endif
-
-                        @if ($isOwnerChoice)
-                            @if ($file['selectable'] && filled($file['details_url'] ?? null))
-                                <button
-                                    type="button"
-                                    wire:click="mountAction('mediaDetails', { id: {{ $file['id'] }} })"
-                                    class="text-primary-700 dark:text-primary-300 absolute end-1 top-1 rounded-md bg-white/95 px-2 py-1 text-xs font-medium shadow-sm dark:bg-gray-900/95"
-                                    data-testid="media-picker-owner-details-{{ $file['id'] }}"
-                                >
-                                    {{ __('admin.media_library.open_details') }}
-                                </button>
-                            @endif
                         @else
-                            <div class="absolute end-1 top-1 opacity-0 transition group-focus-within:opacity-100 group-hover:opacity-100 pointer-coarse:opacity-100">
-                                <x-filament-actions::group
-                                    :actions="[
+                        <a href="{{ $file['review_url'] }}" class="font-medium underline">
+                            {{ __('admin.media_library.review_media') }}
+                        </a>
+                        @endif
+                    </div>
+                    @endif
+
+                    @if ($isOwnerChoice)
+                    @if ($file['selectable'] && filled($file['details_url'] ?? null))
+                    <button
+                        type="button"
+                        wire:click="mountAction('mediaDetails', { id: {{ $file['id'] }} })"
+                        class="text-primary-700 dark:text-primary-300 absolute end-1 top-1 rounded-md bg-white/95 px-2 py-1 text-xs font-medium shadow-sm dark:bg-gray-900/95"
+                        data-testid="media-picker-owner-details-{{ $file['id'] }}"
+                    >
+                        {{ __('admin.media_library.open_details') }}
+                    </button>
+                    @endif
+                    @else
+                    <div class="absolute end-1 top-1 opacity-0 transition group-focus-within:opacity-100 group-hover:opacity-100 pointer-coarse:opacity-100">
+                        <x-filament-actions::group
+                            :actions="[
                                         ($this->mediaDetailsAction)(['id' => $file['id']]),
                                         ($this->viewItemAction)(['id' => $file['id']]),
                                         ($this->downloadItemAction)(['id' => $file['id']]),
@@ -341,68 +372,68 @@
                                         ($this->swapItemAction)(['id' => $file['id']]),
                                         ($this->destroyItemAction)(['id' => $file['id']]),
                                     ]"
-                                    color="gray"
-                                    size="xs"
-                                />
-                            </div>
-                        @endif
+                            color="gray"
+                            size="xs"
+                        />
+                    </div>
+                    @endif
 
-                        <p class="pointer-events-none absolute inset-x-0 bottom-0 truncate bg-gradient-to-t from-black/80 px-2 pt-6 pb-1 text-xs text-white">
-                            {{ $file['pretty_name'] }}
-                        </p>
-                    </li>
+                    <p class="pointer-events-none absolute inset-x-0 bottom-0 truncate bg-gradient-to-t from-black/80 px-2 pt-6 pb-1 text-xs text-white">
+                        {{ $file['pretty_name'] }}
+                    </p>
+                </li>
                 @empty
-                    <li class="col-span-full py-12 text-center text-sm text-gray-500">
-                        @if (filled($search))
-                            <p>{{ __('admin.media_library.empty_search') }}</p>
-                            <x-filament::button
-                                class="mt-3"
-                                size="xs"
-                                color="gray"
-                                wire:click="$set('search', '')"
-                                wire:loading.attr="disabled"
-                                wire:offline.attr="disabled"
-                            >
-                                {{ __('admin.media_library.clear_search') }}
-                            </x-filament::button>
-                        @elseif ($directoryFilter !== '')
-                            <p>{{ __('admin.media_library.empty_directory') }}</p>
-                            <x-filament::button
-                                class="mt-3"
-                                size="xs"
-                                color="gray"
-                                wire:click="$set('directoryFilter', '')"
-                                wire:loading.attr="disabled"
-                                wire:offline.attr="disabled"
-                            >
-                                {{ __('admin.media_library.all_media') }}
-                            </x-filament::button>
-                        @elseif (! $allMedia)
-                            <p>{{ __('admin.media_library.empty_context') }}</p>
-                            <x-filament::button
-                                class="mt-3"
-                                size="xs"
-                                color="gray"
-                                wire:click="showAllMedia"
-                                wire:loading.attr="disabled"
-                                wire:offline.attr="disabled"
-                            >
-                                {{ __('admin.media_library.all_media') }}
-                            </x-filament::button>
-                        @else
-                            <p>{{ __('admin.media_library.empty_library') }}</p>
-                            <x-filament::button
-                                class="mt-3"
-                                size="xs"
-                                color="gray"
-                                wire:click="activateSource('upload')"
-                                wire:loading.attr="disabled"
-                                wire:offline.attr="disabled"
-                            >
-                                {{ __('admin.media_library.upload_source') }}
-                            </x-filament::button>
-                        @endif
-                    </li>
+                <li class="col-span-full py-12 text-center text-sm text-gray-500">
+                    @if (filled($search))
+                    <p>{{ __('admin.media_library.empty_search') }}</p>
+                    <x-filament::button
+                        class="mt-3"
+                        size="xs"
+                        color="gray"
+                        wire:click="$set('search', '')"
+                        wire:loading.attr="disabled"
+                        wire:offline.attr="disabled"
+                    >
+                        {{ __('admin.media_library.clear_search') }}
+                    </x-filament::button>
+                    @elseif ($directoryFilter !== '')
+                    <p>{{ __('admin.media_library.empty_directory') }}</p>
+                    <x-filament::button
+                        class="mt-3"
+                        size="xs"
+                        color="gray"
+                        wire:click="$set('directoryFilter', '')"
+                        wire:loading.attr="disabled"
+                        wire:offline.attr="disabled"
+                    >
+                        {{ __('admin.media_library.all_media') }}
+                    </x-filament::button>
+                    @elseif (! $allMedia)
+                    <p>{{ __('admin.media_library.empty_context') }}</p>
+                    <x-filament::button
+                        class="mt-3"
+                        size="xs"
+                        color="gray"
+                        wire:click="showAllMedia"
+                        wire:loading.attr="disabled"
+                        wire:offline.attr="disabled"
+                    >
+                        {{ __('admin.media_library.all_media') }}
+                    </x-filament::button>
+                    @else
+                    <p>{{ __('admin.media_library.empty_library') }}</p>
+                    <x-filament::button
+                        class="mt-3"
+                        size="xs"
+                        color="gray"
+                        wire:click="activateSource('upload')"
+                        wire:loading.attr="disabled"
+                        wire:offline.attr="disabled"
+                    >
+                        {{ __('admin.media_library.upload_source') }}
+                    </x-filament::button>
+                    @endif
+                </li>
                 @endforelse
             </ul>
         </main>
@@ -425,52 +456,52 @@
             @endphp
 
             @if (in_array($activeSource, ['upload', 'url'], true))
-                <div class="sticky top-0 z-10 -mx-4 -mt-4 mb-3 flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-gray-200 bg-white px-4 py-2 dark:border-gray-800 dark:bg-gray-900">
-                    @if ($activeSource === 'upload')
-                        <span data-testid="media-picker-upload-action-guard" x-bind:inert="uploading">
-                            {{ $this->uploadFilesAction }}
-                        </span>
-                    @else
-                        <span
-                            data-testid="media-picker-url-action-guard"
-                            x-bind:inert="uploading"
-                            wire:loading.attr="inert"
-                            wire:offline.attr="inert"
-                        >
-                            {{ $this->acquireUrlAction }}
-                        </span>
-                    @endif
-                    <p class="text-primary-800 dark:text-primary-200 min-w-48 flex-1 text-xs">
-                        {!! $permanenceNoteHtml !!}
-                    </p>
-                </div>
-            @elseif ($activeSource === 'storage')
-                <p class="bg-primary-50 text-primary-800 dark:bg-primary-950 dark:text-primary-200 mb-4 rounded-md p-3 text-xs">
+            <div class="sticky top-0 z-10 -mx-4 -mt-4 mb-3 flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-gray-200 bg-white px-4 py-2 dark:border-gray-800 dark:bg-gray-900">
+                @if ($activeSource === 'upload')
+                <span data-testid="media-picker-upload-action-guard" x-bind:inert="uploading">
+                    {{ $this->uploadFilesAction }}
+                </span>
+                @else
+                <span
+                    data-testid="media-picker-url-action-guard"
+                    x-bind:inert="uploading"
+                    wire:loading.attr="inert"
+                    wire:offline.attr="inert"
+                >
+                    {{ $this->acquireUrlAction }}
+                </span>
+                @endif
+                <p class="text-primary-800 dark:text-primary-200 min-w-48 flex-1 text-xs">
                     {!! $permanenceNoteHtml !!}
                 </p>
+            </div>
+            @elseif ($activeSource === 'storage')
+            <p class="bg-primary-50 text-primary-800 dark:bg-primary-950 dark:text-primary-200 mb-4 rounded-md p-3 text-xs">
+                {!! $permanenceNoteHtml !!}
+            </p>
             @endif
 
             @if (! $isOwnerChoice)
-                <x-filament::tabs
-                    :label="__('admin.media_library.source_navigation')"
-                    contained
-                    class="mb-4 overflow-x-auto"
-                    data-testid="media-picker-source-navigation"
-                    wire:loading.attr="inert"
+            <x-filament::tabs
+                :label="__('admin.media_library.source_navigation')"
+                contained
+                class="mb-4 overflow-x-auto"
+                data-testid="media-picker-source-navigation"
+                wire:loading.attr="inert"
+            >
+                @foreach (['upload', 'url', 'storage'] as $source)
+                <x-filament::tabs.item
+                    :active="$activeSource === $source"
+                    id="media-picker-source-{{ $source }}"
+                    data-testid="media-picker-source-{{ $source }}"
+                    wire:click="activateSource('{{ $source }}')"
+                    x-bind:disabled="uploading"
+                    wire:offline.attr="disabled"
                 >
-                    @foreach (['upload', 'url', 'storage'] as $source)
-                        <x-filament::tabs.item
-                            :active="$activeSource === $source"
-                            id="media-picker-source-{{ $source }}"
-                            data-testid="media-picker-source-{{ $source }}"
-                            wire:click="activateSource('{{ $source }}')"
-                            x-bind:disabled="uploading"
-                            wire:offline.attr="disabled"
-                        >
-                            {{ __("admin.media_library.{$source}_source") }}
-                        </x-filament::tabs.item>
-                    @endforeach
-                </x-filament::tabs>
+                    {{ __("admin.media_library.{$source}_source") }}
+                </x-filament::tabs.item>
+                @endforeach
+            </x-filament::tabs>
             @endif
 
             <div class="min-h-6" aria-live="polite" aria-atomic="true">
@@ -491,269 +522,265 @@
             </fieldset>
 
             @if ($activeSource === 'upload')
-                @error('panelData.uploads')
-                    <span
-                        data-error-source="upload"
-                        class="sr-only"
-                        x-init="
-                            $nextTick(() =>
-                                (
-                                    document.getElementById('media-picker-upload-input') ??
-                                    document.getElementById('media-picker-source-upload')
-                                )?.focus(),
-                            )
-                        "
-                    ></span>
-                @enderror
+            @error('panelData.uploads')
+            <span
+                data-error-source="upload"
+                class="sr-only"
+                x-init="
+                    $nextTick(() =>
+                        (
+                            document.getElementById('media-picker-upload-input') ??
+                            document.getElementById('media-picker-source-upload')
+                        )?.focus(),
+                    )
+                "
+            ></span>
+            @enderror
 
-                @if ($uploadResults !== [])
-                    @php
-                        $fateCounts = collect($uploadResults)->countBy('fate');
-                    @endphp
-                    <div
-                        class="mt-3 overflow-hidden rounded-lg border border-gray-200 dark:border-gray-700"
-                        data-testid="media-picker-upload-results"
-                        role="status"
-                        aria-live="polite"
-                    >
-                        <div class="flex flex-wrap items-center justify-between gap-2 border-b border-gray-200 bg-gray-50 px-3 py-1.5 text-xs font-semibold dark:border-gray-700 dark:bg-gray-800/60">
-                            <span>{{ __('admin.media_library.upload_results_heading', ['count' => count($uploadResults)]) }}</span>
-                            <span class="font-normal text-gray-500 dark:text-gray-400">
-                                {{
-                                    __('admin.media_library.upload_results_counts', [
-                                        'acquired' => $fateCounts->get('acquired', 0),
-                                        'failed' => $fateCounts->get('failed', 0),
-                                        'not_attempted' => $fateCounts->get('not_attempted', 0),
-                                    ])
-                                }}
-                            </span>
+            @if ($uploadResults !== [])
+            @php
+                $fateCounts = collect($uploadResults)->countBy('fate');
+            @endphp
+            <div
+                class="mt-3 overflow-hidden rounded-lg border border-gray-200 dark:border-gray-700"
+                data-testid="media-picker-upload-results"
+                role="status"
+                aria-live="polite"
+            >
+                <div class="flex flex-wrap items-center justify-between gap-2 border-b border-gray-200 bg-gray-50 px-3 py-1.5 text-xs font-semibold dark:border-gray-700 dark:bg-gray-800/60">
+                    <span>{{ __('admin.media_library.upload_results_heading', ['count' => count($uploadResults)]) }}</span>
+                    <span class="font-normal text-gray-500 dark:text-gray-400">
+                        {{
+                            __('admin.media_library.upload_results_counts', [
+                                'acquired' => $fateCounts->get('acquired', 0),
+                                'failed' => $fateCounts->get('failed', 0),
+                                'not_attempted' => $fateCounts->get('not_attempted', 0),
+                            ])
+                        }}
+                    </span>
+                </div>
+                <ul>
+                    @foreach ($uploadResults as $row)
+                    <li class="flex min-w-0 items-center gap-2 border-b border-dashed border-gray-200 px-3 py-1.5 text-xs last:border-b-0 dark:border-gray-700">
+                        <span
+                            @class([
+                                'shrink-0 rounded-full border px-2 text-[11px] font-bold',
+                                'border-success-500 text-success-600 dark:text-success-400' => $row['fate'] === 'acquired',
+                                'border-danger-500 text-danger-600 dark:text-danger-400' => $row['fate'] === 'failed',
+                                'border-gray-400 text-gray-500 dark:text-gray-400' => $row['fate'] === 'not_attempted',
+                            ])
+                        >{{ __("admin.media_library.upload_fate_{$row['fate']}") }}</span>
+                        <span class="min-w-0 truncate font-mono text-[11px]" dir="ltr">{{ $row['name'] }}</span>
+                        <span @class([
+                            'ms-auto shrink-0',
+                            'text-danger-600 dark:text-danger-400' => $row['fate'] === 'failed',
+                            'text-gray-500 dark:text-gray-400' => $row['fate'] !== 'failed',
+                        ])>
+                            @if ($row['fate'] === 'acquired')
+                            @if ($row['heavy'] ?? false)
+                            <span
+                                class="border-warning-500 text-warning-600 dark:text-warning-400 me-1 rounded-full border px-1.5 text-[10px] font-bold"
+                                data-testid="media-picker-upload-heavy"
+                            >{{ __('admin.media_library.upload_heavy_chip', ['size' => \Illuminate\Support\Number::fileSize((int) ($row['size'] ?? 0))]) }}</span>
+                            @endif
+                            {{ __('admin.media_library.upload_fate_acquired_note') }}
+                            @elseif ($row['fate'] === 'failed')
+                            {{ __("admin.media_library.upload_reason_{$row['reason']}") }}
+                            @else
+                            {{ __('admin.media_library.upload_fate_queue_note') }}
+                            @endif
+                        </span>
+                    </li>
+                    @endforeach
+                </ul>
+            </div>
+            @endif
+            @elseif ($activeSource === 'url')
+            @error('panelData.external_url')
+            <span
+                data-error-source="url"
+                class="sr-only"
+                x-init="
+                    $nextTick(() =>
+                        (
+                            document.getElementById('media-picker-url-input') ??
+                            document.getElementById('media-picker-source-url')
+                        )?.focus(),
+                    )
+                "
+            ></span>
+            @enderror
+
+            <div wire:ignore>
+                <div
+                    class="mt-3"
+                    data-testid="media-picker-url-preview"
+                    x-data="{ src: null, failed: false, w: null, h: null }"
+                    x-init="
+                        $nextTick(() => {
+                            const input = document.getElementById('media-picker-url-input');
+                            input?.addEventListener('blur', () => {
+                                const value = input.value.trim();
+                                failed = false;
+                                w = null;
+                                h = null;
+                                src = value.startsWith('https://') ? value : null;
+                            });
+                        })
+                    "
+                >
+                    <template x-if="src">
+                        <div class="flex min-w-0 items-center gap-3 rounded-lg border border-gray-200 p-2.5 dark:border-gray-700">
+                            <img
+                                x-show="! failed"
+                                x-bind:src="src"
+                                x-on:load="
+                                    w = $el.naturalWidth;
+                                    h = $el.naturalHeight;
+                                "
+                                x-on:error="failed = true"
+                                alt=""
+                                class="h-24 w-24 shrink-0 rounded-md border border-gray-200 object-contain dark:border-gray-700"
+                            />
+                            <div class="grid min-w-0 gap-0.5 text-xs">
+                                <p x-show="! failed" class="text-success-700 dark:text-success-400">
+                                    {{ __('admin.media_library.url_preview_loaded') }}
+                                </p>
+                                <p x-show="! failed && w" class="text-gray-500 dark:text-gray-400">
+                                    <span dir="ltr" x-text="w + '×' + h"></span>
+                                    · {{ __('admin.media_library.url_preview_dims_note') }}
+                                </p>
+                                <p x-show="failed" class="text-danger-600 dark:text-danger-400">
+                                    {{ __('admin.media_library.url_preview_failed') }}
+                                </p>
+                            </div>
                         </div>
-                        <ul>
-                            @foreach ($uploadResults as $row)
-                                <li class="flex min-w-0 items-center gap-2 border-b border-dashed border-gray-200 px-3 py-1.5 text-xs last:border-b-0 dark:border-gray-700">
-                                    <span
-                                        @class([
-                                            'shrink-0 rounded-full border px-2 text-[11px] font-bold',
-                                            'border-success-500 text-success-600 dark:text-success-400' => $row['fate'] === 'acquired',
-                                            'border-danger-500 text-danger-600 dark:text-danger-400' => $row['fate'] === 'failed',
-                                            'border-gray-400 text-gray-500 dark:text-gray-400' => $row['fate'] === 'not_attempted',
-                                        ])
-                                    >{{ __("admin.media_library.upload_fate_{$row['fate']}") }}</span>
-                                    <span
-                                        class="min-w-0 truncate font-mono text-[11px]"
-                                        dir="ltr"
-                                    >{{ $row['name'] }}</span>
-                                    <span @class([
-                                        'ms-auto shrink-0',
-                                        'text-danger-600 dark:text-danger-400' => $row['fate'] === 'failed',
-                                        'text-gray-500 dark:text-gray-400' => $row['fate'] !== 'failed',
-                                    ])>
-                                        @if ($row['fate'] === 'acquired')
-                                            @if ($row['heavy'] ?? false)
-                                                <span
-                                                    class="border-warning-500 text-warning-600 dark:text-warning-400 me-1 rounded-full border px-1.5 text-[10px] font-bold"
-                                                    data-testid="media-picker-upload-heavy"
-                                                >{{ __('admin.media_library.upload_heavy_chip', ['size' => \Illuminate\Support\Number::fileSize((int) ($row['size'] ?? 0))]) }}</span>
-                                            @endif
-                                            {{ __('admin.media_library.upload_fate_acquired_note') }}
-                                        @elseif ($row['fate'] === 'failed')
-                                            {{ __("admin.media_library.upload_reason_{$row['reason']}") }}
-                                        @else
-                                            {{ __('admin.media_library.upload_fate_queue_note') }}
+                    </template>
+                </div>
+            </div>
+            @else
+            <section id="media-picker-panel-storage" data-testid="media-picker-panel-storage" class="pt-3">
+                @if (! $storageConfigured)
+                <p class="text-xs text-gray-500">{{ __('admin.media_library.storage_unconfigured') }}</p>
+                @else
+                <fieldset x-bind:disabled="uploading" wire:loading.attr="disabled" wire:offline.attr="disabled">
+                    <legend class="sr-only">{{ __('admin.media_library.storage_source') }}</legend>
+                    <div class="flex items-end gap-2">
+                        <div class="min-w-0 flex-1">
+                            <label for="media-picker-storage-search" class="sr-only">
+                                {{ __('admin.media_library.storage_search_label') }}
+                            </label>
+                            <x-filament::input.wrapper prefix-icon="heroicon-s-magnifying-glass">
+                                <x-filament::input
+                                    id="media-picker-storage-search"
+                                    data-testid="media-picker-storage-search"
+                                    type="search"
+                                    :placeholder="__('admin.media_library.storage_search')"
+                                    wire:model.live.debounce.1500ms="storageSearch"
+                                    :aria-invalid="$errors->has('storageAcquisition') ? 'true' : 'false'"
+                                    aria-describedby="media-picker-storage-error"
+                                />
+                            </x-filament::input.wrapper>
+                        </div>
+                        <x-filament::button
+                            data-testid="media-picker-storage-refresh"
+                            size="xs"
+                            color="gray"
+                            wire:click="refreshStorageFiles"
+                        >
+                            {{ __('admin.media_library.refresh_storage') }}
+                        </x-filament::button>
+                    </div>
+
+                    <div id="media-picker-storage-error" class="mt-2">
+                        @error('storageAcquisition')
+                        <p
+                            data-error-source="storage"
+                            class="text-danger-600 dark:text-danger-400 text-xs"
+                            x-init="
+                                $nextTick(() =>
+                                    (
+                                        document.getElementById('media-picker-storage-search') ??
+                                        document.getElementById('media-picker-source-storage')
+                                    )?.focus(),
+                                )
+                            "
+                        >
+                            {{ $message }}
+                        </p>
+                        @enderror
+                    </div>
+
+                    <ul class="mt-3 space-y-2">
+                        @forelse ($storageFiles as $candidate)
+                        <li
+                            wire:key="storage-candidate-{{ hash('sha256', $candidate['token']) }}"
+                            class="flex items-center justify-between gap-2 rounded-md border border-gray-200 p-2 text-xs dark:border-gray-700"
+                        >
+                            <span class="min-w-0 flex-1">
+                                <span class="block truncate font-medium" dir="ltr">{{ $candidate['filename'] }}</span>
+                                <span class="block truncate text-gray-500">
+                                    {{ $candidate['source'] }}
+                                    @if (filled($candidate['ext'] ?? null))
+                                    ·
+                                    <span dir="ltr"
+                                        >{{ $candidate['ext'] }}
+                                        @if (($candidate['size'] ?? null) !== null)
+                                        ·{{ \Illuminate\Support\Number::fileSize((int) $candidate['size']) }}
                                         @endif
                                     </span>
-                                </li>
-                            @endforeach
-                        </ul>
-                    </div>
-                @endif
-            @elseif ($activeSource === 'url')
-                @error('panelData.external_url')
-                    <span
-                        data-error-source="url"
-                        class="sr-only"
-                        x-init="
-                            $nextTick(() =>
-                                (
-                                    document.getElementById('media-picker-url-input') ??
-                                    document.getElementById('media-picker-source-url')
-                                )?.focus(),
-                            )
-                        "
-                    ></span>
-                @enderror
-
-                <div wire:ignore>
-                    <div
-                        class="mt-3"
-                        data-testid="media-picker-url-preview"
-                        x-data="{ src: null, failed: false, w: null, h: null }"
-                        x-init="
-                            $nextTick(() => {
-                                const input = document.getElementById('media-picker-url-input');
-                                input?.addEventListener('blur', () => {
-                                    const value = input.value.trim();
-                                    failed = false;
-                                    w = null;
-                                    h = null;
-                                    src = value.startsWith('https://') ? value : null;
-                                });
-                            })
-                        "
-                    >
-                        <template x-if="src">
-                            <div class="flex min-w-0 items-center gap-3 rounded-lg border border-gray-200 p-2.5 dark:border-gray-700">
-                                <img
-                                    x-show="! failed"
-                                    x-bind:src="src"
-                                    x-on:load="
-                                        w = $el.naturalWidth;
-                                        h = $el.naturalHeight;
-                                    "
-                                    x-on:error="failed = true"
-                                    alt=""
-                                    class="h-24 w-24 shrink-0 rounded-md border border-gray-200 object-contain dark:border-gray-700"
-                                />
-                                <div class="grid min-w-0 gap-0.5 text-xs">
-                                    <p x-show="! failed" class="text-success-700 dark:text-success-400">
-                                        {{ __('admin.media_library.url_preview_loaded') }}
-                                    </p>
-                                    <p x-show="! failed && w" class="text-gray-500 dark:text-gray-400">
-                                        <span dir="ltr" x-text="w + '×' + h"></span>
-                                        · {{ __('admin.media_library.url_preview_dims_note') }}
-                                    </p>
-                                    <p x-show="failed" class="text-danger-600 dark:text-danger-400">
-                                        {{ __('admin.media_library.url_preview_failed') }}
-                                    </p>
-                                </div>
-                            </div>
-                        </template>
-                    </div>
-                </div>
-            @else
-                <section id="media-picker-panel-storage" data-testid="media-picker-panel-storage" class="pt-3">
-                    @if (! $storageConfigured)
-                        <p class="text-xs text-gray-500">{{ __('admin.media_library.storage_unconfigured') }}</p>
-                    @else
-                        <fieldset x-bind:disabled="uploading" wire:loading.attr="disabled" wire:offline.attr="disabled">
-                            <legend class="sr-only">{{ __('admin.media_library.storage_source') }}</legend>
-                            <div class="flex items-end gap-2">
-                                <div class="min-w-0 flex-1">
-                                    <label for="media-picker-storage-search" class="sr-only">
-                                        {{ __('admin.media_library.storage_search_label') }}
-                                    </label>
-                                    <x-filament::input.wrapper prefix-icon="heroicon-s-magnifying-glass">
-                                        <x-filament::input
-                                            id="media-picker-storage-search"
-                                            data-testid="media-picker-storage-search"
-                                            type="search"
-                                            :placeholder="__('admin.media_library.storage_search')"
-                                            wire:model.live.debounce.1500ms="storageSearch"
-                                            :aria-invalid="$errors->has('storageAcquisition') ? 'true' : 'false'"
-                                            aria-describedby="media-picker-storage-error"
-                                        />
-                                    </x-filament::input.wrapper>
-                                </div>
-                                <x-filament::button
-                                    data-testid="media-picker-storage-refresh"
-                                    size="xs"
-                                    color="gray"
-                                    wire:click="refreshStorageFiles"
+                                    @endif
+                                </span>
+                                @if ($storageErrorToken === $candidate['token'] && $errors->has('storageAcquisition'))
+                                <span
+                                    class="text-danger-600 dark:text-danger-400 block"
+                                    data-testid="media-picker-storage-row-error"
                                 >
-                                    {{ __('admin.media_library.refresh_storage') }}
-                                </x-filament::button>
-                            </div>
-
-                            <div id="media-picker-storage-error" class="mt-2">
-                                @error('storageAcquisition')
-                                    <p
-                                        data-error-source="storage"
-                                        class="text-danger-600 dark:text-danger-400 text-xs"
-                                        x-init="
-                                            $nextTick(() =>
-                                                (
-                                                    document.getElementById('media-picker-storage-search') ??
-                                                    document.getElementById('media-picker-source-storage')
-                                                )?.focus(),
-                                            )
-                                        "
-                                    >
-                                        {{ $message }}
-                                    </p>
-                                @enderror
-                            </div>
-
-                            <ul class="mt-3 space-y-2">
-                                @forelse ($storageFiles as $candidate)
-                                    <li
-                                        wire:key="storage-candidate-{{ hash('sha256', $candidate['token']) }}"
-                                        class="flex items-center justify-between gap-2 rounded-md border border-gray-200 p-2 text-xs dark:border-gray-700"
-                                    >
-                                        <span class="min-w-0 flex-1">
-                                            <span
-                                                class="block truncate font-medium"
-                                                dir="ltr"
-                                            >{{ $candidate['filename'] }}</span>
-                                            <span class="block truncate text-gray-500">
-                                                {{ $candidate['source'] }}
-                                                @if (filled($candidate['ext'] ?? null))
-                                                    ·
-                                                    <span dir="ltr"
-                                                        >{{ $candidate['ext'] }}
-                                                        @if (($candidate['size'] ?? null) !== null) ·{{ \Illuminate\Support\Number::fileSize((int) $candidate['size']) }}@endif
-                                                    </span>
-                                                @endif
-                                            </span>
-                                            @if ($storageErrorToken === $candidate['token'] && $errors->has('storageAcquisition'))
-                                                <span
-                                                    class="text-danger-600 dark:text-danger-400 block"
-                                                    data-testid="media-picker-storage-row-error"
-                                                >
-                                                    {{ $errors->first('storageAcquisition') }}
-                                                </span>
-                                            @endif
-                                        </span>
-                                        {{ ($this->acquireStorageAction)(['token' => $candidate['token']]) }}
-                                    </li>
-                                @empty
-                                    <li class="text-xs text-gray-500">
-                                        @if (filled($storageSearch))
-                                            {{ __('admin.media_library.storage_search_empty') }}
-                                        @else
-                                            {{ __('admin.media_library.storage_empty') }}
-                                        @endif
-                                    </li>
-                                @endforelse
-                            </ul>
-                        </fieldset>
-                    @endif
-                </section>
+                                    {{ $errors->first('storageAcquisition') }}
+                                </span>
+                                @endif
+                            </span>
+                            {{ ($this->acquireStorageAction)(['token' => $candidate['token']]) }}
+                        </li>
+                        @empty
+                        <li class="text-xs text-gray-500">
+                            @if (filled($storageSearch))
+                            {{ __('admin.media_library.storage_search_empty') }}
+                            @else
+                            {{ __('admin.media_library.storage_empty') }}
+                            @endif
+                        </li>
+                        @endforelse
+                    </ul>
+                </fieldset>
+                @endif
+            </section>
             @endif
         </aside>
     </div>
 
     @if (! $isOwnerChoice)
-        <div
-            data-testid="media-picker-footer"
-            class="sticky bottom-0 z-20 flex flex-wrap items-center justify-end gap-3 border-t border-gray-200 bg-white px-4 py-3 dark:border-gray-800 dark:bg-gray-900"
-            x-bind:inert="uploading"
-            wire:loading.attr="inert"
-            wire:offline.attr="inert"
+    <div
+        data-testid="media-picker-footer"
+        class="sticky bottom-0 z-20 flex flex-wrap items-center justify-end gap-3 border-t border-gray-200 bg-white px-4 py-3 dark:border-gray-800 dark:bg-gray-900"
+        x-bind:inert="uploading"
+        wire:loading.attr="inert"
+        wire:offline.attr="inert"
+    >
+        @if (! $isInlineOwnerWorkspace)
+        <x-filament::button
+            color="gray"
+            wire:click="clearSelection"
+            x-bind:disabled="uploading"
+            wire:loading.attr="disabled"
+            wire:offline.attr="disabled"
         >
-            @if (! $isInlineOwnerWorkspace)
-                <x-filament::button
-                    color="gray"
-                    wire:click="clearSelection"
-                    x-bind:disabled="uploading"
-                    wire:loading.attr="disabled"
-                    wire:offline.attr="disabled"
-                >
-                    {{ __('admin.media_library.clear_selection') }}
-                </x-filament::button>
-                {{ $this->destroySelectedAction }}
-            @endif
-            {{ $this->insertMediaAction }}
-        </div>
+            {{ __('admin.media_library.clear_selection') }}
+        </x-filament::button>
+        {{ $this->destroySelectedAction }}
+        @endif
+        {{ $this->insertMediaAction }}
+    </div>
     @endif
 
     <x-filament-actions::modals />
