@@ -174,6 +174,34 @@ commits) · where else to look (concrete greps/paths) · status.
 - **Status:** fixed instance; F2's near-midnight fixture landed (`b24490a`)
   and was proven discriminating — the UTC-day expectation fails against it.
 
+## event-halting-return · An implicit bool return halts model-event propagation
+
+*(Founded 2026-08-04 from phase-3 Task 2 — ACTUAL, pre-existing, latent in
+production until the first second listener arrived.)*
+
+- **Cause:** a model-event closure written as an arrow fn implicitly returns
+  its body's value; when the body is a bool-returning helper
+  (`Cache::forget()` returns FALSE on an absent key), a `false` return hits
+  Laravel's dispatcher break-on-false semantics (vendor
+  `Events/Dispatcher.php:335`) and SILENTLY halts the listener loop — every
+  later listener for that model event is skipped.
+- **Evidence (ACTUAL, fixed `9b494a4`):** `PublicFormSubmission::booted()`
+  registered `static::saved(fn (): bool => Cache::forget(badge_key))`; the
+  new `EditorialMetricsCacheObserver` registration became the first-ever
+  second listener and was silently skipped — caught by the watched-red
+  invalidation test, diagnosed cleanly (sentinel probes → control model →
+  listener-registry reflection → vendor dispatcher read; no
+  re-run-and-hope, `flake-label` discipline in practice). Both closures now
+  return void with a why-comment.
+- **Where else:** `grep -rn "static::\(saved\|created\|updated\|deleted\)(fn" app`
+  (clean at fix time); any event/observer closure ending in a
+  bool-returning call (cache ops, file ops, `Model::save()`).
+- **Suggested guard:** model-event closures return void, stated in the
+  why-comment at the fixed sites; the grep above is the census trail; an
+  arch-level pin is an open wish (no clean Pest arch expression for
+  "closure must not return bool" yet).
+- **Status:** founded, one sighting, fixed; grep-clean for siblings.
+
 ## expectation-from-home · The test's oracle is the code under test
 
 *(Founded 2026-08-04 from phase-3 Task 1; a second, earlier evidence point
