@@ -4,6 +4,7 @@ namespace App\Filament\Widgets;
 
 use App\Enums\PublicFormSubmissionStatus;
 use App\Enums\StreamEventType;
+use App\Filament\Resources\Imports\ImportResource;
 use App\Filament\Resources\PublicFormSubmissions\PublicFormSubmissionResource;
 use App\Filament\Widgets\Concerns\AdminOnlyWidget;
 use App\Filament\Widgets\Concerns\ReadsDashboardFilters;
@@ -62,6 +63,7 @@ class IntakeQueueWidget extends Widget
             'submissionsUrl' => PublicFormSubmissionResource::getUrl('index', [
                 'filters' => ['status' => ['value' => PublicFormSubmissionStatus::New->value]],
             ]),
+            'importsUrl' => ImportResource::getUrl('index'),
         ];
     }
 }

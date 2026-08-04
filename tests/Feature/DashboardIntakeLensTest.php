@@ -11,6 +11,7 @@ use App\Enums\StreamEventType;
 use App\Enums\TranscriptionMode;
 use App\Filament\Pages\Dashboard;
 use App\Filament\Pages\ImporterSettings;
+use App\Filament\Resources\Imports\ImportResource;
 use App\Filament\Widgets\DashboardContextWidget;
 use App\Filament\Widgets\IntakeQueueWidget;
 use App\Filament\Widgets\MediaFindingsWidget;
@@ -171,4 +172,14 @@ it('renders declared-provider rows under their source filter', function (): void
     Livewire::test(IntakeQueueWidget::class, ['pageFilters' => ['source' => ImportConnectionProvider::GoogleDrive->value]])
         ->assertSee('drive.csv')
         ->assertDontSeeHtml('data-testid="intake-source-empty"');
+});
+
+it('offers both overflow doorways in the cap note', function (): void {
+    PublicFormSubmission::factory()->count(11)->create();
+
+    Livewire::test(IntakeQueueWidget::class)
+        ->assertSeeHtml('data-testid="intake-cap-note"')
+        ->assertSee(__('admin.dashboard.intake.view_new_submissions'))
+        ->assertSee(__('admin.dashboard.intake.view_imports'))
+        ->assertSeeHtml(ImportResource::getUrl('index'));
 });

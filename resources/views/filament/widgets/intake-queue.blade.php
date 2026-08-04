@@ -91,6 +91,7 @@
                     <p class="mt-2 text-xs text-gray-500 dark:text-gray-400" data-testid="intake-cap-note">
                         {{ __('admin.dashboard.intake.showing_latest', ['count' => count($rows), 'total' => $counts['all']]) }}
                         · <a href="{{ $submissionsUrl }}" class="hover:underline">{{ __('admin.dashboard.intake.view_new_submissions') }}</a>
+                        · <a href="{{ $importsUrl }}" class="hover:underline">{{ __('admin.dashboard.intake.view_imports') }}</a>
                     </p>
                 @endif
             @endif

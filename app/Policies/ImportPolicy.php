@@ -15,9 +15,34 @@ use Filament\Actions\Imports\Models\Import;
  */
 class ImportPolicy
 {
+    /**
+     * With a policy registered, a missing ability method is a DENY — the
+     * read-only listing (ListImports) cannot render without this.
+     */
+    public function viewAny(User $user): bool
+    {
+        return $user->hasRoleAtLeast(UserRole::Admin);
+    }
+
     public function view(User $user, Import $import): bool
     {
         return $user->hasRoleAtLeast(UserRole::Admin)
             || $import->user()->is($user);
+    }
+
+    /** Rows are created by the import modal and future fetch runs, never by hand. */
+    public function create(User $user): bool
+    {
+        return false;
+    }
+
+    public function update(User $user, Import $import): bool
+    {
+        return false;
+    }
+
+    public function delete(User $user, Import $import): bool
+    {
+        return false;
     }
 }
