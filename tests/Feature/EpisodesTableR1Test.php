@@ -142,6 +142,33 @@ it('loads transcription relations only when a column actually reads one', functi
     expect($page->instance()->getTableRecords()->first()->relationLoaded('latestPublishedTranscription'))->toBeTrue();
 });
 
+it('lets a dotted column load its own relation, and only that one', function (): void {
+    ContentItem::factory()->count(3)->published()->withTranscription()->create();
+
+    $page = Livewire::test(ListContentItems::class);
+
+    $withFeaturedTitleOn = collect($page->instance()->getDefaultTableColumnState())
+        ->map(function (array $column): array {
+            if ($column['name'] === 'featuredTranscription.title') {
+                $column['isToggled'] = true;
+            }
+
+            return $column;
+        })
+        ->all();
+
+    $page->call('applyTableColumnManager', $withFeaturedTitleOn)->assertSuccessful();
+
+    $record = $page->instance()->getTableRecords()->first();
+
+    // Filament eager-loads for visible DOTTED columns by itself, so this one
+    // needs no help from the prime — and must not get it. Naming it in
+    // TRANSCRIPTION_DEPENDENT_COLUMNS would drag in three relations and both
+    // author sets that nothing on screen reads.
+    expect($record->relationLoaded('featuredTranscription'))->toBeTrue()
+        ->and($record->relationLoaded('latestPublishedTranscription'))->toBeFalse();
+});
+
 it('adds transcript columns that stay off by default', function (): void {
     $table = Livewire::test(ListContentItems::class)->instance()->getTable();
 

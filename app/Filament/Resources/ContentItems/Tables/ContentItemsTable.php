@@ -257,15 +257,20 @@ class ContentItemsTable
     }
 
     /**
-     * The columns that read a whole transcription model, and so are the only
-     * reason to eager-load one. They are `state()` closures on undotted
-     * names, which Filament cannot see through — it eager-loads only for
-     * dotted column names — so the loading has to be decided here instead.
+     * The columns that read a whole transcription model AND that Filament
+     * cannot see into: `state()` closures on undotted names. Filament loads
+     * relations for visible columns whose name contains a dot, so a dotted
+     * column belongs nowhere near this list — `featuredTranscription.title`
+     * and `latestPublishedTranscription.published_at` each pull exactly the
+     * one relation they read, on their own, only when shown.
+     *
+     * Listing a dotted column here would be worse than redundant: it would
+     * fire all four relations plus both author sets for a column that needs
+     * one relation and no authors.
      */
     private const TRANSCRIPTION_DEPENDENT_COLUMNS = [
         'effective_transcribers',
         'effective_transcription_context',
-        'featuredTranscription.title',
     ];
 
     /**
