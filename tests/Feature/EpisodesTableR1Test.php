@@ -5,6 +5,7 @@ use App\Enums\EpisodePinScope;
 use App\Enums\EpisodePublicState;
 use App\Enums\PublicationStatus;
 use App\Enums\UserRole;
+use App\Filament\Actions\EditEffectiveTranscriptionAction;
 use App\Filament\Resources\ContentGroups\Pages\EditContentGroup;
 use App\Filament\Resources\ContentGroups\RelationManagers\ContentItemsRelationManager;
 use App\Filament\Resources\ContentItems\ContentItemResource;
@@ -16,6 +17,7 @@ use App\Models\User;
 use App\Support\PublicContent\PublicTranscriptionSelector;
 use Filament\Actions\Testing\TestAction;
 use Filament\Facades\Filament;
+use Illuminate\Database\LazyLoadingViolationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -578,5 +580,55 @@ it('speaks both languages for the public-state vocabulary', function (): void {
             expect(Lang::has("admin.episode_public_state.{$state->value}", $locale))
                 ->toBeTrue("missing admin.episode_public_state.{$state->value} in {$locale}");
         }
+    }
+});
+
+it('raises rather than blanks when the transcript context relations are missing', function (): void {
+    // A blank badge and "this episode has no effective transcript" are
+    // opposite editorial facts, and the guards used to answer the first with
+    // the second — to an admin deciding whether to publish. The relations are
+    // a contract between primeEpisodeQuery and the columns that read them, so
+    // a breach must reach the app's lazy-loading policy, not the screen.
+    ContentItem::factory()->count(2)
+        ->for(ContentGroup::factory()->published(), 'contentGroup')
+        ->withTranscription(['status' => PublicationStatus::Published, 'published_at' => now()->subMinute()])
+        ->create();
+
+    // Two rows, because Laravel arms preventLazyLoading only when it hydrates
+    // more than one — a single-row fetch is never flagged.
+    $unprimed = ContentItem::query()->get();
+
+    expect(fn (): ?string => EditEffectiveTranscriptionAction::contextStateFor($unprimed->first()))
+        ->toThrow(LazyLoadingViolationException::class);
+
+    // And with the contract honoured it answers, so the fix is not "throw
+    // always" — that mutation would fail here.
+    $primed = ContentItemsTable::primeEpisodeQuery(ContentItem::query())
+        ->with(['featuredTranscription', 'latestPublishedTranscription'])
+        ->get();
+
+    expect(EditEffectiveTranscriptionAction::contextStateFor($primed->first()))->toBeString();
+});
+
+it('explains the difference between published and visible wherever both words appear', function (): void {
+    // «פורסם» (the episode's own switch) and «גלוי» (what the public can
+    // actually reach) read as synonyms and are not. All three surfaces that
+    // show one of the two words point at the same explanation, so they cannot
+    // drift into three slightly different stories.
+    $hint = __('admin.helpers.status_versus_visible');
+    $episode = ContentItem::factory()->create();
+    $table = Livewire::test(ListContentItems::class)->instance()->getTable();
+
+    expect($table->getColumn('public_state')->record($episode)->getTooltip())->toBe($hint)
+        ->and($table->getColumn('status')->record($episode)->getTooltip())->not->toBe($hint);
+
+    // The status cell's own tooltip is the click affordance while the user
+    // may act; it falls back to the explanation when they may not.
+    $this->actingAs(User::factory()->create(['role' => UserRole::Transcriber->value]));
+
+    expect($table->getColumn('status')->record($episode)->getTooltip())->toBe($hint);
+
+    foreach (['en', 'he'] as $locale) {
+        expect(Lang::has('admin.helpers.status_versus_visible', $locale))->toBeTrue("missing hint in {$locale}");
     }
 });

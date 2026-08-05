@@ -267,6 +267,12 @@ class ContentItemsTable
      * Listing a dotted column here would be worse than redundant: it would
      * fire all four relations plus both author sets for a column that needs
      * one relation and no authors.
+     *
+     * The other half of this contract lives in
+     * EditEffectiveTranscriptionAction::contextTranscriptionFor(), which
+     * reads those relations without guarding — a column that calls it and
+     * is missing from this list will raise a lazy-loading violation rather
+     * than quietly render a blank badge.
      */
     private const TRANSCRIPTION_DEPENDENT_COLUMNS = [
         'effective_transcribers',
@@ -333,11 +339,13 @@ class ContentItemsTable
             ->label(__('admin.fields.public_state'))
             ->state(fn (ContentItem $record): EpisodePublicState => EpisodePublicState::for($record))
             ->badge()
-            ->tooltip(fn (ContentItem $record): ?string => EpisodePublicState::for($record) === EpisodePublicState::Scheduled
+            ->tooltip(fn (ContentItem $record): string => EpisodePublicState::for($record) === EpisodePublicState::Scheduled
                 ? __('admin.episode_public_state.scheduled_tooltip', [
                     'date' => $record->published_at?->timezone(UiTimezone::name())->format(UiFormats::dateTime()),
                 ])
-                : null)
+                // Every other state says what "public" depends on, because
+                // the column next to it says «פורסם» and means something else.
+                : __('admin.helpers.status_versus_visible'))
             ->toggleable();
     }
 
@@ -358,11 +366,11 @@ class ContentItemsTable
             ->label(__('admin.fields.status'))
             ->badge()
             ->action(self::togglePublicationAction())
-            ->tooltip(fn (ContentItem $record): ?string => Gate::allows('update', $record)
+            ->tooltip(fn (ContentItem $record): string => Gate::allows('update', $record)
                 ? __('admin.actions.toggle_publication_hint', [
                     'status' => self::oppositeStatus($record)->getLabel(),
                 ])
-                : null)
+                : __('admin.helpers.status_versus_visible'))
             ->toggleable();
     }
 
@@ -611,7 +619,11 @@ class ContentItemsTable
                             ->all(),
                     ])
                     ->default('all')
-                    ->grouped(),
+                    ->grouped()
+                    // «פורסם» is this episode's own switch; «גלוי» is the
+                    // public result of it plus the podcast and the transcript.
+                    // Editors read the two as synonyms and they are not.
+                    ->helperText(__('admin.helpers.status_versus_visible')),
             ])
             ->resetState(['value' => 'all'])
             ->query(fn (Builder $query, array $data): Builder => $query->when(

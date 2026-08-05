@@ -44,7 +44,7 @@ class EditEffectiveTranscriptionAction extends Action
 
     public static function contextStateFor(ContentItem $record): ?string
     {
-        $transcription = static::loadedContextTranscriptionFor($record);
+        $transcription = static::contextTranscriptionFor($record);
 
         if (! $transcription instanceof Transcription) {
             return null;
@@ -58,7 +58,7 @@ class EditEffectiveTranscriptionAction extends Action
 
     public static function contextColorFor(ContentItem $record): string
     {
-        $transcription = static::loadedContextTranscriptionFor($record);
+        $transcription = static::contextTranscriptionFor($record);
 
         return $transcription instanceof Transcription
             ? static::statusColorFor($transcription)
@@ -211,19 +211,32 @@ class EditEffectiveTranscriptionAction extends Action
         return $record->transcriptions()->exists();
     }
 
-    private static function loadedContextTranscriptionFor(ContentItem $record): ?Transcription
+    /**
+     * Reads the context relations directly, on purpose.
+     *
+     * Both call sites are table column closures on queries that prime
+     * `featuredTranscription` and `latestPublishedTranscription` — see
+     * ContentItemsTable::primeEpisodeQuery() and its
+     * TRANSCRIPTION_DEPENDENT_COLUMNS. An unprimed record arriving here is a
+     * broken eager-load contract, not an episode without a transcript, and
+     * the two are opposite editorial facts: a blank badge reads to the admin
+     * as "no effective transcript", which is exactly the wrong thing to tell
+     * someone deciding whether to publish.
+     *
+     * So it must reach the app's lazy-loading policy (AppServiceProvider —
+     * throw outside production, log and answer correctly inside it) rather
+     * than being swallowed here. Guarding with relationLoaded() walked around
+     * a tripwire that was already armed.
+     */
+    private static function contextTranscriptionFor(ContentItem $record): ?Transcription
     {
-        $featuredTranscription = $record->relationLoaded('featuredTranscription')
-            ? $record->featuredTranscription
-            : null;
+        $featuredTranscription = $record->featuredTranscription;
 
         if (static::isCurrentFeaturedTranscription($record, $featuredTranscription) && $featuredTranscription->isPublished()) {
             return $featuredTranscription;
         }
 
-        $latestPublishedTranscription = $record->relationLoaded('latestPublishedTranscription')
-            ? $record->latestPublishedTranscription
-            : null;
+        $latestPublishedTranscription = $record->latestPublishedTranscription;
 
         if ($latestPublishedTranscription instanceof Transcription) {
             return $latestPublishedTranscription;

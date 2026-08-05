@@ -975,6 +975,7 @@ return [
         'cover_path' => 'Choose from the media library or upload a JPEG, PNG, or WebP up to 2 MB and 3000px on each side.',
         'unsafe_legacy_media_repair' => 'This old image is unavailable. Choose a trusted replacement, or remove it to use the configured default image.',
         'content_item_description' => 'Short Markdown description for admin and public item pages.',
+        'status_versus_visible' => 'Published is this episode\'s own switch. Visible means the public can actually reach it — which also needs the podcast published and a released transcript.',
         'content_item_status' => 'Draft items stay private. Published items still need a published group and effective transcription.',
         'content_item_title' => 'Main item title. The slug is generated from this while manual slug edits are preserved.',
         'default_item_type_label_plural' => 'Default: Episodes.',
