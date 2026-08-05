@@ -2,13 +2,14 @@
 
 namespace App\Models;
 
+use App\Enums\NavigationBadge;
 use App\Enums\PublicFormSubmissionStatus;
+use App\Support\NavigationBadgeCount;
 use Database\Factories\PublicFormSubmissionFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\Facades\Cache;
 
 #[Fillable([
     'form_key',
@@ -28,8 +29,6 @@ class PublicFormSubmission extends Model
     /** @use HasFactory<PublicFormSubmissionFactory> */
     use HasFactory;
 
-    public const NEW_SUBMISSIONS_NAVIGATION_BADGE_CACHE_KEY = 'public_form_submissions.new_navigation_badge';
-
     protected $attributes = [
         'status' => 'new',
     ];
@@ -44,12 +43,13 @@ class PublicFormSubmission extends Model
         // and a model-event listener returning exactly false HALTS the
         // dispatcher's listener loop (Dispatcher::dispatch, break-on-false) —
         // which silently skipped every later eloquent.saved listener, such
-        // as the dashboard's EditorialMetricsCacheObserver.
+        // as the dashboard's EditorialMetricsCacheObserver. Both the void
+        // return and NavigationBadgeCount::forget()'s own void return matter.
         static::saved(function (): void {
-            Cache::forget(self::NEW_SUBMISSIONS_NAVIGATION_BADGE_CACHE_KEY);
+            NavigationBadgeCount::forget(NavigationBadge::FormSubmissions);
         });
         static::deleted(function (): void {
-            Cache::forget(self::NEW_SUBMISSIONS_NAVIGATION_BADGE_CACHE_KEY);
+            NavigationBadgeCount::forget(NavigationBadge::FormSubmissions);
         });
     }
 

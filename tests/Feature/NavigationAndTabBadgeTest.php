@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\NavigationBadge;
 use App\Filament\Resources\ContentGroups\Pages\EditContentGroup;
 use App\Filament\Resources\ContentGroups\RelationManagers\ContentItemsRelationManager;
 use App\Filament\Resources\ContentItems\ContentItemResource;
@@ -8,10 +9,13 @@ use App\Filament\Resources\ContentItems\Pages\ListContentItems;
 use App\Filament\Resources\ContentItems\RelationManagers\TranscriptionsRelationManager;
 use App\Filament\Resources\ContentItems\Tables\ContentItemsTable;
 use App\Filament\Resources\Media\MediaResource;
-use App\Filament\Support\NavigationBadgeCount;
+use App\Filament\Resources\PublicFormSubmissions\PublicFormSubmissionResource;
 use App\Models\ContentGroup;
 use App\Models\ContentItem;
+use App\Models\Media;
+use App\Models\PublicFormSubmission;
 use App\Models\User;
+use App\Support\NavigationBadgeCount;
 use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -25,8 +29,12 @@ uses(RefreshDatabase::class);
 beforeEach(function (): void {
     Filament::setCurrentPanel(Filament::getPanel('admin'));
     $this->actingAs(User::factory()->admin()->create());
-    NavigationBadgeCount::forget('episodes');
-    NavigationBadgeCount::forget('media');
+
+    // Structural, not a hand-list: a new badge joins the clean slate by
+    // existing, so it cannot be forgotten here and remembered nowhere.
+    foreach (NavigationBadge::cases() as $badge) {
+        NavigationBadgeCount::forget($badge);
+    }
 });
 
 it('counts episodes and media in the sidebar, and stays silent at zero', function (): void {
@@ -35,15 +43,106 @@ it('counts episodes and media in the sidebar, and stays silent at zero', functio
         ->and(MediaResource::getNavigationBadge())->toBeNull();
 
     ContentItem::factory()->count(3)->create();
-    NavigationBadgeCount::forget('episodes');
+    Media::factory()->count(2)->create();
+    NavigationBadgeCount::forget(NavigationBadge::Episodes);
+    NavigationBadgeCount::forget(NavigationBadge::Media);
 
     expect(ContentItemResource::getNavigationBadge())->toBe('3')
-        ->and(ContentItemResource::getNavigationBadgeColor())->toBe('gray');
+        ->and(ContentItemResource::getNavigationBadgeColor())->toBe('gray')
+        ->and(MediaResource::getNavigationBadge())->toBe('2')
+        ->and(MediaResource::getNavigationBadgeColor())->toBe('gray');
 
     foreach (['admin.resources.content_item.navigation_badge_tooltip', 'admin.curator.navigation_badge_tooltip'] as $key) {
         foreach (['en', 'he'] as $locale) {
             expect(Lang::has($key, $locale))->toBeTrue("missing {$key} in {$locale}");
         }
+    }
+});
+
+it('counts unhandled submissions only, and wears the queue colour', function (): void {
+    PublicFormSubmission::factory()->count(2)->create();
+    PublicFormSubmission::factory()->reviewed()->create();
+
+    // A work queue, not an inventory: the reviewed row exists but is handled.
+    expect(PublicFormSubmissionResource::getNavigationBadge())->toBe('2')
+        ->and(PublicFormSubmissionResource::getNavigationBadgeColor())->toBe('warning');
+
+    foreach (['en', 'he'] as $locale) {
+        expect(Lang::has('admin.resources.public_form_submission.navigation_badge_tooltip', $locale))->toBeTrue();
+    }
+});
+
+it('drops a handled submission from the badge the moment its status changes', function (): void {
+    $submissions = PublicFormSubmission::factory()->count(3)->create();
+
+    expect(PublicFormSubmissionResource::getNavigationBadge())->toBe('3');
+
+    // The one freshness path the badge cannot wait out: a status transition
+    // writes through the model, so `saved` forgets the key and the next read
+    // recomputes. Nothing here touches the cache by hand.
+    $submissions->first()->markReviewed();
+
+    expect(PublicFormSubmissionResource::getNavigationBadge())->toBe('2');
+});
+
+it('forgets the badge without halting sibling saved listeners', function (): void {
+    // The trap this guards (Dispatcher's break-on-false) only bites listeners
+    // registered AFTER the model's own, so boot the model first — booted()
+    // runs on first use and must already own the earlier slot.
+    PublicFormSubmission::factory()->create();
+
+    $sibling = false;
+    PublicFormSubmission::saved(function () use (&$sibling): void {
+        $sibling = true;
+    });
+
+    PublicFormSubmission::factory()->create();
+
+    expect($sibling)->toBeTrue(
+        'the badge-forget listener returned false and killed every later eloquent.saved listener',
+    );
+});
+
+it('caches a zero count instead of re-counting an empty badge', function (): void {
+    // Caching the formatted string would cache `null` at zero, and a cached
+    // null is indistinguishable from a miss — so the steady state of an empty
+    // queue would re-run its COUNT on every render. Caching the int fixes it.
+    expect(PublicFormSubmissionResource::getNavigationBadge())->toBeNull();
+
+    $queries = 0;
+    DB::listen(function () use (&$queries): void {
+        $queries++;
+    });
+
+    expect(PublicFormSubmissionResource::getNavigationBadge())->toBeNull()
+        ->and($queries)->toBe(0);
+});
+
+it('gives every sidebar badge its own cache key', function (): void {
+    $keys = collect(NavigationBadge::cases())
+        ->map(fn (NavigationBadge $badge): string => NavigationBadgeCount::cacheKey($badge));
+
+    expect($keys->unique()->count())->toBe($keys->count())
+        ->and($keys->all())->each->toStartWith('admin.navigation-badge.');
+});
+
+it('keeps every sidebar badge cache call where FilaCheck can see it', function (): void {
+    // FilaCheck Pro's navigation-badge-not-cached rule is a syntactic walk of
+    // the getNavigationBadge() body — it follows no indirection. Moving the
+    // Cache:: call into NavigationBadgeCount would fail the gate at every
+    // site, so the helper owns the key/TTL/format and nothing more.
+    $resources = [ContentItemResource::class, MediaResource::class, PublicFormSubmissionResource::class];
+
+    foreach ($resources as $resource) {
+        $body = (new ReflectionMethod($resource, 'getNavigationBadge'));
+        $source = implode("\n", array_slice(
+            file($body->getFileName()),
+            $body->getStartLine() - 1,
+            $body->getEndLine() - $body->getStartLine() + 1,
+        ));
+
+        expect(str_contains($source, 'Cache::'))
+            ->toBeTrue("{$resource} must cache its badge where FilaCheck can see it");
     }
 });
 
@@ -54,12 +153,14 @@ it('caches the sidebar count so browsing does not re-run it', function (): void 
 
     // Filament has no deferred-badge API for navigation items, so the short
     // cache is the substitute — a new row is not visible until it expires
-    // or something forgets the key.
+    // or something forgets the key. Deliberate: episodes is an inventory
+    // counter, and nothing waits on it. Contrast the submissions badge,
+    // which is a queue and forgets its key on every write.
     ContentItem::factory()->create();
 
     expect(ContentItemResource::getNavigationBadge())->toBe('2');
 
-    NavigationBadgeCount::forget('episodes');
+    NavigationBadgeCount::forget(NavigationBadge::Episodes);
 
     expect(ContentItemResource::getNavigationBadge())->toBe('3');
 });

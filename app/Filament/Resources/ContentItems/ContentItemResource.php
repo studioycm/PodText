@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\ContentItems;
 
+use App\Enums\NavigationBadge;
 use App\Filament\Resources\ContentItems\Pages\CreateContentItem;
 use App\Filament\Resources\ContentItems\Pages\CreateEpisodeWorkspace;
 use App\Filament\Resources\ContentItems\Pages\EditContentItem;
@@ -12,8 +13,8 @@ use App\Filament\Resources\ContentItems\Schemas\ContentItemForm;
 use App\Filament\Resources\ContentItems\Tables\ContentItemsTable;
 use App\Filament\Support\AdminNavigationOrder;
 use App\Filament\Support\Concerns\UsesAdminNavigationOrder;
-use App\Filament\Support\NavigationBadgeCount;
 use App\Models\ContentItem;
+use App\Support\NavigationBadgeCount;
 use BackedEnum;
 use Filament\Navigation\NavigationItem;
 use Filament\Resources\Resource;
@@ -52,7 +53,7 @@ class ContentItemResource extends Resource
     public static function getNavigationBadge(): ?string
     {
         return NavigationBadgeCount::format(Cache::flexible(
-            NavigationBadgeCount::cacheKey('episodes'),
+            NavigationBadgeCount::cacheKey(NavigationBadge::Episodes),
             NavigationBadgeCount::ttl(),
             // Counted through the resource's own query, so the badge can
             // never disagree with the list it links to.

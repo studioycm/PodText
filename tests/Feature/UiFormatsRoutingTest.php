@@ -55,8 +55,15 @@ it('formats the new-submissions navigation badge and hides it at zero', function
     PublicFormSubmission::factory()->count(2)->create();
     PublicFormSubmission::factory()->reviewed()->create();
 
-    expect(PublicFormSubmissionResource::getNavigationBadge())->toBe(UiFormats::number(2));
+    // Both halves on purpose: the routing assertion proves the badge goes
+    // through UiFormats, the literal proves UiFormats itself still formats
+    // the way this test claims. Reading the oracle only from the home it
+    // pins would pass under any mutation of that home.
+    expect(PublicFormSubmissionResource::getNavigationBadge())->toBe(UiFormats::number(2))
+        ->and(PublicFormSubmissionResource::getNavigationBadge())->toBe('2');
 
+    // Deleting through model instances is what fires `deleted` — this is the
+    // only coverage that the badge's write-invalidation works on that path.
     PublicFormSubmission::query()->each(fn (PublicFormSubmission $submission) => $submission->delete());
 
     expect(PublicFormSubmissionResource::getNavigationBadge())->toBeNull();
@@ -69,6 +76,10 @@ it('keeps the two routed straggler sites off raw number_format', function (): vo
     $sources = [
         app_path('Support/PublicFront/Cards/PublicContentItemCardPresenter.php'),
         app_path('Filament/Resources/PublicFormSubmissions/PublicFormSubmissionResource.php'),
+        // Badge formatting moved here when the three sidebar badges folded
+        // into one home; without this the guard above still passes, but it
+        // no longer stands over the code that does the formatting.
+        app_path('Support/NavigationBadgeCount.php'),
     ];
 
     foreach ($sources as $path) {

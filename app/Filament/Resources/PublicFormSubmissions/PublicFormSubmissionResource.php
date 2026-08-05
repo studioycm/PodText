@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\PublicFormSubmissions;
 
+use App\Enums\NavigationBadge;
 use App\Enums\PublicFormSubmissionStatus;
 use App\Filament\Resources\PublicFormSubmissions\Pages\EditPublicFormSubmission;
 use App\Filament\Resources\PublicFormSubmissions\Pages\ListPublicFormSubmissions;
@@ -10,7 +11,7 @@ use App\Filament\Resources\PublicFormSubmissions\Tables\PublicFormSubmissionsTab
 use App\Filament\Support\AdminNavigationOrder;
 use App\Filament\Support\Concerns\UsesAdminNavigationOrder;
 use App\Models\PublicFormSubmission;
-use App\Support\UiFormats;
+use App\Support\NavigationBadgeCount;
 use BackedEnum;
 use Filament\Navigation\NavigationItem;
 use Filament\Resources\Resource;
@@ -48,17 +49,18 @@ class PublicFormSubmissionResource extends Resource
 
     public static function getNavigationBadge(): ?string
     {
-        return Cache::remember(
-            PublicFormSubmission::NEW_SUBMISSIONS_NAVIGATION_BADGE_CACHE_KEY,
-            now()->addMinute(),
-            function (): ?string {
-                $newSubmissionsCount = PublicFormSubmission::query()
-                    ->status(PublicFormSubmissionStatus::New)
-                    ->count();
-
-                return $newSubmissionsCount > 0 ? UiFormats::number($newSubmissionsCount) : null;
-            },
-        );
+        return NavigationBadgeCount::format(Cache::flexible(
+            NavigationBadgeCount::cacheKey(NavigationBadge::FormSubmissions),
+            NavigationBadgeCount::ttl(),
+            // Deliberately not `static::getEloquentQuery()->count()` like its
+            // two siblings: NAV1 made this one a work queue rather than an
+            // inventory, so it counts only what still needs a human. The
+            // model forgets the key on every write, which is what keeps the
+            // number exact despite the wide stale window.
+            fn (): int => PublicFormSubmission::query()
+                ->status(PublicFormSubmissionStatus::New)
+                ->count(),
+        ));
     }
 
     public static function getNavigationBadgeColor(): ?string
@@ -86,6 +88,10 @@ class PublicFormSubmissionResource extends Resource
 
         return [
             NavigationItem::make(static::getNavigationLabel())
+                // This override forked from Filament's base before it began
+                // setting a key; without one, getKey() falls back to the
+                // translated Hebrew label, which parent-item matching reads.
+                ->key(static::class)
                 ->group(static::getNavigationGroup())
                 ->parentItem(static::getNavigationParentItem())
                 ->icon(static::getNavigationIcon())
