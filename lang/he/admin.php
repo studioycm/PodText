@@ -251,6 +251,7 @@ return [
             'singular' => 'פרק',
             'plural' => 'פרקים',
             'navigation' => 'פרקים',
+            'navigation_badge_tooltip' => 'פרקים בספרייה',
             'workspace_navigation' => 'פרק חדש',
         ],
         'category' => [
@@ -309,6 +310,7 @@ return [
         ],
     ],
     'curator' => [
+        'navigation_badge_tooltip' => 'קבצים בספרייה',
         'label' => 'מדיה',
         'plural_label' => 'מדיה',
     ],

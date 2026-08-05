@@ -18,6 +18,9 @@ use Illuminate\Support\Facades\DB;
  */
 class EpisodeListScopeQuery
 {
+    /** @var array<string, int>|null */
+    private ?array $counts = null;
+
     public function apply(Builder $query, EpisodeListScope $scope): Builder
     {
         return match ($scope) {
@@ -89,6 +92,10 @@ class EpisodeListScopeQuery
      */
     public function counts(): array
     {
+        if ($this->counts !== null) {
+            return $this->counts;
+        }
+
         $query = DB::query();
 
         foreach (EpisodeListScope::cases() as $scope) {
@@ -98,7 +105,7 @@ class EpisodeListScopeQuery
             );
         }
 
-        return collect((array) $query->first())
+        return $this->counts = collect((array) $query->first())
             ->map(fn (mixed $count): int => (int) $count)
             ->all();
     }

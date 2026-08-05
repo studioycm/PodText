@@ -54,6 +54,7 @@ use Filament\Forms\Components\Select;
 use Filament\Resources\Pages\ListRecords;
 use Filament\Schemas\Components\Component as SchemaComponent;
 use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Tabs\Tab;
 use Filament\Support\Enums\Width;
 use Filament\Tables\Enums\RecordActionsPosition;
 use Filament\Tables\Filters\SelectFilter;
@@ -233,6 +234,27 @@ class AppServiceProvider extends ServiceProvider
         Livewire::component('curator-curation', DisabledVendorCuratorSurface::class);
 
         $this->app->make(ImportExportQueueTracer::class)->register();
+
+        // Badge deferral, centrally where Filament allows it. Every Tab —
+        // resource filter tabs, schema tabs, and the tabs relation managers
+        // build — loads its badge after the page paints instead of blocking
+        // the first render. A tab whose badge is a raw value rather than a
+        // closure simply gains nothing; nothing breaks.
+        //
+        // Two places this cannot reach, by Filament's design:
+        // - RelationManager::getTabComponent() calls ->deferBadge() itself
+        //   from $isBadgeDeferred, so it wins over this default and each
+        //   relation manager opts in on its own class;
+        // - navigation items have no deferred-badge API at all in 5.7, so
+        //   the sidebar uses NavigationBadgeCount (lazy closure + short
+        //   cache) as the substitute.
+        Tab::configureUsing(function (Tab $tab): void {
+            if (! $this->isAdminPanel()) {
+                return;
+            }
+
+            $tab->deferBadge();
+        });
 
         Table::configureUsing(function (Table $table): void {
             if (! $this->isAdminPanel()) {

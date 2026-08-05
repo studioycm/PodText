@@ -136,18 +136,18 @@ class ListMedia extends ListRecords
     /** @return array<string, Tab> */
     public function getTabs(): array
     {
-        $counts = app(MediaLibraryTaskQuery::class)->counts();
+        // Badges are closures, not values: the global Tab deferral only pays
+        // off when the count is still unresolved at build time. The service
+        // is request-scoped and memoizes, so all of them share one pass.
+        $tasks = app(MediaLibraryTaskQuery::class);
 
         return collect(MediaLibraryTask::cases())
-            ->mapWithKeys(function (MediaLibraryTask $task) use ($counts): array {
+            ->mapWithKeys(function (MediaLibraryTask $task) use ($tasks): array {
                 $tab = Tab::make($task->getLabel())
-                    ->modifyQueryUsing(
-                        fn (Builder $query): Builder => app(MediaLibraryTaskQuery::class)
-                            ->apply($query, $task),
-                    );
+                    ->modifyQueryUsing(fn (Builder $query): Builder => $tasks->apply($query, $task));
 
-                if (array_key_exists($task->value, $counts)) {
-                    $tab->badge($counts[$task->value]);
+                if (array_key_exists($task->value, $tasks->counts())) {
+                    $tab->badge(fn (): mixed => $tasks->counts()[$task->value] ?? null);
                 }
 
                 return [$task->value => $tab];

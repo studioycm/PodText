@@ -9,6 +9,7 @@ use App\Filament\Resources\Media\Pages\ReviewMediaIssues;
 use App\Filament\Resources\Media\Schemas\MediaForm;
 use App\Filament\Resources\Media\Tables\MediaTable;
 use App\Filament\Support\Concerns\UsesAdminNavigationOrder;
+use App\Filament\Support\NavigationBadgeCount;
 use App\Models\Media;
 use App\Support\Media\MediaRecordScope;
 use BackedEnum;
@@ -17,6 +18,7 @@ use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\Cache;
 
 class MediaResource extends Resource
 {
@@ -29,6 +31,25 @@ class MediaResource extends Resource
     public static function getModel(): string
     {
         return config('curator.model', Media::class);
+    }
+
+    public static function getNavigationBadge(): ?string
+    {
+        return NavigationBadgeCount::format(Cache::remember(
+            NavigationBadgeCount::cacheKey('media'),
+            NavigationBadgeCount::ttl(),
+            fn (): int => static::getModel()::query()->count(),
+        ));
+    }
+
+    public static function getNavigationBadgeColor(): ?string
+    {
+        return 'gray';
+    }
+
+    public static function getNavigationBadgeTooltip(): string
+    {
+        return __('admin.curator.navigation_badge_tooltip');
     }
 
     public static function getModelLabel(): string

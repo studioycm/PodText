@@ -35,6 +35,10 @@ use Illuminate\Database\Eloquent\Model;
 
 class TranscriptionsRelationManager extends RelationManager
 {
+    // Filament applies deferral inside getTabComponent(), which this class
+    // overrides — so the override honours the flag explicitly below.
+    protected static bool $isBadgeDeferred = true;
+
     protected static string $relationship = 'transcriptions';
 
     protected static bool $isLazy = false;
@@ -219,7 +223,8 @@ class TranscriptionsRelationManager extends RelationManager
     {
         return Tab::make(__('admin.tabs.transcriptions'))
             ->icon(Heroicon::OutlinedDocumentText)
-            ->badge((string) $ownerRecord->transcriptions()->count())
+            ->badge(static fn (): string => (string) $ownerRecord->transcriptions()->count())
+            ->deferBadge(static::isBadgeDeferred($ownerRecord, $pageClass))
             ->badgeColor('info')
             ->badgeTooltip(__('admin.tabs.transcriptions_badge_tooltip'));
     }

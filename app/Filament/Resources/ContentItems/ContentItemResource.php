@@ -12,6 +12,7 @@ use App\Filament\Resources\ContentItems\Schemas\ContentItemForm;
 use App\Filament\Resources\ContentItems\Tables\ContentItemsTable;
 use App\Filament\Support\AdminNavigationOrder;
 use App\Filament\Support\Concerns\UsesAdminNavigationOrder;
+use App\Filament\Support\NavigationBadgeCount;
 use App\Models\ContentItem;
 use BackedEnum;
 use Filament\Navigation\NavigationItem;
@@ -19,6 +20,7 @@ use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
+use Illuminate\Support\Facades\Cache;
 
 use function Filament\Support\original_request;
 
@@ -45,6 +47,25 @@ class ContentItemResource extends Resource
     public static function getNavigationLabel(): string
     {
         return __('admin.resources.content_item.navigation');
+    }
+
+    public static function getNavigationBadge(): ?string
+    {
+        return NavigationBadgeCount::format(Cache::remember(
+            NavigationBadgeCount::cacheKey('episodes'),
+            NavigationBadgeCount::ttl(),
+            fn (): int => ContentItem::query()->count(),
+        ));
+    }
+
+    public static function getNavigationBadgeColor(): ?string
+    {
+        return 'gray';
+    }
+
+    public static function getNavigationBadgeTooltip(): string
+    {
+        return __('admin.resources.content_item.navigation_badge_tooltip');
     }
 
     public static function getNavigationItems(): array

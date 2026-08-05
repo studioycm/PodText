@@ -251,6 +251,7 @@ return [
             'singular' => 'Content Item',
             'plural' => 'Content Items',
             'navigation' => 'Episodes',
+            'navigation_badge_tooltip' => 'Episodes in the library',
             'workspace_navigation' => 'New episode',
         ],
         'category' => [
@@ -309,6 +310,7 @@ return [
         ],
     ],
     'curator' => [
+        'navigation_badge_tooltip' => 'Files in the library',
         'label' => 'Media',
         'plural_label' => 'Media',
     ],

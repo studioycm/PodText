@@ -37,13 +37,16 @@ class ListContentItems extends ListRecords
      */
     public function getTabs(): array
     {
-        $counts = app(EpisodeListScopeQuery::class)->counts();
+        // One shared service instance memoizes the counts, so six deferred
+        // badges still cost a single aggregate — and only after the page has
+        // painted, because the badge is a closure (see Tab::configureUsing).
+        $scopes = app(EpisodeListScopeQuery::class);
 
         return collect(EpisodeListScope::cases())
             ->mapWithKeys(fn (EpisodeListScope $scope): array => [
                 $scope->value => Tab::make($scope->getLabel())
-                    ->modifyQueryUsing(fn (Builder $query): Builder => app(EpisodeListScopeQuery::class)->apply($query, $scope))
-                    ->badge($counts[$scope->value] ?? 0)
+                    ->modifyQueryUsing(fn (Builder $query): Builder => $scopes->apply($query, $scope))
+                    ->badge(fn (): int => $scopes->counts()[$scope->value] ?? 0)
                     ->extraAttributes(['data-scope' => $scope->value]),
             ])
             ->all();

@@ -868,9 +868,13 @@ it('registers native import export actions on prompt ten admin tables', function
         ->assertActionVisible(TestAction::make('import')->table())
         ->assertActionVisible(TestAction::make('export')->table());
 
+    // R1 (2026-08-05): the episodes lens keeps the same two actions, but in
+    // the page header beside «פרק חדש» rather than the table's own header
+    // strip — page-level intake, not row work. The Prompt 10 contract is
+    // that they remain registered and reachable, which they are.
     Livewire::test(ListContentItems::class)
-        ->assertActionVisible(TestAction::make('import')->table())
-        ->assertActionVisible(TestAction::make('export')->table());
+        ->assertActionVisible('import')
+        ->assertActionVisible('export');
 
     Livewire::test(ListContentGroups::class)
         ->assertActionVisible(TestAction::make('import')->table())

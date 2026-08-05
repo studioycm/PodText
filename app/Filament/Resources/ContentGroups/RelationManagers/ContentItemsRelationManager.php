@@ -47,6 +47,10 @@ class ContentItemsRelationManager extends RelationManager
 
     protected static bool $isLazy = false;
 
+    // Filament applies deferral inside getTabComponent(), which this class
+    // overrides — so the override honours the flag explicitly below.
+    protected static bool $isBadgeDeferred = true;
+
     #[Locked]
     public ?int $ownerImageExpectedMediaId = null;
 
@@ -302,7 +306,8 @@ class ContentItemsRelationManager extends RelationManager
     {
         return Tab::make(__('admin.relations.episodes'))
             ->icon(Heroicon::OutlinedDocumentText)
-            ->badge((string) $ownerRecord->contentItems()->count())
+            ->badge(static fn (): string => (string) $ownerRecord->contentItems()->count())
+            ->deferBadge(static::isBadgeDeferred($ownerRecord, $pageClass))
             ->badgeColor('info')
             ->badgeTooltip(__('admin.tabs.content_items_badge_tooltip'));
     }
