@@ -136,7 +136,10 @@ phases, so `3B P1–P5` and `3C P5–P8` mean phase five of those mini-tasks. Ba
   `docs/research/episodes-lens-design-research.md`, and the reviewed option
   boards are archived at `docs/research/episodes-lens/episodes-lens-boards.html`.
   R2 (custom-forward: chip strip, grouping/sort toggle rows, three-segment
-  visibility cell, saved views) is a **later phase and has not started**.
+  visibility cell, saved views) is a **later phase and has not started**;
+  its plan must start from the R2 seeds in the spec annex — currently S1,
+  the operator's rename of the «ניהול תוכן» navigation group to
+  «ניהול ממוקד» now that episodes have left it.
   Shipped in R1:
   - **Publication-date home** (`App\Models\Concerns\InteractsWithPublicationDate`
     on `ContentItem`, `ContentGroup`, `Transcription`): saving a record as

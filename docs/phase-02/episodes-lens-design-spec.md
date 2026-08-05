@@ -735,6 +735,43 @@ ToggleButtons; selects only for growing sets) and **P-EL8
 `manager-owns-columns`** (every non-identity column toggleable + reorderable;
 the column manager is the density control; structural loop guard).
 
+### R2 seeds — carry these into the R2 implementation plan
+
+Operator instructions given after R1 shipped. They are **binding inputs to
+the R2 plan**, not optional suggestions; the R2 planner starts here.
+
+**S1 — rename the navigation group «ניהול תוכן» → «ניהול ממוקד»**
+(operator, 2026-08-05). R1 moved episodes out of that group to the ungrouped
+front door, so the label now describes only its survivors — podcasts and
+transcripts, the surfaces you open to work one specific thing. "Content
+management" stopped being true the moment the content itself left.
+
+Mechanics (verified against HEAD, 2026-08-05 — the rename is label-only and
+touches no logic):
+- The only value sites are `lang/he/admin.php` and `lang/en/admin.php` under
+  `admin.navigation.groups.content_management`. Every other reference — the
+  builder, the two ITEMS rows, and all four test assertions — routes through
+  `AdminNavigationOrder::CONTENT_MANAGEMENT` or the translation key, and
+  `AdminClusterNavigationTest:29` uses `__()` rather than a literal. No test
+  hardcodes the Hebrew string, so nothing breaks on the value change alone.
+- **Also rename the key and constant** (`content_management` →
+  `focused_management`, `CONTENT_MANAGEMENT` → `FOCUSED_MANAGEMENT`).
+  Mechanical: 5 sites in `AdminNavigationOrder`, 6 in
+  `AdminPhase02ResourcesTest`, 1 in `AdminClusterNavigationTest`, 2 lang
+  keys. Leaving a key named `content_management` holding «ניהול ממוקד» is
+  exactly the vocabulary drift the house `one-home` rule exists to prevent.
+- **Decide the English counterpart**: the Hebrew is "focused management".
+  Recommended `'Focused management'` for a literal pair; flag to the
+  operator if they want something less literal.
+- **Open question for the operator, not for the planner to answer alone:**
+  the sibling group «ניהול סיווג» (taxonomy) is now the odd one out in the
+  pair. Ask whether it wants a matching rename before shipping S1, so the
+  sidebar reads as one deliberate vocabulary rather than a half-migration.
+
+S1 also **partially answers EQ-11** (client vocabulary), which closed as
+"keep current labels until the client's terms arrive". The first term has
+arrived; EQ-11 stays open for the rest.
+
 **Realizations.** Two operator-reviewed realizations of the blueprint exist —
 R1 native-first (stock APIs + custom columns/actions only) and R2
 custom-forward (chip strip, toggle rows, three-segment visibility cell,
