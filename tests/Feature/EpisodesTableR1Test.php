@@ -20,6 +20,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Lang;
+use Illuminate\Support\Str;
 use Livewire\Livewire;
 
 uses(RefreshDatabase::class);
@@ -513,6 +514,35 @@ it('labels the filter and column-manager triggers in both languages', function (
                 ->toBeTrue("missing admin.tables.{$key} in {$locale}");
         }
     }
+});
+
+it('puts the filters trigger on the toolbar row and leaves the native one for the CSS to hide', function (): void {
+    ContentItem::factory()->count(2)->published()->withTranscription()->create();
+
+    // Render hooks do not fire under Livewire::test — only a real panel
+    // request runs them. Written the Livewire way this test would pass while
+    // asserting nothing at all, so it goes over HTTP.
+    $html = $this->get(ContentItemResource::getUrl('index'))->assertOk()->getContent();
+
+    expect($html)->toContain('podtext-toolbar-filters-trigger');
+
+    // Anchored to the re-homed button, not to the page: the native trigger
+    // carries the same word, so a loose assertion on the label alone would
+    // still pass with the hook gone entirely.
+    $rehomedTrigger = Str::before(Str::after($html, 'podtext-toolbar-filters-trigger'), '</button>');
+
+    expect($rehomedTrigger)->toContain(__('admin.tables.filters_trigger'));
+
+    // Re-homed means inside the toolbar row, beside the column manager it is
+    // registered before — not merely present somewhere on the page.
+    expect(strpos($html, 'fi-ta-header-toolbar'))
+        ->toBeLessThan(strpos($html, 'podtext-toolbar-filters-trigger'));
+
+    // The native trigger is not removed, only hidden — by a theme rule keyed
+    // on the container Filament wraps it in. If Filament renames that
+    // container the rule stops matching and the page grows a second,
+    // duplicate trigger, which no other test would notice.
+    expect($html)->toContain('fi-ta-filters-above-content-ctn');
 });
 
 it('speaks both languages for the public-state vocabulary', function (): void {
