@@ -291,6 +291,24 @@ it('keeps the dashboard status doorways working through the toggle filter', func
         ->assertCanSeeTableRecords([$draft, $published]);
 });
 
+it('labels the filter and column-manager triggers in both languages', function (): void {
+    ContentItem::factory()->create();
+
+    $table = Livewire::test(ListContentItems::class)->instance()->getTable();
+
+    // Among search and grouping, a bare icon reads as decoration — these two
+    // carry their names, and the names exist in both locales.
+    expect((string) $table->getFiltersTriggerAction()->getLabel())->toBe(__('admin.tables.filters_trigger'))
+        ->and((string) $table->getColumnManagerTriggerAction()->getLabel())->toBe(__('admin.tables.columns_trigger'));
+
+    foreach (['filters_trigger', 'columns_trigger'] as $key) {
+        foreach (['en', 'he'] as $locale) {
+            expect(Lang::has("admin.tables.{$key}", $locale))
+                ->toBeTrue("missing admin.tables.{$key} in {$locale}");
+        }
+    }
+});
+
 it('speaks both languages for the public-state vocabulary', function (): void {
     foreach (EpisodePublicState::cases() as $state) {
         foreach (['en', 'he'] as $locale) {

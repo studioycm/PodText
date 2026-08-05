@@ -224,6 +224,10 @@ return [
     'episodes' => [
         'heading_scoped' => ':heading · :scope',
     ],
+    'tables' => [
+        'filters_trigger' => 'Filter',
+        'columns_trigger' => 'Columns',
+    ],
     'episode_public_state' => [
         'visible' => 'Visible',
         'scheduled' => 'Scheduled',

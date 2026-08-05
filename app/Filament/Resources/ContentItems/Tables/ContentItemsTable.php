@@ -34,6 +34,7 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\ToggleButtons;
 use Filament\Notifications\Notification;
+use Filament\Support\Enums\Size;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\SelectColumn;
 use Filament\Tables\Columns\TextColumn;
@@ -184,6 +185,17 @@ class ContentItemsTable
                     ->optionsLimit(50),
             ], layout: FiltersLayout::AboveContentCollapsible)
             ->filtersFormColumns(4)
+            // Labelled triggers: on the lens these two sit among search and
+            // grouping, where a bare icon reads as decoration. Small size
+            // keeps them subordinate to the table itself.
+            ->filtersTriggerAction(fn (Action $action): Action => $action
+                ->label(__('admin.tables.filters_trigger'))
+                ->button()
+                ->size(Size::Small))
+            ->columnManagerTriggerAction(fn (Action $action): Action => $action
+                ->label(__('admin.tables.columns_trigger'))
+                ->button()
+                ->size(Size::Small))
             ->recordUrl(fn (ContentItem $record): string => ContentItemResource::getUrl('workspace', ['record' => $record]))
             ->recordActions([
                 Action::make('openEpisodeWorkspace')

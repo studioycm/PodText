@@ -224,6 +224,10 @@ return [
     'episodes' => [
         'heading_scoped' => ':heading · :scope',
     ],
+    'tables' => [
+        'filters_trigger' => 'סינון',
+        'columns_trigger' => 'עמודות',
+    ],
     'episode_public_state' => [
         'visible' => 'גלוי',
         'scheduled' => 'מתוזמן',
