@@ -6,6 +6,7 @@ use App\Filament\Resources\ContentItems\ContentItemResource;
 use App\Filament\Resources\ContentItems\Pages\EditContentItem;
 use App\Filament\Resources\ContentItems\Pages\ListContentItems;
 use App\Filament\Resources\ContentItems\RelationManagers\TranscriptionsRelationManager;
+use App\Filament\Resources\ContentItems\Tables\ContentItemsTable;
 use App\Filament\Resources\Media\MediaResource;
 use App\Filament\Support\NavigationBadgeCount;
 use App\Models\ContentGroup;
@@ -14,8 +15,10 @@ use App\Models\User;
 use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Lang;
 use Livewire\Livewire;
+use Symfony\Component\Finder\SplFileInfo;
 
 uses(RefreshDatabase::class);
 
@@ -82,6 +85,40 @@ it('defers relation manager tab badges too', function (): void {
     // to opt in on its own class, and both of ours do.
     expect(ContentItemsRelationManager::getTabComponent($group, EditContentGroup::class)->isBadgeDeferred())->toBeTrue()
         ->and(TranscriptionsRelationManager::getTabComponent($item, EditContentItem::class)->isBadgeDeferred())->toBeTrue();
+});
+
+it('keeps import and export labelled in Hebrew away from a table', function (): void {
+    app()->setLocale('he');
+
+    // Off a table, these actions fall back to Str::plural() on the singular
+    // label — and Filament reads Hebrew as a pluralising locale, so «פרק»
+    // became «פרקs» when they moved to the page header.
+    foreach (ContentItemsTable::intakeActions() as $action) {
+        expect((string) $action->getLabel())->not->toContain('s')
+            ->and((string) $action->getLabel())->toContain(__('admin.resources.content_item.plural'))
+            ->and((string) $action->getModalHeading())->not->toContain('s');
+    }
+});
+
+it('keeps app-authored tab containers keyed, because deferred badges need one', function (): void {
+    // The key() requirement is a schema-Tabs rule: Filament's own containers
+    // (resourceTabs, relationManagerTabs) set their own. But the global
+    // Tab::configureUsing(deferBadge()) reaches schema tabs too, so a badge
+    // inside an unkeyed container we author would silently never resolve.
+    // No such container exists today — this is the tripwire for the first one.
+    $files = collect(File::allFiles(app_path()))
+        ->filter(fn (SplFileInfo $file): bool => $file->getExtension() === 'php');
+
+    expect($files)->not->toBeEmpty();
+
+    $unkeyed = $files
+        ->filter(fn (SplFileInfo $file): bool => str_contains($file->getContents(), 'Tabs::make('))
+        ->reject(fn (SplFileInfo $file): bool => str_contains($file->getContents(), '->key('))
+        ->map(fn (SplFileInfo $file): string => $file->getRelativePathname())
+        ->values()
+        ->all();
+
+    expect($unkeyed)->toBe([]);
 });
 
 it('computes the six scope counts in one query however many badges ask', function (): void {

@@ -233,13 +233,20 @@ class ContentItemsTable
      */
     public static function intakeActions(): array
     {
+        // The label must be stated: away from a table these actions fall back
+        // to Str::plural() on the singular label, and Filament reads Hebrew as
+        // a pluralising locale — so «פרק» came out as «פרקs».
+        $pluralLabel = fn (): string => ContentItemResource::getPluralModelLabel();
+
         return [
             ImportAction::make()
+                ->pluralModelLabel($pluralLabel)
                 ->importer(ContentItemImporter::class)
                 ->maxRows(1000)
                 ->chunkSize(10)
                 ->fileRules([File::types(['csv', 'txt'])->max(10240)]),
             ExportAction::make()
+                ->pluralModelLabel($pluralLabel)
                 ->exporter(ContentItemExporter::class)
                 ->maxRows(10000),
         ];
