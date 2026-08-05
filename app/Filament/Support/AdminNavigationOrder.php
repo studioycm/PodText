@@ -82,7 +82,7 @@ class AdminNavigationOrder
     ];
 
     /**
-     * @var array<class-string, array{sort: int, group: string|null, badge_deferred?: bool}>
+     * @var array<class-string, array{sort: int, group: string|null}>
      */
     private const ITEMS = [
         Dashboard::class => [
@@ -182,7 +182,6 @@ class AdminNavigationOrder
         PublicFormSubmissionResource::class => [
             'sort' => 20,
             'group' => null,
-            'badge_deferred' => true,
         ],
         MediaResource::class => [
             'sort' => 30,
@@ -243,11 +242,6 @@ class AdminNavigationOrder
         return self::GROUPS[$group]['collapsed'] ?? false;
     }
 
-    public static function hasDeferredBadge(string $class): bool
-    {
-        return self::ITEMS[$class]['badge_deferred'] ?? false;
-    }
-
     /**
      * @return array<int, NavigationGroup>
      */
@@ -295,7 +289,7 @@ class AdminNavigationOrder
     }
 
     /**
-     * @return array<class-string, array{sort: int, group: string|null, badge_deferred?: bool}>
+     * @return array<class-string, array{sort: int, group: string|null}>
      */
     public static function all(): array
     {

@@ -1,6 +1,7 @@
 <?php
 
 use App\Enums\HomepageSectionType;
+use App\Enums\NavigationBadge;
 use App\Enums\PublicationStatus;
 use App\Enums\PublicFormSubmissionStatus;
 use App\Enums\TranscriptionMode;
@@ -70,6 +71,7 @@ use App\Models\Transcription;
 use App\Models\User;
 use App\Settings\AdminUxSettings;
 use App\Settings\PublicContentSettings;
+use App\Support\NavigationBadgeCount;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\Testing\TestAction;
@@ -80,6 +82,7 @@ use Filament\Schemas\Components\Section;
 use Filament\Support\Enums\Width;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Enums\RecordActionsPosition;
+use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -259,7 +262,6 @@ it('orders every registered admin navigation resource and page through the centr
         PublicFormSubmissionResource::class => [
             'sort' => 20,
             'group' => null,
-            'badge_deferred' => true,
         ],
         MediaResource::class => [
             'sort' => 30,
@@ -294,8 +296,7 @@ it('orders every registered admin navigation resource and page through the centr
 
     expect(Dashboard::shouldRegisterNavigation())->toBeTrue()
         ->and(CreateCardTemplate::shouldRegisterNavigation())->toBeFalse()
-        ->and(EditCardTemplate::shouldRegisterNavigation())->toBeFalse()
-        ->and(PublicFormSubmissionResource::isNavigationBadgeDeferred())->toBeTrue();
+        ->and(EditCardTemplate::shouldRegisterNavigation())->toBeFalse();
 
     $panel = Filament::getPanel('admin');
     $registeredNavigationClasses = [
@@ -409,25 +410,48 @@ it('orders every registered admin navigation resource and page through the centr
     expect(SystemCluster::getNavigationLabel())->toBe('ניהול מערכת');
 });
 
-it('defers the public form submission navigation badge query until badge evaluation', function (): void {
-    PublicFormSubmission::factory()
-        ->count(2)
-        ->create(['status' => PublicFormSubmissionStatus::New]);
+it('counts the submissions badge once per cold render and never when warm', function (): void {
+    // This replaces a test that reflected into NavigationItem's private badge
+    // property to prove a closure was stored. That proved the mechanism of a
+    // vendor fork, not a guarantee — and measurement showed the fork saved
+    // zero queries. What actually protects the sidebar is the cache, so that
+    // is what this pins: one COUNT on a cold render however many times the
+    // navigation is composed, and none at all once warm.
+    NavigationBadgeCount::forget(NavigationBadge::FormSubmissions);
 
+    PublicFormSubmission::factory()->count(2)->create(['status' => PublicFormSubmissionStatus::New]);
     PublicFormSubmission::factory()->reviewed()->create();
 
-    $navigationItem = PublicFormSubmissionResource::getNavigationItems()[0];
-    $badgeProperty = new ReflectionProperty($navigationItem, 'badge');
-    $badgeProperty->setAccessible(true);
+    $countBadgeQueries = function (): int {
+        $queries = 0;
+        DB::listen(function (QueryExecuted $query) use (&$queries): void {
+            if (str_contains($query->sql, 'public_form_submissions')) {
+                $queries++;
+            }
+        });
 
-    expect($badgeProperty->getValue($navigationItem))->toBeInstanceOf(Closure::class)
-        ->and($navigationItem->getBadge())->toBe('2')
-        ->and($navigationItem->getBadgeColor($navigationItem->getBadge()))->toBe('warning')
-        ->and($navigationItem->getBadgeTooltip())->toBe(__('admin.resources.public_form_submission.navigation_badge_tooltip'));
+        // Compose the navigation as many times as a page render does.
+        foreach (range(1, 5) as $ignored) {
+            PublicFormSubmissionResource::getNavigationItems();
+        }
 
+        return $queries;
+    };
+
+    expect($countBadgeQueries())->toBe(1);
+
+    $item = PublicFormSubmissionResource::getNavigationItems()[0];
+
+    expect($item->getBadge())->toBe('2')
+        ->and($item->getBadgeColor($item->getBadge()))->toBe('warning')
+        ->and($item->getBadgeTooltip())->toBe(__('admin.resources.public_form_submission.navigation_badge_tooltip'))
+        ->and($countBadgeQueries())->toBe(0);
+
+    // And a write still makes it exact, which is the property the work queue
+    // actually needs — the model forgets the key on save.
     PublicFormSubmission::factory()->create(['status' => PublicFormSubmissionStatus::New]);
 
-    expect($navigationItem->getBadge())->toBe('3');
+    expect(PublicFormSubmissionResource::getNavigationItems()[0]->getBadge())->toBe('3');
 });
 
 it('labels episode workspace actions as the defaults and classic actions as system actions', function (): void {
