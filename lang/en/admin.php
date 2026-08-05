@@ -221,6 +221,9 @@ return [
             'pinned' => 'Episodes currently pinned.',
         ],
     ],
+    'episodes' => [
+        'heading_scoped' => ':heading · :scope',
+    ],
     'episode_public_state' => [
         'visible' => 'Visible',
         'scheduled' => 'Scheduled',

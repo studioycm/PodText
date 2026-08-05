@@ -3,7 +3,9 @@
 use App\Enums\EpisodeListScope;
 use App\Enums\EpisodePublicState;
 use App\Enums\PublicationStatus;
+use App\Filament\Resources\ContentItems\ContentItemResource;
 use App\Filament\Resources\ContentItems\Pages\ListContentItems;
+use App\Models\Author;
 use App\Models\ContentGroup;
 use App\Models\ContentItem;
 use App\Models\User;
@@ -109,22 +111,42 @@ it('narrows a forged tab value to the all scope', function (): void {
         ->assertCanSeeTableRecords(ContentItem::query()->limit(5)->get());
 });
 
-it('carries no subheading or breadcrumbs above the scope tabs', function (): void {
+it('names a scoped arrival in the heading and keeps the plain list bare', function (): void {
     $podcast = ContentGroup::factory()->published()->create(['title' => 'קול הבוקר']);
     $episode = ContentItem::factory()->published()->for($podcast, 'contentGroup')->withTranscription()->create();
 
-    // Operator ruling 2026-08-05: the tabs and their counts already say what
-    // is showing, so the page chrome above them is gone. The podcast scope
-    // is still announced — by the filter's own indicator, not by prose.
-    $page = Livewire::test(ListContentItems::class);
+    // Operator ruling 2026-08-05: no breadcrumbs, no subheading — the tabs
+    // answer "what is showing". A scoped arrival is page identity, so it
+    // rides the heading instead of a second line.
+    $plain = Livewire::test(ListContentItems::class);
 
-    expect($page->instance()->getSubheading())->toBeNull()
-        ->and($page->instance()->getBreadcrumbs())->toBe([]);
+    expect($plain->instance()->getSubheading())->toBeNull()
+        ->and($plain->instance()->getBreadcrumbs())->toBe([])
+        ->and($plain->instance()->getHeading())->not->toContain('קול הבוקר');
 
-    $page->assertDontSee(EpisodeListScope::All->description())
-        ->filterTable('content_group_id', $podcast->getKey())
-        ->assertCanSeeTableRecords([$episode])
-        ->assertSee('קול הבוקר');
+    $scoped = Livewire::withQueryParams(['filters' => ['content_group_id' => ['value' => $podcast->getKey()]]])
+        ->test(ListContentItems::class);
+
+    expect($scoped->instance()->getHeading())->toContain('קול הבוקר');
+
+    $scoped->assertCanSeeTableRecords([$episode]);
+});
+
+it('names a transcriber arrival too, and ignores a forged scope key', function (): void {
+    $transcriber = Author::factory()->create(['name' => 'רינה כהן']);
+    $episode = ContentItem::factory()->published()->withTranscription()->create();
+    $episode->transcriptions()->first()->syncTranscribers([$transcriber->getKey()]);
+
+    $scoped = Livewire::withQueryParams(['filters' => ['transcriber_id' => ['value' => $transcriber->getKey()]]])
+        ->test(ListContentItems::class);
+
+    expect($scoped->instance()->getHeading())->toContain('רינה כהן');
+
+    // A forged or dangling key announces nothing rather than erroring.
+    $forged = Livewire::withQueryParams(['filters' => ['content_group_id' => ['value' => 'not-an-id']]])
+        ->test(ListContentItems::class);
+
+    expect($forged->instance()->getHeading())->toBe(ContentItemResource::getPluralModelLabel());
 });
 
 it('keeps the row badge in parity with the scope queries for every state', function (): void {

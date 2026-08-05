@@ -379,3 +379,11 @@
 .fi-page-sub-navigation-tabs .fi-tabs-item .fi-icon {
     display: none;
 }
+
+/* Episodes list: the collapsible-filters trigger is re-homed into the
+   toolbar row by a render hook (see filters-toolbar-trigger.blade.php), so
+   the native one — which Filament renders in its own row under the panel —
+   is hidden. Scoped to the page that moves it, never table-wide. */
+.fi-resource-content-items .fi-ta-filters-above-content-ctn > .fi-ta-filters-trigger-action-ctn {
+    display: none;
+}

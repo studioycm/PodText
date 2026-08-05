@@ -182,7 +182,7 @@ class ContentItemsTable
                     ->multiple()
                     ->searchable()
                     ->optionsLimit(50),
-            ], layout: FiltersLayout::AboveContent)
+            ], layout: FiltersLayout::AboveContentCollapsible)
             ->filtersFormColumns(4)
             ->recordUrl(fn (ContentItem $record): string => ContentItemResource::getUrl('workspace', ['record' => $record]))
             ->recordActions([

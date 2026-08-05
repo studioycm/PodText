@@ -221,6 +221,9 @@ return [
             'pinned' => 'פרקים מוצמדים כרגע.',
         ],
     ],
+    'episodes' => [
+        'heading_scoped' => ':heading · :scope',
+    ],
     'episode_public_state' => [
         'visible' => 'גלוי',
         'scheduled' => 'מתוזמן',

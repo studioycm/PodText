@@ -5,6 +5,8 @@ namespace App\Filament\Resources\ContentItems\Pages;
 use App\Enums\EpisodeListScope;
 use App\Filament\Resources\ContentItems\ContentItemResource;
 use App\Filament\Resources\ContentItems\Tables\ContentItemsTable;
+use App\Models\Author;
+use App\Models\ContentGroup;
 use App\Support\ContentItems\EpisodeListScopeQuery;
 use Filament\Actions\Action;
 use Filament\Actions\CreateAction;
@@ -72,10 +74,21 @@ class ListContentItems extends ListRecords
     }
 
     /**
-     * The lens is the page: the scope tabs and their counts already say what
-     * is showing, so the page keeps neither a subheading nor breadcrumbs
-     * above them (operator ruling, 2026-08-05).
+     * A scoped arrival is announced in the heading itself rather than on a
+     * second line: «פרקים · קול הבוקר». It is page identity, not commentary,
+     * and it costs no vertical space. The plain list keeps the bare heading,
+     * because the scope tabs already answer "what is showing".
      */
+    public function getHeading(): string
+    {
+        $heading = parent::getHeading();
+        $scope = $this->scopedArrivalName();
+
+        return $scope === null
+            ? $heading
+            : __('admin.episodes.heading_scoped', ['heading' => $heading, 'scope' => $scope]);
+    }
+
     public function getSubheading(): ?string
     {
         return null;
@@ -87,5 +100,34 @@ class ListContentItems extends ListRecords
     public function getBreadcrumbs(): array
     {
         return [];
+    }
+
+    /**
+     * The entrances that scope this list to something worth naming. New ones
+     * register here; the order is the announcement priority when more than
+     * one is active.
+     */
+    private function scopedArrivalName(): ?string
+    {
+        $entrances = [
+            'content_group_id' => [ContentGroup::class, 'title'],
+            'transcriber_id' => [Author::class, 'name'],
+        ];
+
+        foreach ($entrances as $filter => [$model, $column]) {
+            $key = data_get($this->tableFilters, "{$filter}.value");
+
+            if (! is_numeric($key)) {
+                continue;
+            }
+
+            $name = $model::query()->whereKey((int) $key)->value($column);
+
+            if (filled($name)) {
+                return $name;
+            }
+        }
+
+        return null;
     }
 }

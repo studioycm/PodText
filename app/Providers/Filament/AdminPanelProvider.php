@@ -63,6 +63,14 @@ class AdminPanelProvider extends PanelProvider
                 TablesRenderHook::TOOLBAR_END,
                 fn (): View => view('filament.resources.media.gallery-top-pagination'),
             )
+            // The episodes list wants its collapsible-filters trigger on the
+            // toolbar row with the other table controls, not in a row of its
+            // own above the panel. The hook is unscoped; the view guards
+            // itself to that page.
+            ->renderHook(
+                TablesRenderHook::TOOLBAR_COLUMN_MANAGER_TRIGGER_BEFORE,
+                fn (): View => view('filament.resources.content-items.filters-toolbar-trigger'),
+            )
             ->sidebarWidth('15rem')
             ->sidebarCollapsibleOnDesktop()
 //            ->sidebarFullyCollapsibleOnDesktop()
