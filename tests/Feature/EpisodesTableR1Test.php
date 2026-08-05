@@ -9,9 +9,11 @@ use App\Filament\Resources\ContentGroups\Pages\EditContentGroup;
 use App\Filament\Resources\ContentGroups\RelationManagers\ContentItemsRelationManager;
 use App\Filament\Resources\ContentItems\ContentItemResource;
 use App\Filament\Resources\ContentItems\Pages\ListContentItems;
+use App\Filament\Resources\ContentItems\Tables\ContentItemsTable;
 use App\Models\ContentGroup;
 use App\Models\ContentItem;
 use App\Models\User;
+use App\Support\PublicContent\PublicTranscriptionSelector;
 use Filament\Actions\Testing\TestAction;
 use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -72,6 +74,71 @@ it('renders the list with a fixed query budget regardless of row count', functio
     $wide = $countQueries();
 
     expect($wide)->toBe($baseline);
+});
+
+it('adds transcript columns that stay off by default', function (): void {
+    $table = Livewire::test(ListContentItems::class)->instance()->getTable();
+
+    foreach (['transcriptions_sum_word_count', 'transcript_reading_minutes', 'latestPublishedTranscription.published_at'] as $name) {
+        $column = $table->getColumn($name);
+
+        expect($column)->not->toBeNull("column [{$name}] must exist")
+            // Filament applies aggregates and relation eager loads only for
+            // VISIBLE columns, so off-by-default is what makes them free.
+            ->and($column->isToggledHiddenByDefault())->toBeTrue("column [{$name}] must stay off by default");
+    }
+});
+
+it('keeps the transcript word sum at one query however many episodes there are', function (): void {
+    // The real risk in a derived column is per-row cost. An aggregate is one
+    // subquery at any row count; a state closure reaching a relation would be
+    // one query per row — the shape that produced the recorded authors N+1.
+    $countSumQueries = function (): int {
+        $queries = 0;
+        DB::listen(function () use (&$queries): void {
+            $queries++;
+        });
+
+        ContentItemsTable::primeEpisodeQuery(ContentItem::query())
+            ->withSum('transcriptions', 'word_count')
+            ->get()
+            ->each(fn (ContentItem $item): mixed => $item->transcriptions_sum_word_count);
+
+        return $queries;
+    };
+
+    ContentItem::factory()->count(3)->published()->withTranscription()->create();
+    $narrow = $countSumQueries();
+
+    ContentItem::factory()->count(12)->published()->withTranscription()->create();
+
+    expect($countSumQueries())->toBe($narrow);
+});
+
+it('sums transcript words and turns them into reading minutes', function (): void {
+    $episode = ContentItem::factory()
+        ->for(ContentGroup::factory()->published(), 'contentGroup')
+        ->withTranscription([
+            'status' => PublicationStatus::Published,
+            'published_at' => '2026-07-04 09:00:00',
+            'transcript_markdown' => str_repeat('מילה ', 450),
+        ])
+        ->published('2026-08-01 06:00:00')
+        ->create();
+
+    $row = ContentItemsTable::primeEpisodeQuery(ContentItem::query())
+        ->withSum('transcriptions', 'word_count')
+        ->with('latestPublishedTranscription')
+        ->findOrFail($episode->getKey());
+
+    $words = (int) $row->transcriptions_sum_word_count;
+
+    expect($words)->toBe(450)
+        // 450 words at 200 wpm rounds up to three minutes.
+        ->and(app(PublicTranscriptionSelector::class)->readingMinutes($words))->toBe(3)
+        // The transcript's own date, which is not the episode's.
+        ->and($row->latestPublishedTranscription->published_at->toDateTimeString())->toBe('2026-07-04 09:00:00')
+        ->and($row->published_at->toDateTimeString())->toBe('2026-08-01 06:00:00');
 });
 
 it('publishes from one click on the status cell, stamping the date', function (): void {

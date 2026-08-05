@@ -15,6 +15,7 @@ use App\Filament\Resources\Support\RelationshipOptionForms;
 use App\Filament\Resources\Support\ResourceTableActions;
 use App\Filament\Tables\OwnerImageColumn;
 use App\Models\ContentItem;
+use App\Support\PublicContent\PublicTranscriptionSelector;
 use App\Support\Transcriptions\TranscriptionModeLabel;
 use App\Support\UiFormats;
 use App\Support\UiTimezone;
@@ -86,6 +87,9 @@ class ContentItemsTable
                 self::statusToggleColumn(),
                 self::effectivePublishedAtColumn(),
                 self::updatedAtSinceColumn(),
+                self::transcriptWordCountColumn(),
+                self::readingTimeColumn(),
+                self::transcriptionDateColumn(),
                 TextColumn::make('effective_type_label')
                     ->label(__('admin.fields.effective_type_label'))
                     ->state(fn (ContentItem $record): string => $record->effectiveTypeLabelSingular())
@@ -333,6 +337,56 @@ class ContentItemsTable
         return $record->status === PublicationStatus::Published
             ? PublicationStatus::Draft
             : PublicationStatus::Published;
+    }
+
+    /**
+     * The three transcript columns below are SQL aggregates and a relation
+     * path, never state closures over a relation — Filament applies both only
+     * for visible columns, so a switched-off column costs nothing, while an
+     * undotted closure would force the prime to load for everyone (the shape
+     * that produced the recorded 10x authors N+1).
+     *
+     * Hidden by default on purpose: this table already carries ten columns in
+     * RTL, and secondary numbers earn their place by being asked for.
+     */
+    public static function transcriptWordCountColumn(): TextColumn
+    {
+        return TextColumn::make('transcriptions_sum_word_count')
+            ->label(__('admin.fields.word_count'))
+            ->sum('transcriptions', 'word_count')
+            ->numeric()
+            ->sortable()
+            ->placeholder(__('admin.labels.none'))
+            ->toggleable(isToggledHiddenByDefault: true);
+    }
+
+    public static function readingTimeColumn(): TextColumn
+    {
+        // Declares the same aggregate as the column above so it stands alone
+        // when that one is switched off. Both visible costs one extra indexed
+        // subquery, which is cheaper than the two columns being coupled.
+        return TextColumn::make('transcript_reading_minutes')
+            ->label(__('admin.fields.reading_time'))
+            ->sum('transcriptions', 'word_count')
+            ->state(fn (ContentItem $record): ?string => filled($record->transcriptions_sum_word_count)
+                ? __('admin.labels.reading_minutes', [
+                    'minutes' => app(PublicTranscriptionSelector::class)
+                        ->readingMinutes((int) $record->transcriptions_sum_word_count),
+                ])
+                : null)
+            ->placeholder(__('admin.labels.none'))
+            ->toggleable(isToggledHiddenByDefault: true);
+    }
+
+    public static function transcriptionDateColumn(): TextColumn
+    {
+        // A relation path, so Filament eager-loads it only when shown — and
+        // it costs nothing today because primeEpisodeQuery already has it.
+        return TextColumn::make('latestPublishedTranscription.published_at')
+            ->label(__('admin.fields.transcription_date'))
+            ->dateTime(UiFormats::dateTime(), UiTimezone::name())
+            ->placeholder(__('admin.labels.none'))
+            ->toggleable(isToggledHiddenByDefault: true);
     }
 
     public static function effectivePublishedAtColumn(): TextColumn
