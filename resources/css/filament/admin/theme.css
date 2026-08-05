@@ -387,3 +387,21 @@
 .fi-resource-content-items .fi-ta-filters-above-content-ctn > .fi-ta-filters-trigger-action-ctn {
     display: none;
 }
+
+/* Episodes list: the "how many rows am I looking at" count, rendered as the
+   toolbar row's last child by a render hook (toolbar-record-count.blade.php).
+   It takes the slack at the row's end rather than a slot in the control
+   cluster, so the search field keeps its width and the row does not wrap on
+   desktop. Muted and small: it is a readout, not a control. */
+.podtext-toolbar-record-count {
+    margin-inline-start: auto;
+    align-self: center;
+    font-size: 0.75rem;
+    line-height: 1rem;
+    color: var(--gray-500);
+    white-space: nowrap;
+}
+
+:where(.dark) .podtext-toolbar-record-count {
+    color: var(--gray-400);
+}

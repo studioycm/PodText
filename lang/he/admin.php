@@ -223,6 +223,7 @@ return [
     ],
     'episodes' => [
         'heading_scoped' => ':heading · :scope',
+        'toolbar_record_count' => '{0} אין פרקים|{1} פרק אחד|[2,*] :count פרקים',
     ],
     'tables' => [
         'filters_trigger' => 'סינון',

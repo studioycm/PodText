@@ -63,6 +63,13 @@ class AdminPanelProvider extends PanelProvider
                 TablesRenderHook::TOOLBAR_END,
                 fn (): View => view('filament.resources.media.gallery-top-pagination'),
             )
+            // Filament shows the result count only at the foot of the table,
+            // so a filtered episode list made you scroll to learn what it
+            // matched. Same hook, same self-guarding view convention.
+            ->renderHook(
+                TablesRenderHook::TOOLBAR_END,
+                fn (): View => view('filament.resources.content-items.toolbar-record-count'),
+            )
             // The episodes list wants its collapsible-filters trigger on the
             // toolbar row with the other table controls, not in a row of its
             // own above the panel. The hook is unscoped; the view guards

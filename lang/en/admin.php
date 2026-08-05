@@ -223,6 +223,7 @@ return [
     ],
     'episodes' => [
         'heading_scoped' => ':heading · :scope',
+        'toolbar_record_count' => '{0} No episodes|{1} :count episode|[2,*] :count episodes',
     ],
     'tables' => [
         'filters_trigger' => 'Filter',

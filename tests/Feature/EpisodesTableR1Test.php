@@ -76,6 +76,42 @@ it('renders the list with a fixed query budget regardless of row count', functio
     expect($wide)->toBe($baseline);
 });
 
+it('shows how many rows the current view matched, at the top and for free', function (): void {
+    ContentItem::factory()->count(7)->published()->withTranscription()->create();
+    ContentItem::factory()->count(3)->create(['title' => 'ZZZ needle']);
+
+    // Render hooks only fire on the real panel render, not under
+    // Livewire::test — so this half has to go over HTTP or it proves nothing.
+    $this->get(ContentItemResource::getUrl('index'))
+        ->assertOk()
+        ->assertSee('episodes-toolbar-record-count', escape: false)
+        ->assertSee(trans_choice('admin.episodes.toolbar_record_count', 10, ['count' => '10']), escape: false);
+
+    // Arrive scoped, and the number must follow the view rather than the
+    // library — ten rows exist, the drafts tab shows three. Without this the
+    // count could be a plain model count and nothing would notice.
+    $this->get(ContentItemResource::getUrl('index').'?tab='.EpisodeListScope::Drafts->value)
+        ->assertOk()
+        ->assertSee(trans_choice('admin.episodes.toolbar_record_count', 3, ['count' => '3']), escape: false)
+        ->assertDontSee(trans_choice('admin.episodes.toolbar_record_count', 10, ['count' => '10']), escape: false);
+
+    // The number the hook prints is the table's own, so it follows search,
+    // filters and the active tab — and costs nothing once rows have resolved.
+    $page = Livewire::test(ListContentItems::class)->set('tableSearch', 'ZZZ needle');
+
+    $queries = 0;
+    DB::listen(function () use (&$queries): void {
+        $queries++;
+    });
+
+    expect($page->instance()->getAllTableRecordsCount())->toBe(3)
+        ->and($queries)->toBe(0);
+
+    foreach (['en', 'he'] as $locale) {
+        expect(Lang::has('admin.episodes.toolbar_record_count', $locale))->toBeTrue("missing count label in {$locale}");
+    }
+});
+
 it('adds transcript columns that stay off by default', function (): void {
     $table = Livewire::test(ListContentItems::class)->instance()->getTable();
 
