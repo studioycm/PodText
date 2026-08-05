@@ -465,8 +465,10 @@ it('searches and filters content item tables', function (): void {
         ->assertCanSeeTableRecords([$visible])
         ->assertCanNotSeeTableRecords([$hidden]);
 
+    // R1: status is a grouped-toggle schema filter now, so its state is set
+    // as an array — the scalar shorthand only covers Select/Ternary filters.
     Livewire::test(ListContentItems::class)
-        ->filterTable('status', PublicationStatus::Published->value)
+        ->filterTable('status', ['value' => PublicationStatus::Published->value])
         ->assertCanSeeTableRecords([$visible])
         ->assertCanNotSeeTableRecords([$hidden]);
 

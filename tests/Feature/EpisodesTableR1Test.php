@@ -265,6 +265,29 @@ it('filters unpinned episodes and returns to all when the pin filter is reset', 
         ->assertCanSeeTableRecords([$pinned, $plain]);
 });
 
+it('keeps the dashboard status doorways working through the toggle filter', function (): void {
+    $draft = ContentItem::factory()->create();
+    $published = ContentItem::factory()->published()->create();
+
+    // The funnel and stats widgets link with filters[status][value]; the
+    // toggle filter keeps that exact state path, so the doorways must still
+    // land on a scoped list rather than silently showing everything.
+    Livewire::test(ListContentItems::class)
+        ->filterTable('status', ['value' => PublicationStatus::Draft->value])
+        ->assertCanSeeTableRecords([$draft])
+        ->assertCanNotSeeTableRecords([$published]);
+
+    Livewire::test(ListContentItems::class)
+        ->filterTable('status', ['value' => PublicationStatus::Published->value])
+        ->assertCanSeeTableRecords([$published])
+        ->assertCanNotSeeTableRecords([$draft]);
+
+    // «All» is the resting state, not a filter.
+    Livewire::test(ListContentItems::class)
+        ->filterTable('status', ['value' => 'all'])
+        ->assertCanSeeTableRecords([$draft, $published]);
+});
+
 it('speaks both languages for the public-state vocabulary', function (): void {
     foreach (EpisodePublicState::cases() as $state) {
         foreach (['en', 'he'] as $locale) {

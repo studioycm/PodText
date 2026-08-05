@@ -4,6 +4,7 @@ namespace App\Filament\Resources\ContentItems\Pages;
 
 use App\Enums\EpisodeListScope;
 use App\Filament\Resources\ContentItems\ContentItemResource;
+use App\Filament\Resources\ContentItems\Tables\ContentItemsTable;
 use App\Models\ContentGroup;
 use App\Support\ContentItems\EpisodeListScopeQuery;
 use Filament\Actions\Action;
@@ -26,6 +27,7 @@ class ListContentItems extends ListRecords
                 ->url(ContentItemResource::getUrl('workspace-create')),
             CreateAction::make()
                 ->label(__('admin.actions.classic_create')),
+            ...ContentItemsTable::intakeActions(),
         ];
     }
 

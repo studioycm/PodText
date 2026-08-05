@@ -2272,6 +2272,9 @@ return [
     ],
     'filters' => [
         'transcription_history' => 'Transcript history',
+        'status_options' => [
+            'all' => 'All',
+        ],
         'pinned_options' => [
             'all' => 'All',
             'pinned' => 'Pinned',

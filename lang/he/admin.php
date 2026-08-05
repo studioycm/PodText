@@ -2272,6 +2272,9 @@ return [
     ],
     'filters' => [
         'transcription_history' => 'היסטוריית תמלולים',
+        'status_options' => [
+            'all' => 'הכל',
+        ],
         'pinned_options' => [
             'all' => 'הכל',
             'pinned' => 'מוצמדים',

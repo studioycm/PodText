@@ -45,7 +45,6 @@ use Filament\Tables\Grouping\Group;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rules\File;
 use InvalidArgumentException;
@@ -75,13 +74,15 @@ class ContentItemsTable
                     ->placeholder(__('admin.labels.none'))
                     ->badge()
                     ->color(fn (ContentItem $record): string => EditEffectiveTranscriptionAction::contextColorFor($record))
-                    ->toggleable(),
+                    // Context, not a daily answer: «מצב ציבורי» already says
+                    // when the transcript is what blocks the episode.
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('effective_transcribers')
                     ->label(__('admin.fields.transcribers'))
                     ->state(fn (ContentItem $record): string => self::effectiveTranscriberNames($record))
                     ->badge()
                     ->separator(', ')
-                    ->toggleable(),
+                    ->toggleable(isToggledHiddenByDefault: true),
                 self::statusSelectColumn(),
                 self::effectivePublishedAtColumn(),
                 self::updatedAtSinceColumn(),
@@ -110,7 +111,8 @@ class ContentItemsTable
                     ->state(fn (ContentItem $record): string => $record->isCurrentlyPinned() ? __('admin.labels.active') : __('admin.labels.inactive'))
                     ->badge()
                     ->color(fn (ContentItem $record): string => $record->isCurrentlyPinned() ? 'warning' : 'gray')
-                    ->toggleable(),
+                    // The pinned tab and filter answer this now.
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('pin_order')
                     ->label(__('admin.fields.pin_order'))
                     ->numeric()
@@ -158,11 +160,11 @@ class ContentItemsTable
                     ->relationship('contentGroup', 'title')
                     ->searchable()
                     ->optionsLimit(50),
-                SelectFilter::make('status')
-                    ->label(__('admin.fields.status'))
-                    ->options(PublicationStatus::class),
-                self::pinnedToggleFilter(),
+                self::statusToggleFilter(),
+                // The date range is two columns wide, so it sits third to
+                // pack the four-per-row grid into exactly two tidy rows.
                 self::publishedBetweenFilter(),
+                self::pinnedToggleFilter(),
                 SelectFilter::make('transcriber_id')
                     ->label(__('admin.fields.transcribers'))
                     ->relationship('transcriptions.authors', 'name')
@@ -180,30 +182,8 @@ class ContentItemsTable
                     ->multiple()
                     ->searchable()
                     ->optionsLimit(50),
-                SelectFilter::make('embed_provider')
-                    ->label(__('admin.fields.embed_provider'))
-                    ->options(fn (): array => Cache::remember(
-                        'admin.episodes.embed-provider-options',
-                        60,
-                        fn (): array => ContentItem::query()
-                            ->whereNotNull('embed_provider')
-                            ->distinct()
-                            ->orderBy('embed_provider')
-                            ->pluck('embed_provider', 'embed_provider')
-                            ->all(),
-                    )),
-            ], layout: FiltersLayout::AboveContentCollapsible)
-            ->filtersFormColumns(3)
-            ->headerActions([
-                ImportAction::make()
-                    ->importer(ContentItemImporter::class)
-                    ->maxRows(1000)
-                    ->chunkSize(10)
-                    ->fileRules([File::types(['csv', 'txt'])->max(10240)]),
-                ExportAction::make()
-                    ->exporter(ContentItemExporter::class)
-                    ->maxRows(10000),
-            ])
+            ], layout: FiltersLayout::AboveContent)
+            ->filtersFormColumns(4)
             ->recordUrl(fn (ContentItem $record): string => ContentItemResource::getUrl('workspace', ['record' => $record]))
             ->recordActions([
                 Action::make('openEpisodeWorkspace')
@@ -231,6 +211,26 @@ class ContentItemsTable
                     DeleteBulkAction::make(),
                 ]),
             ]);
+    }
+
+    /**
+     * Import and export live in the page header beside «פרק חדש», not in the
+     * table's own header strip: they are page-level intake, not row work.
+     *
+     * @return array<int, Action>
+     */
+    public static function intakeActions(): array
+    {
+        return [
+            ImportAction::make()
+                ->importer(ContentItemImporter::class)
+                ->maxRows(1000)
+                ->chunkSize(10)
+                ->fileRules([File::types(['csv', 'txt'])->max(10240)]),
+            ExportAction::make()
+                ->exporter(ContentItemExporter::class)
+                ->maxRows(10000),
+        ];
     }
 
     public static function primeEpisodeQuery(Builder $query): Builder
@@ -423,6 +423,35 @@ class ContentItemsTable
         }
 
         $notification->send();
+    }
+
+    /**
+     * Status as a grouped toggle rather than a select (P-EL7). The schema
+     * field keeps the name `value`, so the state path stays
+     * `filters.status.value` — the exact shape the dashboard's funnel and
+     * stats doorways already link with.
+     */
+    public static function statusToggleFilter(): Filter
+    {
+        return Filter::make('status')
+            ->schema([
+                ToggleButtons::make('value')
+                    ->label(__('admin.fields.status'))
+                    ->options([
+                        'all' => __('admin.filters.status_options.all'),
+                        ...collect(PublicationStatus::cases())
+                            ->mapWithKeys(fn (PublicationStatus $status): array => [$status->value => $status->getLabel()])
+                            ->all(),
+                    ])
+                    ->default('all')
+                    ->grouped(),
+            ])
+            ->resetState(['value' => 'all'])
+            ->query(fn (Builder $query, array $data): Builder => $query->when(
+                PublicationStatus::tryFrom((string) ($data['value'] ?? 'all')),
+                fn (Builder $query, PublicationStatus $status): Builder => $query->where('status', $status),
+            ))
+            ->indicateUsing(fn (array $data): ?string => PublicationStatus::tryFrom((string) ($data['value'] ?? 'all'))?->getLabel());
     }
 
     public static function pinnedToggleFilter(): Filter
