@@ -32,11 +32,8 @@ use App\Filament\Resources\PublicFormSubmissions\PublicFormSubmissionResource;
 use App\Filament\Resources\SettingsBackups\SettingsBackupResource;
 use App\Filament\Resources\Transcriptions\TranscriptionResource;
 use App\Filament\Resources\Users\UserResource;
-use Filament\Facades\Filament;
-use Filament\Navigation\NavigationBuilder;
 use Filament\Navigation\NavigationGroup;
 use Filament\Navigation\NavigationItem;
-use Filament\Resources\Resource;
 use Filament\Support\Icons\Heroicon;
 
 class AdminNavigationOrder
@@ -44,6 +41,8 @@ class AdminNavigationOrder
     public const CONTENT_MANAGEMENT = 'content_management';
 
     public const TAXONOMY_MANAGEMENT = 'taxonomy_management';
+
+    public const TOOLS_AND_SYSTEM = 'tools_and_system';
 
     public const EPISODE_WORKSPACE_CREATE_SORT = 10;
 
@@ -69,6 +68,16 @@ class AdminNavigationOrder
             'label' => 'admin.navigation.groups.content_management',
             'icon' => Heroicon::OutlinedRectangleGroup,
             'collapsed' => true,
+        ],
+        // The tools block used to be a second ungrouped run, placed after the
+        // labelled groups by a hand-written builder. Filament sorts ungrouped
+        // items first with no override, so keeping that position natively
+        // means giving the block a name — and an icon, which an icon-less
+        // group needs anyway or it spills its items when the sidebar
+        // collapses.
+        self::TOOLS_AND_SYSTEM => [
+            'label' => 'admin.navigation.groups.tools_and_system',
+            'icon' => Heroicon::OutlinedWrenchScrewdriver,
         ],
     ];
 
@@ -181,19 +190,19 @@ class AdminNavigationOrder
         ],
         AdminTools::class => [
             'sort' => 40,
-            'group' => null,
+            'group' => self::TOOLS_AND_SYSTEM,
         ],
         SpotifyLinksFetcher::class => [
             'sort' => 50,
-            'group' => null,
+            'group' => self::TOOLS_AND_SYSTEM,
         ],
         SettingsCluster::class => [
             'sort' => 52,
-            'group' => null,
+            'group' => self::TOOLS_AND_SYSTEM,
         ],
         SystemCluster::class => [
             'sort' => 54,
-            'group' => null,
+            'group' => self::TOOLS_AND_SYSTEM,
         ],
     ];
 
@@ -240,78 +249,40 @@ class AdminNavigationOrder
     }
 
     /**
-     * Compose the panel navigation explicitly: automatic building always renders
-     * every ungrouped item above the labeled groups, while the approved order puts
-     * the content and taxonomy groups directly after the media item.
+     * @return array<int, NavigationGroup>
      */
-    public static function panelNavigation(NavigationBuilder $builder): NavigationBuilder
+    public static function panelNavigationGroups(): array
     {
-        // Static page URLs resolve against the current panel, and another panel
-        // can trigger this build (e.g. the public panel resolving the admin
-        // redirect URL for its user menu), so pin the admin context here.
-        $previousPanel = Filament::getCurrentPanel();
-        Filament::setCurrentPanel(Filament::getPanel('admin'));
+        return collect(array_keys(self::GROUPS))
+            ->map(function (string $group): NavigationGroup {
+                $navigationGroup = NavigationGroup::make(fn (): string => self::groupLabel($group))
+                    ->icon(self::groupIcon($group))
+                    ->collapsible();
 
-        try {
-            return self::composePanelNavigation($builder);
-        } finally {
-            Filament::setCurrentPanel($previousPanel);
-        }
-    }
+                // collapsed() also *sets* collapsibility from the same value in
+                // Filament 5, so passing false would strip an expanded group's
+                // toggle. Only the collapsed groups say it.
+                if (self::isGroupCollapsed($group)) {
+                    $navigationGroup->collapsed();
+                }
 
-    private static function composePanelNavigation(NavigationBuilder $builder): NavigationBuilder
-    {
-        $groupsFollowSort = (int) self::sort(MediaResource::class);
-
-        $items = collect(array_keys(self::ITEMS))
-            ->filter(fn (string $class): bool => blank($class::getCluster())
-                && (! is_subclass_of($class, Resource::class) || blank($class::getParentResourceRegistration()))
-                && $class::shouldRegisterNavigation()
-                && $class::canAccess())
-            ->flatMap(fn (string $class): array => $class::getNavigationItems())
-            ->merge(self::externalNavigationItems())
-            ->sortBy(fn (NavigationItem $item): int => $item->getSort());
-
-        [$groupedItems, $ungroupedItems] = $items->partition(
-            fn (NavigationItem $item): bool => filled($item->getGroup()),
-        );
-        [$leadingItems, $trailingItems] = $ungroupedItems->partition(
-            fn (NavigationItem $item): bool => $item->getSort() <= $groupsFollowSort,
-        );
-
-        $builder->items($leadingItems->values()->all());
-
-        foreach (array_keys(self::GROUPS) as $group) {
-            $navigationGroup = NavigationGroup::make(fn (): string => self::groupLabel($group))
-                ->icon(self::groupIcon($group))
-                ->collapsible()
-                ->items($groupedItems
-                    ->filter(fn (NavigationItem $item): bool => $item->getGroup() === self::groupLabel($group))
-                    ->values()
-                    ->all());
-
-            // `collapsed()` also *sets* collapsibility from the same value in
-            // Filament 5, so calling it with false would strip an expanded
-            // group's collapse toggle. Only the collapsed groups say it.
-            if (self::isGroupCollapsed($group)) {
-                $navigationGroup->collapsed();
-            }
-
-            $builder->group($navigationGroup);
-        }
-
-        return $builder->group(
-            NavigationGroup::make()->items($trailingItems->values()->all()),
-        );
+                return $navigationGroup;
+            })
+            ->all();
     }
 
     /**
+     * Items that belong to no resource or page — currently the one link out
+     * of the panel, which rides in the tools group with the rest of the block
+     * it has always sat in.
+     *
      * @return array<int, NavigationItem>
      */
-    private static function externalNavigationItems(): array
+    public static function panelNavigationItems(): array
     {
         return [
             NavigationItem::make(fn (): string => __('admin.navigation.public_homepage'))
+                ->group(fn (): string => self::groupLabel(self::TOOLS_AND_SYSTEM))
                 ->icon(Heroicon::OutlinedArrowTopRightOnSquare)
                 ->sort(60)
                 ->url(fn (): string => BrowseContentGroups::getUrl(panel: 'public'), shouldOpenInNewTab: true),

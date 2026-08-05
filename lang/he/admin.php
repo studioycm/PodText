@@ -7,6 +7,7 @@ return [
         'public_homepage' => 'לאתר הציבורי',
         'groups' => [
             'content_management' => 'ניהול תוכן',
+            'tools_and_system' => 'כלים ומערכת',
             'taxonomy_management' => 'ניהול סיווג',
             'settings' => 'הגדרות',
             'system_management' => 'ניהול מערכת',

@@ -18,16 +18,19 @@ beforeEach(function (): void {
     $this->actingAs(User::factory()->admin()->create());
 });
 
-it('serves both clusters as first-level navigation after the labeled groups', function (): void {
+it('serves both clusters in the tools group after the labeled groups', function (): void {
     $navigation = collect(Filament::getNavigation());
 
     // R1 EQ-1 (2026-08-05): episodes left this block for the ungrouped front
-    // door, so taxonomy leads and the content group trails it.
+    // door, so taxonomy leads and the content group trails it. The clusters
+    // sit in the tools group rather than a second ungrouped run — native
+    // Filament sorts ungrouped items first and offers no override, so a block
+    // that must come last has to carry a name.
     expect($navigation->map(fn ($group): ?string => $group->getLabel())->values()->all())->toBe([
         null,
         __('admin.navigation.groups.taxonomy_management'),
         __('admin.navigation.groups.content_management'),
-        null,
+        __('admin.navigation.groups.tools_and_system'),
     ]);
 
     $leadingLabels = collect($navigation->first()->getItems())

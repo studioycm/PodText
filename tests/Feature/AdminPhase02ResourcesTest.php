@@ -267,19 +267,19 @@ it('orders every registered admin navigation resource and page through the centr
         ],
         AdminTools::class => [
             'sort' => 40,
-            'group' => null,
+            'group' => 'tools_and_system',
         ],
         SpotifyLinksFetcher::class => [
             'sort' => 50,
-            'group' => null,
+            'group' => 'tools_and_system',
         ],
         SettingsCluster::class => [
             'sort' => 52,
-            'group' => null,
+            'group' => 'tools_and_system',
         ],
         SystemCluster::class => [
             'sort' => 54,
-            'group' => null,
+            'group' => 'tools_and_system',
         ],
     ];
 
@@ -320,12 +320,15 @@ it('orders every registered admin navigation resource and page through the centr
         ->all();
 
     // R1 EQ-1: taxonomy leads the labelled groups and the content group
-    // (podcasts + transcripts) trails it, collapsed by default.
+    // (podcasts + transcripts) trails it, collapsed by default. The tools
+    // block is a labelled group rather than a second ungrouped run — native
+    // Filament sorts ungrouped first with no override, so keeping that block
+    // last means naming it.
     expect($navigationLabels)->toBe([
         null,
         AdminNavigationOrder::groupLabel(AdminNavigationOrder::TAXONOMY_MANAGEMENT),
         AdminNavigationOrder::groupLabel(AdminNavigationOrder::CONTENT_MANAGEMENT),
-        null,
+        AdminNavigationOrder::groupLabel(AdminNavigationOrder::TOOLS_AND_SYSTEM),
     ]);
 
     $groupedNavigation = $navigation

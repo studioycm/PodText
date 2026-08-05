@@ -7,6 +7,7 @@ return [
         'public_homepage' => 'Public site',
         'groups' => [
             'content_management' => 'Content management',
+            'tools_and_system' => 'Tools & system',
             'taxonomy_management' => 'Taxonomy management',
             'settings' => 'Settings',
             'system_management' => 'System management',
