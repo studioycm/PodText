@@ -2,7 +2,7 @@
 
 namespace App\Filament\Resources\Transcriptions\Schemas;
 
-use App\Filament\Forms\Components\PublicationStatusSelect;
+use App\Filament\Forms\Components\PublicationStatusField;
 use App\Filament\Resources\Support\RelationshipOptionForms;
 use App\Support\Transcriptions\TranscriptionModeLabel;
 use App\Support\UiTimezone;
@@ -87,7 +87,7 @@ class TranscriptionForm
             Section::make(__('admin.sections.publication'))
                 ->description(TranscriptionModeLabel::singleText('admin.descriptions.transcription_publication'))
                 ->schema([
-                    PublicationStatusSelect::make('status')
+                    PublicationStatusField::make('status')
                         ->label(__('admin.fields.status'))
                         ->helperText(TranscriptionModeLabel::singleText('admin.helpers.transcription_status'))
                         ->required(),

@@ -2,7 +2,7 @@
 
 namespace App\Filament\Resources\Support;
 
-use App\Filament\Forms\Components\PublicationStatusSelect;
+use App\Filament\Forms\Components\PublicationStatusField;
 use App\Filament\Forms\Components\SlugInput;
 use App\Models\Author;
 use App\Models\Transcription;
@@ -258,7 +258,7 @@ class RelationshipOptionForms
                     ->all())
                 ->default('he')
                 ->required(),
-            PublicationStatusSelect::make('status')
+            PublicationStatusField::make('status')
                 ->label(__('admin.fields.status'))
                 ->required(),
             DateTimePicker::make('published_at')

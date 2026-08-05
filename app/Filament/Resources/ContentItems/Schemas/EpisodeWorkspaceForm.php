@@ -6,7 +6,7 @@ use App\Enums\ImageUploadPurpose;
 use App\Enums\MediaAttachmentRole;
 use App\Enums\PublicationStatus;
 use App\Enums\TranscriptionPresentationMode;
-use App\Filament\Forms\Components\PublicationStatusSelect;
+use App\Filament\Forms\Components\PublicationStatusField;
 use App\Filament\Forms\Components\SlugInput;
 use App\Filament\Forms\Components\TrustedHtmlCodeEditor;
 use App\Filament\Forms\MediaPickerField;
@@ -270,7 +270,7 @@ class EpisodeWorkspaceForm
                 Section::make(__('admin.sections.episode_workspace_visibility'))
                     ->description(__('admin.descriptions.episode_workspace_visibility'))
                     ->schema([
-                        PublicationStatusSelect::make('status')
+                        PublicationStatusField::make('status')
                             ->label(__('admin.fields.status'))
                             ->helperText(__('admin.helpers.content_item_status'))
                             ->required(),
@@ -335,7 +335,7 @@ class EpisodeWorkspaceForm
                     ->required()
                     ->maxLength(10)
                     ->visible((bool) $settings->show_episode_workspace_language_code),
-                PublicationStatusSelect::make('status')
+                PublicationStatusField::make('status')
                     ->label(__('admin.fields.status'))
                     ->helperText(TranscriptionModeLabel::text('admin.helpers.transcription_status'))
                     ->required(),

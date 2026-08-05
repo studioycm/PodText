@@ -1,9 +1,10 @@
 <?php
 
+use App\Enums\PublicationStatus;
 use App\Enums\TranscriptionMode;
 use App\Enums\UserRole;
 use App\Filament\Forms\Components\IconSelect;
-use App\Filament\Forms\Components\PublicationStatusSelect;
+use App\Filament\Forms\Components\PublicationStatusField;
 use App\Livewire\Admin\SettingsImportLocksManager;
 use App\Models\User;
 use App\Settings\AdminUxSettings;
@@ -215,12 +216,23 @@ it('allows a super admin in multi mode to import the complete gated payload', fu
         ]);
 });
 
-it('preloads bounded selects, keeps icon search async, and memoizes template options', function (): void {
-    $bounded = PublicationStatusSelect::make();
+it('renders the two-answer status set inline, keeps icon search async, and memoizes template options', function (): void {
+    $bounded = PublicationStatusField::make();
     $async = IconSelect::make('icon');
 
-    expect($bounded->isPreloaded())->toBeTrue()
-        ->and($bounded->getOptions())->not->toBeEmpty()
+    // The bounded end of the rule used to be a preloaded Select. A set with
+    // two answers is better served with no menu at all, so the assertion
+    // moved with it: every case is on screen, and the colours are the enum's
+    // rather than a second copy that could drift from the table badge.
+    expect($bounded->getOptions())->toBe([
+        PublicationStatus::Draft->value => PublicationStatus::Draft->getLabel(),
+        PublicationStatus::Published->value => PublicationStatus::Published->getLabel(),
+    ])
+        ->and($bounded->isGrouped())->toBeTrue()
+        ->and($bounded->getColors())->toBe([
+            PublicationStatus::Draft->value => 'gray',
+            PublicationStatus::Published->value => 'success',
+        ])
         ->and($async->isPreloaded())->toBeFalse()
         ->and($async->getOptionsLimit())->toBe(50)
         ->and($async->getSearchResults('home'))->not->toBeEmpty();

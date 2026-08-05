@@ -4,7 +4,7 @@ namespace App\Filament\Resources\ContentItems\Schemas;
 
 use App\Enums\MediaAttachmentRole;
 use App\Enums\UserRole;
-use App\Filament\Forms\Components\PublicationStatusSelect;
+use App\Filament\Forms\Components\PublicationStatusField;
 use App\Filament\Forms\Components\SlugInput;
 use App\Filament\Forms\Components\TrustedHtmlCodeEditor;
 use App\Filament\Forms\MediaPickerField;
@@ -256,7 +256,7 @@ class ContentItemForm
                 Section::make(__('admin.sections.publication'))
                     ->description(__('admin.descriptions.content_item_publication'))
                     ->schema([
-                        PublicationStatusSelect::make('status')
+                        PublicationStatusField::make('status')
                             ->label(__('admin.fields.status'))
                             ->helperText(__('admin.helpers.content_item_status'))
                             ->required(),

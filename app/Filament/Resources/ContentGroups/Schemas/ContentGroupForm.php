@@ -3,7 +3,7 @@
 namespace App\Filament\Resources\ContentGroups\Schemas;
 
 use App\Enums\MediaAttachmentRole;
-use App\Filament\Forms\Components\PublicationStatusSelect;
+use App\Filament\Forms\Components\PublicationStatusField;
 use App\Filament\Forms\Components\SlugInput;
 use App\Filament\Forms\MediaPickerField;
 use App\Filament\Forms\SpotifyShowInput;
@@ -141,7 +141,7 @@ class ContentGroupForm
                     ]),
                 Section::make(__('admin.sections.publication'))
                     ->schema([
-                        PublicationStatusSelect::make('status')
+                        PublicationStatusField::make('status')
                             ->label(__('admin.fields.status'))
                             ->required(),
                         DateTimePicker::make('published_at')

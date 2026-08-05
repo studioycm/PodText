@@ -4,7 +4,7 @@ namespace App\Filament\Resources\ContentItems\RelationManagers;
 
 use App\Enums\PublicationStatus;
 use App\Enums\UserRole;
-use App\Filament\Forms\Components\PublicationStatusSelect;
+use App\Filament\Forms\Components\PublicationStatusField;
 use App\Filament\Resources\Support\RelationshipOptionForms;
 use App\Filament\Resources\Support\ResourceTableActions;
 use App\Filament\Resources\Transcriptions\TranscriptionResource;
@@ -68,7 +68,7 @@ class TranscriptionsRelationManager extends RelationManager
                 Section::make(__('admin.sections.publication'))
                     ->description(__('admin.descriptions.transcription_publication'))
                     ->schema([
-                        PublicationStatusSelect::make('status')
+                        PublicationStatusField::make('status')
                             ->label(__('admin.fields.status'))
                             ->helperText(__('admin.helpers.transcription_status'))
                             ->required(),
