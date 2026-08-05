@@ -272,13 +272,16 @@ it('keeps the dashboard status doorways working through the toggle filter', func
     // The funnel and stats widgets link with filters[status][value]; the
     // toggle filter keeps that exact state path, so the doorways must still
     // land on a scoped list rather than silently showing everything.
-    Livewire::test(ListContentItems::class)
-        ->filterTable('status', ['value' => PublicationStatus::Draft->value])
+    // Driven through the query string, because that is how a doorway
+    // actually arrives — DashboardOverviewLensTest pins the URL those
+    // widgets emit, and this pins that the list honours it.
+    Livewire::withQueryParams(['filters' => ['status' => ['value' => PublicationStatus::Draft->value]]])
+        ->test(ListContentItems::class)
         ->assertCanSeeTableRecords([$draft])
         ->assertCanNotSeeTableRecords([$published]);
 
-    Livewire::test(ListContentItems::class)
-        ->filterTable('status', ['value' => PublicationStatus::Published->value])
+    Livewire::withQueryParams(['filters' => ['status' => ['value' => PublicationStatus::Published->value]]])
+        ->test(ListContentItems::class)
         ->assertCanSeeTableRecords([$published])
         ->assertCanNotSeeTableRecords([$draft]);
 

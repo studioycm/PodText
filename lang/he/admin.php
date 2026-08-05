@@ -229,9 +229,6 @@ return [
         'blocked_transcription' => 'חסום: אין תמלול מפורסם',
         'scheduled_tooltip' => 'יעלה לאוויר ב־:date',
     ],
-    'episodes' => [
-        'subheading_scoped_to_podcast' => ':scope מציג את הפודקאסט «:podcast».',
-    ],
     'resources' => [
         'author' => [
             'singular' => 'מחבר',

@@ -5,7 +5,6 @@ namespace App\Filament\Resources\ContentItems\Pages;
 use App\Enums\EpisodeListScope;
 use App\Filament\Resources\ContentItems\ContentItemResource;
 use App\Filament\Resources\ContentItems\Tables\ContentItemsTable;
-use App\Models\ContentGroup;
 use App\Support\ContentItems\EpisodeListScopeQuery;
 use Filament\Actions\Action;
 use Filament\Actions\CreateAction;
@@ -72,30 +71,21 @@ class ListContentItems extends ListRecords
             ?? EpisodeListScope::All->value;
     }
 
+    /**
+     * The lens is the page: the scope tabs and their counts already say what
+     * is showing, so the page keeps neither a subheading nor breadcrumbs
+     * above them (operator ruling, 2026-08-05).
+     */
     public function getSubheading(): ?string
     {
-        $scope = EpisodeListScope::tryFrom((string) $this->activeTab) ?? EpisodeListScope::All;
-
-        $podcastTitle = $this->scopedPodcastTitle();
-
-        if ($podcastTitle !== null) {
-            return __('admin.episodes.subheading_scoped_to_podcast', [
-                'scope' => $scope->description(),
-                'podcast' => $podcastTitle,
-            ]);
-        }
-
-        return $scope->description();
+        return null;
     }
 
-    private function scopedPodcastTitle(): ?string
+    /**
+     * @return array<string, string>
+     */
+    public function getBreadcrumbs(): array
     {
-        $podcastId = data_get($this->tableFilters, 'content_group_id.value');
-
-        if (! is_numeric($podcastId)) {
-            return null;
-        }
-
-        return ContentGroup::query()->whereKey((int) $podcastId)->value('title');
+        return [];
     }
 }

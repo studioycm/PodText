@@ -109,13 +109,21 @@ it('narrows a forged tab value to the all scope', function (): void {
         ->assertCanSeeTableRecords(ContentItem::query()->limit(5)->get());
 });
 
-it('describes the active scope in the subheading and names the scoped podcast', function (): void {
+it('carries no subheading or breadcrumbs above the scope tabs', function (): void {
     $podcast = ContentGroup::factory()->published()->create(['title' => 'קול הבוקר']);
-    ContentItem::factory()->published()->for($podcast, 'contentGroup')->withTranscription()->create();
+    $episode = ContentItem::factory()->published()->for($podcast, 'contentGroup')->withTranscription()->create();
 
-    Livewire::test(ListContentItems::class)
-        ->assertSee(EpisodeListScope::All->description())
+    // Operator ruling 2026-08-05: the tabs and their counts already say what
+    // is showing, so the page chrome above them is gone. The podcast scope
+    // is still announced — by the filter's own indicator, not by prose.
+    $page = Livewire::test(ListContentItems::class);
+
+    expect($page->instance()->getSubheading())->toBeNull()
+        ->and($page->instance()->getBreadcrumbs())->toBe([]);
+
+    $page->assertDontSee(EpisodeListScope::All->description())
         ->filterTable('content_group_id', $podcast->getKey())
+        ->assertCanSeeTableRecords([$episode])
         ->assertSee('קול הבוקר');
 });
 

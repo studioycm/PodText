@@ -229,9 +229,6 @@ return [
         'blocked_transcription' => 'Blocked: no published transcript',
         'scheduled_tooltip' => 'Goes live on :date',
     ],
-    'episodes' => [
-        'subheading_scoped_to_podcast' => ':scope Showing the podcast ":podcast".',
-    ],
     'resources' => [
         'author' => [
             'singular' => 'Author',
