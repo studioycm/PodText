@@ -51,7 +51,10 @@ class PublicContentItemQueries
         $contentItemsTable = (new ContentItem)->getTable();
         $transcriptionsTable = (new Transcription)->getTable();
         $published = str_replace("'", "''", PublicationStatus::Published->value);
-        $publishedWhere = "status = '{$published}' and transcript_markdown is not null and transcript_markdown != '' and (published_at is null or published_at <= CURRENT_TIMESTAMP)";
+        // The app's clock, not the database's — see
+        // PublicTranscriptionSelector::sqlMoment().
+        $moment = PublicTranscriptionSelector::sqlMoment();
+        $publishedWhere = "status = '{$published}' and transcript_markdown is not null and transcript_markdown != '' and (published_at is null or published_at <= {$moment})";
 
         return "coalesce(
             (select published_at from {$transcriptionsTable} where id = {$contentItemsTable}.featured_transcription_id and content_item_id = {$contentItemsTable}.id and {$publishedWhere} limit 1),

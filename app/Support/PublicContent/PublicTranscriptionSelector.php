@@ -5,6 +5,7 @@ namespace App\Support\PublicContent;
 use App\Enums\PublicationStatus;
 use App\Models\ContentItem;
 use App\Models\Transcription;
+use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Query\Builder as QueryBuilder;
 use Illuminate\Support\Collection;
@@ -189,7 +190,32 @@ class PublicTranscriptionSelector
         return "{$transcriptionsTable}.status = '{$published}'
             and {$transcriptionsTable}.transcript_markdown is not null
             and {$transcriptionsTable}.transcript_markdown != ''
-            and ({$transcriptionsTable}.published_at is null or {$transcriptionsTable}.published_at <= CURRENT_TIMESTAMP)";
+            and ({$transcriptionsTable}.published_at is null or {$transcriptionsTable}.published_at <= ".self::sqlMoment().')';
+    }
+
+    /**
+     * The application's "now", as a SQL literal — never CURRENT_TIMESTAMP.
+     *
+     * These predicates decide what the public site shows, and the database
+     * clock is not the application's clock: production MySQL answers
+     * CURRENT_TIMESTAMP in machine-local time (measured 180 minutes ahead of
+     * app UTC on 2026-08-06), while published_at is written from PHP. A
+     * transcription scheduled up to three hours out therefore read as already
+     * public.
+     *
+     * The obvious fix — setting the connection timezone — is the wrong one
+     * here: published_at is a MySQL TIMESTAMP column, so the session timezone
+     * governs how every stored value is read back, and changing it would
+     * shift the entire existing catalogue by three hours. Taking the moment
+     * from PHP is correct under any session timezone, because both sides of
+     * the comparison then get the same treatment.
+     *
+     * It also restores testability: Carbon::setTestNow() and travel() cannot
+     * reach CURRENT_TIMESTAMP, which is why no test ever caught this.
+     */
+    public static function sqlMoment(?CarbonInterface $moment = null): string
+    {
+        return "'".str_replace("'", "''", ($moment ?? now())->toDateTimeString())."'";
     }
 
     public function readingMinutes(?int $wordCount): int

@@ -6,7 +6,9 @@ use App\Livewire\Public\ContentItemBrowser;
 use App\Models\ContentGroup;
 use App\Models\ContentItem;
 use App\Models\Transcription;
+use App\Support\PublicContent\PublicTranscriptionSelector;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Livewire\Livewire;
 
 uses(RefreshDatabase::class);
@@ -98,4 +100,39 @@ it('ignores an unpublished featured transcription when resolving public content'
 
     expect($item->refresh()->effectiveTranscription()->is($published))->toBeTrue()
         ->and(ContentItem::published()->whereKey($item)->exists())->toBeTrue();
+});
+
+it('judges a scheduled transcript by the application clock, not the database clock', function (): void {
+    // The raw public-visibility SQL used CURRENT_TIMESTAMP, which is the
+    // DATABASE's clock. Production MySQL answers it in machine-local time —
+    // measured 180 minutes ahead of app UTC — so a transcript scheduled up to
+    // three hours out read as already public on the live site.
+    //
+    // A timezone test cannot catch that here, because SQLite answers
+    // CURRENT_TIMESTAMP in UTC and would agree. Time travel can: setTestNow()
+    // moves PHP's clock and cannot reach CURRENT_TIMESTAMP, so a query that
+    // still consults the database clock ignores the travel and fails.
+    $group = ContentGroup::factory()->published()->create();
+    $item = ContentItem::factory()->for($group)->published()->withTranscription([
+        'published_at' => now()->addHours(2),
+    ])->create();
+
+    expect(ContentItem::published()->pluck('id')->all())->not->toContain($item->id);
+
+    $selector = app(PublicTranscriptionSelector::class);
+
+    $isPublicNow = fn (): bool => (bool) DB::table('transcriptions')
+        ->where('id', $item->transcriptions()->value('id'))
+        ->whereRaw($selector->publishedWhereSql())
+        ->exists();
+
+    expect($isPublicNow())->toBeFalse();
+
+    // Travel past its air time and it becomes public — the same clock decides
+    // both answers.
+    $this->travel(3)->hours();
+
+    expect($isPublicNow())->toBeTrue();
+
+    $this->travelBack();
 });
