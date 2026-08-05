@@ -1258,11 +1258,30 @@ it('shows the effective transcription edit action on both episode list surfaces 
         'status' => __('admin.publication_status.published'),
     ]);
 
-    Livewire::test(ListContentItems::class)
-        ->assertActionVisible(TestAction::make('editEffectiveTranscription')->table($item))
-        ->assertActionHidden(TestAction::make('editEffectiveTranscription')->table($emptyItem))
-        ->assertTableColumnStateSet('effective_transcription_context', $expectedContext, $item);
+    // The context column is off by default on the episodes list, and the
+    // query no longer eager-loads a transcription for columns nobody has
+    // switched on — so assert it where a user would actually meet it.
+    $showContextColumn = function (object $page): object {
+        $state = collect($page->instance()->getDefaultTableColumnState())
+            ->map(function (array $column): array {
+                if ($column['name'] === 'effective_transcription_context') {
+                    $column['isToggled'] = true;
+                }
 
+                return $column;
+            })
+            ->all();
+
+        return $page->call('applyTableColumnManager', $state);
+    };
+
+    $showContextColumn(
+        Livewire::test(ListContentItems::class)
+            ->assertActionVisible(TestAction::make('editEffectiveTranscription')->table($item))
+            ->assertActionHidden(TestAction::make('editEffectiveTranscription')->table($emptyItem))
+    )->assertTableColumnStateSet('effective_transcription_context', $expectedContext, $item);
+
+    // On the relation manager the column ships visible, so it needs no help.
     Livewire::test(ContentItemsRelationManager::class, [
         'ownerRecord' => $group,
         'pageClass' => EditContentGroup::class,

@@ -112,6 +112,35 @@ it('shows how many rows the current view matched, at the top and for free', func
     }
 });
 
+it('loads transcription relations only when a column actually reads one', function (): void {
+    ContentItem::factory()->count(4)->published()->withTranscription()->create();
+
+    $page = Livewire::test(ListContentItems::class)->assertSuccessful();
+
+    // The default view showed none of the columns that read a transcription
+    // model, yet primed four relations for all of them. The public-state
+    // verdict does not need them — it reads the withExists flags — so the
+    // default page can go without.
+    expect($page->instance()->getTableRecords()->first()->relationLoaded('latestPublishedTranscription'))->toBeFalse()
+        ->and($page->instance()->getTableRecords()->first()->relationLoaded('featuredTranscription'))->toBeFalse();
+
+    $withTranscribersOn = collect($page->instance()->getDefaultTableColumnState())
+        ->map(function (array $column): array {
+            if ($column['name'] === 'effective_transcribers') {
+                $column['isToggled'] = true;
+            }
+
+            return $column;
+        })
+        ->all();
+
+    // And the moment one is switched on it must come back, or the column
+    // would lazy-load per row — which preventLazyLoading turns into a crash.
+    $page->call('applyTableColumnManager', $withTranscribersOn)->assertSuccessful();
+
+    expect($page->instance()->getTableRecords()->first()->relationLoaded('latestPublishedTranscription'))->toBeTrue();
+});
+
 it('adds transcript columns that stay off by default', function (): void {
     $table = Livewire::test(ListContentItems::class)->instance()->getTable();
 

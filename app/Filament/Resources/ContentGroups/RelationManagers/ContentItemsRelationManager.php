@@ -31,6 +31,7 @@ use Filament\Schemas\Schema;
 use Filament\Support\Enums\Width;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Contracts\HasTable;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Contracts\Encryption\DecryptException;
@@ -74,7 +75,7 @@ class ContentItemsRelationManager extends RelationManager
         return ResourceTableActions::iconOnly($table)
             ->heading(__('admin.relations.episodes'))
             ->recordTitleAttribute('title')
-            ->modifyQueryUsing(fn (Builder $query): Builder => ContentItemsTable::primeEpisodeQuery($query)
+            ->modifyQueryUsing(fn (Builder $query, HasTable $livewire): Builder => ContentItemsTable::primeEpisodeQuery($query, $livewire)
                 ->with(['categories', 'tags'])
                 ->latest('published_at')
                 ->latest('id'))

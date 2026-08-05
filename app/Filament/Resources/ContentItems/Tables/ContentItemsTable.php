@@ -38,6 +38,7 @@ use Filament\Notifications\Notification;
 use Filament\Support\Enums\Size;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Contracts\HasTable;
 use Filament\Tables\Enums\FiltersLayout;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\Indicator;
@@ -55,7 +56,7 @@ class ContentItemsTable
     public static function configure(Table $table): Table
     {
         return ResourceTableActions::iconOnly($table)
-            ->modifyQueryUsing(fn (Builder $query): Builder => self::primeEpisodeQuery($query))
+            ->modifyQueryUsing(fn (Builder $query, HasTable $livewire): Builder => self::primeEpisodeQuery($query, $livewire))
             ->columns([
                 OwnerImageColumn::contentItem()
                     ->toggleable(),
@@ -255,18 +256,46 @@ class ContentItemsTable
         ];
     }
 
-    public static function primeEpisodeQuery(Builder $query): Builder
+    /**
+     * The columns that read a whole transcription model, and so are the only
+     * reason to eager-load one. They are `state()` closures on undotted
+     * names, which Filament cannot see through — it eager-loads only for
+     * dotted column names — so the loading has to be decided here instead.
+     */
+    private const TRANSCRIPTION_DEPENDENT_COLUMNS = [
+        'effective_transcribers',
+        'effective_transcription_context',
+        'featuredTranscription.title',
+    ];
+
+    /**
+     * `$livewire` is injected by Filament when this runs as a table query
+     * scope, and is null for the direct calls in tests and tooling — where
+     * loading everything is the safe answer.
+     */
+    public static function primeEpisodeQuery(Builder $query, ?HasTable $livewire = null): Builder
     {
-        return $query
+        $query
             ->with([
                 'contentGroup.coverMediaAttachment.media',
+                'primaryImageMediaAttachment.media',
+            ])
+            ->withCount('transcriptions');
+
+        // Four relations, six queries, and 54 hydrated transcriptions on a
+        // 25-row page — all of it for columns that are off by default. The
+        // public-state verdict does not need them: it reads the withExists
+        // flags below, so it keeps working when nothing is loaded.
+        if (self::needsTranscriptionRelations($livewire)) {
+            $query->with([
                 'featuredTranscription.authors',
                 'featuredTranscription.author',
                 'latestPublishedTranscription.authors',
                 'latestPublishedTranscription.author',
-                'primaryImageMediaAttachment.media',
-            ])
-            ->withCount('transcriptions')
+            ]);
+        }
+
+        return $query
             ->withExists([
                 // The verdict judges prerequisites at the later of now and the
                 // air time, so both flags are primed and the resolver picks
@@ -276,6 +305,21 @@ class ContentItemsTable
                 'transcriptions as has_transcription_by_air_time' => fn (Builder $transcriptions): Builder => $transcriptions
                     ->releasedBy('content_items.published_at'),
             ]);
+    }
+
+    private static function needsTranscriptionRelations(?HasTable $livewire): bool
+    {
+        if (! $livewire instanceof HasTable) {
+            return true;
+        }
+
+        foreach (self::TRANSCRIPTION_DEPENDENT_COLUMNS as $column) {
+            if ($livewire->getTable()->getColumn($column) !== null && ! $livewire->isTableColumnToggledHidden($column)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     public static function publicStateColumn(): TextColumn
