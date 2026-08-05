@@ -51,10 +51,12 @@ class ContentItemResource extends Resource
 
     public static function getNavigationBadge(): ?string
     {
-        return NavigationBadgeCount::format(Cache::remember(
+        return NavigationBadgeCount::format(Cache::flexible(
             NavigationBadgeCount::cacheKey('episodes'),
             NavigationBadgeCount::ttl(),
-            fn (): int => ContentItem::query()->count(),
+            // Counted through the resource's own query, so the badge can
+            // never disagree with the list it links to.
+            fn (): int => static::getEloquentQuery()->count(),
         ));
     }
 

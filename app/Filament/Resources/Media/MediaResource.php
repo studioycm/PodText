@@ -35,10 +35,12 @@ class MediaResource extends Resource
 
     public static function getNavigationBadge(): ?string
     {
-        return NavigationBadgeCount::format(Cache::remember(
+        return NavigationBadgeCount::format(Cache::flexible(
             NavigationBadgeCount::cacheKey('media'),
             NavigationBadgeCount::ttl(),
-            fn (): int => static::getModel()::query()->count(),
+            // Counted through the resource's own query, so the badge can
+            // never disagree with the list it links to.
+            fn (): int => static::getEloquentQuery()->count(),
         ));
     }
 

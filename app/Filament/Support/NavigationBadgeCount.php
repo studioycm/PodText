@@ -3,7 +3,6 @@
 namespace App\Filament\Support;
 
 use App\Support\UiFormats;
-use DateTimeInterface;
 use Illuminate\Support\Facades\Cache;
 
 /**
@@ -27,9 +26,18 @@ final class NavigationBadgeCount
         return "admin.navigation-badge.{$name}";
     }
 
-    public static function ttl(): DateTimeInterface
+    /**
+     * Fresh for a minute, then served stale for up to ten while Laravel
+     * recomputes after the response. `remember()` would make the first
+     * visitor past expiry pay the query; with `flexible()` only the very
+     * first request ever waits, which is the closest a navigation badge can
+     * get to the deferral tabs have.
+     *
+     * @return array{0: int, 1: int}
+     */
+    public static function ttl(): array
     {
-        return now()->addMinute();
+        return [60, 600];
     }
 
     /** A badge reading "0" is noise, not news. */
