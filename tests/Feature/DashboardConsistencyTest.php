@@ -3,6 +3,7 @@
 use App\Enums\DashboardRange;
 use App\Enums\PublicationStatus;
 use App\Enums\TranscriptionMode;
+use App\Filament\Resources\ContentItems\Pages\ListContentItems;
 use App\Filament\Widgets\ActivityStreamWidget;
 use App\Filament\Widgets\DashboardContextWidget;
 use App\Filament\Widgets\EditorialStatsWidget;
@@ -254,4 +255,35 @@ it('keeps stock totals still while a flow widget follows the range and the legen
 
     expect($stageCounts(Livewire::test(PublicationFunnelWidget::class, ['pageFilters' => ['status' => 'visible']])->viewData('stages')))
         ->toBe($stockAtThirty);
+});
+
+it('opens the pinned stat card onto the pinned episodes, not the whole library', function (): void {
+    // every-number-a-door: a stat that links to an unfiltered list is a dead
+    // end wearing a doorway's clothes. This one was — it passed `true`, which
+    // serialises to "1", and EpisodePinScope::tryFrom("1") is null, so the
+    // filter fell back to All and the card opened the entire library.
+    $pinned = ContentItem::factory()->count(2)->create([
+        'is_pinned' => true,
+        'pinned_at' => now()->subDay(),
+        'pinned_until' => null,
+    ]);
+    ContentItem::factory()->count(3)->create(['is_pinned' => false]);
+
+    $widget = Livewire::test(EditorialStatsWidget::class)->instance();
+    $viewData = (new ReflectionMethod($widget, 'getViewData'));
+    $viewData->setAccessible(true);
+
+    $card = collect($viewData->invoke($widget)['cards'] ?? [])->firstWhere('key', 'pinned');
+
+    expect($card)->not->toBeNull()
+        ->and($card['value'])->toBe(2);
+
+    parse_str((string) parse_url($card['url'], PHP_URL_QUERY), $query);
+
+    // Walk through the door the card actually points at.
+    $landing = Livewire::withQueryParams($query)->test(ListContentItems::class);
+
+    expect($landing->instance()->getAllTableRecordsCount())->toBe(2)
+        ->and($landing->instance()->getTableRecords()->pluck('id')->sort()->values()->all())
+        ->toBe($pinned->pluck('id')->sort()->values()->all());
 });
