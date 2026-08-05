@@ -36,7 +36,6 @@ use Filament\Forms\Components\ToggleButtons;
 use Filament\Notifications\Notification;
 use Filament\Support\Enums\Size;
 use Filament\Support\Icons\Heroicon;
-use Filament\Tables\Columns\SelectColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Enums\FiltersLayout;
 use Filament\Tables\Filters\Filter;
@@ -84,7 +83,7 @@ class ContentItemsTable
                     ->badge()
                     ->separator(', ')
                     ->toggleable(isToggledHiddenByDefault: true),
-                self::statusSelectColumn(),
+                self::statusToggleColumn(),
                 self::effectivePublishedAtColumn(),
                 self::updatedAtSinceColumn(),
                 TextColumn::make('effective_type_label')
@@ -289,18 +288,51 @@ class ContentItemsTable
             ->toggleable();
     }
 
-    public static function statusSelectColumn(): SelectColumn
+    /**
+     * The status cell is the control: one click flips it.
+     *
+     * A SelectColumn spent two clicks and a menu on a question with two
+     * answers — and, like ToggleColumn, it writes without consulting a model
+     * policy (both say so in their own source; the only guard is a manually
+     * wired `disabled()`). An Action authorizes natively, so the cheaper
+     * control is also the safer one. Publishing stamps `published_at` on its
+     * own through InteractsWithPublicationDate, and going back to draft keeps
+     * that stamp — the same rule the form has always followed.
+     */
+    public static function statusToggleColumn(): TextColumn
     {
-        return SelectColumn::make('status')
+        return TextColumn::make('status')
             ->label(__('admin.fields.status'))
-            ->options(PublicationStatus::class)
-            ->selectablePlaceholder(false)
-            ->rules(['required'])
-            ->disabled(fn (ContentItem $record): bool => ! Gate::allows('update', $record))
-            ->afterStateUpdated(function (ContentItem $record): void {
-                self::notifyPublicationOutcome($record);
-            })
+            ->badge()
+            ->action(self::togglePublicationAction())
+            ->tooltip(fn (ContentItem $record): ?string => Gate::allows('update', $record)
+                ? __('admin.actions.toggle_publication_hint', [
+                    'status' => self::oppositeStatus($record)->getLabel(),
+                ])
+                : null)
             ->toggleable();
+    }
+
+    public static function togglePublicationAction(): Action
+    {
+        return Action::make('togglePublication')
+            ->label(__('admin.actions.toggle_publication'))
+            // Native authorization — the whole reason this is an Action.
+            ->authorize(fn (ContentItem $record): bool => Gate::allows('update', $record))
+            ->action(function (ContentItem $record): void {
+                $previousStatus = $record->status;
+
+                $record->update(['status' => self::oppositeStatus($record)]);
+
+                self::notifyPublicationOutcome($record, $previousStatus);
+            });
+    }
+
+    public static function oppositeStatus(ContentItem $record): PublicationStatus
+    {
+        return $record->status === PublicationStatus::Published
+            ? PublicationStatus::Draft
+            : PublicationStatus::Published;
     }
 
     public static function effectivePublishedAtColumn(): TextColumn
@@ -412,7 +444,7 @@ class ContentItemsTable
             ->url(fn (ContentItem $record): string => ContentGroupResource::getUrl('edit', ['record' => $record->content_group_id]));
     }
 
-    public static function notifyPublicationOutcome(ContentItem $record): void
+    public static function notifyPublicationOutcome(ContentItem $record, ?PublicationStatus $previousStatus = null): void
     {
         // Verdicts come from a clean re-read: a table-row instance can carry
         // a stale withExists attribute through refresh(), and the single
@@ -439,6 +471,19 @@ class ContentItemsTable
             $notification->body(__('admin.notifications.published_at_stamped', [
                 'date' => $fresh->published_at->timezone(UiTimezone::name())->format(UiFormats::dateTime()),
             ]));
+        }
+
+        if ($previousStatus !== null) {
+            // Notifications are serialized, so their actions dispatch a
+            // Livewire event rather than carry a closure. The payload names
+            // the status to restore, because flipping "whatever it is now"
+            // would undo an edit the operator made in between.
+            $notification->actions([
+                Action::make('undoPublication')
+                    ->label(__('admin.actions.undo'))
+                    ->button()
+                    ->dispatch('undoPublicationToggle', [$record->getKey(), $previousStatus->value]),
+            ]);
         }
 
         $notification->send();

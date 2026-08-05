@@ -4,6 +4,10 @@ use App\Enums\EpisodeListScope;
 use App\Enums\EpisodePinScope;
 use App\Enums\EpisodePublicState;
 use App\Enums\PublicationStatus;
+use App\Enums\UserRole;
+use App\Filament\Resources\ContentGroups\Pages\EditContentGroup;
+use App\Filament\Resources\ContentGroups\RelationManagers\ContentItemsRelationManager;
+use App\Filament\Resources\ContentItems\ContentItemResource;
 use App\Filament\Resources\ContentItems\Pages\ListContentItems;
 use App\Models\ContentGroup;
 use App\Models\ContentItem;
@@ -70,7 +74,7 @@ it('renders the list with a fixed query budget regardless of row count', functio
     expect($wide)->toBe($baseline);
 });
 
-it('updates status inline, stamps the publish date, and tells the truth about visibility', function (): void {
+it('publishes from one click on the status cell, stamping the date', function (): void {
     Carbon::setTestNow('2026-08-05 15:00:00');
 
     $episode = ContentItem::factory()
@@ -78,8 +82,10 @@ it('updates status inline, stamps the publish date, and tells the truth about vi
         ->withTranscription(['status' => PublicationStatus::Published, 'published_at' => now()->subMinute()])
         ->create();
 
+    expect($episode->status)->toBe(PublicationStatus::Draft);
+
     Livewire::test(ListContentItems::class)
-        ->call('updateTableColumnState', 'status', (string) $episode->getKey(), PublicationStatus::Published->value)
+        ->callAction(TestAction::make('togglePublication')->table($episode))
         ->assertNotified(__('admin.notifications.episode_visible'));
 
     $episode->refresh();
@@ -88,26 +94,94 @@ it('updates status inline, stamps the publish date, and tells the truth about vi
         ->and($episode->published_at->toDateTimeString())->toBe('2026-08-05 15:00:00');
 });
 
-it('reports the blocker honestly when an inline publish cannot go live', function (): void {
+it('unpublishes on the next click, and keeps the stamp the form would keep', function (): void {
+    $episode = ContentItem::factory()->published('2026-08-01 06:00:00')->create();
+
+    Livewire::test(ListContentItems::class)
+        ->callAction(TestAction::make('togglePublication')->table($episode))
+        ->assertNotified(__('admin.notifications.episode_unpublished'));
+
+    $episode->refresh();
+
+    // PublicationDateAutofill never clears the date on the way down, so the
+    // cell and the form agree about what unpublishing means.
+    expect($episode->status)->toBe(PublicationStatus::Draft)
+        ->and($episode->published_at?->toDateTimeString())->toBe('2026-08-01 06:00:00');
+});
+
+it('reports the blocker honestly when a one-click publish cannot go live', function (): void {
     $episode = ContentItem::factory()
         ->for(ContentGroup::factory(), 'contentGroup')
         ->withTranscription(['status' => PublicationStatus::Published, 'published_at' => now()->subMinute()])
         ->create();
 
     Livewire::test(ListContentItems::class)
-        ->call('updateTableColumnState', 'status', (string) $episode->getKey(), PublicationStatus::Published->value)
+        ->callAction(TestAction::make('togglePublication')->table($episode))
         ->assertNotified(__('admin.notifications.episode_blocked_group'));
 
     expect($episode->refresh()->status)->toBe(PublicationStatus::Published);
 });
 
-it('rejects a forged inline status value through the implicit in rule', function (): void {
-    $episode = ContentItem::factory()->create();
+it('restores the previous status when the notification undo is used', function (): void {
+    $episode = ContentItem::factory()
+        ->for(ContentGroup::factory()->published(), 'contentGroup')
+        ->withTranscription(['status' => PublicationStatus::Published, 'published_at' => now()->subMinute()])
+        ->create();
 
-    Livewire::test(ListContentItems::class)
-        ->call('updateTableColumnState', 'status', (string) $episode->getKey(), 'forged-status');
+    $page = Livewire::test(ListContentItems::class)
+        ->callAction(TestAction::make('togglePublication')->table($episode));
+
+    expect($episode->refresh()->status)->toBe(PublicationStatus::Published);
+
+    $page->dispatch('undoPublicationToggle', $episode->getKey(), PublicationStatus::Draft->value);
 
     expect($episode->refresh()->status)->toBe(PublicationStatus::Draft);
+});
+
+it('ignores an undo carrying a status that is not a real case', function (): void {
+    // The undo payload is browser-writable, so it is narrowed at the door:
+    // this is where the old forged-inline-status guard now lives.
+    $episode = ContentItem::factory()->published('2026-08-01 06:00:00')->create();
+
+    Livewire::test(ListContentItems::class)
+        ->dispatch('undoPublicationToggle', $episode->getKey(), 'forged-status');
+
+    expect($episode->refresh()->status)->toBe(PublicationStatus::Published);
+});
+
+it('gives the podcast episodes table the same one-click status cell, undo included', function (): void {
+    // The two tables share statusToggleColumn(), so a rename breaks the
+    // relation manager silently until a page renders — which is exactly how
+    // this guard came to exist. Undo is a Livewire listener, so sharing the
+    // column is not enough; the component has to listen too.
+    $group = ContentGroup::factory()->published()->create();
+    $episode = ContentItem::factory()
+        ->for($group, 'contentGroup')
+        ->withTranscription(['status' => PublicationStatus::Published, 'published_at' => now()->subMinute()])
+        ->create();
+
+    $manager = Livewire::test(ContentItemsRelationManager::class, [
+        'ownerRecord' => $group,
+        'pageClass' => EditContentGroup::class,
+    ])->callAction(TestAction::make('togglePublication')->table($episode));
+
+    expect($episode->refresh()->status)->toBe(PublicationStatus::Published);
+
+    $manager->dispatch('undoPublicationToggle', $episode->getKey(), PublicationStatus::Draft->value);
+
+    expect($episode->refresh()->status)->toBe(PublicationStatus::Draft);
+});
+
+it('keeps the whole episodes list away from anyone who cannot update one', function (): void {
+    // The real gate for one-click publishing is page access, because the
+    // policy answers viewAny and update with the same predicate. The
+    // listener's own Gate check is defence for the day those diverge; it is
+    // deliberately not asserted here, because no role can currently reach
+    // the page without also passing it, and a test that cannot fail is
+    // worse than an honest gap.
+    $this->actingAs(User::factory()->create(['role' => UserRole::Transcriber->value]));
+
+    $this->get(ContentItemResource::getUrl('index'))->assertForbidden();
 });
 
 it('reschedules from the date cell modal in the Jerusalem timezone', function (): void {

@@ -9,6 +9,7 @@ use App\Filament\Actions\EditEffectiveTranscriptionAction;
 use App\Filament\Resources\ContentItems\ContentItemResource;
 use App\Filament\Resources\ContentItems\Tables\ContentItemsTable;
 use App\Filament\Resources\Support\ResourceTableActions;
+use App\Filament\Support\Concerns\UndoesPublicationToggle;
 use App\Filament\Tables\OwnerImageColumn;
 use App\Models\ContentItem;
 use App\Models\User;
@@ -41,6 +42,8 @@ use Livewire\Attributes\Locked;
 
 class ContentItemsRelationManager extends RelationManager
 {
+    use UndoesPublicationToggle;
+
     private const int OWNER_IMAGE_BASELINE_VERSION = 2;
 
     protected static string $relationship = 'contentItems';
@@ -111,7 +114,7 @@ class ContentItemsRelationManager extends RelationManager
                     ->badge()
                     ->separator(', ')
                     ->toggleable(isToggledHiddenByDefault: true),
-                ContentItemsTable::statusSelectColumn(),
+                ContentItemsTable::statusToggleColumn(),
                 ContentItemsTable::effectivePublishedAtColumn(),
                 TextColumn::make('featuredTranscription.title')
                     ->label(__('admin.fields.featured_transcription'))
