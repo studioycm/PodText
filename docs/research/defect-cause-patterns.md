@@ -982,6 +982,32 @@ by the orchestrator.)*
   the two lang keys), so no row can carry it. It arms itself the moment the
   parked legacy owner-column retirement lands a writer — i.e. the exact
   feature the case and its translations were added in anticipation of.
+- **It does NOT crash — and that is worse (verified 2026-08-06).**
+  `UnhandledMatchError extends Error implements Throwable`, and **both** call
+  sites already swallow it: `repair()` catches at `:521` →
+  `recordRepairConflict()` → returns `ManualReviewRequired`;
+  `completeCommittedCleanup()` catches at `:924` → `markCleanupPending()` with
+  `Str::limit($exception->getMessage(), 2000)`. So the row **parks forever** in
+  `CleanupPending`/`ManualReviewRequired`, staging artifacts are never removed,
+  and the `UnhandledMatchError` text is written into the journal *as its own
+  explanation*. It reads as a stuck repair, not as a missing arm. An entry
+  that says "throws" would send the next reader looking for a 500 that never
+  happens.
+- **The match is the only LOUD omission, not the only one (verified).** Four
+  further case lists in the same file omit `LegacyOwnerRepair` and fail
+  **silently** by falling through — confirmed by reading each line:
+  `:887` (7 cases) skips source-quarantine artifact verification; `:900` (2)
+  skips `forgetRegistrationSettingsCaches()`; `:904` (7) skips
+  `cleanupCommittedSource()`; `:1131` (2) skips the "registered legacy source
+  still has application references" guard. (`:1466` and `:1485` are narrow
+  Swap/Delete and Sanitize/Relocation waivers where the omission is likely
+  correct.)
+- **Therefore: fixing only the match arm is WORSE than leaving it.** The type
+  would start passing shape validation and then silently skip quarantine
+  verification, cache invalidation, source cleanup and the dangling-reference
+  guard. The product question is not "which paths are required" — it is
+  **which of the five lists this case belongs in**. Whoever lands the writer
+  must answer all five.
 - **Where else:** every `match` over an enum with no `default`, anywhere the
   subject came from a database column or a request. Found by a parser sweep,
   not by grep — see the guard below.
@@ -1024,6 +1050,39 @@ by the orchestrator.)*
   journal is a product decision belonging to the parked legacy owner-column
   retirement work, not a drive-by fix. The retirement work must clear the red
   list as part of landing its writer.
+
+## set-membership-without-totality · A case list no tool can check
+
+- **Cause:** `in_array($case, [Foo::A, Foo::B], true)` is a decision about
+  *which cases belong*, exactly like a `match` — but it has **no exhaustiveness
+  property at all**. A new case simply isn't in the array, the expression
+  returns `false`, and the code takes the "not one of these" branch silently.
+  No static analyser can help: PHPStan's `match.unhandled` has nothing to
+  attach to, because an array literal makes no claim to be total.
+- **Evidence (2026-08-06, ACTUAL, latent — verified line by line):** the same
+  file as `unhandled-arm` carries **four** such lists that omit
+  `MediaMutationOperationType::LegacyOwnerRepair`, each skipping a different
+  safety behaviour — `MediaFilesystemMutationCoordinator.php:887` (7 cases,
+  quarantine-artifact verification), `:900` (2, settings-cache invalidation),
+  `:904` (7, committed-source cleanup), `:1131` (2, dangling-reference guard).
+  The `match` at `:1540` fails loudly and got a guard; these four fail quietly
+  and cannot get one.
+- **Why it matters more than the loud sibling:** the loud one parks a row and
+  someone eventually asks why. These four just… don't run. The system looks
+  healthy while four guarantees are absent.
+- **Where else:** `grep -rn 'in_array(' app | grep '::'` — every hit is a case
+  list. Also `match (true)` chains over enum comparisons, `array_filter` over
+  `cases()` with a hand-written exclusion, and any `->whereIn('col', [...])`
+  built from literal cases rather than from `cases()`.
+- **Guard shape — build the list, don't write it.** The fix is the
+  `array_filter(cases(), fn ($c) => $c->predicate())` bridge from
+  `docs/research/php-enums-playbook.md` §5: put the question on the enum as a
+  named predicate, and derive the array. A new case is then answered by the
+  enum's own exhaustive `match` — which *is* checkable — instead of being
+  silently absent from N array literals. That converts this pattern into
+  `unhandled-arm`, which we can catch.
+- **Status:** open. No guard exists and none can exist for the literal form;
+  the only real remedy is not writing the literal.
 
 ## db-clock-coupling · Correctness depends on a server setting recorded nowhere in the repo
 
