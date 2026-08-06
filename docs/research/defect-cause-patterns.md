@@ -847,6 +847,146 @@ by the orchestrator.)*
 
 ---
 
+## driver-lenient-fallback · The test driver accepts what production rejects
+
+- **Cause:** the suite runs on SQLite and production on MySQL. Where the two
+  disagree, SQLite is almost always the *permissive* one, so the divergence
+  presents as a **green suite**, never as a failure. A passing gate is
+  therefore not evidence that a query runs.
+- **Mechanism (verified in vendor):** Laravel's base
+  `Grammar.php:157` quotes identifiers with `"`, which SQLite inherits;
+  `MySqlGrammar.php:589` uses backticks. SQLite resolves an unknown `"x"` as a
+  **string literal** and returns rows; MySQL throws 1054. Same class:
+  `||` is concat on SQLite and logical OR on MySQL; `group_concat(x, sep)`
+  takes a separator on SQLite and silently concatenates per row on MySQL;
+  `lockForUpdate()` compiles to nothing on SQLite; MySQL PDO returns
+  aggregates as strings; `utf8mb4_unicode_ci` folds Hebrew niqqud and final
+  forms so `'שָׁלוֹם' = 'שלום'` is 1 on MySQL and 0 on SQLite.
+- **Evidence (2026-08-06, ACTUAL-in-design):** grouping an episodes table by a
+  value derived in PHP would have passed the whole gate and 500'd on the first
+  production request. Caught in review, not by a test. Three distinct
+  divergences surfaced in a single day, and the ledger had never named the
+  family.
+- **Where else:** `grep -rn 'whereRaw\|selectRaw\|orderByRaw\|havingRaw' app`
+  — every raw fragment is an unchecked driver assumption. Also any
+  `->groupBy()` on an expression, any string comparison that assumes
+  case/diacritic behaviour, any `lockForUpdate()` whose correctness the test
+  claims to prove.
+- **Guard:** the only real one is running the suite on MySQL. Design for a
+  safe second lane exists (dedicated `mysql_testing` connection sharing no env
+  key with the app connection, `_test`-suffixed name, non-root grant scoped to
+  that schema, `phpunit-mysql.xml`); the current one-shape guard in
+  `tests/TestCase.php:46-64` must learn that second shape rather than be
+  relaxed. Until then, treat "green on SQLite" as untested for anything in the
+  list above and say so in the report.
+- **Status:** open. Registered at discovery; no lane built yet.
+
+## rule-in-fixture · A product rule with no app-side home lives in a test literal
+
+- **Cause:** the inverse of `expectation-from-home`. When a rule has no type to
+  live in, it gets written as an array literal *inside the test* — so the rule
+  is only enforced where a fixture happens to reach it, and adding a case to
+  the enum it describes cannot fail anything.
+- **Evidence (2026-08-06, ACTUAL):**
+  `tests/Feature/EpisodeListScopeTest.php:223` — `$badgeToScope` hand-lists the
+  five `EpisodePublicState` → `EpisodeListScope` pairs. The badge (PHP, per
+  row) and the tab (SQL, per set) are two derivations of one contract, and the
+  contract exists nowhere but that literal. A sixth state can be added, mapped
+  wrongly, and ship green. Note the same test's line 218 does it *right* for
+  the other direction — `->sole()` over `partitionsLibrary()` derives the
+  answer instead of restating it.
+- **Distinguish from a legitimate golden vector:**
+  `tests/Fixtures/Authz/authorization-foundation.php` looks like the worst
+  offender and is the opposite — `app/Auth/AbilityCatalog.php` owns the rule,
+  and the fixture is deliberately a *second independent statement* of it,
+  SHA-256 frozen and compared as whole sets. A literal is a defect when it is
+  the **only** home, not when it is the second witness.
+- **Where else:** `grep -rn '=> \[$' tests/Feature | grep -i 'map\|matrix\|expected'`;
+  any `$xToY = [...]` keyed on enum values; any per-surface count table.
+- **Guard shape:** move the rule to an exhaustive `match ($this)` on the enum,
+  then prove totality by **set equality** rather than by iteration — mapping
+  every case and comparing the resulting set to the target set closes both
+  directions in one assertion (see the `->sole()` note in the ledger's
+  companion research). `match` alone is only a runtime guard here: no
+  PHPStan/Psalm in this repo, so a missing arm is `UnhandledMatchError` at
+  execution. The `cases()` loop is what moves it to CI.
+- **Sightings:** 6 further candidates catalogued in the 2026-08-06 rules audit
+  (per-surface count tables, widget option lists, chip palettes). Two of those
+  are correct-as-written for the reason above.
+- **Status:** open. Founding fix (`EpisodePublicState::scope()`) specified, not
+  yet applied.
+
+## multi-instant-render · One logical "now" read many times inside one render
+
+- **Cause:** `now()` called per predicate rather than captured once and passed
+  down. Every read is a different microsecond, so a single render can hold
+  mutually inconsistent verdicts about the same row.
+- **Evidence (2026-08-06, measured, POTENTIAL):** one `GET /admin/content-items`
+  evaluates `now()` **98-122 times**, every value distinct, over a median
+  **27 ms** window (8 runs, 23.0-39.2 ms). `EpisodePublicState.php:44` alone
+  accounts for 56 reads. Worse, **a single SQL statement carries multiple
+  instants**: `EpisodeListScopeQuery::counts()` (line 158) issues one aggregate
+  with 31 datetime bindings and **29 distinct instants**. The docblock at
+  `EpisodeListScopeQuery.php:143-150` claims the single aggregate means the
+  numbers "can never drift from the tab they label" — true of the predicates,
+  false of the instant. Reproduced end to end: a row rendered under
+  «מתוזמנים» wearing a «גלוי» badge, and a partition sum of 3 against
+  `all = 4` — an episode counted in no tab at all.
+- **Reachability, honestly:** effective resolution is 1 second, not 1
+  microsecond (`Connection::prepareBindings()` formats bindings as
+  `Y-m-d H:i:s`, and `published_at` is a fractionless `timestamp`), so a
+  disagreement needs a whole-second tick equal to a row's air time to land
+  inside the window. At 200 list loads and 5 crossings a day that is roughly
+  **once per nine years**; the local dev database has zero future-dated rows,
+  so its rate is exactly zero. The same page's *staleness* window — the time
+  an operator leaves the list open — is ~22,000× larger, and deferred tab
+  badges never refresh at all. Every incident is transient and never
+  persisted.
+- **Public side:** same drift (71 reads in 29 ms on `GET /`), **no reachable
+  symptom** — every public predicate is one-sided (`published_at <= now()`),
+  so a later read is strictly more permissive and no inconsistent page is
+  constructible. `PublicContentItemQueries::pinnedFirst()` already captures
+  `$now` once for both bounds.
+- **Where else:** `grep -rn 'now()' app/Enums app/Support app/Filament` — any
+  `now()` inside a method called per row, and any query scope that reads the
+  clock instead of accepting a moment. Contrast
+  `PublicTranscriptionSelector::sqlMoment(?CarbonInterface $moment = null)`,
+  which does it right.
+- **Guard shape:** enum and scope methods take `CarbonInterface $moment`
+  rather than calling `now()` (the construction project's
+  `NumberSequenceReset::periodFor($moment)` is the reference); the render
+  captures one instant and threads it.
+- **Status:** open, watch-tier. Registered because the *pattern* is real and
+  cheap to avoid in new code, not because the current symptom warrants a fix
+  ahead of staleness.
+
+## boundary-type-loss · A typed value crossing a serialization boundary comes back untyped
+
+- **Cause:** enums, booleans and dates survive inside PHP and do not survive
+  the wire. Anything that round-trips through a Livewire event payload, a URL
+  query string, or a cached array arrives as a scalar — so the receiving side
+  must re-narrow, and the type signature that made it look safe is a
+  fiction.
+- **Evidence (2026-08-06, ACTUAL, handled):**
+  `UndoesPublicationToggle.php:37` — a `PublicationStatus` case put into a
+  notification action's payload arrives at the listener as a string, so the
+  listener re-narrows with `PublicationStatus::tryFrom(...)` and treats
+  failure as a refusal. Notification actions dispatch **Livewire events**, not
+  closures, which is why the boundary exists at all. Second instance, same
+  family: `EditorialStatsWidget.php:72` builds a doorway with
+  `['isActive' => true]`; through the URL that `true` becomes `"1"`.
+- **Where else:** `grep -rn "#\[On(" app` — every listener parameter is
+  untrusted and untyped-in-practice; `grep -rn "->dispatch(" app` for the
+  senders; any `Cache::` payload containing an enum or a Carbon.
+- **Guard shape:** type listener parameters `mixed` **on purpose** (a typed
+  signature would only move the failure into Livewire's hydration), re-narrow
+  with `tryFrom`, and treat `null` as a refusal rather than a default. Pin the
+  narrowing with a test that dispatches a forged payload.
+- **Status:** closed at the founding site (narrowing in place and tested);
+  registered so the next `#[On]` listener starts from it.
+
+---
+
 ## Route checklist (2026-08-03 round)
 
 Mark each step with commit hash + gate result when done.
