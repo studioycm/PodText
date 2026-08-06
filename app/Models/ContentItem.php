@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\MediaAttachmentRole;
 use App\Enums\PublicationStatus;
+use App\Models\Concerns\HasFoldedSearchColumns;
 use App\Models\Concerns\InteractsWithPublicationDate;
 use App\Observers\ContentItemObserver;
 use App\Support\Media\ContentItemMediaRules;
@@ -62,6 +63,7 @@ class ContentItem extends Model
     /** @use HasFactory<ContentItemFactory> */
     use HasFactory;
 
+    use HasFoldedSearchColumns;
     use HasTags;
     use InteractsWithPublicationDate;
 
@@ -127,11 +129,13 @@ class ContentItem extends Model
             ->where('role', MediaAttachmentRole::PrimaryImage->value);
     }
 
+    /** @return BelongsTo<Transcription, $this> */
     public function featuredTranscription(): BelongsTo
     {
         return $this->belongsTo(Transcription::class, 'featured_transcription_id');
     }
 
+    /** @return HasOne<Transcription, $this> */
     public function latestPublishedTranscription(): HasOne
     {
         return $this
@@ -447,5 +451,16 @@ class ContentItem extends Model
                 ->where('slug', $slug)
                 ->exists(),
         );
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public static function foldedSearchColumns(): array
+    {
+        return [
+            'title' => 'title_search',
+            'description_markdown' => 'description_markdown_search',
+        ];
     }
 }

@@ -1,11 +1,10 @@
-includes:
-    # Included by hand, deliberately. larastan declares this file in its
-    # composer `extra.phpstan.includes`, but that key is only honoured by
-    # phpstan/extension-installer — a composer PLUGIN — and this project runs a
-    # curated `config.allow-plugins` allowlist that does not contain it. Without
-    # this line larastan is installed and silently does nothing: every Eloquent
-    # magic property becomes an error and the run drowns.
-    - vendor/larastan/larastan/extension.neon
+# larastan's extension.neon is loaded automatically by
+# phpstan/extension-installer, which reads larastan's composer
+# `extra.phpstan.includes`. The plugin is allow-listed in composer.json
+# explicitly — this project runs a curated allow-plugins list, and without the
+# entry composer refuses to run the plugin, larastan is never included, and
+# PHPStan reports every Eloquent magic property as an error. A guard test pins
+# both halves so neither can be dropped silently.
 
 parameters:
     paths:
