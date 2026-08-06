@@ -12,7 +12,7 @@ use Illuminate\Support\Facades\DB;
  * The one home for episode quick-scope membership (EQ-4). `visible` rides
  * the model's own published() scope so the public contract is never
  * re-derived; `scheduled`/`blocked` split the remaining published tier so
- * drafts + visible + scheduled + blocked = all, exactly. Counts reuse the
+ * drafts + visible + scheduled + the two blocked scopes = all, exactly. Counts reuse the
  * same predicates through counting subqueries, so every badge resolves in a
  * single round trip without a second home for the conditions.
  */
@@ -31,20 +31,16 @@ class EpisodeListScopeQuery
                 ->where('status', PublicationStatus::Published)
                 ->where('published_at', '>', now())
                 ->where(fn (Builder $query): Builder => $this->wherePrerequisitesMetByAirTime($query)),
-            EpisodeListScope::Blocked => $query
-                ->where('status', PublicationStatus::Published)
-                ->where(function (Builder $query): void {
-                    // Released rows that are not visible, plus scheduled rows
-                    // whose prerequisites will still be missing on the day —
-                    // both are the operator's actionable tier.
-                    $query
-                        ->where(fn (Builder $released): Builder => $released
-                            ->where(fn (Builder $q): Builder => $this->whereReleased($q))
-                            ->whereNot(fn (Builder $q): Builder => $this->wherePrerequisitesMetNow($q)))
-                        ->orWhere(fn (Builder $scheduled): Builder => $scheduled
-                            ->where('published_at', '>', now())
-                            ->whereNot(fn (Builder $q): Builder => $this->wherePrerequisitesMetByAirTime($q)));
-                }),
+            // One switch away, on another record: the episode and its
+            // transcript are ready and the podcast is not published.
+            EpisodeListScope::BlockedGroup => $this->whereBlocked($query)
+                ->whereNot(fn (Builder $q): Builder => $this->whereGroupReleased($q)),
+            // Real work: the podcast is fine, the transcript is not there.
+            // Podcast-blocked rows are excluded so the two scopes stay
+            // disjoint under the same precedence EpisodePublicState uses.
+            EpisodeListScope::BlockedTranscription => $this->whereBlocked($query)
+                ->where(fn (Builder $q): Builder => $this->whereGroupReleased($q))
+                ->whereNot(fn (Builder $q): Builder => $this->whereTranscriptionReleased($q)),
             EpisodeListScope::Pinned => $query->currentlyPinned(),
         };
     }
@@ -56,6 +52,58 @@ class EpisodeListScopeQuery
             $query
                 ->whereNull('published_at')
                 ->orWhere('published_at', '<=', now());
+        });
+    }
+
+    /**
+     * Published rows the public cannot see — released ones missing a
+     * prerequisite now, plus scheduled ones that will still be missing one on
+     * the day. Blockers outrank the clock, which is why a future-dated
+     * episode with an unpublished podcast lives here and not in `scheduled`.
+     */
+    private function whereBlocked(Builder $query): Builder
+    {
+        return $query
+            ->where('status', PublicationStatus::Published)
+            ->where(function (Builder $query): void {
+                $query
+                    ->where(fn (Builder $released): Builder => $released
+                        ->where(fn (Builder $q): Builder => $this->whereReleased($q))
+                        ->whereNot(fn (Builder $q): Builder => $this->wherePrerequisitesMetNow($q)))
+                    ->orWhere(fn (Builder $scheduled): Builder => $scheduled
+                        ->where('published_at', '>', now())
+                        ->whereNot(fn (Builder $q): Builder => $this->wherePrerequisitesMetByAirTime($q)));
+            });
+    }
+
+    /**
+     * Judged at the later of now and the air time, matching
+     * EpisodePublicState: a past-dated row is asked "are you out?", a
+     * future-dated one "will you be out by then?".
+     */
+    private function whereGroupReleased(Builder $query): Builder
+    {
+        return $query->where(function (Builder $query): void {
+            $query
+                ->where(fn (Builder $now): Builder => $now
+                    ->where(fn (Builder $q): Builder => $this->whereReleased($q))
+                    ->whereHas('contentGroup', fn (Builder $group): Builder => $group->releasedBy(now())))
+                ->orWhere(fn (Builder $later): Builder => $later
+                    ->where('published_at', '>', now())
+                    ->whereHas('contentGroup', fn (Builder $group): Builder => $group->releasedBy('content_items.published_at')));
+        });
+    }
+
+    private function whereTranscriptionReleased(Builder $query): Builder
+    {
+        return $query->where(function (Builder $query): void {
+            $query
+                ->where(fn (Builder $now): Builder => $now
+                    ->where(fn (Builder $q): Builder => $this->whereReleased($q))
+                    ->whereHas('transcriptions', fn (Builder $t): Builder => $t->releasedBy(now())))
+                ->orWhere(fn (Builder $later): Builder => $later
+                    ->where('published_at', '>', now())
+                    ->whereHas('transcriptions', fn (Builder $t): Builder => $t->releasedBy('content_items.published_at')));
         });
     }
 

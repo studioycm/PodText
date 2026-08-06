@@ -69,19 +69,24 @@ it('partitions the library exactly across the quick scopes', function (): void {
         ->and($ids(EpisodeListScope::Drafts))->toBe($expected(['draft', 'pinned_draft', 'pin_expired']))
         ->and($ids(EpisodeListScope::Visible))->toBe($expected(['visible']))
         ->and($ids(EpisodeListScope::Scheduled))->toBe($expected(['scheduled']))
-        ->and($ids(EpisodeListScope::Blocked))->toBe($expected(['blocked_group', 'blocked_transcription', 'blocked_both']))
+        // Precedence: an episode blocked by BOTH belongs to the podcast
+        // scope, because that is the upstream fix — the same rule
+        // EpisodePublicState uses, so badge and tab cannot disagree.
+        ->and($ids(EpisodeListScope::BlockedGroup))->toBe($expected(['blocked_group', 'blocked_both']))
+        ->and($ids(EpisodeListScope::BlockedTranscription))->toBe($expected(['blocked_transcription']))
         ->and($ids(EpisodeListScope::Pinned))->toBe($expected(['pinned_draft']));
 
     $counts = $service->counts();
 
-    // The exact partition contract: drafts + visible + scheduled + blocked = all.
-    expect($counts['drafts'] + $counts['visible'] + $counts['scheduled'] + $counts['blocked'])
+    // The exact partition contract, which the split must not break:
+    // drafts + visible + scheduled + the two blocked scopes = all.
+    expect($counts['drafts'] + $counts['visible'] + $counts['scheduled'] + $counts['blocked_group'] + $counts['blocked_transcription'])
         ->toBe($counts['all'])
         ->and($counts['all'])->toBe(count($fixtures))
         ->and($counts['pinned'])->toBe(1);
 });
 
-it('renders six scope tabs with exact count badges and filters records per tab', function (): void {
+it('renders every scope tab with exact count badges and filters records per tab', function (): void {
     $fixtures = episodeScopeFixtures();
 
     $component = Livewire::test(ListContentItems::class);
@@ -92,9 +97,15 @@ it('renders six scope tabs with exact count badges and filters records per tab',
     }
 
     $component
-        ->set('activeTab', EpisodeListScope::Blocked->value)
-        ->assertCanSeeTableRecords(collect($fixtures)->only(['blocked_group', 'blocked_transcription', 'blocked_both']))
-        ->assertCanNotSeeTableRecords(collect($fixtures)->only(['draft', 'visible', 'scheduled']));
+        ->set('activeTab', EpisodeListScope::BlockedGroup->value)
+        ->assertCanSeeTableRecords(collect($fixtures)->only(['blocked_group', 'blocked_both']))
+        ->assertCanNotSeeTableRecords(collect($fixtures)->only(['draft', 'visible', 'scheduled', 'blocked_transcription']));
+
+    $component
+        ->set('activeTab', EpisodeListScope::BlockedTranscription->value)
+        ->assertCanSeeTableRecords(collect($fixtures)->only(['blocked_transcription']))
+        // The both-blocked row is the podcast's problem, not the transcriber's.
+        ->assertCanNotSeeTableRecords(collect($fixtures)->only(['blocked_group', 'blocked_both', 'visible']));
 
     $component
         ->set('activeTab', EpisodeListScope::Visible->value)
@@ -177,7 +188,8 @@ it('keeps the row badge in parity with the scope queries for every state', funct
         EpisodeListScope::Drafts,
         EpisodeListScope::Visible,
         EpisodeListScope::Scheduled,
-        EpisodeListScope::Blocked,
+        EpisodeListScope::BlockedGroup,
+        EpisodeListScope::BlockedTranscription,
     ])->sole(fn (EpisodeListScope $scope): bool => $service
         ->apply(ContentItem::query(), $scope)
         ->whereKey($item->getKey())
@@ -187,8 +199,10 @@ it('keeps the row badge in parity with the scope queries for every state', funct
         EpisodePublicState::Draft->value => EpisodeListScope::Drafts,
         EpisodePublicState::Visible->value => EpisodeListScope::Visible,
         EpisodePublicState::Scheduled->value => EpisodeListScope::Scheduled,
-        EpisodePublicState::BlockedGroup->value => EpisodeListScope::Blocked,
-        EpisodePublicState::BlockedTranscription->value => EpisodeListScope::Blocked,
+        // One-to-one now, where it used to be two badges collapsing into one
+        // tab: the split makes badge and scope the same vocabulary.
+        EpisodePublicState::BlockedGroup->value => EpisodeListScope::BlockedGroup,
+        EpisodePublicState::BlockedTranscription->value => EpisodeListScope::BlockedTranscription,
     ];
 
     foreach ($fixtures as $name => $item) {
