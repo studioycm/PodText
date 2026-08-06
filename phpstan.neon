@@ -1,0 +1,56 @@
+includes:
+    # Included by hand, deliberately. larastan declares this file in its
+    # composer `extra.phpstan.includes`, but that key is only honoured by
+    # phpstan/extension-installer — a composer PLUGIN — and this project runs a
+    # curated `config.allow-plugins` allowlist that does not contain it. Without
+    # this line larastan is installed and silently does nothing: every Eloquent
+    # magic property becomes an error and the run drowns.
+    - vendor/larastan/larastan/extension.neon
+
+parameters:
+    paths:
+        - app
+        - database
+        - routes
+
+    # Load-bearing, and NOT the default — larastan ships
+    # `databaseMigrationsPath: []`. Without this, larastan cannot see the column
+    # types, resolves every cast Eloquent attribute to `string`, and then
+    # reports each enum comparison as "always false" — hundreds of confident,
+    # wrong errors on exactly the code this install was bought to check. Worse,
+    # a `match` over an attribute it believes is a string is not a match over an
+    # enum, so `match.unhandled` never fires on the real defect.
+    databaseMigrationsPath:
+        - database/migrations
+
+    # Level 4 is the floor for the rule this install was bought for —
+    # PHPStan\Rules\Comparison\MatchExpressionRule, identifier `match.unhandled`
+    # — which is what turns a missing enum arm from a runtime UnhandledMatchError
+    # into a build failure. Level 5 is nearly free on top: 3,650 of 3,652
+    # non-constructor methods already declare a return type and 98.1% of
+    # parameters are typed, so argument-type checking has almost no untyped
+    # surface to trip over. Starting at 4 would leave that headroom unused.
+    #
+    # Path upward: 5 → add tests/ with the Pest extensions → 6 → 7 → 8.
+    # Level 6 is bounded (~426 reports, mostly test closures) because the usual
+    # worst cost is already paid: zero bare `@return array` docblocks anywhere.
+    # Stop at 8. Level 9 would make work items of 702 native `mixed`, most of
+    # them Filament's own closure contract rather than neglect.
+    level: 5
+
+    # NO BASELINE, on purpose.
+    #
+    # A baseline freezes every existing error and checks only new code — and in
+    # this repo the errors it would freeze include the exact defects that
+    # justified the install. `PublicFrontConfigValidator.php:69` is a
+    # `match ($key)` over eleven string literals with no default arm, which
+    # throws on any unrecognised config group. Freezing that would buy a green
+    # gate at the price of the finding.
+    #
+    # Same reasoning for ignoreErrors: it stays empty until a real run proves a
+    # rule is wrong about this codebase, rather than being pre-populated with
+    # guesses about what might fail.
+    ignoreErrors: []
+
+    # config/ is deliberately absent: 21 files, zero methods, zero parameters —
+    # nothing to analyse.

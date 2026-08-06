@@ -26,6 +26,7 @@
     "require-dev": {
         "fakerphp/faker": "^1.23",
         "filament/blueprint": "^2.2",
+        "larastan/larastan": "^3.10",
         "laravel/boost": "^2.4",
         "laravel/doctor": "0.1.0",
         "laravel/pail": "^1.2.5",
@@ -76,6 +77,9 @@
         "filacheck:fix": [
             "@putenv FILACHECK_DISABLE_AGENT_MODE=1",
             "vendor/bin/filacheck --fix"
+        ],
+        "types:check": [
+            "@php -d memory_limit=2G vendor/bin/phpstan analyse --no-progress"
         ],
         "post-autoload-dump": [
             "Illuminate\\Foundation\\ComposerScripts::postAutoloadDump",
