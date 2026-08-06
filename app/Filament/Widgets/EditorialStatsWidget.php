@@ -5,7 +5,7 @@ namespace App\Filament\Widgets;
 use App\Enums\DashboardLens;
 use App\Enums\DashboardReason;
 use App\Enums\DashboardTier;
-use App\Enums\EpisodePinScope;
+use App\Enums\EpisodeListScope;
 use App\Enums\FunnelStage;
 use App\Filament\Resources\ContentItems\ContentItemResource;
 use App\Filament\Widgets\Concerns\AdminOnlyWidget;
@@ -76,9 +76,7 @@ class EditorialStatsWidget extends Widget
                     'key' => 'visible',
                     'value' => $visible,
                     'icon' => FunnelStage::Visible->getIcon(),
-                    'url' => ContentItemResource::getUrl('index', $this->scopedTableFilters([
-                        'status' => ['value' => 'published'],
-                    ])),
+                    'url' => ContentItemResource::getUrl('index', $this->scopedTableScope(EpisodeListScope::Visible)),
                     'segments' => [
                         ['key' => 'visible', 'value' => $visible, 'bar' => FunnelStage::Visible->barClass()],
                         ['key' => 'other', 'value' => $rest, 'bar' => 'bg-gray-200 dark:bg-white/10'],
@@ -110,12 +108,7 @@ class EditorialStatsWidget extends Widget
                     'key' => 'pinned',
                     'value' => $structure['pinned'],
                     'icon' => Heroicon::OutlinedStar,
-                    // The filter reads an EpisodePinScope case, not a boolean:
-                    // `true` serialises to "1", tryFrom("1") is null, and the
-                    // doorway silently opened the unfiltered list.
-                    'url' => ContentItemResource::getUrl('index', $this->scopedTableFilters([
-                        'is_pinned' => ['value' => EpisodePinScope::Pinned->value],
-                    ])),
+                    'url' => ContentItemResource::getUrl('index', $this->scopedTableScope(EpisodeListScope::Pinned)),
                     'segments' => [
                         ['key' => 'pinned', 'value' => $structure['pinned'], 'bar' => 'bg-primary-500'],
                         ['key' => 'other', 'value' => max(0, $items - $structure['pinned']), 'bar' => 'bg-gray-200 dark:bg-white/10'],
@@ -125,7 +118,10 @@ class EditorialStatsWidget extends Widget
                     'key' => 'multi_transcription',
                     'value' => $structure['multi_transcription'],
                     'icon' => Heroicon::OutlinedDocumentDuplicate,
-                    'url' => ContentItemResource::getUrl('index', $this->scopedTableFilters()),
+                    // No link: nothing filters episodes by transcript count, so
+                    // this pointed at the whole library. ES-1 — a doorway-less
+                    // number beats one that opens the wrong list.
+                    'url' => null,
                     'segments' => [
                         ['key' => 'multi_transcription', 'value' => $structure['multi_transcription'], 'bar' => 'bg-info-500'],
                         ['key' => 'other', 'value' => max(0, $items - $structure['multi_transcription']), 'bar' => 'bg-gray-200 dark:bg-white/10'],

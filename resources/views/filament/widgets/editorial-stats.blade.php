@@ -56,7 +56,7 @@
                         >
                             {{ __('admin.dashboard.stats.open') }}
                         </x-filament::link>
-                    @else
+                    @elseif (filled($card['url'] ?? null))
                         <x-filament::link :href="$card['url']" size="sm" :icon="$card['icon']" class="mt-2">
                             {{ __('admin.dashboard.stats.open') }}
                         </x-filament::link>

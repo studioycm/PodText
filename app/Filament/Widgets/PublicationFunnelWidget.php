@@ -3,6 +3,7 @@
 namespace App\Filament\Widgets;
 
 use App\Enums\DashboardLens;
+use App\Enums\EpisodeListScope;
 use App\Enums\FunnelStage;
 use App\Filament\Resources\ContentItems\ContentItemResource;
 use App\Filament\Widgets\Concerns\AdminOnlyWidget;
@@ -65,11 +66,17 @@ class PublicationFunnelWidget extends Widget
                 'delta' => $row->delta(),
                 'bar' => $stage->barClass(),
                 'active' => $active === $stage->value,
-                'url' => ContentItemResource::getUrl('index', $this->scopedTableFilters(
-                    $stage === FunnelStage::Draft
-                        ? ['status' => ['value' => 'draft']]
-                        : ['status' => ['value' => 'published']],
-                )),
+                // Only two stages have a scope that answers exactly what the
+                // number counted. Published means status-published AND
+                // released, and Transcribed adds a transcript on top — neither
+                // is any tab or union of tabs, and both used to send
+                // status=published, a superset. ES-1: no link beats a link to
+                // an approximately-right list.
+                'url' => match ($stage) {
+                    FunnelStage::Draft => ContentItemResource::getUrl('index', $this->scopedTableScope(EpisodeListScope::Drafts)),
+                    FunnelStage::Visible => ContentItemResource::getUrl('index', $this->scopedTableScope(EpisodeListScope::Visible)),
+                    default => null,
+                },
             ];
         }
 

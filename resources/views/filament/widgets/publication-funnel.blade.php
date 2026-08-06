@@ -18,9 +18,19 @@
                     data-testid="funnel-segment-{{ $stage }}"
                 >
                     <div class="flex items-center justify-between gap-2">
-                        <x-filament::link :href="$data['url']" size="sm" color="gray" :icon="$data['stage']->getIcon()">
-                            {{ $data['stage']->getLabel() }}
-                        </x-filament::link>
+                        @if (filled($data['url']))
+                            <x-filament::link :href="$data['url']" size="sm" color="gray" :icon="$data['stage']->getIcon()">
+                                {{ $data['stage']->getLabel() }}
+                            </x-filament::link>
+                        @else
+                            {{-- No scope answers exactly this stage's number, so
+                                 the label stays a label rather than a link to an
+                                 approximately-right list. --}}
+                            <span class="fi-link inline-flex items-center gap-1.5 text-sm text-gray-500 dark:text-gray-400">
+                                <x-filament::icon :icon="$data['stage']->getIcon()" class="h-4 w-4" />
+                                {{ $data['stage']->getLabel() }}
+                            </span>
+                        @endif
                         <span class="text-xl font-semibold text-gray-950 tabular-nums dark:text-white">
                             {{ \App\Support\UiFormats::number($data['count']) }}
                         </span>

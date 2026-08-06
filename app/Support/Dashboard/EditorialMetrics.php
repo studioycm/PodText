@@ -5,6 +5,7 @@ namespace App\Support\Dashboard;
 use App\Enums\DashboardRange;
 use App\Enums\DashboardReason;
 use App\Enums\DashboardTier;
+use App\Enums\EpisodeListScope;
 use App\Enums\ImportConnectionProvider;
 use App\Enums\ImportConnectionStatus;
 use App\Enums\MediaDiagnosticReason;
@@ -107,7 +108,10 @@ class EditorialMetrics
                 'categories' => Category::query()->count(),
                 'tags_enabled' => ContentTag::query()->content()->enabled()->count(),
                 'tags_disabled' => ContentTag::query()->content()->where('is_enabled', false)->count(),
-                'pinned' => $this->scoped(ContentItem::query(), $contentGroupId)->where('is_pinned', true)->count(),
+                // currentlyPinned(), not is_pinned: an expired pin is not pinned,
+                // and the doorway's tab has always applied the window. The two
+                // disagreed, so the card counted rows its own link would not show.
+                'pinned' => $this->scoped(ContentItem::query()->currentlyPinned(), $contentGroupId)->count(),
                 'multi_transcription' => $this->scoped(ContentItem::query(), $contentGroupId)
                     ->whereHas('transcriptions', operator: '>', count: 1)
                     ->count(),
@@ -467,7 +471,12 @@ class EditorialMetrics
                     value: (float) $visibleCount,
                     of: (float) $total,
                     color: $this->healthColor($percent),
+                    // The row's number is the VISIBLE count within the group,
+                    // so its door must be the visible tab within the group —
+                    // the group filter alone opened every episode the podcast
+                    // has, published or not.
                     url: ContentItemResource::getUrl('index', [
+                        'tab' => EpisodeListScope::Visible->value,
                         'filters' => ['content_group_id' => ['value' => $group->getKey()]],
                     ]),
                 );

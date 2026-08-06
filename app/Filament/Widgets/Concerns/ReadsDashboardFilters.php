@@ -3,6 +3,7 @@
 namespace App\Filament\Widgets\Concerns;
 
 use App\Enums\DashboardRange;
+use App\Enums\EpisodeListScope;
 use App\Enums\FunnelStage;
 use App\Enums\ImportConnectionProvider;
 use App\Support\Dashboard\EditorialMetrics;
@@ -62,6 +63,29 @@ trait ReadsDashboardFilters
      * @param  array<string, mixed>  $filters
      * @return array<string, mixed>
      */
+    /**
+     * A doorway onto an episode scope — the number's own query, named.
+     *
+     * The defect this exists to prevent: a card's number comes from
+     * EditorialMetrics and its link was hand-written beside it, in a second
+     * vocabulary (table filters) that restates the same predicate. The two
+     * drifted silently — a card reading 1 opening a list of 3 looks exactly
+     * like one reading 1 opening a list of 1.
+     *
+     * An EpisodeListScope case IS the predicate, on both sides:
+     * EpisodeListScopeQuery::apply() answers the count and the tab, so a
+     * doorway built from a case cannot point somewhere the count did not come
+     * from. Metrics with no exact scope get no link at all — see
+     * dashboard-widget-principles ES-1, a doorway-less number beats one
+     * pointing at an approximately-right list.
+     *
+     * @return array<string, mixed>
+     */
+    protected function scopedTableScope(EpisodeListScope $scope): array
+    {
+        return ['tab' => $scope->value, ...$this->scopedTableFilters()];
+    }
+
     protected function scopedTableFilters(array $filters = []): array
     {
         $podcastId = $this->dashboardPodcastId();

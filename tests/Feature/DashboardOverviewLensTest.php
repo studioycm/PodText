@@ -1,6 +1,7 @@
 <?php
 
 use App\Enums\DashboardLens;
+use App\Enums\EpisodeListScope;
 use App\Enums\FunnelStage;
 use App\Enums\PublicationStatus;
 use App\Enums\SparklineTrend;
@@ -160,7 +161,10 @@ it('shows composite stat cards with a composition strip and a filtered doorway',
     // panel-native button for the on-board lens switches.
     Livewire::test(EditorialStatsWidget::class)
         ->assertSeeHtml('data-testid="stat-composition-visible"')
-        ->assertSeeHtml('filters%5Bstatus%5D%5Bvalue%5D=published')
+        // The doorway names the scope its number came from. It used to send
+        // filters[status]=published — a superset, so a card reading 1 opened a
+        // list of 3. See DashboardDoorwayTest, which walks every doorway.
+        ->assertSeeHtml('tab='.EpisodeListScope::Visible->value)
         ->assertSeeHtml('fi-link')
         ->assertSeeHtml('wire:click="openBlockers"');
 });
@@ -252,7 +256,7 @@ it('validates unvalidated page filter data before querying with it', function ()
     // an unknown podcast falls back to the whole library, and a status that is
     // not a funnel stage is ignored rather than echoed into a translation key.
     Livewire::test(EditorialStatsWidget::class, ['pageFilters' => ['podcast' => 999999]])
-        ->assertSeeHtml('filters%5Bstatus%5D%5Bvalue%5D=published')
+        ->assertSeeHtml('tab='.EpisodeListScope::Visible->value)
         ->assertDontSeeHtml('filters%5Bcontent_group_id%5D');
 
     Livewire::test(DashboardContextWidget::class, ['pageFilters' => ['podcast' => 999999]])

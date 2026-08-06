@@ -2,6 +2,7 @@
 
 namespace App\Filament\Widgets;
 
+use App\Enums\EpisodeListScope;
 use App\Filament\Resources\Authors\AuthorResource;
 use App\Filament\Resources\Categories\CategoryResource;
 use App\Filament\Resources\ContentGroups\ContentGroupResource;
@@ -76,13 +77,17 @@ class LibraryCompositionWidget extends Widget
                 [
                     'key' => 'pinned',
                     'value' => $structure['pinned'],
-                    'url' => ContentItemResource::getUrl('index'),
+                    // Was a bare index URL: same number as the stat card, and
+                    // it opened the whole library while ignoring the podcast
+                    // scope this very widget computed.
+                    'url' => ContentItemResource::getUrl('index', $this->scopedTableScope(EpisodeListScope::Pinned)),
                     'icon' => Heroicon::OutlinedStar,
                 ],
                 [
                     'key' => 'multi_transcription',
                     'value' => $structure['multi_transcription'],
-                    'url' => ContentItemResource::getUrl('index'),
+                    // Nothing filters by transcript count — ES-1, no link.
+                    'url' => null,
                     'icon' => Heroicon::OutlinedDocumentDuplicate,
                 ],
             ],
