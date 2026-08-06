@@ -377,15 +377,33 @@ existing gate. **This is the one that found `unhandled-arm` in the ledger.**
 Two traps, both non-obvious:
 
 - `NameResolver` must run as its **own** traverser pass. With both visitors on
-  one traverser, `Match_` is entered before its children resolve, imported
-  enums stay short-named, and the sweep silently reports 17 guarded instead of
-  56 — a green test that checks a third of what you think it does.
-- `self::`/`static::` are not rewritten by `NameResolver`, so the visitor must
-  track the enclosing `Stmt\Enum_` itself.
+  one traverser, `Match_` is entered before its children resolve and every
+  match naming an **imported** enum stays short-named and is skipped.
+- `self::`/`static::` are not rewritten by `NameResolver` at all, so the
+  visitor must track the enclosing `Stmt\Enum_` itself, or every
+  `match ($this)` **inside** an enum file vanishes.
 
-Put it in `tests/Unit` — it needs the autoloader, not a booted app. Blind
-spots: a match with a *wrong* `default` arm, arms referencing cases
-indirectly, and Blade.
+Both traps are green failures — the test passes while checking a fraction of
+the code. Measured on this codebase by mutating the real test three ways
+(`tests/Unit/EnumMatchExhaustivenessTest.php`, `962b17d`):
+
+| | matches seen | what is lost |
+| --- | --- | --- |
+| correct | **56** | — |
+| `NameResolver` merged into the collector pass | **39** | the 17 import-named matches |
+| enclosing-`Stmt\Enum_` tracking dropped | **17** | the 39 in-enum `match ($this)` matches |
+
+And the sharp end: **under the traverser trap the sweep goes blind to the one
+real violation**, because that match names its enum through a `use` import. The
+trap costs the coverage *and* the finding. So the guard needs **three** floors,
+not one — total, self-resolved, and import-resolved — since a single total
+would still pass at 39.
+
+Put it in `tests/Unit` — it needs the autoloader, not a booted app.
+`nikic/php-parser` is already present transitively (filacheck, pest/phpunit,
+psysh); it was **not** added to `composer.json`. Blind spots: a match with a
+*wrong* `default` arm, arms referencing cases indirectly, and Blade.
+
 
 **3. A reflection sweep** (call every zero-argument public method with every
 case). Cheapest, weakest: reaches 38 of the 56 matches, and **would not have

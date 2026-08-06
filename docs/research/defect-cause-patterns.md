@@ -985,17 +985,29 @@ by the orchestrator.)*
 - **Where else:** every `match` over an enum with no `default`, anywhere the
   subject came from a database column or a request. Found by a parser sweep,
   not by grep — see the guard below.
-- **Guard:** a parser-based Pest test that walks every `Match_` node under
-  `app/`, `database/` and `routes/`, and for any match whose arms literally
-  name enum cases asserts every case appears unless a `default` arm exists.
-  One test file, no dependency, ~0.8 s, and it covers all 56 enum matches in
-  this codebase including the 18 written outside `app/Enums`. Two traps
-  recorded so the next author does not re-hit them: `NameResolver` must run as
-  its **own** traverser pass (otherwise `Match_` is entered before its children
-  resolve, imported enums stay short-named, and the sweep silently reports 17
-  guarded instead of 56); and `self::`/`static::` are not rewritten by
-  `NameResolver`, so the visitor has to track the enclosing `Stmt\Enum_`
-  itself.
+- **Guard — BUILT, `962b17d`:** `tests/Unit/EnumMatchExhaustivenessTest.php`
+  walks every `Match_` node under `app/`, `database/` and `routes/`, and for
+  any match whose arms literally name enum cases asserts every case appears
+  unless a `default` arm exists. One file, no new dependency
+  (`nikic/php-parser` is already transitive), 3 tests / 8 assertions / ~0.85 s,
+  covering **56** enum matches. Two independent parser implementations —
+  written in separate sessions — converged on the same single violation, which
+  is the evidence the sweep is neither over- nor under-reporting.
+- **The guard's own failure mode, measured:** both parser traps are *green*
+  failures — the test passes while seeing a fraction of the code.
+  `NameResolver` merged into the collector pass → **39** seen (the 17
+  import-named matches lost); enclosing-`Stmt\Enum_` tracking dropped → **17**
+  seen (the 39 in-enum `match ($this)` matches lost). Worse, **under the
+  traverser trap the sweep goes blind to the very violation above**, because
+  that match names its enum through a `use` import. Hence **three** floors —
+  total, self-resolved, import-resolved — since one total floor still passes
+  at 39. (An earlier draft of this entry and of the playbook attributed the
+  17 to the traverser trap; that was wrong, and the mutation runs are what
+  corrected it.)
+- **Red-listed, not fixed:** the known violation is keyed `path :: Enum`
+  **without a line number**, so an edit above it cannot stale the entry, and
+  the red-list test also fails if someone *fixes* it without removing the
+  entry — the list cannot silently outlive its subject.
 - **Stronger guard:** PHPStan level ≥ 4 reports this as
   `match.unhandled` (`PHPStan\Rules\Comparison\MatchExpressionRule`) at
   authoring time rather than test time. Level 4 is the floor — 0-3 do not
@@ -1007,9 +1019,11 @@ by the orchestrator.)*
   `MediaMutationOperationType::getLabel()` *is* exhaustive; the broken match
   lives in a Support class. Reach for the parser sweep, not the reflection
   one.
-- **Status:** open. Finding reported, arm not added — the correct `required`
-  path list for a legacy-owner-repair journal is a product decision belonging
-  to the retirement work, not a drive-by fix.
+- **Status:** guard closed (`962b17d`), finding open. The arm is deliberately
+  not added — the correct `required` path list for a legacy-owner-repair
+  journal is a product decision belonging to the parked legacy owner-column
+  retirement work, not a drive-by fix. The retirement work must clear the red
+  list as part of landing its writer.
 
 ## db-clock-coupling · Correctness depends on a server setting recorded nowhere in the repo
 
