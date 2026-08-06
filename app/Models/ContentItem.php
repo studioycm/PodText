@@ -8,6 +8,7 @@ use App\Models\Concerns\InteractsWithPublicationDate;
 use App\Observers\ContentItemObserver;
 use App\Support\Media\ContentItemMediaRules;
 use App\Support\Slugs\HebrewSlugger;
+use App\Support\Transcriptions\EffectiveTranscriptionResolver;
 use Database\Factories\ContentItemFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\ObservedBy;
@@ -177,21 +178,17 @@ class ContentItem extends Model
             ?: 'Episode';
     }
 
+    /**
+     * Which transcription is this episode's — featured if it is ours and
+     * published, otherwise the latest published one.
+     *
+     * The rule itself lives in EffectiveTranscriptionResolver, the one home;
+     * this stays because it reads naturally at call sites and because the
+     * public item page and both admin tables have always asked the model.
+     */
     public function effectiveTranscription(): ?Transcription
     {
-        $featuredTranscription = $this->relationLoaded('featuredTranscription')
-            ? $this->featuredTranscription
-            : $this->featuredTranscription()->first();
-
-        if ($featuredTranscription?->content_item_id === $this->getKey() && $featuredTranscription->isPublished()) {
-            return $featuredTranscription;
-        }
-
-        if ($this->relationLoaded('latestPublishedTranscription')) {
-            return $this->latestPublishedTranscription;
-        }
-
-        return $this->latestPublishedTranscription()->first();
+        return app(EffectiveTranscriptionResolver::class)->for($this);
     }
 
     public function resolveWorkspaceTranscription(): ?Transcription

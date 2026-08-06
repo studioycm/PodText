@@ -7,6 +7,7 @@ use App\Filament\Resources\Transcriptions\Schemas\TranscriptionForm;
 use App\Filament\Resources\Transcriptions\TranscriptionResource;
 use App\Models\ContentItem;
 use App\Models\Transcription;
+use App\Support\Transcriptions\EffectiveTranscriptionResolver;
 use App\Support\Transcriptions\TranscriptionModeLabel;
 use Filament\Actions\Action;
 use Filament\Notifications\Notification;
@@ -67,12 +68,10 @@ class EditEffectiveTranscriptionAction extends Action
 
     public static function resolveTranscriptionFor(ContentItem $record): ?Transcription
     {
-        $record->loadMissing([
-            'featuredTranscription.authors',
-            'latestPublishedTranscription.authors',
-        ]);
-
-        $effectiveTranscription = $record->effectiveTranscription();
+        // Short-circuits: when the featured transcript qualifies — which it
+        // does for every episode in production today — the fallback relation
+        // and its authors are never loaded. Four relation queries become two.
+        $effectiveTranscription = app(EffectiveTranscriptionResolver::class)->for($record);
 
         if ($effectiveTranscription instanceof Transcription) {
             return $effectiveTranscription->loadMissing('authors');
@@ -214,39 +213,17 @@ class EditEffectiveTranscriptionAction extends Action
     /**
      * Reads the context relations directly, on purpose.
      *
-     * Both call sites are table column closures on queries that prime
-     * `featuredTranscription` and `latestPublishedTranscription` — see
-     * ContentItemsTable::primeEpisodeQuery() and its
-     * TRANSCRIPTION_DEPENDENT_COLUMNS. An unprimed record arriving here is a
-     * broken eager-load contract, not an episode without a transcript, and
-     * the two are opposite editorial facts: a blank badge reads to the admin
-     * as "no effective transcript", which is exactly the wrong thing to tell
-     * someone deciding whether to publish.
-     *
-     * So it must reach the app's lazy-loading policy (AppServiceProvider —
-     * throw outside production, log and answer correctly inside it) rather
-     * than being swallowed here. Guarding with relationLoaded() walked around
-     * a tripwire that was already armed.
+     * Both call sites are table column closures on queries that prime the
+     * transcription relations — see ContentItemsTable::primeEpisodeQuery() and
+     * its TRANSCRIPTION_DEPENDENT_COLUMNS. An unprimed record here is a broken
+     * eager-load contract, not an episode without a transcript, and the two
+     * are opposite editorial facts: a blank badge reads as "no transcript" to
+     * someone deciding whether to publish. So it must reach the app's
+     * lazy-loading policy rather than being swallowed.
      */
     private static function contextTranscriptionFor(ContentItem $record): ?Transcription
     {
-        $featuredTranscription = $record->featuredTranscription;
-
-        if (static::isCurrentFeaturedTranscription($record, $featuredTranscription) && $featuredTranscription->isPublished()) {
-            return $featuredTranscription;
-        }
-
-        $latestPublishedTranscription = $record->latestPublishedTranscription;
-
-        if ($latestPublishedTranscription instanceof Transcription) {
-            return $latestPublishedTranscription;
-        }
-
-        if (static::isCurrentFeaturedTranscription($record, $featuredTranscription)) {
-            return $featuredTranscription;
-        }
-
-        return null;
+        return app(EffectiveTranscriptionResolver::class)->forLoaded($record);
     }
 
     private static function isCurrentFeaturedTranscription(ContentItem $record, ?Transcription $transcription): bool
