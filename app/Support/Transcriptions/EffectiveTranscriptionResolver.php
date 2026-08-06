@@ -4,6 +4,7 @@ namespace App\Support\Transcriptions;
 
 use App\Models\ContentItem;
 use App\Models\Transcription;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 
 /**
  * The one home for "which transcription is this episode's".
@@ -71,11 +72,19 @@ class EffectiveTranscriptionResolver
     }
 
     /**
-     * The relations a page needs to answer `forLoaded()` for every row.
+     * The relations a page loads BEFORE it knows which rows will fall back.
      *
-     * Both branches, because a page cannot know in advance which rows will
-     * fall back — a per-page two-pass load would need a records-resolved seam
-     * the table query does not offer.
+     * Only the featured branch. The fallback is a second pass, because loading
+     * it up front is measured waste: on the episodes list it is 3 of 7 relation
+     * queries, and 0 of 10 rows read the result — `forLoaded()` returns the
+     * featured transcription for every one of them and the fallback rows are
+     * hydrated and discarded.
+     *
+     * An earlier docblock here claimed a two-pass "would need a records-resolved
+     * seam the table query does not offer". That was wrong: `getTableRecords()`
+     * is public and memoises into `$cachedTableRecords`, so a page can override
+     * it, call parent, and prime once — which is what
+     * `PrimesEffectiveTranscriptions` does.
      *
      * @return array<int, string>
      */
@@ -84,9 +93,45 @@ class EffectiveTranscriptionResolver
         return [
             'featuredTranscription.authors',
             'featuredTranscription.author',
+        ];
+    }
+
+    /**
+     * The second pass: load the fallback branch only for rows the featured one
+     * did not settle.
+     *
+     * Idempotent — `loadMissing` skips anything already hydrated, so calling it
+     * again on a memoised record set costs nothing.
+     *
+     * @param  iterable<int, ContentItem>  $items
+     */
+    public function primeFallback(iterable $items): void
+    {
+        $unsettled = collect($items)
+            // Self-gating on column visibility, using the signal the column
+            // itself leaves behind: `featuredTranscription` is loaded only when
+            // an EffectiveTranscriptionColumn is toggled on. A row without it
+            // belongs to a page that will read neither branch, so priming the
+            // fallback there would re-spend the queries this pass exists to
+            // save — on the default view, which shows no transcription column
+            // at all.
+            ->filter(fn (ContentItem $item): bool => $item->relationLoaded('featuredTranscription'))
+            ->filter(fn (ContentItem $item): bool => ! $this->isOwnPublishedFeatured(
+                $item,
+                $item->featuredTranscription,
+            ));
+
+        if ($unsettled->isEmpty()) {
+            return;
+        }
+
+        // Eloquent's collection, not the base one: `loadMissing()` lives on
+        // Illuminate\Database\Eloquent\Collection, and `collect()` hands back
+        // Support\Collection, which answers the call with a BadMethodCallException.
+        new EloquentCollection($unsettled->all())->loadMissing([
             'latestPublishedTranscription.authors',
             'latestPublishedTranscription.author',
-        ];
+        ]);
     }
 
     private function isOwnPublishedFeatured(ContentItem $item, ?Transcription $featured): bool

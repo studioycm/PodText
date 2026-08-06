@@ -5,6 +5,7 @@ namespace App\Filament\Resources\ContentItems\Pages;
 use App\Enums\EpisodeListScope;
 use App\Filament\Resources\ContentItems\ContentItemResource;
 use App\Filament\Resources\ContentItems\Tables\ContentItemsTable;
+use App\Filament\Support\Concerns\PrimesEffectiveTranscriptions;
 use App\Filament\Support\Concerns\UndoesPublicationToggle;
 use App\Models\Author;
 use App\Models\ContentGroup;
@@ -18,6 +19,7 @@ use Illuminate\Database\Eloquent\Builder;
 
 class ListContentItems extends ListRecords
 {
+    use PrimesEffectiveTranscriptions;
     use UndoesPublicationToggle;
 
     protected static string $resource = ContentItemResource::class;

@@ -9,6 +9,7 @@ use App\Filament\Actions\EditEffectiveTranscriptionAction;
 use App\Filament\Resources\ContentItems\ContentItemResource;
 use App\Filament\Resources\ContentItems\Tables\ContentItemsTable;
 use App\Filament\Resources\Support\ResourceTableActions;
+use App\Filament\Support\Concerns\PrimesEffectiveTranscriptions;
 use App\Filament\Support\Concerns\UndoesPublicationToggle;
 use App\Filament\Tables\EffectiveTranscriptionColumn;
 use App\Filament\Tables\OwnerImageColumn;
@@ -44,6 +45,7 @@ use Livewire\Attributes\Locked;
 
 class ContentItemsRelationManager extends RelationManager
 {
+    use PrimesEffectiveTranscriptions;
     use UndoesPublicationToggle;
 
     private const int OWNER_IMAGE_BASELINE_VERSION = 2;

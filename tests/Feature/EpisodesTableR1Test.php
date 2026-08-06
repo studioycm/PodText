@@ -175,11 +175,50 @@ it('loads transcription relations only when a column actually reads one', functi
         })
         ->all();
 
-    // And the moment one is switched on it must come back, or the column
-    // would lazy-load per row — which preventLazyLoading turns into a crash.
+    // And the moment one is switched on, the FEATURED branch must come back or
+    // the column would lazy-load per row — which preventLazyLoading turns into
+    // a crash.
     $page->call('applyTableColumnManager', $withTranscribersOn)->assertSuccessful();
 
-    expect($page->instance()->getTableRecords()->first()->relationLoaded('latestPublishedTranscription'))->toBeTrue();
+    $records = $page->instance()->getTableRecords();
+
+    expect($records->first()->relationLoaded('featuredTranscription'))->toBeTrue()
+        // …but the fallback branch must NOT, because every one of these rows is
+        // settled by its featured transcript. That is the whole two-pass: the
+        // second branch used to be hydrated for all of them and read by none.
+        ->and($records->first()->relationLoaded('latestPublishedTranscription'))->toBeFalse();
+});
+
+it('primes the fallback branch for exactly the rows the featured one does not settle', function (): void {
+    // The other half of the two-pass. Without this, "we saved three queries"
+    // and "we broke the column" look identical from the assertion above.
+    $settled = ContentItem::factory()->published()->withTranscription()->create();
+
+    $unsettled = ContentItem::factory()->published()->withTranscription()->create();
+    $unsettled->forceFill(['featured_transcription_id' => null])->saveQuietly();
+
+    $page = Livewire::test(ListContentItems::class);
+
+    $withTranscribersOn = collect($page->instance()->getDefaultTableColumnState())
+        ->map(function (array $column): array {
+            if ($column['name'] === 'effective_transcribers') {
+                $column['isToggled'] = true;
+            }
+
+            return $column;
+        })
+        ->all();
+
+    $page->call('applyTableColumnManager', $withTranscribersOn)->assertSuccessful();
+
+    $records = $page->instance()->getTableRecords()->keyBy('id');
+
+    expect($records[$unsettled->id]->relationLoaded('latestPublishedTranscription'))->toBeTrue()
+        ->and($records[$settled->id]->relationLoaded('latestPublishedTranscription'))->toBeFalse();
+
+    // And the column still renders a transcriber for the fallback row, which is
+    // what the priming was for.
+    $page->assertSuccessful();
 });
 
 it('lets a dotted column load its own relation, and only that one', function (): void {
