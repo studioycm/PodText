@@ -4,6 +4,7 @@ namespace App\Filament\Resources\ContentItems\Tables;
 
 use App\Enums\EpisodePinScope;
 use App\Enums\EpisodePublicState;
+use App\Enums\EpisodeReleaseScope;
 use App\Enums\PublicationStatus;
 use App\Filament\Actions\ContentImageActions;
 use App\Filament\Actions\EditEffectiveTranscriptionAction;
@@ -18,6 +19,7 @@ use App\Filament\Tables\OwnerImageColumn;
 use App\Models\ContentItem;
 use App\Support\PublicContent\PublicTranscriptionSelector;
 use App\Support\Transcriptions\EffectiveTranscriptionResolver;
+use App\Support\Transcriptions\MultiTranscriptionSurfaces;
 use App\Support\Transcriptions\TranscriptionModeLabel;
 use App\Support\UiFormats;
 use App\Support\UiTimezone;
@@ -171,6 +173,9 @@ class ContentItemsTable
                 // pack the four-per-row grid into exactly two tidy rows.
                 self::publishedBetweenFilter(),
                 self::pinnedToggleFilter(),
+                self::releaseToggleFilter(),
+                self::transcriptPublishedFilter(),
+                self::multiTranscriptionFilter(),
                 SelectFilter::make('transcriber_id')
                     ->label(__('admin.fields.transcribers'))
                     ->relationship('transcriptions.authors', 'name')
@@ -576,6 +581,81 @@ class ContentItemsTable
                 fn (Builder $query, PublicationStatus $status): Builder => $query->where('status', $status),
             ))
             ->indicateUsing(fn (array $data): ?string => PublicationStatus::tryFrom((string) ($data['value'] ?? 'all'))?->getLabel());
+    }
+
+    /**
+     * Has the episode's own switch actually taken effect?
+     *
+     * The funnel's «יצא לאוויר» stage counts exactly this, and pointed at
+     * status=published before — a superset, so a card reading 2 opened a list
+     * of 3. Number and door now share both the predicate and the word.
+     */
+    public static function releaseToggleFilter(): Filter
+    {
+        return Filter::make('release_state')
+            ->schema([
+                ToggleButtons::make('value')
+                    ->label(__('admin.fields.release_state'))
+                    ->options(EpisodeReleaseScope::options())
+                    ->default(EpisodeReleaseScope::All->value)
+                    ->grouped()
+                    ->helperText(__('admin.helpers.release_versus_scheduled')),
+            ])
+            ->resetState(['value' => EpisodeReleaseScope::All->value])
+            ->query(fn (Builder $query, array $data): Builder => match (EpisodeReleaseScope::fromFilter($data['value'] ?? null)) {
+                EpisodeReleaseScope::Aired => $query
+                    ->where('status', PublicationStatus::Published)
+                    ->where(fn (Builder $released): Builder => $released
+                        ->whereNull('published_at')
+                        ->orWhere('published_at', '<=', now())),
+                EpisodeReleaseScope::Upcoming => $query
+                    ->where('status', PublicationStatus::Published)
+                    ->where('published_at', '>', now()),
+                EpisodeReleaseScope::All => $query,
+            })
+            ->indicateUsing(fn (array $data): ?string => EpisodeReleaseScope::fromFilter($data['value'] ?? null)->indicator());
+    }
+
+    /**
+     * Does a released transcript exist for this episode?
+     *
+     * Composed with the release filter this is the funnel's «תומלל» stage
+     * exactly: aired, and a transcript the public could read. It differs from
+     * the visible tab only by not requiring the podcast to be published — the
+     * gap between the two is the "everything is ready but the podcast is not"
+     * tier.
+     */
+    public static function transcriptPublishedFilter(): Filter
+    {
+        return Filter::make('transcript_published')
+            ->label(__('admin.fields.transcript_published'))
+            ->toggle()
+            ->query(fn (Builder $query): Builder => $query->whereHas(
+                'transcriptions',
+                fn (Builder $transcriptions): Builder => $transcriptions->published(),
+            ))
+            ->indicateUsing(fn (array $data): ?string => ($data['isActive'] ?? false)
+                ? __('admin.fields.transcript_published')
+                : null);
+    }
+
+    /**
+     * Episodes carrying more than one transcript.
+     *
+     * Registered only in multi mode, because the single lens throws when a
+     * second transcript is created — the filter would be a control for a set
+     * that cannot grow, next to a dashboard card hidden for the same reason.
+     */
+    public static function multiTranscriptionFilter(): Filter
+    {
+        return Filter::make('multi_transcription')
+            ->label(__('admin.fields.multi_transcription'))
+            ->toggle()
+            ->visible(fn (): bool => MultiTranscriptionSurfaces::isMultiMode())
+            ->query(fn (Builder $query): Builder => $query->whereHas('transcriptions', operator: '>', count: 1))
+            ->indicateUsing(fn (array $data): ?string => ($data['isActive'] ?? false)
+                ? __('admin.fields.multi_transcription')
+                : null);
     }
 
     public static function pinnedToggleFilter(): Filter

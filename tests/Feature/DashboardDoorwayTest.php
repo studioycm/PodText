@@ -131,32 +131,41 @@ it('lands every dashboard doorway on exactly the records it counted', function (
     $lies = [];
     $discovered = [];
 
-    foreach ($widgets as $widgetClass) {
-        $widget = Livewire::test($widgetClass)->instance();
-        $viewData = new ReflectionMethod($widget, 'getViewData');
-        $viewData->setAccessible(true);
+    // Both modes, because some cards only exist in one. The multi-transcription
+    // doorway is hidden in single mode, so a single-mode-only walk would have
+    // restored a link that nothing checked.
+    foreach ([TranscriptionMode::Single, TranscriptionMode::Multi] as $mode) {
+        setTestTranscriptionMode($mode);
 
-        foreach (doorwaysIn($viewData->invoke($widget)) as $doorway) {
-            $target = doorwayTarget($doorway['url']);
+        foreach ($widgets as $widgetClass) {
+            $widget = Livewire::test($widgetClass)->instance();
+            $viewData = new ReflectionMethod($widget, 'getViewData');
+            $viewData->setAccessible(true);
 
-            if ($target === null) {
-                continue;
-            }
+            foreach (doorwaysIn($viewData->invoke($widget)) as $doorway) {
+                $target = doorwayTarget($doorway['url']);
 
-            $discovered[class_basename($widgetClass)] = ($discovered[class_basename($widgetClass)] ?? 0) + 1;
+                if ($target === null) {
+                    continue;
+                }
 
-            parse_str((string) parse_url($doorway['url'], PHP_URL_QUERY), $query);
+                $discovered[class_basename($widgetClass)] = ($discovered[class_basename($widgetClass)] ?? 0) + 1;
+                $discovered[$doorway['path']] = true;
 
-            $landed = Livewire::withQueryParams($query)->test($target)->instance()->getAllTableRecordsCount();
+                parse_str((string) parse_url($doorway['url'], PHP_URL_QUERY), $query);
 
-            if ($landed !== $doorway['value']) {
-                $lies[] = sprintf(
-                    '%s %s — card says %d, door shows %d',
-                    class_basename($widgetClass),
-                    $doorway['path'],
-                    $doorway['value'],
-                    $landed,
-                );
+                $landed = Livewire::withQueryParams($query)->test($target)->instance()->getAllTableRecordsCount();
+
+                if ($landed !== $doorway['value']) {
+                    $lies[] = sprintf(
+                        '%s %s in %s mode — card says %d, door shows %d',
+                        class_basename($widgetClass),
+                        $doorway['path'],
+                        $mode->value,
+                        $doorway['value'],
+                        $landed,
+                    );
+                }
             }
         }
     }
@@ -167,6 +176,14 @@ it('lands every dashboard doorway on exactly the records it counted', function (
         expect($discovered[class_basename($widgetClass)] ?? 0)
             ->toBeGreaterThan(0, class_basename($widgetClass).' exposes doorways that this walk failed to discover');
     }
+
+    // Named explicitly because it only exists in one mode: a walk that ran
+    // single-mode only would pass while never touching it. Matched on the
+    // suffix, since the path carries the card's array index.
+    $walkedMultiTranscription = collect(array_keys($discovered))
+        ->contains(fn (string $path): bool => str_ends_with($path, '.multi_transcription'));
+
+    expect($walkedMultiTranscription)->toBeTrue('the multi-transcription doorway was never walked');
 
     expect($lies)->toBe([], "a number whose door shows something else is a dead end wearing a doorway's clothes:\n  ".implode("\n  ", $lies));
 });

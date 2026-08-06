@@ -79,7 +79,7 @@ return [
         ],
         'legend' => [
             'draft' => 'Draft',
-            'published' => 'Published',
+            'published' => 'Aired',
             'transcribed' => 'Transcribed',
             'visible' => 'Visible',
         ],
@@ -205,6 +205,11 @@ return [
             'missing_media_description' => 'No media or embed URL, so the episode page has no player.',
             'missing_category_description' => 'No category on the episode or its podcast, so it is missing from category browsing.',
         ],
+    ],
+    'episode_release_scopes' => [
+        'all' => 'All',
+        'aired' => 'Aired',
+        'upcoming' => 'Upcoming',
     ],
     'episode_scopes' => [
         'all' => 'All',
@@ -858,6 +863,9 @@ return [
         'updated_at' => 'Updated',
         'user_agent_hash' => 'User agent hash',
         'word_count' => 'Word count',
+        'release_state' => 'Aired',
+        'transcript_published' => 'Has a published transcript',
+        'multi_transcription' => 'More than one transcript',
         'reading_time' => 'Reading time',
         'transcription_date' => 'Transcription date',
         'payload' => 'Payload',
@@ -977,6 +985,7 @@ return [
         'unsafe_legacy_media_repair' => 'This old image is unavailable. Choose a trusted replacement, or remove it to use the configured default image.',
         'content_item_description' => 'Short Markdown description for admin and public item pages.',
         'status_versus_visible' => 'Published is this episode\'s own switch. Visible means the public can actually reach it — which also needs the podcast published and a released transcript.',
+        'release_versus_scheduled' => 'Aired asks only about this episode\'s own date. Scheduled additionally means its podcast and transcript are due by then.',
         'content_item_status' => 'Draft items stay private. Published items still need a published group and effective transcription.',
         'content_item_title' => 'Main item title. The slug is generated from this while manual slug edits are preserved.',
         'default_item_type_label_plural' => 'Default: Episodes.',
@@ -2286,6 +2295,7 @@ return [
         ],
     ],
     'filters' => [
+        'release_indicator' => 'Release: :scope',
         'transcription_history' => 'Transcript history',
         'status_options' => [
             'all' => 'All',

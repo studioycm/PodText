@@ -79,7 +79,7 @@ return [
         ],
         'legend' => [
             'draft' => 'טיוטה',
-            'published' => 'פורסם',
+            'published' => 'יצא לאוויר',
             'transcribed' => 'תומלל',
             'visible' => 'גלוי',
         ],
@@ -205,6 +205,11 @@ return [
             'missing_media_description' => 'אין כתובת מדיה או הטמעה, ולכן בעמוד הפרק אין נגן.',
             'missing_category_description' => 'אין קטגוריה לפרק או לפודקאסט שלו, ולכן הוא נעדר מדפדוף הקטגוריות.',
         ],
+    ],
+    'episode_release_scopes' => [
+        'all' => 'הכל',
+        'aired' => 'יצא לאוויר',
+        'upcoming' => 'עתידיים',
     ],
     'episode_scopes' => [
         'all' => 'הכל',
@@ -800,6 +805,9 @@ return [
         'tag_type' => 'סוג תגית',
         'tags' => 'תגיות',
         'word_count' => 'מספר מילים',
+        'release_state' => 'יצא לאוויר',
+        'transcript_published' => 'יש תמלול מפורסם',
+        'multi_transcription' => 'יותר מתמלול אחד',
         'reading_time' => 'זמן קריאה',
         'transcription_date' => 'תאריך תמלול',
         'submitted_at' => 'נשלח בתאריך',
@@ -876,6 +884,7 @@ return [
         'content_item_content_group' => 'פודקאסט הורה. נראות מחייבת שהפודקאסט יהיה מפורסם.',
         'content_item_description' => 'תיאור Markdown קצר לדפי פרק בממשק הניהול ובאתר הציבורי.',
         'status_versus_visible' => 'פורסם הוא המתג של הפרק עצמו. גלוי הוא מה שהציבור באמת רואה — לשם כך נדרשים גם פודקאסט מפורסם וגם תמלול משוחרר.',
+        'release_versus_scheduled' => 'יצא לאוויר שואל רק על תאריך הפרק עצמו. מתוזמן פירושו גם שהפודקאסט והתמלול אמורים להתפרסם עד אז.',
         'content_item_status' => 'פרקים בטיוטה נשארים פרטיים. פרקים שפורסמו עדיין צריכים פודקאסט מפורסם ותמלול פעיל.',
         'content_item_title' => 'כותרת הפרק הראשית. מזהה הכתובת נוצר ממנה תוך שמירה על עריכות ידניות של המזהה.',
         'featured_transcription' => 'ניתן לבחור רק תמלולים של אותו פרק. הבורר מוצג לאחר שלפרק יש יותר מתמלול אחד.',
@@ -2286,6 +2295,7 @@ return [
         ],
     ],
     'filters' => [
+        'release_indicator' => 'שידור: :scope',
         'transcription_history' => 'היסטוריית תמלולים',
         'status_options' => [
             'all' => 'הכל',

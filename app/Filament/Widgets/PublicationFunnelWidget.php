@@ -4,6 +4,7 @@ namespace App\Filament\Widgets;
 
 use App\Enums\DashboardLens;
 use App\Enums\EpisodeListScope;
+use App\Enums\EpisodeReleaseScope;
 use App\Enums\FunnelStage;
 use App\Filament\Resources\ContentItems\ContentItemResource;
 use App\Filament\Widgets\Concerns\AdminOnlyWidget;
@@ -72,11 +73,25 @@ class PublicationFunnelWidget extends Widget
                 // is any tab or union of tabs, and both used to send
                 // status=published, a superset. ES-1: no link beats a link to
                 // an approximately-right list.
-                'url' => match ($stage) {
-                    FunnelStage::Draft => ContentItemResource::getUrl('index', $this->scopedTableScope(EpisodeListScope::Drafts)),
-                    FunnelStage::Visible => ContentItemResource::getUrl('index', $this->scopedTableScope(EpisodeListScope::Visible)),
-                    default => null,
-                },
+                // Every stage now has a door that answers exactly its number.
+                // «יצא לאוויר» and «תומלל» reach theirs through real filters
+                // rather than status=published, which was a superset — a card
+                // reading 2 opened a list of 3.
+                'url' => ContentItemResource::getUrl('index', match ($stage) {
+                    FunnelStage::Draft => $this->scopedTableScope(EpisodeListScope::Drafts),
+                    FunnelStage::Visible => $this->scopedTableScope(EpisodeListScope::Visible),
+                    FunnelStage::Published => $this->scopedTableFilters([
+                        'release_state' => ['value' => EpisodeReleaseScope::Aired->value],
+                    ]),
+                    // Aired AND a transcript the public could read. It differs
+                    // from visible only by not requiring the podcast to be
+                    // published — that gap is the "ready but the podcast is
+                    // not" tier.
+                    FunnelStage::Transcribed => $this->scopedTableFilters([
+                        'release_state' => ['value' => EpisodeReleaseScope::Aired->value],
+                        'transcript_published' => ['isActive' => true],
+                    ]),
+                }),
             ];
         }
 

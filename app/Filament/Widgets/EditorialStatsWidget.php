@@ -68,10 +68,9 @@ class EditorialStatsWidget extends Widget
                     'key' => 'multi_transcription',
                     'value' => $structure['multi_transcription'],
                     'icon' => Heroicon::OutlinedDocumentDuplicate,
-                    // No link yet: nothing filters episodes by transcript count.
-                    // ES-1 — a doorway-less number beats one opening the wrong
-                    // list. Only reachable in multi mode; see the filter below.
-                    'url' => null,
+                    'url' => ContentItemResource::getUrl('index', $this->scopedTableFilters([
+                        'multi_transcription' => ['isActive' => true],
+                    ])),
                     'segments' => [
                         ['key' => 'multi_transcription', 'value' => $structure['multi_transcription'], 'bar' => 'bg-info-500'],
                         ['key' => 'other', 'value' => max(0, $items - $structure['multi_transcription']), 'bar' => 'bg-gray-200 dark:bg-white/10'],

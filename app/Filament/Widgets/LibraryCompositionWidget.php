@@ -90,8 +90,9 @@ class LibraryCompositionWidget extends Widget
                 ...(MultiTranscriptionSurfaces::isMultiMode() ? [[
                     'key' => 'multi_transcription',
                     'value' => $structure['multi_transcription'],
-                    // No link yet: nothing filters episodes by transcript count.
-                    'url' => null,
+                    'url' => ContentItemResource::getUrl('index', $this->scopedTableFilters([
+                        'multi_transcription' => ['isActive' => true],
+                    ])),
                     'icon' => Heroicon::OutlinedDocumentDuplicate,
                 ]] : []),
             ],
