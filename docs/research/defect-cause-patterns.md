@@ -960,6 +960,112 @@ by the orchestrator.)*
   cheap to avoid in new code, not because the current symptom warrants a fix
   ahead of staleness.
 
+## unhandled-arm · A case added ahead of its handlers, armed and waiting
+
+- **Cause:** a new enum case ships with its value, its translations and its
+  writer-to-be, but the exhaustive `match` expressions elsewhere are never
+  extended. `match` without a `default` is a *runtime* guard in this repo — no
+  static analyser is installed — so the omission is invisible until the first
+  row carrying that case reaches the match, at which point it is an
+  `UnhandledMatchError`, not a wrong answer.
+- **Evidence (2026-08-06, ACTUAL, latent):**
+  `app/Enums/MediaMutationOperationType.php:19` declares `LegacyOwnerRepair`,
+  and both `lang/en/admin.php:2743` and `lang/he/admin.php:2743` carry its
+  label. The `match ($operationType)` in
+  `MediaFilesystemMutationCoordinator.php:1540-1553`
+  (`assertOperationShape()`) has **no default arm and covers 10 of the 11
+  cases** — `LegacyOwnerRepair` is the omission. The operation type is read
+  back **from the database** at `:1439` via `tryFrom`, so the input is a
+  stored value, not a compile-time one.
+- **Severity, honestly:** latent, not live. Nothing in `app/` writes
+  `legacy_owner_repair` today (grepped: the only references are the case and
+  the two lang keys), so no row can carry it. It arms itself the moment the
+  parked legacy owner-column retirement lands a writer — i.e. the exact
+  feature the case and its translations were added in anticipation of.
+- **Where else:** every `match` over an enum with no `default`, anywhere the
+  subject came from a database column or a request. Found by a parser sweep,
+  not by grep — see the guard below.
+- **Guard:** a parser-based Pest test that walks every `Match_` node under
+  `app/`, `database/` and `routes/`, and for any match whose arms literally
+  name enum cases asserts every case appears unless a `default` arm exists.
+  One test file, no dependency, ~0.8 s, and it covers all 56 enum matches in
+  this codebase including the 18 written outside `app/Enums`. Two traps
+  recorded so the next author does not re-hit them: `NameResolver` must run as
+  its **own** traverser pass (otherwise `Match_` is entered before its children
+  resolve, imported enums stay short-named, and the sweep silently reports 17
+  guarded instead of 56); and `self::`/`static::` are not rewritten by
+  `NameResolver`, so the visitor has to track the enclosing `Stmt\Enum_`
+  itself.
+- **Stronger guard:** PHPStan level ≥ 4 reports this as
+  `match.unhandled` (`PHPStan\Rules\Comparison\MatchExpressionRule`) at
+  authoring time rather than test time. Level 4 is the floor — 0-3 do not
+  report it. Precedent: the FilamentExamples `construction` full project runs
+  larastan at **level 7** in CI (`phpstan.neon`, `composer types:check`,
+  `.github/workflows/tests.yml`) for exactly this.
+- **Note:** the weaker reflection sweep (call every zero-argument enum method
+  with every case) would **not** have caught this one —
+  `MediaMutationOperationType::getLabel()` *is* exhaustive; the broken match
+  lives in a Support class. Reach for the parser sweep, not the reflection
+  one.
+- **Status:** open. Finding reported, arm not added — the correct `required`
+  path list for a legacy-owner-repair journal is a product decision belonging
+  to the retirement work, not a drive-by fix.
+
+## db-clock-coupling · Correctness depends on a server setting recorded nowhere in the repo
+
+- **Cause:** the application's data is only correct in conjunction with a
+  MySQL `time_zone` that lives in production's `my.cnf`. The coupling is
+  invisible: nothing in the repository states it, and a restore onto a
+  differently-configured server silently shifts every value with no error.
+- **Evidence (2026-08-06, verified independently):**
+  **Every** temporal column in the schema is MySQL `TIMESTAMP` — 28
+  `$table->timestamp(` and **zero** `$table->dateTime(` across
+  `database/migrations` (grep, counted). MySQL stores TIMESTAMP as a UTC epoch
+  and converts on **both** read and write using the session timezone; DATETIME
+  would not convert. `config/database.php`'s `mysql` block has **no
+  `timezone` key**, and `MySqlConnector.php:110-112` only emits
+  `SET time_zone=...` when one is present — so every connection inherits
+  `@@global.time_zone`, decided entirely outside this repo.
+- **Why it has not bitten harder:** the conversion is *symmetric*. Laravel
+  writes literal L, MySQL stores `L − offset`, and reading through the same
+  session returns L. Round-tripping is lossless for any offset. It breaks for
+  exactly one class of value — one the **database generates** rather than
+  round-trips. Blast radius, measured: `useCurrent()` appears **once** in the
+  entire schema (`create_jobs_table.php:44`, `failed_jobs.failed_at`), which
+  is why the 180-minute skew stayed invisible for so long.
+- **Latent correctness bug, not cosmetic:** if `@@global.time_zone` resolves to
+  a **named** DST-observing zone (`Asia/Jerusalem`) rather than a fixed
+  `+03:00`, then UTC literals landing in the spring-forward gap (local
+  02:00-02:59, late March) are **nonexistent local times and cannot be stored
+  faithfully**. `created_at`/`updated_at` are written continuously, so any row
+  created while the app's UTC clock reads that hour is at risk.
+- **Two independent workarounds already exist**, written by different sessions
+  that did not know about each other:
+  `PublicTranscriptionSelector::sqlMoment()` (bind PHP's now, never
+  `CURRENT_TIMESTAMP`) and `JerusalemDailySeries` (bucket days in PHP, because
+  raw SQL `DATE(col)` buckets on the database timezone). Two workarounds for
+  one root cause is the signal that the clock itself is the defect — and that
+  a third will eventually be written by someone who knows about neither.
+- **Structurally untestable today:** `phpunit.xml:38-39` forces sqlite
+  `:memory:`, which has no session timezone and no TIMESTAMP conversion, so
+  this whole defect class cannot surface in `php artisan test`. Kin of
+  `driver-lenient-fallback`; see `docs/phase-02/mysql-test-lane-spec.md`.
+- **Target state:** `@@session.time_zone` **and** `@@global.time_zone` at
+  `+00:00`, pinned via `'timezone' => env('DB_TIMEZONE', '+00:00')` in
+  `config/database.php` so it stops depending on the server. **Cannot be
+  flipped alone** — existing rows were written under +3, so a bare flip makes
+  the entire catalogue read three hours early. It needs a one-time repair
+  under a UTC session, in a maintenance window, with `CONVERT_TZ` proven
+  non-NULL first (it returns NULL when the `mysql.time_zone_name` tables are
+  not loaded, which would blank the column).
+- **The app/UI split is already correct and is not the problem:**
+  `config/app.php:68` hardcodes `'UTC'` with no `env()` indirection;
+  Asia/Jerusalem lives only in `UiTimezone` reading
+  `config/localization.php:19`. Do not "fix" this by moving the app timezone —
+  that makes it strictly worse.
+- **Status:** open, unscheduled. Diagnosis complete; remediation is a
+  deliberate migration, not a patch.
+
 ## boundary-type-loss · A typed value crossing a serialization boundary comes back untyped
 
 - **Cause:** enums, booleans and dates survive inside PHP and do not survive

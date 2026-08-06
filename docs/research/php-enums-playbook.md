@@ -158,6 +158,59 @@ usage, `1` otherwise, so the balance formula is one `sum` and no branch.
 enum that reads the clock is untestable and, as we have already learned the
 hard way, wrong in production.
 
+**Transition engine with an idempotency short-circuit.** Every public workflow
+method is a one-line wrapper over one private
+`transition(Model, User, StatusEnum $to, string $event)`, with the destination
+enum as a **first-class parameter**. Three enum facts do work at once
+(`ContractWorkflowService.php:61-92`): identity equality against the
+already-locked row makes a retried transition a **no-op returning the existing
+record** (`:67-69`); `canTransitionTo()` enforces the legal graph (`:89`); and
+both `$from` and `$to` instances go to the logger (`:81`).
+
+**Enum as an authorization routing table.** Rather than a per-transition
+`authorize()` call, `match` on the *destination* case selects the Gate ability
+name inside the `authorize()` argument itself, with
+**`default => throw new LogicException`** as the exhaustiveness guard
+(`ContractWorkflowService.php:71-76`). An unmapped destination is a programmer
+error at the call site, never a silent permit or deny.
+
+**Idempotency-tolerant policy.** The approve abilities read
+`$record->status === Target || $record->status->canTransitionTo(Target)`
+(`InvoicePolicy.php:65`, `ChangeOrderPolicy.php:59`). A double-clicked approve
+or a retried job **authorizes cleanly instead of 403-ing**, and the service's
+identity short-circuit then makes it a no-op. The plain form is used
+everywhere else — the disjunction is deliberate and only on approve.
+
+**Normalize a union at the boundary.** `ActivityLogger` accepts
+`BackedEnum|string|null` for both from- and to-state, collapses both through
+one private `scalar()` helper, and compares the normalized backing values to
+decide **whether to write at all** (`ActivityLogger.php:29-48, 111-114`). That
+is what makes the retry-safe transition produce exactly one history row per
+real change. Kin of `boundary-type-loss` in the ledger.
+
+**Enum method inside a `booted()` invariant.** `ComplianceRecord` may point at
+exactly one of three FK columns; the `saving` hook asks the *requirement's*
+enum which column it requires — `$requirement->applies_to->foreignKey()` — and
+checks it against the map of non-null keys
+(`ComplianceRecord.php:43-62`, call at `:58`). The polymorphic-subject
+invariant is enforced at the model boundary with **no `match` in the model at
+all**.
+
+**Manual `getLabel()` outside Filament's pipeline.** `HasLabel` is normally
+consumed implicitly, but it is dereferenced by hand in the two places Filament
+never auto-applies it: raw Blade custom pages, and
+`getGlobalSearchResultDetails()`, which is typed `array<string,string>` so an
+enum instance would have to be stringified. There the manual call is
+**required, not decorative** — and it turns the Filament contract into an
+app-wide presenter.
+
+**Enum cast on a custom Pivot model.** `->using(ProjectAssignment::class)` plus
+`withPivot([...])` is the **only** way to get an enum cast onto
+intermediate-table columns; plain `withPivot()` hands back a raw string. The
+pivot class extends `Relations\Pivot` and declares `casts()` like any model.
+⚠️ It comes with a trap the project itself fell into — see the anti-patterns
+below.
+
 **Capability matrix.** `Role::permissions(): array<Permission>` maps each role
 to a list of `Permission` cases; `permissionNames()` flattens to strings for the
 Spatie seeder; policies then ask `$user->can(Permission::VoidInvoices->value)`.
@@ -230,6 +283,100 @@ the whole project:
 
 ---
 
+## 6a. Making a missing `match` arm fail in CI
+
+`match ($this)` with no `default` is the whole safety argument for enums over
+strings — but in **this** repo it is only a *runtime* guard. No static
+analyser is installed, so a missing arm is an `UnhandledMatchError` at
+execution, not a build failure. Three ways to close that, ranked:
+
+**1. PHPStan + larastan at level ≥ 4.** Rule
+`PHPStan\Rules\Comparison\MatchExpressionRule`, error identifier
+`match.unhandled`, message *"Match expression does not handle remaining
+value: …"*. **Level 4 is the floor — levels 0-3 do not report it.** It
+strictly dominates the others: it covers all 56 enum matches in this codebase,
+including matches whose subject is type-inferred rather than literally naming
+cases. Enum-awareness comes from PHPStan core, not from larastan.
+
+The cost is far lower than `app/`'s 513 files / 78k lines suggests. Measured
+type coverage: **4,268 parameters, 0 untyped**; 3,525 methods, 152 without a
+return type of which **150 are `__construct`** (which cannot have one) — so
+exactly **2** real methods lack one; 1,859 closures, 48 untyped; **5** dynamic
+property fetches app-wide; 932 `@return array<…>`/`array{…}` shapes and **0**
+untyped `@return array`; and **0** existing `@phpstan`/`@psalm` annotations.
+This codebase is already written to level 6-7 conventions with no PHPStan
+installed. Not verified by running it — installing would have modified
+`composer.json` — so treat the small-baseline conclusion as a strong proxy,
+not a measurement.
+
+Precedent: the FilamentExamples `construction` project runs **larastan at
+level 7** in CI (`phpstan.neon`, `composer types:check` chained into
+`composer test`, plus its own GitHub Actions step across PHP 8.3/8.4/8.5).
+
+**2. A parser-based Pest test — no dependency, and it has already paid for
+itself.** Walk every `Node\Expr\Match_` under `app/`, `database/`, `routes/`;
+for any match whose arms literally name `App\…Enum::Case`, assert every case
+appears unless a `default` arm exists. Purely syntactic — needs no type
+inference, because the arms themselves identify the enum. ~0.8 s on the
+existing gate. **This is the one that found `unhandled-arm` in the ledger.**
+Two traps, both non-obvious:
+
+- `NameResolver` must run as its **own** traverser pass. With both visitors on
+  one traverser, `Match_` is entered before its children resolve, imported
+  enums stay short-named, and the sweep silently reports 17 guarded instead of
+  56 — a green test that checks a third of what you think it does.
+- `self::`/`static::` are not rewritten by `NameResolver`, so the visitor must
+  track the enclosing `Stmt\Enum_` itself.
+
+Put it in `tests/Unit` — it needs the autoloader, not a booted app. Blind
+spots: a match with a *wrong* `default` arm, arms referencing cases
+indirectly, and Blade.
+
+**3. A reflection sweep** (call every zero-argument public method with every
+case). Cheapest, weakest: reaches 38 of the 56 matches, and **would not have
+found the live one**, because the enum's own `getLabel()` is exhaustive and
+the broken match lives in a Support class. Write #2 instead. Useful data if
+you build it anyway: `grep` for `DB::|Cache::|Storage::|Http::|Log::|dispatch(|Auth::`
+across `app/Enums` returns **zero** hits, so no mocking is needed — our enums
+are already side-effect free.
+
+**Not an option: FilaCheck.** Verified — it has no exhaustiveness rule of any
+kind; it is a Filament-API linter (deprecations, missing indicators,
+unsearchable columns, string icons). Its `EnumMissingFilamentInterfacesRule` is
+a *different* enum guard we already pass, not a substitute. **Also not:**
+Psalm (a second analyser and a second baseline, in a codebase with zero
+suppression annotations of either dialect) or Rector (it would *add* the
+missing arms rather than fail the build — wrong shape for a gate).
+
+## 6b. Anti-patterns, caught in real code
+
+**A pivot-cast enum column renders blank.**
+`TextColumn::make('project_role')->badge()` cannot resolve a pivot attribute:
+`BelongsToMany::migratePivotAttributes()` moves every `pivot_*` key onto the
+pivot relation and **unsets it from the parent**
+(`vendor/.../BelongsToMany.php:1255-1271`), while Filament resolves cell state
+with `data_get($record, $name)`. The construction project ships this bug
+(`UsersRelationManager.php:46`) directly beside two sibling columns that get it
+right with `->state(fn ($record) => $record->pivot->…)`.
+
+**Asymmetric exhaustiveness in a codec pair.** `CompanySetting::typedValue()`
+(read) lists all five cases with **no default**, so a sixth is an analysis
+error. `CompanySettings::encode()` (write) covers three and funnels the rest
+into `default => (string) $value`, so the same new case is **silently
+stringified** with no error anywhere. Two halves of one codec disagreeing
+about strictness is worse than either policy applied consistently — the read
+side's guarantee is exactly what makes the write side's silence invisible.
+
+**A string literal compared against `->value`.**
+`$invoice->type->value === 'subcontractor'` (`User.php:148`) — in a project
+that does it correctly two files away with an enum instance
+(`Invoice.php:54`). The `unrouted-enum` pattern in the ledger, in the wild.
+
+**Blade re-deriving what `HasColor` already returns.** A hand-rolled timesheet
+grid branches on case identity inside `@class()` to pick Tailwind classes that
+`TimeEntryStatus::getColor()` already returns. `one-home`, in a file nobody
+thought to look at.
+
 ## 7. Rules
 
 **Do**
@@ -270,6 +417,12 @@ pattern and has no equivalent in the construction project.
 
 Gaps worth a look, in order:
 
+0. **One `match` is already missing an arm.** `MediaMutationOperationType`
+   declares 11 cases; `MediaFilesystemMutationCoordinator.php:1540-1553` covers
+   10 with no `default`. Registered as `unhandled-arm` in the ledger. Latent —
+   nothing writes `LegacyOwnerRepair` yet — and it arms itself the day the
+   parked legacy owner-column retirement lands a writer. Found by §6a's parser
+   sweep, which is the argument for building it.
 1. **No transition table anywhere.** `PublicationStatus` has no
    `allowedTransitions()`; the rule for what a toggle may do lives in the table
    action. Everything in §4 argues for moving it.
