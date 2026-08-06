@@ -25,6 +25,7 @@ Every implementation prompt uses Boost where available, reads its blueprint, che
 ## Do not
 
 - Do not claim Boost was used if MCP calls fail.
+- Do not run `vendor/bin/filacheck` directly. It force-enables `--fix` whenever it detects an AI coding agent, so the plain command writes to source files.
 - Do not run `filacheck --fix` without explicit approval.
 - Do not write secrets, tokens, licenses, Composer auth, MCP headers, or machine paths to tracked files.
 
@@ -37,7 +38,7 @@ Every implementation prompt uses Boost where available, reads its blueprint, che
 ```bash
 php artisan test
 vendor/bin/pint --test
-vendor/bin/filacheck
+composer filacheck
 npm run build
 ```
 
@@ -68,9 +69,10 @@ npm run build
 
 ## FilaCheck / FilaCheck Pro notes
 
+- Run FilaCheck as `composer filacheck`. Never run `vendor/bin/filacheck`, which rewrites source files when an AI agent runs it, even without `--fix`.
+- Local iteration may use `composer filacheck -- --dirty`; final verification uses `composer filacheck` with no arguments.
+- `composer filacheck:fix` is the only approved way to write fixes, and still needs explicit approval.
 - Treat remaining violations as blockers in implementation prompts.
-- Local iteration may use `vendor/bin/filacheck --dirty`.
-- Final verification uses full `vendor/bin/filacheck`.
 - FilaCheck/FilaCheck Pro must pass; do not run `filacheck --fix` unless explicitly approved.
 - If a prompt uses combined relation tabs with content, use the official Filament method names for the installed version.
 - Prompt 09 final reports must state whether combined tabs, relation manager badges, redirect behavior, and create-another behavior were implemented.
