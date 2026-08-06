@@ -2469,11 +2469,17 @@ and `model:show` is safe to use again.
   via `eachById`, `withoutTimestamps` so a backfill cannot read as an edit,
   and free to re-run (a row whose shadow already matches leaves nothing dirty,
   so `save()` issues no statement).
-- Admin uses a shared closure factory rather than a `Column::macro`. A macro
-  named anything other than `searchable` removes the literal `->searchable(`
-  from source, and FilaCheck scans statically — it then reports six tables as
-  having no searchable columns at all. The factory keeps the literal and the
-  single shared implementation.
+- Admin uses a `Column::macro('foldedSearchable')` delegating to
+  `FoldedTableSearch::query()`, applied at 28 call sites. FilaCheck's
+  `table-without-searchable-columns` cannot see it — the rule decides with
+  `preg_match('/->searchable\s*\(/', $snippet)`, so any macro name reads as no
+  searchable column — and it reported six genuinely searchable tables as
+  having none. **Operator rule (2026-08-06): FilaCheck is not the authority on
+  Filament. Deprecations and real errors get fixed; UX suggestions do not get
+  to change a good solution.** The rule is disabled in a partial
+  `config/filacheck-pro.php` with the reason at the disable site, and its
+  signal is replaced macro-aware by
+  `tests/Feature/AdminTableSearchabilityTest.php`.
 - Indexes: varchar shadows are indexed, longtext shadows are not — MySQL
   cannot index a LONGTEXT without a key prefix length, and expressing one
   means the per-driver schema branching §1 disqualifies. Note a B-tree index
@@ -2496,7 +2502,15 @@ and `model:show` is safe to use again.
   `HebrewSearchFoldingPathsTest.php`, `HebrewSearchFoldingAdminTest.php`,
   `BackfillSearchFoldsCommandTest.php`. Regression canaries in
   `AppOwnedMediaResourceTest` and `AppOwnedMediaPickerTest` stay green.
-- Gate 2026-08-06: pest 1826 passed (20534 assertions), pint clean, full
-  filacheck 36/36 rules passed, `npm run build` green. `composer types:check`
-  623 errors, below the 636 pre-existing baseline and none in the new or
-  changed files.
+- Gate 2026-08-06: pest 1844 passed (20557 assertions), pint clean, filacheck
+  35/35 rules passed, `npm run build` green.
+- `composer types:check` reads 652, up from 623 before the macro was restored.
+  All 28 of the difference are `Call to an undefined method …::foldedSearchable()`
+  — PHPStan cannot see Filament macros, which is why the two pre-existing
+  macros in `AppServiceProvider` already carry 12 errors of the same kind
+  (`multiTranscription` 10, `superAdminOnly` 2). Zeroing them needs a
+  `stubFiles` entry in `phpstan.neon` declaring the method on
+  `Filament\Tables\Columns\Column`; that is a teach, not a suppression, so it
+  does not conflict with the file's "NO BASELINE / `ignoreErrors` stays empty"
+  policy. Left for whoever owns `phpstan.neon` — a concurrent session had it
+  open at the time. `types:check` is deliberately not in the gate.

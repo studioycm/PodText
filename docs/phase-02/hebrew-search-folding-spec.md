@@ -175,15 +175,29 @@ folded columns) and one relation-level `update()` writing
 
 ## 7. Deviations from §4, and why
 
-- **Item 6 says "macro".** Shipped as a shared closure factory,
-  `FoldedTableSearch::query()`, passed to `->searchable(query: …)` — the form
-  §4.6 itself writes. A `Column::macro('foldedSearchable')` was built first and
-  **failed the gate**: renaming the call removes the literal `->searchable(`
-  from source, and FilaCheck scans statically, so it reported six tables as
-  having no searchable columns at all. The factory keeps one shared
-  implementation *and* the literal. Filament injects the column into any
-  closure parameter named `$column` (its `$evaluationIdentifier`), so call
-  sites pass no arguments.
+### Item 6's macro shipped as written — and FilaCheck was wrong, not the macro
+
+`Column::macro('foldedSearchable')` is the shipped admin seam, delegating to
+`FoldedTableSearch::query()` so the closure stays in a named, testable class.
+Filament injects the column into any closure parameter named `$column` (its
+`$evaluationIdentifier`), so call sites pass nothing but an optional `against`.
+
+FilaCheck's `table-without-searchable-columns` reports six of those tables as
+having **no searchable columns at all**. That is a false negative in a static
+heuristic: `TableWithoutSearchableColumnsRule.php:137` decides with
+`preg_match('/->searchable\s*\(/', $snippet)` — a plain regex over the source —
+so any macro name is invisible to it, however faithfully the macro calls
+`->searchable(query: …)` underneath.
+
+**Operator rule (2026-08-06): FilaCheck is not the authority on Filament.**
+Deprecations and real errors get fixed; UX *suggestions* do not get to change a
+good solution. The rule is disabled in `config/filacheck-pro.php` — a partial
+override, since both of the package's config readers default a missing rule to
+enabled — with the reason recorded at the disable site. The signal it provided
+is replaced, macro-aware, by `tests/Feature/AdminTableSearchabilityTest.php`,
+which sweeps `app/Filament` for tables listing text and asserts each keeps a
+`->searchable(` or `->foldedSearchable(` column.
+
 - **Item 8 says "indexes on the shadow columns".** Varchar shadows are
   indexed; longtext shadows are not. MySQL cannot index a LONGTEXT without a
   key prefix length, and expressing one means exactly the per-driver schema

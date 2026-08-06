@@ -7,7 +7,6 @@ use App\Enums\ImportConnectionProvider;
 use App\Enums\ImportConnectionStatus;
 use App\Filament\Clusters\SystemCluster;
 use App\Filament\Support\Concerns\UsesAdminNavigationOrder;
-use App\Filament\Support\FoldedTableSearch;
 use App\Models\ImportConnection;
 use App\Support\Importer\ConnectionTester;
 use App\Support\UiTimezone;
@@ -69,7 +68,7 @@ class ImporterSettings extends Page implements HasActions, HasSchemas, HasTable
             ->columns([
                 TextColumn::make('name')
                     ->label(__('admin.fields.name'))
-                    ->searchable(query: FoldedTableSearch::query())
+                    ->foldedSearchable()
                     ->sortable(),
                 TextColumn::make('provider')
                     ->label(__('admin.importer.fields.provider'))

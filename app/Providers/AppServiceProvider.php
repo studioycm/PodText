@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use App\Enums\UserRole;
+use App\Filament\Support\FoldedTableSearch;
 use App\Http\Middleware\RequireResendWebhookSecret;
 use App\Listeners\ResendWebhookEventSubscriber;
 use App\Livewire\Admin\DisabledVendorCuratorSurface;
@@ -46,6 +47,7 @@ use App\Support\Transcriptions\MultiTranscriptionSurfaces;
 use Awcodes\Curator\Facades\Curator;
 use BezhanSalleh\FilamentShield\Commands\TranslationCommand;
 use BezhanSalleh\FilamentShield\Facades\FilamentShield;
+use Closure;
 use Filament\Actions\Action;
 use Filament\Actions\Imports\Models\FailedImportRow;
 use Filament\Actions\Imports\Models\Import;
@@ -56,6 +58,7 @@ use Filament\Schemas\Components\Component as SchemaComponent;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Tabs\Tab;
 use Filament\Support\Enums\Width;
+use Filament\Tables\Columns\Column;
 use Filament\Tables\Enums\RecordActionsPosition;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
@@ -226,6 +229,33 @@ class AppServiceProvider extends ServiceProvider
         Action::macro('superAdminOnly', function () {
             /** @var Action $this */
             return $this->hidden(fn (): bool => Gate::denies(UserRole::SuperAdmin->value));
+        });
+
+        /*
+         * Hebrew-folded table search, declared once instead of at eighty call
+         * sites. `InteractsWithTableQuery::applySearchConstraint()`
+         * short-circuits the whole vendor emitter the moment `$this->searchQuery`
+         * is set, so routing through `->searchable(query: …)` takes ownership of
+         * the predicate for every column this is applied to.
+         *
+         * `against` names the column the folded term is compared with. It
+         * defaults to the shadow of the column's own name, and is passed
+         * explicitly for columns that are already their own fold — slugs, whose
+         * slugger strips niqqud on the way in.
+         */
+        Column::macro('foldedSearchable', function (
+            bool|Closure $condition = true,
+            ?string $against = null,
+            bool $isIndividual = false,
+            bool $isGlobal = true,
+        ) {
+            /** @var Column $this */
+            return $this->searchable(
+                condition: $condition,
+                query: FoldedTableSearch::query($against),
+                isIndividual: $isIndividual,
+                isGlobal: $isGlobal,
+            );
         });
 
         Media::observe(CuratorMediaObserver::class);

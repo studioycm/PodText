@@ -4,7 +4,6 @@ namespace App\Filament\Resources\HomepageSections\Tables;
 
 use App\Enums\HomepageSectionType;
 use App\Filament\Resources\Support\ResourceTableActions;
-use App\Filament\Support\FoldedTableSearch;
 use App\Support\UiTimezone;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
@@ -23,11 +22,11 @@ class HomepageSectionsTable
             ->columns([
                 TextColumn::make('name')
                     ->label(__('admin.fields.name'))
-                    ->searchable(query: FoldedTableSearch::query())
+                    ->foldedSearchable()
                     ->sortable(),
                 TextColumn::make('slug')
                     ->label(__('admin.fields.slug'))
-                    ->searchable(query: FoldedTableSearch::query(against: 'slug'))
+                    ->foldedSearchable(against: 'slug')
                     ->toggleable(),
                 TextColumn::make('type')
                     ->label(__('admin.fields.homepage_section_type'))
@@ -35,15 +34,15 @@ class HomepageSectionsTable
                     ->sortable(),
                 TextColumn::make('category.name')
                     ->label(__('admin.fields.category'))
-                    ->searchable(query: FoldedTableSearch::query())
+                    ->foldedSearchable()
                     ->toggleable(),
                 TextColumn::make('tag.name')
                     ->label(__('admin.fields.tag'))
-                    ->searchable(query: FoldedTableSearch::query())
+                    ->foldedSearchable()
                     ->toggleable(),
                 TextColumn::make('contentGroup.title')
                     ->label(__('admin.fields.content_group'))
-                    ->searchable(query: FoldedTableSearch::query())
+                    ->foldedSearchable()
                     ->toggleable(),
                 TextColumn::make('limit')
                     ->label(__('admin.fields.limit'))

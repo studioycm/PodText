@@ -14,7 +14,6 @@ use App\Filament\Resources\ContentGroups\ContentGroupResource;
 use App\Filament\Resources\ContentItems\ContentItemResource;
 use App\Filament\Resources\Support\RelationshipOptionForms;
 use App\Filament\Resources\Support\ResourceTableActions;
-use App\Filament\Support\FoldedTableSearch;
 use App\Filament\Tables\EffectiveTranscriptionColumn;
 use App\Filament\Tables\OwnerImageColumn;
 use App\Models\ContentItem;
@@ -66,11 +65,11 @@ class ContentItemsTable
                     ->toggleable(),
                 TextColumn::make('title')
                     ->label(__('admin.fields.title'))
-                    ->searchable(query: FoldedTableSearch::query())
+                    ->foldedSearchable()
                     ->sortable(),
                 TextColumn::make('contentGroup.title')
                     ->label(__('admin.fields.content_group'))
-                    ->searchable(query: FoldedTableSearch::query())
+                    ->foldedSearchable()
                     ->sortable()
                     ->toggleable(),
                 self::publicStateColumn(),
@@ -138,7 +137,7 @@ class ContentItemsTable
                     ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('slug')
                     ->label(__('admin.fields.slug'))
-                    ->searchable(query: FoldedTableSearch::query(against: 'slug'))
+                    ->foldedSearchable(against: 'slug')
                     ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('media_url')
                     ->label(__('admin.fields.media_url'))

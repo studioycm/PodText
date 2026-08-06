@@ -6,7 +6,6 @@ use App\Enums\SettingsBackupSource;
 use App\Filament\Actions\ExportPublicSettingsAction;
 use App\Filament\Pages\ImportPublicSettings;
 use App\Filament\Pages\ManageSettingsImportLocks;
-use App\Filament\Support\FoldedTableSearch;
 use App\Models\SettingsBackupSnapshot;
 use App\Models\SettingsBackupVersion;
 use App\Models\User;
@@ -65,7 +64,7 @@ class SettingsBackupsTable
                 TextColumn::make('label')
                     ->label(__('admin.fields.label'))
                     ->placeholder(__('admin.placeholders.empty'))
-                    ->searchable(query: FoldedTableSearch::query()),
+                    ->foldedSearchable(),
                 TextColumn::make('payload_hash')
                     ->label(__('admin.fields.payload_hash'))
                     ->formatStateUsing(fn (string $state): string => str($state)->substr(0, 12)->toString())

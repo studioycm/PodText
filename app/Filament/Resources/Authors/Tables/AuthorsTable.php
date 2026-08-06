@@ -5,7 +5,6 @@ namespace App\Filament\Resources\Authors\Tables;
 use App\Filament\Exports\AuthorExporter;
 use App\Filament\Imports\AuthorImporter;
 use App\Filament\Resources\Support\ResourceTableActions;
-use App\Filament\Support\FoldedTableSearch;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
@@ -24,11 +23,11 @@ class AuthorsTable
             ->columns([
                 TextColumn::make('name')
                     ->label(__('admin.fields.author_name'))
-                    ->searchable(query: FoldedTableSearch::query())
+                    ->foldedSearchable()
                     ->sortable(),
                 TextColumn::make('slug')
                     ->label(__('admin.fields.slug'))
-                    ->searchable(query: FoldedTableSearch::query(against: 'slug'))
+                    ->foldedSearchable(against: 'slug')
                     ->sortable(),
                 TextColumn::make('reference_key')
                     ->label(__('admin.fields.reference_key'))

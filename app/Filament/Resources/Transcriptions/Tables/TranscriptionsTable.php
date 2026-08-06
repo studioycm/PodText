@@ -7,7 +7,6 @@ use App\Enums\UserRole;
 use App\Filament\Exports\TranscriptionExporter;
 use App\Filament\Imports\TranscriptionImporter;
 use App\Filament\Resources\Support\ResourceTableActions;
-use App\Filament\Support\FoldedTableSearch;
 use App\Models\Transcription;
 use App\Support\Search\FoldedSearch;
 use App\Support\Transcriptions\MultiTranscriptionSurfaces;
@@ -40,7 +39,7 @@ class TranscriptionsTable
             ->columns([
                 TextColumn::make('contentItem.title')
                     ->label(TranscriptionModeLabel::text('admin.fields.content_item'))
-                    ->searchable(query: FoldedTableSearch::query())
+                    ->foldedSearchable()
                     ->sortable(),
                 TextColumn::make('transcriber_names')
                     ->label(__('admin.fields.transcribers'))
@@ -49,7 +48,7 @@ class TranscriptionsTable
                         ->whereHas('authors', fn (Builder $query): Builder => $query->where('name_search', 'like', FoldedSearch::pattern($search)))),
                 TextColumn::make('title')
                     ->label(__('admin.fields.title'))
-                    ->searchable(query: FoldedTableSearch::query())
+                    ->foldedSearchable()
                     ->toggleable(),
                 TextColumn::make('language_code')
                     ->label(__('admin.fields.language_code'))
