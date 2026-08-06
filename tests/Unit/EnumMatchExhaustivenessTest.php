@@ -35,10 +35,17 @@ use PhpParser\ParserFactory;
  * reporting green. These floors are what make that fail instead. Measured at
  * 56 guarded matches: 39 named through `self::`/`static::` from inside the
  * enum, 17 through a `use` import in another file.
+ *
+ * The enum-file floor is a separate claim from the `self::` one, not a
+ * restatement: two enums are declared outside `app/Enums` (`SpotifyEntityMode`,
+ * `PermissionCacheInvalidationOutcome`), so 38 of the 39 self-named matches sit
+ * in 19 files under `app/Enums` and one does not. A directory walk that quietly
+ * stopped descending into the enum files could still clear the `self::` floor.
  */
 $guardedMatchFloor = 56;
 $selfResolvedFloor = 39;
 $importResolvedFloor = 17;
+$enumFileFloor = 19;
 
 /**
  * Matches known to be non-exhaustive, red-listed rather than fixed.
@@ -64,7 +71,7 @@ $knownUnhandled = [
  * Walks `app/`, `database/` and `routes/` once, returning every `match` whose
  * arms literally name cases of an `App\` enum.
  *
- * @return list<array{enum: string, identity: string, description: string, missing: list<string>, hasDefault: bool, resolution: list<string>}>
+ * @return list<array{enum: string, file: string, identity: string, description: string, missing: list<string>, hasDefault: bool, resolution: list<string>}>
  */
 $sweepEnumMatches = function (): array {
     static $sweep = null;
@@ -232,6 +239,7 @@ $sweepEnumMatches = function (): array {
 
             $matches[] = [
                 'enum' => $enum,
+                'file' => $relativePath,
                 'identity' => $relativePath.' :: '.$enum,
                 'description' => $relativePath.':'.$candidate['line'].' — '.$enum.' has no arm for '.implode(', ', $missing),
                 'missing' => $missing,
@@ -294,7 +302,7 @@ test('the red-listed non-exhaustive matches are still exactly the ones on the li
     expect($unhandledMatches())->toEqual($knownUnhandled, 'The red list of known non-exhaustive matches no longer matches the code. Either a listed match was fixed and its entry should go, or one changed which cases it misses.');
 });
 
-test('the sweep still sees every enum match it is supposed to see', function () use ($sweepEnumMatches, $guardedMatchFloor, $selfResolvedFloor, $importResolvedFloor) {
+test('the sweep still sees every enum match it is supposed to see', function () use ($sweepEnumMatches, $guardedMatchFloor, $selfResolvedFloor, $importResolvedFloor, $enumFileFloor) {
     $matches = $sweepEnumMatches();
 
     $resolvedVia = fn (string $how): int => count(array_filter(
@@ -302,7 +310,14 @@ test('the sweep still sees every enum match it is supposed to see', function () 
         fn (array $match): bool => in_array($how, $match['resolution'], true),
     ));
 
-    expect(count($matches))
+    $enumFilesReached = count(array_unique(array_filter(
+        array_column($matches, 'file'),
+        fn (string $file): bool => str_starts_with($file, 'app/Enums/'),
+    )));
+
+    expect($enumFilesReached)
+        ->toBeGreaterThanOrEqual($enumFileFloor, 'The sweep is no longer reading the enum files themselves, where most exhaustive matches live. Check that the directory walk still descends into app/Enums.')
+        ->and(count($matches))
         ->toBeGreaterThanOrEqual($guardedMatchFloor, 'The sweep found fewer enum matches than exist. A shortfall here means the sweep stopped seeing code, not that the code got safer — every assertion in this file is only worth the matches it reaches.')
         ->and($resolvedVia('self'))
         ->toBeGreaterThanOrEqual($selfResolvedFloor, 'Matches naming their cases with self:: or static:: are no longer being resolved. NameResolver leaves those alone, so the collector has to track the enclosing enum declaration itself.')
