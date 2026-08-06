@@ -180,6 +180,92 @@ Also worth carrying forward: pinning `DB_COLLATION` in `.env.example` changes
 
 ---
 
+## 4a. Should the app timezone be Israel? No — and not because Laravel says so
+
+The question is worth re-deriving rather than inheriting, because "store UTC,
+present local" is usually asserted as convention. Here it is a **correctness
+requirement**, and Israel is precisely the case that proves it.
+
+**Israel observes DST, so a local wall clock is not a unique name for an
+instant.** [MEASURED], twice, in both engines:
+
+```
+Fall-back — two instants 3600 seconds apart:
+  PHP,   Asia/Jerusalem:  2026-10-25 01:30:00
+                          2026-10-25 01:30:00     ← identical string
+  MySQL, CONVERT_TZ:      2026-10-25 03:30:00
+                          2026-10-25 03:30:00     ← identical string
+
+Spring-forward — a local time that does not exist:
+  new DateTime('2026-03-27 02:30:00', Asia/Jerusalem)
+    → 2026-03-27 03:30:00 IDT          ← silently moved, no error
+```
+
+If `APP_TIMEZONE=Asia/Jerusalem`, `now()` returns a local wall clock, Carbon
+serialises that wall clock, and **that string is what lands in the database.**
+Two episodes published an hour apart on the fall-back night get **byte-identical
+`published_at` values**. Ordering breaks, "latest transcription" breaks, and
+there is no recovery — the information is destroyed at write time, not at read
+time. An hour a year, silently, forever.
+
+So: **the app timezone stays UTC.** It already is, correctly and unusually
+well — `config/app.php:68` hardcodes `'UTC'` with **no `env()` indirection**, so
+it cannot drift per-environment, and Asia/Jerusalem lives only at the
+presentation layer through `UiTimezone` reading `config/localization.php:19`.
+`.env.example:20-21` even warns that `APP_TIMEZONE` would be a no-op. Nothing
+here should change.
+
+### Then why must the database be UTC?
+
+Not because UTC is magic. **The rule is that the database session clock must
+equal the app clock** — the 180-minute bug is a *disagreement*, not a wrong
+absolute value. Since the app clock must be UTC for the reason above, the
+database follows.
+
+And the disagreement only bites for values the **database generates**.
+App-written literals round-trip losslessly under any session zone, because the
+conversion cancels. That leaves two coherent end states:
+
+| | DB session | existing data | `NOW()` vs app | cost |
+| --- | --- | --- | --- | --- |
+| **A** | `+00:00` | must be shifted | agree | a data migration |
+| **B** *(today)* | inherits `SYSTEM` | untouched | disagree by the offset | never use DB-generated time |
+
+**B is only stable while nobody uses `CURRENT_TIMESTAMP`** — a rule already
+broken once and worked around twice independently (`sqlMoment()`,
+`JerusalemDailySeries`). A third workaround is a matter of time.
+
+### The cheap middle step nobody has taken
+
+There is a third option that costs almost nothing and removes the largest
+hidden risk:
+
+```php
+// config/database.php, mysql block — pin, don't inherit
+'timezone' => env('DB_TIMEZONE', '<whatever production resolves to today>'),
+```
+
+`MySqlConnector.php:110-112` emits `SET time_zone` only when this key exists;
+today it does not, so every connection inherits `@@global.time_zone`, which
+locally is `SYSTEM` → `IDT`. Pinning it to **the offset production already
+uses** changes no stored value and no rendered value — but it makes the
+behaviour **deterministic instead of ambient**. A dump restored onto a
+differently-configured server stops silently shifting the entire catalogue,
+which is the failure mode with no error message attached to it.
+
+⚠️ This requires knowing whether production resolves to a **fixed `+03:00`** or
+a **DST-observing named zone** — pinning a fixed offset when the server has been
+running a named zone would shift every winter row by an hour. That is
+Pre-flight PF-4 in §5, and it must be answered first.
+
+**Recommended staging:** pin the connection timezone (cheap, reversible, kills
+the restore hazard) → then decide whether full UTC alignment earns a window.
+Note this is **entirely separable from the collation question** — they were
+bundled only because both were assumed to need a data copy, and if the
+collation stays put (§3's null option), the clock no longer needs one either.
+
+---
+
 ## 5. What must be measured on production before any window
 
 Nothing in the repo records any of this — there is no deploy script, no
