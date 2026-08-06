@@ -115,6 +115,43 @@ it('shows how many rows the current view matched, at the top and for free', func
     }
 });
 
+it('keeps the transcriber column flat in queries however many rows it renders', function (): void {
+    // This path used to cost one query PER ROW and say nothing: it reached
+    // relations by method call, which preventLazyLoading cannot see, so 25
+    // rows quietly became 51 queries. The column now declares its own eager
+    // loading through Filament's per-visible-column hook, so the cost is flat.
+    $showTranscribers = function (): int {
+        $page = Livewire::test(ListContentItems::class);
+        $state = collect($page->instance()->getDefaultTableColumnState())
+            ->map(function (array $column): array {
+                if ($column['name'] === 'effective_transcribers') {
+                    $column['isToggled'] = true;
+                }
+
+                return $column;
+            })
+            ->all();
+        $page->call('applyTableColumnManager', $state);
+
+        $queries = 0;
+        DB::listen(function () use (&$queries): void {
+            $queries++;
+        });
+
+        $page->call('$refresh')->assertSuccessful();
+
+        return $queries;
+    };
+
+    ContentItem::factory()->count(3)->published()->withTranscription()->create();
+    Livewire::test(ListContentItems::class)->assertSuccessful();
+    $narrow = $showTranscribers();
+
+    ContentItem::factory()->count(12)->published()->withTranscription()->create();
+
+    expect($showTranscribers())->toBe($narrow);
+});
+
 it('loads transcription relations only when a column actually reads one', function (): void {
     ContentItem::factory()->count(4)->published()->withTranscription()->create();
 

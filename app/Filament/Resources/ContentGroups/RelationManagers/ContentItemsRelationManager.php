@@ -10,6 +10,7 @@ use App\Filament\Resources\ContentItems\ContentItemResource;
 use App\Filament\Resources\ContentItems\Tables\ContentItemsTable;
 use App\Filament\Resources\Support\ResourceTableActions;
 use App\Filament\Support\Concerns\UndoesPublicationToggle;
+use App\Filament\Tables\EffectiveTranscriptionColumn;
 use App\Filament\Tables\OwnerImageColumn;
 use App\Models\ContentItem;
 use App\Models\User;
@@ -18,6 +19,7 @@ use App\Support\Media\MediaRecordScope;
 use App\Support\Media\OwnerImageChangedException;
 use App\Support\Media\OwnerImageChoicePresentation;
 use App\Support\Media\OwnerImagePresenter;
+use App\Support\Transcriptions\EffectiveTranscriptionResolver;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\BulkActionGroup;
@@ -31,7 +33,6 @@ use Filament\Schemas\Schema;
 use Filament\Support\Enums\Width;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
-use Filament\Tables\Contracts\HasTable;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Contracts\Encryption\DecryptException;
@@ -75,7 +76,7 @@ class ContentItemsRelationManager extends RelationManager
         return ResourceTableActions::iconOnly($table)
             ->heading(__('admin.relations.episodes'))
             ->recordTitleAttribute('title')
-            ->modifyQueryUsing(fn (Builder $query, HasTable $livewire): Builder => ContentItemsTable::primeEpisodeQuery($query, $livewire)
+            ->modifyQueryUsing(fn (Builder $query): Builder => ContentItemsTable::primeEpisodeQuery($query)
                 ->with(['categories', 'tags'])
                 ->latest('published_at')
                 ->latest('id'))
@@ -92,13 +93,16 @@ class ContentItemsRelationManager extends RelationManager
                     // R1: the public-state badge earns the default slot; the
                     // type label stays one toggle away, as on the main table.
                     ->toggleable(isToggledHiddenByDefault: true),
-                TextColumn::make('effective_transcribers')
+                EffectiveTranscriptionColumn::make('effective_transcribers')
                     ->label(__('admin.fields.transcribers'))
-                    ->state(fn (ContentItem $record): string => implode(', ', $record->effectiveTranscription()?->transcriberNames() ?? []))
+                    ->state(fn (ContentItem $record): string => implode(
+                        ', ',
+                        app(EffectiveTranscriptionResolver::class)->forLoaded($record)?->transcriberNames() ?? [],
+                    ))
                     ->badge()
                     ->separator(', '),
                 ContentItemsTable::publicStateColumn(),
-                TextColumn::make('effective_transcription_context')
+                EffectiveTranscriptionColumn::make('effective_transcription_context')
                     ->label(__('admin.fields.effective_transcription'))
                     ->state(fn (ContentItem $record): ?string => EditEffectiveTranscriptionAction::contextStateFor($record))
                     ->placeholder(__('admin.labels.none'))

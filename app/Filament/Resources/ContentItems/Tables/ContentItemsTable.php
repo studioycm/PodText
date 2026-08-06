@@ -13,9 +13,11 @@ use App\Filament\Resources\ContentGroups\ContentGroupResource;
 use App\Filament\Resources\ContentItems\ContentItemResource;
 use App\Filament\Resources\Support\RelationshipOptionForms;
 use App\Filament\Resources\Support\ResourceTableActions;
+use App\Filament\Tables\EffectiveTranscriptionColumn;
 use App\Filament\Tables\OwnerImageColumn;
 use App\Models\ContentItem;
 use App\Support\PublicContent\PublicTranscriptionSelector;
+use App\Support\Transcriptions\EffectiveTranscriptionResolver;
 use App\Support\Transcriptions\TranscriptionModeLabel;
 use App\Support\UiFormats;
 use App\Support\UiTimezone;
@@ -38,7 +40,6 @@ use Filament\Notifications\Notification;
 use Filament\Support\Enums\Size;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
-use Filament\Tables\Contracts\HasTable;
 use Filament\Tables\Enums\FiltersLayout;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\Indicator;
@@ -56,7 +57,7 @@ class ContentItemsTable
     public static function configure(Table $table): Table
     {
         return ResourceTableActions::iconOnly($table)
-            ->modifyQueryUsing(fn (Builder $query, HasTable $livewire): Builder => self::primeEpisodeQuery($query, $livewire))
+            ->modifyQueryUsing(fn (Builder $query): Builder => self::primeEpisodeQuery($query))
             ->columns([
                 OwnerImageColumn::contentItem()
                     ->toggleable(),
@@ -70,7 +71,7 @@ class ContentItemsTable
                     ->sortable()
                     ->toggleable(),
                 self::publicStateColumn(),
-                TextColumn::make('effective_transcription_context')
+                EffectiveTranscriptionColumn::make('effective_transcription_context')
                     ->label(__('admin.fields.effective_transcription'))
                     ->state(fn (ContentItem $record): ?string => EditEffectiveTranscriptionAction::contextStateFor($record))
                     ->placeholder(__('admin.labels.none'))
@@ -79,7 +80,7 @@ class ContentItemsTable
                     // Context, not a daily answer: «מצב ציבורי» already says
                     // when the transcript is what blocks the episode.
                     ->toggleable(isToggledHiddenByDefault: true),
-                TextColumn::make('effective_transcribers')
+                EffectiveTranscriptionColumn::make('effective_transcribers')
                     ->label(__('admin.fields.transcribers'))
                     ->state(fn (ContentItem $record): string => self::effectiveTranscriberNames($record))
                     ->badge()
@@ -256,34 +257,6 @@ class ContentItemsTable
         ];
     }
 
-    /**
-     * The columns that read a whole transcription model AND that Filament
-     * cannot see into: `state()` closures on undotted names. Filament loads
-     * relations for visible columns whose name contains a dot, so a dotted
-     * column belongs nowhere near this list — `featuredTranscription.title`
-     * and `latestPublishedTranscription.published_at` each pull exactly the
-     * one relation they read, on their own, only when shown.
-     *
-     * Listing a dotted column here would be worse than redundant: it would
-     * fire all four relations plus both author sets for a column that needs
-     * one relation and no authors.
-     *
-     * The other half of this contract lives in
-     * EditEffectiveTranscriptionAction::contextTranscriptionFor(), which
-     * reads those relations without guarding — a column that calls it and
-     * is missing from this list will raise a lazy-loading violation rather
-     * than quietly render a blank badge.
-     */
-    private const TRANSCRIPTION_DEPENDENT_COLUMNS = [
-        'effective_transcribers',
-        'effective_transcription_context',
-    ];
-
-    /**
-     * `$livewire` is injected by Filament when this runs as a table query
-     * scope, and is null for the direct calls in tests and tooling — where
-     * loading everything is the safe answer.
-     */
     public static function primeEpisodeQuery(Builder $query, ?HasTable $livewire = null): Builder
     {
         $query
@@ -292,19 +265,6 @@ class ContentItemsTable
                 'primaryImageMediaAttachment.media',
             ])
             ->withCount('transcriptions');
-
-        // Four relations, six queries, and 54 hydrated transcriptions on a
-        // 25-row page — all of it for columns that are off by default. The
-        // public-state verdict does not need them: it reads the withExists
-        // flags below, so it keeps working when nothing is loaded.
-        if (self::needsTranscriptionRelations($livewire)) {
-            $query->with([
-                'featuredTranscription.authors',
-                'featuredTranscription.author',
-                'latestPublishedTranscription.authors',
-                'latestPublishedTranscription.author',
-            ]);
-        }
 
         return $query
             ->withExists([
@@ -316,21 +276,6 @@ class ContentItemsTable
                 'transcriptions as has_transcription_by_air_time' => fn (Builder $transcriptions): Builder => $transcriptions
                     ->releasedBy('content_items.published_at'),
             ]);
-    }
-
-    private static function needsTranscriptionRelations(?HasTable $livewire): bool
-    {
-        if (! $livewire instanceof HasTable) {
-            return true;
-        }
-
-        foreach (self::TRANSCRIPTION_DEPENDENT_COLUMNS as $column) {
-            if ($livewire->getTable()->getColumn($column) !== null && ! $livewire->isTableColumnToggledHidden($column)) {
-                return true;
-            }
-        }
-
-        return false;
     }
 
     public static function publicStateColumn(): TextColumn
@@ -796,8 +741,18 @@ class ContentItemsTable
             });
     }
 
+    /**
+     * Strict on purpose. This runs inside a table cell, where the column has
+     * declared its own eager loading — so an unloaded relation here is a
+     * broken contract, not an episode without transcribers. The lazy entry
+     * point would answer correctly at one query PER ROW, which is how this
+     * path silently cost 51 queries on 25 rows: it reached relations by
+     * method call, which preventLazyLoading cannot see.
+     */
     private static function effectiveTranscriberNames(ContentItem $record): string
     {
-        return implode(', ', $record->effectiveTranscription()?->transcriberNames() ?? []);
+        $transcription = app(EffectiveTranscriptionResolver::class)->forLoaded($record);
+
+        return implode(', ', $transcription?->transcriberNames() ?? []);
     }
 }
