@@ -9,6 +9,30 @@ runs on MySQL, and where they disagree SQLite is almost always the permissive
 one — so divergence shows up as a **green suite**, never as a failure. A
 passing gate currently is not evidence that a query runs.
 
+**Two things here were not in the original design**, and both moved a barrier
+rather than adding a feature — recorded so a later reader knows they are
+considered decisions, not inherited assumptions:
+
+1. **The disposable-schema check was demoted to a first-use check** (§4). It was
+   originally framed as a barrier. It cannot be one: after the first run the
+   schema holds exactly the app's migrations and is indistinguishable from a
+   real copy of the app database. It can answer *"is this a stranger's
+   database?"* and never *"is this a second copy of mine?"* — so it is written
+   as a first-use gate with a local fingerprint, and the **grant** carries the
+   barrier role.
+2. **Charset and collation are pinned on the connection rather than inherited**
+   (§6). Herd ships MySQL 9.4.0, whose server default `utf8mb4_0900_ai_ci` is
+   accent-insensitive — the property that folds Hebrew niqqud. A lane
+   inheriting the server default would test comparison behaviour production may
+   not have, which is a **fresh instance of `driver-lenient-fallback`, not a
+   cure for it**.
+
+> Point 2 is now the subject of a separate investigation, because it turns out
+> to be the *application's* question and not just the test lane's: see
+> `docs/phase-02/hebrew-collation-and-clock-plan.md` once it lands. If that work
+> changes the app's target collation, **this spec's §3 must be updated to
+> match** — the lane is only honest while it mirrors production.
+
 ---
 
 ## 1. What is being protected
