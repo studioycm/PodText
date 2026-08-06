@@ -14,24 +14,24 @@ meant to bind.
 | Source | What it gave | Honesty note |
 | --- | --- | --- |
 | `studioycm/FilamentExamples` → `v4/full-projects/construction` | **20 enums, ~584 files, every call site.** The primary source. | Read in full from a sparse clone. |
-| FilamentDaily — *PHP Enums in Filament: Practical Example* (`8DJpB0LMv8I`, 3:43, Jul 2026) | Its description names its source project: the construction system above. | **Transcript unobtainable.** |
-| Laravel — *Supercharge Your Laravel App with Enums* (`eeQVOXgQg88`, 19:54, Sep 2025) | Chapter list: Enum Basics → Using Enums → Enum Casting → Enum Route Binding → Enum Validation. | **Transcript unobtainable.** Topics grounded in Laravel 13 docs instead. |
-| Laravel Daily — *Reuse Enums Across Your Laravel/Filament App* (`ZzobbjfEJE8`, 8:22, Mar 2026) | Its own summary: *centralize colors, icons and labels in one enum file; reuse across models, controllers and Filament components.* Mentions FilaCheck. | **Transcript unobtainable.** No chapters. |
+| FilamentDaily — *PHP Enums in Filament: Practical Example* (`8DJpB0LMv8I`, 3:43, Jul 2026) | A walkthrough of the construction project's `InvoiceStatus`: `allowedTransitions`/`canTransitionTo` driving action visibility, plus `acceptsPayments` and `isFinancesLocked`. | **Transcript supplied by the operator.** Independently confirms §4's reading of the source. |
+| Laravel Daily — *Reuse Enums Across Your Laravel/Filament App* (`ZzobbjfEJE8`, 8:22, Mar 2026) | An `OrderStatus` carrying all four contracts plus `isFinal()`, reused across cast, table, filter, record actions, Blade, query scope, widget, **migration default** and **factory state**. Ends on FilaCheck's own enum rule. | **Transcript supplied by the operator.** The richest of the three; §4a is drawn from it. |
+| Laravel — *Supercharge Your Laravel App with Enums* (`eeQVOXgQg88`, 19:54, Sep 2025) | Chapter list: Enum Basics → Using Enums → Enum Casting → Enum Route Binding → Enum Validation. | Transcript not obtained; all five topics grounded in the Laravel 13 docs instead. |
 | Laravel 13 docs via Boost `search-docs` | Casting, `AsEnumCollection`, implicit enum route binding, `Rule::enum` with `only`/`except`/`when`. | Version-correct for this app. |
 | Filament 5 docs via Boost `search-docs` (`docs/09-advanced/03-enums.md`) | The four contracts and every surface that auto-applies them. | Version-correct for this app. |
 
-**On the video transcripts.** All three were attempted in two browsers, signed
-in with Premium, through four routes: the "Show transcript" UI panel, the
-InnerTube `get_transcript` API, and the `timedtext` endpoint in `json3`, `srv3`
-and default formats with credentials. Every route returned the same thing — the
-panel expands with zero segments, the API returns zero segments, the endpoint
-returns **HTTP 200 with a zero-byte body**. The caption data is gated behind a
-player-bound token. This is a server-side block, not a technique that was
-missed. **No transcript text was obtained, and none is quoted or paraphrased
-here.** What the videos contributed is their titles, chapter lists and
-descriptions — from which their topics are known exactly — plus, in the
-FilamentDaily case, the source project, which turned out to be worth more than
-the transcript would have been.
+**On the video transcripts.** Automated extraction failed on all three, in two
+browsers, signed in with Premium, through four routes — the "Show transcript"
+UI panel, the InnerTube `get_transcript` API, and the `timedtext` endpoint in
+`json3`, `srv3` and default formats with credentials. Every route returned the
+same thing: the panel expands with zero segments, and the endpoint returns
+**HTTP 200 with a zero-byte body**. The caption data is gated behind a
+player-bound token; it is a server-side block, not a technique that was missed.
+**Two of the three transcripts were then supplied by the operator**, and the
+claims drawn from them are marked as such below. Everything a video asserts
+about framework behaviour has been re-verified against installed vendor source
+before being written down here — see §4a, where one such claim needed its scope
+corrected.
 
 ---
 
@@ -219,6 +219,61 @@ Worth weighing against our `UserRole::rank()`/`isAtLeast()`.
 
 ---
 
+## 4a. Every surface one enum can reach
+
+From the Laravel Daily walkthrough, which takes a single `OrderStatus` and
+reuses it everywhere it will go. Each row below was re-verified against
+installed vendor source or the version-correct docs before being listed — the
+video is the prompt, not the authority.
+
+| Surface | How | Verified |
+| --- | --- | --- |
+| Eloquent cast | `'status' => OrderStatus::class` in `casts()` | Laravel 13 docs |
+| Table column | `TextColumn::make('status')->badge()` — icon, colour and label all inferred | Filament 5 docs |
+| Filter | `SelectFilter`/`Radio`→`->options(OrderStatus::class)`; with `HasDescription`, **the radio options carry their descriptions automatically** | Filament 5 docs |
+| Record action | `->visible(fn ($record) => ! $record->status->isFinal())` | §4 pattern |
+| Blade, outside Filament | `$order->status->getLabel()` called directly on a public page | see §4 |
+| Query scope | `#[Scope] function withStatus(Builder $q, OrderStatus $status)` — **the enum as a typed scope parameter**, so call sites can't typo | plain PHP typing |
+| Widget stats | the same scope, reused per stat | — |
+| **Migration default** | `$table->string('status')->default(OrderStatus::Pending)` | **`Grammar::getDefaultValue():513-515`** — it branches on `UnitEnum` and passes through `enum_value()`, so *pure* enums work too (by case name) |
+| **Factory state** | `->pending()` states setting enum cases rather than strings | — |
+
+The two in bold are the ones most often missed, and the migration one is worth
+a moment: the default lives in the schema, so a hand-typed string there drifts
+from the enum with **no call site to grep**. Passing the case removes the only
+copy of that literal.
+
+The framing the video puts on all of this is single-responsibility — the enum
+as the one place the options' logic lives, changed once and picked up
+everywhere. That is `one-home` from our ledger, arrived at independently, and
+it is the reason to prefer a method on the enum over a closure at the surface.
+
+### What FilaCheck actually checks — and its scope
+
+FilaCheck Pro ships **`EnumMissingFilamentInterfacesRule`**, which flags an
+enum missing `HasLabel`/`HasColor`/`HasIcon`/`HasDescription`. We have it
+installed. But read its scope before trusting a green run:
+
+```php
+public function extraScanPaths(): array { return ['app/Models']; }   // :68
+// …then: if (! $node instanceof Class_) return [];
+//        if (! $this->isEloquentModel($node)) return [];
+//        $enumClasses = $this->extractEnumClasses(…);   // from casts() only
+```
+
+**It only inspects enums reached through an Eloquent model's `casts()`.** An
+enum used solely in a Filament form, table or action — never cast on a model —
+is invisible to it. Measured here: 13 of our 45 enums are model-cast, and all
+13 implement `HasLabel`, which is why our runs are green. The other 32,
+including the **11 that implement no contract at all**, are simply out of the
+rule's reach.
+
+So: *FilaCheck green ≠ every enum a human sees has a label.* Same family as
+`decorative-cap` and `line-guard` in the ledger — a guard whose reputation is
+wider than its scope. (Its sibling rules `StringIconInsteadOfEnumRule` and
+`StringFontWeightInsteadOfEnumRule` push string icons toward the `Heroicon`
+enum, which is the same idea aimed at Filament's own enums.)
+
 ## 5. The rule that matters most here
 
 > **An enum answers questions about a case, in PHP. SQL only ever sees the
@@ -393,6 +448,10 @@ thought to look at.
   fatal error at every decision site, which is the entire safety argument for
   enums over strings.
 - Use `->options(Status::class)`, not a hand-built array.
+- Pass the case, not the string, to a migration `->default()` and to factory
+  states — those are the two copies of a literal with no call site to grep.
+- Type query-scope parameters as the enum, so a typo is a fatal rather than an
+  empty result set.
 
 **Do not**
 
