@@ -2,6 +2,7 @@
 
 namespace App\Support\Slugs;
 
+use App\Support\Search\HebrewSearchFold;
 use Closure;
 use Illuminate\Support\Str;
 
@@ -11,8 +12,7 @@ class HebrewSlugger
 
     public static function slug(?string $source, ?string $fallback = null, int $maxLength = self::MaxLength): string
     {
-        $slug = mb_strtolower((string) $source, 'UTF-8');
-        $slug = (string) preg_replace('/\p{Mn}+/u', '', $slug);
+        $slug = HebrewSearchFold::fold($source);
         $slug = (string) preg_replace('/[\x{2010}-\x{2015}\x{2212}]+/u', '-', $slug);
         $slug = (string) preg_replace('/[\s_]+/u', '-', $slug);
         $slug = (string) preg_replace('/[^a-z0-9\x{05D0}-\x{05EA}-]+/u', '', $slug);

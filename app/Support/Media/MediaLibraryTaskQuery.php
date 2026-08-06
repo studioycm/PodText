@@ -7,6 +7,7 @@ use App\Enums\MediaLibraryTask;
 use App\Models\ContentGroup;
 use App\Models\ContentItem;
 use App\Models\Media;
+use App\Support\Search\FoldedSearch;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
@@ -80,16 +81,17 @@ class MediaLibraryTaskQuery
     public function applySearchTerm(Builder $query, string $searchTerm, string $scope = 'all'): Builder
     {
         $scope = in_array($scope, ['all', 'title', 'owner', 'filename'], true) ? $scope : 'all';
-        $title = $query->getModel()->qualifyColumn('title');
-        $name = $query->getModel()->qualifyColumn('name');
+        $title = $query->getModel()->qualifyColumn(FoldedSearch::column('title'));
+        $name = $query->getModel()->qualifyColumn(FoldedSearch::column('name'));
+        $like = FoldedSearch::pattern($searchTerm);
 
-        return $query->where(function (Builder $query) use ($title, $name, $searchTerm, $scope): void {
+        return $query->where(function (Builder $query) use ($title, $name, $like, $searchTerm, $scope): void {
             if (in_array($scope, ['all', 'title'], true)) {
-                $query->orWhere($title, 'like', "%{$searchTerm}%");
+                $query->orWhere($title, 'like', $like);
             }
 
             if (in_array($scope, ['all', 'filename'], true)) {
-                $query->orWhere($name, 'like', "%{$searchTerm}%");
+                $query->orWhere($name, 'like', $like);
             }
 
             if (in_array($scope, ['all', 'owner'], true)) {
@@ -107,21 +109,22 @@ class MediaLibraryTaskQuery
     public function applyOwnerTitleSearch(Builder $query, string $searchTerm): Builder
     {
         $mediaKey = $query->getModel()->getQualifiedKeyName();
+        $like = FoldedSearch::pattern($searchTerm);
 
         return $query
-            ->orWhereExists(function ($sub) use ($mediaKey, $searchTerm): void {
+            ->orWhereExists(function ($sub) use ($mediaKey, $like): void {
                 $sub->from('media_attachments')
                     ->join('content_groups', 'content_groups.id', '=', 'media_attachments.attachable_id')
                     ->whereColumn('media_attachments.media_id', $mediaKey)
                     ->whereIn('media_attachments.attachable_type', ['content_group', ContentGroup::class])
-                    ->where('content_groups.title', 'like', "%{$searchTerm}%");
+                    ->where('content_groups.title_search', 'like', $like);
             })
-            ->orWhereExists(function ($sub) use ($mediaKey, $searchTerm): void {
+            ->orWhereExists(function ($sub) use ($mediaKey, $like): void {
                 $sub->from('media_attachments')
                     ->join('content_items', 'content_items.id', '=', 'media_attachments.attachable_id')
                     ->whereColumn('media_attachments.media_id', $mediaKey)
                     ->whereIn('media_attachments.attachable_type', ['content_item', ContentItem::class])
-                    ->where('content_items.title', 'like', "%{$searchTerm}%");
+                    ->where('content_items.title_search', 'like', $like);
             });
     }
 

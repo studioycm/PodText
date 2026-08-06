@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\HasFoldedSearchColumns;
+use App\Models\Contracts\FoldsSearchColumns;
 use App\Support\Slugs\HebrewSlugger;
 use Database\Factories\CategoryFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -21,10 +23,12 @@ use Illuminate\Support\Collection;
     'is_visible',
     'sort_order',
 ])]
-class Category extends Model
+class Category extends Model implements FoldsSearchColumns
 {
     /** @use HasFactory<CategoryFactory> */
     use HasFactory;
+
+    use HasFoldedSearchColumns;
 
     protected $attributes = [
         'is_visible' => true,
@@ -97,5 +101,15 @@ class Category extends Model
             $source,
             fn (string $slug): bool => static::query()->where('slug', $slug)->exists(),
         );
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public static function foldedSearchColumns(): array
+    {
+        return [
+            'name' => 'name_search',
+        ];
     }
 }

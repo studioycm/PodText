@@ -7,7 +7,9 @@ use App\Enums\UserRole;
 use App\Filament\Exports\TranscriptionExporter;
 use App\Filament\Imports\TranscriptionImporter;
 use App\Filament\Resources\Support\ResourceTableActions;
+use App\Filament\Support\FoldedTableSearch;
 use App\Models\Transcription;
+use App\Support\Search\FoldedSearch;
 use App\Support\Transcriptions\MultiTranscriptionSurfaces;
 use App\Support\Transcriptions\SingleTranscriptionLens;
 use App\Support\Transcriptions\TranscriptionModeLabel;
@@ -38,16 +40,16 @@ class TranscriptionsTable
             ->columns([
                 TextColumn::make('contentItem.title')
                     ->label(TranscriptionModeLabel::text('admin.fields.content_item'))
-                    ->searchable()
+                    ->searchable(query: FoldedTableSearch::query())
                     ->sortable(),
                 TextColumn::make('transcriber_names')
                     ->label(__('admin.fields.transcribers'))
                     ->state(fn (Transcription $record): string => implode(', ', $record->transcriberNames()))
                     ->searchable(query: fn (Builder $query, string $search): Builder => $query
-                        ->whereHas('authors', fn (Builder $query): Builder => $query->where('name', 'like', "%{$search}%"))),
+                        ->whereHas('authors', fn (Builder $query): Builder => $query->where('name_search', 'like', FoldedSearch::pattern($search)))),
                 TextColumn::make('title')
                     ->label(__('admin.fields.title'))
-                    ->searchable()
+                    ->searchable(query: FoldedTableSearch::query())
                     ->toggleable(),
                 TextColumn::make('language_code')
                     ->label(__('admin.fields.language_code'))

@@ -11,6 +11,7 @@ use App\Filament\Resources\ContentItems\Tables\ContentItemsTable;
 use App\Filament\Resources\Support\ResourceTableActions;
 use App\Filament\Support\Concerns\PrimesEffectiveTranscriptions;
 use App\Filament\Support\Concerns\UndoesPublicationToggle;
+use App\Filament\Support\FoldedTableSearch;
 use App\Filament\Tables\EffectiveTranscriptionColumn;
 use App\Filament\Tables\OwnerImageColumn;
 use App\Models\ContentItem;
@@ -86,7 +87,7 @@ class ContentItemsRelationManager extends RelationManager
                 OwnerImageColumn::contentItem(),
                 TextColumn::make('title')
                     ->label(__('admin.fields.title'))
-                    ->searchable()
+                    ->searchable(query: FoldedTableSearch::query())
                     ->sortable(),
                 TextColumn::make('effective_type_label')
                     ->label(__('admin.fields.effective_type_label'))

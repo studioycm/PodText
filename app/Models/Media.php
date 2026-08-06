@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\HasFoldedSearchColumns;
+use App\Models\Contracts\FoldsSearchColumns;
 use App\Support\Media\MediaMutationLease;
 use Database\Factories\MediaFactory;
 use Illuminate\Database\Eloquent\Casts\Attribute;
@@ -13,8 +15,10 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use LogicException;
 
-class Media extends \Awcodes\Curator\Models\Media
+class Media extends \Awcodes\Curator\Models\Media implements FoldsSearchColumns
 {
+    use HasFoldedSearchColumns;
+
     private bool $testFixtureCreation = false;
 
     /**
@@ -141,5 +145,16 @@ class Media extends \Awcodes\Curator\Models\Media
     protected static function newFactory(): Factory
     {
         return MediaFactory::new();
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public static function foldedSearchColumns(): array
+    {
+        return [
+            'title' => 'title_search',
+            'name' => 'name_search',
+        ];
     }
 }

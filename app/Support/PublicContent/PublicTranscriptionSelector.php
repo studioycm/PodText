@@ -110,7 +110,7 @@ class PublicTranscriptionSelector
                 ->join('transcriptions', 'author_transcription.transcription_id', '=', 'transcriptions.id')
                 ->whereColumn('transcriptions.content_item_id', 'content_items.id')
                 ->where('author_transcription.author_id', $authorId)
-                ->where('transcriptions.title', 'like', $like);
+                ->where('transcriptions.title_search', 'like', $like);
 
             $this->constrainJoinedPublicTranscriptions($query, $mode);
         });

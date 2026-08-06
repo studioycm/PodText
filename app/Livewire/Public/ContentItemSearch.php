@@ -20,6 +20,7 @@ use App\Support\PublicFront\Cards\PublicFrontCardTemplateResolver;
 use App\Support\PublicFront\PublicFrontRenderContext;
 use App\Support\PublicFront\Sections\PublicDisplaySectionResolver;
 use App\Support\PublicFront\Sections\PublicDisplaySectionResult;
+use App\Support\Search\FoldedSearch;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Pagination\LengthAwarePaginator;
@@ -465,23 +466,22 @@ class ContentItemSearch extends Component
             return;
         }
 
-        $like = "%{$search}%";
+        $like = FoldedSearch::pattern($search);
 
         $query->where(function (Builder $query) use ($like): void {
             $query
-                ->where('title', 'like', $like)
-                ->orWhereHas('contentGroup', fn (Builder $query): Builder => $query->where('title', 'like', $like))
-                ->orWhereHas('categories', fn (Builder $query): Builder => $query->visible()->where('name', 'like', $like))
-                ->orWhereHas('contentGroup.categories', fn (Builder $query): Builder => $query->visible()->where('name', 'like', $like))
+                ->where('title_search', 'like', $like)
+                ->orWhereHas('contentGroup', fn (Builder $query): Builder => $query->where('title_search', 'like', $like))
+                ->orWhereHas('categories', fn (Builder $query): Builder => $query->visible()->where('name_search', 'like', $like))
+                ->orWhereHas('contentGroup.categories', fn (Builder $query): Builder => $query->visible()->where('name_search', 'like', $like))
                 ->orWhereHas('tags', function (Builder $query) use ($like): void {
+                    // The tag shadow flattens every locale into one column, so
+                    // the raw-blob-plus-`name->{locale}` pair collapses to one
+                    // arm without narrowing what it matches.
                     $query
                         ->where('type', 'content')
                         ->where('is_enabled', true)
-                        ->where(function (Builder $query) use ($like): void {
-                            $query
-                                ->where('name', 'like', $like)
-                                ->orWhere('name->'.app()->getLocale(), 'like', $like);
-                        });
+                        ->where('name_search', 'like', $like);
                 });
         });
     }
@@ -828,9 +828,9 @@ class ContentItemSearch extends Component
      */
     public function latestFilteredItems(PublicDisplaySectionResult $section): Collection
     {
-        $search = Str::of($this->latestSearchValue($section->key))->lower();
+        $search = $this->latestSearchValue($section->key);
 
-        if ($search->isEmpty()) {
+        if ($search === '') {
             return $section->items
                 ->take($this->latestTotalLimit($section))
                 ->values();
@@ -848,7 +848,10 @@ class ContentItemSearch extends Component
                     ->filter()
                     ->implode(' ');
 
-                return Str::of($haystack)->lower()->contains((string) $search);
+                // Not SQL, so no shadow column to lean on — the same normalizer
+                // is applied to both sides here instead. Folding lowercases, so
+                // this keeps the case-insensitivity the old ->lower() gave.
+                return FoldedSearch::contains($haystack, $search);
             })
             ->take($this->latestTotalLimit($section))
             ->values();

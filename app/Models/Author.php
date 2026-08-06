@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\HasFoldedSearchColumns;
+use App\Models\Contracts\FoldsSearchColumns;
 use App\Support\Slugs\HebrewSlugger;
 use Database\Factories\AuthorFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -12,10 +14,12 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Str;
 
 #[Fillable(['reference_key', 'name', 'slug', 'bio_markdown'])]
-class Author extends Model
+class Author extends Model implements FoldsSearchColumns
 {
     /** @use HasFactory<AuthorFactory> */
     use HasFactory;
+
+    use HasFoldedSearchColumns;
 
     public function transcriptions(): HasMany
     {
@@ -52,5 +56,15 @@ class Author extends Model
             $source,
             fn (string $slug): bool => static::query()->where('slug', $slug)->exists(),
         );
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public static function foldedSearchColumns(): array
+    {
+        return [
+            'name' => 'name_search',
+        ];
     }
 }

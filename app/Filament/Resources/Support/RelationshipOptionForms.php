@@ -6,6 +6,7 @@ use App\Filament\Forms\Components\PublicationStatusField;
 use App\Filament\Forms\Components\SlugInput;
 use App\Models\Author;
 use App\Models\Transcription;
+use App\Support\Search\FoldedSearch;
 use App\Support\Transcriptions\TranscriptionModeLabel;
 use App\Support\UiTimezone;
 use Filament\Actions\Action;
@@ -95,7 +96,7 @@ class RelationshipOptionForms
                 ->searchable()
                 ->optionsLimit(50)
                 ->getSearchResultsUsing(fn (?string $search): array => Author::query()
-                    ->when(filled($search), fn ($query) => $query->where('name', 'like', '%'.trim((string) $search).'%'))
+                    ->when(filled($search), fn ($query) => $query->where('name_search', 'like', FoldedSearch::pattern((string) $search)))
                     ->orderBy('name')
                     ->limit(50)
                     ->pluck('name', 'id')

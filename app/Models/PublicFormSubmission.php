@@ -4,6 +4,8 @@ namespace App\Models;
 
 use App\Enums\NavigationBadge;
 use App\Enums\PublicFormSubmissionStatus;
+use App\Models\Concerns\HasFoldedSearchColumns;
+use App\Models\Contracts\FoldsSearchColumns;
 use App\Support\NavigationBadgeCount;
 use Database\Factories\PublicFormSubmissionFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -24,10 +26,12 @@ use Illuminate\Database\Eloquent\Model;
     'verification_channel',
     'verification_verified_at',
 ])]
-class PublicFormSubmission extends Model
+class PublicFormSubmission extends Model implements FoldsSearchColumns
 {
     /** @use HasFactory<PublicFormSubmissionFactory> */
     use HasFactory;
+
+    use HasFoldedSearchColumns;
 
     protected $attributes = [
         'status' => 'new',
@@ -86,6 +90,16 @@ class PublicFormSubmission extends Model
             'status' => PublicFormSubmissionStatus::class,
             'submitted_at' => 'datetime',
             'verification_verified_at' => 'datetime',
+        ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public static function foldedSearchColumns(): array
+    {
+        return [
+            'form_name_snapshot' => 'form_name_snapshot_search',
         ];
     }
 }

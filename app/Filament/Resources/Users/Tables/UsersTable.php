@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Users\Tables;
 
 use App\Enums\UserRole;
 use App\Filament\Resources\Support\ResourceTableActions;
+use App\Filament\Support\FoldedTableSearch;
 use App\Support\UiTimezone;
 use Filament\Actions\EditAction;
 use Filament\Tables\Columns\TextColumn;
@@ -18,7 +19,7 @@ class UsersTable
             ->columns([
                 TextColumn::make('name')
                     ->label(__('admin.fields.name'))
-                    ->searchable()
+                    ->searchable(query: FoldedTableSearch::query())
                     ->sortable(),
                 TextColumn::make('email')
                     ->label(__('admin.fields.email'))

@@ -6,6 +6,7 @@ use App\Enums\MediaAttachmentRole;
 use App\Enums\PublicationStatus;
 use App\Models\Concerns\HasFoldedSearchColumns;
 use App\Models\Concerns\InteractsWithPublicationDate;
+use App\Models\Contracts\FoldsSearchColumns;
 use App\Observers\ContentItemObserver;
 use App\Support\Media\ContentItemMediaRules;
 use App\Support\Slugs\HebrewSlugger;
@@ -58,7 +59,7 @@ use Spatie\Tags\HasTags;
     'original_published_at',
 ])]
 #[ObservedBy([ContentItemObserver::class])]
-class ContentItem extends Model
+class ContentItem extends Model implements FoldsSearchColumns
 {
     /** @use HasFactory<ContentItemFactory> */
     use HasFactory;

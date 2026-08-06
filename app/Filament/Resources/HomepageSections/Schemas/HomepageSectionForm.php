@@ -10,6 +10,7 @@ use App\Support\PublicFront\Cards\PublicFrontCardTemplateResolver;
 use App\Support\PublicFront\PublicFormTargetStatus;
 use App\Support\PublicFront\PublicFrontConfigRegistry;
 use App\Support\PublicFront\Sections\PublicDisplaySectionRegistry;
+use App\Support\Search\FoldedSearch;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -357,7 +358,7 @@ class HomepageSectionForm
     private static function contentItemOptions(?string $search = null): array
     {
         return ContentItem::query()
-            ->when(filled($search), fn ($query) => $query->where('title', 'like', '%'.trim((string) $search).'%'))
+            ->when(filled($search), fn ($query) => $query->where('title_search', 'like', FoldedSearch::pattern((string) $search)))
             ->orderBy('title')
             ->limit(50)
             ->pluck('title', 'id')

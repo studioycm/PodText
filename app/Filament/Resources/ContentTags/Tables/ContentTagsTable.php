@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\ContentTags\Tables;
 
 use App\Filament\Resources\Support\ResourceTableActions;
+use App\Filament\Support\FoldedTableSearch;
 use App\Support\UiTimezone;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
@@ -21,11 +22,11 @@ class ContentTagsTable
             ->columns([
                 TextColumn::make('name')
                     ->label(__('admin.fields.name'))
-                    ->searchable()
+                    ->searchable(query: FoldedTableSearch::query())
                     ->sortable(),
                 TextColumn::make('slug')
                     ->label(__('admin.fields.slug'))
-                    ->searchable()
+                    ->searchable(query: FoldedTableSearch::query(against: 'slug'))
                     ->toggleable(),
                 IconColumn::make('is_enabled')
                     ->label(__('admin.fields.is_enabled'))

@@ -4,6 +4,7 @@ namespace App\Filament\Widgets;
 
 use App\Enums\DashboardReason;
 use App\Filament\Resources\ContentItems\ContentItemResource;
+use App\Filament\Support\FoldedTableSearch;
 use App\Filament\Widgets\Concerns\AdminOnlyWidget;
 use App\Filament\Widgets\Concerns\ReadsDashboardFilters;
 use App\Filament\Widgets\Concerns\ShowsLoadingSkeleton;
@@ -92,7 +93,7 @@ class BlockersQueueWidget extends TableWidget
             ->columns([
                 TextColumn::make('title')
                     ->label(__('admin.fields.title'))
-                    ->searchable()
+                    ->searchable(query: FoldedTableSearch::query())
                     ->limit(60),
                 TextColumn::make('contentGroup.title')
                     ->label(__('admin.resources.content_group.singular'))

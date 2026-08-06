@@ -28,6 +28,7 @@ use App\Support\PublicFront\Groups\PublicContentGroupQueries;
 use App\Support\PublicFront\PublicDefaultImageResolver;
 use App\Support\PublicFront\PublicFrontConfigRegistry;
 use App\Support\PublicFront\PublicFrontRenderContext;
+use App\Support\Search\FoldedSearch;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\View\ComponentAttributeBag;
 
@@ -220,11 +221,11 @@ class CardTemplatePreviewer
         $query = PublicContentItemQueries::base($aggregates, $selector);
 
         if ($search !== '') {
-            $like = "%{$search}%";
+            $like = FoldedSearch::pattern($search);
             $query->where(function (Builder $query) use ($like): void {
                 $query
-                    ->where('title', 'like', $like)
-                    ->orWhereHas('contentGroup', fn (Builder $query): Builder => $query->where('title', 'like', $like));
+                    ->where('title_search', 'like', $like)
+                    ->orWhereHas('contentGroup', fn (Builder $query): Builder => $query->where('title_search', 'like', $like));
             });
         }
 

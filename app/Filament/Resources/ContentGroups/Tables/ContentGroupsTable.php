@@ -7,6 +7,7 @@ use App\Filament\Actions\ContentImageActions;
 use App\Filament\Exports\ContentGroupExporter;
 use App\Filament\Imports\ContentGroupImporter;
 use App\Filament\Resources\Support\ResourceTableActions;
+use App\Filament\Support\FoldedTableSearch;
 use App\Filament\Tables\OwnerImageColumn;
 use App\Support\UiTimezone;
 use Filament\Actions\BulkActionGroup;
@@ -31,16 +32,16 @@ class ContentGroupsTable
                 OwnerImageColumn::contentGroup(),
                 TextColumn::make('title')
                     ->label(__('admin.fields.title'))
-                    ->searchable()
+                    ->searchable(query: FoldedTableSearch::query())
                     ->sortable(),
                 TextColumn::make('group_type_label_singular')
                     ->label(__('admin.fields.group_type_label_singular'))
                     ->badge()
-                    ->searchable(),
+                    ->searchable(query: FoldedTableSearch::query()),
                 TextColumn::make('default_item_type_label_singular')
                     ->label(__('admin.fields.default_item_type_label_singular'))
                     ->badge()
-                    ->searchable(),
+                    ->searchable(query: FoldedTableSearch::query()),
                 TextColumn::make('original_language_code')
                     ->label(__('admin.fields.original_language_code'))
                     ->formatStateUsing(fn (string $state): string => __("admin.locales.{$state}"))
@@ -66,7 +67,7 @@ class ContentGroupsTable
                     ->sortable(),
                 TextColumn::make('slug')
                     ->label(__('admin.fields.slug'))
-                    ->searchable()
+                    ->searchable(query: FoldedTableSearch::query(against: 'slug'))
                     ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('reference_key')
                     ->label(__('admin.fields.reference_key'))

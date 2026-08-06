@@ -4,6 +4,7 @@ namespace App\Filament\Resources\PublicFormSubmissions\Tables;
 
 use App\Enums\PublicFormSubmissionStatus;
 use App\Filament\Resources\Support\ResourceTableActions;
+use App\Filament\Support\FoldedTableSearch;
 use App\Models\PublicFormSubmission;
 use App\Support\PublicFront\Forms\PublicFormSubmissionPresenter;
 use App\Support\UiTimezone;
@@ -31,7 +32,7 @@ class PublicFormSubmissionsTable
                     ->sortable(),
                 TextColumn::make('form_name_snapshot')
                     ->label(__('admin.fields.public_form_name_snapshot'))
-                    ->searchable()
+                    ->searchable(query: FoldedTableSearch::query())
                     ->toggleable(),
                 TextColumn::make('status')
                     ->label(__('admin.fields.status'))

@@ -2434,3 +2434,69 @@ and `model:show` is safe to use again.
   duplicate-mount/window-event precedent; only `search-examples` was
   available; the decision rests on Livewire 4 event docs and the app-owned
   component.| Prompt 13 dashboard metrics | Phases 1-2 + 2R + the full 2026-08-03 orchestrated route complete; route-end push pending operator word; phases 3-4 planned-ready | Mid-route push `987b92f` (release `74621206`); route blocks all orchestrator-verified: V `0e80c84`/`bf0c063`, F `b24490a`/`b3d6de4`, A `2831ee9`…`1efeb35`, B1 `168a618`/`87aa8bf`, fix-batch+hardening `abd46f3`…`f494f0a`/`7768442`/`5da7acc`/`ce95a35` (Q7 inversion riding `11afc21` — see handoff provenance note), scan-scope fix `12285a7`/`ecc9eda`. Authoritative: `dashboard-metrics-phase-2R-handoff.md`; ledger+checklist `docs/research/defect-cause-patterns.md`; principles `dashboard-widget-principles.md` + `dashboard-governance-principles.md` | The route verified the stack, gave formats a home behind a statement-scanned guard, fixed the sparkline/empty-state/doorway layer with an Alpine hover, hardened filters/queries/authz from research findings (incl. the global preload-default inversion and the super-admin backups policy), closed two live public styling gaps (prose contract + badge maps) behind a discovery guard + on-demand sentinels, co-created 14 widget + 7 governance principles, recovered the lost dossier principles (ES-1–ES-7), and reconciled the phase-3 plan to implementable. Remaining: route-end push (on operator word, after this fold), then phase-3 implementation from the reconciled plan and phase-4 evidence. |
+
+## Hebrew Search Folding
+
+- Scope delivered: everything, admin included. A search for `שלום` now finds
+  text stored as `שָׁלוֹם`, and the reverse — a pointed term finds unpointed
+  text — which is the same defect seen from the other side and applies to
+  every field regardless of what is stored.
+- Design: folded `*_search` shadow columns written by an overridden
+  `setAttribute()`, searched with a plain portable `LIKE`. SQLite executes the
+  predicate that ships, so the suite proves the shipped thing. The
+  driver-branched `LOCATE`/`COLLATE` alternative stays disqualified for the
+  reason in `hebrew-search-folding-spec.md` §1.
+- `App\Support\Search\HebrewSearchFold::fold()` is the one normalizer:
+  lowercase + strip `\p{Mn}`. `HebrewSlugger` now delegates to it rather than
+  repeating the same two lines.
+- `App\Support\Search\FoldedSearch` is the driver-agnostic seam (`pattern()`,
+  `column()`, `contains()`); `App\Filament\Support\FoldedTableSearch::query()`
+  is the Filament closure factory passed to `->searchable(query: …)`.
+- Shadow columns cover 17 searched free-text columns across 12 models.
+  Deliberately excluded, each for a measured reason: `transcript_markdown`
+  (no code path searches it — zero LIKE predicates, zero `->searchable()`
+  columns, so a shadow would duplicate the largest column in the schema to
+  serve no query); slug columns (the slugger already folds, so a slug is its
+  own fold — asserted in `HebrewSluggerTest`); reference keys, language codes,
+  providers, URLs and e-mail (ASCII); and Filament's vendor-owned `Import`
+  model.
+- Write seam is `setAttribute()`, not model events: `Model::fill()` routes
+  through it and `forceFill()` delegates to `fill()`, so the five live
+  `saveQuietly()` writes in `app/` are covered, as are Filament importers
+  (`ImportColumn::fillRecord()` → `data_set()` → `__set()`), proven against a
+  real import rather than inferred.
+- `php artisan search:backfill-folds` populates and repairs shadows: chunked
+  via `eachById`, `withoutTimestamps` so a backfill cannot read as an edit,
+  and free to re-run (a row whose shadow already matches leaves nothing dirty,
+  so `save()` issues no statement).
+- Admin uses a shared closure factory rather than a `Column::macro`. A macro
+  named anything other than `searchable` removes the literal `->searchable(`
+  from source, and FilaCheck scans statically — it then reports six tables as
+  having no searchable columns at all. The factory keeps the literal and the
+  single shared implementation.
+- Indexes: varchar shadows are indexed, longtext shadows are not — MySQL
+  cannot index a LONGTEXT without a key prefix length, and expressing one
+  means the per-driver schema branching §1 disqualifies. Note a B-tree index
+  cannot serve the leading-wildcard `LIKE` that ships either way (measured:
+  `EXPLAIN SELECT *` on a leading-wildcard `LIKE` gives `type: ALL`, no key);
+  they earn their keep on the backfill's `IS NULL` sweep and future
+  equality/prefix work. FULLTEXT remains out of scope per §5.
+- Live defect closed: `content_items` id 56 carries a U+05BF RAFE in
+  `description_markdown` (`…D794 D6BF 21`). Measured before the change,
+  `description_markdown LIKE '%זה למה!%'` returned 0 while
+  `LOCATE(…)` returned 1 and the folded predicate returned 1.
+  `HebrewSearchFoldingPathsTest` reproduces the exact bytes and pins that the
+  phrase is now findable as it renders.
+- Niqqud census on the dev database: exactly one row in the whole schema
+  carries a Hebrew combining mark (that one). Niqqud here is accidental, not
+  systematic — which is why the pointed-search-finds-unpointed-text direction
+  carries most of the value.
+- Tests: `tests/Unit/HebrewSearchFoldTest.php`,
+  `tests/Feature/HebrewSearchFoldingTest.php`,
+  `HebrewSearchFoldingPathsTest.php`, `HebrewSearchFoldingAdminTest.php`,
+  `BackfillSearchFoldsCommandTest.php`. Regression canaries in
+  `AppOwnedMediaResourceTest` and `AppOwnedMediaPickerTest` stay green.
+- Gate 2026-08-06: pest 1826 passed (20534 assertions), pint clean, full
+  filacheck 36/36 rules passed, `npm run build` green. `composer types:check`
+  623 errors, below the 636 pre-existing baseline and none in the new or
+  changed files.

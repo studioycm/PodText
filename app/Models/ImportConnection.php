@@ -5,16 +5,20 @@ namespace App\Models;
 use App\Enums\ImportConnectionAuthType;
 use App\Enums\ImportConnectionProvider;
 use App\Enums\ImportConnectionStatus;
+use App\Models\Concerns\HasFoldedSearchColumns;
+use App\Models\Contracts\FoldsSearchColumns;
 use Database\Factories\ImportConnectionFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Arr;
 use Illuminate\Validation\ValidationException;
 
-class ImportConnection extends Model
+class ImportConnection extends Model implements FoldsSearchColumns
 {
     /** @use HasFactory<ImportConnectionFactory> */
     use HasFactory;
+
+    use HasFoldedSearchColumns;
 
     protected $fillable = [
         'name',
@@ -112,5 +116,15 @@ class ImportConnection extends Model
                 'auth_type' => __('admin.importer.validation.invalid_auth_type'),
             ]);
         }
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public static function foldedSearchColumns(): array
+    {
+        return [
+            'name' => 'name_search',
+        ];
     }
 }

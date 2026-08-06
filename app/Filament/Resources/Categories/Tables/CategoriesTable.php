@@ -5,6 +5,7 @@ namespace App\Filament\Resources\Categories\Tables;
 use App\Filament\Exports\CategoryExporter;
 use App\Filament\Imports\CategoryImporter;
 use App\Filament\Resources\Support\ResourceTableActions;
+use App\Filament\Support\FoldedTableSearch;
 use App\Support\UiTimezone;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
@@ -26,16 +27,16 @@ class CategoriesTable
             ->columns([
                 TextColumn::make('name')
                     ->label(__('admin.fields.name'))
-                    ->searchable()
+                    ->searchable(query: FoldedTableSearch::query())
                     ->sortable(),
                 TextColumn::make('parent.name')
                     ->label(__('admin.fields.parent_category'))
-                    ->searchable()
+                    ->searchable(query: FoldedTableSearch::query())
                     ->sortable()
                     ->toggleable(),
                 TextColumn::make('slug')
                     ->label(__('admin.fields.slug'))
-                    ->searchable()
+                    ->searchable(query: FoldedTableSearch::query(against: 'slug'))
                     ->toggleable(),
                 IconColumn::make('is_visible')
                     ->label(__('admin.fields.is_visible'))

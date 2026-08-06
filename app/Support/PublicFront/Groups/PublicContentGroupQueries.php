@@ -5,6 +5,7 @@ namespace App\Support\PublicFront\Groups;
 use App\Models\Category;
 use App\Models\ContentGroup;
 use App\Support\PublicContent\PublicTranscriptionAggregates;
+use App\Support\Search\FoldedSearch;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 
@@ -32,20 +33,20 @@ class PublicContentGroupQueries
             return $query;
         }
 
-        $like = "%{$search}%";
+        $like = FoldedSearch::pattern($search);
 
         return $query->where(function (Builder $query) use ($like): void {
             $query
-                ->where('title', 'like', $like)
-                ->orWhere('description_markdown', 'like', $like)
-                ->orWhereHas('categories', fn (Builder $query): Builder => $query->visible()->where('name', 'like', $like))
+                ->where('title_search', 'like', $like)
+                ->orWhere('description_markdown_search', 'like', $like)
+                ->orWhereHas('categories', fn (Builder $query): Builder => $query->visible()->where('name_search', 'like', $like))
                 ->orWhereHas('contentItems', function (Builder $query) use ($like): void {
                     $query
                         ->published()
                         ->where(function (Builder $query) use ($like): void {
                             $query
-                                ->where('title', 'like', $like)
-                                ->orWhereHas('categories', fn (Builder $query): Builder => $query->visible()->where('name', 'like', $like));
+                                ->where('title_search', 'like', $like)
+                                ->orWhereHas('categories', fn (Builder $query): Builder => $query->visible()->where('name_search', 'like', $like));
                         });
                 });
         });

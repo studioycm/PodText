@@ -3,7 +3,9 @@
 namespace App\Models;
 
 use App\Enums\PublicationStatus;
+use App\Models\Concerns\HasFoldedSearchColumns;
 use App\Models\Concerns\InteractsWithPublicationDate;
+use App\Models\Contracts\FoldsSearchColumns;
 use App\Support\Transcriptions\SingleTranscriptionLens;
 use App\Support\Transcriptions\TranscriptWordCounter;
 use App\Support\Transcripts\TranscriptSegmentParser;
@@ -32,11 +34,12 @@ use Illuminate\Validation\ValidationException;
     'speakers',
     'parsed_segments',
 ])]
-class Transcription extends Model
+class Transcription extends Model implements FoldsSearchColumns
 {
     /** @use HasFactory<TranscriptionFactory> */
     use HasFactory;
 
+    use HasFoldedSearchColumns;
     use InteractsWithPublicationDate;
 
     protected $attributes = [
@@ -281,6 +284,16 @@ class Transcription extends Model
             'speakers' => 'array',
             'status' => PublicationStatus::class,
             'word_count' => 'integer',
+        ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public static function foldedSearchColumns(): array
+    {
+        return [
+            'title' => 'title_search',
         ];
     }
 }

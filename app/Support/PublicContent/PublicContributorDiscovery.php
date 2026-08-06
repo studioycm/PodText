@@ -4,6 +4,7 @@ namespace App\Support\PublicContent;
 
 use App\Models\Author;
 use App\Models\ContentItem;
+use App\Support\Search\FoldedSearch;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Pagination\LengthAwarePaginator;
@@ -29,11 +30,13 @@ class PublicContributorDiscovery
         $search = trim((string) $search);
 
         if ($search !== '') {
-            $like = "%{$search}%";
+            $like = FoldedSearch::pattern($search);
 
             $query->where(function (Builder $query) use ($like): void {
+                // `slug` needs no shadow: HebrewSlugger folds its input, so a
+                // slug is already its own fold. Asserted in HebrewSluggerTest.
                 $query
-                    ->where('name', 'like', $like)
+                    ->where('name_search', 'like', $like)
                     ->orWhere('slug', 'like', $like);
             });
         }
@@ -105,12 +108,12 @@ class PublicContributorDiscovery
             ]);
 
         if ($search !== '') {
-            $like = "%{$search}%";
+            $like = FoldedSearch::pattern($search);
 
             $query->where(function (Builder $query) use ($aggregates, $authorId, $like): void {
                 $query
-                    ->where('title', 'like', $like)
-                    ->orWhereHas('contentGroup', fn (Builder $query): Builder => $query->where('title', 'like', $like))
+                    ->where('title_search', 'like', $like)
+                    ->orWhereHas('contentGroup', fn (Builder $query): Builder => $query->where('title_search', 'like', $like))
                     ->orWhere(fn (Builder $query): Builder => $aggregates->whereContentItemHasContributorTranscriptionTitle($query, (int) $authorId, $like));
             });
         }

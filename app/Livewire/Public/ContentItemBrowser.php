@@ -10,6 +10,7 @@ use App\Support\PublicFront\Cards\PublicFrontCardTemplate;
 use App\Support\PublicFront\Cards\PublicFrontCardTemplateResolver;
 use App\Support\PublicFront\PublicFrontConfigRegistry;
 use App\Support\PublicFront\PublicFrontRenderContext;
+use App\Support\Search\FoldedSearch;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Pagination\LengthAwarePaginator;
@@ -106,11 +107,11 @@ class ContentItemBrowser extends Component
             ->when(
                 $this->searchEnabled() && filled($this->search),
                 fn (Builder $query): Builder => $query->where(function (Builder $query): void {
-                    $like = "%{$this->search}%";
+                    $like = FoldedSearch::pattern($this->search);
 
                     $query
-                        ->where('title', 'like', $like)
-                        ->orWhere('description_markdown', 'like', $like);
+                        ->where('title_search', 'like', $like)
+                        ->orWhere('description_markdown_search', 'like', $like);
                 }),
             )
             ->when(

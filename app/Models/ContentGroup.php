@@ -4,7 +4,9 @@ namespace App\Models;
 
 use App\Enums\MediaAttachmentRole;
 use App\Enums\PublicationStatus;
+use App\Models\Concerns\HasFoldedSearchColumns;
 use App\Models\Concerns\InteractsWithPublicationDate;
+use App\Models\Contracts\FoldsSearchColumns;
 use App\Observers\ContentGroupObserver;
 use App\Support\Slugs\HebrewSlugger;
 use Carbon\CarbonInterface;
@@ -35,11 +37,12 @@ use Illuminate\Support\Str;
     'homepage_order',
 ])]
 #[ObservedBy([ContentGroupObserver::class])]
-class ContentGroup extends Model
+class ContentGroup extends Model implements FoldsSearchColumns
 {
     /** @use HasFactory<ContentGroupFactory> */
     use HasFactory;
 
+    use HasFoldedSearchColumns;
     use InteractsWithPublicationDate;
 
     protected $attributes = [
@@ -148,5 +151,18 @@ class ContentGroup extends Model
             $source,
             fn (string $slug): bool => static::query()->where('slug', $slug)->exists(),
         );
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public static function foldedSearchColumns(): array
+    {
+        return [
+            'title' => 'title_search',
+            'description_markdown' => 'description_markdown_search',
+            'group_type_label_singular' => 'group_type_label_singular_search',
+            'default_item_type_label_singular' => 'default_item_type_label_singular_search',
+        ];
     }
 }

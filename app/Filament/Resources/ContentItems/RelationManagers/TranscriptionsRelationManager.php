@@ -8,7 +8,9 @@ use App\Filament\Forms\Components\PublicationStatusField;
 use App\Filament\Resources\Support\RelationshipOptionForms;
 use App\Filament\Resources\Support\ResourceTableActions;
 use App\Filament\Resources\Transcriptions\TranscriptionResource;
+use App\Filament\Support\FoldedTableSearch;
 use App\Models\Transcription;
+use App\Support\Search\FoldedSearch;
 use App\Support\Transcriptions\MultiTranscriptionSurfaces;
 use App\Support\UiTimezone;
 use Filament\Actions\Action;
@@ -105,12 +107,12 @@ class TranscriptionsRelationManager extends RelationManager
                 TextColumn::make('title')
                     ->label(__('admin.fields.title'))
                     ->placeholder(__('admin.labels.untitled'))
-                    ->searchable(),
+                    ->searchable(query: FoldedTableSearch::query()),
                 TextColumn::make('transcriber_names')
                     ->label(__('admin.fields.transcribers'))
                     ->state(fn (Transcription $record): string => implode(', ', $record->transcriberNames()))
                     ->searchable(query: fn (Builder $query, string $search): Builder => $query
-                        ->whereHas('authors', fn (Builder $query): Builder => $query->where('name', 'like', "%{$search}%"))),
+                        ->whereHas('authors', fn (Builder $query): Builder => $query->where('name_search', 'like', FoldedSearch::pattern($search)))),
                 TextColumn::make('status')
                     ->label(__('admin.fields.status'))
                     ->badge()

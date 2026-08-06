@@ -2,6 +2,9 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\HasFoldedSearchColumns;
+use App\Models\Contracts\FoldsSearchColumns;
+use App\Support\Search\HebrewSearchFold;
 use App\Support\Slugs\HebrewSlugger;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
@@ -19,8 +22,10 @@ use Spatie\Tags\Tag;
     'created_by_id',
     'moderation_state',
 ])]
-class ContentTag extends Tag
+class ContentTag extends Tag implements FoldsSearchColumns
 {
+    use HasFoldedSearchColumns;
+
     protected $table = 'tags';
 
     protected $attributes = [
@@ -81,5 +86,43 @@ class ContentTag extends Tag
                 ->when($this->exists, fn (Builder $query): Builder => $query->whereKeyNot($this))
                 ->exists(),
         );
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public static function foldedSearchColumns(): array
+    {
+        return [
+            'name' => 'name_search',
+        ];
+    }
+
+    /**
+     * `name` is Spatie translatable JSON. The shadow flattens every locale into
+     * one newline-joined string rather than mirroring the JSON, because MySQL
+     * normalizes a JSON column on insert while SQLite keeps PHP's bytes — a
+     * JSON shadow would have to be matched against two encodings, a flat one
+     * against neither. Newline is the joiner because no search term carries it.
+     */
+    protected function foldAttributeForSearch(mixed $stored): ?string
+    {
+        if ($stored === null) {
+            return null;
+        }
+
+        $translations = json_decode((string) $stored, true);
+
+        if (! is_array($translations)) {
+            return HebrewSearchFold::fold((string) $stored);
+        }
+
+        return collect($translations)
+            ->map(fn (mixed $translation): string => HebrewSearchFold::fold(
+                is_scalar($translation) ? (string) $translation : '',
+            ))
+            ->filter()
+            ->unique()
+            ->implode("\n");
     }
 }

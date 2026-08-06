@@ -3,6 +3,8 @@
 namespace App\Models;
 
 use App\Enums\HomepageSectionType;
+use App\Models\Concerns\HasFoldedSearchColumns;
+use App\Models\Contracts\FoldsSearchColumns;
 use App\Support\Slugs\HebrewSlugger;
 use Database\Factories\HomepageSectionFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -26,10 +28,12 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
     'display_config',
     'pagination_config',
 ])]
-class HomepageSection extends Model
+class HomepageSection extends Model implements FoldsSearchColumns
 {
     /** @use HasFactory<HomepageSectionFactory> */
     use HasFactory;
+
+    use HasFoldedSearchColumns;
 
     protected $attributes = [
         'limit' => 6,
@@ -146,5 +150,15 @@ class HomepageSection extends Model
             $source,
             fn (string $slug): bool => static::query()->where('slug', $slug)->exists(),
         );
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public static function foldedSearchColumns(): array
+    {
+        return [
+            'name' => 'name_search',
+        ];
     }
 }
