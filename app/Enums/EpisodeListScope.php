@@ -57,6 +57,30 @@ enum EpisodeListScope: string implements HasLabel
         };
     }
 
+    /**
+     * Does this scope earn a tab?
+     *
+     * «מוצמדים» does not. Pinning is an attribute an episode carries, not a
+     * stage it passes through, and the table already has a tri-state pin
+     * filter that answers it — including «לא מוצמדים», which a tab cannot.
+     * A tab beside that filter is a second door onto one question, and the
+     * narrower door was the one worth keeping.
+     *
+     * The scope itself stays: `counts()` still reports it, the two triage
+     * scopes still lean on the same pin window, and the dashboard doorways
+     * now open the filter instead.
+     */
+    public function showsAsTab(): bool
+    {
+        return match ($this) {
+            self::All, self::Drafts, self::Visible, self::Scheduled,
+            self::BlockedGroup, self::BlockedTranscription,
+            self::ReadyToPublish, self::PinnedNotVisible,
+            self::WillBreakOnAir => true,
+            self::Pinned => false,
+        };
+    }
+
     public function getLabel(): string
     {
         return __("admin.episode_scopes.{$this->value}");

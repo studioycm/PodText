@@ -6,6 +6,7 @@ use App\Enums\DashboardLens;
 use App\Enums\DashboardReason;
 use App\Enums\DashboardTier;
 use App\Enums\EpisodeListScope;
+use App\Enums\EpisodePinScope;
 use App\Enums\FunnelStage;
 use App\Filament\Resources\ContentItems\ContentItemResource;
 use App\Filament\Widgets\Concerns\AdminOnlyWidget;
@@ -130,7 +131,12 @@ class EditorialStatsWidget extends Widget
                     'key' => 'pinned',
                     'value' => $structure['pinned'],
                     'icon' => Heroicon::OutlinedStar,
-                    'url' => ContentItemResource::getUrl('index', $this->scopedTableScope(EpisodeListScope::Pinned)),
+                    // The pin filter, not the retired «מוצמדים» tab. Both run
+                    // currentlyPinned(), so the number the card shows and the
+                    // rows the door opens stay the same set.
+                    'url' => ContentItemResource::getUrl('index', $this->scopedTableFilters([
+                        'is_pinned' => ['value' => EpisodePinScope::Pinned->value],
+                    ])),
                     'segments' => [
                         ['key' => 'pinned', 'value' => $structure['pinned'], 'bar' => 'bg-primary-500'],
                         ['key' => 'other', 'value' => max(0, $items - $structure['pinned']), 'bar' => 'bg-gray-200 dark:bg-white/10'],

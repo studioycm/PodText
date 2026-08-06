@@ -116,9 +116,19 @@ it('renders every scope tab with exact count badges and filters records per tab'
 
     $component = Livewire::test(ListContentItems::class);
 
+    // Derived from showsAsTab(), not from cases(): «מוצמדים» is still a scope
+    // — counted, and leaned on by the two pin triage scopes — but it is no
+    // longer a tab, so the page must render exactly the scopes that claim one
+    // and must NOT render the one that does not.
     foreach (EpisodeListScope::cases() as $scope) {
-        $component->assertSeeHtml('data-scope="'.$scope->value.'"');
-        $component->assertSee($scope->getLabel());
+        if ($scope->showsAsTab()) {
+            $component->assertSeeHtml('data-scope="'.$scope->value.'"');
+            $component->assertSee($scope->getLabel());
+
+            continue;
+        }
+
+        $component->assertDontSeeHtml('data-scope="'.$scope->value.'"');
     }
 
     $component

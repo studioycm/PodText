@@ -14,6 +14,7 @@ use App\Filament\Resources\ContentItems\Tables\ContentItemsTable;
 use App\Models\ContentGroup;
 use App\Models\ContentItem;
 use App\Models\User;
+use App\Support\ContentItems\EpisodeListScopeQuery;
 use App\Support\PublicContent\PublicTranscriptionSelector;
 use Filament\Actions\Testing\TestAction;
 use Filament\Facades\Filament;
@@ -668,4 +669,43 @@ it('explains the difference between published and visible wherever both words ap
     foreach (['en', 'he'] as $locale) {
         expect(Lang::has('admin.helpers.status_versus_visible', $locale))->toBeTrue("missing hint in {$locale}");
     }
+});
+
+it('retires the pinned tab in favour of the tri-state pin filter', function (): void {
+    // Pinning is an attribute an episode carries, not a stage it passes
+    // through, and the filter answers a question the tab could not: «לא
+    // מוצמדים». Two doors onto one question, and this keeps the narrower one.
+    $tabs = array_keys(Livewire::test(ListContentItems::class)->instance()->getTabs());
+
+    expect($tabs)->not->toContain(EpisodeListScope::Pinned->value)
+        ->and($tabs)->toContain(EpisodeListScope::All->value);
+
+    // Structural, not a hand-list: every scope the enum says is a tab must be
+    // one, so a new scope cannot be added and silently left out of the page.
+    $expected = collect(EpisodeListScope::cases())
+        ->filter(fn (EpisodeListScope $scope): bool => $scope->showsAsTab())
+        ->map(fn (EpisodeListScope $scope): string => $scope->value)
+        ->values()
+        ->all();
+
+    expect($tabs)->toEqualCanonicalizing($expected);
+});
+
+it('lands a stale ?tab=pinned bookmark on a tab that exists', function (): void {
+    // `pinned` is still a valid EpisodeListScope, so enum narrowing alone lets
+    // it through — and it would select a tab the page no longer renders,
+    // showing an empty table under no visible tab.
+    $page = Livewire::withQueryParams(['tab' => EpisodeListScope::Pinned->value])->test(ListContentItems::class);
+
+    expect($page->instance()->activeTab)->toBe(EpisodeListScope::All->value);
+});
+
+it('still counts the pinned scope even though it has no tab', function (): void {
+    // The scope did not go away — the doorways and the two triage scopes still
+    // lean on the same pin window. Only the tab did.
+    ContentItem::factory()->create(['is_pinned' => true, 'pinned_at' => now()->subDay(), 'pinned_until' => null]);
+
+    expect(app(EpisodeListScopeQuery::class)->counts())
+        ->toHaveKey(EpisodeListScope::Pinned->value)
+        ->and(app(EpisodeListScopeQuery::class)->counts()[EpisodeListScope::Pinned->value])->toBe(1);
 });

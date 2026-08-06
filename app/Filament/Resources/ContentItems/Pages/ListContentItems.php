@@ -46,6 +46,7 @@ class ListContentItems extends ListRecords
         $scopes = app(EpisodeListScopeQuery::class);
 
         return collect(EpisodeListScope::cases())
+            ->filter(fn (EpisodeListScope $scope): bool => $scope->showsAsTab())
             ->mapWithKeys(fn (EpisodeListScope $scope): array => [
                 $scope->value => Tab::make($scope->getLabel())
                     ->modifyQueryUsing(fn (Builder $query): Builder => $scopes->apply($query, $scope))
@@ -75,8 +76,15 @@ class ListContentItems extends ListRecords
     /** state-narrows-at-the-door: the tab key is URL/browser-writable. */
     private function narrowActiveTab(): void
     {
-        $this->activeTab = EpisodeListScope::tryFrom((string) $this->activeTab)?->value
-            ?? EpisodeListScope::All->value;
+        // `showsAsTab()` and not merely `tryFrom()`: `pinned` is still a valid
+        // scope, so it survives the enum narrowing and would select a tab that
+        // no longer exists — an empty table under no visible tab. A stale
+        // bookmark has to land somewhere real.
+        $scope = EpisodeListScope::tryFrom((string) $this->activeTab);
+
+        $this->activeTab = $scope?->showsAsTab() === true
+            ? $scope->value
+            : EpisodeListScope::All->value;
     }
 
     /**
