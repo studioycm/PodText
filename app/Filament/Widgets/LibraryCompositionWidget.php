@@ -12,6 +12,7 @@ use App\Filament\Widgets\Concerns\AdminOnlyWidget;
 use App\Filament\Widgets\Concerns\ReadsDashboardFilters;
 use App\Filament\Widgets\Concerns\ShowsLoadingSkeleton;
 use App\Support\Dashboard\EditorialMetrics;
+use App\Support\Transcriptions\MultiTranscriptionSurfaces;
 use Filament\Support\Icons\Heroicon;
 use Filament\Widgets\Concerns\InteractsWithPageFilters;
 use Filament\Widgets\Widget;
@@ -46,7 +47,10 @@ class LibraryCompositionWidget extends Widget
         $structure = $metrics->snapshot($podcastId)['structure'];
 
         return [
+            // Single mode blocks a second transcript at creation, so this chip
+            // could only ever describe legacy rows there — see the stat card.
             'chips' => [
+
                 [
                     'key' => 'groups',
                     'value' => $structure['groups'],
@@ -83,14 +87,15 @@ class LibraryCompositionWidget extends Widget
                     'url' => ContentItemResource::getUrl('index', $this->scopedTableScope(EpisodeListScope::Pinned)),
                     'icon' => Heroicon::OutlinedStar,
                 ],
-                [
+                ...(MultiTranscriptionSurfaces::isMultiMode() ? [[
                     'key' => 'multi_transcription',
                     'value' => $structure['multi_transcription'],
-                    // Nothing filters by transcript count — ES-1, no link.
+                    // No link yet: nothing filters episodes by transcript count.
                     'url' => null,
                     'icon' => Heroicon::OutlinedDocumentDuplicate,
-                ],
+                ]] : []),
             ],
+
             'health' => $metrics->podcastHealth($podcastId),
             'transcribers' => $metrics->transcriberBoard($this->dashboardRange(), $podcastId),
         ];

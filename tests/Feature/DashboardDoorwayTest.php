@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\TranscriptionMode;
 use App\Filament\Resources\ContentItems\Pages\ListContentItems;
 use App\Filament\Resources\Imports\Pages\ListImports;
 use App\Filament\Resources\Media\Pages\ListMedia;
@@ -186,4 +187,30 @@ it('records that the intake queue does not pair its numbers with its doors', fun
 
     expect(doorwaysIn($data))->toBe([])
         ->and($data)->toHaveKeys(['counts', 'submissionsUrl', 'importsUrl']);
+});
+
+it('hides the multi-transcription number in single mode, where it can never move', function (): void {
+    ContentItem::factory()->count(2)->create();
+
+    $keysFor = function (string $widgetClass): array {
+        $widget = Livewire::test($widgetClass)->instance();
+        $viewData = new ReflectionMethod($widget, 'getViewData');
+        $viewData->setAccessible(true);
+        $data = $viewData->invoke($widget);
+
+        return collect($data['cards'] ?? $data['chips'] ?? [])->pluck('key')->all();
+    };
+
+    // Transcription::booted() throws on a second transcript while the single
+    // lens is active, so in single mode this number can only describe legacy
+    // rows and can never change. A stat that cannot move is furniture.
+    setTestTranscriptionMode(TranscriptionMode::Single);
+
+    expect($keysFor(EditorialStatsWidget::class))->not->toContain('multi_transcription')
+        ->and($keysFor(LibraryCompositionWidget::class))->not->toContain('multi_transcription');
+
+    setTestTranscriptionMode(TranscriptionMode::Multi);
+
+    expect($keysFor(EditorialStatsWidget::class))->toContain('multi_transcription')
+        ->and($keysFor(LibraryCompositionWidget::class))->toContain('multi_transcription');
 });

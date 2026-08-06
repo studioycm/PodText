@@ -12,6 +12,7 @@ use App\Filament\Widgets\Concerns\AdminOnlyWidget;
 use App\Filament\Widgets\Concerns\ReadsDashboardFilters;
 use App\Filament\Widgets\Concerns\ShowsLoadingSkeleton;
 use App\Support\Dashboard\EditorialMetrics;
+use App\Support\Transcriptions\MultiTranscriptionSurfaces;
 use Filament\Support\Icons\Heroicon;
 use Filament\Widgets\Concerns\InteractsWithPageFilters;
 use Filament\Widgets\Widget;
@@ -56,6 +57,28 @@ class EditorialStatsWidget extends Widget
         $visible = $funnel['visible'];
         $notVisible = $gap['invisible'];
         $rest = max(0, $items - $visible);
+
+        // An episode cannot gain a second transcript while the single lens is
+        // active — Transcription::booted() throws — so in single mode this
+        // number can only ever describe legacy rows and can never move. A
+        // stat that cannot change is not a stat; it is furniture.
+        $multiTranscriptionCards = MultiTranscriptionSurfaces::isMultiMode()
+            ? [
+                [
+                    'key' => 'multi_transcription',
+                    'value' => $structure['multi_transcription'],
+                    'icon' => Heroicon::OutlinedDocumentDuplicate,
+                    // No link yet: nothing filters episodes by transcript count.
+                    // ES-1 — a doorway-less number beats one opening the wrong
+                    // list. Only reachable in multi mode; see the filter below.
+                    'url' => null,
+                    'segments' => [
+                        ['key' => 'multi_transcription', 'value' => $structure['multi_transcription'], 'bar' => 'bg-info-500'],
+                        ['key' => 'other', 'value' => max(0, $items - $structure['multi_transcription']), 'bar' => 'bg-gray-200 dark:bg-white/10'],
+                    ],
+                ],
+            ]
+            : [];
 
         return [
             'cards' => [
@@ -114,19 +137,7 @@ class EditorialStatsWidget extends Widget
                         ['key' => 'other', 'value' => max(0, $items - $structure['pinned']), 'bar' => 'bg-gray-200 dark:bg-white/10'],
                     ],
                 ],
-                [
-                    'key' => 'multi_transcription',
-                    'value' => $structure['multi_transcription'],
-                    'icon' => Heroicon::OutlinedDocumentDuplicate,
-                    // No link: nothing filters episodes by transcript count, so
-                    // this pointed at the whole library. ES-1 — a doorway-less
-                    // number beats one that opens the wrong list.
-                    'url' => null,
-                    'segments' => [
-                        ['key' => 'multi_transcription', 'value' => $structure['multi_transcription'], 'bar' => 'bg-info-500'],
-                        ['key' => 'other', 'value' => max(0, $items - $structure['multi_transcription']), 'bar' => 'bg-gray-200 dark:bg-white/10'],
-                    ],
-                ],
+                ...$multiTranscriptionCards,
             ],
         ];
     }
