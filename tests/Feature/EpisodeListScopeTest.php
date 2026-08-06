@@ -44,6 +44,16 @@ function episodeScopeFixtures(): array
         'pinned_draft' => ContentItem::factory()->pinned()->for($draftGroup, 'contentGroup')->create(),
         'pin_expired' => ContentItem::factory()->pinned()->for($draftGroup, 'contentGroup')
             ->create(['pinned_until' => now()->subDay()]),
+        // Pinned AND visible: without this row, pinned_not_visible and pinned
+        // return the same set and a broken predicate passes unnoticed.
+        'pinned_visible' => ContentItem::factory()->pinned()->published()->for($publishedGroup, 'contentGroup')
+            ->withTranscription()->create(),
+        // A draft with everything else already out — one switch from live.
+        'ready_to_publish' => ContentItem::factory()->for($publishedGroup, 'contentGroup')
+            ->withTranscription(['status' => PublicationStatus::Published, 'published_at' => now()->subMinute()])->create(),
+        // Future-dated, and its podcast will still be unpublished on the day.
+        'will_break_on_air' => ContentItem::factory()->published(now()->addDays(5))->for($draftGroup, 'contentGroup')
+            ->withTranscription(['status' => PublicationStatus::Published, 'published_at' => now()->subMinute()])->create(),
     ];
 }
 
@@ -66,24 +76,39 @@ it('partitions the library exactly across the quick scopes', function (): void {
         ->all();
 
     expect($ids(EpisodeListScope::All))->toBe($expected(array_keys($fixtures)))
-        ->and($ids(EpisodeListScope::Drafts))->toBe($expected(['draft', 'pinned_draft', 'pin_expired']))
-        ->and($ids(EpisodeListScope::Visible))->toBe($expected(['visible']))
+        ->and($ids(EpisodeListScope::Drafts))->toBe($expected(['draft', 'pinned_draft', 'pin_expired', 'ready_to_publish']))
+        ->and($ids(EpisodeListScope::Visible))->toBe($expected(['visible', 'pinned_visible']))
         ->and($ids(EpisodeListScope::Scheduled))->toBe($expected(['scheduled']))
         // Precedence: an episode blocked by BOTH belongs to the podcast
         // scope, because that is the upstream fix — the same rule
         // EpisodePublicState uses, so badge and tab cannot disagree.
-        ->and($ids(EpisodeListScope::BlockedGroup))->toBe($expected(['blocked_group', 'blocked_both']))
+        ->and($ids(EpisodeListScope::BlockedGroup))->toBe($expected(['blocked_group', 'blocked_both', 'will_break_on_air']))
         ->and($ids(EpisodeListScope::BlockedTranscription))->toBe($expected(['blocked_transcription']))
-        ->and($ids(EpisodeListScope::Pinned))->toBe($expected(['pinned_draft']));
+        ->and($ids(EpisodeListScope::Pinned))->toBe($expected(['pinned_draft', 'pinned_visible']))
+        // Triage scopes overlap the partition on purpose: each answers "which
+        // single thing is missing", so a row can appear in one and in its
+        // partition scope both.
+        // The pinned draft's podcast and transcript are not released, so it is
+        // NOT ready to publish — only a draft with both already out qualifies.
+        ->and($ids(EpisodeListScope::ReadyToPublish))->toBe($expected(['ready_to_publish']))
+        ->and($ids(EpisodeListScope::PinnedNotVisible))->toBe($expected(['pinned_draft']))
+        // Scheduled-and-healthy stays out; only the future-dated row whose
+        // prerequisites will still be missing on the day belongs here.
+        ->and($ids(EpisodeListScope::WillBreakOnAir))->toBe($expected(['will_break_on_air']));
 
     $counts = $service->counts();
 
-    // The exact partition contract, which the split must not break:
-    // drafts + visible + scheduled + the two blocked scopes = all.
-    expect($counts['drafts'] + $counts['visible'] + $counts['scheduled'] + $counts['blocked_group'] + $counts['blocked_transcription'])
+    // The exact partition contract, derived from the enum rather than listed
+    // here — so an overlapping scope cannot silently break the sum, and a new
+    // partitioning one is forced to declare itself.
+    $partition = collect(EpisodeListScope::cases())
+        ->filter(fn (EpisodeListScope $scope): bool => $scope->partitionsLibrary())
+        ->sum(fn (EpisodeListScope $scope): int => $counts[$scope->value]);
+
+    expect($partition)
         ->toBe($counts['all'])
         ->and($counts['all'])->toBe(count($fixtures))
-        ->and($counts['pinned'])->toBe(1);
+        ->and($counts['pinned'])->toBe(2);
 });
 
 it('renders every scope tab with exact count badges and filters records per tab', function (): void {

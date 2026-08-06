@@ -219,6 +219,9 @@ return [
         'blocked_group' => 'Podcast blocked',
         'blocked_transcription' => 'Needs a transcript',
         'pinned' => 'Pinned',
+        'ready_to_publish' => 'Ready to publish',
+        'pinned_not_visible' => 'Pinned but hidden',
+        'will_break_on_air' => 'Will break on air',
         'descriptions' => [
             'all' => 'Every episode in the library.',
             'drafts' => 'Episodes still in draft.',
@@ -227,6 +230,9 @@ return [
             'blocked_group' => 'Ready to go — the podcast itself is not published yet. One switch, on another record.',
             'blocked_transcription' => 'Published, but there is no released transcript yet.',
             'pinned' => 'Episodes currently pinned.',
+            'ready_to_publish' => 'Drafts whose podcast and transcript are already out — one switch and they are live.',
+            'pinned_not_visible' => 'Promoted to the front page, yet the public cannot see them.',
+            'will_break_on_air' => 'Scheduled episodes whose podcast or transcript will still be missing on the day.',
         ],
     ],
     'episodes' => [

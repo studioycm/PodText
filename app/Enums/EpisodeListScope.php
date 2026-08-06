@@ -31,6 +31,32 @@ enum EpisodeListScope: string implements HasLabel
     case BlockedTranscription = 'blocked_transcription';
     case Pinned = 'pinned';
 
+    // Triage scopes: each asks "which single thing is missing", and each
+    // OVERLAPS the partition rather than extending it. Ready-to-publish is a
+    // slice of drafts, pinned-not-visible of pinned, and will-break-on-air of
+    // the blocked pair — so partitionsLibrary() below, not a hand-list in a
+    // test, is what decides which scopes must sum to the whole.
+    case ReadyToPublish = 'ready_to_publish';
+    case PinnedNotVisible = 'pinned_not_visible';
+    case WillBreakOnAir = 'will_break_on_air';
+
+    /**
+     * Does this scope carve out part of the exact partition?
+     *
+     * Structural rather than a list in a test: adding an overlapping scope
+     * cannot silently break the sum, and adding a partitioning one forces the
+     * question to be answered here, where the reason lives.
+     */
+    public function partitionsLibrary(): bool
+    {
+        return match ($this) {
+            self::Drafts, self::Visible, self::Scheduled,
+            self::BlockedGroup, self::BlockedTranscription => true,
+            self::All, self::Pinned, self::ReadyToPublish,
+            self::PinnedNotVisible, self::WillBreakOnAir => false,
+        };
+    }
+
     public function getLabel(): string
     {
         return __("admin.episode_scopes.{$this->value}");

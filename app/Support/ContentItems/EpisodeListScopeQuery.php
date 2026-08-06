@@ -42,6 +42,23 @@ class EpisodeListScopeQuery
                 ->where(fn (Builder $q): Builder => $this->whereGroupReleased($q))
                 ->whereNot(fn (Builder $q): Builder => $this->whereTranscriptionReleased($q)),
             EpisodeListScope::Pinned => $query->currentlyPinned(),
+            // One switch away, on the episode itself: a draft whose podcast
+            // and transcript are already out. The mirror of blocked_group,
+            // and the pile an editor can clear in a sitting.
+            EpisodeListScope::ReadyToPublish => $query
+                ->where('status', PublicationStatus::Draft)
+                ->where(fn (Builder $q): Builder => $this->wherePrerequisitesMetNow($q)),
+            // Promoted to the front and invisible: the one case where pinned
+            // overlapping the other scopes actually matters.
+            EpisodeListScope::PinnedNotVisible => $query
+                ->currentlyPinned()
+                ->whereNot(fn (Builder $q): Builder => $q->published()),
+            // Blocked, but not yet — these still have time to be fixed before
+            // anyone notices. A deadline rather than a fire.
+            EpisodeListScope::WillBreakOnAir => $query
+                ->where('status', PublicationStatus::Published)
+                ->where('published_at', '>', now())
+                ->whereNot(fn (Builder $q): Builder => $this->wherePrerequisitesMetByAirTime($q)),
         };
     }
 
