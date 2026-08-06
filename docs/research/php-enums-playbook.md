@@ -102,7 +102,16 @@ array, `->badge()` instead of a `->color(fn ($state) => match (...))` closure.**
 A colour written in a closure is a colour that will disagree with the next
 surface someone builds.
 
-Our position: 34 of 45 enums implement `HasLabel`; 11 implement no contract at
+**Census caveat, and it bit twice.** We have **47** enums, not 45 — two live
+outside `app/Enums`:
+`app/Support/Importer/SpotifyLinks/SpotifyEntityMode.php` and
+`app/Auth/LegacyRoleBackfill/PermissionCacheInvalidationOutcome.php`. Both
+carry no contract. Any tool that globs `app/Enums/*.php` — including the
+reflection sweep described in §6a — silently misses them, and so did the first
+draft of every count in this document. Count by declaration
+(`grep -rl '^enum ' app`), never by directory.
+
+Our position: 34 of 47 enums implement `HasLabel`; **13** implement no contract at
 all (internal ones, mostly fine); 2 implement all four. The construction
 project uses `HasDescription` **nowhere** — we are ahead of it there.
 
@@ -263,9 +272,9 @@ public function extraScanPaths(): array { return ['app/Models']; }   // :68
 
 **It only inspects enums reached through an Eloquent model's `casts()`.** An
 enum used solely in a Filament form, table or action — never cast on a model —
-is invisible to it. Measured here: 13 of our 45 enums are model-cast, and all
-13 implement `HasLabel`, which is why our runs are green. The other 32,
-including the **11 that implement no contract at all**, are simply out of the
+is invisible to it. Measured here: 13 of our 47 enums are model-cast, and all
+13 implement `HasLabel`, which is why our runs are green. The other 34,
+including the **13 that implement no contract at all**, are simply out of the
 rule's reach.
 
 So: *FilaCheck green ≠ every enum a human sees has a label.* Same family as
@@ -486,7 +495,7 @@ thought to look at.
 
 ## 8. Where we stand
 
-Already good: 23 of our 45 enums carry behaviour beyond the contracts —
+Already good: 23 of our 47 enums carry behaviour beyond the contracts —
 `DashboardRange::currentPeriod()`, `EpisodePublicState::for()`,
 `UserRole::isAtLeast()`, `SparklineTrend::fromDelta()`. The `fromFilter()` /
 `options()` / `indicator()` triple on the filter-scope enums is our own house
