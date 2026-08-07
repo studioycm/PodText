@@ -15,7 +15,7 @@ service-container idiom, and invokable controllers. Nothing dated appeared.
 
 It ships a bonus **`laraveldaily-structure-audit`** agent skill as lesson 16 — the third
 course in this round to do so. Same verdict as recorded in
-[laraveldaily-queues-notes.md](docs/research/laraveldaily-queues-notes.md) §6: noted, not
+[laraveldaily-queues-notes.md](queues-notes.md) §6: noted, not
 installed.
 
 ---

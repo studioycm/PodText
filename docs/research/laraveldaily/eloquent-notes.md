@@ -5,7 +5,7 @@ Notes on [Laravel 13 Eloquent: Expert Level](https://laraveldaily.com/course/lar
 
 Per the operator's instruction this was **skimmed for relationship optimization**, not watched
 linearly. **5 of 41 lessons** were read in full via Vimeo auto-captions (extraction method in
-[laraveldaily-livewire-v4-notes.md](docs/research/laraveldaily-livewire-v4-notes.md) §1);
+[laraveldaily-livewire-v4-notes.md](livewire-v4-notes.md) §1);
 the other 36 were not. What was skipped is listed in §6.
 
 Every claim below was re-verified against `laravel/framework v13.23.0` as installed.
@@ -27,7 +27,7 @@ idiom appeared in the lessons read.
 
 Like the queues course, it ships a bonus **`laraveldaily-eloquent-audit`** agent skill as
 lesson 41. Same verdict as recorded in
-[laraveldaily-queues-notes.md](docs/research/laraveldaily-queues-notes.md) §6 — noted, not
+[laraveldaily-queues-notes.md](queues-notes.md) §6 — noted, not
 installed, and for the same reasons.
 
 ---
@@ -40,7 +40,36 @@ installed, and for the same reasons.
 | 22 — `load()` and `$with` | You can eager-load after the fact with `->load('user')`. You can also set `protected $with = ['user']` on the model — and the lesson **argues against it**: it loads the relation even where it is not needed, and the next developer editing that controller has no way to see it. Verdict: eager-load explicitly. |
 | 23 — Detect and prevent N+1 | `Model::preventLazyLoading(! app()->isProduction())` throws on any lazy load outside production. `Model::automaticallyEagerLoadRelationships()` (Laravel 12.9+) instead *fixes* it silently. Course advice: "you should probably always use automatically eager load relationships." **See §3.** |
 | 26 — `whereHas` vs `join` vs raw | Measured on 30 000 posts: Eloquent 3 queries / 77 MB / 0.4 s; Query Builder 2 queries / 66 MB / faster; raw `DB::select` ≈ Query Builder. Query Builder is close to raw. The stated cost is losing accessors/mutators and model features. |
-| 34 — One of many | `latestOfMany()`, `oldestOfMany()`, `ofMany('price', 'max')`, `ofMany(['price' => 'max', 'updated_at' => 'min'])`, and `ofMany([...], fn ($q) => $q->where('title', 'like', …))`. **See §2.** |
+| 34 — One of many | `latestOfMany()`, `oldestOfMany()`, `ofMany('price', 'max')`, `ofMany(['price' => 'max', 'updated_at' => 'min'])`, and `ofMany([...], fn ($q) => $q->where('title', 'like', …))`. Plus `->one()`, §1a. **See §2.** |
+
+### 1a. `->one()` on `HasMany` — added after a methodology correction
+
+**This course's video lessons also carry authored text bodies, and the first pass read only the
+captions.** The `oneofmany` lesson's text body runs 5 446 characters and contains a section the
+narration never mentions:
+
+```php
+public function latestProject(): HasOne
+{
+    return $this->projects()->one()->latestOfMany();
+}
+```
+
+Instead of restating `$this->hasOne(Project::class)` for every variant, chain `->one()` on the
+existing `hasMany`. Verified in Laravel 13 — `HasMany::one()` builds a `HasOne` from
+`$this->getQuery()`, so it **inherits the parent relation's base constraints** (scopes, default
+ordering), exactly as the text claims. `HasOne` uses `CanBeOneOfMany`, so
+`->one()->latestOfMany()` runs the same machinery as the standalone form.
+
+**It does not change §2.** `->one()` is a construction convenience; winner selection is still
+`CanBeOneOfMany`'s MIN/MAX aggregate over the child table. The parked refactor's conclusion is
+unaffected.
+
+Relevant to this repo mainly as style: `ContentItem::latestPublishedTranscription()` is written
+as `$this->hasOne(Transcription::class)->published()->latest(...)`, i.e. the standalone form,
+which duplicates the target rather than reusing `transcriptions()`. Rewriting it as
+`$this->transcriptions()->one()->…` would inherit any constraint later added to
+`transcriptions()`. **Cosmetic, not proposed** — noted only so the option is on the record.
 
 ---
 
@@ -180,7 +209,7 @@ rather than an open item.
   not a limitation. The unread set includes several that plausibly matter and are candidates
   for a follow-up pass:
   - `model-casts-dates-enum` — directly adjacent to the `casts()` / larastan finding in
-    [larastan-playbook.md](docs/research/larastan-playbook.md) §1. **Highest-value unread lesson.**
+    [larastan-playbook.md](../larastan-playbook.md) §1. **Highest-value unread lesson.**
   - `local-global-scopes` — adjacent to the public-visibility scopes and to the
     `Builder<Model>` typing debt in `larastan-playbook.md` §4b.
   - `withcount`, `query-relationship-data`, `has-many-through`, `advanced-belongs-to-many`,
@@ -191,11 +220,15 @@ rather than an open item.
   - `prunable-and-massprunable`, `model-observers`, `wascreated-isdirty`, `firstorcreate-methods`.
 - **The bonus skill's full text** — only the lesson page was read; the GitHub raw file was
   deliberately not fetched.
-- **The course's demo repository**, if one exists — not located; all code above was
-  reconstructed from captions and then confirmed against framework source.
+- **The lesson text bodies were missed on the first pass** — see §1a. This course's video
+  lessons carry authored write-ups *and* a "Code for this lesson can be found on GitHub" link,
+  and the first pass used only Vimeo captions. One real API (`->one()`) was lost that way and
+  has been added; the four other lessons read here were **not** re-checked against their text
+  bodies, so more may be missing. The [README](README.md) §3 rule exists because of this.
 - Auto-caption caveat, as in the Livewire notes: the ASR mangles identifiers (*"Larval"*,
   *"eloquence"*, *"bullying condition"*, *"of many"*). **No API name in this document comes
-  from a caption** — each was confirmed in `vendor/laravel/framework`.
+  from a caption** — each was confirmed in `vendor/laravel/framework`. That discipline is what
+  kept §2's conclusion correct despite the extraction gap above.
 
 ---
 

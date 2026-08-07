@@ -45,13 +45,13 @@ The lesson argues against MySQL `enum()` columns and for native PHP enums:
 **PodText is already fully here.** Measured: `app/Enums/` holds **47** enum classes, and the
 recent commit `refactor(enums): move the last two enums into app/Enums, and guard the rule`
 closed the last exceptions with an architecture rule. There is already a
-[php-enums-playbook.md](docs/research/php-enums-playbook.md) in this folder that goes deeper
+[php-enums-playbook.md](../php-enums-playbook.md) in this folder that goes deeper
 than this lesson.
 
 **No action.** Recorded only as external corroboration of a decision already made and enforced.
 
 Worth connecting, though: the `casts()` method being the modern form is exactly what breaks
-larastan by default — see [larastan-playbook.md](docs/research/larastan-playbook.md) §1. The
+larastan by default — see [larastan-playbook.md](../larastan-playbook.md) §1. The
 course teaches the right pattern and, like every other source found, has no idea it interacts
 badly with static analysis.
 
@@ -84,7 +84,7 @@ The lesson's Option 1 (load the whole relation, then `sortByDesc(...)->first()` 
 exactly the pattern the effective-transcription work exists to avoid. Useful mainly as a
 reminder of *why* the denormalised column is there, for anyone tempted to remove it.
 
-Connects to [laraveldaily-eloquent-notes.md](docs/research/laraveldaily-eloquent-notes.md) §2 —
+Connects to [laraveldaily-eloquent-notes.md](eloquent-notes.md) §2 —
 the pointer column is what makes the rule parent-dependent, and therefore what makes `ofMany`
 unable to express it.
 

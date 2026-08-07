@@ -255,7 +255,7 @@ idempotency guards, whole-model payloads, and so on.
    preferences."*
 2. Installing it means fetching a `curl`-ed file from a third-party GitHub repo straight into
    an agent's instruction path — which is precisely the trust model the security course in
-   [laraveldaily-supply-chain-security-notes.md](docs/research/laraveldaily-supply-chain-security-notes.md)
+   [laraveldaily-supply-chain-security-notes.md](supply-chain-security-notes.md)
    argues against. A skill file is executable instruction surface, not documentation.
 3. §3 shows its findings would be mostly already-satisfied here.
 

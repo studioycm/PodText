@@ -463,10 +463,14 @@ feature directory listing, whole subsystems outside the course's scope: `Support
 
 ### What I could not obtain
 
-- **The course's demo repository.** Lesson 2 says "you will have access to the full
-  repository, the link will be at the bottom of this lesson" — no such link is present in the
-  lesson page text. Every code sample here was therefore reconstructed from captions and then
-  confirmed against vendor source rather than copied from the author's repo.
+- ~~The course's demo repository.~~ **Found afterwards — correction.** Lesson 2 says "you will
+  have access to the full repository, the link will be at the bottom of this lesson", and it is
+  there: **`LaravelDaily/Livewire-v4-Course-Demo`**. It lives in the lesson's `.prose` element,
+  which on this course contains *only* that line (64 characters) — so the extraction used here
+  discarded it as empty. Every code sample in this document was reconstructed from captions and
+  confirmed against vendor source instead, which is why the conclusions still stand; but the
+  repo was available and was not used. See the folder [README](README.md) §3 for the extraction
+  rule that now prevents this.
 - **Anything beyond the spoken track.** Lessons are screencasts with no text body; on-screen
   code that was never read aloud is not recoverable from captions. This is why §3–§8 lean on
   vendor source for exact syntax — the captions establish *what feature was shown*, not *how

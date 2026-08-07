@@ -181,8 +181,8 @@ regeneration. That converts §4 from a source-reading into a measurement.
 
 Recorded because the alarm is plausible enough that someone will raise it again, and because
 it is the second time this round that a course's prose was directionally right and precisely
-wrong — cf. [laraveldaily-queues-notes.md](docs/research/laraveldaily-queues-notes.md) §2 and
-[laraveldaily-exceptions-notes.md](docs/research/laraveldaily-exceptions-notes.md) §2.
+wrong — cf. [laraveldaily-queues-notes.md](queues-notes.md) §2 and
+[laraveldaily-exceptions-notes.md](exceptions-notes.md) §2.
 
 ### 4a. What the upgrade *did* break: exclusion keys are version-fragile
 
