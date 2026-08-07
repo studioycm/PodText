@@ -2469,6 +2469,22 @@ and `model:show` is safe to use again.
   via `eachById`, `withoutTimestamps` so a backfill cannot read as an edit,
   and free to re-run (a row whose shadow already matches leaves nothing dirty,
   so `save()` issues no statement).
+- **DEPLOY ORDERING — search is dead between the two steps.** The migration
+  adds the shadow columns NULL, and every search predicate now compares against
+  a shadow. So from the moment `migrate` finishes until `search:backfill-folds`
+  finishes, **every pre-existing row is invisible to every search** — public
+  homepage, episode browser, podcast listing, contributors, media library and
+  the whole admin panel. Rows written after the migration are fine; the
+  `setAttribute()` hook fills their shadows on write. There is no repo-level
+  deploy script (Forge owns it), so this is an operator action:
+
+  ```
+  php artisan migrate --force && php artisan search:backfill-folds
+  ```
+
+  Run them as one step. The backfill is re-runnable, so running it again later
+  is free and repairs any drift. Nothing about this is reversible-by-waiting —
+  the window stays open until the backfill runs.
 - Admin uses a `Column::macro('foldedSearchable')` delegating to
   `FoldedTableSearch::query()`, applied at 28 call sites. FilaCheck's
   `table-without-searchable-columns` cannot see it — the rule decides with
