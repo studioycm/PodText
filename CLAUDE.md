@@ -457,6 +457,18 @@ Every implementation prompt uses Boost where available, reads its blueprint, che
 - Do not run `filacheck --fix` without explicit approval.
 - Do not write secrets, tokens, licenses, Composer auth, MCP headers, or machine paths to tracked files.
 
+## Laravel Boost version and regeneration
+
+- This project runs **Laravel Boost 2.5 or newer** (2.5.3 with `laravel/roster` 1.0 as of 2026-08-07). Do not assume 2.4.x behaviour or advice. Boost and roster move together: upgrade both in one `composer update laravel/boost laravel/roster`, because a partial update fails and misreports `filament/blueprint` as the conflict.
+- **`CLAUDE.md` is entirely generated.** The `<laravel-boost-guidelines>` block spans the whole file, so anything hand-written into it is destroyed by the next `boost:install` or `boost:update`. `AGENTS.md` is the only exception — it has a hand-written region before the block that survives — but that reaches Codex alone. Never hand-edit either file.
+- Durable text goes in the source Boost composes from, not its output:
+  - **Always-on project policy → `.ai/guidelines/*.md`.** Composed into every agent's file, so it reaches Claude, Codex and Junie and survives every regeneration.
+  - **Path-scoped traps → `.ai/rules/*.md`.** Glob-matched and read on demand, written with the `record-rule` MCP tool rather than by hand. Propose the glob, title and note text and get approval before recording.
+  - **Anything that must not silently regress → a test.** Prose advises; only a test fails. `tests/Feature/FilacheckAgentModeGuardTest.php` is the worked example.
+- Run `boost:install` with all three features (`--guidelines --skills --mcp`). A subset rewrites the agent files from the selected features alone and silently drops the sections belonging to the omitted ones.
+- `boost:update` is deliberately not automated, and must not be put in a composer hook: it can silently reintroduce vendor guidelines this project excludes on purpose. Run it by hand, then immediately run `php artisan test --filter=FilacheckAgentModeGuard` and read `git diff CLAUDE.md` before committing. On 2.5+ `--discover` is the default; `--no-discover` opts out.
+- Vendor guidelines are cancelled at the source by leaving the package out of `boost.json` "packages" — Boost filters those by prefix, so it survives guideline-key renames. `boost.guidelines.exclude` in `config/boost.php` is only a backstop; it matches exactly and fails open.
+
 ## Testing rules
 
 - Each implementation prompt must add/update Pest tests.
