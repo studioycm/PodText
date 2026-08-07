@@ -240,6 +240,74 @@ the Filament class a covariant `@property ContentItem $record` — not to loosen
 Filament 5 with many panels and providers boots fine under larastan's `bootstrap.php`. See
 §2 for why the migration-scan types are the proof. Should it ever break, it breaks loudly.
 
+### 4d. Relationship generics — the cheapest error reduction available, and it fixes part of 4b
+
+larastan infers a relation's *kind* from the return type, but not the *related model*, unless
+you tell it. Without a generic, `$item->transcriptions` is a collection of `Model`, and every
+concrete method or property reached through it is an error. Annotate:
+
+```php
+/** @return HasMany<Transcription, $this> */
+public function transcriptions(): HasMany
+```
+
+`$this` on the declaring side is load-bearing — it preserves late-static model context so the
+type survives subclassing.
+
+**Measured here, 2026-08-07 — and then reverted.** The change was implemented, measured, and
+backed out because it fell outside that session's approved scope. The numbers below are real
+measurements of a working change, not estimates, but **the annotations are not in the code**;
+`open-findings-triage.md` §B5 carries this as an open item.
+
+This repo has 45 relationship methods and 2 generics. Adding the other 43 took `507 → 444`,
+with **zero** new errors introduced, and left the suite byte-identical at 1850 passed /
+20573 assertions. Where the errors went:
+
+| identifier | before | after |
+| --- | --- | --- |
+| `property.notFound` | 65 | 33 |
+| `argument.type` | 58 | 44 |
+| `method.notFound` | 129 | 121 |
+| `return.type` | 27 | 20 |
+| `argument.unresolvableType` | 1 | 0 |
+
+Three things worth knowing before doing this elsewhere:
+
+- **Check the generic arity against the installed framework**, don't guess. Read the
+  `@template` lines on the relation class: `HasMany`/`HasOne`/`BelongsTo`/`MorphTo` take two,
+  `BelongsToMany`/`MorphToMany` take two plus defaulted pivot and accessor, `HasOneThrough`
+  takes three (related, intermediate, declaring).
+- **`morphTo()` with no argument cannot be narrowed.** It returns `MorphTo<Model, $this>`, and
+  PHPStan checks the body against your tag — so annotating the union the morph map actually
+  admits is a claim it *rejects*, producing a fresh `return.type` error. Use `Model`. The one
+  place this bites is worth an explicit comment in the code, because the natural instinct on a
+  second pass is to re-narrow it and re-break it.
+- **Know which annotations PHPStan is actually checking.** It validates each `@return` against
+  the method body — that is how it caught the `morphTo()` mistake above, and it is the reason
+  a bulk pass is safe. But where the related class is a *dynamic string*, it cannot: this
+  repo's `tags()` calls `morphToMany(self::getTagClassName(), …)`, so a `ContentTag` claim is
+  accepted unverified. True today per `config/tags.php`, but nothing pins it. Either pin it
+  with a test or leave those relations un-annotated; do not let an unverifiable annotation
+  pass as a verified one.
+
+The annotation can also expose dead defensive code: a `foreach` guarded by
+`if (! $item instanceof ContentItem) { continue; }` becomes provably redundant once the
+relation is typed, because the guard existed only to compensate for the missing type. Deleting
+that guard is the change working as intended — and note it is then the *only* runtime-affecting
+line in an otherwise comment-only change, so it deserves separate scrutiny from the rest.
+
+This does **not** fix the Filament half of 4b. Errors whose `Model` originates from
+`Exporter::$record` or `getEloquentQuery()` still need narrowing at that boundary.
+
+Rules distilled from [szepeviktor's `larastan-preflight-reviewer` skill](https://github.com/szepeviktor/skills/blob/master/skills/larastan-preflight-reviewer/SKILL.md)
+(szepeviktor is a larastan collaborator; the repo carries no license, so the rules were
+applied, not copied). The same skill prescribes literal array shapes on `casts()` as the
+per-model alternative to `parseModelCastsMethod` — **do not adopt that here**: it duplicates
+every cast map into a docblock on every model, forever, with silent drift when the two
+disagree. §1's one config line replaces all of it. The skill's `Attribute<TGet, TSet>` rules
+(use `never` for the absent side) and its `@mixin` rule for `JsonResource` remain unapplied
+and are open candidates.
+
 ---
 
 ## 5. What larastan can and cannot do

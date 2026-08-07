@@ -2590,3 +2590,48 @@ and `model:show` is safe to use again.
   app typing debt at Filament's untyped `Model`/`Builder` boundary — a third of
   the total, and not a tool limitation. Only 10 of the 507 are genuine tool
   limitations. `types:check` stays out of the gate until the count is zero.
+
+## Eloquent Relationship Generics (measured, reverted, NOT applied)
+
+- **Status: proven but not in the code.** Implemented and measured 2026-08-07, then
+  reverted as out-of-scope for that session. Tracked as `open-findings-triage.md`
+  §B5. The numbers below are real measurements of a working change.
+- 43 of the repo's 45 relationship methods carry no `@return` generic. larastan
+  infers a relation's *kind* from the return type but not the *related model*, so
+  `$item->transcriptions` was a collection of `Model` and everything reached
+  through it was an error.
+- Annotating all of them took `composer types:check` from **507 to 444, with
+  zero new errors introduced**, and the suite stayed byte-identical at 1850
+  passed / 20573 assertions. `property.notFound` 65→33, `argument.type` 58→44,
+  `return.type` 27→20, `method.notFound` 129→121, `argument.unresolvableType` 1→0.
+  Combined with the cast-flag fix above: 614 → 444, a 28% cut.
+- `$this` on the declaring side is load-bearing — it preserves late-static model
+  context so the type survives subclassing.
+- Check generic arity against the installed framework rather than guessing:
+  `HasMany`/`HasOne`/`BelongsTo`/`MorphTo` take two, `BelongsToMany`/`MorphToMany`
+  take two plus defaulted pivot and accessor, `HasOneThrough` takes three.
+- **`morphTo()` with no argument cannot be narrowed.** It returns
+  `MorphTo<Model, $this>` and PHPStan checks the body against the tag, so
+  annotating the union the morph map admits (`ContentGroup|ContentItem`) is a
+  claim it rejects and produces a fresh `return.type` error.
+  `MediaAttachment::attachable()` now carries a comment saying exactly this,
+  because the instinct on a second pass is to re-narrow it and re-break it.
+- It exposes one piece of dead defensive code: `ContentImagesExportManager`
+  guards a `foreach` with `if (! $item instanceof ContentItem) { continue; }`,
+  which exists only because the relation is untyped. Deleting it is the ONLY
+  runtime-affecting line in an otherwise comment-only change, so it deserves
+  separate scrutiny if this is revisited.
+- Three annotations would be UNVERIFIABLE by PHPStan: `tags()`, `contentTags()`
+  and `enabledContentTags()` call `morphToMany(self::getTagClassName(), ...)`, a
+  dynamic class string, so the `ContentTag` claim is accepted unchecked. True
+  today per `config/tags.php:9`, but nothing pins it — add a guard test asserting
+  `ContentItem::getTagClassName() === ContentTag::class`, or skip those three.
+- Rules taken from szepeviktor's `larastan-preflight-reviewer` skill (he is a
+  larastan collaborator; the repo is unlicensed, so the rules were applied, not
+  copied). Still unapplied and worth doing: `Attribute<TGet, TSet>` generics with
+  `never` for the absent side, and `@mixin` on any `JsonResource`. Deliberately
+  rejected: its literal array shapes on `casts()`, which duplicate every cast map
+  into a docblock forever — `parseModelCastsMethod` replaces all of it.
+- What this does NOT fix: errors whose `Model` originates from Filament's own
+  contracts (`Exporter::$record`, `Resource::getEloquentQuery()`). That family is
+  122 of the remaining 444 and needs narrowing at the Filament boundary instead.
