@@ -140,10 +140,20 @@ it('keeps the unsafe vendor guidelines out of anything boost regenerates', funct
     // `php artisan boost:install` writes them straight back. config/boost.php
     // excludes them at the source, so this asserts the composer no longer
     // emits them at all rather than asserting today's file contents.
+    //
+    // Match on prefix, not on the exact key. Boost excludes with a strict
+    // `in_array`, and Boost 2.5 renamed these keys to `<package>/core` — an
+    // exact-key assertion here passed while the exclusion had already stopped
+    // matching and the unsafe text was back in CLAUDE.md.
     $emitted = app(GuidelineComposer::class)->used();
 
-    foreach (['laraveldaily/filacheck', 'laraveldaily/filacheck-pro'] as $guideline) {
-        expect(in_array($guideline, $emitted, true))
-            ->toBeFalse("Boost still emits the `{$guideline}` guideline, which tells agents to auto-fix with the raw binary. Check boost.guidelines.exclude in config/boost.php.");
+    foreach (['laraveldaily/filacheck', 'laraveldaily/filacheck-pro'] as $package) {
+        $leaked = array_values(array_filter(
+            $emitted,
+            fn (string $key): bool => $key === $package || str_starts_with($key, $package.'/'),
+        ));
+
+        expect($leaked)
+            ->toBe([], 'Boost still emits ['.implode(', ', $leaked).'], which tells agents to auto-fix with the raw binary. Add the key to boost.guidelines.exclude in config/boost.php.');
     }
 });

@@ -19,12 +19,21 @@ return [
     | Excluding them here is what makes the override durable: without it every
     | `php artisan boost:install` puts the unsafe instructions straight back.
     |
+    | Boost matches these keys with a strict `in_array`, so a key rename in
+    | Boost silently drops the exclusion rather than erroring. Boost 2.5 did
+    | exactly that — it suffixed package guideline keys with `/core` — so both
+    | spellings are listed. Keep the bare keys alongside any new ones; the
+    | FilacheckAgentModeGuardTest asserts on prefix, not exact key, so it
+    | catches the next rename instead of passing vacuously.
+    |
     */
 
     'guidelines' => [
         'exclude' => [
             'laraveldaily/filacheck',
             'laraveldaily/filacheck-pro',
+            'laraveldaily/filacheck/core',
+            'laraveldaily/filacheck-pro/core',
         ],
     ],
 
