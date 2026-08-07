@@ -2505,12 +2505,25 @@ and `model:show` is safe to use again.
 - Gate 2026-08-06: pest 1844 passed (20557 assertions), pint clean, filacheck
   35/35 rules passed, `npm run build` green.
 - `composer types:check` reads 652, up from 623 before the macro was restored.
-  All 28 of the difference are `Call to an undefined method …::foldedSearchable()`
-  — PHPStan cannot see Filament macros, which is why the two pre-existing
+  All 28 of the difference are `Call to an undefined method …::foldedSearchable()`.
+  PHPStan cannot see Filament macros at all, which is why the two pre-existing
   macros in `AppServiceProvider` already carry 12 errors of the same kind
-  (`multiTranscription` 10, `superAdminOnly` 2). Zeroing them needs a
-  `stubFiles` entry in `phpstan.neon` declaring the method on
-  `Filament\Tables\Columns\Column`; that is a teach, not a suppression, so it
+  (`multiTranscription` 10, `superAdminOnly` 2).
+- Why the usual remedy does not apply: larastan's
+  `MacroMethodsClassReflectionExtension` gates on
+  `Illuminate\Support\Traits\Macroable` (`:18`, `:79`), and Filament components
+  use `Filament\Support\Concerns\Macroable` — a different trait, verified with
+  `class_uses_recursive(TextColumn::class)`. No branch matches, so booting the
+  registering provider (the advice in larastan discussion #1737) changes
+  nothing. The shapes differ too: Laravel's `$macros` is `name => Closure`,
+  Filament's is `name => [class-string => Closure]`.
+- The fix is a `stubFiles` entry, which teaches rather than suppresses and so
   does not conflict with the file's "NO BASELINE / `ignoreErrors` stays empty"
-  policy. Left for whoever owns `phpstan.neon` — a concurrent session had it
-  open at the time. `types:check` is deliberately not in the gate.
+  policy. **The form matters, both measured:** an `@method` PHPDoc on a stubbed
+  class body works and is inherited by subclasses (a stub on `Column` reaches
+  `TextColumn`); a real method signature in the stub does **not**, on either
+  class. One stub covering `Column`, `Filament\Schemas\Components\Component`
+  and `Filament\Actions\Action` takes the repo 652 → **614**, clearing all 40
+  macro errors including the 12 that predate this work. Left to whoever owns
+  `phpstan.neon` — a concurrent session had it open — and sent to that session.
+  `types:check` is deliberately not in the gate.
