@@ -69,9 +69,14 @@ The finding was an artefact of PHPStan's agent error formatter, which truncates 
 
 What B1 *did* suppress at that file were the neighbouring `match.alwaysFalse` reports at `:550`–`:551`, plus the equivalents in `ConnectionTester.php` and `GoogleApiDriveClientFactory.php` — all now gone. C1 remains the open defect; the parser test and PHPStan both catch it, so keep both.
 
-### B3. `PublicFrontConfigValidator.php:69` — `OPEN`
-A `match ($key)` over 11+ string literals, **no default arm**. Throws on any unrecognised config group. A *scalar* match, so the enum sweep structurally cannot see it.
-**Next:** add a default arm, or route the keys through an enum.
+### B3. `PublicFrontConfigValidator.php:69` — `OPEN`, re-characterised 2026-08-07
+A `match ($key)` over 14 string literals with **no default arm**. A *scalar* match, so the enum sweep structurally cannot see it — only PHPStan reports it.
+
+**Correction: it does not "throw on any unrecognised config group",** as this entry previously said. `validateGroups()` guards first — `if (! in_array($key, $settingsKeys, true))` records `unknown_top_level_key` and `continue`s — so an unknown key never reaches the match. The match is unreachable for exactly the input that was claimed to break it.
+
+**The real risk is the inverse, and it is a trap rather than a live bug.** Safety rests on two hand-maintained lists in two files agreeing: `PublicFrontConfigRegistry::settingsKeys()` (14 strings) and the match arms (the same 14). Add a fifteenth key to `settingsKeys()`, forget the arm, and the first save of that config group raises `UnhandledMatchError` in production. That is the C3 `set-membership-without-totality` pattern, so fix it *with* C3 rather than alone.
+
+**Next — and NOT the default arm this entry used to recommend.** A default arm would swallow the missing key silently, converting a loud crash into quiet wrong behaviour, which is worse than the trap it closes. Either route the keys through a backed enum, so `match.unhandled` fires at analysis time the moment a case is added without an arm; or add a guard test asserting `settingsKeys()` and the match arms are the same set. The enum route is preferred — PHPStan already watches this line, so the guard costs nothing to keep.
 
 ### B4. 445 errors triaged by identifier — `OPEN` (work items, not mysteries)
 Triaged 2026-08-07 after B1; the counts below are from before B5, which cut 62 of them. No baseline, no `@phpstan-ignore`. Five groups:
