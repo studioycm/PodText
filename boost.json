@@ -10,9 +10,7 @@
     "nightwatch": false,
     "packages": [
         "filament/filament",
-        "filament/blueprint",
-        "laraveldaily/filacheck",
-        "laraveldaily/filacheck-pro"
+        "filament/blueprint"
     ],
     "sail": false,
     "skills": [

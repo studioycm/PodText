@@ -9,22 +9,31 @@ return [
     | Boost Guidelines
     |--------------------------------------------------------------------------
     |
-    | Guideline keys excluded from the generated CLAUDE.md. The two FilaCheck
-    | packages ship guidelines telling agents to run `vendor/bin/filacheck`
-    | with `--fix`, which contradicts this project's rule that fixes are only
-    | written with explicit approval — and the binary force-enables `--fix` on
-    | its own whenever it detects an AI agent. PodText's own FilaCheck rules
-    | live in .ai/guidelines/tooling-quality.md instead.
+    | Second line of defence only. Read this before "simplifying" it.
     |
-    | Excluding them here is what makes the override durable: without it every
-    | `php artisan boost:install` puts the unsafe instructions straight back.
+    | The unsafe text is not Boost's. Both FilaCheck packages ship it
+    | themselves, in
+    | `vendor/laraveldaily/filacheck{,-pro}/resources/boost/guidelines/core.blade.php`,
+    | which literally say "you must run `filacheck --fix`". Boost only
+    | discovers and renders them. That contradicts this project's rule that
+    | fixes are written only with explicit approval, and the binary
+    | force-enables `--fix` on its own whenever it detects an AI agent.
+    | PodText's own FilaCheck rules live in .ai/guidelines/tooling-quality.md.
     |
-    | Boost matches these keys with a strict `in_array`, so a key rename in
-    | Boost silently drops the exclusion rather than erroring. Boost 2.5 did
-    | exactly that — it suffixed package guideline keys with `/core` — so both
-    | spellings are listed. Keep the bare keys alongside any new ones; the
-    | FilacheckAgentModeGuardTest asserts on prefix, not exact key, so it
-    | catches the next rename instead of passing vacuously.
+    | PRIMARY cancellation is at the source: neither package is selected in
+    | `boost.json` "packages". GuidelineComposer::keyBelongsToSelectedPackage()
+    | drops every guideline whose key is not under a selected package, and it
+    | matches by PREFIX, so it survives the key renames this exclude list
+    | cannot. Deselecting costs nothing else — the FilaCheck packages ship no
+    | skills, and `filament-security-audit` comes from filament/blueprint.
+    |
+    | This list stays as a backstop for the one case deselection misses:
+    | someone re-ticking the packages in the interactive `boost:install`
+    | dialog. Boost matches these keys with a strict `in_array`, so a rename
+    | silently drops the exclusion rather than erroring — Boost 2.5 did
+    | exactly that by suffixing keys with `/core`, which is why both spellings
+    | are listed. FilacheckAgentModeGuardTest asserts on the composed output
+    | rather than on either mechanism, so it catches a failure of both.
     |
     */
 
