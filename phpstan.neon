@@ -12,6 +12,23 @@ parameters:
         - database
         - routes
 
+    # Filament macros are structurally invisible to larastan, and the usual
+    # remedy does not apply. larastan's MacroMethodsClassReflectionExtension
+    # gates on `Illuminate\Support\Traits\Macroable` (:18, :73, :79), while
+    # Filament components use `Filament\Support\Concerns\Macroable` — verified:
+    # class_uses_recursive(TextColumn::class) contains the latter and not the
+    # former, so no branch matches and the extension never looks. Booting the
+    # registering provider — the advice in larastan discussion #1737 — cannot
+    # help. The shapes differ too: Laravel stores `name => Closure`, Filament
+    # `name => [class-string => Closure]`.
+    #
+    # A stub TEACHES rather than suppresses, so it does not touch the no-baseline
+    # policy below: it says the method exists instead of hiding the report.
+    # The form matters — `@method` PHPDoc on a stubbed class body works and is
+    # inherited by subclasses; declaring a real signature in the stub does not.
+    stubFiles:
+        - phpstan/filament-macros.stub
+
     # Load-bearing, and NOT the default — larastan ships
     # `databaseMigrationsPath: []`. Without this, larastan cannot see the column
     # types, resolves every cast Eloquent attribute to `string`, and then

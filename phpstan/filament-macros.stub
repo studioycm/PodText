@@ -1,0 +1,24 @@
+<?php
+
+namespace Filament\Tables\Columns;
+
+/**
+ * @method static foldedSearchable(bool|\Closure $condition = true, ?string $against = null, bool $isIndividual = false, bool $isGlobal = true)
+ */
+class Column {}
+
+namespace Filament\Schemas\Components;
+
+/**
+ * @method static multiTranscription(?\App\Enums\UserRole $minimum = null)
+ * @method static superAdminOnly()
+ */
+class Component {}
+
+namespace Filament\Actions;
+
+/**
+ * @method static multiTranscription(?\App\Enums\UserRole $minimum = null)
+ * @method static superAdminOnly()
+ */
+class Action {}

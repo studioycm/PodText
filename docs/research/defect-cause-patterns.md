@@ -754,6 +754,24 @@ by the orchestrator.)*
   pathspec — `git commit <paths> -m …` — which commits only those paths
   regardless of index state; inspect `git status` staged section when in
   doubt.
+- **Sighting (2026-08-06, this orchestrator session, ACTUAL — the guard's own
+  blind spot):** `ce0f3a0` used an explicit pathspec, exactly as the adopted
+  guard prescribes, and **still swallowed 13 lines of another session's
+  work** — the `HasFoldedSearchColumns` trait use and the whole
+  `foldedSearchColumns()` method, both sitting unstaged in
+  `app/Models/ContentItem.php` while I added two PHPDoc lines to the same
+  file. **A pathspec is a FILE-level instrument.** It protects against other
+  files; it cannot protect against another writer inside the same file, and
+  nothing in `git status --porcelain` distinguishes "my edit" from "theirs"
+  once both are ` M` on one path. Consequence: `ce0f3a0` references
+  `App\Models\Concerns\HasFoldedSearchColumns` before that file exists — HEAD
+  is correct and complete, but that commit alone will not bisect. Ruling:
+  leave-and-record, same as the founding evidence — no history surgery in a
+  live shared tree with an active session.
+  **Guard extension:** before staging a file that `git status` shows as
+  modified, check whether the modification is yours —
+  `git diff <path>` and read it — or ask the other session. The pathspec rule
+  stands; it is necessary and not sufficient.
 - **Sibling sighting (2026-08-04, hygiene session, ACTUAL):**
   `pint --dirty` swept another session's in-flight blade file (the
   focus-fix work in `media-picker-panel.blade.php`) — `--dirty`-scoped
