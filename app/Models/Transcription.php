@@ -56,16 +56,19 @@ class Transcription extends Model implements FoldsSearchColumns
         return $this;
     }
 
+    /** @return BelongsTo<ContentItem, $this> */
     public function contentItem(): BelongsTo
     {
         return $this->belongsTo(ContentItem::class);
     }
 
+    /** @return BelongsTo<Author, $this> */
     public function author(): BelongsTo
     {
         return $this->belongsTo(Author::class);
     }
 
+    /** @return BelongsToMany<Author, $this> */
     public function authors(): BelongsToMany
     {
         return $this

@@ -32,11 +32,13 @@ class ContentTag extends Tag implements FoldsSearchColumns
         'is_enabled' => false,
     ];
 
+    /** @return BelongsTo<User, $this> */
     public function enabledBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'enabled_by_id');
     }
 
+    /** @return BelongsTo<User, $this> */
     public function createdBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by_id');

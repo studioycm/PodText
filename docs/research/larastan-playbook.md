@@ -254,14 +254,10 @@ public function transcriptions(): HasMany
 `$this` on the declaring side is load-bearing — it preserves late-static model context so the
 type survives subclassing.
 
-**Measured here, 2026-08-07 — and then reverted.** The change was implemented, measured, and
-backed out because it fell outside that session's approved scope. The numbers below are real
-measurements of a working change, not estimates, but **the annotations are not in the code**;
-`open-findings-triage.md` §B5 carries this as an open item.
-
-This repo has 45 relationship methods and 2 generics. Adding the other 43 took `507 → 444`,
-with **zero** new errors introduced, and left the suite byte-identical at 1850 passed /
-20573 assertions. Where the errors went:
+**Measured and applied here, 2026-08-07.** This repo had 45 relationship methods and 2
+generics. Adding the other 43 took `507 → 445`, with **zero** new errors introduced. The
+change is 51 lines of PHPDoc and nothing else, so it has no runtime surface at all. Where the
+errors went:
 
 | identifier | before | after |
 | --- | --- | --- |
@@ -270,6 +266,9 @@ with **zero** new errors introduced, and left the suite byte-identical at 1850 p
 | `method.notFound` | 129 | 121 |
 | `return.type` | 27 | 20 |
 | `argument.unresolvableType` | 1 | 0 |
+
+(The table sums to 444; the applied change stops at 445 because the one `instanceof.alwaysTrue`
+it newly exposes was deliberately left standing — see the last paragraph of this section.)
 
 Three things worth knowing before doing this elsewhere:
 

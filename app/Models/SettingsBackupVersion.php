@@ -37,11 +37,13 @@ class SettingsBackupVersion extends Model implements FoldsSearchColumns
         ];
     }
 
+    /** @return BelongsTo<User, $this> */
     public function creator(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by_user_id');
     }
 
+    /** @return HasMany<SettingsBackupSnapshot, $this> */
     public function snapshots(): HasMany
     {
         return $this->hasMany(SettingsBackupSnapshot::class, 'backup_id');

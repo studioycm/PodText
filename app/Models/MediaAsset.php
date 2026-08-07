@@ -11,11 +11,13 @@ use LogicException;
 #[Fillable(['reference_key'])]
 class MediaAsset extends Model
 {
+    /** @return HasMany<MediaProviderBinding, $this> */
     public function providerBindings(): HasMany
     {
         return $this->hasMany(MediaProviderBinding::class);
     }
 
+    /** @return HasMany<MediaAttachment, $this> */
     public function attachments(): HasMany
     {
         return $this->hasMany(MediaAttachment::class);

@@ -45,7 +45,7 @@ Version divergence confirmed. This decides the MySQL test lane:
 
 ---
 
-## B. PHPStan / larastan (507 errors, gate not wired in)
+## B. PHPStan / larastan (445 errors, gate not wired in)
 
 ### B1. Enum-and-datetime casts resolve as `string` — `FIXED` 2026-08-07
 `$item->status` typed as `string`, not `PublicationStatus`, so every enum comparison was reported "always false". Not enum-specific — a `datetime` cast also resolved to `string` (`PruneMediaQuarantine.php:48`, *"Cannot call method timezone() on string"*).
@@ -73,8 +73,8 @@ What B1 *did* suppress at that file were the neighbouring `match.alwaysFalse` re
 A `match ($key)` over 11+ string literals, **no default arm**. Throws on any unrecognised config group. A *scalar* match, so the enum sweep structurally cannot see it.
 **Next:** add a default arm, or route the keys through an enum.
 
-### B4. 507 errors triaged by identifier — `OPEN` (work items, not mysteries)
-Triaged 2026-08-07 after B1. No baseline, no `@phpstan-ignore`. Five groups:
+### B4. 445 errors triaged by identifier — `OPEN` (work items, not mysteries)
+Triaged 2026-08-07 after B1; the counts below are from before B5, which cut 62 of them. No baseline, no `@phpstan-ignore`. Five groups:
 
 **1. Untyped `Model` / `Builder` — 171, a third of the total and the largest family by far.** Two distinct sources, and B5 establishes the split: **122 originate in Filament's own contracts** (`Exporter::$record`, `Resource::getEloquentQuery()`, `modifyQueryUsing(fn (Builder $query) => …)`), and **49 originate in our own un-generic'd relations**. Shapes: `method.notFound` on `Builder`/`Builder<Model>` (61 — ordinary `scopeReleasedBy()` / `scopeCurrentlyPinned()` / `scopePublished()` methods that larastan resolves fine on `Builder<ContentItem>` but cannot on a raw `Builder`), `property.notFound` on `Model::$reference_key` (48), `method.notFound` on `Model::…` (20), 38 of the 58 `argument.type`, and `assign.propertyType` (4). **Real app typing debt, not a larastan limitation.** Remedy is to narrow at the boundary — type the closure `Builder<ContentItem>`, or give the Filament class a covariant `@property` — never to loosen the check.
 
@@ -88,20 +88,22 @@ Triaged 2026-08-07 after B1. No baseline, no `@phpstan-ignore`. Five groups:
 
 **Still not wired into `composer test`** — deliberately. See the note in `phpstan.neon`: a red gate trains people to ignore red. Wire it when the count reaches zero, not before.
 
-### B5. Relationship generics missing on 43 of 45 relations — `BOUNDED`: measured, then reverted, awaiting approval
-larastan infers a relation's *kind* from the return type but not the *related model*. Without `@return HasMany<Transcription, $this>`, `$item->transcriptions` is a collection of `Model`, and everything reached through it is an error. This repo has 45 relationship methods and 2 generics.
+### B5. Relationship generics missing on 43 of 45 relations — `FIXED` 2026-08-07
+larastan infers a relation's *kind* from the return type but not the *related model*. Without `@return HasMany<Transcription, $this>`, `$item->transcriptions` is a collection of `Model`, and everything reached through it is an error. This repo had 45 relationship methods and 2 generics.
 
-**The fix is proven but NOT APPLIED.** It was implemented and measured on 2026-08-07, then reverted because it was out of the approved scope for that session. The numbers below are real measurements, not estimates; the code is back to its prior state.
+Annotating the other 43 took **507 → 445, with zero new errors introduced**. `property.notFound` 65→33, `argument.type` 58→44, `return.type` 27→20, `method.notFound` 129→121, `argument.unresolvableType` 1→0. The change is 51 lines of PHPDoc and nothing else — PHP does not read docblocks, so it has no runtime surface at all.
 
-Annotating the other 43 took **507 → 444, with zero new errors introduced**. `property.notFound` 65→33, `argument.type` 58→44, `return.type` 27→20, `method.notFound` 129→121, `argument.unresolvableType` 1→0. Full suite stayed green at 1850 passed / 20573 assertions, byte-identical to the pre-change run. The change was 51 added lines of PHPDoc — which PHP does not read, so zero runtime surface — plus one 4-line deletion (below).
+Guarded by `tests/Feature/EloquentRelationshipGenericsGuardTest.php`, mutation-checked by deleting one annotation. It asserts every relation carries a generic, so a new relation added without one fails a test instead of quietly giving back part of the win.
 
-Four things the experiment established, so a future pass need not rediscover them:
+Four things established along the way:
 - **Check generic arity against the installed framework.** `HasMany`/`HasOne`/`BelongsTo`/`MorphTo` take two; `BelongsToMany`/`MorphToMany` take two plus defaulted pivot and accessor; `HasOneThrough` takes three (related, intermediate, declaring).
-- **`morphTo()` with no argument cannot be narrowed.** It returns `MorphTo<Model, $this>` and PHPStan checks the body against the tag, so annotating the union the morph map actually admits (`ContentGroup|ContentItem`) is a claim it *rejects* — it produced a fresh `return.type` error on `MediaAttachment::attachable()`. Use `Model`, and leave a comment, because the instinct on a second pass is to re-narrow it.
-- **Three annotations would be unverifiable.** `tags()` / `contentTags()` / `enabledContentTags()` call `morphToMany(self::getTagClassName(), …)` — a dynamic class string — so PHPStan accepts the `ContentTag` claim without checking it. It is true today (`config/tags.php:9`), but nothing pins it. Any future pass should add a guard test asserting `ContentItem::getTagClassName() === ContentTag::class`, or skip those three.
-- **It exposes dead defensive code.** `ContentImagesExportManager` guards a `foreach` with `if (! $item instanceof ContentItem) { continue; }`, which exists only because the relation is untyped. Typing the relation makes it provably unreachable. That deletion is the *only* runtime-affecting part of the whole change, and it is the one part worth a second opinion.
+- **`morphTo()` with no argument cannot be narrowed.** It returns `MorphTo<Model, $this>` and PHPStan checks the body against the tag, so annotating the union the morph map actually admits (`ContentGroup|ContentItem`) is a claim it *rejects* — it produced a fresh `return.type` error on `MediaAttachment::attachable()`. That method now carries `Model` plus a comment saying why, because the instinct on a second pass is to re-narrow it.
+- **Three annotations are unverifiable by PHPStan, and are pinned by test instead.** `tags()` / `contentTags()` / `enabledContentTags()` call `morphToMany(self::getTagClassName(), …)` — a dynamic class string — so PHPStan accepts the `ContentTag` claim without checking it. `config/tags.php:9` is the source of truth and the guard test asserts it, so editing that config now fails a test rather than silently invalidating three annotations.
+- **Reflection reports a trait's methods as declared by the using class.** The guard test's count canary caught Spatie `HasTags::tagsTranslated()` being treated as ours. Filter relation discovery on `getFileName()`, not `getDeclaringClass()`.
 
-Source of the rules: [szepeviktor's `larastan-preflight-reviewer` skill](https://github.com/szepeviktor/skills/blob/master/skills/larastan-preflight-reviewer/SKILL.md) — a larastan collaborator's, unlicensed, so applied rather than copied. Its `Attribute<TGet, TSet>` and `JsonResource` `@mixin` rules are also unapplied. Its `casts()` array-shape rule is deliberately **rejected** — see `phpstan.neon`.
+**Deliberately not done: the dead `instanceof` guard.** Typing `ContentGroup::contentItems()` makes `if (! $item instanceof ContentItem) { continue; }` in `ContentImagesExportManager` provably unreachable, and PHPStan now reports it (`instanceof.alwaysTrue`, the one error separating 445 from 444). Removing it is the only runtime-affecting edit in the vicinity, so it was split off as its own decision rather than smuggled in with 51 lines of comments. Still open.
+
+Source of the rules: [szepeviktor's `larastan-preflight-reviewer` skill](https://github.com/szepeviktor/skills/blob/master/skills/larastan-preflight-reviewer/SKILL.md) — a larastan collaborator's, unlicensed, so applied rather than copied. Its `Attribute<TGet, TSet>` and `JsonResource` `@mixin` rules are **not yet applied** and are the obvious next candidates. Its `casts()` array-shape rule is deliberately **rejected** — see `phpstan.neon`.
 
 ---
 

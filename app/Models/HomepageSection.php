@@ -45,16 +45,19 @@ class HomepageSection extends Model implements FoldsSearchColumns
         'pagination_config' => '[]',
     ];
 
+    /** @return BelongsTo<Category, $this> */
     public function category(): BelongsTo
     {
         return $this->belongsTo(Category::class);
     }
 
+    /** @return BelongsTo<ContentTag, $this> */
     public function tag(): BelongsTo
     {
         return $this->belongsTo(ContentTag::class, 'tag_id');
     }
 
+    /** @return BelongsTo<ContentGroup, $this> */
     public function contentGroup(): BelongsTo
     {
         return $this->belongsTo(ContentGroup::class);

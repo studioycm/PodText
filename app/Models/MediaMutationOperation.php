@@ -48,11 +48,13 @@ class MediaMutationOperation extends Model
 {
     use HasFactory;
 
+    /** @return BelongsTo<Media, $this> */
     public function media(): BelongsTo
     {
         return $this->belongsTo(Media::class);
     }
 
+    /** @return BelongsTo<User, $this> */
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);

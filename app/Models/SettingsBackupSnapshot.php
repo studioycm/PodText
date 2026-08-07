@@ -42,6 +42,7 @@ class SettingsBackupSnapshot extends Model
         'error',
     ];
 
+    /** @return BelongsTo<SettingsBackupVersion, $this> */
     public function backup(): BelongsTo
     {
         return $this->belongsTo(SettingsBackupVersion::class, 'backup_id');

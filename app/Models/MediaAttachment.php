@@ -20,16 +20,26 @@ class MediaAttachment extends Model
         'position' => 0,
     ];
 
+    /** @return BelongsTo<Media, $this> */
     public function media(): BelongsTo
     {
         return $this->belongsTo(Media::class);
     }
 
+    /** @return BelongsTo<MediaAsset, $this> */
     public function mediaAsset(): BelongsTo
     {
         return $this->belongsTo(MediaAsset::class);
     }
 
+    /**
+     * The morph map admits only ContentGroup and ContentItem, but `morphTo()`
+     * with no argument returns `MorphTo<Model, $this>` and PHPStan checks the
+     * body against the tag. Narrowing the generic to that union is therefore a
+     * claim it rejects, not an improvement — keep `Model` here.
+     *
+     * @return MorphTo<Model, $this>
+     */
     public function attachable(): MorphTo
     {
         return $this->morphTo();

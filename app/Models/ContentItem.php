@@ -73,16 +73,19 @@ class ContentItem extends Model implements FoldsSearchColumns
         'status' => 'draft',
     ];
 
+    /** @return BelongsTo<ContentGroup, $this> */
     public function contentGroup(): BelongsTo
     {
         return $this->belongsTo(ContentGroup::class);
     }
 
+    /** @return BelongsToMany<Category, $this> */
     public function categories(): BelongsToMany
     {
         return $this->belongsToMany(Category::class);
     }
 
+    /** @return MorphToMany<ContentTag, $this> */
     public function tags(): MorphToMany
     {
         return $this
@@ -97,23 +100,27 @@ class ContentItem extends Model implements FoldsSearchColumns
             ->ordered();
     }
 
+    /** @return MorphToMany<ContentTag, $this> */
     public function contentTags(): MorphToMany
     {
         return $this->tags()
             ->where('type', 'content');
     }
 
+    /** @return MorphToMany<ContentTag, $this> */
     public function enabledContentTags(): MorphToMany
     {
         return $this->contentTags()
             ->where('is_enabled', true);
     }
 
+    /** @return HasMany<Transcription, $this> */
     public function transcriptions(): HasMany
     {
         return $this->hasMany(Transcription::class);
     }
 
+    /** @return HasMany<MediaAttachment, $this> */
     public function mediaAttachments(): HasMany
     {
         return $this->hasMany(MediaAttachment::class, 'attachable_id')
@@ -123,6 +130,7 @@ class ContentItem extends Model implements FoldsSearchColumns
             ->orderBy('id');
     }
 
+    /** @return HasOne<MediaAttachment, $this> */
     public function primaryImageMediaAttachment(): HasOne
     {
         return $this->hasOne(MediaAttachment::class, 'attachable_id')
@@ -152,6 +160,8 @@ class ContentItem extends Model implements FoldsSearchColumns
      * Do not eager-load this relation from list, table, or collection queries:
      * the fallback ordering is instance-conditional and intended only for the
      * episode workspace form.
+     *
+     * @return HasOne<Transcription, $this>
      */
     public function workspaceTranscription(): HasOne
     {

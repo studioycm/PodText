@@ -54,11 +54,13 @@ class ContentGroup extends Model implements FoldsSearchColumns
         'status' => 'draft',
     ];
 
+    /** @return HasMany<ContentItem, $this> */
     public function contentItems(): HasMany
     {
         return $this->hasMany(ContentItem::class);
     }
 
+    /** @return HasMany<MediaAttachment, $this> */
     public function mediaAttachments(): HasMany
     {
         return $this->hasMany(MediaAttachment::class, 'attachable_id')
@@ -68,6 +70,7 @@ class ContentGroup extends Model implements FoldsSearchColumns
             ->orderBy('id');
     }
 
+    /** @return HasOne<MediaAttachment, $this> */
     public function coverMediaAttachment(): HasOne
     {
         return $this->hasOne(MediaAttachment::class, 'attachable_id')
@@ -75,6 +78,7 @@ class ContentGroup extends Model implements FoldsSearchColumns
             ->where('role', MediaAttachmentRole::Cover->value);
     }
 
+    /** @return BelongsToMany<Category, $this> */
     public function categories(): BelongsToMany
     {
         return $this->belongsToMany(Category::class);

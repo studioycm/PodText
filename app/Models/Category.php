@@ -35,21 +35,25 @@ class Category extends Model implements FoldsSearchColumns
         'sort_order' => 0,
     ];
 
+    /** @return BelongsTo<Category, $this> */
     public function parent(): BelongsTo
     {
         return $this->belongsTo(Category::class, 'parent_id');
     }
 
+    /** @return HasMany<Category, $this> */
     public function children(): HasMany
     {
         return $this->hasMany(Category::class, 'parent_id');
     }
 
+    /** @return BelongsToMany<ContentGroup, $this> */
     public function contentGroups(): BelongsToMany
     {
         return $this->belongsToMany(ContentGroup::class);
     }
 
+    /** @return BelongsToMany<ContentItem, $this> */
     public function contentItems(): BelongsToMany
     {
         return $this->belongsToMany(ContentItem::class);

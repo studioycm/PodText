@@ -52,22 +52,26 @@ class Media extends \Awcodes\Curator\Models\Media implements FoldsSearchColumns
         return [];
     }
 
+    /** @return HasMany<MediaAttachment, $this> */
     public function attachments(): HasMany
     {
         return $this->hasMany(MediaAttachment::class);
     }
 
+    /** @return HasMany<MediaMutationOperation, $this> */
     public function mutationOperations(): HasMany
     {
         return $this->hasMany(MediaMutationOperation::class);
     }
 
+    /** @return HasOne<MediaProviderBinding, $this> */
     public function providerBinding(): HasOne
     {
         return $this->hasOne(MediaProviderBinding::class, 'provider_record_key')
             ->where('provider', 'curator');
     }
 
+    /** @return HasOneThrough<MediaAsset, MediaProviderBinding, $this> */
     public function mediaAsset(): HasOneThrough
     {
         return $this->hasOneThrough(

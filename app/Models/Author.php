@@ -21,11 +21,13 @@ class Author extends Model implements FoldsSearchColumns
 
     use HasFoldedSearchColumns;
 
+    /** @return HasMany<Transcription, $this> */
     public function transcriptions(): HasMany
     {
         return $this->hasMany(Transcription::class);
     }
 
+    /** @return BelongsToMany<Transcription, $this> */
     public function authoredTranscriptions(): BelongsToMany
     {
         return $this
