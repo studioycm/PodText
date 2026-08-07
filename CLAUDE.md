@@ -465,8 +465,13 @@ Every implementation prompt uses Boost where available, reads its blueprint, che
   - **Always-on project policy → `.ai/guidelines/*.md`.** Composed into every agent's file, so it reaches Claude, Codex and Junie and survives every regeneration.
   - **Path-scoped traps → `.ai/rules/*.md`.** Glob-matched and read on demand, written with the `record-rule` MCP tool rather than by hand. Propose the glob, title and note text and get approval before recording.
   - **Anything that must not silently regress → a test.** Prose advises; only a test fails. `tests/Feature/FilacheckAgentModeGuardTest.php` is the worked example.
-- Run `boost:install` with all three features (`--guidelines --skills --mcp`). A subset rewrites the agent files from the selected features alone and silently drops the sections belonging to the omitted ones.
-- `boost:update` is deliberately not automated, and must not be put in a composer hook: it can silently reintroduce vendor guidelines this project excludes on purpose. Run it by hand, then immediately run `php artisan test --filter=FilacheckAgentModeGuard` and read `git diff CLAUDE.md` before committing. On 2.5+ `--discover` is the default; `--no-discover` opts out.
+- Use the composer scripts, never the bare Artisan commands:
+  - **`composer boost:sync`** — reinstalls guidelines, skills and MCP for all three agents, then runs the guard test. Idempotent; safe to run any time.
+  - **`composer boost:refresh`** — `boost:update` (with `--no-discover`) followed by `boost:sync`.
+  Both fail with a non-zero exit if the FilaCheck override stops holding, so a regression cannot pass unnoticed. Read `git diff CLAUDE.md AGENTS.md` afterwards regardless.
+- Always install with all three features. A subset rewrites the agent files from the selected features alone and silently drops the sections belonging to the omitted ones — which is why `boost:sync` hard-codes `--guidelines --skills --mcp`.
+- `boost:refresh` passes `--no-discover` on purpose. Discovery adopts newly available vendor guidelines and skills, and adopting a vendor's instructions is a decision, not a refresh — run `php artisan boost:update` interactively when you actually want to review what is new.
+- Neither script belongs in a composer hook such as `post-update-cmd`. They are safe because a human runs them and reads the diff; firing them unattended removes the only step that is not automated.
 - Vendor guidelines are cancelled at the source by leaving the package out of `boost.json` "packages" — Boost filters those by prefix, so it survives guideline-key renames. `boost.guidelines.exclude` in `config/boost.php` is only a backstop; it matches exactly and fails open.
 
 ## Testing rules

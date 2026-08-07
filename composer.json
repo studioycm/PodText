@@ -74,6 +74,15 @@
             "@php artisan config:clear --ansi @no_additional_args",
             "@php artisan test"
         ],
+        "boost:sync": [
+            "@php artisan config:clear --ansi @no_additional_args",
+            "@php artisan boost:install --guidelines --skills --mcp --no-interaction",
+            "@php artisan test --compact --filter=FilacheckAgentModeGuard"
+        ],
+        "boost:refresh": [
+            "@php artisan boost:update --no-discover --no-interaction",
+            "@boost:sync"
+        ],
         "filacheck": [
             "@putenv FILACHECK_DISABLE_AGENT_MODE=1",
             "vendor/bin/filacheck"
