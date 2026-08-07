@@ -25,6 +25,20 @@ final class LegacyRoleBackfillAnalyzer
         'role_has_permissions',
     ];
 
+    /**
+     * Half-open `[minimum, ceiling)` range of `spatie/laravel-permission`
+     * versions this analyzer has been validated against.
+     *
+     * A range, not a pinned version: the previous `!== '7.3.0'` raised a
+     * blocking issue inside this dormant subsystem, so a routine package
+     * upgrade failed 31 tests that nothing reachable depends on. Widen the
+     * ceiling only after re-checking `LegacyRoleBackfillSchemaContract`
+     * against the new major's published migration.
+     *
+     * @var array{0: string, 1: string}
+     */
+    private const VALIDATED_PACKAGE_RANGE = ['7.0.0', '9.0.0'];
+
     public function __construct(private readonly PrivacyHasher $hasher) {}
 
     public function analyze(): AnalysisReport
@@ -246,6 +260,25 @@ final class LegacyRoleBackfillAnalyzer
         ]);
     }
 
+    /**
+     * Whether the installed package version falls inside the validated range.
+     *
+     * `unknown` is what the analyzer records when Composer cannot report a
+     * version, and a non-string means the contract itself is malformed. Both
+     * stay blocking — this relaxes a pin, it does not remove a guard.
+     */
+    private function packageVersionIsValidated(mixed $version): bool
+    {
+        if (! is_string($version) || $version === '' || $version === 'unknown') {
+            return false;
+        }
+
+        $normalized = ltrim($version, 'vV');
+
+        return version_compare($normalized, self::VALIDATED_PACKAGE_RANGE[0], '>=')
+            && version_compare($normalized, self::VALIDATED_PACKAGE_RANGE[1], '<');
+    }
+
     /** @param array<string, mixed> $contract @param list<AnalysisIssue> $issues */
     private function validateStaticContract(array $contract, array &$issues): void
     {
@@ -265,8 +298,8 @@ final class LegacyRoleBackfillAnalyzer
             $issues[] = new AnalysisIssue(AnalysisIssue::CONFIG_MODEL_TYPE_DRIFT);
         }
 
-        if ($contract['package_version'] !== '7.3.0') {
-            $issues[] = new AnalysisIssue('package_version_drift');
+        if (! $this->packageVersionIsValidated($contract['package_version'])) {
+            $issues[] = new AnalysisIssue(AnalysisIssue::PACKAGE_VERSION_DRIFT);
         }
 
         foreach (self::TABLE_KEYS as $key) {
