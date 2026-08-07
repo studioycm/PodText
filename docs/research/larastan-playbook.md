@@ -263,6 +263,25 @@ being the standing example. Prefer, in order: fix the code → narrow the type a
 boundary → teach PHPStan with a stub → and only then consider a scoped `ignoreErrors`
 entry with a comment saying why the rule is wrong about this codebase.
 
+### The mainstream advice is the opposite, and its own worked example is the argument against it
+
+Worth knowing, because "just baseline it" is what most tutorials say and someone will
+propose it here eventually. LaravelDaily's Larastan course devotes its entire "Don't get
+scared by errors" lesson to `--generate-baseline` as *the* answer to a large first run.
+
+Read the lesson's own example, though. The baseline it generates freezes, among twelve
+entries, several missing Eloquent relations (`roles` on `User`, `permissions` on `Role`)
+and an access to an undefined property. Those are not noise — they are real bugs, of
+exactly the class larastan exists to find. The lesson then demonstrates the tool working
+"correctly" afterwards by showing a *newly written* `with(['roles', 'permissions'])` call
+reporting only `permissions`, while `roles` stays silent because it is baselined. The
+demonstration of the feature working is simultaneously a demonstration of a real defect
+being rendered invisible in new code.
+
+That is the whole argument for this repo's policy, made unintentionally by the best-known
+tutorial on the subject. A baseline does not defer the work; it converts findings into
+permanent silence, and does so most reliably for the findings that recur.
+
 ---
 
 ## 6. Sources
@@ -276,18 +295,34 @@ entry with a comment saying why the rule is wrong about this codebase.
   [#2509](https://github.com/larastan/larastan/issues/2509),
   [#1935](https://github.com/larastan/larastan/issues/1935)
 - [Running PHPStan on max with Laravel](https://laravel-news.com/running-phpstan-on-max-with-laravel) — level progression, generic-type friction
-- [larastan.org](https://larastan.org/), [LaravelDaily's Larastan course](https://laraveldaily.com/course/larastan),
+- [larastan.org](https://larastan.org/),
   [Larament](https://filamentphp.com/plugins/codewithdennis-larament) (a Filament starter kit;
   its `phpstan.neon` is the stock three-key file at level 5 — no Filament-specific configuration)
+- [LaravelDaily's Larastan course](https://laraveldaily.com/course/larastan) — 8 text lessons,
+  30 min, read in full 2026-08-07 on the operator's account. **Published March 2023 and not
+  revised since**, confirmed three ways: it installs `nunomaduro/larastan` and hand-writes
+  `includes: ./vendor/nunomaduro/larastan/extension.neon` (both pre-rename, and the
+  `includes:` line is now redundant under `phpstan/extension-installer`); it states level 9
+  is the highest (PHPStan 2.x has 10); newest discussion comment is three years old. It
+  therefore predates Laravel 11's `casts()` method by a year and **cannot** speak to the
+  defect in §1. Lesson 6's level-by-level breakdown independently confirms the level 4/5
+  reasoning in `phpstan.neon` — dead-code checks begin at 4, caller-side argument checking
+  is what 5 adds — but contributes nothing new. Lesson 7 is the baseline argument, treated
+  in §5.
 - Vendor source read directly: `vendor/larastan/larastan/{bootstrap.php,extension.neon}`,
   `src/Properties/ModelCastHelper.php`, `vendor/laravel/framework/.../HasAttributes.php`
 
 ### What I could not obtain
 
-No YouTube transcripts. The LaravelDaily Larastan course is a paid course page with no
-free transcript, and the FilamentDaily channel surfaced no larastan/PHPStan content in
-search. Nothing authored by Nuno Maduro specifically about larastan configuration turned
-up beyond the package README — he co-created larastan with Can Vural in 2019, but the
-current maintainers (`canvural`, `calebdw`, `szepeviktor`) are the ones answering the
-issues cited above. The substantive findings here come from vendor source and the issue
-tracker, both of which are primary.
+No YouTube transcripts, and none were needed in the end — the LaravelDaily course turned
+out to be text, not video, and was read in full (see above). The FilamentDaily channel
+surfaced no larastan/PHPStan content at all. Nothing authored by Nuno Maduro specifically
+about larastan configuration turned up beyond the package README — he co-created larastan
+with Can Vural in 2019, but the current maintainers (`canvural`, `calebdw`, `szepeviktor`)
+are the ones answering the issues cited above.
+
+**Bottom line on secondary sources: none of them knew about this defect.** Every tutorial
+and course found predates Laravel 11's `casts()` method or does not mention it. The
+substantive findings here came from vendor source and the issue tracker, and the one
+external source that materially changed a decision did so by arguing the opposite case
+(§5).
