@@ -4,6 +4,7 @@ namespace App\Filament\Pages;
 
 use App\Enums\ImportConnectionProvider;
 use App\Enums\ImportConnectionStatus;
+use App\Enums\SpotifyEntityMode;
 use App\Filament\Imports\ContentGroupImporter;
 use App\Filament\Imports\ContentItemImporter;
 use App\Filament\Support\Concerns\UsesAdminNavigationOrder;
@@ -14,7 +15,6 @@ use App\Models\ImportConnection;
 use App\Models\User;
 use App\Support\Importer\ImporterThrottle;
 use App\Support\Importer\SpotifyLinks\ImporterCsvBuilder;
-use App\Support\Importer\SpotifyLinks\SpotifyEntityMode;
 use App\Support\Importer\SpotifyLinks\SpotifyHtmlToMarkdown;
 use App\Support\Importer\SpotifyLinks\SpotifyLinkParser;
 use App\Support\Importer\SpotifyLinks\SpotifyLinksDirectImporter;

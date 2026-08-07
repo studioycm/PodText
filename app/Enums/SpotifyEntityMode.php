@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Support\Importer\SpotifyLinks;
+namespace App\Enums;
 
 enum SpotifyEntityMode: string
 {

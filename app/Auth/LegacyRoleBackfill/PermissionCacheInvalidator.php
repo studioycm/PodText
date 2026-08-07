@@ -2,6 +2,7 @@
 
 namespace App\Auth\LegacyRoleBackfill;
 
+use App\Enums\PermissionCacheInvalidationOutcome;
 use Illuminate\Cache\CacheManager;
 use Spatie\Permission\PermissionRegistrar;
 use Throwable;

@@ -2,6 +2,7 @@
 
 namespace App\Auth\LegacyRoleBackfill;
 
+use App\Enums\PermissionCacheInvalidationOutcome;
 use App\Enums\UserRole;
 use DateTimeImmutable;
 use Throwable;

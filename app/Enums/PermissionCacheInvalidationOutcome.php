@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Auth\LegacyRoleBackfill;
+namespace App\Enums;
 
 enum PermissionCacheInvalidationOutcome: string
 {
