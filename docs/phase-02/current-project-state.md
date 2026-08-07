@@ -2543,3 +2543,50 @@ and `model:show` is safe to use again.
   macro errors including the 12 that predate this work. Left to whoever owns
   `phpstan.neon` — a concurrent session had it open — and sent to that session.
   `types:check` is deliberately not in the gate.
+
+## larastan Cast Resolution
+
+- Root cause of the "every enum comparison is always false" reports found and
+  fixed: larastan's `parseModelCastsMethod`, which ships `false`. Laravel merges
+  `casts()` into the cast map in `HasAttributes::initializeHasAttributes()` — a
+  trait initializer, so it runs only from `Model::__construct()`. larastan
+  builds models with `newInstanceWithoutConstructor()`, so the initializer never
+  fires and `getCasts()` sees only the empty `$casts` property. With the flag
+  off larastan falls back to the *declared* return type of `casts()` — plain
+  `array`, not a constant array — and skips the merge silently.
+- Measured, level 5: `composer types:check` reads **507**, down from 614. Cold
+  run 20.4s → 21.5s, so the documented cost of the flag is ~5% here.
+- The failure was invisible because larastan falls back to the migration column
+  type, not to `mixed`. `integer` and `boolean` casts therefore looked correct
+  and only `datetime`, `array` and enum casts diverged — a partial pattern that
+  reads as an enum- or Filament-specific problem and is neither.
+- The whole 107-error difference was false positives: all `match.alwaysFalse`,
+  `method.nonObject`, `function.impossibleType`, `booleanAnd.alwaysFalse` and
+  `instanceof.alwaysFalse`, plus 7 of 11 `deadCode.unreachable`. That last
+  family is the reason this mattered more than wrong types — a cast attribute
+  believed to be a string makes guard clauses always-terminate, so PHPStan
+  marked the code after them unreachable and stopped analysing it.
+- Refuted, with evidence: larastan's bootstrap is **not** failing under
+  Filament. The column types it did produce prove the container booted and the
+  migration scan ran, and `bootstrap.php:40-51` exits 1 loudly on any throwable.
+- Corrected: `match.unhandled` was **already firing** on
+  `MediaFilesystemMutationCoordinator.php:1540` before this change — that match
+  subject comes from `MediaMutationOperationType::tryFrom(...)`, a native enum,
+  so the cast defect never reached it. The earlier "it never fires" reading came
+  from PHPStan's agent error formatter truncating its list. Pass `-v` and check
+  the `truncated` field before concluding a rule does not fire.
+- Guard: `tests/Feature/LarastanCastResolutionGuardTest.php` runs the real
+  binary against a `dumpType` probe and pins both halves — the flag resolves the
+  enum/datetime/array casts, and with the flag forced off the hazard still
+  reproduces. Mutation-checked by flipping `phpstan.neon`; 2 of 3 tests fail.
+- Research written up in `docs/research/larastan-playbook.md`: config knobs and
+  which matter, level progression, the three distinct Filament interactions
+  (macros are out of scope upstream by maintainer policy, per larastan#1935),
+  and the `dumpType` probe method that diagnoses this class of problem in one
+  run. Upstream: larastan#2512 proposes flipping the default, #2509 is the same
+  surprise reported as an enum bug.
+- The remaining 507 are triaged by identifier in
+  `docs/phase-02/open-findings-triage.md` §B4. Largest family is 171 errors of
+  app typing debt at Filament's untyped `Model`/`Builder` boundary — a third of
+  the total, and not a tool limitation. Only 10 of the 507 are genuine tool
+  limitations. `types:check` stays out of the gate until the count is zero.

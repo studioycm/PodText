@@ -1,7 +1,8 @@
 # Open findings — triage list
 
 Everything found and **not fixed**. One line of what it is, what's proven, what's next.
-Status: `OPEN` = nothing done · `BOUNDED` = diagnosed, fix not chosen · `PARTIAL` = half done.
+Status: `OPEN` = nothing done · `BOUNDED` = diagnosed, fix not chosen · `PARTIAL` = half done ·
+`FIXED` = closed here, kept because a live entry depends on it · `WITHDRAWN` = the finding's premise was wrong.
 
 ---
 
@@ -44,32 +45,48 @@ Version divergence confirmed. This decides the MySQL test lane:
 
 ---
 
-## B. PHPStan / larastan (614 errors, gate not wired in)
+## B. PHPStan / larastan (507 errors, gate not wired in)
 
-### B1. Enum-and-datetime casts resolve as `string` — `BOUNDED`
-`$item->status` types as `string`, not `PublicationStatus`, so every enum comparison is reported "always false". Not enum-specific — a `datetime` cast also resolves to `string` (`PruneMediaQuarantine.php:48`, *"Cannot call method timezone() on string"*).
+### B1. Enum-and-datetime casts resolve as `string` — `FIXED` 2026-08-07
+`$item->status` typed as `string`, not `PublicationStatus`, so every enum comparison was reported "always false". Not enum-specific — a `datetime` cast also resolved to `string` (`PruneMediaQuarantine.php:48`, *"Cannot call method timezone() on string"*).
 
-**Four hypotheses tested and eliminated:**
-| tested | result |
-| --- | --- |
-| `$attributes` string default beside the cast | no change |
-| `databaseMigrationsPath` set/unset | no change |
-| `@property` annotation on the model | no change |
-| PHPStan result cache | no change (cleared) |
+**Cause: larastan's `parseModelCastsMethod`, which defaults to `false`.** Laravel merges `casts()` into the cast map in `HasAttributes::initializeHasAttributes()` — a trait initializer, so it runs only from `Model::__construct()`. larastan builds models with `newInstanceWithoutConstructor()`, so the initializer never fires and `getCasts()` sees only the empty `$casts` property. With the flag off, larastan falls back to the *declared* return type of `casts()` — plain `array`, not a constant array — and skips the merge silently.
 
-Confirmed *not* the cause: no accessor, no `@mixin`, `casts()` is a plain literal array, `ModelPropertyExtension` is registered, `bootstrapFiles` is present.
-**Next:** likely larastan's app bootstrap failing silently on this app (Filament panels/providers). Run larastan with `-v`/debug and check whether the container boots. This is the single biggest lever on the 614.
+The flag is now set in `phpstan.neon`, with the full mechanism in the comment there and the research in [`docs/research/larastan-playbook.md`](../research/larastan-playbook.md).
 
-### B2. The motivating rule doesn't fire — `BOUNDED`
-Because of B1, `match.unhandled` never reports on `MediaFilesystemMutationCoordinator.php:1540`: PHPStan thinks the subject is a `string`, so it isn't a match over an enum. **The parser test catches what PHPStan misses** — keep both. Fixing B1 should make this fire.
+**Why the five earlier hypotheses all read as "no change":** none of them touched the cast map. `databaseMigrationsPath` in particular is load-bearing but for a *different* job — it supplies the column type that larastan falls back to. That fallback is why the failure looked partial (`integer`/`boolean` casts appeared fine; only `datetime`, `array` and enum casts diverged from their column type), and it is also the evidence that refutes the sixth hypothesis:
+
+> **The leading hypothesis — larastan's bootstrap failing silently under Filament — is refuted.** If the container had not booted, the migration scan could not have produced the `string|null` fallback types that were actually observed. larastan also fails *loudly*: `bootstrap.php:40-51` routes any throwable to `BootstrapErrorHandler` and `exit(1)`.
+
+**Measured, level 5, `app` + `database` + `routes`:** 614 → 507 errors; cold run 20.4s → 21.5s. The families that vanished were entirely false positives: all 7 `match.alwaysFalse`, all 17 `method.nonObject`, all 16 `function.impossibleType`, all 8 `booleanAnd.alwaysFalse`, all 6 `instanceof.alwaysFalse`, and 7 of 11 `deadCode.unreachable`. That last one is why the defect was worse than wrong types: a cast attribute believed to be a string makes guard clauses always-terminate, so PHPStan marked the code after them unreachable and *stopped analysing it*.
+
+Guarded by `tests/Feature/LarastanCastResolutionGuardTest.php`, which pins both halves against the real binary (the flag works; the hazard is still real) and was mutation-checked by flipping the config.
+
+### B2. The motivating rule doesn't fire — `WITHDRAWN`, the premise was wrong
+The claim was that B1 suppressed `match.unhandled` on `MediaFilesystemMutationCoordinator.php:1540`. **It did not.** That rule was firing there on the unfixed config, correctly naming `MediaMutationOperationType::LegacyOwnerRepair`. The match subject at that site comes from `MediaMutationOperationType::tryFrom(...)` narrowed by an `instanceof` guard (`:1439`, `:1450`) — a native enum by construction, never a model attribute, so the cast defect could not reach it.
+
+The finding was an artefact of PHPStan's agent error formatter, which truncates its error list and appends `"truncated": true, "hint": "Pass -v to see all errors."`. The site was below the cut. **Pass `-v` and check the `truncated` field before concluding a rule does not fire.**
+
+What B1 *did* suppress at that file were the neighbouring `match.alwaysFalse` reports at `:550`–`:551`, plus the equivalents in `ConnectionTester.php` and `GoogleApiDriveClientFactory.php` — all now gone. C1 remains the open defect; the parser test and PHPStan both catch it, so keep both.
 
 ### B3. `PublicFrontConfigValidator.php:69` — `OPEN`
 A `match ($key)` over 11+ string literals, **no default arm**. Throws on any unrecognised config group. A *scalar* match, so the enum sweep structurally cannot see it.
 **Next:** add a default arm, or route the keys through an enum.
 
-### B4. 614 errors untriaged — `OPEN`
-Real ones in the sample: `Cannot call method timezone() on string`, `Offset … on array{} does not exist`, `Result of && is always false`.
-**Next:** triage by identifier after B1; do not baseline.
+### B4. 507 errors triaged by identifier — `OPEN` (work items, not mysteries)
+Triaged 2026-08-07 after B1. No baseline, no `@phpstan-ignore`. Five groups:
+
+**1. Filament's untyped `Model` / `Builder` contracts — 171, a third of the total and the largest family by far.** Filament hands you `Illuminate\Database\Eloquent\Model` and unparameterized `Builder` (`Exporter::$record`, `Resource::getEloquentQuery()`, `modifyQueryUsing(fn (Builder $query) => …)`), and app code calls concrete-model methods on them. `property.notFound` on `Model::$reference_key` (48), `method.notFound` on `Model::transcriptions()` (20), `method.notFound` on `Builder::releasedBy()` / `currentlyPinned()` / `published()` / `orderByEffectivePublishedAt()` (61 — these are ordinary `scopeX()` methods that larastan resolves fine on `Builder<ContentItem>` but cannot on a raw `Builder`), 38 of the 58 `argument.type`, and `assign.propertyType` (4). **Real app typing debt, not a larastan limitation.** Remedy is to narrow at the boundary — type the closure `Builder<ContentItem>`, or give the Filament class a covariant `@property` — never to loosen the check.
+
+**2. `BuildsPublicContentSettingsSubjectSchemas` calls a method its host may not have — 36.** The trait calls `$this->withImportLockSection()`, defined on `PublicContentSettingsSubjectPage`. `CardTemplateEditorPage` uses the trait but extends `SettingsPage`, so it does not inherit the method. An undeclared host requirement; a fatal if any of those paths is reachable from that page. **Real, and the most likely genuine bug in the remainder — worth its own look.**
+
+**3. Two unimported class names, both real — `class.notFound`.** `ContentItemsTable.php:265` declares `?HasTable $livewire` with **no `use` statement**, so PHP resolves it to `App\Filament\Resources\ContentItems\Tables\HasTable`, which does not exist — the parameter accepts `null` and would `TypeError` on any real Livewire instance. `EditorialMetrics.php:617` has a `@return` array shape referencing `ProgressWidgetData`, a class that exists nowhere in the repo. Both are the kind of thing this install was bought to find.
+
+**4. Small real findings, mostly one-offs.** `nullsafe.neverNull` (44 — unnecessary `?->`, now *accurate* because casts resolve), `staticClassAccess.privateMethod` (34 — `static::privateMethod()` in subclassable classes), `function.alreadyNarrowedType` (37 — redundant `is_string()`/`is_array()` guards), `return.type` (27), `method.unused` (6), `catch.neverThrown`, `property.onlyWritten` (2), `identical.alwaysTrue`, `larastan.noUnnecessaryCollectionCall`.
+
+**5. Genuine tool limitations — 10, none needing suppression.** `varTag.nativeType` × 5 in `AppServiceProvider` (macro registration closures: the `@var` lands on `$this` because Filament's `Macroable` rebinds the closure), `unset.possiblyHookedProperty` on Filament's own `$cachedTabs`, `method.notFound` on `ConnectionInterface::getDriverName()`/`getSchemaBuilder()` × 2 (Laravel's contract genuinely lacks them; `DB::connection()` returns the interface, not `Connection`), and `class.notFound` × 2 inside `phpstan/filament-macros.stub` for `App\Enums\UserRole` — a class that exists and resolves fine everywhere else in the codebase, but is not visible in stub-file scope.
+
+**Still not wired into `composer test`** — deliberately. See the note in `phpstan.neon`: a red gate trains people to ignore red. Wire it when the count reaches zero, not before.
 
 ---
 

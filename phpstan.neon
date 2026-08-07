@@ -30,14 +30,50 @@ parameters:
         - phpstan/filament-macros.stub
 
     # Load-bearing, and NOT the default — larastan ships
-    # `databaseMigrationsPath: []`. Without this, larastan cannot see the column
-    # types, resolves every cast Eloquent attribute to `string`, and then
-    # reports each enum comparison as "always false" — hundreds of confident,
-    # wrong errors on exactly the code this install was bought to check. Worse,
-    # a `match` over an attribute it believes is a string is not a match over an
-    # enum, so `match.unhandled` never fires on the real defect.
+    # `databaseMigrationsPath: []`. This is where larastan learns the column
+    # types, which are the fallback for every attribute whose cast it cannot
+    # resolve. Without it there is no fallback at all.
     databaseMigrationsPath:
         - database/migrations
+
+    # Load-bearing, and NOT the default — larastan ships
+    # `parseModelCastsMethod: false`, which silently discards every cast this
+    # app declares.
+    #
+    # Laravel merges `casts()` into the cast map in
+    # `HasAttributes::initializeHasAttributes()` — a TRAIT INITIALIZER, so it
+    # runs only from `Model::__construct()`. larastan builds its models with
+    # `newInstanceWithoutConstructor()` (ModelCastHelper.php:257), so the
+    # initializer never fires and `getCasts()` returns only the `$casts`
+    # property, which is empty in every model here. With this flag off larastan
+    # falls back to the DECLARED return type of `casts()` — plain `array`, not a
+    # constant array — and skips the merge without a word. Turning it on makes
+    # larastan parse the method body instead.
+    #
+    # The symptom looks enum-specific and it is not. The attribute does not
+    # become `mixed`; it becomes the column type from the migration scan above.
+    # So `integer` and `boolean` casts look fine (column type already matches)
+    # while `datetime`, `array` and enum casts resolve to `string|null` — a
+    # partial pattern that sends you hunting for an enum- or Filament-shaped
+    # cause. Measured on this repo: `$item->status` was `string`, is now
+    # `PublicationStatus`; `$item->published_at` was `string|null`, is now
+    # `Carbon|null`. 614 errors -> 507, and the families that vanished were
+    # entirely false: every `match.alwaysFalse`, every `method.nonObject`,
+    # every `function.impossibleType`, and 7 of 11 `deadCode.unreachable`.
+    #
+    # That last family is why this is worse than "wrong types": a cast Eloquent
+    # attribute believed to be a string makes guard clauses always-terminate,
+    # so PHPStan marks the code after them unreachable and STOPS ANALYSING IT.
+    # Real errors hide behind false ones.
+    #
+    # Cost is the documented reason for the default, and it is small here:
+    # 20.4s -> 21.5s cold, measured with isolated tmpDirs. The AST parse only
+    # runs for classes that actually declare `casts()`.
+    #
+    # Upstream: larastan#2512 proposes flipping this default; #2509 is the same
+    # surprise reported as an enum bug. Full write-up, including the dumpType
+    # probe that diagnoses this in one run: docs/research/larastan-playbook.md.
+    parseModelCastsMethod: true
 
     # Level 4 is the floor for the rule this install was bought for —
     # PHPStan\Rules\Comparison\MatchExpressionRule, identifier `match.unhandled`
