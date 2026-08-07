@@ -1069,6 +1069,51 @@ by the orchestrator.)*
   retirement work, not a drive-by fix. The retirement work must clear the red
   list as part of landing its writer.
 
+## abstraction-blinds-the-detector · A call-site-matching tool reads success as failure
+
+- **Cause:** linters and static analysers that match on **call-site text or
+  call-site shape** go blind exactly when a pattern is centralised — which is
+  the moment the abstraction succeeded. The tool then reports the absence of
+  the literal it was hunting, and the report reads like a defect.
+- **The trap is the response, not the report.** Un-abstracting the code to
+  restore the literal makes the tool green and the codebase worse. It is
+  "the gate must pass" outranking design judgment, and it converts a linter
+  into an architect.
+- **Evidence (2026-08-06, ACTUAL, twice, independently):**
+  1. **FilaCheck.** A `Column::macro('foldedSearchable')` centralised 28 admin
+     search call sites; `TableWithoutSearchableColumnsRule.php:137` is
+     `preg_match('/->searchable\s*\(/', $snippet)` — a **plain regex over
+     source text** — so six tables were reported as having no searchable
+     column. The macro was briefly replaced with a closure factory purely so
+     the literal `->searchable(` would survive in source. Reverted on the
+     operator's ruling.
+  2. **larastan**, same day, same abstraction, different mechanism: Filament
+     macros are invisible because
+     `MacroMethodsClassReflectionExtension.php:18,73,79` gates on
+     `Illuminate\Support\Traits\Macroable` while Filament uses
+     `Filament\Support\Concerns\Macroable` — 40 `method.notFound` errors.
+- **Correct responses, in order:**
+  1. **Teach the tool.** A PHPStan `stubFiles` entry *asserts the method
+     exists*; it does not suppress a report — which is why it coexists with a
+     no-baseline policy that forbids `ignoreErrors` and frozen baselines
+     (`phpstan/filament-macros.stub`, `52983df`). Note the form is
+     load-bearing and was measured: `@method` PHPDoc on a stubbed class body
+     works and subclasses inherit it; a declared real signature does nothing.
+  2. **Replace the signal with one that understands the abstraction** — the
+     FilaCheck rule is now disabled with the reason at the disable site, and
+     `tests/Feature/AdminTableSearchabilityTest.php` sweeps `app/Filament`
+     knowing about the macro.
+  3. **Never un-abstract the code.**
+- **Distinguish suggestion from error.** Deprecations and real errors get
+  fixed. A *suggestion* does not get to change a good solution, and FilaCheck
+  is not the authority on Filament design.
+- **Where else:** any rule matching source text rather than resolved
+  behaviour. `grep -rn "preg_match" vendor/laraveldaily/filacheck*/src/Rules`
+  enumerates FilaCheck's text-matching rules; each is a candidate to go blind
+  the day its pattern is centralised. Same question for any future arch test
+  that asserts a literal appears.
+- **Status:** open as a standing rule. Both instances closed.
+
 ## set-membership-without-totality · A case list no tool can check
 
 - **Cause:** `in_array($case, [Foo::A, Foo::B], true)` is a decision about
