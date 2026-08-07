@@ -16,6 +16,7 @@
     ],
     "sail": false,
     "skills": [
+        "infer-conventions",
         "laravel-best-practices",
         "configuring-horizon",
         "socialite-development",

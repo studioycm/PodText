@@ -897,6 +897,7 @@ Every implementation prompt uses Boost where available, reads its blueprint, che
 ## Do not
 
 - Do not claim Boost was used if MCP calls fail.
+- Do not run `vendor/bin/filacheck` directly. It force-enables `--fix` whenever it detects an AI coding agent, so the plain command writes to source files.
 - Do not run `filacheck --fix` without explicit approval.
 - Do not write secrets, tokens, licenses, Composer auth, MCP headers, or machine paths to tracked files.
 
@@ -909,7 +910,7 @@ Every implementation prompt uses Boost where available, reads its blueprint, che
 ```bash
 php artisan test
 vendor/bin/pint --test
-vendor/bin/filacheck
+composer filacheck
 npm run build
 ```
 
@@ -940,9 +941,10 @@ npm run build
 
 ## FilaCheck / FilaCheck Pro notes
 
+- Run FilaCheck as `composer filacheck`. Never run `vendor/bin/filacheck`, which rewrites source files when an AI agent runs it, even without `--fix`.
+- Local iteration may use `composer filacheck -- --dirty`; final verification uses `composer filacheck` with no arguments.
+- `composer filacheck:fix` is the only approved way to write fixes, and still needs explicit approval.
 - Treat remaining violations as blockers in implementation prompts.
-- Local iteration may use `vendor/bin/filacheck --dirty`.
-- Final verification uses full `vendor/bin/filacheck`.
 - FilaCheck/FilaCheck Pro must pass; do not run `filacheck --fix` unless explicitly approved.
 - If a prompt uses combined relation tabs with content, use the official Filament method names for the installed version.
 - Prompt 09 final reports must state whether combined tabs, relation manager badges, redirect behavior, and create-another behavior were implemented.
@@ -1104,27 +1106,11 @@ The Laravel Boost guidelines are specifically curated by Laravel maintainers for
 
 ## Foundational Context
 
-This application is a Laravel application and its main Laravel ecosystems package & versions are below. You are an expert with them all. Ensure you abide by these specific packages & versions.
+This application is a Laravel application running on PHP 8.4. You are an expert with the Laravel ecosystem. Always use the APIs that match the installed major version of each package — do not assume a version.
 
-- php - 8.4
-- filament/filament (FILAMENT) - v5
-- laravel/framework (LARAVEL) - v13
-- laravel/horizon (HORIZON) - v5
-- laravel/prompts (PROMPTS) - v0
-- laravel/socialite (SOCIALITE) - v5
-- livewire/livewire (LIVEWIRE) - v4
-- laravel/boost (BOOST) - v2
-- laravel/mcp (MCP) - v0
-- laravel/pail (PAIL) - v1
-- laravel/pint (PINT) - v1
-- pestphp/pest (PEST) - v4
-- phpunit/phpunit (PHPUNIT) - v12
-- prettier (PRETTIER) - v3
-- tailwindcss (TAILWINDCSS) - v4
-
-## Skills Activation
-
-This project has domain-specific skills available in `**/skills/**`. You MUST activate the relevant skill whenever you work in that domain—don't wait until you're stuck.
+Before relying on a package's API, confirm its installed version:
+- PHP packages: run `composer show --direct` to list direct dependencies with versions, or `composer show <vendor/package>` for a single package.
+- JS packages: check `package.json` for the installed versions.
 
 ## Conventions
 
@@ -1178,6 +1164,11 @@ This project has domain-specific skills available in `**/skills/**`. You MUST ac
 2. Use `"quoted phrases"` for exact position matching: `"infinite scroll"` requires adjacent words in order.
 3. Combine words and phrases for mixed queries: `middleware "rate limit"`.
 4. Use multiple queries for OR logic: `queries=["authentication", "middleware"]`.
+
+## Project Rules
+
+- This project contains committed, area-grouped rules in `.ai/rules` when that directory exists (settled decisions, non-obvious traps, standing constraints). Framework and package guidelines that only apply to specific paths (testing, frontend, components) also live there, under `.ai/rules/boost` — this is not just recorded decisions, it is load-bearing guidance you have not seen inline. Before you enter plan mode or create/edit any file, you MUST first: open @.ai/rules/index.md (it maps file globs to rule files), read every rule file whose globs cover the path(s) in scope, and run `grep -rin 'keyword' .ai/rules` to catch what a path match alone misses. Do not write code until you have read and are following every matching rule. If `.ai/rules` does not exist, continue without it.
+- Record durable rules with `record-rule` so the next agent or teammate inherits them instead of working them out again. Pass a `glob` (e.g. `app/Http/Controllers/**`), a short `title`, and a few-line `note`. Always use `record-rule`, never your native memory or notes tool — native memory is personal and session-scoped; only `.ai/rules` is shared with the team and persists in the repo.
 
 ## Artisan
 
@@ -1276,7 +1267,7 @@ This project has domain-specific skills available in `**/skills/**`. You MUST ac
 - Run tests: `php artisan test --compact` or filter: `php artisan test --compact --filter=testName`.
 - Do NOT delete tests without approval.
 
-=== filament/filament rules ===
+=== filament/filament/core rules ===
 
 ## Filament
 
@@ -1512,7 +1503,7 @@ livewire(ListUsers::class)
   - `$navigationGroup`: `protected static string | UnitEnum | null` (not `?string`)
   - `$view`: `protected string` (not `protected static string`) on `Page` and `Widget` classes
 
-=== filament/blueprint rules ===
+=== filament/blueprint/core rules ===
 
 ## Filament Blueprint
 
@@ -1522,18 +1513,5 @@ that an implementing agent can write code without making decisions.
 **Start here**: Read
 `/vendor/filament/blueprint/resources/markdown/planning/overview.md` for plan format,
 required sections, and what to clarify with the user before planning.
-
-=== laraveldaily/filacheck rules ===
-
-## laraveldaily/filacheck
-
-- After you have created/modified any files in `app/Filament` folder, you must run `vendor/bin/filacheck --fix`, to ensure there is no deprecated Filament code. Reported not fixed issues MUST be fixed before continuing.
-
-=== laraveldaily/filacheck-pro rules ===
-
-## laraveldaily/filacheck-pro
-
-- After creating or modifying any files under `app/Filament/`, run `vendor/bin/filacheck --fix --dirty` to auto-fix deprecated Filament code and flag performance, security, UX, and best-practice issues from FilaCheck-Pro. `--dirty` limits the scan to files with uncommitted git changes — fastest after a targeted edit.
-- Exit code 0 means no remaining issues; exit code 1 means violations remain after `--fix`. Any reported violation that `--fix` could not resolve MUST be addressed (consult the rule's suggestion message) before continuing the task.
 
 </laravel-boost-guidelines>
