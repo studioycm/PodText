@@ -17,8 +17,9 @@ current, and its author's own conclusion ("I downgraded my Anthropic plan in fav
 is a personal, dated preference, not a durable fact.
 
 **Treat the mechanics as reliable and the tool comparisons as expired on arrival.** The
-mechanics checked out — every Boost claim below was verified against the installed
-`laravel/boost v2.4.13`.
+mechanics checked out — every Boost claim below was verified against `laravel/boost v2.4.13`,
+then **re-verified against v2.5.3** when another session upgraded mid-write on 2026-08-07.
+Both readings agree; §4 is stronger for it, and §4a is what the upgrade itself taught.
 
 One caption caveat, and a good illustration of why identifiers never come from captions: the
 narration renders the command as *"PHP Artisan Boost update discover"*. The real signature,
@@ -93,11 +94,16 @@ already knows about. **Newly installed packages get no guidelines until Boost is
 again.** Two ways to handle it — rerun `boost:install`, or add the `--discover` flag to the
 update command in `composer.json` so it happens on every `composer update`.
 
-Verified — `--discover` is real, and its help text says exactly this:
+Verified — but **the flag's status changed between the two Boost versions read**, which is
+itself a good illustration of §0:
 
-```
---discover   Discover and prompt for newly available guidelines and skills
-```
+| version | behaviour |
+| --- | --- |
+| v2.4.13 | `--discover` opt-in: *"Discover and prompt for newly available guidelines and skills"* |
+| **v2.5.3** | `--discover` is **the default**, and a new `--no-discover` opts out |
+
+So on the currently installed version the flag is redundant — plain `boost:update` already
+discovers. The lesson's advice to add `--discover` was correct in May 2026 and is now noise.
 
 Measured on this repo: `composer.json` has **no Boost script at all**.
 
@@ -109,23 +115,23 @@ post-update-cmd     => vendor:publish --tag=laravel-assets --ansi --force
 So since Boost was installed, any package added here that ships guidelines has been
 contributing nothing.
 
-**Proposal — operator decides, nothing changed:** add to `post-update-cmd` in `composer.json`:
+**Proposal — run it by hand in the dependency batch, do not wire it into `composer.json`:**
 
-```json
-"@php artisan boost:update --discover"
+```bash
+php artisan boost:update
 ```
 
-Two caveats that make this a decision rather than an obvious win:
+Three reasons against the `post-update-cmd` hook the lesson suggests:
 
-1. **`--discover` prompts interactively.** In a non-interactive `composer update` (CI, a
-   deploy) that is at best noise and at worst a hang. The dependency-refresh work here is
-   deliberate and batched, so running `php artisan boost:update --discover` **by hand as part
-   of that batch** may fit this project better than wiring it into every `composer update`.
-2. It rewrites `CLAUDE.md` and `AGENTS.md`, which are tracked files in a **shared worktree**.
-   That makes it exactly the kind of shared-file mutation that needs coordination before it
-   runs.
-
-Given both, the manual-in-the-dependency-batch option is the one I would pick.
+1. **Discovery prompts interactively.** In a non-interactive `composer update` (CI, a deploy)
+   that is at best noise and at worst a hang. Dependency refreshes here are deliberate and
+   batched, which is the natural place for a manual step.
+2. **It rewrites `CLAUDE.md` and `AGENTS.md`** — tracked files in a **shared worktree**. That
+   is exactly the kind of shared-file mutation that needs coordination before it runs.
+3. **§4a is the empirical argument.** When it regenerated on the 2.5.3 upgrade it silently
+   reintroduced instructions this project had deliberately excluded. A step with that blast
+   radius belongs where someone is watching, not on an automatic hook — and it should be
+   followed by `php artisan test --filter=FilacheckAgentModeGuard`.
 
 ---
 
@@ -167,10 +173,50 @@ limit is not a problem either.
 **So the hand-written preamble in `AGENTS.md` is safe, and no migration into `.ai/guidelines/`
 is needed.** The lesson's warning is true only for content placed *inside* the block.
 
+**Then it was tested for real.** While this document was being written, another session
+upgraded Boost 2.4.13 → **2.5.3** and regenerated the guidelines. Re-measured afterwards:
+`GuidelineWriter.php:56-57` is byte-identical, and `AGENTS.md`'s Boost block still opens at
+line **445** — the 444 hand-written lines survived an actual minor-version upgrade and a real
+regeneration. That converts §4 from a source-reading into a measurement.
+
 Recorded because the alarm is plausible enough that someone will raise it again, and because
 it is the second time this round that a course's prose was directionally right and precisely
 wrong — cf. [laraveldaily-queues-notes.md](docs/research/laraveldaily-queues-notes.md) §2 and
 [laraveldaily-exceptions-notes.md](docs/research/laraveldaily-exceptions-notes.md) §2.
+
+### 4a. What the upgrade *did* break: exclusion keys are version-fragile
+
+The safe half is the delimited block. The fragile half is **which guidelines go into it**.
+
+`config/boost.php` carries a `boost.guidelines.exclude` list, and its purpose is exactly the
+durability problem this section is about: both FilaCheck packages ship vendor guidelines
+telling agents to run the raw binary with `--fix`, which contradicts this project's rule, so
+they are excluded at source rather than edited out of `CLAUDE.md` after the fact.
+
+**Boost 2.5 renamed guideline keys to `<package>/core`.** Boost matches the exclusion list with
+a strict `in_array`, so the existing exact-key entries silently stopped matching, and the
+unsafe FilaCheck instructions came back into `CLAUDE.md` on regeneration. Nothing errored —
+the exclusion just quietly became a no-op.
+
+Two things caught it, and the second is the durable lesson:
+
+- `FilacheckAgentModeGuardTest` failed on the file-contents assertion. Working as designed.
+- Its sibling assertion — the one checking what Boost *emits* rather than what the file
+  currently says — **had been passing throughout**, because it compared keys exactly. The test
+  now matches on prefix (`$key === $package || str_starts_with($key, $package.'/')`) with a
+  comment recording why. An exact-match assertion about a vendor's key naming is a guard that
+  reports success while the thing it guards is already broken.
+
+Current state, measured 2026-08-07 after the fix: `config/boost.php` excludes all four keys
+(both bare and `/core` forms), and `php artisan test --filter=FilacheckAgentModeGuard` passes —
+4 tests, 11 assertions. That fix is another session's uncommitted working-tree change, not
+mine, and is described here only as observed state.
+
+**The transferable rule:** upgrading Boost can change *what* lands in the block even though it
+never touches what surrounds it. Any project-level exclusion or override keyed on a vendor's
+guideline names needs a test that asserts on emitted output, matched loosely enough to survive
+a rename. It is the same failure shape as a bulk audit with no count canary: a check that
+passes vacuously is worse than no check, because it buys confidence it has not earned.
 
 ---
 
@@ -199,10 +245,14 @@ MySQL), conversation memory, structured tool responses.
 - [Course index](https://laraveldaily.com/course/ai-agents-laravel-2026), May 2026, 7 video lessons.
   Read: [Laravel Boost: main things to know](https://laraveldaily.com/lesson/ai-agents-laravel-2026/laravel-boost-main-things-to-know),
   [Claude Code: better UI and plan mode](https://laraveldaily.com/lesson/ai-agents-laravel-2026/claude-code-better-ui-and-plan-mode).
-- Verified against `laravel/boost v2.4.13`: `php artisan list boost`,
-  `php artisan boost:update --help`, `vendor/laravel/boost/src/Install/GuidelineWriter.php:30-74`.
+- Verified against `laravel/boost v2.4.13` and re-verified against **v2.5.3**:
+  `php artisan list boost`, `php artisan boost:update --help`,
+  `vendor/laravel/boost/src/Install/GuidelineWriter.php:30-74`.
 - This repo, measured 2026-08-07: `.ai/guidelines/` (9 files), `.ai/skills/`, `.claude/skills/`,
-  `composer.json` scripts, `CLAUDE.md` / `AGENTS.md` line counts and Boost-block boundaries.
+  `composer.json` scripts, `CLAUDE.md` / `AGENTS.md` line counts and Boost-block boundaries
+  (before and after the 2.5.3 upgrade); `config/boost.php` exclusion list;
+  `tests/Feature/FilacheckAgentModeGuardTest.php`;
+  `php artisan test --filter=FilacheckAgentModeGuard` (4 passed, 11 assertions).
 
 ### What I could not obtain
 
