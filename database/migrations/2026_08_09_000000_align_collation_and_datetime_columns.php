@@ -25,8 +25,15 @@ return new class extends Migration
             return; // SQLite suite (until the MySQL lane lands) — nothing to align.
         }
 
-        $tables = DB::select('SELECT TABLE_NAME t FROM information_schema.TABLES
-            WHERE TABLE_SCHEMA = DATABASE() AND TABLE_TYPE = "BASE TABLE"');
+        $database = DB::connection()->getDatabaseName();
+
+        // Schema default first: it only affects future CREATE TABLEs, and putting
+        // the most privilege-sensitive statement before the table rebuilds means
+        // a denied ALTER fails in seconds, not after the full conversion.
+        DB::statement("ALTER DATABASE `{$database}` CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci");
+
+        $tables = DB::select("SELECT TABLE_NAME t FROM information_schema.TABLES
+            WHERE TABLE_SCHEMA = ? AND TABLE_TYPE = 'BASE TABLE' ORDER BY TABLE_NAME", [$database]);
 
         foreach ($tables as $table) {
             // Two statements on purpose: CONVERT TO cannot be combined with
@@ -34,18 +41,15 @@ return new class extends Migration
             // datetime columns land in an already-converted table.
             DB::statement("ALTER TABLE `{$table->t}` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci");
 
-            $clauses = $this->modifyClauses(DB::select('SELECT COLUMN_NAME c, IS_NULLABLE n, COLUMN_DEFAULT d
+            $clauses = $this->modifyClauses(DB::select("SELECT TABLE_NAME t, COLUMN_NAME c, IS_NULLABLE n, COLUMN_DEFAULT d, EXTRA e, COLUMN_COMMENT cm
                 FROM information_schema.COLUMNS
-                WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND DATA_TYPE = "timestamp"
-                ORDER BY ORDINAL_POSITION', [$table->t]));
+                WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ? AND DATA_TYPE = 'timestamp'
+                ORDER BY ORDINAL_POSITION", [$database, $table->t]));
 
             if ($clauses !== []) {
                 DB::statement("ALTER TABLE `{$table->t}` ".implode(', ', $clauses));
             }
         }
-
-        $database = DB::connection()->getDatabaseName();
-        DB::statement("ALTER DATABASE `{$database}` CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci");
     }
 
     public function down(): void
@@ -60,11 +64,27 @@ return new class extends Migration
      * (failed_jobs.failed_at) is app-written on this Laravel version and the
      * default was a dormant DB-generated-time hazard (spec §10.1).
      *
-     * @param  list<object{c: string, n: string, d: ?string}>  $rows
+     * Every attribute this generator does not restate must be one it is
+     * sanctioned to drop. An unsanctioned default, an ON UPDATE clause, or a
+     * column comment throws instead of converting silently.
+     *
+     * @param  list<object{t: string, c: string, n: string, d: ?string, e: string, cm: string}>  $rows
      * @return list<string>
      */
     public function modifyClauses(array $rows): array
     {
+        foreach ($rows as $row) {
+            $defaultSanctioned = $row->d === null || $row->d === 'CURRENT_TIMESTAMP';
+            $extraSanctioned = $row->e === '' || $row->e === 'DEFAULT_GENERATED';
+
+            if (! $defaultSanctioned || ! $extraSanctioned || $row->cm !== '') {
+                throw new RuntimeException(
+                    "Refusing to convert `{$row->t}`.`{$row->c}`: default=[{$row->d}] extra=[{$row->e}] comment=[{$row->cm}] — "
+                    .'this generator restates only nullability; handle this column deliberately first (alignment spec §10.1).'
+                );
+            }
+        }
+
         return array_map(
             fn (object $row): string => sprintf(
                 'MODIFY `%s` DATETIME %s',
