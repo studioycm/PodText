@@ -1,10 +1,13 @@
 # LaravelDaily: How to Structure Laravel 13 Projects — course notes
 
 Notes on [How to Structure Laravel 13 Projects](https://laraveldaily.com/course/laravel-projects-structure)
-(16 text lessons, 1h32m, **Mar 2026**), read 2026-08-07. Three lessons read in full.
+(16 text lessons, 1h32m, **Mar 2026**). Read 2026-08-07 (3 lessons) + 2026-08-08 (the rest,
+from `raw/` — 10 more in full, the two AI/links lessons skimmed) — **16/16, complete**. Two
+lessons had already been read during the events/observers research.
 
-**Short version: most of this course does not apply to PodText, and the one lesson that does
-is the one arguing against the other fifteen.**
+**Short version unchanged by the full read: most of this course does not apply to PodText,
+and the one lesson that does is the one arguing against the other fifteen. The full read adds
+corroborations, not corrections — §2b.**
 
 ---
 
@@ -106,6 +109,24 @@ warns about.
 
 ---
 
+## 2b. Second pass — the remaining lessons, and what this repo already does
+
+Read 2026-08-08 from the corpus. No claim in the first version needed correcting; each lesson
+lands as either already-practiced, deliberately-not-needed, or N/A. Verified against the tree
+per row:
+
+| lesson | verdict here |
+| --- | --- |
+| Form Requests | **0 Form Requests exist, correctly** — the ~9 thin controllers don't carry complex validation; Filament schemas and Livewire rules own it. The lesson's premise (fat controller validation) has no referent here. |
+| DTOs | **Already practiced in plain-PHP form where it earns its place**: 14 `readonly` Data classes under `app/Support/**/Data/` (dashboard rows, rates, heatmaps). No `spatie/laravel-data`, no blanket DTO layer — which matches the lesson's own advice. Its consistency rule ("if the project uses DTOs, use them everywhere") is scoped here per-subsystem, which is the defensible reading. |
+| Pipelines | **0 uses of the `Pipeline` facade** — and one hand-rolled `SettingsPackageUpgradePipeline` for settings-package upgrades, which fits the lesson's own criterion (ordered steps that change independently) without the facade. The facade adds nothing over the existing class; no change. |
+| Base controller / traits | The trait half is already house practice — `HasFoldedSearchColumns`, slug concerns — same shape as the lesson's `HasSlug` example. The API-response half has no referent (no JSON API response layer to deduplicate). |
+| Global helpers | The author's stance — class-based static helpers, never function files ("we need `function_exists()` every time… with a class-based approach this problem wouldn't exist") — is exactly the state here: **no `app/helpers.php`, no `app/Helpers/`**; `app/Support` classes serve the role. Corroboration. |
+| Admin/user role areas | Two keepers. *"Please, please don't create separate Models per role"* — one `User` + roles, which is the position here. And its worked example (`ploi/roadmap`: `role` string column + `UserRole` enum + `hasAdminAccess()`) is **structurally identical to PodText's `UserRole` + `hasRoleAtLeast()`** — independent corroboration of the staged-authz position, cross-referenced in [roles-permissions-notes.md](roles-permissions-notes.md). |
+| Modules / packages | N/A — monolith by choice. `nWidart/laravel-modules`, package extraction, and `InterNACHI/modular` are a map of what exists if a subsystem ever needs extraction; the catalogue's `laravel-modules-ddd` course is the deeper treatment, unread. |
+| Dispatch jobs / blade components | Covered better elsewhere: jobs by [queues-notes.md](queues-notes.md); the Blade-components lesson is generic and PodText's `resources/views/components/public/` set is already past it. |
+| Extra resources / bonus AI skill | Course-links list; skill **not installed** (standing position). |
+
 ## 3. Applies here vs. generic
 
 | lesson | applies to PodText? |
@@ -130,7 +151,9 @@ warns about.
 
 ### What I could not obtain / did not read
 
-13 of 16 lessons. Given §1 — the course's premise does not match this codebase's shape — the
-remaining lessons were judged unlikely to repay the reading, and that is a judgement call
-rather than a measurement. If anyone disagrees, `structure-admin-user-role-areas` and
-`modules-packages` are the two most likely to contain something, and neither was opened.
+Nothing remains — 16/16 covered as of 2026-08-08 (§2b). The earlier judgement call that the
+remainder was unlikely to repay reading proved right in direction (no corrections resulted)
+but wrong on two counts worth naming: `structure-admin-user-role-areas` contained the
+strongest independent corroboration of the authz position, and the helpers lesson settled a
+style question (class-based over function files) this repo had answered identically without
+a recorded reason.
