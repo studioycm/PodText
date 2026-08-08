@@ -8,27 +8,27 @@ use App\Enums\ImportConnectionStatus;
 use App\Models\Concerns\HasFoldedSearchColumns;
 use App\Models\Contracts\FoldsSearchColumns;
 use Database\Factories\ImportConnectionFactory;
+use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Arr;
 use Illuminate\Validation\ValidationException;
 
+#[Fillable([
+    'name',
+    'provider',
+    'auth_type',
+    'credentials',
+    'settings',
+    'status',
+    'last_tested_at',
+])]
 class ImportConnection extends Model implements FoldsSearchColumns
 {
     /** @use HasFactory<ImportConnectionFactory> */
     use HasFactory;
 
     use HasFoldedSearchColumns;
-
-    protected $fillable = [
-        'name',
-        'provider',
-        'auth_type',
-        'credentials',
-        'settings',
-        'status',
-        'last_tested_at',
-    ];
 
     protected $attributes = [
         'provider' => 'manual',

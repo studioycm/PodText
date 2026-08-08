@@ -3,10 +3,23 @@
 namespace App\Models;
 
 use App\Support\UiTimezone;
+use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+#[Fillable([
+    'backup_id',
+    'screen_key',
+    'theme',
+    'viewport',
+    'kind',
+    'format',
+    'resolved_url',
+    'path',
+    'status',
+    'error',
+])]
 class SettingsBackupSnapshot extends Model
 {
     use HasFactory;
@@ -28,19 +41,6 @@ class SettingsBackupSnapshot extends Model
     public const STATUS_PENDING = 'pending';
 
     public const VIEWPORT_DESKTOP = 'desktop-1440';
-
-    protected $fillable = [
-        'backup_id',
-        'screen_key',
-        'theme',
-        'viewport',
-        'kind',
-        'format',
-        'resolved_url',
-        'path',
-        'status',
-        'error',
-    ];
 
     /** @return BelongsTo<SettingsBackupVersion, $this> */
     public function backup(): BelongsTo

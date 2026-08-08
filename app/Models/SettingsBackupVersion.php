@@ -7,27 +7,27 @@ use App\Models\Concerns\HasFoldedSearchColumns;
 use App\Models\Contracts\FoldsSearchColumns;
 use App\Support\SettingsLifecycle\PublicSettingsPackage;
 use App\Support\UiTimezone;
+use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Str;
 
+#[Fillable([
+    'scope',
+    'label',
+    'payload_json',
+    'checksum',
+    'payload_hash',
+    'source',
+    'created_by_user_id',
+    'import_report',
+])]
 class SettingsBackupVersion extends Model implements FoldsSearchColumns
 {
     use HasFactory;
     use HasFoldedSearchColumns;
-
-    protected $fillable = [
-        'scope',
-        'label',
-        'payload_json',
-        'checksum',
-        'payload_hash',
-        'source',
-        'created_by_user_id',
-        'import_report',
-    ];
 
     protected function casts(): array
     {

@@ -34,6 +34,12 @@ class Media extends \Awcodes\Curator\Models\Media implements FoldsSearchColumns
         ];
     }
 
+    /**
+     * Deliberately a property, not #[Fillable]: the attribute MERGES into the
+     * inherited list (GuardsAttributes::initializeGuardsAttributes), so it
+     * cannot narrow Curator's 17-column parent $fillable. This override is
+     * that narrowing — path/disk/directory must stay out of mass assignment.
+     */
     protected $fillable = [
         'alt',
         'title',
