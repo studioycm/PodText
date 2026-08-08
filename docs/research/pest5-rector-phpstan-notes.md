@@ -216,15 +216,26 @@ great work with Laravel Boost. We needed that as well on Pest v5."
   risk, immediate diagnostic gain), then `rector-laravel` sets one at a time, type
   declarations last — each `--dry-run` reviewed like a PR.
 
-### What could not be obtained
+### Extraction notes (corrected 2026-08-07, same day)
 
 YouTube's `timedtext` API returned HTTP 200 with a zero-byte body for every format, from
-both curl and in-page fetch — the same failure documented in memory for a prior video. What
-worked instead: the watch page's own "In this video → Transcript" panel, whose DOM carries
-the full segment list (`.ytwTranscriptSegmentViewModelTimestamp` + sibling text spans) once
-opened during playback. The old `ytd-transcript-segment-renderer` selector matches nothing
-in this UI. No official written transcript exists; auto-captions are the only text source,
-with the identifier-mangling caveat above.
+both curl and in-page fetch. What worked here: the watch page's own "In this video →
+Transcript" panel, whose DOM carries the full segment list
+(`.ytwTranscriptSegmentViewModelTimestamp` + sibling text spans) once opened during
+playback. The old `ytd-transcript-segment-renderer` selector matches nothing in this UI.
+
+**Correction from the laraveldaily research session, verified by them the same day:** the
+endpoint is not dead — the *raw* `baseUrl` from `ytInitialPlayerResponse` is. Since
+YouTube's proof-of-origin rollout, the player's own caption request appends
+`potc=1&pot=<token>`; lifting that full URL from
+`performance.getEntriesByType('resource')` after enabling CC and re-fetching it in-page
+returns the complete track (their test: all 23,114 json3 events of a 7-hour VOD in one
+fetch). Division of labor going forward: **panel scrape for normal-length videos, pot-URL
+interception for multi-hour VODs** where the panel DOM may virtualize. The canonical
+write-up of both methods is `docs/research/laraveldaily/README.md` §3b-ter.
+
+No official written transcript exists for this talk; auto-captions are the only text
+source, with the identifier-mangling caveat above.
 
 ---
 
