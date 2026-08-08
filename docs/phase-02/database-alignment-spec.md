@@ -652,6 +652,42 @@ is the only vehicle that reaches all three environments.
   `datetime` casts across 10 models need nothing. Stated so no implementer
   "helpfully" touches casts inside the ALTER PR — §12 makes it a non-goal.
 
+### Rehearsal before reality (operator rule, 2026-08-08)
+
+**The migration runs against no real database until it has passed on a
+rehearsal database.** Standing rule for this project: destructive or
+type-changing passes get rehearsed on a disposable copy first.
+
+- **Two rehearsal databases, same script**: `podtext_rehearsal` on the local
+  9.4.0 daemon (rehearses the local run) and on the 8.0.46 lane daemon
+  (rehearses production's engine). Neither is dropped without explicit
+  operator approval.
+- **Contents**: a restore of the real snapshot (step 0's tooling doubles as
+  the rehearsal input — the rehearsal is also the snapshot's restore test),
+  **plus ~100 synthetic edge rows** spread across every date/time column
+  shape the schema has (all 80 TIMESTAMP columns are reachable through their
+  tables; include the 3 NOT NULL columns and `failed_jobs.failed_at`'s
+  default):
+  - winter literal (`+02` frame) and summer literal (`+03` frame)
+  - spring-forward boundary pair (`01:59` valid / `03:00` first-valid)
+  - both October-fold instants (two epochs rendering the same `01:30` wall)
+  - epoch edges: `1970-01-01 02:00:01` wall (TIMESTAMP minimum under +02) and
+    `2038-01-19` max-epoch boundary
+  - `NULL` in every nullable date column
+  - collation payloads in collated columns riding the same rows: niqqud,
+    final-form, U+05C7, trailing-space, emoji pairs — so the CONVERT TO pass
+    is rehearsed on hostile strings, not just the ALTER on hostile dates
+- **Oracle, mechanical**: before the run, dump per-row
+  `SHA1(CONCAT_WS(...))` over every date column and every collated unique
+  column, plus `information_schema` COLUMN_TYPE / IS_NULLABLE /
+  COLUMN_DEFAULT / COLLATION_NAME. After the run, compare: every date literal
+  byte-identical; NOT NULL and defaults preserved (except the one default
+  deliberately dropped); every collated column `0900_ai_ci`; zero 1062, zero
+  1267; wall-clock runtime recorded as the production window estimate.
+- **Pass criterion**: the migration, the pre-flight scripts, and
+  `db:check-settings` all green on both rehearsal databases — then and only
+  then does the migration touch `podtext`, and only after that, production.
+
 ### Prerequisite: production is one migration behind
 
 [MEASURED 2026-08-08] local has **82** migrations, production **81**; production's
