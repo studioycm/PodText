@@ -59,7 +59,7 @@ Search returned all 27 results without pagination; whether longer result sets pa
 
 | date | course | size | status |
 | --- | --- | --- | --- |
-| Mar 2026 | Laravel 13 Eloquent: Expert Level · `laravel-eloquent-expert` | 41L video+text | ◐ 5/41 — **★ top re-read**, text bodies unchecked |
+| Mar 2026 | Laravel 13 Eloquent: Expert Level · `laravel-eloquent-expert` | 41L video+text | ✅ 24/41 full + all digested — rewritten 2026-08-08 |
 | Apr 2025 | Structuring Databases in Laravel 12 · `structuring-databases-laravel` | 18L text | ✅ 4/18 |
 | Sep 2023 | Laravel GroupBy: Practical Examples · `laravel-groupby` | 13L text | |
 | Jul 2022 | Laravel Collections Chains: 15 Real Examples · `laravel-collections` | 16L video | |
@@ -79,7 +79,7 @@ Search returned all 27 results without pagination; whether longer result sets pa
 
 | date | course | size | status |
 | --- | --- | --- | --- |
-| Mar 2026 | Queues in Laravel 13 · `queues-laravel` | 18L text | ◐ 9/18 — **★** lesson 17 (`Queue::fake`) unread |
+| Mar 2026 | Queues in Laravel 13 · `queues-laravel` | 18L text | ✅ 18/18 — rewritten 2026-08-08 |
 | Mar 2025 | Laravel Reverb: Four "Live" Examples · `laravel-reverb` | 5L text | realtime, not in stack |
 | May 2023 | Practical Laravel Queues on Live Server · `laravel-queues-server` | 7L text | ⛔ php8.1, `queue:listen`, 4-trait stub |
 | Jan 2023 | Deploy Laravel to AWS EC2 · `deploy-laravel-aws-ec2` | 7L text | we're on Forge |
@@ -88,7 +88,7 @@ Search returned all 27 results without pagination; whether longer result sets pa
 
 | date | course | size | status |
 | --- | --- | --- | --- |
-| Apr 2026 | Roles and Permissions in Laravel 13 · `roles-permissions` | 14L video | **★** Spatie + Shield + AUTHZ closure |
+| Apr 2026 | Roles and Permissions in Laravel 13 · `roles-permissions` | 14L video | ✅ 3 full + digest — notes written 2026-08-08 |
 | May 2026 | Practical Laravel Security: Packages, Secrets, Supply-Chain · `laravel-security-composer` | 7L text | ✅ 7/7 |
 
 ## Group 5 — Filament
@@ -126,7 +126,7 @@ Livewire 3.
 
 | date | course | size | status |
 | --- | --- | --- | --- |
-| Mar 2025 | Handling Exceptions and Errors in Laravel 12 · `exceptions-errors-laravel` | 8L text | ✅ 3/8 — sample code broken |
+| Mar 2025 | Handling Exceptions and Errors in Laravel 12 · `exceptions-errors-laravel` | 8L text | ✅ 8/8 — rewritten 2026-08-08; sample code broken |
 | Jul 2023 | Laravel Array Validation · `laravel-array-validation-all-you-need-to-know` | 7L text | |
 
 ## Group 9 — APIs & integrations

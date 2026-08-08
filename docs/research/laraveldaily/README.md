@@ -336,11 +336,12 @@ Established 2026-08-07:
 | --- | --- | --- | --- |
 | [livewire-v4-notes.md](livewire-v4-notes.md) | Livewire v3 to v4 | Jan 2026 | passes |
 | [supply-chain-security-notes.md](supply-chain-security-notes.md) | Practical Laravel Security | May 2026 | passes — freshest on the site |
-| [queues-notes.md](queues-notes.md) | Queues in Laravel 13 (+ 2023 companion) | Mar 2026 | passes / companion stale |
-| [eloquent-notes.md](eloquent-notes.md) | Laravel 13 Eloquent: Expert Level | Mar 2026 | passes |
+| [queues-notes.md](queues-notes.md) | Queues in Laravel 13 (+ 2023 companion) | Mar 2026 | passes / companion stale — **18/18, rewritten** |
+| [eloquent-notes.md](eloquent-notes.md) | Laravel 13 Eloquent: Expert Level | Mar 2026 | passes — **24/41 full, all digested, rewritten** |
 | [database-design-notes.md](database-design-notes.md) | Structuring Databases in Laravel 12 | Apr 2025 | passes — schema design ages slowly |
 | [app-structure-notes.md](app-structure-notes.md) | How to Structure Laravel 13 Projects | Mar 2026 | passes — but premise doesn't fit this app |
-| [exceptions-notes.md](exceptions-notes.md) | Handling Exceptions and Errors in Laravel 12 | Mar 2025 | mixed — API current, sample code broken |
+| [exceptions-notes.md](exceptions-notes.md) | Handling Exceptions and Errors in Laravel 12 | Mar 2025 | mixed — **8/8, rewritten**; sample code broken |
+| [roles-permissions-notes.md](roles-permissions-notes.md) | Roles and Permissions in Laravel 13 | Apr 2026 | passes — validates the staged authz position |
 | [ai-agents-notes.md](ai-agents-notes.md) | AI Agents/IDEs for Laravel | May 2026 | passes — but tool comparisons expire fast |
 
 ### Known unread, ranked for a next pass
