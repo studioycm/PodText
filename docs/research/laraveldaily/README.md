@@ -224,6 +224,48 @@ per-lesson `M:SS` timestamps = video**. Both can appear; see §3a.
 
 ---
 
+## 3e. The tooling — scrape once, then search locally
+
+Three files in this folder, so nobody has to repeat the crawl:
+
+| file | what it is |
+| --- | --- |
+| [`scrape.mjs`](scrape.mjs) | Playwright scraper. Writes one JSON per course to `raw/`. |
+| [`build-index.mjs`](build-index.mjs) | Generates `index.md` from `inventory.json` + `raw/`. |
+| **[`index.md`](index.md)** | **The search surface — start here.** |
+| `inventory.json` | 407 lessons across 27 courses; regenerate with `--inventory`. |
+| `raw/` | Scraped bodies, links, comments, transcripts. **Gitignored** — large, and licensed material from a paid account. |
+
+```bash
+node scrape.mjs --login      # once — you log in; the script never sees credentials
+node scrape.mjs              # full crawl, checkpointed per lesson, resumable
+node build-index.mjs         # regenerate index.md
+```
+
+### Searching
+
+`index.md` is **one line per lesson with every searchable term on that line**, so grep returns
+the lesson rather than a heading you then have to read around:
+
+```bash
+grep -i "observer"   docs/research/laraveldaily/index.md    # concept
+grep -i "ofMany()"   docs/research/laraveldaily/index.md    # API identifier
+grep -i "wire:sort"  docs/research/laraveldaily/index.md    # directive
+grep -i "2026"       docs/research/laraveldaily/index.md    # recency
+```
+
+Identifiers are mined from lesson bodies, capped at the 12 most frequent per lesson — so the
+index finds *which lesson discusses an API*, and `raw/<course>.json` holds the full text.
+
+Two things learned building it, both worth keeping:
+
+- **Match PHP attributes without the closing bracket.** Real usage is
+  `#[ObservedBy([UserObserver::class])]`, so a `#\[[A-Za-z]+\]` pattern matches nothing and the
+  index silently returned zero hits for the exact names it exists to find.
+- **A truncation flag needs two signals.** Flagging any body that does not end in terminal
+  punctuation produced 46 false positives and 0 true ones — every lesson ending in a code block.
+  Requiring *also* that the body is well under its course median dropped that to 3.
+
 ## 4. Archive format for future research
 
 Each course gets **one file per course** in this folder, named `<topic>-notes.md`. The point is
@@ -272,6 +314,11 @@ Established 2026-08-07:
 
 - **57 courses total.**
 - **Exactly one Filament course** — "Filament 4/5 From Scratch" (Aug 2025, 28 lessons, video).
+  Note, correcting an earlier read: its doc links pointing at `filamentphp.com/docs/4.x/…` are
+  **not** a staleness signal on their own, because Filament keeps the same doc path structure
+  across majors — `4.x` → `5.x` substitutes directly. The comment threads arguing about
+  Shield's beta status are not a signal either. **Judge this course by checking its APIs
+  against the installed Filament 5, not by its links or its comments.**
 - **Exactly one PHPStan/Larastan item** — the stale Mar 2023 course. Site search for "phpstan"
   returns nothing else. **LaravelDaily is a dead end for static analysis.**
 - Some 2026 courses ship a **bonus agent skill** as a final lesson

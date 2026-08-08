@@ -19,6 +19,8 @@
  *   --courses=a,b     only these course slugs
  *   --no-transcripts  skip the Vimeo caption pass (much faster)
  *   --out=DIR         output directory (default ./raw)
+ *   --inventory       write inventory.json (course + lesson list) and exit.
+ *                     Needs no premium session — course pages list lessons publicly.
  */
 
 import { chromium } from 'playwright';
@@ -142,6 +144,38 @@ async function main() {
     await page.goto(`${BASE}/login`, { waitUntil: 'domcontentloaded' });
     log('Log in in the window that just opened, then press Ctrl+C here when done.');
     await new Promise(() => {}); // hold open until interrupted
+  }
+
+  // Inventory mode: enumerate lessons only. Works without a premium session, so it
+  // can be regenerated cheaply and feeds build-index.mjs before any scrape has run.
+  if (flag('inventory')) {
+    const inv = {};
+    for (const course of COURSES) {
+      try {
+        const html = await rawHtml(ctx, `${BASE}/course/${course}`);
+        const meta = await page.evaluate((h) => {
+          const d = new DOMParser().parseFromString(h, 'text/html');
+          const t = d.body.innerText.replace(/\s+/g, ' ');
+          const m = t.match(/(\d+)\s*lessons?.{0,80}?((?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s*20\d\d)/i);
+          return {
+            title: (d.title || '').replace(/\s*\|\s*Laravel Daily\s*$/, '').trim(),
+            released: m?.[2] || null,
+            format: /Text-based Course/.test(t) ? 'text' : (/Video Course/.test(t) ? 'video' : null),
+            slugs: [...new Set(Array.from(d.querySelectorAll('a[href*="/lesson/"]'))
+              .map((a) => a.getAttribute('href').split('/').pop()))],
+          };
+        }, html);
+        inv[course] = meta;
+        log(`inventory ${course}: ${meta.slugs.length} lessons · ${meta.released} · ${meta.format}`);
+      } catch (e) {
+        log(`!! ${course}: ${e.message}`);
+      }
+      await sleep(PAUSE);
+    }
+    await writeFile(path.join(HERE, 'inventory.json'), JSON.stringify(inv, null, 1));
+    log(`wrote inventory.json · ${Object.values(inv).reduce((a, c) => a + c.slugs.length, 0)} lessons`);
+    await ctx.close();
+    return;
   }
 
   // --- Premium canary -------------------------------------------------------
