@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\FormVerificationChannel;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Attributes\Scope;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 
@@ -24,14 +25,16 @@ class FormVerificationCode extends Model
         'attempts' => 0,
     ];
 
-    public function scopeActive(Builder $query): Builder
+    #[Scope]
+    protected function active(Builder $query): Builder
     {
         return $query
             ->whereNull('consumed_at')
             ->where('expires_at', '>', now());
     }
 
-    public function scopeForChallenge(
+    #[Scope]
+    protected function forChallenge(
         Builder $query,
         FormVerificationChannel $channel,
         string $address,

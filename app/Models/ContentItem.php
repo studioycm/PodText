@@ -14,6 +14,7 @@ use App\Support\Transcriptions\EffectiveTranscriptionResolver;
 use Database\Factories\ContentItemFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\ObservedBy;
+use Illuminate\Database\Eloquent\Attributes\Scope;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -288,7 +289,8 @@ class ContentItem extends Model implements FoldsSearchColumns
             && ($this->pinned_until === null || $this->pinned_until->gt($at));
     }
 
-    public function scopePublished(Builder $query): Builder
+    #[Scope]
+    protected function published(Builder $query): Builder
     {
         return $query
             ->where('status', PublicationStatus::Published)
@@ -301,7 +303,8 @@ class ContentItem extends Model implements FoldsSearchColumns
             ->whereHas('transcriptions', fn (Builder $query): Builder => $query->published());
     }
 
-    public function scopeInCategoryTree(Builder $query, Category|int $category): Builder
+    #[Scope]
+    protected function inCategoryTree(Builder $query, Category|int $category): Builder
     {
         $category = $category instanceof Category
             ? $category
@@ -316,7 +319,8 @@ class ContentItem extends Model implements FoldsSearchColumns
         });
     }
 
-    public function scopeWithEnabledContentTag(Builder $query, ContentTag|string $tag): Builder
+    #[Scope]
+    protected function withEnabledContentTag(Builder $query, ContentTag|string $tag): Builder
     {
         $tag = is_string($tag)
             ? ContentTag::findFromString($tag, 'content')
@@ -334,7 +338,8 @@ class ContentItem extends Model implements FoldsSearchColumns
         });
     }
 
-    public function scopeCurrentlyPinned(Builder $query, ?Carbon $at = null): Builder
+    #[Scope]
+    protected function currentlyPinned(Builder $query, ?Carbon $at = null): Builder
     {
         $at ??= now();
 
@@ -352,7 +357,8 @@ class ContentItem extends Model implements FoldsSearchColumns
             });
     }
 
-    public function scopeOrderedForPins(Builder $query): Builder
+    #[Scope]
+    protected function orderedForPins(Builder $query): Builder
     {
         return $query
             ->orderByRaw('pin_order is null')
@@ -361,7 +367,8 @@ class ContentItem extends Model implements FoldsSearchColumns
             ->orderByDesc('id');
     }
 
-    public function scopeWithEffectiveTranscriptionPublishedAt(Builder $query): Builder
+    #[Scope]
+    protected function withEffectiveTranscriptionPublishedAt(Builder $query): Builder
     {
         return $query->addSelect([
             'featured_transcription_published_at' => Transcription::query()
@@ -380,9 +387,10 @@ class ContentItem extends Model implements FoldsSearchColumns
         ]);
     }
 
-    public function scopeOrderByEffectiveTranscriptionPublishedAt(Builder $query, string $direction = 'desc'): Builder
+    #[Scope]
+    protected function orderByEffectiveTranscriptionPublishedAt(Builder $query, string $direction = 'desc'): Builder
     {
-        $this->scopeWithEffectiveTranscriptionPublishedAt($query);
+        $this->withEffectiveTranscriptionPublishedAt($query);
         $direction = strtolower($direction) === 'asc' ? 'asc' : 'desc';
 
         return $query

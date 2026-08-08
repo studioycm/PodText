@@ -4,6 +4,7 @@ namespace App\Models\Concerns;
 
 use App\Enums\PublicationStatus;
 use Carbon\CarbonInterface;
+use Illuminate\Database\Eloquent\Attributes\Scope;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
@@ -37,7 +38,8 @@ trait InteractsWithPublicationDate
             ?? ($this->status === PublicationStatus::Published ? $this->created_at : null));
     }
 
-    public function scopeOrderByEffectivePublishedAt(Builder $query, string $direction = 'desc'): Builder
+    #[Scope]
+    protected function orderByEffectivePublishedAt(Builder $query, string $direction = 'desc'): Builder
     {
         $direction = strtolower($direction) === 'asc' ? 'asc' : 'desc';
 

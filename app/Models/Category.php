@@ -7,6 +7,7 @@ use App\Models\Contracts\FoldsSearchColumns;
 use App\Support\Slugs\HebrewSlugger;
 use Database\Factories\CategoryFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Attributes\Scope;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -59,7 +60,8 @@ class Category extends Model implements FoldsSearchColumns
         return $this->belongsToMany(ContentItem::class);
     }
 
-    public function scopeVisible(Builder $query): Builder
+    #[Scope]
+    protected function visible(Builder $query): Builder
     {
         return $query->where('is_visible', true);
     }

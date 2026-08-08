@@ -13,6 +13,7 @@ use Carbon\CarbonInterface;
 use Database\Factories\ContentGroupFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\ObservedBy;
+use Illuminate\Database\Eloquent\Attributes\Scope;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -84,7 +85,8 @@ class ContentGroup extends Model implements FoldsSearchColumns
         return $this->belongsToMany(Category::class);
     }
 
-    public function scopePublished(Builder $query): Builder
+    #[Scope]
+    protected function published(Builder $query): Builder
     {
         return $query->releasedBy(now());
     }
@@ -95,7 +97,8 @@ class ContentGroup extends Model implements FoldsSearchColumns
      * know whether a podcast will be out by an episode's air time.
      * A string `$moment` names a column to compare against instead of a value.
      */
-    public function scopeReleasedBy(Builder $query, CarbonInterface|string $moment): Builder
+    #[Scope]
+    protected function releasedBy(Builder $query, CarbonInterface|string $moment): Builder
     {
         return $query
             ->where('status', PublicationStatus::Published)
@@ -108,7 +111,8 @@ class ContentGroup extends Model implements FoldsSearchColumns
             });
     }
 
-    public function scopeOrderedForHomepage(Builder $query): Builder
+    #[Scope]
+    protected function orderedForHomepage(Builder $query): Builder
     {
         return $query
             ->orderByRaw('homepage_order is null')

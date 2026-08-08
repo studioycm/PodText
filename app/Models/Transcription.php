@@ -12,6 +12,7 @@ use App\Support\Transcripts\TranscriptSegmentParser;
 use Carbon\CarbonInterface;
 use Database\Factories\TranscriptionFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Attributes\Scope;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -155,7 +156,8 @@ class Transcription extends Model implements FoldsSearchColumns
             ->all();
     }
 
-    public function scopePublished(Builder $query): Builder
+    #[Scope]
+    protected function published(Builder $query): Builder
     {
         return $query->releasedBy(now());
     }
@@ -166,7 +168,8 @@ class Transcription extends Model implements FoldsSearchColumns
      * know whether a transcript will be out by an episode's air time.
      * A string `$moment` names a column to compare against instead of a value.
      */
-    public function scopeReleasedBy(Builder $query, CarbonInterface|string $moment): Builder
+    #[Scope]
+    protected function releasedBy(Builder $query, CarbonInterface|string $moment): Builder
     {
         return $query
             ->where('status', PublicationStatus::Published)

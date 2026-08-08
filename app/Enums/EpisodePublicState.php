@@ -9,8 +9,8 @@ use Filament\Support\Contracts\HasLabel;
 
 /**
  * The per-row public-visibility verdict for episode tables (P-EL2
- * row-answers-first). Derived from ContentItem::scopePublished's exact
- * contract; EpisodeListScopeTest pins badge↔scope parity so this resolver
+ * row-answers-first). Derived from the exact contract of ContentItem's
+ * published() scope; EpisodeListScopeTest pins badge↔scope parity so this resolver
  * cannot drift from the query-side truth. When both the podcast and the
  * transcript block, the podcast wins the label — it is the upstream fix.
  */

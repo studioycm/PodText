@@ -9,6 +9,7 @@ use App\Models\Contracts\FoldsSearchColumns;
 use App\Support\NavigationBadgeCount;
 use Database\Factories\PublicFormSubmissionFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Attributes\Scope;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -72,7 +73,8 @@ class PublicFormSubmission extends Model implements FoldsSearchColumns
         $this->update(['status' => PublicFormSubmissionStatus::New]);
     }
 
-    public function scopeStatus(Builder $query, PublicFormSubmissionStatus|string $status): Builder
+    #[Scope]
+    protected function status(Builder $query, PublicFormSubmissionStatus|string $status): Builder
     {
         $status = $status instanceof PublicFormSubmissionStatus ? $status->value : $status;
 

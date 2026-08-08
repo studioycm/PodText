@@ -8,6 +8,7 @@ use App\Models\Contracts\FoldsSearchColumns;
 use App\Support\Slugs\HebrewSlugger;
 use Database\Factories\HomepageSectionFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Attributes\Scope;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -63,12 +64,14 @@ class HomepageSection extends Model implements FoldsSearchColumns
         return $this->belongsTo(ContentGroup::class);
     }
 
-    public function scopeVisible(Builder $query): Builder
+    #[Scope]
+    protected function visible(Builder $query): Builder
     {
         return $query->where('is_visible', true);
     }
 
-    public function scopeOrdered(Builder $query): Builder
+    #[Scope]
+    protected function ordered(Builder $query): Builder
     {
         return $query
             ->orderBy('sort_order')

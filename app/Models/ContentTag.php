@@ -7,6 +7,7 @@ use App\Models\Contracts\FoldsSearchColumns;
 use App\Support\Search\HebrewSearchFold;
 use App\Support\Slugs\HebrewSlugger;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Attributes\Scope;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Spatie\Tags\Tag;
@@ -44,12 +45,14 @@ class ContentTag extends Tag implements FoldsSearchColumns
         return $this->belongsTo(User::class, 'created_by_id');
     }
 
-    public function scopeContent(Builder $query): Builder
+    #[Scope]
+    protected function content(Builder $query): Builder
     {
         return $query->where('type', 'content');
     }
 
-    public function scopeEnabled(Builder $query): Builder
+    #[Scope]
+    protected function enabled(Builder $query): Builder
     {
         return $query->where('is_enabled', true);
     }
