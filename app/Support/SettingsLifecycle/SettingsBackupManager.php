@@ -27,6 +27,8 @@ class SettingsBackupManager
         private readonly SettingsLifecycleSchema $schema,
         private readonly SettingsImportMergeEngine $mergeEngine,
         private readonly PublicContentSettingsWriteCoordinator $writeCoordinator,
+        private readonly SettingsPackageImportAnalyzer $importAnalyzer,
+        private readonly SettingsMediaIdentityProjector $mediaProjector,
     ) {}
 
     /**
@@ -157,14 +159,14 @@ class SettingsBackupManager
         ?string $sourceLabel,
     ): SettingsImportReport {
         $this->forgetFreshSettingsInstance();
-        $analysis = app(SettingsPackageImportAnalyzer::class)->analyze($package, $mode);
+        $analysis = $this->importAnalyzer->analyze($package, $mode);
 
         if ($analysis->refused()) {
             throw new RuntimeException(implode(' ', $analysis->errors));
         }
 
         $allowedPaths = $analysis->selectablePaths();
-        $selectedPaths = app(SettingsMediaIdentityProjector::class)->expandSelectedPaths($selectedPaths);
+        $selectedPaths = $this->mediaProjector->expandSelectedPaths($selectedPaths);
         $selectedPaths = array_values(array_intersect($selectedPaths, $allowedPaths));
         $beforeImportBackup = $this->createBeforeImport($user);
         $appliedPaths = $this->applySelectedPayload($package->payloadForApplication(), $selectedPaths, $mode, $user);

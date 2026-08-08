@@ -31,6 +31,7 @@ class PublicDisplaySectionResolver
         private readonly PublicDisplaySectionConfigValidator $validator,
         private readonly PublicDisplaySectionQueryResolver $queryResolver,
         private readonly PublicFrontCardTemplateResolver $templateResolver,
+        private readonly PublicRouteRegistry $routeRegistry,
     ) {}
 
     public function resolve(HomepageSection $section): ?PublicDisplaySectionResult
@@ -163,7 +164,7 @@ class PublicDisplaySectionResolver
 
     private function routeKeyUrl(string $routeKey): ?string
     {
-        return app(PublicRouteRegistry::class)->url($routeKey);
+        return $this->routeRegistry->url($routeKey);
     }
 
     private function category(PublicDisplaySectionConfigResult $config, HomepageSection $section): ?Category

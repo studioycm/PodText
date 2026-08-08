@@ -43,6 +43,9 @@ class CardTemplatePreviewer
         private readonly ContentItemDisplayTitle $displayTitle,
         private readonly PublicFrontRenderContext $context,
         private readonly MediaRecordScope $mediaRecordScope,
+        private readonly MediaIdentityResolver $mediaIdentityResolver,
+        private readonly MediaAttachmentIdentityResolver $attachmentIdentityResolver,
+        private readonly PublicMediaDelivery $mediaDelivery,
     ) {}
 
     /**
@@ -160,9 +163,9 @@ class CardTemplatePreviewer
             'aggregates' => new PublicTranscriptionAggregates($policy, $selector),
             'default_images' => new PublicDefaultImageResolver(
                 $this->context,
-                app(MediaIdentityResolver::class),
-                app(MediaAttachmentIdentityResolver::class),
-                app(PublicMediaDelivery::class),
+                $this->mediaIdentityResolver,
+                $this->attachmentIdentityResolver,
+                $this->mediaDelivery,
             ),
         ];
     }

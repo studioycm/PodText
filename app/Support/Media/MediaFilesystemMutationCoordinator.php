@@ -40,6 +40,7 @@ class MediaFilesystemMutationCoordinator
         private readonly PublicFrontConfigCache $publicFrontConfigCache,
         private readonly SettingsCacheFactory $settingsCacheFactory,
         private readonly PublicContentSettingsWriteCoordinator $settingsWriteCoordinator,
+        private readonly StoredMediaValidator $storedMediaValidator,
     ) {}
 
     /**
@@ -331,7 +332,7 @@ class MediaFilesystemMutationCoordinator
             throw new \InvalidArgumentException('The media record already has a reference key.');
         }
 
-        $proof = app(StoredMediaValidator::class)->validateForReferenceKeyBackfill($trusted);
+        $proof = $this->storedMediaValidator->validateForReferenceKeyBackfill($trusted);
         $purpose = $this->policy->purposeForPath((string) $trusted->path);
         $operationKey = (string) Str::ulid();
         $operation = $this->fence->begin($trusted, $actor, 'mintReferenceKey', [
