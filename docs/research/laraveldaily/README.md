@@ -247,13 +247,32 @@ returns **HTTP 200 with an empty body** — since the proof-of-origin rollout it
 4. Live-VOD tracks use `wWinId`/`aAppend` roll-up events — filter `events` with `segs`,
    join `utf8`, drop pure-`\n` appenders.
 
+**Method B — transcript-panel scrape** (from the larastan session's Pest-5-talk run;
+fewer calls for normal-length videos): start playback muted first (the panel mounts EMPTY
+until playback has run a few seconds), click the button whose `aria-label` is exactly
+"Show transcript", wait ~3 s, then scrape the `.ytwTranscriptSegmentViewModelTimestamp`
+elements (walk up to the row, read its `.ytAttributedStringHost`). The old
+`ytd-transcript-segment-renderer` selector is dead. Dump in 60–70-segment slices — full dumps
+truncate. **Count-canary it**: check segments ≈ duration/7s before trusting; on multi-hour
+VODs the list may be virtualized — scroll the panel container to force-render, or fall back
+to method A, which returned all 23k events of a 7-hour VOD in one fetch. Last-ditch fallback:
+CC on + `playbackRate=2` + poll `.ytp-caption-segment` every 250 ms (costs half the runtime).
+
+Which to use: method A for long VODs and precise slicing; method B when the video is short
+and you want the transcript in ~4 calls.
+
 For **frames**: the local-mp4 canvas pipeline does NOT transfer to long YouTube VODs — far
 seeks re-fetch MSE segments; 'seeked' fires with nothing decoded and canvas grabs come back
 black (or blank white after a quality-force). Polling readyState was not sufficient either.
 **What works: seek the in-app player (`video.currentTime = t; play(); pause()`), then take a
-plain `computer` screenshot** — 1080p slides are fully legible, and the transcript panel in
-frame gives free timestamp alignment. Cost: ~2 calls per slide; pick moments from the
-transcript first and capture only what matters.
+plain `computer` screenshot** — 1080p slides are fully legible. Cost: ~2 calls per slide;
+pick moments from the transcript first and capture only what matters. Refinements from the
+larastan session's run, all confirmed worth adopting: **turn captions OFF before shooting**
+(`.ytp-subtitles-button` if `aria-pressed=true` — captions overlap the bottom code lines;
+two of the Laracon captures have caption text over the slide's last rows), the
+play-~1s-then-pause dance is what forces a full-res frame (seeking while paused can leave a
+blurry preview), land 1–3 s *after* a slide transition, and don't rely on
+`computer {action:"zoom", region}` — the pane returns full screenshots instead of crops.
 
 Worked example: the Laracon US 2026 Day-2 stream segment (Povilas's Filament talk) —
 transcript + verified slide code in `raw/youtube-vii6P0vJhTw-laracon-filament-talk.md`,
