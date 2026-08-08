@@ -1,250 +1,208 @@
 # LaravelDaily: Laravel 13 Eloquent Expert — course notes
 
-Notes on [Laravel 13 Eloquent: Expert Level](https://laraveldaily.com/course/laravel-eloquent-expert)
-(41 video lessons, 1h34m, **Mar 2026**), read 2026-08-07.
+- **URL**: https://laraveldaily.com/course/laravel-eloquent-expert — 41 lessons, 1h34m, video **with full text bodies**, **Mar 2026**
+- **Read**: 2026-08-07 (5 lessons via captions) + 2026-08-08 (**19 lessons in full from `raw/`, all 41 digested** — headings + identifiers extracted per lesson)
+- **Verified against**: `laravel/framework v13.23.0`; this repo's models as of today (including the concurrent sessions' scope/attribute migration)
+- **Staleness verdict**: **passes, and is the most current course on the site for framework surface** — it teaches the Laravel 13 model attributes (`#[Fillable]`, `#[Scope]`, …) that this repo adopted this week
 
-Per the operator's instruction this was **skimmed for relationship optimization**, not watched
-linearly. **5 of 41 lessons** were read in full via Vimeo auto-captions (extraction method in
-[laraveldaily-livewire-v4-notes.md](livewire-v4-notes.md) §1);
-the other 36 were not. What was skipped is listed in §6.
+Full rewrite of the first version (5/41, captions only). Its two load-bearing conclusions
+survive re-verification and are kept in §1; everything else is new.
 
-Every claim below was re-verified against `laravel/framework v13.23.0` as installed.
-
-**Two findings worth the session:** the course confirms the parked
-effective-transcription conclusion, and I can now say *why* at the framework-source level
-(§2); and the course's headline N+1 recommendation would, if adopted here, **silently disable
-a guard this repo already relies on** (§3).
+**Headline: the tree has already adopted this course's "modern" recommendations — in some
+cases days ago, by the concurrent larastan/Boost sessions — and the framework holds
+substantially more attribute surface than the course shows.** One genuine gap (§3) and one
+cleanup candidate (§8) came out of the full read.
 
 ---
 
-## 0. Staleness verdict: **passes**
+## 1. Kept from the first pass, re-verified
 
-Mar 2026, Laravel 13-era. The N+1 lesson explicitly discusses `automaticallyEagerLoadRelationships`
-as "released pretty recently in Laravel 12.9" — a fine-grained, current version claim, and it
-checks out: the method exists at
-`vendor/laravel/framework/src/Illuminate/Database/Eloquent/Model.php:586`. Nothing pre-11
-idiom appeared in the lessons read.
-
-Like the queues course, it ships a bonus **`laraveldaily-eloquent-audit`** agent skill as
-lesson 41. Same verdict as recorded in
-[laraveldaily-queues-notes.md](queues-notes.md) §6 — noted, not
-installed, and for the same reasons.
+- **`ofMany` cannot express featured-else-latest** — the subquery is a MIN/MAX aggregate over
+  the child table alone, attached via `joinSub` as an uncorrelated derived table
+  (`CanBeOneOfMany.php`). The parked 2b refactor's conclusion stands; nothing in the full
+  course reopens it.
+- **`->one()` on an existing `HasMany`** (`$this->projects()->one()->latestOfMany()`) is the
+  DRY construction form and inherits the parent relation's constraints. Construction sugar
+  only — winner selection is unchanged.
+- **Do not enable `automaticallyEagerLoadRelationships()` here.** The course recommends it
+  (lesson 26: "probably always use" it on Laravel 12.9+); measured in
+  `HasAttributes::getRelationValue()`, autoloading returns **before** the
+  `preventLazyLoading` check, so it would replace this repo's local N+1 exception with a
+  silent fix. Decision recorded: keep `preventLazyLoading`, leave autoloading off.
 
 ---
 
-## 1. What the read lessons actually say
+## 2. Laravel 13 model attributes — the course undersells its own headline
 
-| lesson | substance |
+The course presents `#[Fillable]` / `#[Unguarded]` as "the modern recommendation"
+(fillable lesson), `#[Scope]` as "the recommended way" with `scopeX()` explicitly labelled
+**legacy**, plus `#[ScopedBy]` and `#[ObservedBy]`.
+
+Measured in `Illuminate/Database/Eloquent/Attributes/`: **24 attributes**. The course shows
+five. The rest, none mentioned:
+
+`Appends` · `Boot` · `CollectedBy` · `Connection` · `DateFormat` · `Guarded` · `Hidden` ·
+`Initialize` · `RouteKey` · `Table` · `Touches` · **`UseEloquentBuilder`** · `UseFactory` ·
+`UsePolicy` · `UseResource` · `UseResourceCollection` · `Visible` · `WithoutIncrementing` ·
+`WithoutTimestamps`
+
+### PodText is already migrated — this week
+
+Measured today: `#[Fillable]` + `#[Hidden]` on `User` (`app/Models/User.php:18-19`),
+attribute imports across 6+ models, and **21 `#[Scope]` attributes with zero legacy
+`scopeX()` methods left**. The larastan playbook's note that `checkModelMethodVisibility`
+"would conflict with this repo's existing `public function scopeX`" is now obsolete — the
+concurrent sessions' model migration removed the conflict. (That larastan flag is now
+enableable in principle; one for the phpstan owner.)
+
+### `UseEloquentBuilder` — flagged for the larastan Builder-typing debt
+
+`#[UseEloquentBuilder(ContentItemBuilder::class)]` + a custom builder class is the framework's
+own typed answer to the `Builder<Model>` boundary problem recorded in
+[larastan-playbook](../larastan-playbook.md) §4b (61 raw-`Builder` scope errors at the
+Filament boundary). A custom builder gives the scopes a real class PHPStan can see, no stub
+needed. **Not proposed — noted as the alternative to stubs** if that debt family ever gets a
+dedicated pass; it is a real refactor with test implications, not a drop-in.
+
+---
+
+## 3. The one genuine gap: strictness is one-third enabled
+
+The fillable lesson's opening failure — `create()` silently **dropping** a field missing from
+`$fillable` (their `email_verified_at` demo) — is the exact failure class
+`Model::preventSilentlyDiscarding()` turns into an exception. The course's blanket fix:
+
+```php
+Model::shouldBeStrict(! app()->isProduction());
+```
+
+`shouldBeStrict()` enables three guards (`Model.php:562`): `preventLazyLoading` **+**
+`preventSilentlyDiscarding` **+** `preventAccessingMissingAttributes`.
+
+Measured here: only `preventLazyLoading(! isProduction())` is on
+(`AppServiceProvider.php:148`). The other two are off, so a mass-assignment of a non-fillable
+field still drops silently in dev, and a typo'd attribute read returns null instead of
+throwing.
+
+**Proposal (operator decides):** widen to `Model::shouldBeStrict(! $this->app->isProduction())`.
+Caveat honestly: the missing-attribute guard can fire on legitimate dynamic access patterns
+(Filament forms occasionally read optional attributes), so run the suite before adopting —
+1850 tests will say quickly whether the strict pair is compatible. If it isn't, adopt
+`preventSilentlyDiscarding` alone, which is the half that catches real bugs.
+
+---
+
+## 4. Relation querying — the modern methods, with local usage counts
+
+All verified in `Eloquent/Concerns/QueriesRelationships.php` (`:186,440,735,795`):
+
+| method | what it replaces | uses in `app/` |
+| --- | --- | --- |
+| `has('rel')` / `has('rel', '>', 1)` | manual join/count | (baseline) |
+| `whereHas('rel', fn)` | conditional join | in use |
+| `whereRelation('rel', 'col', 'op', 'v')` | one-condition `whereHas` closure | 1 |
+| `withWhereHas('rel', fn)` | duplicated `whereHas` + `with` closures | **0** |
+| `whereBelongsTo($model)` | `where('user_id', $user->id)` | 1 |
+| `whereAttachedTo($model)` | manual pivot `whereHas` | 0 (BelongsToMany taxonomy could use it) |
+
+`withWhereHas` is the one worth remembering: the filter-and-eager-load-the-same-subset
+pattern appears in public listing queries, and the duplicated-closure form is the bug-prone
+version (edit one closure, forget the other).
+
+## 5. Aggregates and serialization
+
+- `withCount` (5 uses here already), plus `withMin/Max/Avg/Sum/Exists` →
+  `{relation}_{fn}_{column}` attributes. Their 50k-row demo's point stands: aggregates in
+  SQL, not `->count()` on loaded collections — the `with('projects')->count()` version OOMs
+  at 400k rows.
+- Serialization: `$hidden`/`$visible`/`$appends` + runtime `makeHidden()/makeVisible()/append()`.
+  PodText note: `User` now carries `#[Hidden([...])]` — the attribute form of the same
+  contract — and **zero `$appends`** anywhere, which is the right default (appends run their
+  accessor on every serialization).
+
+## 6. Pivots and polymorphics — matches the tree
+
+`withTimestamps()`, `withPivot()`, `wherePivot()`-scoped secondary relations, `->as()`
+renaming (author: never used it). Polymorphic `morphs()`/`morphTo()`/`morphMany()` with
+`Relation::enforceMorphMap()` recommended.
+
+PodText: 2 `withPivot` uses; `MediaAttachment` is the polymorphic hub (2 `morphTo`) and
+`AppServiceProvider:178` registers a **`morphMap`** — the course shows `enforceMorphMap`,
+whose only delta is throwing on unmapped models instead of silently storing FQCNs. With every
+morph type already mapped here, enforcing would be a one-word hardening; low value, zero
+urgency.
+
+## 7. The utility lessons — one-line verdicts
+
+| lesson | verdict for PodText |
 | --- | --- |
-| 18 — Subqueries and subselects | `addSelect(['last_post' => Post::select('created_at')->whereColumn('user_id', 'users.id')->latest()->take(1)])`. The demo's honest result: duration barely improved, but **memory dropped hard** (91 MB → much lower) because you fetch one scalar per parent instead of hydrating a related model. Framed as a rare-but-useful optimisation, not a default. |
-| 22 — `load()` and `$with` | You can eager-load after the fact with `->load('user')`. You can also set `protected $with = ['user']` on the model — and the lesson **argues against it**: it loads the relation even where it is not needed, and the next developer editing that controller has no way to see it. Verdict: eager-load explicitly. |
-| 23 — Detect and prevent N+1 | `Model::preventLazyLoading(! app()->isProduction())` throws on any lazy load outside production. `Model::automaticallyEagerLoadRelationships()` (Laravel 12.9+) instead *fixes* it silently. Course advice: "you should probably always use automatically eager load relationships." **See §3.** |
-| 26 — `whereHas` vs `join` vs raw | Measured on 30 000 posts: Eloquent 3 queries / 77 MB / 0.4 s; Query Builder 2 queries / 66 MB / faster; raw `DB::select` ≈ Query Builder. Query Builder is close to raw. The stated cost is losing accessors/mutators and model features. |
-| 34 — One of many | `latestOfMany()`, `oldestOfMany()`, `ofMany('price', 'max')`, `ofMany(['price' => 'max', 'updated_at' => 'min'])`, and `ofMany([...], fn ($q) => $q->where('title', 'like', …))`. Plus `->one()`, §1a. **See §2.** |
+| `firstOrCreate/firstOrNew/updateOrCreate/upsert` | Known; 2 `updateOrCreate` uses. `upsert` (0 uses) is the bulk-import primitive if importers ever need row-level dedupe at scale — note it bypasses model events, which matters here (observers). |
+| `wasRecentlyCreated / isDirty / wasChanged` | In use (3 × `wasRecentlyCreated`). The `isDirty`-before-save vs `wasChanged`-after-save split is the part people get wrong. |
+| `find/first` variants, `whereDate/whereX` | Generic. The dynamic-`whereEmail` magic is flagged by the author himself as not recommended — agreed, it defeats static analysis. |
+| `whereAll/whereAny`, `when()` | Generic sugar. |
+| Query caching (`Cache::remember`) | Generic; PodText caches at the settings/config layer instead, deliberately. |
+| Seeding via chunked `insert()` | Good trick (bypasses Eloquent per-row cost); factories stay canonical here for tests. |
+| Raw queries, whereHas-vs-join, N+1 debugbar | Covered by kept §1 conclusions and the perf demo above. |
+| Model stubs customization, singular/plural naming, `touch()`, `saveQuietly()` | Generic/known. |
 
-### 1a. `->one()` on `HasMany` — added after a methodology correction
+## 8. Prunable — a real cleanup candidate found
 
-**This course's video lessons also carry authored text bodies, and the first pass read only the
-captions.** The `oneofmany` lesson's text body runs 5 446 characters and contains a section the
-narration never mentions:
+`Prunable` (per-row, fires events) vs `MassPrunable` (single `DELETE`, no events), both driven
+by `php artisan model:prune` on the scheduler, with `--model` / `--except` scoping.
 
-```php
-public function latestProject(): HasOne
-{
-    return $this->projects()->one()->latestOfMany();
-}
-```
+**PodText has zero prunable models but one obvious candidate**: `FormVerificationCode` has
+`expires_at`, scopes exclude expired rows, and nothing deletes them — expired codes accumulate
+forever. `MassPrunable` + `prunable(): where('expires_at', '<', now()->subDays(N))` +
+scheduling `model:prune` is the textbook fit (no side effects on delete → mass variant).
+**Proposal, small and self-contained.** Check first whether any retention/audit expectation
+exists for used codes; if so, prune only long-expired ones.
 
-Instead of restating `$this->hasOne(Project::class)` for every variant, chain `->one()` on the
-existing `hasMany`. Verified in Laravel 13 — `HasMany::one()` builds a `HasOne` from
-`$this->getQuery()`, so it **inherits the parent relation's base constraints** (scopes, default
-ordering), exactly as the text claims. `HasOne` uses `CanBeOneOfMany`, so
-`->one()->latestOfMany()` runs the same machinery as the standalone form.
+## 9. The package-survey lessons (38–40) — mostly not for here
 
-**It does not change §2.** `->one()` is a construction convenience; winner selection is still
-`CanBeOneOfMany`'s MIN/MAX aggregate over the child table. The parked refactor's conclusion is
-unaffected.
+Spatie query-builder (URL-driven filters — Filament owns this surface here), Tucker-Eric
+EloquentFilter, spatie/laravel-searchable and protonemedia/cross-eloquent-search
+(**MySQL 8.0+ only** — fine here), staudenmeir HasManyDeep, Tighten Parental (single-table
+inheritance), cascade soft-deletes. PodText's Hebrew folded-column search is deliberate and
+none of the search packages handle folding — no change. Useful as a map of what exists;
+new dependencies need approval regardless.
 
-Relevant to this repo mainly as style: `ContentItem::latestPublishedTranscription()` is written
-as `$this->hasOne(Transcription::class)->published()->latest(...)`, i.e. the standalone form,
-which duplicates the target rather than reusing `transcriptions()`. Rewriting it as
-`$this->transcriptions()->one()->…` would inherit any constraint later added to
-`transcriptions()`. **Cosmetic, not proposed** — noted only so the option is on the record.
+## 10. The bonus "AI skill" (lesson 41, 27.6k chars in corpus)
 
----
-
-## 2. `oneOfMany` and the parked effective-transcription refactor
-
-The parked 2b refactor wants one **eager-loadable** `HasOne` expressing *featured if set, else
-latest published*, and its recorded conclusion is that **`ofMany` cannot express it**. Lesson
-34 is the course's full treatment of `ofMany`, so it is the natural place to check whether
-anything was missed.
-
-**It confirms the conclusion, and nothing in the lesson unblocks it.** The four forms it
-teaches are: aggregate on `id`, aggregate on another column, multiple aggregate columns as
-tiebreakers, and a closure that adds *filtering*. None of them makes the winner depend on a
-value that lives on the parent row.
-
-### Why, from the framework source — the part the course does not give
-
-`Illuminate/Database/Eloquent/Relations/Concerns/CanBeOneOfMany.php`:
-
-1. **The aggregate is restricted to MIN/MAX**, enforced with a throw (`:94-96`):
-   ```php
-   if (! in_array(strtolower($aggregate), ['min', 'max'])) {
-       throw new InvalidArgumentException("Invalid aggregate [{$aggregate}] used within ofMany relation. Available aggregates: MIN, MAX");
-   }
-   ```
-   No `CASE`, no expression, no arbitrary ordering key.
-
-2. **The subquery is built on the related model alone**, grouped by the foreign key
-   (`newOneOfManySubQuery`):
-   ```php
-   $subQuery = $this->query->getModel()->newQuery()->withoutGlobalScopes(...);
-   foreach (Arr::wrap($groupBy) as $group) { $subQuery->groupBy($this->qualifyRelatedColumn($group)); }
-   ```
-   It selects only `MAX(...) as x_aggregate` / `min(...)` columns.
-
-3. **That subquery is then attached with `joinSub`** (`addOneOfManyJoinSubQuery`) — i.e. as a
-   **derived table**.
-
-The closure form runs against *that* subquery. So a constraint like
-`whereColumn('transcriptions.id', 'content_items.featured_transcription_id')` would emit a
-reference to the parent table from inside a derived table that does not have it in scope.
-Derived tables are not correlated (absent `LATERAL`, which Eloquent does not emit here).
-**The rule is not expressible in `ofMany` for structural reasons, not for want of API surface.**
-
-### What the course *does* contribute, indirectly
-
-Lesson 18's subselect is the complementary half, and it maps exactly onto the approach already
-recorded for the parked refactor (a correlated subquery). The distinction worth writing down:
-
-| technique | can express a parent-dependent winner? | gives a hydrated model? | eager-loadable? |
-| --- | --- | --- | --- |
-| `ofMany` / `latestOfMany` | **no** (MIN/MAX over child columns only) | yes | yes |
-| `addSelect` correlated subselect (lesson 18) | yes | **no** — a scalar column | n/a |
-| `HasOne` + correlated subquery in `ORDER BY` | yes | yes | yes |
-
-The third row is the parked approach, and it is the only one of the three that satisfies all
-three columns. **Nothing here changes that decision** — recorded so the `ofMany` avenue does
-not get re-opened by someone reading lesson 34 in isolation.
-
-For context on what is being replaced: the current
-[`ContentItem::workspaceTranscription()`](app/Models/ContentItem.php:156) branches on
-`$this->featured_transcription_id` **while building the relation**, which is precisely why it
-carries a docblock warning not to eager-load it from list or collection queries. That
-instance-conditional shape is the thing the refactor removes.
+Same standing position as the queues/testing/structure ones: **not installed** — third-party
+`SKILL.md` is executable instruction surface, and §2–§8 show the codebase already ahead of
+most of its checks.
 
 ---
 
-## 3. The N+1 recommendation would disable a guard this repo already has
+## 11. Sources
 
-Measured — PodText already implements the stricter half of lesson 23, at
-[AppServiceProvider.php:148](app/Providers/AppServiceProvider.php:148):
+- All 41 lessons digested (headings + identifiers, from `raw/laravel-eloquent-expert.json`,
+  scraped 2026-08-08, premium-verified); **24 read in full** across the two passes —
+  including [fillable/guarded](https://laraveldaily.com/lesson/laravel-eloquent-expert/model-fillable-guarded),
+  [local & global scopes](https://laraveldaily.com/lesson/laravel-eloquent-expert/local-global-scopes),
+  [query relationship data](https://laraveldaily.com/lesson/laravel-eloquent-expert/query-relationship-data),
+  [model properties](https://laraveldaily.com/lesson/laravel-eloquent-expert/model-properties-tables-keys),
+  [firstOrCreate family](https://laraveldaily.com/lesson/laravel-eloquent-expert/firstorcreate-methods),
+  [wasCreated/isDirty](https://laraveldaily.com/lesson/laravel-eloquent-expert/wascreated-isdirty),
+  [prunable](https://laraveldaily.com/lesson/laravel-eloquent-expert/prunable-and-massprunable-cleaning-up-old-records),
+  [withCount](https://laraveldaily.com/lesson/laravel-eloquent-expert/withcount),
+  [advanced belongsToMany](https://laraveldaily.com/lesson/laravel-eloquent-expert/advanced-belongs-to-many),
+  [polymorphic relations](https://laraveldaily.com/lesson/laravel-eloquent-expert/polymorphic-relations),
+  [serialization](https://laraveldaily.com/lesson/laravel-eloquent-expert/27-hidden-visible-appends-model-serialization),
+  [filter/search packages](https://laraveldaily.com/lesson/laravel-eloquent-expert/filter-search-packages),
+  and the five from the first pass.
+- Framework source at v13.23.0: `Eloquent/Attributes/` (24 files),
+  `Eloquent/Concerns/QueriesRelationships.php:186,440,735,795`, `Eloquent/Model.php:562`
+  (`shouldBeStrict`), `CanBeOneOfMany.php`, `HasAttributes::getRelationValue()`.
+- This repo, measured 2026-08-08: `User.php:18-19`, scope counts (21 attribute / 0 legacy),
+  `AppServiceProvider.php:148,178`, usage counts per §4–§8, `FormVerificationCode.php`.
 
-```php
-Model::preventLazyLoading(! $this->app->isProduction());
-```
+### What I could not obtain / did not read in full
 
-exactly as the lesson teaches, production guard included. `automaticallyEagerLoadRelationships()`
-is **not** enabled.
-
-The course's closing advice is to "always use automatically eager load relationships". **Do not
-apply that here without deciding deliberately**, because the two features are not additive.
-From `HasAttributes::getRelationValue()` (`:563-582`):
-
-```php
-if ($this->attemptToAutoloadRelation($key)) {
-    return $this->relations[$key];
-}
-
-if ($this->preventsLazyLoading) {
-    $this->handleLazyLoadingViolation($key);
-}
-```
-
-**Autoloading is attempted first and returns early.** Wherever it succeeds, the lazy-loading
-violation never fires. Enabling it would therefore not *add* protection on top of
-`preventLazyLoading` — it would **replace the local exception with a silent fix**, and the N+1
-signal this repo currently gets in development would stop appearing for exactly the cases
-autoloading handles.
-
-That is a policy choice between *surface the problem* and *paper over the problem*. This repo
-currently chooses to surface it. The course does not mention the interaction at all.
-
-**Recommendation: no change.** Keep `preventLazyLoading`, leave
-`automaticallyEagerLoadRelationships` off. Recorded so this is a decision on the record rather
-than an omission — and so that a future reader of lesson 23 does not enable it as an obvious win.
-
----
-
-## 4. `protected $with` — an existing-convention check
-
-Lesson 22's warning against model-level `$with` is worth checking against a codebase that has
-strict lazy-load prevention on: with `preventLazyLoading` enabled there is standing pressure to
-"just add it to `$with`" whenever the exception fires, which is the failure mode the lesson
-describes.
-
-**Checked: `protected $with` appears nowhere in `app/Models/`.** No model-level eager loading
-has crept in, so the pressure has not produced any. Nothing to do; recorded as a clean result
-rather than an open item.
-
----
-
-## 5. Applies here vs. generic
-
-| lesson | applies to PodText? |
-| --- | --- |
-| 34 One of many | **Yes** — confirms the parked refactor's conclusion, §2. No action. |
-| 18 Subqueries/subselects | **Yes, as background** to the parked refactor. Also a real option for list pages that need one scalar from a relation rather than the whole model. |
-| 23 Detect/prevent N+1 | **Yes, and the answer is "no change"** — §3. Half already implemented; the other half would be a regression here. |
-| 22 `load()` / `$with` | Mostly generic. The `$with` caution was checked and is clean, §4. |
-| 26 whereHas vs join vs raw | Generic. The measured trade-off (Query Builder ≈ raw, but loses accessors/mutators) is worth knowing before anyone optimises a public listing query by dropping to `DB::table()` — this codebase leans on model accessors and enum casts, so that trade would cost more here than in the demo. |
-
----
-
-## 6. What I could not obtain / did not read
-
-- **36 of 41 lessons went unread.** This was a deliberate skim per the operator's instruction,
-  not a limitation. The unread set includes several that plausibly matter and are candidates
-  for a follow-up pass:
-  - `model-casts-dates-enum` — directly adjacent to the `casts()` / larastan finding in
-    [larastan-playbook.md](../larastan-playbook.md) §1. **Highest-value unread lesson.**
-  - `local-global-scopes` — adjacent to the public-visibility scopes and to the
-    `Builder<Model>` typing debt in `larastan-playbook.md` §4b.
-  - `withcount`, `query-relationship-data`, `has-many-through`, `advanced-belongs-to-many`,
-    `polymorphic-relations` — `MediaAttachment` is polymorphic here (`attachable_type`), so the
-    polymorphic lessons may be relevant.
-  - `n1-query-problem-debugbar-eager-loading`, `n1-query-packages-examples`,
-    `query-result-caching`, `api-reponse-optimization`, `hidden-visible-appends-model-serialization`.
-  - `prunable-and-massprunable`, `model-observers`, `wascreated-isdirty`, `firstorcreate-methods`.
-- **The bonus skill's full text** — only the lesson page was read; the GitHub raw file was
-  deliberately not fetched.
-- **The lesson text bodies were missed on the first pass** — see §1a. This course's video
-  lessons carry authored write-ups *and* a "Code for this lesson can be found on GitHub" link,
-  and the first pass used only Vimeo captions. One real API (`->one()`) was lost that way and
-  has been added; the four other lessons read here were **not** re-checked against their text
-  bodies, so more may be missing. The [README](README.md) §3 rule exists because of this.
-- Auto-caption caveat, as in the Livewire notes: the ASR mangles identifiers (*"Larval"*,
-  *"eloquence"*, *"bullying condition"*, *"of many"*). **No API name in this document comes
-  from a caption** — each was confirmed in `vendor/laravel/framework`. That discipline is what
-  kept §2's conclusion correct despite the extraction gap above.
-
----
-
-## 7. Sources
-
-- [Course index](https://laraveldaily.com/course/laravel-eloquent-expert), Mar 2026, 41 video lessons.
-  Read: [18 subqueries and subselects](https://laraveldaily.com/lesson/laravel-eloquent-expert/subqueries-and-subselects),
-  [22 eager loading with load() and $with](https://laraveldaily.com/lesson/laravel-eloquent-expert/eager-loading-load-and-with),
-  [23 detect and prevent N+1](https://laraveldaily.com/lesson/laravel-eloquent-expert/detect-and-prevent-n1-query),
-  [26 whereHas vs join vs raw SQL](https://laraveldaily.com/lesson/laravel-eloquent-expert/eloquent-query-builder-wherehas-vs-join),
-  [34 one record from many](https://laraveldaily.com/lesson/laravel-eloquent-expert/oneofmany).
-- Framework source read directly at v13.23.0:
-  `Eloquent/Relations/Concerns/CanBeOneOfMany.php` (`ofMany`, `newOneOfManySubQuery`,
-  `addOneOfManyJoinSubQuery`), `Eloquent/Concerns/HasAttributes.php:563-582`
-  (`getRelationValue` guard order), `Eloquent/Model.php:562-586`
-  (`shouldBeStrict`, `preventLazyLoading`, `automaticallyEagerLoadRelationships`).
-- This repo, measured 2026-08-07: [ContentItem.php:126-202](app/Models/ContentItem.php:126)
-  (relations and effective-transcription resolution),
-  [AppServiceProvider.php:148](app/Providers/AppServiceProvider.php:148).
+17 lessons remain digest-only (casts/dates/enum, accessors deep-dive beyond the read
+excerpt, brackets/or, when(), subselect performance details, caching, seeds, raw queries,
+n1-packages, collections-vs-query, api-response, wherehas-vs-join, hasManyThrough,
+polymorphic M2M, relationship/extra packages, make:model options, stub customization).
+Their headings and identifiers are indexed in [index.md](index.md); nothing in the digests
+contradicted a claim made here. The `model-casts-dates-enum` lesson turned out to be 1.9k
+chars of basics — the larastan `casts()` interaction remains uncovered by this course.
