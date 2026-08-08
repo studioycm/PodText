@@ -1,8 +1,15 @@
 # Database alignment — spec
 
-**Status:** approved in conversation 2026-08-08. Not implemented. Supersedes the
-clock half of `hebrew-collation-and-clock-plan.md` and rewrites
-`mysql-test-lane-spec.md` §3/§6/§7.
+**Status:** approved in conversation 2026-08-08; adversarially re-verified the
+same day against the full LaravelDaily archive (407-lesson index + 29 raw
+course scrapes), vendor framework/Filament source, and live probes on the local
+daemon — 4 claims corrected, the rest confirmed; corrections are folded in
+below and marked where they overturned the first draft. The archive itself has
+**zero content** on collation, TIMESTAMP semantics, or MySQL-vs-SQLite testing:
+decisions 1-3 and 6 rest entirely on this repo's own measurements, and nothing
+in the archive contradicts them. Not implemented. Supersedes the clock half of
+`hebrew-collation-and-clock-plan.md` and rewrites `mysql-test-lane-spec.md`
+§3/§6/§7.
 
 **Goal:** local dev, the test lane and production run the same database engine,
 the same collation and the same clock — and none of that correctness depends on
@@ -110,9 +117,31 @@ Reasons, in order of weight:
 That it is also MySQL's server default on both 8.0 and 9.x is **incidental, not
 the argument**.
 
-**No Hebrew-specific collation exists** [MEASURED] — MySQL ships tailorings for
-Czech, Spanish, Turkish and others; Hebrew needs none, because the root DUCET
-order already sorts it correctly.
+**No Hebrew tailoring exists among the Unicode/utf8mb4 collations** [MEASURED] —
+MySQL ships tailorings for Czech, Spanish, Turkish and others; Hebrew needs
+none, because the root DUCET order already sorts it correctly. (Scoped
+deliberately: `hebrew_general_ci`/`hebrew_bin` do exist, but in the legacy
+8-bit ISO-8859-8 `hebrew` charset — not utf8mb4 candidates. An unscoped "none
+exists" fails anyone re-running `SHOW COLLATION LIKE '%hebrew%'`.)
+
+### The config key that actually controls the future
+
+**`config/database.php:57` — `'collation' => env('DB_COLLATION',
+'utf8mb4_unicode_ci')` — is the live mechanism that made today's schema
+uniformly `unicode_ci` on a server whose default is `0900_ai_ci`.** Verified in
+vendor: `MySqlGrammar::compileCreateEncoding()` stamps **every** future
+`CREATE TABLE` with an explicit collate clause read from this key, and
+`MySqlConnector` sets the session collation from it. Left untouched, it
+recreates the drift with the very next migration — the schema-default change in
+step 2 offers zero protection, because the grammar always wins when config
+carries a collation.
+
+So step 2 includes: **hardcode `'charset' => 'utf8mb4'` and `'collation' =>
+'utf8mb4_0900_ai_ci'` on the app `mysql` connection, removing the `env()`
+indirection** — the same no-drift rule `config/app.php` already applies to the
+timezone, and the same hardcoding the `mysql_testing` block uses. The stale
+`mariadb` block at `config/database.php:77` carries the same default; fix it in
+the same pass.
 
 **This overturns `hebrew-collation-and-clock-plan.md` §3**, which called the
 null option "genuinely defensible". That analysis weighed sorting and Hebrew `=`
@@ -187,6 +216,34 @@ What it kills at once:
 **`TIMESTAMP` is safe only while every client is configured identically,
 forever. `DATETIME` is safe unconditionally.**
 
+External precedent, found in the LaravelDaily archive after this decision was
+made independently: the `laravel-user-timezones` course uses
+`$table->dateTime()` throughout and its instructor defends the choice in the
+comments — *"we are strictly working with UTC all the time and we want Carbon
+to handle the offset, not the DB."* Same reasoning, same conclusion.
+
+Two pieces of fine print, both measured, neither changing the decision:
+
+- **"Does not convert. Ever." has one write-side exception.** MySQL 8.0.19+
+  converts *offset-suffixed* literals (`'2026-01-15 10:00:00+05:30'`) into the
+  session zone even for `DATETIME` columns — measured: stored `06:30` under the
+  IDT session. Laravel's write format is `'Y-m-d H:i:s'` with no offset
+  (vendor `Grammar.php:282-284`), so app writes never hit this — but until
+  step 5 pins the session, a raw-SQL or import path using ISO offset literals
+  would convert into Jerusalem wall, not UTC.
+- **The conversion permanently collapses the October fold.** The two distinct
+  epochs that render as the same fall-back literal become one stored value
+  forever. Acceptable precisely because the app could never distinguish them
+  before either (both already read back identically through `TIMESTAMP`) — but
+  stated here so nobody "discovers" it later.
+
+The no-op claim itself was re-proven empirically during review: winter, summer,
+spring-edge, max-epoch and **both** October-fold instants all read back
+byte-identical after `ALTER … DATETIME` under the current session; the
+counterfactual (pinning `+00:00` *first*) shifted every literal by −2/−3h.
+Winter staying `10:00` also re-proves A2: the session conversion is per-instant
+named-zone, not a flat +3.
+
 ---
 
 ## 5. Target state
@@ -201,8 +258,8 @@ forever. `DATETIME` is safe unconditionally.**
 | 6 | Production app | **UTC** — identical to 3 | ✅ |
 | 7 | Test DB | **UTC**, pinned — identical to 2 | to build |
 | 8 | Column type | **`DATETIME`**, never `TIMESTAMP` | ✗ 80 `TIMESTAMP` |
-| 9 | Display | **Asia/Jerusalem**, one home | ✅ `UiTimezone` |
-| 10 | User input | read as Jerusalem, converted to UTC; **DST gap rejected** | ⚠️ gap unhandled |
+| 9 | Display | **Asia/Jerusalem**, one home | ⚠️ home exists (`UiTimezone`), two live drift instances — see below |
+| 10 | User input | read as Jerusalem, converted to UTC; **spring gap rejected, autumn fold policy stated** | ⚠️ gap unhandled; fold silently resolves to the later instant |
 | 11 | Scheduler | explicit `->timezone()` when a human means local | ⚠️ see 10.4 |
 
 **1 and 4 differ deliberately.** Your Mac's clock is a convenience nothing
@@ -212,6 +269,14 @@ sensible guess for an Israeli account and the wrong setting for a server.
 
 **The app layer is already correct in both environments.** The database layer is
 wrong in both, identically. That is the entire gap.
+
+Row 9's ⚠️, found in review: `AuthorsTable.php:38,43` carry the only two bare
+`->dateTime()` calls in the app — rendering **UTC in Filament's default format
+today** — and all 21 `DateTimePicker` sites are browser-native, so their
+19 `->displayFormat('d/m/Y H:i')` chains are dead code and the visible picker
+format is currently the **admin's browser locale**, outside the repo. Both are
+per-site drift instances that §8's global hooks close; they are also the proof
+that per-site configuration drifts, which is the argument for the hooks.
 
 ---
 
@@ -229,9 +294,19 @@ GRANT ALL PRIVILEGES ON `podtext`.* TO 'podtext'@'127.0.0.1';
 CREATE DATABASE `podtext_test`
   DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci;
 CREATE USER 'podtext_test'@'127.0.0.1' IDENTIFIED BY '<password>';
-GRANT ALL PRIVILEGES ON `podtext_test`.* TO 'podtext_test'@'127.0.0.1';
+GRANT ALL PRIVILEGES ON `podtext\_test`.* TO 'podtext_test'@'127.0.0.1';
+-- paratest, if ever enabled: Laravel derives "{database}_test_{token}", i.e.
+-- podtext_test_test_1, and calls Schema::createDatabase — so the parallel
+-- grant needs the wildcard AND CREATE:
+-- GRANT ALL PRIVILEGES ON `podtext\_test\_test\_%`.* TO 'podtext_test'@'127.0.0.1';
 FLUSH PRIVILEGES;
 ```
+
+(`\_` because an unescaped `_` is itself a single-character wildcard in GRANT
+database patterns. The old spec's grant did not cover the paratest-derived
+names its own regex anticipated — `TestDatabases.php:200-209` appends
+`_test_{token}` to the *already-suffixed* base, which the guard regex matches
+but the unescaped grant did not reach.)
 
 No grant on `podtext` is issued to the test user, and the test user lives on a
 daemon where `podtext` does not exist at all. Passwords go in `.env` (gitignored)
@@ -246,7 +321,14 @@ with placeholders in `.env.example` — **never `.env.testing`**, which
 
 ```bash
 herd services:create mysql --service-version=8.0.46
+# then set its port to 3307 — every Herd MySQL version defaults to 3306
+# [MEASURED], and the 9.4.0 app daemon already holds it. The lane's
+# "port ≠ app port" guard clause is violated at creation otherwise.
 ```
+
+(Herd database services are a Herd Pro capability. This machine already runs
+two — MySQL 9.4.0 and Redis — so the license exists; recorded because the lane
+rides on it.)
 
 [MEASURED] `herd services:versions mysql` offers 9.7.1, 9.4.0, 8.4.10 and
 **8.0.46** — production's exact version. This replaces both options the old spec
@@ -262,10 +344,44 @@ that specific argument was wrong. The conclusion survives for other reasons
 **SQLite is retired entirely.** One lane, not two. Consequences:
 
 - `assertSafeTestingDatabase()` becomes **one shape**, simpler than the old
-  two-shape design.
+  two-shape design. The sqlite shape is hard-coded in **four places that must
+  move together**: `phpunit.xml:38-40`, `tests/Pest.php:21-33` (the putenv
+  loop), `tests/TestCase.php` (config overrides + `forceSafeTestingEnvironment`
+  + the guard), and `tests/Feature/EnvironmentGuardsTest.php:24-31`, which
+  asserts the retiring shape *by name*. Half-moving them is the failure mode.
+- Carried over from the superseded spec so it isn't lost in the rewrite:
+  **`tests/Unit` bypasses the guard** — `Pest.php` binds `Tests\TestCase` to
+  `Feature`/`Browser` only. Latent while unit tests don't boot the app;
+  restate it in the new guard's docblock.
 - No `phpunit-mysql.xml`, no second composer script.
 - The `driver-lenient-fallback` divergence class stops existing rather than
   being caught by a lane someone might forget to run.
+- **Browser tests carry over safely** [verified in vendor]: pest-plugin-browser
+  has no artisan-serve child — `LaravelHttpServer` is an in-process Amp socket
+  server dispatching Playwright traffic through the same app kernel on the same
+  connection, so the per-test transaction stays visible and there is no second
+  process to drift from the forced env.
+
+**Schema vehicle — load-bearing, and the old draft got it wrong.** The lane's
+schema is not `ALTER`ed; it is rebuilt by `migrate:fresh` replaying the
+migration files, which contain 28 `->timestamp(` and 26 `->timestamps(` calls.
+Run steps 2-3 as hand SQL against `podtext` and production, and the lane is
+recreated with 80 `TIMESTAMP` columns under the old collation **forever**,
+regardless of ordering. Therefore **steps 2-3 ship as a Laravel migration**
+(generated `MODIFY`s per §9) that every environment runs — production through
+the normal deploy, the lane through every `migrate:fresh` replay. Collation
+alone would survive via the connection config (the grammar stamps CREATE
+TABLEs), but the column type has no config knob; only a migration reaches all
+three environments.
+
+**One shared lane schema vs concurrent pest runs.** SQLite `:memory:` made
+concurrent runs isolated *by construction*; the lane makes them collide — two
+processes would `migrate:fresh` over each other mid-run, and concurrent
+sessions on this machine are documented reality (`tests/Pest.php:35-96` exists
+precisely because of them — per-pid fake-disk tokens). The lane needs a
+process-level run lock (flock on a file under `storage/framework/testing/`,
+fail fast with a clear message when held) until/unless paratest with per-process
+databases replaces it.
 
 **Connection** — `mysql_testing` in `config/database.php`, sharing **no env key**
 with the app connection:
@@ -293,11 +409,25 @@ a variable this connection never reads.
 **Why `'timezone' => '+00:00'` here is safe rather than dishonest.** Ordinarily
 a lane whose clock is *correct* while production's is *wrong* would hide the
 disagreement — tests green, production broken, which is `driver-lenient-fallback`
-pointed at the clock. After step 3 that objection dissolves: `DATETIME` columns
-do not convert, so the session clock is inert on both sides and lane and
-production agree by construction rather than by configuration. If the lane were
-built **before** step 3, it must instead be left on `SYSTEM` to mirror
-production honestly.
+pointed at the clock. After step 3 that objection dissolves for stored values:
+`DATETIME` columns do not convert, so the session clock is inert for **column
+storage** on both sides. (Not for SQL-generated time — `NOW()`/`CURDATE()`/
+`DATE()` still read the session clock and only agree everywhere at step 5;
+the §9 ordering covers this, and §11's `useCurrent`/`CURRENT_TIMESTAMP` ban is
+what keeps SQL-generated time out of the schema meanwhile.)
+
+Two operational teeth, so the ordering rule is a refusal rather than prose:
+
+- The lane's first-use fingerprint also records and asserts
+  `information_schema` **TIMESTAMP column count = 0** whenever the connection
+  carries `'timezone' => '+00:00'` — a lane built before step 3's migration
+  exists refuses to run, instead of silently testing the wrong clock semantics.
+- `db:check-settings` runs against the lane too (§11), so lane drift fails the
+  same command that checks the other two environments.
+
+If the lane must exist **before** step 3 lands, drop the `timezone` key and
+leave it on `SYSTEM` to mirror production honestly — and the fingerprint
+assertion above is what forces that choice to be made consciously.
 
 **Guard clauses**, all required, each with its own refusal test:
 
@@ -315,6 +445,13 @@ production honestly.
 
 Plus, after boot: point `mysql` and `mariadb` at `unreachable_from_tests`.
 
+Two placement facts the clause table depends on: the guard must keep running in
+`refreshApplication()` **before** any migration fires (today's ordering — moved
+later, the first `migrate:fresh` drops tables before the guard ever sees them),
+and paratest's `switchToDatabase()` rewrites the connection config **after** the
+guard has run, so the derived `_test_N` names are structurally unguarded — the
+grant is their only barrier.
+
 Honest limit, unchanged from the old spec: after the first run the schema holds
 exactly the app's migrations and is indistinguishable from a real copy. The
 check answers *"is this a stranger's database?"*, never *"is this a second copy
@@ -324,12 +461,33 @@ of mine?"*
 mode rejections, MySQL not rolling back DDL, ordering assumptions resting on
 SQLite's rowid, identifier quoting, `||`, `group_concat`, `lockForUpdate()`.
 Expect the suite several times slower than `:memory:` — the last full gate was
-1,651 tests in 473s.
+1,651 tests in 473s. Named additions from review:
+
+- **DDL-in-test sites, with addresses**: `TranscriptionsModelTest.php:65`
+  (`Schema::dropIfExists`) and `AuthzLegacyRoleBackfillTest.php:247,766-776`
+  run DDL inside transaction-wrapped tests; on MySQL each implicit-commits.
+  RefreshDatabase self-heals (vendor resets `$migrated` when the PDO is no
+  longer in transaction, forcing a re-`migrate:fresh`) — so the cost is extra
+  full migrations, not corruption. Verified equally: the transaction-per-test
+  cleanup shape itself is engine-identical, and `ShouldQueueAfterCommit` jobs
+  fire immediately at transaction level 1 by framework design — no after-commit
+  divergence.
+- **The 29 test files that do NOT use `RefreshDatabase`** (123 of 152 do): on
+  `:memory:` they saw an empty, tableless database; on the persistent lane they
+  see the fully migrated schema plus anything a DDL implicit commit leaked — a
+  distinct behaviour-change class from the strict-mode/rowid items.
+- **The Spatie permission migration's `config('permission.testing')` branch**
+  (`2026_07_16_172210…:40`, in-code comment: "a fix for sqlite testing") flips
+  for the first time on the lane, inside the `migrate:fresh` replay path.
 
 Two gains: the folded-search shadow columns finally execute on the real engine,
-and `LegacyRoleBackfillSchemaContract::expected('mysql')` stops being asserted
-from SQLite and becomes verifiable for real — turning that dormant class into a
-canary that the lane's schema is production-shaped.
+and `LegacyRoleBackfillSchemaContract::inspect()` becomes runnable against a
+real MySQL — **as an index/key-shape canary only**: verified in source, its
+`normalizeColumn()` folds `timestamp` and `datetime` to one name and contains
+zero collation checks, so it is structurally blind to both divergences this
+spec fixes. A lane rebuilt with 80 `TIMESTAMP` columns under `unicode_ci`
+would pass it. The column-type and collation canary is `db:check-settings`
+(§11), not this class.
 
 ---
 
@@ -342,14 +500,35 @@ Filament has global hooks that make almost all of that unnecessary, and
 
 | What | Hook | Covers |
 | --- | --- | --- |
-| Timezone | `FilamentTimezone::set(UiTimezone::name())` | every `DateTimePicker`/`TimePicker` (loads Jerusalem, **converts back on save**), every `TextColumn::dateTime()`, every `TextEntry::dateTime()` |
-| Table formats | `Table::configureUsing(…->defaultDateTimeDisplayFormat(UiFormats::dateTime())…)` | verified: `tables/.../CanFormatState.php:84` resolves a bare `->dateTime()` via `$column->getTable()` |
-| Form + infolist formats | `Schema::configureUsing(…)` | verified: `infolists/.../CanFormatState.php:84` resolves via the container, which is a `Schema` |
-| Picker formats | `DateTimePicker::configureUsing(…)` | pickers hold their **own** copy (`DateTimePicker.php:71-77`); they do not read the Schema's |
+| Timezone | `FilamentTimezone::set(UiTimezone::name())` | **exactly three vendor readers, enumerated** [verified by exhaustive grep]: tables `CanFormatState.php:480` (gated `isDateTime()` — `since()`/`isoDateTime()` set it too), infolists `CanFormatState.php:472` (same gate), `DateTimePicker.php:731` (gated `hasTime()`; `TimePicker` keeps `hasTime()` true, so covered). "Converts back on save" verified: `DateTimeStateCast::get()` shifts picker-tz → app-tz at dehydration; `set()` is the exact inverse on hydration. |
+| Table formats | `Table::configureUsing(…->defaultDateDisplayFormat(UiFormats::date())->defaultDateTimeDisplayFormat(UiFormats::dateTime())->defaultTimeDisplayFormat(UiFormats::time())…)` | verified: `tables/.../CanFormatState.php:84` resolves a bare `->dateTime()` via `$column->getTable()`. Bonus coverage: table `Group.php:322` date labels and the `Range` summarizer read the same Table defaults. **All three formats must be set** — the vendor defaults diverge (`'M j, Y H:i:s'` on Table/Schema, `'M j, Y H:i'` on the picker), so an un-set one is silent drift. |
+| Form + infolist formats | `Schema::configureUsing(…)`, same three setters | verified: `infolists/.../CanFormatState.php:84` resolves via the container, which is a `Schema` |
+| Picker formats | `DateTimePicker::configureUsing(…)`, same setters **plus `->native(false)`** | pickers hold their **own** copy (`DateTimePicker.php:71-79`); they do not read the Schema's. **And the format only exists on non-native pickers** — see below. |
+
+**Native pickers were silently defeating the day-first rule.** All 21 app
+`DateTimePicker` sites are browser-native (`CanBeNative.php` defaults
+`$isNative = true`; zero `->native(false)` anywhere), and the native branch
+renders a bare `datetime-local` input the **browser** formats by its own
+locale — `displayFormat` is only read in the non-native JS branch. So the 19
+per-site `->displayFormat('d/m/Y H:i')` chains are dead code today, and
+day-first picker display currently rests on the admin's browser locale — a
+correctness dependency outside the repo, exactly the class this spec exists to
+remove. **Decision: `->native(false)` globally via the same `configureUsing`**,
+which makes the format hooks live and the display deterministic. Operator-visible
+consequence, stated plainly: admins get Filament's JS picker instead of the
+browser-native control.
 
 Deliberate exclusion, documented by Filament and **not to be "fixed"**: the
 default timezone does not apply to date-only fields (`DatePicker`, `->date()`),
 because applying a zone to a value with no time shifts the date itself.
+
+**Known-uncovered surfaces** (enumerated so nobody adds one expecting
+Jerusalem): table `Group` date labels and the `Range` summarizer apply **no**
+timezone conversion at all; `->time()` falls back to `config('app.timezone')`
+(UTC) because `isTime` does not set `isDateTime`; the tooltip family
+(`dateTooltip()` etc.) never sets `isDateTime` either. All currently unused in
+app — the guard in §11 is what keeps that true, or makes an adoption
+deliberate.
 
 **Outside Filament** — raw Blade — one Carbon macro registered beside the rest:
 
@@ -360,7 +539,36 @@ Carbon::macro('forDisplay', fn (?string $format = null): string => $this
 ```
 
 Still one call per site, but **zero configuration** at the site. Same route for
-exports and the dashboard's Jerusalem-day bucketing.
+exports and the dashboard's Jerusalem-day bucketing. Three facts about the
+macro, all measured this review rather than assumed: no existing Carbon macro
+or mixin exists anywhere in `app/` (no collision); a macro registered on
+`Carbon` is callable on `CarbonImmutable` instances too (importer support code
+holds those); and `translatedFormat` renders **Hebrew month names with zero
+extra setup** — nesbot/carbon's auto-discovered Laravel provider syncs Carbon's
+locale to `app.locale` on boot and on `LocaleUpdated` (measured in the booted
+app: locale `he`, `15 ינואר 2026`). The multi-language research note claiming
+prose formats need an explicit `Carbon::setLocale` is **wrong for this stack**;
+nobody should add a redundant one. A date-only variant (or a `$format` argument
+of `UiFormats::date()`) covers the presenter sites that show dates without
+times. Pin the `CarbonImmutable` reach and the Hebrew rendering with one small
+test each — both are exactly the verified-vs-asserted class.
+
+**How the 52 + 18 call sites actually split** [counted in review — the honest
+version of "almost all collapse"]:
+
+- **~25 files collapse entirely** — Filament chains the hooks replace: 21
+  picker chains, 21 `->dateTime(format, tz)` columns, `->since(tz)`, 2
+  `DatePicker` display formats.
+- **~17 display sites keep one `forDisplay()` call each** — Blade views,
+  card presenters, the transcript viewer, CSV builders, snapshot labels.
+- **~9 files legitimately keep `UiTimezone`** because they are *input parsing*
+  or *domain logic*, not display: the Spotify importers and lookup, import
+  date parsing, `DashboardRange`, `PublicationDateAutofill`,
+  `JerusalemDailySeries`, `EditorialMetrics`.
+
+That three-way split is the §11 guard's allowlist: Filament component chains
+are banned; Carbon-level input/logic/macro-definition sites are exempt. A naive
+content scan would flag the nine legitimate survivors or miss the chains.
 
 **Rejected: pushing the timezone into the model** — a cast returning a
 Jerusalem-zoned Carbon, or a base-model override. It looks like the most global
@@ -390,6 +598,42 @@ The order is the whole trick. Reversed, step 4 shifts every date in the app.
 Steps 2 and 3 are both `ALTER TABLE` and should run as one pass per table.
 **At 40 tables / 3,544 rows / 4.9 MB this completes in seconds**, so production
 needs a brief maintenance-mode window, not a scheduled outage.
+
+### The vehicle is a Laravel migration — not hand SQL
+
+Hand SQL reaches `podtext` and production but **not the test lane**, which
+rebuilds its schema by replaying the migration files (`migrate:fresh`) — it
+would be recreated with 80 `TIMESTAMP` columns under the old collation on every
+run, forever (§7). One migration, run everywhere through the normal mechanism,
+is the only vehicle that reaches all three environments.
+
+### ALTER mechanics, all measured
+
+- **Collation converts with `CONVERT TO`**, not the default-only form:
+  `ALTER TABLE t COLLATE=utf8mb4_0900_ai_ci` changes **only the table default**
+  and leaves all 183 columns on `unicode_ci` — a footgun that passes a naive
+  eyeball. The converting form is
+  `ALTER TABLE t CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci`.
+  Charset stays utf8mb4 → utf8mb4, so there is no TEXT-type-promotion hazard.
+- **A bare `MODIFY col DATETIME` silently drops `NOT NULL`** [measured] — and
+  3 of the 80 columns carry it (`failed_jobs.failed_at`,
+  `form_verification_codes.expires_at`, `public_form_submissions.submitted_at`).
+  Every `MODIFY` must therefore be **generated from `information_schema`**
+  (type + `IS_NULLABLE` + `COLUMN_DEFAULT`), in this spec's own
+  generate-don't-hand-list spirit.
+- **Precision: nothing to preserve.** Zero migrations pass a precision
+  argument, the framework default is 0, and all 80 columns measure
+  `DATETIME_PRECISION 0` — plain `DATETIME` is the right target.
+- **The pass must run to completion before app traffic resumes.** A
+  half-converted schema can raise `1267 Illegal mix of collations` on JOINs
+  between a converted and an unconverted column. Production sits behind
+  maintenance mode; local has no such window, so: run it, don't browse
+  mid-pass.
+- **Zero model or cast changes ride along.** Eloquent is column-type-blind:
+  the write/read format is the connection grammar's `'Y-m-d H:i:s'`
+  (`Grammar.php:282`), no code path consults the column's SQL type, and the 23
+  `datetime` casts across 10 models need nothing. Stated so no implementer
+  "helpfully" touches casts inside the ALTER PR — §12 makes it a non-goal.
 
 ### Prerequisite: production is one migration behind
 
@@ -421,15 +665,22 @@ unique/primary indexes, which is where a collation change can raise `1062`.
 
 ## 10. Carried caveats and known gaps
 
-### 10.1 `failed_jobs.failed_at` carries a real error
+### 10.1 `failed_jobs.failed_at` — a dormant hazard, not corrupted data
 
-The one `DEFAULT CURRENT_TIMESTAMP` column in the schema. Those rows were
-written **by MySQL** in local time, so they are genuinely ~3 hours off from the
-app's UTC frame — unlike every app-written value, whose round trip cancels.
-Converting to `DATETIME` **preserves that error rather than fixing it.**
+The one `DEFAULT CURRENT_TIMESTAMP` column in the schema. **The first draft's
+diagnosis was wrong and is corrected here** [verified in vendor during review]:
+`config/queue.php:124` sets the failed driver to `database-uuids`, and
+`DatabaseUuidFailedJobProvider.php:63` writes `'failed_at' => Date::now()`
+explicitly on every log — framework-logged failures **never exercise the
+default** on this Laravel version. The existing rows are app-written UTC whose
+round trip cancels like every other app value; there is no 3-hour error to
+preserve. (The 5 local rows were checked; if production rows predate this
+Laravel version or were inserted by hand, re-verify their frame there before
+claiming otherwise.)
 
-Fix: drop the default and let Laravel write the column. Decide explicitly; do
-not let it ride along silently.
+The default **is** still a dormant DB-generated-time hazard — any insert that
+omits the column gets MySQL's clock. Fix unchanged, now proven safe: drop the
+default (the provider always supplies the value) and let the migration say so.
 
 ### 10.2 `$table->timestamps()` will re-introduce `TIMESTAMP`
 
@@ -438,17 +689,52 @@ not let it ride along silently.
 So every future migration drifts back by default.
 
 **Prose cannot hold this. A statement-scan guard must**, in the shape this repo
-already uses for enum literals and format literals.
+already uses for enum literals and format literals. Coverage findings from
+review, both of which a naive ban would miss:
 
-### 10.3 The DST input gap
+- **`softDeletes()` and `softDeletesTz()` also emit `TIMESTAMP`**
+  (`Blueprint.php:1362/1374`) with no `timestamp` literal at the call site.
+  Ban them too; `softDeletesDatetime()` (`Blueprint.php:1386`) is the
+  compliant form to name in the guard message.
+- **The type ban alone does not kill DB-generated time**: `typeDateTime()`
+  honours `useCurrent()`/`useCurrentOnUpdate()` as well, so
+  `DATETIME DEFAULT CURRENT_TIMESTAMP` is reachable — §11's separate
+  `useCurrent`/`CURRENT_TIMESTAMP` ban is load-bearing, not redundant.
+- **Per-model date-format escape hatches** change both the stored literal and
+  read parsing: `protected $dateFormat`, `#[DateFormat]`, and
+  `#[Table(dateFormat:)]` all resolve into the same slot
+  (`HasAttributes.php:213-215`). Zero usages today; add all three spellings to
+  the anti-drift scan so it stays that way.
+
+### 10.3 The DST input edges — the spring gap and the autumn fold
 
 `FilamentTimezone::set()` makes pickers read and write Jerusalem correctly, but
 an admin picking **02:30 on 27 March 2026** selects a time that does not exist,
-and Carbon silently moves it to 03:30 with no error. No configuration prevents
-this. It needs an explicit validation rule, applied globally through
+and Carbon silently moves it to 03:30 with no error [re-measured in review; the
+transition is real: IST→IDT at 02:00 local]. No configuration prevents this.
+It needs an explicit validation rule, applied globally through
 `DateTimePicker::configureUsing()`.
 
-Config handles the 364 ordinary days; one rule handles the day it does not.
+The rule is feasible **and not defeated by pre-conversion** [verified in
+vendor]: validation runs against raw Livewire state — the Jerusalem wall-clock
+string — *before* `dehydrateState()` performs the Jerusalem→UTC conversion
+(`HasState.php:453` vs `:489`). Design constraints, so the implementer doesn't
+rediscover them: gate on `$component->hasTime()` and read
+`$component->getTimezone()` (not `UiTimezone` directly) so per-site overrides
+and the DatePicker exclusion stay consistent; detection is round-trip — parse
+the raw string in the picker's zone, re-format, compare — because PHP has no
+dedicated gap API and the normalize-forward mismatch *is* the detector.
+
+**The autumn fold now has a stated policy.** 01:00–01:59 on fall-back night
+occurs twice; PHP resolves the ambiguous string to the **second** (post-fold,
++02:00) occurrence, silently [measured]. Policy: **accept-later** — the PHP
+default stands, documented rather than discovered. Rejecting the fold hour
+would refuse a time that genuinely exists twice, and the one-hour ambiguity
+costs at most an hour of ordering precision once a year on manually-typed
+input; `now()`-driven values are unaffected.
+
+Config handles the 363 ordinary days; one rule handles the gap day, one stated
+policy handles the fold day.
 
 ### 10.4 The scheduler already disagrees with its author
 
@@ -484,9 +770,17 @@ B5 trailing-space rows (length-based):         NONE
   3,544 [MEASURED]. Method: for each unique/primary index, `GROUP BY` its
   columns with `COLLATE utf8mb4_0900_ai_ci` applied to the collated ones,
   excluding rows where any indexed column is NULL (MySQL permits multiple NULLs
-  in a unique index, which would otherwise report a false positive).
+  in a unique index, which would otherwise report a false positive — a live
+  clause, not theory: `curator.reference_key` is a nullable collated
+  unique-indexed column).
   **Result: zero colliding groups. The collation change is safe on today's
   production data.** Re-run immediately before the window, not once.
+  **The scan must also assert its own precondition** [found in review]: it is
+  sufficient only while the schema has zero prefix (`SUB_PART`) and zero
+  functional (`EXPRESSION`) unique indexes — a prefix-unique index would make
+  full-column `GROUP BY` silently under-detect. Both measure 0 today; one
+  `information_schema.STATISTICS` query inside the scan turns the assumption
+  into a refusal.
 - **B5 — trailing space.** The old check `col <> TRIM(TRAILING ' ' FROM col)` is
   a tautology on a PAD SPACE collation. Length-based:
   `LENGTH(col) <> LENGTH(TRIM(TRAILING CHAR(32) FROM col))`. **Result: zero
@@ -525,12 +819,14 @@ Prose advises; only a test fails.
 
 | Guard | Prevents |
 | --- | --- |
-| Ban `$table->timestamp(` / `timestamps()` in new migrations | 10.2 — the silent drift back |
-| Ban `useCurrent()` / `CURRENT_TIMESTAMP` in migrations | the entire DB-generated-time class |
-| Extend `db:check-settings` to assert collation **and** column type, non-zero exit | drift on any of the three servers |
-| Extend the existing `Asia/Jerusalem` anti-drift test to ban now-redundant `->timezone()`/`UiFormats::` at Filament call sites | §8 regressing back to per-site config |
+| Ban `$table->timestamp(` / `timestamps()` / **`softDeletes()` / `softDeletesTz()`** in new migrations; name `softDeletesDatetime()` as the compliant form in the failure message | 10.2 — the silent drift back, including the two spellings with no `timestamp` literal at the call site |
+| Ban `useCurrent()` / `useCurrentOnUpdate()` / `CURRENT_TIMESTAMP` in migrations | the entire DB-generated-time class — reachable through `DATETIME` too, so this is not redundant with the type ban |
+| Ban `protected $dateFormat`, `#[DateFormat]`, `#[Table(dateFormat:)]` in models | per-model date-format escape hatches that change the stored literal (zero today; keep it so) |
+| Extend `db:check-settings` to assert collation (name **and** `PAD_ATTRIBUTE`), column type, and non-zero exit; run it against **all three** servers, lane included | drift on any server; also the 8.0.46-vs-9.4 `0900_ai_ci` identity, closed cheaply by re-running the §3 matrix once on the lane |
+| Extend the existing `Asia/Jerusalem` anti-drift test to ban now-redundant `->timezone()`/`UiFormats::`/`->displayFormat()` at Filament component chains, with §8's three-way allowlist (input-parsing and domain-logic `UiTimezone` sites are exempt) | §8 regressing back to per-site config — without flagging the nine legitimate survivors |
+| One-line Pest tests: `forDisplay` on a `CarbonImmutable` instance; `forDisplay` rendering Hebrew month names | §8's two verified-not-asserted macro claims staying true across carbon upgrades |
 | The lane guard's own refusal test, one case per clause in §7 | a guard nobody tests is prose wearing a guard's clothes |
-| `LegacyRoleBackfillSchemaContract::inspect()` vs `expected('mysql')` on the real lane | the lane's schema silently diverging from production's shape |
+| `LegacyRoleBackfillSchemaContract::inspect()` vs `expected('mysql')` on the real lane — **index/key shape only** | the lane's index/FK shape silently diverging; it is structurally blind to column type and collation (§7), which `db:check-settings` owns |
 
 ---
 
@@ -554,6 +850,18 @@ not be.
   and nothing else. No new indexes, no dropped ones, no renames.
 - **Not a search change.** `HebrewSearchFold`'s shadow-column design is settled
   and unaffected; the collation governs `=`, unique indexes and sorting.
+- **Not a cast refactor.** The 23 `datetime` casts stay exactly as they are —
+  no `immutable_datetime` migration, no `Date::use(CarbonImmutable)` binding.
+  Switching to immutable casts changes return types app-wide (in-place mutation
+  call sites break silently) and is orthogonal to the storage change; it must
+  not ride the ALTER window. `CarbonImmutable` already appears ad hoc in import
+  support code, so a future immutable move is plausible — as its own decision.
+- **JSON columns are out of scope, on purpose.** 16 JSON columns exist across
+  10 migrations; `information_schema` reports no collation for them (they sit
+  outside the 183-column count and outside the ALTER pass), and JSON scalar
+  comparison is `utf8mb4_bin` — accent- and case-**sensitive** — regardless of
+  this spec. Do not "make JSON match", and do not assume `0900_ai_ci` semantics
+  reach JSON-extracted Hebrew.
 
 ## 13. Open
 
@@ -563,5 +871,15 @@ not be.
   keeps receiving backported security fixes for the 24.04 window, so there is no
   urgency — but Forge cannot do it in place, and the daemon is shared by three
   sites.
-- **Target #10 verification** — whether Filament's pickers currently round-trip
-  admin input through Jerusalem correctly, independent of the DST gap.
+- ~~Target #10 verification~~ — **closed in review.** The picker round-trip is
+  correct by construction: `DateTimeStateCast::set()` (app-tz parse →
+  picker-tz on hydration) and `::get()` (picker-tz → app-tz on dehydration)
+  are exact inverses outside the DST edges, which §10.3 handles. One round-trip
+  test in the implementation pins it.
+- **No CI story.** The suite becomes MySQL-only with no CI config in the repo;
+  a future pipeline needs a `mysql:8.0.46` service container, or an explicit
+  "local-only suite" decision. Recorded, not designed here.
+- **The `testing-advanced` course (31 lessons, Sep 2024)** is the one archive
+  item plausibly covering test-database configuration in depth, and it is
+  catalogue-only — never scraped. Optional fetch before building the lane;
+  apply the full staleness protocol if fetched.
