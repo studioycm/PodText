@@ -16,7 +16,7 @@ use PDO;
  * refuses to write a snapshot it cannot trust, and compare refuses to trust a
  * snapshot — or a live re-read — it cannot verify.
  */
-#[Signature('db:alignment-oracle {mode : capture or compare}')]
+#[Signature('db:alignment-oracle {mode : capture or compare} {--force : Overwrite an existing capture file}')]
 #[Description('Capture or compare per-table value hashes and column properties around the alignment migration.')]
 class AlignmentOracle extends Command
 {
@@ -49,14 +49,10 @@ class AlignmentOracle extends Command
             $this->error($failure);
         }
 
-        if ($state['hashes'] === [] || $state['properties'] === []) {
-            $this->error('Refusing to capture: hashes or properties came back empty.');
+        $refusal = self::captureRefusal($state, is_file($path), (bool) $this->option('force'));
 
-            return self::FAILURE;
-        }
-
-        if ($state['row_failures'] !== []) {
-            $this->error('Refusing to capture: one or more rows were unhashable (see above) — the hash would silently omit them.');
+        if ($refusal !== null) {
+            $this->error($refusal);
 
             return self::FAILURE;
         }
@@ -113,46 +109,44 @@ class AlignmentOracle extends Command
             return self::FAILURE;
         }
 
-        $meta = is_array($before['meta'] ?? null) ? $before['meta'] : null;
-        $hashes = is_array($before['hashes'] ?? null) ? $before['hashes'] : null;
-        $properties = is_array($before['properties'] ?? null) ? $before['properties'] : null;
+        $meta = is_array($before['meta'] ?? null) ? $before['meta'] : [];
+        $hashes = is_array($before['hashes'] ?? null) ? $before['hashes'] : [];
+        $properties = is_array($before['properties'] ?? null) ? $before['properties'] : [];
 
-        if ($meta === null || $meta === [] || $hashes === null || $hashes === [] || $properties === null || $properties === []) {
-            $this->error("Capture at {$path} is missing or has empty meta/hashes/properties — refusing to compare.");
+        if ($hashes === [] || $properties === []) {
+            $this->error("Capture at {$path} has missing or empty hashes/properties — refusing to compare.");
 
             return self::FAILURE;
         }
 
         $currentDatabase = (string) DB::connection()->getDatabaseName();
-        $capturedDatabase = (string) ($meta['database'] ?? '');
-
-        if ($capturedDatabase !== $currentDatabase) {
-            $this->error("Refusing to compare: capture database `{$capturedDatabase}` does not match the current database `{$currentDatabase}`.");
-
-            return self::FAILURE;
-        }
 
         // Re-read live, before paying for the full hash pass: the whole
         // hash-equality proof is only valid if the session timezone that
         // rendered every TIMESTAMP literal into the hashed text has not
         // moved since capture (spec §9 — "order is the trick").
-        $live = $this->liveTimeZones();
-        $capturedSessionTz = (string) ($meta['session_time_zone'] ?? '');
-        $capturedSystemTz = (string) ($meta['system_time_zone'] ?? '');
+        $liveTimeZones = $this->liveTimeZones();
 
-        if ($capturedSessionTz !== $live['session']) {
-            $this->error("Refusing to compare: session_time_zone drifted from `{$capturedSessionTz}` (capture) to `{$live['session']}` (now).");
+        $provenanceError = self::provenanceFailure($meta, $currentDatabase, $liveTimeZones);
 
-            return self::FAILURE;
-        }
-
-        if ($capturedSystemTz !== $live['system']) {
-            $this->error("Refusing to compare: system_time_zone drifted from `{$capturedSystemTz}` (capture) to `{$live['system']}` (now).");
+        if ($provenanceError !== null) {
+            $this->error($provenanceError);
 
             return self::FAILURE;
         }
 
         $after = $this->state();
+
+        // The hash pass itself can run long on a big table; re-check the
+        // session timezone captured just above against the one state() saw
+        // at the END of the pass. A drift here means something repointed the
+        // session clock mid-run — hashes collected before and after that
+        // moment are not comparable to each other, let alone to capture.
+        if ($after['meta']['session_time_zone'] !== $liveTimeZones['session']) {
+            $this->error('Refusing to compare: session timezone changed during the compare pass.');
+
+            return self::FAILURE;
+        }
 
         $failures = array_merge($after['row_failures'], self::compareStates(
             ['hashes' => $hashes, 'properties' => $properties],
@@ -164,7 +158,11 @@ class AlignmentOracle extends Command
         }
 
         if ($failures === []) {
-            $this->info('Oracle PASS: values byte-identical; only the intended property changes occurred.');
+            $this->info(sprintf(
+                'Oracle PASS: values byte-identical; only the intended property changes occurred (%d tables, %d columns).',
+                $after['meta']['tables'],
+                $after['meta']['columns'],
+            ));
 
             return self::SUCCESS;
         }
@@ -288,6 +286,82 @@ class AlignmentOracle extends Command
     }
 
     /**
+     * Everything that must stop a capture from being written, checked BEFORE
+     * any file I/O runs. A phase-confused capture (nothing left to convert —
+     * this is a post-migration database, not a pre-migration one) or an
+     * accidental overwrite of an existing baseline is exactly as dangerous as
+     * a bad compare: a later compare trusts this file completely, without
+     * re-deriving it. Pure and static so it is testable on SQLite with
+     * literal fixture arrays.
+     *
+     * @param  array{meta: array{tables: int, columns: int, database: string, captured_at: string, session_time_zone: string, system_time_zone: string}, hashes: array<string, array{rows: int, sha1: string}>, properties: array<string, array{type: string, nullable: string, default: ?string, collation: ?string, extra: string}>, row_failures: list<string>}  $state
+     */
+    public static function captureRefusal(array $state, bool $fileExists, bool $force): ?string
+    {
+        if ($state['hashes'] === [] || $state['properties'] === []) {
+            return 'Refusing to capture: hashes or properties came back empty.';
+        }
+
+        if ($state['row_failures'] !== []) {
+            return 'Refusing to capture: one or more rows were unhashable (see above) — the hash would silently omit them.';
+        }
+
+        $hasTimestamp = false;
+        $hasUnicodeCi = false;
+
+        foreach ($state['properties'] as $property) {
+            $hasTimestamp = $hasTimestamp || $property['type'] === 'timestamp';
+            $hasUnicodeCi = $hasUnicodeCi || $property['collation'] === 'utf8mb4_unicode_ci';
+        }
+
+        if (! $hasTimestamp && ! $hasUnicodeCi) {
+            return 'Refusing to capture: nothing left to convert; this is not a pre-migration state.';
+        }
+
+        if ($fileExists && ! $force) {
+            return 'Refusing to capture: baseline exists — pass --force to overwrite deliberately.';
+        }
+
+        return null;
+    }
+
+    /**
+     * Everything that must stop a compare from trusting its inputs, checked
+     * before the expensive hash pass runs. Pure and static so it is testable
+     * on SQLite with literal fixture arrays; the caller is responsible for
+     * defaulting a missing/non-array `meta` to `[]` before calling this.
+     *
+     * @param  array<string, mixed>  $meta
+     * @param  array{session: string, system: string}  $liveTimeZones
+     */
+    public static function provenanceFailure(array $meta, string $currentDatabase, array $liveTimeZones): ?string
+    {
+        if ($meta === []) {
+            return 'Refusing to compare: capture meta is missing or malformed.';
+        }
+
+        $capturedDatabase = (string) ($meta['database'] ?? '');
+
+        if ($capturedDatabase !== $currentDatabase) {
+            return "Refusing to compare: capture database `{$capturedDatabase}` does not match the current database `{$currentDatabase}`.";
+        }
+
+        $capturedSessionTz = (string) ($meta['session_time_zone'] ?? '');
+
+        if ($capturedSessionTz !== $liveTimeZones['session']) {
+            return "Refusing to compare: session_time_zone drifted from `{$capturedSessionTz}` (capture) to `{$liveTimeZones['session']}` (now).";
+        }
+
+        $capturedSystemTz = (string) ($meta['system_time_zone'] ?? '');
+
+        if ($capturedSystemTz !== $liveTimeZones['system']) {
+            return "Refusing to compare: system_time_zone drifted from `{$capturedSystemTz}` (capture) to `{$liveTimeZones['system']}` (now).";
+        }
+
+        return null;
+    }
+
+    /**
      * @return array{
      *     meta: array{database: string, captured_at: string, session_time_zone: string, system_time_zone: string, tables: int, columns: int},
      *     hashes: array<string, array{rows: int, sha1: string}>,
@@ -304,10 +378,26 @@ class AlignmentOracle extends Command
             WHERE TABLE_SCHEMA = DATABASE()
               AND (DATA_TYPE IN ('timestamp', 'datetime') OR COLLATION_NAME IS NOT NULL)");
 
-        $pdo = DB::connection()->getPdo();
-        $pdo->setAttribute(PDO::MYSQL_ATTR_USE_BUFFERED_QUERY, false);
+        $writePdo = DB::connection()->getPdo();
+        $readPdo = DB::connection()->getReadPdo();
+        $readPdoDiffers = $readPdo !== $writePdo;
+
+        $previousWriteBuffered = (bool) $writePdo->getAttribute(PDO::MYSQL_ATTR_USE_BUFFERED_QUERY);
+        $writePdo->setAttribute(PDO::MYSQL_ATTR_USE_BUFFERED_QUERY, false);
+
+        $previousReadBuffered = $readPdoDiffers ? (bool) $readPdo->getAttribute(PDO::MYSQL_ATTR_USE_BUFFERED_QUERY) : $previousWriteBuffered;
+
+        if ($readPdoDiffers) {
+            $readPdo->setAttribute(PDO::MYSQL_ATTR_USE_BUFFERED_QUERY, false);
+        }
 
         try {
+            // Every query below — DB::select() or DB::cursor(), on either PDO
+            // — must run to full completion before the next one starts and
+            // before this block exits. An early break/return while a cursor
+            // still has rows unread leaves the connection HY000 2014 ("Cannot
+            // execute queries while other unbuffered queries are active") for
+            // whatever runs next.
             foreach ($tables as $table) {
                 $columns = array_map(
                     fn (object $row): string => $row->c,
@@ -355,8 +445,14 @@ class AlignmentOracle extends Command
             // would materialize their entire result set before PHP sees the
             // first row. Restored unconditionally so a mid-loop exception
             // never leaves the connection in unbuffered mode for whatever
-            // runs next.
-            $pdo->setAttribute(PDO::MYSQL_ATTR_USE_BUFFERED_QUERY, true);
+            // runs next — and restored to whatever it actually was before,
+            // not a hardcoded `true`, in case something upstream had already
+            // changed it.
+            $writePdo->setAttribute(PDO::MYSQL_ATTR_USE_BUFFERED_QUERY, $previousWriteBuffered);
+
+            if ($readPdoDiffers) {
+                $readPdo->setAttribute(PDO::MYSQL_ATTR_USE_BUFFERED_QUERY, $previousReadBuffered);
+            }
         }
 
         $properties = [];
