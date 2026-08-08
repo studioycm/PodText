@@ -27,6 +27,15 @@ return new class extends Migration
 
         $database = DB::connection()->getDatabaseName();
 
+        // Pre-condition, not post-condition: validate every TIMESTAMP column
+        // in one schema-wide scan BEFORE any DDL, so an unsanctioned
+        // attribute stops the run in seconds — never mid-conversion. The
+        // external oracle still owns end-state verification.
+        $this->modifyClauses(DB::select("SELECT TABLE_NAME t, COLUMN_NAME c, IS_NULLABLE n, COLUMN_DEFAULT d, EXTRA e, COLUMN_COMMENT cm, DATETIME_PRECISION p
+            FROM information_schema.COLUMNS
+            WHERE TABLE_SCHEMA = ? AND DATA_TYPE = 'timestamp'
+            ORDER BY TABLE_NAME, ORDINAL_POSITION", [$database]));
+
         // Schema default first: it only affects future CREATE TABLEs, and putting
         // the most privilege-sensitive statement before the table rebuilds means
         // a denied ALTER fails in seconds, not after the full conversion.
@@ -39,15 +48,15 @@ return new class extends Migration
             // Two statements on purpose: CONVERT TO cannot be combined with
             // other alter options, and it must precede the MODIFYs so the
             // datetime columns land in an already-converted table.
-            DB::statement("ALTER TABLE `{$table->t}` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci");
+            DB::statement("ALTER TABLE `{$database}`.`{$table->t}` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci");
 
-            $clauses = $this->modifyClauses(DB::select("SELECT TABLE_NAME t, COLUMN_NAME c, IS_NULLABLE n, COLUMN_DEFAULT d, EXTRA e, COLUMN_COMMENT cm
+            $clauses = $this->modifyClauses(DB::select("SELECT TABLE_NAME t, COLUMN_NAME c, IS_NULLABLE n, COLUMN_DEFAULT d, EXTRA e, COLUMN_COMMENT cm, DATETIME_PRECISION p
                 FROM information_schema.COLUMNS
                 WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ? AND DATA_TYPE = 'timestamp'
                 ORDER BY ORDINAL_POSITION", [$database, $table->t]));
 
             if ($clauses !== []) {
-                DB::statement("ALTER TABLE `{$table->t}` ".implode(', ', $clauses));
+                DB::statement("ALTER TABLE `{$database}`.`{$table->t}` ".implode(', ', $clauses));
             }
         }
     }
@@ -65,10 +74,10 @@ return new class extends Migration
      * default was a dormant DB-generated-time hazard (spec §10.1).
      *
      * Every attribute this generator does not restate must be one it is
-     * sanctioned to drop. An unsanctioned default, an ON UPDATE clause, or a
-     * column comment throws instead of converting silently.
+     * sanctioned to drop. An unsanctioned default, an ON UPDATE clause, a
+     * column comment, or fractional precision throws instead of converting silently.
      *
-     * @param  list<object{t: string, c: string, n: string, d: ?string, e: string, cm: string}>  $rows
+     * @param  list<object{t: string, c: string, n: string, d: ?string, e: string, cm: string, p: int|string}>  $rows
      * @return list<string>
      */
     public function modifyClauses(array $rows): array
@@ -76,10 +85,11 @@ return new class extends Migration
         foreach ($rows as $row) {
             $defaultSanctioned = $row->d === null || $row->d === 'CURRENT_TIMESTAMP';
             $extraSanctioned = $row->e === '' || $row->e === 'DEFAULT_GENERATED';
+            $precisionSanctioned = (int) $row->p === 0;
 
-            if (! $defaultSanctioned || ! $extraSanctioned || $row->cm !== '') {
+            if (! $defaultSanctioned || ! $extraSanctioned || ! $precisionSanctioned || $row->cm !== '') {
                 throw new RuntimeException(
-                    "Refusing to convert `{$row->t}`.`{$row->c}`: default=[{$row->d}] extra=[{$row->e}] comment=[{$row->cm}] — "
+                    "Refusing to convert `{$row->t}`.`{$row->c}`: default=[{$row->d}] extra=[{$row->e}] precision=[{$row->p}] comment=[{$row->cm}] — "
                     .'this generator restates only nullability; handle this column deliberately first (alignment spec §10.1).'
                 );
             }
