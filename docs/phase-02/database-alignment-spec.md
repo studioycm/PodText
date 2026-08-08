@@ -391,6 +391,32 @@ Steps 2 and 3 are both `ALTER TABLE` and should run as one pass per table.
 **At 40 tables / 3,544 rows / 4.9 MB this completes in seconds**, so production
 needs a brief maintenance-mode window, not a scheduled outage.
 
+### Prerequisite: production is one migration behind
+
+[MEASURED 2026-08-08] local has **82** migrations, production **81**; production's
+latest is `2026_08_04_185049_add_provider_to_imports_table`. The missing one is
+`2026_08_06_223132_add_hebrew_search_folding_columns`.
+
+That migration carries a **deploy-ordering hazard already recorded in
+`current-project-state.md`**: it adds the shadow columns NULL while every search
+predicate already compares against a shadow, so between `migrate` finishing and
+`search:backfill-folds` finishing, *every pre-existing row is invisible to every
+search* — public and admin alike.
+
+```bash
+php artisan migrate --force && php artisan search:backfill-folds
+```
+
+**Land that first, as its own deploy, and confirm search works before starting
+step 2.** Bundling it with the collation and column-type window would mean that
+if search misbehaves afterwards, nobody can tell which change caused it — the
+same reasoning that put the search fix ahead of the migration in the original
+plan's §6.
+
+Note the shadow columns are indexed **non-uniquely**, so they fall outside the
+B3/B5 scans by construction, not by omission — those scans cover
+unique/primary indexes, which is where a collation change can raise `1062`.
+
 ---
 
 ## 10. Carried caveats and known gaps
@@ -442,21 +468,37 @@ real `1062` instead of silently corrupting an index under `UNIQUE_CHECKS=0`
 (B4), and preserves literals instead of re-rendering epochs under a different
 zone (B9).
 
-**Three survive and are mandatory:**
+**Three survived. All three were run against production on 2026-08-08, and all
+three came back clean:**
+
+```
+unique/primary indexes with collated columns:  30      (generated, not listed)
+B3 duplicate risk under 0900_ai_ci:            NONE
+B5 trailing-space rows (length-based):         NONE
+```
 
 - **B3 — the duplicate scan.** `0900_ai_ci` merges values `unicode_ci` keeps
-  distinct (`'א' = 'א'+U+05C7` goes 0 → 1). Two legal rows can become a
-  duplicate key. Must run against **production** data, not local: the local
-  corpus is ~460 rows of near-ASCII identifiers with one non-ASCII
-  unique-indexed value and zero niqqud in indexed columns — 821 rows against
-  production's 3,544 [MEASURED] — so a local clearance is close to vacuous.
-- **B5 — the trailing-space check must be length-based.**
-  `col <> TRIM(TRAILING ' ' FROM col)` is a tautology on a PAD SPACE collation.
-  Use `LENGTH(col) <> LENGTH(TRIM(TRAILING CHAR(32) FROM col))`. This matters
-  more now, not less: `0900_ai_ci` is NO PAD, so trailing spaces become
-  significant.
+  distinct (`'א' = 'א'+U+05C7` goes 0 → 1), so two legal rows can become a
+  duplicate key. Run against **production**, because a local clearance would be
+  close to vacuous — 821 rows of near-ASCII identifiers against production's
+  3,544 [MEASURED]. Method: for each unique/primary index, `GROUP BY` its
+  columns with `COLLATE utf8mb4_0900_ai_ci` applied to the collated ones,
+  excluding rows where any indexed column is NULL (MySQL permits multiple NULLs
+  in a unique index, which would otherwise report a false positive).
+  **Result: zero colliding groups. The collation change is safe on today's
+  production data.** Re-run immediately before the window, not once.
+- **B5 — trailing space.** The old check `col <> TRIM(TRAILING ' ' FROM col)` is
+  a tautology on a PAD SPACE collation. Length-based:
+  `LENGTH(col) <> LENGTH(TRIM(TRAILING CHAR(32) FROM col))`. **Result: zero
+  rows.** Note this blocker's direction is the opposite of B3's: PAD SPACE →
+  NO PAD makes previously-equal values *distinct*, which can never raise 1062.
+  It is a behaviour pre-flight, not a migration blocker — a stored `'abc '`
+  would silently stop matching a lookup for `'abc'`.
 - **B8 — generate the index inventory from `information_schema`.** The old plan
-  said 5, then 22; the real figure was 39. Never hand-list.
+  said 5, then 22, then 39. **The real figure is 30, identical on local and
+  production** [MEASURED both sides]. Never hand-list — and note this is the
+  third different number that document produced, which is the argument for
+  generating it rather than the argument for any one figure.
 
 ### 10.6 Two files that become misleading
 
@@ -492,7 +534,28 @@ Prose advises; only a test fails.
 
 ---
 
-## 12. Open
+## 12. Non-goals
+
+Stated explicitly because *"make all three environments the same"* is exactly
+the frame under which someone helpfully makes them the same in a way they must
+not be.
+
+- **The folded-search shadow indexes stay asymmetric.** The folding migration
+  indexes every varchar shadow (`title_search`, `name_search`, …) and
+  deliberately skips the LONGTEXT description/transcript shadows, because MySQL
+  cannot index a LONGTEXT without a prefix length and expressing one would mean
+  per-driver schema branching. **Do not add indexes to the LONGTEXT shadows for
+  symmetry.** Verified independently on 9.4.0: under the shipped query shape
+  (`FoldedSearch::pattern()` wraps both sides, so `LIKE '%term%'`) a B-tree
+  gives no range access at all — `type=index`, a full index scan — so a
+  symmetric index would buy nothing and cost inserts and disk.
+  See `docs/research/laraveldaily/database-design-notes.md` §1b/§1c.
+- **Not a schema redesign.** Column types change from `TIMESTAMP` to `DATETIME`
+  and nothing else. No new indexes, no dropped ones, no renames.
+- **Not a search change.** `HebrewSearchFold`'s shadow-column design is settled
+  and unaffected; the collation governs `=`, unique indexes and sorting.
+
+## 13. Open
 
 - **The snapshot's shape (step 0)** — dump files with history, a server-side
   schema copy, or both. Undecided; it gates steps 2 and 3.
