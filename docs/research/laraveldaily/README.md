@@ -77,6 +77,20 @@ Markers that settle it fast, all visible in lesson 1 or 2:
 - **Screenshot/log timestamps.** A lesson titled "Laravel 12" carrying a 2023 log line was re-badged, not rewritten.
 - **Newest comment date.** Three-year-old discussion on a "current" course is a signal.
 
+### On anything older than Laravel 12, check the *pattern*, not just the API
+
+A lesson can use perfectly current APIs and still teach an approach the same publisher has
+since moved away from. Checking that the code still runs is not enough.
+
+Worked example: the May 2023 timezone course builds three events and three listeners for
+model created/updated/deleted, dispatched from a controller. Every class uses current idiom —
+nothing to flag on an API sweep. But the Aug 2024 design-patterns lesson would route that to an
+Observer, and the Mar 2026 structure course would question whether it should be events at all.
+**The architecture was superseded while the syntax stayed valid.**
+
+So on any pre-Laravel-12 lesson, ask both questions: do these APIs still exist, *and* does this
+publisher still recommend this shape? Their own later courses are the best check.
+
 ### Verify against what is actually installed — this is the important one
 
 **Every API claim worth acting on gets confirmed against `vendor/` in this repo**, not against

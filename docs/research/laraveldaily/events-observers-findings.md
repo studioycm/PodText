@@ -189,13 +189,91 @@ in a property — that is a *subscriber*, which auto-discovery does not register
 
 ---
 
+---
+
+## 4a. Second pass — three more lessons, and the author's own position
+
+Added after the first report. Three lessons not covered above turned out to be directly
+on-topic.
+
+### The strongest statement they make is against the pattern
+
+[Observer Pattern](https://laraveldaily.com/lesson/design-patterns/observer-pattern)
+(design-patterns, Aug 2024) closes with a personal position, not a neutral summary: the author
+says he has *"been avoiding this pattern lately"* because both observers and listeners require
+extra effort to understand what happens in the background, and that he has come to prefer a
+more *"active"* approach — calling Services or Jobs directly from the controller.
+
+That is a stronger endorsement of the no-event-spine position than anything in §1, and it comes
+from the site's own author rather than being inferred from a decision framework.
+
+### Their clearest split between the two mechanisms
+
+Same lesson, and this is the rule worth keeping:
+
+- **Observers** — when you want to separate extra logic tied to **Eloquent models**.
+- **Listeners** — for events **not necessarily related to Eloquent models**.
+
+With one argument for preferring an explicit Event *even for model work*: it lets future
+developers (a) see that something happens at all, since *"Observers are not clearly seen"*, and
+(b) add further listeners to the same event without touching existing code.
+
+The lesson also frames observers as *"a more convenient wrapper implementation of
+events/listeners"* — Eloquent fires the event for you, and the observer's methods are the
+listeners.
+
+### An asymmetry neither of the first-pass lessons mentioned
+
+> The only difference from listeners is that we do need to register the Observers, they are not
+> auto-discovered.
+
+**Verified, with a nuance.** There is no directory scan for observers the way `app/Listeners`
+is scanned — you must declare `#[ObservedBy]` or call `::observe()`. But the attribute *is*
+resolved automatically at boot (`Eloquent/Concerns/HasEvents.php:41`):
+
+```php
+static::whenBooted(fn () => static::observe(static::resolveObserveAttributes()));
+```
+
+**And a detail worth knowing before standardising** (`HasEvents.php:56-60`):
+`resolveObserveAttributes()` walks `get_parent_class()`, so **`#[ObservedBy]` is inherited by
+child models.** Putting it on a base model propagates to everything extending it — useful or
+surprising depending on intent.
+
+### Queued listeners
+
+[Mailables, Events, Listeners](https://laraveldaily.com/lesson/queues-laravel/mailables-event-listeners)
+(queues-laravel, Mar 2026): three class types accept `ShouldQueue` — **notifications, listeners
+and mailables**. Their guidance is to put `ShouldQueue` on the **listener** rather than on the
+notification when the listener is what does the work, so one queued job covers the whole
+reaction instead of one job per notification.
+
+### A counter-example, flagged per the pre-Laravel-12 rule
+
+[Cleaning up Controllers with Events/Listeners](https://laraveldaily.com/lesson/laravel-user-timezones/cleaning-up-controllers-events-listeners)
+(laravel-user-timezones, **May 2023 — Laravel 10 era**) creates three events and three
+listeners for `Booking` created / updated / deleted, dispatched from the controller.
+
+That is pure model-lifecycle work, which the later (Aug 2024) design-patterns lesson would route
+to an **Observer**, and which the Mar 2026 structure course would question having as events at
+all under its "only one consequence" test. The event/listener classes themselves use current
+idiom (`Dispatchable`, promoted constructor properties) — no stale API — but the *architecture*
+it teaches is superseded by the same publisher's later advice.
+
+Recorded as an instance of the standing rule: **on any lesson older than Laravel 12, check
+whether the pattern has since been superseded, not just whether the APIs still exist.**
+
 ## 5. Sources
 
 - [When NOT to Extract](https://laraveldaily.com/lesson/laravel-projects-structure/when-not-to-extract-avoiding-over-engineering) — Mar 2026, text
 - [Events/Listeners: When and How](https://laraveldaily.com/lesson/laravel-projects-structure/events-listeners-when-how) — Mar 2026, text
 - [Before Saving: Mutator or Observer](https://laraveldaily.com/lesson/laravel-projects-structure/before-saving-mutator-observer) — Mar 2026, text
 - [Model Observers](https://laraveldaily.com/lesson/laravel-eloquent-expert/model-observers) — Mar 2026, video **with** text body; demo repo at `LaravelDaily/Laravel-Eloquent-Expert-Course` (per-lesson branches, e.g. `tree/lesson-09`)
+- [Observer Pattern](https://laraveldaily.com/lesson/design-patterns/observer-pattern) — Aug 2024, text
+- [Mailables, Events, Listeners](https://laraveldaily.com/lesson/queues-laravel/mailables-event-listeners) — Mar 2026, text
+- [Cleaning up Controllers with Events/Listeners](https://laraveldaily.com/lesson/laravel-user-timezones/cleaning-up-controllers-events-listeners) — May 2023, text
 - Framework source at v13.23.0: `Eloquent/Attributes/ObservedBy.php`,
+  `Eloquent/Concerns/HasEvents.php:41-60`,
   `Foundation/Support/Providers/EventServiceProvider.php`
 
 ### What I could not obtain
