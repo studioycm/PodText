@@ -213,14 +213,14 @@ files, menus, pricing pages, exact flags. On the AI-agents course this yielded m
 existed in no other channel (the agent roster, exact MCP wiring, credit arithmetic on the
 meter, a premium article shown on screen long enough to read).
 
-Extraction without installing anything (`video-frames.mjs`): Playwright drives the **system
+Extraction without installing anything (`dev code/laraveldaily/video-frames.mjs`): Playwright drives the **system
 Chrome** (`channel: 'chrome'` — the bundled Chromium lacks h264), navigates to the mp4's
 `file://` URL (Chrome's media document exposes a `<video>`), seeks, draws to canvas, saves
 **contact sheets** (3×4 tiles, timestamped) plus full-res single frames on demand:
 
 ```bash
-node video-frames.mjs sheet "/path/to/lesson.mp4" outdir 20   # one sheet per ~4 min
-node video-frames.mjs frame "/path/to/lesson.mp4" outdir 312  # full-res at 5:12
+node "dev code/laraveldaily/video-frames.mjs" sheet "/path/to/lesson.mp4" outdir 20   # one sheet per ~4 min
+node "dev code/laraveldaily/video-frames.mjs" frame "/path/to/lesson.mp4" outdir 312  # full-res at 5:12
 ```
 
 Two traps, both hit and fixed in the script: a `setContent` page is about:blank-origin and
@@ -301,20 +301,31 @@ per-lesson `M:SS` timestamps = video**. Both can appear; see §3a.
 
 Three files in this folder, so nobody has to repeat the crawl:
 
-| file | what it is |
+**Location (since 2026-08-08): all tooling and scraped data live in `dev code/laraveldaily/`
+at the repo root — deliberately OUTSIDE git** (root `.gitignore` covers `/dev code/`), so the
+app tree stays clean for push/deploy and the whole area can be deleted in one gesture when the
+research phase ends. Every `raw/…` path mentioned in these notes resolves there.
+
+| file (in `dev code/laraveldaily/`) | what it is |
 | --- | --- |
-| [`scrape.mjs`](scrape.mjs) | Playwright scraper. Writes one JSON per course to `raw/`. |
-| [`build-index.mjs`](build-index.mjs) | Generates `index.md` from `inventory.json` + `raw/`. |
-| [`video-frames.mjs`](video-frames.mjs) | Frame extractor for downloaded lesson mp4s — see §3f. |
-| **[`index.md`](index.md)** | **The search surface — start here.** |
-| `inventory.json` | 407 lessons across 27 courses; regenerate with `--inventory`. |
-| `raw/` | Scraped bodies, links, comments, transcripts. **Gitignored** — large, and licensed material from a paid account. |
+| `scrape.mjs` | Playwright scraper. Writes one JSON per course to `raw/`. |
+| `build-index.mjs` | Generates the committed `index.md` from `inventory.json` + `raw/`. |
+| `video-frames.mjs` | Frame extractor: local mp4s (`sheet`/`frame`) + YouTube (`yt`). |
+| `inventory.json` | 407 lessons across 27 courses; regenerate with `scrape.mjs --inventory`. |
+| `raw/` | Scraped bodies, links, comments, transcripts + the Laracon talk capture. Licensed material from a paid account — never commit. |
+| `filament5-linkcheck.json` | Machine results behind [filament5-linkcheck.md](filament5-linkcheck.md). |
+
+**[`index.md`](index.md)** stays committed here — it is the search surface; start there.
 
 ```bash
+cd "dev code/laraveldaily"
 node scrape.mjs --login      # once — you log in; the script never sees credentials
 node scrape.mjs              # full crawl, checkpointed per lesson, resumable
-node build-index.mjs         # regenerate index.md
+node build-index.mjs && cp index.md ../../docs/research/laraveldaily/index.md
 ```
+
+(Node resolves `playwright` by walking up to the repo's `node_modules`, so the scripts run
+from the new location unchanged.)
 
 ### Searching
 

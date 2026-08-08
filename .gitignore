@@ -37,3 +37,6 @@ Homestead.json
 Homestead.yaml
 
 herd.yml
+
+# Session tooling & scraped research data — deliberately outside git
+/dev code/

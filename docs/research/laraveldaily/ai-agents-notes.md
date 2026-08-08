@@ -275,7 +275,7 @@ material with a shelf life.
 ## 4c. Third pass — the actual video files (2026-08-08)
 
 The operator supplied the mp4s for lessons 1 (Boost), 2 (Codex), 3 (Claude Code) and 6
-(PhpStorm). Frames were extracted with [`video-frames.mjs`](video-frames.mjs) (Playwright +
+(PhpStorm). Frames were extracted with `dev code/laraveldaily/video-frames.mjs` (Playwright +
 system Chrome — no ffmpeg on this machine; method in [README](README.md) §3e) and read as
 contact sheets. This closes the one channel captions cannot carry: **on-screen content the
 narration never reads aloud.** Everything below was absent from both transcript and `.prose`.
@@ -443,7 +443,7 @@ MySQL), conversation memory, structured tool responses.
 ### Sources added by the third pass
 
 - The four mp4s supplied by the operator (lessons 1, 2, 3, 6; 540p/360p), frame-extracted via
-  [`video-frames.mjs`](video-frames.mjs) — 11 contact sheets read; method in
+  `dev code/laraveldaily/video-frames.mjs` — 11 contact sheets read; method in
   [README](README.md) §3b-bis.
 
 ### What I could not obtain

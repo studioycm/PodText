@@ -4,7 +4,7 @@
   (Laravel channel, 2026-07-30), segment **2:05:17 → 2:28:49**; talk proper ≈ 2:05:04–2:25:50,
   then host Q&A.
 - **Captured**: 2026-08-08 — full ASR transcript + frame-verified slide code, archived in
-  `raw/youtube-vii6P0vJhTw-laracon-filament-talk.md` (gitignored). Extraction method: README
+  `dev code/laraveldaily/raw/youtube-vii6P0vJhTw-laracon-filament-talk.md` (outside git). Extraction method: README
   §3b-ter.
 - **Verified against**: installed `filament/filament 5.7.x`, this repo's panel providers and
   Livewire components.
@@ -80,7 +80,7 @@ archive: a current-Filament reference the LaravelDaily catalogue cannot supply.
 ## 5. Sources
 
 - Segment transcript + 3 frame-verified slides + deck-structure reconstruction:
-  `raw/youtube-vii6P0vJhTw-laracon-filament-talk.md`.
+  `dev code/laraveldaily/raw/youtube-vii6P0vJhTw-laracon-filament-talk.md`.
 - Installed Filament 5.7 (`PanelsRenderHook`/`TablesRenderHook` constant counts via
   reflection); `app/Providers/Filament/*` renderHook usage; `app/Filament/Pages` and
   Widgets counts.
