@@ -25,3 +25,34 @@ it('carries the full edge matrix from the spec', function (): void {
         ->toContain('טעם ')                            // trailing space (B5 fodder)
         ->toContain('🎧')->toContain('🎤');            // the unicode_ci emoji collapse
 });
+
+it('marks a composite-integer-pivot unique index as not insert-safe', function (): void {
+    // author_transcription's own shape: a surrogate PRIMARY that varies
+    // (fresh id per insert) alongside a composite unique over two FK columns
+    // that a blind clone would copy verbatim — the measured duplicate-entry abort.
+    $uniqueIndexes = [
+        'PRIMARY' => ['id'],
+        'author_transcription_author_id_transcription_id_unique' => ['author_id', 'transcription_id'],
+    ];
+    $varying = ['id', 'created_at', 'updated_at'];
+
+    expect(SeedRehearsalEdges::insertSafe($uniqueIndexes, $varying))->toBeFalse();
+});
+
+it('treats a unique index containing a timestamp column as insert-safe', function (): void {
+    $uniqueIndexes = ['PRIMARY' => ['id'], 'edge_marker_unique' => ['edge_marker_at']];
+    $varying = ['id', 'edge_marker_at'];
+
+    expect(SeedRehearsalEdges::insertSafe($uniqueIndexes, $varying))->toBeTrue();
+});
+
+it('treats a unique index containing a varied collated column as insert-safe', function (): void {
+    $uniqueIndexes = ['content_items_content_group_id_slug_unique' => ['content_group_id', 'slug']];
+    $varying = ['slug'];
+
+    expect(SeedRehearsalEdges::insertSafe($uniqueIndexes, $varying))->toBeTrue();
+});
+
+it('treats a table with no unique indexes at all as insert-safe', function (): void {
+    expect(SeedRehearsalEdges::insertSafe([], []))->toBeTrue();
+});
