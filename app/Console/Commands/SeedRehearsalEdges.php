@@ -80,8 +80,9 @@ class SeedRehearsalEdges extends Command
                         // Unique-safe: payload + a nonce suffix, capped to the
                         // column's real capacity (narrow code columns get a
                         // truncated payload; none of them is unique — measured).
+                        // mb_substr counts codepoints like MySQL does; Str::limit counts display width (niqqud = 0) and can overflow narrow columns at the boundary.
                         $payload = self::CollationPayloads[$i % count(self::CollationPayloads)];
-                        $row[$column->c] = Str::limit($payload.' '.Str::random(8), min(60, (int) ($column->len ?? 60)), '');
+                        $row[$column->c] = mb_substr($payload.' '.Str::random(8), 0, min(60, (int) ($column->len ?? 60)));
                     }
                 }
 
