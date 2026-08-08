@@ -1,10 +1,13 @@
 # LaravelDaily: AI Agents/IDEs for Laravel (May 2026) — course notes
 
 Notes on [AI Agents/IDEs for Laravel: May 2026 (Claude Code, Codex, OpenCode, etc)](https://laraveldaily.com/course/ai-agents-laravel-2026)
-(7 video lessons, 52 min, **May 2026**), read 2026-08-07 via Vimeo auto-captions. Two lessons
-read in full: Laravel Boost, and Claude Code.
+(7 video lessons, 52 min, **May 2026**). Read 2026-08-07 (Boost + Claude Code lessons, live)
+and 2026-08-08 (the remaining five, from `raw/` transcripts) — **7/7, complete**. This is a
+transcript-only course: zero text bodies, so every lesson rides on ASR captions and no
+identifier below comes from a caption unverified.
 
-**One actionable gap found (§3), and one plausible alarm that verification disproved (§4).**
+**One actionable gap found (§3), one plausible alarm that verification disproved (§4), and
+the tool-tour half distilled to its durable residue (§4b).**
 
 ---
 
@@ -220,13 +223,62 @@ passes vacuously is worse than no check, because it buys confidence it has not e
 
 ---
 
+## 4b. Second pass — the five tool-tour lessons, kept to what outlives the tools
+
+Read in full from transcripts on 2026-08-08. The market comparisons ("which agent is best in
+May 2026") are already expired and are deliberately **not** summarised — the author says so
+himself: the intro calls his own **Nov 2025 predecessor course "ancient in the AI era"**, six
+months on. That sentence is the whole §0 argument, from the source. What follows is only the
+material with a shelf life.
+
+### Durable, regardless of which agent wins
+
+- **Reasoning effort is a bigger lever than model choice, and the author measured it**: extra
+  high ≈ **4×** the tokens of medium, high ≈ 2×. His concrete failure case: medium delivered
+  JSON:API pagination as a bare `page` query param; high delivered the spec's `page[number]`
+  form. Medium "skips the details" — his recommendation is high for real work. Transferable
+  to any agent with effort tiers.
+- **Boost's `search-docs` is the channel for post-cutoff APIs.** His demo: the model used
+  Laravel's recent JSON:API resource correctly *only* because Boost's search-docs fed it —
+  "LLMs are not trained on that specifically." This is the mechanism behind the house rule
+  that Boost must actually be running, not just installed.
+- **Under-specified prompts produce agent-invented decisions.** His endpoint came back
+  authenticated because the prompt didn't say; he flags it as violating his own advice.
+  Matches the house practice of spec-first prompts.
+- **Status lines lie; dashboards don't.** In-terminal usage numbers diverged from the
+  provider dashboard in his own demo. Check the dashboard before drawing conclusions about
+  quota — same family as the agent-mode-truncation lesson in this repo's memory.
+- **The closing workflow claim**: agents run in terminals, IDEs are for review and
+  refactoring — "what a lot of developers will do in 2026 and beyond." That is a description
+  of this project's existing workflow, arrived at independently.
+
+### Noted, dated, kept only as pointers
+
+- **OpenCode** (lesson 5): a model-marketplace middleman — pay-as-you-go at provider API
+  prices ("Zen", card fee on top) or a small subscription ("Go"). Its real use case per the
+  author: provider-outage fallback and plan-with-one-model, deliver-with-another. No
+  subsidised limits, so heavy models cost API rates.
+- **VS Code** (lesson 6): GitHub Copilot moved to usage-based billing from June 2026 —
+  the author quotes the community reading it as "the beginning of the end of subsidized
+  subscriptions". Official Claude Code/Codex extensions reuse your existing subscription
+  in-IDE; Kilo Code/Cline are more middlemen.
+- **PhpStorm** (lesson 7): agents now plug in via **ACP** (Agent Client Protocol, a
+  JetBrains + Zed collaboration) — Junie, Claude and Codex selectable in AI Chat. His
+  measured cost gap: the same trivial prompt cost **0.17 credits via Junie vs 0.79 via the
+  Claude agent** (~4.6×), and JetBrains' credit units are opaque enough that a comment
+  thread had to locate the usage meter for him. His verdict matches the terminal-first
+  workflow above.
+- **Codex tips** (lesson 3): `!cmd` to run shell from the prompt line, `/review` for
+  unstaged changes, prompt-stash via Ctrl-C/↑, session hooks. Tool-specific; recorded as
+  pointers only.
+
 ## 5. Applies here vs. generic
 
 | lesson | applies to PodText? |
 | --- | --- |
 | 02 Laravel Boost | **Yes — one gap**, §3. Everything else already correct. |
 | 04 Claude Code / plan mode | Corroborates existing practice; one prompting tip; one safety reminder. |
-| 03 Codex CLI, 05 OpenCode, 06 VS Code/Copilot, 07 PhpStorm | Not read — tool tours with a short shelf life, §0. |
+| 03 Codex CLI, 05 OpenCode, 06 VS Code/Copilot, 07 PhpStorm | Read 2026-08-08 — durable residue in §4b; the comparisons themselves are expired. |
 
 ## 6. Adjacent course worth knowing about
 
@@ -242,9 +294,15 @@ MySQL), conversation memory, structured tool responses.
 
 ## 7. Sources
 
-- [Course index](https://laraveldaily.com/course/ai-agents-laravel-2026), May 2026, 7 video lessons.
-  Read: [Laravel Boost: main things to know](https://laraveldaily.com/lesson/ai-agents-laravel-2026/laravel-boost-main-things-to-know),
-  [Claude Code: better UI and plan mode](https://laraveldaily.com/lesson/ai-agents-laravel-2026/claude-code-better-ui-and-plan-mode).
+- [Course index](https://laraveldaily.com/course/ai-agents-laravel-2026), May 2026, 7 video lessons — **all read**:
+  [intro](https://laraveldaily.com/lesson/ai-agents-laravel-2026/intro-whats-inside-the-course-3),
+  [Laravel Boost](https://laraveldaily.com/lesson/ai-agents-laravel-2026/laravel-boost-main-things-to-know),
+  [Codex CLI/app](https://laraveldaily.com/lesson/ai-agents-laravel-2026/codex-cli-app-gpt-5x-models),
+  [Claude Code](https://laraveldaily.com/lesson/ai-agents-laravel-2026/claude-code-better-ui-and-plan-mode),
+  [OpenCode](https://laraveldaily.com/lesson/ai-agents-laravel-2026/opencode-choose-from-more-llms),
+  [VS Code/Copilot](https://laraveldaily.com/lesson/ai-agents-laravel-2026/vs-code-github-copilot-and-unofficial-extensions),
+  [PhpStorm](https://laraveldaily.com/lesson/ai-agents-laravel-2026/phpstorm-are-they-still-in-the-ai-game) —
+  first two live 2026-08-07, the rest from `raw/` transcripts 2026-08-08.
 - Verified against `laravel/boost v2.4.13` and re-verified against **v2.5.3**:
   `php artisan list boost`, `php artisan boost:update --help`,
   `vendor/laravel/boost/src/Install/GuidelineWriter.php:30-74`.
@@ -256,9 +314,7 @@ MySQL), conversation memory, structured tool responses.
 
 ### What I could not obtain
 
-- **5 of 7 lessons unread** — the Codex CLI, OpenCode, VS Code/Copilot and PhpStorm tours.
-  Deliberate: §0 argues their shelf life is shorter than the time since publication, and none
-  of them would change a repo setting.
+- Nothing remains unread — all 7 lessons are covered as of 2026-08-08 (§4b).
 - **The author's public guidelines repository** (`AI-Workflows-For-Laravel`) is referenced in
   the lesson as the source of his custom `.ai/guidelines` files. Not fetched — same reasoning
   as the bonus skills in the queues and Eloquent notes: third-party agent-instruction files are
