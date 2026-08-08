@@ -63,7 +63,7 @@ class SeedRehearsalEdges extends Command
                 continue;
             }
 
-            $columns = DB::select('SELECT COLUMN_NAME c, DATA_TYPE dt, IS_NULLABLE n, COLLATION_NAME coll, COLUMN_KEY k, EXTRA e
+            $columns = DB::select('SELECT COLUMN_NAME c, DATA_TYPE dt, IS_NULLABLE n, COLLATION_NAME coll, COLUMN_KEY k, EXTRA e, CHARACTER_MAXIMUM_LENGTH len
                 FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ?', [$table->t]);
 
             foreach (self::DateEdges as $i => $edge) {
@@ -77,9 +77,11 @@ class SeedRehearsalEdges extends Command
                         // NULL-preservation is rehearsed too.
                         $row[$column->c] = ($column->n === 'YES' && $i % 2 === 1) ? null : $edge;
                     } elseif ($column->coll !== null && isset($row[$column->c]) && is_string($row[$column->c])) {
-                        // Unique-safe: payload + a nonce suffix.
+                        // Unique-safe: payload + a nonce suffix, capped to the
+                        // column's real capacity (narrow code columns get a
+                        // truncated payload; none of them is unique — measured).
                         $payload = self::CollationPayloads[$i % count(self::CollationPayloads)];
-                        $row[$column->c] = Str::limit($payload.' '.Str::random(8), 60, '');
+                        $row[$column->c] = Str::limit($payload.' '.Str::random(8), min(60, (int) ($column->len ?? 60)), '');
                     }
                 }
 
