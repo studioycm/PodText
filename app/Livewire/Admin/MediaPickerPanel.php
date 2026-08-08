@@ -1013,6 +1013,10 @@ class MediaPickerPanel extends Component implements HasActions, HasSchemas
             ->select([
                 'id', 'reference_key', 'name', 'path', 'title', 'alt', 'ext', 'size', 'width', 'height', 'created_at',
                 'disk', 'directory', 'visibility', 'type',
+                // PublicMediaDelivery reads both when deciding inline-SVG
+                // safety: trusted_at for the trust short-circuit, updated_at
+                // in the cache key — omitting it silently keys on 0.
+                'trusted_at', 'updated_at',
             ])
             ->orderByDesc('id');
     }

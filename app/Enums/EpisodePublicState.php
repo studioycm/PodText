@@ -70,7 +70,11 @@ enum EpisodePublicState: string implements HasColor, HasLabel
             ? 'has_transcription_by_air_time'
             : 'has_transcription_now';
 
-        $flag = $record->hasAttribute($attribute)
+        // Ask the attributes array, not hasAttribute(): withExists() merges a
+        // cast into hydrated instances, and after a refresh() the cast lingers
+        // while the aliased column is gone — hasAttribute() then says yes and
+        // the read trips preventAccessingMissingAttributes.
+        $flag = array_key_exists($attribute, $record->getAttributes())
             ? $record->getAttribute($attribute)
             : null;
 

@@ -39,7 +39,13 @@ class CardTemplateReferenceScanner
         );
 
         $sections = HomepageSection::query()
-            ->select(['id', 'name', 'type', 'source_config', 'display_config'])
+            // The validator falls back to the section's own columns when
+            // source_config omits a key, so they must ride along.
+            ->select([
+                'id', 'name', 'type', 'source_config', 'display_config',
+                'selection_config', 'pagination_config',
+                'category_id', 'tag_id', 'content_group_id', 'limit',
+            ])
             ->orderBy('id')
             ->get();
 

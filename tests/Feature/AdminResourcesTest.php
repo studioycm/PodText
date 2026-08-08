@@ -197,7 +197,11 @@ it('creates and edits content groups with defaults, cover library attachment, an
         ->and($group->coverMediaAttachment()->with('media')->first()?->media?->path)->toBe($cover->path)
         ->and($group->coverMediaAttachment()->firstOrFail()->media_id)->toBe($cover->getKey());
 
-    Storage::disk('public')->assertExists($group->cover_path);
+    // Assert the attached cover's real file. The old form of this line read
+    // $group->cover_path — a column retired with the legacy owner-column
+    // migration — so it passed Storage::assertExists(null), which checks the
+    // disk ROOT and is always true. Strict mode exposed the vacuous pass.
+    Storage::disk('public')->assertExists($cover->path);
 
     Livewire::test(EditContentGroup::class, ['record' => $group->getRouteKey()])
         ->fillForm([

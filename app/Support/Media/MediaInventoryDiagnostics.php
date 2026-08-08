@@ -154,6 +154,9 @@ class MediaInventoryDiagnostics
                 'type',
                 'ext',
                 'reference_key',
+                // PublicMediaDelivery reads both when reasons() judges
+                // inline-SVG safety on these rows.
+                'trusted_at',
                 'updated_at',
             ])
             ->lazyById(250)

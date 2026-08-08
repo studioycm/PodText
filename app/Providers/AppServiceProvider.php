@@ -145,7 +145,7 @@ class AppServiceProvider extends ServiceProvider
         Import::observe(EditorialMetricsCacheObserver::class);
         FailedImportRow::observe(EditorialMetricsCacheObserver::class);
 
-        Model::preventLazyLoading(! $this->app->isProduction());
+        Model::shouldBeStrict(! $this->app->isProduction());
         Model::handleLazyLoadingViolationUsing(function (Model $model, string $relation): void {
             if (! $model->exists || $model->wasRecentlyCreated) {
                 return;
