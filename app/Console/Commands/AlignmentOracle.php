@@ -362,6 +362,24 @@ class AlignmentOracle extends Command
     }
 
     /**
+     * Whether a table's row-level VALUES participate in the hash pass.
+     *
+     * `migrations` is the migration machinery's own ledger, not app data:
+     * running the migrate under test inserts its own row recording that
+     * fact. That mutation IS the act being certified, so `migrations` can
+     * never be value-stable across a capture → migrate → compare sequence by
+     * design — hashing it would fail every legitimate run, not just a broken
+     * one. Its columns still go through the properties capture in state()'s
+     * second pass below (unaffected by this), so the `migration` column's
+     * own collation conversion is still verified; only row-level values are
+     * excluded here.
+     */
+    public static function hashableTable(string $name): bool
+    {
+        return $name !== 'migrations';
+    }
+
+    /**
      * @return array{
      *     meta: array{database: string, captured_at: string, session_time_zone: string, system_time_zone: string, tables: int, columns: int},
      *     hashes: array<string, array{rows: int, sha1: string}>,
@@ -374,9 +392,15 @@ class AlignmentOracle extends Command
         $hashes = [];
         $rowFailures = [];
 
-        $tables = DB::select("SELECT DISTINCT TABLE_NAME t FROM information_schema.COLUMNS
-            WHERE TABLE_SCHEMA = DATABASE()
-              AND (DATA_TYPE IN ('timestamp', 'datetime') OR COLLATION_NAME IS NOT NULL)");
+        // hashableTable() drops `migrations` here — see its docblock. The
+        // properties pass below is untouched and still covers every table,
+        // `migrations` included.
+        $tables = array_values(array_filter(
+            DB::select("SELECT DISTINCT TABLE_NAME t FROM information_schema.COLUMNS
+                WHERE TABLE_SCHEMA = DATABASE()
+                  AND (DATA_TYPE IN ('timestamp', 'datetime') OR COLLATION_NAME IS NOT NULL)"),
+            fn (object $table): bool => self::hashableTable($table->t),
+        ));
 
         $writePdo = DB::connection()->getPdo();
         $readPdo = DB::connection()->getReadPdo();

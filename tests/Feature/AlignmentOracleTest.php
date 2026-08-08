@@ -19,6 +19,16 @@ it('encodes NULL distinctly from empty string in the row expression', function (
         ->toContain("CONCAT_WS('|',");
 });
 
+it('excludes only the migrations ledger from the hash pass', function (): void {
+    // The migrate run under test inserts its own ledger row — that mutation
+    // IS the act being certified, so `migrations` can never be value-stable
+    // across capture -> migrate -> compare and must never be hashed. Every
+    // other table stays eligible.
+    expect(AlignmentOracle::hashableTable('migrations'))->toBeFalse()
+        ->and(AlignmentOracle::hashableTable('jobs'))->toBeTrue()
+        ->and(AlignmentOracle::hashableTable('failed_jobs'))->toBeTrue();
+});
+
 it('passes a full sanctioned run: timestamp to datetime, unicode_ci to 0900_ai_ci, sanctioned default/extra drop, identical hashes', function (): void {
     $before = [
         'hashes' => [
