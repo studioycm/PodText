@@ -61,6 +61,97 @@ const topicOf = (slug, course) => {
   return 'General';
 };
 
+/**
+ * "Also touches" — cross-cutting concepts mined from the lesson BODY (and transcript),
+ * as opposed to TOPICS, which classifies the primary subject from the slug alone.
+ *
+ * Purpose: surface the non-obvious. A Filament lesson that happens to demonstrate
+ * factories, a queues lesson that leans on notifications, a SaaS lesson with a solid
+ * Stripe-webhook section — grep for the concept and these lessons appear even though
+ * their titles say nothing about it.
+ *
+ * Rules of thumb for the vocabulary: concrete nouns over vibes, tight word-boundary
+ * regexes over substrings (¬ "cast" matching "broadcast"), and a mention threshold so
+ * a single passing reference does not index.
+ */
+const CONCEPTS = [
+  ['validation',    /\bvalidat(?:e|ion|ed|or)|form request|\brules\(\)/gi],
+  ['authorization', /\bpolic(?:y|ies)\b|\bgate(?:s|::)|\bauthoriz|\bcan\(\)/gi],
+  ['authentication',/\bauth\(\)|\blogin\b|\bregister(?:ed)?\b|\bsanctum\b|\bfortify\b|\bguard\b/gi],
+  ['roles',         /\brole(?:s)?\b|\bpermission(?:s)?\b|\bspatie\/laravel-permission\b|\bshield\b/gi],
+  ['notifications', /\bnotification(?:s)?\b|\bnotify\b|\bNotification::/gi],
+  ['mail',          /\bmailable(?:s)?\b|\bMail::|\bemail(?:s)? (?:is |are )?sent\b|\benvelope\(\)/gi],
+  ['queues',        /\bqueue(?:d|s)?\b|\bShouldQueue\b|\bjob(?:s)? (?:table|class|worker)|\bdispatch\(/gi],
+  ['events',        /\bevent\(new\b|\blistener(?:s)?\b|\bobserver(?:s)?\b|\bObservedBy\b|\bbooted\(\)/gi],
+  ['caching',       /\bcache(?:d|s)?\b|\bCache::|\bremember\(/gi],
+  ['factories',     /\bfactor(?:y|ies)\b|\bfake\(\)|\bfaker\b|\bseeder(?:s)?\b|\bseed(?:ing)?\b/gi],
+  ['testing',       /\bpest\b|\bphpunit\b|\bassert[A-Z]?|\bit\(['"]|\btest\(['"]|\bRefreshDatabase\b/gi],
+  ['migrations',    /\bmigration(?:s)?\b|\bSchema::|\bforeignId\b|\bmigrate\b/gi],
+  ['enums',         /\benum(?:s)?\b|\bBackedEnum\b|\bcases\(\)/gi],
+  ['casts',         /\bcasts\(\)|\bprotected \$casts\b|\bAttribute::make\b|\baccessor(?:s)?\b|\bmutator(?:s)?\b/gi],
+  ['relationships', /\bbelongsTo\b|\bhasMany\b|\bhasOne\b|\bbelongsToMany\b|\bmorph[A-Z]|\bpivot\b/gi],
+  ['eager-loading', /\beager.load|\bwith\(\[|\bload\(\[?['"]|\bN\+1\b/gi],
+  ['scopes',        /\bscope[A-Z][a-z]+|\bglobal scope(?:s)?\b|\blocal scope(?:s)?\b/gi],
+  ['pagination',    /\bpaginat(?:e|ion|or)\b|\bsimplePaginate\b|\bcursorPaginate\b/gi],
+  ['file-uploads',  /\bfile upload(?:s)?\b|\bUploadedFile\b|\bstoreAs\b|\bStorage::|\bmedialibrary\b/gi],
+  ['api-resources', /\bApiResource\b|\bJsonResource\b|\bResource::collection\b|\bapi resource(?:s)?\b/gi],
+  ['middleware',    /\bmiddleware(?:s)?\b/gi],
+  ['routing',       /\bRoute::|\broute model binding\b|\bnamed route(?:s)?\b/gi],
+  ['blade',         /\bblade\b|\b@foreach\b|\b@if\b|\bx-data\b|\bcomponent(?:s)? (?:class|view)\b/gi],
+  ['livewire',      /\blivewire\b|\bwire:[a-z]/gi],
+  ['filament',      /\bfilament\b|\bresource(?:s)? (?:page|class|form|table)\b/gi],
+  ['tailwind',      /\btailwind\b|\bdark:|\bsm:|\bmd:|\blg:/gi],
+  ['localization',  /\btranslat(?:e|ion|ions|able)\b|\b__\(['"]|\btrans\(|\blocale(?:s)?\b|\blang\b/gi],
+  ['timezones',     /\btimezone(?:s)?\b|\bCarbon(?:Immutable)?::|\bnow\(\)|->format\(['"]/gi],
+  ['scheduling',    /\bschedul(?:e|er|ed|ing)\b|\bcron\b|\beveryMinute\b|\bdaily\(\)/gi],
+  ['websockets',    /\breverb\b|\bbroadcast(?:ing)?\b|\bwebsocket(?:s)?\b|\bEcho\b|\bpusher\b/gi],
+  ['webhooks',      /\bwebhook(?:s)?\b/gi],
+  ['http-client',   /\bHttp::|\bhttp client\b|\bexternal api\b|\b3rd.party api\b/gi],
+  // Deliberately narrow: "billing"/"subscription" alone match AI-tool pricing talk
+  // (Claude/Copilot plans), which tagged IDE lessons with `stripe` on the first run.
+  ['stripe',        /\bstripe\b|\bcashier\b/gi],
+  ['multi-tenancy', /\btenan(?:t|ts|cy)\b|\bteam(?:s)? (?:id|scope|switch)/gi],
+  ['soft-deletes',  /\bsoft.?delete(?:s|d)?\b|\bSoftDeletes\b|\brestore(?:d)?\(\)|\bforceDelete\b/gi],
+  ['transactions',  /\bDB::transaction\b|\btransaction(?:s)?\b|\brollback\b/gi],
+  ['security',      /\bxss\b|\bcsrf\b|\bsql injection\b|\bsanitiz|\bescap(?:e|ing)\b|\bsecret(?:s)?\b/gi],
+  ['performance',   /\bperformance\b|\bslow quer|\bmemory\b|\bbenchmark\b|\boptimiz/gi],
+  ['debugging',     /\bdebugbar\b|\bray\b|\bdd\(|\bdump\(|\btinker\b|\blogs?\b/gi],
+  ['packages',      /\bcomposer require\b|\bpackagist\b|\bvendor\/[a-z-]+\/[a-z-]+/gi],
+  ['ai-agents',     /\bclaude\b|\bcodex\b|\bcursor\b|\bcopilot\b|\bboost\b|\bSKILL\.md\b|\bmcp\b/gi],
+  ['deployment',    /\bdeploy(?:ment|ed|ing)?\b|\bforge\b|\benvoyer\b|\bproduction server\b|\bci\/cd\b/gi],
+];
+
+/** Concepts a topic already implies — suppressed so "also touches" stays *also*. */
+const TOPIC_IMPLIES = {
+  'Testing': ['testing', 'factories'],
+  'Eloquent & relations': ['relationships', 'casts', 'scopes', 'eager-loading'],
+  'Database & schema': ['migrations', 'relationships'],
+  'Queues & jobs': ['queues'],
+  'Security & auth': ['roles', 'authorization', 'authentication', 'security'],
+  'Errors & exceptions': ['debugging'],
+  'API & HTTP': ['api-resources', 'routing', 'http-client', 'webhooks'],
+  'Localisation & time': ['localization', 'timezones'],
+  'Frontend & UI': ['tailwind', 'blade'],
+  'Livewire & Alpine': ['livewire', 'blade'],
+  'Filament': ['filament'],
+  'Realtime': ['websockets'],
+  'AI & tooling': ['ai-agents'],
+  'Process & deploy': ['deployment'],
+  'Architecture & patterns': [],
+};
+
+function alsoTouches(text, topic, cap = 8) {
+  if (!text) return [];
+  const suppressed = new Set(TOPIC_IMPLIES[topic] || []);
+  const hits = [];
+  for (const [name, re] of CONCEPTS) {
+    if (suppressed.has(name)) continue;
+    const n = (text.match(re) || []).length;
+    if (n >= 3) hits.push([name, n]); // threshold: a passing mention doesn't index
+  }
+  return hits.sort((a, b) => b[1] - a[1]).slice(0, cap).map(([n]) => n);
+}
+
 /** Turn a slug into something readable, dropping the numeric noise the site adds. */
 const humanise = (slug) => slug
   .replace(/^\d+-/, '').replace(/-\d+$/, '').replace(/-\d+-\d+$/, '')
@@ -149,6 +240,7 @@ async function main() {
         comments: r?.comments?.length || 0,
         tx: r?.transcript ? r.transcript.length : (r?.vimeo ? 0 : null),
         idents: identifiers(r?.body),
+        also: alsoTouches(`${r?.body || ''}\n${r?.transcript || ''}`, topicOf(slug, course)),
         suspect: !!looksCut,
       });
     }
@@ -185,7 +277,11 @@ async function main() {
   out.push('```');
   out.push('');
   out.push('Columns per row: `course` · `released` · `format` · size · links · comments ·');
-  out.push('transcript · identifiers. `**TRUNCATED**` marks a body that is both unterminated');
+  out.push('transcript · identifiers · `also:` concepts. The `also:` list is mined from the');
+  out.push('lesson body and transcript, minus what its topic already implies — it is where the');
+  out.push('non-obvious lives: a Filament lesson demonstrating factories, a SaaS lesson with a');
+  out.push('real Stripe-webhook section. `grep "also:.*factories"` finds material to learn from');
+  out.push('that no title would surface. `**TRUNCATED**` marks a body that is both unterminated');
   out.push('*and* well under its course median — the shape of a paywall teaser. A body merely');
   out.push('ending in a code block is not flagged.');
   out.push('');
@@ -207,9 +303,10 @@ async function main() {
       if (r.tx) bits.push(`tx${(r.tx / 1000).toFixed(1)}k`);
       else if (r.tx === 0) bits.push('tx-none');
       const ids = r.idents.length ? ` — ${r.idents.join(' ')}` : '';
+      const also = r.also?.length ? ` · also: ${r.also.join(' ')}` : '';
       const flag = r.suspect ? ' **TRUNCATED**' : '';
       out.push(`- [${r.title}](https://laraveldaily.com/lesson/${r.course}/${r.slug}) · `
-        + `${bits.join(' · ')}${ids}${flag}`);
+        + `${bits.join(' · ')}${ids}${also}${flag}`);
     }
     out.push('');
   }
