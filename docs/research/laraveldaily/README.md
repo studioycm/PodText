@@ -229,6 +229,36 @@ opaque-origin for canvas, so `toDataURL` throws SecurityError unless Chrome is l
 `--allow-file-access-from-files`. Read the sheets as images; the 540p tiles are legible for
 terminal text, and anything marginal gets a full-res `frame` pass.
 
+### 3b-ter. YouTube (talks, livestreams) — the pot wall and how to jump it
+
+YouTube's raw `timedtext` caption URL (from `ytInitialPlayerResponse.captionTracks[].baseUrl`)
+returns **HTTP 200 with an empty body** — since the proof-of-origin rollout it requires a
+`pot` token only the player attaches. Curl and plain fetch both get the empty 200. The jump:
+
+1. Open the watch page in the in-app browser; read title/tracks from
+   `ytInitialPlayerResponse`.
+2. Make the **player** load captions (seek + play muted + click `.ytp-subtitles-button` if
+   `aria-pressed=false`).
+3. `read_network_requests` with `urlPattern: "timedtext"` — the player's request carries
+   `potc=1&pot=…`. **Do not read the body via the network tool** on long videos (it returns
+   the whole track and floods context). Instead re-`fetch` that pot URL **in-page** (grab it
+   from `performance.getEntriesByType('resource')`), cache the parsed json3 on `window`, and
+   return only sliced, timestamp-chunked text.
+4. Live-VOD tracks use `wWinId`/`aAppend` roll-up events — filter `events` with `segs`,
+   join `utf8`, drop pure-`\n` appenders.
+
+For **frames**: the local-mp4 canvas pipeline does NOT transfer to long YouTube VODs — far
+seeks re-fetch MSE segments; 'seeked' fires with nothing decoded and canvas grabs come back
+black (or blank white after a quality-force). Polling readyState was not sufficient either.
+**What works: seek the in-app player (`video.currentTime = t; play(); pause()`), then take a
+plain `computer` screenshot** — 1080p slides are fully legible, and the transcript panel in
+frame gives free timestamp alignment. Cost: ~2 calls per slide; pick moments from the
+transcript first and capture only what matters.
+
+Worked example: the Laracon US 2026 Day-2 stream segment (Povilas's Filament talk) —
+transcript + verified slide code in `raw/youtube-vii6P0vJhTw-laracon-filament-talk.md`,
+analysis in [laracon-2026-filament-talk-notes.md](laracon-2026-filament-talk-notes.md).
+
 ### 3c. Comments — worth reading
 
 Comments sit under `.comments-*` classes (e.g. `.comments-date` wraps the "N months ago"

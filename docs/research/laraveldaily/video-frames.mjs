@@ -12,6 +12,10 @@ import path from 'node:path';
 
 const [mode, videoPath, outDir, ...rest] = process.argv.slice(2);
 if (!mode || !videoPath || !outDir) { console.error('usage: see header'); process.exit(1); }
+
+// yt mode has its own flow (declared below; function declarations hoist).
+if (mode === 'yt') { await ytMode(); process.exit(0); }
+
 await mkdir(outDir, { recursive: true });
 
 const browser = await chromium.launch({
@@ -92,3 +96,91 @@ if (mode === 'frame') {
   }
 }
 await browser.close();
+
+/**
+ * (appended mode) YouTube capture:
+ *   node video-frames.mjs yt <videoId> <outdir> <fromSec> <toSec> [stepSec]
+ * Chrome channel again (h264/MSE). Seeks the watch-page player and canvas-dumps
+ * contact sheets. MSE video is same-origin-safe for canvas (no file:// taint).
+ */
+async function ytMode() {
+  const [, videoId, outDir2, fromS, toS, stepS] = process.argv.slice(2);
+  await mkdir(outDir2, { recursive: true });
+  const browser2 = await chromium.launch({ channel: 'chrome', headless: true });
+  const page2 = await browser2.newPage({ viewport: { width: 1600, height: 900 } });
+  await page2.goto(`https://www.youtube.com/watch?v=${videoId}&t=${fromS}s`, { waitUntil: 'domcontentloaded' });
+  // consent page (EU flows) — click through if it appears
+  try {
+    const consent = await page2.$('button[aria-label*="Accept"], form[action*="consent"] button');
+    if (consent) { await consent.click(); await page2.waitForLoadState('domcontentloaded'); }
+  } catch {}
+  await page2.waitForSelector('video', { timeout: 30000 });
+  await page2.evaluate(() => {
+    const v = document.querySelector('video');
+    v.muted = true; v.play();
+    const p = document.getElementById('movie_player');
+    if (p && p.setPlaybackQualityRange) p.setPlaybackQualityRange('hd1080', 'hd1080');
+  });
+  await new Promise((r) => setTimeout(r, 4000)); // let quality switch settle
+
+  // Far seeks on a long VOD trigger fresh MSE segment fetches; 'seeked' can fire
+  // while readyState is still HAVE_METADATA and the frame is black. Poll for real
+  // decodable data (readyState >= 2, not seeking) with a generous ceiling.
+  const seekYt = (t) => page2.evaluate((t) => new Promise((res) => {
+    const v = document.querySelector('video');
+    v.currentTime = t;
+    const t0 = Date.now();
+    const poll = () => {
+      if ((!v.seeking && v.readyState >= 2) || Date.now() - t0 > 20000) {
+        setTimeout(res, 600); // paint settle
+      } else setTimeout(poll, 300);
+    };
+    setTimeout(poll, 300);
+  }), t);
+  const grabYt = () => page2.evaluate(() => {
+    const v = document.querySelector('video');
+    const c = document.createElement('canvas');
+    c.width = v.videoWidth; c.height = v.videoHeight;
+    c.getContext('2d').drawImage(v, 0, 0);
+    return c.toDataURL('image/png').split(',')[1];
+  });
+
+  const meta2 = await page2.evaluate(() => {
+    const v = document.querySelector('video');
+    return { w: v.videoWidth, h: v.videoHeight, dur: v.duration };
+  });
+  console.log(`yt ${videoId} ${meta2.w}x${meta2.h} dur=${Math.round(meta2.dur)}s`);
+
+  const step2 = Number(stepS || 20);
+  const times2 = [];
+  for (let t = Number(fromS); t <= Number(toS); t += step2) times2.push(Math.round(t));
+  const COLS = 3, ROWS = 4, per = COLS * ROWS;
+  for (let s = 0; s * per < times2.length; s++) {
+    const batch = times2.slice(s * per, (s + 1) * per);
+    await page2.evaluate(({ COLS, ROWS, w, h }) => {
+      const old = document.getElementById('sheet'); if (old) old.remove();
+      const c = document.createElement('canvas'); c.id = 'sheet';
+      c.width = COLS * w; c.height = ROWS * h;
+      document.body.appendChild(c);
+      window.__ctx = c.getContext('2d');
+      window.__ctx.font = `bold ${Math.round(h / 14)}px monospace`;
+    }, { COLS, ROWS, w: meta2.w, h: meta2.h });
+    for (let i = 0; i < batch.length; i++) {
+      await seekYt(batch[i]);
+      await page2.evaluate(({ i, COLS, t, w, h }) => {
+        const v = document.querySelector('video');
+        const x = (i % COLS) * w, y = Math.floor(i / COLS) * h;
+        window.__ctx.drawImage(v, x, y, w, h);
+        window.__ctx.strokeStyle = '#0f0'; window.__ctx.strokeRect(x, y, w, h);
+        window.__ctx.fillStyle = '#0f0';
+        const hh = Math.floor(t / 3600), mm = Math.floor(t % 3600 / 60), ss = t % 60;
+        window.__ctx.fillText(`${hh}:${String(mm).padStart(2, '0')}:${String(ss).padStart(2, '0')}`, x + 10, y + h - 12);
+      }, { i, COLS, t: batch[i], w: meta2.w, h: meta2.h });
+    }
+    const b64 = await page2.evaluate(() => document.getElementById('sheet').toDataURL('image/png').split(',')[1]);
+    const f = path.join(outDir2, `yt-sheet${s}.png`);
+    await writeFile(f, Buffer.from(b64, 'base64'));
+    console.log('wrote', f, `(${batch.length} frames @ ${batch[0]}s..${batch[batch.length - 1]}s)`);
+  }
+  await browser2.close();
+}
