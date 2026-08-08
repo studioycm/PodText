@@ -457,11 +457,28 @@ exactly the app's migrations and is indistinguishable from a real copy. The
 check answers *"is this a stranger's database?"*, never *"is this a second copy
 of mine?"*
 
-**Expected fallout — this is the point, not a side effect.** Budget for strict
-mode rejections, MySQL not rolling back DDL, ordering assumptions resting on
-SQLite's rowid, identifier quoting, `||`, `group_concat`, `lockForUpdate()`.
-Expect the suite several times slower than `:memory:` — the last full gate was
-1,651 tests in 473s. Named additions from review:
+**Expected fallout — this is the point, not a side effect.** Budget for SQL
+strict-mode rejections, MySQL not rolling back DDL, ordering assumptions
+resting on SQLite's rowid, identifier quoting, `||`, `group_concat`,
+`lockForUpdate()`. Expect the suite several times slower than `:memory:` — the
+last full gate was 1,853 tests, green under full Eloquent strict mode
+(`f751455`, 2026-08-08).
+
+**Two unrelated things are both called "strict mode" and will both fire during
+the lane's first red run** — mis-attribution is the trap:
+
+- **SQL strict mode** (`'strict' => true` on the connection →
+  `STRICT_TRANS_TABLES`): MySQL rejecting truncation, bad values, zero-dates
+  that SQLite accepted. *This* is the lane's expected new-failure class.
+- **Eloquent strict mode** (`Model::shouldBeStrict()` outside production,
+  since `f751455`): already enforced on the current suite. Its
+  missing-attribute guard catches column-subset selects reading unselected
+  attributes — the five defects that commit fixed were exactly that shape.
+  Lane failures from this guard are **signal, not lane noise**: the lane
+  changes no select lists, so a new missing-attribute violation means a real
+  query defect surfaced by different data flow, not an engine artifact.
+
+Named additions from review:
 
 - **DDL-in-test sites, with addresses**: `TranscriptionsModelTest.php:65`
   (`Schema::dropIfExists`) and `AuthzLegacyRoleBackfillTest.php:247,766-776`
@@ -736,11 +753,18 @@ input; `now()`-driven values are unaffected.
 Config handles the 363 ordinary days; one rule handles the gap day, one stated
 policy handles the fold day.
 
-### 10.4 The scheduler already disagrees with its author
+### 10.4 The scheduler already disagrees with its author — twice now
 
 `routes/console.php:13` — `Schedule::command('media:prune-quarantine --apply')
 ->dailyAt('03:30')` with no `->timezone()`. Laravel evaluates against
-`config('app.timezone')`, so it runs at **03:30 UTC = 06:30 Israel**.
+`config('app.timezone')`, so it runs at **03:30 UTC = 06:30 Israel**. And the
+pattern is reproducing: `aef8c81` (2026-08-08) added
+`Schedule::command('model:prune')->dailyAt('03:50')`, also unpinned — written
+"next to the existing quarantine prune", which is exactly how an undecided
+default propagates. Two tasks now; the fix is one decision applied to both
+(explicit `->timezone(UiTimezone::name())` if the author means Israel night,
+or a comment saying UTC is meant), plus a guard-shape candidate: a test that
+every schedule entry states its timezone intent.
 
 [VERIFIED] this also confirms step 4 is safe: the scheduler already evaluates in
 UTC and Forge's cron fires every minute, so changing the server's OS timezone
