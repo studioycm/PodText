@@ -203,12 +203,14 @@ class PublicTranscriptionSelector
      * transcription scheduled up to three hours out therefore read as already
      * public.
      *
-     * The obvious fix — setting the connection timezone — is the wrong one
-     * here: published_at is a MySQL TIMESTAMP column, so the session timezone
-     * governs how every stored value is read back, and changing it would
-     * shift the entire existing catalogue by three hours. Taking the moment
-     * from PHP is correct under any session timezone, because both sides of
-     * the comparison then get the same treatment.
+     * That skew is being closed by the alignment program
+     * (database-alignment-spec.md), which migrates every stored timestamp
+     * before the production OS clock moves to UTC, deliberately in that
+     * order (§9) so no existing value is reinterpreted along the way. That
+     * does not reopen this decision: §11 bans DB-generated time as a class —
+     * CURRENT_TIMESTAMP, useCurrent() — not as a stand-in for this one skew,
+     * so sqlMoment() stays and taking the moment from PHP remains correct
+     * regardless of what the database clock reads.
      *
      * It also restores testability: Carbon::setTestNow() and travel() cannot
      * reach CURRENT_TIMESTAMP, which is why no test ever caught this.

@@ -12,9 +12,12 @@ use Illuminate\Support\Carbon;
  *
  * Written because every off-the-shelf helper we looked at groups with a raw SQL
  * `DATE(column)`, which buckets on the database timezone: wrong for a board
- * whose editorial day is a Jerusalem day, wrong across daylight-saving shifts,
- * and different between production MySQL and the SQLite test database.
- * Bucketing therefore happens in PHP, where the timezone is explicit.
+ * whose editorial day is a Jerusalem day, and wrong across daylight-saving
+ * shifts. That holds regardless of how correctly the database clock itself is
+ * set — this is a presentation choice, converting a UTC-stored instant to a
+ * Jerusalem calendar day, not a workaround for engine or clock disagreement
+ * between MySQL and SQLite. Bucketing therefore happens in PHP, where the
+ * timezone is explicit.
  */
 class JerusalemDailySeries
 {
