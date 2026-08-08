@@ -102,8 +102,14 @@ class SeedRehearsalEdges extends Command
                             // column's real capacity (narrow code columns get a
                             // truncated payload; none of them is unique — measured).
                             // mb_substr counts codepoints like MySQL does; Str::limit counts display width (niqqud = 0) and can overflow narrow columns at the boundary.
+                            // Truncation may land exactly on the separator space (measured:
+                            // 7-codepoint 'שָׁלוֹם' + ' ' cut at a length-8 column) — rtrim it so
+                            // the seeder never manufactures a B5 trailing-space finding by
+                            // construction. The 'טעם ' payload's own designed space still sits
+                            // mid-string in every wide column, so the designed collation
+                            // coverage is unchanged.
                             $payload = self::CollationPayloads[$i % count(self::CollationPayloads)];
-                            $row[$column->c] = mb_substr($payload.' '.Str::random(8), 0, min(60, (int) ($column->len ?? 60)));
+                            $row[$column->c] = rtrim(mb_substr($payload.' '.Str::random(8), 0, min(60, (int) ($column->len ?? 60))), ' ');
                         }
                     }
 
