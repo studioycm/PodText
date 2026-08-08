@@ -2705,3 +2705,32 @@ and `model:show` is safe to use again.
   layers, zero orphaned abilities; its section 4 lists the real findings,
   led by the policy-less-resources asymmetry (an Admin cannot delete an
   episode but can delete the podcast that owns it).
+
+## Database Alignment — Phase 0 (snapshot tooling + folding deploy)
+
+- The database alignment program is specced in
+  `docs/phase-02/database-alignment-spec.md` (adversarially re-verified
+  2026-08-08 against the LaravelDaily archive, vendor source, and live
+  probes; supersedes the clock half of `hebrew-collation-and-clock-plan.md`
+  and rewrites `mysql-test-lane-spec.md` §3/§6/§7 — those two docs still
+  need their deferral banners, queued for the next docs pass).
+- Phase 0 executed 2026-08-08: `db:snapshot`/`db:restore` commands landed as
+  `aabad86` — gzipped table-level dumps + JSON manifest under
+  `storage/app/db-snapshots/`, restore guarded by a typed-name confirmation
+  and content refusals for the two measured dump traps (B1 CREATE
+  DATABASE/USE retargeting, B2 --tz-utc re-rendered literals). Tests pin the
+  refusals and exact shell contracts (10 passing); proven end-to-end locally
+  by a real snapshot + full restore round trip with identical counts.
+- Production caught up the same day behind a native `artisan down` window:
+  deploy `75045371` landed `aabad86`, the Hebrew-folding migration ran
+  ([42]), `search:backfill-folds` filled 1,053 rows across 12 models
+  (shadows 100%), `db:check-settings` baselined the two known findings live
+  (utf8mb3 schema default, +03:00 clock), `/up` 200 after `up`. The public
+  503 is the operator's deliberate MP1 soft maintenance, pre-existing.
+- Backups on record: local `podtext-20260808-180202-phase0-baseline`
+  (9.4.0), production `/home/forge/backups/…-pre-folding.sql.gz` (manual,
+  pre-deploy) and `podtext-20260808-180633-post-folding` (via the new
+  command, 8.0.46). Auto-deploy is OFF — push does not deploy; this deploy
+  was triggered deliberately via Forge.
+- Next: Phase 1 (dedicated local MySQL user, off root), then the alignment
+  migration phase behind its rehearsal-database rule (spec §9).
