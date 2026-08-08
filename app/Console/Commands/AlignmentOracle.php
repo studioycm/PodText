@@ -407,8 +407,8 @@ class AlignmentOracle extends Command
                         ORDER BY ORDINAL_POSITION", [$table->t]),
                 );
 
-                // Incremental hash over ordered rows: GROUP_CONCAT would silently
-                // truncate at group_concat_max_len and report false equality.
+                // Incremental hash over ordered rows: GROUP_CONCAT silently
+                // truncates at group_concat_max_len and reports false equality.
                 $context = hash_init('sha1');
                 $rows = 0;
 
