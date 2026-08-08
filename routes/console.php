@@ -11,3 +11,4 @@ Artisan::command('inspire', function () {
 // Runs only when the host invokes `php artisan schedule:run` (no scheduler is
 // provisioned by the app itself).
 Schedule::command('media:prune-quarantine --apply')->dailyAt('03:30');
+Schedule::command('model:prune')->dailyAt('03:50');

@@ -5,6 +5,8 @@ use App\Enums\FormVerificationResult;
 use App\Mail\PublicFormEmailVerificationCodeMail;
 use App\Models\FormVerificationCode;
 use App\Support\Forms\Verification\FormVerificationManager;
+use Illuminate\Console\Scheduling\Event;
+use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
@@ -186,4 +188,34 @@ it('renders singular and plural expiry copy in queued email content', function (
         formName: 'Test form',
         mailLocale: 'en',
     ))->assertSeeInHtml('This code expires in 5 minutes.');
+});
+
+it('prunes only codes more than thirty days past expiry', function (): void {
+    $make = fn (string $address, mixed $expiresAt): FormVerificationCode => FormVerificationCode::create([
+        'channel' => FormVerificationChannel::Email,
+        'address' => $address,
+        'code_hash' => hash('sha256', 'irrelevant'),
+        'form_key' => 'request_transcription',
+        'guest_token_hash' => hash('sha256', 'guest-token'),
+        'expires_at' => $expiresAt,
+    ]);
+
+    $longDead = $make('dead@example.com', now()->subDays(31));
+    $recentlyExpired = $make('recent@example.com', now()->subDay());
+    $active = $make('active@example.com', now()->addMinutes(10));
+
+    $this->artisan('model:prune')->assertSuccessful();
+
+    expect(FormVerificationCode::query()->whereKey($longDead->getKey())->exists())->toBeFalse()
+        ->and(FormVerificationCode::query()->whereKey($recentlyExpired->getKey())->exists())->toBeTrue()
+        ->and(FormVerificationCode::query()->whereKey($active->getKey())->exists())->toBeTrue();
+});
+
+it('schedules model pruning daily', function (): void {
+    $events = collect(app(Schedule::class)->events());
+
+    expect($events->contains(
+        fn (Event $event): bool => str_contains((string) $event->command, 'model:prune')
+            && $event->expression === '50 3 * * *',
+    ))->toBeTrue();
 });

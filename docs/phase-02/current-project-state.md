@@ -2673,3 +2673,35 @@ and `model:show` is safe to use again.
   `app/Support/<Feature>` folders ARE the architecture; the 13 query classes
   and 8 Media value objects are feature-cohesive where they stand. Moving
   them would be churn.
+
+## Eloquent Strict Mode and Verification-Code Pruning
+
+- 2026-08-08, commits `f751455` and the pruning commit following it. Operator
+  decisions D2 (strict mode, option A on evidence) and D4 (prune window).
+- `Model::shouldBeStrict(! isProduction())` is on — all three guards outside
+  production. Adopted only after the full suite ran green under it; the first
+  run failed 84 tests and every failure decomposed into a real defect, which
+  is the argument for keeping it:
+  - the media picker's subset select fed `PublicMediaDelivery` records
+    without `updated_at`/`trusted_at`, so the inline-SVG safety cache keyed
+    on `0` — a live bug found by the guard, not a false positive;
+  - `withExists()` merges a cast into hydrated instances and `refresh()`
+    drops the aliased column while the cast lingers, so `hasAttribute()`
+    affirms an attribute `getAttribute()` cannot deliver
+    (`EpisodePublicState` now asks the attributes array);
+  - `AdminResourcesTest` asserted `Storage::assertExists($group->cover_path)`
+    against the retired legacy owner-column — `assertExists(null)` checks the
+    disk ROOT, so the assertion had been vacuously green since the
+    retirement. Strict mode is what exposed it.
+- New-code rule: any query that projects a column subset owns the full read
+  contract of everything downstream of its rows; strict mode now enforces
+  this in dev and CI.
+- `FormVerificationCode` is `MassPrunable` — codes 30 days past expiry —
+  with `model:prune` scheduled daily at 03:50 next to the quarantine prune.
+  No retention expectation for used codes exists in docs or tests (checked
+  before choosing the window).
+- The Gate surface map (F9) lives at
+  `docs/research/authz-gate-surface-map.md` — 113 sites, three deliberate
+  layers, zero orphaned abilities; its section 4 lists the real findings,
+  led by the policy-less-resources asymmetry (an Admin cannot delete an
+  episode but can delete the podcast that owns it).

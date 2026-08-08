@@ -6,6 +6,7 @@ use App\Enums\FormVerificationChannel;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Scope;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\MassPrunable;
 use Illuminate\Database\Eloquent\Model;
 
 #[Fillable([
@@ -21,6 +22,19 @@ use Illuminate\Database\Eloquent\Model;
 ])]
 class FormVerificationCode extends Model
 {
+    use MassPrunable;
+
+    /**
+     * Codes 30 days past expiry (operator decision 2026-08-08, D4). No
+     * retention or audit expectation exists for used codes — verified against
+     * docs and tests before choosing the window. MassPrunable on purpose:
+     * deleting a dead code has no side effects, so no per-row events needed.
+     */
+    public function prunable(): Builder
+    {
+        return static::query()->where('expires_at', '<', now()->subDays(30));
+    }
+
     protected $attributes = [
         'attempts' => 0,
     ];
