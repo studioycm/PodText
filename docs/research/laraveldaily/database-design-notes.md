@@ -1,8 +1,10 @@
 # LaravelDaily: Structuring Databases in Laravel 12 — course notes
 
 Notes on [Structuring Databases in Laravel 12](https://laraveldaily.com/course/structuring-databases-laravel)
-(18 text lessons, 1h21m, **Apr 2025**), read 2026-08-07. Four lessons read in full, chosen for
-PodText relevance: enum columns, JSON columns, status-history, and unlimited-depth hierarchies.
+(18 text lessons, 1h21m, **Apr 2025**). Read 2026-08-07 (4 lessons) + 2026-08-08 (6 more in
+full from `raw/`, the rest digested) — **10/18 full, 18/18 covered**. Second-pass findings in
+§1b; every applicable practice turned out to be already implemented in this schema, twice
+with reasoning deeper than the course's.
 
 ---
 
@@ -142,6 +144,71 @@ count changes; the numbers above are the baseline to compare against.
 
 ---
 
+## 1b. Second pass (2026-08-08) — six more lessons, checked against the live schema
+
+### Indexes — already implemented, with reasoning past the lesson's level
+
+The lesson: index only what `WHERE`/`ORDER BY` actually uses (measured 24 ms → 2 ms on its
+demo); every index costs insert speed and disk (its `created_at` index bought ~nothing and
++8 MB); `foreignId()->constrained()` indexes itself; composite indexes for repeated
+two-column conditions.
+
+Measured here: the Hebrew folding migration
+(`2026_08_06_223132_add_hebrew_search_folding_columns.php:73-74`) already indexes every
+varchar shadow column — and its docblock reasons **beyond** the course: LONGTEXT cannot take
+a plain index, and a btree cannot serve the leading-wildcard `LIKE` the search ships anyway,
+so the transcript body deliberately has none. The course never mentions the
+leading-wildcard limitation at all. The shadows are queried via `title_search`/`name_search`
+`LIKE` in [ContentItemSearch.php:473-476](../../../app/Livewire/Public/ContentItemSearch.php).
+**Nothing to adopt; the house work is ahead of the lesson.**
+
+### Primary keys & unique indexes — already implemented
+
+The lesson: pivots without `id` need a composite primary; put uniqueness on the DB level so a
+future developer's missing validation cannot corrupt "sensitive" tables.
+
+Measured (`SHOW INDEX`): `category_content_group` and `category_content_item` both carry
+composite PRIMARY keys (`category_id + content_*_id`); spatie's `taggables` has its
+`tag_id + taggable_id + taggable_type` unique. **Done.**
+
+### Cascade / restrict / null on delete — deliberate mix, matching the lesson's frame
+
+The lesson's three options (validate in app, hide upfront — which it argues against on
+performance and trust grounds — or decide at the FK). Measured here: **21 `cascadeOnDelete`,
+14 `nullOnDelete`, 3 `restrictOnDelete`** across migrations — per-relation decisions, not a
+blanket default, which is exactly the lesson's conclusion. Its warning against eager-loading
+children merely to hide delete buttons ("loading a lot of data for the 1% who delete") is the
+same closure-cost reasoning as the Filament performance guidance already in force.
+
+### Grandparent foreign keys — blesses `featured_transcription_id` again
+
+The lesson stores a duplicate grandparent FK for query convenience, names the 3NF violation,
+and concludes "in some cases it brings more benefit than harm". Same shape as
+`content_items.featured_transcription_id` (§ order-status above) — second independent
+corroboration. Its `staudenmeir/belongs-to-through` alternative is noted; no need here.
+
+### UUID / ULID — confirms the existing decision
+
+The lesson's own advice: keep integer PKs and add a UUID **alongside**, only where IDs must
+be hidden in URLs. PodText's import/export layer already refuses numeric IDs as portable
+identifiers in favour of reference keys and slugs (`.ai/import-export`), and public URLs are
+slug-driven. No table needs a UUID column for that; `HasUuids`/`HasUlids` + `uniqueIds()` +
+`getRouteKeyName()` are recorded as the mechanism if one ever does. ULID = sortable variant.
+
+### Naming — matches throughout
+
+`is_` boolean prefix (the lesson's main advice) — this schema's `is_visible`, `is_admin`
+style matches; `owner_id`-style FKs with explicit `constrained('users')` for clarity — the
+media tables already do the equivalent. Nothing to change.
+
+### Digest-only (verified nothing contradicts existing notes)
+
+`belongsto-vs-belongstomany-vs-polymorphic`, `hasone-relationship-examples`, `normalization`,
+`polymorphic-many-to-many-query-data`, `pivot-tables-extra-field-operations` — covered better
+by the Eloquent course notes; `custom-fields-eav` (JSON column wins for this repo's case,
+already decided); `invoice-numbers` (N/A); `practice-change-db-structure-live-project`
+(worked example of a live migration, generic).
+
 ## 2. Applies here vs. generic
 
 | lesson | applies to PodText? |
@@ -151,7 +218,7 @@ count changes; the numbers above are the baseline to compare against.
 | Order status history | **Corroborates** `featured_transcription_id`. No action; useful as rationale. |
 | Unlimited levels parent/children | **One finding** — `descendantIds()` is O(nodes) on a public path. Currently 2 queries. Watch, don't fix. |
 
-## 3. What I did not read
+## 3. What I did not read (superseded — see §1b)
 
 14 of 18 lessons: `belongsto-vs-belongstomany-vs-polymorphic`, `hasone-relationship-examples`,
 `normalization-three-normal-forms`, `hasmany-delete-parents-validate-cascade`,
