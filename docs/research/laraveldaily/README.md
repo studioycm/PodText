@@ -205,6 +205,30 @@ identifier against vendor source or `--help`.
 Signed caption URLs carry `expires=` and die in roughly a day — collect and download in one
 sitting.
 
+### 3b-bis. Downloaded video files — the fifth channel, when the operator supplies mp4s
+
+Premium accounts can download lesson videos. An actual mp4 closes the one gap captions
+cannot: **on-screen content the narration never reads aloud** — terminal commands, config
+files, menus, pricing pages, exact flags. On the AI-agents course this yielded material that
+existed in no other channel (the agent roster, exact MCP wiring, credit arithmetic on the
+meter, a premium article shown on screen long enough to read).
+
+Extraction without installing anything (`video-frames.mjs`): Playwright drives the **system
+Chrome** (`channel: 'chrome'` — the bundled Chromium lacks h264), navigates to the mp4's
+`file://` URL (Chrome's media document exposes a `<video>`), seeks, draws to canvas, saves
+**contact sheets** (3×4 tiles, timestamped) plus full-res single frames on demand:
+
+```bash
+node video-frames.mjs sheet "/path/to/lesson.mp4" outdir 20   # one sheet per ~4 min
+node video-frames.mjs frame "/path/to/lesson.mp4" outdir 312  # full-res at 5:12
+```
+
+Two traps, both hit and fixed in the script: a `setContent` page is about:blank-origin and
+Chrome refuses it `file://` subresources — navigate to the mp4 itself; and `file://` is
+opaque-origin for canvas, so `toDataURL` throws SecurityError unless Chrome is launched with
+`--allow-file-access-from-files`. Read the sheets as images; the 540p tiles are legible for
+terminal text, and anything marginal gets a full-res `frame` pass.
+
 ### 3c. Comments — worth reading
 
 Comments sit under `.comments-*` classes (e.g. `.comments-date` wraps the "N months ago"
@@ -232,6 +256,7 @@ Three files in this folder, so nobody has to repeat the crawl:
 | --- | --- |
 | [`scrape.mjs`](scrape.mjs) | Playwright scraper. Writes one JSON per course to `raw/`. |
 | [`build-index.mjs`](build-index.mjs) | Generates `index.md` from `inventory.json` + `raw/`. |
+| [`video-frames.mjs`](video-frames.mjs) | Frame extractor for downloaded lesson mp4s — see §3f. |
 | **[`index.md`](index.md)** | **The search surface — start here.** |
 | `inventory.json` | 407 lessons across 27 courses; regenerate with `--inventory`. |
 | `raw/` | Scraped bodies, links, comments, transcripts. **Gitignored** — large, and licensed material from a paid account. |

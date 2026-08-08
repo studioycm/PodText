@@ -272,6 +272,134 @@ material with a shelf life.
   unstaged changes, prompt-stash via Ctrl-C/↑, session hooks. Tool-specific; recorded as
   pointers only.
 
+## 4c. Third pass — the actual video files (2026-08-08)
+
+The operator supplied the mp4s for lessons 1 (Boost), 2 (Codex), 3 (Claude Code) and 6
+(PhpStorm). Frames were extracted with [`video-frames.mjs`](video-frames.mjs) (Playwright +
+system Chrome — no ffmpeg on this machine; method in [README](README.md) §3e) and read as
+contact sheets. This closes the one channel captions cannot carry: **on-screen content the
+narration never reads aloud.** Everything below was absent from both transcript and `.prose`.
+
+### Boost lesson — on-screen specifics
+
+- `boost:install`'s agent roster at recording time: **Amp, Claude Code, Codex, Cursor,
+  Gemini CLI, GitHub Copilot, Junie, Kiro, OpenCode** (he selects Claude Code + Codex +
+  OpenCode). The installer warns: *"This will override the current guidelines, skills, and
+  MCP configuration."*
+- The exact OpenCode MCP wiring Boost writes (`opencode.json`):
+  `{"mcp": {"laravel-boost": {"type": "local", "enabled": true, "command": ["php", "artisan", "boost:mcp"]}}}`.
+- `boost:update` ends with *"No security vulnerability advisories found."* — Boost bundles an
+  advisory check into guideline updates; neither transcript nor our own Boost notes had this.
+- **His `composer.json` wires the hook we advised against**: `post-update-cmd` runs
+  `vendor:publish --tag=laravel-assets` then `@php artisan boost:update --ansi` — *without*
+  `--discover`; discovery he runs manually, and it prompts per package
+  (`spatie/laravel-permission (skills)`, `…model-states`). So his practice is a middle
+  position: automatic refresh of known guidelines, manual adoption of new ones. Our §3
+  reasoning (shared worktree, §4a blast radius) stands, but the note now records his
+  configuration accurately rather than only his narration.
+- Vendor skills ship as `.agents/skills/<name>/SKILL.md` with frontmatter
+  (`author: Spatie`, MIT) and a **"When to Activate"** section — e.g. medialibrary's
+  "Activate when working with file uploads, media attachments, or image processing…".
+- His custom guideline file (`.ai/guidelines/laraveldaily-laravel.md`) is legible on screen.
+  Two rules worth keeping beyond what §2 already had: *"if some library is not available in
+  Laravel Boost `search-docs`, always use **context7**"* (a documented fallback chain), and
+  **"Never chain multiple migration-creating commands (`make:model -m`, `make:migration`)
+  with `&&` or `;` — they may get identical timestamps. Run each separately."** That is a
+  real trap: migration filenames are second-resolution timestamps, and identical stamps make
+  ordering undefined.
+- Visual confirmation that custom guidelines land at the very top of the compiled block:
+  `<laravel-boost-guidelines>` → `=== .ai/laraveldaily-laravel rules ===` before anything else.
+
+### Codex lesson — on-screen specifics
+
+- Codex CLI **v0.128.0**; reasoning menu: Low / Medium (default) / High / Extra high.
+  Status-line is configurable; his fields: `model-with-reasoning`, `current-dir`,
+  `context-used`, `five-hour-limit`, `weekly-limit` (off: `model`, `project-name`,
+  `git-branch`).
+- The auto-approval feature prints its reasoning:
+  *"Automatic approval review approved (risk: low, authorization: high): Searching
+  project-specific Laravel documentation is a read-only, low-risk step directly in service
+  of the user-requested implementation."* The tips article (below) explains the mechanism:
+  the command is **checked by an LLM itself** — "and yes, it uses a bit of tokens".
+- Boost MCP traffic on screen: `laravel-boost.search-docs({"packages": ["laravel/framework"],
+  "queries": [...], "token_limit": 10000})`, `database-schema({"summary": true})`,
+  `get-absolute-url`, `application-info` — and the roster payload names Boost **2.4.6**.
+- The agent's artisan trail includes `make:resource UserResource --json-api` and reads of
+  `resource-json-api.stub` in the framework — a JSON:API resource path in current Laravel
+  that none of our notes had recorded.
+- The demo's full verification loop on screen: `vendor/bin/pint --dirty --format agent`
+  (`{"tool":"pint","result":"passed"}`) then `php artisan test --compact` → "7 tests passed,
+  32 assertions", and in the seeder demo it flags *"Full suite has 1 unrelated existing
+  failure: guests cannot list users expects 401 but gets 200, because routes/api.php has
+  auth:sanctum commented out"* — the agent attributing a pre-existing red test rather than
+  absorbing it.
+- The premium tips article is on screen long enough to read. The pieces the spoken skim
+  dropped: bypass flags are `codex --dangerously-bypass-approvals-and-sandbox` and its alias
+  `codex --yolo` (Claude Code equivalent named as `claude --dangerously-skip-permissions`);
+  `!cmd` runs a shell command from the prompt line; screenshots paste via macOS
+  `Cmd+Ctrl+Shift+4` then `Ctrl+V` → shown as `[Image #1]`; `/review` reviews unstaged
+  changes; `/keymap` lists 16 editor actions; hooks fire on `SessionStart`/`Stop` (his use:
+  play a sound when the prompt finishes); and his caveat that the status-line 5h/weekly
+  numbers *"cannot be trusted… useful only in the beginning of the prompt — probably the
+  most useful thing is Context"*, with the real balance on the provider dashboard
+  (5-hour 100% / weekly 48%, with reset timestamp).
+
+### Claude Code lesson — on-screen specifics
+
+- Claude Code **v2.1.128** on Claude Pro; `/model` menu: *Default (recommended) Sonnet 4.6 —
+  best for everyday tasks; Opus 4.7 — most capable, ~2× usage vs Sonnet; Haiku 4.5 — fastest*,
+  with an effort adjuster (his: Opus 4.7, medium effort).
+- The question-tool UI he praises is on screen: topic chips (*Controller style · CRUD
+  actions · Auth · Slug · Submit*), options including *"Chat about this"* and *"Skip
+  interview and plan immediately"*. His answers: match the existing single-action +
+  `JsonApiResource` pattern; APIs don't need create/edit form endpoints; leave auth
+  commented; auto-generate slug from name.
+- The plan-approval menu includes **"No, refine with Ultraplan on Claude Code on the web"**,
+  and the plan is saved to `~/.claude/plans/<generated-slug>.md` — both invisible in the
+  transcript.
+- Run outcome on screen: 10 single-action controllers, 22 Pest tests (happy + 422/404 +
+  cascade), `migrate:fresh --seed` clean, Pint clean, *"Crunched for 7m 33s"* — and the same
+  pre-existing-failure attribution habit: *"the pre-existing UsersApiTest failure is
+  unrelated — that test expects auth on /api/users, but its middleware was commented out
+  before I started."*
+- The X post he shows (the "downgraded" one §0 references) is legible: *"Downgraded Anthropic
+  plan from $100 to $20. I always used ~30% of weekly limit anyway. But also now GPT-5.4 is
+  BETTER. So now I have: $20/mo Codex (primary driver), $20/mo Anthropic (reviews / second
+  opinion), added $20 on Opencode Zen for testing models like Kimi."* His stack, exactly.
+
+### PhpStorm lesson — on-screen specifics
+
+- The poll behind "PhpStorm is still number one": 395 votes, final — **PhpStorm 45.3% ·
+  VS Code 39.2% · Other 9.1% · "IDE in 2026?! What?!" 6.3%** (Apr 15, 2026).
+- JetBrains' pitch on screen: "Multi-agent experience — Junie, Claude Agent, Codex, and more
+  including GitHub Copilot and Cursor **via ACP**", "Transparent AI costs without vendor
+  lock-in (**BYOK**)".
+- **Junie disables a newly added MCP server by default** — *"Server configuration
+  'laravel-boost' has been added. It is disabled for security reasons. Enable Server"* —
+  and then prompts per command (`laravel-boost/application-info` → Run command / Allow all
+  MCP commands / Allowlist…). A real security posture difference from the terminal agents;
+  nothing in the transcript.
+- Junie's model list with credit multipliers: GPT-5 (~default), GPT-5.3-codex (1.5–2×),
+  GPT-5.4 (2–3×), **GPT-5.5 (3–6×, his pick)**, GPT-5.2 (1.5–2×), Gemini 3.1 Pro (preview),
+  Grok 4.1 Fast Reasoning (3–4× *fewer*).
+- The pricing page: AI Free (3 credits/30d), AI Pro €100/yr (10), **AI Ultimate €300/yr
+  (35 credits/30d, "recommended if you plan to work with Junie regularly")**. License panel
+  semantics: monthly credits spend first; top-ups only after quota, valid 12 months.
+- The credit arithmetic §4b quoted is visible as a sequence: **35.00 → 34.83 after the Junie
+  task (0.17) → 34.04 after the same task via Claude Agent (0.79)** — the ~4.6× gap measured
+  on the meter itself.
+- Claude Agent's ToS dialog states **Claude Code is installed automatically** ("Install and
+  Continue"), under Anthropic's Commercial ToS plus JetBrains AI ToS; agent bar shows
+  Mode: Default · Model: Opus · Effort: Medium, and Junie's "Brave Mode" toggle is still
+  present.
+
+### What the frames did *not* change
+
+No claim in §1–§4b needed correcting — the transcript-based read held. The frames added
+precision (exact flags, menus, numbers) and four genuinely new facts: the Boost advisory
+check, the author's own `post-update-cmd` hook, Junie's MCP-disabled-by-default posture, and
+the migration-timestamp chaining trap in his guidelines.
+
 ## 5. Applies here vs. generic
 
 | lesson | applies to PodText? |
@@ -311,6 +439,12 @@ MySQL), conversation memory, structured tool responses.
   (before and after the 2.5.3 upgrade); `config/boost.php` exclusion list;
   `tests/Feature/FilacheckAgentModeGuardTest.php`;
   `php artisan test --filter=FilacheckAgentModeGuard` (4 passed, 11 assertions).
+
+### Sources added by the third pass
+
+- The four mp4s supplied by the operator (lessons 1, 2, 3, 6; 540p/360p), frame-extracted via
+  [`video-frames.mjs`](video-frames.mjs) — 11 contact sheets read; method in
+  [README](README.md) §3b-bis.
 
 ### What I could not obtain
 
