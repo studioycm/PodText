@@ -60,7 +60,7 @@ Search returned all 27 results without pagination; whether longer result sets pa
 | date | course | size | status |
 | --- | --- | --- | --- |
 | Mar 2026 | Laravel 13 Eloquent: Expert Level · `laravel-eloquent-expert` | 41L video+text | ✅ 24/41 full + all digested — rewritten 2026-08-08 |
-| Apr 2025 | Structuring Databases in Laravel 12 · `structuring-databases-laravel` | 18L text | ✅ 4/18 |
+| Apr 2025 | Structuring Databases in Laravel 12 · `structuring-databases-laravel` | 18L text | ✅ 18/18 covered — finished 2026-08-08 |
 | Sep 2023 | Laravel GroupBy: Practical Examples · `laravel-groupby` | 13L text | |
 | Jul 2022 | Laravel Collections Chains: 15 Real Examples · `laravel-collections` | 16L video | |
 | Oct 2021 | Better Eloquent Performance · `eloquent-performance` | 21L video | topic matters, age brutal |
@@ -116,7 +116,7 @@ Livewire 3.
 
 | date | course | size | status |
 | --- | --- | --- | --- |
-| Mar 2026 | How to Structure Laravel 13 Projects · `laravel-projects-structure` | 16L text | ✅ 3/16 |
+| Mar 2026 | How to Structure Laravel 13 Projects · `laravel-projects-structure` | 16L text | ✅ 16/16 — finished 2026-08-08 |
 | Oct 2025 | Laravel Modules and DDD · `laravel-modules-ddd` | 16L video | |
 | Dec 2024 | Laravel Project PROCESS: Start to Finish · `laravel-project-process` | 16L text | |
 | Aug 2024 | Design Patterns in Laravel 11 · `design-patterns` | 17L text | **★ selected** |
@@ -153,7 +153,7 @@ Livewire 3.
 
 | date | course | size | status |
 | --- | --- | --- | --- |
-| May 2026 | AI Agents/IDEs for Laravel: May 2026 · `ai-agents-laravel-2026` | 7L video | ◐ 2/7 — the only current one |
+| May 2026 | AI Agents/IDEs for Laravel: May 2026 · `ai-agents-laravel-2026` | 7L video | ✅ 7/7 — finished 2026-08-08; the only current one |
 | Feb 2026 | Laravel AI SDK: 6 Practical Examples · `laravel-ai-sdk` | 9L video | **★ selected** — incl. speech-to-text |
 | Nov 2025 | Laravel Coding with AI Agents: Cursor, Claude Code, Codex · `laravel-ai-agents-cursor-claude-code-codex` | 5L video | superseded |
 | Aug 2025 | PhpStorm Junie AI · `phpstorm-junie-ai` | 7L video | superseded |
