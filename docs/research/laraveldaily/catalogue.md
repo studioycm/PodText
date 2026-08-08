@@ -145,7 +145,7 @@ Livewire 3.
 | date | course | size | status |
 | --- | --- | --- | --- |
 | Mar 2025 | Tailwind CSS v4 for Laravel Developers · `tailwind-laravel` | 9L text | **★** we run Tailwind 4 |
-| Aug 2024 | Multi-Language Laravel 11: All You Need to Know · `multi-language-laravel` | 18L text | **★** Hebrew/RTL — check staleness hard |
+| Aug 2024 | Multi-Language Laravel 11: All You Need to Know · `multi-language-laravel` | 18L text | ✅ probed + 4 full — **re-badged, ~2023 authorship**; stable half already implemented here; translation-sheet pkg abandoned |
 | May 2023 | Laravel User Timezones · `laravel-user-timezones` | 11L text | **★ selected** — `Asia/Jerusalem` presentation |
 | Feb 2022 | Practical Alpine.js From Scratch · `alpine-js` | 19L video | Livewire bundles Alpine |
 

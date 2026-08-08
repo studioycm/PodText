@@ -342,6 +342,7 @@ Established 2026-08-07:
 | [app-structure-notes.md](app-structure-notes.md) | How to Structure Laravel 13 Projects | Mar 2026 | passes — **16/16**, premise doesn't fit this app |
 | [exceptions-notes.md](exceptions-notes.md) | Handling Exceptions and Errors in Laravel 12 | Mar 2025 | mixed — **8/8, rewritten**; sample code broken |
 | [roles-permissions-notes.md](roles-permissions-notes.md) | Roles and Permissions in Laravel 13 | Apr 2026 | passes — validates the staged authz position |
+| [multi-language-notes.md](multi-language-notes.md) | Multi-Language Laravel 11 | card Aug 2024 | **mixed — re-badged, ~2023 authorship**; stable half implemented here |
 | [ai-agents-notes.md](ai-agents-notes.md) | AI Agents/IDEs for Laravel | May 2026 | passes — **7/7**, tool comparisons expire fast |
 
 ### Known unread, ranked for a next pass
