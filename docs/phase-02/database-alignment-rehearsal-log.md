@@ -20,15 +20,20 @@ Both engines converted cleanly with **byte-identical value preservation** (oracl
 
 The 8.0.46 figures are the production-window estimate: **the migration itself is sub-second at this data size**; the window's real cost is the snapshot + capture + compare bookends.
 
-## Defects rehearsal caught (both plan-inherent, both fixed and re-proven)
+## Defects rehearsal caught (all plan-inherent, all fixed in code and re-proven)
 
 1. **Seeder collided on composite-unique pivots** (`author_transcription (author_id, transcription_id)`, SQLSTATE 1062 on the first clone). Root cause: `COLUMN_KEY` cannot see composite unique indexes (first column reports MUL) — the earlier "measured zero uncloneable keys" canary was itself blind. Fix `1c0d294`: unique constraints read from `information_schema.STATISTICS`; tables whose every unique index intersects the varying set keep the insert path, others get an in-place update path (date edges only, primary-key-addressed, up to 7 rows).
 2. **Oracle hashed the `migrations` ledger** — the migration run inserts its own ledger row, so capture→migrate→compare could never pass as planned (`value drift in migrations: rows 82 → 83`). Fix `8abadbe`: the ledger is excluded from value hashing (its mutation IS the act under test); its column properties stay captured, so its collation conversion is still verified.
 
+## Drop-and-recreate verification (operator-requested, 2026-08-09)
+
+After the third fix (`cc86be5`, below), both rehearsal databases were **dropped, recreated, and run end-to-end with zero manual intervention**: restore → seed → pre-flight CLEAN (no prune step) → capture → migrate (613ms / 639ms) → oracle PASS → check-settings aligned. The sequence is clean by construction on a fresh database on both engines.
+
+3. **Seeder manufactured B5 findings at truncation boundaries** — 7-codepoint payloads (`שָׁלוֹם`, `ם סופית`) + separator truncate at exactly 8 chars in `settings_backup_snapshots.format`, leaving trailing spaces that made pre-flight exit 1 until manually pruned. Fix `cc86be5`: the truncated payload is `rtrim`'d — only an accidental boundary-cut space is stripped; `'טעם '`'s designed space sits mid-string in every wide column, so collation coverage is unchanged. (The first prune attempt was its own lesson: under PAD SPACE, `col <> TRIM(...)` compares equal, so the delete matched 0 rows — the byte-length predicate `LENGTH(col) <> LENGTH(TRIM(TRAILING CHAR(32) FROM col))` is the correct form. That very phenomenon is what this migration retires.)
+
 ## Notes for the production window (Task 11)
 
-- **Seeded B5 artifacts are a rehearsal-only phenomenon**: 7-codepoint payloads (`שָׁלוֹם`, `ם סופית`) + separator truncate at exactly 8 chars in `settings_backup_snapshots.format`, manufacturing trailing spaces. Production runs pre-flight on real data only — Task 4's live scan of that lineage was clean.
-- **Pruning trailing-space rows needs the byte-length predicate** (`LENGTH(col) <> LENGTH(TRIM(TRAILING CHAR(32) FROM col))`): under the current PAD SPACE collation, `col <> TRIM(...)` compares equal — the very phenomenon being migrated away bit inside its own rehearsal (first delete attempt affected 0 rows).
+- Production runs pre-flight on real data only (no seeding) — Task 4's live scan of that lineage was clean.
 - The **configured-collation PAD finding** in `db:check-settings` persists until Task 9 hardcodes `utf8mb4_0900_ai_ci` in `config/database.php` — expected and transient; only the clock finding is a Phase 3 matter.
 - Spot check: seeded emoji title `🎧 …` renders intact post-conversion; NULL-alternated clones stayed NULL (nullability preserved, also proven by the oracle property rules).
 - Rehearsal databases **kept** (drop only on operator approval): `podtext_restore_check` (3306) and `podtext_rehearsal` (3307), both now in the converted end state.
