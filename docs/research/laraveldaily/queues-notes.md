@@ -1,85 +1,26 @@
 # LaravelDaily: Queues — course notes + PodText audit
 
-Notes on two courses, read 2026-08-07:
+- **URL**: https://laraveldaily.com/course/queues-laravel — 18 lessons, 1h12m, text, **Mar 2026**
+- **Also covers**: [Practical Laravel Queues on Live Server](https://laraveldaily.com/course/laravel-queues-server) — May 2023, **stale**, §6
+- **Read**: 2026-08-07 (9 lessons, live) + 2026-08-08 (the rest, from the scraped corpus in `raw/`) — **18/18, complete**
+- **Verified against**: `laravel/framework v13.23.0`; this repo's jobs, Horizon and queue config
+- **Staleness verdict**: **passes** — Laravel 13 queue attributes, current job stub, current testing helpers
 
-- **[Queues in Laravel 13](https://laraveldaily.com/course/queues-laravel)** — 18 text lessons,
-  1h12m, **Mar 2026**. Current.
-- **[Practical Laravel Queues on Live Server](https://laraveldaily.com/course/laravel-queues-server)** —
-  7 text lessons, 42 min, **May 2023**. Stale; spot-checked and stopped — §5.
+Full rewrite of the first version of this note, which covered 9 of 18 lessons. Every retained
+claim was re-checked against the repo as it stands today; one claim from the draft of this
+rewrite was itself caught false by that re-check (§4).
 
-All API claims re-verified against the installed `laravel/framework v13.23.0`. The PodText
-audit in §3 is measured against `app/Jobs/`, `config/horizon.php`, `config/queue.php` and
-`.env.example` as they stand today.
-
-**Headline: PodText's queue code is already aligned with almost everything the Mar 2026
-course recommends** — in several places ahead of it. Two small gaps and one unverified
-production setting are in §4.
+**Headline: PodText's queue code and tests already implement almost everything the course
+recommends — ahead of it in places.** The remaining gaps are §7, and they are small.
 
 ---
 
-## 0. Staleness verdicts
+## 1. Correction to the course, kept: "a timed-out job is silently killed" is not accurate
 
-### Queues in Laravel 13 (Mar 2026) — **passes**
-
-The strongest single marker is that it teaches the **Laravel 13 queue attributes**, which are
-genuinely new. Verified — `vendor/laravel/framework/src/Illuminate/Queue/Attributes/`
-contains 13 of them:
-
-`Backoff` · `Connection` · `DebounceFor` · `Delay` · `DeleteWhenMissingModels` ·
-`FailOnTimeout` · `MaxExceptions` · `Queue` · `ReadsQueueAttributes` · `Timeout` · `Tries` ·
-`UniqueFor` · `WithoutRelations`
-
-The course uses the modern single-trait job shape (`Illuminate\Foundation\Queue\Queueable`),
-constructor property promotion, and `readonly` — all Laravel 11+ idiom. Nothing pre-11 leaks
-through.
-
-Coverage gap rather than rot: it teaches `#[Tries]`, `#[Backoff]`, `#[UniqueFor]`,
-`#[WithoutRelations]` and `#[DeleteWhenMissingModels]` — five of the thirteen. `#[DebounceFor]`,
-`#[MaxExceptions]`, `#[Timeout]`, `#[FailOnTimeout]`, `#[Delay]`, `#[Queue]`, `#[Connection]`
-go unmentioned.
-
-### One claim that is imprecise, and it matters — §2.
-
----
-
-## 1. What the course teaches, condensed
-
-Only the parts with a decision in them.
-
-| topic | the useful part |
-| --- | --- |
-| Retries | `$tries` property, `tries()` method, or `#[Tries(5)]`. `#[Backoff(60, 120, 300)]` gives escalating delays — the point being to give a flapping external service time to recover instead of hammering it. |
-| `failed()` | Runs *before* Laravel's own error logging. Real uses: notify admins, **clean up partial data** (temp files, half-created records), `report($exception)` to Sentry/Flare. |
-| Timeouts | Default 60 s. `$timeout` per job. **Prefer many small jobs over one big one** — smaller payloads, less to lose, faster recovery. |
-| Idempotency | A retried job re-runs work that already succeeded. Guard the mutation (`if (is_null($read_at))`), not just the job. |
-| Missing models | Pass **IDs, not models**, and guard existence — or use `#[DeleteWhenMissingModels]` to have the job silently dropped rather than throwing `ModelNotFoundException`. |
-| Unique jobs | `ShouldBeUnique` locks on **the class name by default** — so a second *different* user's job gets dropped too. Always implement `uniqueId()`. `#[UniqueFor(60)]` bounds the lock. `ShouldBeUniqueUntilProcessing` releases it when a worker picks the job up rather than when it finishes. |
-| Priority queues | `->onQueue('priority')` plus `--queue=priority,default`. Strictly ordered: `default` starves until `priority` is empty. |
-| Supervisor / Horizon | With Horizon, Supervisor runs **one** process (`artisan horizon`, `numprocs=1`); Horizon manages workers from version-controlled `config/horizon.php`. Deploy hook is `horizon:terminate`, not `queue:restart`. |
-
-The `ShouldBeUnique` class-name-lock gotcha is the single most valuable item — it is a silent
-data-loss bug, and it is not obvious from the interface name.
-
----
-
-## 2. Correction: "a timed-out job is silently killed" is not accurate
-
-The course states:
-
-> By default, a timed-out job is silently killed by the worker. Adding `$failOnTimeout = true`
-> makes the job explicitly fail — recorded in `failed_jobs`, `failed()` called […] This is
-> almost always what you want.
-
-Measured in `vendor/laravel/framework/src/Illuminate/Queue/Worker.php`. The `SIGALRM` handler
-(`registerTimeoutHandler`, `:293-310`) calls three things in order:
-
-```php
-$this->markJobAsFailedIfWillExceedMaxAttempts($conn, $job, (int) $options->maxTries, $e);
-$this->markJobAsFailedIfWillExceedMaxExceptions($conn, $job, $e);
-$this->markJobAsFailedIfItShouldFailOnTimeout($conn, $job, $e);
-```
-
-and the first of those (`:665-675`) is:
+Measured in `Illuminate/Queue/Worker.php`: the `SIGALRM` handler calls
+`markJobAsFailedIfWillExceedMaxAttempts(...)` **before** the `failOnTimeout` check, and that
+method fails the job properly — `failed_jobs` row written, `failed()` called — whenever the
+timeout lands on the job's last permitted attempt:
 
 ```php
 $maxTries = ! is_null($job->maxTries()) ? $job->maxTries() : $maxTries;
@@ -88,228 +29,230 @@ if (! $job->retryUntil() && $maxTries > 0 && $job->attempts() >= $maxTries) {
 }
 ```
 
-So the accurate statement is:
+For a `tries = 1` job — both of this repo's long jobs — **every** timeout is already a proper
+failure. `$failOnTimeout` / `#[FailOnTimeout]` changes something narrower: fail immediately on
+the *first* timeout instead of releasing for retry. Add it only where a timeout should not be
+retried.
 
-- A job that times out **on its last permitted attempt is already failed properly** —
-  `failed_jobs` row written, `failed()` called — with no `failOnTimeout` needed. For a
-  `tries = 1` job that is *every* timeout.
-- `$failOnTimeout = true` (or `#[FailOnTimeout]`) changes something narrower: it fails the job
-  **immediately on the first timeout, regardless of attempts remaining**, instead of releasing
-  it for retry.
-
-"Silently killed" is therefore wrong as stated, and the correction changes an action item:
-it removes what looked like a real gap in this repo (§3, `ExportContentImagesZip`). Worth
-adding `#[FailOnTimeout]` only where a timeout should *not* be retried — not as a blanket rule.
-
-Also verified, because it governs how `config/horizon.php` and job classes interact:
-**a job's own `$tries` overrides the worker/Horizon setting** (`$maxTries = ! is_null($job->maxTries()) ? … `).
+Also verified: **a job's own `$tries` overrides the worker/Horizon setting**
+(`$job->maxTries()` wins), so Horizon's `tries => 1` here is a fallback, not a cap.
 
 ---
 
-## 3. PodText audit — measured
+## 2. Retries, failures, idempotency, uniqueness — condensed, all verified
 
-### Configuration
+| topic | the useful part |
+| --- | --- |
+| Retries | `$tries` property, `tries()` method, or `#[Tries(5)]`; `#[Backoff(60, 120, 300)]` escalating delays. All **13** Laravel 13 queue attributes exist in `Illuminate/Queue/Attributes/`; the course teaches five. |
+| `failed()` | Runs before Laravel's own logging. Uses: notify admins, clean up partial data, `report($exception)`. |
+| Timeouts | Default 60 s. Prefer many small jobs over one big one. |
+| Idempotency | A retried job re-runs work that already succeeded — guard the mutation, not the job. Pass IDs, not models; or `#[DeleteWhenMissingModels]`. |
+| Unique jobs | `ShouldBeUnique` locks on **the class name by default** — a second *different* user's job is dropped too. Always implement `uniqueId()`. `#[UniqueFor(60)]` bounds the lock. `ShouldBeUniqueUntilProcessing` releases at pickup instead of completion. |
+| Priority queues | `->onQueue('priority')` + `--queue=priority,default`; strict ordering — `default` starves until `priority` drains. |
+| Horizon | Supervisor runs one `artisan horizon` process; workers are config-driven; deploy hook is `horizon:terminate`, not `queue:restart`. |
 
-| item | value | verdict |
+The `ShouldBeUnique` class-name-lock gotcha remains the most valuable single item in the
+course — silent data loss, invisible from the interface name.
+
+---
+
+## 3. Newly read lessons — delay/release, skip middleware, chains, batches, progress
+
+### Delayed dispatch vs conditional release (lesson 8)
+
+`dispatch($user)->delay(now()->addMinutes(15))` delays the start;
+`$this->release(60)` inside `handle()` re-queues a job whose precondition is unmet (their
+example: email not yet verified). Two correct emphases:
+
+- **`release()` requires max attempts to be set** — each release counts as an attempt and the
+  job fails when they run out; without `$tries` it can loop.
+- `#[Backoff]` automates *retry* delays; `release()` remains right for *conditional*
+  re-queueing, where the job decides at runtime.
+
+### Skipping via job middleware (lesson 10)
+
+```php
+public function middleware(): array
+{
+    return [Skip::when(is_null($this->user->email_verified_at))];
+}
+```
+
+`Illuminate\Queue\Middleware\Skip::when(Closure|bool)` — verified present
+(`Skip.php:21`). The job "succeeds" without `handle()` running. This is the declarative form
+of the guard-and-return idiom PodText's image jobs already use inside `handle()`; both are
+valid, middleware makes the skip visible from the class head.
+
+The middleware directory also ships `FailOnException`, `Release`, **`SkipIfBatchCancelled`**,
+`ThrottlesExceptions` — none covered by the course.
+
+### Chains vs batches (lesson 12)
+
+- **`Bus::chain([...])`** — strictly sequential; a failure stops the rest; only the failed job
+  reaches `failed_jobs`, and retrying it resumes the chain. `->catch(fn (Throwable $e) => …)`.
+- **`Bus::batch([...])`** — parallel, explicitly **random order**; every job needs the
+  `Batchable` trait; batches persist in `job_batches` (fresh apps ship the migration;
+  `make:queue-batches-table` otherwise — command verified). Hooks:
+  `->before/progress/then/catch/finally`, plus `->name(…)`, `->onQueue()`, `->onConnection()`.
+- Inside a batch job the course checks `$this->batch()->canceled()` manually — **the framework
+  ships `SkipIfBatchCancelled` middleware for exactly this**, which the course never mentions.
+
+### Batch progress (lesson 13)
+
+`$batch = Bus::batch($jobs)->dispatch()` → hand `$batch->id` to the page →
+`Bus::findBatch($id)` → `processedJobs()`, `totalJobs`, `progress()` (percent). Their demo
+polls by reloading the page; the natural PodText form would be Livewire + `wire:poll` — §7c.
+
+### `queue:listen` locally (lesson 9)
+
+`queue:work` boots the app once and never sees code changes; `queue:listen` re-boots per job.
+Development uses `listen`, production uses `work`. Explains the classic "my change doesn't
+run" confusion; costs nothing to know.
+
+### Intro lessons (1–3)
+
+`ShouldQueue` on notifications, mailables and listeners — covered in
+[events-observers-findings.md](events-observers-findings.md) §4a, including their advice to
+queue the **listener** that does the work rather than each notification. Nothing else new.
+
+---
+
+## 4. Testing queues (lesson 17) — and a false claim caught in this rewrite's own draft
+
+The lesson's three tools, all verified in `v13.23.0` (`BusFake.php:355,508`,
+`InteractsWithQueue.php:92,219`):
+
+| helper | answers | key assertions |
 | --- | --- | --- |
-| `queue.default` | `redis` | matches the course's recommendation |
-| Horizon supervisor-1 queues | `default`, `imports-exports` | separated by workload |
-| Horizon `tries` | `1` | fallback only — overridden per job, §2 |
-| Horizon `timeout` | `1850` (`HORIZON_SUPERVISOR_TIMEOUT`) | — |
-| `queue.connections.redis.retry_after` | `1900` (`REDIS_QUEUE_RETRY_AFTER`) | **correct ordering** |
+| `Queue::fake()` | was it dispatched, with what payload, on which queue | `assertPushed(Job::class)` · `assertPushed(Job::class, fn ($job) => …)` · `assertPushed(Job::class, 1)` · `assertPushedOn('priority', …)` · `assertNotPushed(…)` |
+| `Bus::fake()` | chain/batch structure | `assertChained([A::class, B::class, C::class])` · `assertBatched(fn (PendingBatch $b) => $b->name === '…' && $b->jobs->count() === 3)` |
+| `$job->withFakeQueueInteractions()` | what the job did to the queue from inside `handle()` | `assertReleased(60)` · `assertNotReleased()` · also intercepts `delete()`/`fail()` |
 
-The `retry_after` > worker-`timeout` ordering is the classic double-execution trap: if
-`retry_after` fires first, Redis re-queues a job that is still running. **This repo already
-gets it right and documents the coupling in `.env.example`:**
+Two boundaries the lesson states plainly, both correct and both easy to trip on:
 
-```
-# COUPLING: REDIS_QUEUE_RETRY_AFTER must stay ABOVE HORIZON_SUPERVISOR_TIMEOUT
-```
+- **`Queue::fake()` does not intercept `Bus::chain()`/`Bus::batch()`** — those need
+  `Bus::fake()`.
+- **`withFakeQueueInteractions()` fakes only queue interactions** — pair with `Mail::fake()`
+  etc. for side effects.
 
-The Mar 2026 course never mentions this coupling at all. PodText is ahead of it here.
+### Applied here: already satisfied — and the draft of this section was wrong
 
-### Jobs
+The draft claimed the suite had no `Queue::fake()` and proposed dispatch-contract tests.
+**Measured before writing: `Queue::fake` appears 12 times across 6 test files**, with
+`assertPushed` in count form (`SettingsBackupSnapshotJob::class, 2`), payload-closure form,
+and — at `EpisodeWorkspaceTest.php:537` — a closure asserting
+`$job->queue === 'imports-exports'`, which covers what `assertPushedOn` would. The config
+side has its own file (`ImportExportQueueConfigurationTest`).
 
-Four jobs. Note the first grep I ran for `public $tries` found nothing and would have produced
-a false "no retries configured" finding — **this repo uses typed properties (`public int $tries`)**,
-which that pattern misses. Corrected inventory:
+So the lesson's guidance is **already implemented here, including its advanced forms**. No
+proposal. `withFakeQueueInteractions()` has no current use — no job calls `release()` — worth
+knowing for the day one does. Recorded as the worked example of the count-canary rule: the
+draft's claim came from memory of an earlier session, and one grep killed it.
+
+---
+
+## 5. PodText audit — re-confirmed 2026-08-08
+
+`app/Jobs`, `config/horizon.php`, `config/queue.php`, `.env.example` unchanged since the
+first audit (git-clean on all four).
 
 | | `Download…GroupImage` | `Download…ItemImage` | `ExportContentImagesZip` | `SettingsBackupSnapshotJob` |
 | --- | --- | --- | --- | --- |
-| `$tries` | 3 | 3 | 1 | 1 |
-| `$timeout` | 120 | 120 | 1800 | config, default 1800 |
+| `$tries` / `$timeout` | 3 / 120 | 3 / 120 | 1 / 1800 | 1 / config 1800 |
 | `backoff()` | `[30, 120]` | `[30, 120]` | — | — |
-| `ShouldBeUnique` + `uniqueId()` | yes | yes | — | — |
-| `$uniqueFor` | 600 | 600 | — | — |
-| `middleware()` | `RateLimited` | `RateLimited` | — | — |
-| `ShouldQueueAfterCommit` | yes | yes | yes | yes |
-| `failed()` | yes | yes | yes | **no** |
-| passes IDs not models | yes | yes | yes | yes |
-| guards missing models | yes | yes | — | — |
-| explicit `onQueue()` | yes | yes | yes | — |
+| `ShouldBeUnique` + `uniqueId()` + `$uniqueFor` | ✓ 600 | ✓ 600 | — | — |
+| `RateLimited` middleware | ✓ | ✓ | — | — |
+| `ShouldQueueAfterCommit` | ✓ | ✓ | ✓ | ✓ |
+| `failed()` | ✓ | ✓ | ✓ | **✗** |
+| IDs not models / missing-model guards | ✓ | ✓ | ✓/– | ✓/– |
 
-Mapped against the course's lessons, PodText already implements: retries with escalating
-backoff (lesson 4), `failed()` (5), per-job timeouts (6), idempotency via ID-passing plus
-existence guards (7), `ShouldBeUnique` **with** a real `uniqueId()` and a bounded `$uniqueFor`
-(11), and dedicated queues (14). It adds two things the course does not cover at all:
-`ShouldQueueAfterCommit` on every job, and `RateLimited` middleware on the outbound-HTTP jobs.
-
-`uniqueId()` on the image jobs returns `contentItemId : sha256(expectedUrl)` — so re-dispatch
-after the URL changes is correctly *not* deduplicated. That is a level of care beyond the
-course's `return (string) $this->user->id`.
-
----
-
-## 4. Actual gaps
-
-Three, all small. Nothing here is urgent.
-
-### 4a. `SettingsBackupSnapshotJob` has no `failed()`, and stuck snapshots have no reconciler
-
-The job loops snapshots and catches per-snapshot exceptions, marking that snapshot `FAILED`
-and continuing — good. But if the **whole job** dies (timeout at 1800 s, worker OOM at the
-128 MB Horizon memory limit, deploy restart), every snapshot it had not reached yet stays
-`STATUS_PENDING`.
-
-Measured: `STATUS_PENDING` is written in `SettingsBackupSnapshotManager` (`:83`, `:97`, `:278`)
-and read nowhere that would clear a stranded one. There is no sweeper.
-
-With `tries = 1`, a timeout *does* record the job in `failed_jobs` (§2) — so the failure is
-visible in Horizon. But nothing marks the orphaned snapshot rows, so the backup silently
-appears to be still in progress.
-
-**Proposal:** add a `failed(Throwable $e)` to
-[SettingsBackupSnapshotJob.php](app/Jobs/SettingsBackupSnapshotJob.php) that marks the
-still-pending snapshots for `$this->backupId` as failed with the exception message, mirroring
-the per-snapshot handler already in `handle()`. Roughly ten lines, and it makes the existing
-in-loop error handling total rather than partial.
-
-### 4b. Forge's Horizon-daemon stop timeout is unverified against a 1800 s job
-
-This is the one durable item recovered from the stale 2023 course (§5). Forge's Horizon daemon
-has a **Stop Seconds** setting, and Forge's own guidance is that it must exceed the
-longest-running job — otherwise Supervisor kills a job mid-flight on deploy.
-
-PodText's longest jobs are `ExportContentImagesZip` and `SettingsBackupSnapshotJob` at
-**1800 s each**. So Forge's Horizon daemon Stop Seconds must be **> 1800**. Not verified —
-that is a production console setting, not a repo file, and I did not reach into production
-from a research session.
-
-This is a third term in a coupling this repo already tracks two-thirds of:
+Coupling chain already documented in `.env.example` and correct:
 
 ```
-job $timeout (1800)  <  HORIZON_SUPERVISOR_TIMEOUT (1850)  <  REDIS_QUEUE_RETRY_AFTER (1900)
-                     ... and Forge daemon Stop Seconds must also exceed the job timeout
+job $timeout (1800) < HORIZON_SUPERVISOR_TIMEOUT (1850) < REDIS_QUEUE_RETRY_AFTER (1900)
 ```
 
-**Proposal:** check it once, and if it is right, add the Forge value to the existing
-`# COUPLING:` comment in `.env.example` so the whole chain is documented in one place.
-
-### 4c. Queue attributes are unused (cosmetic)
-
-Every job uses properties and methods rather than the Laravel 13 attributes. This is purely
-stylistic — properties are not deprecated, and `backoff()` as a method is arguably clearer
-than `#[Backoff(30, 120)]`. **No action recommended.** Noted only so it is a decision rather
-than an oversight.
+`Batchable` / `Bus::batch` / `Bus::chain`: **zero uses in `app/`**, and no `job_batches`
+migration exists — batches are wholly new surface here, not something half-adopted.
 
 ---
 
-## 5. The May 2023 companion course — stale, stopped, one item kept
+## 6. The May 2023 companion course — stale, one item kept
 
-Spot-checked two lessons. Three independent staleness markers, all in visible code:
+Three markers in visible code: `php8.1` in the Forge supervisor config, `queue:listen` as the
+generated worker command, the pre-Laravel-11 four-trait job stub. Stopped per the era rule —
+and per the newer rule ([README](README.md) §2) its *architecture* would need re-checking even
+where its APIs run.
 
-- Forge supervisor config shows `php8.1` and `queue:listen` — this repo is on PHP 8.4, and
-  Forge generates `queue:work` now.
-- The job stub uses the **pre-Laravel-11 four-trait shape**
-  (`Illuminate\Bus\Queueable`, `Foundation\Bus\Dispatchable`, `Queue\InteractsWithQueue`,
-  `Queue\SerializesModels`) instead of the single `Foundation\Queue\Queueable`.
-- `protected $user;` with manual constructor assignment, no promotion.
-
-Per the operator's rule (anything ≤ Dec 2024 is stale by default), **stopped there** rather
-than reading the remaining five lessons. That is the result, not a failure.
-
-**One item survives and is worth keeping** — it is ops guidance, which ages differently from
-framework API, and it is what §4b is built on:
-
-> Ensure Graceful Shutdown Seconds is greater than Maximum Seconds Per Job. Otherwise
-> Supervisor may kill the job before it is finished processing.
-
-plus the Horizon-daemon form of the same rule (Stop Seconds > longest job), and the detail
-that a Forge Horizon daemon runs with **processes = 1** because Horizon manages its own
-children.
+Kept, because ops guidance ages differently: **Forge's Graceful Shutdown / Stop Seconds must
+exceed the longest job** — here that means **> 1800 s** on the Horizon daemon. Still
+unverified against production (§7b).
 
 ---
 
-## 6. The bonus "AI skill" — noted, not installed
+## 7. Gaps and proposals (none applied)
 
-Lesson 18 of the Mar 2026 course ships a `laraveldaily-queues-audit` skill (a `SKILL.md`)
-intended to be dropped into `~/.claude/skills/` or a project's `.claude/skills/`, from
-[LaravelDaily/AI-Workflows-For-Laravel](https://github.com/LaravelDaily/AI-Workflows-For-Laravel).
-It codifies the course's recommendations as an automated scan: unqueued long operations,
-listeners/mailables/notifications not implementing `ShouldQueue`, missing `failed()`, missing
-idempotency guards, whole-model payloads, and so on.
+### 7a. `SettingsBackupSnapshotJob` has no `failed()` — stranded `STATUS_PENDING` rows
 
-**Not installed, and I recommend against installing it as-is.** Three reasons:
+If the whole job dies (timeout, OOM, deploy restart), snapshots it had not reached stay
+`pending` forever; nothing sweeps them (`STATUS_PENDING` written in
+`SettingsBackupSnapshotManager:83,97,278`, cleared nowhere on failure). With `tries = 1` the
+*job* failure is visible in Horizon (§1), but the backup rows silently look in-progress.
+**Proposal:** a `failed(Throwable $e)` marking that backup's still-pending snapshots failed —
+mirrors the in-loop handler, ~10 lines.
 
-1. The author says so himself: *"Those are NOT strict rules, many of them are personal
-   preferences."*
-2. Installing it means fetching a `curl`-ed file from a third-party GitHub repo straight into
-   an agent's instruction path — which is precisely the trust model the security course in
-   [laraveldaily-supply-chain-security-notes.md](supply-chain-security-notes.md)
-   argues against. A skill file is executable instruction surface, not documentation.
-3. §3 shows its findings would be mostly already-satisfied here.
+### 7b. Verify Forge's Horizon daemon Stop Seconds > 1800
 
-Recorded because the *pattern* is worth knowing — courses shipping agent skills alongside
-lessons is new as of 2026 and will recur.
+Then record it as the fourth term of the `# COUPLING:` comment in `.env.example`. One
+production-console look.
 
----
+### 7c. Batches fit two existing loops — future option, costs stated, not proposed
 
-## 7. Applies here vs. generic
+- `SettingsBackupSnapshotJob` runs all snapshots inside one 1800 s job with `usleep` pacing.
+  As a named batch of per-snapshot jobs it would gain retry granularity, a real progress
+  number, and `catch()` — at the cost of the `job_batches` migration and moving pacing into
+  middleware.
+- `ExportContentImagesZip`: batch progress via `Bus::findBatch` + `wire:poll` is exactly the
+  lesson-13 pattern if bulk export ever needs UI progress.
 
-| lesson group | applies to PodText? |
-| --- | --- |
-| Basics, mailables, dispatching (01-03) | No — long settled here |
-| Failures, `failed()`, timeouts (04-06) | **Partly** — one gap, §4a. Plus the §2 correction |
-| Idempotency, unique jobs (07, 11) | Already implemented, more carefully than the course |
-| `queue:listen` locally, skip, delay (08-10) | Generic |
-| Batches and chains (12-13) | **Unread.** Possibly relevant to bulk image export — see below |
-| Priority queues (14) | Already implemented (`default` / `imports-exports`) |
-| Redis + Horizon (15-16) | Already the setup; Horizon config is version-controlled |
-| Testing queues (17) | **Unread** — see below |
-| AI skill (18) | Noted, declined, §6 |
+### 7d. Queue attributes unused (cosmetic)
+
+Properties/methods everywhere, attributes nowhere. Not deprecated; recorded as a decision,
+not an oversight.
 
 ---
 
-## 8. Sources
+## 8. The bonus "AI skill" (lesson 18)
 
-- [Queues in Laravel 13](https://laraveldaily.com/course/queues-laravel), Mar 2026. Lessons read in full:
-  [failed jobs & retrying](https://laraveldaily.com/lesson/queues-laravel/failed-job-restarting-queue-1-1),
-  [the failed() method](https://laraveldaily.com/lesson/queues-laravel/method-failed-1),
-  [long-running jobs & timeouts](https://laraveldaily.com/lesson/queues-laravel/long-running-jobs-timeouts-1),
-  [idempotent jobs](https://laraveldaily.com/lesson/queues-laravel/idempotent-jobs-1),
-  [unique jobs](https://laraveldaily.com/lesson/queues-laravel/unique-jobs),
-  [multiple queues & priority](https://laraveldaily.com/lesson/queues-laravel/multiple-queues-priority-1),
-  [Redis & Horizon](https://laraveldaily.com/lesson/queues-laravel/drivers-redis-horizon),
-  [Supervisor & Horizon](https://laraveldaily.com/lesson/queues-laravel/supervisor-multiple-queue-workers-and-horizon-again),
-  [bonus AI skill](https://laraveldaily.com/lesson/queues-laravel/bonus-ai-skill-laraveldaily-queues-audit).
-- [Practical Laravel Queues on Live Server](https://laraveldaily.com/course/laravel-queues-server), May 2023.
-  Spot-checked: [Forge queues](https://laraveldaily.com/lesson/laravel-queues-server/laravel-forge-queues),
-  [queue spikes & scaling](https://laraveldaily.com/lesson/laravel-queues-server/queue-spikes-scaling). Stopped — §5.
-- Vendor source read directly: `Illuminate/Queue/Worker.php` (timeout handler, `maxTries`
-  precedence, `failJob` conditions), `Illuminate/Queue/Queue.php` (`failOnTimeout` default
-  `false`), `Illuminate/Queue/Attributes/` (the 13 attributes).
-- This repo, measured 2026-08-07: `app/Jobs/*.php`, `config/horizon.php`, `config/queue.php`,
-  `.env.example`, `SettingsBackupSnapshotManager.php`.
+Its full text now sits in the corpus (`raw/queues-laravel.json`, 21k chars), so the earlier
+"deliberately not fetched" caveat is obsolete. Position unchanged: **not installed** — the
+author calls it personal preference, §4–5 show it mostly already satisfied, and a third-party
+`SKILL.md` is executable instruction surface
+([supply-chain-security-notes.md](supply-chain-security-notes.md)).
+
+## 9. Sources
+
+- All 18 lessons of [queues-laravel](https://laraveldaily.com/course/queues-laravel) —
+  9 read live 2026-08-07, 9 from `raw/queues-laravel.json` (scraped 2026-08-08,
+  premium-verified by canary). Newly read:
+  [batches & chains](https://laraveldaily.com/lesson/queues-laravel/jobs-batch-chain-1),
+  [batch progress](https://laraveldaily.com/lesson/queues-laravel/progress-batch-1),
+  [testing queues](https://laraveldaily.com/lesson/queues-laravel/testing-queues-queue-fake-bus-fake-withfakequeueinteractions),
+  [delay & release](https://laraveldaily.com/lesson/queues-laravel/delay-jobs-condition-1),
+  [skip middleware](https://laraveldaily.com/lesson/queues-laravel/skip-processing-job),
+  [queue:listen](https://laraveldaily.com/lesson/queues-laravel/queue-listen-local),
+  plus intro lessons 1–3.
+- [laravel-queues-server](https://laraveldaily.com/course/laravel-queues-server) — stale, §6.
+- Framework source at v13.23.0: `Queue/Worker.php`, `Queue/Attributes/` (13 files),
+  `Queue/Middleware/Skip.php:21` + directory listing,
+  `Support/Testing/Fakes/BusFake.php:355,508`, `Queue/InteractsWithQueue.php:92,219`;
+  `php artisan list` for `make:queue-batches-table`.
+- This repo, measured 2026-08-08: `app/Jobs/*`, queue/Horizon config, `.env.example`
+  (git-clean since first audit); greps for `Queue::fake` (12 hits, 6 files),
+  `assertPushed` forms, `imports-exports` assertions, `Batchable` (0), `job_batches`
+  migration (absent).
 
 ### What I could not obtain
 
-- **Five of the eighteen lessons went unread**: batches and chains (12), batch progress (13),
-  testing queues with `Queue::fake` / `Bus::fake` / `withFakeQueueInteractions` (17), plus the
-  intro lessons and `queue:listen` locally. Lesson 17 is the one worth a follow-up, since this
-  repo has 1850 tests and none of them were checked against its recommendations in this pass.
-  Lessons 12-13 matter only if bulk image export ever needs progress reporting.
-- **Production configuration**: the Forge Horizon daemon's Stop Seconds (§4b), and whether the
-  deploy script runs `horizon:terminate`. Both unverified — not reached into from a research
-  session.
-- **The full text of the bonus skill** — only the portion rendered in the lesson page was read;
-  the GitHub raw file was deliberately not fetched (§6).
+- **Production configuration** (§7b): Forge Horizon daemon Stop Seconds and the deploy hook.
+- Nothing else — the course is fully read.
