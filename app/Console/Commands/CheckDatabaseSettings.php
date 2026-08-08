@@ -61,6 +61,23 @@ class CheckDatabaseSettings extends Command
             }
         }
 
+        $types = collect(DB::select("SELECT DATA_TYPE dt, COUNT(*) n FROM information_schema.COLUMNS
+            WHERE TABLE_SCHEMA = DATABASE() AND DATA_TYPE IN ('timestamp','datetime','date','time') GROUP BY 1"))
+            ->mapWithKeys(fn (object $row): array => [$row->dt => (int) $row->n])->all();
+
+        foreach ($types as $type => $count) {
+            $this->line(str_pad('column types', 17)."{$type}  ×{$count}");
+        }
+
+        array_push($problems, ...self::columnTypeProblems($types));
+
+        $pad = DB::selectOne('SELECT PAD_ATTRIBUTE p FROM information_schema.COLLATIONS WHERE COLLATION_NAME = ?',
+            [config('database.connections.mysql.collation')]);
+
+        if ($pad !== null && $pad->p !== 'NO PAD') {
+            $problems[] = "The configured collation pads ({$pad->p}); the alignment target utf8mb4_0900_ai_ci is NO PAD.";
+        }
+
         $clock = DB::selectOne('SELECT @@global.time_zone g, @@session.time_zone s, @@system_time_zone sys,
             TIMEDIFF(NOW(), UTC_TIMESTAMP()) offset');
 
@@ -86,5 +103,19 @@ class CheckDatabaseSettings extends Command
         }
 
         return self::FAILURE;
+    }
+
+    /**
+     * @param  array<string, int>  $typeCounts
+     * @return list<string>
+     */
+    public static function columnTypeProblems(array $typeCounts): array
+    {
+        $timestamps = $typeCounts['timestamp'] ?? 0;
+
+        return $timestamps === 0 ? [] : [
+            "{$timestamps} column(s) are still TIMESTAMP. The alignment target is DATETIME everywhere — "
+            .'TIMESTAMP converts through the session timezone on read and write. See database-alignment-spec.md §4.',
+        ];
     }
 }
