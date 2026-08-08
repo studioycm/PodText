@@ -2641,3 +2641,35 @@ and `model:show` is safe to use again.
 - What this does NOT fix: errors whose `Model` originates from Filament's own
   contracts (`Exporter::$record`, `Resource::getEloquentQuery()`). That family is
   122 of the remaining 445 and needs narrowing at the Filament boundary instead.
+
+## Laravel 13 Attribute Migration and Support Injection
+
+- 2026-08-08, commits `cc5fc12`, `4c9605a`, `04801eb`, `141769f`. Source of
+  truth for the target forms: vendor (`Model.php:1987` scope resolution,
+  `Command.php:159` attribute config, `GuardsAttributes.php:49` fillable
+  merge), cross-checked against the Mar 2026 LaravelDaily lessons in
+  `docs/research/laraveldaily/`.
+- All 21 local scopes are `#[Scope] protected` methods named after the scope —
+  20 across eight models plus one in `InteractsWithPublicationDate`, which a
+  `Models/*.php` glob missed (trait scopes exist; count your sweep). Call
+  sites unchanged. PHPStan delta zero against the 445-error baseline.
+- All 12 console commands carry `#[Signature]` / `#[Description]` class
+  attributes instead of properties. Names, options and defaults verified
+  unchanged via `artisan list --raw` and `--help`.
+- `#[Fillable]` now covers 17 of 18 models. **`Media` is a deliberate hold,
+  not a leftover**: the attribute MERGES into the inherited list
+  (`GuardsAttributes::initializeGuardsAttributes`), so it cannot narrow
+  Curator's 17-column parent `$fillable`; the property override is what keeps
+  `path`/`disk`/`directory` out of mass assignment. The model carries a
+  comment saying so.
+- Seven `app(X::class)` sites in four Support classes became promoted
+  constructor deps (`SettingsBackupManager`, `CardTemplatePreviewer`,
+  `MediaFilesystemMutationCoordinator`, `PublicDisplaySectionResolver`).
+  The remaining Support `app()` calls are deliberate: clearCache-then-resolve
+  freshness rituals, `??=` late defaults, or static-only APIs (conversion of
+  those is a registered follow-up, not drift).
+- Architecture decision, twice-derived (this session and the LaravelDaily
+  research independently): **no Actions/Services/Queries/Data extraction.**
+  `app/Support/<Feature>` folders ARE the architecture; the 13 query classes
+  and 8 Media value objects are feature-cohesive where they stand. Moving
+  them would be churn.
