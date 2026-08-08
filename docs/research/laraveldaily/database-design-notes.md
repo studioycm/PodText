@@ -209,6 +209,35 @@ by the Eloquent course notes; `custom-fields-eav` (JSON column wins for this rep
 already decided); `invoice-numbers` (N/A); `practice-change-db-structure-live-project`
 (worked example of a live migration, generic).
 
+### 1c. Addendum (2026-08-08, Boost-session D7 follow-up): index lessons vs the live MySQL
+
+Requested as a fresh read; both lessons were in fact covered in §1b — this addendum adds the
+piece the folded-search owner actually needs: **plan-level verification against the installed
+server**, which turns out to be **MySQL 9.4.0** (earlier prose here said "MySQL 8"; the
+recursive-CTE remark is unaffected, 9.x carries it).
+
+`EXPLAIN` on the real `content_items` table, shadow index in place, both shapes of the
+folded-search predicate:
+
+| predicate shape | access | key | rows |
+| --- | --- | --- | --- |
+| `title_search LIKE '%term%'` (shipped — `FoldedSearch::pattern()` wraps both sides) | `type=index` — full **index scan**, no seek | `content_items_title_search_index` | all |
+| `title_search LIKE 'term%'` (prefix) | `type=range` — real seek | same index | 1 |
+
+So the migration docblock's claim is confirmed empirically, and sharpened: under the shipped
+leading-wildcard shape a B-tree gives **no range access** — the probe ran as a covering index
+scan (`Using index`), a modest benefit that evaporates once the query selects non-indexed
+columns. The shadow indexes earn their keep exactly where the docblock says: the backfill's
+`IS NULL` sweep, and any future **equality or prefix** search mode. If prefix search is ever
+offered as an option, the indexes are already the right ones — that is a one-line change in
+`FoldedSearch::pattern()`, not a schema change.
+
+Re-confirmed on 9.4.0 while there: composite PRIMARY keys on both category pivots, the
+`taggables` unique triple, and the lesson's `foreignId()->constrained()`-auto-indexes claim
+(the `*_foreign` keys are visible in `SHOW INDEX`). Caveat for the environments owner: local
+holds 10 `content_items` rows, so all costs here are structural, not measured — re-run the
+same two `EXPLAIN`s against production row counts before drawing sizing conclusions.
+
 ## 2. Applies here vs. generic
 
 | lesson | applies to PodText? |
