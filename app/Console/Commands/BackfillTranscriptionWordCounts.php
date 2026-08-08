@@ -4,15 +4,15 @@ namespace App\Console\Commands;
 
 use App\Models\Transcription;
 use App\Support\Transcriptions\TranscriptWordCounter;
+use Illuminate\Console\Attributes\Description;
+use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
 
+#[Signature('transcriptions:backfill-word-counts
+        {--all : Recompute every transcription, including rows that already store a value}')]
+#[Description('Compute and store word_count for transcriptions that were saved before automatic word counting.')]
 class BackfillTranscriptionWordCounts extends Command
 {
-    protected $signature = 'transcriptions:backfill-word-counts
-                            {--all : Recompute every transcription, including rows that already store a value}';
-
-    protected $description = 'Compute and store word_count for transcriptions that were saved before automatic word counting.';
-
     public function handle(TranscriptWordCounter $counter): int
     {
         $recomputeAll = (bool) $this->option('all');

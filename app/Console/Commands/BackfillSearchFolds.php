@@ -3,6 +3,8 @@
 namespace App\Console\Commands;
 
 use App\Models\Contracts\FoldsSearchColumns;
+use Illuminate\Console\Attributes\Description;
+use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
@@ -10,14 +12,12 @@ use ReflectionClass;
 use Symfony\Component\Finder\Finder;
 use Symfony\Component\Finder\SplFileInfo;
 
+#[Signature('search:backfill-folds
+        {--chunk=500 : Rows to load per pass}
+        {--model= : Backfill one model class instead of every one}')]
+#[Description('Populate the *_search shadow columns for rows written before Hebrew search folding, and repair any that drifted.')]
 class BackfillSearchFolds extends Command
 {
-    protected $signature = 'search:backfill-folds
-                            {--chunk=500 : Rows to load per pass}
-                            {--model= : Backfill one model class instead of every one}';
-
-    protected $description = 'Populate the *_search shadow columns for rows written before Hebrew search folding, and repair any that drifted.';
-
     public function handle(): int
     {
         $models = $this->targetModels();

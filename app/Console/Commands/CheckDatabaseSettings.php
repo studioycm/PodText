@@ -2,6 +2,8 @@
 
 namespace App\Console\Commands;
 
+use Illuminate\Console\Attributes\Description;
+use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 
@@ -17,12 +19,10 @@ use Illuminate\Support\Facades\DB;
  *
  * Read-only. Safe to run anywhere, including production.
  */
+#[Signature('db:check-settings')]
+#[Description('Report charset, collation and clock settings, and flag drift between them.')]
 class CheckDatabaseSettings extends Command
 {
-    protected $signature = 'db:check-settings';
-
-    protected $description = 'Report charset, collation and clock settings, and flag drift between them.';
-
     public function handle(): int
     {
         if (DB::connection()->getDriverName() !== 'mysql') {

@@ -7,16 +7,16 @@ use App\Enums\MediaMutationRepairResult;
 use App\Enums\MediaMutationStatus;
 use App\Models\MediaMutationOperation;
 use App\Support\Media\MediaFilesystemMutationCoordinator;
+use Illuminate\Console\Attributes\Description;
+use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
 
+#[Signature('media:repair-mutations
+        {--apply : Repair or roll back incomplete journal entries}
+        {--operation-key= : Limit the report or repair to one operation key}')]
+#[Description('Report or idempotently repair incomplete media filesystem mutations.')]
 class RepairMediaMutations extends Command
 {
-    protected $signature = 'media:repair-mutations
-        {--apply : Repair or roll back incomplete journal entries}
-        {--operation-key= : Limit the report or repair to one operation key}';
-
-    protected $description = 'Report or idempotently repair incomplete media filesystem mutations.';
-
     public function handle(MediaFilesystemMutationCoordinator $coordinator): int
     {
         $query = MediaMutationOperation::query()

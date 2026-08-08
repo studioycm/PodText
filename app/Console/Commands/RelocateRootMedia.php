@@ -5,17 +5,17 @@ namespace App\Console\Commands;
 use App\Enums\UserRole;
 use App\Models\User;
 use App\Support\Media\MediaRelocationBatch;
+use Illuminate\Console\Attributes\Description;
+use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
 
-class RelocateRootMedia extends Command
-{
-    protected $signature = 'media:relocate-root
+#[Signature('media:relocate-root
         {--apply : Execute the relocation; without it only the census report prints}
         {--chunk=50 : Rows relocated per chunk while applying}
-        {--user= : Acting admin user id (defaults to the first admin)}';
-
-    protected $description = 'Report or execute the managed relocation of root-level media files (census → chunked, resumable apply).';
-
+        {--user= : Acting admin user id (defaults to the first admin)}')]
+#[Description('Report or execute the managed relocation of root-level media files (census → chunked, resumable apply).')]
+class RelocateRootMedia extends Command
+{
     public function handle(MediaRelocationBatch $batch): int
     {
         $actor = $this->resolveActor();

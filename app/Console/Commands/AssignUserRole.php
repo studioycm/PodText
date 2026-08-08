@@ -4,14 +4,14 @@ namespace App\Console\Commands;
 
 use App\Enums\UserRole;
 use App\Models\User;
+use Illuminate\Console\Attributes\Description;
+use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
 
+#[Signature('users:assign-role {email} {role}')]
+#[Description('Assign one of the fixed PodText user roles to an existing user.')]
 class AssignUserRole extends Command
 {
-    protected $signature = 'users:assign-role {email} {role}';
-
-    protected $description = 'Assign one of the fixed PodText user roles to an existing user.';
-
     public function handle(): int
     {
         $role = UserRole::tryFrom((string) $this->argument('role'));

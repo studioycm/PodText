@@ -13,16 +13,16 @@ use App\Support\SettingsLifecycle\PublicContentSettingsWriteCoordinator;
 use App\Support\SettingsLifecycle\PublicSettingsPackage;
 use App\Support\SettingsLifecycle\SettingsBackupManager;
 use App\Support\Transcriptions\MultiTranscriptionSurfaces;
+use Illuminate\Console\Attributes\Description;
+use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
 use Spatie\LaravelSettings\SettingsContainer;
 
+#[Signature('settings:normalize-public-content
+        {--apply : Persist normalized public content JSON settings after creating a system backup.}')]
+#[Description('Report and optionally persist normalized public content JSON settings.')]
 class NormalizePublicContentSettings extends Command
 {
-    protected $signature = 'settings:normalize-public-content
-        {--apply : Persist normalized public content JSON settings after creating a system backup.}';
-
-    protected $description = 'Report and optionally persist normalized public content JSON settings.';
-
     public function __construct(
         private readonly PublicFrontConfigValidator $validator,
         private readonly SettingsBackupManager $backups,

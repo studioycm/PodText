@@ -4,14 +4,14 @@ namespace App\Console\Commands;
 
 use App\Models\Transcription;
 use App\Support\Transcripts\TranscriptSegmentParser;
+use Illuminate\Console\Attributes\Description;
+use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
 
+#[Signature('transcriptions:backfill-parsed-segments')]
+#[Description('Persist parsed transcript segments for transcriptions saved before automatic derivation.')]
 class BackfillTranscriptionParsedSegments extends Command
 {
-    protected $signature = 'transcriptions:backfill-parsed-segments';
-
-    protected $description = 'Persist parsed transcript segments for transcriptions saved before automatic derivation.';
-
     public function handle(TranscriptSegmentParser $parser): int
     {
         $backfilled = 0;

@@ -8,16 +8,16 @@ use App\Support\Importer\Google\GoogleDriveConnector;
 use App\Support\Importer\TranscriptFormatProbeAnalyzer;
 use App\Support\Importer\TranscriptFormatProbePaths;
 use App\Support\Importer\TranscriptFormatProbeWriter;
+use Illuminate\Console\Attributes\Description;
+use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Str;
 
+#[Signature('importer:probe-formats {connection} {--ids=} {--file=} {--limit=20}')]
+#[Description('Fetch Google Doc transcript samples and write structural format findings for the importer workbench.')]
 class ProbeImporterFormats extends Command
 {
-    protected $signature = 'importer:probe-formats {connection} {--ids=} {--file=} {--limit=20}';
-
-    protected $description = 'Fetch Google Doc transcript samples and write structural format findings for the importer workbench.';
-
     public function handle(
         GoogleDriveConnector $connector,
         TranscriptFormatProbeAnalyzer $analyzer,

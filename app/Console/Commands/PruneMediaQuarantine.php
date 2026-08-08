@@ -5,19 +5,19 @@ namespace App\Console\Commands;
 use App\Enums\MediaMutationStatus;
 use App\Models\MediaMutationOperation;
 use App\Support\UiTimezone;
+use Illuminate\Console\Attributes\Description;
+use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Storage;
 
+#[Signature('media:prune-quarantine
+        {--apply : Delete quarantine directories for completed operations older than the retention window}
+        {--days= : Override the configured retention window in days}')]
+#[Description('Report or prune quarantine copies of completed media mutations past the retention window. Incomplete operations are never touched: their quarantine copy is a hard precondition for repair.')]
 class PruneMediaQuarantine extends Command
 {
     private const OPERATION_KEY_PATTERN = '/^[0-9A-HJKMNP-TV-Z]{26}$/';
-
-    protected $signature = 'media:prune-quarantine
-        {--apply : Delete quarantine directories for completed operations older than the retention window}
-        {--days= : Override the configured retention window in days}';
-
-    protected $description = 'Report or prune quarantine copies of completed media mutations past the retention window. Incomplete operations are never touched: their quarantine copy is a hard precondition for repair.';
 
     public function handle(): int
     {

@@ -4,15 +4,15 @@ namespace App\Console\Commands;
 
 use App\Models\ContentTag;
 use App\Support\Slugs\HebrewSlugger;
+use Illuminate\Console\Attributes\Description;
+use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
 use Illuminate\Database\Eloquent\Builder;
 
+#[Signature('content-tags:repair-slugs')]
+#[Description('Repair empty or legacy fallback content tag slugs with the Hebrew-aware slugger.')]
 class RepairContentTagSlugs extends Command
 {
-    protected $signature = 'content-tags:repair-slugs';
-
-    protected $description = 'Repair empty or legacy fallback content tag slugs with the Hebrew-aware slugger.';
-
     public function handle(): int
     {
         $scanned = 0;

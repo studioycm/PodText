@@ -3,15 +3,15 @@
 namespace App\Console\Commands;
 
 use App\Support\Media\MediaIntegrityReporter;
+use Illuminate\Console\Attributes\Description;
+use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
 use JsonException;
 
+#[Signature('media:report-integrity {--json : Emit machine-readable JSON}')]
+#[Description('Report allowed, disallowed, missing, duplicate, referenced, attached, and orphaned media state.')]
 class ReportMediaIntegrity extends Command
 {
-    protected $signature = 'media:report-integrity {--json : Emit machine-readable JSON}';
-
-    protected $description = 'Report allowed, disallowed, missing, duplicate, referenced, attached, and orphaned media state.';
-
     public function handle(MediaIntegrityReporter $reporter): int
     {
         $report = $reporter->report();
