@@ -100,7 +100,13 @@ final readonly class LegacyRoleBackfillSchemaContract
             'columns' => $columns,
             'foreign_table' => $table,
             'foreign_columns' => $foreignColumns,
-            'on_update' => $driver === 'mysql' ? 'restrict' : 'no action',
+            // Every foreign key here omits an explicit ON UPDATE clause, and
+            // MEASURED on the 8.0.46 lane (information_schema.REFERENTIAL_
+            // CONSTRAINTS.UPDATE_RULE), MySQL reports that as NO ACTION, not
+            // RESTRICT — the two are behaviourally identical in InnoDB, but
+            // the introspected string is what this contract compares byte
+            // for byte. Same value on both drivers.
+            'on_update' => 'no action',
             'on_delete' => 'cascade',
         ];
         $indexes = fn (array $values): array => tap($values, fn (array &$items) => usort($items, fn (array $left, array $right): int => [$left['kind'], $left['columns']] <=> [$right['kind'], $right['columns']]));
