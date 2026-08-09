@@ -2774,3 +2774,24 @@ and `model:show` is safe to use again.
   storage). Rehearsal DBs kept in converted state pending operator drop
   approval. Only the clock finding remains — Phase 3 (OS → UTC, connection
   pin, tz tables, schedule intent) is next, behind its own gates.
+
+## Database Alignment — Phase 3 server half executed (the clock)
+
+- 2026-08-09, operator-approved window: ikc4 (28 cols, 12 ALTERs) and
+  ari_configurator (60 cols, 26 ALTERs) frozen TIMESTAMP→DATETIME with
+  nullability restated and their single `failed_jobs.failed_at` default
+  dropped — collations untouched (their decision, not podtext's). Backups
+  first (`/home/forge/backups/*-20260809-pre-freeze.sql.gz`, gzip-verified);
+  literals byte-identical after; zero timestamp columns remain in either.
+- ikc4's inert `APP_TIMEZONE="Asia/Jerusalem"` `.env` line deleted, config
+  cache rebuilt (zero Jerusalem refs in the cached config).
+- One root window: `timedatectl set-timezone UTC`, `default-time-zone =
+  '+00:00'` pinned in `mysqld.cnf`, tz tables loaded
+  (`CONVERT_TZ('2026-01-15 10:00:00','UTC','Asia/Jerusalem')` →
+  `12:00:00`), single mysql restart + both php-fpm units; podtext Horizon
+  terminated/respawned. All three apps: `TIMEDIFF(NOW(), UTC_TIMESTAMP())`
+  = `00:00:00`; podtext `/up` 200, ikc4 302 (auth redirect), ari 200.
+- **`db:check-settings` on production: exit 0, "No drift found" — first
+  time.** Remaining Phase 3: the in-repo `+00:00` connection pin + local
+  daemons' my.cnf/tz tables (Task 13), schedule timezone intent (Task 14),
+  then the Phase 3 deploy gate.
