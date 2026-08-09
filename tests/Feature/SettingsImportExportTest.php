@@ -309,11 +309,11 @@ it('round trips public form definitions through exported packages and selected i
         auth()->user(),
     );
 
-    // toEqual for the two JSON-column-round-tripped payloads: mysql's JSON
-    // column re-serializes object members in its own key order on write,
-    // independent of app behaviour (spec §7 SQL strict mode). appliedPaths()
-    // is computed fresh in PHP, not re-read from the column, so it keeps the
-    // strict comparison.
+    // toEqual for the two JSON-column-round-tripped payloads: native JSON
+    // column round-trip (driver storage difference) — mysql's JSON column
+    // re-serializes object members in its own key order on write,
+    // independent of app behaviour. appliedPaths() is computed fresh in
+    // PHP, not re-read from the column, so it keeps the strict comparison.
     expect($package['payload']['public_forms'])->toEqual($publicForms)
         ->and($report->appliedPaths())->toBe(['public_forms.definitions'])
         ->and(step10S1aSettings()->public_forms)->toEqual($normalizedPublicForms);

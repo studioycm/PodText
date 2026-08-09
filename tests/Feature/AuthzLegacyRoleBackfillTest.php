@@ -898,9 +898,10 @@ it('binds rollback ownership to actual role IDs and physical tuples', function (
     $replacementId = $owned['role_id'] + 10_000;
     // SQLite's PRAGMA defer_foreign_keys defers FK re-validation to commit,
     // letting the parent update land before the matching child update. The
-    // mysql lane has no transaction-scoped equivalent (spec §7 SQL strict
-    // mode) — SET FOREIGN_KEY_CHECKS is the session-scoped analogue,
-    // re-enabled immediately once both writes are done.
+    // mysql lane has no transaction-scoped equivalent (SQL dialect
+    // difference — PRAGMA has no MySQL equivalent) — SET FOREIGN_KEY_CHECKS
+    // is the session-scoped analogue, re-enabled immediately once both
+    // writes are done.
     DB::statement('SET FOREIGN_KEY_CHECKS=0');
     DB::table('roles')->where('id', $owned['role_id'])->update(['id' => $replacementId]);
     DB::table('model_has_roles')->where('role_id', $owned['role_id'])->update(['role_id' => $replacementId]);

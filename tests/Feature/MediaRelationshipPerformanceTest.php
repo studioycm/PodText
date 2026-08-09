@@ -174,9 +174,10 @@ it('uses the evidence-backed attachment identity and mutation repair indexes', f
     // sqlite's EXPLAIN QUERY PLAN reports the chosen access method
     // structurally, independent of row presence — mysql's plain EXPLAIN
     // only populates key/possible_keys for a fully-bound UNIQUE lookup when
-    // it can't shortcut to "no matching row in const table" (spec §7 SQL
-    // strict mode). One matching row per unique-keyed query is enough; the
-    // non-unique ref-type lookups plan correctly even on an empty table.
+    // it can't shortcut to "no matching row in const table" (engine
+    // introspection difference). One matching row per unique-keyed query is
+    // enough; the non-unique ref-type lookups plan correctly even on an
+    // empty table.
     $media = Media::factory()->create();
     MediaAttachment::factory()->create([
         'media_id' => $media->getKey(),

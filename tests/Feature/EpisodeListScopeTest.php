@@ -29,11 +29,12 @@ beforeEach(function (): void {
  * releases the frozen clock — this file never froze time before, and
  * nothing here should leave it frozen after.
  *
- * Without this, all eleven share one mysql DATETIME second (spec §7 SQL
- * strict mode: no fractional-second precision), so ListContentItems'
- * `->defaultSort('updated_at', 'desc')` has no secondary tie-break and mysql
- * does not preserve insertion order for tied rows the way sqlite happened
- * to — which of the eleven lands on the ten-row first page becomes
+ * Without this, all eleven share one mysql DATETIME second (no
+ * fractional-second precision), so ListContentItems'
+ * `->defaultSort('updated_at', 'desc')` has no secondary tie-break —
+ * ordering (SQLite rowid order is not MySQL return order): sqlite happened
+ * to preserve insertion order for tied rows, mysql does not promise that —
+ * which of the eleven lands on the ten-row first page becomes
  * non-deterministic instead of "the ten most recently created."
  *
  * @return array<string, ContentItem>
@@ -183,11 +184,12 @@ it('narrows a forged tab value to the all scope', function (): void {
 
     // Explicit orderBy matching ListContentItemsTable's own
     // ->defaultSort('updated_at', 'desc'): a bare, unordered limit(5) has no
-    // guaranteed relationship to what a ten-per-page table renders first —
-    // sqlite happened to return rows in insertion order with no ORDER BY,
-    // mysql does not promise that (spec §7 SQL strict mode). Ordering the
-    // same way the table does guarantees this sample is a subset of
-    // whatever its first page shows, independent of page size.
+    // guaranteed relationship to what a ten-per-page table renders first.
+    // Ordering (SQLite rowid order is not MySQL return order): sqlite
+    // happened to return rows in insertion order with no ORDER BY, mysql
+    // does not promise that. Ordering the same way the table does
+    // guarantees this sample is a subset of whatever its first page shows,
+    // independent of page size.
     Livewire::test(ListContentItems::class)
         ->set('activeTab', 'forged-scope')
         ->assertSet('activeTab', EpisodeListScope::All->value)

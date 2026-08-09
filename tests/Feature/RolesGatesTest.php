@@ -274,10 +274,11 @@ it('keeps hidden public transcription policy values byte-identical during forged
         roles1ClearSettingsCache();
 
         // toEqual, not a json_encode(...)->toBe(json_encode(...)) byte
-        // comparison: a mysql JSON column re-serializes object members in
+        // comparison: native JSON column round-trip (driver storage
+        // difference) — a mysql JSON column re-serializes object members in
         // its own key order on write, independent of whether the forged
         // save was (correctly) ignored — the contract here is an unchanged
-        // VALUE, not preserved insertion order (spec §7 SQL strict mode).
+        // VALUE, not preserved insertion order.
         expect(app(PublicContentSettings::class)->transcription_policy)->toEqual($storedPolicy);
     }
 });
@@ -375,10 +376,11 @@ it('filters and save-guards the public card template transcription-count part', 
 
     $templates = collect(app(PublicContentSettings::class)->card_templates)->keyBy('key');
 
-    // toEqual: each part is an associative map that mysql's JSON column
-    // re-keys on write (spec §7 SQL strict mode) — the list ORDER of parts
-    // itself stays a strict comparison (sebastian/comparator compares list
-    // elements by numeric key), only each part's own field order is relaxed.
+    // toEqual: native JSON column round-trip (driver storage difference) —
+    // each part is an associative map that mysql's JSON column re-keys on
+    // write — the list ORDER of parts itself stays a strict comparison
+    // (sebastian/comparator compares list elements by numeric key), only
+    // each part's own field order is relaxed.
     expect($templates->get('stored_count')['parts'])->toEqual($storedTemplate['parts'])
         ->and($templates)->not->toHaveKey('forged_count')
         ->and($forged->get('protectedForgeryDetected'))->toBeTrue();

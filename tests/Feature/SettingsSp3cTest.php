@@ -228,9 +228,10 @@ it('projects every duplicate and malformed stored row as a non editable diagnost
         ->and($diagnostics->where('diagnostic_reason', 'duplicate'))->toHaveCount(2)
         ->and($diagnostics->where('diagnostic_reason', 'malformed'))->toHaveCount(1)
         ->and(collect($projection->records)->where('record_key', 'configured:content_item:duplicate'))->toBeEmpty()
-        // toEqual: mysql's JSON column re-serializes each template's own
-        // key order on write (spec §7 SQL strict mode); the list order of
-        // $stored itself (duplicate, duplicate, malformed) stays enforced.
+        // toEqual: native JSON column round-trip (driver storage
+        // difference) — mysql's JSON column re-serializes each template's
+        // own key order on write; the list order of $stored itself
+        // (duplicate, duplicate, malformed) stays enforced.
         ->and(settingsSp3cSnapshot()['card_templates'])->toEqual($stored);
 });
 
@@ -352,11 +353,11 @@ it('edits only the target from one fresh snapshot and preserves siblings and for
     Event::assertDispatchedTimes(SettingsSaved::class, 1);
     $snapshot = settingsSp3cSnapshot();
 
-    // toEqual for the two raw snapshot entries: mysql's JSON column
-    // re-serializes object members in its own key order on write (spec §7
-    // SQL strict mode). canonicalJson() ksort()s before encoding, so ITS
-    // output stays a strict string comparison — that's the actual
-    // order-independent proof.
+    // toEqual for the two raw snapshot entries: native JSON column
+    // round-trip (driver storage difference) — mysql's JSON column
+    // re-serializes object members in its own key order on write.
+    // canonicalJson() ksort()s before encoding, so ITS output stays a
+    // strict string comparison — that's the actual order-independent proof.
     expect($snapshot['card_templates'][0])->toEqual($before)
         ->and($snapshot['card_templates'][1]['label'])->toBe('Changed target')
         ->and($snapshot['card_templates'][2])->toEqual($after)
@@ -520,10 +521,10 @@ it('preserves corrupt siblings exactly while a valid target edit is focused', fu
     );
 
     $templates = settingsSp3cSnapshot()['card_templates'];
-    // toEqual only for the array-shaped sibling: mysql's JSON column
-    // re-serializes nested object member order on write (spec §7 SQL
-    // strict mode). $corruptAfter is a plain string with no keys to
-    // reorder, so it stays a strict comparison.
+    // toEqual only for the array-shaped sibling: native JSON column
+    // round-trip (driver storage difference) — mysql's JSON column
+    // re-serializes nested object member order on write. $corruptAfter is a
+    // plain string with no keys to reorder, so it stays a strict comparison.
     expect($templates[0])->toEqual($corruptBefore)
         ->and($templates[1]['label'])->toBe('Valid target only')
         ->and($templates[2])->toBe($corruptAfter);
@@ -547,9 +548,10 @@ it('creates clone and override candidates deterministically and preserves append
     $create->call('save')->assertHasNoErrors();
     $templates = settingsSp3cSnapshot()['card_templates'];
 
-    // toEqual for the array-shaped templates: mysql's JSON column
-    // re-serializes each one's own key order on write (spec §7 SQL strict
-    // mode); list position/order stays enforced either way.
+    // toEqual for the array-shaped templates: native JSON column round-trip
+    // (driver storage difference) — mysql's JSON column re-serializes each
+    // one's own key order on write; list position/order stays enforced
+    // either way.
     expect($templates[0])->toEqual($source)
         ->and($templates[1])->toEqual($sibling)
         ->and($templates[2]['key'])->toBe($copyKey);
@@ -702,8 +704,9 @@ it('uses exact hidden routes and mounts one editable template draft without sibl
         ->assertHasNoErrors()
         ->assertRedirect(EditCardTemplate::getUrl(['family' => 'content_item', 'key' => 'target']));
 
-    // toEqual for the untouched sibling: mysql's JSON column re-serializes
-    // its key order on write (spec §7 SQL strict mode).
+    // toEqual for the untouched sibling: native JSON column round-trip
+    // (driver storage difference) — mysql's JSON column re-serializes its
+    // key order on write.
     expect(settingsSp3cSnapshot()['card_templates'][0]['label'])->toBe('Saved from one draft')
         ->and(settingsSp3cSnapshot()['card_templates'][1])->toEqual($sibling);
 });
@@ -726,8 +729,9 @@ it('renames an unused non default template at its original index and makes the o
         ->assertRedirect($newUrl);
 
     $templates = settingsSp3cSnapshot()['card_templates'];
-    // toEqual for the untouched siblings: mysql's JSON column re-serializes
-    // their key order on write (spec §7 SQL strict mode).
+    // toEqual for the untouched siblings: native JSON column round-trip
+    // (driver storage difference) — mysql's JSON column re-serializes their
+    // key order on write.
     expect($templates[0])->toEqual($before)
         ->and($templates[1]['key'])->toBe('renamed')
         ->and($templates[2])->toEqual($after);
@@ -939,8 +943,8 @@ it('sanitizes capability loss and refuses forged protected additions with zero s
         ->assertHasErrors('data.key');
 
     Event::assertNotDispatched(SettingsSaved::class);
-    // toEqual: mysql's JSON column re-serializes key order on write (spec §7
-    // SQL strict mode).
+    // toEqual: native JSON column round-trip (driver storage difference) —
+    // mysql's JSON column re-serializes key order on write.
     expect(settingsSp3cSnapshot()['card_templates'][1])->toEqual($ordinary);
 });
 
@@ -981,8 +985,8 @@ it('hides and hard refuses protected clone and delete for non capable actors', f
         'key' => 'protected',
     ])->test(CreateCardTemplate::class)->assertForbidden();
 
-    // toEqual: mysql's JSON column re-serializes key order on write (spec §7
-    // SQL strict mode).
+    // toEqual: native JSON column round-trip (driver storage difference) —
+    // mysql's JSON column re-serializes key order on write.
     expect(settingsSp3cSnapshot()['card_templates'][0])->toEqual($protected);
 });
 

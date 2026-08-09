@@ -2465,7 +2465,8 @@ it('mounts and detaches an attachment whose Media row disappeared', function ():
     // write path) needs the constraint out of the way for this one delete.
     // SQLite's PRAGMA defer_foreign_keys defers re-validation to commit; the
     // mysql lane's session-scoped equivalent is SET FOREIGN_KEY_CHECKS,
-    // re-enabled immediately after (spec §7 SQL strict mode).
+    // re-enabled immediately after (SQL dialect difference — PRAGMA has no
+    // MySQL equivalent).
     DB::statement('SET FOREIGN_KEY_CHECKS=0');
     DB::table('curator')->where('id', $missing->getKey())->delete();
     DB::statement('SET FOREIGN_KEY_CHECKS=1');
@@ -2512,7 +2513,8 @@ it('halts a rowless stale automatic choice refreshes its authenticated baseline 
     // write path) needs the constraint out of the way for this one delete.
     // SQLite's PRAGMA defer_foreign_keys defers re-validation to commit; the
     // mysql lane's session-scoped equivalent is SET FOREIGN_KEY_CHECKS,
-    // re-enabled immediately after (spec §7 SQL strict mode).
+    // re-enabled immediately after (SQL dialect difference — PRAGMA has no
+    // MySQL equivalent).
     DB::statement('SET FOREIGN_KEY_CHECKS=0');
     DB::table('curator')->where('id', $missing->getKey())->delete();
     DB::statement('SET FOREIGN_KEY_CHECKS=1');

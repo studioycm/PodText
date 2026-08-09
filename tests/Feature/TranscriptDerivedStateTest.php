@@ -34,10 +34,10 @@ it('persists parsed segments when a transcription is saved through the applicati
         'status' => PublicationStatus::Draft,
     ]);
 
-    // toEqual, not toBe: parsed_segments is a mysql JSON column, which
+    // toEqual, not toBe: native JSON column round-trip (driver storage
+    // difference) — parsed_segments is a mysql JSON column, which
     // re-serializes each segment's own key order on write, independent of
-    // app behaviour (spec §7 SQL strict mode). Segment list order stays
-    // enforced either way.
+    // app behaviour. Segment list order stays enforced either way.
     expect($transcription->refresh()->parsed_segments)
         ->toEqual(app(TranscriptSegmentParser::class)->parse(derivedStateMarkdown()))
         ->and($transcription->parsed_segments)->not->toBe([]);
