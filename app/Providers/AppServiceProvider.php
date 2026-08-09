@@ -44,6 +44,8 @@ use App\Support\PublicFront\PublicFrontRenderContextFactory;
 use App\Support\SettingsLifecycle\SettingsBackupManager;
 use App\Support\SettingsLifecycle\SettingsLifecycleSchema;
 use App\Support\Transcriptions\MultiTranscriptionSurfaces;
+use App\Support\UiFormats;
+use App\Support\UiTimezone;
 use Awcodes\Curator\Facades\Curator;
 use BezhanSalleh\FilamentShield\Commands\TranslationCommand;
 use BezhanSalleh\FilamentShield\Facades\FilamentShield;
@@ -52,12 +54,15 @@ use Filament\Actions\Action;
 use Filament\Actions\Imports\Models\FailedImportRow;
 use Filament\Actions\Imports\Models\Import;
 use Filament\Facades\Filament;
+use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\Select;
 use Filament\Resources\Pages\ListRecords;
 use Filament\Schemas\Components\Component as SchemaComponent;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Tabs\Tab;
+use Filament\Schemas\Schema;
 use Filament\Support\Enums\Width;
+use Filament\Support\Facades\FilamentTimezone;
 use Filament\Tables\Columns\Column;
 use Filament\Tables\Enums\RecordActionsPosition;
 use Filament\Tables\Filters\SelectFilter;
@@ -286,7 +291,21 @@ class AppServiceProvider extends ServiceProvider
             $tab->deferBadge();
         });
 
+        // One home for wall-clock and shape: every Filament datetime loads,
+        // renders and saves through the UI timezone and the day-first
+        // formats — per-site ->timezone()/->displayFormat() chains are
+        // banned by UiTimezonePolicyTest.
+        FilamentTimezone::set(UiTimezone::name());
+
         Table::configureUsing(function (Table $table): void {
+            // App-wide, not admin-only: public Filament tables (and any
+            // future panel) get the same day-first shapes with zero
+            // per-site config, matching Schema::configureUsing() below.
+            $table
+                ->defaultDateDisplayFormat(UiFormats::date())
+                ->defaultDateTimeDisplayFormat(UiFormats::dateTime())
+                ->defaultTimeDisplayFormat(UiFormats::time());
+
             if (! $this->isAdminPanel()) {
                 return;
             }
@@ -307,6 +326,21 @@ class AppServiceProvider extends ServiceProvider
                 $table->queryStringIdentifier(Str::lcfirst(class_basename($table->getLivewire()::class)));
             }
         });
+
+        Schema::configureUsing(fn (Schema $schema): Schema => $schema
+            ->defaultDateDisplayFormat(UiFormats::date())
+            ->defaultDateTimeDisplayFormat(UiFormats::dateTime())
+            ->defaultTimeDisplayFormat(UiFormats::time()));
+
+        DateTimePicker::configureUsing(fn (DateTimePicker $picker): DateTimePicker => $picker
+            // Browser-native pickers render in the BROWSER's locale — a
+            // dependency outside the repo. Non-native makes the display
+            // format real. (Operator approved: JS picker replaces the
+            // browser control.)
+            ->native(false)
+            ->defaultDateDisplayFormat(UiFormats::date())
+            ->defaultDateTimeDisplayFormat(UiFormats::dateTime())
+            ->defaultTimeDisplayFormat(UiFormats::time()));
 
         Action::configureUsing(function (Action $action): void {
             if (! $this->isAdminPanel()) {
