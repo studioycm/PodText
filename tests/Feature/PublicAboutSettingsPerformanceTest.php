@@ -261,7 +261,7 @@ it('keeps default-false owner presentations on the initial hydration lookup and 
     expect($presentation->savedMediaCanSelect)->toBeFalse()
         ->and($exception)->toBeInstanceOf(AuthorizationException::class)
         ->and($captured['queries'])->toHaveCount(1)
-        ->and($captured['queries'][0])->toContain('"curator"."id" in (');
+        ->and($captured['queries'][0])->toContain('`curator`.`id` in (');
 });
 
 it('hydrates an authorized Settings exact saved identity without another media read', function (): void {
@@ -543,7 +543,7 @@ it('keeps mismatched and non-owner numeric identities on the existing lookup and
         'owner' => ['data.owner_media_reference_key' => $replacement->reference_key],
         'ordinary' => ['data.ordinary_media_reference_key' => $saved->reference_key],
     ])->and($captured['queries'])->toHaveCount(2)
-        ->each->toContain('"curator"."id" = ?');
+        ->each->toContain('`curator`.`id` = ?');
 });
 
 it('falls back to the existing lookup and Gate denial when saved-media select policy is lost', function (): void {
@@ -575,5 +575,5 @@ it('falls back to the existing lookup and Gate denial when saved-media select po
     expect($presentation->savedMediaCanSelect)->toBeFalse()
         ->and($exception)->toBeInstanceOf(AuthorizationException::class)
         ->and($captured['queries'])->toHaveCount(1)
-        ->and($captured['queries'][0])->toContain('"curator"."id" = ?');
+        ->and($captured['queries'][0])->toContain('`curator`.`id` = ?');
 });

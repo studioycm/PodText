@@ -497,7 +497,7 @@ it('chunks one exact diagnostic snapshot and reuses its filesystem decisions at 
     DB::listen(function ($query) use (&$curatorSelects): void {
         $sql = mb_strtolower($query->sql);
 
-        if (str_starts_with(ltrim($sql), 'select') && str_contains($sql, 'from "curator"')) {
+        if (str_starts_with(ltrim($sql), 'select') && str_contains($sql, 'from `curator`')) {
             $curatorSelects[] = $query->sql;
         }
     });
