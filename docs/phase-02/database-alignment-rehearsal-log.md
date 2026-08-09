@@ -37,3 +37,9 @@ After the third fix (`cc86be5`, below), both rehearsal databases were **dropped,
 - The **configured-collation PAD finding** in `db:check-settings` persists until Task 9 hardcodes `utf8mb4_0900_ai_ci` in `config/database.php` — expected and transient; only the clock finding is a Phase 3 matter.
 - Spot check: seeded emoji title `🎧 …` renders intact post-conversion; NULL-alternated clones stayed NULL (nullability preserved, also proven by the oracle property rules).
 - Rehearsal databases **kept** (drop only on operator approval): `podtext_restore_check` (3306) and `podtext_rehearsal` (3307), both now in the converted end state.
+
+## Task 19 — lane canaries (2026-08-09)
+
+- §3 collation matrix re-run on the lane daemon (8.0.46, 3307): `niqqud=1 final-form=1 modern-mark=1 trailing-space=0 emoji=0` — identical to the spec's measured `0900_ai_ci` column; the 8.0.46-vs-9.4 identity canary is closed.
+- Suite duration on the lane: **615s** (1929 tests) vs ~557s SQLite baseline — ~10% slower for a real-engine, strict-mode, UTC-pinned lane.
+- First red run: 89 failures → green in 12 attributed commits (`f2cc8b1..d194d5e`), including two genuine app defects the lane surfaced (`de83d26` mysql ON UPDATE contract, `e031bcb` analyzer nonexistent-column query).
