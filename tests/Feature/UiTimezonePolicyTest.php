@@ -22,7 +22,7 @@ it('formats a stored UTC instant on the configured UI timezone', function (): vo
 });
 
 it('keeps the UI timezone literal out of application and view code', function (): void {
-    $offenders = collect(['app', 'resources'])
+    $offenders = collect(['app', 'resources', 'routes'])
         ->flatMap(fn (string $directory): array => File::allFiles(base_path($directory)))
         ->filter(fn (SplFileInfo $file): bool => str_contains(
             (string) file_get_contents($file->getPathname()),

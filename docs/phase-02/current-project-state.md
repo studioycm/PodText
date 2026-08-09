@@ -2774,6 +2774,12 @@ and `model:show` is safe to use again.
   storage). Rehearsal DBs kept in converted state pending operator drop
   approval. Only the clock finding remains — Phase 3 (OS → UTC, connection
   pin, tz tables, schedule intent) is next, behind its own gates.
+- Caveat: restoring either banked `pre-alignment` snapshot under the
+  now-pinned `+00:00` connection (added below in the Phase 3 code half) and
+  replaying the migration would materialize shifted literals the oracle
+  cannot catch — the restore-and-replay session is internally
+  self-consistent, so nothing inside it flags the drift. Restore only with
+  the pin temporarily removed, or onto a connection that was never pinned.
 
 ## Database Alignment — Phase 3 server half executed (the clock)
 
@@ -2823,7 +2829,9 @@ and `model:show` is safe to use again.
   §3 Hebrew-folding collation matrix re-measured identical on the 8.0.46
   lane to the spec's 9.4.0 figures, closing the version-identity question.
   Full lane suite: 1934/1934 in ~635s, versus the retired ~557s SQLite
-  baseline. Pushed `d5f3837..f3c764b`; no deploy — the lane is
+  baseline (the rehearsal log's earlier 615s/1929 figure is a real run from
+  an earlier point in the same T19 stabilization wave, not a
+  contradiction). Pushed `d5f3837..f3c764b`; no deploy — the lane is
   dev/test-only.
 - Phase 5 gave every Filament date surface one source of truth, and
   deployed it: `c093e96` adds the global hooks that give every
