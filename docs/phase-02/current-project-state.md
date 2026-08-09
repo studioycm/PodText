@@ -2734,3 +2734,43 @@ and `model:show` is safe to use again.
   was triggered deliberately via Forge.
 - Next: Phase 1 (dedicated local MySQL user, off root), then the alignment
   migration phase behind its rehearsal-database rule (spec §9).
+
+## Database Alignment — Phases 1–2 executed (collation + DATETIME, everywhere)
+
+- Executed 2026-08-09 via subagent-driven development against the
+  implementation plan (`94a3328`); every task independently reviewed, the
+  riskiest artifacts (migration, oracle) by adversarial review with
+  operator-adjudicated hardening. Commits `837782c..3b142fb` (pushed).
+- Local user first: `podtext`@`127.0.0.1` owns local app access
+  (grants on `podtext`.* + `podtext_restore_check`.* only); `.env` off
+  `root`. A second Herd daemon runs MySQL 8.0.46 on 3307 for rehearsals and
+  the future test lane.
+- Tooling: `db:preflight-alignment` (generated B3/B5 scans, 30 unique
+  indexes), `db:seed-rehearsal-edges` (DST/epoch/collation edge matrix,
+  insert-vs-update paths from STATISTICS), `db:alignment-oracle`
+  (fail-closed exact-diff certifier: provenance meta, transition allow-list,
+  ORDER BY SHA1(line), phase guards), and `db:check-settings` extended with
+  column-type + PAD_ATTRIBUTE drift.
+- The migration (`2026_08_09_000000`): generated from information_schema,
+  driver-guarded, attribute-guarded (throws on unsanctioned
+  default/EXTRA/precision/comment), schema-qualified DDL, deterministic
+  order, ALTER DATABASE first. Session timezone deliberately untouched —
+  each TIMESTAMP materialized as the literal the app always read (spec §4).
+- Rehearsed on BOTH engines (9.4.0 + 8.0.46) from restored snapshots with
+  seeded hostile rows; drop-and-recreate verification ran the whole sequence
+  clean with zero manual steps. Three plan-inherent defects were caught by
+  rehearsal and fixed in code before any real run (composite-unique pivots,
+  migrations-ledger hashing, truncation-manufactured B5 artifacts) —
+  `docs/phase-02/database-alignment-rehearsal-log.md` has the full record.
+- Real runs, both oracle-PASS byte-identical (36 tables / 390 columns):
+  local `podtext` (591ms) and production behind a native `down
+  --secret` window (deploy `75054667` at `3b142fb`, migration rode the
+  deploy script). End state everywhere: schema default + 40 tables + 183
+  columns `utf8mb4_0900_ai_ci`, `datetime ×80`, zero TIMESTAMP, the
+  utf8mb3 finding GONE. `config/database.php` hardcodes the pair (no env
+  indirection) so every future CREATE TABLE inherits it.
+- Snapshots banked: local `pre-alignment` (9.4.0), production
+  `pre-alignment` + `post-alignment` (8.0.46, via the site's shared
+  storage). Rehearsal DBs kept in converted state pending operator drop
+  approval. Only the clock finding remains — Phase 3 (OS → UTC, connection
+  pin, tz tables, schedule intent) is next, behind its own gates.
