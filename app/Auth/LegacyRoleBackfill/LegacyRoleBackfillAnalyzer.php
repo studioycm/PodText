@@ -422,6 +422,26 @@ final class LegacyRoleBackfillAnalyzer
             }
         }
 
+        // A configured pivot/morph column name is untrusted input — config
+        // drift is exactly what this analyzer exists to detect, and
+        // validateStaticContract() already records config_column_drift for
+        // it. Bail out to the same empty shape as a missing table rather
+        // than hand a possibly-nonexistent identifier straight to the query
+        // builder: MySQL rejects an unknown column at parse time even
+        // against an empty table, where SQLite's legacy
+        // quoted-identifier-as-string-literal fallback used to mask it.
+        $requiredColumns = [
+            $tables['role_has_permissions'] => [$columns['permission_pivot_key'], $columns['role_pivot_key']],
+            $tables['model_has_permissions'] => [$columns['permission_pivot_key'], $columns['model_morph_key'], 'model_type'],
+            $tables['model_has_roles'] => [$columns['role_pivot_key'], $columns['model_morph_key'], 'model_type'],
+        ];
+
+        foreach ($requiredColumns as $table => $requiredColumnNames) {
+            if (! Schema::hasColumns($table, $requiredColumnNames)) {
+                return [$empty, [], []];
+            }
+        }
+
         $roleRows = $this->lockedQuery($tables['roles'], $lock)->orderBy('id')->get(['id', 'name', 'guard_name']);
         $permissionRows = $this->lockedQuery($tables['permissions'], $lock)->orderBy('id')->get(['id']);
         $grantRows = $this->lockedQuery($tables['role_has_permissions'], $lock)
