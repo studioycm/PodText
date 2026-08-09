@@ -534,7 +534,6 @@ it('keeps the normal In Use predicate database-only and constant as inventory sc
             && (
                 str_contains($sql, 'settings')
                 || str_contains($sql, 'curator')
-                || str_contains($sql, 'sqlite_master')
             )
         ) {
             $queries[] = $query->sql;

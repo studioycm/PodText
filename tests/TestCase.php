@@ -24,6 +24,8 @@ abstract class TestCase extends BaseTestCase
             // reach the real schema (spec §7 free hardening).
             'database.connections.mysql.database' => 'unreachable_from_tests',
             'database.connections.mariadb.database' => 'unreachable_from_tests',
+            // A stray DB::connection('sqlite') must hit memory, never a repo file.
+            'database.connections.sqlite.database' => ':memory:',
         ]);
         $this->app->detectEnvironment(fn (): string => 'testing');
 

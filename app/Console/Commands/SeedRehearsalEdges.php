@@ -55,8 +55,8 @@ class SeedRehearsalEdges extends Command
 
         $database = DB::connection()->getDatabaseName();
 
-        if (preg_match('/rehearsal|restore_check/', $database) !== 1) {
-            $this->error("Refused: `{$database}` is not a rehearsal database (name must match /rehearsal|restore_check/).");
+        if (preg_match('/(rehearsal|restore_check)$/', $database) !== 1) {
+            $this->error("Refused: `{$database}` is not a rehearsal database (name must match /(rehearsal|restore_check)$/).");
 
             return self::FAILURE;
         }

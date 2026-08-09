@@ -251,7 +251,7 @@ it('allows a super-admin to change the global transcription mode switch', functi
     expect(app(AdminUxSettings::class)->transcription_mode)->toBe(TranscriptionMode::Multi);
 });
 
-it('keeps hidden public transcription policy values byte-identical during forged admin saves in both modes', function (): void {
+it('keeps hidden public transcription policy values value-identical during forged admin saves in both modes', function (): void {
     $storedPolicy = [
         'public_mode' => PublicTranscriptionPolicy::MODE_FEATURED_ONLY,
         'count_mode' => PublicTranscriptionPolicy::MODE_FEATURED_ONLY,
