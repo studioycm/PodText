@@ -1,8 +1,22 @@
 <?php
 
+use App\Filament\Resources\ContentItems\Pages\ListContentItems;
+use App\Models\ContentItem;
+use App\Models\User;
 use App\Rules\ExistsInTimezone;
+use Filament\Actions\Testing\TestAction;
+use Filament\Facades\Filament;
 use Filament\Forms\Components\DateTimePicker;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Validator;
+use Livewire\Livewire;
+
+uses(RefreshDatabase::class);
+
+beforeEach(function (): void {
+    Filament::setCurrentPanel(Filament::getPanel('admin'));
+    $this->actingAs(User::factory()->admin()->create());
+});
 
 it('rejects the spring-forward gap and accepts its edges', function (string $value, bool $valid): void {
     $validator = Validator::make(['at' => $value], ['at' => new ExistsInTimezone('Asia/Jerusalem', 'Y-m-d H:i:s')]);
@@ -43,4 +57,24 @@ it('does not gate date-only pickers with the DST rule', function (): void {
         ->first(fn (mixed $rule): bool => $rule instanceof ExistsInTimezone);
 
     expect($rule)->toBeNull();
+});
+
+it('rejects a spring-forward gap value from the date cell modal', function (): void {
+    // The field that motivated the getInternalFormat() fix: changePublishedAt
+    // is a ->seconds(false) picker, so this proves the rule actually fires
+    // through that action — not just through a bare picker instance. The
+    // payload stays seconds-inclusive on purpose: a no-seconds payload
+    // throws "Not enough data available to satisfy format" inside the rule's
+    // catch-all and dodges it entirely (see EpisodesTableR1Test.php's
+    // existing coverage, which is non-probative for exactly this reason).
+    $episode = ContentItem::factory()->published('2026-08-01 06:00:00')->create();
+
+    Livewire::test(ListContentItems::class)
+        ->callAction(
+            TestAction::make('changePublishedAt')->table($episode),
+            ['published_at' => '2026-03-27 02:30:00'],
+        )
+        ->assertHasTableActionErrors(['published_at']);
+
+    expect($episode->refresh()->published_at->toDateTimeString())->toBe('2026-08-01 06:00:00');
 });
