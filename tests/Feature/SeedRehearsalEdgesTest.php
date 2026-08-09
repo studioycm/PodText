@@ -2,9 +2,13 @@
 
 use App\Console\Commands\SeedRehearsalEdges;
 
-it('refuses the sqlite suite driver', function (): void {
+it('refuses a database name that is not a rehearsal copy', function (): void {
+    // The lane is mysql, so the driver check now passes — podtext_test
+    // still correctly refuses the name check before any table is touched,
+    // which is the guard that actually matters here (a rehearsal-only
+    // command must never run against a database it wasn't built for).
     $this->artisan('db:seed-rehearsal-edges')
-        ->expectsOutputToContain('only supports MySQL')
+        ->expectsOutputToContain('is not a rehearsal database')
         ->assertFailed();
 });
 

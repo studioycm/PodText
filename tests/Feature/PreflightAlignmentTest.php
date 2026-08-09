@@ -2,10 +2,13 @@
 
 use App\Console\Commands\PreflightAlignment;
 
-it('refuses the sqlite suite driver', function (): void {
+it('runs clean against the aligned mysql lane', function (): void {
+    // Read-only (the class docblock: "safe anywhere, including
+    // production") — the lane's schema is aligned by the time any test
+    // runs, so the real B3/B5 scans have nothing to find.
     $this->artisan('db:preflight-alignment')
-        ->expectsOutputToContain('only supports MySQL')
-        ->assertFailed();
+        ->expectsOutputToContain('Pre-flight clean')
+        ->assertSuccessful();
 });
 
 it('builds a duplicate scan that collates only collated columns and excludes NULL rows', function (): void {

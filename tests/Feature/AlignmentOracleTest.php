@@ -1,11 +1,22 @@
 <?php
 
 use App\Console\Commands\AlignmentOracle;
+use Illuminate\Support\Facades\DB;
 
-it('refuses the sqlite suite driver', function (): void {
+it('refuses to capture a database that is already aligned', function (): void {
+    // The lane's schema is aligned by the time any test runs (the
+    // alignment migration replays with every migrate:fresh), so a capture
+    // against it always hits captureRefusal()'s "nothing left to convert"
+    // path — after the real, read-only state()/hash pass runs, but before
+    // any file is written. Exercises real command behaviour on the lane
+    // without ever touching storage.
+    $path = storage_path('app/db-snapshots/oracle-'.DB::connection()->getDatabaseName().'.json');
+
     $this->artisan('db:alignment-oracle', ['mode' => 'capture'])
-        ->expectsOutputToContain('only supports MySQL')
+        ->expectsOutputToContain('nothing left to convert')
         ->assertFailed();
+
+    expect(is_file($path))->toBeFalse();
 });
 
 it('encodes NULL distinctly from empty string in the row expression', function (): void {
