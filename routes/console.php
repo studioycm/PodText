@@ -1,5 +1,6 @@
 <?php
 
+use App\Support\UiTimezone;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schedule;
@@ -10,5 +11,5 @@ Artisan::command('inspire', function () {
 
 // Runs only when the host invokes `php artisan schedule:run` (no scheduler is
 // provisioned by the app itself).
-Schedule::command('media:prune-quarantine --apply')->dailyAt('03:30');
-Schedule::command('model:prune')->dailyAt('03:50');
+Schedule::command('media:prune-quarantine --apply')->timezone(UiTimezone::name())->dailyAt('03:30');
+Schedule::command('model:prune')->timezone(UiTimezone::name())->dailyAt('03:50');
