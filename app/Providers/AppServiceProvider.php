@@ -84,6 +84,7 @@ use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Str;
 use Livewire\Livewire;
+use LogicException;
 use Spatie\LaravelSettings\Events\SettingsSaved;
 
 class AppServiceProvider extends ServiceProvider
@@ -358,14 +359,17 @@ class AppServiceProvider extends ServiceProvider
             // picker synced, not a reformatted guess.
             ->rule(
                 fn (DateTimePicker $component): ExistsInTimezone => new ExistsInTimezone(
-                    $component->getTimezone() ?? config('app.timezone'),
+                    $component->getTimezone(),
                     $component->getInternalFormat(),
                 ),
                 condition: fn (DateTimePicker $component): bool => $component->hasTime(),
             ));
 
         $forDisplay = function (?string $format = null): string {
-            /** @var CarbonInterface $this */
+            if (! $this instanceof CarbonInterface) {
+                throw new LogicException('forDisplay() macro called on a non-Carbon receiver.');
+            }
+
             return $this->copy()->setTimezone(UiTimezone::name())
                 ->translatedFormat($format ?? UiFormats::dateTime());
         };

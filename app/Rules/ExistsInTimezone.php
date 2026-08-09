@@ -34,7 +34,7 @@ class ExistsInTimezone implements ValidationRule
             return; // format errors are someone else's rule too
         }
 
-        if ($parsed !== false && $parsed->format($this->format) !== $value) {
+        if ($parsed !== null && $parsed->format($this->format) !== $value) {
             $fail(__('admin.validation.nonexistent_wall_time', ['timezone' => $this->timezone]));
         }
     }

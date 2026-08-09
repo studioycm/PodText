@@ -74,7 +74,7 @@ it('rejects a spring-forward gap value from the date cell modal', function (): v
             TestAction::make('changePublishedAt')->table($episode),
             ['published_at' => '2026-03-27 02:30:00'],
         )
-        ->assertHasTableActionErrors(['published_at']);
+        ->assertHasFormErrors(['published_at']);
 
     expect($episode->refresh()->published_at->toDateTimeString())->toBe('2026-08-01 06:00:00');
 });
