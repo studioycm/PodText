@@ -1,6 +1,7 @@
 <?php
 
 use App\Support\UiTimezone;
+use Tests\TestCase;
 
 /**
  * The environment invariants, each as its own named failure.
@@ -21,13 +22,28 @@ use App\Support\UiTimezone;
  * gap is itself recorded as residual risk in mysql-test-lane-spec.md — the
  * database guard cannot reach tests/Unit either.
  */
-it('runs against an in-memory sqlite database it cannot destroy', function (): void {
+it('runs against the dedicated mysql test lane it cannot destroy', function (): void {
     // The suite runs migrate:fresh, which drops every table it finds. The real
-    // local database is MySQL `podtext`. If this ever reads anything else, the
-    // next `RefreshDatabase` is destructive — see mysql-test-lane-spec.md.
-    expect(config('database.default'))->toBe('sqlite', 'The suite is pointed at a database it may not destroy.')
-        ->and(config('database.connections.sqlite.database'))->toBe(':memory:')
+    // local database is MySQL `podtext` on the app connection, one daemon away
+    // from the lane. If the default connection ever resolves to anything but
+    // the dedicated lane, the next `RefreshDatabase` is destructive — see
+    // mysql-test-lane-spec.md.
+    expect(config('database.default'))->toBe('mysql_testing', 'The suite is pointed at a database it may not destroy.')
+        ->and(config('database.connections.mysql.database'))->toBe('unreachable_from_tests')
+        ->and(config('database.connections.mariadb.database'))->toBe('unreachable_from_tests')
         ->and(app()->environment())->toBe('testing');
+});
+
+it('refuses to run with the app connection selected as default', function (): void {
+    // Not a re-run of TestLaneGuardTest's stubbed clause table — this feeds
+    // the REAL booted connections (host, port, username, database as they
+    // exist right now) through the same pure refusalFor, swapping only
+    // `default` to the app connection, to prove the booted guard would have
+    // thrown had the lane not been selected.
+    $config = config('database');
+    $config['default'] = 'mysql';
+
+    expect(TestCase::refusalFor($config, []))->not->toBeNull();
 });
 
 it('keeps storage in UTC and Jerusalem at the presentation layer only', function (): void {

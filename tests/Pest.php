@@ -21,8 +21,7 @@ use Tests\TestCase;
 foreach ([
     'APP_ENV' => 'testing',
     'CACHE_STORE' => 'array',
-    'DB_CONNECTION' => 'sqlite',
-    'DB_DATABASE' => ':memory:',
+    'DB_CONNECTION' => 'mysql_testing',
     'DB_URL' => '',
     'QUEUE_CONNECTION' => 'sync',
     'SESSION_DRIVER' => 'array',
