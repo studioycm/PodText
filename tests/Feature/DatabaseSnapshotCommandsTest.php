@@ -3,23 +3,46 @@
 use App\Console\Commands\RestoreDatabase;
 use App\Console\Commands\SnapshotDatabase;
 use Carbon\CarbonImmutable;
+use Illuminate\Support\Str;
 
 /**
- * The snapshot/restore pair is MySQL-only and the suite runs on SQLite, so
- * these tests pin the two things that do not need a server: the refusals and
- * the exact shell/flag contracts. The flags ARE the safety design — each one
- * traces to a measured trap in database-alignment-spec.md §10.5 — so drift in
- * the command string is drift in the safety, and this file is what catches it.
+ * The snapshot/restore pair is MySQL-only. The suite now boots on the
+ * dedicated mysql_testing lane, so the driver refusal these tests used to
+ * pin is unreachable — each now exercises the next real, live-testable
+ * guard instead. The exact shell/flag contracts stay pinned below without a
+ * server, same as before: the flags ARE the safety design — each one traces
+ * to a measured trap in database-alignment-spec.md §10.5 — so drift in the
+ * command string is drift in the safety, and this file is what catches it.
  */
-it('refuses to snapshot a non-mysql connection', function (): void {
-    $this->artisan('db:snapshot')
-        ->expectsOutputToContain('only supports MySQL')
-        ->assertFailed();
+it('writes a real snapshot and manifest against the aligned mysql lane', function (): void {
+    // db:snapshot has no required argument to validate before it shells out
+    // — unlike db:restore below, there is no cheap pre-flight refusal left
+    // once the driver check passes. mysqldump is a real local dependency of
+    // the same Herd MySQL install the lane connection itself depends on, so
+    // this runs for real and cleans up what it writes.
+    $directory = SnapshotDatabase::snapshotDirectory();
+    $before = collect(glob($directory.'/*.sql.gz') ?: []);
+
+    $this->artisan('db:snapshot', ['--label' => 'db-snapshot-command-test'])
+        ->expectsOutputToContain('Snapshot written:')
+        ->assertSuccessful();
+
+    $created = collect(glob($directory.'/*.sql.gz') ?: [])->diff($before)->values();
+
+    expect($created)->toHaveCount(1);
+
+    foreach ($created as $sqlFile) {
+        @unlink($sqlFile);
+        @unlink(Str::replaceLast('.sql.gz', '.json', $sqlFile));
+    }
 });
 
-it('refuses to restore into a non-mysql connection', function (): void {
+it('refuses a restore file that does not exist', function (): void {
+    // The driver refusal is unreachable on the mysql lane — the next real
+    // guard is resolveSnapshotPath()'s file-existence check, which runs
+    // before any dump content or database is touched.
     $this->artisan('db:restore', ['file' => 'anything.sql.gz'])
-        ->expectsOutputToContain('only supports MySQL')
+        ->expectsOutputToContain('Snapshot not found')
         ->assertFailed();
 });
 

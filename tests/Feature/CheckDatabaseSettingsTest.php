@@ -2,9 +2,12 @@
 
 use App\Console\Commands\CheckDatabaseSettings;
 
-it('warns and exits cleanly on the sqlite suite driver', function (): void {
+it('reports no drift against the aligned mysql lane', function (): void {
+    // Read-only ("Safe to run anywhere, including production" per the class
+    // docblock) — the lane's schema is aligned by the time any test runs, so
+    // the real charset/collation/clock checks all come back clean.
     $this->artisan('db:check-settings')
-        ->expectsOutputToContain('Not a MySQL connection')
+        ->expectsOutputToContain('No drift found.')
         ->assertSuccessful();
 });
 
