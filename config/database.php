@@ -65,6 +65,23 @@ return [
             ]) : [],
         ],
 
+        'mysql_testing' => [
+            'driver' => 'mysql',
+            'host' => env('DB_TESTING_HOST', '127.0.0.1'),
+            'port' => env('DB_TESTING_PORT', '3307'),
+            'database' => env('DB_TESTING_DATABASE'),   // no default — missing must fail closed
+            'username' => env('DB_TESTING_USERNAME'),
+            'password' => env('DB_TESTING_PASSWORD', ''),
+            'charset' => 'utf8mb4',
+            'collation' => 'utf8mb4_0900_ai_ci',
+            'timezone' => '+00:00',
+            'prefix' => '',
+            'prefix_indexes' => true,
+            'strict' => true,
+            'engine' => null,
+            // no 'url' key on purpose — a DSN overrides host and database at connect time
+        ],
+
         'mariadb' => [
             'driver' => 'mariadb',
             'url' => env('DB_URL'),
