@@ -36,3 +36,41 @@ it('keeps the UI timezone literal out of application and view code', function ()
 
     expect($offenders)->toBe([]);
 });
+
+it('keeps per-site timezone/format chains out of the Filament admin surface', function (): void {
+    // Measured empty at introduction (Task 26, 2026-08-09): a grep sweep of
+    // app/Filament/ for `->timezone(` and `->displayFormat(` returned zero
+    // hits — Task 22 already stripped every such chain in favor of the
+    // global Filament hooks installed in AppServiceProvider::boot(). Kept as
+    // an explicit array, not omitted, so the on-disk assertion below still
+    // runs and a future exception has somewhere to go.
+    //
+    // The families this ban conceptually exempts (input-parsing/domain-logic
+    // Carbon chains such as JerusalemDailySeries.php and
+    // EditorialMetrics.php, plus AppServiceProvider.php where the global
+    // defaults themselves are declared) all live OUTSIDE app/Filament/, so
+    // none of them need an entry here. Do not widen this scan to app/
+    // generally to "cover" them — that would re-flag those files' already
+    // reviewed, legitimate Carbon chains.
+    $allowlist = [
+        //
+    ];
+
+    collect($allowlist)->each(function (string $relativePath): void {
+        expect(File::exists(base_path($relativePath)))->toBeTrue(
+            "Allowlisted file no longer exists on disk: {$relativePath}. Update the UiTimezonePolicyTest allowlist.",
+        );
+    });
+
+    $offenders = collect(File::allFiles(base_path('app/Filament')))
+        ->filter(fn (SplFileInfo $file): bool => str((string) file_get_contents($file->getPathname()))
+            ->contains(['->timezone(', '->displayFormat(']))
+        ->map(fn (SplFileInfo $file): string => str($file->getPathname())
+            ->after(base_path().DIRECTORY_SEPARATOR)
+            ->toString())
+        ->reject(fn (string $relativePath): bool => in_array($relativePath, $allowlist, true))
+        ->values()
+        ->all();
+
+    expect($offenders)->toBe([]);
+});
