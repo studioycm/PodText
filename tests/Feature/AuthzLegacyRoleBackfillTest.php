@@ -51,10 +51,14 @@ beforeEach(function (): void {
     Http::preventStrayRequests();
     Mail::fake();
 
-    expect(config('database.default'))->toBe('sqlite')
-        ->and(config('database.connections.sqlite.database'))->toBe(':memory:')
-        ->and(DB::connection()->getDriverName())->toBe('sqlite')
-        ->and(DB::connection()->getDatabaseName())->toBe(':memory:');
+    // The disposable-database intent this pin has always carried is now
+    // expressed by the lane guard itself (TestCase::assertSafeTestingDatabase());
+    // this stays as defense in depth for a file that does heavy raw
+    // DB/Schema manipulation, re-pinned to the mysql_testing lane contract.
+    expect(config('database.default'))->toBe('mysql_testing')
+        ->and(DB::connection()->getName())->toBe('mysql_testing')
+        ->and(DB::connection()->getDriverName())->toBe('mysql')
+        ->and(config('database.connections.mysql.database'))->toBe('unreachable_from_tests');
 
     config([
         'app.key' => 'base64:'.base64_encode(str_repeat('a', 32)),
@@ -246,6 +250,13 @@ it('refuses target, config, team, model, schema, and key drift', function (): vo
     config(['permission.column_names.model_morph_key' => 'model_id']);
     Schema::table('roles', fn (Blueprint $table) => $table->string('unexpected_schema_column')->nullable());
     expect(authzAnalyzer()->analyze()->toArray()['issue_totals'])->toHaveKey('schema_column_drift');
+
+    // DDL implicitly commits on MySQL (spec §7 DDL-commit leakage) — this
+    // ALTER escapes RefreshDatabase's transaction rollback and would
+    // otherwise leave `roles` permanently mutated in the shared lane
+    // schema. Undo it explicitly rather than rely on the next test's
+    // forced re-migrate.
+    Schema::table('roles', fn (Blueprint $table) => $table->dropColumn('unexpected_schema_column'));
 
     config(['app.key' => 'base64:not-valid']);
     expect(fn () => new PrivacyHasher)->toThrow(BackfillException::class);
@@ -742,7 +753,7 @@ it('refuses malformed unsupported and boundary-invalid privacy keys without expo
     'unsupported cipher' => [str_repeat('a', 32), 'CHACHA20'],
 ]);
 
-it('records the complete SQLite schema descriptor and exposes a pure MySQL expectation', function (): void {
+it('records the complete MySQL schema descriptor and exposes a pure MySQL expectation', function (): void {
     $report = authzAnalyzer()->analyze()->toArray();
     $contract = new LegacyRoleBackfillSchemaContract(
         DB::connection(),
@@ -753,7 +764,10 @@ it('records the complete SQLite schema descriptor and exposes a pure MySQL expec
     $mysqlRoleId = collect($mysql['tables']['roles']['columns'])->firstWhere('name', 'id');
     $mysqlUserRole = collect($mysql['tables']['users']['columns'])->firstWhere('name', 'role');
 
-    expect($report['connection']['schema'])->toBe($contract->expected('sqlite'))
+    // The lane boots on mysql, so the live-inspected schema is mysql-shaped
+    // — compare it against the mysql expectation, the same one asserted
+    // below against the pure (connection-independent) generator function.
+    expect($report['connection']['schema'])->toBe($mysql)
         ->and($report['issue_totals'])->toBe([])
         ->and($mysqlRoleId)->toMatchArray(['type' => 'integer', 'length' => null, 'unsigned' => true, 'auto_increment' => true])
         ->and($mysqlUserRole)->toMatchArray(['type' => 'string', 'length' => 32, 'default' => 'user'])
@@ -774,8 +788,15 @@ it('enumerates column property primary unique secondary and foreign-key schema d
     });
     Schema::drop('model_has_roles');
     Schema::create('model_has_roles', function (Blueprint $table): void {
+        // model_type stays NOT NULL (matches the real migration): it is
+        // part of the composite primary key below, and MySQL — unlike the
+        // suite's old sqlite driver — refuses a nullable PRIMARY KEY column
+        // at DDL time (spec §7 SQL strict mode). A shorter length is the
+        // deliberate column-property drift instead: still a valid PK
+        // member, still the same column name/name-set (so this stays a
+        // property mismatch, not a missing-column one), just not 255.
         $table->unsignedBigInteger('role_id');
-        $table->string('model_type')->nullable();
+        $table->string('model_type', 100);
         $table->unsignedBigInteger('model_id');
         $table->primary(['role_id', 'model_id', 'model_type']);
     });
@@ -871,9 +892,15 @@ it('binds rollback ownership to actual role IDs and physical tuples', function (
     $receipt = authzArtifactRepository()->loadBackfillReceipt($applied->receiptName);
     $owned = $receipt->toArray()['owned_assignments'][0];
     $replacementId = $owned['role_id'] + 10_000;
-    DB::statement('PRAGMA defer_foreign_keys = ON');
+    // SQLite's PRAGMA defer_foreign_keys defers FK re-validation to commit,
+    // letting the parent update land before the matching child update. The
+    // mysql lane has no transaction-scoped equivalent (spec §7 SQL strict
+    // mode) — SET FOREIGN_KEY_CHECKS is the session-scoped analogue,
+    // re-enabled immediately once both writes are done.
+    DB::statement('SET FOREIGN_KEY_CHECKS=0');
     DB::table('roles')->where('id', $owned['role_id'])->update(['id' => $replacementId]);
     DB::table('model_has_roles')->where('role_id', $owned['role_id'])->update(['role_id' => $replacementId]);
+    DB::statement('SET FOREIGN_KEY_CHECKS=1');
     $before = DB::table('model_has_roles')->count();
 
     expect(authzAnalyzer()->analyze()->status())->toBe('already_applied')
