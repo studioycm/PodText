@@ -6,7 +6,6 @@ use App\Enums\PublicFormSubmissionStatus;
 use App\Filament\Resources\Support\ResourceTableActions;
 use App\Models\PublicFormSubmission;
 use App\Support\PublicFront\Forms\PublicFormSubmissionPresenter;
-use App\Support\UiTimezone;
 use Filament\Actions\Action;
 use Filament\Actions\BulkAction;
 use Filament\Actions\BulkActionGroup;
@@ -47,7 +46,7 @@ class PublicFormSubmissionsTable
                     ->sortable(),
                 TextColumn::make('submitted_at')
                     ->label(__('admin.fields.submitted_at'))
-                    ->dateTime('d/m/Y H:i', UiTimezone::name())
+                    ->dateTime()
                     ->sortable(),
                 TextColumn::make('source_url')
                     ->label(__('admin.fields.source_url'))

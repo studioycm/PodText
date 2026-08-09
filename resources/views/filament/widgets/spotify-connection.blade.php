@@ -33,7 +33,7 @@
                                 datetime="{{ $connection['last_tested_at']->toIso8601String() }}"
                                 data-testid="connection-tested-at"
                             >
-                                {{ __('admin.dashboard.connection.last_tested', ['date' => $connection['last_tested_at']->copy()->timezone(\App\Support\UiTimezone::name())->format(\App\Support\UiFormats::dateTime())]) }}
+                                {{ __('admin.dashboard.connection.last_tested', ['date' => $connection['last_tested_at']->forDisplay()]) }}
                             </time>
                         @else
                             <span class="text-xs text-gray-500 dark:text-gray-400">{{ __('admin.dashboard.connection.never_tested') }}</span>

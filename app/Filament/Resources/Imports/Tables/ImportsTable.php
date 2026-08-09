@@ -5,7 +5,6 @@ namespace App\Filament\Resources\Imports\Tables;
 use App\Enums\ImportConnectionProvider;
 use App\Support\Dashboard\EditorialMetrics;
 use App\Support\UiFormats;
-use App\Support\UiTimezone;
 use Filament\Actions\Action;
 use Filament\Actions\Imports\Models\Import;
 use Filament\Support\Icons\Heroicon;
@@ -53,11 +52,11 @@ class ImportsTable
                     ->formatStateUsing(fn (int $state): string => UiFormats::number($state)),
                 TextColumn::make('created_at')
                     ->label(__('admin.fields.created_at'))
-                    ->dateTime(UiFormats::dateTime(), UiTimezone::name())
+                    ->dateTime()
                     ->sortable(),
                 TextColumn::make('completed_at')
                     ->label(__('admin.resources.imports.completed_at'))
-                    ->dateTime(UiFormats::dateTime(), UiTimezone::name())
+                    ->dateTime()
                     ->placeholder(__('admin.resources.imports.running'))
                     ->sortable(),
             ])

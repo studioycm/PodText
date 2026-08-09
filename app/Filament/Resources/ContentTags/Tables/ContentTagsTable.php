@@ -3,7 +3,6 @@
 namespace App\Filament\Resources\ContentTags\Tables;
 
 use App\Filament\Resources\Support\ResourceTableActions;
-use App\Support\UiTimezone;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
@@ -32,7 +31,7 @@ class ContentTagsTable
                     ->boolean(),
                 TextColumn::make('enabled_at')
                     ->label(__('admin.fields.enabled_at'))
-                    ->dateTime('d/m/Y H:i', UiTimezone::name())
+                    ->dateTime()
                     ->sortable(),
                 TextColumn::make('moderation_state')
                     ->label(__('admin.fields.moderation_state'))
@@ -44,7 +43,7 @@ class ContentTagsTable
                     ->sortable(),
                 TextColumn::make('updated_at')
                     ->label(__('admin.fields.updated_at'))
-                    ->dateTime('d/m/Y H:i', UiTimezone::name())
+                    ->dateTime()
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
             ])

@@ -263,9 +263,7 @@ class RelationshipOptionForms
                 ->label(__('admin.fields.status'))
                 ->required(),
             DateTimePicker::make('published_at')
-                ->label(__('admin.fields.published_at'))
-                ->displayFormat('d/m/Y H:i')
-                ->timezone(UiTimezone::name()),
+                ->label(__('admin.fields.published_at')),
         ];
     }
 
@@ -292,9 +290,7 @@ class RelationshipOptionForms
                 ->default(false),
             DateTimePicker::make('enabled_at')
                 ->label(__('admin.fields.enabled_at'))
-                ->helperText(__('admin.helpers.enabled_at', ['timezone' => UiTimezone::name()]))
-                ->displayFormat('d/m/Y H:i')
-                ->timezone(UiTimezone::name()),
+                ->helperText(__('admin.helpers.enabled_at', ['timezone' => UiTimezone::name()])),
             TextInput::make('order_column')
                 ->label(__('admin.fields.sort_order'))
                 ->helperText(__('admin.helpers.sort_order'))

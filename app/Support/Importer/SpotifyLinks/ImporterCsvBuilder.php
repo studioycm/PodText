@@ -51,14 +51,14 @@ class ImporterCsvBuilder
     public function importDate(mixed $value): string
     {
         if ($value instanceof CarbonInterface) {
-            return $value->copy()->timezone(UiTimezone::name())->format('d/m/Y H:i');
+            return $value->forDisplay();
         }
 
         if (blank($value)) {
             return '';
         }
 
-        return Carbon::parse((string) $value, UiTimezone::name())->format('d/m/Y H:i');
+        return Carbon::parse((string) $value, UiTimezone::name())->forDisplay();
     }
 
     private function cell(mixed $value): string

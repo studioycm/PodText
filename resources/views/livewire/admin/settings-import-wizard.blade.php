@@ -34,7 +34,7 @@
                         <option value="">{{ __('admin.placeholders.choose_backup') }}</option>
                         @foreach ($backups as $backup)
                             <option value="{{ $backup->getKey() }}">
-                                #{{ $backup->getKey() }} · {{ $backup->source?->getLabel() }} · {{ $backup->created_at?->timezone(\App\Support\UiTimezone::name())->format('d/m/Y H:i') }}
+                                #{{ $backup->getKey() }} · {{ $backup->source?->getLabel() }} · {{ $backup->created_at?->forDisplay() }}
                             </option>
                         @endforeach
                     </select>

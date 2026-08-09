@@ -10,7 +10,6 @@ use App\Models\ContentItem;
 use App\Models\Media;
 use App\Models\MediaAttachment;
 use App\Support\PublicFront\PublicDefaultImageResolver;
-use App\Support\UiTimezone;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Number;
@@ -594,7 +593,7 @@ class OwnerImagePresenter
             'disk' => filled($media->disk) ? (string) $media->disk : null,
             'reference_key' => filled($media->reference_key) ? (string) $media->reference_key : null,
             'updated_at' => $media->updated_at
-                ? $media->updated_at->clone()->timezone(UiTimezone::name())->format('d/m/Y H:i')
+                ? $media->updated_at->forDisplay()
                 : null,
             'preview_url' => $canView ? $this->inventoryDiagnostics->previewUrl($media) : null,
             'download_url' => $canDownload

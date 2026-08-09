@@ -4,7 +4,6 @@ namespace App\Support\SettingsLifecycle;
 
 use App\Enums\SettingsImportMode;
 use App\Models\SettingsBackupVersion;
-use App\Support\UiTimezone;
 use Illuminate\Contracts\Support\Arrayable;
 use Illuminate\Support\Carbon;
 
@@ -145,7 +144,7 @@ class SettingsImportReport implements Arrayable
 
     public function generatedAtLabel(): string
     {
-        return Carbon::parse($this->generatedAt)->timezone(UiTimezone::name())->format('d/m/Y H:i');
+        return Carbon::parse($this->generatedAt)->forDisplay();
     }
 
     /**

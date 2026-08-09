@@ -12,7 +12,6 @@ use App\Support\Search\FoldedSearch;
 use App\Support\Transcriptions\MultiTranscriptionSurfaces;
 use App\Support\Transcriptions\SingleTranscriptionLens;
 use App\Support\Transcriptions\TranscriptionModeLabel;
-use App\Support\UiTimezone;
 use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
@@ -60,7 +59,7 @@ class TranscriptionsTable
                     ->sortable(),
                 TextColumn::make('published_at')
                     ->label(__('admin.fields.published_at'))
-                    ->dateTime('d/m/Y H:i', UiTimezone::name())
+                    ->dateTime()
                     ->sortable(),
                 TextColumn::make('word_count')
                     ->label(__('admin.fields.word_count'))
@@ -69,7 +68,7 @@ class TranscriptionsTable
                     ->toggleable(),
                 TextColumn::make('updated_at')
                     ->label(__('admin.fields.updated_at'))
-                    ->dateTime('d/m/Y H:i', UiTimezone::name())
+                    ->dateTime()
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('reference_key')

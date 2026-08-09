@@ -75,9 +75,7 @@ class TranscriptionsRelationManager extends RelationManager
                             ->required(),
                         DateTimePicker::make('published_at')
                             ->label(__('admin.fields.published_at'))
-                            ->helperText(__('admin.helpers.transcription_published_at', ['timezone' => UiTimezone::name()]))
-                            ->displayFormat('d/m/Y H:i')
-                            ->timezone(UiTimezone::name()),
+                            ->helperText(__('admin.helpers.transcription_published_at', ['timezone' => UiTimezone::name()])),
                     ])
                     ->columns(2),
                 Section::make(__('admin.sections.transcript'))
@@ -118,7 +116,7 @@ class TranscriptionsRelationManager extends RelationManager
                     ->sortable(),
                 TextColumn::make('published_at')
                     ->label(__('admin.fields.published_at'))
-                    ->dateTime('d/m/Y H:i', UiTimezone::name())
+                    ->dateTime()
                     ->sortable(),
                 TextColumn::make('language_code')
                     ->label(__('admin.fields.language_code'))
@@ -137,7 +135,7 @@ class TranscriptionsRelationManager extends RelationManager
                     ->color(fn (Transcription $record): string => $record->getKey() === $this->getOwnerRecord()->featured_transcription_id ? 'warning' : 'gray'),
                 TextColumn::make('updated_at')
                     ->label(__('admin.fields.updated_at'))
-                    ->dateTime('d/m/Y H:i', UiTimezone::name())
+                    ->dateTime()
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
             ])

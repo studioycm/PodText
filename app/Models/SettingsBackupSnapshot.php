@@ -2,7 +2,6 @@
 
 namespace App\Models;
 
-use App\Support\UiTimezone;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -86,7 +85,7 @@ class SettingsBackupSnapshot extends Model
 
     public function downloadFilename(): string
     {
-        $timestamp = $this->created_at?->copy()->timezone(UiTimezone::name())->format('Ymd-His') ?? (string) $this->getKey();
+        $timestamp = $this->created_at?->forDisplay('Ymd-His') ?? (string) $this->getKey();
 
         return "settings-backup-{$this->backup_id}-{$this->screen_key}-{$this->theme}-{$this->kind}-{$timestamp}.{$this->format}";
     }

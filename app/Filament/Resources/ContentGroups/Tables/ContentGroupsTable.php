@@ -8,7 +8,6 @@ use App\Filament\Exports\ContentGroupExporter;
 use App\Filament\Imports\ContentGroupImporter;
 use App\Filament\Resources\Support\ResourceTableActions;
 use App\Filament\Tables\OwnerImageColumn;
-use App\Support\UiTimezone;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
@@ -62,7 +61,7 @@ class ContentGroupsTable
                     ->sortable(),
                 TextColumn::make('published_at')
                     ->label(__('admin.fields.published_at'))
-                    ->dateTime('d/m/Y H:i', UiTimezone::name())
+                    ->dateTime()
                     ->sortable(),
                 TextColumn::make('slug')
                     ->label(__('admin.fields.slug'))

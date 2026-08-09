@@ -5,7 +5,6 @@ namespace App\Filament\Resources\Categories\Tables;
 use App\Filament\Exports\CategoryExporter;
 use App\Filament\Imports\CategoryImporter;
 use App\Filament\Resources\Support\ResourceTableActions;
-use App\Support\UiTimezone;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
@@ -46,7 +45,7 @@ class CategoriesTable
                     ->sortable(),
                 TextColumn::make('updated_at')
                     ->label(__('admin.fields.updated_at'))
-                    ->dateTime('d/m/Y H:i', UiTimezone::name())
+                    ->dateTime()
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
             ])

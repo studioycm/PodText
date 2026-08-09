@@ -252,13 +252,9 @@ class EpisodeWorkspaceForm
                             ->maxLength(2048)
                             ->rules(ContentItemMediaRules::rules()['external_thumbnail_url']),
                         DateTimePicker::make('external_published_at')
-                            ->label(__('admin.fields.external_published_at'))
-                            ->displayFormat('d/m/Y H:i')
-                            ->timezone(UiTimezone::name()),
+                            ->label(__('admin.fields.external_published_at')),
                         DateTimePicker::make('original_published_at')
-                            ->label(__('admin.fields.original_published_at'))
-                            ->displayFormat('d/m/Y H:i')
-                            ->timezone(UiTimezone::name()),
+                            ->label(__('admin.fields.original_published_at')),
                         KeyValue::make('media_metadata')
                             ->label(__('admin.fields.media_metadata'))
                             ->helperText(__('admin.helpers.media_metadata'))
@@ -275,22 +271,16 @@ class EpisodeWorkspaceForm
                             ->helperText(__('admin.helpers.content_item_status'))
                             ->required(),
                         DateTimePicker::make('published_at')
-                            ->label(__('admin.fields.published_at'))
-                            ->displayFormat('d/m/Y H:i')
-                            ->timezone(UiTimezone::name()),
+                            ->label(__('admin.fields.published_at')),
                         Toggle::make('is_pinned')
                             ->label(__('admin.fields.is_pinned'))
                             ->helperText(__('admin.helpers.is_pinned')),
                         DateTimePicker::make('pinned_at')
                             ->label(__('admin.fields.pinned_at'))
-                            ->helperText(__('admin.helpers.pinned_at'))
-                            ->displayFormat('d/m/Y H:i')
-                            ->timezone(UiTimezone::name()),
+                            ->helperText(__('admin.helpers.pinned_at')),
                         DateTimePicker::make('pinned_until')
                             ->label(__('admin.fields.pinned_until'))
-                            ->helperText(__('admin.helpers.pinned_until'))
-                            ->displayFormat('d/m/Y H:i')
-                            ->timezone(UiTimezone::name()),
+                            ->helperText(__('admin.helpers.pinned_until')),
                         TextInput::make('pin_order')
                             ->label(__('admin.fields.pin_order'))
                             ->helperText(__('admin.helpers.pin_order'))
@@ -341,9 +331,7 @@ class EpisodeWorkspaceForm
                     ->required(),
                 DateTimePicker::make('published_at')
                     ->label(__('admin.fields.published_at'))
-                    ->helperText(TranscriptionModeLabel::text('admin.helpers.transcription_published_at', ['timezone' => UiTimezone::name()]))
-                    ->displayFormat('d/m/Y H:i')
-                    ->timezone(UiTimezone::name()),
+                    ->helperText(TranscriptionModeLabel::text('admin.helpers.transcription_published_at', ['timezone' => UiTimezone::name()])),
                 MarkdownEditor::make('transcript_markdown')
                     ->label(__('admin.fields.transcript_markdown'))
                     ->helperText(__('admin.helpers.transcript_markdown'))

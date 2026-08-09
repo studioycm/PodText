@@ -6,7 +6,6 @@ use App\Enums\SettingsBackupSource;
 use App\Models\Concerns\HasFoldedSearchColumns;
 use App\Models\Contracts\FoldsSearchColumns;
 use App\Support\SettingsLifecycle\PublicSettingsPackage;
-use App\Support\UiTimezone;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -87,7 +86,7 @@ class SettingsBackupVersion extends Model implements FoldsSearchColumns
 
     public function downloadFilename(): string
     {
-        $timestamp = $this->created_at?->copy()->timezone(UiTimezone::name())->format('Ymd-His') ?? (string) $this->getKey();
+        $timestamp = $this->created_at?->forDisplay('Ymd-His') ?? (string) $this->getKey();
 
         return "public-content-settings-backup-{$timestamp}.json";
     }

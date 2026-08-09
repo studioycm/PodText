@@ -79,7 +79,7 @@
                             dir="ltr"
                             datetime="{{ $event['at']->toIso8601String() }}"
                         >
-                            {{ $event['at']->copy()->timezone(\App\Support\UiTimezone::name())->format(\App\Support\UiFormats::dateTime()) }}
+                            {{ $event['at']->forDisplay() }}
                         </time>
                     </li>
                 @endforeach

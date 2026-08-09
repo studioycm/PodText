@@ -291,7 +291,7 @@ class ContentItemsTable
             ->badge()
             ->tooltip(fn (ContentItem $record): string => EpisodePublicState::for($record) === EpisodePublicState::Scheduled
                 ? __('admin.episode_public_state.scheduled_tooltip', [
-                    'date' => $record->published_at?->timezone(UiTimezone::name())->format(UiFormats::dateTime()),
+                    'date' => $record->published_at?->forDisplay(),
                 ])
                 // Every other state says what "public" depends on, because
                 // the column next to it says «פורסם» and means something else.
@@ -391,7 +391,7 @@ class ContentItemsTable
         // it costs nothing today because primeEpisodeQuery already has it.
         return TextColumn::make('latestPublishedTranscription.published_at')
             ->label(__('admin.fields.transcription_date'))
-            ->dateTime(UiFormats::dateTime(), UiTimezone::name())
+            ->dateTime()
             ->placeholder(__('admin.labels.none'))
             ->toggleable(isToggledHiddenByDefault: true);
     }
@@ -400,7 +400,7 @@ class ContentItemsTable
     {
         return TextColumn::make('effective_published_at')
             ->label(__('admin.fields.published_at'))
-            ->dateTime(UiFormats::dateTime(), UiTimezone::name())
+            ->dateTime()
             ->placeholder(__('admin.labels.none'))
             ->sortable(query: fn (Builder $query, string $direction): Builder => $query->orderByEffectivePublishedAt($direction))
             ->tooltip(fn (ContentItem $record): ?string => $record->published_at === null && $record->status === PublicationStatus::Published
@@ -414,8 +414,8 @@ class ContentItemsTable
     {
         return TextColumn::make('updated_at')
             ->label(__('admin.fields.updated_at'))
-            ->since(UiTimezone::name())
-            ->dateTimeTooltip(UiFormats::dateTime(), UiTimezone::name())
+            ->since()
+            ->dateTimeTooltip()
             ->sortable()
             ->toggleable();
     }
@@ -432,9 +432,7 @@ class ContentItemsTable
                 DateTimePicker::make('published_at')
                     ->label(__('admin.fields.published_at'))
                     ->helperText(__('admin.helpers.published_at_timezone', ['timezone' => UiTimezone::name()]))
-                    ->seconds(false)
-                    ->displayFormat(UiFormats::dateTime())
-                    ->timezone(UiTimezone::name()),
+                    ->seconds(false),
             ])
             ->fillForm(fn (ContentItem $record): array => [
                 'published_at' => $record->published_at,
@@ -517,7 +515,7 @@ class ContentItemsTable
             ->title(match ($state) {
                 EpisodePublicState::Visible => __('admin.notifications.episode_visible'),
                 EpisodePublicState::Scheduled => __('admin.notifications.episode_scheduled', [
-                    'date' => $fresh->published_at?->timezone(UiTimezone::name())->format(UiFormats::dateTime()),
+                    'date' => $fresh->published_at?->forDisplay(),
                 ]),
                 EpisodePublicState::Draft => __('admin.notifications.episode_unpublished'),
                 EpisodePublicState::BlockedGroup => __('admin.notifications.episode_blocked_group'),
@@ -530,7 +528,7 @@ class ContentItemsTable
 
         if ($record->wasChanged('published_at') && $fresh->published_at !== null) {
             $notification->body(__('admin.notifications.published_at_stamped', [
-                'date' => $fresh->published_at->timezone(UiTimezone::name())->format(UiFormats::dateTime()),
+                'date' => $fresh->published_at->forDisplay(),
             ]));
         }
 
@@ -686,12 +684,10 @@ class ContentItemsTable
             ->schema([
                 DatePicker::make('published_from')
                     ->label(__('admin.filters.published_from'))
-                    ->native(false)
-                    ->displayFormat(UiFormats::date()),
+                    ->native(false),
                 DatePicker::make('published_until')
                     ->label(__('admin.filters.published_until'))
-                    ->native(false)
-                    ->displayFormat(UiFormats::date()),
+                    ->native(false),
             ])
             ->columnSpan(2)
             ->columns(2)
@@ -795,9 +791,7 @@ class ContentItemsTable
                     ->required(),
                 DateTimePicker::make('published_at')
                     ->label(__('admin.fields.published_at'))
-                    ->helperText(TranscriptionModeLabel::text('admin.helpers.transcription_published_at', ['timezone' => UiTimezone::name()]))
-                    ->displayFormat(UiFormats::dateTime())
-                    ->timezone(UiTimezone::name()),
+                    ->helperText(TranscriptionModeLabel::text('admin.helpers.transcription_published_at', ['timezone' => UiTimezone::name()])),
                 MarkdownEditor::make('transcript_markdown')
                     ->label(__('admin.fields.transcript_markdown'))
                     ->helperText(TranscriptionModeLabel::text('admin.helpers.transcript_markdown'))

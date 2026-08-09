@@ -13,7 +13,7 @@
     $totalWordCount = (int) ($contentGroup->public_total_word_count ?? 0);
     $totalReadingMinutes = $totalWordCount > 0 ? max(1, (int) ceil($totalWordCount / 200)) : 0;
     $latestTranscriptionDate = filled($contentGroup->public_latest_transcription_published_at ?? null)
-        ? \Carbon\Carbon::parse($contentGroup->public_latest_transcription_published_at)->timezone(\App\Support\UiTimezone::name())->format('d/m/Y')
+        ? \Carbon\Carbon::parse($contentGroup->public_latest_transcription_published_at)->forDisplay(\App\Support\UiFormats::date())
         : null;
     $initials = str($contentGroup->title)->squish()->substr(0, 2)->upper();
     $pageImage = $this->pageImage();

@@ -10,7 +10,6 @@ use App\Filament\Widgets\Concerns\ShowsLoadingSkeleton;
 use App\Models\ContentGroup;
 use App\Support\Dashboard\EditorialMetrics;
 use App\Support\UiFormats;
-use App\Support\UiTimezone;
 use Filament\Widgets\Concerns\InteractsWithPageFilters;
 use Filament\Widgets\Widget;
 use Illuminate\Support\Carbon;
@@ -58,8 +57,7 @@ class DashboardContextWidget extends Widget
             'showSource' => $lens === DashboardLens::Intake,
             'stages' => FunnelStage::cases(),
             'generatedAt' => Carbon::parse($metrics['generated_at'])
-                ->timezone(UiTimezone::name())
-                ->format(UiFormats::time()),
+                ->forDisplay(UiFormats::time()),
         ];
     }
 }
