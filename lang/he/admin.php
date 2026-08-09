@@ -3281,6 +3281,7 @@ return [
         'cannot_demote_self' => 'אי אפשר להוריד את התפקיד של חשבון הסופר-אדמין שלך.',
         'media_url_https' => 'כתובת המדיה חייבת להשתמש ב-HTTPS.',
         'media_reference_key' => 'יש לבחור תמונה מורשית מספריית התמונות.',
+        'nonexistent_wall_time' => 'השעה הזו אינה קיימת ב-:timezone בתאריך הזה — השעון מדלג עליה.',
         'embed_url_host' => 'מארח כתובת ההטמעה אינו מאושר.',
         'embed_url_https' => 'כתובת ההטמעה חייבת להשתמש ב-HTTPS.',
         'embed_url_no_html' => 'יש להדביק כתובת הטמעה, לא HTML.',

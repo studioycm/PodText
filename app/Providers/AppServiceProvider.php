@@ -22,6 +22,7 @@ use App\Policies\ContentItemPolicy;
 use App\Policies\CuratorMediaPolicy;
 use App\Policies\ImportPolicy;
 use App\Policies\SettingsBackupPolicy;
+use App\Rules\ExistsInTimezone;
 use App\Settings\PublicContentSettings;
 use App\Support\Authorization\PackageMutationCommandGuard;
 use App\Support\Dashboard\EditorialMetrics;
@@ -343,7 +344,25 @@ class AppServiceProvider extends ServiceProvider
             ->native(false)
             ->defaultDateDisplayFormat(UiFormats::date())
             ->defaultDateTimeDisplayFormat(UiFormats::dateTime())
-            ->defaultTimeDisplayFormat(UiFormats::time()));
+            ->defaultTimeDisplayFormat(UiFormats::time())
+            // Spring-forward gap (alignment spec §10.3): reject wall times
+            // that don't exist in the picker's zone. getInternalFormat(),
+            // not getFormat() — getFormat() tracks hasSeconds()/->format()
+            // and can diverge from what non-native pickers actually sync
+            // (e.g. the changePublishedAt action's ->seconds(false) picker
+            // still round-trips `Y-m-d H:i:s`; getInternalFormat() always
+            // returns that shape once native(false) is fixed, verified in
+            // vendor). That shape matches the raw Livewire state
+            // HasState::getState() validates (:453) before dehydrateState()
+            // (:490) converts it to UTC — so the rule sees exactly what the
+            // picker synced, not a reformatted guess.
+            ->rule(
+                fn (DateTimePicker $component): ExistsInTimezone => new ExistsInTimezone(
+                    $component->getTimezone() ?? config('app.timezone'),
+                    $component->getInternalFormat(),
+                ),
+                condition: fn (DateTimePicker $component): bool => $component->hasTime(),
+            ));
 
         $forDisplay = function (?string $format = null): string {
             /** @var CarbonInterface $this */

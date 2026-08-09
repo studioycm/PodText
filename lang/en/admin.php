@@ -3285,6 +3285,7 @@ return [
         'embed_url_url' => 'The embed URL must be a valid URL.',
         'media_url_https' => 'The media URL must use HTTPS.',
         'media_reference_key' => 'Choose an allowed image from the image library.',
+        'nonexistent_wall_time' => 'This time does not exist in :timezone on that date — the clock skips it.',
         'owner_image_baseline_invalid' => 'This owner-image workspace can no longer be verified. Close it and open it again before saving.',
         'owner_image_changed' => 'The owner image changed after this workspace opened. Close it, review the current image, and try again.',
         'settings_owner_image_changed' => 'A saved image for these settings changed while this page was open. Review the refreshed current image, then save again.',
