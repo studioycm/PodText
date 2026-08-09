@@ -55,6 +55,7 @@ return [
             'unix_socket' => env('DB_SOCKET', ''),
             'charset' => 'utf8mb4',
             'collation' => 'utf8mb4_0900_ai_ci', // hardcoded on purpose: this key stamps every CREATE TABLE (alignment spec §3); env indirection is how unicode_ci drifted in.
+            'timezone' => '+00:00', // pinned AFTER the DATETIME conversion (alignment spec §9 step 5): declared in git, not inherited from whichever OS the server runs.
             'prefix' => '',
             'prefix_indexes' => true,
             'strict' => true,
