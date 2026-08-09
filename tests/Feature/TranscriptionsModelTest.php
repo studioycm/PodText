@@ -91,6 +91,17 @@ it('backfills existing transcription author ids into the transcriber pivot migra
         ->where('author_id', $author->id)
         ->where('transcription_id', $transcriptionId)
         ->value('sort_order'))->toBe(0);
+
+    // Both migrations ran as real DDL, which implicitly commits on mysql and
+    // escapes RefreshDatabase's transaction rollback (spec §7 DDL-commit
+    // leakage). The table recreation above replays the ORIGINAL, pre-alignment
+    // migration, landing author_transcription back on TIMESTAMP columns —
+    // which would otherwise permanently trip TestCase::assertDisposableSchema()'s
+    // zero-TIMESTAMP invariant for every test in every future run, since that
+    // guard runs before RefreshDatabase gets a chance to migrate:fresh again.
+    // The alignment migration is idempotent (AlignmentMigrationTest) — re-run
+    // it to restore the lane's invariant before this test ends.
+    (require database_path('migrations/2026_08_09_000000_align_collation_and_datetime_columns.php'))->up();
 });
 
 it('syncs ordered transcription transcribers and keeps the compatibility author primary', function (): void {
