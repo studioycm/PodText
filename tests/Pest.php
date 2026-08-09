@@ -43,6 +43,11 @@ if ($laneLock === false || ! flock($laneLock, LOCK_EX | LOCK_NB)) {
     exit(1);
 }
 
+// The include runs inside BootFiles::load() — a method scope. Without this,
+// the handle is garbage-collected right after bootstrap and the lock silently
+// releases (proven by a mid-run probe). Globals live as long as the process.
+$GLOBALS['mysqlLaneRunLock'] = $laneLock;
+
 /*
 |--------------------------------------------------------------------------
 | Process-scoped fake disk roots
