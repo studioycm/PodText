@@ -49,6 +49,9 @@ use App\Support\UiTimezone;
 use Awcodes\Curator\Facades\Curator;
 use BezhanSalleh\FilamentShield\Commands\TranslationCommand;
 use BezhanSalleh\FilamentShield\Facades\FilamentShield;
+use Carbon\Carbon;
+use Carbon\CarbonImmutable;
+use Carbon\CarbonInterface;
 use Closure;
 use Filament\Actions\Action;
 use Filament\Actions\Imports\Models\FailedImportRow;
@@ -341,6 +344,14 @@ class AppServiceProvider extends ServiceProvider
             ->defaultDateDisplayFormat(UiFormats::date())
             ->defaultDateTimeDisplayFormat(UiFormats::dateTime())
             ->defaultTimeDisplayFormat(UiFormats::time()));
+
+        $forDisplay = function (?string $format = null): string {
+            /** @var CarbonInterface $this */
+            return $this->copy()->setTimezone(UiTimezone::name())
+                ->translatedFormat($format ?? UiFormats::dateTime());
+        };
+        Carbon::macro('forDisplay', $forDisplay);
+        CarbonImmutable::macro('forDisplay', $forDisplay);
 
         Action::configureUsing(function (Action $action): void {
             if (! $this->isAdminPanel()) {
