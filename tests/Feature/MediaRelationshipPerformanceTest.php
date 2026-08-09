@@ -2,6 +2,7 @@
 
 use App\Enums\ImageUploadPurpose;
 use App\Enums\MediaAttachmentRole;
+use App\Enums\MediaMutationStatus;
 use App\Models\ContentGroup;
 use App\Models\ContentItem;
 use App\Models\Media;
@@ -115,7 +116,7 @@ it('batches about and team settings identity queries for one ten and fifty recor
     $renderer = app(PublicAboutPageRenderer::class);
     $queries = [];
     DB::listen(function ($query) use (&$queries): void {
-        if (str_contains($query->sql, '"curator"')) {
+        if (str_contains($query->sql, '`curator`')) {
             $queries[] = $query->sql;
         }
     });
@@ -152,10 +153,10 @@ it('keeps bulk legacy and attachment reference discovery bounded for one ten and
     $referenceQueries = [];
     DB::listen(function ($query) use (&$referenceQueries): void {
         if (
-            str_contains($query->sql, '"media_attachments"')
-            || (str_contains($query->sql, '"content_groups"') && str_contains($query->sql, '"cover_path"'))
-            || (str_contains($query->sql, '"content_items"') && str_contains($query->sql, '"image_path"'))
-            || (str_contains($query->sql, '"settings"') && str_contains($query->sql, '"payload"'))
+            str_contains($query->sql, '`media_attachments`')
+            || (str_contains($query->sql, '`content_groups`') && str_contains($query->sql, '`cover_path`'))
+            || (str_contains($query->sql, '`content_items`') && str_contains($query->sql, '`image_path`'))
+            || (str_contains($query->sql, '`settings`') && str_contains($query->sql, '`payload`'))
         ) {
             $referenceQueries[] = $query->sql;
         }
@@ -167,34 +168,54 @@ it('keeps bulk legacy and attachment reference discovery bounded for one ten and
         ->and(Media::query()->whereKey($records->modelKeys())->exists())->toBeFalse();
 })->with([1, 10, 50]);
 
-it('uses the evidence-backed attachment identity and mutation repair indexes in sqlite', function (): void {
-    expect(DB::connection()->getDriverName())->toBe('sqlite');
+it('uses the evidence-backed attachment identity and mutation repair indexes', function (): void {
+    expect(DB::connection()->getDriverName())->toBe('mysql');
+
+    // sqlite's EXPLAIN QUERY PLAN reports the chosen access method
+    // structurally, independent of row presence — mysql's plain EXPLAIN
+    // only populates key/possible_keys for a fully-bound UNIQUE lookup when
+    // it can't shortcut to "no matching row in const table" (spec §7 SQL
+    // strict mode). One matching row per unique-keyed query is enough; the
+    // non-unique ref-type lookups plan correctly even on an empty table.
+    $media = Media::factory()->create();
+    MediaAttachment::factory()->create([
+        'media_id' => $media->getKey(),
+        'attachable_type' => 'content_group',
+        'attachable_id' => 1,
+        'role' => MediaAttachmentRole::Cover,
+        'position' => 0,
+    ]);
 
     $plans = [
         'media_attachments_owner_role_unique' => DB::select(
-            'EXPLAIN QUERY PLAN SELECT id FROM media_attachments WHERE attachable_type = ? AND attachable_id = ? AND role = ? LIMIT 1',
-            ['content_group', 1, 'cover'],
+            'EXPLAIN SELECT id FROM media_attachments WHERE attachable_type = ? AND attachable_id = ? AND role = ? LIMIT 1',
+            ['content_group', 1, MediaAttachmentRole::Cover->value],
         ),
         'media_attachments_media_role_index' => DB::select(
-            'EXPLAIN QUERY PLAN SELECT id FROM media_attachments WHERE media_id = ? AND role = ?',
-            [1, 'cover'],
+            'EXPLAIN SELECT id FROM media_attachments WHERE media_id = ? AND role = ?',
+            [$media->getKey(), MediaAttachmentRole::Cover->value],
         ),
         'curator_reference_key_unique' => DB::select(
-            'EXPLAIN QUERY PLAN SELECT id FROM curator WHERE reference_key = ? LIMIT 1',
-            [(string) Str::ulid()],
+            'EXPLAIN SELECT id FROM curator WHERE reference_key = ? LIMIT 1',
+            [$media->reference_key],
         ),
         'media_mutations_status_updated_index' => DB::select(
-            'EXPLAIN QUERY PLAN SELECT id FROM media_mutation_operations WHERE status = ? ORDER BY updated_at, id LIMIT 100',
-            ['cleanup_pending'],
+            'EXPLAIN SELECT id FROM media_mutation_operations WHERE status = ? ORDER BY updated_at, id LIMIT 100',
+            [MediaMutationStatus::CleanupPending->value],
         ),
         'media_mutations_media_status_index' => DB::select(
-            'EXPLAIN QUERY PLAN SELECT id FROM media_mutation_operations WHERE media_id = ? AND status = ?',
-            [1, 'cleanup_pending'],
+            'EXPLAIN SELECT id FROM media_mutation_operations WHERE media_id = ? AND status = ?',
+            [$media->getKey(), MediaMutationStatus::CleanupPending->value],
         ),
     ];
 
     foreach ($plans as $index => $rows) {
-        $detail = collect($rows)->pluck('detail')->implode(' ');
-        expect($detail)->toContain($index);
+        // possible_keys (the optimizer's usable-index candidates), not key
+        // (its cost-based pick): on these near-empty fixture tables MySQL
+        // sometimes prefers a different valid index than it would at
+        // production cardinality. This test guards index existence and
+        // applicability, not the optimizer's tie-break.
+        $candidates = collect($rows)->pluck('possible_keys')->implode(',');
+        expect($candidates)->toContain($index);
     }
 });
