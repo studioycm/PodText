@@ -1,5 +1,7 @@
 # MySQL test lane — spec
 
+> **Superseded 2026-08-08 by [database-alignment-spec.md](database-alignment-spec.md)**, which carries the reviewed decisions (collation chosen on merit incl. the emoji evidence; clock solved by DATETIME conversion; the lane on a second Herd daemon). This document stays as the measurement record.
+
 **Status:** design, approved in principle (operator chose Herd, 2026-08-06).
 Not implemented. Nothing in this document has been applied to the repo.
 

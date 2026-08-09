@@ -1,5 +1,7 @@
 # Hebrew collation and the database clock — decision, and why the runbook is not ready
 
+> **Superseded 2026-08-08 by [database-alignment-spec.md](database-alignment-spec.md)**, which carries the reviewed decisions (collation chosen on merit incl. the emoji evidence; clock solved by DATETIME conversion; the lane on a second Herd daemon). This document stays as the measurement record.
+
 **Status: DO NOT RUN.** A full migration runbook was written and then attacked
 from four angles. **All four found blocking defects — 28 total, 9 of them
 blockers**, including two that would have destroyed or silently corrupted data.

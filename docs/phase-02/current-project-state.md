@@ -2795,3 +2795,64 @@ and `model:show` is safe to use again.
   time.** Remaining Phase 3: the in-repo `+00:00` connection pin + local
   daemons' my.cnf/tz tables (Task 13), schedule timezone intent (Task 14),
   then the Phase 3 deploy gate.
+
+## Database Alignment — Phase 3 code half through Phase 6 executed (test lane, display/input globals, guard inventory)
+
+- Phase 3's code half closed and deployed together: `3911495` declares
+  `'timezone' => '+00:00'` on the `mysql` connection in git rather than
+  inheriting it from the server's OS, and `d5f3837` pins both
+  `routes/console.php` schedule entries to `UiTimezone::name()` so the
+  03:30/03:50 jobs run on Israel wall time year-round, guarded by a test
+  against any future unpinned entry. Push `3b142fb..d5f3837`, deploy
+  `75071476`; verified on production — `/up` 200, `db:check-settings` exit
+  0 with the declared pin, `schedule:list` showing both entries in
+  Jerusalem time.
+- Phase 4 retired SQLite from the suite. A dedicated MySQL 8.0.46 daemon on
+  port 3307 (the `mysql_testing` connection, sharing no env key with the
+  app) is protected by a one-shape guard — `TestLaneGuardTest` (`3638245`
+  + `431edcb`) refuses the app's own database/port/user, any DSN or socket
+  escape, and any name collision in the raw env files — plus a
+  flock-based run-lock (`9f979b5`) against concurrent suite runs. The
+  first run against the real engine turned up 89 failures; 14 attributed
+  commits took it to green, including two genuine application defects the
+  SQLite suite had never been able to see: `de83d26` (MySQL's unspecified
+  `ON UPDATE` is `NO ACTION`, not the `RESTRICT` the legacy-role schema
+  contract predicted) and `e031bcb` (the legacy-role analyzer querying a
+  configured column that does not exist — MySQL rejects that at parse
+  time; SQLite's quoted-identifier fallback had silently absorbed it). The
+  §3 Hebrew-folding collation matrix re-measured identical on the 8.0.46
+  lane to the spec's 9.4.0 figures, closing the version-identity question.
+  Full lane suite: 1934/1934 in ~635s, versus the retired ~557s SQLite
+  baseline. Pushed `d5f3837..f3c764b`; no deploy — the lane is
+  dev/test-only.
+- Phase 5 gave every Filament date surface one source of truth, and
+  deployed it: `c093e96` adds the global hooks that give every
+  `DateTimePicker`/`DatePicker` its Asia/Jerusalem timezone and day-first
+  format from one place, `46ef475` adds the `forDisplay()` macro on both
+  `Carbon` and `CarbonImmutable` as the one call site for rendering,
+  `0cb9cb8` collapses the per-site `->timezone()`/`->displayFormat()`
+  chains this replaced across 44 files (+77/−149), and `6ef6099`/`71dc28b`
+  add `ExistsInTimezone`, a validation rule that catches Jerusalem's
+  spring-forward wall-clock gap by round-tripping the parsed value through
+  its own format. Gate review (`efcebec`) caught two real bugs first: the
+  wiring read `DateTimePicker::getFormat()`, which is inert on fields with
+  seconds disabled, fixed to `getInternalFormat()` and confirmed against
+  vendor source; and `Carbon::createFromFormat()`'s undocumented `null`
+  return path, which would have crashed outside the rule's own `try` block
+  instead of failing validation cleanly, fixed with an explicit `$parsed
+  !== null` guard. Push `f3c764b..efcebec`, deploy `75082462`; verified on
+  production — `/up` 200, `forDisplay` rendering `08/08/2026 12:34`,
+  day-first Jerusalem.
+- Phase 6 closed the program on four standing guards: `ebb6e1a`
+  (`MigrationDateColumnPolicyTest`, bans `TIMESTAMP`/DB-generated time in
+  any future migration), `a278b33` (`ModelDateFormatPolicyTest`, bans
+  per-model `$dateFormat` escape hatches), `ac8c8a8` (a fourth
+  `UiTimezonePolicyTest` case, banning `->timezone()`/`->displayFormat()`
+  chains from re-entering `app/Filament/`), and Phase 4's
+  `TestLaneGuardTest` above. `db:check-settings` — extended across the
+  whole program with collation, column-type, and `PAD_ATTRIBUTE` drift
+  checks — is now the standing drift alarm: exit 0 on both production and
+  local.
+- Still open: the rehearsal databases (`podtext_restore_check` on 3306,
+  `podtext_rehearsal` on 3307) are kept in their converted end state,
+  pending operator approval to drop them.
