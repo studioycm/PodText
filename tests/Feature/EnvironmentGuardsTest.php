@@ -34,14 +34,17 @@ it('runs against the dedicated mysql test lane it cannot destroy', function (): 
         ->and(app()->environment())->toBe('testing');
 });
 
-it('refuses to run with the app connection selected as default', function (): void {
+it('refuses to run when the booted lane connection is tampered with', function (): void {
     // Not a re-run of TestLaneGuardTest's stubbed clause table — this feeds
     // the REAL booted connections (host, port, username, database as they
-    // exist right now) through the same pure refusalFor, swapping only
-    // `default` to the app connection, to prove the booted guard would have
-    // thrown had the lane not been selected.
+    // exist right now) through the same pure refusalFor, mutating one
+    // connection-level field (the lane host) to prove the booted guard would
+    // refuse a tampered connection. Mutating `default` instead would
+    // short-circuit on the very first clause before ever touching the booted
+    // connection array, which would not actually prove anything about the
+    // booted state.
     $config = config('database');
-    $config['default'] = 'mysql';
+    $config['connections']['mysql_testing']['host'] = '10.0.0.9';
 
     expect(TestCase::refusalFor($config, []))->not->toBeNull();
 });

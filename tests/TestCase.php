@@ -82,10 +82,12 @@ abstract class TestCase extends BaseTestCase
         return match (true) {
             ($lane['driver'] ?? null) !== 'mysql' => 'the lane driver must be mysql.',
             array_key_exists('url', $lane) => 'a url/DSN key silently overrides host and database — remove it.',
+            array_key_exists('unix_socket', $lane) => 'a unix_socket key bypasses host and port — remove it.',
             ($lane['database'] ?? null) === null || $lane['database'] === '' => 'no lane database configured — failing closed.',
             preg_match('/^[a-z][a-z0-9_]*_test(_[0-9]+)?$/', (string) $lane['database']) !== 1 => 'the lane database name must match /^[a-z][a-z0-9_]*_test(_[0-9]+)?$/.',
             in_array((string) $lane['database'], $rawEnvDatabases, true) => 'the lane database name appears as a DB_DATABASE in the raw .env files — a forced var could be masking the real name.',
-            ! in_array((string) ($lane['host'] ?? ''), ['127.0.0.1', 'localhost', '::1'], true) => 'the lane host must be local — a remote host is never a test target.',
+            ! in_array((string) ($lane['host'] ?? ''), ['127.0.0.1', '::1'], true) => 'the lane host must be 127.0.0.1 or ::1 — localhost means the unix socket (the app daemon), and a remote host is never a test target.',
+            preg_match('/^\d+$/', (string) ($lane['port'] ?? '')) !== 1 => 'the lane port must be an explicit number — an empty port silently resolves to the app daemon.',
             (string) ($lane['port'] ?? '') === (string) ($config['connections']['mysql']['port'] ?? '') => 'the lane port equals the app connection port — the lane must live on its own daemon.',
             ($lane['username'] ?? '') === '' => 'the lane username is empty.',
             ($lane['username'] ?? '') === 'root' => 'root would bypass the schema-scoped grant — the last barrier. Refused.',
@@ -109,7 +111,7 @@ abstract class TestCase extends BaseTestCase
                 continue;
             }
             if (preg_match('/^DB_DATABASE=(.*)$/m', (string) file_get_contents($file), $m) === 1) {
-                $values[] = trim($m[1], "\"' ");
+                $values[] = trim($m[1], "\"' \r");
             }
         }
 

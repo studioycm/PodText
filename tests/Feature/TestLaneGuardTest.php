@@ -27,6 +27,11 @@ it('refuses every broken shape', function (callable $mutate, string $needle) use
     'root user' => [fn (array &$c) => $c['connections']['mysql_testing']['username'] = 'root', 'root'],
     'app username' => [fn (array &$c) => $c['connections']['mysql_testing']['username'] = 'podtext', 'username'],
     'empty database' => [fn (array &$c) => $c['connections']['mysql_testing']['database'] = null, 'closed'],
+    'localhost host' => [fn (array &$c) => $c['connections']['mysql_testing']['host'] = 'localhost', 'unix socket'],
+    'unix_socket key' => [fn (array &$c) => $c['connections']['mysql_testing']['unix_socket'] = '/tmp/mysql.sock', 'unix_socket'],
+    'empty port' => [fn (array &$c) => $c['connections']['mysql_testing']['port'] = '', 'explicit number'],
+    'wrong driver' => [fn (array &$c) => $c['connections']['mysql_testing']['driver'] = 'pgsql', 'driver'],
+    'empty username' => [fn (array &$c) => $c['connections']['mysql_testing']['username'] = '', 'empty'],
 ]);
 
 it('refuses when the lane name appears in the raw env files', function () use ($valid): void {
