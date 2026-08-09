@@ -23,38 +23,68 @@ beforeEach(function (): void {
 });
 
 /**
+ * Eleven rows, each created a second after the last (travel(), not an
+ * explicit updated_at — freshTimestamp() then just follows the moved clock,
+ * with no mass-assignment/fillable concerns). travelBack() at the end fully
+ * releases the frozen clock — this file never froze time before, and
+ * nothing here should leave it frozen after.
+ *
+ * Without this, all eleven share one mysql DATETIME second (spec §7 SQL
+ * strict mode: no fractional-second precision), so ListContentItems'
+ * `->defaultSort('updated_at', 'desc')` has no secondary tie-break and mysql
+ * does not preserve insertion order for tied rows the way sqlite happened
+ * to — which of the eleven lands on the ten-row first page becomes
+ * non-deterministic instead of "the ten most recently created."
+ *
  * @return array<string, ContentItem>
  */
 function episodeScopeFixtures(): array
 {
     $publishedGroup = ContentGroup::factory()->published();
     $draftGroup = ContentGroup::factory();
+    $tick = function (): void {
+        test()->travel(1)->seconds();
+    };
 
-    return [
+    $fixtures = [
         'draft' => ContentItem::factory()->for($draftGroup, 'contentGroup')->create(),
-        'visible' => ContentItem::factory()->published()->for($publishedGroup, 'contentGroup')->withTranscription()->create(),
-        'scheduled' => ContentItem::factory()->published(now()->addDays(3))->for($publishedGroup, 'contentGroup')
-            ->withTranscription(['status' => PublicationStatus::Published, 'published_at' => now()->subMinute()])->create(),
-        'blocked_group' => ContentItem::factory()->published()->for($draftGroup, 'contentGroup')
-            ->withTranscription(['status' => PublicationStatus::Published, 'published_at' => now()->subMinute()])->create(),
-        'blocked_transcription' => ContentItem::factory()->published()->for($publishedGroup, 'contentGroup')
-            ->withTranscription(['status' => PublicationStatus::Draft, 'published_at' => null])->create(),
-        'blocked_both' => ContentItem::factory()->published()->for($draftGroup, 'contentGroup')
-            ->withTranscription(['status' => PublicationStatus::Draft, 'published_at' => null])->create(),
-        'pinned_draft' => ContentItem::factory()->pinned()->for($draftGroup, 'contentGroup')->create(),
-        'pin_expired' => ContentItem::factory()->pinned()->for($draftGroup, 'contentGroup')
-            ->create(['pinned_until' => now()->subDay()]),
-        // Pinned AND visible: without this row, pinned_not_visible and pinned
-        // return the same set and a broken predicate passes unnoticed.
-        'pinned_visible' => ContentItem::factory()->pinned()->published()->for($publishedGroup, 'contentGroup')
-            ->withTranscription()->create(),
-        // A draft with everything else already out — one switch from live.
-        'ready_to_publish' => ContentItem::factory()->for($publishedGroup, 'contentGroup')
-            ->withTranscription(['status' => PublicationStatus::Published, 'published_at' => now()->subMinute()])->create(),
-        // Future-dated, and its podcast will still be unpublished on the day.
-        'will_break_on_air' => ContentItem::factory()->published(now()->addDays(5))->for($draftGroup, 'contentGroup')
-            ->withTranscription(['status' => PublicationStatus::Published, 'published_at' => now()->subMinute()])->create(),
     ];
+    $tick();
+    $fixtures['visible'] = ContentItem::factory()->published()->for($publishedGroup, 'contentGroup')->withTranscription()->create();
+    $tick();
+    $fixtures['scheduled'] = ContentItem::factory()->published(now()->addDays(3))->for($publishedGroup, 'contentGroup')
+        ->withTranscription(['status' => PublicationStatus::Published, 'published_at' => now()->subMinute()])->create();
+    $tick();
+    $fixtures['blocked_group'] = ContentItem::factory()->published()->for($draftGroup, 'contentGroup')
+        ->withTranscription(['status' => PublicationStatus::Published, 'published_at' => now()->subMinute()])->create();
+    $tick();
+    $fixtures['blocked_transcription'] = ContentItem::factory()->published()->for($publishedGroup, 'contentGroup')
+        ->withTranscription(['status' => PublicationStatus::Draft, 'published_at' => null])->create();
+    $tick();
+    $fixtures['blocked_both'] = ContentItem::factory()->published()->for($draftGroup, 'contentGroup')
+        ->withTranscription(['status' => PublicationStatus::Draft, 'published_at' => null])->create();
+    $tick();
+    $fixtures['pinned_draft'] = ContentItem::factory()->pinned()->for($draftGroup, 'contentGroup')->create();
+    $tick();
+    $fixtures['pin_expired'] = ContentItem::factory()->pinned()->for($draftGroup, 'contentGroup')
+        ->create(['pinned_until' => now()->subDay()]);
+    $tick();
+    // Pinned AND visible: without this row, pinned_not_visible and pinned
+    // return the same set and a broken predicate passes unnoticed.
+    $fixtures['pinned_visible'] = ContentItem::factory()->pinned()->published()->for($publishedGroup, 'contentGroup')
+        ->withTranscription()->create();
+    $tick();
+    // A draft with everything else already out — one switch from live.
+    $fixtures['ready_to_publish'] = ContentItem::factory()->for($publishedGroup, 'contentGroup')
+        ->withTranscription(['status' => PublicationStatus::Published, 'published_at' => now()->subMinute()])->create();
+    $tick();
+    // Future-dated, and its podcast will still be unpublished on the day.
+    $fixtures['will_break_on_air'] = ContentItem::factory()->published(now()->addDays(5))->for($draftGroup, 'contentGroup')
+        ->withTranscription(['status' => PublicationStatus::Published, 'published_at' => now()->subMinute()])->create();
+
+    test()->travelBack();
+
+    return $fixtures;
 }
 
 it('partitions the library exactly across the quick scopes', function (): void {
@@ -151,10 +181,17 @@ it('renders every scope tab with exact count badges and filters records per tab'
 it('narrows a forged tab value to the all scope', function (): void {
     episodeScopeFixtures();
 
+    // Explicit orderBy matching ListContentItemsTable's own
+    // ->defaultSort('updated_at', 'desc'): a bare, unordered limit(5) has no
+    // guaranteed relationship to what a ten-per-page table renders first —
+    // sqlite happened to return rows in insertion order with no ORDER BY,
+    // mysql does not promise that (spec §7 SQL strict mode). Ordering the
+    // same way the table does guarantees this sample is a subset of
+    // whatever its first page shows, independent of page size.
     Livewire::test(ListContentItems::class)
         ->set('activeTab', 'forged-scope')
         ->assertSet('activeTab', EpisodeListScope::All->value)
-        ->assertCanSeeTableRecords(ContentItem::query()->limit(5)->get());
+        ->assertCanSeeTableRecords(ContentItem::query()->orderBy('updated_at', 'desc')->limit(5)->get());
 });
 
 it('names a scoped arrival in the heading and keeps the plain list bare', function (): void {
