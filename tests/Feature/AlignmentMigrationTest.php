@@ -2,13 +2,16 @@
 
 use Illuminate\Support\Facades\DB;
 
-it('no-ops on the sqlite suite driver', function (): void {
-    expect(DB::connection()->getDriverName())->toBe('sqlite');
+it('is idempotent on an already-aligned mysql lane schema', function (): void {
+    expect(DB::connection()->getDriverName())->toBe('mysql');
 
     $migration = require database_path('migrations/2026_08_09_000000_align_collation_and_datetime_columns.php');
 
-    // Past the guard the first statement is ALTER DATABASE — which would
-    // throw on sqlite, so completing up() IS the proof the guard held.
+    // The lane's schema is already aligned — this same migration ran during
+    // this test's migrate:fresh replay. Calling up() again must be a
+    // no-throw no-op: zero TIMESTAMP columns remain for the pre-condition
+    // scan to find, so modifyClauses() sees nothing to convert, and the
+    // ALTER DATABASE / CONVERT TO statements repeat harmlessly.
     $migration->up();
 });
 
