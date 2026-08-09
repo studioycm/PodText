@@ -2460,8 +2460,15 @@ it('mounts and detaches an attachment whose Media row disappeared', function ():
         $admin,
     );
 
-    DB::statement('PRAGMA defer_foreign_keys = ON');
+    // media_attachments.media_id is restrictOnDelete() — simulating "the
+    // Media row disappeared anyway" (a historical data anomaly, not a live
+    // write path) needs the constraint out of the way for this one delete.
+    // SQLite's PRAGMA defer_foreign_keys defers re-validation to commit; the
+    // mysql lane's session-scoped equivalent is SET FOREIGN_KEY_CHECKS,
+    // re-enabled immediately after (spec §7 SQL strict mode).
+    DB::statement('SET FOREIGN_KEY_CHECKS=0');
     DB::table('curator')->where('id', $missing->getKey())->delete();
+    DB::statement('SET FOREIGN_KEY_CHECKS=1');
 
     $component = Livewire::actingAs($admin)
         ->test(ListContentItems::class)
@@ -2500,8 +2507,15 @@ it('halts a rowless stale automatic choice refreshes its authenticated baseline 
         $admin,
     );
 
-    DB::statement('PRAGMA defer_foreign_keys = ON');
+    // media_attachments.media_id is restrictOnDelete() — simulating "the
+    // Media row disappeared anyway" (a historical data anomaly, not a live
+    // write path) needs the constraint out of the way for this one delete.
+    // SQLite's PRAGMA defer_foreign_keys defers re-validation to commit; the
+    // mysql lane's session-scoped equivalent is SET FOREIGN_KEY_CHECKS,
+    // re-enabled immediately after (spec §7 SQL strict mode).
+    DB::statement('SET FOREIGN_KEY_CHECKS=0');
     DB::table('curator')->where('id', $missing->getKey())->delete();
+    DB::statement('SET FOREIGN_KEY_CHECKS=1');
 
     $component = Livewire::actingAs($admin)
         ->test(ListContentItems::class)
