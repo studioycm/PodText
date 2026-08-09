@@ -147,7 +147,13 @@ it('keeps gated transcription policy bytes unchanged during anonymous normalize 
 
     clearSp2NormalizeSettingsState();
 
-    expect(app(PublicContentSettings::class)->transcription_policy)->toBe([
+    // toEqual, not toBe: a mysql JSON column re-serializes object members in
+    // its own key order on write, independent of any app behaviour — the
+    // contract this test guards is unchanged VALUES, not preserved
+    // insertion order (spec §7 SQL strict mode; sebastian/comparator's
+    // default array comparison is key-based, so list/part ORDER elsewhere
+    // stays enforced, only associative key order is relaxed here).
+    expect(app(PublicContentSettings::class)->transcription_policy)->toEqual([
         'public_mode' => 'forged_mode',
         'count_mode' => 'forged_count',
         'show_multiple_transcriptions_on_item_page' => true,

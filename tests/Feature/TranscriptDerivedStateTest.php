@@ -34,8 +34,12 @@ it('persists parsed segments when a transcription is saved through the applicati
         'status' => PublicationStatus::Draft,
     ]);
 
+    // toEqual, not toBe: parsed_segments is a mysql JSON column, which
+    // re-serializes each segment's own key order on write, independent of
+    // app behaviour (spec §7 SQL strict mode). Segment list order stays
+    // enforced either way.
     expect($transcription->refresh()->parsed_segments)
-        ->toBe(app(TranscriptSegmentParser::class)->parse(derivedStateMarkdown()))
+        ->toEqual(app(TranscriptSegmentParser::class)->parse(derivedStateMarkdown()))
         ->and($transcription->parsed_segments)->not->toBe([]);
 });
 
@@ -43,12 +47,12 @@ it('re-derives segments when the body changes and keeps explicit values', functi
     $explicit = [['speaker' => 'ידני', 'text' => 'נשמר']];
     $transcription = Transcription::factory()->create(['parsed_segments' => $explicit]);
 
-    expect($transcription->refresh()->parsed_segments)->toBe($explicit);
+    expect($transcription->refresh()->parsed_segments)->toEqual($explicit);
 
     $transcription->update(['transcript_markdown' => derivedStateMarkdown()]);
 
     expect($transcription->refresh()->parsed_segments)
-        ->toBe(app(TranscriptSegmentParser::class)->parse(derivedStateMarkdown()));
+        ->toEqual(app(TranscriptSegmentParser::class)->parse(derivedStateMarkdown()));
 });
 
 it('renders the public viewer from persisted segments without re-parsing', function (): void {
@@ -93,9 +97,10 @@ it('backfills parsed segments for existing rows without touching explicit ones',
 
     $this->artisan('transcriptions:backfill-parsed-segments')->assertSuccessful();
 
+    // toEqual: see the mysql JSON key-reordering reasoning above.
     expect($withNull->refresh()->parsed_segments)
-        ->toBe(app(TranscriptSegmentParser::class)->parse(derivedStateMarkdown()))
-        ->and($withValue->refresh()->parsed_segments)->toBe($explicit);
+        ->toEqual(app(TranscriptSegmentParser::class)->parse(derivedStateMarkdown()))
+        ->and($withValue->refresh()->parsed_segments)->toEqual($explicit);
 });
 
 it('serves the public filter options from a bounded cache across search renders', function (): void {

@@ -1147,7 +1147,9 @@ it('treats a nested lifecycle list as one conflict unit', function (): void {
     Event::assertNotDispatched(SettingsSaved::class);
     clearPublicFrontSettingsCache();
 
-    expect(app(PublicContentSettings::class)->about_page['blocks'])->toBe($freshAbout['blocks']);
+    // toEqual: mysql's JSON column re-serializes each block's own key order
+    // on write (spec §7 SQL strict mode); block list order stays enforced.
+    expect(app(PublicContentSettings::class)->about_page['blocks'])->toEqual($freshAbout['blocks']);
 });
 
 it('holds one stable public content settings lock before writer work', function (): void {

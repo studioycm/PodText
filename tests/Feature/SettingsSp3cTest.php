@@ -228,7 +228,10 @@ it('projects every duplicate and malformed stored row as a non editable diagnost
         ->and($diagnostics->where('diagnostic_reason', 'duplicate'))->toHaveCount(2)
         ->and($diagnostics->where('diagnostic_reason', 'malformed'))->toHaveCount(1)
         ->and(collect($projection->records)->where('record_key', 'configured:content_item:duplicate'))->toBeEmpty()
-        ->and(settingsSp3cSnapshot()['card_templates'])->toBe($stored);
+        // toEqual: mysql's JSON column re-serializes each template's own
+        // key order on write (spec §7 SQL strict mode); the list order of
+        // $stored itself (duplicate, duplicate, malformed) stays enforced.
+        ->and(settingsSp3cSnapshot()['card_templates'])->toEqual($stored);
 });
 
 it('scans every homepage section in one projected query with fallback ambiguity and deterministic order', function (): void {
@@ -349,9 +352,14 @@ it('edits only the target from one fresh snapshot and preserves siblings and for
     Event::assertDispatchedTimes(SettingsSaved::class, 1);
     $snapshot = settingsSp3cSnapshot();
 
-    expect($snapshot['card_templates'][0])->toBe($before)
+    // toEqual for the two raw snapshot entries: mysql's JSON column
+    // re-serializes object members in its own key order on write (spec §7
+    // SQL strict mode). canonicalJson() ksort()s before encoding, so ITS
+    // output stays a strict string comparison — that's the actual
+    // order-independent proof.
+    expect($snapshot['card_templates'][0])->toEqual($before)
         ->and($snapshot['card_templates'][1]['label'])->toBe('Changed target')
-        ->and($snapshot['card_templates'][2])->toBe($after)
+        ->and($snapshot['card_templates'][2])->toEqual($after)
         ->and(app(CardTemplateIdentity::class)->canonicalJson($snapshot['card_templates'][0]))
         ->toBe(app(CardTemplateIdentity::class)->canonicalJson($before))
         ->and($snapshot['podcasts_page']['title'])->toBe('Sequential foreign-root change');
@@ -457,7 +465,8 @@ it('blocks referenced and ambiguous renames with useful deterministic blocker de
             ->and($exception->details)->toContain("#{$ambiguousSection->id} No-family content block");
     }
 
-    expect(settingsSp3cSnapshot()['card_templates'][0])->toBe($ambiguous);
+    // toEqual: same mysql JSON key-reordering reasoning as above.
+    expect(settingsSp3cSnapshot()['card_templates'][0])->toEqual($ambiguous);
 });
 
 it('allows independent sibling editors to survive sequential saves and makes a second same-target editor stale', function (): void {
@@ -511,7 +520,11 @@ it('preserves corrupt siblings exactly while a valid target edit is focused', fu
     );
 
     $templates = settingsSp3cSnapshot()['card_templates'];
-    expect($templates[0])->toBe($corruptBefore)
+    // toEqual only for the array-shaped sibling: mysql's JSON column
+    // re-serializes nested object member order on write (spec §7 SQL
+    // strict mode). $corruptAfter is a plain string with no keys to
+    // reorder, so it stays a strict comparison.
+    expect($templates[0])->toEqual($corruptBefore)
         ->and($templates[1]['label'])->toBe('Valid target only')
         ->and($templates[2])->toBe($corruptAfter);
 });
@@ -534,8 +547,11 @@ it('creates clone and override candidates deterministically and preserves append
     $create->call('save')->assertHasNoErrors();
     $templates = settingsSp3cSnapshot()['card_templates'];
 
-    expect($templates[0])->toBe($source)
-        ->and($templates[1])->toBe($sibling)
+    // toEqual for the array-shaped templates: mysql's JSON column
+    // re-serializes each one's own key order on write (spec §7 SQL strict
+    // mode); list position/order stays enforced either way.
+    expect($templates[0])->toEqual($source)
+        ->and($templates[1])->toEqual($sibling)
         ->and($templates[2]['key'])->toBe($copyKey);
 
     $copy = $templates[2];
@@ -546,7 +562,7 @@ it('creates clone and override candidates deterministically and preserves append
     );
     $afterDelete = settingsSp3cSnapshot()['card_templates'];
 
-    expect($afterDelete)->toBe([$source, $sibling]);
+    expect($afterDelete)->toEqual([$source, $sibling]);
 
     Livewire::withQueryParams([
         'mode' => 'override',
@@ -686,8 +702,10 @@ it('uses exact hidden routes and mounts one editable template draft without sibl
         ->assertHasNoErrors()
         ->assertRedirect(EditCardTemplate::getUrl(['family' => 'content_item', 'key' => 'target']));
 
+    // toEqual for the untouched sibling: mysql's JSON column re-serializes
+    // its key order on write (spec §7 SQL strict mode).
     expect(settingsSp3cSnapshot()['card_templates'][0]['label'])->toBe('Saved from one draft')
-        ->and(settingsSp3cSnapshot()['card_templates'][1])->toBe($sibling);
+        ->and(settingsSp3cSnapshot()['card_templates'][1])->toEqual($sibling);
 });
 
 it('renames an unused non default template at its original index and makes the old URL 404', function (): void {
@@ -708,9 +726,11 @@ it('renames an unused non default template at its original index and makes the o
         ->assertRedirect($newUrl);
 
     $templates = settingsSp3cSnapshot()['card_templates'];
-    expect($templates[0])->toBe($before)
+    // toEqual for the untouched siblings: mysql's JSON column re-serializes
+    // their key order on write (spec §7 SQL strict mode).
+    expect($templates[0])->toEqual($before)
         ->and($templates[1]['key'])->toBe('renamed')
-        ->and($templates[2])->toBe($after);
+        ->and($templates[2])->toEqual($after);
 
     $this->get($oldUrl)->assertNotFound();
     $this->get($newUrl)->assertOk();
@@ -919,7 +939,9 @@ it('sanitizes capability loss and refuses forged protected additions with zero s
         ->assertHasErrors('data.key');
 
     Event::assertNotDispatched(SettingsSaved::class);
-    expect(settingsSp3cSnapshot()['card_templates'][1])->toBe($ordinary);
+    // toEqual: mysql's JSON column re-serializes key order on write (spec §7
+    // SQL strict mode).
+    expect(settingsSp3cSnapshot()['card_templates'][1])->toEqual($ordinary);
 });
 
 it('exposes protected editor state only to a current super admin in multi mode', function (): void {
@@ -959,7 +981,9 @@ it('hides and hard refuses protected clone and delete for non capable actors', f
         'key' => 'protected',
     ])->test(CreateCardTemplate::class)->assertForbidden();
 
-    expect(settingsSp3cSnapshot()['card_templates'][0])->toBe($protected);
+    // toEqual: mysql's JSON column re-serializes key order on write (spec §7
+    // SQL strict mode).
+    expect(settingsSp3cSnapshot()['card_templates'][0])->toEqual($protected);
 });
 
 it('uses the original protected identity for shell rename and restores fresh protected parts', function (): void {

@@ -309,9 +309,14 @@ it('round trips public form definitions through exported packages and selected i
         auth()->user(),
     );
 
-    expect($package['payload']['public_forms'])->toBe($publicForms)
+    // toEqual for the two JSON-column-round-tripped payloads: mysql's JSON
+    // column re-serializes object members in its own key order on write,
+    // independent of app behaviour (spec §7 SQL strict mode). appliedPaths()
+    // is computed fresh in PHP, not re-read from the column, so it keeps the
+    // strict comparison.
+    expect($package['payload']['public_forms'])->toEqual($publicForms)
         ->and($report->appliedPaths())->toBe(['public_forms.definitions'])
-        ->and(step10S1aSettings()->public_forms)->toBe($normalizedPublicForms);
+        ->and(step10S1aSettings()->public_forms)->toEqual($normalizedPublicForms);
 });
 
 it('round trips maintenance mode settings through exported packages and selected imports', function (): void {
@@ -356,7 +361,8 @@ it('round trips maintenance mode settings through exported packages and selected
         auth()->user(),
     );
 
-    expect($package['payload']['maintenance'])->toBe($maintenance)
+    // toEqual: same mysql JSON key-reordering reasoning as public_forms above.
+    expect($package['payload']['maintenance'])->toEqual($maintenance)
         ->and($maintenancePaths)->toEqualCanonicalizing([
             'maintenance.enabled',
             'maintenance.form_key',
@@ -368,7 +374,7 @@ it('round trips maintenance mode settings through exported packages and selected
             'maintenance.title',
         ])
         ->and($report->appliedPaths())->toEqualCanonicalizing($maintenancePaths)
-        ->and(step10S1aSettings()->maintenance)->toBe($maintenance);
+        ->and(step10S1aSettings()->maintenance)->toEqual($maintenance);
 });
 
 it('persists import locks and derives the front-text preset from lockable units', function (): void {
