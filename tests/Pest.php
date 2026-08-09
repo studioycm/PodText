@@ -32,6 +32,18 @@ foreach ([
 }
 
 /*
+ * One shared lane schema; concurrent pest runs would migrate:fresh over each
+ * other (SQLite :memory: made this impossible by construction — the lane does
+ * not). flock, held for the process lifetime; fail fast, never queue.
+ */
+$laneLock = fopen(dirname(__DIR__).'/storage/framework/testing/mysql-lane-run.lock', 'c+');
+
+if ($laneLock === false || ! flock($laneLock, LOCK_EX | LOCK_NB)) {
+    fwrite(STDERR, "Another pest run holds the MySQL lane. Wait for it to finish.\n");
+    exit(1);
+}
+
+/*
 |--------------------------------------------------------------------------
 | Process-scoped fake disk roots
 |--------------------------------------------------------------------------
