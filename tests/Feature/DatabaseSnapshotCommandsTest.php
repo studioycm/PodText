@@ -29,11 +29,20 @@ it('writes a real snapshot and manifest against the aligned mysql lane', functio
 
     $created = collect(glob($directory.'/*.sql.gz') ?: [])->diff($before)->values();
 
-    expect($created)->toHaveCount(1);
+    // finally, not sequential: a failed assertion here must not skip
+    // cleanup and orphan a real file in storage/app/db-snapshots/.
+    try {
+        expect($created)->toHaveCount(1);
 
-    foreach ($created as $sqlFile) {
-        @unlink($sqlFile);
-        @unlink(Str::replaceLast('.sql.gz', '.json', $sqlFile));
+        // The test's own name promises "and manifest" — assert the
+        // manifest file db:snapshot writes alongside the dump actually
+        // exists, not just the .sql.gz.
+        expect(is_file(Str::replaceLast('.sql.gz', '.json', $created->first())))->toBeTrue();
+    } finally {
+        foreach ($created as $sqlFile) {
+            @unlink($sqlFile);
+            @unlink(Str::replaceLast('.sql.gz', '.json', $sqlFile));
+        }
     }
 });
 

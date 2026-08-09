@@ -62,46 +62,52 @@ it('creates the ordered transcription transcriber pivot schema', function (): vo
 });
 
 it('backfills existing transcription author ids into the transcriber pivot migration', function (): void {
-    Schema::dropIfExists('author_transcription');
+    // Both migrations below run as real DDL, which implicitly commits on
+    // mysql and escapes RefreshDatabase's transaction rollback (spec §7
+    // DDL-commit leakage). The table recreation replays the ORIGINAL,
+    // pre-alignment migration, landing author_transcription back on
+    // TIMESTAMP columns — which would otherwise permanently trip
+    // TestCase::assertDisposableSchema()'s zero-TIMESTAMP invariant for
+    // every test in every future run, since that guard runs before
+    // RefreshDatabase gets a chance to migrate:fresh again. The compensating
+    // re-run belongs in finally, not after the assertion: a failure in the
+    // assertion (or anywhere else in this block) must not skip it and leave
+    // the lane in the state that trips the guard for every later test.
+    try {
+        Schema::dropIfExists('author_transcription');
 
-    $author = Author::factory()->create();
-    $item = ContentItem::factory()->create();
-    $now = now();
+        $author = Author::factory()->create();
+        $item = ContentItem::factory()->create();
+        $now = now();
 
-    $transcriptionId = DB::table('transcriptions')->insertGetId([
-        'reference_key' => (string) Str::ulid(),
-        'content_item_id' => $item->id,
-        'author_id' => $author->id,
-        'title' => 'Legacy single-author transcription',
-        'language_code' => 'he',
-        'transcript_markdown' => 'Legacy body',
-        'status' => PublicationStatus::Published->value,
-        'published_at' => $now,
-        'word_count' => 2,
-        'speakers' => null,
-        'parsed_segments' => null,
-        'created_at' => $now,
-        'updated_at' => $now,
-    ]);
+        $transcriptionId = DB::table('transcriptions')->insertGetId([
+            'reference_key' => (string) Str::ulid(),
+            'content_item_id' => $item->id,
+            'author_id' => $author->id,
+            'title' => 'Legacy single-author transcription',
+            'language_code' => 'he',
+            'transcript_markdown' => 'Legacy body',
+            'status' => PublicationStatus::Published->value,
+            'published_at' => $now,
+            'word_count' => 2,
+            'speakers' => null,
+            'parsed_segments' => null,
+            'created_at' => $now,
+            'updated_at' => $now,
+        ]);
 
-    $migration = include collect(glob(database_path('migrations/*_create_author_transcription_table.php')))->first();
-    $migration->up();
+        $migration = include collect(glob(database_path('migrations/*_create_author_transcription_table.php')))->first();
+        $migration->up();
 
-    expect(DB::table('author_transcription')
-        ->where('author_id', $author->id)
-        ->where('transcription_id', $transcriptionId)
-        ->value('sort_order'))->toBe(0);
-
-    // Both migrations ran as real DDL, which implicitly commits on mysql and
-    // escapes RefreshDatabase's transaction rollback (spec §7 DDL-commit
-    // leakage). The table recreation above replays the ORIGINAL, pre-alignment
-    // migration, landing author_transcription back on TIMESTAMP columns —
-    // which would otherwise permanently trip TestCase::assertDisposableSchema()'s
-    // zero-TIMESTAMP invariant for every test in every future run, since that
-    // guard runs before RefreshDatabase gets a chance to migrate:fresh again.
-    // The alignment migration is idempotent (AlignmentMigrationTest) — re-run
-    // it to restore the lane's invariant before this test ends.
-    (require database_path('migrations/2026_08_09_000000_align_collation_and_datetime_columns.php'))->up();
+        expect(DB::table('author_transcription')
+            ->where('author_id', $author->id)
+            ->where('transcription_id', $transcriptionId)
+            ->value('sort_order'))->toBe(0);
+    } finally {
+        // Idempotent (AlignmentMigrationTest) — re-run it to restore the
+        // lane's invariant no matter how the block above ends.
+        (require database_path('migrations/2026_08_09_000000_align_collation_and_datetime_columns.php'))->up();
+    }
 });
 
 it('syncs ordered transcription transcribers and keeps the compatibility author primary', function (): void {

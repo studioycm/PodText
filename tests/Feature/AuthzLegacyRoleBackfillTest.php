@@ -249,14 +249,18 @@ it('refuses target, config, team, model, schema, and key drift', function (): vo
 
     config(['permission.column_names.model_morph_key' => 'model_id']);
     Schema::table('roles', fn (Blueprint $table) => $table->string('unexpected_schema_column')->nullable());
-    expect(authzAnalyzer()->analyze()->toArray()['issue_totals'])->toHaveKey('schema_column_drift');
 
-    // DDL implicitly commits on MySQL (spec §7 DDL-commit leakage) — this
-    // ALTER escapes RefreshDatabase's transaction rollback and would
-    // otherwise leave `roles` permanently mutated in the shared lane
-    // schema. Undo it explicitly rather than rely on the next test's
-    // forced re-migrate.
-    Schema::table('roles', fn (Blueprint $table) => $table->dropColumn('unexpected_schema_column'));
+    try {
+        expect(authzAnalyzer()->analyze()->toArray()['issue_totals'])->toHaveKey('schema_column_drift');
+    } finally {
+        // DDL implicitly commits on MySQL (DDL-commit leakage) — this ALTER
+        // escapes RefreshDatabase's transaction rollback and would
+        // otherwise leave `roles` permanently mutated in the shared lane
+        // schema. finally, not sequential: a failed assertion above must
+        // not skip this and leave the column behind. Undo it explicitly
+        // rather than rely on the next test's forced re-migrate.
+        Schema::table('roles', fn (Blueprint $table) => $table->dropColumn('unexpected_schema_column'));
+    }
 
     config(['app.key' => 'base64:not-valid']);
     expect(fn () => new PrivacyHasher)->toThrow(BackfillException::class);
