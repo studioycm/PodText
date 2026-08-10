@@ -22,12 +22,16 @@ use Illuminate\Support\Facades\Process;
  * - A dump carrying `SET TIME_ZONE='+00:00'` was taken with `--tz-utc`, so its
  *   TIMESTAMP literals are re-rendered UTC, not the app-visible bytes this
  *   tool promises to restore (trap B2). Refused unless --allow-utc-dump.
+ * - A dump defining TIMESTAMP columns restored onto the +00:00-pinned
+ *   connection, then replayed through the alignment migration, would
+ *   materialize shifted literals the oracle cannot catch (state-doc
+ *   snapshot-restore caveat). Refused unless --allow-timestamp-dump.
  *
  * Destructive by design — the dump's DROP TABLE IF EXISTS statements replace
  * every table it contains. Tables created after the snapshot survive, which is
  * why the migrations table riding the dump keeps `php artisan migrate` honest.
  */
-#[Signature('db:restore {file? : Snapshot filename or path; omit to list} {--latest : Restore the newest snapshot} {--allow-utc-dump : Permit a --tz-utc dump} {--force : Skip the typed confirmation}')]
+#[Signature('db:restore {file? : Snapshot filename or path; omit to list} {--latest : Restore the newest snapshot} {--allow-utc-dump : Permit a --tz-utc dump} {--allow-timestamp-dump : Permit TIMESTAMP-column DDL onto a +00:00-pinned connection} {--force : Skip the typed confirmation}')]
 #[Description('Restore a db:snapshot dump into the default MySQL database, guarded against retargeting.')]
 class RestoreDatabase extends Command
 {
@@ -55,6 +59,15 @@ class RestoreDatabase extends Command
 
         $config = DB::connection()->getConfig();
         $database = (string) $config['database'];
+
+        $timezone = $config['timezone'] ?? null;
+        $timestampRefusal = self::timestampDdlRefusal($path, is_string($timezone) ? $timezone : null, (bool) $this->option('allow-timestamp-dump'));
+
+        if ($timestampRefusal !== null) {
+            $this->error($timestampRefusal);
+
+            return self::FAILURE;
+        }
 
         if (! $this->option('force')) {
             $typed = $this->ask("Restoring will DROP and rewrite every table the dump contains, inside `{$database}`. Type the database name to continue");
@@ -122,6 +135,53 @@ class RestoreDatabase extends Command
         }
 
         return null;
+    }
+
+    /**
+     * Scan the entire decompressed stream for TIMESTAMP column DDL. Unlike
+     * contentRefusal()'s header traps, CREATE TABLE statements appear
+     * throughout the dump, so this reads to EOF — chunked, with a carry for
+     * lines split across chunk boundaries.
+     */
+    public static function timestampDdlRefusal(string $path, ?string $connectionTimezone, bool $allowTimestampDump): ?string
+    {
+        if ($allowTimestampDump || $connectionTimezone !== '+00:00') {
+            return null;
+        }
+
+        $handle = gzopen($path, 'rb');
+
+        if ($handle === false) {
+            return "Could not open {$path} as a gzip stream.";
+        }
+
+        $pattern = '/^\s*`[^`]+`\s+timestamp[\s(]/mi';
+        $carry = '';
+        $found = false;
+
+        while (! gzeof($handle)) {
+            $chunk = $carry.(string) gzread($handle, 65536);
+            $lastNewline = strrpos($chunk, "\n");
+            [$scannable, $carry] = $lastNewline === false
+                ? ['', $chunk]
+                : [substr($chunk, 0, $lastNewline + 1), substr($chunk, $lastNewline + 1)];
+
+            if ($scannable !== '' && preg_match($pattern, $scannable) === 1) {
+                $found = true;
+
+                break;
+            }
+        }
+
+        if (! $found && $carry !== '' && preg_match($pattern, $carry) === 1) {
+            $found = true;
+        }
+
+        gzclose($handle);
+
+        return $found
+            ? 'Refused: the dump defines TIMESTAMP columns while the target connection pins +00:00 — replaying it (and the alignment migration) would materialize shifted literals the oracle cannot catch. Restore with the pin temporarily removed, onto an unpinned connection, or pass --allow-timestamp-dump only if that is understood.'
+            : null;
     }
 
     private function resolveSnapshotPath(): ?string

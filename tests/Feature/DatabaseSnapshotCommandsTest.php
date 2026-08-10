@@ -3,6 +3,7 @@
 use App\Console\Commands\RestoreDatabase;
 use App\Console\Commands\SnapshotDatabase;
 use Carbon\CarbonImmutable;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Str;
 
 /**
@@ -144,4 +145,44 @@ describe('restore content guards', function (): void {
 
         @unlink($path);
     });
+});
+
+/** A tiny gzipped dump fixture; $withTimestamp switches the one column type under test. */
+function timestampProbeDump(bool $withTimestamp): string
+{
+    $column = $withTimestamp ? '`created_at` timestamp NULL DEFAULT NULL' : '`created_at` datetime NULL DEFAULT NULL';
+    $sql = "-- fixture\nCREATE TABLE `probe` (\n  `id` bigint unsigned NOT NULL,\n  {$column},\n  PRIMARY KEY (`id`)\n);\n";
+    File::ensureDirectoryExists(SnapshotDatabase::snapshotDirectory());
+    $path = SnapshotDatabase::snapshotDirectory().'/fixture-timestamp-probe.sql.gz';
+    file_put_contents($path, gzencode($sql));
+
+    return $path;
+}
+
+it('classifies TIMESTAMP DDL against the pinned connection', function (bool $withTimestamp, ?string $timezone, bool $allow, bool $refused): void {
+    $path = timestampProbeDump($withTimestamp);
+
+    try {
+        $refusal = RestoreDatabase::timestampDdlRefusal($path, $timezone, $allow);
+        $refused ? expect($refusal)->toContain('TIMESTAMP') : expect($refusal)->toBeNull();
+    } finally {
+        @unlink($path);
+    }
+})->with([
+    'timestamp + pinned = refused' => [true, '+00:00', false, true],
+    'timestamp + unpinned = allowed' => [true, null, false, false],
+    'timestamp + pinned + flag = allowed' => [true, '+00:00', true, false],
+    'datetime + pinned = allowed' => [false, '+00:00', false, false],
+]);
+
+it('refuses to restore a TIMESTAMP dump through the command before any confirmation', function (): void {
+    timestampProbeDump(true);
+
+    try {
+        $this->artisan('db:restore', ['file' => 'fixture-timestamp-probe.sql.gz'])
+            ->expectsOutputToContain('TIMESTAMP')
+            ->assertExitCode(1);
+    } finally {
+        @unlink(SnapshotDatabase::snapshotDirectory().'/fixture-timestamp-probe.sql.gz');
+    }
 });
