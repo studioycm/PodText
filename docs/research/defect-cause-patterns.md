@@ -732,6 +732,35 @@ mechanism behind all three registered browser-timeout data points.)*
   against test-storage interference — hold discipline for TEST runs is
   retired; tree/commit hygiene rules stand.
 
+## silent-vendor-surface · A routine bump ships a surface nobody adopted
+
+*(Merged 2026-08-11 from the test-suite-rethink session's contribution —
+`docs/research/laraveldaily/pest5-notes.md` §2 — with its evidence
+re-verified by the ledger owner.)*
+
+- **Cause:** a routine dependency bump delivers a new behavioral surface
+  nobody decided to adopt, so capability and decision drift apart: docs keep
+  describing the old world while the new surface is already live in the
+  tree.
+- **Evidence (POTENTIAL — no defect yet, two live surfaces):** `303beab`
+  ("chore(deps): upgrade Boost to 2.5 and bump the stack", 2026-08-07) took
+  Pest to **v4.7.8** (verified in `composer.lock`), which ships Pest 5's
+  time-balanced sharding — `--update-shards` plus a
+  `tests/.pest/shards.json` staleness WARN. Found 2026-08-10 only because a
+  research session diffed vendor source against keynote claims, while an
+  active planning doc still classified the feature as v5-gated. The WARN
+  path and the stale doc claim are both reachable today.
+- **Where else:** grouped-bump commits' `composer.lock` diffs for
+  minor-version jumps of test-infra/tooling packages; vendor CHANGELOGs for
+  features backported ahead of a major.
+- **Suggested guard:** on grouped bumps read the lock diff per package (not
+  just the top-level constraint), and treat each new vendor capability as a
+  decision item — adopted, or recorded as deliberately unadopted.
+- **Status:** POTENTIAL, one sighting, no action queued — the sharding
+  surface stays unadopted by decision (the suite runs locally/on-lane, not
+  on sharded CI). Kin of `unscanned-home` in spirit: a capability that
+  exists but that nothing in the project's decisions accounts for.
+
 ## shared-index-entanglement · Targeted adds don't protect commits in a shared tree
 
 *(Registered 2026-08-03; found by the fix-batch session's flag, cause owned
@@ -811,8 +840,12 @@ by the orchestrator.)*
 - **Suggested guard:** FilaCheck-style AST rule — flag `optionsLimit()`/
   `preload()` co-occurring with static `->options()` and no
   `getSearchResultsUsing()`.
-- **Status:** open — fix queued in the post-B1 batch (rewire the three
-  filters to the capped shape).
+- **Status:** **FIXED (`abd46f3`, post-B1 batch)** — stale-status flag
+  contributed by the test-suite-rethink session (A3) and re-verified in
+  source by the ledger owner 2026-08-11, not taken on report:
+  `TranscriptionsTable.php:93-95` and `:98-100` now read
+  `->relationship(...)->searchable()->optionsLimit(50)`, so the caps ride a
+  mechanism actually in play.
 
 ## service-hop-cost · Per-row cost hidden one service hop away *(alias P15)*
 
@@ -836,9 +869,17 @@ by the orchestrator.)*
   reached from a column.
 - **Suggested guard:** query-count regression test — render the widget with a
   25-row fixture under `DB::listen`, assert a fixed budget.
-- **Status:** open — fix queued in the post-B1 batch (batch-prime the reasons
-  like `MediaInventoryDiagnostics`, or fold reasons into `queueQuery()`
-  selects; plus the query-budget test).
+- **Status:** **FIXED (`c129f5f`)** — stale-status flag contributed by the
+  test-suite-rethink session (A4) and re-verified in source by the ledger
+  owner 2026-08-11: `blockerReasonsFor()` now reads primed facts through
+  `blockerFact($item, '<fact>', $fallback)` (the queue page primes them with
+  `withExists`; the closure remains only as the bare-record fallback), and
+  the suggested guard landed as `DashboardMetricsTest.php:101` — "renders a
+  blockers queue page within a fixed query budget" under `DB::listen`.
+  **Note for future auditors:** the column closure at
+  `BlockersQueueWidget.php:101` still calls the service and that is
+  CORRECT — the fix moved the cost, not the call; judging this site by its
+  caller alone reads as unfixed.
 
 ## client-payload · Cross-step payload carried through the client *(alias P16)*
 
