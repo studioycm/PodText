@@ -147,11 +147,12 @@ describe('restore content guards', function (): void {
     });
 });
 
-/** A tiny gzipped dump fixture; $withTimestamp switches the one column type under test. */
-function timestampProbeDump(bool $withTimestamp): string
+/** A tiny gzipped dump fixture; $withTimestamp switches the one column type under test, $pastFirstChunk pushes it beyond the first 64KB read. */
+function timestampProbeDump(bool $withTimestamp, bool $pastFirstChunk = false): string
 {
     $column = $withTimestamp ? '`created_at` timestamp NULL DEFAULT NULL' : '`created_at` datetime NULL DEFAULT NULL';
-    $sql = "-- fixture\nCREATE TABLE `probe` (\n  `id` bigint unsigned NOT NULL,\n  {$column},\n  PRIMARY KEY (`id`)\n);\n";
+    $filler = $pastFirstChunk ? str_repeat("-- filler\n", 30000) : '';
+    $sql = "-- fixture\n{$filler}CREATE TABLE `probe` (\n  `id` bigint unsigned NOT NULL,\n  {$column},\n  PRIMARY KEY (`id`)\n);\n";
     File::ensureDirectoryExists(SnapshotDatabase::snapshotDirectory());
     $path = SnapshotDatabase::snapshotDirectory().'/fixture-timestamp-probe.sql.gz';
     file_put_contents($path, gzencode($sql));
@@ -159,8 +160,8 @@ function timestampProbeDump(bool $withTimestamp): string
     return $path;
 }
 
-it('classifies TIMESTAMP DDL against the pinned connection', function (bool $withTimestamp, ?string $timezone, bool $allow, bool $refused): void {
-    $path = timestampProbeDump($withTimestamp);
+it('classifies TIMESTAMP DDL against the pinned connection', function (bool $withTimestamp, ?string $timezone, bool $allow, bool $refused, bool $pastFirstChunk = false): void {
+    $path = timestampProbeDump($withTimestamp, $pastFirstChunk);
 
     try {
         $refusal = RestoreDatabase::timestampDdlRefusal($path, $timezone, $allow);
@@ -173,6 +174,7 @@ it('classifies TIMESTAMP DDL against the pinned connection', function (bool $wit
     'timestamp + unpinned = allowed' => [true, null, false, false],
     'timestamp + pinned + flag = allowed' => [true, '+00:00', true, false],
     'datetime + pinned = allowed' => [false, '+00:00', false, false],
+    'timestamp past the first 64KB = still refused' => [true, '+00:00', false, true, true],
 ]);
 
 it('refuses to restore a TIMESTAMP dump through the command before any confirmation', function (): void {
@@ -180,9 +182,23 @@ it('refuses to restore a TIMESTAMP dump through the command before any confirmat
 
     try {
         $this->artisan('db:restore', ['file' => 'fixture-timestamp-probe.sql.gz'])
-            ->expectsOutputToContain('TIMESTAMP')
+            ->expectsOutputToContain('pins +00:00')
             ->assertExitCode(1);
     } finally {
         @unlink(SnapshotDatabase::snapshotDirectory().'/fixture-timestamp-probe.sql.gz');
+    }
+});
+
+it('leaves the B1 retargeting refusal untouched by --allow-timestamp-dump', function (): void {
+    File::ensureDirectoryExists(SnapshotDatabase::snapshotDirectory());
+    $path = SnapshotDatabase::snapshotDirectory().'/fixture-b1-probe.sql.gz';
+    file_put_contents($path, gzencode("CREATE DATABASE `hijack`;\nUSE `hijack`;\n"));
+
+    try {
+        $this->artisan('db:restore', ['file' => 'fixture-b1-probe.sql.gz', '--allow-timestamp-dump' => true])
+            ->expectsOutputToContain('CREATE DATABASE')
+            ->assertExitCode(1);
+    } finally {
+        @unlink($path);
     }
 });

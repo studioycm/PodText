@@ -12,8 +12,8 @@ use Illuminate\Support\Facades\Process;
  * Restore a db:snapshot dump into the default database.
  *
  * The restore target is always the CURRENT default connection's database —
- * never a name parsed out of the dump. Two content guards enforce that
- * contract before a single statement runs, both aimed at traps the alignment
+ * never a name parsed out of the dump. Three content guards enforce that
+ * contract before a single statement runs, all aimed at traps the alignment
  * plan measured (docs/phase-02/database-alignment-spec.md §10.5):
  *
  * - A dump carrying `CREATE DATABASE` / `USE` would silently retarget the
@@ -155,12 +155,20 @@ class RestoreDatabase extends Command
             return "Could not open {$path} as a gzip stream.";
         }
 
-        $pattern = '/^\s*`[^`]+`\s+timestamp[\s(]/mi';
+        $pattern = '/^\s*`[^`]+`\s+timestamp\b/mi';
         $carry = '';
         $found = false;
 
         while (! gzeof($handle)) {
-            $chunk = $carry.(string) gzread($handle, 65536);
+            $read = gzread($handle, 65536);
+
+            if ($read === false) {
+                gzclose($handle);
+
+                return "Could not read {$path} to the end as a gzip stream.";
+            }
+
+            $chunk = $carry.$read;
             $lastNewline = strrpos($chunk, "\n");
             [$scannable, $carry] = $lastNewline === false
                 ? ['', $chunk]
