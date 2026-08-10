@@ -1554,12 +1554,16 @@ phases, so `3B P1–P5` and `3C P5–P8` mean phase five of those mini-tasks. Ba
   `unpublished_group` reason, full filawidgets data-contract adoption with a
   Jerusalem-correct series helper, the legend actually scoping the flow widgets,
   restored stream columns and full day-first date-times, `canView()` on every
-  widget, and cache invalidation on editorial writes. A4 closed 2026-08-03
-  (`c36f6c4`, the reason-bar doorway / unpinned-promise fix as recorded in
-  `dashboard-metrics-phase-2R-handoff.md`); the phase-4 evidence items remain
-  open. *(The "visible-series proxy" parenthetical this line carried does not
-  match that handoff's A4 — flagged for the dashboard owner rather than
-  guessed at.)*
+  widget, and cache invalidation on editorial writes. A4 (visible-series proxy)
+  closed 2026-07-31 by `ce15d96` — `becameVisibleAt()` derives the day an
+  episode actually became visible — per
+  `dashboard-metrics-phase-1-2-remediation-audit.md` (A4 ✅ at :23, restated at
+  :118); the phase-4 evidence items remain open. **Cite dashboard findings by
+  document, never by bare ID:** that audit and
+  `dashboard-metrics-phase-2R-handoff.md` both number findings A1–A4 for
+  different things — the handoff's A4 is the reason-bar doorway closure
+  (`c36f6c4`), an unrelated finding. Conflating the two is what made an earlier
+  pass of this line cite the wrong commit.
 
 ## Deferred Items
 
