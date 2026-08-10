@@ -9,7 +9,7 @@
   [krekas/Laravel-KnowledgeBase-FAQ](https://github.com/krekas/Laravel-KnowledgeBase-FAQ)
   branch `rector`, six commits, one per run — so every `rector.php` was fetched from GitHub
   at its exact sha instead of being transcribed from video.
-- **Verified against**: installed `rector/rector 2.6.1` + `driftingly/rector-laravel 2.5.0`,
+- **Verified against**: installed `rector/rector 2.6.1` + `driftingly/rector-laravel 2.5.0` (two packages, one engine — §0),
   this repo's `rector.php`, and the standing rector memory (parallel-lossy/serial-honest).
 - **Staleness verdict**: **passes with one dated number** — Apr 2025, modern
   `RectorConfig::configure()` fluent API throughout (current in 2.6), all six named rules
@@ -22,6 +22,51 @@ week** (commit `7b6b52e`, "introduce Rector wired to larastan — dry-run-locked
 progression model — one concern per run, cumulative config — is the useful transferable
 shape. PodText's own setup is already *more* disciplined than the video's on the two points
 that matter (§3).
+
+---
+
+## 0. Two packages, one engine — read this before the rest
+
+The single most useful clarification in the video, and the thing every config decision below
+turns on. Measured on this repo:
+
+| layer | package | rule files | role |
+| --- | --- | --- | --- |
+| engine | `rector/rector` **2.6.1** | **898** | the PHP refactoring tool itself |
+| Laravel rules | `driftingly/rector-laravel` **2.5.0** | **124** | a rule pack *on top of* the engine |
+
+`driftingly/rector-laravel` **requires** `rector/rector ^2.2.7` — it is an extension, not a
+standalone tool, which is exactly how the video puts it: rector-laravel is *"extension of PHP
+Rector"*, and installing it *"installs Rector under the hood."* Both are direct dependencies
+in this repo's `composer.json` (`^2.6` and `^2.5`).
+
+**Naming trap:** there is no package called `laravel-rector` or `laravel/rector`. It is
+`driftingly/rector-laravel` — a community package, formerly published under the `rectorphp`
+org, so older posts show a different vendor prefix. Search for the wrong name and you find
+nothing or something else.
+
+### Why the layer split is the whole story
+
+The two namespaces appear side by side in every config in §1, and the per-run file counts
+fall cleanly along the seam:
+
+- `Rector\Set\ValueObject\SetList` + `withPreparedSets(...)` → **core PHP** rules
+- `RectorLaravel\Set\LaravelSetList` / `LaravelLevelSetList` + individual
+  `RectorLaravel\Rector\…` classes → **Laravel** rules
+
+The video's Laravel-layer runs touched **23, 16 and 3** files. Its single PHP-layer run —
+`withPreparedSets(deadCode, codeQuality, typeDeclarations, privatization, earlyReturn,
+strictBooleans)` — touched **107**, and the narrator flags its output as belonging to a
+different world: *"these are examples from PHP, not from Laravel."*
+
+**PodText currently runs the Laravel layer only.** `rector.php` loads
+`withSets([LaravelSetList::LARAVEL_CODE_QUALITY])` and nothing from `SetList::*`, with no
+`withPreparedSets(...)`. The engine is present purely as a host for the Laravel rule pack.
+
+That makes the fork explicit for whoever widens the config later: **adding more
+`LaravelSetList` / `RectorLaravel` rules stays surgical; switching on `withPreparedSets`
+opens the 898-rule core and restyles the codebase's PHP wholesale.** The video is the
+worked evidence of the difference — 107 files against 23.
 
 ---
 
@@ -67,7 +112,7 @@ upgrades) — different angles of the same automation family. His usage rule:
 
 | video's demo config | PodText's config |
 | --- | --- |
-| broad `withPreparedSets(...)` six-flag run (107 files) | **one targeted set**: `LaravelSetList::LARAVEL_CODE_QUALITY` — exactly his "specific rules, not full sweep" advice, which the demo itself did not follow |
+| broad `withPreparedSets(...)` six-flag run — the **core-PHP layer**, 107 files (§0) | **one targeted set**: `LaravelSetList::LARAVEL_CODE_QUALITY`, Laravel layer only — exactly his "specific rules, not full sweep" advice, which the demo itself did not follow |
 | no PHPStan wiring | `withPHPStanConfigs([phpstan.neon, larastan extension])` — Rector reuses the larastan model knowledge |
 | default cache | `withCache(storage/framework/cache/rector)` — isolated per the [rector-parallel memory] finding that overlapping sessions corrupt shared cache state |
 | `--dry-run` as advice | **dry-run-locked** by the adopting commit's own framing |
