@@ -219,6 +219,8 @@ constraint: the flock run-lock file is per-tree while the lane is
 machine-global — the helper must probe for live lane connections, not just the
 local lock, or it papers over cross-worktree collisions.
 
+**Closed:** the shipped command is `db:test-lane-reset`, refusal-layered (clause table → flock → processlist probe → typed confirmation), with the clause table extracted to `App\Support\Testing\TestLaneContract`.
+
 ### F5. `mysqldump` + `gzip` are undocumented suite prerequisites — `FIXED` 2026-08-10 (`732c710`)
 `DatabaseSnapshotCommandsTest` shells the real dump pipeline against the lane,
 so both binaries are hard test dependencies. Documented in
@@ -230,6 +232,8 @@ The caveat is documented in `current-project-state.md` (restore only with the
 `+00:00` pin removed, or onto an unpinned connection). Approved hardening:
 `db:restore` warns when a dump carries `TIMESTAMP` column DDL while the target
 connection pins `+00:00`.
+
+**Closed:** shipped stronger than specced — `db:restore` *refuses outright* (exit 1) unless `--allow-timestamp-dump`, with scan completeness verified against the gzip trailer; the body above kept its original "warns" wording per the keep-description rule, and `current-project-state.md` carries the accurate phrasing.
 
 ### F7. Production cron/rsyslog still stamp +03:00 — operator window (decided)
 The T12 window restarted mysql/php-fpm/Horizon only; daemons that inherited the
