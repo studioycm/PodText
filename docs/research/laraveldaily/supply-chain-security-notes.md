@@ -212,9 +212,14 @@ Lesson 2's eleven habits, each with what is actually true here.
 | 10 | Deploy with `--no-dev --optimize-autoloader` | **Unverified** — Forge's default script includes both; not confirmed against this site's actual script |
 | 11 | Don't panic-update during an incident | Advice noted; no action |
 
-### The one concrete repo gap: `.gitignore` has no `.env.*` wildcard
+### The one concrete repo gap (since closed): `.gitignore` had no `.env.*` wildcard
 
-Measured — `.gitignore` lists exactly:
+> **Status 2026-08-10: shipped.** Commit `a093baf` applied exactly the glob-plus-re-include
+> below; verified at HEAD — `git check-ignore -v .env.staging` matches `.gitignore:16`
+> (`.env.*`) and `.env.example` stays tracked. The measurement below describes the
+> pre-`a093baf` file.
+
+Measured at research time — `.gitignore` listed exactly:
 
 ```
 .env
@@ -227,7 +232,8 @@ every filename in Lesson 3's "real `ls -la` from a real production server" examp
 two that happen to be listed — **would be committable**. Nothing currently violates this
 (root holds only `.env` and `.env.example`), so this is a latent trap, not a present leak.
 
-**Proposal:** replace the three literals with a glob plus a re-include, in `.gitignore`:
+**Proposal (now the file's actual content, per `a093baf`):** replace the three literals
+with a glob plus a re-include, in `.gitignore`:
 
 ```gitignore
 .env
@@ -299,7 +305,7 @@ rotating precisely because they have not looked up the mechanism.
 | --- | --- |
 | 01 laravel-lang attack | Context only. **Not exposed** — §2. |
 | 02 Composer habits | **Yes.** One gap found (`composer audit` not in the gate), one live finding through it — §3, §4. |
-| 03 Secrets | **Yes, one concrete gap** — the `.gitignore` glob — §4. `APP_PREVIOUS_KEYS` is worth knowing now. |
+| 03 Secrets | **Yes, one concrete gap** — the `.gitignore` glob — §4 (since closed, `a093baf`). `APP_PREVIOUS_KEYS` is worth knowing now. |
 | 04 Local development | **Operator-scope, not repo-scope.** Deliberately not audited here — see below. |
 | 05 Am I affected | **Yes, and it was used** — §2 and §3 are both outputs of this lesson's method. |
 | 06 Emergency checklist | **Yes**, with the auto-deploy and webhook caveats in §5. |
@@ -336,7 +342,9 @@ session-cookie theft, which password-based 2FA does not).
    **Shipped before publication**: `303beab` (2026-08-07) bumped it as part of the stack
    update, ~2h before these notes were committed. Verified 2026-08-10: lock at 2.9.0,
    audit clean. Nothing left to do here.
-2. **Widen the `.gitignore` env patterns to `.env.*` with `!.env.example`** — §4.
+2. ~~**Widen the `.gitignore` env patterns to `.env.*` with `!.env.example`** — §4.~~
+   **Shipped**: `a093baf` (2026-08-10) applied it verbatim; verified working at HEAD
+   (`check-ignore` matches, `.env.example` still tracked). Nothing left to do here.
 3. **Add `composer audit` to the quality gate.** It cost one command and surfaced §3 on its
    first run. Candidate: a `composer.json` script alongside the existing `filacheck` entry, so
    it runs with the rest of the gate rather than being remembered. Note it fails the build on
