@@ -8,14 +8,18 @@
 > round** — never by the auditor, whose independence is the reason this record came out
 > clean. At the first regeneration, rows convert to **pointer-not-restatement** form
 > (stable ID → owning doc/section → tier; status lives only in the owning doc), so a
-> stale index can only over-report open items, never contradict a status. What this file
-> owns exclusively: the cross-program priority order, convergences (items that are
-> secretly one piece of work), and contradictions between documents — relations owned by
-> no single doc.
+> stale index can only over-report open items, never contradict a status. A regeneration
+> is committed **only from a copy taken at commit time, with the source's line count
+> recorded in the commit message** — a stale generation committed as fresh is itself the
+> defect this file documents (proven by `969e2ee`, corrected in the commit that carries
+> this sentence). What this file owns exclusively: the cross-program priority order,
+> convergences (items that are secretly one piece of work), and contradictions between
+> documents — relations owned by no single doc.
+
 
 **Snapshot:** 2026-08-10, from `main` @ **`7b7097d`**. Read-only harvest; nothing was written to the repo.
 **Window:** documents modified since 2026-07-31 (`find docs -name '*.md' -newermt '2026-07-31'`), cross-checked with `git log --since`.
-**Sources:** 21 documents in two clusters (list at the end, with per-doc item counts).
+**Sources:** 23 documents in three clusters (list at the end, with per-doc item counts). Cluster C (security/authz) was added 2026-08-11.
 **Precedence when docs disagree:** commit evidence beats prose · newer dated statement beats older · a doc's own amendment beats its own table. Every resolution is recorded in Appendix A.
 
 > ⚠️ **This register was overtaken mid-harvest.** The *"Triage post-alignment residuals"* session is working live in the tree and moved HEAD `0437705 → 8296f16` (7 commits) while this was being written. Already folded in below:
@@ -37,7 +41,9 @@ Things affecting production **now**. Two classes, deliberately kept in one tier 
 - **Correctness (1.1–1.7)** — a wrong result, a crash path, or state that ends up wrong.
 - **Cost (1.8–1.9)** — right answers, paid for at a price production is charged on every operation. Not data bugs. 1.8 is bounded per operation; 1.9 is unbounded but slow-burning and admin-action-bound, so it is *cumulative*, not urgent.
 
-Do these first, correctness before cost. **1.8 + 1.9 + 2.6 are one piece of work, not three** — see the note under 2.6.
+Do these first, correctness before cost.
+
+1.8 and 1.9 are the same subsystem with **separate ceilings** — bounded per-operation cost vs unbounded accumulation — so they are two fixes, related but not one ticket. **Constraint on 1.8:** the batching refactor must preserve write-then-spawn ordering, or write atomically (see the withdrawn 2.6). An earlier revision of this register claimed 1.8 + 1.9 + 2.6 were one piece of work; that was wrong on both counts and is retired.
 
 | # | Item | Where | Status | Notes |
 |---|---|---|---|---|
@@ -61,16 +67,21 @@ Not firing today; the failure path is demonstrated and one change away.
 |---|---|---|---|---|
 | 2.1 | Hand-typed `migrate:fresh` / `db:wipe` / seeder still reaches the **development** database | mysql-lane §8.1 | open | Its own doc: *"the largest remaining hole; the lane does nothing about it."* Partly mitigated — alignment Task 1 moved `.env` off `root` |
 | 2.2 | `tests/Unit` bypasses the lane guard (`tests/Pest.php:109-111`) | mysql-lane §8.2 | "latent today" — those tests don't boot the app | Phase S "unit-suite bypass closure" candidate, unshipped. Needs an arch rule or guard binding |
-| 2.3 | `.env.testing` is not gitignored | mysql-lane §8.7 | open, unaddressed in every later doc | The one residual no successor document picked up |
+| 2.3 | **`.gitignore` has no `.env.*` wildcard** — only three literals (`.env`, `.env.backup`, `.env.production`) | mysql-lane §8.7 **+** supply-chain §4 | open; **both halves verified by me** | Two sessions found the same hole from opposite ends and neither saw the other. `git check-ignore -v .env.testing` → **not ignored**. So `.env.testing`, `.env.old`, `.env.local`, `.env.production.real` are all committable. Latent, not a present leak (only `.env` + `.env.example` on disk). One fix closes the class: `.env` / `.env.*` / `!.env.example` |
 | ~~2.4~~ | ~~Cross-worktree lane lock gap — two worktrees hold independent flocks~~ | triage **D3** + notes §1 + **DP7** + plan **Task S3** | ✅ **CLOSED `89a2ee1`/`810f6f2`** during this harvest | Lock and fingerprint are now machine-global under `~/.cache/podtext-test-lane/`, HOME-anchored and purge-proof; a legacy per-tree fingerprint is adopted once and removed |
 | 2.5 | `single-read-race` sweep — one-shot `x-show` reads race Alpine's frame cadence | patterns + notes R4 | first sighting; second has now arrived | Recon scope **6 browser files × 15 `x-show` views, UNCHECKED**. S1/S1b converted the boolean family; rect-delta reads partly remain |
-| 2.6 | `SettingsBackupSnapshotManager.php:104` — `Storage::disk('local')->put(...)` with no atomicity, no lock, no size bound | settings-performance/21 | "not asserted as a defect — worth one look" | Open question left unowned since the settings-performance round. **Confirmed from the F12 diagnosis side: the batching refactor (F12 proposal 1) rewrites this exact job-JSON `put()` site.** So batching + job-JSON hardening (atomic write, size bound) + non-System retention should ship as **one ticket, not three** — 1.8 + 1.9 + 2.6 |
+| ~~2.6~~ | ~~`SettingsBackupSnapshotManager.php:104` — `put()` with no atomicity, no lock, no size bound~~ | settings-performance/21:135-142 | ✅ **ANSWERED 2026-08-11 (`ed46ef3`) — not a defect.** Withdrawn from this tier | **My error: I filed a question as a trap.** The source asked *"worth one look by someone who knows that path"* and even guessed the answer (*"a partial write may be structurally impossible"*); Tier 2 requires a demonstrated failure path, and there was none. The F12 diagnosis walked that path and answered it: `put()` (`:104`) and the node spawn (`:107`) are sequential statements in one process — one writer, one reader, `retry()` rewrites before re-reading, payload is bounded metadata, the only variable is an integer PK. No reader can observe partial state. **But the code does not assert this** — it falls out of one-row-per-process, which is exactly what F12 fix (1) changes. Now a **design constraint on 1.8**, not a ticket |
 | 2.7 | MUX3 **D2=A decision lapse** — `3900645` removed the managed-scope guard from `repair` | mini4 handoff | **lapsed, not violated** | `CuratorMediaPolicy.php:124-150` carries no `MediaRecordScope::allows()` while `delete`/`swap` still do. Operative boundary since 2026-07-31 is the wider one |
 | 2.8 | Purge exposure is suite-wide — 40 files fake the `public` disk | browser-timeout open flag 3 | open | *"A census of which browser waits depend on faked-disk presence would size the true blast radius."* Fix 1 (`a3fa4f2`) landed; the census did not |
 | 2.9 | Dead `instanceof` guard in `ContentImagesExportManager`, now provably unreachable | triage §B5 residual | "still open" | The single error separating 445 from 444. Split off because it is the only runtime-affecting edit in the family |
 | 2.10 | `Category::descendantIds()` (`app/Models/Category.php:63-75`) queries per level — naive recursive adjacency read | laraveldaily/database-design-notes | one real finding | The lesson's whole point is that this does not scale |
 | 2.11 | Compiled assets and views are an unexamined shared surface between concurrent runs | browser-timeout open flag 4 | open | No build arm was ever run during the contention investigation |
 | 2.12 | Step 5B O1: narrow-to-wide root race + focus restoration gaps in both directions | settings-performance/33 | open findings | Listener sets `wide = true` before awaiting `$wire.unmountAction()`; a settled root-count assertion **cannot** detect the peak duplicate |
+| **2.13** | **Delete-floor asymmetry: an Admin cannot delete an episode but can delete the podcast that owns it** | authz §4.1 | open; **highest-weight authz finding** | Only 4 of ~13 Filament resources have policies, and Filament's policy-existence check **allows** when none is registered. `ContentGroups`, `Transcriptions`, `Categories`, `ContentTags`, `Authors`, `HomepageSections`, `PublicFormSubmissions` have none — the Admin floor (`User.php:46-49`) is the only gate. The doc calls the wide-open posture *coherent as staged authz*; it calls the **asymmetry arbitrary**, and that is the defect: `ContentItemPolicy::delete` is SuperAdmin-only (`ContentItemPolicy.php:41-47`) while the parent has no delete floor at all. Cascading data loss routes around an explicit prohibition |
+| 2.14 | `ListMedia::continueRootRelocation()` (`:68`) has no gate of its own | authz §4.2 | open, **mitigated downstream** | Public Livewire method trusting `$this->relocationRun` state set by the `deleteAny`-authorized `startRootRelocation()` (`:57`). Each chunk re-checks `relocate` per row (`MediaRelocationBatch.php:44/50`) and the coordinator re-authorizes (`:147/:261`) — so not exploitable today, but the page-level method itself trusts component state |
+| 2.15 | `MediaAttachmentManager.php:210` skips the per-record `detach` check when the media row can't be resolved | authz §4.3 | open, deliberate | Attachment row deleted under only the class-level `viewAny` floor (`:175`). Intentional for dangling-attachment cleanup — but it makes `detach` authorization **conditional on scope resolution** |
+| 2.16 | Bulk-action UI gates are weaker than the mutation they front | authz §4.4 | open, covered but silent-degrade | `titleByOwnerSelected` gates on `viewAny` only (`MediaTable.php:603`) while doing per-record writes; per-record `update` is delegated to `MediaOwnerTitleApplier.php:87/94`, which **skips rather than throws** |
+| 2.17 | Silent no-op denials on browser-forgeable paths | authz §4.5 | open, safe but invisible | `UndoesPublicationToggle.php:40` re-checks `update` on a forgeable Livewire event and silently no-ops on denial; same pattern at `MediaOwnerTitleApplier.php:32`. Correct outcome, but invisible to the denied user **and to logs** |
 
 ---
 
@@ -146,6 +157,14 @@ Real, agreed, and deliberately not scheduled. Grouped rather than ranked.
 - Moderator, transcriber and user roles have no admin panel access in v1 (by design); LENS1 owns the public copy/vocabulary cleanup.
 - `Q1`–`Q18` in `public-front-v2-open-questions.md` are formally unresolved, but 17 of them are answered by the same file's own "Resolved User Decisions" block and by the execution plan. **Needs one reconciliation pass, not 18 decisions.**
 
+**Security hygiene** (from the two docs added 2026-08-11)
+- **`composer audit` in the quality gate** — cost one command and surfaced the commonmark advisory on its first run. Blocker: it fails on *any* advisory including inapplicable ones, so it needs a documented way to record a reviewed-and-inapplicable finding first (§3a is the worked example). Candidate: a `composer.json` script beside the `filacheck` entry.
+- **Write the Tier 1 rotation list down** — which token deploys, where the quick-deploy webhook URL lives, who holds push access. **A private note, not a repo file** (the doc is explicit; do not commit it).
+- **Confirm the Forge deploy script uses `--no-dev --optimize-autoloader`, and which user runs Composer on the server** — both unverified, both one look. Non-obvious here: the Forge scheduler was already found living in *root's* crontab.
+- **Authz §4.6 fragile-by-construction couplings** (tripwires, not holes): enum-value-as-gate-name · `CuratorMediaPolicy` calling back out to a provider-defined gate (`:127`,`:153`) — the app's only policy→gate dependency · class-level checks passing `config('curator.model', Media::class)`, so a `curator.model` override detaches them from `CuratorMediaPolicy` · `viewHorizon` resolving the panel non-strictly, so a panel rename silently denies everyone (fail-closed, at least).
+- **Authz §4.7 inventory line drift** — the doc cites `AppServiceProvider.php:202-207`; the file now has `201-206`. Cosmetic, but the doc's own advice applies to the whole map: **re-grep, don't trust cached line numbers.** Its counts were verified against HEAD `45a59e1`, many commits ago.
+- **Deliberately not done, and should stay that way:** home-directory `.env` / shell-history credential sweeps are operator-only, and their results **must not enter the repo**.
+
 **Research follow-ups**
 - `pest-plugin-phpstan` × agent-mode formatter vs `LarastanCastResolutionGuardTest`'s isolated-config trick — *"worth a look, not a worry."*
 - `toBeUlid()` can replace the hand-rolled ULID regex in test-side assertions (production regex stays) — Pest-5-gated.
@@ -181,9 +200,44 @@ Listed so nobody re-litigates them.
 
 ---
 
+## Tier 5b — Preconditions, not tasks: what a Shield activation must preserve
+
+Not open findings and not work items — **constraints that must hold if `spatie/laravel-permission` + Shield is ever activated.** Recorded here because they are invisible at the call sites they would break, and because item 2.13 makes Shield look like the obvious fix. Ordered by danger (authz §5).
+
+1. **No `Gate::before` super-admin bypass — the big one.** Shield's default `super_admin` wiring registers a `Gate::before` returning `true`, bypassing all policy bodies. In this app **policy denials are invariant guards, not permission checks**: `CuratorMediaPolicy::delete` blocks deleting media with live references (`:42-61`), `relocate` blocks already-managed rows and duplicate identities (`:73-88`), `trust` blocks non-applicable records (`:94-113`), `mintReferenceKey` protects key immutability. A blanket-allow before-hook would let super-admins delete referenced media and violate journal invariants. Intersection-with-policy mode, or the hook disabled — never blanket-allow.
+2. **`Response::deny()` messages are user-facing copy.** They render verbatim in the issue-review panel (`MediaIssueReviewPresenter.php:133-215`), the bulk-delete census, and picker tooltips (`MediaPickerPanel.php:1069`). Shield policies returning bare `false` would blank out load-bearing UI.
+3. **The gate names are API.** `super-admin`, `multi-transcription`, `viewHorizon` are consumed by macros, UserResource, Horizon, and from *inside* `CuratorMediaPolicy` (`:127`,`:153`). Note `super-admin` collides exactly with the conventional spatie role string — decide whether they become the same thing, and rename *together with* all three consumer sites and the enum value if not.
+4. **The four `Gate::policy` bridges cover two vendor models** (Curator `Media`, Filament `Import`) that Shield's resource-driven generation won't know about. `shield:generate` must not shadow `CuratorMediaPolicy` (25 methods, **19 beyond CRUD** — a regenerated CRUD-only policy silently drops `select`/`attach`/`detach`/`trust`/…, and Laravel's missing-method behavior denies them all) or `ImportPolicy`, whose `view` owner-check **is** the failed-row download authorization the import/export spec requires.
+5. **`hasRoleAtLeast` is ranked, not a flat permission set.** Every policy floor and `canAccessPanel` (`User.php:46`) uses ordered comparison. A mapping must reproduce the ordering (each rank ⊇ the rank below) or migrate every call site simultaneously — including `MultiTranscriptionSurfaces::userCan`, which also composes a global multi-mode flag **no permission table can express**.
+6. **The `forUser($actor)` job/service pattern must keep working** — checks must resolve for an explicitly passed user outside request context (`DownloadExternal*Image.php:71`, `MediaRelocationBatch.php:44`), including spatie's permission-cache behavior under queue workers.
+7. **Policy-less resources are wide-open-to-Admins by design** (item 2.13). Shield generates policies for *all* resources, flipping that default to "whatever got seeded" — a deliberate staged change, with 2.13's delete-floor asymmetry the natural first thing to rationalize.
+8. **Hard-coded `false` methods are structural prohibitions, not missing permissions** — `UserResource.php:63-75` create/delete/deleteAny, plus `SettingsBackupPolicy` and `ImportPolicy`. Shield must not "grant" them back.
+
+---
+
 ## Appendix A — Contradictions between source documents
 
 Each is a stale line in a real file. Fixing them is a docs pass, not engineering.
+
+> ✅ **EXECUTED 2026-08-11** — `7ba7461` → `fd62af3` → `97eb2c6` (F12 session editing, this session auditing read-only).
+> **Fixed at source:** A1, A5, A6, A7, A8, A9, A10, A12, A13, A18 — plus A2, A15, A16 which resolved during the harvest.
+> **Still open:** A3/A4 (pending `defect-cause-patterns.md`'s declared owner — nobody overrides the one-owner rule) · A11 (operator decision) · A17 (laraveldaily folder owner) · A14 (a count note, no action).
+>
+> The implementer/reviewer split earned its keep. **Enumerated, not counted** — the pass's own lesson applied to its own tally:
+> **Mine, caught by F12 (5):** 2.6 mis-tiered · A9's evidence (right verdict, wrong proving commit) · A12's target (wrong thing identified as stale) · A13's stale replacement values · my own `grep -c` cite-count error, made in the same message where I raised `grep -c` counts lines, not occurrences as the lesson.
+> **F12's, caught by me (5):** A8 under-fixed (annotated where the file self-instructed an update) · A13 truncated at the Curator line · A5's attribution (the two-A4 collision) · A18's overclaim · a census cited as proof after it had gone stale.
+> **F12's, caught by me (6):** the five above, plus a mid-sentence splice in `d527ae2` that orphaned a clause so the doc literally claimed its own accuracy rule was rotting — fixed in `c52af0d`.
+> **Self-caught (1):** F12's `replace_all` flip, found inside the same commit by the census — the one piece of evidence here that in-commit verification works, even though the number it produced later went stale.
+>
+> **In every case the finder was not the writer. No counterexample in the dataset.**
+>
+> **Six mechanisms for producing a figure that looks measured and is not** — a complete set worth keeping: `grep -c` counts lines, not occurrences · unique strings are not unique files · a census taken before the last edit is not a census of the file · an extraction regex can manufacture a member (a phantom `Image.php` from a `*` wildcard) · **compensating errors that mask each other by producing the right total** (my regex invented one file and lost another; net zero, right answer, wrong understanding) · and prose damage between verified fragments, which survives all five of the others being satisfied.
+> Governing corollary: **enumerate rather than count. A count you can list is a count you can falsify; a count you can only cite is not.**
+> Both root causes are recorded below.
+>
+> **My failure mode:** I harvested via sub-agent summaries and cited from memory at write time instead of re-reading. Every wrong verdict I produced traces to that.
+> **F12's failure mode, in their words:** when a relayed verdict disagreed with the document's own text, they doubted the document and transcribed the relay — three times. The relay was the wrong half each time.
+> **The row we both got wrong, in opposite directions:** A8. I said update §3, they annotated it, then they updated it citing my note, and I now agree. Neither of our judgements settled it — the document's own §2:40 self-instruction did (*"this spec's §3 must be updated to match"*), with the original pin preserved in the banner so the measurement record survives.
 
 | # | Item | Doc that says open | Doc that says closed | Verdict |
 |---|---|---|---|---|
@@ -191,7 +245,7 @@ Each is a stale line in a real file. Fixing them is a docs pass, not engineering
 | A2 | **DP9** `DB_CONNECTION` default | *(was stale; now fixed in-source)* | `203125c` + `57c1898`, both verified | **Shipped.** The live session already corrected `F11` to read *"DP9 is CLOSED"* mid-harvest |
 | A3 | `decorative-cap` (P14) | `defect-cause-patterns.md` — *"open — fix queued in the post-B1 batch"* | Same doc's Post-B1 row + `abd46f3` *"rewire three decorative-cap filters"* (verified) | **Shipped.** Status line stale |
 | A4 | `service-hop-cost` (P15) | Same doc — *"open — fix queued in the post-B1 batch"* | Same doc's checklist: 105 → 3 queries | **Shipped.** Status line stale |
-| A5 | Dashboard **A4** | `current-project-state.md` ~L1558 — *"A4 and the phase-4 evidence items remain open"* | remediation audit + `c36f6c4` *"make the reason-bar doorway promise true on-board (A4)"* (verified) | **Fixed.** Only phase-4 RTL evidence (3.16) is still open |
+| A5 | Dashboard **A4** — ⚠️ **two different A4s exist; this row first cited the wrong one** | `current-project-state.md` ~L1558 — *"A4 (visible-series proxy) and the phase-4 evidence items remain open"* | **Remediation-audit A4** = *"the funnel's `visible` series is a proxy"* → closed by **`ce15d96`** (*"derive the day an episode became visible (A4)"*, `becameVisibleAt()`, 2026-07-31). **2R-handoff A4** = reason-bar doorway / unpinned-promise → closed by `c36f6c4`. Two findings, one ID, two docs | **Fixed — by `ce15d96`, not `c36f6c4`.** My first version cited `c36f6c4`, matching the label against the wrong document's A4. That error propagated into the docs pass (`7ba7461`), which then flagged the *correct* "visible-series proxy" parenthetical as a mismatch for the dashboard owner. The label was right all along. **The durable finding is the ID collision**, not a mislabel — reported back to F12 |
 | A6 | Dashboard **F1/F2/F3** | `dashboard-metrics-phase-2R-handoff.md` "Findings raised" table marks them Open | Same doc's queue entries with `b24490a`, `b3d6de4` | **Fixed.** Table is stale against its own queue |
 | A7 | Four R10 `keep-deferred` rows (`dropStatements` backtick doubling, `LANE` const, `fopen`-message conflation, ignored `unlink()`) | `test-suite-rethink-notes.md` R10 verdicts them keep-deferred | `e9ac5cf` shipped all four (verified) | **Fixed anyway.** R10 table stale for those rows |
 | A8 | `mysql-test-lane-spec.md` §3 target collation | Shows `utf8mb4_unicode_ci` | alignment spec: `utf8mb4_0900_ai_ci` everywhere | **Superseded.** Only the top banner covers this; §3 itself was never updated |
@@ -199,9 +253,11 @@ Each is a stale line in a real file. Fixing them is a docs pass, not engineering
 | A10 | `pest5-rector-phpstan-notes.md` header + §1 | *"Nothing here is installed or changed"* / *"`rector/rector` is not installed and there is no `rector.php`"* | `7b6b52e` installed it (verified) | **Stale header** |
 | A11 | Both implementation plans' checkboxes | `test-suite-rethink`: 0 of 61 ticked · `database-alignment`: 0 of 107 ticked | ~95% and 100% executed, commit-verified | **Checkbox state is not status.** Driving from boxes re-does finished work |
 | A12 | MUX3 "separate phase" copy | Issue Review still says folder moves are *"handled in a separate phase"* | That phase shipped | **Stale copy** |
-| A13 | `current-project-state.md` §Tooling State | Laravel 13.21.1 / Filament 5.7.3 | 13.23.0 / 5.7.5 elsewhere in the tree | **Stale versions** |
+| A13 | `current-project-state.md` **`## Tooling State` (:1595) only** | Laravel 13.21.1 · Filament 5.7.3 · Livewire 4.3.3 · Pest 4.7.5 · Horizon 5.48.1 · Boost 2.4.13 · Curator 5.1.2 · FilaCheck 1.2.3 | Measured 2026-08-11: **13.24.0 · 5.7.6 · 4.3.5 · 4.7.8 · 5.48.2 · 2.5.3 · 5.1.5 · 1.2.5**. Unchanged: PHP 8.4.23, spatie tags 4.12.0, spatie settings 3.9.0, FilaCheck Pro 1.2.7 | **Stale — but scope it carefully.** ⚠️ Version strings also appear at `:1103`, `:1419`, `:1523`, `:1528`, `:1530`, `:1531` as **historical completion records** ("DEP-UPGRADE-O1 moved Laravel to 13.21.1"). Those were true when written; editing them falsifies history. Only `:1595` is a current-state claim. Re-measure at edit time — these numbers rot too |
 | A14 | Triage §F item count | Sweep reported F1–F11 | File carries **F12** (added 2026-08-10) | **Register gained an item mid-harvest** — see the warning at the top |
 | A15 | Time-balanced sharding | `test-suite-rethink-notes.md` §3 — *"CI-day concern; there is no CI. **Parked.**"* and §6 listed it as Pest-5-gated | `laraveldaily/pest5-notes.md` §1f — verified in the installed tree: `Shard.php` in **pest 4.7.8** already implements `--shard`, `--update-shards` and the `tests/.pest/shards.json` warning | ✅ **RESOLVED AT SOURCE `7b7097d`** — both sites corrected (verified): §3's parked note now states it is not Pest-5-gated, §6 no longer claims it. Idle by choice, not by gate |
+| A17 | Supply-chain proposal 1: *"`composer update league/commonmark` 2.8.3 → 2.9.0 in the next gate-green batch"* | `supply-chain-security-notes.md` §7.1 + §3d, committed 2026-08-07 **22:37** | `303beab` bumped it 2026-08-07 **20:31** — two hours earlier, in the same evening. Verified: lock reads 2.9.0, and `composer audit` now returns *"No security vulnerability advisories found"* | ✅ **Already done when written.** The one applicable advisory is closed. Notably `303beab` is the *same* commit the `silent-vendor-surface` candidate cites for the sharding surface — one routine bump silently closed a security advisory **and** introduced an unnoticed vendor feature |
+| A18 | Authz map's cited line numbers | Doc cites `AppServiceProvider.php:202-207`; counts "re-verified against tree at HEAD `45a59e1`" | **Three readings, three values:** doc says `202-207`, this register said `201-206`, actual today is **`211-216`** (re-grepped 2026-08-11) | **Stale by design of the medium — and this register was stale too.** My `201-206` rotted between harvest and now. §4.7 flags the hazard against itself; the fix may be to *remove* the line cites rather than refresh them, since any value transcribed here rots the same way. Re-grep at edit time; transcribe nothing, mine included |
 | A16 | **Task S3 / D3 / DP7** cross-worktree lock | Every doc harvested at `0437705`, incl. this register's first draft, calls it the last open Phase S item | `89a2ee1` + `810f6f2`, Phase S closed `a50b15f` | **Shipped mid-harvest.** Any doc still describing the fingerprint as living under `storage/framework/testing/mysql-lane/` is stale — it is `~/.cache/podtext-test-lane/` now |
 
 ---
@@ -243,9 +299,12 @@ Counts are the census used to verify nothing was dropped (`grep -c` on each doc'
 | `docs/phase-02/settings-step5b-*-handoff.md` + `docs/research/settings-performance/33-*.md` | 07-31 | 13-item deferred inventory (items 8/9 = FU05/FU04 live) + O1 findings |
 | `docs/phase-02/media-operations-ux3-mini3b/mini3c/mini4-*.md`, `roles-gates-roles1-handoff.md` | 07-31 | Per-mini deferred lists + the D2=A lapse record |
 
-**Deliberately excluded** (not selected for this pass — both are live open-finding lists in the window):
-`docs/research/authz-gate-surface-map.md` §4 — 7 ranked gate holes, incl. policy-less resources reachable by any panel user, two ungated actions, two silent-deny paths. Several would land in Tier 1–2.
-`docs/research/laraveldaily/supply-chain-security-notes.md` §7 — commonmark 2.8.3→2.9.0 advisory, `.env.*` gitignore gap, `composer audit` in the gate, Forge deploy-script verification.
+**Cluster C — security / authorization** (added 2026-08-11 on request; was excluded from the first pass)
+
+| Doc | Mod | Items |
+|---|---|---|
+| `docs/research/authz-gate-surface-map.md` | 08-08 | §4 holes 1–7 (→ items 2.13–2.17 + two Tier-4 entries) · §5 Shield constraints 1–8 (→ Tier 5b) · §4 opens by ruling out orphans in both directions: *"Defined but never checked / checked but never defined: **none**"* — all 25 `CuratorMediaPolicy` methods verified present |
+| `docs/research/laraveldaily/supply-chain-security-notes.md` | 08-07 | §7 proposals 1–5 (1 already done → A17; 2 merged into 2.3; 3–5 → Tier 4) · §2 records **PodText was not exposed** to the studied attack (measured) · §3a: 5 of 6 commonmark advisories don't apply |
 
 **Checked, nothing open:** `browser-timeout-contention-run-log.md` · `filament-examples-phase-02.md` · `php-enums-playbook.md` · `dashboard-widget-principles.md` · `dashboard-governance-principles.md` · `dashboard-metrics-combined-ux-plan.md` · `dashboard-metrics-filawidgets-adoption-analysis.md` · `dashboard-metrics-phase-3-plan.md` (D-4 decided) · `dashboard-metrics-phase-4-plan.md` ("None blocking") · `episodes-lens-design-research.md` · `episodes-lens-design-spec.md` §9 (pattern-avoidance audit, not live defects) · `episodes-lens-r1-implementation-plan.md` · `hebrew-search-folding-spec.md` (§6 answered 2026-08-06) · `larastan-playbook.md` (policy, not triage) · `media-program/00`–`04` · the 15 remaining `docs/research/laraveldaily/*` notes.
 
@@ -316,6 +375,11 @@ One line each, no description. SHA where the source doc gives one; all SHAs quot
 - `F033` SVG sanitize shipped; `F045` evidence gap closed `def171b`; `F048` retention contract shipped (`media:prune-quarantine`, 90-day default).
 - `F041` and `F044` not reproduced in 3A.
 - Browser-test hygiene and the contention investigation both closed end-to-end, both defects fixed.
+
+**Security**
+- The one applicable `league/commonmark` advisory — closed by the 2.8.3 → 2.9.0 bump in `303beab`; `composer audit` now returns clean.
+- PodText was **not exposed** to the studied supply-chain attack — measured, not assumed.
+- Authz orphan check: no gate is defined-but-unchecked, and no checked ability is undefined — verified in both directions.
 
 **Product / process**
 - Public Front Q19 and Q20 closed 2026-07-30 by operator decision — do not re-raise.
