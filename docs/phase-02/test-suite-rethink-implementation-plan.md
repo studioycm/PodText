@@ -1242,6 +1242,20 @@ One commit, all mechanical, each reviewer-prescribed earlier:
 - Step 3 (fix only what the diagnosis licenses): mechanical, behavior-preserving speedups (shared fixtures via beforeEach consolidation, faking an unfaked boundary, removing redundant renders) — implement with before/after per-test timings; anything structural (splitting the file, changing what's asserted) is REPORTED as a proposal instead, not done.
 - Gate: file green + measured delta in the report; full-suite wall-time re-measured at the Phase S close, not per-task; pint; commit `test(maintenance): <mechanism> — <before>s → <after>s`.
 
+### Task S1b: adjacent single-read booleans → stable reads (operator-approved 2026-08-10, "pull S1b into Phase S after S2")
+
+**Files:** the same four browser files S1 touched — the UNCONVERTED single-read layout booleans S1's implementer disclosed and deliberately left (`modal_within_viewport`, `preview_is_logical_end`, `columns_do_not_overlap`, `opener_hidden`/`opener_visible`, `status_one_row`, `header/footer_visible_after_scroll`, `every_card_within_viewport`, `review_within_viewport`, and siblings — grep-inventory first, count before/after).
+
+Same pinned mechanism as S1 (`stableRead`, byte-identical helper text, tag `// stable-read (R4)`); same HARD boundary (no assertion/threshold/expected-value changes — BLOCKED if one would need to move); same verification shape (primary file 3× green before/after, mutation transparency check, siblings 1× each); note S1's reviewer finding #2 applies here too — the guarantee is boolean-granularity flicker retirement, claim nothing stronger. Commit: `test(browser): stable reads for the remaining layout booleans — S1's disclosed remainder`.
+
+### Task S2b: the settings-save subprocess tax — sweep the siblings
+
+**Files:** every test file that saves settings without the fake (inventory first): `grep -rl "PublicContentSettings" tests/Feature | xargs grep -L "fakeSettingsBackupSnapshotQueue"` (refine to files that actually `->save()`); S2 measured the mechanism (each save = SettingsSaved → backup manager → SettingsBackupSnapshotJob → real `node` subprocess ×2 under the sync queue).
+
+- Add `fakeSettingsBackupSnapshotQueue()` to each hit's `beforeEach` (the established 14-file convention); files whose tests ASSERT on the snapshot job/backup behavior are exempt — list them explicitly in the report instead.
+- Per-file before/after timing (junit or `--compact` duration) in the report; expect material wins only on save-heavy files.
+- Gate: each touched file green; pint; one commit `test(settings): fake the snapshot job where saves never assert on it — the S2 tax, swept`.
+
 ### Task S3: D3 consolidation + DP7 — machine-global lane lock and fingerprint
 
 **Files:** `app/Support/Testing/TestLaneContract.php` · `tests/Pest.php` · `tests/TestCase.php` · `app/Console/Commands/ResetTestLane.php` · `tests/Feature/TestLaneGuardTest.php` / `tests/Feature/TestLaneResetCommandTest.php` / `tests/Feature/EnvironmentGuardsTest.php` (follow the code)
