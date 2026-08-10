@@ -175,7 +175,19 @@ it('classifies TIMESTAMP DDL against the pinned connection', function (bool $wit
     'timestamp + pinned + flag = allowed' => [true, '+00:00', true, false],
     'datetime + pinned = allowed' => [false, '+00:00', false, false],
     'timestamp past the first 64KB = still refused' => [true, '+00:00', false, true, true],
+    'datetime past the first 64KB = still allowed' => [false, '+00:00', false, false, true],
 ]);
+
+it('fails closed when the gzip stream cannot be verified read-to-end', function (): void {
+    $path = timestampProbeDump(true, true);
+    file_put_contents($path, substr((string) file_get_contents($path), 0, 2048));
+
+    try {
+        expect(RestoreDatabase::timestampDdlRefusal($path, '+00:00', false))->toContain('TIMESTAMP');
+    } finally {
+        @unlink($path);
+    }
+});
 
 it('refuses to restore a TIMESTAMP dump through the command before any confirmation', function (): void {
     timestampProbeDump(true);

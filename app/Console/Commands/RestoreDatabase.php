@@ -158,6 +158,7 @@ class RestoreDatabase extends Command
         $pattern = '/^\s*`[^`]+`\s+timestamp\b/mi';
         $carry = '';
         $found = false;
+        $bytesRead = 0;
 
         while (! gzeof($handle)) {
             $read = gzread($handle, 65536);
@@ -168,6 +169,7 @@ class RestoreDatabase extends Command
                 return "Could not read {$path} to the end as a gzip stream.";
             }
 
+            $bytesRead += strlen($read);
             $chunk = $carry.$read;
             $lastNewline = strrpos($chunk, "\n");
             [$scannable, $carry] = $lastNewline === false
@@ -187,9 +189,43 @@ class RestoreDatabase extends Command
 
         gzclose($handle);
 
+        if (! $found) {
+            $trailerSize = self::gzipTrailerSize($path);
+
+            if ($trailerSize === null || $bytesRead % 4294967296 !== $trailerSize) {
+                return "Could not verify {$path} was read to the end as a gzip stream (read {$bytesRead} decompressed bytes; the trailer disagrees) — refusing to call it TIMESTAMP-free.";
+            }
+        }
+
         return $found
             ? 'Refused: the dump defines TIMESTAMP columns while the target connection pins +00:00 — replaying it (and the alignment migration) would materialize shifted literals the oracle cannot catch. Restore with the pin temporarily removed, onto an unpinned connection, or pass --allow-timestamp-dump only if that is understood.'
             : null;
+    }
+
+    /**
+     * The gzip ISIZE trailer: decompressed length mod 2^32 (RFC 1952). Proves
+     * completeness of a scan, not integrity — single-member archives only,
+     * which both gzencode and the db:snapshot mysqldump|gzip pipeline produce.
+     */
+    private static function gzipTrailerSize(string $path): ?int
+    {
+        $size = @filesize($path);
+
+        if ($size === false || $size < 4) {
+            return null;
+        }
+
+        $handle = fopen($path, 'rb');
+
+        if ($handle === false) {
+            return null;
+        }
+
+        fseek($handle, -4, SEEK_END);
+        $trailer = (string) fread($handle, 4);
+        fclose($handle);
+
+        return strlen($trailer) === 4 ? unpack('V', $trailer)[1] : null;
     }
 
     private function resolveSnapshotPath(): ?string
