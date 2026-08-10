@@ -1201,6 +1201,58 @@ Candidates already identified — the R gate prices and picks; each selected ite
 
 **Entry condition:** operator has read the Phase R report and named the scope. Do not start any candidate before that. Per the 2026-08-10 broadening, Phase S completes — suite "working straight" — before Phase U opens.
 
+**SATISFIED 2026-08-10 at the R gate: full scope (all four buckets) selected. The concrete addenda follow as Tasks S4→S5→S1→S2→S3 (execution order: quick wins first, structure last).**
+
+---
+
+### Task S4: opportunistic one-liners (batch)
+
+**Files:** `app/Console/Commands/ResetTestLane.php` · `app/Auth/LegacyRoleBackfill/LegacyRoleBackfillSchemaContract.php` · `tests/Feature/TestLaneResetCommandTest.php`
+
+One commit, all mechanical, each reviewer-prescribed earlier:
+- `ResetTestLane`: `private const LANE = 'mysql_testing';` replacing the three literals (`:38`, `:76`, `:111`); split the `fopen === false` case from the flock-denied case with its own message (`Could not open the run-lock file — check storage/framework/testing exists and is writable.`); check `unlink()`'s result (failure → `$this->error(...)` + `self::FAILURE`); `dropStatements()` doubles backticks (`str_replace('`', '``', ...)`) instead of stripping.
+- Contract `:108`: drop the stale trailing sentence `Same value on both drivers.` (keep the rest of the comment).
+- `TestLaneResetCommandTest`: update the drop-statements unit expectation if the escaping change alters output for plain names (it must not — plain names contain no backticks; add one dataset case with an embedded backtick proving the doubling).
+- Gate: `php -d memory_limit=2G vendor/bin/pest tests/Feature/TestLaneResetCommandTest.php tests/Feature/AuthzLegacyRoleBackfillTest.php --compact` green; phpstan on both app files (equal-or-lower); pint; commit `fix(test-lane): review one-liners — LANE const, honest failure messages, backtick doubling, stale comment`.
+
+### Task S5: DP9 — the default connection flip
+
+**Files:** `config/database.php:20` · `.env.example` (the sqlite warning prose near `:30`)
+
+- `'default' => env('DB_CONNECTION', 'sqlite'),` → `'default' => env('DB_CONNECTION', 'mysql'),`
+- `.env.example`: the warning that explained the sqlite fallback now states the mysql fallback (missing `DB_CONNECTION` fails loudly against a credentialed daemon instead of opening a file).
+- Proof: full-suite unaffected structurally (tests force `mysql_testing` before config is ever read) — run `php -d memory_limit=2G vendor/bin/pest tests/Feature/EnvironmentGuardsTest.php tests/Feature/TestLaneGuardTest.php --compact` as the fast sanity pair + `php artisan config:show database.default` in the dev context (expect `mysql`, driven by the real `.env`).
+- Commit: `chore(config): DP9 — a missing DB_CONNECTION now fails loudly on mysql, the last sqlite-shaped default retired`.
+
+### Task S1: browser single-read family → stable reads
+
+**Files:** `tests/Browser/CardTemplatePreviewBrowserTest.php` (28 of the 54 occurrences) + the three sibling files R4 counted (`grep -rln "horizontal_overflow" tests/Browser` is the authoritative list)
+
+- Mechanism (pinned): inside each measurement's JS evaluation block, replace every single-read layout assertion input (`document.documentElement.scrollWidth > clientWidth + 1`, bare `getBoundingClientRect()` deltas feeding `full_bleed`) with a stable-read helper embedded in the same script: read the value on two consecutive `requestAnimationFrame` ticks (await a Promise wrapping `requestAnimationFrame`) until two consecutive reads agree, capped at 10 frames, then use the agreed value. One helper function per evaluation block (the blocks are self-contained strings — no shared JS file; keep the helper identical across blocks, comment-tagged `// stable-read (R4)` for future greps).
+- TDD shape: this is flake-hardening of existing green tests — the red/green cycle is replaced by (a) before: run `CardTemplatePreviewBrowserTest` 3× consecutively green (baseline), (b) after the edit: 3× consecutively green again, (c) mutation check: temporarily force the helper to return the FIRST read (defeating stability) — tests must still pass on an idle machine (proves the helper is transparent), revert; the real proof is the disappearance of the contention flake over the coming full-gate runs — say exactly that in the report, no stronger claim.
+- Scope discipline: assertions themselves (thresholds, expected values) do not change; only how the measured inputs are read.
+- Gate: the touched browser files 3× green; pint; commit `test(browser): stable reads for layout measurements — the single-read contention flake class retired`.
+
+### Task S2: the 148.7s file — diagnose, then fix what the diagnosis licenses
+
+**Files:** `tests/Feature/PublicMaintenanceModeTest.php` (18 tests) + whatever the diagnosis names (report-first task)
+
+- Step 1 (measure): `php -d memory_limit=2G vendor/bin/pest tests/Feature/PublicMaintenanceModeTest.php --compact --log-junit storage/framework/testing/junit-mm.xml`, aggregate per-test times; identify whether the cost is flat (~8s × 18 — boot/fixture-shaped) or concentrated (a few tests dominate).
+- Step 2 (root-cause): read the file + the code paths its slowest tests exercise; name the mechanism with evidence (e.g. repeated settings rebuilds, full public-page renders per assertion, an unfaked external boundary, redundant migrations). NO fix before the mechanism is named in writing.
+- Step 3 (fix only what the diagnosis licenses): mechanical, behavior-preserving speedups (shared fixtures via beforeEach consolidation, faking an unfaked boundary, removing redundant renders) — implement with before/after per-test timings; anything structural (splitting the file, changing what's asserted) is REPORTED as a proposal instead, not done.
+- Gate: file green + measured delta in the report; full-suite wall-time re-measured at the Phase S close, not per-task; pint; commit `test(maintenance): <mechanism> — <before>s → <after>s`.
+
+### Task S3: D3 consolidation + DP7 — machine-global lane lock and fingerprint
+
+**Files:** `app/Support/Testing/TestLaneContract.php` · `tests/Pest.php` · `tests/TestCase.php` · `app/Console/Commands/ResetTestLane.php` · `tests/Feature/TestLaneGuardTest.php` / `tests/Feature/TestLaneResetCommandTest.php` / `tests/Feature/EnvironmentGuardsTest.php` (follow the code)
+
+- Design (pinned at the R gate): the run-lock and the fingerprint both become **machine-global, lane-identity-keyed** paths owned by `TestLaneContract`: `runLockPath(host, port, database)` and `fingerprintPath(...)` (existing) both move under `sys_get_temp_dir().'/podtext-test-lane/'` with the same `sha1(host|port|database)` naming. Consequences, each pinned by a test: (a) two worktrees can no longer both hold "the" lock — the cross-worktree gap closes for good; (b) a fresh worktree inherits the machine's fingerprint and stops hard-refusing a lane the machine already owns (the F4 pain solved at the root — `db:test-lane-reset` remains the remedy for a genuinely foreign lane); (c) `ResetTestLane`'s flock probe now guards cross-worktree too (its PROCESSLIST layer stays as belt); (d) `tests/Pest.php`'s lock acquisition switches to the new path — **the `$GLOBALS` lifetime persistence stays exactly as is** (the GC trap does not move).
+- D3 half: `TestCase::refreshApplication()`'s guard sequence gets named-failure messages consolidated behind one entry call (`TestLaneContract::assertSafeBoot(...)` orchestrating refusalFor → fingerprint → TIMESTAMP check), so the next reader finds ONE guard entrypoint; `EnvironmentGuardsTest`'s diagnosis tests follow.
+- Migration note: on first run after this lands, the old per-tree fingerprint is simply ignored (stale file in storage/framework/testing/mysql-lane/ — delete opportunistically); the new location starts empty → first boot re-fingerprints against the populated lane... **which would hard-refuse**. The task therefore ships a one-time bridge: if the machine-global fingerprint is absent but the legacy per-tree one exists for the same identity, adopt it (write the new file, log one line). Pinned by a test with a faked legacy file.
+- Gate: full guard-test set green; a two-process probe mirroring `final-review-fixes.md` §1 proving the lock holds across TREES (second flock attempt from a different cwd fails while a suite runs — scriptable with the fixture pattern, 20s sleep margin); phpstan; pint; **full suite** (this touches the boot path); commit `refactor(test-lane): machine-global lane lock + fingerprint — the cross-worktree gap closes (D3/DP7)`.
+
+---
+
 ---
 
 ### Task 11: Phase U — Pest 5 + plugins (blocked on the operator's SEPARATE go-ahead; possibly a dedicated session)
