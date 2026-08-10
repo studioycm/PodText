@@ -75,6 +75,18 @@ commits) · where else to look (concrete greps/paths) · status.
 - **Where else:** for each enum in `app/Enums`, grep its literal backing values
   outside the enum file; `ActivityStreamWidget` hand-writes event-type colours
   (known open → `StreamEventType`, phase 3).
+- **Self-sighting (2026-08-11, documentation tier, ACTUAL):** THIS FILE
+  records a pattern's state in two places — the route-checklist row and the
+  entry's own **status line** — so they drift exactly like duplicated
+  constants. Mechanism: a fix lands in another session, that session's
+  report updates the checklist row, and the status line is missed.
+  Measured: **2 of 19 entries** were over-stating open work
+  (`decorative-cap`, `service-hop-cost`), both caught by the
+  test-suite-rethink session's triage, not by me. Guard: curating a fix
+  updates BOTH places in the same commit, or the checklist row cites the
+  entry instead of restating its state. Prior for future auditors: assume
+  ~10% status-line staleness here, and where the two disagree the checklist
+  row has been the more current — but verify against code.
 - **Sighting (2026-08-03, V1):** the generalized form — a *contract* enforced
   only on hand-listed members protects nothing outside the list. The stock/flow
   tag rule was asserted per named widget, so `PublicFormTargetWarningsWidget`
