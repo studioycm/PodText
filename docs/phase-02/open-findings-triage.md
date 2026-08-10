@@ -273,13 +273,26 @@ CLOSED**: the operator approved the flip at the R gate and it shipped —
 `config/database.php:20` now falls back to `mysql` (`203125c`), with
 `.env.example` stating the conditional failure mode honestly (`57c1898`).
 
-### F12. `SettingsBackupManager` per-unit re-saves — `OPEN`, diagnosis approved (operator, 2026-08-10)
-Found by S2b's timing spread: `SettingsSp3aTest` lost 68.5s to the snapshot
-subprocess from only 3 visible save sites — `import()`/`restore()` appear to
-drive a full settings-save cycle (SettingsSaved → backup version → snapshot
-job) **per unit** rather than batched. Possible real production inefficiency
-in `app/Support/SettingsLifecycle/SettingsBackupManager.php`.
-**Next:** a small, standalone diagnosis task (parked roadmap): count the
-save/backup cycles a single `import()` triggers, name the mechanism, propose
-batching only if the diagnosis licenses it. Evidence trail:
-`.superpowers/sdd/task-S2b-report.md` + the final whole-branch review.
+### F12. `SettingsBackupManager` per-unit re-saves — `DIAGNOSED` (2026-08-10); fix propose-only, operator gate
+The per-unit reading is **disproven**: one `import()` fires exactly ONE
+batched `SettingsSaved` (4 selected units → 1 event, instrumented), and no
+production caller loops. The real mechanism is **per-backup visual-snapshot
+fan-out ×2 backups per operation with no dedup on the full-set path**: one
+import = BeforeImport backup (2 thumbs + fullTargets(4 bare/7 content-rich) ×
+themes(2) × formats(1) rows) + post-save System backup (2 thumbs), one
+node+Playwright spawn per row (~1.2–1.8s) — **12 spawns/import bare, 18
+content-rich, 10 for a fully locked NO-OP import** (it still saves and still
+snapshots). Sp3a's 68.5s reconciles as ~52 spawns × ~1.32s. Verdict:
+**confirmed production-affecting (efficiency, not correctness)** — worker
+time + headless-Chromium load on live public pages per settings operation;
+the suite-side tax was already neutralized by S2b. Side-flag: `prune()`
+retention is System-only, so Manual/BeforeImport/BeforeRestore backups and
+snapshot files accumulate unboundedly. Evidence + measured table:
+`.superpowers/sdd/task-F12-report.md`; characterization pin:
+`tests/Feature/F12SettingsBackupDiagnosisTest.php`.
+**Next (propose-only, NOT implemented — operator picks):** (1) batch each
+backup's snapshot rows into one script invocation — the script already
+accepts a `targets` array under one browser launch, the manager sends
+singletons; 12→2 spawns per import; (2) no-op imports skip snapshot
+scheduling and the redundant save cycle; optional (3) payload-hash full-set
+dedup (gallery-semantics tradeoff).
