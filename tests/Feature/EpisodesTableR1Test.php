@@ -429,7 +429,7 @@ it('reschedules from the date cell modal in the Jerusalem timezone', function ()
     Livewire::test(ListContentItems::class)
         ->callAction(
             TestAction::make('changePublishedAt')->table($episode),
-            ['published_at' => '2026-08-10 09:30'],
+            ['published_at' => '2026-08-10 09:30:00'],
         )
         ->assertNotified();
 
