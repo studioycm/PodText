@@ -296,3 +296,17 @@ accepts a `targets` array under one browser launch, the manager sends
 singletons; 12→2 spawns per import; (2) no-op imports skip snapshot
 scheduling and the redundant save cycle; optional (3) payload-hash full-set
 dedup (gallery-semantics tradeoff).
+**Answers the open question in
+`docs/research/settings-performance/21-authz-subsystem-dormancy-record.md`
+(§ "Open question for whoever owns settings lifecycle", :135-142):** that
+doc asks whether the plain `put()` at `SettingsBackupSnapshotManager.php:104`
+(no atomic write, no lock, no size bound) can ever hand a truncated job file
+to its reader. From this diagnosis: **no, not today** — `put()` (`:104`) and
+the `node` spawn (`:107`) are sequential statements in one process, the file
+has exactly one writer and one reader, its payload is bounded metadata, and
+the only variable in its path is the snapshot's integer key. **Not a defect;
+it is also not a guarantee the code states** — it falls out of
+one-row-per-process. Fix (1) rewrites that exact site, so it must keep
+write-then-spawn ordering (or write atomically) instead of inheriting the
+property by luck. The `prune()` ceiling above is a separate fix in the same
+subsystem.
