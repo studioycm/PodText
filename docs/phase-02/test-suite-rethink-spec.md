@@ -26,6 +26,17 @@ database-alignment program closed. Research base:
    `pestphp/pest-plugin-rector`, TIA execution) moves to the final phase
    behind its own approval; plain `rector/rector` +
    `driftingly/rector-laravel` land now, app-side, wired to `phpstan.neon`.
+6. **Scope broadening (operator, 2026-08-10, mid-execution)**: the suite
+   "went through rough changes and needs to be properly fixed and working
+   straight — everything needs to be checked as part of the main task and
+   before Pest 5." Consequences: CI is no longer out of scope — Phase R
+   produces the feasibility decision (R9 → DP-CI) and Phase S implements it
+   if approved; every deferred test-adjacent item (task-review Minors, the
+   sqlite residuals from the 2026-08-10 cross-session sweep, F8/F9-class
+   accepted labels, the flake specimen) is re-assessed in one Phase R table
+   (R10) whose fix-verdicts feed Phase S; the sqlite artifacts get their own
+   fix-now task (7B). Nothing here reorders the phases: R → T → S all
+   complete before Phase U opens.
 
 ## Part 1 — fix-now batch (this round, before the phased work)
 
@@ -201,8 +212,11 @@ go-ahead (their 2026-08-10 instruction), independent of the per-commit gates.
 The 443-error PHPStan backlog itself and the 5 `varTag.nativeType` macro
 errors (parked larastan/tooling roadmap — slotting order recorded in
 `open-findings-triage.md` §F10) · FULLTEXT/Scout · §C1–C3 enum work · the
-effective-transcription HasOne refactor (parked by operator note) · CI
-setup (sharding facts recorded for that future day).
+effective-transcription HasOne refactor (parked by operator note).
+
+CI is **in** scope as of the 2026-08-10 broadening (decision record #6):
+R9 produces the feasibility verdict, Phase S implements it on approval.
+Only CI *sharding optimization* remains a post-Pest-5 concern.
 
 ## Operator decision points
 

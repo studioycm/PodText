@@ -907,20 +907,65 @@ Expected: pest ~1,964 passing (1,953 + 1 from Task 1 + 1 from Task 2 + 4 from Ta
 
 - [ ] **Step 2: Run Task 5 Step 6 (manual `db:test-lane-reset` end-to-end) now**, record output.
 
-- [ ] **Step 3: Update the two docs**
+- [ ] **Step 3: Update the docs (scope enlarged 2026-08-10 by the verified cross-session sweep + operator broadening)**
 
-In `open-findings-triage.md` §F: mark F1–F6 `FIXED <date>` with their commit SHAs (keep each entry's one-line description); F7 stays "next deploy window"; F8–F10 unchanged. In `current-project-state.md`, extend the "Post-program follow-ups" block: `db:test-lane-reset` is the now-landed remedy (name it), and the `db:restore` TIMESTAMP refusal replaces "approved as a ride-along hardening".
+In `open-findings-triage.md`: §F mark F1–F6 `FIXED <date>` with their commit SHAs (keep each entry's one-line description); F7 stays "next deploy window"; F8–F10 unchanged; flip §C2 to `FIXED` by `005eda6` (both enums moved; guarded by `EnvironmentGuardsTest`'s declares-every-enum test); add **§F11** registering the sqlite residuals (fixed by Task 7B — cite its commit) and the config-default question as DP9. In `current-project-state.md`, extend the "Post-program follow-ups" block: `db:test-lane-reset` is the now-landed remedy (name it), and the `db:restore` TIMESTAMP refusal replaces "approved as a ride-along hardening". In `app/Console/Commands/CheckDatabaseSettings.php`, replace the stale docblock sentence "The suite runs on sqlite, which has no charset, no collation and no session timezone, so this whole class of setting is structurally invisible to `php artisan test`." with: "The suite now runs on the dedicated MySQL lane, so these settings are testable there — this command remains the production-side drift alarm." In `docs/research/defect-cause-patterns.md`: close `driver-lenient-fallback` (the line "**Status:** open. Registered at discovery; no lane built yet." becomes "**Status:** closed 2026-08-09 — the MySQL lane is built and is the suite's only driver; the one-shape guard learned the second shape (alignment Phase 4).") and close `db-clock-coupling`'s status line the same way (the alignment migration ran; the connection pins `+00:00` hardcoded — note the env-var proposal was deliberately not taken).
 
 - [ ] **Step 4: Commit**
 
 ```bash
-git add docs/phase-02/open-findings-triage.md docs/phase-02/current-project-state.md
-git commit -m "docs: Part 1 fix-now batch closed — F-ledger flips, state-doc follow-ups current
+git add docs/phase-02/open-findings-triage.md docs/phase-02/current-project-state.md app/Console/Commands/CheckDatabaseSettings.php docs/research/defect-cause-patterns.md
+git commit -m "docs: Part 1 close — F-ledger flips, C2/F11, stale sqlite-era prose retired
 
 Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
 ```
 
 🛑 **Report to the operator** (commits list, gate record, manual-reset transcript). Push only if they say so.
+
+---
+
+### Task 7B: SQLite residual removal (operator scope addition, 2026-08-10)
+
+**Files:**
+- Delete: `database/database.sqlite` (528 KB, mtime Jul 10 — nothing references it as a test target)
+- Modify: `composer.json` (the `post-create-project-cmd` line that recreates it)
+
+**Deliberately NOT touched** (keep-forever, consumed by `tests/TestCase.php`'s `:memory:` containment, `NonMysqlRefusalTest`, and `TestLaneResetCommandTest`): the `sqlite` connection block in `config/database.php`. The `DB_CONNECTION` default of `sqlite` at `config/database.php:20` is **DP9** — recommended flip to `mysql` (a missing env key should fail loudly against a credentialed daemon, not silently open a file), decided at the R gate, not here.
+
+- [ ] **Step 1: Prove the file is unreferenced and untracked**
+
+```bash
+git check-ignore database/database.sqlite && echo IGNORED
+grep -rn "database.sqlite" app config tests composer.json phpunit.xml | grep -v "config/database.php"
+```
+
+Expected: `IGNORED`; grep shows ONLY the `composer.json` post-create line (the `config/database.php` sqlite-block reference is excluded and stays).
+
+- [ ] **Step 2: Remove**
+
+```bash
+rm database/database.sqlite
+```
+
+Then edit `composer.json`'s `post-create-project-cmd` array: delete the line containing `file_exists('database/database.sqlite') || touch('database/database.sqlite');` (keep the array's other entries untouched; remove a dangling comma if one results).
+
+- [ ] **Step 3: Verify**
+
+```bash
+composer validate --no-check-all
+php -d memory_limit=2G vendor/bin/pest tests/Feature/NonMysqlRefusalTest.php tests/Feature/TestLaneGuardTest.php --compact
+```
+
+Expected: composer.json valid; 20/20 passing (5 + 15) — the `:memory:` containment consumers are unaffected by the file's absence.
+
+- [ ] **Step 4: Commit**
+
+```bash
+git add composer.json
+git commit -m "chore: retire the sqlite artifact — the file is gone and create-project stops recreating it
+
+Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
+```
 
 ---
 
@@ -995,7 +1040,15 @@ Classify each: (a) genuinely DB-free, (b) manual state management (DDL/finally p
 
 - [ ] **Step 8 (R8): DATETIME tie-sensitivity sweep** — list order-sensitive assertions without tie-breaks: grep tests for `defaultSort|orderBy.*desc|assertCanSeeTableRecords` near fixtures created in loops without `travel()`. Output: file list with a flake-risk verdict each (the `ec47df7` pattern is the fix template).
 
-- [ ] **Step 9: Append the measurement report** to `docs/research/test-suite-rethink-notes.md` under `## Phase R measurements (2026-08-DD)`, with DP1–DP3 pre-filled as recommendations. Commit:
+- [ ] **Step 9 (R9): CI feasibility decision-support (operator broadening, 2026-08-10)** — no pipeline file is written in R; this step produces the decision material for **DP-CI**:
+  (a) map every clause of the one-shape table against a GitHub Actions `mysql:8.0.46` service container: host `127.0.0.1` ✓/✗, mapped explicit port, database `podtext_test` + non-root user via init script, name-collision clause vs a runner-checkout `.env.example` — determine whether CI satisfies the guard **without weakening a single clause**;
+  (b) inventory the runner prerequisites the suite now carries: `mysqldump` + `gzip` on PATH, Chrome/browser deps for `tests/Browser`, the 2G memory limit, the fingerprint first-use flow on a always-fresh runner (works by construction: fresh runner = empty schema);
+  (c) estimate wall time (~10 min single-threaded today) and note what sharding would later buy;
+  (d) recommendation table: implement-in-S / defer-post-U / record local-only-decision, with one-line rationale each.
+
+- [ ] **Step 10 (R10): deferred-items re-assessment (operator broadening, 2026-08-10)** — one consolidated table; every row gets `fix-in-S` or `keep-deferred (why)`. Rows, at minimum: every task-review Minor held in the progress ledger (Tasks 1–6 — contract comment staleness, `dropStatements` backtick escaping, views-survive-reset, unlink result, fopen-message conflation, fixture-in-real-snapshot-dir, describe-block placement, `LANE` const, `+00:00` literal coupling, handle() guard extraction); F8 (`possible_keys`) and F9 (per-boot COLUMNS count — pair with R3's measurement); DP9 (config `DB_CONNECTION` default `sqlite` → `mysql`); the `CardTemplatePreviewBrowserTest:663` single-read flake fix plus R4's sibling single-reads; `defect-cause-patterns.md` entries that still touch the suite. The operator's R-gate call turns this table into Phase S's checklist.
+
+- [ ] **Step 11: Append the measurement report** to `docs/research/test-suite-rethink-notes.md` under `## Phase R measurements (2026-08-DD)`, with DP1–DP3, DP-CI, and DP9 pre-filled as recommendations and the R10 table included. Commit:
 
 ```bash
 git add docs/research/test-suite-rethink-notes.md
@@ -1004,7 +1057,7 @@ git commit -m "docs(rethink): Phase R measurement report
 Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
 ```
 
-🛑 **GATE: operator reads the report, sets Phase S scope, answers DP1–DP3.**
+🛑 **GATE: operator reads the report, sets Phase S scope from the R10 table, answers DP1–DP3, DP-CI, and DP9.**
 
 ---
 
@@ -1142,8 +1195,10 @@ Candidates already identified — the R gate prices and picks; each selected ite
 - R5 category-(c) RefreshDatabase corrections.
 - The `CardTemplatePreviewBrowserTest:663` single-read → condition-wait fix, plus siblings from R4.
 - Guard trims only if R3 registered against the ~600s wall.
+- **CI pipeline implementation per DP-CI** (workflow file + `mysql:8.0.46` service container + lane bootstrap; the one-shape clause table itself does not change — operator broadening 2026-08-10).
+- **Every R10 row the operator verdicts `fix-in-S`**, including DP9's config-default flip if approved.
 
-**Entry condition:** operator has read the Phase R report and named the scope. Do not start any candidate before that.
+**Entry condition:** operator has read the Phase R report and named the scope. Do not start any candidate before that. Per the 2026-08-10 broadening, Phase S completes — suite "working straight" — before Phase U opens.
 
 ---
 
