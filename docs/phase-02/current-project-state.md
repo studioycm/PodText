@@ -2872,13 +2872,18 @@ and `model:show` is safe to use again.
   - Suite prerequisites now include `mysqldump` and `gzip` on PATH —
     `DatabaseSnapshotCommandsTest` shells the real dump pipeline against the
     lane. A fresh worktree also hard-refuses first lane use by design
-    (empty-schema fingerprint); until the `lane:reset` helper lands, the
-    remedy is deliberate operator action, not wiping the lane while other
-    sessions may hold it.
+    (empty-schema fingerprint); the landed remedy is `php artisan
+    db:test-lane-reset` (`0f3a32a`, hardened `274b536`/`fb6b212`, extracted
+    onto `App\Support\Testing\TestLaneContract` by `a45efc4`) — a
+    refusal-layered, typed-confirmation command that empties the lane and
+    removes its fingerprint, verified end-to-end 2026-08-10 (Task 7: 40
+    tables dropped, `TestLaneGuardTest` 15/15 green against the re-fingerprinted
+    empty schema).
   - **Next deploy window checklist: restart `cron` + `rsyslog` (and reload
     nginx) on production** — those daemons kept the pre-UTC zone at start and
     still stamp +03:00; mysql/php-fpm/Horizon were already restarted in the
     T12 window.
   - Restoring a `pre-alignment` snapshot still follows the pin-removal caveat
-    above; a `db:restore` TIMESTAMP-DDL warning is approved as a ride-along
-    hardening.
+    above; `db:restore` now refuses outright — not merely warns — when a dump
+    carries TIMESTAMP-column DDL while the target connection pins `+00:00`
+    (`17c19ff`, hardened `f83949f`/`3bba8cc`/`a63d23f`).

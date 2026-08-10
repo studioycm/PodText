@@ -134,10 +134,11 @@ Source of the rules: [szepeviktor's `larastan-preflight-reviewer` skill](https:/
 **Four more lists silently omit it too** (`:887`, `:900`, `:904`, `:1131`) — quarantine verification, cache invalidation, source cleanup, dangling-reference guard.
 **Fixing only the match arm is worse than leaving it.** The retirement work must answer all five and clear the red list.
 
-### C2. Two enums outside `app/Enums` — `OPEN`
+### C2. Two enums outside `app/Enums` — `FIXED` 2026-08-07 (`005eda6`)
 `app/Support/Importer/SpotifyLinks/SpotifyEntityMode.php`, `app/Auth/LegacyRoleBackfill/PermissionCacheInvalidationOutcome.php`. Neither carries a contract.
 Any tool globbing `app/Enums/*.php` misses them — which is what produced every wrong enum count in the playbook.
 **Next:** move both, or decide they stay and record why.
+**Closed:** both moved into `app/Enums` (`005eda6`), guarded by `EnvironmentGuardsTest`'s "declares every enum under app/Enums" test.
 
 ### C3. `set-membership-without-totality` — `OPEN`, no guard possible
 `in_array($case, [...])` decides membership like a `match` but claims no totality. **No analyser can check it, PHPStan included.**
@@ -192,25 +193,25 @@ Buckets: `fix-now` (this round) · `ride-along` · `parked-roadmap` ·
 `docs/phase-02/test-suite-rethink-spec.md`; sources are the program ledger
 (`.superpowers/sdd/progress.md`, gitignored) and the task reports cited inline.
 
-### F1. Dead `expected('sqlite')` branches — `fix-now`
+### F1. Dead `expected('sqlite')` branches — `FIXED` 2026-08-10 (`e3a539c`)
 `LegacyRoleBackfillSchemaContract` still accepts and describes a sqlite schema
 (`:21`, `:67`, `:178`, `:248`) but zero callers pass `'sqlite'` since the suite
 went mysql-only (T19). Remove the arms, keep the driver refusal loud, re-pin
 tests.
 
-### F2. Nullability-drift fixture coverage — `fix-now`
+### F2. Nullability-drift fixture coverage — `FIXED` 2026-08-10 (`7cdaadf`)
 The `model_has_roles` drift fixture swapped its nullable-PK drift for a
 shorter-VARCHAR drift (MySQL refuses a nullable PRIMARY KEY column at DDL
 time), so *nullability* drift is exercised nowhere. Add it on a non-PK column
 (`roles.name`) in the same fixture.
 
-### F3. `EpisodesTableR1Test` payloads dodge the DST rule — `fix-now`
+### F3. `EpisodesTableR1Test` payloads dodge the DST rule — `FIXED` 2026-08-10 (`982a65b`)
 Its `changePublishedAt` calls send `'Y-m-d H:i'` (no seconds); the
 `ExistsInTimezone` rule throws-and-passes on format mismatch, so that field's
 DST coverage lives only in `DstInputEdgeTest` (T23 residual). Send
 seconds-bearing payloads.
 
-### F4. Fresh-worktree lane-fingerprint refusal — `fix-now` (remedy)
+### F4. Fresh-worktree lane-fingerprint refusal — `FIXED` 2026-08-10 (`a45efc4`, `0f3a32a`, `274b536`, `fb6b212`)
 First lane use requires an *empty* schema; the fingerprint file is gitignored,
 so every fresh worktree hard-refuses a populated lane (fail-closed, correct).
 Remedy approved: documented steps + a `lane:reset`-style helper. Design
@@ -218,13 +219,13 @@ constraint: the flock run-lock file is per-tree while the lane is
 machine-global — the helper must probe for live lane connections, not just the
 local lock, or it papers over cross-worktree collisions.
 
-### F5. `mysqldump` + `gzip` are undocumented suite prerequisites — `fix-now`
+### F5. `mysqldump` + `gzip` are undocumented suite prerequisites — `FIXED` 2026-08-10 (`732c710`)
 `DatabaseSnapshotCommandsTest` shells the real dump pipeline against the lane,
 so both binaries are hard test dependencies. Documented in
 `current-project-state.md` (this pass); keep beside the lane env block if one
 lands in `.env.example`.
 
-### F6. Pre-alignment snapshot replay under the pinned connection — `ride-along` guard approved
+### F6. Pre-alignment snapshot replay under the pinned connection — `FIXED` 2026-08-10 (`17c19ff`, `f83949f`, `3bba8cc`, `a63d23f`)
 The caveat is documented in `current-project-state.md` (restore only with the
 `+00:00` pin removed, or onto an unpinned connection). Approved hardening:
 `db:restore` warns when a dump carries `TIMESTAMP` column DDL while the target
@@ -257,3 +258,14 @@ Carbon-macro stub route that would clear all 5 varTag errors (T23 flag);
 Filament-boundary narrowing (122); own-relation typing (49); §B3+§C3 enum
 totality; the `phpstan.neon` comment refresh noted under B3. Level-6 wiring
 (tests/) is Pest-5-gated and rides the rethink's final phase.
+
+### F11. SQLite artifacts — `FIXED` (file + composer) / DP9 open (config default)
+The 528KB `database/database.sqlite` was deleted and the `composer.json`
+`post-create-project-cmd` touch line removed (`d1d0671`, from the 2026-08-10
+cross-session sweep — Task 7B). The `config/database.php` sqlite `:memory:`
+connection block is keep-forever: consumed by `tests/TestCase.php`'s
+containment, `NonMysqlRefusalTest`, and `TestLaneResetCommandTest`. The
+`DB_CONNECTION` default of `sqlite` (`config/database.php:20`) is **DP9** —
+recommended flip to `mysql` (a missing env key should fail loudly against a
+credentialed daemon, not silently open a file); operator decides at the R
+gate.

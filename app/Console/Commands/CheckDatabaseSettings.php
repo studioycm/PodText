@@ -13,9 +13,9 @@ use Illuminate\Support\Facades\DB;
  * Production's schema default was `utf8mb3_unicode_ci` while all 40 tables were
  * `utf8mb4_unicode_ci`. Nothing was broken — but any table created without an
  * explicit charset would have inherited three-byte Unicode, and nothing in the
- * repo, the test suite or the deploy would ever have said so. The suite runs on
- * sqlite, which has no charset, no collation and no session timezone, so this
- * whole class of setting is structurally invisible to `php artisan test`.
+ * repo, the test suite or the deploy would ever have said so. The suite now
+ * runs on the dedicated MySQL lane, so these settings are testable there —
+ * this command remains the production-side drift alarm.
  *
  * Read-only. Safe to run anywhere, including production.
  */

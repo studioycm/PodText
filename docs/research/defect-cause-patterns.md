@@ -897,7 +897,7 @@ by the orchestrator.)*
   `tests/TestCase.php:46-64` must learn that second shape rather than be
   relaxed. Until then, treat "green on SQLite" as untested for anything in the
   list above and say so in the report.
-- **Status:** open. Registered at discovery; no lane built yet.
+- **Status:** closed 2026-08-09 — the MySQL lane is built and is the suite's only driver; the one-shape guard learned the second shape (alignment Phase 4).
 
 ## rule-in-fixture · A product rule with no app-side home lives in a test literal
 
@@ -1182,10 +1182,12 @@ by the orchestrator.)*
   raw SQL `DATE(col)` buckets on the database timezone). Two workarounds for
   one root cause is the signal that the clock itself is the defect — and that
   a third will eventually be written by someone who knows about neither.
-- **Structurally untestable today:** `phpunit.xml:38-39` forces sqlite
-  `:memory:`, which has no session timezone and no TIMESTAMP conversion, so
-  this whole defect class cannot surface in `php artisan test`. Kin of
-  `driver-lenient-fallback`; see `docs/phase-02/mysql-test-lane-spec.md`.
+- **Was structurally untestable under the old suite:** `phpunit.xml` used to
+  force sqlite `:memory:`, which has no session timezone and no TIMESTAMP
+  conversion, so this whole defect class could not surface in
+  `php artisan test`. Kin of `driver-lenient-fallback`. The suite now runs on
+  the dedicated `mysql_testing` lane instead — see
+  `docs/phase-02/mysql-test-lane-spec.md`.
 - **Target state:** `@@session.time_zone` **and** `@@global.time_zone` at
   `+00:00`, pinned via `'timezone' => env('DB_TIMEZONE', '+00:00')` in
   `config/database.php` so it stops depending on the server. **Cannot be
@@ -1199,8 +1201,9 @@ by the orchestrator.)*
   Asia/Jerusalem lives only in `UiTimezone` reading
   `config/localization.php:19`. Do not "fix" this by moving the app timezone —
   that makes it strictly worse.
-- **Status:** open, unscheduled. Diagnosis complete; remediation is a
-  deliberate migration, not a patch.
+- **Status:** closed 2026-08-09 — the alignment migration ran; the connection
+  pins `+00:00` hardcoded in `config/database.php` (the env-var proposal
+  above, `env('DB_TIMEZONE', '+00:00')`, was deliberately not taken).
 
 ## boundary-type-loss · A typed value crossing a serialization boundary comes back untyped
 
