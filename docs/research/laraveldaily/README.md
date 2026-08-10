@@ -278,6 +278,12 @@ Worked example: the Laracon US 2026 Day-2 stream segment (Povilas's Filament tal
 transcript + verified slide code in `raw/youtube-vii6P0vJhTw-laracon-filament-talk.md`,
 analysis in [laracon-2026-filament-talk-notes.md](laracon-2026-filament-talk-notes.md).
 
+Method-A refinement from the 8-video Pest 5 sweep (`raw/youtube-pest5-collection.md`,
+analysis in [pest5-notes.md](pest5-notes.md)): the pot URL can silently miss from
+`performance.getEntriesByType('resource')` because the default resource-timing buffer
+holds only ~250 entries — call `performance.setResourceTimingBufferSize(3000)` first,
+then toggle CC off/on to force a fresh caption request into the enlarged buffer.
+
 ### 3c. Comments — worth reading
 
 Comments sit under `.comments-*` classes (e.g. `.comments-date` wraps the "N months ago"
