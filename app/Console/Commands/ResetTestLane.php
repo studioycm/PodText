@@ -1,0 +1,126 @@
+<?php
+
+namespace App\Console\Commands;
+
+use App\Support\Testing\TestLaneContract;
+use Illuminate\Console\Attributes\Description;
+use Illuminate\Console\Attributes\Signature;
+use Illuminate\Console\Command;
+use Illuminate\Support\Facades\DB;
+
+/**
+ * Reset the dedicated MySQL test lane to first-use state.
+ *
+ * A fresh worktree has no fingerprint file (gitignored), so the suite
+ * refuses a populated lane as a stranger's database — fail-closed and
+ * correct. This command is the sanctioned remedy: it empties the lane schema
+ * and removes the fingerprint, so the next pest boot re-fingerprints an
+ * empty schema and migrates fresh.
+ *
+ * Refusal layers, in order (spec F4):
+ * - the extracted one-shape clause table — the same table the suite boots on;
+ * - this tree's flock run-lock (a suite in THIS tree is mid-run; a second
+ *   same-process fd is denied too, which is what the in-suite test pins);
+ * - live lane connections via information_schema.PROCESSLIST — every suite
+ *   connects as the lane user, and PROCESSLIST shows the caller's own user
+ *   without the PROCESS privilege, so a suite running from ANOTHER worktree
+ *   is visible here even though its flock file is not;
+ * - the typed-name confirmation (unless --force);
+ * - lock_wait_timeout=3 on the drop session, so a holder the probes missed
+ *   fails the drop fast instead of hanging it.
+ */
+#[Signature('db:test-lane-reset {--force : Skip the typed confirmation}')]
+#[Description('Empty the dedicated MySQL test lane and remove its fingerprint, so the next pest boot starts first-use clean.')]
+class ResetTestLane extends Command
+{
+    public function handle(): int
+    {
+        $config = array_merge(config('database'), ['default' => 'mysql_testing']);
+        $refusal = TestLaneContract::refusalFor($config, TestLaneContract::rawEnvDatabases());
+
+        if ($refusal !== null) {
+            $this->error('Refusing to reset: '.$refusal);
+
+            return self::FAILURE;
+        }
+
+        $lane = $config['connections']['mysql_testing'];
+        $database = (string) $lane['database'];
+        $lockHandle = fopen(storage_path('framework/testing/mysql-lane-run.lock'), 'c+');
+
+        if ($lockHandle === false || ! flock($lockHandle, LOCK_EX | LOCK_NB)) {
+            $this->error('Refusing to reset: a pest run in this tree holds the MySQL lane run-lock.');
+
+            return self::FAILURE;
+        }
+
+        try {
+            $foreign = self::foreignLaneConnections($database);
+
+            if ($foreign > 0) {
+                $this->error("Refusing to reset: {$foreign} other connection(s) are live on `{$database}` — a suite may be running from another worktree.");
+
+                return self::FAILURE;
+            }
+
+            if (! $this->option('force')) {
+                $typed = $this->ask("This EMPTIES `{$database}` and deletes its fingerprint. Type the database name to continue");
+
+                if ($typed !== $database) {
+                    $this->warn('Aborted — the typed name did not match.');
+
+                    return self::FAILURE;
+                }
+            }
+
+            $connection = DB::connection('mysql_testing');
+            $tables = array_map(
+                static fn (object $row): string => (string) $row->name,
+                $connection->select("SELECT TABLE_NAME name FROM information_schema.TABLES WHERE TABLE_SCHEMA = ? AND TABLE_TYPE = 'BASE TABLE' ORDER BY TABLE_NAME", [$database]),
+            );
+
+            $connection->statement('SET SESSION lock_wait_timeout = 3');
+            $connection->statement('SET FOREIGN_KEY_CHECKS = 0');
+
+            try {
+                foreach (self::dropStatements($database, $tables) as $statement) {
+                    $connection->statement($statement);
+                }
+            } finally {
+                $connection->statement('SET FOREIGN_KEY_CHECKS = 1');
+            }
+
+            $fingerprint = TestLaneContract::fingerprintPath((string) $lane['host'], (string) $lane['port'], $database);
+
+            if (is_file($fingerprint)) {
+                unlink($fingerprint);
+            }
+
+            $this->info(sprintf('Lane `%s` emptied (%d tables dropped) and fingerprint removed. The next pest boot re-fingerprints and migrates fresh.', $database, count($tables)));
+
+            return self::SUCCESS;
+        } finally {
+            flock($lockHandle, LOCK_UN);
+            fclose($lockHandle);
+        }
+    }
+
+    /** Lane connections other than this one — the cross-worktree suite probe. */
+    public static function foreignLaneConnections(string $database): int
+    {
+        return (int) DB::connection('mysql_testing')
+            ->selectOne('SELECT COUNT(*) n FROM information_schema.PROCESSLIST WHERE DB = ? AND ID <> CONNECTION_ID()', [$database])->n;
+    }
+
+    /**
+     * @param  list<string>  $tables
+     * @return list<string>
+     */
+    public static function dropStatements(string $database, array $tables): array
+    {
+        return array_map(
+            static fn (string $table): string => sprintf('DROP TABLE IF EXISTS `%s`.`%s`', str_replace('`', '', $database), str_replace('`', '', $table)),
+            $tables,
+        );
+    }
+}
