@@ -48,11 +48,87 @@ it('keeps rector wired to larastan through phpstan.neon and larastan\'s own exte
 });
 
 it('boots the real PHPStan container behind that wiring without the extension-installer schema crash', function (): void {
-    $result = Process::path(base_path())->run('vendor/bin/rector process --dry-run --ansi --output-format=json');
+    // Cold-cache Rector walks all ~628 configured paths' files before it can report
+    // anything — comfortably past Laravel's Process default of 60 seconds even when
+    // nothing is wrong. 300s gives headroom without masking a real hang.
+    $result = Process::path(base_path())
+        ->timeout(300)
+        ->run('vendor/bin/rector process --dry-run --ansi --output-format=json');
 
     $combined = $result->output().$result->errorOutput();
 
-    expect($combined)->not->toContain('PHPStanServicesFactory')
+    // Positive canary first: Rector's JsonOutputFormatter always emits a "totals" key
+    // (see JsonOutputFactory::create()) on any real, completed run — reportable or not.
+    // Without this, three "not->toContain" assertions alone would pass just as happily
+    // if Rector silently never ran at all (binary missing, path wrong, process killed).
+    expect($combined)->toContain('totals')
+        ->and($combined)->not->toContain('PHPStanServicesFactory')
         ->and($combined)->not->toContain('ValidationException')
         ->and($combined)->not->toContain('fatal_errors');
+});
+
+/*
+ * Everything above pins the wiring string and proves the container boots — neither
+ * proves the actual hazard is contained. FilaCheck's own guard test (see
+ * FilacheckAgentModeGuardTest) doesn't stop at "the opt-out flag is set"; it runs the
+ * real binary against a fixture with a genuine violation and checks the file on disk
+ * afterward. This test is that second half for Rector: a rule that DOES match, run for
+ * real against a throwaway file, with --dry-run in the command — then the file is read
+ * back and must be byte-identical to what was written, proving the dry run reported a
+ * change without ever writing one.
+ */
+it('withholds the write during --dry-run even when a rule genuinely matches', function (): void {
+    $fixtureRoot = sys_get_temp_dir().'/podtext-rector-'.bin2hex(random_bytes(6));
+    $fixtureFile = $fixtureRoot.'/probe.php';
+    $fixtureConfig = $fixtureRoot.'/rector-fixture.php';
+
+    File::ensureDirectoryExists($fixtureRoot);
+
+    // app('translator') is AppToResolveRector's own documented example (its
+    // RuleDefinition code sample is literally `app('foo'); -> resolve('foo');`) — a
+    // string-literal abstract, no ::class constant needed, confirmed against the
+    // rule's source rather than assumed.
+    $originalSource = <<<'PHP'
+        <?php
+        $instance = app('translator');
+        PHP;
+
+    File::put($fixtureFile, $originalSource);
+
+    // Minimal standalone config: same fluent RectorConfig API and the same
+    // LaravelSetList import path rector.php uses, scoped to only the fixture
+    // directory so this never touches the real app tree.
+    File::put($fixtureConfig, <<<PHP
+        <?php
+
+        use Rector\Config\RectorConfig;
+        use RectorLaravel\Set\LaravelSetList;
+
+        return RectorConfig::configure()
+            ->withPaths(['{$fixtureRoot}'])
+            ->withSets([LaravelSetList::LARAVEL_CODE_QUALITY])
+            ->withCache('{$fixtureRoot}/cache');
+        PHP);
+
+    try {
+        $result = Process::path(base_path())
+            ->timeout(120)
+            ->run("vendor/bin/rector process --dry-run --config {$fixtureConfig} --output-format=json");
+
+        $decoded = json_decode($result->output(), true);
+
+        // Rector reports changed_files relative to CWD (e.g. "../../../tmp/.../probe.php"),
+        // not absolute — match on the fixture's own basename rather than a full-path
+        // string, so this doesn't depend on where the suite happens to run from.
+        $reportedFiles = array_map(fn (string $path): string => basename($path), $decoded['changed_files'] ?? []);
+
+        expect($decoded)
+            ->not->toBeNull('Rector did not return valid JSON: '.$result->output().$result->errorOutput())
+            ->and($decoded['totals']['changed_files'] ?? null)->toBe(1)
+            ->and($reportedFiles)->toContain('probe.php')
+            ->and(File::get($fixtureFile))
+            ->toBe($originalSource, 'The dry run wrote to the fixture file — --dry-run no longer withholds writes.');
+    } finally {
+        File::deleteDirectory($fixtureRoot);
+    }
 });
