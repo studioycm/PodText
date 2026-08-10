@@ -239,11 +239,11 @@ it('renders the Media inventory as responsive accessible native cards', function
                 direction: document.documentElement.dir,
                 card_count: cards.length,
                 columns: lefts.size,
-                every_card_within_viewport: cards.every((card) => {
+                every_card_within_viewport: await stableRead(() => cards.every((card) => {
                     const rect = card.getBoundingClientRect();
 
                     return rect.left >= -1 && rect.right <= viewportWidth + 1;
-                }),
+                })),
                 metadata_visible: cards.every((card) => {
                     const metadata = card.querySelector(
                         '[data-testid="media-library-card-file-summary"]',
@@ -262,9 +262,9 @@ it('renders the Media inventory as responsive accessible native cards', function
                     record?.querySelectorAll('button[aria-label]') ?? [],
                 ).some((button) => button.getAttribute('aria-label') === {$moreActions}
                     && isShown(button))),
-                actions_within_viewport: records.every((record) => Array.from(
+                actions_within_viewport: await stableRead(() => records.every((record) => Array.from(
                     record?.querySelectorAll('.fi-ta-actions a, .fi-ta-actions button') ?? [],
-                ).every((action) => ! isShown(action) || withinViewport(action))),
+                ).every((action) => ! isShown(action) || withinViewport(action)))),
                 horizontal_overflow: await stableRead(() => document.documentElement.scrollWidth
                     > document.documentElement.clientWidth + 1),
             };
@@ -766,14 +766,17 @@ it('delivers a responsive accessible issue review and preserves its exact task o
                 return previous;
             };
             const review = document.querySelector('[data-testid="media-issue-review"]');
-            const rect = review?.getBoundingClientRect();
 
             return {
                 viewport_width: window.innerWidth,
                 direction: document.documentElement.dir,
-                review_within_viewport: Boolean(rect)
-                    && rect.left >= -1
-                    && rect.right <= window.innerWidth + 1,
+                review_within_viewport: await stableRead(() => {
+                    const rect = review?.getBoundingClientRect();
+
+                    return Boolean(rect)
+                        && rect.left >= -1
+                        && rect.right <= window.innerWidth + 1;
+                }),
                 horizontal_overflow: await stableRead(() => document.documentElement.scrollWidth
                     > document.documentElement.clientWidth + 1),
             };

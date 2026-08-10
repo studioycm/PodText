@@ -503,8 +503,6 @@ function ownerImageBrowserOpenDedicatedAction(
 
             modal.scrollTop = modal.scrollHeight;
             await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
-            const headerRect = header?.getBoundingClientRect();
-            const footerRect = footer?.getBoundingClientRect();
 
             return {
                 direction: document.documentElement.dir,
@@ -541,20 +539,28 @@ function ownerImageBrowserOpenDedicatedAction(
                 modal_top: modalRect.top,
                 modal_width: modalRect.width,
                 modal_height: modalRect.height,
-                modal_scrollable: modal.scrollHeight > modal.clientHeight + 1,
+                modal_scrollable: await stableRead(() => modal.scrollHeight > modal.clientHeight + 1),
                 active_scroll_owners: activeScrollOwners,
-                state_nested_scroll: choice.scrollHeight > choice.clientHeight + 1,
-                gallery_nested_scroll: gallery.scrollHeight > gallery.clientHeight + 1,
-                header_nested_scroll: header
+                state_nested_scroll: await stableRead(() => choice.scrollHeight > choice.clientHeight + 1),
+                gallery_nested_scroll: await stableRead(() => gallery.scrollHeight > gallery.clientHeight + 1),
+                header_nested_scroll: await stableRead(() => header
                     ? header.scrollHeight > header.clientHeight + 1
-                    : false,
-                footer_nested_scroll: footer
+                    : false),
+                footer_nested_scroll: await stableRead(() => footer
                     ? footer.scrollHeight > footer.clientHeight + 1
-                    : false,
-                header_visible_after_scroll: ! headerRect
-                    || (headerRect.top >= -1 && headerRect.bottom <= innerHeight + 1),
-                footer_visible_after_scroll: ! footerRect
-                    || (footerRect.top >= -1 && footerRect.bottom <= innerHeight + 1),
+                    : false),
+                header_visible_after_scroll: await stableRead(() => {
+                    const headerRect = header?.getBoundingClientRect();
+
+                    return ! headerRect
+                        || (headerRect.top >= -1 && headerRect.bottom <= innerHeight + 1);
+                }),
+                footer_visible_after_scroll: await stableRead(() => {
+                    const footerRect = footer?.getBoundingClientRect();
+
+                    return ! footerRect
+                        || (footerRect.top >= -1 && footerRect.bottom <= innerHeight + 1);
+                }),
                 details_width: detailsRect?.width ?? null,
                 details_height: detailsRect?.height ?? null,
                 source_min_width: Math.min(...sourceRects.map((rect) => rect.width)),

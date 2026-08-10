@@ -795,12 +795,27 @@ it('keeps one inert responsive preview root with focus and dirty navigation prot
                 horizontal_overflow: await stableRead(() => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1),
                 shell_overflow: getComputedStyle(document.querySelector('[data-card-template-preview-wide-shell]')).overflowY,
                 preview_overflow: getComputedStyle(document.querySelector('[data-card-template-preview-scroll]')).overflowY,
-                preview_is_logical_end: previewRect?.right <= editorRect?.left,
-                columns_do_not_overlap: previewRect?.right <= editorRect?.left,
+                preview_is_logical_end: await stableRead(() => {
+                    const preview = previewColumn?.getBoundingClientRect();
+                    const editor = editorColumn?.getBoundingClientRect();
+
+                    return preview?.right <= editor?.left;
+                }),
+                columns_do_not_overlap: await stableRead(() => {
+                    const preview = previewColumn?.getBoundingClientRect();
+                    const editor = editorColumn?.getBoundingClientRect();
+
+                    return preview?.right <= editor?.left;
+                }),
                 editor_width: editorRect?.width ?? null,
                 preview_width: previewRect?.width ?? null,
-                opener_hidden: Boolean(trigger && (getComputedStyle(trigger).display === 'none' || trigger.offsetParent === null)),
-                draft_is_first_editor_section: Math.abs((draftRect?.top ?? -1) - (editorRect?.top ?? -3)) < 2,
+                opener_hidden: await stableRead(() => Boolean(trigger && (getComputedStyle(trigger).display === 'none' || trigger.offsetParent === null))),
+                draft_is_first_editor_section: await stableRead(() => {
+                    const draft = draftSection?.getBoundingClientRect();
+                    const editor = editorColumn?.getBoundingClientRect();
+
+                    return Math.abs((draft?.top ?? -1) - (editor?.top ?? -3)) < 2;
+                }),
                 import_metadata_in_header: Boolean(headerMetadata),
                 import_metadata_in_editor: Boolean(editorColumn?.querySelector('[data-card-template-import-lock-metadata]')),
             };
@@ -856,10 +871,20 @@ it('keeps one inert responsive preview root with focus and dirty navigation prot
                     preview_roots: document.querySelectorAll('[data-card-template-preview-root]').length,
                     adjacent_roots: document.querySelectorAll('[data-card-template-preview-adjacent]').length,
                     modal_roots: document.querySelectorAll('[data-card-template-preview-modal]').length,
-                    opener_hidden: Boolean(trigger && (getComputedStyle(trigger).display === 'none' || trigger.offsetParent === null)),
+                    opener_hidden: await stableRead(() => Boolean(trigger && (getComputedStyle(trigger).display === 'none' || trigger.offsetParent === null))),
                     horizontal_overflow: await stableRead(() => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1),
-                    preview_is_logical_end: previewRect?.right <= editorRect?.left,
-                    columns_do_not_overlap: previewRect?.right <= editorRect?.left,
+                    preview_is_logical_end: await stableRead(() => {
+                        const previewNow = preview?.getBoundingClientRect();
+                        const editorNow = editor?.getBoundingClientRect();
+
+                        return previewNow?.right <= editorNow?.left;
+                    }),
+                    columns_do_not_overlap: await stableRead(() => {
+                        const previewNow = preview?.getBoundingClientRect();
+                        const editorNow = editor?.getBoundingClientRect();
+
+                        return previewNow?.right <= editorNow?.left;
+                    }),
                     editor_width: editorRect?.width ?? null,
                     preview_width: previewRect?.width ?? null,
                 };
@@ -932,7 +957,7 @@ it('keeps one inert responsive preview root with focus and dirty navigation prot
                     preview_roots: document.querySelectorAll('[data-card-template-preview-root]').length,
                     adjacent_roots: document.querySelectorAll('[data-card-template-preview-adjacent]').length,
                     modal_roots: document.querySelectorAll('[data-card-template-preview-modal]').length,
-                    opener_visible: Boolean(trigger && getComputedStyle(trigger).display !== 'none' && trigger.getBoundingClientRect().width > 0),
+                    opener_visible: await stableRead(() => Boolean(trigger && getComputedStyle(trigger).display !== 'none' && trigger.getBoundingClientRect().width > 0)),
                     horizontal_overflow: await stableRead(() => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1),
                 };
             }
@@ -974,7 +999,6 @@ it('keeps one inert responsive preview root with focus and dirty navigation prot
                 const modal = document.querySelector('[data-card-template-preview-modal]');
                 const dialog = modal?.closest('[aria-modal="true"]');
                 const modalWindow = dialog?.querySelector('.fi-modal-window');
-                const modalRect = modalWindow?.getBoundingClientRect();
 
                 return {
                     viewport_width: window.innerWidth,
@@ -983,7 +1007,7 @@ it('keeps one inert responsive preview root with focus and dirty navigation prot
                     modal_roots: document.querySelectorAll('[data-card-template-preview-modal]').length,
                     active_inside_modal: Boolean(dialog?.contains(document.activeElement)),
                     horizontal_overflow: await stableRead(() => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1),
-                    modal_is_logical_end: (modalRect?.left ?? Infinity) <= 4,
+                    modal_is_logical_end: await stableRead(() => (modalWindow?.getBoundingClientRect()?.left ?? Infinity) <= 4),
                     modal_public_interactions: modal?.querySelectorAll('[data-test="card-template-preview-ready"] a[href], [data-test="card-template-preview-ready"] [wire\\:click], [data-test="card-template-preview-ready"] button').length ?? 0,
                 };
             }
@@ -1155,10 +1179,20 @@ it('keeps one inert responsive preview root with focus and dirty navigation prot
                 livewire_requests: window.__step5bRequestUrls.filter((url) => url.includes('/livewire')).length,
                 dirty_value: input?.value ?? null,
                 dirty_protected: event.defaultPrevented,
-                opener_hidden: Boolean(trigger && (getComputedStyle(trigger).display === 'none' || trigger.offsetParent === null)),
+                opener_hidden: await stableRead(() => Boolean(trigger && (getComputedStyle(trigger).display === 'none' || trigger.offsetParent === null))),
                 horizontal_overflow: await stableRead(() => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1),
-                preview_is_logical_end: previewRect?.right <= editorRect?.left,
-                columns_do_not_overlap: previewRect?.right <= editorRect?.left,
+                preview_is_logical_end: await stableRead(() => {
+                    const preview = document.querySelector('[data-card-template-preview-column]')?.getBoundingClientRect();
+                    const editor = document.querySelector('[data-card-template-editor-column]')?.getBoundingClientRect();
+
+                    return preview?.right <= editor?.left;
+                }),
+                columns_do_not_overlap: await stableRead(() => {
+                    const preview = document.querySelector('[data-card-template-preview-column]')?.getBoundingClientRect();
+                    const editor = document.querySelector('[data-card-template-editor-column]')?.getBoundingClientRect();
+
+                    return preview?.right <= editor?.left;
+                }),
                 editor_width: editorRect?.width ?? null,
                 preview_width: previewRect?.width ?? null,
             };
@@ -1217,7 +1251,7 @@ it('keeps one inert responsive preview root with focus and dirty navigation prot
                 preview_roots: document.querySelectorAll('[data-card-template-preview-root]').length,
                 adjacent_roots: document.querySelectorAll('[data-card-template-preview-adjacent]').length,
                 modal_roots: document.querySelectorAll('[data-card-template-preview-modal]').length,
-                opener_visible: Boolean(trigger && getComputedStyle(trigger).display !== 'none' && trigger.getBoundingClientRect().width > 0),
+                opener_visible: await stableRead(() => Boolean(trigger && getComputedStyle(trigger).display !== 'none' && trigger.getBoundingClientRect().width > 0)),
                 focus_on_opener: Boolean(document.activeElement?.closest('[data-test="card-template-preview-open"]')),
                 dirty_value: input?.value ?? null,
                 dirty_protected: event.defaultPrevented,
@@ -1331,7 +1365,7 @@ it('keeps one inert responsive preview root with focus and dirty navigation prot
                 adjacent_roots: document.querySelectorAll('[data-card-template-preview-adjacent]').length,
                 modal_roots: document.querySelectorAll('[data-card-template-preview-modal]').length,
                 livewire_requests: window.__step5bRapidRequestUrls.filter((url) => url.includes('/livewire')).length,
-                opener_visible: Boolean(trigger && getComputedStyle(trigger).display !== 'none' && trigger.getBoundingClientRect().width > 0),
+                opener_visible: await stableRead(() => Boolean(trigger && getComputedStyle(trigger).display !== 'none' && trigger.getBoundingClientRect().width > 0)),
                 focus_on_opener: Boolean(document.activeElement?.closest('[data-test="card-template-preview-open"]')),
                 dirty_value: input?.value ?? null,
                 horizontal_overflow: await stableRead(() => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1),
@@ -1445,7 +1479,6 @@ it('renders the focused preview shell in English LTR', function (): void {
             await new Promise((resolve) => setTimeout(resolve, 350));
             const modal = document.querySelector('[data-card-template-preview-modal]');
             const dialog = modal?.closest('[aria-modal="true"]');
-            const modalRect = dialog?.querySelector('.fi-modal-window')?.getBoundingClientRect();
 
             return {
                 viewport_width: window.innerWidth,
@@ -1453,7 +1486,7 @@ it('renders the focused preview shell in English LTR', function (): void {
                 adjacent_roots: document.querySelectorAll('[data-card-template-preview-adjacent]').length,
                 modal_roots: document.querySelectorAll('[data-card-template-preview-modal]').length,
                 active_inside_modal: Boolean(dialog?.contains(document.activeElement)),
-                modal_is_logical_end: (modalRect?.right ?? 0) >= window.innerWidth - 4,
+                modal_is_logical_end: await stableRead(() => (dialog?.querySelector('.fi-modal-window')?.getBoundingClientRect()?.right ?? 0) >= window.innerWidth - 4),
                 horizontal_overflow: await stableRead(() => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1),
             };
         }
@@ -1512,11 +1545,21 @@ it('renders the focused preview shell in English LTR', function (): void {
                 preview_roots: document.querySelectorAll('[data-card-template-preview-root]').length,
                 adjacent_roots: document.querySelectorAll('[data-card-template-preview-adjacent]').length,
                 modal_roots: document.querySelectorAll('[data-card-template-preview-modal]').length,
-                preview_is_logical_end: editorRect?.right <= previewRect?.left,
-                columns_do_not_overlap: editorRect?.right <= previewRect?.left,
+                preview_is_logical_end: await stableRead(() => {
+                    const editor = document.querySelector('[data-card-template-editor-column]')?.getBoundingClientRect();
+                    const preview = document.querySelector('[data-card-template-preview-column]')?.getBoundingClientRect();
+
+                    return editor?.right <= preview?.left;
+                }),
+                columns_do_not_overlap: await stableRead(() => {
+                    const editor = document.querySelector('[data-card-template-editor-column]')?.getBoundingClientRect();
+                    const preview = document.querySelector('[data-card-template-preview-column]')?.getBoundingClientRect();
+
+                    return editor?.right <= preview?.left;
+                }),
                 editor_width: editorRect?.width ?? null,
                 preview_width: previewRect?.width ?? null,
-                opener_hidden: Boolean(trigger && (getComputedStyle(trigger).display === 'none' || trigger.offsetParent === null)),
+                opener_hidden: await stableRead(() => Boolean(trigger && (getComputedStyle(trigger).display === 'none' || trigger.offsetParent === null))),
                 horizontal_overflow: await stableRead(() => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1),
                 header_metadata: Boolean(document.querySelector('.fi-header [data-card-template-import-lock-metadata]')),
             };
@@ -1680,7 +1723,7 @@ it('keeps card width and sample choice transient inside the compact preview cont
                         - Math.min(...controlsChildren.map((rect) => rect.top + (rect.height / 2))) < 4,
                 refresh_icon_only: refresh?.textContent.trim() === '',
                 refresh_label: refresh?.getAttribute('aria-label'),
-                status_one_row: statusRow?.getBoundingClientRect().height < 24,
+                status_one_row: await stableRead(() => statusRow?.getBoundingClientRect().height < 24),
                 refreshed_direction: refreshed?.dir,
             };
         }
@@ -2117,6 +2160,20 @@ it('refreshes a changed template part and keeps the wide preview below the topba
 
     $interaction = $page->script(<<<'JS'
         async () => {
+            // stable-read (R4): a layout value counts only when two consecutive
+            // animation-frame reads agree (cap 10 frames) — a mid-reflow transient
+            // can no longer become an assertion input.
+            const stableRead = async (fn) => {
+                const frame = () => new Promise((resolve) => requestAnimationFrame(resolve));
+                let previous = fn();
+                for (let i = 0; i < 10; i++) {
+                    await frame();
+                    const current = fn();
+                    if (JSON.stringify(current) === JSON.stringify(previous)) return current;
+                    previous = current;
+                }
+                return previous;
+            };
             const summary = Array.from(document.querySelectorAll('[data-card-template-part-summary]'))
                 .find((candidate) => candidate.textContent.includes('STEP5B BROWSER PART BEFORE'));
             const item = summary?.closest('.fi-fo-builder-item');
@@ -2141,15 +2198,25 @@ it('refreshes a changed template part and keeps the wide preview below the topba
                 .map((grid) => getComputedStyle(grid).gridTemplateColumns.split(' ').length));
             const hasTwoColumnGrid = Array.from(panel?.querySelectorAll('.fi-grid') ?? [])
                 .some((grid) => getComputedStyle(grid).gridTemplateColumns.split(' ').length === 2);
-            const slideOverAtLogicalStart = panelRect?.left >= previewRect?.right;
-            const slideOverOverlapsPreview = ! (
-                panelRect?.right <= previewRect?.left
-                || panelRect?.left >= previewRect?.right
-                || panelRect?.bottom <= previewRect?.top
-                || panelRect?.top >= previewRect?.bottom
-            );
+            const slideOverAtLogicalStart = await stableRead(() => {
+                const panelBounds = panel?.getBoundingClientRect();
+                const previewBounds = preview?.getBoundingClientRect();
+
+                return panelBounds?.left >= previewBounds?.right;
+            });
+            const slideOverOverlapsPreview = await stableRead(() => {
+                const panelBounds = panel?.getBoundingClientRect();
+                const previewBounds = preview?.getBoundingClientRect();
+
+                return ! (
+                    panelBounds?.right <= previewBounds?.left
+                    || panelBounds?.left >= previewBounds?.right
+                    || panelBounds?.bottom <= previewBounds?.top
+                    || panelBounds?.top >= previewBounds?.bottom
+                );
+            });
             const previewInteractiveBehindOverlay = previewCenter
-                ? preview.contains(document.elementFromPoint(previewCenter.x, previewCenter.y))
+                ? await stableRead(() => preview.contains(document.elementFromPoint(previewCenter.x, previewCenter.y)))
                 : null;
             const activeInsideSlideOver = Boolean(panel?.contains(document.activeElement));
             const textInput = Array.from(modal?.querySelectorAll('input') ?? []).find((candidate) =>
@@ -2197,7 +2264,11 @@ it('refreshes a changed template part and keeps the wide preview below the topba
                 panel_right: panelRect?.right,
                 preview_left: previewRect?.left,
                 preview_right: previewRect?.right,
-                preview_visible_behind_overlay: Boolean(previewRect && previewRect.width > 0 && previewRect.height > 0),
+                preview_visible_behind_overlay: await stableRead(() => {
+                    const previewBounds = preview?.getBoundingClientRect();
+
+                    return Boolean(previewBounds && previewBounds.width > 0 && previewBounds.height > 0);
+                }),
                 preview_interactive_behind_overlay: previewInteractiveBehindOverlay,
                 active_inside_slide_over: activeInsideSlideOver,
                 max_grid_columns: maxGridColumns,

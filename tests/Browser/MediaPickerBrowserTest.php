@@ -319,8 +319,6 @@ it('keeps the acquisition workspace accessible responsive and stateful', functio
                 && guardProbeClose?.getAttribute('aria-disabled') !== 'true'
                 && picker()?.getAttribute('aria-busy') !== 'true';
 
-            const modalRect = modalWindow?.getBoundingClientRect();
-
             return {
                 direction: document.documentElement.dir,
                 modal_roots: document.querySelectorAll(
@@ -330,8 +328,12 @@ it('keeps the acquisition workspace accessible responsive and stateful', functio
                 active_inside_modal: Boolean(dialog()?.contains(document.activeElement)),
                 horizontal_overflow: await stableRead(() => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1),
                 picker_horizontal_overflow: await stableRead(() => (picker()?.scrollWidth ?? 0) > (picker()?.clientWidth ?? 0) + 1),
-                modal_within_viewport: (modalRect?.left ?? -1) >= -1
-                    && (modalRect?.right ?? window.innerWidth + 1) <= window.innerWidth + 1,
+                modal_within_viewport: await stableRead(() => {
+                    const modalRect = modalWindow?.getBoundingClientRect();
+
+                    return (modalRect?.left ?? -1) >= -1
+                        && (modalRect?.right ?? window.innerWidth + 1) <= window.innerWidth + 1;
+                }),
                 storage_was_lazy: storageWasLazy,
                 storage_loaded: storageLoaded,
                 upload_panel_persisted: uploadPanelPersisted,
@@ -396,7 +398,6 @@ it('keeps the acquisition workspace accessible responsive and stateful', functio
             const grid = picker?.querySelector('.min-h-0.flex-1');
             const gallery = grid?.querySelector('main');
             const sourceRail = grid?.querySelector('aside');
-            const modalRect = modalWindow?.getBoundingClientRect();
             const pickerRect = picker?.getBoundingClientRect();
             const overflowingElements = Array.from(picker?.querySelectorAll('*') ?? [])
                 .filter((element) => {
@@ -428,8 +429,12 @@ it('keeps the acquisition workspace accessible responsive and stateful', functio
                 picker_scroll_width: picker?.scrollWidth ?? null,
                 picker_client_width: picker?.clientWidth ?? null,
                 overflowing_elements: overflowingElements,
-                modal_within_viewport: (modalRect?.left ?? -1) >= -1
-                    && (modalRect?.right ?? window.innerWidth + 1) <= window.innerWidth + 1,
+                modal_within_viewport: await stableRead(() => {
+                    const modalRect = modalWindow?.getBoundingClientRect();
+
+                    return (modalRect?.left ?? -1) >= -1
+                        && (modalRect?.right ?? window.innerWidth + 1) <= window.innerWidth + 1;
+                }),
                 owner_single_active_area: Boolean(gallery && sourceRail)
                     && (gallery.classList.contains('hidden') !== sourceRail.classList.contains('hidden')),
                 header_sticky: getComputedStyle(
