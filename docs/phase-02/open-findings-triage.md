@@ -263,13 +263,23 @@ Filament-boundary narrowing (122); own-relation typing (49); §B3+§C3 enum
 totality; the `phpstan.neon` comment refresh noted under B3. Level-6 wiring
 (tests/) is Pest-5-gated and rides the rethink's final phase.
 
-### F11. SQLite artifacts — `FIXED` (file + composer) / DP9 open (config default)
+### F11. SQLite artifacts — `FIXED` (file + composer + DP9 default flip)
 The 528KB `database/database.sqlite` was deleted and the `composer.json`
 `post-create-project-cmd` touch line removed (`d1d0671`, from the 2026-08-10
 cross-session sweep — Task 7B). The `config/database.php` sqlite `:memory:`
 connection block is keep-forever: consumed by `tests/TestCase.php`'s
-containment (a stray `DB::connection('sqlite')` must hit memory, never a repo file); `NonMysqlRefusalTest` exercises non-mysql refusals via its own throwaway connection. The
-`DB_CONNECTION` default of `sqlite` (`config/database.php:20`) is **DP9** —
-recommended flip to `mysql` (a missing env key should fail loudly against a
-credentialed daemon, not silently open a file); operator decides at the R
-gate.
+containment (a stray `DB::connection('sqlite')` must hit memory, never a repo file); `NonMysqlRefusalTest` exercises non-mysql refusals via its own throwaway connection. **DP9 is
+CLOSED**: the operator approved the flip at the R gate and it shipped —
+`config/database.php:20` now falls back to `mysql` (`203125c`), with
+`.env.example` stating the conditional failure mode honestly (`57c1898`).
+
+### F12. `SettingsBackupManager` per-unit re-saves — `OPEN`, diagnosis approved (operator, 2026-08-10)
+Found by S2b's timing spread: `SettingsSp3aTest` lost 68.5s to the snapshot
+subprocess from only 3 visible save sites — `import()`/`restore()` appear to
+drive a full settings-save cycle (SettingsSaved → backup version → snapshot
+job) **per unit** rather than batched. Possible real production inefficiency
+in `app/Support/SettingsLifecycle/SettingsBackupManager.php`.
+**Next:** a small, standalone diagnosis task (parked roadmap): count the
+save/backup cycles a single `import()` triggers, name the mechanism, propose
+batching only if the diagnosis licenses it. Evidence trail:
+`.superpowers/sdd/task-S2b-report.md` + the final whole-branch review.
