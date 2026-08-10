@@ -21,6 +21,7 @@ beforeEach(function (): void {
 
     Cache::flush();
     clearStep10P1SettingsCache();
+    fakeSettingsBackupSnapshotQueue();
 });
 
 function clearStep10P1SettingsCache(): void

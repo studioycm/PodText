@@ -21,6 +21,10 @@ use Spatie\LaravelSettings\SettingsContainer;
 
 uses(RefreshDatabase::class);
 
+beforeEach(function (): void {
+    fakeSettingsBackupSnapshotQueue();
+});
+
 function createPrompt11PublicItem(array $itemAttributes = [], array $transcriptionAttributes = [], ?ContentGroup $group = null): ContentItem
 {
     $group ??= ContentGroup::factory()->published()->create();

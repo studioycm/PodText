@@ -39,6 +39,7 @@ uses(RefreshDatabase::class);
 
 beforeEach(function (): void {
     Filament::setCurrentPanel(Filament::getPanel('admin'));
+    fakeSettingsBackupSnapshotQueue();
 });
 
 function clearStep9PublicFrontSettingsCache(): void

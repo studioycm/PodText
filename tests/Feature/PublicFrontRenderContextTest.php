@@ -14,6 +14,10 @@ use Spatie\LaravelSettings\SettingsContainer;
 
 uses(RefreshDatabase::class);
 
+beforeEach(function (): void {
+    fakeSettingsBackupSnapshotQueue();
+});
+
 function clearStep10rA1SettingsCache(): void
 {
     app()->forgetInstance(PublicContentSettings::class);

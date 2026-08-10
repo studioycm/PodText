@@ -7,6 +7,10 @@ use Illuminate\Support\Facades\DB;
 
 uses(RefreshDatabase::class);
 
+beforeEach(function (): void {
+    fakeSettingsBackupSnapshotQueue();
+});
+
 /**
  * A Spatie settings property with no stored row throws `MissingSettings` for
  * the whole group — every screen that loads it dies, not just the one reading
