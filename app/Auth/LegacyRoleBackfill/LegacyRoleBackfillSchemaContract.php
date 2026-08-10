@@ -105,7 +105,7 @@ final readonly class LegacyRoleBackfillSchemaContract
             // CONSTRAINTS.UPDATE_RULE), MySQL reports that as NO ACTION, not
             // RESTRICT — the two are behaviourally identical in InnoDB, but
             // the introspected string is what this contract compares byte
-            // for byte. Same value on both drivers.
+            // for byte.
             'on_update' => 'no action',
             'on_delete' => 'cascade',
         ];

@@ -55,3 +55,9 @@ it('generates schema-qualified drop statements', function (): void {
         'DROP TABLE IF EXISTS `podtext_test`.`beta`',
     ]);
 });
+
+it('doubles backticks in table names when generating drop statements', function (): void {
+    expect(ResetTestLane::dropStatements('podtext_test', ['alpha`b']))->toBe([
+        'DROP TABLE IF EXISTS `podtext_test`.`alpha``b`',
+    ]);
+});

@@ -33,9 +33,11 @@ use Illuminate\Support\Facades\DB;
 #[Description('Empty the dedicated MySQL test lane and remove its fingerprint, so the next pest boot starts first-use clean.')]
 class ResetTestLane extends Command
 {
+    private const LANE = 'mysql_testing';
+
     public function handle(): int
     {
-        $config = array_merge(config('database'), ['default' => 'mysql_testing']);
+        $config = array_merge(config('database'), ['default' => self::LANE]);
         $refusal = TestLaneContract::refusalFor($config, TestLaneContract::rawEnvDatabases());
 
         if ($refusal !== null) {
@@ -44,11 +46,17 @@ class ResetTestLane extends Command
             return self::FAILURE;
         }
 
-        $lane = $config['connections']['mysql_testing'];
+        $lane = $config['connections'][self::LANE];
         $database = (string) $lane['database'];
         $lockHandle = fopen(storage_path('framework/testing/mysql-lane-run.lock'), 'c+');
 
-        if ($lockHandle === false || ! flock($lockHandle, LOCK_EX | LOCK_NB)) {
+        if ($lockHandle === false) {
+            $this->error('Could not open the run-lock file — check storage/framework/testing exists and is writable.');
+
+            return self::FAILURE;
+        }
+
+        if (! flock($lockHandle, LOCK_EX | LOCK_NB)) {
             $this->error('Refusing to reset: a pest run in this tree holds the MySQL lane run-lock.');
 
             return self::FAILURE;
@@ -73,7 +81,7 @@ class ResetTestLane extends Command
                 }
             }
 
-            $connection = DB::connection('mysql_testing');
+            $connection = DB::connection(self::LANE);
             $tables = array_map(
                 static fn (object $row): string => (string) $row->name,
                 $connection->select("SELECT TABLE_NAME name FROM information_schema.TABLES WHERE TABLE_SCHEMA = ? AND TABLE_TYPE = 'BASE TABLE' ORDER BY TABLE_NAME", [$database]),
@@ -92,8 +100,10 @@ class ResetTestLane extends Command
 
             $fingerprint = TestLaneContract::fingerprintPath((string) $lane['host'], (string) $lane['port'], $database);
 
-            if (is_file($fingerprint)) {
-                unlink($fingerprint);
+            if (is_file($fingerprint) && ! unlink($fingerprint)) {
+                $this->error("Could not delete the fingerprint file: {$fingerprint}");
+
+                return self::FAILURE;
             }
 
             $this->info(sprintf('Lane `%s` emptied (%d tables dropped) and fingerprint removed. The next pest boot re-fingerprints and migrates fresh.', $database, count($tables)));
@@ -108,7 +118,7 @@ class ResetTestLane extends Command
     /** Lane connections other than this one — the cross-worktree suite probe. */
     public static function foreignLaneConnections(string $database): int
     {
-        return (int) DB::connection('mysql_testing')
+        return (int) DB::connection(self::LANE)
             ->selectOne('SELECT COUNT(*) n FROM information_schema.PROCESSLIST WHERE DB = ? AND ID <> CONNECTION_ID()', [$database])->n;
     }
 
@@ -119,7 +129,7 @@ class ResetTestLane extends Command
     public static function dropStatements(string $database, array $tables): array
     {
         return array_map(
-            static fn (string $table): string => sprintf('DROP TABLE IF EXISTS `%s`.`%s`', str_replace('`', '', $database), str_replace('`', '', $table)),
+            static fn (string $table): string => sprintf('DROP TABLE IF EXISTS `%s`.`%s`', str_replace('`', '``', $database), str_replace('`', '``', $table)),
             $tables,
         );
     }
