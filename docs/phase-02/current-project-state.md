@@ -2861,6 +2861,24 @@ and `model:show` is safe to use again.
   whole program with collation, column-type, and `PAD_ATTRIBUTE` drift
   checks — is now the standing drift alarm: exit 0 on both production and
   local.
-- Still open: the rehearsal databases (`podtext_restore_check` on 3306,
-  `podtext_rehearsal` on 3307) are kept in their converted end state,
-  pending operator approval to drop them.
+- Closed 2026-08-10 at the program's final gate: both rehearsal databases
+  (`podtext_restore_check` on 3306, `podtext_rehearsal` on 3307) dropped on
+  operator approval — the 3307 daemon now hosts only `podtext_test`. All 55
+  program commits are pushed; production deploys carried through `75082462`
+  (`efcebec`), and the final six commits (tests/docs/lock-fix) ride the next
+  feature deploy.
+- Post-program follow-ups (triaged 2026-08-10, operator-confirmed — the full
+  residual ledger is `docs/phase-02/open-findings-triage.md` §F):
+  - Suite prerequisites now include `mysqldump` and `gzip` on PATH —
+    `DatabaseSnapshotCommandsTest` shells the real dump pipeline against the
+    lane. A fresh worktree also hard-refuses first lane use by design
+    (empty-schema fingerprint); until the `lane:reset` helper lands, the
+    remedy is deliberate operator action, not wiping the lane while other
+    sessions may hold it.
+  - **Next deploy window checklist: restart `cron` + `rsyslog` (and reload
+    nginx) on production** — those daemons kept the pre-UTC zone at start and
+    still stamp +03:00; mysql/php-fpm/Horizon were already restarted in the
+    T12 window.
+  - Restoring a `pre-alignment` snapshot still follows the pin-removal caveat
+    above; a `db:restore` TIMESTAMP-DDL warning is approved as a ride-along
+    hardening.

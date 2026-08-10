@@ -8,6 +8,11 @@ Status: `OPEN` = nothing done · `BOUNDED` = diagnosed, fix not chosen · `PARTI
 
 ## A. Production timezone & locale
 
+**2026-08-10: §A is closed end-to-end by the database-alignment program**
+(55 commits `94a3328..7d715c9`; `db:check-settings` exit 0 — "No drift found" —
+on both local and production). Labels updated in place below; the measured
+block stays as the historical baseline.
+
 **Measured on production 2026-08-07** (read-only, `podtext.co.il`):
 
 ```
@@ -18,30 +23,35 @@ schema default utf8mb3 / utf8mb3_unicode_ci     ← see A3
 all 40 tables         utf8mb4_unicode_ci
 ```
 
-### A1. The +3 is a timezone, not a broken clock — `BOUNDED`
-`UTC_TIMESTAMP()` is real UTC; only `NOW()` is offset. So no NTP problem.
-**Next:** decide between pinning the connection tz (cheap) or full UTC migration.
+### A1. The +3 is a timezone, not a broken clock — `FIXED` 2026-08-09 (alignment Phase 3)
+`UTC_TIMESTAMP()` is real UTC; only `NOW()` was offset. The decision went to
+**full UTC**: OS `timedatectl set-timezone UTC`, `default-time-zone = '+00:00'`
+in `mysqld.cnf`, tz tables loaded. `TIMEDIFF(NOW(), UTC_TIMESTAMP())` =
+`00:00:00` on all three apps.
 
-### A2. It is a DST-observing named zone (`IDT`), not a fixed `+03:00` — `OPEN`
-This was the deciding open question and it came back the **worse** way.
-Consequences, both now live:
-- UTC literals landing in the spring-forward gap (local 02:00–02:59, late March) **cannot be stored faithfully**.
-- Any per-row shift is **+2 in winter, +3 in summer** — a flat `INTERVAL 3 HOUR` is wrong.
+### A2. It is a DST-observing named zone (`IDT`), not a fixed `+03:00` — `FIXED` 2026-08-09
+Mooted by going full UTC instead of any per-row shift or `+03:00` pin — the
+winter/summer asymmetry never got a chance to bite. The connection now pins
+`'timezone' => '+00:00'` in git (`3911495`), and the spring-forward wall-clock
+gap is guarded at *input* by the `ExistsInTimezone` rule on every
+`DateTimePicker` (`6ef6099`/`71dc28b`).
 
-**Next:** pinning `'timezone' => '+03:00'` in `config/database.php` would shift every winter row by an hour. Pin to a *named* zone or don't pin. Must be resolved before any clock work.
+### A3. Schema default is `utf8mb3` — `FIXED` 2026-08-09 (alignment Phases 1–2)
+`ALTER DATABASE` ran first inside migration `2026_08_09_000000`; schema default
++ 40 tables + 183 columns are `utf8mb4_0900_ai_ci` everywhere, oracle-verified
+byte-identical. The utf8mb3 finding is gone from `db:check-settings`.
 
-### A3. Schema default is `utf8mb3` — `OPEN` (new, not previously known)
-All 40 existing tables are `utf8mb4_unicode_ci`, so nothing is broken today.
-But **any new table created without an explicit charset inherits `utf8mb3`** — 3-byte, no emoji, no full Unicode.
-**Next:** `ALTER DATABASE podtext CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci` — metadata only, does not touch table data. Cheap and worth doing.
+### A4. `mysql.time_zone_name` unreadable — `FIXED` 2026-08-09 (T12/T13)
+tz tables are loaded on all three daemons (production + both local), verified
+via `CONVERT_TZ('2026-01-15 10:00:00','UTC','Asia/Jerusalem')` → `12:00:00` on
+each.
 
-### A4. `mysql.time_zone_name` unreadable — `OPEN`
-`SELECT command denied to user 'podtext'`. So we cannot confirm whether named-zone conversion (`CONVERT_TZ`) works — and `CONVERT_TZ` returns **NULL** when those tables are empty, which would blank a column mid-migration.
-**Next:** check as root before any migration that uses it.
-
-### A5. Production MySQL 8.0.46 vs local Herd 9.4.0 — `OPEN`
-Version divergence confirmed. This decides the MySQL test lane:
-**Docker pinned to 8.0, not Herd's 9.4** — see `mysql-test-lane-spec.md` §6/§7, which said to revisit exactly here.
+### A5. Production MySQL 8.0.46 vs local Herd 9.4.0 — `FIXED` 2026-08-09 (alignment Phase 4)
+The lane was decided and **built**: a dedicated MySQL **8.0.46** daemon on
+`127.0.0.1:3307` — a second native Herd service, not the Docker container the
+first read of this finding suggested. The §3 Hebrew-collation matrix measured
+identical on 8.0.46 vs 9.4.0 (T19 canary), closing the version-identity
+question.
 
 ---
 
@@ -77,6 +87,11 @@ A `match ($key)` over 14 string literals with **no default arm**. A *scalar* mat
 **The real risk is the inverse, and it is a trap rather than a live bug.** Safety rests on two hand-maintained lists in two files agreeing: `PublicFrontConfigRegistry::settingsKeys()` (14 strings) and the match arms (the same 14). Add a fifteenth key to `settingsKeys()`, forget the arm, and the first save of that config group raises `UnhandledMatchError` in production. That is the C3 `set-membership-without-totality` pattern, so fix it *with* C3 rather than alone.
 
 **Next — and NOT the default arm this entry used to recommend.** A default arm would swallow the missing key silently, converting a loud crash into quiet wrong behaviour, which is worse than the trap it closes. Either route the keys through a backed enum, so `match.unhandled` fires at analysis time the moment a case is added without an arm; or add a guard test asserting `settingsKeys()` and the match arms are the same set. The enum route is preferred — PHPStan already watches this line, so the guard costs nothing to keep.
+
+Housekeeping note (2026-08-10): `phpstan.neon`'s no-baseline comment still
+carries this entry's *pre-correction* wording ("eleven string literals",
+"throws on any unrecognised config group"). Refresh that comment on the
+roadmap's first touch of the file — the policy it argues for is unchanged.
 
 ### B4. 445 errors triaged by identifier — `OPEN` (work items, not mysteries)
 Triaged 2026-08-07 after B1; the counts below are from before B5, which cut 62 of them. No baseline, no `@phpstan-ignore`. Five groups:
@@ -137,21 +152,108 @@ It references `HasFoldedSearchColumns` before that file exists (lands in `8ec2ad
 **Cause:** a pathspec is *file*-level and both sessions edited `app/Models/ContentItem.php`.
 **Next:** nothing, unless a history rewrite is wanted.
 
-### D2. Push pairing — `OPEN`, operator action
-66 commits unpushed. Auto-deploy now **cancelled by the operator**, so the urgency is gone, but the pairing still holds whenever deploy happens:
-```bash
-php artisan migrate --force && php artisan search:backfill-folds
-```
-Between the two, every pre-existing row is invisible to every search. **Already run and verified locally** — 136 rows, id 56 now findable.
+### D2. Push pairing — `FIXED` 2026-08-08 (alignment Phase 0)
+Both halves closed: the pairing ran on production behind the Phase 0 window
+(deploy `75045371` — the folding migration plus `search:backfill-folds`, 1,053
+rows across 12 models, shadows 100%), and the push backlog cleared — all 55
+alignment commits are pushed, production deployed through `75082462`. The
+pairing rule itself stays live for any future restore/replay: between
+`migrate --force` and `search:backfill-folds`, pre-existing rows are invisible
+to search.
 
-### D3. Pre-test guard consolidation — `OPEN`
-Guards are scattered (`TestCase` DB safety, `Pest.php` env forcing, floors in the enum sweep). Not yet a single first-running check with named failures.
+### D3. Pre-test guard consolidation — `OPEN`, now owned by the suite rethink
+Guards are scattered and the alignment program added more (`TestCase` clause
+table + fingerprint + TIMESTAMP check, `Pest.php` env forcing + run-lock, floors
+in the enum sweep). Not yet a single first-running check with named failures.
+Owned by `docs/phase-02/test-suite-rethink-spec.md` (structure phase), which
+also owns the cross-worktree lock gap recorded there.
 
 ---
 
 ## E. Deferred by decision (not defects)
 
-- **MySQL test lane** — specced, not built. Now needs Docker/8.0 per A5.
-- **Collation change** — the null option is live; §1 of the search spec proved the collation was never what decided Hebrew search.
+- **MySQL test lane** — `BUILT` 2026-08-09 (alignment Phase 4): dedicated Herd
+  MySQL 8.0.46 daemon on 3307, `mysql_testing` connection behind the one-shape
+  guard and flock run-lock; the suite runs on it exclusively. (Docker turned
+  out unnecessary — a second native Herd service pins 8.0.46.)
+- **Collation change** — `DONE` 2026-08-09 by the alignment program:
+  `utf8mb4_0900_ai_ci` on schema + tables + columns everywhere, oracle-verified
+  byte-identical. (§1 of the search spec stands: collation was never what
+  decided Hebrew search — folding did.)
 - **FULLTEXT / Scout** — the only thing that makes `%term%` fast. Shadow columns changed *what* is compared, not that it scans.
 - **`imports.name` / `file_name`** — deliberately unfolded (vendor model, machine filenames).
+
+---
+
+## F. Database-alignment program residuals — triaged 2026-08-10, operator-confirmed
+
+Buckets: `fix-now` (this round) · `ride-along` · `parked-roadmap` ·
+`accepted-forever`. Fix designs live in
+`docs/phase-02/test-suite-rethink-spec.md`; sources are the program ledger
+(`.superpowers/sdd/progress.md`, gitignored) and the task reports cited inline.
+
+### F1. Dead `expected('sqlite')` branches — `fix-now`
+`LegacyRoleBackfillSchemaContract` still accepts and describes a sqlite schema
+(`:21`, `:67`, `:178`, `:248`) but zero callers pass `'sqlite'` since the suite
+went mysql-only (T19). Remove the arms, keep the driver refusal loud, re-pin
+tests.
+
+### F2. Nullability-drift fixture coverage — `fix-now`
+The `model_has_roles` drift fixture swapped its nullable-PK drift for a
+shorter-VARCHAR drift (MySQL refuses a nullable PRIMARY KEY column at DDL
+time), so *nullability* drift is exercised nowhere. Add it on a non-PK column
+(`roles.name`) in the same fixture.
+
+### F3. `EpisodesTableR1Test` payloads dodge the DST rule — `fix-now`
+Its `changePublishedAt` calls send `'Y-m-d H:i'` (no seconds); the
+`ExistsInTimezone` rule throws-and-passes on format mismatch, so that field's
+DST coverage lives only in `DstInputEdgeTest` (T23 residual). Send
+seconds-bearing payloads.
+
+### F4. Fresh-worktree lane-fingerprint refusal — `fix-now` (remedy)
+First lane use requires an *empty* schema; the fingerprint file is gitignored,
+so every fresh worktree hard-refuses a populated lane (fail-closed, correct).
+Remedy approved: documented steps + a `lane:reset`-style helper. Design
+constraint: the flock run-lock file is per-tree while the lane is
+machine-global — the helper must probe for live lane connections, not just the
+local lock, or it papers over cross-worktree collisions.
+
+### F5. `mysqldump` + `gzip` are undocumented suite prerequisites — `fix-now`
+`DatabaseSnapshotCommandsTest` shells the real dump pipeline against the lane,
+so both binaries are hard test dependencies. Documented in
+`current-project-state.md` (this pass); keep beside the lane env block if one
+lands in `.env.example`.
+
+### F6. Pre-alignment snapshot replay under the pinned connection — `ride-along` guard approved
+The caveat is documented in `current-project-state.md` (restore only with the
+`+00:00` pin removed, or onto an unpinned connection). Approved hardening:
+`db:restore` warns when a dump carries `TIMESTAMP` column DDL while the target
+connection pins `+00:00`.
+
+### F7. Production cron/rsyslog still stamp +03:00 — operator window (decided)
+The T12 window restarted mysql/php-fpm/Horizon only; daemons that inherited the
+old OS zone keep stamping +03:00 until restarted. Decision 2026-08-10: restart
+`cron` + `rsyslog` (and reload nginx) rides the **next deploy window
+checklist** — noted in `current-project-state.md`.
+
+### F8. `possible_keys` vs `key` in `MediaRelationshipPerformanceTest` — `accepted-forever`
+Asserting `key` would pin an optimizer tie-break MySQL does not guarantee on
+near-empty fixture tables (measured: a different valid index wins). The
+in-test comment is the record (T19).
+
+### F9. Per-boot `information_schema.COLUMNS` count — `accepted`, pending one measurement
+`TestCase::assertDisposableSchema()` counts lane TIMESTAMP columns on every
+app boot (~1,900×/suite) — the deliberate T17 trade-off that catches
+DDL-leak deadlocks at the next boot. The rethink's research phase measures its
+real cost; revisit only if it registers against the ~600s wall.
+
+### F10. PHPStan backlog — `parked-roadmap` (owner unchanged: larastan/tooling roadmap)
+443 errors (§B4) plus 5 pre-existing `varTag.nativeType` in
+`AppServiceProvider` macro closures. Slotting order when the roadmap opens:
+the two `class.notFound` one-liners (§B4 group 3); the
+`BuildsPublicContentSettingsSubjectSchemas` trait-host fatal (§B4 group 2 —
+the one genuine runtime bug in the family, operator may pull it forward); the
+Carbon-macro stub route that would clear all 5 varTag errors (T23 flag);
+Filament-boundary narrowing (122); own-relation typing (49); §B3+§C3 enum
+totality; the `phpstan.neon` comment refresh noted under B3. Level-6 wiring
+(tests/) is Pest-5-gated and rides the rethink's final phase.
