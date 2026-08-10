@@ -58,7 +58,7 @@ class ResetTestLane extends Command
         $lockHandle = fopen($lockPath, 'c+');
 
         if ($lockHandle === false) {
-            $this->error("Could not open the run-lock file at {$lockPath} — check sys_get_temp_dir() is writable.");
+            $this->error("Could not open the run-lock file at {$lockPath} — check the shared lane root is writable.");
 
             return self::FAILURE;
         }

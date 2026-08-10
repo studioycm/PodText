@@ -66,6 +66,8 @@ survive a mistake in the layers above them.
 | 3 | `assertSafeTestingDatabase()` two-shape guard | code, in-process | a wrong `.env`, a typo'd schema name, a remote host, a root login, a DSN, an unknown lane value — **fails closed on each** |
 | 4 | **MySQL GRANT scoped to `podtext_test` only** | server-side | *everything above it.* A bug in the guard, a hand-typed `artisan migrate:fresh`, a future refactor of `TestCase`, a mid-test config mutation. MySQL answers 1044/1142 instead of dropping the schema. |
 
+*The authoritative clause table is `App\Support\Testing\TestLaneContract::refusalFor()` — rows above predate T17/S3 (localhost is refused, there is no `DB_TESTING_LANE`, the suite is mysql-only); the Disposable-schema check below describes current path behavior.*
+
 **Layer 4 is the real barrier.** Layers 2 and 3 are there so that mistakes are
 loud and early instead of silent; layer 4 is there so that a mistake in 2 or 3
 still cannot destroy anything. The guard must therefore also **refuse `root`

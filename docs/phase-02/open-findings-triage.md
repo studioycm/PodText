@@ -268,7 +268,7 @@ The 528KB `database/database.sqlite` was deleted and the `composer.json`
 `post-create-project-cmd` touch line removed (`d1d0671`, from the 2026-08-10
 cross-session sweep — Task 7B). The `config/database.php` sqlite `:memory:`
 connection block is keep-forever: consumed by `tests/TestCase.php`'s
-containment, `NonMysqlRefusalTest`, and `TestLaneResetCommandTest`. The
+containment (a stray `DB::connection('sqlite')` must hit memory, never a repo file); `NonMysqlRefusalTest` exercises non-mysql refusals via its own throwaway connection. The
 `DB_CONNECTION` default of `sqlite` (`config/database.php:20`) is **DP9** —
 recommended flip to `mysql` (a missing env key should fail loudly against a
 credentialed daemon, not silently open a file); operator decides at the R

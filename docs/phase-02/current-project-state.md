@@ -2917,7 +2917,7 @@ and `model:show` is safe to use again.
   `c720777`/`f1793cf`/`cd6f88c`); the lane run-lock and fingerprint moved
   **machine-global** under `~/.cache/podtext-test-lane/` (HOME-anchored,
   purge-proof; `89a2ee1`/`810f6f2`) — two worktrees can no longer race the
-  lane and a fresh worktree inherits the fingerprint instead of refusing;
+  lane (once their checkouts carry the S3 code — a pre-S3 checkout still locks the retired per-tree path) and a fresh worktree inherits the fingerprint instead of refusing;
   boot guard consolidated behind `TestLaneContract::assertSafeBoot()`; DP9
   flipped the last sqlite-shaped default to `mysql` (`203125c`, prose
   truth-checked `57c1898`).

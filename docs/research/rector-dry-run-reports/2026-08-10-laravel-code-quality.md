@@ -192,6 +192,8 @@ itself, which is what the fix below does.
 is present in `rector.php`'s committed text, since determinism is now load-bearing for every
 future DP4 measurement, not just a one-time observation.
 
+Cold-cache contract-test cost (measured final review): the full file runs in ~28s cold / ~16s warm; the fixture test's 300s timeout has ~272s headroom.
+
 ## 1. The command
 
 ```bash
