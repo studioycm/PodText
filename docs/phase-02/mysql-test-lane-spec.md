@@ -87,14 +87,17 @@ A fifth layer exists and is not being taken today: running the test MySQL in a
 
 ## 3. The second shape — a connection that shares no env key with the app
 
-> **§3 collation superseded 2026-08-08 by `database-alignment-spec.md`.** The
-> `utf8mb4_unicode_ci` pin below (and in the grant that follows, and its
-> rationale in §6) was the decision *at the time this was measured*. The
-> alignment program chose **`utf8mb4_0900_ai_ci` everywhere** — local, lane and
-> production — and shipped it 2026-08-10. The values are left unedited because
-> this document is the measurement record; read them as history, not as the
-> live configuration. Everything else in §3 (no shared env key, fail-closed
-> `database`, no `url` key) still stands and is implemented.
+> **§3 collation updated 2026-08-11 per this spec's own instruction.** §2's
+> closing note requires that "if that work changes the app's target collation,
+> **this spec's §3 must be updated to match** — the lane is only honest while
+> it mirrors production." It did: the alignment program chose
+> **`utf8mb4_0900_ai_ci`** for local, lane and production and shipped it
+> 2026-08-10 (`database-alignment-spec.md`). The values below now name the live
+> target. **For the measurement record:** this section originally specified
+> `utf8mb4_unicode_ci`, pinned deliberately with the reasoning still preserved
+> in §6 — that reasoning was superseded on the merits (emoji evidence), not
+> discarded by accident. Everything else in §3 (no shared env key, fail-closed
+> `database`, no `url` key) stands as written and is implemented.
 
 ```php
 // config/database.php — deliberately does NOT read DB_DATABASE or DB_URL
@@ -106,7 +109,7 @@ A fifth layer exists and is not being taken today: running the test MySQL in a
     'username' => env('DB_TESTING_USERNAME'),
     'password' => env('DB_TESTING_PASSWORD', ''),
     'charset' => 'utf8mb4',
-    'collation' => 'utf8mb4_unicode_ci',        // pinned on purpose — see §6
+    'collation' => 'utf8mb4_0900_ai_ci',        // mirrors production; §6's unicode_ci case was superseded 2026-08-08
     'prefix' => '', 'prefix_indexes' => true, 'strict' => true, 'engine' => null,
     // no 'url' key at all — a DSN silently overrides host and database
 ],
@@ -120,7 +123,7 @@ name lives in a variable this connection never reads.
 
 ```sql
 CREATE DATABASE IF NOT EXISTS `podtext_test`
-  DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+  DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci;
 
 CREATE USER IF NOT EXISTS 'podtext_test'@'127.0.0.1' IDENTIFIED BY '<password>';
 
@@ -245,6 +248,15 @@ This matters more than it looks:
   niqqud. `utf8mb4_unicode_ci` folds differently.
 - So a lane that inherits the server default would test Hebrew comparison
   behaviour that **production does not have**.
+
+> **§6's conclusion is superseded (2026-08-08 decision, shipped 2026-08-10).**
+> The premise above — that production does not have `0900_ai_ci` behaviour — is
+> no longer true: the alignment program weighed both collations on the merits
+> (including the emoji evidence this section lacked) and chose
+> **`utf8mb4_0900_ai_ci` for local, lane and production alike**. The lane now
+> matches production *because* it uses the server default, not in spite of it.
+> The analysis below stays as the measurement record; do not "restore"
+> `utf8mb4_unicode_ci` on its authority. See `database-alignment-spec.md`.
 
 **Testing on the wrong MySQL version or collation is a new instance of
 `driver-lenient-fallback`, not a cure for it.** Two consequences, both

@@ -17,15 +17,17 @@
 
 | Gate | Defined at | Predicate | Consumers |
 |---|---|---|---|
-| `super-admin` (= `UserRole::SuperAdmin->value`) | `app/Providers/AppServiceProvider.php:205` | `$user->hasRoleAtLeast(UserRole::SuperAdmin)` | `superAdminOnly()` macros (AppServiceProvider:221, 231); `UserResource.php:50,55,60`; **called back from inside `CuratorMediaPolicy`** at `app/Policies/CuratorMediaPolicy.php:127,153` |
-| `multi-transcription` | `app/Providers/AppServiceProvider.php:206` | `MultiTranscriptionSurfaces::userCan($user, $minimumRole)` — role floor **AND** global multi-mode flag; optional minimum-role argument, defaults SuperAdmin | `multiTranscription()` macros only (AppServiceProvider:216, 226), used at `ContentItemForm.php:183`, `TranscriptionsRelationManager.php:196`, `BuildsPublicContentSettingsSubjectSchemas.php:341–359` |
+| `super-admin` (= `UserRole::SuperAdmin->value`) | `AppServiceProvider::boot()`, `Gate::define(UserRole::SuperAdmin->value, …)` | `$user->hasRoleAtLeast(UserRole::SuperAdmin)` | `superAdminOnly()` macros (`SchemaComponent` + `Action`); `UserResource.php:50,55,60`; **called back from inside `CuratorMediaPolicy`** at `app/Policies/CuratorMediaPolicy.php:127,153` |
+| `multi-transcription` | `AppServiceProvider::boot()`, `Gate::define('multi-transcription', …)` | `MultiTranscriptionSurfaces::userCan($user, $minimumRole)` — role floor **AND** global multi-mode flag; optional minimum-role argument, defaults SuperAdmin | `multiTranscription()` macros only (`SchemaComponent` + `Action`), used at `ContentItemForm.php:183`, `TranscriptionsRelationManager.php:196`, `BuildsPublicContentSettingsSubjectSchemas.php:341–359` |
 | `viewHorizon` | `app/Providers/HorizonServiceProvider.php:33` | nullable-user FilamentUser `canAccessPanel('admin')` | Horizon vendor dashboard middleware only |
 
 There is **no `Gate::before`** — no super-admin bypass at the gate layer. `super-admin` is an ordinary ability, and that absence is load-bearing (see §5).
 
 ### 1b. Policy bridges (`Gate::policy`) — four, two of them vendor models
 
-All at `app/Providers/AppServiceProvider.php:201–204`:
+All four in `AppServiceProvider::boot()` — grep `Gate::policy` rather than
+trusting a line number; this doc's citation for this block has drifted three
+times (see §4.7 item 7):
 
 | Model | Policy | Ability vocabulary |
 |---|---|---|
@@ -77,11 +79,11 @@ A UI bypass therefore still hits a hard gate; a service-layer TOCTOU still hits 
 
 Three replacements, each a considered idiom rather than an omission:
 
-**(1) Filament resource authorization replaces controller `$this->authorize()`.** There are no CRUD controllers to put the trait call in — admin CRUD is Filament resources, and Filament v5 auto-consults registered policies for `viewAny/create/update/view/delete/…` (verified in `vendor/filament/filament/src/Resources/Resource/Concerns/HasAuthorization.php`: delegates to `get_authorization_response(...)` with policy-existence checking on). The `SettingsBackupPolicy` and `ImportPolicy` bridges have **zero direct `Gate::` call sites in app code** — they are enforced entirely through this implicit Filament layer (plus Filament's own failed-row download check hitting `ImportPolicy::view`, the owner-or-admin rule at `ImportPolicy.php:29`). This is why grep-for-`Gate::` undercounts the real enforcement surface: the four `Gate::policy` lines at `AppServiceProvider.php:201–204` fan out into every resource page, table action, and relation manager for those models without any visible call site.
+**(1) Filament resource authorization replaces controller `$this->authorize()`.** There are no CRUD controllers to put the trait call in — admin CRUD is Filament resources, and Filament v5 auto-consults registered policies for `viewAny/create/update/view/delete/…` (verified in `vendor/filament/filament/src/Resources/Resource/Concerns/HasAuthorization.php`: delegates to `get_authorization_response(...)` with policy-existence checking on). The `SettingsBackupPolicy` and `ImportPolicy` bridges have **zero direct `Gate::` call sites in app code** — they are enforced entirely through this implicit Filament layer (plus Filament's own failed-row download check hitting `ImportPolicy::view`, the owner-or-admin rule at `ImportPolicy.php:29`). This is why grep-for-`Gate::` undercounts the real enforcement surface: the four `Gate::policy` registrations in `AppServiceProvider::boot()` fan out into every resource page, table action, and relation manager for those models without any visible call site.
 
 **(2) `Gate::forUser($actor)` replaces `$user->can()`.** They are semantically identical, but the codebase standardized on the facade form and threads an **explicit `User $actor` through service signatures** — 19 of 20 sites in the service mesh use `forUser`, and the picker pins the actor with `abort_unless($actor instanceof User, 403)` first. The reason is structural: much of this code runs where ambient `auth()` is unreliable or wrong — queued jobs (`DownloadExternalContentGroupImage.php:71` re-authorizes the *enqueueing* user rehydrated by id, not the absent ambient user), batch services, and Livewire methods reachable via browser-forgeable payloads. Also, `forUser()->authorize()` throws with the policy's `Response` intact, and `Gate::inspect()` exposes deny messages — `$user->can()` returns a bare bool, which the presenter tier specifically cannot use (deny messages are UI copy, §2 tier 1).
 
-**(3) Macros replace scattered role checks.** The `->superAdminOnly()` / `->multiTranscription()` macros (`AppServiceProvider.php:214–233`) are declarative authorization affordances; the actual `Gate::denies` calls live in the macro bodies, invisible to grep at the 8 usage sites.
+**(3) Macros replace scattered role checks.** The `->superAdminOnly()` / `->multiTranscription()` macros (registered on both `SchemaComponent` and `Action` in `AppServiceProvider::boot()` — grep the macro names) are declarative authorization affordances; the actual `Gate::denies` calls live in the macro bodies, invisible to grep at the 8 usage sites.
 
 **Is it consistent?** Substantially. Deviations are minor and mostly documented in-code: `PathCuratorPicker.php:398` is the single ambient `Gate::authorize` amid a forUser-everywhere file; `ContentItemsTable.php:430` and three `MediaTable` actions (:377, :406, :445) use Filament's string-form `->authorize('ability')` instead of a Gate closure — same policy bridge, different syntax, but it means those actions' *execution* enforcement lives in the delegated services, not the closure. One genuine incoherence: the naming split between kebab-case app gates (`super-admin`, `multi-transcription`) and Horizon's vendor-convention `viewHorizon`, plus the fact that the `super-admin` gate name is not a literal — renaming the enum value silently renames the gate **and** breaks `CuratorMediaPolicy:127,153`, which look the gate up by `UserRole::SuperAdmin->value`.
 
@@ -105,7 +107,7 @@ Real findings, ordered by weight:
 
 6. **Fragile-by-construction couplings** (not holes, but tripwires): the enum-value-as-gate-name (§3); `CuratorMediaPolicy` calling back out to a provider-defined gate (`CuratorMediaPolicy.php:127,153`) — the only policy→gate dependency in the app; class-level checks passing `config('curator.model', Media::class)` (`CuratorMediaAdmission.php:28` et al.) — a `curator.model` override would detach those checks from `CuratorMediaPolicy`; and `viewHorizon` resolving the admin panel non-strictly, so a panel rename silently denies everyone (fail-closed, at least).
 
-7. **Inventory line drift:** the reader inventory cites `AppServiceProvider.php:202–207` for the bridge/define block; current file has it at **201–206**. Cosmetic, but future readers should re-grep rather than trust cached line numbers.
+7. **Inventory line drift — and this item is its own proof.** The bridge/define block has now been cited three different ways: the reader inventory said `AppServiceProvider.php:202–207`, this doc then said `201–206`, and on 2026-08-11 it was measured at **211–216**. Every one of those was accurate when written and wrong within days. **The fix is not a fresher number.** As of 2026-08-11 this document cites *symbols* — `Gate::policy`, `Gate::define`, the `superAdminOnly`/`multiTranscription` macros — and asks you to grep. The one place line numbers are still written down is the Sources footer, which is explicitly pinned to HEAD `45a59e1` and is a provenance record, not navigation.
 
 ---
 

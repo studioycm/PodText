@@ -1611,11 +1611,11 @@ phases, so `3B P1–P5` and `3C P5–P8` mean phase five of those mini-tasks. Ba
 - FilaCheck Pro: 1.2.7 installed.
 - Awcodes Curator: 5.1.5 installed.
 - Spatie Laravel Tags: 4.12.0 installed.
-- Filament Spatie Laravel Tags plugin: 5.7.3 installed.
+- Filament Spatie Laravel Tags plugin: 5.7.6 installed.
 - Spatie Laravel Settings: 3.9.0 installed.
-- Filament Spatie Laravel Settings plugin: 5.7.3 installed.
+- Filament Spatie Laravel Settings plugin: 5.7.6 installed.
 - Tailwind CSS: 4.3.3.
-- Vite: 8.1.5; Laravel Vite plugin: 3.1.3.
+- Vite: 8.2.1; Laravel Vite plugin: 3.1.3.
 - App locale from `php artisan about`: `he`.
 - App timezone from `php artisan about`: `UTC`; Phase 02 UI requirements still require Israel/Hebrew date presentation in `Asia/Jerusalem` while storing dates with Laravel's normal conventions.
 
