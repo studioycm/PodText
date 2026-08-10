@@ -833,6 +833,26 @@ it('enumerates column property primary unique secondary and foreign-key schema d
     ]);
 });
 
+it('detects nullability drift on a non-key column as property drift', function (): void {
+    authzCreateLegacyUsers();
+
+    // roles.name is NOT NULL in the real migration and is not part of any
+    // primary key, so MySQL accepts the nullability flip (unlike the PK
+    // column the original fixture had to abandon — spec F2). Only the
+    // nullability changes: length, charset (table default), and the absent
+    // default are restated identically.
+    DB::statement('ALTER TABLE roles MODIFY name VARCHAR(255) NULL');
+
+    try {
+        expect(authzAnalyzer()->analyze()->toArray()['issue_totals'])
+            ->toHaveKey('schema_column_property_drift');
+    } finally {
+        // MySQL DDL auto-commits and escapes RefreshDatabase's rollback —
+        // the revert must run even when the assertion fails (I2/M1 lesson).
+        DB::statement('ALTER TABLE roles MODIFY name VARCHAR(255) NOT NULL');
+    }
+});
+
 it('blocks configured table-name and morph-map drift', function (): void {
     authzCreateLegacyUsers();
     config(['permission.table_names.roles' => 'foreign_roles']);
