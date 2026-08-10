@@ -447,10 +447,14 @@ with a row, the amendment is current.
   console text against that task; do not route it back to Media. If the
   previewer task is ever cancelled outright, `F044` must be terminally closed in
   the same decision rather than returned to limbo.
-- **The `separate_phase` copy is stale.** Issue Review still tells operators
-  that moving files into managed folders "is handled in a separate phase". That
-  phase shipped, and sanitize now relocates a root-level source in the same
-  operation.
+- ~~**The `separate_phase` copy is stale.**~~ **CLOSED** (verified 2026-08-11:
+  `separate_phase` appears nowhere in `app/`, `lang/` or `resources/`). Issue
+  Review used to tell operators that moving files into managed folders "is
+  handled in a separate phase". That phase shipped, sanitize now relocates a
+  root-level source in the same operation, the copy points at the Managed
+  relocation action that exists, and the resolution kind was renamed
+  `separate_phase` → `relocation_available` across presenter, view and test
+  (recorded in `docs/phase-02/current-project-state.md`).
 
 **Amendments added 2026-07-31 (RECON2 R4).** The RECON2 audit found that
 twelve rows above were still marked pending for work that shipped and was

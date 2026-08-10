@@ -1554,8 +1554,12 @@ phases, so `3B P1–P5` and `3C P5–P8` mean phase five of those mini-tasks. Ba
   `unpublished_group` reason, full filawidgets data-contract adoption with a
   Jerusalem-correct series helper, the legend actually scoping the flow widgets,
   restored stream columns and full day-first date-times, `canView()` on every
-  widget, and cache invalidation on editorial writes. A4 (visible-series proxy)
-  and the phase-4 evidence items remain open.
+  widget, and cache invalidation on editorial writes. A4 closed 2026-08-03
+  (`c36f6c4`, the reason-bar doorway / unpinned-promise fix as recorded in
+  `dashboard-metrics-phase-2R-handoff.md`); the phase-4 evidence items remain
+  open. *(The "visible-series proxy" parenthetical this line carried does not
+  match that handoff's A4 — flagged for the dashboard owner rather than
+  guessed at.)*
 
 ## Deferred Items
 
@@ -1594,16 +1598,18 @@ phases, so `3B P1–P5` and `3C P5–P8` mean phase five of those mini-tasks. Ba
 
 ## Tooling State
 
-- Laravel: 13.21.1.
+*Verified against `composer show --direct` and `php -r 'echo PHP_VERSION;'` on 2026-08-11.*
+
+- Laravel: 13.24.0.
 - PHP: 8.4.23 from the local CLI; Laravel Boost reports PHP 8.4.
-- Filament: 5.7.3.
-- Livewire: 4.3.3.
-- Laravel Horizon: 5.48.1.
-- Laravel Boost: 2.4.13 installed and available through MCP.
-- Pest: 4.7.5.
-- FilaCheck: 1.2.3 installed.
+- Filament: 5.7.6.
+- Livewire: 4.3.5.
+- Laravel Horizon: 5.48.2.
+- Laravel Boost: 2.5.3 installed and available through MCP (with `laravel/roster` 1.0; upgrade both together).
+- Pest: 4.7.8.
+- FilaCheck: 1.2.5 installed.
 - FilaCheck Pro: 1.2.7 installed.
-- Awcodes Curator: 5.1.2 installed.
+- Awcodes Curator: 5.1.5 installed.
 - Spatie Laravel Tags: 4.12.0 installed.
 - Filament Spatie Laravel Tags plugin: 5.7.3 installed.
 - Spatie Laravel Settings: 3.9.0 installed.

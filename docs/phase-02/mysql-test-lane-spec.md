@@ -2,8 +2,13 @@
 
 > **Superseded 2026-08-08 by [database-alignment-spec.md](database-alignment-spec.md)**, which carries the reviewed decisions (collation chosen on merit incl. the emoji evidence; clock solved by DATETIME conversion; the lane on a second Herd daemon). This document stays as the measurement record.
 
-**Status:** design, approved in principle (operator chose Herd, 2026-08-06).
-Not implemented. Nothing in this document has been applied to the repo.
+**Status:** design, approved in principle (operator chose Herd, 2026-08-06);
+**built and live since 2026-08-10** — the lane runs on a second Herd daemon,
+its guard and disposable-schema check ship in `tests/`, and the lock plus
+fingerprint live machine-globally under `~/.cache/podtext-test-lane/`. The
+collation and clock decisions here were superseded by
+`database-alignment-spec.md` (see the banner above). This document is the
+measurement record, not an unapplied plan.
 
 **Why it exists:** `driver-lenient-fallback` in
 `docs/research/defect-cause-patterns.md`. The suite runs on SQLite, production
@@ -81,6 +86,15 @@ A fifth layer exists and is not being taken today: running the test MySQL in a
 ---
 
 ## 3. The second shape — a connection that shares no env key with the app
+
+> **§3 collation superseded 2026-08-08 by `database-alignment-spec.md`.** The
+> `utf8mb4_unicode_ci` pin below (and in the grant that follows, and its
+> rationale in §6) was the decision *at the time this was measured*. The
+> alignment program chose **`utf8mb4_0900_ai_ci` everywhere** — local, lane and
+> production — and shipped it 2026-08-10. The values are left unedited because
+> this document is the measurement record; read them as history, not as the
+> live configuration. Everything else in §3 (no shared env key, fail-closed
+> `database`, no `url` key) still stands and is implemented.
 
 ```php
 // config/database.php — deliberately does NOT read DB_DATABASE or DB_URL

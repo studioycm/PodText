@@ -398,8 +398,8 @@ Two traps when copying it:
 | `ActivityStreamWidget` hand-writes event-type colours | Fixed — `StreamEventType` (phase 3, `e2010b8`) |
 | 12 enums implement no Filament contract | **Open** — E4 |
 | Enum-backed settings properties typed as `string` | Fixed — E5, `AdminUxSettings` |
-| Date/number formats scattered | **Open** — F1/F2 |
-| Silent `take($limit)` in breakdowns | **Open** — F3 |
+| Date/number formats scattered | Fixed — F1/F2 (`b24490a`), `App\Support\UiFormats` with all 12 sites routed |
+| Silent `take($limit)` in breakdowns | Fixed — F3 (`b3d6de4`), `rollUpTail` in `EditorialMetrics` |
 | Sparkline normalisation understates variation | Fixed — A1 (`2831ee9`), min/max over an inset band |
 | Reason bars all opened the same unfiltered list (unpinned-promise) | Fixed — A4 (`c36f6c4`), on-board dispatch doorway |
 | Enum-only colour literals never compiled (`app/Enums` unscanned) | Fixed — A2 (`b9825c6`), `@source` glob + pin test |

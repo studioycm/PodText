@@ -7,7 +7,13 @@ daemon — 4 claims corrected, the rest confirmed; corrections are folded in
 below and marked where they overturned the first draft. The archive itself has
 **zero content** on collation, TIMESTAMP semantics, or MySQL-vs-SQLite testing:
 decisions 1-3 and 6 rest entirely on this repo's own measurements, and nothing
-in the archive contradicts them. Not implemented. Supersedes the clock half of
+in the archive contradicts them. **Implemented and closed 2026-08-10** — all
+27 tasks and 7 gates executed; local, lane and production all run
+`utf8mb4_0900_ai_ci` + `DATETIME` + UTC, and `db:check-settings` exiting 0 is
+the standing drift alarm (program closure recorded in
+`current-project-state.md` via `6dbc3be`, which did not touch this file — its
+"Not implemented" status line had simply never been updated). Supersedes the
+clock half of
 `hebrew-collation-and-clock-plan.md` and rewrites `mysql-test-lane-spec.md`
 §3/§6/§7.
 

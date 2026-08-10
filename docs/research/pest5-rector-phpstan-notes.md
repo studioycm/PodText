@@ -1,6 +1,10 @@
 # Pest 5, Rector, and what they add beside larastan
 
-Research notes, 2026-08-07. **Nothing here is installed or changed** — this is the
+Research notes, 2026-08-07. **Superseded in part 2026-08-10: Rector IS now
+installed and wired** (`7b6b52e`, `rector.php` at the repo root, dry-run-locked
+with larastan's `extension.neon` passed explicitly to `withPHPStanConfigs`).
+Read §1's "current state" as the pre-install record; the Pest 4 → 5 upgrade is
+still unapproved and unstarted. This was the
 decision-support doc for two separate moves the operator may approve later: adding Rector,
 and upgrading Pest 4 → 5. Versions were checked against Packagist the same day; the video
 section was extracted from the full transcript of Nuno Maduro's Laracon US 2026 talk, read
@@ -69,7 +73,8 @@ approval, and rules are adopted **individually** after reading their diff — ne
 lists blind. A Rector set list adopted wholesale is the refactoring twin of a PHPStan
 baseline adopted wholesale: a large, unreviewed decision disguised as configuration.
 
-Current state: `rector/rector` is **not installed** and there is no `rector.php`. Latest
+Current state *(as of 2026-08-07; superseded — `7b6b52e` installed Rector and
+added `rector.php` on 2026-08-10)*: `rector/rector` was **not installed** and there was no `rector.php`. Latest
 stable is 2.6.1. (Larament, the Filament starter kit, ships Rector + a `composer review`
 script chaining pint → rector → phpstan → pest — a reasonable shape to steal the day this
 lands.)

@@ -246,11 +246,15 @@ Asserting `key` would pin an optimizer tie-break MySQL does not guarantee on
 near-empty fixture tables (measured: a different valid index wins). The
 in-test comment is the record (T19).
 
-### F9. Per-boot `information_schema.COLUMNS` count — `accepted`, pending one measurement
+### F9. Per-boot `information_schema.COLUMNS` count — `accepted`, CLOSED (measured 2026-08-10)
 `TestCase::assertDisposableSchema()` counts lane TIMESTAMP columns on every
 app boot (~1,900×/suite) — the deliberate T17 trade-off that catches
-DDL-leak deadlocks at the next boot. The rethink's research phase measures its
-real cost; revisit only if it registers against the ~600s wall.
+DDL-leak deadlocks at the next boot. **The measurement this entry waited for
+was taken** (rethink Phase R, R3): 0.524 ms/query × 1,931 boots = **1.01s per
+suite, 0.16% of a 622.2s wall** — far under the revisit threshold, so it
+stays accepted and the item is closed. Source:
+`docs/research/test-suite-rethink-notes.md` R3 ("F9 verdict: stays
+`accepted`, closed").
 
 ### F10. PHPStan backlog — `parked-roadmap` (owner unchanged: larastan/tooling roadmap)
 443 errors (§B4) plus 5 pre-existing `varTag.nativeType` in
