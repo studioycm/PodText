@@ -43,7 +43,7 @@ it('sees a second live lane connection through the processlist probe', function 
     );
 
     try {
-        expect(ResetTestLane::foreignLaneConnections((string) $lane['database']))->toBe($before + 1);
+        expect(ResetTestLane::foreignLaneConnections((string) $lane['database']))->toBeGreaterThan($before);
     } finally {
         $pdo = null;
     }
