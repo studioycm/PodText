@@ -1,6 +1,7 @@
 # Test-Suite Rethink + Post-Alignment Backlog Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **EXECUTED 2026-08-10** (Part 1 + Phases R/T/S complete and reviewed; Phase U remains operator-gated). **Checkbox state was not maintained during execution — do not read `- [ ]` boxes as status.** The record is the round ledger (`.superpowers/sdd/progress.md`) and the commits it names (A11 ruling, 2026-08-11).
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task.
 
 **Goal:** Close the operator-confirmed post-alignment fix-now batch (spec Part 1, F1–F6), then run the staged suite rethink: measurements (R), Rector introduction wired to larastan (T), structure fixes behind the R gate (S), and the Pest 5 upgrade last behind its own approval (U).
 
