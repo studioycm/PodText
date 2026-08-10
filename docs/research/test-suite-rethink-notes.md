@@ -116,7 +116,11 @@ None of these exist yet; they decide the structure phase's scope:
   Also unresolved: where the TIA cache lives and how it behaves with two
   sessions sharing one worktree (the same class of hazard the fake-disk
   tokens fixed). Execution is Pest-5-gated anyway (§6).
-- **Time-balanced sharding** — CI-day concern; there is no CI. Parked.
+- **Time-balanced sharding** — CI-day concern; there is no CI. Parked — with
+  one status correction (2026-08-10, Pest 5 research session): it is **not
+  Pest-5-gated**. The installed 4.7.8 already ships it (`Shard.php`:
+  `--shard`, `--update-shards`, the `tests/.pest/shards.json` staleness
+  warning; `laraveldaily/pest5-notes.md` §1f). Idle by choice, not by gate.
 - **Guard trims** — only if measurement 2.3 registers against the wall time.
 
 ## 4. Correctness and honesty levers
@@ -168,7 +172,9 @@ gate, possibly executed in a dedicated session.
 
 - **Gated behind it:** `pest-plugin-phpstan` (the written-down level-6 path
   in `phpstan.neon`), `pest-plugin-rector` (test-style rules), TIA execution,
-  `--agent`, `toBeUlid()`, time-balanced sharding.
+  `--agent`, `toBeUlid()`. (Time-balanced sharding was originally listed here
+  too, but it turned out to ship in the installed 4.7.8 — see §3's parked
+  note; not v5-gated.)
 - **Not gated (prep that lands earlier):** the PHPUnit 13 changelog read
   (the one genuinely unbounded upgrade item), the browser-trap inventory,
   and the run-lock lifetime re-probe design — the `$GLOBALS` fix is

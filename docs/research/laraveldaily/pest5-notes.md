@@ -145,7 +145,7 @@ Rector plugins) are v5-only — none exist in 4.7.8.
 
 | v5 feature | local relevance |
 | --- | --- |
-| TIA | The strongest future pull: the suite runs ~600s on the 3307 MySQL lane — exactly TIA's target profile. Two pre-adoption checks are already known: (1) **no Xdebug/PCOV in the Herd CLI 8.4 ini today** (measured); (2) TIA replay vs the machine-global lane-lock/fingerprint bootstrap in `Pest.php` needs a compatibility look — the lane infra assumes tests execute; replayed runs may skip lane setup expectations (same file, same scope subtleties as the lane-lock GC trap). |
+| TIA | The strongest future pull: the suite runs ~600s on the 3307 MySQL lane — exactly TIA's target profile. Two pre-adoption checks are already known: (1) **no Xdebug/PCOV in the Herd CLI 8.4 ini today** (measured); (2) TIA replay vs the machine-global lane-lock/fingerprint bootstrap in `Pest.php` needs a compatibility look — the lane infra assumes tests execute; replayed runs may skip lane setup expectations (same file, same scope subtleties as the lane-lock GC trap). That bootstrap moved *while this doc was being written*: Phase S S3 commits `89a2ee1` (machine-global lane lock + fingerprint) and `810f6f2` (HOME-anchored `~/.cache/podtext-test-lane/` root) — whoever picks up check (2) reads those two commits first. Registered as item 3.9b in the open-findings inventory. |
 | Time-balanced sharding | Installed already (4.7.8) but idle: it's a CI horizontal-scaling feature and this project's suite runs locally/on-lane, not on sharded CI workflows. Nothing to do; know it exists. |
 | PHPStan plugin | Slots into a pre-existing plan verbatim — `phpstan.neon:86` already names "add tests/ with the Pest extensions" as the level-5→8 path. When the repo reaches Pest 5, this plugin is that step's enabler. |
 | Rector plugin | `rector.php` exists, dry-run-locked, Laravel-layer-only. The Pest set list + `withPaths(['tests'])` is a clean future sweep — same one-concern-per-run discipline as [rector-video-notes.md](rector-video-notes.md) §2. |
@@ -156,6 +156,22 @@ Rector plugins) are v5-only — none exist in 4.7.8.
 **No proposals.** Everything actionable is gated on a Pest 5 adoption decision that is
 explicitly not being made now; the two TIA pre-checks above are recorded so the future
 session starts warm.
+
+### Candidate cause-pattern (contributed to the ledger owner, per its protocol)
+
+Per `docs/research/defect-cause-patterns.md`'s contribution flow — side sessions register
+candidates with evidence in their own reports; the orchestrator merges:
+
+- **silent-vendor-surface** · a routine dependency bump delivers a new behavioral surface
+  nobody decided to adopt, so capability and decision drift apart · **evidence**: commit
+  `303beab` ("bump the stack", 2026-08-08) took pest to 4.7.8, which ships Pest 5's
+  time-balanced sharding (`--update-shards`, a `tests/.pest/shards.json` staleness WARN) —
+  discovered 2026-08-10 only because this research session diffed vendor source against
+  keynote claims; meanwhile an active planning doc still classified the feature as
+  v5-gated · **POTENTIAL**, not ACTUAL — no defect yet, but the WARN path and the stale
+  doc claim are both live surfaces · **where else to look**: grouped-bump commits'
+  composer.lock diffs for minor-version jumps of test-infra/tooling packages; vendor
+  CHANGELOGs for features backported ahead of a major.
 
 ## 3. Feature ↔ video map (where to re-read what)
 
