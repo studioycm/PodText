@@ -1181,7 +1181,7 @@ git commit -m "feat(tooling): introduce Rector wired to larastan — dry-run-loc
 Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
 ```
 
-🛑 **GATE (DP4): each write pass is its own operator approval.** Procedure per approved pass: clear the rector cache first (`composer rector -- --clear-cache` — a warm cache under-reports, measured in the 2026-08-10 dry-run report) → narrow `rector.php` to the approved rules (`->withRules([...])` replacing the set for that run if only part is approved) → `composer rector:fix` → `git diff` review → `php -d memory_limit=2G vendor/bin/phpstan analyse -v` (no new errors vs the 443 baseline count) → pint → targeted pest → full gate → commit → restore `rector.php` to its committed shape if it was narrowed.
+🛑 **GATE (DP4): each write pass is its own operator approval.** Procedure per approved pass: clear the rector cache first (`composer rector -- --clear-cache` — a warm cache under-reports, measured in the 2026-08-10 dry-run report) — and note `rector.php` pins serial mode (`withoutParallel`); never measure or fix through parallel mode (nondeterministic, measured 2026-08-10, see the dry-run report's §0c) → narrow `rector.php` to the approved rules (`->withRules([...])` replacing the set for that run if only part is approved, keeping `->withoutParallel()` in the narrowed chain) → `composer rector:fix` → `git diff` review → `php -d memory_limit=2G vendor/bin/phpstan analyse -v` (no new errors vs the 443 baseline count) → pint → targeted pest → full gate → commit → restore `rector.php` to its committed shape if it was narrowed.
 
 ---
 

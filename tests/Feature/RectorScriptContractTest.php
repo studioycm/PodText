@@ -44,7 +44,8 @@ it('keeps composer rector dry-run-only and the write path separate', function ()
  */
 it('keeps rector wired to larastan through phpstan.neon and larastan\'s own extension.neon', function (): void {
     expect(File::get(base_path('rector.php')))
-        ->toContain("withPHPStanConfigs([__DIR__.'/phpstan.neon', __DIR__.'/vendor/larastan/larastan/extension.neon'])");
+        ->toContain("withPHPStanConfigs([__DIR__.'/phpstan.neon', __DIR__.'/vendor/larastan/larastan/extension.neon'])")
+        ->toContain('withoutParallel');
 });
 
 it('boots the real PHPStan container behind that wiring without the extension-installer schema crash', function (): void {

@@ -8,6 +8,17 @@ report.**
 
 All verdicts below are **recommendations for the operator's DP4 call**, not decisions.
 
+> **Correction (2026-08-10, cross-session finding — see §0c):** every total from here through
+> §4 was measured under Rector's default **parallel** mode, which two same-tree/same-config
+> dry runs (A: 17 changed / 50 errors, B: 8 changed / 51 errors, only 6 diff files common to
+> both) show is nondeterministic and lossy on this codebase. Serial mode
+> (`->withoutParallel()`, `rector.php`'s config default as of this correction) reproduced
+> **69 changed files / 147 errors** identically across two separate runs, plus a third,
+> independent reproduction in this same pass. **The corrected headline for this set against
+> this tree is 69 changed / 147 errored (serial, deterministic floor)** — treat the `20`/`56`
+> totals quoted through §1-§4 below as a parallel-mode artifact, not the number to act on; see
+> §0c for the full evidence and the corrected §4 table for the per-rule floor.
+
 ## 0. Wiring note — the brief's literal config does not boot (read this first)
 
 The task brief specified:
@@ -112,6 +123,75 @@ jobs, filesystem writes, outbound calls during provider boot), and it goes beyon
 task asked for ("so type rules see larastan's cast/generics knowledge" — achieved by §0
 alone). Left as a documented, deferred decision for the operator, not added silently.
 
+### §0c — parallel nondeterminism (2026-08-10, cross-session finding)
+
+**Found by the Rector Laravel dry run session; artifacts verified by direct JSON comparison.**
+`rector.php` had no explicit parallel setting when this report first shipped, so every run
+above used Rector 2.6.1's default parallel mode — including the `20`/`56` totals in §1-§2.
+Same tree, same config, cold, private cache per run; only the parallel/serial setting varied:
+
+| run | mode | changed_files | errors |
+| --- | --- | --- | --- |
+| A | parallel (prior default) | 17 | 50 |
+| B | parallel (prior default) | 8 | 51 |
+| — | serial (`->withoutParallel()`) | 69 | 147 |
+| — | serial (`->withoutParallel()`), repeat | 69 | 147 |
+
+Run A and run B disagree with each other — 17 vs 8 changed files, only 6 diff files common to
+both — despite identical tree, config, and a cold, private cache each time. Serial mode, run
+twice the same way, agrees with itself exactly: byte-identical diff sets both times. **The
+`20`/`56` totals this report originally shipped were themselves a parallel-mode artifact** —
+notably neither run A's nor run B's own numbers, which is further evidence that parallel output
+here is not a stable function of the tree and config alone. Independently reproduced a third
+time in this same pass, after `rector.php` was changed to pin `->withoutParallel()`:
+`composer rector -- --clear-cache` → `{"changed_files":69,"errors":147}`, with the same
+five-rule, 69-file shape recorded below.
+
+**Mechanism (inference — offered as the most consistent explanation of the observed numbers,
+not confirmed by reading Rector's parallel-worker source):** a parallel worker that hits §0b's
+larastan-boot gap (the `Illuminate\Container\Container`-is-not-`Application` failures) appears
+to fail in a way that silently drops the remainder of its assigned chunk rather than surfacing
+a partial-chunk error — which would explain both why repeated parallel runs disagree with each
+other (different chunk/worker assignment each time) and why serial (one process, no chunk
+boundaries) is the only mode that reproduced identically twice.
+
+**Serial-floor corrections, all verified in this pass (`composer rector -- --clear-cache`,
+`file_diffs[].applied_rectors` aggregated per rule):**
+
+- `AppToResolveRector`: 60 files, ~121 call sites (parallel artifact: 19 files / 35 sites).
+- `EloquentOrderByToLatestOrOldestRector`: 5 files (parallel artifact: 2). The three
+  newly-visible files are `app/Support/PublicContent/PublicContentItemQueries.php`,
+  `app/Support/PublicContent/PublicTranscriptionSelector.php`, and
+  `app/Support/PublicFront/Sections/PublicDisplaySectionQueryResolver.php` — the shared public
+  query core, not incidental call sites.
+- `SleepFuncToSleepStaticCallRector`: 2 files (parallel artifact: 1) — both of this codebase's
+  `usleep()` call sites migrate under serial: `app/Jobs/SettingsBackupSnapshotJob.php` and
+  `app/Support/Importer/ImporterThrottle.php`. The parallel run's apparent "skip" of
+  `ImporterThrottle.php` was the nondeterminism, not a property of that file.
+- `CarbonToDateFacadeRector`: 6 files, 7 call sites (parallel artifact: 1 file / 1 site) —
+  `DashboardContextWidget.php`, `AppServiceProvider.php`,
+  `Support/Dashboard/Data/Heatmap.php`, `Support/Dashboard/JerusalemDailySeries.php`,
+  `Support/Importer/SpotifyLinks/ImporterCsvBuilder.php`, and
+  `Support/SettingsLifecycle/SettingsImportReport.php`.
+- A fifth rule fires under serial that neither parallel run surfaced:
+  `RectorLaravel\Rector\Coalesce\ApplyDefaultInsteadOfNullCoalesceRector`, once, on
+  `database/migrations/2026_06_30_012921_create_settings_table.php` (both its `up()` and
+  `down()` methods — `config('settings.repositories.database.table') ?? 'settings'` →
+  `config('settings.repositories.database.table', 'settings')`). See its row in §4 for the
+  verdict.
+
+147 errored files is roughly 23% of this config's ~628 scanned paths — the serial numbers above
+are themselves a floor, not a guaranteed ceiling; they are simply the only numbers this project
+has that reproduced identically across repeat runs. There is no `--no-parallel` CLI flag in
+Rector 2.6.1 to pin this per-invocation instead — determinism has to be pinned in `rector.php`
+itself, which is what the fix below does.
+
+**Fix applied:** `rector.php` now ends its fluent chain with `->withoutParallel()`, so
+`composer rector` and `composer rector:fix` always run serial by default.
+`tests/Feature/RectorScriptContractTest.php`'s wiring-pin test now also asserts `withoutParallel`
+is present in `rector.php`'s committed text, since determinism is now load-bearing for every
+future DP4 measurement, not just a one-time observation.
+
 ## 1. The command
 
 ```bash
@@ -121,7 +201,7 @@ composer rector > storage/framework/testing/rector-laravel-code-quality.txt 2>&1
 (`storage/framework/testing/rector-laravel-code-quality.txt` is gitignored scratch — confirmed
 with `git check-ignore -v`; not committed, deleted after this report was written.)
 
-**Stale-cache caveat (measured):** a warm `storage/framework/cache/rector` under-reports changed files on re-runs against unchanged source (observed 11, then 6, vs the true 20 until the cache was cleared) — and `RectorScriptContractTest` now warms this shared cache on every suite run, so a warm cache is the routine state. Before trusting any dry-run for a DP4 decision, clear it: `composer rector -- --clear-cache` (composer appends passthrough args after the baked flags).
+**Stale-cache caveat (measured):** a warm `storage/framework/cache/rector` under-reports changed files on re-runs against unchanged source (observed 11, then 6, vs 20 before the cache was cleared — that cleared-cache figure was itself later found to be a parallel-mode artifact, see §0c; the underlying point stands regardless: a warm cache under-reports relative to a cleared one) — and `RectorScriptContractTest` now warms this shared cache on every suite run, so a warm cache is the routine state. Before trusting any dry-run for a DP4 decision, clear the cache **and** run serial: `composer rector -- --clear-cache` (composer appends passthrough args after the baked flags) now runs serial by default, since `rector.php` pins `->withoutParallel()` (§0c) — parallel mode was separately measured nondeterministic and lossy on this codebase. DP4 measurement and fix runs need cold cache **and** serial together; either alone has been observed to under- or mis-report on this project.
 
 ## 2. Summary counts
 
@@ -151,7 +231,12 @@ that §0b traces to source:
 {"totals": {"changed_files": 20, "errors": 56}}
 ```
 
-4 rules fired across those 20 files:
+**Superseded (§0c):** this `20`/`56` total is a parallel-mode run and does not reproduce — the
+deterministic serial floor for this exact set against this exact tree is **69 changed / 147
+errored** (five rules, not four). See §0c for the corrected measurement and §4 for the
+corrected per-rule table.
+
+4 rules fired across those 20 files (parallel-mode run — see the correction above):
 
 | rule | files touched | call-site occurrences |
 | --- | --- | --- |
@@ -575,10 +660,11 @@ counts were recounted by hand against §3's diff, not copied from the file-touch
 
 ## 4. Per-rule verdict table
 
-None of the four rules below rewrite a Filament fluent chain (a
-`Something::make()->method()->method()` builder chain) — all four rewrite plain PHP global
-helpers, Eloquent `Builder` methods, or a static facade call, none of which route through
-Filament's `Macroable`. That claim needs one boundary drawn precisely: several diffs *do* edit
+None of the five rules below rewrite a Filament fluent chain (a
+`Something::make()->method()->method()` builder chain) — all five rewrite plain PHP global
+helpers (including a bare `config()` call whose `??` fallback becomes a second argument),
+Eloquent `Builder` methods, or a static facade call, none of which route through Filament's
+`Macroable`. That claim needs one boundary drawn precisely: several diffs *do* edit
 code that lives inside a closure passed as one argument of a Filament chain —
 `BlockersQueueWidget.php`'s `->state(fn (ContentItem $record): array => app(...))` and
 `->query(fn (Builder $query, array $data): Builder => ... app(...) ...)` are both
@@ -590,20 +676,30 @@ preserved for future sets.
 
 | rule | files touched | verdict | why |
 | --- | --- | --- | --- |
-| `RectorLaravel\Rector\FuncCall\AppToResolveRector` | 19 | **reject** | `app(X::class)` → `resolve(X::class)`, 35 call sites. Behaviourally identical (`resolve()` is a thin wrapper around `app()` in Laravel's own `helpers.php`), but the codebase has an overwhelming, unambiguous existing convention: `app(` appears 457 times in `app/` today; the global `resolve()` helper appears **zero** times anywhere (every `resolve(` hit in the codebase is a method named `resolve()` on a project class, e.g. `PublicFrontCardTemplateResolver::resolve()`, unrelated to this rule). Adopting would plant a second, unprecedented idiom for identical behaviour in exactly 35 of ~490 call sites — a net loss of consistency for zero functional gain. |
-| `RectorLaravel\Rector\MethodCall\EloquentOrderByToLatestOrOldestRector` | 2 | **defer** | `orderByDesc('published_at')` / `orderBy('original_published_at')` → `latest('published_at')` / `oldest('original_published_at')` — 3 call sites (`ContentGroupBrowser.php` ×1, `ContentItemBrowser.php` ×2). Behaviourally identical: `latest($col)`/`oldest($col)` are `orderBy($col, 'desc'\|'asc')` under a different name (verified via the rule's own `convertOrderByToLatest()`), gated by a conservative default column-name allowlist (`*_at`, `*_date`, `*_on`) confirmed via source — which is why `id`/`title`/`duration_seconds` in the same call chains are correctly left untouched; this is deliberate scoping, not a partial/flaky match. *Originally verdicted adopt on a precedent argument the task review disproved — the operator can still choose to adopt at DP4.* The precedent doesn't hold: `app/Models/ContentItem.php:154-155`'s existing shape is uniform `->latest('published_at')->latest('id')`, and this rule cannot reproduce that — `id` fails the allowlist, so its real output is the **mixed** `->latest($col)->orderByDesc('id')` form, a third shape matching neither the pre-existing `orderByDesc`/`orderByDesc` style nor `ContentItem.php`'s own `latest`/`latest` style. Worse, inside `ContentItemBrowser::applySort()` this breaks the parallelism of a `match` whose other arms (`title_asc`, `title_desc`, `duration_longest`, `duration_shortest`) stay on `orderBy`/`orderByDesc` — a reader now sees two idioms for structurally identical "sort by X, tie-break by id" arms, distinguished only by whether X happens to end in `_at`. The rewrite itself is safe; the consistency case for adopting it *now* is negative, not positive. |
-| `RectorLaravel\Rector\FuncCall\SleepFuncToSleepStaticCallRector` | 1 | **defer** | `usleep(150000)` → `\Illuminate\Support\Sleep::usleep(150000)` in `app/Jobs/SettingsBackupSnapshotJob.php`, gated (per the rule's source) to `usleep()`/`sleep()` used as a bare statement. Low risk alone — `Sleep::usleep()` is a drop-in, test-fakeable replacement, and this call site is already skipped in tests via its own `! app()->runningUnitTests()` guard. Deferred, not rejected, because this project has exactly one other `usleep()` call site (`app/Support/Importer/ImporterThrottle.php:19`) that this dry run silently did not touch — confirmed by isolating that file that it independently fails PHPStan analysis under Rector for the §0b reason (`Undefined constant "Larastan\Larastan\LARAVEL_VERSION"`), not because the rule rejected it. Adopting today would convert one of two identical-purpose call sites, which is a worse, half-migrated state than leaving both alone. Revisit once §0b's gap is addressed (or resolved upstream), or handle both call sites by hand in the same change. |
-| `RectorLaravel\Rector\StaticCall\CarbonToDateFacadeRector` | 1 | **reject** | `Carbon::parse(...)` → `\Illuminate\Support\Facades\Date::parse(...)` in `app/Filament/Widgets/DashboardContextWidget.php`. The `Date` facade is used **zero** times anywhere else in `app/`; the file already uses `Illuminate\Support\Carbon` (Laravel's own Carbon subclass, not raw `nesbot/carbon`), which already supports `setTestNow()` and every other testability hook the facade would add on top. Adopting for this single call site would introduce a brand-new, unprecedented facade-import pattern for no behavioural or testability gain here. |
+| `RectorLaravel\Rector\FuncCall\AppToResolveRector` | 60 (parallel artifact: 19) | **reject** | `app(X::class)` → `resolve(X::class)`, ~121 call sites under serial (parallel artifact: 35 — see §0c). Behaviourally identical (`resolve()` is a thin wrapper around `app()` in Laravel's own `helpers.php`), but the codebase has an overwhelming, unambiguous existing convention: `app(` appears 457 times in `app/` today; the global `resolve()` helper appears **zero** times anywhere (every `resolve(` hit in the codebase is a method named `resolve()` on a project class, e.g. `PublicFrontCardTemplateResolver::resolve()`, unrelated to this rule). **The reject case is stronger than first reported, not weaker:** adopting would now plant a second, unprecedented idiom across roughly a quarter of every `app()` call site in the codebase (~121 of ~490), not the one-in-thirteen slice the parallel run undercounted — still zero functional gain either way. |
+| `RectorLaravel\Rector\MethodCall\EloquentOrderByToLatestOrOldestRector` | 5 (parallel artifact: 2) | **defer** | `orderByDesc('published_at')` / `orderBy('original_published_at')` → `latest('published_at')` / `oldest('original_published_at')`. Behaviourally identical: `latest($col)`/`oldest($col)` are `orderBy($col, 'desc'\|'asc')` under a different name (verified via the rule's own `convertOrderByToLatest()`), gated by a conservative default column-name allowlist (`*_at`, `*_date`, `*_on`) confirmed via source — which is why `id`/`title`/`duration_seconds` in the same call chains are correctly left untouched; this is deliberate scoping, not a partial/flaky match. *Originally verdicted adopt on a precedent argument the task review disproved — the operator can still choose to adopt at DP4.* The precedent doesn't hold: `app/Models/ContentItem.php:154-155`'s existing shape is uniform `->latest('published_at')->latest('id')`, and this rule cannot reproduce that — `id` fails the allowlist, so its real output is the **mixed** `->latest($col)->orderByDesc('id')` form, a third shape matching neither the pre-existing `orderByDesc`/`orderByDesc` style nor `ContentItem.php`'s own `latest`/`latest` style. Worse, inside `ContentItemBrowser::applySort()` this breaks the parallelism of a `match` whose other arms (`title_asc`, `title_desc`, `duration_longest`, `duration_shortest`) stay on `orderBy`/`orderByDesc` — a reader now sees two idioms for structurally identical "sort by X, tie-break by id" arms, distinguished only by whether X happens to end in `_at`. **Blast-radius note (§0c):** serial mode shows this rule actually touches 5 files, not 2 — the three additional files are `PublicContentItemQueries`, `PublicTranscriptionSelector`, and `PublicDisplaySectionQueryResolver`, the shared public query core that the homepage, search, category, and tag landing pages all resolve through (per the public-panel and search-filters guidelines). A rewrite here is no longer contained to two Livewire browser components; any future adopt decision must review the shared core's call sites too, not just `ContentGroupBrowser`/`ContentItemBrowser`. The rewrite itself is safe; the consistency case for adopting it *now* is negative, not positive. |
+| `RectorLaravel\Rector\FuncCall\SleepFuncToSleepStaticCallRector` | 2 (parallel artifact: 1) | **defer** | `usleep(150000)` → `\Illuminate\Support\Sleep::usleep(150000)`, gated (per the rule's source) to `usleep()`/`sleep()` used as a bare statement. Under serial this fires on **both** of this codebase's `usleep()` call sites: `app/Jobs/SettingsBackupSnapshotJob.php` (already skipped in tests via its own `! app()->runningUnitTests()` guard) and `app/Support/Importer/ImporterThrottle.php`. This row's original defer reasoning was that adopting would leave one of two identical-purpose call sites half-migrated, because `ImporterThrottle.php` appeared invisible to the rule under the parallel run. **That premise is dissolved:** both sites migrate identically under serial (§0c), so there is no half-migration risk. Still **defer**, not adopt — both sites migrate under serial; adopt only if `Sleep::fake()` testability is a feature the operator actually wants here. That trade is the operator's call at DP4, not a correctness or consistency question either way. |
+| `RectorLaravel\Rector\StaticCall\CarbonToDateFacadeRector` | 6 (parallel artifact: 1) | **reject** | `Carbon::parse(...)` → `\Illuminate\Support\Facades\Date::parse(...)`, 7 call sites under serial (parallel artifact: 1 file / 1 site — see §0c) across `DashboardContextWidget.php`, `AppServiceProvider.php`, `Support/Dashboard/Data/Heatmap.php`, `Support/Dashboard/JerusalemDailySeries.php`, `Support/Importer/SpotifyLinks/ImporterCsvBuilder.php`, and `Support/SettingsLifecycle/SettingsImportReport.php`. The `Date` facade is used **zero** times anywhere else in `app/`; every touched file already uses `Illuminate\Support\Carbon` (Laravel's own Carbon subclass, not raw `nesbot/carbon`), which already supports `setTestNow()` and every other testability hook the facade would add on top. Adopting would introduce a brand-new, unprecedented facade-import pattern across 6 files — not the single call site first reported — for no behavioural or testability gain. |
+| `RectorLaravel\Rector\Coalesce\ApplyDefaultInsteadOfNullCoalesceRector` | 1 | **reject** | `config('settings.repositories.database.table') ?? 'settings'` → `config('settings.repositories.database.table', 'settings')`, both call sites (`up()` and `down()`) in `database/migrations/2026_06_30_012921_create_settings_table.php` — an **applied** migration (confirmed via `php artisan migrate:status`: batch 1, ran). Applied migrations are frozen history; a rule that edits one is auto-rejected regardless of the change's merit, independent of whether the rewrite itself is safe. Only surfaced once serial mode processed this file at all — neither parallel run reached it (§0c). |
 
-**Net for this set:** 0 adopt, 2 defer (one blocked on §0b, not on its own rule; one flipped
-from an adopt this task's review disproved), 2 reject — all evidence-based against this
-codebase's actual, measured conventions rather than generic Laravel-community preference.
+**Net for this set:** 0 adopt, 2 defer, 3 reject — all evidence-based against this codebase's
+actual, measured conventions rather than generic Laravel-community preference. Of the two
+defers: `SleepFuncToSleepStaticCallRector` is no longer blocked on §0b — serial mode migrates
+both call sites identically (§0c), so it now defers purely on whether `Sleep::fake()`
+testability is wanted, an operator preference call, not a technical blocker;
+`EloquentOrderByToLatestOrOldestRector` remains flipped from an original adopt this task's
+review disproved, and its blast radius grew from 2 files to 5 under serial (§0c). Of the three
+rejects: `AppToResolveRector`'s case strengthened under serial (60 files, not 19);
+`CarbonToDateFacadeRector`'s reasoning is unchanged, now spanning 6 files instead of 1;
+`ApplyDefaultInsteadOfNullCoalesceRector` is newly surfaced under serial and auto-rejected as an
+edit to an applied migration.
 
 ## 5. What stays registered
 
 Per the brief, the set **stays** in `rector.php` after this report — `composer rector` is
 dry-run-locked and `composer rector:fix` is approval-gated, so a registered set is inert
-without an explicit DP4 pass. `rector.php`'s committed shape:
+without an explicit DP4 pass. `rector.php`'s committed shape (now pinning serial mode per
+§0c):
 
 ```php
 <?php
@@ -615,5 +711,7 @@ return RectorConfig::configure()
     ->withPaths([__DIR__.'/app', __DIR__.'/database', __DIR__.'/routes'])
     ->withPHPStanConfigs([__DIR__.'/phpstan.neon', __DIR__.'/vendor/larastan/larastan/extension.neon'])
     ->withCache(__DIR__.'/storage/framework/cache/rector')
-    ->withSets([LaravelSetList::LARAVEL_CODE_QUALITY]);
+    ->withSets([LaravelSetList::LARAVEL_CODE_QUALITY])
+    // Serial on purpose: parallel mode is nondeterministic and lossy here (measured 2026-08-10: parallel 17 vs 8 changed files run-to-run; serial 69, byte-identical twice) — see the dry-run report §0c.
+    ->withoutParallel();
 ```
