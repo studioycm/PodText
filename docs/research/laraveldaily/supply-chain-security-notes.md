@@ -65,7 +65,12 @@ from the cryptominer compromise this project actually had; nothing here changes 
 
 ---
 
-## 3. Live finding: 6 `league/commonmark` advisories, of which **1 applies**
+## 3. Finding (since resolved): 6 `league/commonmark` advisories, of which **1 applied**
+
+> **Status 2026-08-10: closed.** Commit `303beab` (2026-08-07, the Boost session's stack
+> bump) shipped 2.8.3 → 2.9.0 — hours before these notes were committed, so proposal §7.1
+> was already done at publication. The lock reads 2.9.0 and `composer audit` is clean.
+> The analysis below is kept as the worked example §7.3 refers to.
 
 Lesson 2 says to run `composer audit` before deploying and weekly. Ran it on 2026-08-07:
 
@@ -326,8 +331,11 @@ session-cookie theft, which password-based 2FA does not).
 
 ## 7. Proposals arising (no code changed in this session)
 
-1. **`composer update league/commonmark`** (2.8.3 → 2.9.0) in the next gate-green batch — §3d.
-   Single package, no constraint change, closes the one applicable advisory.
+1. ~~**`composer update league/commonmark`** (2.8.3 → 2.9.0) in the next gate-green batch — §3d.
+   Single package, no constraint change, closes the one applicable advisory.~~
+   **Shipped before publication**: `303beab` (2026-08-07) bumped it as part of the stack
+   update, ~2h before these notes were committed. Verified 2026-08-10: lock at 2.9.0,
+   audit clean. Nothing left to do here.
 2. **Widen the `.gitignore` env patterns to `.env.*` with `!.env.example`** — §4.
 3. **Add `composer audit` to the quality gate.** It cost one command and surfaced §3 on its
    first run. Candidate: a `composer.json` script alongside the existing `filacheck` entry, so
