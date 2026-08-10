@@ -123,29 +123,46 @@ with `git check-ignore -v`; not committed, deleted after this report was written
 
 ## 2. Summary counts
 
-Rector 2.6.1 emits structured JSON for this invocation in this environment rather than the
-colored console summary shown on stage at Laracon (`--output-format` was not requested
-explicitly by the composer script; some layer in this session's tool environment appears to
-request it regardless of invocation style — confirmed the JSON is Rector's own native
-`JsonOutputFormatter` output, not a wrapper, by cross-checking `vendor/bin/rector/bin/rector.php`'s
-formatter selection code). The JSON's own totals are an equally precise substitute for the
-"tail -5" rule/file counts:
+Rector 2.6.1 emits structured JSON for this invocation — not a session artifact, and not
+gated on anyone passing `--output-format=json` by hand. `composer.json`'s dev dependencies
+already include `laravel/pao` ("Agent-optimized output for PHP testing tools"). Its
+`vendor/laravel/pao/src/Drivers/Rector/Starter.php` runs at `vendor/autoload.php` load time —
+a Composer `files` autoload entry, so every route into `vendor/bin/rector` picks it up
+(composer script, direct binary call, or a subprocess spawned from inside a test) — and, when
+`laravel/agent-detector` reports an agent context, rewrites `$_SERVER['argv']`/`$GLOBALS['argv']`
+to force `--output-format=json` (its `ensureOutputFormatJson()` method) before Rector's own
+CLI ever parses argv. Confirmed by isolating the call outside any interactive tool layer
+entirely: a plain PHP script requiring only `vendor/autoload.php`, running the composer
+script's exact command string (no `--output-format` flag anywhere in it) through
+`Process::run()`, with the result written to a file and read back separately, reproduces the
+identical JSON shape with the identical totals shown below. `PAO_DISABLE=1` is the documented
+opt-out if a literal console-formatted run is ever needed.
+
+The JSON's `totals` sub-object is an equally precise substitute for the "tail -5" rule/file
+counts — verified against Rector's own
+`Rector\ChangesReporting\Output\Factory\JsonOutputFactory::create()` source:
+`totals.changed_files` is `$processResult->getTotalChanged()`, Rector's own bookkeeping of
+how many files it rewrote, not something PHPStan reports; `totals.errors` is
+`count($processResult->getSystemErrors())`, the per-file PHPStan/larastan analysis failures
+that §0b traces to source:
 
 ```json
-{"changed_files": 20, "errors": 56}
+{"totals": {"changed_files": 20, "errors": 56}}
 ```
 
 4 rules fired across those 20 files:
 
-| rule | files touched | occurrences |
+| rule | files touched | call-site occurrences |
 | --- | --- | --- |
-| `RectorLaravel\Rector\FuncCall\AppToResolveRector` | 19 | 19 call sites |
-| `RectorLaravel\Rector\MethodCall\EloquentOrderByToLatestOrOldestRector` | 2 | 2 call sites |
-| `RectorLaravel\Rector\FuncCall\SleepFuncToSleepStaticCallRector` | 1 | 1 call site |
-| `RectorLaravel\Rector\StaticCall\CarbonToDateFacadeRector` | 1 | 1 call site |
+| `RectorLaravel\Rector\FuncCall\AppToResolveRector` | 19 | 35 |
+| `RectorLaravel\Rector\MethodCall\EloquentOrderByToLatestOrOldestRector` | 2 | 3 (`ContentGroupBrowser.php` ×1, `ContentItemBrowser.php` ×2) |
+| `RectorLaravel\Rector\FuncCall\SleepFuncToSleepStaticCallRector` | 1 | 1 |
+| `RectorLaravel\Rector\StaticCall\CarbonToDateFacadeRector` | 1 | 1 |
 
-(Files can appear under more than one rule; 20 is the de-duplicated file count PHPStan
-reported.)
+(Files can appear under more than one rule; 20 is `getTotalChanged()`'s de-duplicated file
+count, not a sum of the occurrences column — a file with several `app()`/`orderBy()` call
+sites counts once per rewrite in "occurrences" but once total in "files touched". Occurrence
+counts were recounted by hand against §3's diff, not copied from the file-touched column.)
 
 ## 3. Full diff output
 
@@ -560,19 +577,26 @@ reported.)
 None of the four rules below rewrite a Filament fluent chain (a
 `Something::make()->method()->method()` builder chain) — all four rewrite plain PHP global
 helpers, Eloquent `Builder` methods, or a static facade call, none of which route through
-Filament's `Macroable`. The brief's "default-reject anything touching Filament fluent chains"
-policy is preserved for future sets but was not triggered by this one.
+Filament's `Macroable`. That claim needs one boundary drawn precisely: several diffs *do* edit
+code that lives inside a closure passed as one argument of a Filament chain —
+`BlockersQueueWidget.php`'s `->state(fn (ContentItem $record): array => app(...))` and
+`->query(fn (Builder $query, array $data): Builder => ... app(...) ...)` are both
+`AppToResolveRector` rewrites of the closure's own body, not of the chain's structure. The
+brief's "default-reject anything touching Filament fluent chains" policy is about the chain
+itself — its method calls and arguments as Filament/Macroable sees them — not the interior of
+a closure a chain happens to carry, so this does not count as the policy firing. The policy is
+preserved for future sets.
 
 | rule | files touched | verdict | why |
 | --- | --- | --- | --- |
-| `RectorLaravel\Rector\FuncCall\AppToResolveRector` | 19 | **reject** | `app(X::class)` → `resolve(X::class)`. Behaviourally identical (`resolve()` is a thin wrapper around `app()` in Laravel's own `helpers.php`), but the codebase has an overwhelming, unambiguous existing convention: `app(` appears 457 times in `app/` today; the global `resolve()` helper appears **zero** times anywhere (every `resolve(` hit in the codebase is a method named `resolve()` on a project class, e.g. `PublicFrontCardTemplateResolver::resolve()`, unrelated to this rule). Adopting would plant a second, unprecedented idiom for identical behaviour in exactly 19 of 476 call sites — a net loss of consistency for zero functional gain. |
-| `RectorLaravel\Rector\MethodCall\EloquentOrderByToLatestOrOldestRector` | 2 | **adopt** | `orderByDesc('published_at')` / `orderBy('original_published_at')` → `latest('published_at')` / `oldest('original_published_at')`. Verified via the rule's own source (`RectorLaravel\Rector\MethodCall\EloquentOrderByToLatestOrOldestRector`) that it only fires on column names matching a conservative default allowlist (`*_at`, `*_date`, `*_on`), which is why `id`, `title`, and `duration_seconds` in the same call chains are correctly left untouched — this is deliberate scoping, not a partial/flaky match. The codebase's own canonical model, `app/Models/ContentItem.php:154-155`, already writes the exact target shape (`->latest('published_at')->latest('id')`); this rule brings two Livewire browser components in line with that existing idiom rather than introducing a new one. Minor, pre-existing caveat unrelated to this rule: the tie-breaker (`->orderByDesc('id')`) does not become `->latest('id')` like `ContentItem.php`'s does, because `id` doesn't match the date-like allowlist — true before and after this rule, not something it worsens. |
+| `RectorLaravel\Rector\FuncCall\AppToResolveRector` | 19 | **reject** | `app(X::class)` → `resolve(X::class)`, 35 call sites. Behaviourally identical (`resolve()` is a thin wrapper around `app()` in Laravel's own `helpers.php`), but the codebase has an overwhelming, unambiguous existing convention: `app(` appears 457 times in `app/` today; the global `resolve()` helper appears **zero** times anywhere (every `resolve(` hit in the codebase is a method named `resolve()` on a project class, e.g. `PublicFrontCardTemplateResolver::resolve()`, unrelated to this rule). Adopting would plant a second, unprecedented idiom for identical behaviour in exactly 35 of ~490 call sites — a net loss of consistency for zero functional gain. |
+| `RectorLaravel\Rector\MethodCall\EloquentOrderByToLatestOrOldestRector` | 2 | **defer** | `orderByDesc('published_at')` / `orderBy('original_published_at')` → `latest('published_at')` / `oldest('original_published_at')` — 3 call sites (`ContentGroupBrowser.php` ×1, `ContentItemBrowser.php` ×2). Behaviourally identical: `latest($col)`/`oldest($col)` are `orderBy($col, 'desc'\|'asc')` under a different name (verified via the rule's own `convertOrderByToLatest()`), gated by a conservative default column-name allowlist (`*_at`, `*_date`, `*_on`) confirmed via source — which is why `id`/`title`/`duration_seconds` in the same call chains are correctly left untouched; this is deliberate scoping, not a partial/flaky match. *Originally verdicted adopt on a precedent argument the task review disproved — the operator can still choose to adopt at DP4.* The precedent doesn't hold: `app/Models/ContentItem.php:154-155`'s existing shape is uniform `->latest('published_at')->latest('id')`, and this rule cannot reproduce that — `id` fails the allowlist, so its real output is the **mixed** `->latest($col)->orderByDesc('id')` form, a third shape matching neither the pre-existing `orderByDesc`/`orderByDesc` style nor `ContentItem.php`'s own `latest`/`latest` style. Worse, inside `ContentItemBrowser::applySort()` this breaks the parallelism of a `match` whose other arms (`title_asc`, `title_desc`, `duration_longest`, `duration_shortest`) stay on `orderBy`/`orderByDesc` — a reader now sees two idioms for structurally identical "sort by X, tie-break by id" arms, distinguished only by whether X happens to end in `_at`. The rewrite itself is safe; the consistency case for adopting it *now* is negative, not positive. |
 | `RectorLaravel\Rector\FuncCall\SleepFuncToSleepStaticCallRector` | 1 | **defer** | `usleep(150000)` → `\Illuminate\Support\Sleep::usleep(150000)` in `app/Jobs/SettingsBackupSnapshotJob.php`, gated (per the rule's source) to `usleep()`/`sleep()` used as a bare statement. Low risk alone — `Sleep::usleep()` is a drop-in, test-fakeable replacement, and this call site is already skipped in tests via its own `! app()->runningUnitTests()` guard. Deferred, not rejected, because this project has exactly one other `usleep()` call site (`app/Support/Importer/ImporterThrottle.php:19`) that this dry run silently did not touch — confirmed by isolating that file that it independently fails PHPStan analysis under Rector for the §0b reason (`Undefined constant "Larastan\Larastan\LARAVEL_VERSION"`), not because the rule rejected it. Adopting today would convert one of two identical-purpose call sites, which is a worse, half-migrated state than leaving both alone. Revisit once §0b's gap is addressed (or resolved upstream), or handle both call sites by hand in the same change. |
 | `RectorLaravel\Rector\StaticCall\CarbonToDateFacadeRector` | 1 | **reject** | `Carbon::parse(...)` → `\Illuminate\Support\Facades\Date::parse(...)` in `app/Filament/Widgets/DashboardContextWidget.php`. The `Date` facade is used **zero** times anywhere else in `app/`; the file already uses `Illuminate\Support\Carbon` (Laravel's own Carbon subclass, not raw `nesbot/carbon`), which already supports `setTestNow()` and every other testability hook the facade would add on top. Adopting for this single call site would introduce a brand-new, unprecedented facade-import pattern for no behavioural or testability gain here. |
 
-**Net for this set:** 1 adopt, 1 defer (blocked on §0b, not on the rule itself), 2 reject —
-all evidence-based against this codebase's actual, measured conventions rather than generic
-Laravel-community preference.
+**Net for this set:** 0 adopt, 2 defer (one blocked on §0b, not on its own rule; one flipped
+from an adopt this task's review disproved), 2 reject — all evidence-based against this
+codebase's actual, measured conventions rather than generic Laravel-community preference.
 
 ## 5. What stays registered
 

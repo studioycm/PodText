@@ -1106,7 +1106,8 @@ it('keeps composer rector dry-run-only and the write path separate', function ()
 
 it('keeps rector wired to larastan through phpstan.neon', function (): void {
     expect(File::get(base_path('rector.php')))
-        ->toContain("withPHPStanConfigs([__DIR__.'/phpstan.neon'])");
+        // corrected after rectorphp#8006/#8141 — Rector skips extension-installer
+        ->toContain("withPHPStanConfigs([__DIR__.'/phpstan.neon', __DIR__.'/vendor/larastan/larastan/extension.neon'])");
 });
 ```
 
@@ -1125,7 +1126,7 @@ use Rector\Config\RectorConfig;
 
 return RectorConfig::configure()
     ->withPaths([__DIR__.'/app', __DIR__.'/database', __DIR__.'/routes'])
-    ->withPHPStanConfigs([__DIR__.'/phpstan.neon'])
+    ->withPHPStanConfigs([__DIR__.'/phpstan.neon', __DIR__.'/vendor/larastan/larastan/extension.neon']) // corrected after rectorphp#8006/#8141 — Rector skips extension-installer
     ->withCache(__DIR__.'/storage/framework/cache/rector');
 ```
 
@@ -1155,7 +1156,7 @@ Expected: Rector runs, finds the paths, and reports **no changes** with a warnin
 Add `use RectorLaravel\Set\LaravelSetList;` at the top of `rector.php` and insert the set call into the fluent chain before the closing semicolon, so the file ends:
 
 ```php
-    ->withPHPStanConfigs([__DIR__.'/phpstan.neon'])
+    ->withPHPStanConfigs([__DIR__.'/phpstan.neon', __DIR__.'/vendor/larastan/larastan/extension.neon']) // corrected after rectorphp#8006/#8141 — Rector skips extension-installer
     ->withCache(__DIR__.'/storage/framework/cache/rector')
     ->withSets([LaravelSetList::LARAVEL_CODE_QUALITY]);
 ```

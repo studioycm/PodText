@@ -35,11 +35,13 @@ PHPStan tells you a type is wrong; Rector adds the type. The standard loop is Re
 PHPStan verify.
 
 The connection is deeper than sequencing: **Rector can read PHPStan's configuration**
-(`rector.php` → `->withPHPStanConfigs(['phpstan.neon'])`), which means it sees larastan's
-model property types — including everything the `parseModelCastsMethod` fix and the
-relationship generics unlocked. Without that wiring Rector guesses and writes `mixed`; with
-it, Rector's type-declaration rules write the type larastan already proved. Our B1/B5 work
-directly raises the quality of what Rector could write here.
+(`rector.php` → `->withPHPStanConfigs(['phpstan.neon', 'vendor/larastan/larastan/extension.neon'])`
+— corrected after rectorphp#8006/#8141 — Rector skips extension-installer, so larastan's
+extension.neon has to ride along explicitly or the container never boots), which means it
+sees larastan's model property types — including everything the `parseModelCastsMethod` fix
+and the relationship generics unlocked. Without that wiring Rector guesses and writes `mixed`;
+with it, Rector's type-declaration rules write the type larastan already proved. Our B1/B5
+work directly raises the quality of what Rector could write here.
 
 What Rector would concretely offer this repo, in value order:
 
