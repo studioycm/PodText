@@ -79,10 +79,12 @@ it('boots the real PHPStan container behind that wiring without the extension-in
  */
 it('withholds the write during --dry-run even when a rule genuinely matches', function (): void {
     $fixtureRoot = sys_get_temp_dir().'/podtext-rector-'.bin2hex(random_bytes(6));
-    $fixtureFile = $fixtureRoot.'/probe.php';
+    $fixtureSourceDir = $fixtureRoot.'/src';
+    $fixtureFile = $fixtureSourceDir.'/probe.php';
     $fixtureConfig = $fixtureRoot.'/rector-fixture.php';
 
     File::ensureDirectoryExists($fixtureRoot);
+    File::ensureDirectoryExists($fixtureSourceDir);
 
     // app('translator') is AppToResolveRector's own documented example (its
     // RuleDefinition code sample is literally `app('foo'); -> resolve('foo');`) — a
@@ -105,7 +107,7 @@ it('withholds the write during --dry-run even when a rule genuinely matches', fu
         use RectorLaravel\Set\LaravelSetList;
 
         return RectorConfig::configure()
-            ->withPaths(['{$fixtureRoot}'])
+            ->withPaths(['{$fixtureSourceDir}'])
             ->withSets([LaravelSetList::LARAVEL_CODE_QUALITY])
             ->withCache('{$fixtureRoot}/cache');
         PHP);

@@ -121,6 +121,8 @@ composer rector > storage/framework/testing/rector-laravel-code-quality.txt 2>&1
 (`storage/framework/testing/rector-laravel-code-quality.txt` is gitignored scratch — confirmed
 with `git check-ignore -v`; not committed, deleted after this report was written.)
 
+**Stale-cache caveat (measured):** a warm `storage/framework/cache/rector` under-reports changed files on re-runs against unchanged source (observed 11, then 6, vs the true 20 until the cache was cleared) — and `RectorScriptContractTest` now warms this shared cache on every suite run, so a warm cache is the routine state. Before trusting any dry-run for a DP4 decision, clear it: `composer rector -- --clear-cache` (composer appends passthrough args after the baked flags).
+
 ## 2. Summary counts
 
 Rector 2.6.1 emits structured JSON for this invocation — not a session artifact, and not
@@ -135,8 +137,7 @@ CLI ever parses argv. Confirmed by isolating the call outside any interactive to
 entirely: a plain PHP script requiring only `vendor/autoload.php`, running the composer
 script's exact command string (no `--output-format` flag anywhere in it) through
 `Process::run()`, with the result written to a file and read back separately, reproduces the
-identical JSON shape with the identical totals shown below. `PAO_DISABLE=1` is the documented
-opt-out if a literal console-formatted run is ever needed.
+identical JSON shape with the identical totals shown below. For an operator terminal, console format IS the default (pao's injection is agent-gated); `PAO_DISABLE=1` matters only inside agent sessions that need console output.
 
 The JSON's `totals` sub-object is an equally precise substitute for the "tail -5" rule/file
 counts — verified against Rector's own
