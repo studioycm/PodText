@@ -8,10 +8,19 @@ use App\Console\Commands\ResetTestLane;
  * being tested — and that refusal is exactly what the first test pins. The
  * drop is covered by the pure statement generator plus one manual
  * end-to-end run recorded in the round report (spec F4).
+ * The processlist and typed-confirmation branches are likewise unreachable
+ * in-suite — the flock refusal always fires first — so Task 7's manual
+ * end-to-end run is the compensating control for those layers too.
  */
 
 it("refuses while this tree's pest process holds the lane run-lock", function (): void {
     $this->artisan('db:test-lane-reset')
+        ->expectsOutputToContain('run-lock')
+        ->assertExitCode(1);
+});
+
+it('refuses even with --force while the run-lock is held — force only skips the typed confirmation', function (): void {
+    $this->artisan('db:test-lane-reset', ['--force' => true])
         ->expectsOutputToContain('run-lock')
         ->assertExitCode(1);
 });
@@ -26,6 +35,7 @@ it('refuses a non-lane-shaped config before any probe or prompt', function (): v
 
 it('sees a second live lane connection through the processlist probe', function (): void {
     $lane = config('database.connections.mysql_testing');
+    $before = ResetTestLane::foreignLaneConnections((string) $lane['database']);
     $pdo = new PDO(
         sprintf('mysql:host=%s;port=%s;dbname=%s', $lane['host'], $lane['port'], $lane['database']),
         (string) $lane['username'],
@@ -33,7 +43,7 @@ it('sees a second live lane connection through the processlist probe', function 
     );
 
     try {
-        expect(ResetTestLane::foreignLaneConnections((string) $lane['database']))->toBeGreaterThanOrEqual(1);
+        expect(ResetTestLane::foreignLaneConnections((string) $lane['database']))->toBe($before + 1);
     } finally {
         $pdo = null;
     }
