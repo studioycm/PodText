@@ -206,6 +206,10 @@ class RestoreDatabase extends Command
      * The gzip ISIZE trailer: decompressed length mod 2^32 (RFC 1952). Proves
      * completeness of a scan, not integrity — single-member archives only,
      * which both gzencode and the db:snapshot mysqldump|gzip pipeline produce.
+     * Swapping gzip for a multi-member producer (pigz) would make clean dumps
+     * refuse here — fail-closed, but worth knowing. PHP's gzip stream layer
+     * swallows CRC failures silently (measured), so integrity stays unproven;
+     * truncation and short reads are what this catches.
      */
     private static function gzipTrailerSize(string $path): ?int
     {

@@ -179,11 +179,12 @@ it('classifies TIMESTAMP DDL against the pinned connection', function (bool $wit
 ]);
 
 it('fails closed when the gzip stream cannot be verified read-to-end', function (): void {
-    $path = timestampProbeDump(true, true);
-    file_put_contents($path, substr((string) file_get_contents($path), 0, 2048));
+    $path = timestampProbeDump(false, true);
+    $raw = (string) file_get_contents($path);
+    file_put_contents($path, substr($raw, 0, intdiv(strlen($raw), 2)));
 
     try {
-        expect(RestoreDatabase::timestampDdlRefusal($path, '+00:00', false))->toContain('TIMESTAMP');
+        expect(RestoreDatabase::timestampDdlRefusal($path, '+00:00', false))->toContain('the trailer disagrees');
     } finally {
         @unlink($path);
     }
