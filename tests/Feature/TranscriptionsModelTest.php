@@ -67,7 +67,7 @@ it('backfills existing transcription author ids into the transcriber pivot migra
     // DDL-commit leakage). The table recreation replays the ORIGINAL,
     // pre-alignment migration, landing author_transcription back on
     // TIMESTAMP columns — which would otherwise permanently trip
-    // TestCase::assertDisposableSchema()'s zero-TIMESTAMP invariant for
+    // TestLaneContract::assertSafeBoot()'s zero-TIMESTAMP invariant for
     // every test in every future run, since that guard runs before
     // RefreshDatabase gets a chance to migrate:fresh again. The compensating
     // re-run belongs in finally, not after the assertion: a failure in the

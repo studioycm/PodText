@@ -53,9 +53,10 @@ beforeEach(function (): void {
     Mail::fake();
 
     // The disposable-database intent this pin has always carried is now
-    // expressed by the lane guard itself (TestCase::assertSafeTestingDatabase());
-    // this stays as defense in depth for a file that does heavy raw
-    // DB/Schema manipulation, re-pinned to the mysql_testing lane contract.
+    // expressed by the lane guard itself (TestLaneContract::assertSafeBoot(),
+    // called once from TestCase::refreshApplication()); this stays as
+    // defense in depth for a file that does heavy raw DB/Schema
+    // manipulation, re-pinned to the mysql_testing lane contract.
     expect(config('database.default'))->toBe('mysql_testing')
         ->and(DB::connection()->getName())->toBe('mysql_testing')
         ->and(DB::connection()->getDriverName())->toBe('mysql')

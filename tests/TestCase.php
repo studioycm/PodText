@@ -5,10 +5,16 @@ namespace Tests;
 use App\Support\Testing\TestLaneContract;
 use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
 use Illuminate\Support\Facades\DB;
-use RuntimeException;
 
 abstract class TestCase extends BaseTestCase
 {
+    /**
+     * One accepted shape, one guard entrypoint (D3). Everything else throws,
+     * BEFORE any migration runs.
+     * NOTE for tests/Unit: Pest binds this class to Feature/Browser only —
+     * unit tests bypass the guard (latent while they do not boot the app;
+     * carried from the superseded spec).
+     */
     protected function refreshApplication(): void
     {
         $this->forceSafeTestingEnvironment();
@@ -30,7 +36,25 @@ abstract class TestCase extends BaseTestCase
         ]);
         $this->app->detectEnvironment(fn (): string => 'testing');
 
-        $this->assertSafeTestingDatabase();
+        $lane = config('database.connections.mysql_testing');
+        $host = (string) ($lane['host'] ?? '');
+        $port = (string) ($lane['port'] ?? '');
+        $database = (string) ($lane['database'] ?? '');
+
+        // The one guard entrypoint (D3): refusalFor -> fingerprint
+        // (first-use / legacy bridge / existing) -> TIMESTAMP check, all
+        // inside TestLaneContract so db:test-lane-reset and this boot path
+        // can never drift apart. The run-lock/fingerprint paths are now
+        // machine-global (DP7); the closure is the only DB access in this
+        // method, kept injectable so TestLaneContract's orchestration stays
+        // testable without a real connection.
+        TestLaneContract::assertSafeBoot(
+            config('database'),
+            TestLaneContract::rawEnvDatabases(),
+            TestLaneContract::fingerprintPath($host, $port, $database),
+            TestLaneContract::legacyFingerprintPath($host, $port, $database),
+            fn (string $sql, array $bindings): int => (int) DB::connection('mysql_testing')->selectOne($sql, $bindings)->n,
+        );
     }
 
     private function forceSafeTestingEnvironment(): void
@@ -46,60 +70,6 @@ abstract class TestCase extends BaseTestCase
             putenv("{$key}={$value}");
             $_ENV[$key] = $value;
             $_SERVER[$key] = $value;
-        }
-    }
-
-    /**
-     * One accepted shape. Everything else throws, BEFORE any migration runs.
-     * NOTE for tests/Unit: Pest binds this class to Feature/Browser only —
-     * unit tests bypass the guard (latent while they do not boot the app;
-     * carried from the superseded spec).
-     */
-    private function assertSafeTestingDatabase(): void
-    {
-        $refusal = TestLaneContract::refusalFor(config('database'), TestLaneContract::rawEnvDatabases());
-
-        if ($refusal === null) {
-            $this->assertDisposableSchema();
-
-            return;
-        }
-
-        throw new RuntimeException('Refusing to run tests: '.$refusal);
-    }
-
-    /**
-     * First use of a schema must find it empty; afterwards a fingerprint file
-     * remembers it. Also asserts the lane carries zero TIMESTAMP columns while
-     * its connection pins +00:00 — the spec §7 ordering refusal made real.
-     */
-    private function assertDisposableSchema(): void
-    {
-        $lane = config('database.connections.mysql_testing');
-        $fingerprint = TestLaneContract::fingerprintPath((string) $lane['host'], (string) $lane['port'], (string) $lane['database']);
-        $directory = dirname($fingerprint);
-
-        if (! is_file($fingerprint)) {
-            $tables = (int) DB::connection('mysql_testing')
-                ->selectOne('SELECT COUNT(*) n FROM information_schema.TABLES WHERE TABLE_SCHEMA = ?', [$lane['database']])->n;
-
-            if ($tables > 0) {
-                throw new RuntimeException("Refusing first use: `{$lane['database']}` already holds {$tables} tables and no fingerprint exists — is this a stranger's database?");
-            }
-
-            @mkdir($directory, 0755, true);
-            file_put_contents($fingerprint, now()->toIso8601String());
-
-            return;
-        }
-
-        if (($lane['timezone'] ?? null) === '+00:00') {
-            $timestamps = (int) DB::connection('mysql_testing')
-                ->selectOne('SELECT COUNT(*) n FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = ? AND DATA_TYPE = "timestamp"', [$lane['database']])->n;
-
-            if ($timestamps > 0) {
-                throw new RuntimeException("The lane pins +00:00 but holds {$timestamps} TIMESTAMP columns — it would test clock semantics production does not have. Run the alignment migration first (spec §7).");
-            }
         }
     }
 }

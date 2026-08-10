@@ -11,20 +11,25 @@ use Illuminate\Support\Facades\DB;
 /**
  * Reset the dedicated MySQL test lane to first-use state.
  *
- * A fresh worktree has no fingerprint file (gitignored), so the suite
- * refuses a populated lane as a stranger's database — fail-closed and
- * correct. This command is the sanctioned remedy: it empties the lane schema
- * and removes the fingerprint, so the next pest boot re-fingerprints an
- * empty schema and migrates fresh.
+ * The run-lock and fingerprint are machine-global, lane-identity-keyed paths
+ * (D3/DP7), so a fresh worktree normally INHERITS the fingerprint the
+ * machine already holds for this lane identity and does not hard-refuse it
+ * — the old "fresh worktree, no fingerprint file, hard refusal" pain is
+ * solved at the root. This command is the sanctioned remedy for a genuinely
+ * foreign lane (or a deliberate reset): it empties the lane schema and
+ * removes the fingerprint, so the next pest boot re-fingerprints an empty
+ * schema and migrates fresh.
  *
  * Refusal layers, in order (spec F4):
  * - the extracted one-shape clause table — the same table the suite boots on;
- * - this tree's flock run-lock (a suite in THIS tree is mid-run; a second
- *   same-process fd is denied too, which is what the in-suite test pins);
+ * - the machine-global flock run-lock (a suite ANYWHERE ON THIS MACHINE is
+ *   mid-run; a second same-process fd is denied too, which is what the
+ *   in-suite test pins);
  * - live lane connections via information_schema.PROCESSLIST — every suite
  *   connects as the lane user, and PROCESSLIST shows the caller's own user
- *   without the PROCESS privilege, so a suite running from ANOTHER worktree
- *   is visible here even though its flock file is not;
+ *   without the PROCESS privilege; kept as a second, independent layer below
+ *   the now-machine-global flock (belt-and-suspenders against a live
+ *   connection whose flock is stale or was never acquired through Pest.php);
  * - the typed-name confirmation (unless --force);
  * - lock_wait_timeout=3 on the drop session, so a holder the probes missed
  *   fails the drop fast instead of hanging it.
@@ -48,16 +53,18 @@ class ResetTestLane extends Command
 
         $lane = $config['connections'][self::LANE];
         $database = (string) $lane['database'];
-        $lockHandle = fopen(storage_path('framework/testing/mysql-lane-run.lock'), 'c+');
+        $lockPath = TestLaneContract::runLockPath((string) $lane['host'], (string) $lane['port'], $database);
+        @mkdir(dirname($lockPath), 0755, true);
+        $lockHandle = fopen($lockPath, 'c+');
 
         if ($lockHandle === false) {
-            $this->error('Could not open the run-lock file — check storage/framework/testing exists and is writable.');
+            $this->error("Could not open the run-lock file at {$lockPath} — check sys_get_temp_dir() is writable.");
 
             return self::FAILURE;
         }
 
         if (! flock($lockHandle, LOCK_EX | LOCK_NB)) {
-            $this->error('Refusing to reset: a pest run in this tree holds the MySQL lane run-lock.');
+            $this->error('Refusing to reset: a pest run on this machine holds the MySQL lane run-lock.');
 
             return self::FAILURE;
         }

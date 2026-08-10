@@ -7,6 +7,7 @@ use App\Jobs\SettingsBackupSnapshotJob;
 use App\Models\Media;
 use App\Models\User;
 use App\Settings\AdminUxSettings;
+use App\Support\Testing\TestLaneContract;
 use Filament\Actions\Imports\Models\Import;
 use Illuminate\Filesystem\Filesystem;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -35,8 +36,51 @@ foreach ([
  * One shared lane schema; concurrent pest runs would migrate:fresh over each
  * other (SQLite :memory: made this impossible by construction — the lane does
  * not). flock, held for the process lifetime; fail fast, never queue.
+ *
+ * Machine-global, lane-identity-keyed (D3/DP7): the path lives under
+ * sys_get_temp_dir(), not this tree's storage/, so two worktrees on the same
+ * machine now contend for the SAME lock file — the cross-worktree gap this
+ * used to leave open is closed.
+ *
+ * The identity must match what the booted config resolves post-boot (that is
+ * what lets db:test-lane-reset's own flock probe see THIS lock — proven by
+ * TestLaneResetCommandTest). getenv() alone is not enough: .env has not been
+ * parsed yet this early in Pest's boot (BootFiles::load() runs before any
+ * Laravel bootstrapping), so getenv('DB_TESTING_DATABASE') reads false here
+ * even though config/database.php's env() will read the real value moments
+ * later — a getenv()-only lock silently lands on a different hash than every
+ * post-boot caller computes, and the two can never see each other's lock
+ * (measured: it does not fail loud, it fails invisibly). Falling back to the
+ * raw .env file — the same file Dotenv is about to parse, same pattern as
+ * rawEnvDatabases() — keeps the two identities the same without waiting for
+ * boot. getenv() is still checked first so an actually-exported environment
+ * (CI, a forced var) wins over the file.
  */
-$laneLock = fopen(dirname(__DIR__).'/storage/framework/testing/mysql-lane-run.lock', 'c+');
+$rawPreBootEnv = static function (string $key, string $default): string {
+    $fromEnv = getenv($key);
+
+    if ($fromEnv !== false && $fromEnv !== '') {
+        return $fromEnv;
+    }
+
+    $envFile = dirname(__DIR__).'/.env';
+
+    if (is_file($envFile) && preg_match('/^'.preg_quote($key, '/').'=(.*)$/m', (string) file_get_contents($envFile), $m) === 1) {
+        return trim($m[1], "\"' \r");
+    }
+
+    return $default;
+};
+
+$laneLockPath = TestLaneContract::runLockPath(
+    $rawPreBootEnv('DB_TESTING_HOST', '127.0.0.1'),
+    $rawPreBootEnv('DB_TESTING_PORT', '3307'),
+    $rawPreBootEnv('DB_TESTING_DATABASE', ''),
+);
+
+@mkdir(dirname($laneLockPath), 0755, true);
+
+$laneLock = fopen($laneLockPath, 'c+');
 
 if ($laneLock === false || ! flock($laneLock, LOCK_EX | LOCK_NB)) {
     fwrite(STDERR, "Another pest run holds the MySQL lane. Wait for it to finish.\n");
@@ -47,6 +91,15 @@ if ($laneLock === false || ! flock($laneLock, LOCK_EX | LOCK_NB)) {
 // the handle is garbage-collected right after bootstrap and the lock silently
 // releases (proven by a mid-run probe). Globals live as long as the process.
 $GLOBALS['mysqlLaneRunLock'] = $laneLock;
+
+// Opportunistic one-time cleanup (D3/DP7): the pre-relocation per-tree lock
+// file is now permanently dead — nothing will ever open it again — so remove
+// it if a run from before this migration left it behind in this tree.
+$legacyLockPath = dirname(__DIR__).'/storage/framework/testing/mysql-lane-run.lock';
+
+if (is_file($legacyLockPath) && @unlink($legacyLockPath)) {
+    fwrite(STDERR, "Removed the stale per-tree lane lock at {$legacyLockPath} — superseded by the machine-global lock (D3/DP7).\n");
+}
 
 /*
 |--------------------------------------------------------------------------

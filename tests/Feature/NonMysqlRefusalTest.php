@@ -11,7 +11,8 @@ use Illuminate\Support\Facades\DB;
  * Same pattern as AuthzPackageFoundationTest's isolated-SQLite test: swap
  * `database.default` to a throwaway :memory: connection INSIDE the test
  * body, restored in `finally`. This never touches the lane connection or
- * TestCase::assertSafeTestingDatabase(), which only runs once at boot,
+ * TestLaneContract::assertSafeBoot() (called once from
+ * TestCase::refreshApplication() at boot), which only runs once at boot,
  * before the test body executes — it just gives DB::connection() (no args)
  * a non-mysql driver to report for the length of one command call.
  */

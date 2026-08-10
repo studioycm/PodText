@@ -2,11 +2,20 @@
 
 namespace App\Support\Testing;
 
+use Closure;
+use Illuminate\Support\Facades\Log;
+use RuntimeException;
+
 /**
  * The one accepted shape for the disposable MySQL test lane, extracted from
  * tests/TestCase.php so non-test tooling (db:test-lane-reset) refuses on the
- * same clause table the suite boots on. Pure static: no state, no connection
- * — callers pass the config array and the raw env names in.
+ * same clause table the suite boots on. `refusalFor()`/`rawEnvDatabases()`
+ * are pure static: no state, no connection — callers pass the config array
+ * and the raw env names in. `assertSafeBoot()` is the one boot-time guard
+ * entrypoint built on top of them (D3); it does file I/O and logging by
+ * necessity, but every input it needs (config, paths, row counts) is still a
+ * parameter, never read internally, so tests can drive it without a real
+ * connection or the real machine-global fingerprint.
  */
 final class TestLaneContract
 {
@@ -63,9 +72,130 @@ final class TestLaneContract
         return array_values(array_filter($values));
     }
 
-    /** The first-use fingerprint file for a lane identity (host|port|database). */
+    /**
+     * Machine-global directory holding both the run-lock and the fingerprint
+     * (D3/DP7): any process, any cwd, on this machine resolves the same path
+     * for the same lane identity — the cross-worktree gap closes because
+     * there is no per-tree input left in the path at all. Directory creation
+     * is the writer's job (tests/Pest.php for the lock, assertSafeBoot for
+     * the fingerprint), not this method's.
+     */
+    private static function laneRoot(): string
+    {
+        return sys_get_temp_dir().'/podtext-test-lane/';
+    }
+
+    private static function identityHash(string $host, string $port, string $database): string
+    {
+        return sha1($host.'|'.$port.'|'.$database);
+    }
+
+    /**
+     * The machine-global run-lock file for a lane identity (host|port|database).
+     * Pre-boot safe: sys_get_temp_dir() and sha1() only, no config()/app() —
+     * tests/Pest.php calls this before the framework boots.
+     */
+    public static function runLockPath(string $host, string $port, string $database): string
+    {
+        return self::laneRoot().self::identityHash($host, $port, $database).'.lock';
+    }
+
+    /**
+     * The machine-global first-use fingerprint file for a lane identity
+     * (host|port|database). Pre-boot safe for the same reason as
+     * runLockPath(), even though nothing currently calls it before boot.
+     */
     public static function fingerprintPath(string $host, string $port, string $database): string
     {
-        return storage_path('framework/testing/mysql-lane/'.sha1($host.'|'.$port.'|'.$database));
+        return self::laneRoot().self::identityHash($host, $port, $database).'.fingerprint';
+    }
+
+    /**
+     * The pre-D3/DP7 per-tree fingerprint location. Kept only so the
+     * one-time bridge (adoptLegacyFingerprint()) can find a tree's existing
+     * fingerprint after the relocation — never write here again.
+     */
+    public static function legacyFingerprintPath(string $host, string $port, string $database): string
+    {
+        return storage_path('framework/testing/mysql-lane/'.self::identityHash($host, $port, $database));
+    }
+
+    /**
+     * One-time migration bridge: when the machine-global fingerprint is
+     * absent but a legacy per-tree fingerprint exists for the same lane
+     * identity, adopt its content instead of hard-refusing a lane the
+     * machine already knows. Pure copy only — both paths are parameters, no
+     * identity computation, and no deletion of the legacy source here; the
+     * caller (assertSafeBoot) decides on cleanup and logging.
+     */
+    public static function adoptLegacyFingerprint(string $legacyPath, string $globalPath): bool
+    {
+        if (is_file($globalPath) || ! is_file($legacyPath)) {
+            return false;
+        }
+
+        @mkdir(dirname($globalPath), 0755, true);
+
+        return copy($legacyPath, $globalPath);
+    }
+
+    /**
+     * The one boot-time guard entrypoint (D3): refusalFor -> fingerprint
+     * (first-use / legacy bridge / existing) -> TIMESTAMP check, throwing
+     * the same named-failure RuntimeExceptions TestCase has always thrown,
+     * now behind a single call so a reader has one entrypoint to find.
+     *
+     * Both fingerprint paths and the row-count access are parameters, never
+     * resolved internally, so a test can drive every branch against scratch
+     * files and a stubbed count without ever touching the real
+     * machine-global fingerprint or the real lane connection.
+     *
+     * @param  array<string, mixed>  $config
+     * @param  list<string>  $rawEnvDatabases
+     * @param  Closure(string, array<int, mixed>): int  $countRows  runs an
+     *                                                              information_schema count query (sql, bindings) against the
+     *                                                              lane connection and returns the single counted row
+     */
+    public static function assertSafeBoot(
+        array $config,
+        array $rawEnvDatabases,
+        string $fingerprintPath,
+        string $legacyFingerprintPath,
+        Closure $countRows,
+    ): void {
+        $refusal = self::refusalFor($config, $rawEnvDatabases);
+
+        if ($refusal !== null) {
+            throw new RuntimeException('Refusing to run tests: '.$refusal);
+        }
+
+        $lane = $config['connections']['mysql_testing'] ?? [];
+        $database = (string) ($lane['database'] ?? '');
+
+        if (! is_file($fingerprintPath)) {
+            if (self::adoptLegacyFingerprint($legacyFingerprintPath, $fingerprintPath)) {
+                @unlink($legacyFingerprintPath);
+                Log::info("Adopted the legacy per-tree lane fingerprint at {$legacyFingerprintPath} into the machine-global fingerprint at {$fingerprintPath} (D3/DP7 relocation) and removed the stale file.");
+            } else {
+                $tables = $countRows('SELECT COUNT(*) n FROM information_schema.TABLES WHERE TABLE_SCHEMA = ?', [$database]);
+
+                if ($tables > 0) {
+                    throw new RuntimeException("Refusing first use: `{$database}` already holds {$tables} tables and no fingerprint exists — is this a stranger's database?");
+                }
+
+                @mkdir(dirname($fingerprintPath), 0755, true);
+                file_put_contents($fingerprintPath, now()->toIso8601String());
+
+                return;
+            }
+        }
+
+        if (($lane['timezone'] ?? null) === '+00:00') {
+            $timestamps = $countRows('SELECT COUNT(*) n FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = ? AND DATA_TYPE = "timestamp"', [$database]);
+
+            if ($timestamps > 0) {
+                throw new RuntimeException("The lane pins +00:00 but holds {$timestamps} TIMESTAMP columns — it would test clock semantics production does not have. Run the alignment migration first (spec §7).");
+            }
+        }
     }
 }
