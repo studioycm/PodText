@@ -1,6 +1,7 @@
 <?php
 
 use App\Auth\CompatibilityGrantManifest;
+use App\Auth\LegacyRoleBackfill\AnalysisIssue;
 use App\Auth\LegacyRoleBackfill\AnalysisReport;
 use App\Auth\LegacyRoleBackfill\AnalysisReportValidator;
 use App\Auth\LegacyRoleBackfill\ArtifactException;
@@ -776,6 +777,22 @@ it('records the complete MySQL schema descriptor and exposes a pure MySQL expect
         ->and($mysqlRoleId)->toMatchArray(['type' => 'integer', 'length' => null, 'unsigned' => true, 'auto_increment' => true])
         ->and($mysqlUserRole)->toMatchArray(['type' => 'string', 'length' => 32, 'default' => 'user'])
         ->and($mysql['tables']['model_has_roles']['foreign_keys'][0]['on_delete'])->toBe('cascade');
+});
+
+it('refuses non-mysql drivers everywhere in the schema contract', function (): void {
+    $contract = new LegacyRoleBackfillSchemaContract(
+        DB::connection(),
+        config('permission.table_names'),
+        (new User)->getTable(),
+    );
+
+    expect(fn () => $contract->expected('sqlite'))->toThrow(BackfillRefusalException::class)
+        ->and(fn () => $contract->expected('pgsql'))->toThrow(BackfillRefusalException::class);
+
+    $issues = $contract->issues(['driver' => 'sqlite', 'tables' => []]);
+
+    expect($issues)->toHaveCount(1)
+        ->and($issues[0]->code)->toBe(AnalysisIssue::SCHEMA_COLUMN_PROPERTY_DRIFT);
 });
 
 it('enumerates column property primary unique secondary and foreign-key schema drift together', function (): void {

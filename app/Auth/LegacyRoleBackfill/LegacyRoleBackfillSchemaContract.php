@@ -18,7 +18,7 @@ final readonly class LegacyRoleBackfillSchemaContract
     {
         $driver = $this->connection->getDriverName();
 
-        if (! in_array($driver, ['sqlite', 'mysql'], true)) {
+        if ($driver !== 'mysql') {
             throw new BackfillRefusalException('The database driver is unsupported for AUTHZ1-C schema inspection.');
         }
 
@@ -34,8 +34,8 @@ final readonly class LegacyRoleBackfillSchemaContract
                 continue;
             }
 
-            $columns = array_map(fn (array $column): array => $this->normalizeColumn($column, $driver), $builder->getColumns($table));
-            $indexes = array_map(fn (array $index): array => $this->normalizeIndex($index, $driver), $builder->getIndexes($table));
+            $columns = array_map(fn (array $column): array => $this->normalizeColumn($column), $builder->getColumns($table));
+            $indexes = array_map(fn (array $index): array => $this->normalizeIndex($index), $builder->getIndexes($table));
             $foreignKeys = array_map(fn (array $foreign): array => $this->normalizeForeignKey($foreign), $builder->getForeignKeys($table));
 
             if ($key === 'users') {
@@ -64,7 +64,7 @@ final readonly class LegacyRoleBackfillSchemaContract
     /** @return array<string, mixed> */
     public function expected(string $driver): array
     {
-        if (! in_array($driver, ['sqlite', 'mysql'], true)) {
+        if ($driver !== 'mysql') {
             throw new BackfillRefusalException('The database driver is unsupported for AUTHZ1-C schema expectations.');
         }
 
@@ -72,7 +72,7 @@ final readonly class LegacyRoleBackfillSchemaContract
             'name' => $name,
             'type' => 'integer',
             'length' => null,
-            'unsigned' => $driver === 'mysql',
+            'unsigned' => true,
             'nullable' => $nullable,
             'default' => $default,
             'auto_increment' => $autoIncrement,
@@ -80,7 +80,7 @@ final readonly class LegacyRoleBackfillSchemaContract
         $string = fn (string $name, ?int $length = 255, bool $nullable = false, mixed $default = null): array => [
             'name' => $name,
             'type' => 'string',
-            'length' => $driver === 'mysql' ? $length : null,
+            'length' => $length,
             'unsigned' => false,
             'nullable' => $nullable,
             'default' => $default,
@@ -115,7 +115,7 @@ final readonly class LegacyRoleBackfillSchemaContract
         $named = fn (): array => [
             'exists' => true,
             'columns' => $columns([$integer('id', autoIncrement: true), $string('name'), $string('guard_name'), $timestamp('created_at'), $timestamp('updated_at')]),
-            'indexes' => $indexes([$index('primary', ['id'], $driver === 'mysql' ? 'btree' : null), $index('unique', ['name', 'guard_name'], $driver === 'mysql' ? 'btree' : null)]),
+            'indexes' => $indexes([$index('primary', ['id'], 'btree'), $index('unique', ['name', 'guard_name'], 'btree')]),
             'foreign_keys' => [],
         ];
 
@@ -126,8 +126,8 @@ final readonly class LegacyRoleBackfillSchemaContract
                 'exists' => true,
                 'columns' => $columns([$integer('permission_id'), $integer('model_id'), $string('model_type')]),
                 'indexes' => $indexes([
-                    $index('index', ['model_id', 'model_type'], $driver === 'mysql' ? 'btree' : null),
-                    $index('primary', ['permission_id', 'model_id', 'model_type'], $driver === 'mysql' ? 'btree' : null),
+                    $index('index', ['model_id', 'model_type'], 'btree'),
+                    $index('primary', ['permission_id', 'model_id', 'model_type'], 'btree'),
                 ]),
                 'foreign_keys' => [$foreign(['permission_id'], 'permissions', ['id'])],
             ],
@@ -135,18 +135,18 @@ final readonly class LegacyRoleBackfillSchemaContract
                 'exists' => true,
                 'columns' => $columns([$integer('role_id'), $integer('model_id'), $string('model_type')]),
                 'indexes' => $indexes([
-                    $index('index', ['model_id', 'model_type'], $driver === 'mysql' ? 'btree' : null),
-                    $index('primary', ['role_id', 'model_id', 'model_type'], $driver === 'mysql' ? 'btree' : null),
+                    $index('index', ['model_id', 'model_type'], 'btree'),
+                    $index('primary', ['role_id', 'model_id', 'model_type'], 'btree'),
                 ]),
                 'foreign_keys' => [$foreign(['role_id'], 'roles', ['id'])],
             ],
             'role_has_permissions' => [
                 'exists' => true,
                 'columns' => $columns([$integer('permission_id'), $integer('role_id')]),
-                'indexes' => $indexes(array_values(array_filter([
-                    $index('primary', ['permission_id', 'role_id'], $driver === 'mysql' ? 'btree' : null),
-                    $driver === 'mysql' ? $index('index', ['role_id'], 'btree') : null,
-                ]))),
+                'indexes' => $indexes([
+                    $index('primary', ['permission_id', 'role_id'], 'btree'),
+                    $index('index', ['role_id'], 'btree'),
+                ]),
                 'foreign_keys' => [
                     $foreign(['permission_id'], 'permissions', ['id']),
                     $foreign(['role_id'], 'roles', ['id']),
@@ -159,8 +159,8 @@ final readonly class LegacyRoleBackfillSchemaContract
                     $string('role', 32, default: 'user'),
                 ]),
                 'indexes' => $indexes([
-                    $index('index', ['role'], $driver === 'mysql' ? 'btree' : null),
-                    $index('primary', ['id'], $driver === 'mysql' ? 'btree' : null),
+                    $index('index', ['role'], 'btree'),
+                    $index('primary', ['id'], 'btree'),
                 ]),
                 'foreign_keys' => [],
             ],
@@ -175,7 +175,7 @@ final readonly class LegacyRoleBackfillSchemaContract
     {
         $driver = $actual['driver'] ?? null;
 
-        if (! is_string($driver) || ! in_array($driver, ['sqlite', 'mysql'], true)) {
+        if (! is_string($driver) || $driver !== 'mysql') {
             return [new AnalysisIssue(AnalysisIssue::SCHEMA_COLUMN_PROPERTY_DRIFT)];
         }
 
@@ -224,7 +224,7 @@ final readonly class LegacyRoleBackfillSchemaContract
     }
 
     /** @param array<string, mixed> $column @return array<string, mixed> */
-    private function normalizeColumn(array $column, string $driver): array
+    private function normalizeColumn(array $column): array
     {
         $rawType = strtolower((string) ($column['type'] ?? $column['type_name'] ?? ''));
         $typeName = strtolower((string) ($column['type_name'] ?? strtok($rawType, '(')));
@@ -245,8 +245,8 @@ final readonly class LegacyRoleBackfillSchemaContract
         return [
             'name' => (string) ($column['name'] ?? ''),
             'type' => $type,
-            'length' => $driver === 'sqlite' ? null : $length,
-            'unsigned' => $driver === 'mysql' && str_contains($rawType, 'unsigned'),
+            'length' => $length,
+            'unsigned' => str_contains($rawType, 'unsigned'),
             'nullable' => ($column['nullable'] ?? null) === true,
             'default' => $default,
             'auto_increment' => ($column['auto_increment'] ?? null) === true,
@@ -254,12 +254,12 @@ final readonly class LegacyRoleBackfillSchemaContract
     }
 
     /** @param array<string, mixed> $index @return array<string, mixed> */
-    private function normalizeIndex(array $index, string $driver): array
+    private function normalizeIndex(array $index): array
     {
         return [
             'kind' => ($index['primary'] ?? false) ? 'primary' : (($index['unique'] ?? false) ? 'unique' : 'index'),
             'columns' => array_values($index['columns'] ?? []),
-            'type' => $driver === 'mysql' ? strtolower((string) ($index['type'] ?? '')) : null,
+            'type' => strtolower((string) ($index['type'] ?? '')),
         ];
     }
 
