@@ -101,7 +101,11 @@ it('keeps the acquisition workspace accessible responsive and stateful', functio
             // animation-frame reads agree (cap 10 frames) — a mid-reflow transient
             // can no longer become an assertion input.
             const stableRead = async (fn) => {
-                const frame = () => new Promise((resolve) => requestAnimationFrame(resolve));
+                // 250ms fallback: an occluded renderer must degrade to last-read, never hang (S1b review).
+                const frame = () => new Promise((resolve) => {
+                    requestAnimationFrame(resolve);
+                    setTimeout(resolve, 250);
+                });
                 let previous = fn();
                 for (let i = 0; i < 10; i++) {
                     await frame();
@@ -381,7 +385,11 @@ it('keeps the acquisition workspace accessible responsive and stateful', functio
             // animation-frame reads agree (cap 10 frames) — a mid-reflow transient
             // can no longer become an assertion input.
             const stableRead = async (fn) => {
-                const frame = () => new Promise((resolve) => requestAnimationFrame(resolve));
+                // 250ms fallback: an occluded renderer must degrade to last-read, never hang (S1b review).
+                const frame = () => new Promise((resolve) => {
+                    requestAnimationFrame(resolve);
+                    setTimeout(resolve, 250);
+                });
                 let previous = fn();
                 for (let i = 0; i < 10; i++) {
                     await frame();
@@ -462,7 +470,11 @@ it('keeps the acquisition workspace accessible responsive and stateful', functio
             // animation-frame reads agree (cap 10 frames) — a mid-reflow transient
             // can no longer become an assertion input.
             const stableRead = async (fn) => {
-                const frame = () => new Promise((resolve) => requestAnimationFrame(resolve));
+                // 250ms fallback: an occluded renderer must degrade to last-read, never hang (S1b review).
+                const frame = () => new Promise((resolve) => {
+                    requestAnimationFrame(resolve);
+                    setTimeout(resolve, 250);
+                });
                 let previous = fn();
                 for (let i = 0; i < 10; i++) {
                     await frame();

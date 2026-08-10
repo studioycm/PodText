@@ -471,7 +471,11 @@ it('renders content-aware public item and group geometry in both directions', fu
                 // animation-frame reads agree (cap 10 frames) — a mid-reflow transient
                 // can no longer become an assertion input.
                 const stableRead = async (fn) => {
-                    const frame = () => new Promise((resolve) => requestAnimationFrame(resolve));
+                    // 250ms fallback: an occluded renderer must degrade to last-read, never hang (S1b review).
+                    const frame = () => new Promise((resolve) => {
+                        requestAnimationFrame(resolve);
+                        setTimeout(resolve, 250);
+                    });
                     let previous = fn();
                     for (let i = 0; i < 10; i++) {
                         await frame();
@@ -607,7 +611,11 @@ it('renders every ordered-flow preview variant responsively for item and group',
                         // animation-frame reads agree (cap 10 frames) — a mid-reflow transient
                         // can no longer become an assertion input.
                         const stableRead = async (fn) => {
-                            const frame = () => new Promise((resolve) => requestAnimationFrame(resolve));
+                            // 250ms fallback: an occluded renderer must degrade to last-read, never hang (S1b review).
+                            const frame = () => new Promise((resolve) => {
+                                requestAnimationFrame(resolve);
+                                setTimeout(resolve, 250);
+                            });
                             let previous = fn();
                             for (let i = 0; i < 10; i++) {
                                 await frame();
@@ -762,7 +770,11 @@ it('keeps one inert responsive preview root with focus and dirty navigation prot
             // animation-frame reads agree (cap 10 frames) — a mid-reflow transient
             // can no longer become an assertion input.
             const stableRead = async (fn) => {
-                const frame = () => new Promise((resolve) => requestAnimationFrame(resolve));
+                // 250ms fallback: an occluded renderer must degrade to last-read, never hang (S1b review).
+                const frame = () => new Promise((resolve) => {
+                    requestAnimationFrame(resolve);
+                    setTimeout(resolve, 250);
+                });
                 let previous = fn();
                 for (let i = 0; i < 10; i++) {
                     await frame();
@@ -780,7 +792,6 @@ it('keeps one inert responsive preview root with focus and dirty navigation prot
             const previewRect = previewColumn?.getBoundingClientRect();
             const editorRect = editorColumn?.getBoundingClientRect();
             const draftSection = editorColumn?.querySelector('[data-card-template-editor]');
-            const draftRect = draftSection?.getBoundingClientRect();
             const headerMetadata = document.querySelector('.fi-header [data-card-template-import-lock-metadata]');
             const trigger = document.querySelector('[data-test="card-template-preview-open"]');
 
@@ -849,7 +860,11 @@ it('keeps one inert responsive preview root with focus and dirty navigation prot
                 // animation-frame reads agree (cap 10 frames) — a mid-reflow transient
                 // can no longer become an assertion input.
                 const stableRead = async (fn) => {
-                    const frame = () => new Promise((resolve) => requestAnimationFrame(resolve));
+                    // 250ms fallback: an occluded renderer must degrade to last-read, never hang (S1b review).
+                    const frame = () => new Promise((resolve) => {
+                        requestAnimationFrame(resolve);
+                        setTimeout(resolve, 250);
+                    });
                     let previous = fn();
                     for (let i = 0; i < 10; i++) {
                         await frame();
@@ -939,7 +954,11 @@ it('keeps one inert responsive preview root with focus and dirty navigation prot
                 // animation-frame reads agree (cap 10 frames) — a mid-reflow transient
                 // can no longer become an assertion input.
                 const stableRead = async (fn) => {
-                    const frame = () => new Promise((resolve) => requestAnimationFrame(resolve));
+                    // 250ms fallback: an occluded renderer must degrade to last-read, never hang (S1b review).
+                    const frame = () => new Promise((resolve) => {
+                        requestAnimationFrame(resolve);
+                        setTimeout(resolve, 250);
+                    });
                     let previous = fn();
                     for (let i = 0; i < 10; i++) {
                         await frame();
@@ -976,7 +995,11 @@ it('keeps one inert responsive preview root with focus and dirty navigation prot
                 // animation-frame reads agree (cap 10 frames) — a mid-reflow transient
                 // can no longer become an assertion input.
                 const stableRead = async (fn) => {
-                    const frame = () => new Promise((resolve) => requestAnimationFrame(resolve));
+                    // 250ms fallback: an occluded renderer must degrade to last-read, never hang (S1b review).
+                    const frame = () => new Promise((resolve) => {
+                        requestAnimationFrame(resolve);
+                        setTimeout(resolve, 250);
+                    });
                     let previous = fn();
                     for (let i = 0; i < 10; i++) {
                         await frame();
@@ -1135,7 +1158,11 @@ it('keeps one inert responsive preview root with focus and dirty navigation prot
             // animation-frame reads agree (cap 10 frames) — a mid-reflow transient
             // can no longer become an assertion input.
             const stableRead = async (fn) => {
-                const frame = () => new Promise((resolve) => requestAnimationFrame(resolve));
+                // 250ms fallback: an occluded renderer must degrade to last-read, never hang (S1b review).
+                const frame = () => new Promise((resolve) => {
+                    requestAnimationFrame(resolve);
+                    setTimeout(resolve, 250);
+                });
                 let previous = fn();
                 for (let i = 0; i < 10; i++) {
                     await frame();
@@ -1229,7 +1256,11 @@ it('keeps one inert responsive preview root with focus and dirty navigation prot
             // animation-frame reads agree (cap 10 frames) — a mid-reflow transient
             // can no longer become an assertion input.
             const stableRead = async (fn) => {
-                const frame = () => new Promise((resolve) => requestAnimationFrame(resolve));
+                // 250ms fallback: an occluded renderer must degrade to last-read, never hang (S1b review).
+                const frame = () => new Promise((resolve) => {
+                    requestAnimationFrame(resolve);
+                    setTimeout(resolve, 250);
+                });
                 let previous = fn();
                 for (let i = 0; i < 10; i++) {
                     await frame();
@@ -1332,7 +1363,11 @@ it('keeps one inert responsive preview root with focus and dirty navigation prot
             // animation-frame reads agree (cap 10 frames) — a mid-reflow transient
             // can no longer become an assertion input.
             const stableRead = async (fn) => {
-                const frame = () => new Promise((resolve) => requestAnimationFrame(resolve));
+                // 250ms fallback: an occluded renderer must degrade to last-read, never hang (S1b review).
+                const frame = () => new Promise((resolve) => {
+                    requestAnimationFrame(resolve);
+                    setTimeout(resolve, 250);
+                });
                 let previous = fn();
                 for (let i = 0; i < 10; i++) {
                     await frame();
@@ -1456,7 +1491,11 @@ it('renders the focused preview shell in English LTR', function (): void {
             // animation-frame reads agree (cap 10 frames) — a mid-reflow transient
             // can no longer become an assertion input.
             const stableRead = async (fn) => {
-                const frame = () => new Promise((resolve) => requestAnimationFrame(resolve));
+                // 250ms fallback: an occluded renderer must degrade to last-read, never hang (S1b review).
+                const frame = () => new Promise((resolve) => {
+                    requestAnimationFrame(resolve);
+                    setTimeout(resolve, 250);
+                });
                 let previous = fn();
                 for (let i = 0; i < 10; i++) {
                     await frame();
@@ -1525,7 +1564,11 @@ it('renders the focused preview shell in English LTR', function (): void {
             // animation-frame reads agree (cap 10 frames) — a mid-reflow transient
             // can no longer become an assertion input.
             const stableRead = async (fn) => {
-                const frame = () => new Promise((resolve) => requestAnimationFrame(resolve));
+                // 250ms fallback: an occluded renderer must degrade to last-read, never hang (S1b review).
+                const frame = () => new Promise((resolve) => {
+                    requestAnimationFrame(resolve);
+                    setTimeout(resolve, 250);
+                });
                 let previous = fn();
                 for (let i = 0; i < 10; i++) {
                     await frame();
@@ -1617,7 +1660,11 @@ it('keeps card width and sample choice transient inside the compact preview cont
             // animation-frame reads agree (cap 10 frames) — a mid-reflow transient
             // can no longer become an assertion input.
             const stableRead = async (fn) => {
-                const frame = () => new Promise((resolve) => requestAnimationFrame(resolve));
+                // 250ms fallback: an occluded renderer must degrade to last-read, never hang (S1b review).
+                const frame = () => new Promise((resolve) => {
+                    requestAnimationFrame(resolve);
+                    setTimeout(resolve, 250);
+                });
                 let previous = fn();
                 for (let i = 0; i < 10; i++) {
                     await frame();
@@ -1787,7 +1834,11 @@ it('keeps automatic preload search and effective image ranking aligned in the au
             // animation-frame reads agree (cap 10 frames) — a mid-reflow transient
             // can no longer become an assertion input.
             const stableRead = async (fn) => {
-                const frame = () => new Promise((resolve) => requestAnimationFrame(resolve));
+                // 250ms fallback: an occluded renderer must degrade to last-read, never hang (S1b review).
+                const frame = () => new Promise((resolve) => {
+                    requestAnimationFrame(resolve);
+                    setTimeout(resolve, 250);
+                });
                 let previous = fn();
                 for (let i = 0; i < 10; i++) {
                     await frame();
@@ -2081,7 +2132,11 @@ it('keeps automatic preload search and effective image ranking aligned in the au
             // animation-frame reads agree (cap 10 frames) — a mid-reflow transient
             // can no longer become an assertion input.
             const stableRead = async (fn) => {
-                const frame = () => new Promise((resolve) => requestAnimationFrame(resolve));
+                // 250ms fallback: an occluded renderer must degrade to last-read, never hang (S1b review).
+                const frame = () => new Promise((resolve) => {
+                    requestAnimationFrame(resolve);
+                    setTimeout(resolve, 250);
+                });
                 let previous = fn();
                 for (let i = 0; i < 10; i++) {
                     await frame();
@@ -2164,7 +2219,11 @@ it('refreshes a changed template part and keeps the wide preview below the topba
             // animation-frame reads agree (cap 10 frames) — a mid-reflow transient
             // can no longer become an assertion input.
             const stableRead = async (fn) => {
-                const frame = () => new Promise((resolve) => requestAnimationFrame(resolve));
+                // 250ms fallback: an occluded renderer must degrade to last-read, never hang (S1b review).
+                const frame = () => new Promise((resolve) => {
+                    requestAnimationFrame(resolve);
+                    setTimeout(resolve, 250);
+                });
                 let previous = fn();
                 for (let i = 0; i < 10; i++) {
                     await frame();

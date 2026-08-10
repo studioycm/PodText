@@ -291,7 +291,11 @@ function ownerImageBrowserOpenDedicatedAction(
             // animation-frame reads agree (cap 10 frames) — a mid-reflow transient
             // can no longer become an assertion input.
             const stableRead = async (fn) => {
-                const frame = () => new Promise((resolve) => requestAnimationFrame(resolve));
+                // 250ms fallback: an occluded renderer must degrade to last-read, never hang (S1b review).
+                const frame = () => new Promise((resolve) => {
+                    requestAnimationFrame(resolve);
+                    setTimeout(resolve, 250);
+                });
                 let previous = fn();
                 for (let i = 0; i < 10; i++) {
                     await frame();
@@ -1093,7 +1097,11 @@ it('proves embedded owner image forms across classic and workspace surfaces', fu
                 // animation-frame reads agree (cap 10 frames) — a mid-reflow transient
                 // can no longer become an assertion input.
                 const stableRead = async (fn) => {
-                    const frame = () => new Promise((resolve) => requestAnimationFrame(resolve));
+                    // 250ms fallback: an occluded renderer must degrade to last-read, never hang (S1b review).
+                    const frame = () => new Promise((resolve) => {
+                        requestAnimationFrame(resolve);
+                        setTimeout(resolve, 250);
+                    });
                     let previous = fn();
                     for (let i = 0; i < 10; i++) {
                         await frame();
@@ -1265,7 +1273,11 @@ it('proves relation manager owner images on the create surface', function (
             // animation-frame reads agree (cap 10 frames) — a mid-reflow transient
             // can no longer become an assertion input.
             const stableRead = async (fn) => {
-                const frame = () => new Promise((resolve) => requestAnimationFrame(resolve));
+                // 250ms fallback: an occluded renderer must degrade to last-read, never hang (S1b review).
+                const frame = () => new Promise((resolve) => {
+                    requestAnimationFrame(resolve);
+                    setTimeout(resolve, 250);
+                });
                 let previous = fn();
                 for (let i = 0; i < 10; i++) {
                     await frame();

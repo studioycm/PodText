@@ -78,7 +78,11 @@ it('renders the Media inventory as responsive accessible native cards', function
             // animation-frame reads agree (cap 10 frames) — a mid-reflow transient
             // can no longer become an assertion input.
             const stableRead = async (fn) => {
-                const frame = () => new Promise((resolve) => requestAnimationFrame(resolve));
+                // 250ms fallback: an occluded renderer must degrade to last-read, never hang (S1b review).
+                const frame = () => new Promise((resolve) => {
+                    requestAnimationFrame(resolve);
+                    setTimeout(resolve, 250);
+                });
                 let previous = fn();
                 for (let i = 0; i < 10; i++) {
                     await frame();
@@ -208,7 +212,11 @@ it('renders the Media inventory as responsive accessible native cards', function
             // animation-frame reads agree (cap 10 frames) — a mid-reflow transient
             // can no longer become an assertion input.
             const stableRead = async (fn) => {
-                const frame = () => new Promise((resolve) => requestAnimationFrame(resolve));
+                // 250ms fallback: an occluded renderer must degrade to last-read, never hang (S1b review).
+                const frame = () => new Promise((resolve) => {
+                    requestAnimationFrame(resolve);
+                    setTimeout(resolve, 250);
+                });
                 let previous = fn();
                 for (let i = 0; i < 10; i++) {
                     await frame();
@@ -348,7 +356,11 @@ it('keeps canonical Media task context keyboard reachable across Edit and safe f
             // animation-frame reads agree (cap 10 frames) — a mid-reflow transient
             // can no longer become an assertion input.
             const stableRead = async (fn) => {
-                const frame = () => new Promise((resolve) => requestAnimationFrame(resolve));
+                // 250ms fallback: an occluded renderer must degrade to last-read, never hang (S1b review).
+                const frame = () => new Promise((resolve) => {
+                    requestAnimationFrame(resolve);
+                    setTimeout(resolve, 250);
+                });
                 let previous = fn();
                 for (let i = 0; i < 10; i++) {
                     await frame();
@@ -676,7 +688,11 @@ it('delivers a responsive accessible issue review and preserves its exact task o
             // animation-frame reads agree (cap 10 frames) — a mid-reflow transient
             // can no longer become an assertion input.
             const stableRead = async (fn) => {
-                const frame = () => new Promise((resolve) => requestAnimationFrame(resolve));
+                // 250ms fallback: an occluded renderer must degrade to last-read, never hang (S1b review).
+                const frame = () => new Promise((resolve) => {
+                    requestAnimationFrame(resolve);
+                    setTimeout(resolve, 250);
+                });
                 let previous = fn();
                 for (let i = 0; i < 10; i++) {
                     await frame();
@@ -755,7 +771,11 @@ it('delivers a responsive accessible issue review and preserves its exact task o
             // animation-frame reads agree (cap 10 frames) — a mid-reflow transient
             // can no longer become an assertion input.
             const stableRead = async (fn) => {
-                const frame = () => new Promise((resolve) => requestAnimationFrame(resolve));
+                // 250ms fallback: an occluded renderer must degrade to last-read, never hang (S1b review).
+                const frame = () => new Promise((resolve) => {
+                    requestAnimationFrame(resolve);
+                    setTimeout(resolve, 250);
+                });
                 let previous = fn();
                 for (let i = 0; i < 10; i++) {
                     await frame();
