@@ -37,10 +37,12 @@ foreach ([
  * other (SQLite :memory: made this impossible by construction — the lane does
  * not). flock, held for the process lifetime; fail fast, never queue.
  *
- * Machine-global, lane-identity-keyed (D3/DP7): the path lives under
- * sys_get_temp_dir(), not this tree's storage/, so two worktrees on the same
- * machine now contend for the SAME lock file — the cross-worktree gap this
- * used to leave open is closed.
+ * Machine-global, lane-identity-keyed (D3/DP7), HOME-anchored not
+ * TMPDIR-anchored (post-review relocation — see TestLaneContract::sharedRoot()
+ * for why TMPDIR alone is unsafe: OS purges, context-dependent value): the
+ * path lives under this user's HOME, never this tree's storage/, so two
+ * worktrees on the same machine now contend for the SAME lock file — the
+ * cross-worktree gap this used to leave open is closed.
  *
  * The identity must match what the booted config resolves post-boot (that is
  * what lets db:test-lane-reset's own flock probe see THIS lock — proven by
@@ -82,7 +84,12 @@ $laneLockPath = TestLaneContract::runLockPath(
 
 $laneLock = fopen($laneLockPath, 'c+');
 
-if ($laneLock === false || ! flock($laneLock, LOCK_EX | LOCK_NB)) {
+if ($laneLock === false) {
+    fwrite(STDERR, "Could not open the run-lock file at {$laneLockPath} — check the directory is writable.\n");
+    exit(1);
+}
+
+if (! flock($laneLock, LOCK_EX | LOCK_NB)) {
     fwrite(STDERR, "Another pest run holds the MySQL lane. Wait for it to finish.\n");
     exit(1);
 }
@@ -95,10 +102,26 @@ $GLOBALS['mysqlLaneRunLock'] = $laneLock;
 // Opportunistic one-time cleanup (D3/DP7): the pre-relocation per-tree lock
 // file is now permanently dead — nothing will ever open it again — so remove
 // it if a run from before this migration left it behind in this tree.
+// Transitional: probe it non-blocking first and skip the unlink if a pre-S3
+// process (still running the old code, still flocking this exact path) holds
+// it right now — this file only fully stops mattering once every checkout
+// has picked up this change.
 $legacyLockPath = dirname(__DIR__).'/storage/framework/testing/mysql-lane-run.lock';
 
-if (is_file($legacyLockPath) && @unlink($legacyLockPath)) {
-    fwrite(STDERR, "Removed the stale per-tree lane lock at {$legacyLockPath} — superseded by the machine-global lock (D3/DP7).\n");
+if (is_file($legacyLockPath)) {
+    $legacyProbe = @fopen($legacyLockPath, 'r');
+
+    if ($legacyProbe !== false) {
+        if (flock($legacyProbe, LOCK_EX | LOCK_NB)) {
+            flock($legacyProbe, LOCK_UN);
+
+            if (@unlink($legacyLockPath)) {
+                fwrite(STDERR, "Removed the stale per-tree lane lock at {$legacyLockPath} — superseded by the machine-global lock (D3/DP7).\n");
+            }
+        }
+
+        fclose($legacyProbe);
+    }
 }
 
 /*

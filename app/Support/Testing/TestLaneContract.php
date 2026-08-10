@@ -73,16 +73,34 @@ final class TestLaneContract
     }
 
     /**
-     * Machine-global directory holding both the run-lock and the fingerprint
-     * (D3/DP7): any process, any cwd, on this machine resolves the same path
-     * for the same lane identity — the cross-worktree gap closes because
-     * there is no per-tree input left in the path at all. Directory creation
-     * is the writer's job (tests/Pest.php for the lock, assertSafeBoot for
-     * the fingerprint), not this method's.
+     * Same-user machine-global directory holding both the run-lock and the
+     * fingerprint (D3/DP7, relocated post-review from sys_get_temp_dir()):
+     * any process, any cwd, under this user resolves the same path for the
+     * same lane identity — the cross-worktree gap closes because there is no
+     * per-tree input left in the path at all.
+     *
+     * HOME-anchored, not TMPDIR-anchored, and that distinction is
+     * load-bearing, not cosmetic: macOS purges TMPDIR on a roughly weekly
+     * cycle (measured), which would silently erase the fingerprint and force
+     * a hard first-use refusal on a schema the machine already knows —
+     * F4 pain on a timer. TMPDIR is also context-dependent: launchd, cron,
+     * sudo, and php.ini can each report a different TMPDIR for what is
+     * conceptually "the same machine," which would silently split the one
+     * lock into several that never see each other. HOME does not have
+     * either problem for a same-user suite. Falling back to
+     * sys_get_temp_dir() happens ONLY when HOME itself is unset (unusual —
+     * normal shells, cron, and launchd contexts all set it) — that fallback
+     * reintroduces both risks named above, so it is a named degradation, not
+     * a silent one.
+     *
+     * Directory creation is the writer's job, not this method's: tests/Pest.php
+     * and ResetTestLane both mkdir before opening the lock file; assertSafeBoot
+     * (first use) and adoptLegacyFingerprint (the bridge) both mkdir before
+     * writing the fingerprint.
      */
-    private static function laneRoot(): string
+    private static function sharedRoot(): string
     {
-        return sys_get_temp_dir().'/podtext-test-lane/';
+        return rtrim((string) (getenv('HOME') ?: sys_get_temp_dir()), '/').'/.cache/podtext-test-lane';
     }
 
     private static function identityHash(string $host, string $port, string $database): string
@@ -92,12 +110,12 @@ final class TestLaneContract
 
     /**
      * The machine-global run-lock file for a lane identity (host|port|database).
-     * Pre-boot safe: sys_get_temp_dir() and sha1() only, no config()/app() —
-     * tests/Pest.php calls this before the framework boots.
+     * Pre-boot safe: getenv(), sys_get_temp_dir(), and sha1() only, no
+     * config()/app() — tests/Pest.php calls this before the framework boots.
      */
     public static function runLockPath(string $host, string $port, string $database): string
     {
-        return self::laneRoot().self::identityHash($host, $port, $database).'.lock';
+        return self::sharedRoot().'/'.self::identityHash($host, $port, $database).'.lock';
     }
 
     /**
@@ -107,7 +125,7 @@ final class TestLaneContract
      */
     public static function fingerprintPath(string $host, string $port, string $database): string
     {
-        return self::laneRoot().self::identityHash($host, $port, $database).'.fingerprint';
+        return self::sharedRoot().'/'.self::identityHash($host, $port, $database).'.fingerprint';
     }
 
     /**
@@ -174,8 +192,8 @@ final class TestLaneContract
 
         if (! is_file($fingerprintPath)) {
             if (self::adoptLegacyFingerprint($legacyFingerprintPath, $fingerprintPath)) {
-                @unlink($legacyFingerprintPath);
-                Log::info("Adopted the legacy per-tree lane fingerprint at {$legacyFingerprintPath} into the machine-global fingerprint at {$fingerprintPath} (D3/DP7 relocation) and removed the stale file.");
+                $removed = @unlink($legacyFingerprintPath);
+                Log::info("Adopted the legacy per-tree lane fingerprint at {$legacyFingerprintPath} into the machine-global fingerprint at {$fingerprintPath} (D3/DP7 relocation)".($removed ? ' and removed the stale file.' : '.'));
             } else {
                 $tables = $countRows('SELECT COUNT(*) n FROM information_schema.TABLES WHERE TABLE_SCHEMA = ?', [$database]);
 
@@ -188,6 +206,13 @@ final class TestLaneContract
 
                 return;
             }
+        } else {
+            // Durability belt: an already-established fingerprint gets its
+            // mtime refreshed on every boot that confirms it (copy() already
+            // gives the just-adopted branch above a fresh mtime, so this is
+            // only needed here) — an external cleaner consulting mtime must
+            // never mistake an actively-used lane for an abandoned one.
+            @touch($fingerprintPath);
         }
 
         if (($lane['timezone'] ?? null) === '+00:00') {

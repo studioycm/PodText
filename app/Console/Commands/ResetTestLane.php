@@ -113,7 +113,7 @@ class ResetTestLane extends Command
                 return self::FAILURE;
             }
 
-            $this->info(sprintf('Lane `%s` emptied (%d tables dropped) and fingerprint removed. The next pest boot re-fingerprints and migrates fresh.', $database, count($tables)));
+            $this->info(sprintf('Lane `%s` emptied (%d tables dropped) and fingerprint removed. The next pest boot re-fingerprints (or adopts a legacy fingerprint) and migrates fresh.', $database, count($tables)));
 
             return self::SUCCESS;
         } finally {

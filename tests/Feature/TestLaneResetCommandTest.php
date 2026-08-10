@@ -13,7 +13,7 @@ use App\Console\Commands\ResetTestLane;
  * end-to-end run is the compensating control for those layers too.
  */
 
-it("refuses while this tree's pest process holds the lane run-lock", function (): void {
+it('refuses while the running pest process holds the lane run-lock', function (): void {
     $this->artisan('db:test-lane-reset')
         ->expectsOutputToContain('run-lock')
         ->assertExitCode(1);
