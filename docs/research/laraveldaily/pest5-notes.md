@@ -15,9 +15,10 @@
   `phpstan.neon` and `rector.php`. pestphp.com docs are the durable API authority for
   anything beyond what's verified here.
 - **Staleness verdict**: **the freshest material in the whole research effort** — released
-  the week of Laracon US 2026 (late July/early Aug), about a version this repo has *not*
-  adopted. The standing rule stands: **PodText stays on Pest 4** (operator decision); this
-  doc is upgrade intelligence, not an upgrade instruction.
+  the week of Laracon US 2026 (late July/early Aug), about a version this repo has *not yet*
+  adopted. **Status change 2026-08-11: the operator green-lit a dedicated Pest 5 upgrade
+  session.** This doc is that session's briefing — §2b is its checklist; §1a's flag list is
+  doc-verified against pestphp.com, not just the videos.
 
 **Headline: Pest 5 is six features, and one of them is already installed.** Time-balanced
 sharding shipped into the Pest **4.7.x** line — the installed 4.7.8 contains `--shard`,
@@ -45,11 +46,24 @@ Rector plugins) are v5-only — none exist in 4.7.8.
 - First run is **slower** than normal (it records); runs after a change re-record the
   affected slice (Povilas's changed-file run still took 48s for that reason). Steady-state
   no-change runs are near-instant.
-- Modes/flags heard across the videos: `--tia`, `--no-tia`, `--fresh`, `--refetch`;
-  `pest()->tia()` in `Pest.php` for always-on local; a *filtered* mode (skip replay
-  output); *watch paths* to map source→tests for non-standard layouts; **baseline TIA** —
-  a CI job rebuilds the graph every 24h, uploads it as an artifact, devs pull it with
-  `--baseline` to skip the fresh-graph cost.
+- Flags and config, **doc-verified 2026-08-11 against pestphp.com/docs/tia** (supersedes
+  the ASR-derived list): `--tia` (replay, or record if no baseline), `--no-tia`,
+  `--tia --fresh` (discard graph, re-record), `--tia --refetch` (bypass the 24h CI-baseline
+  cooldown), `--tia --filtered` (narrow PHPUnit to affected files; auto-disabled with
+  explicit paths or `--coverage`), `--tia --locally`, `--tia --baselined` (fetch the shared
+  CI baseline — **requires an authenticated `gh` CLI**); plain `--baseline` only **prints
+  the TIA storage path** and exits. Env equivalents `PEST_TIA*=1`. `Pest.php` config:
+  `pest()->tia()->locally()/->always()/->baselined()/->filtered()` and
+  `->watch(['glob' => 'tests/target'])`; built-in defaults already cover Laravel, Livewire,
+  Blade, and browser-asset patterns with no config. CI baseline = a dedicated workflow
+  (`--parallel --tia --coverage --fresh` daily/on-push, upload the `--baseline` path as an
+  artifact with `include-hidden-files: true`) — the only CI job where `--tia` belongs.
+- **Where the graph lives (doc fact that sharpens pre-check (2) below):**
+  `~/.pest/tia/<project-key>/`, machine-global, keyed by the **normalized git remote URL**
+  (abs-path hash for remoteless repos) — so all worktrees and all concurrent sessions of
+  this repo share **one** graph directory. Graph auto-rebuilds on `composer.lock`,
+  `phpunit.xml*`, Vite/Node lockfile, or PHP-version changes; comment/whitespace-only
+  edits are hash-normalized to zero reruns.
 - **Positioning is explicit: TIA is for local, sharding is for CI** — a Pest core member
   states it directly (quoted in Povilas's video; ASR mangles the name, see §4).
 
@@ -151,11 +165,45 @@ Rector plugins) are v5-only — none exist in 4.7.8.
 | Rector plugin | `rector.php` exists, dry-run-locked, Laravel-layer-only. The Pest set list + `withPaths(['tests'])` is a clean future sweep — same one-concern-per-run discipline as [rector-video-notes.md](rector-video-notes.md) §2. |
 | Agent plugin | The repo already has the two prerequisites (browser plugin 4.3.1 + Boost) — at v5 time it's a `boost:install` skill toggle. Note the house TDD rule still governs: agent-arranged browser checks are a convenience layer, not a substitute for the committed feature tests. |
 | Evals | Not relevant — PodText has no in-app AI agents. File under "if AI SDK features ever land" (the AI-SDK course in the backlog is the companion read). |
-| Upgrade itself | `composer.json` pins `"pestphp/pest": "^4.7"`. A v5 move is a project decision with a plugin-matrix check (browser/laravel plugins must follow major), not a version bump — and the operator's standing rule keeps it parked. |
+| Upgrade itself | `composer.json` pins `"pestphp/pest": "^4.7"`. Official upgrade guide (fetched 2026-08-11): PHP ≥ 8.4 (met), **built on PHPUnit 13** ("any notable changes … might have an impact" — the changelog read is the one unbounded item, already flagged as ungated prep in `test-suite-rethink-notes.md` §6), and **all pest-maintained plugins move to `^5.0` together** — here that's `pest-plugin-browser` 4.3.1, `pest-plugin-laravel` 4.1.0, `pest-plugin-drift` 4.1.0. The guide's "~2 minutes" claim covers dependency edits only, not a 1850-test suite with custom lane bootstrap. **Now green-lit for a dedicated session** — §2b. |
 
 **No proposals.** Everything actionable is gated on a Pest 5 adoption decision that is
 explicitly not being made now; the two TIA pre-checks above are recorded so the future
 session starts warm.
+
+### 2b. Dedicated upgrade-session checklist (added 2026-08-11 on the operator's green light)
+
+Ordered so each step gates the next; sources in parentheses.
+
+1. **PHPUnit 13 changelog read first** — the only unbounded-risk item (upgrade guide;
+   rethink-notes §6 already lists it as ungated prep).
+2. **Bump as one move**: `pest` + `pest-plugin-browser` + `pest-plugin-laravel` +
+   `pest-plugin-drift` all to `^5.0` (upgrade guide: plugins follow the major together —
+   same partial-update trap family as the Boost/roster pin chain).
+3. **Re-probe the `Pest.php` bootstrap shape** before trusting the lane infra: the
+   lane-lock `$GLOBALS` fix is bootstrapper-shape-dependent (`BootFiles::load()` method
+   scope — the GC trap); v5 may have changed that shape. Mid-run lock probe, not
+   boot-time-only.
+4. **Lane-bootstrap × TIA compatibility** (pre-check (2) above): read `89a2ee1` +
+   `810f6f2` first; then note the graph is machine-global at `~/.pest/tia/<project-key>`
+   keyed by git remote — **all sessions/worktrees share one graph**, so two concurrent
+   suite runs are a new contention surface next to the lane lock itself (registered as
+   inventory item 3.9b).
+5. **Install a coverage driver** before any TIA run: Herd ships Xdebug disabled — enable
+   the `zend_extension` line in the **8.4** ini (Povilas's walkthrough used 8.5; measured
+   here: neither xdebug nor pcov loaded, and rethink-notes adds no .so exists in the
+   extension dir, so this may be install-not-uncomment).
+6. **TIA config shape for this repo**: local-only (`pest()->tia()->locally()`), no
+   `->baselined()` (needs `gh` auth + CI artifacts; there is no CI), built-in
+   Laravel/Livewire/Blade/browser watch defaults should cover the app — verify browser
+   tests' asset tracking against the Vite build before relying on replay.
+7. **Then the gated follow-ons** in rethink-notes §6 order: `pest-plugin-phpstan`
+   (the `phpstan.neon:86` "add tests/" path), `pest-plugin-rector` (own run, dry-run
+   discipline per `rector-video-notes.md`), `--agent` (boost:install skill toggle),
+   new expectations (`toBeEmail` etc. become available to tests).
+8. **Full gate + doc sweep**: `php artisan test`, pint, `composer filacheck`, build; then
+   update the docs this upgrade stales — this file's header, rethink-notes §3/§6 gate
+   language, and the memory files' "we use Pest 4" standing rule.
 
 ### Candidate cause-pattern (contributed to the ledger owner, per its protocol)
 
@@ -198,6 +246,12 @@ attributed to the videos/docs as v5 claims, not asserted as local fact.
 
 - All eight transcripts + capture metadata:
   `dev code/laraveldaily/raw/youtube-pest5-collection.md`.
+- Official docs (fetched 2026-08-11, the API authority over the transcripts):
+  [pestphp.com/docs/upgrade-guide](https://pestphp.com/docs/upgrade-guide),
+  [pestphp.com/docs/tia](https://pestphp.com/docs/tia),
+  [pestphp.com/docs/continuous-integration](https://pestphp.com/docs/continuous-integration)
+  (sharding; confirms `tests/.pest/shards.json` is committed and time-balancing activates
+  automatically once it exists).
 - Installed-version verification: `composer show` (pest 4.7.8, released 2026-08-03;
   browser plugin 4.3.1), `vendor/pestphp/pest/src/Plugins/Shard.php` (time-balanced
   sharding present), `vendor/pestphp/pest/src/Mixins/Expectation.php` (no
