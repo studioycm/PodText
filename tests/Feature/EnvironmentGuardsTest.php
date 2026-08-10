@@ -1,7 +1,7 @@
 <?php
 
+use App\Support\Testing\TestLaneContract;
 use App\Support\UiTimezone;
-use Tests\TestCase;
 
 /**
  * The environment invariants, each as its own named failure.
@@ -46,7 +46,7 @@ it('refuses to run when the booted lane connection is tampered with', function (
     $config = config('database');
     $config['connections']['mysql_testing']['host'] = '10.0.0.9';
 
-    expect(TestCase::refusalFor($config, []))->not->toBeNull();
+    expect(TestLaneContract::refusalFor($config, []))->not->toBeNull();
 });
 
 it('keeps storage in UTC and Jerusalem at the presentation layer only', function (): void {

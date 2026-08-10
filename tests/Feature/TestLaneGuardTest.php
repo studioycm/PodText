@@ -1,6 +1,6 @@
 <?php
 
-use Tests\TestCase;
+use App\Support\Testing\TestLaneContract;
 
 $valid = fn (): array => [
     'default' => 'mysql_testing',
@@ -11,13 +11,13 @@ $valid = fn (): array => [
 ];
 
 it('accepts the canonical lane shape', function () use ($valid): void {
-    expect(TestCase::refusalFor($valid(), ['podtext']))->toBeNull();
+    expect(TestLaneContract::refusalFor($valid(), ['podtext']))->toBeNull();
 });
 
 it('refuses every broken shape', function (callable $mutate, string $needle) use ($valid): void {
     $config = $valid();
     $mutate($config);
-    expect((string) TestCase::refusalFor($config, ['podtext']))->toContain($needle);
+    expect((string) TestLaneContract::refusalFor($config, ['podtext']))->toContain($needle);
 })->with([
     'app connection as default' => [fn (array &$c) => $c['default'] = 'mysql', 'mysql_testing'],
     'DSN present' => [fn (array &$c) => $c['connections']['mysql_testing']['url'] = 'mysql://x', 'url'],
@@ -35,5 +35,5 @@ it('refuses every broken shape', function (callable $mutate, string $needle) use
 ]);
 
 it('refuses when the lane name appears in the raw env files', function () use ($valid): void {
-    expect((string) TestCase::refusalFor($valid(), ['podtext', 'podtext_test']))->toContain('env');
+    expect((string) TestLaneContract::refusalFor($valid(), ['podtext', 'podtext_test']))->toContain('env');
 });
