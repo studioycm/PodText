@@ -1,6 +1,7 @@
 # Database Alignment Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **EXECUTED 2026-08-10** (all 27 tasks and 7 gates complete; local, lane and production on `utf8mb4_0900_ai_ci` + `DATETIME` + UTC, with `db:check-settings` exiting 0 as the standing drift alarm). **Checkbox state was not maintained during execution — do not read the 107 `- [ ]` boxes as status; zero were ever ticked.** The record is the round ledger (`.superpowers/sdd/progress.md`) and the commits it names, plus the closure in `current-project-state.md` (A11 ruling, 2026-08-11).
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task.
 
 **Goal:** Align local, test and production databases on one engine family, `utf8mb4_0900_ai_ci`, `DATETIME` columns and a UTC clock — then make Filament/Blade display and input Jerusalem-local globally, with guards so none of it regresses.
 
