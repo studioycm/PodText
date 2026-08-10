@@ -32,6 +32,7 @@ uses(RefreshDatabase::class);
 
 beforeEach(function (): void {
     config(['settings.cache.enabled' => true]);
+    fakeSettingsBackupSnapshotQueue();
 
     Cache::flush();
     Http::preventStrayRequests();
