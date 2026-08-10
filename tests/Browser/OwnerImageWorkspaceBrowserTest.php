@@ -287,6 +287,20 @@ function ownerImageBrowserOpenDedicatedAction(
 
     return $page->script(<<<JS
         async () => {
+            // stable-read (R4): a layout value counts only when two consecutive
+            // animation-frame reads agree (cap 10 frames) — a mid-reflow transient
+            // can no longer become an assertion input.
+            const stableRead = async (fn) => {
+                const frame = () => new Promise((resolve) => requestAnimationFrame(resolve));
+                let previous = fn();
+                for (let i = 0; i < 10; i++) {
+                    await frame();
+                    const current = fn();
+                    if (JSON.stringify(current) === JSON.stringify(previous)) return current;
+                    previous = current;
+                }
+                return previous;
+            };
             const readinessDiagnostics = (stage) => {
                 const dialogs = Array.from(document.querySelectorAll(
                     '[aria-modal="true"].fi-modal-open',
@@ -546,8 +560,8 @@ function ownerImageBrowserOpenDedicatedAction(
                 source_min_width: Math.min(...sourceRects.map((rect) => rect.width)),
                 source_min_height: Math.min(...sourceRects.map((rect) => rect.height)),
                 gallery_columns: columns,
-                horizontal_overflow: document.documentElement.scrollWidth
-                    > document.documentElement.clientWidth + 1,
+                horizontal_overflow: await stableRead(() => document.documentElement.scrollWidth
+                    > document.documentElement.clientWidth + 1),
                 owned_overflow: overflow,
                 failed_requests: window.__ownerImageFailedRequests,
                 unhandled_rejections: window.__ownerImageUnhandledRejections,
@@ -1069,6 +1083,20 @@ it('proves embedded owner image forms across classic and workspace surfaces', fu
 
         $surfaceEvidence[] = $page->script(<<<'JS'
             async () => {
+                // stable-read (R4): a layout value counts only when two consecutive
+                // animation-frame reads agree (cap 10 frames) — a mid-reflow transient
+                // can no longer become an assertion input.
+                const stableRead = async (fn) => {
+                    const frame = () => new Promise((resolve) => requestAnimationFrame(resolve));
+                    let previous = fn();
+                    for (let i = 0; i < 10; i++) {
+                        await frame();
+                        const current = fn();
+                        if (JSON.stringify(current) === JSON.stringify(previous)) return current;
+                        previous = current;
+                    }
+                    return previous;
+                };
                 const started = performance.now();
 
                 while (performance.now() - started < 10000) {
@@ -1098,8 +1126,8 @@ it('proves embedded owner image forms across classic and workspace surfaces', fu
                             raw_key_absent: ! /\badmin\.[a-z0-9_.]+/i.test(ownedText),
                             current_folder_absent: ! ownedText.includes('Current folder')
                                 && ! ownedText.includes('התיקייה הנוכחית'),
-                            horizontal_overflow: document.documentElement.scrollWidth
-                                > document.documentElement.clientWidth + 1,
+                            horizontal_overflow: await stableRead(() => document.documentElement.scrollWidth
+                                > document.documentElement.clientWidth + 1),
                         };
                     }
 
@@ -1227,6 +1255,20 @@ it('proves relation manager owner images on the create surface', function (
     $classicCreateLabel = ownerImageBrowserJsValue(__('admin.actions.classic_create'));
     $create = $page->script(<<<JS
         async () => {
+            // stable-read (R4): a layout value counts only when two consecutive
+            // animation-frame reads agree (cap 10 frames) — a mid-reflow transient
+            // can no longer become an assertion input.
+            const stableRead = async (fn) => {
+                const frame = () => new Promise((resolve) => requestAnimationFrame(resolve));
+                let previous = fn();
+                for (let i = 0; i < 10; i++) {
+                    await frame();
+                    const current = fn();
+                    if (JSON.stringify(current) === JSON.stringify(previous)) return current;
+                    previous = current;
+                }
+                return previous;
+            };
             const waitFor = async (callback, timeout = 10000) => {
                 const started = performance.now();
 
@@ -1288,8 +1330,8 @@ it('proves relation manager owner images on the create surface', function (
                     '[data-testid="owner-image-choice-state"]',
                 ).length,
                 raw_key_absent: ! /\\badmin\\.[a-z0-9_.]+/i.test(state.textContent),
-                horizontal_overflow: document.documentElement.scrollWidth
-                    > document.documentElement.clientWidth + 1,
+                horizontal_overflow: await stableRead(() => document.documentElement.scrollWidth
+                    > document.documentElement.clientWidth + 1),
             };
         }
         JS);

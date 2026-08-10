@@ -97,6 +97,20 @@ it('keeps the acquisition workspace accessible responsive and stateful', functio
 
     $wide = $page->script(<<<'JS'
         async () => {
+            // stable-read (R4): a layout value counts only when two consecutive
+            // animation-frame reads agree (cap 10 frames) — a mid-reflow transient
+            // can no longer become an assertion input.
+            const stableRead = async (fn) => {
+                const frame = () => new Promise((resolve) => requestAnimationFrame(resolve));
+                let previous = fn();
+                for (let i = 0; i < 10; i++) {
+                    await frame();
+                    const current = fn();
+                    if (JSON.stringify(current) === JSON.stringify(previous)) return current;
+                    previous = current;
+                }
+                return previous;
+            };
             const waitFor = async (callback, step = null, timeout = 7000) => {
                 const started = performance.now();
 
@@ -314,8 +328,8 @@ it('keeps the acquisition workspace accessible responsive and stateful', functio
                 ).length,
                 dialog_roots: document.querySelectorAll('[aria-modal="true"].fi-modal-open').length,
                 active_inside_modal: Boolean(dialog()?.contains(document.activeElement)),
-                horizontal_overflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
-                picker_horizontal_overflow: (picker()?.scrollWidth ?? 0) > (picker()?.clientWidth ?? 0) + 1,
+                horizontal_overflow: await stableRead(() => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1),
+                picker_horizontal_overflow: await stableRead(() => (picker()?.scrollWidth ?? 0) > (picker()?.clientWidth ?? 0) + 1),
                 modal_within_viewport: (modalRect?.left ?? -1) >= -1
                     && (modalRect?.right ?? window.innerWidth + 1) <= window.innerWidth + 1,
                 storage_was_lazy: storageWasLazy,
@@ -361,6 +375,20 @@ it('keeps the acquisition workspace accessible responsive and stateful', functio
     $page->resize(390, 844);
     $narrow = $page->script(<<<'JS'
         async () => {
+            // stable-read (R4): a layout value counts only when two consecutive
+            // animation-frame reads agree (cap 10 frames) — a mid-reflow transient
+            // can no longer become an assertion input.
+            const stableRead = async (fn) => {
+                const frame = () => new Promise((resolve) => requestAnimationFrame(resolve));
+                let previous = fn();
+                for (let i = 0; i < 10; i++) {
+                    await frame();
+                    const current = fn();
+                    if (JSON.stringify(current) === JSON.stringify(previous)) return current;
+                    previous = current;
+                }
+                return previous;
+            };
             await new Promise((resolve) => setTimeout(resolve, 300));
             const dialog = document.querySelector('[aria-modal="true"].fi-modal-open');
             const picker = dialog?.querySelector('[data-testid="media-picker"]');
@@ -395,8 +423,8 @@ it('keeps the acquisition workspace accessible responsive and stateful', functio
                     '[aria-modal="true"].fi-modal-open [data-testid="media-picker"]',
                 ).length,
                 active_inside_modal: Boolean(dialog?.contains(document.activeElement)),
-                horizontal_overflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
-                picker_horizontal_overflow: (picker?.scrollWidth ?? 0) > (picker?.clientWidth ?? 0) + 1,
+                horizontal_overflow: await stableRead(() => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1),
+                picker_horizontal_overflow: await stableRead(() => (picker?.scrollWidth ?? 0) > (picker?.clientWidth ?? 0) + 1),
                 picker_scroll_width: picker?.scrollWidth ?? null,
                 picker_client_width: picker?.clientWidth ?? null,
                 overflowing_elements: overflowingElements,
@@ -425,6 +453,20 @@ it('keeps the acquisition workspace accessible responsive and stateful', functio
 
     $closed = $page->script(<<<'JS'
         async () => {
+            // stable-read (R4): a layout value counts only when two consecutive
+            // animation-frame reads agree (cap 10 frames) — a mid-reflow transient
+            // can no longer become an assertion input.
+            const stableRead = async (fn) => {
+                const frame = () => new Promise((resolve) => requestAnimationFrame(resolve));
+                let previous = fn();
+                for (let i = 0; i < 10; i++) {
+                    await frame();
+                    const current = fn();
+                    if (JSON.stringify(current) === JSON.stringify(previous)) return current;
+                    previous = current;
+                }
+                return previous;
+            };
             const started = performance.now();
             document.querySelector(
                 '[aria-modal="true"].fi-modal-open [data-testid="media-picker-close"]',
@@ -451,7 +493,7 @@ it('keeps the acquisition workspace accessible responsive and stateful', functio
                     '[aria-modal="true"].fi-modal-open [data-testid="media-picker"]',
                 ) === null,
                 focus_returned: Boolean(document.activeElement?.closest('[data-testid="media-picker-open"]')),
-                horizontal_overflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
+                horizontal_overflow: await stableRead(() => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1),
             };
         }
         JS);

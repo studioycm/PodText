@@ -74,6 +74,20 @@ it('renders the Media inventory as responsive accessible native cards', function
     ], JSON_THROW_ON_ERROR);
     $wide = $page->script(<<<JS
         async () => {
+            // stable-read (R4): a layout value counts only when two consecutive
+            // animation-frame reads agree (cap 10 frames) — a mid-reflow transient
+            // can no longer become an assertion input.
+            const stableRead = async (fn) => {
+                const frame = () => new Promise((resolve) => requestAnimationFrame(resolve));
+                let previous = fn();
+                for (let i = 0; i < 10; i++) {
+                    await frame();
+                    const current = fn();
+                    if (JSON.stringify(current) === JSON.stringify(previous)) return current;
+                    previous = current;
+                }
+                return previous;
+            };
             const waitFor = async (callback, timeout = 7000) => {
                 const started = performance.now();
 
@@ -165,8 +179,8 @@ it('renders the Media inventory as responsive accessible native cards', function
                 bulk_selection_available: Boolean(document.querySelector(
                     '.fi-ta input[type="checkbox"]',
                 )),
-                horizontal_overflow: document.documentElement.scrollWidth
-                    > document.documentElement.clientWidth + 1,
+                horizontal_overflow: await stableRead(() => document.documentElement.scrollWidth
+                    > document.documentElement.clientWidth + 1),
             };
         }
         JS);
@@ -190,6 +204,20 @@ it('renders the Media inventory as responsive accessible native cards', function
     $page->resize(390, 844);
     $narrow = $page->script(<<<JS
         async () => {
+            // stable-read (R4): a layout value counts only when two consecutive
+            // animation-frame reads agree (cap 10 frames) — a mid-reflow transient
+            // can no longer become an assertion input.
+            const stableRead = async (fn) => {
+                const frame = () => new Promise((resolve) => requestAnimationFrame(resolve));
+                let previous = fn();
+                for (let i = 0; i < 10; i++) {
+                    await frame();
+                    const current = fn();
+                    if (JSON.stringify(current) === JSON.stringify(previous)) return current;
+                    previous = current;
+                }
+                return previous;
+            };
             await new Promise((resolve) => setTimeout(resolve, 250));
             const cards = Array.from(document.querySelectorAll(
                 '[data-testid="media-library-card"]',
@@ -237,8 +265,8 @@ it('renders the Media inventory as responsive accessible native cards', function
                 actions_within_viewport: records.every((record) => Array.from(
                     record?.querySelectorAll('.fi-ta-actions a, .fi-ta-actions button') ?? [],
                 ).every((action) => ! isShown(action) || withinViewport(action))),
-                horizontal_overflow: document.documentElement.scrollWidth
-                    > document.documentElement.clientWidth + 1,
+                horizontal_overflow: await stableRead(() => document.documentElement.scrollWidth
+                    > document.documentElement.clientWidth + 1),
             };
         }
         JS);
@@ -316,6 +344,20 @@ it('keeps canonical Media task context keyboard reachable across Edit and safe f
     );
     $initial = $page->script(<<<JS
         async () => {
+            // stable-read (R4): a layout value counts only when two consecutive
+            // animation-frame reads agree (cap 10 frames) — a mid-reflow transient
+            // can no longer become an assertion input.
+            const stableRead = async (fn) => {
+                const frame = () => new Promise((resolve) => requestAnimationFrame(resolve));
+                let previous = fn();
+                for (let i = 0; i < 10; i++) {
+                    await frame();
+                    const current = fn();
+                    if (JSON.stringify(current) === JSON.stringify(previous)) return current;
+                    previous = current;
+                }
+                return previous;
+            };
             const waitFor = async (callback, timeout = 7000) => {
                 const started = performance.now();
 
@@ -375,8 +417,8 @@ it('keeps canonical Media task context keyboard reachable across Edit and safe f
                 tab: new URL(window.location.href).searchParams.get('tab'),
                 page: new URL(window.location.href).searchParams.get('page'),
                 card_count: cards.length,
-                horizontal_overflow: document.documentElement.scrollWidth
-                    > document.documentElement.clientWidth + 1,
+                horizontal_overflow: await stableRead(() => document.documentElement.scrollWidth
+                    > document.documentElement.clientWidth + 1),
             };
         }
         JS);
@@ -629,7 +671,21 @@ it('delivers a responsive accessible issue review and preserves its exact task o
         ->assertSee(__('admin.media_issue_review.owners.presentation_only'));
 
     $reviewState = $page->script(<<<'JS'
-        () => {
+        async () => {
+            // stable-read (R4): a layout value counts only when two consecutive
+            // animation-frame reads agree (cap 10 frames) — a mid-reflow transient
+            // can no longer become an assertion input.
+            const stableRead = async (fn) => {
+                const frame = () => new Promise((resolve) => requestAnimationFrame(resolve));
+                let previous = fn();
+                for (let i = 0; i < 10; i++) {
+                    await frame();
+                    const current = fn();
+                    if (JSON.stringify(current) === JSON.stringify(previous)) return current;
+                    previous = current;
+                }
+                return previous;
+            };
             const visible = (element) => element?.getClientRects().length > 0;
             const action = (testId) => document.querySelector(`[data-testid="${testId}"]`);
             const ownerRoute = action('media-issue-owner-route');
@@ -654,8 +710,8 @@ it('delivers a responsive accessible issue review and preserves its exact task o
                 retry_present: Boolean(action('media-issue-retry')),
                 files_discovery_present: Boolean(action('media-files-discovery')),
                 trash_present: Boolean(action('media-trash')),
-                horizontal_overflow: document.documentElement.scrollWidth
-                    > document.documentElement.clientWidth + 1,
+                horizontal_overflow: await stableRead(() => document.documentElement.scrollWidth
+                    > document.documentElement.clientWidth + 1),
             };
         }
         JS);
@@ -694,7 +750,21 @@ it('delivers a responsive accessible issue review and preserves its exact task o
 
     $page->resize(390, 844)->wait(0.25);
     $narrow = $page->script(<<<'JS'
-        () => {
+        async () => {
+            // stable-read (R4): a layout value counts only when two consecutive
+            // animation-frame reads agree (cap 10 frames) — a mid-reflow transient
+            // can no longer become an assertion input.
+            const stableRead = async (fn) => {
+                const frame = () => new Promise((resolve) => requestAnimationFrame(resolve));
+                let previous = fn();
+                for (let i = 0; i < 10; i++) {
+                    await frame();
+                    const current = fn();
+                    if (JSON.stringify(current) === JSON.stringify(previous)) return current;
+                    previous = current;
+                }
+                return previous;
+            };
             const review = document.querySelector('[data-testid="media-issue-review"]');
             const rect = review?.getBoundingClientRect();
 
@@ -704,8 +774,8 @@ it('delivers a responsive accessible issue review and preserves its exact task o
                 review_within_viewport: Boolean(rect)
                     && rect.left >= -1
                     && rect.right <= window.innerWidth + 1,
-                horizontal_overflow: document.documentElement.scrollWidth
-                    > document.documentElement.clientWidth + 1,
+                horizontal_overflow: await stableRead(() => document.documentElement.scrollWidth
+                    > document.documentElement.clientWidth + 1),
             };
         }
         JS);

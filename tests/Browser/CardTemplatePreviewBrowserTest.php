@@ -467,12 +467,26 @@ it('renders content-aware public item and group geometry in both directions', fu
         $page->resize($width, 1100);
         $measurement = $page->script(<<<'JS'
             async () => {
+                // stable-read (R4): a layout value counts only when two consecutive
+                // animation-frame reads agree (cap 10 frames) — a mid-reflow transient
+                // can no longer become an assertion input.
+                const stableRead = async (fn) => {
+                    const frame = () => new Promise((resolve) => requestAnimationFrame(resolve));
+                    let previous = fn();
+                    for (let i = 0; i < 10; i++) {
+                        await frame();
+                        const current = fn();
+                        if (JSON.stringify(current) === JSON.stringify(previous)) return current;
+                        previous = current;
+                    }
+                    return previous;
+                };
                 await new Promise((resolve) => setTimeout(resolve, 250));
                 const knownResizeObserverMessage = 'ResizeObserver loop completed with undelivered notifications.';
                 const browserErrors = window.__pestBrowser?.jsErrors ?? [];
                 window.__pestBrowser.jsErrors = browserErrors.filter((error) => error.message !== knownResizeObserverMessage);
                 const card = (key) => document.querySelector(`[data-card-template-key="${key}"]`);
-                const measure = (prefix) => {
+                const measure = async (prefix) => {
                     const leading = card(`o2_browser_${prefix}_leading`);
                     const body = card(`o2_browser_${prefix}_body`);
                     const ordered = card(`o2_browser_${prefix}_ordered`);
@@ -481,12 +495,15 @@ it('renders content-aware public item and group geometry in both directions', fu
                     const bodyStyle = body ? getComputedStyle(body) : null;
                     const leadingImage = leading?.querySelector('img');
                     const orderedImages = Array.from(ordered?.querySelectorAll('[data-card-part="image"]') ?? []);
-                    const orderedRect = ordered?.getBoundingClientRect();
-                    const fullBleed = orderedImages.every((image) => {
-                        const rect = image.getBoundingClientRect();
+                    const fullBleed = await stableRead(() => {
+                        const orderedRect = ordered?.getBoundingClientRect();
 
-                        return Math.abs(rect.left - orderedRect.left) <= 2
-                            && Math.abs(rect.right - orderedRect.right) <= 2;
+                        return orderedImages.every((image) => {
+                            const rect = image.getBoundingClientRect();
+
+                            return Math.abs(rect.left - orderedRect.left) <= 2
+                                && Math.abs(rect.right - orderedRect.right) <= 2;
+                        });
                     });
 
                     return {
@@ -516,9 +533,9 @@ it('renders content-aware public item and group geometry in both directions', fu
                 return {
                     viewport_width: window.innerWidth,
                     direction: document.documentElement.dir,
-                    horizontal_overflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
-                    item: measure('item'),
-                    group: measure('group'),
+                    horizontal_overflow: await stableRead(() => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1),
+                    item: await measure('item'),
+                    group: await measure('group'),
                     resize_observer_errors: browserErrors.filter((error) => error.message === knownResizeObserverMessage).length,
                     js_errors: browserErrors
                         .map((error) => error.message)
@@ -586,6 +603,20 @@ it('renders every ordered-flow preview variant responsively for item and group',
                 $page->resize($width, 900);
                 $measurement = $page->script(<<<'JS'
                     async () => {
+                        // stable-read (R4): a layout value counts only when two consecutive
+                        // animation-frame reads agree (cap 10 frames) — a mid-reflow transient
+                        // can no longer become an assertion input.
+                        const stableRead = async (fn) => {
+                            const frame = () => new Promise((resolve) => requestAnimationFrame(resolve));
+                            let previous = fn();
+                            for (let i = 0; i < 10; i++) {
+                                await frame();
+                                const current = fn();
+                                if (JSON.stringify(current) === JSON.stringify(previous)) return current;
+                                previous = current;
+                            }
+                            return previous;
+                        };
                         const isNarrow = window.innerWidth < 1024;
                         let started = performance.now();
 
@@ -617,7 +648,6 @@ it('renders every ordered-flow preview variant responsively for item and group',
                         const card = ready?.querySelector('[data-card-template-key]');
                         const style = card ? getComputedStyle(card) : null;
                         const images = Array.from(card?.querySelectorAll('[data-card-part="image"]') ?? []);
-                        const rect = card?.getBoundingClientRect();
 
                         return {
                             viewport_width: window.innerWidth,
@@ -635,14 +665,18 @@ it('renders every ordered-flow preview variant responsively for item and group',
                             padding: style?.padding,
                             image_source: images[0]?.dataset.cardImageSource ?? null,
                             images: images.length,
-                            full_bleed: images.every((image) => {
-                                const imageRect = image.getBoundingClientRect();
+                            full_bleed: await stableRead(() => {
+                                const rect = card?.getBoundingClientRect();
 
-                                return Math.abs(imageRect.left - rect.left) <= 2
-                                    && Math.abs(imageRect.right - rect.right) <= 2;
+                                return images.every((image) => {
+                                    const imageRect = image.getBoundingClientRect();
+
+                                    return Math.abs(imageRect.left - rect.left) <= 2
+                                        && Math.abs(imageRect.right - rect.right) <= 2;
+                                });
                             }),
                             interactions: ready?.querySelectorAll('a[href], [wire\\:click], button, input, select, textarea').length ?? -1,
-                            horizontal_overflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
+                            horizontal_overflow: await stableRead(() => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1),
                             resize_observer_errors: browserErrors.filter((error) => error.message === knownResizeObserverMessage).length,
                             js_errors: browserErrors
                                 .map((error) => error.message)
@@ -724,6 +758,20 @@ it('keeps one inert responsive preview root with focus and dirty navigation prot
 
     $wide = $page->script(<<<'JS'
         async () => {
+            // stable-read (R4): a layout value counts only when two consecutive
+            // animation-frame reads agree (cap 10 frames) — a mid-reflow transient
+            // can no longer become an assertion input.
+            const stableRead = async (fn) => {
+                const frame = () => new Promise((resolve) => requestAnimationFrame(resolve));
+                let previous = fn();
+                for (let i = 0; i < 10; i++) {
+                    await frame();
+                    const current = fn();
+                    if (JSON.stringify(current) === JSON.stringify(previous)) return current;
+                    previous = current;
+                }
+                return previous;
+            };
             await new Promise((resolve) => setTimeout(resolve, 250));
             const root = document.querySelector('[data-card-template-preview-root]');
             const ready = root?.querySelector('[data-test="card-template-preview-ready"]');
@@ -744,7 +792,7 @@ it('keeps one inert responsive preview root with focus and dirty navigation prot
                 public_interactions: ready?.querySelectorAll('a[href], [wire\\:click], button, input, select, textarea').length ?? 0,
                 direction: document.documentElement.dir,
                 key_direction: document.querySelector('[data-card-template-editor] input[dir="ltr"]')?.dir ?? null,
-                horizontal_overflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
+                horizontal_overflow: await stableRead(() => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1),
                 shell_overflow: getComputedStyle(document.querySelector('[data-card-template-preview-wide-shell]')).overflowY,
                 preview_overflow: getComputedStyle(document.querySelector('[data-card-template-preview-scroll]')).overflowY,
                 preview_is_logical_end: previewRect?.right <= editorRect?.left,
@@ -782,6 +830,20 @@ it('keeps one inert responsive preview root with focus and dirty navigation prot
         $page->resize($width, 900);
         $measurement = $page->script(<<<'JS'
             async () => {
+                // stable-read (R4): a layout value counts only when two consecutive
+                // animation-frame reads agree (cap 10 frames) — a mid-reflow transient
+                // can no longer become an assertion input.
+                const stableRead = async (fn) => {
+                    const frame = () => new Promise((resolve) => requestAnimationFrame(resolve));
+                    let previous = fn();
+                    for (let i = 0; i < 10; i++) {
+                        await frame();
+                        const current = fn();
+                        if (JSON.stringify(current) === JSON.stringify(previous)) return current;
+                        previous = current;
+                    }
+                    return previous;
+                };
                 await new Promise((resolve) => setTimeout(resolve, 200));
                 const preview = document.querySelector('[data-card-template-preview-column]');
                 const editor = document.querySelector('[data-card-template-editor-column]');
@@ -795,7 +857,7 @@ it('keeps one inert responsive preview root with focus and dirty navigation prot
                     adjacent_roots: document.querySelectorAll('[data-card-template-preview-adjacent]').length,
                     modal_roots: document.querySelectorAll('[data-card-template-preview-modal]').length,
                     opener_hidden: Boolean(trigger && (getComputedStyle(trigger).display === 'none' || trigger.offsetParent === null)),
-                    horizontal_overflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
+                    horizontal_overflow: await stableRead(() => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1),
                     preview_is_logical_end: previewRect?.right <= editorRect?.left,
                     columns_do_not_overlap: previewRect?.right <= editorRect?.left,
                     editor_width: editorRect?.width ?? null,
@@ -848,6 +910,20 @@ it('keeps one inert responsive preview root with focus and dirty navigation prot
         $page->resize($width, 800);
         $closed = $page->script(<<<'JS'
             async () => {
+                // stable-read (R4): a layout value counts only when two consecutive
+                // animation-frame reads agree (cap 10 frames) — a mid-reflow transient
+                // can no longer become an assertion input.
+                const stableRead = async (fn) => {
+                    const frame = () => new Promise((resolve) => requestAnimationFrame(resolve));
+                    let previous = fn();
+                    for (let i = 0; i < 10; i++) {
+                        await frame();
+                        const current = fn();
+                        if (JSON.stringify(current) === JSON.stringify(previous)) return current;
+                        previous = current;
+                    }
+                    return previous;
+                };
                 await new Promise((resolve) => setTimeout(resolve, 200));
                 const trigger = document.querySelector('[data-test="card-template-preview-open"]');
 
@@ -857,7 +933,7 @@ it('keeps one inert responsive preview root with focus and dirty navigation prot
                     adjacent_roots: document.querySelectorAll('[data-card-template-preview-adjacent]').length,
                     modal_roots: document.querySelectorAll('[data-card-template-preview-modal]').length,
                     opener_visible: Boolean(trigger && getComputedStyle(trigger).display !== 'none' && trigger.getBoundingClientRect().width > 0),
-                    horizontal_overflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
+                    horizontal_overflow: await stableRead(() => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1),
                 };
             }
             JS);
@@ -871,6 +947,20 @@ it('keeps one inert responsive preview root with focus and dirty navigation prot
 
         $open = $page->script(<<<'JS'
             async () => {
+                // stable-read (R4): a layout value counts only when two consecutive
+                // animation-frame reads agree (cap 10 frames) — a mid-reflow transient
+                // can no longer become an assertion input.
+                const stableRead = async (fn) => {
+                    const frame = () => new Promise((resolve) => requestAnimationFrame(resolve));
+                    let previous = fn();
+                    for (let i = 0; i < 10; i++) {
+                        await frame();
+                        const current = fn();
+                        if (JSON.stringify(current) === JSON.stringify(previous)) return current;
+                        previous = current;
+                    }
+                    return previous;
+                };
                 const started = performance.now();
                 const trigger = document.querySelector('[data-test="card-template-preview-open"]');
                 trigger.focus();
@@ -892,7 +982,7 @@ it('keeps one inert responsive preview root with focus and dirty navigation prot
                     adjacent_roots: document.querySelectorAll('[data-card-template-preview-adjacent]').length,
                     modal_roots: document.querySelectorAll('[data-card-template-preview-modal]').length,
                     active_inside_modal: Boolean(dialog?.contains(document.activeElement)),
-                    horizontal_overflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
+                    horizontal_overflow: await stableRead(() => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1),
                     modal_is_logical_end: (modalRect?.left ?? Infinity) <= 4,
                     modal_public_interactions: modal?.querySelectorAll('[data-test="card-template-preview-ready"] a[href], [data-test="card-template-preview-ready"] [wire\\:click], [data-test="card-template-preview-ready"] button').length ?? 0,
                 };
@@ -1017,6 +1107,20 @@ it('keeps one inert responsive preview root with focus and dirty navigation prot
     $page->resize(1024, 800);
     $wideRestored = $page->script(<<<'JS'
         async () => {
+            // stable-read (R4): a layout value counts only when two consecutive
+            // animation-frame reads agree (cap 10 frames) — a mid-reflow transient
+            // can no longer become an assertion input.
+            const stableRead = async (fn) => {
+                const frame = () => new Promise((resolve) => requestAnimationFrame(resolve));
+                let previous = fn();
+                for (let i = 0; i < 10; i++) {
+                    await frame();
+                    const current = fn();
+                    if (JSON.stringify(current) === JSON.stringify(previous)) return current;
+                    previous = current;
+                }
+                return previous;
+            };
             const started = performance.now();
 
             while (
@@ -1052,7 +1156,7 @@ it('keeps one inert responsive preview root with focus and dirty navigation prot
                 dirty_value: input?.value ?? null,
                 dirty_protected: event.defaultPrevented,
                 opener_hidden: Boolean(trigger && (getComputedStyle(trigger).display === 'none' || trigger.offsetParent === null)),
-                horizontal_overflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
+                horizontal_overflow: await stableRead(() => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1),
                 preview_is_logical_end: previewRect?.right <= editorRect?.left,
                 columns_do_not_overlap: previewRect?.right <= editorRect?.left,
                 editor_width: editorRect?.width ?? null,
@@ -1087,6 +1191,20 @@ it('keeps one inert responsive preview root with focus and dirty navigation prot
     $page->resize(1023, 800);
     $narrowRestored = $page->script(<<<'JS'
         async () => {
+            // stable-read (R4): a layout value counts only when two consecutive
+            // animation-frame reads agree (cap 10 frames) — a mid-reflow transient
+            // can no longer become an assertion input.
+            const stableRead = async (fn) => {
+                const frame = () => new Promise((resolve) => requestAnimationFrame(resolve));
+                let previous = fn();
+                for (let i = 0; i < 10; i++) {
+                    await frame();
+                    const current = fn();
+                    if (JSON.stringify(current) === JSON.stringify(previous)) return current;
+                    previous = current;
+                }
+                return previous;
+            };
             await new Promise((resolve) => setTimeout(resolve, 250));
             const trigger = document.querySelector('[data-test="card-template-preview-open"]');
             const input = Array.from(document.querySelectorAll('[data-card-template-editor] input'))
@@ -1103,7 +1221,7 @@ it('keeps one inert responsive preview root with focus and dirty navigation prot
                 focus_on_opener: Boolean(document.activeElement?.closest('[data-test="card-template-preview-open"]')),
                 dirty_value: input?.value ?? null,
                 dirty_protected: event.defaultPrevented,
-                horizontal_overflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
+                horizontal_overflow: await stableRead(() => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1),
             };
         }
         JS);
@@ -1176,6 +1294,20 @@ it('keeps one inert responsive preview root with focus and dirty navigation prot
     $page->resize(1023, 800);
     $rapidResizeBack = $page->script(<<<'JS'
         async () => {
+            // stable-read (R4): a layout value counts only when two consecutive
+            // animation-frame reads agree (cap 10 frames) — a mid-reflow transient
+            // can no longer become an assertion input.
+            const stableRead = async (fn) => {
+                const frame = () => new Promise((resolve) => requestAnimationFrame(resolve));
+                let previous = fn();
+                for (let i = 0; i < 10; i++) {
+                    await frame();
+                    const current = fn();
+                    if (JSON.stringify(current) === JSON.stringify(previous)) return current;
+                    previous = current;
+                }
+                return previous;
+            };
             const started = performance.now();
 
             while (document.querySelector('[data-card-template-preview-modal]') !== null && performance.now() - started < 7000) {
@@ -1202,7 +1334,7 @@ it('keeps one inert responsive preview root with focus and dirty navigation prot
                 opener_visible: Boolean(trigger && getComputedStyle(trigger).display !== 'none' && trigger.getBoundingClientRect().width > 0),
                 focus_on_opener: Boolean(document.activeElement?.closest('[data-test="card-template-preview-open"]')),
                 dirty_value: input?.value ?? null,
-                horizontal_overflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
+                horizontal_overflow: await stableRead(() => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1),
             };
             delete window.__step5bRapidRootCount;
             delete window.__step5bRapidRootPeak;
@@ -1286,6 +1418,20 @@ it('renders the focused preview shell in English LTR', function (): void {
 
     $narrow = $page->script(<<<'JS'
         async () => {
+            // stable-read (R4): a layout value counts only when two consecutive
+            // animation-frame reads agree (cap 10 frames) — a mid-reflow transient
+            // can no longer become an assertion input.
+            const stableRead = async (fn) => {
+                const frame = () => new Promise((resolve) => requestAnimationFrame(resolve));
+                let previous = fn();
+                for (let i = 0; i < 10; i++) {
+                    await frame();
+                    const current = fn();
+                    if (JSON.stringify(current) === JSON.stringify(previous)) return current;
+                    previous = current;
+                }
+                return previous;
+            };
             await new Promise((resolve) => setTimeout(resolve, 200));
             const trigger = document.querySelector('[data-test="card-template-preview-open"]');
             trigger.focus();
@@ -1308,7 +1454,7 @@ it('renders the focused preview shell in English LTR', function (): void {
                 modal_roots: document.querySelectorAll('[data-card-template-preview-modal]').length,
                 active_inside_modal: Boolean(dialog?.contains(document.activeElement)),
                 modal_is_logical_end: (modalRect?.right ?? 0) >= window.innerWidth - 4,
-                horizontal_overflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
+                horizontal_overflow: await stableRead(() => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1),
             };
         }
         JS);
@@ -1342,6 +1488,20 @@ it('renders the focused preview shell in English LTR', function (): void {
 
     $geometry = $page->script(<<<'JS'
         async () => {
+            // stable-read (R4): a layout value counts only when two consecutive
+            // animation-frame reads agree (cap 10 frames) — a mid-reflow transient
+            // can no longer become an assertion input.
+            const stableRead = async (fn) => {
+                const frame = () => new Promise((resolve) => requestAnimationFrame(resolve));
+                let previous = fn();
+                for (let i = 0; i < 10; i++) {
+                    await frame();
+                    const current = fn();
+                    if (JSON.stringify(current) === JSON.stringify(previous)) return current;
+                    previous = current;
+                }
+                return previous;
+            };
             await new Promise((resolve) => setTimeout(resolve, 250));
             const previewRect = document.querySelector('[data-card-template-preview-column]')?.getBoundingClientRect();
             const editorRect = document.querySelector('[data-card-template-editor-column]')?.getBoundingClientRect();
@@ -1357,7 +1517,7 @@ it('renders the focused preview shell in English LTR', function (): void {
                 editor_width: editorRect?.width ?? null,
                 preview_width: previewRect?.width ?? null,
                 opener_hidden: Boolean(trigger && (getComputedStyle(trigger).display === 'none' || trigger.offsetParent === null)),
-                horizontal_overflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
+                horizontal_overflow: await stableRead(() => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1),
                 header_metadata: Boolean(document.querySelector('.fi-header [data-card-template-import-lock-metadata]')),
             };
         }
@@ -1410,6 +1570,20 @@ it('keeps card width and sample choice transient inside the compact preview cont
 
     $interaction = $page->script(<<<'JS'
         async () => {
+            // stable-read (R4): a layout value counts only when two consecutive
+            // animation-frame reads agree (cap 10 frames) — a mid-reflow transient
+            // can no longer become an assertion input.
+            const stableRead = async (fn) => {
+                const frame = () => new Promise((resolve) => requestAnimationFrame(resolve));
+                let previous = fn();
+                for (let i = 0; i < 10; i++) {
+                    await frame();
+                    const current = fn();
+                    if (JSON.stringify(current) === JSON.stringify(previous)) return current;
+                    previous = current;
+                }
+                return previous;
+            };
             await new Promise((resolve) => setTimeout(resolve, 250));
             const width = document.querySelector('[data-test="card-template-preview-width"]');
             const plane = document.querySelector('[data-card-template-preview-width-plane]');
@@ -1500,7 +1674,7 @@ it('keeps card width and sample choice transient inside the compact preview cont
                 controls_expanded: toggle?.getAttribute('aria-expanded'),
                 canvas_visible: getComputedStyle(ready).display !== 'none',
                 preview_roots: document.querySelectorAll('[data-card-template-preview-root]').length,
-                horizontal_overflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
+                horizontal_overflow: await stableRead(() => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1),
                 controls_share_row: controlsChildren.length === 3
                     && Math.max(...controlsChildren.map((rect) => rect.top + (rect.height / 2)))
                         - Math.min(...controlsChildren.map((rect) => rect.top + (rect.height / 2))) < 4,
@@ -1566,6 +1740,20 @@ it('keeps automatic preload search and effective image ranking aligned in the au
 
     $interaction = $page->script(<<<'JS'
         async () => {
+            // stable-read (R4): a layout value counts only when two consecutive
+            // animation-frame reads agree (cap 10 frames) — a mid-reflow transient
+            // can no longer become an assertion input.
+            const stableRead = async (fn) => {
+                const frame = () => new Promise((resolve) => requestAnimationFrame(resolve));
+                let previous = fn();
+                for (let i = 0; i < 10; i++) {
+                    await frame();
+                    const current = fn();
+                    if (JSON.stringify(current) === JSON.stringify(previous)) return current;
+                    previous = current;
+                }
+                return previous;
+            };
             const sleep = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds));
             const waitFor = async (callback, timeout = 7000) => {
                 const started = performance.now();
@@ -1694,7 +1882,7 @@ it('keeps automatic preload search and effective image ranking aligned in the au
                 direction: document.documentElement.dir,
                 viewport_width: window.innerWidth,
                 preview_roots: document.querySelectorAll('[data-card-template-preview-root]').length,
-                horizontal_overflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
+                horizontal_overflow: await stableRead(() => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1),
             };
         }
         JS);
@@ -1846,6 +2034,20 @@ it('keeps automatic preload search and effective image ranking aligned in the au
     $page->refresh();
     $restricted = $page->script(<<<'JS'
         async () => {
+            // stable-read (R4): a layout value counts only when two consecutive
+            // animation-frame reads agree (cap 10 frames) — a mid-reflow transient
+            // can no longer become an assertion input.
+            const stableRead = async (fn) => {
+                const frame = () => new Promise((resolve) => requestAnimationFrame(resolve));
+                let previous = fn();
+                for (let i = 0; i < 10; i++) {
+                    await frame();
+                    const current = fn();
+                    if (JSON.stringify(current) === JSON.stringify(previous)) return current;
+                    previous = current;
+                }
+                return previous;
+            };
             await new Promise((resolve) => setTimeout(resolve, 400));
 
             return {
@@ -1858,7 +2060,7 @@ it('keeps automatic preload search and effective image ranking aligned in the au
                 preview_roots: document.querySelectorAll('[data-card-template-preview-root]').length,
                 direction: document.documentElement.dir,
                 viewport_width: window.innerWidth,
-                horizontal_overflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
+                horizontal_overflow: await stableRead(() => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1),
             };
         }
         JS);
