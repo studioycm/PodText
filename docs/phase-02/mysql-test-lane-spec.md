@@ -145,11 +145,18 @@ Shape B — mysql, every clause required:
 
 ### Disposable-schema check
 
-First use of a schema must find it **empty**, recorded afterwards by a local
-fingerprint file keyed on `sha1(host|port|database)` under
-`storage/framework/testing/mysql-lane/`. Re-point at a populated unknown schema
-and there is no fingerprint → refused. Delete the fingerprint → next run
-demands an empty schema again.
+First use of a schema must find it **empty**, recorded afterwards by a
+fingerprint file keyed on `sha1(host|port|database)`. Since the S3 relocation
+(2026-08-10, commits `89a2ee1`/`810f6f2`) the fingerprint — and the run-lock —
+live **machine-globally** under `~/.cache/podtext-test-lane/` (HOME-anchored:
+purge-proof, TMPDIR-independent; owned by `App\Support\Testing\TestLaneContract`),
+so every worktree of the same user shares one lock and one fingerprint: a
+fresh worktree inherits the machine's fingerprint instead of hard-refusing,
+and two trees can no longer both hold "the" lock. Re-point at a populated
+unknown schema and there is no fingerprint → refused. Delete the fingerprint
+(or run `db:test-lane-reset`) → next run demands an empty schema again. A
+legacy per-tree fingerprint under `storage/framework/testing/mysql-lane/` is
+adopted once and removed.
 
 Honest limit: after the first run the schema holds exactly the app's migrations
 and is **indistinguishable from a real copy of the app database**. The check

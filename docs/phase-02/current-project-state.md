@@ -2887,3 +2887,41 @@ and `model:show` is safe to use again.
     above; `db:restore` now refuses outright — not merely warns — when a dump
     carries TIMESTAMP-column DDL while the target connection pins `+00:00`
     (`17c19ff`, hardened `f83949f`/`3bba8cc`/`a63d23f`).
+
+## Test-Suite Rethink — Phases R, T, and S executed
+
+- Program: `docs/phase-02/test-suite-rethink-spec.md` +
+  `docs/phase-02/test-suite-rethink-implementation-plan.md`, executed
+  2026-08-10 by subagent-driven development with per-task adversarial review.
+  Phase U (Pest 5 + plugins) remains gated on the operator's separate
+  go-ahead; DP4 (Rector write passes) stands open with **zero adopts
+  recommended**.
+- **Phase R** measured the suite (report in
+  `docs/research/test-suite-rethink-notes.md`): 1,969 tests / 622.2s, one
+  Feature file (`PublicMaintenanceModeTest`) alone at 148.7s, browser share
+  25.6%, guard query 1.0s/suite (F9 closed), CI feasible without weakening a
+  guard clause (deferred post-U by operator decision, mapping recorded).
+- **Phase T** introduced Rector dev-only (`7b6b52e` + three hardening waves):
+  dry-run-locked via `composer rector` and a contract guard test that PROVES
+  `--dry-run` withholds writes on a live fixture; wired to larastan through
+  the two-file `withPHPStanConfigs` (Rector skips extension-installer —
+  rectorphp #8006/#8141); **serial on purpose** (`00a4ff6`): parallel mode
+  measured nondeterministic and lossy (17 vs 8 changed files run-to-run;
+  serial 69/147 byte-identical ×4) — DP4 numbers corrected to the serial
+  floor, 0 adopt / 2 defer / 3 reject.
+- **Phase S** made the suite faster and steadier: the settings-save
+  subprocess tax (every save shelled to `node` ×2 under the sync queue)
+  faked out of 7 files (`cef86bc` + `0437705`, ~280s saved); the browser
+  single-read flake class retired via 26 identical `stableRead` helpers
+  (64 routed reads, hang-proof 250ms frame fallback,
+  `c720777`/`f1793cf`/`cd6f88c`); the lane run-lock and fingerprint moved
+  **machine-global** under `~/.cache/podtext-test-lane/` (HOME-anchored,
+  purge-proof; `89a2ee1`/`810f6f2`) — two worktrees can no longer race the
+  lane and a fresh worktree inherits the fingerprint instead of refusing;
+  boot guard consolidated behind `TestLaneContract::assertSafeBoot()`; DP9
+  flipped the last sqlite-shaped default to `mysql` (`203125c`, prose
+  truth-checked `57c1898`).
+- **End state: 1,988 tests / 20,869 assertions in 340.7s — 45% faster than
+  the R1 baseline at +19 tests.** Full per-task record: the rethink section
+  of `.superpowers/sdd/progress.md` (gitignored ledger); review packages and
+  reports alongside it.
