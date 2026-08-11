@@ -358,3 +358,75 @@ backups table now states the active retention policy (en+he). Designed,
 operator-gated (AskUserQuestion), and reviewed pre-implementation by the
 1.8 batching session (approved with 1 Important + 2 Minor, all
 addressed); gate 2008 tests / 20,982 assertions / 357s.
+
+### F13. Media-picker browser tests never adopted the sanctioned ResizeObserver filter — `OPEN` (identified 2026-08-12)
+`tests/Browser/MediaPickerUploadFocusReturnBrowserTest` asserts with a
+**bare** `assertNoJavaScriptErrors()` at `:138`, `:214` and `:273`, so it
+fails under full-run load on Chromium's
+`ResizeObserver loop completed with undelivered notifications.` while
+passing in isolation. Caught by the register-1.9 reviewer across three
+full runs (`c1cbae9` 387.6s, `1443b7d` 387.5s, both green on immediate
+re-run at 357.1s; the identical +30.5s delta identifies the same test each
+time; `tests/Browser` in isolation 56/56). The message is **already
+classified** as a Filament body/sidebar observer artifact
+(`settings-step5b-card-template-preview-lg-column-handoff.md:168-175`) and
+was already sighted unattributed in
+`current-project-state.md:235`.
+
+**The defect is the unapplied remedy, not the artifact.** The project's
+sanctioned technique exists and is in use at four call sites in
+`MediaPickerBrowserTest` (`:504`, `:688`, `:809`, `:1052`, `:1283`), plus
+`MediaResourceGalleryBrowserTest:836` and
+`MediaPickerCloneReproBrowserTest:274`: strip **only** that exact message
+from `window.__pestBrowser.jsErrors` and still fail on every unexpected
+message — explicitly never to be described as a literal zero-message run
+(`docs/research/settings-performance/44-…-mini2-implementation-plan.md:128`
+makes retaining it a standing requirement). `MediaPickerUploadFocusReturn`
+was written without it. Cause-pattern: **`one-home`, applied to a
+technique rather than a value** — a solved problem re-solved (here: not
+solved) at a second site because the solution had no single home.
+
+Fix shape: give the filter one home (a shared browser-test helper in
+`tests/Pest.php` or a small trait) and route all three bare assertions
+through it, rather than pasting the fifth copy of the literal. Record the
+artifact count as the step5b tests do. Not attempted in the 1.9 round:
+different subsystem, and the round's tree was committed — registered here
+at identification time so it does not close as chat-only. Whoever takes it
+should expect the same failure on the next full run until then.
+
+### F13. Media-picker browser tests never adopted the classified-artifact filter — `OPEN`
+
+Three full-suite runs across `c1cbae9`/`1443b7d` failed on the **first**
+attempt and passed on re-run, each ~**+30.5s** over a green run (387.6s /
+387.5s vs 357.1s). Identified on the third:
+`tests/Browser/MediaPickerUploadFocusReturnBrowserTest` → *"it returns focus
+to the workspace when the upload settles"*, failing at bare
+`$page->assertNoJavaScriptErrors()` (`:138`; siblings `:214`, `:273`) on
+`ResizeObserver loop completed with undelivered notifications` at
+`/admin/content-groups/{id}/edit`. `tests/Browser` in isolation: 56/56.
+
+**Not a new class, and not a mystery.** That exact message is already
+classified in-repo as a Chromium artifact from the Filament body/sidebar
+observer (`settings-step5b-card-template-preview-lg-column-handoff.md:168-175`),
+and `current-project-state.md:235` already records the same signature ("one
+ResizeObserver flake under full-run load passed 3/3 in isolation"). The
+**remedy also already exists and is a standing requirement**: the step5b
+browser tests record the artifact's count, strip *only* that exact known
+message from Pest's accumulator, and still fail on every unexpected message
+— explicitly "must not be described as a literal zero-message run"
+(`docs/research/settings-performance/44-…-mini2-implementation-plan.md:128`
+keeps that filtering mandatory). The media-picker browser tests simply never
+adopted it. A solved problem unapplied at a second site — `one-home` applied
+to a technique rather than a value.
+
+**Next:** port the step5b filter shape to the three bare call sites. Do
+**not** blanket-suppress console errors, and do not weaken the assertion to
+a warning — the whole point of that shape is that unexpected messages still
+fail. Until then the suite carries a ~1-in-2 first-run false failure under
+full-run load, which is the `flake-label` trap in reverse: a real, explained
+artifact wearing a flake's clothes.
+
+**Found by:** the register-1.8 session while re-verifying the 1.9 gate
+(three sightings, one identification). Registered here rather than left in
+chat per the register-at-the-moment rule; not filed against 1.9 — it
+predates that round and touches none of its surface.
