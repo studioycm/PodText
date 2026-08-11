@@ -1285,6 +1285,55 @@ by the orchestrator.)*
 
 ---
 
+## guard-names-the-instance · A guard keyed on one named case, under a comment claiming the general rule
+
+- **Cause:** an invariant holds for a *reason* (a property some cases have),
+  but the guard is written against the case that had that property when the
+  code was authored. The docblock states the general rule, so readers — and
+  the next reviewer — verify the sentence, not its coverage. Nothing is
+  wrong until a **supported configuration** gives another case the same
+  property: the comment stays true-sounding, the guard silently stops
+  covering, and no code change was needed to break it. Distinct from
+  `unpinned-promise` (there the promise has no test at all; here the promise
+  is pinned, but only on the named instance) and from `decorative-cap` (the
+  guard does real work — just not all of it).
+- **Evidence (2026-08-11, ACTUAL, handled — register 1.9,
+  `4da7542` → `c1cbae9`):** settings-backup retention skips pruning a
+  snapshot-set owner while a surviving backup still borrows it, and
+  `SettingsBackupManager::prune()` justified that deferral as bounded
+  "because Manual backups never borrow: every borrower is mortal".
+  `SettingsBackupSnapshotManager::findFullSetSourceBackup()` enforced it as
+  `if ($sourceValue === Manual->value) return null;`. But the real reason a
+  Manual cannot borrow is that its *retention ceiling* is keep-forever, and
+  `prune()` treats `<= 0` as keep-forever for **every** non-System source —
+  so the documented knob `SETTINGS_BACKUPS_RETENTION_BEFORE_IMPORT=0` makes
+  BeforeImport backups immortal while they can still borrow, pinning their
+  owner's rendered files forever: the exact unbounded accumulation the round
+  existed to remove. Found by the designated reviewer session reading the
+  comment against `.env.example` rather than against the code; reproduced by
+  a failing test before the fix.
+- **Where else:** `grep -rn "=== [A-Z][A-Za-z]*::[A-Za-z]*->value" app` and
+  `grep -rn "instanceof [A-Z][A-Za-z]*::" app` — every enum-case-equality
+  guard, read next to its own docblock: does the comment name a *property*
+  (keep-forever, unpublished, immutable) while the code names a *case*? Then
+  ask what config, factory state, or future case supplies that property.
+  Highest-risk homes: anything reading `config(...)` ceilings/limits keyed
+  per case, and policy/authorization checks keyed on a single role or status
+  case.
+- **Guard shape:** derive the guard from the property the comment claims —
+  here `isKeepForeverSource()` reading the borrower's own retention key, so
+  the rule follows the ceiling rather than the source name and is true by
+  construction under any configuration. Choose the safe fallback for
+  unmapped inputs (the fix reads an unknown source as keep-forever, costing
+  a re-render instead of pinning). Pin the *general* rule with a
+  non-founding instance — the fix's new test sets a **non-Manual** source to
+  keep-forever, which the original special case would fail.
+- **Status:** closed at the founding site (ceiling-driven refusal shipped and
+  pinned both ways). Registered as a search prompt; no sweep yet — one
+  sighting.
+
+---
+
 ## Route checklist (2026-08-03 round)
 
 Mark each step with commit hash + gate result when done.
