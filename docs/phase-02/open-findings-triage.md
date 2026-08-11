@@ -381,13 +381,42 @@ artifact's count, strip *only* that exact known message from Pest's
 accumulator, and still fail on every unexpected message — explicitly "must
 not be described as a literal zero-message run"
 (`docs/research/settings-performance/44-settings-development-metrics-retirement-mini2-implementation-plan.md:128`
-keeps that filtering mandatory). It is already in use at **five** call sites
-in `MediaPickerBrowserTest` (`:504`, `:688`, `:809`, `:1052`, `:1283`), plus
-`MediaResourceGalleryBrowserTest:836` and
-`MediaPickerCloneReproBrowserTest:274`. `MediaPickerUploadFocusReturn` — a
-sibling file in the same suite — simply never adopted it. A solved problem
-unapplied at a second site: **`one-home` applied to a technique rather than a
-value**, which is why the fix below is not "paste the literal a sixth time".
+keeps that filtering mandatory). `MediaPickerUploadFocusReturn` — a sibling
+file in the same suite — simply never adopted it. A solved problem unapplied
+at a second site: **`one-home` applied to a technique rather than a value**,
+which is why the fix below is not "paste the literal a sixth time".
+
+**The existing seven sites are two divergent techniques at two layers, and
+that is what makes this harder than an extraction** (established on
+re-audit, verified against the tree):
+
+- **Strict form, 6 sites** — `MediaPickerBrowserTest` (`:504`, `:688`,
+  `:809`, `:1052`, `:1283`) and `MediaResourceGalleryBrowserTest:836`:
+  JS-side, inside the evaluate block, mutating
+  `window.__pestBrowser.jsErrors` with **exact message equality** (trailing
+  period included). This is the step5b shape and the one the standing
+  requirement describes.
+- **Loose form, 1 site** — `MediaPickerCloneReproBrowserTest:269-276`: a
+  PHP-side helper filtering the returned array with
+  `! str_contains($error, 'ResizeObserver loop completed')` — a **prefix
+  match**, which would swallow any future ResizeObserver variant — and
+  carrying a second suppression beside it,
+  `! str_contains($error, 'isFromCancelledTransition')`.
+
+Consequences for the fix, in order of how easily they are got wrong:
+**(1)** the two intercept at different layers (browser-side accumulator vs
+post-hoc PHP array), so one helper cannot serve both without choosing a
+layer — design work, not extraction. **(2)** consolidating on the
+*convenient* form would **weaken six sites**: the PHP substring form is the
+easier one to share and is the wrong one, because a prefix match is exactly
+what the mini2 requirement forbids. The consolidation must land on strict
+equality. **(3)** `isFromCancelledTransition` must not ride along. It is
+**not** an unexplained blanket suppression — the helper's own docblock
+(`:262-267`) justifies it as Alpine's overlapping-modal-transition rejection
+noise, predating that test's defect — but that justification exists **only
+at that call site**: the string appears exactly once in the whole repo and
+in no doc. So it is a `one-home` case of its own nested inside this one, and
+it needs classifying in a doc *before* any shared helper could carry it.
 
 **Next:** give the filter one home (a shared browser-test helper in
 `tests/Pest.php` or a small trait) and route the three bare call sites
