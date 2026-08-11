@@ -2035,6 +2035,8 @@ return [
         'settings_backup_schema_unsupported' => 'גרסת סכמת הגיבוי חדשה יותר ממה שהיישום תומך בו.',
         'settings_backup_snapshot_borrowed' => 'מוצג מתוך גיבוי #:id',
         'settings_backup_scope_invalid' => 'גיבוי ההגדרות הזה שייך להיקף הגדרות אחר.',
+        'settings_backups_retention_notice_manual_capped' => 'שמירה אוטומטית מחזיקה את :system גיבויי המערכת, :before_import גיבויי לפני-ייבוא ו-:before_restore גיבויי לפני-שחזור החדשים ביותר. מגיבויים ידניים נשמרים :manual החדשים ביותר.',
+        'settings_backups_retention_notice_manual_forever' => 'שמירה אוטומטית מחזיקה את :system גיבויי המערכת, :before_import גיבויי לפני-ייבוא ו-:before_restore גיבויי לפני-שחזור החדשים ביותר. גיבויים ידניים נשמרים עד למחיקה.',
         'settings_import_applied' => 'יובאו :count יחידות הגדרה שנבחרו.',
         'settings_import_locks_saved' => 'נשמרו :count יחידות הגדרה נעולות.',
         'settings_import_missing_file' => 'החבילה מפנה לקובץ חסר בדיסק הציבורי בנתיב :path (:value).',

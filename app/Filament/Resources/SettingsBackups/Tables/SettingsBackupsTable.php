@@ -45,6 +45,7 @@ class SettingsBackupsTable
                     ->latest('id'),
             ]))
             ->defaultSort('id', 'desc')
+            ->description(self::retentionNotice())
             ->columns([
                 ImageColumn::make('home_thumbnail')
                     ->label(__('admin.fields.home_thumbnail'))
@@ -192,6 +193,30 @@ class SettingsBackupsTable
                         ->using(fn (SettingsBackupVersion $record) => app(SettingsBackupSnapshotManager::class)->deleteBackup($record)),
                 ]),
             ]);
+    }
+
+    /**
+     * The retention ceilings live in config/env, invisible from the admin
+     * panel — this notice states the active policy where the backups it
+     * governs are listed (register 1.9, operator-chosen visibility).
+     */
+    private static function retentionNotice(): string
+    {
+        $manualCeiling = (int) config('settings-backups.retention_manual', 0);
+        $ceilings = [
+            'system' => max(1, (int) config('settings-backups.retention', 25)),
+            'before_import' => (int) config('settings-backups.retention_before_import', 25),
+            'before_restore' => (int) config('settings-backups.retention_before_restore', 25),
+        ];
+
+        if ($manualCeiling > 0) {
+            return __('admin.messages.settings_backups_retention_notice_manual_capped', [
+                ...$ceilings,
+                'manual' => $manualCeiling,
+            ]);
+        }
+
+        return __('admin.messages.settings_backups_retention_notice_manual_forever', $ceilings);
     }
 
     /**

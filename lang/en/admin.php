@@ -2023,6 +2023,8 @@ return [
         'settings_backup_schema_unsupported' => 'This settings backup schema version is newer than this application supports.',
         'settings_backup_snapshot_borrowed' => 'Shown from backup #:id',
         'settings_backup_scope_invalid' => 'This settings backup is for a different settings scope.',
+        'settings_backups_retention_notice_manual_capped' => 'Automatic retention keeps the newest :system system, :before_import before-import, and :before_restore before-restore backups. Manual backups keep the newest :manual.',
+        'settings_backups_retention_notice_manual_forever' => 'Automatic retention keeps the newest :system system, :before_import before-import, and :before_restore before-restore backups. Manual backups are kept until deleted.',
         'settings_import_applied' => 'Imported :count selected setting units.',
         'settings_import_locks_saved' => 'Saved :count locked setting units.',
         'settings_import_missing_file' => 'The package references a missing public-disk file at :path (:value).',

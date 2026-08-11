@@ -8,10 +8,12 @@ use App\Models\User;
 use App\Settings\PublicContentSettings;
 use App\Support\PublicFront\PublicFrontConfigCache;
 use App\Support\PublicFront\PublicFrontConfigReader;
+use App\Support\SettingsLifecycle\PublicContentSettingsWriteCoordinator;
 use App\Support\SettingsLifecycle\PublicSettingsPackage;
 use App\Support\SettingsLifecycle\SettingsBackupManager;
 use Filament\Actions\Testing\TestAction;
 use Filament\Facades\Filament;
+use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Process;
@@ -103,6 +105,109 @@ it('dedupes identical system backups and prunes by retention', function (): void
         ->and($backups->where('source', SettingsBackupSource::Manual)->values())->toHaveCount(1)
         ->and($backups->where('source', SettingsBackupSource::BeforeImport)->values())->toHaveCount(1)
         ->and($backups->where('source', SettingsBackupSource::BeforeRestore)->values())->toHaveCount(1);
+});
+
+it('prunes before-import and before-restore backups past their per-source ceilings', function (): void {
+    config([
+        'settings-backups.retention_before_import' => 2,
+        'settings-backups.retention_before_restore' => 2,
+    ]);
+
+    $manager = app(SettingsBackupManager::class);
+    $manual = $manager->createManual('Manual keeper', auth()->user());
+
+    /*
+     * The generic Process fake writes no results file, so every full row ends
+     * FAILED and no backup can borrow — each source's ceiling applies to
+     * plain, unborrowed rows here.
+     */
+    $beforeImports = collect(range(1, 4))
+        ->map(fn (int $i) => $manager->create(SettingsBackupSource::BeforeImport, "BI {$i}", auth()->user()));
+    $beforeRestores = collect(range(1, 4))
+        ->map(fn (int $i) => $manager->create(SettingsBackupSource::BeforeRestore, "BR {$i}", auth()->user()));
+
+    expect(SettingsBackupVersion::query()->where('source', SettingsBackupSource::BeforeImport->value)->pluck('label')->all())
+        ->toBe(['BI 3', 'BI 4'])
+        ->and(SettingsBackupVersion::query()->where('source', SettingsBackupSource::BeforeRestore->value)->pluck('label')->all())
+        ->toBe(['BR 3', 'BR 4'])
+        ->and(SettingsBackupVersion::query()->whereKey($manual->getKey())->exists())->toBeTrue();
+
+    Storage::disk('local')->assertMissing("settings-backups/{$beforeImports->first()->getKey()}");
+    Storage::disk('local')->assertMissing("settings-backups/{$beforeRestores->first()->getKey()}");
+    expect(Storage::disk('local')->directoryExists("settings-backups/{$beforeImports->last()->getKey()}"))->toBeTrue();
+});
+
+it('keeps manual backups forever by default and prunes them only when a ceiling is configured', function (): void {
+    $manager = app(SettingsBackupManager::class);
+
+    $manuals = collect(range(1, 3))
+        ->map(fn (int $i) => $manager->createManual("Manual {$i}", auth()->user()));
+
+    expect(SettingsBackupVersion::query()->where('source', SettingsBackupSource::Manual->value)->count())->toBe(3);
+
+    config(['settings-backups.retention_manual' => 1]);
+
+    $manager->createManual('Manual 4', auth()->user());
+
+    expect(SettingsBackupVersion::query()->where('source', SettingsBackupSource::Manual->value)->pluck('label')->all())
+        ->toBe(['Manual 4']);
+
+    Storage::disk('local')->assertMissing("settings-backups/{$manuals->first()->getKey()}");
+});
+
+it('shows the retention policy notice on the backups table', function (): void {
+    config([
+        'settings-backups.retention' => 25,
+        'settings-backups.retention_before_import' => 10,
+        'settings-backups.retention_before_restore' => 7,
+    ]);
+
+    Livewire::test(ListSettingsBackups::class)
+        ->assertOk()
+        ->assertSee(__('admin.messages.settings_backups_retention_notice_manual_forever', [
+            'system' => 25,
+            'before_import' => 10,
+            'before_restore' => 7,
+        ]));
+
+    config(['settings-backups.retention_manual' => 5]);
+
+    Livewire::test(ListSettingsBackups::class)
+        ->assertOk()
+        ->assertSee(__('admin.messages.settings_backups_retention_notice_manual_capped', [
+            'system' => 25,
+            'before_import' => 10,
+            'before_restore' => 7,
+            'manual' => 5,
+        ]));
+});
+
+it('runs manual backup creation under the public settings write lock', function (): void {
+    app()->instance(
+        PublicContentSettingsWriteCoordinator::class,
+        new PublicContentSettingsWriteCoordinator(leaseSeconds: 300, waitSeconds: 0),
+    );
+
+    $lock = Cache::lock(PublicContentSettingsWriteCoordinator::LOCK_KEY, 300);
+
+    expect($lock->get())->toBeTrue();
+
+    try {
+        /*
+         * An uncoordinated createManual() would be the one prune() path able
+         * to interleave with a coordinated borrow establishment (reviewer
+         * finding 3 on the 1.9 design): it must join the write lock instead
+         * of proceeding.
+         */
+        expect(fn () => app(SettingsBackupManager::class)->createManual('Locked out', auth()->user()))
+            ->toThrow(LockTimeoutException::class);
+    } finally {
+        $lock->release();
+    }
+
+    $backup = app(SettingsBackupManager::class)->createManual('Lock released', auth()->user());
+
+    expect($backup)->toBeInstanceOf(SettingsBackupVersion::class);
 });
 
 it('downloads a checksum-valid package and protects the backup resource from guests', function (): void {

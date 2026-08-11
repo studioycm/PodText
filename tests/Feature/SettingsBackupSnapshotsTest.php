@@ -441,8 +441,8 @@ it('cleans up the batch job and results files after processing', function (): vo
     /*
      * Mixed outcome (one FAILED target): the per-row `error` columns carry
      * the post-mortem signal, so the per-invocation batch pair must not
-     * persist — non-System backups are never pruned (register 1.9), and one
-     * pair per retry would rebuild the accumulation this fix removed.
+     * persist — every retained backup (Manual is keep-forever by default)
+     * would otherwise accumulate one pair per invocation for its whole life.
      */
     expect($backup->snapshots()->where('status', SettingsBackupSnapshot::STATUS_FAILED)->count())->toBe(1)
         ->and(Storage::disk('local')->files("settings-backups/{$backup->getKey()}/jobs"))->toBe([]);
@@ -468,7 +468,9 @@ it('borrows the newest identical sibling full set instead of rescheduling one', 
     $settings->save();
 
     $second = app(SettingsBackupManager::class)->createManual('Set owner P2', auth()->user(), ['png'], ['light']);
-    $third = app(SettingsBackupManager::class)->createManual('Borrower P2', auth()->user(), ['png'], ['light']);
+    // Manual backups never borrow (register 1.9), so the borrower fixture is
+    // a mortal before-import backup.
+    $third = app(SettingsBackupManager::class)->create(SettingsBackupSource::BeforeImport, 'Borrower P2', auth()->user(), ['png'], ['light']);
 
     expect($first->refresh()->full_snapshot_source_backup_id)->toBeNull()
         ->and($first->snapshots()->where('kind', SettingsBackupSnapshot::KIND_FULL)->where('status', SettingsBackupSnapshot::STATUS_DONE)->count())->toBe(4)
@@ -483,7 +485,7 @@ it('renders a fresh full set when the identical sibling set is incomplete', func
     fakeSettingsSnapshotProcess(['search']);
 
     $first = app(SettingsBackupManager::class)->createManual('Incomplete owner', auth()->user(), ['png'], ['light']);
-    $second = app(SettingsBackupManager::class)->createManual('Not a borrower', auth()->user(), ['png'], ['light']);
+    $second = app(SettingsBackupManager::class)->create(SettingsBackupSource::BeforeImport, 'Not a borrower', auth()->user(), ['png'], ['light']);
 
     expect($first->snapshots()->where('kind', SettingsBackupSnapshot::KIND_FULL)->where('status', SettingsBackupSnapshot::STATUS_DONE)->count())->toBe(3)
         ->and($second->refresh()->full_snapshot_source_backup_id)->toBeNull()
@@ -495,13 +497,100 @@ it('only borrows a sibling set that covers every requested theme and format comb
 
     $lightOnly = app(SettingsBackupManager::class)->createManual('Light-only owner', auth()->user(), ['png'], ['light']);
     $bothThemes = app(SettingsBackupManager::class)->createManual('Both-theme owner', auth()->user(), ['png'], ['light', 'dark']);
-    $lightBorrower = app(SettingsBackupManager::class)->createManual('Light borrower', auth()->user(), ['png'], ['light']);
+    $lightBorrower = app(SettingsBackupManager::class)->create(SettingsBackupSource::BeforeImport, 'Light borrower', auth()->user(), ['png'], ['light']);
 
     expect($bothThemes->refresh()->full_snapshot_source_backup_id)->toBeNull()
         ->and($bothThemes->snapshots()->where('kind', SettingsBackupSnapshot::KIND_FULL)->count())->toBe(8)
         ->and($lightBorrower->refresh()->full_snapshot_source_backup_id)->toBe($bothThemes->getKey())
         ->and($lightBorrower->snapshots()->where('kind', SettingsBackupSnapshot::KIND_FULL)->count())->toBe(0)
         ->and($lightOnly->refresh()->full_snapshot_source_backup_id)->toBeNull();
+});
+
+it('skips pruning a borrowed full-set owner until its last borrower is pruned', function (): void {
+    config(['settings-backups.retention_before_import' => 1]);
+    fakeSettingsSnapshotProcess();
+
+    $manager = app(SettingsBackupManager::class);
+    $owner = $manager->create(SettingsBackupSource::BeforeImport, 'Borrowed owner', auth()->user(), ['png'], ['light']);
+    $borrower = $manager->create(SettingsBackupSource::BeforeImport, 'Borrower', auth()->user(), ['png'], ['light']);
+
+    /*
+     * The owner is past the ceiling of 1, but the surviving borrower still
+     * renders the owner's set — deleting it would silently empty the
+     * borrower's gallery (register 1.9 borrow-liveness guard).
+     */
+    expect($borrower->refresh()->full_snapshot_source_backup_id)->toBe($owner->getKey())
+        ->and(SettingsBackupVersion::query()->whereKey($owner->getKey())->exists())->toBeTrue()
+        ->and(Storage::disk('local')->directoryExists("settings-backups/{$owner->getKey()}"))->toBeTrue()
+        ->and($borrower->effectiveSnapshots()
+            ->where('kind', SettingsBackupSnapshot::KIND_FULL)
+            ->where('status', SettingsBackupSnapshot::STATUS_DONE))->toHaveCount(4);
+
+    $settings = step10S2VSettings();
+    $settings->homepage_item_limit = 61;
+    $settings->save();
+
+    $fresh = $manager->create(SettingsBackupSource::BeforeImport, 'Fresh payload', auth()->user(), ['png'], ['light']);
+
+    /*
+     * Now both owner and borrower are past the ceiling in the same pass: a
+     * borrower that is itself being pruned does not keep its owner alive.
+     */
+    expect(SettingsBackupVersion::query()->whereKey($owner->getKey())->exists())->toBeFalse()
+        ->and(SettingsBackupVersion::query()->whereKey($borrower->getKey())->exists())->toBeFalse()
+        ->and(SettingsBackupVersion::query()->whereKey($fresh->getKey())->exists())->toBeTrue()
+        ->and(Storage::disk('local')->directoryExists("settings-backups/{$owner->getKey()}"))->toBeFalse()
+        ->and(Storage::disk('local')->directoryExists("settings-backups/{$borrower->getKey()}"))->toBeFalse();
+});
+
+it('never borrows a sibling full set for manual backups', function (): void {
+    fakeSettingsSnapshotProcess();
+
+    $manager = app(SettingsBackupManager::class);
+    $manager->create(SettingsBackupSource::BeforeImport, 'BI owner', auth()->user(), ['png'], ['light']);
+    $manual = $manager->createManual('Manual own set', auth()->user(), ['png'], ['light']);
+
+    /*
+     * Manual backups are keep-forever: as borrowers they would pin a mortal
+     * owner past its ceiling permanently (operator decision on the 1.9
+     * design's reviewer finding 1), so a Manual always renders its own set.
+     */
+    expect($manual->refresh()->full_snapshot_source_backup_id)->toBeNull()
+        ->and($manual->snapshots()
+            ->where('kind', SettingsBackupSnapshot::KIND_FULL)
+            ->where('status', SettingsBackupSnapshot::STATUS_DONE)
+            ->count())->toBe(4);
+
+    // The reverse direction stays allowed: a mortal borrower borrowing from a
+    // keep-forever owner can never pin anything.
+    $beforeImport = $manager->create(SettingsBackupSource::BeforeImport, 'BI borrower', auth()->user(), ['png'], ['light']);
+
+    expect($beforeImport->refresh()->full_snapshot_source_backup_id)->toBe($manual->getKey());
+});
+
+it('holds borrow chain-freedom: no backup both borrows and owns full rows', function (): void {
+    fakeSettingsSnapshotProcess();
+
+    $manager = app(SettingsBackupManager::class);
+    $owner = $manager->create(SettingsBackupSource::BeforeImport, 'Chain owner', auth()->user(), ['png'], ['light']);
+    $manager->create(SettingsBackupSource::BeforeImport, 'Chain borrower', auth()->user(), ['png'], ['light']);
+
+    $ownerRow = $owner->snapshots()
+        ->where('kind', SettingsBackupSnapshot::KIND_FULL)
+        ->firstOrFail();
+    app(SettingsBackupSnapshotManager::class)->retry($ownerRow);
+
+    /*
+     * Load-bearing for retention (1.9 reviewer finding 2): single-pass prune
+     * soundness assumes no backup both borrows and owns. With a chain A→B→C,
+     * C could be deleted while surviving B still borrows it. This pin exists
+     * so a future "re-render this backup" feature fails loudly here instead
+     * of letting retention silently delete a live owner.
+     */
+    expect(SettingsBackupVersion::query()
+        ->whereNotNull('full_snapshot_source_backup_id')
+        ->whereHas('snapshots', fn ($query) => $query->where('kind', SettingsBackupSnapshot::KIND_FULL))
+        ->count())->toBe(0);
 });
 
 it('falls back to the source backup full set in the gallery and zip for deduped backups', function (): void {
@@ -557,7 +646,7 @@ it('renders the table image column and snapshot gallery controls', function (): 
         ->assertMountedActionModalSee(__('admin.actions.download_all_snapshots'));
 });
 
-it('removes snapshot files on explicit delete and retention prune while preserving non-system backups', function (): void {
+it('removes snapshot files on explicit delete and system retention prune while keeper sources stay within their ceilings', function (): void {
     config(['settings-backups.retention' => 1]);
 
     $singleDeleteBackup = createStep10S2VBackup(label: 'Delete with files');
@@ -568,8 +657,16 @@ it('removes snapshot files on explicit delete and retention prune while preservi
     Storage::disk('local')->assertMissing("settings-backups/{$singleDeleteBackup->getKey()}");
     expect(SettingsBackupVersion::query()->whereKey($singleDeleteBackup->getKey())->exists())->toBeFalse();
 
+    /*
+     * Non-System backups ARE prunable since register 1.9: the Manual keeper
+     * survives because Manual defaults to keep-forever, and the BeforeImport
+     * keeper because it is within its own ceiling — not because retention
+     * ignores their sources.
+     */
     $manual = createStep10S2VBackup(SettingsBackupSource::Manual, 'Manual keeper');
     createStep10S2VSnapshot($manual);
+    $beforeImport = createStep10S2VBackup(SettingsBackupSource::BeforeImport, 'Before-import keeper');
+    createStep10S2VSnapshot($beforeImport);
     $oldSystem = createStep10S2VBackup(SettingsBackupSource::System, 'Old system');
     createStep10S2VSnapshot($oldSystem);
     $newSystem = createStep10S2VBackup(SettingsBackupSource::System, 'New system');
@@ -579,11 +676,13 @@ it('removes snapshot files on explicit delete and retention prune while preservi
 
     expect(SettingsBackupVersion::query()->whereKey($oldSystem->getKey())->exists())->toBeFalse()
         ->and(SettingsBackupVersion::query()->whereKey($newSystem->getKey())->exists())->toBeTrue()
-        ->and(SettingsBackupVersion::query()->whereKey($manual->getKey())->exists())->toBeTrue();
+        ->and(SettingsBackupVersion::query()->whereKey($manual->getKey())->exists())->toBeTrue()
+        ->and(SettingsBackupVersion::query()->whereKey($beforeImport->getKey())->exists())->toBeTrue();
 
     Storage::disk('local')->assertMissing("settings-backups/{$oldSystem->getKey()}");
     Storage::disk('local')->assertExists("settings-backups/{$newSystem->getKey()}/thumbnail/home-light-desktop-1440.png");
     Storage::disk('local')->assertExists("settings-backups/{$manual->getKey()}/thumbnail/home-light-desktop-1440.png");
+    Storage::disk('local')->assertExists("settings-backups/{$beforeImport->getKey()}/thumbnail/home-light-desktop-1440.png");
 });
 
 it('does not delete pruned snapshot files when the surrounding transaction rolls back', function (): void {

@@ -37,7 +37,16 @@ class SettingsBackupManager
      */
     public function createManual(?string $label = null, ?User $user = null, ?array $snapshotFormats = null, ?array $snapshotThemes = null): SettingsBackupVersion
     {
-        return $this->create(SettingsBackupSource::Manual, $label, $user, $snapshotFormats, $snapshotThemes);
+        /*
+         * Manual creation joins the write coordinator so that prune() and
+         * borrow establishment always serialize under the one settings write
+         * lock — an uncoordinated prune could otherwise interleave with a
+         * coordinated import/restore committing a fresh borrow on a backup
+         * this pass is about to delete (1.9 design review, finding 3).
+         */
+        return $this->writeCoordinator->transaction(
+            fn (): SettingsBackupVersion => $this->create(SettingsBackupSource::Manual, $label, $user, $snapshotFormats, $snapshotThemes),
+        );
     }
 
     public function createSystem(): ?SettingsBackupVersion
@@ -200,16 +209,52 @@ class SettingsBackupManager
         return $report;
     }
 
+    /**
+     * Keep the newest N backups per source (register 1.9). The System ceiling
+     * is always at least 1; for the other sources a ceiling <= 0 means keep
+     * forever — Manual defaults to keep-forever because each one is a
+     * deliberate, labeled admin act. Runs on every create(), which is the
+     * only moment the set grows.
+     */
     public function prune(string $scope): void
     {
-        $retention = max(1, (int) config('settings-backups.retention', 25));
-        $idsToPrune = SettingsBackupVersion::query()
-            ->where('scope', $scope)
-            ->where('source', SettingsBackupSource::System->value)
-            ->orderByDesc('id')
-            ->pluck('id')
-            ->slice($retention)
+        $ceilings = [
+            SettingsBackupSource::System->value => max(1, (int) config('settings-backups.retention', 25)),
+            SettingsBackupSource::Manual->value => (int) config('settings-backups.retention_manual', 0),
+            SettingsBackupSource::BeforeImport->value => (int) config('settings-backups.retention_before_import', 25),
+            SettingsBackupSource::BeforeRestore->value => (int) config('settings-backups.retention_before_restore', 25),
+        ];
+
+        $candidateIds = collect($ceilings)
+            ->filter(fn (int $ceiling): bool => $ceiling > 0)
+            ->flatMap(fn (int $ceiling, string $source) => SettingsBackupVersion::query()
+                ->where('scope', $scope)
+                ->where('source', $source)
+                ->orderByDesc('id')
+                ->pluck('id')
+                ->slice($ceiling))
             ->values();
+
+        if ($candidateIds->isEmpty()) {
+            return;
+        }
+
+        /*
+         * Borrow-liveness guard: an owner whose full set is still borrowed by
+         * a SURVIVING backup is skipped this pass — deleting it would
+         * silently empty the borrower's gallery (nullOnDelete strips the
+         * pointer). Borrowers that are themselves candidates do not protect
+         * their owner. The deferral is bounded because Manual backups never
+         * borrow: every borrower is mortal, so a skipped owner is collected
+         * once its last borrower is pruned. Single-pass is sound because no
+         * backup both borrows and owns (chain-freedom, pinned in tests).
+         */
+        $liveBorrowedOwnerIds = SettingsBackupVersion::query()
+            ->whereIn('full_snapshot_source_backup_id', $candidateIds)
+            ->whereNotIn('id', $candidateIds)
+            ->pluck('full_snapshot_source_backup_id');
+
+        $idsToPrune = $candidateIds->diff($liveBorrowedOwnerIds)->values();
 
         if ($idsToPrune->isEmpty()) {
             return;

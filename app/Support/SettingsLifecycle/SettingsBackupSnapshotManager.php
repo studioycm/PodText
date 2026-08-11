@@ -161,10 +161,10 @@ class SettingsBackupSnapshotManager
 
     /**
      * The per-invocation batch pair never persists: the per-row `error`
-     * columns already carry the post-mortem signal, and non-System backups
-     * are never pruned (register 1.9), so keeping a pair per invocation would
-     * rebuild the very accumulation shape this fix removed (review finding 2
-     * on 476c508).
+     * columns already carry the post-mortem signal, and every retained backup
+     * (Manual is keep-forever by default; bounded sources retain up to their
+     * ceiling) would otherwise accumulate one pair per invocation for its
+     * whole life (review finding 2 on 476c508).
      */
     private function deleteBatchFiles(string $jobPath, string $resultsPath): void
     {
@@ -298,7 +298,15 @@ class SettingsBackupSnapshotManager
      * (a failed recapture), the borrower surfaces that failure and cannot
      * re-render a set of its own; the owner's next successful retry heals
      * both galleries, and a stuck-failing owner is equally broken in its own
-     * gallery — so recovery is operational there, not structural here.
+     * gallery — so recovery is operational there, not structural here. The
+     * unattended counterpart is stricter: retention (register 1.9) refuses to
+     * prune an owner while a surviving backup still borrows its set.
+     *
+     * Manual backups never borrow (register 1.9): they are keep-forever by
+     * default, and a keep-forever borrower would pin a mortal owner past its
+     * retention ceiling permanently. A Manual create re-renders its own set
+     * instead; every remaining borrower is mortal, which is what keeps a
+     * skipped owner's deferral bounded.
      *
      * @param  array<int, array{screen_key: string, url: string}>  $fullTargets
      * @param  array<int, string>  $themes
@@ -306,6 +314,12 @@ class SettingsBackupSnapshotManager
      */
     private function findFullSetSourceBackup(SettingsBackupVersion $backup, array $fullTargets, array $themes, array $formats): ?SettingsBackupVersion
     {
+        $sourceValue = $backup->source instanceof SettingsBackupSource ? $backup->source->value : $backup->source;
+
+        if ($sourceValue === SettingsBackupSource::Manual->value) {
+            return null;
+        }
+
         $needed = collect($fullTargets)
             ->flatMap(fn (array $target): Collection => collect($themes)
                 ->flatMap(fn (string $theme): Collection => collect($formats)
