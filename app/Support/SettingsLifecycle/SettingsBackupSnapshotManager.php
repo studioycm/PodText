@@ -316,13 +316,17 @@ class SettingsBackupSnapshotManager
      * unattended counterpart is stricter: retention (register 1.9) refuses to
      * prune an owner while a surviving backup still borrows its set.
      *
-     * A source whose own retention ceiling is keep-forever never borrows
-     * (register 1.9): prune() drops keep-forever sources from candidacy, so
-     * such a borrower would pin its mortal owner past that owner's ceiling
-     * permanently. It re-renders its own set instead. Manual is that case
-     * under the default configuration; the rule follows the ceiling rather
-     * than the source name so "every borrower is mortal" — what bounds a
-     * skipped owner's deferral in prune() — holds under any configuration.
+     * Two independent refusals gate borrowing (register 1.9), each with its
+     * own reason so that removing either is a deliberate act:
+     * **retention correctness** — a source whose own ceiling is keep-forever
+     * is never a prune candidate, so as a borrower it would pin its mortal
+     * owner permanently; keying this on the ceiling rather than a source name
+     * is what makes "every borrower is mortal" (prune()'s bounded-deferral
+     * premise) true under any configuration. **Durability** — Manual backups
+     * stay self-contained whatever their ceiling, because retention protects
+     * a live-borrowed owner from pruning but not from an admin deleting it by
+     * hand, and a curated keeper should not lose its gallery to an unrelated
+     * deletion. Under the default configuration the two coincide on Manual.
      *
      * @param  array<int, array{screen_key: string, url: string}>  $fullTargets
      * @param  array<int, string>  $themes
@@ -330,7 +334,21 @@ class SettingsBackupSnapshotManager
      */
     private function findFullSetSourceBackup(SettingsBackupVersion $backup, array $fullTargets, array $themes, array $formats): ?SettingsBackupVersion
     {
-        if ($this->isKeepForeverSource($backup->source)) {
+        $sourceValue = $backup->source instanceof SettingsBackupSource ? $backup->source->value : $backup->source;
+
+        // Retention correctness: a borrower that is never a prune candidate
+        // would pin its mortal owner past that owner's ceiling forever.
+        if ($this->isKeepForeverSource($sourceValue)) {
+            return null;
+        }
+
+        // Durability, and deliberately independent of the rule above: prune()
+        // refuses to delete a live-borrowed owner, but a human deleting that
+        // owner still nulls the pointer and empties the borrower's gallery
+        // with no retry offered. A Manual backup exists because an admin said
+        // "keep this", so it owns its files at the cost of one render even
+        // when a finite ceiling would otherwise make it an eligible borrower.
+        if ($sourceValue === SettingsBackupSource::Manual->value) {
             return null;
         }
 

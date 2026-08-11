@@ -3020,9 +3020,19 @@ and `model:show` is safe to use again.
   its own full set inside its one spawn; the 1.8 borrow tests were re-pinned
   onto BeforeImport borrowers, and the refusal (Manual default + a
   non-Manual keep-forever source) plus the allowed
-  mortal-borrows-from-immortal direction have their own pins. **Consequence
-  if a finite `retention_manual` is ever set: Manual becomes an ordinary
-  mortal borrower again** — bounded, but no longer self-contained.
+  mortal-borrows-from-immortal direction have their own pins.
+- **Manual self-containment is a second, independent refusal.** The ceiling
+  rule answers *"can this borrower pin its owner past retention?"*; it does
+  not answer *"can an unrelated deletion gut this backup's gallery?"* —
+  retention refuses to prune a live-borrowed owner, but an admin deleting
+  that owner by hand still nulls the pointer and empties the borrower's
+  gallery with no retry offered. So `findFullSetSourceBackup()` refuses
+  Manual borrowers whatever their ceiling, keeping the operator's literal
+  decision intact and costing one render only in a configuration nobody
+  runs today (default `retention_manual = 0` makes the two rules coincide).
+  Decided on the implementation reviewer's recommendation after this round
+  first shipped the ceiling rule alone; each refusal carries its own
+  one-line reason in code so removing either is deliberate.
 - **Reviewer findings taken:** chain-freedom (no backup both borrows and
   owns full rows) pinned explicitly — it is load-bearing for single-pass
   prune soundness; `createManual()` joined
@@ -3055,5 +3065,18 @@ and `model:show` is safe to use again.
   a **pre-existing** gap shared with the long-coordinated `restore()` action
   (production waits 5s, not the 0 the test injects), worth one future ticket
   wrapping both actions in a caught-and-notified path.
-- **End state: 2,009 tests / 20,985 assertions in 361s green**, pint clean,
+- **Unattributed flake sighting (round note, not a 1.9 defect).** The
+  reviewer's independent gate on `c1cbae9` failed **one** test on its first
+  run (2008/2009, 387.6s) and was green on an immediate re-run of the same
+  commit (2009/2009, 357.1s); every one of this session's runs was green.
+  The identity of the failing test was not captured and it did not
+  reproduce. What is established: the failing run was **+30.5s**, matching
+  the 30,000ms browser timeout in `tests/Pest.php` almost exactly; assertion
+  totals were identical in both runs; `tests/Browser` in isolation passed
+  56/56 (164.7s); and **no browser test touches the settings-backups
+  surface**, so the 1.9 table `description()` is not reachable that way.
+  Recorded as a sighting of the known browser-timeout flake class
+  (`docs/research/browser-timeout-contention-investigation.md`) rather than
+  attributed — if it recurs, capture the failing test name before re-running.
+- **End state: 2,010 tests / 20,987 assertions in 362s green**, pint clean,
   FilaCheck 35/35, `npm run build` clean.

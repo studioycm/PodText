@@ -347,7 +347,11 @@ ceiling-driven rule `isKeepForeverSource()` after the implementation
 review showed the source-name form left `RETENTION_BEFORE_IMPORT=0` (a
 documented knob) able to pin an owner forever; under default config the
 two are identical, and such a create re-renders its own set inside its one
-spawn. `createManual()` joined the write coordinator so every prune and
+spawn. A **second, independent** refusal keeps Manual borrowers out
+whatever their ceiling — retention protects a live-borrowed owner from
+pruning but not from a hand delete, so a curated keeper owns its files
+rather than risking a silently emptied gallery.
+`createManual()` joined the write coordinator so every prune and
 borrow establishment serialize under the settings write lock;
 chain-freedom (no backup both borrows and owns) is pinned as a test; the
 backups table now states the active retention policy (en+he). Designed,

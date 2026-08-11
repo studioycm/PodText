@@ -568,6 +568,30 @@ it('never borrows a sibling full set into a keep-forever source', function (): v
     expect($beforeImport->refresh()->full_snapshot_source_backup_id)->toBe($manual->getKey());
 });
 
+it('keeps manual backups self-contained even when their ceiling is finite', function (): void {
+    fakeSettingsSnapshotProcess();
+
+    /*
+     * Independent of the keep-forever rule: retention refuses to prune a
+     * live-borrowed owner, but a human deleting that owner still nulls the
+     * pointer and empties the borrower's gallery with no retry offered. A
+     * Manual backup exists because an admin deliberately said "keep this",
+     * so it owns its files at the cost of one render even when a finite
+     * ceiling makes it an otherwise-eligible mortal borrower.
+     */
+    config(['settings-backups.retention_manual' => 5]);
+
+    $manager = app(SettingsBackupManager::class);
+    $manager->create(SettingsBackupSource::BeforeImport, 'BI owner', auth()->user(), ['png'], ['light']);
+    $manual = $manager->createManual('Curated keeper', auth()->user(), ['png'], ['light']);
+
+    expect($manual->refresh()->full_snapshot_source_backup_id)->toBeNull()
+        ->and($manual->snapshots()
+            ->where('kind', SettingsBackupSnapshot::KIND_FULL)
+            ->where('status', SettingsBackupSnapshot::STATUS_DONE)
+            ->count())->toBe(4);
+});
+
 it('refuses the borrow for any source configured keep-forever, not only manual', function (): void {
     fakeSettingsSnapshotProcess();
 
