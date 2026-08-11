@@ -2942,8 +2942,9 @@ and `model:show` is safe to use again.
   `.superpowers/sdd/task-F12-report.md`, handoff
   `.superpowers/sdd/F12-fix-handoff.md`), executed 2026-08-11 with the F12
   diagnosis session as designated reviewer. The operator approved **all
-  three** proposed fixes; register 1.9 (non-System prune retention) stays
-  independently schedulable and was NOT shipped.
+  three** proposed fixes; register 1.9 (non-System prune retention) ~~stays
+  independently schedulable and~~ was NOT shipped here — it shipped later
+  the same day as its own round (`4da7542`, next section).
 - **Fix 1 — one spawn per backup.** `SettingsBackupSnapshotJob` now hands
   every pending row of its backup to
   `SettingsBackupSnapshotManager::processBatch()`, which writes ONE
@@ -2983,4 +2984,60 @@ and `model:show` is safe to use again.
   the batched results contract.
 - **End state: 2,000 tests / 20,947 assertions in 344s green**, pint clean,
   FilaCheck 35/35, `npm run build` clean. Reviewer verdict from the diagnosis
-  session gates final completion of the register entry.
+  session ~~gates~~ gated final completion of the register entry — approved
+  2026-08-11 (2 Important + 1 Minor, closed in `ee49793`; residual minors
+  taken in `41c8819`).
+
+## Settings-Backup Retention — register 1.9 executed
+
+- Program: operator-approved round closing the last unbounded ceiling in the
+  settings-backup subsystem (triage §F12 side-flag → register 1.9), executed
+  2026-08-11 (`4da7542`) with the 1.8 batching session as designated
+  reviewer. Design doc + verdict trail:
+  `.superpowers/sdd/task-1.9-design.md` (gitignored session artifact).
+- **Policy (operator-chosen at an AskUserQuestion gate):**
+  `SettingsBackupManager::prune()` keeps the newest N per source instead of
+  System-only — System unchanged at `max(1, retention)`; BeforeImport 25;
+  BeforeRestore 25; Manual keep-forever by default. Knobs in
+  `config/settings-backups.php` + `.env.example`
+  (`SETTINGS_BACKUPS_RETENTION_MANUAL/_BEFORE_IMPORT/_BEFORE_RESTORE`;
+  `<= 0` = keep forever for non-System sources). Pruning stays inline in
+  `create()` — growth is admin-action-bound, so pruning at the moment of
+  growth bounds the disk with no scheduler dependency.
+- **Borrow-liveness guard:** an owner whose full set is still borrowed by a
+  SURVIVING backup is skipped that pass; a borrower that is itself a
+  candidate does not protect its owner (same-pass pair dies together, files
+  deleted after commit). Deferral is bounded because **Manual backups never
+  borrow** — operator decision on the reviewer's Important finding
+  (`findFullSetSourceBackup()` has no source filter, so a keep-forever
+  Manual borrower would have pinned a mortal owner forever; reachable via
+  import → restore → create-manual-backup). A Manual create re-renders its
+  own full set inside its one spawn; the 1.8 borrow tests were re-pinned
+  onto BeforeImport borrowers, and the exclusion plus the allowed
+  mortal-borrows-from-immortal direction have their own pins.
+- **Reviewer findings taken:** chain-freedom (no backup both borrows and
+  owns full rows) pinned explicitly — it is load-bearing for single-pass
+  prune soundness; `createManual()` joined
+  `PublicContentSettingsWriteCoordinator` so every prune and borrow
+  establishment serialize under the settings write lock (closing the
+  select-then-delete race an uncoordinated manual create could run against
+  a coordinated import; lock-timeout behavior pinned);
+  `deleteBatchFiles()` PHPDoc and the batch-cleanup test comment no longer
+  claim non-System backups are never pruned; the old "preserving
+  non-system backups" test was renamed to name its real invariant and
+  gained a BeforeImport keeper fixture.
+- **Admin visibility (operator-chosen):** the backups table states the
+  active retention policy as a table `description()`, dynamic from config,
+  translation keys en+he
+  (`admin.messages.settings_backups_retention_notice_manual_forever` /
+  `_manual_capped`).
+- Deliberately NOT done: age-based retention, a scheduled prune command,
+  files-only retention (keep rows / drop files), structural shared-set
+  refcounting (operator floated it mid-round; assessed as a 1.8-scale
+  storage refactor whose semantics the skip-guard already delivers — a
+  legitimate future round, not a 1.9 fold-in), and any hand-edit of
+  `consolidated-open-findings.md` (its header forbids hand-edits; the
+  owning docs carry the status).
+- **End state: 2,008 tests / 20,982 assertions in 357s green**, pint clean,
+  FilaCheck 35/35, `npm run build` clean. Post-implementation diff review
+  by the 1.8 batching session pending; its verdict gates round completion.

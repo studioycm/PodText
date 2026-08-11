@@ -290,8 +290,9 @@ and still snapshotted). Sp3a's 68.5s reconciles as ~52 spawns × ~1.32s. Verdict
 **confirmed production-affecting (efficiency, not correctness)** — worker
 time + headless-Chromium load on live public pages per settings operation;
 the suite-side tax was already neutralized by S2b. Side-flag: `prune()`
-retention is System-only, so Manual/BeforeImport/BeforeRestore backups and
-snapshot files accumulate unboundedly. Evidence + measured table:
+retention ~~is~~ was System-only, so Manual/BeforeImport/BeforeRestore
+backups and snapshot files accumulated unboundedly — since closed as
+register 1.9 (`4da7542`, below). Evidence + measured table:
 `.superpowers/sdd/task-F12-report.md`; characterization pin:
 `tests/Feature/F12SettingsBackupDiagnosisTest.php`.
 **Shipped (2026-08-11, `476c508`; all three fixes operator-approved at the
@@ -331,5 +332,23 @@ one process, the job file is uuid-named per invocation (no invocation can
 reuse a file it did not write, even across concurrent retries), the pair is
 deleted after result mapping, and the ordering is now ASSERTED by the batch
 tests in `tests/Feature/SettingsBackupSnapshotsTest.php` — register 2.6's
-hazard no longer rests on luck. The `prune()` ceiling above remains a
-separate, still-open fix in the same subsystem (register 1.9).
+hazard no longer rests on luck. The `prune()` ceiling above ~~remains a
+separate, still-open fix~~ was fixed as the separate register-1.9 round
+(2026-08-11, `4da7542`): per-source count ceilings inside the same
+`prune()` call — System unchanged at `max(1, retention)`; BeforeImport and
+BeforeRestore keep the newest 25; Manual keep-forever by default (all
+env-tunable; `<= 0` = keep forever for non-System sources) — with a
+borrow-liveness guard (an owner whose full set is still borrowed by a
+surviving backup is skipped until its last borrower is pruned; a same-pass
+borrower does not protect its owner). Bounded-deferral holds because
+**Manual backups never borrow** (operator decision at the design gate,
+after the 1.8-reviewer's finding that a keep-forever borrower would pin a
+mortal owner forever — `findFullSetSourceBackup()` now refuses Manual
+borrowers and a Manual create re-renders its own set inside its one
+spawn). `createManual()` joined the write coordinator so every prune and
+borrow establishment serialize under the settings write lock;
+chain-freedom (no backup both borrows and owns) is pinned as a test; the
+backups table now states the active retention policy (en+he). Designed,
+operator-gated (AskUserQuestion), and reviewed pre-implementation by the
+1.8 batching session (approved with 1 Important + 2 Minor, all
+addressed); gate 2008 tests / 20,982 assertions / 357s.
