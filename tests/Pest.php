@@ -286,7 +286,11 @@ function knownResizeObserverArtifact(): string
  * error from the payload someone reads while debugging.
  *
  * `window.__pestBrowser.jsErrors` is a pest-plugin-browser internal, and this
- * function is the single place the suite reaches into it.
+ * function is the single place the suite reaches into it. The read is
+ * deliberately not optional-chained: the plugin's init script defines that
+ * object before any page script runs, so if it is ever missing the internal
+ * has moved and this should fail loudly here rather than silently strip
+ * nothing everywhere.
  *
  * Both page shapes are accepted because `visit()` returns a
  * PendingAwaitablePage that only becomes an AwaitableWebpage once something is
@@ -301,7 +305,7 @@ function stripKnownResizeObserverArtifacts(AwaitableWebpage|PendingAwaitablePage
     return (int) $page->script(<<<JS
         () => {
             const known = {$known};
-            const errors = window.__pestBrowser?.jsErrors ?? [];
+            const errors = window.__pestBrowser.jsErrors;
 
             window.__pestBrowser.jsErrors = errors.filter((error) => error.message !== known);
 
