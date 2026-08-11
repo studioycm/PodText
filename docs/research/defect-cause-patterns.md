@@ -4,12 +4,30 @@ Started 2026-08-03 by the dashboard route-plan orchestrator session. Every
 defect found in the Prompt 13 round traces to a repeatable cause-pattern; each
 entry here turns one finding into a search prompt for similar cases elsewhere.
 
-**Protocol.** This file has **one owner** — the orchestrator session curates
+**Protocol — SUPERSEDED 2026-08-11, see the paragraph below before writing.**
+~~This file has **one owner** — the orchestrator session curates
 it (operator-confirmed 2026-08-03; two writers on one ledger would be one-home
-itself). Side-sessions contribute candidate entries and sightings via the
+itself).~~ Side-sessions contribute candidate entries and sightings via the
 "open flags + pattern evidence" section of their final reports — with
 evidence: file:line or commit, one-line mechanism, ACTUAL vs POTENTIAL — and
-the orchestrator merges, dedupes, and curates. (Exception noted: the F-block
+the orchestrator merges, dedupes, and curates.
+
+**Custodianship (operator decision 2026-08-11, rule home
+`.ai/rules/docs.md` §"Living cross-session ledgers").** One-owner-forever is
+retired — it left this ledger stale for a week under a dormant creator-owner.
+Ownership now follows **freshest knowledge**: whoever last performs a
+sanctioned merge is the current custodian, recorded here at each merge. Every
+write, the custodian's included, passes one gate — **evidence attached**
+(commit + file/symbol), **narrow pathspec**, and an **independent session
+re-audits the diff**. A direct append that passes that gate is correct, not a
+protocol violation; the retired text above said otherwise, which is why it is
+struck rather than deleted. A dormant custodian gets a merge-or-transfer
+deadline by wake message, and silence past it transfers custodianship to the
+evidenced requester.
+
+**Custodian at last merge:** the register-1.9 settings-backup retention
+session — `guard-names-the-instance` entry (`0894641`, 2026-08-11) and this
+header correction, both re-audited by the register-1.8 batching session. (Exception noted: the F-block
 delegate was instructed pre-rule that it may append directly; its appends get
 curated on merge at verification.) A dedicated read-only bad-practices
 research task (chip `task_8d7e8616`) crunches the subject systematically via
@@ -1199,6 +1217,14 @@ by the orchestrator.)*
   `unhandled-arm`, which we can catch.
 - **Status:** open. No guard exists and none can exist for the literal form;
   the only real remedy is not writing the literal.
+- **Sibling, arrived at from the same greps —
+  `guard-names-the-instance`.** The remedy above assumes the property is
+  **intrinsic to the enum**, so `cases()` can answer for it. When the
+  property is a *runtime* fact (a config-keyed ceiling, a per-tenant flag),
+  even the derived-from-`cases()` form is unavailable, and the failure needs
+  no new case at all — an existing one acquires the property from
+  configuration. See that entry for the discriminator and the
+  derive-from-the-property's-actual-home fix.
 
 ## db-clock-coupling · Correctness depends on a server setting recorded nowhere in the repo
 
@@ -1297,6 +1323,21 @@ by the orchestrator.)*
   `unpinned-promise` (there the promise has no test at all; here the promise
   is pinned, but only on the named instance) and from `decorative-cap` (the
   guard does real work — just not all of it).
+- **Nearest neighbour — `set-membership-without-totality`, and the greps
+  overlap almost completely, so check which one you have.** That pattern
+  breaks when the **case set grows**: someone adds an enum case and the
+  hand-written literal silently omits it, which arrives in a diff a reviewer
+  can question. This one breaks with **no new case and no code change at
+  all** — the existing cases are untouched and one of them *acquires the
+  property at runtime*, so it arrives as a production `.env` edit months
+  later with no diff for anyone to review. The discriminator that decides
+  the remedy is **where the property lives**: that entry's fix is "build the
+  list, don't write it" (`array_filter(cases(), fn ($c) => $c->predicate())`,
+  putting the question on the enum), and **that fix is unavailable here** —
+  keep-forever is not intrinsic to `SettingsBackupSource::BeforeImport`, it
+  is owned by `config('settings-backups.retention_before_import')`, so an
+  enum predicate would be a lie by construction. Derive from the property's
+  *actual* home instead.
 - **Evidence (2026-08-11, ACTUAL, handled — register 1.9,
   `4da7542` → `c1cbae9`):** settings-backup retention skips pruning a
   snapshot-set owner while a surviving backup still borrows it, and
