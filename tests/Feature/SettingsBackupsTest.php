@@ -126,9 +126,9 @@ it('prunes before-import and before-restore backups past their per-source ceilin
     $beforeRestores = collect(range(1, 4))
         ->map(fn (int $i) => $manager->create(SettingsBackupSource::BeforeRestore, "BR {$i}", auth()->user()));
 
-    expect(SettingsBackupVersion::query()->where('source', SettingsBackupSource::BeforeImport->value)->pluck('label')->all())
+    expect(SettingsBackupVersion::query()->where('source', SettingsBackupSource::BeforeImport->value)->orderBy('id')->pluck('label')->all())
         ->toBe(['BI 3', 'BI 4'])
-        ->and(SettingsBackupVersion::query()->where('source', SettingsBackupSource::BeforeRestore->value)->pluck('label')->all())
+        ->and(SettingsBackupVersion::query()->where('source', SettingsBackupSource::BeforeRestore->value)->orderBy('id')->pluck('label')->all())
         ->toBe(['BR 3', 'BR 4'])
         ->and(SettingsBackupVersion::query()->whereKey($manual->getKey())->exists())->toBeTrue();
 

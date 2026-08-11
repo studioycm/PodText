@@ -340,12 +340,14 @@ BeforeRestore keep the newest 25; Manual keep-forever by default (all
 env-tunable; `<= 0` = keep forever for non-System sources) — with a
 borrow-liveness guard (an owner whose full set is still borrowed by a
 surviving backup is skipped until its last borrower is pruned; a same-pass
-borrower does not protect its owner). Bounded-deferral holds because
-**Manual backups never borrow** (operator decision at the design gate,
-after the 1.8-reviewer's finding that a keep-forever borrower would pin a
-mortal owner forever — `findFullSetSourceBackup()` now refuses Manual
-borrowers and a Manual create re-renders its own set inside its one
-spawn). `createManual()` joined the write coordinator so every prune and
+borrower does not protect its owner). Bounded-deferral holds because **a
+source whose own ceiling is keep-forever never borrows** — operator
+decision at the design gate ("Manual never borrows"), shipped as the
+ceiling-driven rule `isKeepForeverSource()` after the implementation
+review showed the source-name form left `RETENTION_BEFORE_IMPORT=0` (a
+documented knob) able to pin an owner forever; under default config the
+two are identical, and such a create re-renders its own set inside its one
+spawn. `createManual()` joined the write coordinator so every prune and
 borrow establishment serialize under the settings write lock;
 chain-freedom (no backup both borrows and owns) is pinned as a test; the
 backups table now states the active retention policy (en+he). Designed,

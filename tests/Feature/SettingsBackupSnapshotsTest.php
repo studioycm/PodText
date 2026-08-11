@@ -543,7 +543,7 @@ it('skips pruning a borrowed full-set owner until its last borrower is pruned', 
         ->and(Storage::disk('local')->directoryExists("settings-backups/{$borrower->getKey()}"))->toBeFalse();
 });
 
-it('never borrows a sibling full set for manual backups', function (): void {
+it('never borrows a sibling full set into a keep-forever source', function (): void {
     fakeSettingsSnapshotProcess();
 
     $manager = app(SettingsBackupManager::class);
@@ -551,9 +551,9 @@ it('never borrows a sibling full set for manual backups', function (): void {
     $manual = $manager->createManual('Manual own set', auth()->user(), ['png'], ['light']);
 
     /*
-     * Manual backups are keep-forever: as borrowers they would pin a mortal
-     * owner past its ceiling permanently (operator decision on the 1.9
-     * design's reviewer finding 1), so a Manual always renders its own set.
+     * A borrower whose own retention ceiling is keep-forever would pin a
+     * mortal owner past its ceiling permanently (1.9 design review), so it
+     * always renders its own set. Manual is that case by default.
      */
     expect($manual->refresh()->full_snapshot_source_backup_id)->toBeNull()
         ->and($manual->snapshots()
@@ -566,6 +566,30 @@ it('never borrows a sibling full set for manual backups', function (): void {
     $beforeImport = $manager->create(SettingsBackupSource::BeforeImport, 'BI borrower', auth()->user(), ['png'], ['light']);
 
     expect($beforeImport->refresh()->full_snapshot_source_backup_id)->toBe($manual->getKey());
+});
+
+it('refuses the borrow for any source configured keep-forever, not only manual', function (): void {
+    fakeSettingsSnapshotProcess();
+
+    /*
+     * `<= 0` means keep forever for every non-System source, and prune()
+     * drops those from candidacy entirely — so a keep-forever BeforeImport
+     * borrower would pin its owner exactly as a Manual one would. The refusal
+     * follows the borrower's OWN ceiling, which is what makes "every borrower
+     * is mortal" true by construction under any configuration.
+     */
+    config(['settings-backups.retention_before_import' => 0]);
+
+    $manager = app(SettingsBackupManager::class);
+    $owner = $manager->create(SettingsBackupSource::BeforeRestore, 'BR owner', auth()->user(), ['png'], ['light']);
+    $immortalBorrower = $manager->create(SettingsBackupSource::BeforeImport, 'Immortal BI', auth()->user(), ['png'], ['light']);
+
+    expect($owner->refresh()->full_snapshot_source_backup_id)->toBeNull()
+        ->and($immortalBorrower->refresh()->full_snapshot_source_backup_id)->toBeNull()
+        ->and($immortalBorrower->snapshots()
+            ->where('kind', SettingsBackupSnapshot::KIND_FULL)
+            ->where('status', SettingsBackupSnapshot::STATUS_DONE)
+            ->count())->toBe(4);
 });
 
 it('holds borrow chain-freedom: no backup both borrows and owns full rows', function (): void {

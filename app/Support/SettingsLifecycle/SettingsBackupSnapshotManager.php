@@ -273,6 +273,20 @@ class SettingsBackupSnapshotManager
             ?? PublicFrontConfigRegistry::defaults()['settings_backups'];
     }
 
+    /**
+     * Whether this source's own retention ceiling means "keep forever", so
+     * that backups of it are never prune candidates. The per-source config
+     * keys mirror the enum values (`retention_manual`, etc.); an unmapped
+     * source reads as keep-forever, which fails toward a re-render — the
+     * direction that costs a spawn instead of pinning an owner.
+     */
+    private function isKeepForeverSource(SettingsBackupSource|string|null $source): bool
+    {
+        $sourceValue = $source instanceof SettingsBackupSource ? $source->value : $source;
+
+        return (int) config("settings-backups.retention_{$sourceValue}", 0) <= 0;
+    }
+
     private function sourceGetsFullSnapshots(SettingsBackupSource|string|null $source): bool
     {
         $sourceValue = $source instanceof SettingsBackupSource ? $source->value : $source;
@@ -302,11 +316,13 @@ class SettingsBackupSnapshotManager
      * unattended counterpart is stricter: retention (register 1.9) refuses to
      * prune an owner while a surviving backup still borrows its set.
      *
-     * Manual backups never borrow (register 1.9): they are keep-forever by
-     * default, and a keep-forever borrower would pin a mortal owner past its
-     * retention ceiling permanently. A Manual create re-renders its own set
-     * instead; every remaining borrower is mortal, which is what keeps a
-     * skipped owner's deferral bounded.
+     * A source whose own retention ceiling is keep-forever never borrows
+     * (register 1.9): prune() drops keep-forever sources from candidacy, so
+     * such a borrower would pin its mortal owner past that owner's ceiling
+     * permanently. It re-renders its own set instead. Manual is that case
+     * under the default configuration; the rule follows the ceiling rather
+     * than the source name so "every borrower is mortal" — what bounds a
+     * skipped owner's deferral in prune() — holds under any configuration.
      *
      * @param  array<int, array{screen_key: string, url: string}>  $fullTargets
      * @param  array<int, string>  $themes
@@ -314,9 +330,7 @@ class SettingsBackupSnapshotManager
      */
     private function findFullSetSourceBackup(SettingsBackupVersion $backup, array $fullTargets, array $themes, array $formats): ?SettingsBackupVersion
     {
-        $sourceValue = $backup->source instanceof SettingsBackupSource ? $backup->source->value : $backup->source;
-
-        if ($sourceValue === SettingsBackupSource::Manual->value) {
+        if ($this->isKeepForeverSource($backup->source)) {
             return null;
         }
 

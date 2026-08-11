@@ -244,10 +244,12 @@ class SettingsBackupManager
          * a SURVIVING backup is skipped this pass — deleting it would
          * silently empty the borrower's gallery (nullOnDelete strips the
          * pointer). Borrowers that are themselves candidates do not protect
-         * their owner. The deferral is bounded because Manual backups never
-         * borrow: every borrower is mortal, so a skipped owner is collected
-         * once its last borrower is pruned. Single-pass is sound because no
-         * backup both borrows and owns (chain-freedom, pinned in tests).
+         * their owner. The deferral is bounded because a source configured
+         * keep-forever never borrows (`isKeepForeverSource()`), so every
+         * borrower is itself a prune candidate eventually and a skipped owner
+         * is collected once its last borrower is pruned. Single-pass is sound
+         * because no backup both borrows and owns (chain-freedom, pinned in
+         * tests).
          */
         $liveBorrowedOwnerIds = SettingsBackupVersion::query()
             ->whereIn('full_snapshot_source_backup_id', $candidateIds)

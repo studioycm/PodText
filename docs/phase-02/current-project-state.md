@@ -3007,14 +3007,22 @@ and `model:show` is safe to use again.
 - **Borrow-liveness guard:** an owner whose full set is still borrowed by a
   SURVIVING backup is skipped that pass; a borrower that is itself a
   candidate does not protect its owner (same-pass pair dies together, files
-  deleted after commit). Deferral is bounded because **Manual backups never
-  borrow** — operator decision on the reviewer's Important finding
-  (`findFullSetSourceBackup()` has no source filter, so a keep-forever
-  Manual borrower would have pinned a mortal owner forever; reachable via
-  import → restore → create-manual-backup). A Manual create re-renders its
-  own full set inside its one spawn; the 1.8 borrow tests were re-pinned
-  onto BeforeImport borrowers, and the exclusion plus the allowed
-  mortal-borrows-from-immortal direction have their own pins.
+  deleted after commit). Deferral is bounded because **a source whose own
+  retention ceiling is keep-forever never borrows**
+  (`isKeepForeverSource()`): such a borrower is never a prune candidate, so
+  it would pin its mortal owner forever (reachable via import → restore →
+  create-manual-backup). The operator decided this at the design gate as
+  "Manual never borrows"; the implementation review showed the source-name
+  form was a special case whose invariant a supported knob
+  (`SETTINGS_BACKUPS_RETENTION_BEFORE_IMPORT=0`) falsifies, so the shipped
+  rule follows the ceiling — identical to the operator's decision under
+  default config, true by construction under any. Such a create re-renders
+  its own full set inside its one spawn; the 1.8 borrow tests were re-pinned
+  onto BeforeImport borrowers, and the refusal (Manual default + a
+  non-Manual keep-forever source) plus the allowed
+  mortal-borrows-from-immortal direction have their own pins. **Consequence
+  if a finite `retention_manual` is ever set: Manual becomes an ordinary
+  mortal borrower again** — bounded, but no longer self-contained.
 - **Reviewer findings taken:** chain-freedom (no backup both borrows and
   owns full rows) pinned explicitly — it is load-bearing for single-pass
   prune soundness; `createManual()` joined
@@ -3038,6 +3046,14 @@ and `model:show` is safe to use again.
   legitimate future round, not a 1.9 fold-in), and any hand-edit of
   `consolidated-open-findings.md` (its header forbids hand-edits; the
   owning docs carry the status).
-- **End state: 2,008 tests / 20,982 assertions in 357s green**, pint clean,
-  FilaCheck 35/35, `npm run build` clean. Post-implementation diff review
-  by the 1.8 batching session pending; its verdict gates round completion.
+- **Implementation review** by the 1.8 batching session: approved with 1
+  Important + 1 Minor (2026-08-11), both closed in the follow-up commit —
+  the ceiling-driven borrow refusal above, and `orderBy('id')` on two
+  order-sensitive `pluck()` assertions that had been relying on InnoDB
+  index-walk order. Raised and deliberately deferred: `LockTimeoutException`
+  from the coordinated `createManual()` reaches the backups table uncaught —
+  a **pre-existing** gap shared with the long-coordinated `restore()` action
+  (production waits 5s, not the 0 the test injects), worth one future ticket
+  wrapping both actions in a caught-and-notified path.
+- **End state: 2,009 tests / 20,985 assertions in 361s green**, pint clean,
+  FilaCheck 35/35, `npm run build` clean.
