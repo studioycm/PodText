@@ -479,11 +479,12 @@ rather than merely persisting. It is left alone for a reason that stands on
 its own: that file does not strip-then-assert, it *measures* — it counts the
 artifact into a returned payload and asserts on both the count and the
 surviving messages — so a stripping helper would break what it is testing.
-The mini2 plan's mandate to retain that file's filtering
-(`44-…-mini2-implementation-plan.md:127-129`) is **not** the justification and
-must not be cited as one: it says retain the filtering, which a shared helper
-would also satisfy, and reading it as "do not refactor this file" would ossify
-the boundary on a prohibition the document never makes. A future consolidation
+The mini2 plan (`44-…-mini2-implementation-plan.md:127-129`) is the reason
+that filtering cannot simply be *deleted* — and nothing more. It is **not**
+the reason the file is left unrefactored, and must not be cited as one: it
+mandates retaining the behavior, which a shared helper would also satisfy, and
+reading it as "do not refactor this file" would ossify the boundary on a
+prohibition the document never makes. A future consolidation
 there is open, and it needs a measurement-shaped helper, not this one.
 
 **Accepted limit, recorded because it is how this could quietly come back.**
