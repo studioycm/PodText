@@ -497,7 +497,10 @@ consequence is the part that matters: **if this flake ever returns, the first
 suspect is the literal drifting from Chromium's real text** — a Playwright
 bump dropping the trailing period would do exactly that — **and the guard test
 will stay green throughout.** Confirm the emitted text before re-litigating
-the filter.
+the filter. Recorded here deliberately as a *disclosed* limit and **not
+counted as an `expectation-from-home` sighting**: a documented accepted limit
+is not a defect instance, and counting it would spend that pattern's sweep
+trigger on one. The non-registration is a decision, not an omission.
 
 **Also found while converting:** `visit()` returns `PendingAwaitablePage`,
 which only becomes `AwaitableWebpage` once a method is called on it. Every
