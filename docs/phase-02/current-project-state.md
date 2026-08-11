@@ -3075,11 +3075,11 @@ and `model:show` is safe to use again.
   `assertNoJavaScriptErrors()` (`:138`) on Chromium's
   `ResizeObserver loop completed with undelivered notifications.` The
   identical +30.5s delta across all three makes it the same test each time.
-  This message is already classified in-repo as a Filament body/sidebar
-  observer artifact
-  (`settings-step5b-card-template-preview-lg-column-handoff.md:168-175`),
-  and the sighting at :235 above is the same signature. **The real finding
-  is that the remedy exists and was never applied here** — registered in
-  `open-findings-triage.md` §F13.
+  The message is the already-classified Filament body/sidebar observer
+  artifact, not an unknown, and the in-repo remedy for it was simply never
+  applied to the media-picker tests — which is what makes it a work item
+  rather than a flake. **Details, evidence and fix shape live in
+  `open-findings-triage.md` §F13; this note is only the round record**, and
+  F13 predates 1.9 and touches none of its surface.
 - **End state: 2,010 tests / 20,987 assertions in 362s green**, pint clean,
   FilaCheck 35/35, `npm run build` clean.
