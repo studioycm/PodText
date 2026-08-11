@@ -277,7 +277,7 @@ CLOSED**: the operator approved the flip at the R gate and it shipped —
 `config/database.php:20` now falls back to `mysql` (`203125c`), with
 `.env.example` stating the conditional failure mode honestly (`57c1898`).
 
-### F12. `SettingsBackupManager` per-unit re-saves — `DIAGNOSED` (2026-08-10); fix propose-only, operator gate
+### F12. `SettingsBackupManager` per-unit re-saves — `FIXED` (2026-08-11, `476c508`; diagnosed 2026-08-10)
 The per-unit reading is **disproven**: one `import()` fires exactly ONE
 batched `SettingsSaved` (4 selected units → 1 event, instrumented), and no
 production caller loops. The real mechanism is **per-backup visual-snapshot
@@ -294,12 +294,25 @@ retention is System-only, so Manual/BeforeImport/BeforeRestore backups and
 snapshot files accumulate unboundedly. Evidence + measured table:
 `.superpowers/sdd/task-F12-report.md`; characterization pin:
 `tests/Feature/F12SettingsBackupDiagnosisTest.php`.
-**Next (propose-only, NOT implemented — operator picks):** (1) batch each
-backup's snapshot rows into one script invocation — the script already
-accepts a `targets` array under one browser launch, the manager sends
-singletons; 12→2 spawns per import; (2) no-op imports skip snapshot
-scheduling and the redundant save cycle; optional (3) payload-hash full-set
-dedup (gallery-semantics tradeoff).
+**Shipped (2026-08-11, `476c508`; all three fixes operator-approved at the
+implementing session's decision gate; register 1.9 deliberately NOT folded
+in):** (1) one spawn per backup — `SettingsBackupSnapshotJob` hands every
+pending row to `processBatch()`, which writes one uuid-named job JSON
+(per-target `snapshot_id` + `results_path`), spawns once, and maps the
+script's per-target results back to rows so one target's failure marks
+exactly its own row; the 150ms inter-row sleep was dropped and the spawn
+timeout scales per target, capped under the job timeout; (2) candidate-empty
+imports keep the BeforeImport audit row + `import_report` but skip snapshot
+scheduling and the save→`SettingsSaved`→`createSystem` cycle; (3)
+payload-minus-locks full-set dedup via `full_snapshot_source_backup_id`
+(nullOnDelete) with the gallery/zip falling back through
+`effectiveSnapshots()` — borrowed rows badged, never retryable. Measured per
+operation (before → after): save 2→1, bare import 12→2, content-rich import
+18→2, manual 10→1, ungated restore 10→1, gated restore 12→2, locked no-op
+import 10→0. The characterization pin was re-argued number by number; gate
+2000 tests / 20,947 assertions green. Reviewed by the F12 diagnosis session
+(approved 2026-08-11, 2 Important + 1 Minor findings, addressed in the same
+follow-up batch that carries this entry).
 **Answers the open question in
 `docs/research/settings-performance/21-authz-subsystem-dormancy-record.md`
 (§ "Open question for whoever owns settings lifecycle", :135-142):** that
@@ -310,7 +323,11 @@ the `node` spawn (`:107`) are sequential statements in one process, the file
 has exactly one writer and one reader, its payload is bounded metadata, and
 the only variable in its path is the snapshot's integer key. **Not a defect;
 it is also not a guarantee the code states** — it falls out of
-one-row-per-process. Fix (1) rewrites that exact site, so it must keep
-write-then-spawn ordering (or write atomically) instead of inheriting the
-property by luck. The `prune()` ceiling above is a separate fix in the same
-subsystem.
+one-row-per-process. Fix (1) rewrote that exact site and discharged the
+constraint: the batch write and the spawn remain sequential statements in
+one process, the job file is uuid-named per invocation (no invocation can
+reuse a file it did not write, even across concurrent retries), the pair is
+deleted after result mapping, and the ordering is now ASSERTED by the batch
+tests in `tests/Feature/SettingsBackupSnapshotsTest.php` — register 2.6's
+hazard no longer rests on luck. The `prune()` ceiling above remains a
+separate, still-open fix in the same subsystem (register 1.9).

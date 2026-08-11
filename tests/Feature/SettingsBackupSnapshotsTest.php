@@ -429,6 +429,35 @@ it('scales the batch process timeout per target and caps it under the job timeou
         && $process->timeout === 1740);
 });
 
+it('cleans up the batch job and results files after processing', function (): void {
+    Queue::fake();
+    fakeSettingsSnapshotProcess(['search']);
+
+    $backup = app(SettingsBackupManager::class)->createManual('Cleanup contract', auth()->user(), ['png'], ['light']);
+
+    (new SettingsBackupSnapshotJob($backup->getKey()))
+        ->handle(app(SettingsBackupSnapshotManager::class));
+
+    /*
+     * Mixed outcome (one FAILED target): the per-row `error` columns carry
+     * the post-mortem signal, so the per-invocation batch pair must not
+     * persist — non-System backups are never pruned (register 1.9), and one
+     * pair per retry would rebuild the accumulation this fix removed.
+     */
+    expect($backup->snapshots()->where('status', SettingsBackupSnapshot::STATUS_FAILED)->count())->toBe(1)
+        ->and(Storage::disk('local')->files("settings-backups/{$backup->getKey()}/jobs"))->toBe([]);
+
+    $backup->snapshots()->update(['status' => SettingsBackupSnapshot::STATUS_PENDING, 'error' => null]);
+
+    Process::fake(fn () => throw new RuntimeException('spawn exploded'));
+
+    (new SettingsBackupSnapshotJob($backup->getKey()))
+        ->handle(app(SettingsBackupSnapshotManager::class));
+
+    expect($backup->snapshots()->pluck('status')->unique()->all())->toBe([SettingsBackupSnapshot::STATUS_FAILED])
+        ->and(Storage::disk('local')->files("settings-backups/{$backup->getKey()}/jobs"))->toBe([]);
+});
+
 it('borrows the newest identical sibling full set instead of rescheduling one', function (): void {
     fakeSettingsSnapshotProcess();
 

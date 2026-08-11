@@ -150,11 +150,25 @@ class SettingsBackupSnapshotManager
                 ]);
         } catch (Throwable $exception) {
             $this->failSnapshots($snapshots, str($exception->getMessage())->limit(2000)->toString());
+            $this->deleteBatchFiles($jobPath, $resultsPath);
 
             return;
         }
 
         $this->applyBatchResults($snapshots, $resultsPath, $result);
+        $this->deleteBatchFiles($jobPath, $resultsPath);
+    }
+
+    /**
+     * The per-invocation batch pair never persists: the per-row `error`
+     * columns already carry the post-mortem signal, and non-System backups
+     * are never pruned (register 1.9), so keeping a pair per invocation would
+     * rebuild the very accumulation shape this fix removed (review finding 2
+     * on 476c508).
+     */
+    private function deleteBatchFiles(string $jobPath, string $resultsPath): void
+    {
+        $this->disk()->delete([$jobPath, $resultsPath]);
     }
 
     /**
@@ -277,6 +291,14 @@ class SettingsBackupSnapshotManager
      * re-rendering it. Owners must own their rows (a borrower has none), so
      * borrow chains cannot form; the newest owner wins; the scan is bounded
      * to the newest candidates because missing a match only costs a render.
+     *
+     * Accepted trade (review finding 3 on 476c508): the borrow is live — the
+     * borrower's gallery always shows the owner's CURRENT rows, checked as
+     * complete-and-DONE only at borrow time. If an owner row later degrades
+     * (a failed recapture), the borrower surfaces that failure and cannot
+     * re-render a set of its own; the owner's next successful retry heals
+     * both galleries, and a stuck-failing owner is equally broken in its own
+     * gallery — so recovery is operational there, not structural here.
      *
      * @param  array<int, array{screen_key: string, url: string}>  $fullTargets
      * @param  array<int, string>  $themes
