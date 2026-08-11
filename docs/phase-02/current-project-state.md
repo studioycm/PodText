@@ -3065,18 +3065,21 @@ and `model:show` is safe to use again.
   a **pre-existing** gap shared with the long-coordinated `restore()` action
   (production waits 5s, not the 0 the test injects), worth one future ticket
   wrapping both actions in a caught-and-notified path.
-- **Unattributed flake sighting (round note, not a 1.9 defect).** The
-  reviewer's independent gate on `c1cbae9` failed **one** test on its first
-  run (2008/2009, 387.6s) and was green on an immediate re-run of the same
-  commit (2009/2009, 357.1s); every one of this session's runs was green.
-  The identity of the failing test was not captured and it did not
-  reproduce. What is established: the failing run was **+30.5s**, matching
-  the 30,000ms browser timeout in `tests/Pest.php` almost exactly; assertion
-  totals were identical in both runs; `tests/Browser` in isolation passed
-  56/56 (164.7s); and **no browser test touches the settings-backups
-  surface**, so the 1.9 table `description()` is not reachable that way.
-  Recorded as a sighting of the known browser-timeout flake class
-  (`docs/research/browser-timeout-contention-investigation.md`) rather than
-  attributed — if it recurs, capture the failing test name before re-running.
+- **Flake sighting: IDENTIFIED, and not a 1.9 defect.** The reviewer's
+  independent gates failed one test on the first run of `c1cbae9` (387.6s)
+  and again on `1443b7d` (387.5s), each green on an immediate re-run of the
+  same commit (357.1s); every run in this session was green. Caught on the
+  third occurrence:
+  `tests/Browser/MediaPickerUploadFocusReturnBrowserTest` → *"it returns
+  focus to the workspace when the upload settles"*, failing at the **bare**
+  `assertNoJavaScriptErrors()` (`:138`) on Chromium's
+  `ResizeObserver loop completed with undelivered notifications.` The
+  identical +30.5s delta across all three makes it the same test each time.
+  This message is already classified in-repo as a Filament body/sidebar
+  observer artifact
+  (`settings-step5b-card-template-preview-lg-column-handoff.md:168-175`),
+  and the sighting at :235 above is the same signature. **The real finding
+  is that the remedy exists and was never applied here** — registered in
+  `open-findings-triage.md` §F13.
 - **End state: 2,010 tests / 20,987 assertions in 362s green**, pint clean,
   FilaCheck 35/35, `npm run build` clean.
