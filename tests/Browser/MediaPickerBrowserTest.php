@@ -501,10 +501,6 @@ it('keeps the acquisition workspace accessible responsive and stateful', functio
                 await new Promise((resolve) => setTimeout(resolve, 25));
             }
 
-            const knownResizeObserverMessage = 'ResizeObserver loop completed with undelivered notifications.';
-            window.__pestBrowser.jsErrors = (window.__pestBrowser?.jsErrors ?? [])
-                .filter((error) => error.message !== knownResizeObserverMessage);
-
             return {
                 modal_closed: document.querySelector(
                     '[aria-modal="true"].fi-modal-open [data-testid="media-picker"]',
@@ -514,6 +510,10 @@ it('keeps the acquisition workspace accessible responsive and stateful', functio
             };
         }
         JS);
+
+    // Before the js_errors diagnostic below reads the accumulator: that read is
+    // capped, so an unstripped artifact could evict a real error from it.
+    $resizeObserverArtifacts = stripKnownResizeObserverArtifacts($page);
 
     expect($closed['modal_closed'])->toBeTrue(json_encode($closed, JSON_THROW_ON_ERROR))
         ->and($closed['focus_returned'])->toBeTrue(json_encode($closed, JSON_THROW_ON_ERROR))
@@ -678,19 +678,14 @@ it('keeps the acquisition workspace accessible responsive and stateful', functio
         $saved['direct_shows_media'] = $reloaded['direct_shows_media'];
     }
 
+    $saved['resize_observer_artifacts'] = $resizeObserverArtifacts;
+
     expect($saved['saved'])->toBeTrue()
         ->and($saved['pending_cleared'])->toBeTrue(json_encode($saved, JSON_THROW_ON_ERROR))
         ->and($saved['direct_shows_media'])->toBeTrue(json_encode($saved, JSON_THROW_ON_ERROR))
         ->and($group->refresh()->coverMediaAttachment()->value('media_id'))->toBe($media->getKey());
 
-    $page->script(<<<'JS'
-        () => {
-            const knownResizeObserverMessage = 'ResizeObserver loop completed with undelivered notifications.';
-            window.__pestBrowser.jsErrors = (window.__pestBrowser?.jsErrors ?? [])
-                .filter((error) => error.message !== knownResizeObserverMessage);
-        }
-        JS);
-    $page->assertNoJavaScriptErrors();
+    assertNoUnexpectedJavaScriptErrors($page);
 })->with([
     'Hebrew RTL' => ['he', 'rtl'],
     'English LTR' => ['en', 'ltr'],
@@ -804,14 +799,7 @@ it('guards close while the parent accepts a returned selection', function (): vo
         ->and($result['selection_returned'])->toBeTrue(json_encode($result, JSON_THROW_ON_ERROR))
         ->and($result['focus_returned'])->toBeTrue(json_encode($result, JSON_THROW_ON_ERROR));
 
-    $page->script(<<<'JS'
-        () => {
-            const knownResizeObserverMessage = 'ResizeObserver loop completed with undelivered notifications.';
-            window.__pestBrowser.jsErrors = (window.__pestBrowser?.jsErrors ?? [])
-                .filter((error) => error.message !== knownResizeObserverMessage);
-        }
-        JS);
-    $page->assertNoJavaScriptErrors();
+    assertNoUnexpectedJavaScriptErrors($page);
 });
 
 it('closes a field picker locally while truly offline and reconciles the action on reconnect', function (): void {
@@ -1047,14 +1035,7 @@ it('closes a field picker locally while truly offline and reconciles the action 
         ->and($reconnected['parent_closed'])->toBeTrue()
         ->and($reconnected['scroll_lock_released'])->toBeTrue();
 
-    $page->script(<<<'JS'
-        () => {
-            const knownResizeObserverMessage = 'ResizeObserver loop completed with undelivered notifications.';
-            window.__pestBrowser.jsErrors = (window.__pestBrowser?.jsErrors ?? [])
-                .filter((error) => error.message !== knownResizeObserverMessage);
-        }
-        JS);
-    $page->assertNoJavaScriptErrors();
+    assertNoUnexpectedJavaScriptErrors($page);
 });
 
 it('returns acquired media to the inline owner action while attachment stays pending until save', function (): void {
@@ -1280,10 +1261,6 @@ it('returns acquired media to the inline owner action while attachment stays pen
             await waitFor(() => outerDialog() === undefined);
             await waitFor(() => requestsSettledAfter(completed));
 
-            const knownResizeObserverMessage = 'ResizeObserver loop completed with undelivered notifications.';
-            window.__pestBrowser.jsErrors = (window.__pestBrowser?.jsErrors ?? [])
-                .filter((error) => error.message !== knownResizeObserverMessage);
-
             return {
                 outer_closed: outerDialog() === undefined,
                 failed_requests: window.__mediaPickerFailedRequests,
@@ -1295,7 +1272,7 @@ it('returns acquired media to the inline owner action while attachment stays pen
         ->and($saved['failed_requests'])->toBe(0, json_encode($saved, JSON_THROW_ON_ERROR))
         ->and($group->refresh()->coverMediaAttachment()->value('media_id'))->toBe($media->getKey());
 
-    $page->assertNoJavaScriptErrors();
+    assertNoUnexpectedJavaScriptErrors($page);
 });
 
 it('keeps a nested media item action owned by the picker across repeated modal lifecycles', function (): void {
@@ -1420,10 +1397,6 @@ it('keeps a nested media item action owned by the picker across repeated modal l
             await waitFor(() => picker() === null);
             await waitFor(() => requestsSettledAfter(completed));
 
-            const knownResizeObserverMessage = 'ResizeObserver loop completed with undelivered notifications.';
-            window.__pestBrowser.jsErrors = (window.__pestBrowser?.jsErrors ?? [])
-                .filter((error) => error.message !== knownResizeObserverMessage);
-
             return {
                 first_child_opened: firstChildOpened,
                 second_child_opened: secondChildOpened,
@@ -1444,5 +1417,5 @@ it('keeps a nested media item action owned by the picker across repeated modal l
         ->and($result['picker_survived_second_close'])->toBeTrue()
         ->and($result['picker_closed_explicitly'])->toBeTrue();
 
-    $page->assertNoJavaScriptErrors();
+    assertNoUnexpectedJavaScriptErrors($page);
 });

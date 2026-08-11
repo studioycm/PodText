@@ -135,7 +135,7 @@ it('returns focus to the workspace when the upload settles', function (): void {
 
     expect($result['focus_inside_picker'])->toBeTrue(json_encode($result, JSON_THROW_ON_ERROR));
 
-    $page->assertNoJavaScriptErrors();
+    assertNoUnexpectedJavaScriptErrors($page);
 });
 
 it('returns focus even when the primary return target cannot take it', function (): void {
@@ -211,7 +211,7 @@ it('returns focus even when the primary return target cannot take it', function 
     expect($result['focus_returned'])->toBeTrue(json_encode($result, JSON_THROW_ON_ERROR))
         ->and($result['active_element'])->not->toBe('BODY', json_encode($result, JSON_THROW_ON_ERROR));
 
-    $page->assertNoJavaScriptErrors();
+    assertNoUnexpectedJavaScriptErrors($page);
 });
 
 it('leaves a deliberate focus choice alone when the upload settles', function (): void {
@@ -270,5 +270,5 @@ it('leaves a deliberate focus choice alone when the upload settles', function ()
 
     expect($result['kept_choice'])->toBeTrue(json_encode($result, JSON_THROW_ON_ERROR));
 
-    $page->assertNoJavaScriptErrors();
+    assertNoUnexpectedJavaScriptErrors($page);
 });

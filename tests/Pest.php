@@ -15,6 +15,8 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Process;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
+use Pest\Browser\Api\AwaitableWebpage;
+use Pest\Browser\Api\PendingAwaitablePage;
 use Spatie\LaravelSettings\SettingsContainer;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
@@ -253,6 +255,76 @@ expect()->extend('toBeOne', function () {
 | global functions to help you to reduce the number of lines of code in your test files.
 |
 */
+
+/**
+ * Chromium's exact ResizeObserver notice, trailing period included.
+ *
+ * Classified in-repo as a benign artifact of Filament's body/sidebar observer
+ * rather than a page defect
+ * (docs/phase-02/settings-step5b-card-template-preview-lg-column-handoff.md:168-175).
+ * It appears only under full-run load, which is why it wears a flake's clothes.
+ *
+ * Matching is exact by requirement, never a substring: a prefix match would
+ * also swallow future ResizeObserver messages that nobody has classified
+ * (docs/research/settings-performance/44-settings-development-metrics-retirement-mini2-implementation-plan.md:128).
+ */
+function knownResizeObserverArtifact(): string
+{
+    return 'ResizeObserver loop completed with undelivered notifications.';
+}
+
+/**
+ * Drop only the classified artifact from Pest's accumulator; report how many.
+ *
+ * The count is the point. A run that strips three artifacts is not a
+ * zero-message run, and describing it as one would hide the very thing the
+ * classification records — so the count comes back to the caller instead of
+ * being discarded inside the filter.
+ *
+ * Call this before any diagnostic that reads the accumulator, not only before
+ * an assertion: a capped read (`slice`) lets a benign artifact evict a real
+ * error from the payload someone reads while debugging.
+ *
+ * `window.__pestBrowser.jsErrors` is a pest-plugin-browser internal, and this
+ * function is the single place the suite reaches into it.
+ *
+ * Both page shapes are accepted because `visit()` returns a
+ * PendingAwaitablePage that only becomes an AwaitableWebpage once something is
+ * called on it: existing call sites arrive here post-`resize()` and a new one
+ * written as plain `visit()` would not, and a shared helper should not fail on
+ * the difference.
+ */
+function stripKnownResizeObserverArtifacts(AwaitableWebpage|PendingAwaitablePage $page): int
+{
+    $known = json_encode(knownResizeObserverArtifact(), JSON_THROW_ON_ERROR);
+
+    return (int) $page->script(<<<JS
+        () => {
+            const known = {$known};
+            const errors = window.__pestBrowser?.jsErrors ?? [];
+
+            window.__pestBrowser.jsErrors = errors.filter((error) => error.message !== known);
+
+            return errors.length - window.__pestBrowser.jsErrors.length;
+        }
+        JS);
+}
+
+/**
+ * Fail on every JavaScript error except the classified artifact.
+ *
+ * Strips the artifact, then hands the rest to Pest's own assertion, so an
+ * unexpected message still fails the test with the plugin's own reporting.
+ * Returns the artifact count for callers that record it in a failure payload.
+ */
+function assertNoUnexpectedJavaScriptErrors(AwaitableWebpage|PendingAwaitablePage $page): int
+{
+    $artifacts = stripKnownResizeObserverArtifacts($page);
+
+    $page->assertNoJavaScriptErrors();
+
+    return $artifacts;
+}
 
 function fakeSettingsBackupSnapshotQueue(): void
 {

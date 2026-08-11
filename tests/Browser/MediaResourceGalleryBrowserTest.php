@@ -291,7 +291,7 @@ it('renders the Media inventory as responsive accessible native cards', function
         ->and($narrow['actions_within_viewport'])->toBeTrue(json_encode($narrow, JSON_THROW_ON_ERROR))
         ->and($narrow['horizontal_overflow'])->toBeFalse();
 
-    $page->assertNoJavaScriptErrors();
+    assertNoUnexpectedJavaScriptErrors($page);
 })->with([
     'Hebrew RTL' => ['he', 'rtl'],
     'English LTR' => ['en', 'ltr'],
@@ -604,7 +604,7 @@ it('keeps canonical Media task context keyboard reachable across Edit and safe f
     expect($activatedTask['tab'])->toBe('in_use')
         ->and($activatedTask['selected'])->toContain(__('admin.media_library.tasks.in_use'));
 
-    $page->assertNoJavaScriptErrors();
+    assertNoUnexpectedJavaScriptErrors($page);
 })->with([
     'Hebrew canonical context' => ['he', 'rtl'],
     'English canonical context' => ['en', 'ltr'],
@@ -831,15 +831,7 @@ it('delivers a responsive accessible issue review and preserves its exact task o
     expect($firstTab)->toBe('media-issue-next')
         ->and($secondTab)->toBe('media-issue-return');
 
-    $page->script(<<<'JS'
-        () => {
-            const knownResizeObserverMessage = 'ResizeObserver loop completed with undelivered notifications.';
-            const browserErrors = window.__pestBrowser?.jsErrors ?? [];
-            window.__pestBrowser.jsErrors = browserErrors.filter(
-                (error) => error.message !== knownResizeObserverMessage,
-            );
-        }
-        JS);
+    stripKnownResizeObserverArtifacts($page);
     $accessibilityIssues = $page->script(<<<'JS'
         async () => {
             const root = document.querySelector('[data-testid="media-issue-review"]');

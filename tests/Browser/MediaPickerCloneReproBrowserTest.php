@@ -260,8 +260,26 @@ function m2CloneReproDriverHelpers(): string
 }
 
 /**
- * Alpine cancels modal transitions when cycles overlap; that rejection noise
- * predates the defect and is unrelated to component-root integrity.
+ * Filter this test's OWN error accumulator — `window.__m2.pageErrors`, fed by
+ * the listeners installed at m2CloneReproInstrument(), not Pest's
+ * `window.__pestBrowser.jsErrors`. Same message text as the shared artifact
+ * filter, a different channel, which is why this does not route through
+ * assertNoUnexpectedJavaScriptErrors().
+ *
+ * Two suppressions, each narrow:
+ *
+ * - The classified ResizeObserver artifact, matched by exact equality against
+ *   the one shared literal. Exact matching is safe across `describeError()`
+ *   despite the transform in the path: it returns strings unchanged and an
+ *   Error's `.message` verbatim, so Chromium's text reaches the accumulator
+ *   unaltered either way.
+ * - `isFromCancelledTransition` — Alpine cancels modal transitions when cycles
+ *   overlap, and that rejection noise predates this test's defect and is
+ *   unrelated to component-root integrity. It stays a substring match on the
+ *   distinctive property name because it arrives on the unhandledrejection
+ *   channel, where the reason object's serialized shape varies; and it stays
+ *   scoped to this call site, which is the only place in the repo that
+ *   observes it.
  *
  * @param  array<int, string>  $errors
  * @return array<int, string>
@@ -271,7 +289,7 @@ function m2CloneReproMaterialErrors(array $errors): array
     return array_values(array_filter(
         $errors,
         fn (string $error): bool => ! str_contains($error, 'isFromCancelledTransition')
-            && ! str_contains($error, 'ResizeObserver loop completed'),
+            && $error !== knownResizeObserverArtifact(),
     ));
 }
 
