@@ -285,8 +285,8 @@ fan-out ×2 backups per operation with no dedup on the full-set path**: one
 import = BeforeImport backup (2 thumbs + fullTargets(4 bare/7 content-rich) ×
 themes(2) × formats(1) rows) + post-save System backup (2 thumbs), one
 node+Playwright spawn per row (~1.2–1.8s) — **12 spawns/import bare, 18
-content-rich, 10 for a fully locked NO-OP import** (it still saves and still
-snapshots). Sp3a's 68.5s reconciles as ~52 spawns × ~1.32s. Verdict:
+content-rich, 10 for a fully locked NO-OP import** (pre-fix: it still saved
+and still snapshotted). Sp3a's 68.5s reconciles as ~52 spawns × ~1.32s. Verdict:
 **confirmed production-affecting (efficiency, not correctness)** — worker
 time + headless-Chromium load on live public pages per settings operation;
 the suite-side tax was already neutralized by S2b. Side-flag: `prune()`
@@ -316,14 +316,16 @@ follow-up batch that carries this entry).
 **Answers the open question in
 `docs/research/settings-performance/21-authz-subsystem-dormancy-record.md`
 (§ "Open question for whoever owns settings lifecycle", :135-142):** that
-doc asks whether the plain `put()` at `SettingsBackupSnapshotManager.php:104`
-(no atomic write, no lock, no size bound) can ever hand a truncated job file
-to its reader. From this diagnosis: **no, not today** — `put()` (`:104`) and
-the `node` spawn (`:107`) are sequential statements in one process, the file
-has exactly one writer and one reader, its payload is bounded metadata, and
-the only variable in its path is the snapshot's integer key. **Not a defect;
-it is also not a guarantee the code states** — it falls out of
-one-row-per-process. Fix (1) rewrote that exact site and discharged the
+doc asks whether the plain `put()` in the pre-fix
+`SettingsBackupSnapshotManager::processSnapshot()` (no atomic write, no
+lock, no size bound) can ever hand a truncated job file to its reader. From
+this diagnosis: **no, not today** — the `put()` and the `node` spawn were
+sequential statements in one process, the file had exactly one writer and
+one reader, its payload is bounded metadata, and the only variable in its
+path was the snapshot's integer key. **Not a defect; it is also not a
+guarantee the code states** — it fell out of one-row-per-process. Fix (1)
+rewrote that exact site into `processBatch()` (cited by symbol on purpose —
+line numbers here drifted within a day of shipping) and discharged the
 constraint: the batch write and the spawn remain sequential statements in
 one process, the job file is uuid-named per invocation (no invocation can
 reuse a file it did not write, even across concurrent retries), the pair is
