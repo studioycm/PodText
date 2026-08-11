@@ -15,14 +15,47 @@ if (targets.length === 0) {
     throw new Error('The settings snapshot job does not contain any targets.');
 }
 
-const browser = await chromium.launch({ headless: true });
+// One target's failure must not sink its batch siblings: every target gets its
+// own try/catch, and the per-target outcomes are always written to the results
+// file (before the browser closes) so the manager can map them back to rows.
+const results = [];
+let browser = null;
 
 try {
+    browser = await chromium.launch({ headless: true });
+
     for (const target of targets) {
-        await captureTarget(browser, target);
+        try {
+            await captureTarget(browser, target);
+            results.push({ snapshot_id: target.snapshot_id ?? null, ok: true, error: null });
+        } catch (error) {
+            results.push({
+                snapshot_id: target.snapshot_id ?? null,
+                ok: false,
+                error: String(error?.message ?? error),
+            });
+        }
     }
 } finally {
-    await browser.close();
+    if (typeof job.results_path === 'string' && job.results_path !== '') {
+        try {
+            await fs.mkdir(path.dirname(job.results_path), { recursive: true });
+            await fs.writeFile(job.results_path, JSON.stringify({ results }), 'utf8');
+        } catch (error) {
+            console.error(`Could not write the snapshot results file: ${String(error?.message ?? error)}`);
+        }
+    }
+
+    if (browser) {
+        await browser.close();
+    }
+}
+
+const failedResults = results.filter((result) => !result.ok);
+
+if (failedResults.length > 0) {
+    console.error(`${failedResults.length} of ${targets.length} snapshot targets failed.`);
+    process.exitCode = 1;
 }
 
 async function captureTarget(browser, target) {

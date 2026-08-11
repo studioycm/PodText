@@ -54,12 +54,13 @@ class SettingsBackupManager
         );
     }
 
-    public function createBeforeImport(?User $user = null): SettingsBackupVersion
+    public function createBeforeImport(?User $user = null, bool $withSnapshots = true): SettingsBackupVersion
     {
         return $this->create(
             source: SettingsBackupSource::BeforeImport,
             label: __('admin.messages.settings_backup_before_import_label'),
             user: $user,
+            withSnapshots: $withSnapshots,
         );
     }
 
@@ -67,7 +68,7 @@ class SettingsBackupManager
      * @param  array<int, string>|null  $snapshotFormats
      * @param  array<int, string>|null  $snapshotThemes
      */
-    public function create(SettingsBackupSource $source, ?string $label = null, ?User $user = null, ?array $snapshotFormats = null, ?array $snapshotThemes = null): ?SettingsBackupVersion
+    public function create(SettingsBackupSource $source, ?string $label = null, ?User $user = null, ?array $snapshotFormats = null, ?array $snapshotThemes = null, bool $withSnapshots = true): ?SettingsBackupVersion
     {
         if (! Schema::hasTable('settings_backup_versions')) {
             if ($source === SettingsBackupSource::System) {
@@ -94,7 +95,7 @@ class SettingsBackupManager
             'created_by_user_id' => $user?->getKey(),
         ]);
 
-        if (! $this->shouldSkipSnapshots($source, $package, $backup)) {
+        if ($withSnapshots && ! $this->shouldSkipSnapshots($source, $package, $backup)) {
             $this->snapshots->scheduleForBackup($backup, $snapshotFormats, $snapshotThemes);
         }
 
@@ -168,8 +169,19 @@ class SettingsBackupManager
         $allowedPaths = $analysis->selectablePaths();
         $selectedPaths = $this->mediaProjector->expandSelectedPaths($selectedPaths);
         $selectedPaths = array_values(array_intersect($selectedPaths, $allowedPaths));
-        $beforeImportBackup = $this->createBeforeImport($user);
-        $appliedPaths = $this->applySelectedPayload($package->payloadForApplication(), $selectedPaths, $mode, $user);
+
+        /*
+         * The merge is pure array work on in-transaction state, so computing
+         * it first does not change what the BeforeImport backup captures.
+         * Candidate-empty is a strict no-op (the definitive applied list is a
+         * post-normalization subset of the candidates): keep the audit backup
+         * row + report, but schedule no snapshots and skip the unconditional
+         * save→SettingsSaved→createSystem cycle.
+         */
+        $merge = $this->mergeSelectedPayload($package->payloadForApplication(), $selectedPaths, $mode);
+        $isNoOp = $merge['candidate_paths'] === [];
+        $beforeImportBackup = $this->createBeforeImport($user, withSnapshots: ! $isNoOp);
+        $appliedPaths = $isNoOp ? [] : $this->applyMergedSelection($merge, $user);
         $report = SettingsImportReport::fromAnalysis(
             analysis: $analysis,
             selectedPaths: $selectedPaths,
@@ -243,19 +255,8 @@ class SettingsBackupManager
             return false;
         }
 
-        return PublicSettingsPackage::canonicalPayloadJson($this->payloadWithoutImportLocks($latest->package()->payload()))
-            === PublicSettingsPackage::canonicalPayloadJson($this->payloadWithoutImportLocks($package->payload()));
-    }
-
-    /**
-     * @param  array<string, mixed>  $payload
-     * @return array<string, mixed>
-     */
-    private function payloadWithoutImportLocks(array $payload): array
-    {
-        unset($payload['import_locks']);
-
-        return $payload;
+        return PublicSettingsPackage::canonicalPayloadJsonWithoutImportLocks($latest->package()->payload())
+            === PublicSettingsPackage::canonicalPayloadJsonWithoutImportLocks($package->payload());
     }
 
     private function validatePackageForRestore(PublicSettingsPackage $package): void
@@ -302,15 +303,19 @@ class SettingsBackupManager
     }
 
     /**
+     * Pure array work on in-transaction state: computes the merged payload
+     * and the pre-normalization candidate applied paths without touching
+     * settings — which is what licenses running it before createBeforeImport.
+     *
      * @param  array<string, mixed>  $importedPayload
      * @param  array<int, string>  $selectedPaths
-     * @return array<int, string>
+     * @return array{payload: array<string, mixed>, original_payload: array<string, mixed>, candidate_paths: array<int, string>}
      */
-    private function applySelectedPayload(array $importedPayload, array $selectedPaths, SettingsImportMode $mode, ?User $user): array
+    private function mergeSelectedPayload(array $importedPayload, array $selectedPaths, SettingsImportMode $mode): array
     {
         $currentPayload = PublicSettingsPackage::fromCurrentSettings()->payload();
         $originalPayload = $currentPayload;
-        $appliedPaths = [];
+        $candidatePaths = [];
 
         foreach (array_values(array_unique($selectedPaths)) as $path) {
             $currentExists = $this->schema->valueExists($currentPayload, $path);
@@ -326,21 +331,34 @@ class SettingsBackupManager
                 }
 
                 $this->schema->setValue($currentPayload, $path, $mergedValue);
-                $appliedPaths[] = $path;
+                $candidatePaths[] = $path;
 
                 continue;
             }
 
             if ($mode === SettingsImportMode::Replace && str_contains($path, '.')) {
                 $this->schema->forgetValue($currentPayload, $path);
-                $appliedPaths[] = $path;
+                $candidatePaths[] = $path;
             }
         }
 
-        $appliedPayload = $this->applyPayload($currentPayload, $user);
+        return [
+            'payload' => $currentPayload,
+            'original_payload' => $originalPayload,
+            'candidate_paths' => $candidatePaths,
+        ];
+    }
 
-        return collect($appliedPaths)
-            ->filter(fn (string $path): bool => $this->schema->value($originalPayload, $path) !== $this->schema->value($appliedPayload, $path))
+    /**
+     * @param  array{payload: array<string, mixed>, original_payload: array<string, mixed>, candidate_paths: array<int, string>}  $merge
+     * @return array<int, string>
+     */
+    private function applyMergedSelection(array $merge, ?User $user): array
+    {
+        $appliedPayload = $this->applyPayload($merge['payload'], $user);
+
+        return collect($merge['candidate_paths'])
+            ->filter(fn (string $path): bool => $this->schema->value($merge['original_payload'], $path) !== $this->schema->value($appliedPayload, $path))
             ->values()
             ->all();
     }

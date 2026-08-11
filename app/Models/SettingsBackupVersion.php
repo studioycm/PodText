@@ -7,6 +7,7 @@ use App\Models\Concerns\HasFoldedSearchColumns;
 use App\Models\Contracts\FoldsSearchColumns;
 use App\Support\SettingsLifecycle\PublicSettingsPackage;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -22,6 +23,7 @@ use Illuminate\Support\Str;
     'source',
     'created_by_user_id',
     'import_report',
+    'full_snapshot_source_backup_id',
 ])]
 class SettingsBackupVersion extends Model implements FoldsSearchColumns
 {
@@ -46,6 +48,41 @@ class SettingsBackupVersion extends Model implements FoldsSearchColumns
     public function snapshots(): HasMany
     {
         return $this->hasMany(SettingsBackupSnapshot::class, 'backup_id');
+    }
+
+    /** @return BelongsTo<SettingsBackupVersion, $this> */
+    public function fullSnapshotSourceBackup(): BelongsTo
+    {
+        return $this->belongsTo(SettingsBackupVersion::class, 'full_snapshot_source_backup_id');
+    }
+
+    /**
+     * The rows the gallery and zip present: this backup's own rows, plus the
+     * source backup's full set when this backup borrowed one (full-set dedup)
+     * and owns no full rows itself.
+     *
+     * @return Collection<int, SettingsBackupSnapshot>
+     */
+    public function effectiveSnapshots(): Collection
+    {
+        $own = $this->snapshots()->get();
+        $borrowed = new Collection;
+
+        if ($this->full_snapshot_source_backup_id !== null
+            && $own->where('kind', SettingsBackupSnapshot::KIND_FULL)->isEmpty()) {
+            $borrowed = $this->fullSnapshotSourceBackup?->snapshots()
+                ->where('kind', SettingsBackupSnapshot::KIND_FULL)
+                ->get() ?? new Collection;
+        }
+
+        return $own->merge($borrowed)
+            ->sortBy([
+                ['screen_key', 'asc'],
+                ['theme', 'asc'],
+                ['kind', 'asc'],
+                ['format', 'asc'],
+            ])
+            ->values();
     }
 
     public function homeThumbnailSnapshot(): ?SettingsBackupSnapshot

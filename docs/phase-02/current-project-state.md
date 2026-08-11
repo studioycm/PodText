@@ -2935,3 +2935,52 @@ and `model:show` is safe to use again.
   the R1 baseline at +19 tests.** Full per-task record: the rethink section
   of `.superpowers/sdd/progress.md` (gitignored ledger); review packages and
   reports alongside it.
+
+## Settings-Backup Snapshot Batching — register 1.8 executed (F12 fix)
+
+- Program: operator-approved fix of triage finding F12 (diagnosis
+  `.superpowers/sdd/task-F12-report.md`, handoff
+  `.superpowers/sdd/F12-fix-handoff.md`), executed 2026-08-11 with the F12
+  diagnosis session as designated reviewer. The operator approved **all
+  three** proposed fixes; register 1.9 (non-System prune retention) stays
+  independently schedulable and was NOT shipped.
+- **Fix 1 — one spawn per backup.** `SettingsBackupSnapshotJob` now hands
+  every pending row of its backup to
+  `SettingsBackupSnapshotManager::processBatch()`, which writes ONE
+  uuid-named job JSON (each target carrying its `snapshot_id`, plus a
+  `results_path`), spawns `scripts/settings-snapshots.mjs` once, and maps the
+  script's per-target results file back to rows — ok→DONE, error→FAILED with
+  its own message, missing→FAILED with the process error. The script catches
+  per-target errors, always writes the results file before closing the
+  browser, and exits non-zero if any target failed. Write-then-spawn ordering
+  (register 2.6) is now ASSERTED by tests that read the job file at spawn
+  time; per-shot failure isolation is demonstrated on a one-spawn multi-target
+  batch with one failing target. The per-row 150ms sleep was DROPPED — it
+  paced successive spawns, and the single spawn's targets already serialize
+  inside one browser. The spawn timeout scales per target
+  (`snapshot_process_timeout × targets`, capped at `snapshot_job_timeout −
+  60`).
+- **Fix 2 — no-op import short-circuit.** `import()` computes the merge
+  before `createBeforeImport()`; when the candidate applied-path list is
+  empty it keeps the BeforeImport backup row + `import_report` for audit but
+  schedules no snapshots and skips the save→SettingsSaved→createSystem cycle
+  (a fully locked no-op import now costs 0 spawns and 0 saves).
+- **Fix 3 — full-set dedup.** A full-source backup whose payload-minus-locks
+  matches a sibling that OWNS a complete DONE full set for the same
+  targets×themes×formats records `full_snapshot_source_backup_id` (new
+  nullable FK, nullOnDelete) and schedules thumbnails only. The gallery and
+  per-backup zip fall back to the source backup's full set through
+  `SettingsBackupVersion::effectiveSnapshots()`; borrowed rows are badged
+  (`admin.messages.settings_backup_snapshot_borrowed`, en+he) and never offer
+  retry. Deleting the owner nulls the pointer and degrades the borrower to
+  its own rows.
+- **Measured spawns per operation (before → after):** explicit save 2→1,
+  bare import 12→2, content-rich import 18→2, createManual 10→1, ungated
+  restore 10→1, gated restore 12→2, fully locked no-op import 10→0. The
+  44-row worst configured case (png+pdf+html × both themes) is now one spawn.
+  `tests/Feature/F12SettingsBackupDiagnosisTest.php` re-pinned with every
+  drop argued inline; `fakeSettingsSnapshotProcess()` (tests/Pest.php) fakes
+  the batched results contract.
+- **End state: 2,000 tests / 20,947 assertions in 344s green**, pint clean,
+  FilaCheck 35/35, `npm run build` clean. Reviewer verdict from the diagnosis
+  session gates final completion of the register entry.

@@ -2033,6 +2033,7 @@ return [
         'settings_backup_no_diff' => 'אין הבדלים בין הגיבוי הזה לבין ההגדרות הנוכחיות.',
         'settings_backup_no_snapshots' => 'עדיין לא נוצרו צילומים לגיבוי הזה.',
         'settings_backup_schema_unsupported' => 'גרסת סכמת הגיבוי חדשה יותר ממה שהיישום תומך בו.',
+        'settings_backup_snapshot_borrowed' => 'מוצג מתוך גיבוי #:id',
         'settings_backup_scope_invalid' => 'גיבוי ההגדרות הזה שייך להיקף הגדרות אחר.',
         'settings_import_applied' => 'יובאו :count יחידות הגדרה שנבחרו.',
         'settings_import_locks_saved' => 'נשמרו :count יחידות הגדרה נעולות.',

@@ -2021,6 +2021,7 @@ return [
         'settings_backup_no_diff' => 'No differences between this backup and current settings.',
         'settings_backup_no_snapshots' => 'No snapshots have been created for this backup yet.',
         'settings_backup_schema_unsupported' => 'This settings backup schema version is newer than this application supports.',
+        'settings_backup_snapshot_borrowed' => 'Shown from backup #:id',
         'settings_backup_scope_invalid' => 'This settings backup is for a different settings scope.',
         'settings_import_applied' => 'Imported :count selected setting units.',
         'settings_import_locks_saved' => 'Saved :count locked setting units.',

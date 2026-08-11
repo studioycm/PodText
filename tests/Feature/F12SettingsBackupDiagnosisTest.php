@@ -1,20 +1,34 @@
 <?php
 
 /**
- * F12 characterization pin — the diagnosed per-operation cost structure of
- * SettingsBackupManager, NOT a desired contract.
+ * F12 characterization pin — the per-operation cost structure of
+ * SettingsBackupManager AFTER the operator-approved register-1.8 fixes.
  *
  * Counts, per operation: SettingsSaved events (by settings class),
  * SettingsBackupVersion rows (by source), snapshot rows (by kind/status),
  * SettingsBackupSnapshotJob executions, and node subprocess spawns
- * (Process::fake). Key pins: one import() fires exactly ONE batched save
- * (never per-unit), while every full-source backup (manual/before_import/
- * before_restore) schedules thumbs + fullTargets × themes × formats rows,
- * one node spawn each, with no dedup — even for a fully locked no-op import.
+ * (Process fake with the batched results contract). The diagnosed pre-fix
+ * numbers stay in per-scenario comments; every drop names the fix that
+ * caused it:
  *
- * Evidence for docs/phase-02/open-findings-triage.md F12 and
- * .superpowers/sdd/task-F12-report.md. An approved batching fix is expected
- * to LOWER these counts and must update the expectations deliberately.
+ * - Fix 1 (batching): each backup's snapshot rows render through ONE node
+ *   spawn instead of one per row — spawns count backups now, not rows.
+ * - Fix 2 (no-op short-circuit): a candidate-empty import keeps its audit
+ *   BeforeImport row but schedules no snapshots and skips the unconditional
+ *   save→SettingsSaved→createSystem cycle.
+ * - Fix 3 (full-set dedup) never fires in these scenarios — no scenario
+ *   creates two full-source backups with identical payload-minus-locks where
+ *   the earlier one owns a DONE full set — so it is pinned by the dedicated
+ *   tests in SettingsBackupSnapshotsTest instead.
+ *
+ * The still-pinned diagnosis result: one import() fires exactly ONE batched
+ * save (never per-unit), and full-source backups still schedule
+ * thumbs + fullTargets × themes × formats ROWS (row counts did not change —
+ * only spawns and the no-op flow did).
+ *
+ * Evidence for docs/phase-02/open-findings-triage.md F12,
+ * .superpowers/sdd/task-F12-report.md, and the fix handoff
+ * .superpowers/sdd/F12-fix-handoff.md.
  */
 
 use App\Enums\SettingsBackupSource;
@@ -48,7 +62,10 @@ beforeEach(function (): void {
     config(['app.url' => 'https://podtext.test']);
 
     Cache::flush();
-    Process::fake();
+    // Fix 1 made DONE conditional on the per-target results file the script
+    // contract now promises; a plain Process::fake() would mark every row
+    // FAILED, so the pin fakes the full batched results contract instead.
+    fakeSettingsSnapshotProcess();
     Storage::fake('local');
 
     app()->forgetInstance(PublicContentSettings::class);
@@ -191,7 +208,9 @@ it('A: one explicit save costs one system backup, one job, thumbnail-only spawns
         ->and($state['backups'][0]['rows_total'])->toBe($manifest['thumbnail_targets'])
         ->and($state['snapshot_rows_done'])->toBe($state['snapshot_rows_total']);
 
-    Process::assertRanTimes(f12NodeSpawnFilter(), $state['snapshot_rows_done']);
+    // Was 2 (one spawn per thumbnail row); fix 1 renders the system backup's
+    // 2 rows through one batched spawn.
+    Process::assertRanTimes(f12NodeSpawnFilter(), 1);
 });
 
 it('B: one import on a bare DB fires ONE batched save but pays two backups and thumbs+full spawns', function (): void {
@@ -237,7 +256,9 @@ it('B: one import on a bare DB fires ONE batched save but pays two backups and t
         ->and($state['backups'][1]['rows_total'])->toBe($manifest['thumbnail_targets'])
         ->and($state['snapshot_rows_done'])->toBe($state['snapshot_rows_total']);
 
-    Process::assertRanTimes(f12NodeSpawnFilter(), $state['snapshot_rows_done']);
+    // Was 12 (one spawn per row: 10 before_import + 2 system); fix 1 batches
+    // each backup into one spawn — one per backup, two per import.
+    Process::assertRanTimes(f12NodeSpawnFilter(), 2);
 });
 
 it('C: the same single import on a content-rich DB fans out to every full target', function (): void {
@@ -274,7 +295,10 @@ it('C: the same single import on a content-rich DB fans out to every full target
         ->and($state['backups'][1]['rows_total'])->toBe($manifest['thumbnail_targets'])
         ->and($state['snapshot_rows_done'])->toBe($state['snapshot_rows_total']);
 
-    Process::assertRanTimes(f12NodeSpawnFilter(), $state['snapshot_rows_done']);
+    // Was 18 (16 before_import rows + 2 system rows, one spawn each); fix 1
+    // makes the content-rich import cost the same two spawns as the bare one —
+    // the 7-target fan-out now amortizes inside one node boot.
+    Process::assertRanTimes(f12NodeSpawnFilter(), 2);
 });
 
 it('D: createManual pays a full set; an ungated restore pays another and dedups its system backup', function (): void {
@@ -320,7 +344,11 @@ it('D: createManual pays a full set; an ungated restore pays another and dedups 
         ->and(collect($state['backups'])->last()['rows_total'])->toBe($fullSet)
         ->and($state['snapshot_rows_done'])->toBe($state['snapshot_rows_total']);
 
-    Process::assertRanTimes(f12NodeSpawnFilter(), $state['snapshot_rows_done']);
+    // Was 24 across the scenario (2+10+2+10 rows, one spawn each); fix 1
+    // spends one spawn per backup: system + manual + system + before_restore.
+    // Fix 3 does not fire here: the manual backup (payload 77) is the only
+    // full-set owner, and the before_restore backup captures payload 11.
+    Process::assertRanTimes(f12NodeSpawnFilter(), 4);
 });
 
 it('E: a gated (admin) restore additionally creates a post-restore system backup', function (): void {
@@ -365,10 +393,13 @@ it('E: a gated (admin) restore additionally creates a post-restore system backup
     ])
         ->and($state['snapshot_rows_done'])->toBe($state['snapshot_rows_total']);
 
-    Process::assertRanTimes(f12NodeSpawnFilter(), $state['snapshot_rows_done']);
+    // Was 26 across the scenario (2+10+2+10+2 rows, one spawn each); fix 1
+    // spends one spawn per backup — five backups, five spawns. Fix 3 does not
+    // fire: the two full-source backups capture different payloads.
+    Process::assertRanTimes(f12NodeSpawnFilter(), 5);
 });
 
-it('F: a fully locked no-op import still saves settings and pays the full before-import set', function (): void {
+it('F: a fully locked no-op import keeps its audit backup row but skips snapshots and the save cycle', function (): void {
     $admin = User::factory()->create(['role' => UserRole::Admin->value]);
     $registry = app(SettingsImportLockSurfaceRegistry::class);
     $maintenancePaths = $registry->sectionUnitPaths('maintenance');
@@ -391,14 +422,29 @@ it('F: a fully locked no-op import still saves settings and pays the full before
         'final' => $state,
     ]);
 
-    $fullSet = $manifest['thumbnail_targets'] + ($manifest['full_targets'] * 2 * 1);
+    $beforeImport = SettingsBackupVersion::query()
+        ->where('source', SettingsBackupSource::BeforeImport->value)
+        ->latest('id')
+        ->firstOrFail();
 
+    /*
+     * Fix 2: the merge is computed BEFORE the BeforeImport backup now, so a
+     * candidate-empty import keeps its audit row + import_report but
+     * schedules no snapshots and skips the save→SettingsSaved→createSystem
+     * cycle. Was (diagnosed): saved 2 / before_import with the 10-row full
+     * set / 2 jobs — with 12 spawns before fix 1 and 2 after it. Everything
+     * still counted below comes from the antecedent lock save alone.
+     */
     expect($report->appliedPaths())->toBe([])
-        ->and($state['saved_events']['PublicContentSettings'] ?? 0)->toBe(2)
+        ->and($state['saved_events']['PublicContentSettings'] ?? 0)->toBe(1)
+        ->and($state['snapshot_jobs_processed'])->toBe(1)
         ->and(collect($state['backups'])->pluck('source')->all())
         ->toBe([SettingsBackupSource::System->value, SettingsBackupSource::BeforeImport->value])
-        ->and(collect($state['backups'])->last()['rows_total'])->toBe($fullSet)
-        ->and($state['snapshot_rows_done'])->toBe($state['snapshot_rows_total']);
+        ->and(collect($state['backups'])->last()['rows_total'])->toBe(0)
+        ->and($state['snapshot_rows_total'])->toBe($manifest['thumbnail_targets'])
+        ->and($state['snapshot_rows_done'])->toBe($state['snapshot_rows_total'])
+        ->and(filled($beforeImport->import_report))->toBeTrue()
+        ->and($report->beforeImportBackupId)->toBe($beforeImport->getKey());
 
-    Process::assertRanTimes(f12NodeSpawnFilter(), $state['snapshot_rows_done']);
+    Process::assertRanTimes(f12NodeSpawnFilter(), 1);
 });

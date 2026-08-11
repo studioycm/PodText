@@ -1,12 +1,7 @@
 @php
     use App\Models\SettingsBackupSnapshot;
 
-    $snapshots = $backup->snapshots()
-        ->orderBy('screen_key')
-        ->orderBy('theme')
-        ->orderBy('kind')
-        ->orderBy('format')
-        ->get();
+    $snapshots = $backup->effectiveSnapshots();
     $screens = $snapshots->pluck('screen_key')->unique()->values();
     $themes = $snapshots->pluck('theme')->unique()->values();
     $selectedScreen = $screens->first();
@@ -102,6 +97,14 @@
                                 ])>
                                     {{ __("admin.settings_backup_snapshot_statuses.{$snapshot->status}") }}
                                 </span>
+                                @if ($snapshot->backup_id !== $backup->getKey())
+                                    <span
+                                        class="bg-info-100 text-info-800 dark:bg-info-950 dark:text-info-200 rounded-full px-2 py-0.5 text-xs font-medium"
+                                        data-test="settings-backup-snapshot-borrowed"
+                                    >
+                                        {{ __('admin.messages.settings_backup_snapshot_borrowed', ['id' => $snapshot->backup_id]) }}
+                                    </span>
+                                @endif
                             </div>
                             <a
                                 href="{{ $snapshot->resolved_url }}"
@@ -124,7 +127,8 @@
                                 </a>
                             @endif
 
-                            @if (in_array($snapshot->status, [SettingsBackupSnapshot::STATUS_DONE, SettingsBackupSnapshot::STATUS_FAILED], true))
+                            {{-- Borrowed rows never offer retry: recapturing would overwrite the owner backup's artifact. --}}
+                            @if ($snapshot->backup_id === $backup->getKey() && in_array($snapshot->status, [SettingsBackupSnapshot::STATUS_DONE, SettingsBackupSnapshot::STATUS_FAILED], true))
                                 <form
                                     method="POST"
                                     action="{{ route('admin.settings-backup-snapshots.retry', $snapshot) }}"

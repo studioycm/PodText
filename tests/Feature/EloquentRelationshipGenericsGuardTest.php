@@ -86,7 +86,9 @@ it('finds the relationship methods it is supposed to be guarding', function (): 
     // A cheap canary: if the discovery above silently stops matching (a
     // refactor moves models, or return types are dropped), every other
     // assertion in this file would vacuously pass.
-    expect(relationshipMethods())->toHaveCount(45);
+    // 46 = 45 + SettingsBackupVersion::fullSnapshotSourceBackup() (full-set
+    // dedup pointer, register 1.8 fix 3).
+    expect(relationshipMethods())->toHaveCount(46);
 });
 
 it('declares a generic on every Eloquent relationship so larastan can resolve the related model', function (): void {

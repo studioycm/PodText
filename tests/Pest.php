@@ -12,6 +12,7 @@ use Filament\Actions\Imports\Models\Import;
 use Illuminate\Filesystem\Filesystem;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Process;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
 use Spatie\LaravelSettings\SettingsContainer;
@@ -258,6 +259,53 @@ function fakeSettingsBackupSnapshotQueue(): void
     Queue::fake([
         SettingsBackupSnapshotJob::class,
     ]);
+}
+
+/**
+ * Fake the settings-snapshots node process with the batched results contract.
+ *
+ * The fake reads the batch job JSON at spawn time — a missing or truncated
+ * file therefore fails the run, which is what keeps the write-then-spawn
+ * ordering property (register 2.6) observable in every test that uses this —
+ * writes the per-target results file the script contract promises, and fails
+ * only the requested targets. Do not assert inside the closure: the manager
+ * catches Throwable around the spawn, so an in-closure expectation failure
+ * would be swallowed into FAILED rows instead of failing the test.
+ *
+ * @param  array<int, int|string>  $failTargets  snapshot ids or screen keys to fail
+ */
+function fakeSettingsSnapshotProcess(array $failTargets = [], string $failError = 'Snapshot capture failed.'): void
+{
+    Process::fake(function ($process) use ($failTargets, $failError) {
+        $command = $process->command;
+        $commandLine = is_array($command) ? implode(' ', $command) : (string) $command;
+
+        if (! str_contains($commandLine, 'settings-snapshots.mjs')) {
+            return Process::result();
+        }
+
+        $payload = json_decode((string) file_get_contents((string) $command[2]), true, flags: JSON_THROW_ON_ERROR);
+        $failed = 0;
+        $results = [];
+
+        foreach ((array) ($payload['targets'] ?? []) as $target) {
+            $fails = in_array($target['snapshot_id'] ?? null, $failTargets, true)
+                || in_array($target['screen_key'] ?? null, $failTargets, true);
+            $failed += $fails ? 1 : 0;
+            $results[] = [
+                'snapshot_id' => $target['snapshot_id'] ?? null,
+                'ok' => ! $fails,
+                'error' => $fails ? $failError : null,
+            ];
+        }
+
+        file_put_contents((string) $payload['results_path'], json_encode(['results' => $results], JSON_THROW_ON_ERROR));
+
+        return Process::result(
+            errorOutput: $failed > 0 ? $failError : '',
+            exitCode: $failed > 0 ? 1 : 0,
+        );
+    });
 }
 
 function setTestTranscriptionMode(TranscriptionMode $mode): void

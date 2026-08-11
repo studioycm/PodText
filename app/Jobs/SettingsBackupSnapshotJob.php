@@ -37,19 +37,25 @@ class SettingsBackupSnapshotJob implements ShouldQueueAfterCommit
             $query->whereKey($this->snapshotIds);
         }
 
-        $query->each(function (SettingsBackupSnapshot $snapshot) use ($manager): void {
-            try {
-                $manager->processSnapshot($snapshot);
-            } catch (Throwable $exception) {
-                $snapshot->forceFill([
-                    'status' => SettingsBackupSnapshot::STATUS_FAILED,
-                    'error' => str($exception->getMessage())->limit(2000)->toString(),
-                ])->save();
-            }
+        $snapshots = $query->get();
 
-            if (! app()->runningUnitTests()) {
-                usleep(150000);
-            }
-        });
+        if ($snapshots->isEmpty()) {
+            return;
+        }
+
+        try {
+            $manager->processBatch($snapshots);
+        } catch (Throwable $exception) {
+            $error = str($exception->getMessage())->limit(2000)->toString();
+
+            $snapshots->each(function (SettingsBackupSnapshot $snapshot) use ($error): void {
+                if ($snapshot->refresh()->status === SettingsBackupSnapshot::STATUS_PENDING) {
+                    $snapshot->forceFill([
+                        'status' => SettingsBackupSnapshot::STATUS_FAILED,
+                        'error' => $error,
+                    ])->save();
+                }
+            });
+        }
     }
 }

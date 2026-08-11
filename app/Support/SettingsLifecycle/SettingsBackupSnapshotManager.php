@@ -8,10 +8,13 @@ use App\Models\SettingsBackupSnapshot;
 use App\Models\SettingsBackupVersion;
 use App\Support\PublicFront\PublicFrontConfigRegistry;
 use Illuminate\Contracts\Filesystem\Filesystem;
+use Illuminate\Contracts\Process\ProcessResult;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Process;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
+use JsonException;
 use RuntimeException;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Throwable;
@@ -56,18 +59,27 @@ class SettingsBackupSnapshotManager
             ));
 
         if ($this->sourceGetsFullSnapshots($backup->source)) {
-            $fullRows = collect($this->manifest->fullTargets())
-                ->flatMap(fn (array $target): Collection => collect($resolvedThemes)
-                    ->flatMap(fn (string $theme): Collection => collect($resolvedFormats)
-                        ->map(fn (string $format): SettingsBackupSnapshot => $this->upsertPendingSnapshot(
-                            backup: $backup,
-                            target: $target,
-                            theme: $theme,
-                            kind: SettingsBackupSnapshot::KIND_FULL,
-                            format: $format,
-                        ))));
+            $fullTargets = $this->manifest->fullTargets();
+            $sourceBackup = $this->findFullSetSourceBackup($backup, $fullTargets, $resolvedThemes, $resolvedFormats);
 
-            $rows = $rows->merge($fullRows);
+            if ($sourceBackup !== null) {
+                $backup->forceFill([
+                    'full_snapshot_source_backup_id' => $sourceBackup->getKey(),
+                ])->save();
+            } else {
+                $fullRows = collect($fullTargets)
+                    ->flatMap(fn (array $target): Collection => collect($resolvedThemes)
+                        ->flatMap(fn (string $theme): Collection => collect($resolvedFormats)
+                            ->map(fn (string $format): SettingsBackupSnapshot => $this->upsertPendingSnapshot(
+                                backup: $backup,
+                                target: $target,
+                                theme: $theme,
+                                kind: SettingsBackupSnapshot::KIND_FULL,
+                                format: $format,
+                            ))));
+
+                $rows = $rows->merge($fullRows);
+            }
         }
 
         if ($rows->isEmpty()) {
@@ -87,52 +99,62 @@ class SettingsBackupSnapshotManager
         SettingsBackupSnapshotJob::dispatch($snapshot->backup_id, [$snapshot->getKey()]);
     }
 
-    public function processSnapshot(SettingsBackupSnapshot $snapshot): void
+    /**
+     * Process every given pending row of ONE backup through a single script
+     * invocation. The job-file write and the spawn are sequential statements
+     * in this one process — the write-then-spawn ordering property (register
+     * 2.6) that one-row-per-process used to provide for free and the batch
+     * tests now assert — and per-target truth comes back through the results
+     * file, so one target's failure marks exactly its own row.
+     *
+     * @param  Collection<int, SettingsBackupSnapshot>  $snapshots
+     */
+    public function processBatch(Collection $snapshots): void
     {
-        $snapshot->loadMissing('backup');
+        if ($snapshots->isEmpty()) {
+            return;
+        }
 
-        $path = $this->outputPath($snapshot);
-        $snapshot->forceFill([
-            'path' => $path,
-            'status' => SettingsBackupSnapshot::STATUS_PENDING,
-            'error' => null,
-        ])->save();
+        $backup = $snapshots->first()->loadMissing('backup')->backup;
+        $settings = $this->settingsBackupsConfig($backup);
 
-        $jobPath = $this->jobPath($snapshot);
-        $this->disk()->makeDirectory(dirname($path));
+        $snapshots->each(function (SettingsBackupSnapshot $snapshot): void {
+            $snapshot->forceFill([
+                'path' => $this->outputPath($snapshot),
+                'status' => SettingsBackupSnapshot::STATUS_PENDING,
+                'error' => null,
+            ])->save();
+
+            $this->disk()->makeDirectory(dirname((string) $snapshot->path));
+        });
+
+        $batchId = (string) Str::uuid();
+        $jobPath = "{$this->backupDirectory($backup->getKey())}/jobs/batch-{$batchId}.json";
+        $resultsPath = "{$this->backupDirectory($backup->getKey())}/jobs/batch-{$batchId}.results.json";
         $this->disk()->makeDirectory(dirname($jobPath));
-        $this->disk()->put($jobPath, json_encode($this->processPayload($snapshot, $path), JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR));
+        $this->disk()->put($jobPath, json_encode([
+            'targets' => $snapshots
+                ->map(fn (SettingsBackupSnapshot $snapshot): array => $this->targetPayload($snapshot, $settings))
+                ->values()
+                ->all(),
+            'results_path' => $this->disk()->path($resultsPath),
+        ], JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR));
 
         try {
             $result = Process::path(base_path())
-                ->timeout((int) config('settings-backups.snapshot_process_timeout', self::PROCESS_TIMEOUT))
+                ->timeout($this->batchProcessTimeout($snapshots->count()))
                 ->run([
                     'node',
                     'scripts/settings-snapshots.mjs',
                     $this->disk()->path($jobPath),
                 ]);
         } catch (Throwable $exception) {
-            $snapshot->forceFill([
-                'status' => SettingsBackupSnapshot::STATUS_FAILED,
-                'error' => str($exception->getMessage())->limit(2000)->toString(),
-            ])->save();
+            $this->failSnapshots($snapshots, str($exception->getMessage())->limit(2000)->toString());
 
             return;
         }
 
-        if ($result->successful()) {
-            $snapshot->forceFill([
-                'status' => SettingsBackupSnapshot::STATUS_DONE,
-                'error' => null,
-            ])->save();
-
-            return;
-        }
-
-        $snapshot->forceFill([
-            'status' => SettingsBackupSnapshot::STATUS_FAILED,
-            'error' => str(trim($result->errorOutput()) ?: trim($result->output()) ?: 'Snapshot process failed.')->limit(2000)->toString(),
-        ])->save();
+        $this->applyBatchResults($snapshots, $resultsPath, $result);
     }
 
     /**
@@ -153,15 +175,10 @@ class SettingsBackupSnapshotManager
 
     public function zipResponse(SettingsBackupVersion $backup): BinaryFileResponse
     {
-        $snapshots = $backup->snapshots()
-            ->where('status', SettingsBackupSnapshot::STATUS_DONE)
-            ->whereNotNull('path')
-            ->orderBy('screen_key')
-            ->orderBy('theme')
-            ->orderBy('kind')
-            ->orderBy('format')
-            ->get()
-            ->filter(fn (SettingsBackupSnapshot $snapshot): bool => $this->disk()->exists((string) $snapshot->path));
+        $snapshots = $backup->effectiveSnapshots()
+            ->filter(fn (SettingsBackupSnapshot $snapshot): bool => $snapshot->status === SettingsBackupSnapshot::STATUS_DONE
+                && filled($snapshot->path)
+                && $this->disk()->exists((string) $snapshot->path));
 
         abort_if($snapshots->isEmpty(), 404);
 
@@ -254,6 +271,67 @@ class SettingsBackupSnapshotManager
     }
 
     /**
+     * Full-set dedup: a full-source backup whose payload-minus-locks is
+     * byte-identical to a sibling that already OWNS a DONE full set covering
+     * every requested target×theme×format borrows that set instead of
+     * re-rendering it. Owners must own their rows (a borrower has none), so
+     * borrow chains cannot form; the newest owner wins; the scan is bounded
+     * to the newest candidates because missing a match only costs a render.
+     *
+     * @param  array<int, array{screen_key: string, url: string}>  $fullTargets
+     * @param  array<int, string>  $themes
+     * @param  array<int, string>  $formats
+     */
+    private function findFullSetSourceBackup(SettingsBackupVersion $backup, array $fullTargets, array $themes, array $formats): ?SettingsBackupVersion
+    {
+        $needed = collect($fullTargets)
+            ->flatMap(fn (array $target): Collection => collect($themes)
+                ->flatMap(fn (string $theme): Collection => collect($formats)
+                    ->map(fn (string $format): string => implode('|', [
+                        $target['screen_key'],
+                        $theme,
+                        SettingsBackupSnapshot::VIEWPORT_DESKTOP,
+                        $format,
+                    ]))))
+            ->all();
+
+        if ($needed === []) {
+            return null;
+        }
+
+        $payloadJson = PublicSettingsPackage::canonicalPayloadJsonWithoutImportLocks($backup->package()->payload());
+
+        return SettingsBackupVersion::query()
+            ->where('scope', $backup->scope)
+            ->whereKeyNot($backup->getKey())
+            ->whereHas('snapshots', fn ($query) => $query
+                ->where('kind', SettingsBackupSnapshot::KIND_FULL)
+                ->where('status', SettingsBackupSnapshot::STATUS_DONE))
+            ->latest('id')
+            ->limit(10)
+            ->get()
+            ->first(function (SettingsBackupVersion $candidate) use ($payloadJson, $needed): bool {
+                if (PublicSettingsPackage::canonicalPayloadJsonWithoutImportLocks($candidate->package()->payload()) !== $payloadJson) {
+                    return false;
+                }
+
+                $owned = $candidate->snapshots()
+                    ->where('kind', SettingsBackupSnapshot::KIND_FULL)
+                    ->where('status', SettingsBackupSnapshot::STATUS_DONE)
+                    ->get()
+                    ->map(fn (SettingsBackupSnapshot $snapshot): string => implode('|', [
+                        $snapshot->screen_key,
+                        $snapshot->theme,
+                        $snapshot->viewport,
+                        $snapshot->format,
+                    ]))
+                    ->all();
+
+                return array_diff($needed, $owned) === [];
+            });
+    }
+
+    /**
      * @param  array{screen_key: string, url: string}  $target
      */
     private function upsertPendingSnapshot(
@@ -282,11 +360,90 @@ class SettingsBackupSnapshotManager
     }
 
     /**
-     * @return array{targets: array<int, array<string, mixed>>}
+     * The per-target spawn budget scales with the batch size, capped just
+     * under the queue job timeout so a timed-out spawn still dies inside the
+     * job and its per-target results can be mapped.
      */
-    private function processPayload(SettingsBackupSnapshot $snapshot, string $path): array
+    private function batchProcessTimeout(int $targetCount): int
     {
-        $settings = $this->settingsBackupsConfig($snapshot->backup);
+        $perTarget = (int) config('settings-backups.snapshot_process_timeout', self::PROCESS_TIMEOUT);
+        $jobTimeout = (int) config('settings-backups.snapshot_job_timeout', 1800);
+
+        return min($perTarget * max(1, $targetCount), max($perTarget, $jobTimeout - 60));
+    }
+
+    /**
+     * @param  Collection<int, SettingsBackupSnapshot>  $snapshots
+     */
+    private function applyBatchResults(Collection $snapshots, string $resultsPath, ProcessResult $result): void
+    {
+        $resultsById = $this->readBatchResults($resultsPath);
+        $processError = str(trim($result->errorOutput()) ?: trim($result->output()) ?: 'Snapshot process failed.')
+            ->limit(2000)
+            ->toString();
+
+        $snapshots->each(function (SettingsBackupSnapshot $snapshot) use ($resultsById, $processError, $result): void {
+            $entry = $resultsById->get($snapshot->getKey());
+
+            if (is_array($entry) && ($entry['ok'] ?? false) === true) {
+                $snapshot->forceFill([
+                    'status' => SettingsBackupSnapshot::STATUS_DONE,
+                    'error' => null,
+                ])->save();
+
+                return;
+            }
+
+            $error = is_array($entry) && filled($entry['error'] ?? null)
+                ? str((string) $entry['error'])->limit(2000)->toString()
+                : ($result->successful()
+                    ? 'The snapshot process reported no result for this target.'
+                    : $processError);
+
+            $snapshot->forceFill([
+                'status' => SettingsBackupSnapshot::STATUS_FAILED,
+                'error' => $error,
+            ])->save();
+        });
+    }
+
+    /**
+     * @return Collection<int, array<string, mixed>>
+     */
+    private function readBatchResults(string $resultsPath): Collection
+    {
+        if (! $this->disk()->exists($resultsPath)) {
+            return collect();
+        }
+
+        try {
+            $decoded = json_decode((string) $this->disk()->get($resultsPath), true, flags: JSON_THROW_ON_ERROR);
+        } catch (JsonException) {
+            return collect();
+        }
+
+        return collect((array) ($decoded['results'] ?? []))
+            ->filter(fn (mixed $entry): bool => is_array($entry) && isset($entry['snapshot_id']))
+            ->keyBy(fn (array $entry): int => (int) $entry['snapshot_id']);
+    }
+
+    /**
+     * @param  Collection<int, SettingsBackupSnapshot>  $snapshots
+     */
+    private function failSnapshots(Collection $snapshots, string $error): void
+    {
+        $snapshots->each(fn (SettingsBackupSnapshot $snapshot) => $snapshot->forceFill([
+            'status' => SettingsBackupSnapshot::STATUS_FAILED,
+            'error' => $error,
+        ])->save());
+    }
+
+    /**
+     * @param  array<string, mixed>  $settings
+     * @return array<string, mixed>
+     */
+    private function targetPayload(SettingsBackupSnapshot $snapshot, array $settings): array
+    {
         $maxWidth = (int) ($settings['thumbnail_max_width'] ?? PublicFrontConfigRegistry::defaults()['settings_backups']['thumbnail_max_width']);
         $thumbnailWidth = max(1, $maxWidth);
         $thumbnailHeight = max(1, (int) round($thumbnailWidth * (self::THUMBNAIL_HEIGHT / self::VIEWPORT_WIDTH)));
@@ -295,32 +452,29 @@ class SettingsBackupSnapshotManager
         $height = self::VIEWPORT_HEIGHT;
 
         return [
-            'targets' => [
-                [
-                    'url' => $snapshot->resolved_url,
-                    'screen_key' => $snapshot->screen_key,
-                    'theme' => $snapshot->theme,
-                    'formats' => [$snapshot->format],
-                    'kind' => $snapshot->kind,
-                    'mode' => $isThumbnail ? 'thumb' : 'full',
-                    'max_width' => $maxWidth,
-                    'device_scale_factor' => $isThumbnail
-                        ? round($thumbnailWidth / self::VIEWPORT_WIDTH, 6)
-                        : 1,
-                    'viewport' => [
-                        'name' => $snapshot->viewport,
-                        'width' => $width,
-                        'height' => $height,
-                    ],
-                    'fallback_viewport' => [
-                        'name' => "{$snapshot->viewport}-thumbnail-fallback",
-                        'width' => $isThumbnail ? $thumbnailWidth : $width,
-                        'height' => $isThumbnail ? $thumbnailHeight : $height,
-                    ],
-                    'outputs' => [
-                        $snapshot->format => $this->disk()->path($path),
-                    ],
-                ],
+            'snapshot_id' => $snapshot->getKey(),
+            'url' => $snapshot->resolved_url,
+            'screen_key' => $snapshot->screen_key,
+            'theme' => $snapshot->theme,
+            'formats' => [$snapshot->format],
+            'kind' => $snapshot->kind,
+            'mode' => $isThumbnail ? 'thumb' : 'full',
+            'max_width' => $maxWidth,
+            'device_scale_factor' => $isThumbnail
+                ? round($thumbnailWidth / self::VIEWPORT_WIDTH, 6)
+                : 1,
+            'viewport' => [
+                'name' => $snapshot->viewport,
+                'width' => $width,
+                'height' => $height,
+            ],
+            'fallback_viewport' => [
+                'name' => "{$snapshot->viewport}-thumbnail-fallback",
+                'width' => $isThumbnail ? $thumbnailWidth : $width,
+                'height' => $isThumbnail ? $thumbnailHeight : $height,
+            ],
+            'outputs' => [
+                $snapshot->format => $this->disk()->path((string) $snapshot->path),
             ],
         ];
     }
@@ -328,11 +482,6 @@ class SettingsBackupSnapshotManager
     private function outputPath(SettingsBackupSnapshot $snapshot): string
     {
         return "{$this->backupDirectory($snapshot->backup_id)}/{$snapshot->kind}/{$snapshot->screen_key}-{$snapshot->theme}-{$snapshot->viewport}.{$snapshot->format}";
-    }
-
-    private function jobPath(SettingsBackupSnapshot $snapshot): string
-    {
-        return "{$this->backupDirectory($snapshot->backup_id)}/jobs/{$snapshot->getKey()}.json";
     }
 
     private function backupDirectory(int|string $backupId): string

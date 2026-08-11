@@ -292,22 +292,31 @@ it('queues restore-created snapshot jobs only after the before-restore backup is
     );
 });
 
-it('processes snapshots through the script contract and isolates per-shot failures', function (): void {
+it('processes the whole backup through one batched spawn and isolates per-target failures', function (): void {
     Queue::fake();
 
     $backup = app(SettingsBackupManager::class)->createManual('Process contract', auth()->user(), ['png'], ['light']);
-    $snapshots = $backup->snapshots()->orderBy('id')->limit(2)->get();
     $contracts = [];
-    $calls = 0;
 
-    Process::fake(function ($process) use (&$contracts, &$calls) {
-        $calls++;
-        $contracts[] = json_decode(file_get_contents($process->command[2]), true, flags: JSON_THROW_ON_ERROR);
+    Process::fake(function ($process) use (&$contracts) {
+        $payload = json_decode((string) file_get_contents((string) $process->command[2]), true, flags: JSON_THROW_ON_ERROR);
+        $contracts[] = $payload;
 
-        return Process::result('', $calls === 1 ? '' : 'boom', $calls === 1 ? 0 : 1);
+        $results = collect((array) ($payload['targets'] ?? []))
+            ->map(fn (array $target): array => [
+                'snapshot_id' => $target['snapshot_id'] ?? null,
+                'ok' => ($target['screen_key'] ?? null) !== 'search',
+                'error' => ($target['screen_key'] ?? null) === 'search' ? 'boom' : null,
+            ])
+            ->values()
+            ->all();
+
+        file_put_contents((string) ($payload['results_path'] ?? ''), json_encode(['results' => $results], JSON_THROW_ON_ERROR));
+
+        return Process::result('', 'boom', 1);
     });
 
-    (new SettingsBackupSnapshotJob($backup->getKey(), $snapshots->modelKeys()))
+    (new SettingsBackupSnapshotJob($backup->getKey()))
         ->handle(app(SettingsBackupSnapshotManager::class));
 
     Process::assertRanTimes(
@@ -315,24 +324,188 @@ it('processes snapshots through the script contract and isolates per-shot failur
             && $process->command[0] === 'node'
             && $process->command[1] === 'scripts/settings-snapshots.mjs'
             && str_ends_with($process->command[2], '.json'),
-        2,
+        1,
     );
 
-    $firstSnapshot = $snapshots->first()->refresh();
-    $secondSnapshot = $snapshots->last()->refresh();
+    $rows = $backup->snapshots()->orderBy('id')->get();
+    $failedRows = $rows->where('status', SettingsBackupSnapshot::STATUS_FAILED);
     $firstContract = $contracts[0]['targets'][0];
 
-    expect($firstSnapshot->status)->toBe(SettingsBackupSnapshot::STATUS_DONE)
-        ->and($secondSnapshot->status)->toBe(SettingsBackupSnapshot::STATUS_FAILED)
-        ->and($secondSnapshot->error)->toContain('boom')
+    expect($contracts)->toHaveCount(1)
+        ->and(count($contracts[0]['targets']))->toBe($rows->count())
+        ->and($contracts[0]['results_path'])->toBeString()
+        ->and($failedRows)->toHaveCount(1)
+        ->and($failedRows->first()->screen_key)->toBe('search')
+        ->and($failedRows->first()->error)->toContain('boom')
+        ->and($rows->where('status', SettingsBackupSnapshot::STATUS_DONE))->toHaveCount($rows->count() - 1)
         ->and($backup->refresh()->exists)->toBeTrue()
-        ->and($firstContract)->toHaveKeys(['url', 'screen_key', 'theme', 'formats', 'mode', 'max_width', 'device_scale_factor', 'viewport', 'fallback_viewport', 'outputs'])
+        ->and($firstContract)->toHaveKeys(['snapshot_id', 'url', 'screen_key', 'theme', 'formats', 'mode', 'max_width', 'device_scale_factor', 'viewport', 'fallback_viewport', 'outputs'])
         ->and($firstContract['viewport']['width'])->toBe(1440)
         ->and($firstContract['device_scale_factor'])->toBeGreaterThan(0)
         ->and($firstContract['device_scale_factor'])->toBeLessThan(1)
         ->and($firstContract['fallback_viewport']['width'])->toBe($firstContract['max_width'])
         ->and($firstContract['outputs'])->toHaveKey(SettingsBackupSnapshot::FORMAT_PNG)
         ->and(base_path('scripts/settings-snapshots.mjs'))->toBeFile();
+});
+
+it('writes the complete batched job file before the snapshot process spawns', function (): void {
+    Queue::fake();
+
+    $backup = app(SettingsBackupManager::class)->createManual('Ordering contract', auth()->user(), ['png'], ['light']);
+    $pendingIds = $backup->snapshots()->orderBy('id')->pluck('id')->all();
+    $observed = [];
+
+    Process::fake(function ($process) use (&$observed) {
+        $jobPath = (string) $process->command[2];
+        $raw = is_file($jobPath) ? (string) file_get_contents($jobPath) : null;
+        $payload = $raw === null ? null : json_decode($raw, true);
+        $observed[] = [
+            'existed_at_spawn' => $raw !== null,
+            'parsed' => is_array($payload),
+            'target_ids' => is_array($payload) ? array_column($payload['targets'] ?? [], 'snapshot_id') : [],
+            'results_path' => is_array($payload) ? ($payload['results_path'] ?? null) : null,
+        ];
+
+        if (is_array($payload) && isset($payload['results_path'])) {
+            $results = collect((array) ($payload['targets'] ?? []))
+                ->map(fn (array $target): array => ['snapshot_id' => $target['snapshot_id'] ?? null, 'ok' => true, 'error' => null])
+                ->values()
+                ->all();
+
+            file_put_contents((string) $payload['results_path'], json_encode(['results' => $results], JSON_THROW_ON_ERROR));
+        }
+
+        return Process::result();
+    });
+
+    (new SettingsBackupSnapshotJob($backup->getKey()))
+        ->handle(app(SettingsBackupSnapshotManager::class));
+
+    /*
+     * Write-then-spawn ordering (register 2.6): one-row-per-process used to
+     * guarantee this for free; under batching it must hold explicitly — the
+     * job file is complete on disk, with every pending row present as a
+     * target, at the moment the single process spawns.
+     */
+    expect($observed)->toHaveCount(1)
+        ->and($observed[0]['existed_at_spawn'])->toBeTrue()
+        ->and($observed[0]['parsed'])->toBeTrue()
+        ->and($observed[0]['target_ids'])->toBe($pendingIds)
+        ->and($observed[0]['results_path'])->not->toBeNull()
+        ->and($backup->snapshots()->where('status', SettingsBackupSnapshot::STATUS_DONE)->count())->toBe(count($pendingIds));
+});
+
+it('scales the batch process timeout per target and caps it under the job timeout', function (): void {
+    Queue::fake();
+    config([
+        'settings-backups.snapshot_process_timeout' => 120,
+        'settings-backups.snapshot_job_timeout' => 1800,
+    ]);
+
+    fakeSettingsSnapshotProcess();
+
+    $backup = app(SettingsBackupManager::class)->createManual('Timeout scaling', auth()->user(), ['png'], ['light']);
+    $rowCount = $backup->snapshots()->count();
+
+    (new SettingsBackupSnapshotJob($backup->getKey()))
+        ->handle(app(SettingsBackupSnapshotManager::class));
+
+    Process::assertRan(fn ($process): bool => is_array($process->command)
+        && $process->command[1] === 'scripts/settings-snapshots.mjs'
+        && $process->timeout === 120 * $rowCount);
+
+    $backup->snapshots()->update(['status' => SettingsBackupSnapshot::STATUS_PENDING]);
+    config(['settings-backups.snapshot_process_timeout' => 400]);
+
+    (new SettingsBackupSnapshotJob($backup->getKey()))
+        ->handle(app(SettingsBackupSnapshotManager::class));
+
+    /*
+     * 400s × 6 targets would outlive the 1800s job timeout; the cap keeps the
+     * spawn's death inside the job so per-target results can still be mapped.
+     */
+    Process::assertRan(fn ($process): bool => is_array($process->command)
+        && $process->command[1] === 'scripts/settings-snapshots.mjs'
+        && $process->timeout === 1740);
+});
+
+it('borrows the newest identical sibling full set instead of rescheduling one', function (): void {
+    fakeSettingsSnapshotProcess();
+
+    $first = app(SettingsBackupManager::class)->createManual('Set owner P1', auth()->user(), ['png'], ['light']);
+
+    $settings = step10S2VSettings();
+    $settings->homepage_item_limit = 55;
+    $settings->save();
+
+    $second = app(SettingsBackupManager::class)->createManual('Set owner P2', auth()->user(), ['png'], ['light']);
+    $third = app(SettingsBackupManager::class)->createManual('Borrower P2', auth()->user(), ['png'], ['light']);
+
+    expect($first->refresh()->full_snapshot_source_backup_id)->toBeNull()
+        ->and($first->snapshots()->where('kind', SettingsBackupSnapshot::KIND_FULL)->where('status', SettingsBackupSnapshot::STATUS_DONE)->count())->toBe(4)
+        ->and($second->refresh()->full_snapshot_source_backup_id)->toBeNull()
+        ->and($second->snapshots()->where('kind', SettingsBackupSnapshot::KIND_FULL)->count())->toBe(4)
+        ->and($third->refresh()->full_snapshot_source_backup_id)->toBe($second->getKey())
+        ->and($third->snapshots()->count())->toBe(2)
+        ->and($third->snapshots()->where('kind', SettingsBackupSnapshot::KIND_FULL)->count())->toBe(0);
+});
+
+it('renders a fresh full set when the identical sibling set is incomplete', function (): void {
+    fakeSettingsSnapshotProcess(['search']);
+
+    $first = app(SettingsBackupManager::class)->createManual('Incomplete owner', auth()->user(), ['png'], ['light']);
+    $second = app(SettingsBackupManager::class)->createManual('Not a borrower', auth()->user(), ['png'], ['light']);
+
+    expect($first->snapshots()->where('kind', SettingsBackupSnapshot::KIND_FULL)->where('status', SettingsBackupSnapshot::STATUS_DONE)->count())->toBe(3)
+        ->and($second->refresh()->full_snapshot_source_backup_id)->toBeNull()
+        ->and($second->snapshots()->where('kind', SettingsBackupSnapshot::KIND_FULL)->count())->toBe(4);
+});
+
+it('only borrows a sibling set that covers every requested theme and format combination', function (): void {
+    fakeSettingsSnapshotProcess();
+
+    $lightOnly = app(SettingsBackupManager::class)->createManual('Light-only owner', auth()->user(), ['png'], ['light']);
+    $bothThemes = app(SettingsBackupManager::class)->createManual('Both-theme owner', auth()->user(), ['png'], ['light', 'dark']);
+    $lightBorrower = app(SettingsBackupManager::class)->createManual('Light borrower', auth()->user(), ['png'], ['light']);
+
+    expect($bothThemes->refresh()->full_snapshot_source_backup_id)->toBeNull()
+        ->and($bothThemes->snapshots()->where('kind', SettingsBackupSnapshot::KIND_FULL)->count())->toBe(8)
+        ->and($lightBorrower->refresh()->full_snapshot_source_backup_id)->toBe($bothThemes->getKey())
+        ->and($lightBorrower->snapshots()->where('kind', SettingsBackupSnapshot::KIND_FULL)->count())->toBe(0)
+        ->and($lightOnly->refresh()->full_snapshot_source_backup_id)->toBeNull();
+});
+
+it('falls back to the source backup full set in the gallery and zip for deduped backups', function (): void {
+    $owner = createStep10S2VBackup(label: 'Full set owner');
+    createStep10S2VSnapshot($owner, kind: SettingsBackupSnapshot::KIND_FULL);
+    $deduped = createStep10S2VBackup(label: 'Borrower');
+    $deduped->forceFill(['full_snapshot_source_backup_id' => $owner->getKey()])->save();
+    createStep10S2VSnapshot($deduped, status: SettingsBackupSnapshot::STATUS_PENDING);
+
+    Livewire::test(ListSettingsBackups::class)
+        ->mountAction(TestAction::make('snapshots')->table($deduped))
+        ->assertMountedActionModalSee('data-kind="full"', false)
+        ->assertMountedActionModalSee(__('admin.messages.settings_backup_snapshot_borrowed', ['id' => $owner->getKey()]))
+        // Borrowed rows must not offer retry — recapturing would overwrite the
+        // OWNER's artifact from another backup's gallery.
+        ->assertDontSee('data-test="settings-backup-snapshot-retry"', false);
+
+    $zipResponse = $this->get(route('admin.settings-backups.snapshots-zip', $deduped));
+    $zipResponse->assertOk();
+
+    $zip = new ZipArchive;
+    $zip->open($zipResponse->baseResponse->getFile()->getPathname());
+
+    expect($zip->locateName('home/light/full-desktop-1440.png'))->not->toBeFalse();
+    $zip->close();
+
+    // Deleting the owner degrades the borrower gracefully: pointer nulled,
+    // nothing left to zip (its own thumbnail never finished).
+    app(SettingsBackupSnapshotManager::class)->deleteBackup($owner);
+
+    expect($deduped->refresh()->full_snapshot_source_backup_id)->toBeNull();
+
+    $this->get(route('admin.settings-backups.snapshots-zip', $deduped))->assertNotFound();
 });
 
 it('renders the table image column and snapshot gallery controls', function (): void {

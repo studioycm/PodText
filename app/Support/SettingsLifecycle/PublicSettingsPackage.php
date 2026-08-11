@@ -147,6 +147,19 @@ class PublicSettingsPackage
         return self::json(self::sortKeysRecursively($payload));
     }
 
+    /**
+     * The canonical payload identity used for visual dedup decisions: import
+     * locks change no rendered pixel, so they are excluded from the compare.
+     *
+     * @param  array<string, mixed>  $payload
+     */
+    public static function canonicalPayloadJsonWithoutImportLocks(array $payload): string
+    {
+        unset($payload['import_locks']);
+
+        return self::canonicalPayloadJson($payload);
+    }
+
     private static function sortKeysRecursively(mixed $value): mixed
     {
         if (! is_array($value)) {
