@@ -359,7 +359,7 @@ operator-gated (AskUserQuestion), and reviewed pre-implementation by the
 1.8 batching session (approved with 1 Important + 2 Minor, all
 addressed); gate 2008 tests / 20,982 assertions / 357s.
 
-### F13. Media-picker browser tests never adopted the classified-artifact filter — `OPEN` (identified 2026-08-12)
+### F13. Media-picker browser tests never adopted the classified-artifact filter — `FIXED` (identified 2026-08-12, fixed 2026-08-12, `d84b1c7`)
 
 Three full-suite runs across `c1cbae9`/`1443b7d` failed on the **first**
 attempt and passed on an immediate re-run of the same commit, each ~**+30.5s**
@@ -390,18 +390,27 @@ which is why the fix below is not "paste the literal a sixth time".
 that is what makes this harder than an extraction** (established on
 re-audit, verified against the tree):
 
-- **Strict form, 6 sites** — `MediaPickerBrowserTest` (`:504`, `:688`,
-  `:809`, `:1052`, `:1283`) and `MediaResourceGalleryBrowserTest:836`:
-  JS-side, inside the evaluate block, mutating
-  `window.__pestBrowser.jsErrors` with **exact message equality** (trailing
-  period included). This is the step5b shape and the one the standing
-  requirement describes.
+- **Strict form, 7 sites** — `MediaPickerBrowserTest` (`:504`, `:688`,
+  `:809`, `:1052`, `:1283`, **`:1423`** — six, corrected on implementation
+  from the five first registered here) and
+  `MediaResourceGalleryBrowserTest:836`: JS-side, inside the evaluate block,
+  mutating `window.__pestBrowser.jsErrors` with **exact message equality**
+  (trailing period included). This is the step5b shape and the one the
+  standing requirement describes.
 - **Loose form, 1 site** — `MediaPickerCloneReproBrowserTest:269-276`: a
-  PHP-side helper filtering the returned array with
+  PHP-side helper filtering with
   `! str_contains($error, 'ResizeObserver loop completed')` — a **prefix
   match**, which would swallow any future ResizeObserver variant — and
   carrying a second suppression beside it,
-  `! str_contains($error, 'isFromCancelledTransition')`.
+  `! str_contains($error, 'isFromCancelledTransition')`. **Correction (made
+  on implementation, against this entry's original wording): this is not the
+  loose form of the same technique at a different layer. It is a different
+  error channel.** `window.__m2.pageErrors` is that test's *own* accumulator,
+  declared at `:106-110` and fed by its own `error`/`unhandledrejection`
+  listeners at `:128`/`:131`; it never touches
+  `window.__pestBrowser.jsErrors`. Same message text, different channel —
+  which is why the fix tightens it in place rather than routing it through
+  the shared helper.
 
 Consequences for the fix, in order of how easily they are got wrong:
 **(1)** the two intercept at different layers (browser-side accumulator vs
@@ -418,14 +427,89 @@ at that call site**: the string appears exactly once in the whole repo and
 in no doc. So it is a `one-home` case of its own nested inside this one, and
 it needs classifying in a doc *before* any shared helper could carry it.
 
-**Next:** give the filter one home (a shared browser-test helper in
-`tests/Pest.php` or a small trait) and route the three bare call sites
-through it, recording the artifact count as the step5b tests do. Do **not**
-blanket-suppress console errors, and do **not** weaken the assertion to a
-warning — the whole point of that shape is that unexpected messages still
-fail. Until then the suite carries a ~1-in-2 first-run false failure under
-full-run load, which is the `flake-label` trap in reverse: a real, explained
-artifact wearing a flake's clothes.
+**Resolved (`d84b1c7`, 2026-08-12).** `tests/Pest.php` owns the technique:
+`knownResizeObserverArtifact()` holds the literal,
+`stripKnownResizeObserverArtifacts()` counts and strips only exact matches and
+returns the count, and `assertNoUnexpectedJavaScriptErrors()` composes the two
+so unexpected messages still fail through Pest's own assertion. Every
+converted site is one line, and the helper is the only place the suite reaches
+into `window.__pestBrowser.jsErrors`. Consolidation landed on strict equality,
+not the convenient substring form.
+
+Four things worth carrying forward, three of them corrections to this entry's
+own first draft:
+
+1. **Six strict sites in `MediaPickerBrowserTest`, not five** (above).
+2. **CloneRepro is a different channel, not a loose variant** (above). Its
+   ResizeObserver arm tightened to exact equality against the shared literal;
+   exact matching is safe across the `describeError()` transform in its path,
+   because that function returns strings unchanged and an `Error`'s
+   `.message` verbatim, so Chromium's text reaches the accumulator unaltered
+   either way.
+3. **The `:504` strip is redundant for that test's own end-of-test assertion
+   but not for its mid-test `js_errors` diagnostic at `:644`, whose
+   `.slice(0, 5)` cap lets a benign artifact evict a real error — so it
+   survives as a strip-only helper call.** Its count is now recorded in the
+   payload that diagnostic feeds, so a `pending_cleared`/`direct_shows_media`
+   failure states how many artifacts were stripped.
+4. **`isFromCancelledTransition` now has a written home** rather than only a
+   call-site line: Alpine cancels modal transitions when cycles overlap, and
+   that rejection noise predates the M2 defect and is unrelated to
+   component-root integrity. It stays a **substring** match, deliberately —
+   it arrives on the `unhandledrejection` channel where the reason object's
+   serialized shape varies — and stays scoped to
+   `MediaPickerCloneReproBrowserTest`, the only place in the repo that
+   observes it.
+
+**Isolation could not have proved this fix, and that is the durable lesson.**
+The artifact never fires in isolation, so a green isolated suite exercises the
+filter *zero* times — the count-canary trap. The filter's behavior is
+therefore pinned by `tests/Browser/JavaScriptErrorArtifactFilterBrowserTest`,
+which seeds the accumulator directly and asserts both the count and the
+strictness: a near-miss differing from the classified message **only by its
+trailing period survives the strip**, which is precisely what the old
+substring form would have swallowed. Prose forbids a prefix match; that test
+is what makes the prohibition fail loudly.
+
+**Scope deliberately not crossed:** `CardTemplatePreviewBrowserTest` keeps its
+own copies of the literal — **four declarations under two different variable
+names** (`knownResizeObserverMessage` at `:489`/`:651`, `knownMessage` at
+`:1466`/`:1614`), which is the `one-home` defect compounding inside one file
+rather than merely persisting. It is left alone for a reason that stands on
+its own: that file does not strip-then-assert, it *measures* — it counts the
+artifact into a returned payload and asserts on both the count and the
+surviving messages — so a stripping helper would break what it is testing.
+The mini2 plan's mandate to retain that file's filtering
+(`44-…-mini2-implementation-plan.md:127-129`) is **not** the justification and
+must not be cited as one: it says retain the filtering, which a shared helper
+would also satisfy, and reading it as "do not refactor this file" would ossify
+the boundary on a prohibition the document never makes. A future consolidation
+there is open, and it needs a measurement-shaped helper, not this one.
+
+**Accepted limit, recorded because it is how this could quietly come back.**
+The guard test seeds the accumulator from the same constant the helper reads,
+so it proves the filter is *self-consistent* — not that the literal still
+matches what Chromium actually emits. That is `expectation-from-home`
+(`defect-cause-patterns.md:312`), an accepted limit here rather than a defect,
+since nothing in-process can observe the real message on demand. The
+consequence is the part that matters: **if this flake ever returns, the first
+suspect is the literal drifting from Chromium's real text** — a Playwright
+bump dropping the trailing period would do exactly that — **and the guard test
+will stay green throughout.** Confirm the emitted text before re-litigating
+the filter.
+
+**Also found while converting:** `visit()` returns `PendingAwaitablePage`,
+which only becomes `AwaitableWebpage` once a method is called on it. Every
+existing call site arrives post-`->resize()`, so a narrowly-typed shared
+helper passes the entire suite and then `TypeError`s on the first caller who
+writes plain `visit()` — the shape a new test is most likely to use. The
+helper accepts both.
+
+**Proof:** three consecutive green full-suite runs — 2012 tests / 20,991
+assertions at 353.0s / 366.6s / 353.9s, none carrying the +30.5s artifact
+signature that identified the failure. One green run would have been
+worthless at ~1-in-2. Touched files 20/20 in isolation; pint clean; FilaCheck
+35/35.
 
 **Found by:** the register-1.8 session while independently re-verifying the
 1.9 gate (three sightings, one identification). Not filed against 1.9 — it

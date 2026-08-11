@@ -397,6 +397,7 @@ is the only way to learn what changed when that phase starts.
 | 3 | `waitFor` labelled polling helper | All 10 matched files | Correct pattern, no action |
 | 4 | `_x_dataStack` boot probe | `DashboardSparklineBrowserTest.php` | Correct (`closest('[x-data]')`), no action |
 | 5 | pest-plugin-browser 4.3.1 → 5.0.0 | composer.lock | Deferred to the Pest 5 upgrade phase; no changelog text available to pre-read |
+| 6 | Classified ResizeObserver artifact vs. bare `assertNoJavaScriptErrors()` | MediaPickerUploadFocusReturn (3 bare sites, the ~1-in-2 first-run failure), MediaPicker (6), MediaResourceGallery (3), MediaPickerCloneRepro (1, a *different* accumulator) | **Fixed 2026-08-12 (`d84b1c7`)** — the filter now has one home in `tests/Pest.php`, strict exact-equality and counted, pinned by `JavaScriptErrorArtifactFilterBrowserTest` (isolation exercises the filter zero times, so the suite alone could never prove it). `CardTemplatePreviewBrowserTest` is untouched (4 literal declarations under 2 variable names) because it *measures* the artifact into asserted payloads rather than strip-then-asserting — a stripping helper would break it; a measurement-shaped consolidation there stays open. See `open-findings-triage.md` §F13 |
 
 ### R5. RefreshDatabase opt-out classification
 
