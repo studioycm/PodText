@@ -1,6 +1,8 @@
 # Repo governance model — generalizing the dashboard model beyond one program
 
-**Status:** DESIGN, operator-approved scope, not implemented. Planning round 2026-08-12.
+**Status:** DESIGN. **Scope reduced by operator decision 2026-08-12 — see §0.**
+Not implemented. Implementation plan:
+`docs/superpowers/plans/2026-08-12-governance-generalization-plan.md`.
 **Supersedes in scope:** the dashboard-only scope ruling of 2026-08-03.
 **Provenance:** written 2026-08-12 by the governance-planning session, from
 `docs/phase-02/dashboard-governance-principles.md` (the model), `.ai/rules/docs.md`
@@ -9,6 +11,52 @@ and `~/.cache/podtext-coord/PROTOCOL.md` (the live concurrent-session protocol,
 outside the repo).
 
 ---
+
+## 0. Scope reduction (operator decision, 2026-08-12)
+
+The operator will run **one session at a time, or use worktrees**, rather than
+concurrent sessions in a shared tree. Everything below that exists to make
+concurrent shared-tree work safe is therefore **not being built**: the two-gear
+protocol (§5), the shared-resource register as a governance mechanism (§5.1),
+the contribution zone (§6), and the dormancy clock (§7).
+
+What survives, and is what the plan implements: the core principles (§4), the
+reconciliation of the contradictory `one-owner` text (§1), and the guards (§8) —
+which matter *more* without concurrency, not less. Nearly every correction in
+this round came from a peer session catching something on evidence; remove the
+peers and a guard that fails loudly is the only remaining check.
+
+**A caution on worktrees, verified 2026-08-12.** They isolate the working tree
+and the git index. They do **not** isolate the MySQL test lane (lock and
+fingerprint are machine-global at `~/.cache/podtext-test-lane/`, made so
+deliberately by `89a2ee1`/`810f6f2` to close the cross-worktree gap) nor the
+Pest 5 TIA graph (`~/.pest/tia/<project-key>`, keyed by normalized git remote —
+every worktree of this repo shares one graph; mechanism confirmed `50dc246`).
+A large net win, not a complete one.
+
+Sections marked out of scope were not wrong. They answer a question the operator
+has decided not to have.
+
+### 0.1 A sourcing defect in this document
+
+This spec repeatedly cites `~/.cache/podtext-coord/PROTOCOL.md`, which **lives
+outside the repo, is not version-controlled, and has been edited since these
+citations were written** — partly in response to findings in this very document.
+Every quotation of it below is therefore historical, as-of **2026-08-12**,
+pre-correction, and cannot be verified by any reader at any commit.
+
+That is `unarchived-binding` (alias P12) — *binding by reference to an
+unarchived source* — occurring in a document whose §4 opens by listing
+`readable-binding` as principle one. It is logged in the `governs-itself`
+instance table in §4, and is the only entry there that its document's own author
+introduced knowingly, by citing a convenient external file instead of archiving
+the text relied upon.
+
+Recorded rather than silently repaired because the pattern is the point. The
+correct remedy — quote the relied-upon text verbatim into the repo with a date
+stamp — is noted here and deliberately not applied retroactively to a design
+record; a future revision that wants these claims load-bearing must archive them
+first.
 
 ## 1. Why now
 
@@ -84,17 +132,36 @@ requires *every* implementation prompt to update it. With (d) it lands T0 correc
 that file is chronological **accumulation**, not curated **synthesis**. Nobody
 reconciles prompt 9's entry against prompt 13's.
 
-The three named ledgers fail (d) in the other direction — the patterns ledger
-dedupes sightings into patterns, the triage list reconciles status, the register
-synthesizes across documents.
-
 > **Custodianship exists to protect synthesis, not accumulation.**
 
 The classification is a property of the artifact, not of the program that made
 it. That is precisely why the model transferred to the test-suite program
 unmodified, and it is the whole basis for generalizing it.
 
-### 3.1 The consolidated register — split ownership (D3)
+### 3.1 Membership, enumerated
+
+An earlier revision of this section described its membership in prose — *"the
+three named ledgers"* — which silently lumped a T2 register in with two T1
+ledgers. A spec arguing for enumeration over description, describing. Logged in
+the `governs-itself` table in §4 and fixed here.
+
+| Artifact | Class | Why |
+|---|---|---|
+| `docs/research/defect-cause-patterns.md` | **T1** | Dedupes sightings into patterns; already carries a custodian header |
+| `docs/phase-02/open-findings-triage.md` | **T1** | Reconciles status across programs and rounds |
+| `docs/phase-02/dashboard-governance-principles.md` | **T1** | Amendments must be reconciled against each other; `governs-itself` forbids it exempting itself |
+| `docs/phase-02/consolidated-open-findings.md` | **T2** | Synthesizes across documents; regenerate-wholesale, hand-edit is a defect |
+| `docs/phase-02/current-project-state.md` | **T0** | Fails clause (d) — chronological accumulation, not curated synthesis |
+| everything else under `docs/**` | **T0** | Default |
+
+**Under the §0 scope reduction, only one row of this table has a live
+consumer:** the T1 set is not given custodian machinery, contribution zones, or
+dormancy clocks. What ships is the guard's `CUSTODIED_LEDGERS` constant, which
+names the ledgers that actually carry a custodian header today. The rest of this
+table is design record — kept because the admission test is the durable part and
+the membership is its worked example, not because anything reads it.
+
+### 3.2 The consolidated register — split ownership (D3)
 
 `docs/phase-02/consolidated-open-findings.md` is the sole T2 member and is also
 the committed seed of the unstarted Documentation Architecture and Consolidation
@@ -157,7 +224,9 @@ Every governance artifact is classified under this scheme like any other, carrie
 the same custodian discipline, and is subject to the same guards. When you write
 a rule, check the document you wrote it in against it before you commit.
 
-*Why:* four instances, three of them during the round that designed this section.
+*Why:* the instances below, all from 2026-08-11/12. **Three of them are in this
+document.** No ordinal is given for any of them, because a running count is a
+number that rots — which is the failure directly above this one.
 
 | Artifact | Rule it states | How it broke that rule |
 |---|---|---|
@@ -165,12 +234,17 @@ a rule, check the document you wrote it in against it before you commit.
 | `~/.cache/podtext-coord/PROTOCOL.md` §4 | enumerate rather than cite counts | Carried an unenumerable count ("four test files"; actually one), hours after being written, in the document that enforces the discipline |
 | `defect-cause-patterns.md` | custodian stamped at each merge | Went unstamped at `6e23af0`, the first merge after the rule was adopted |
 | `defect-cause-patterns.md` | `one-home` | Registered its own `one-home` violation (`0df05ee`) |
+| **This spec, §8.1** | enumerate rather than cite counts | Claimed "three guards convert three rows"; listing them gives one |
+| **This spec, §3.1** | enumerate rather than describe | Described its own T1 membership in prose, lumping a T2 register in with two T1 ledgers — fixed by the table there |
+| **This spec, §0.1** | `readable-binding` | Binds its analysis to `PROTOCOL.md`, which is outside the repo, unversioned, and has changed since |
 
-The pattern is not carelessness — the second instance was written by the round's
-arbiter, under active collision pressure, and self-corrected within the hour. It
-is that **prose describing a discipline does not participate in the discipline**.
-Only a guard does. This principle is why §8 exists, and §8 is what makes this
-principle more than an observation.
+The pattern is not carelessness. The `PROTOCOL.md` instance was written by the
+round's arbiter, under active collision pressure, and self-corrected within the
+hour; three more were committed by the author of the principle itself, in the
+document introducing it, within a day. That is the evidence: **prose describing a
+discipline does not participate in the discipline.** Only a guard does. This
+principle is why §8 exists, and §8 is what makes this principle more than an
+observation.
 
 **New — `control-preconditions`:** when a discipline is accepted as a control,
 state what it depends on. *"Safe provided everyone obeys a rule"* is a materially
@@ -222,10 +296,12 @@ here, found while writing this document:
 3. **The working tree as test input** — no tracked-file edits while any suite
    runs. Markdown genuinely *is* test input here, so "docs-only is inert" is
    false in this repo. Measured at HEAD: exactly one test reads project docs at
-   runtime — `tests/Feature/PublicStep9RMenuHeaderUxFixesTest.php:118-120`,
-   reading three files, two of them under `docs/phase-02/`. Additionally, a Pest
-   5 TIA recording run is graph-sensitive to *any* new file, whether or not a
-   test reads it.
+   runtime — `tests/Feature/PublicStep9RMenuHeaderUxFixesTest.php:118-121`,
+   reading **four** files, two of them under `docs/phase-02/` and one
+   (`.ai/guidelines/tooling-quality.md`) **outside `docs/` entirely** — which is
+   exactly the kind of file a session edits while believing docs are inert.
+   Additionally, a Pest 5 TIA recording run is graph-sensitive to *any* new
+   file, whether or not a test reads it.
 
 4. **Git HEAD itself** — and this one is *outside any lock's reach*. Per
    `3330fe7`'s message, a Pest 5 TIA recording run stamps `setRecordedAtSha()`
@@ -323,17 +399,33 @@ follow.
 
 The need is not theoretical, and the evidence arrived during this very round.
 `PROTOCOL.md` §4 justifies its most absolute rule with *"four test files read
-`.md`, two of them under `docs/phase-02/`"*. Measured at HEAD: **one** test file
-reads **three** docs files, two of them under `docs/phase-02/` — the last clause
-exact, the first off by 4×, apparently by counting files-read as test-files.
+`.md`, two of them under `docs/phase-02/`"* (its text as of 2026-08-12, since
+corrected — see §0.1). Measured at HEAD: **one** test file reads **four** files,
+two of them under `docs/phase-02/` — the last clause exact, the first off by 4×,
+apparently by counting files-read as test-files.
 Thirteen of the fifteen `.md` mentions in `tests/` are docblock citations, two of
 them on a governed ledger, which is how a reader arrives at "a governed ledger is
-test input" when no test reads one. The rule's *conclusion* survives — three real
-docs are read by a real test — but a protocol written hours earlier, by a careful
+test input" when no test reads one. The rule's *conclusion* survives — four real
+files are read by a real test — but a protocol written hours earlier, by a careful
 author, under active collision pressure, already carried a number that could be
 cited and not enumerated. This is the register's own corollary applied to
 governance: **a count you can list is a count you can falsify; a count you can
 only cite is not.**
+
+**And this document got it wrong too, in a new way.** The figure above was first
+written as *three* files. It came from a detection command ending in `head -3` —
+the instrument silently capped the count, and the cap left no trace in the
+output. That is `silent-cap` (alias P6) firing inside the measurement used to
+correct someone else's uncountable number. The chain ran three deep — *"four test
+files"* (wrong) → *"one test file, three docs files"* (wrong, truncated) → *"four
+files"* (verified) — and in every link the corrector was not the writer, with the
+middle correction wrong in a **new** way rather than a smaller one. The lesson is
+sharper than *enumerate rather than count*: **an enumeration is only as
+trustworthy as its instrument's cap.** `head`, `--maxdepth`, PHPStan's agent-mode
+truncation and MCP result limits all return lists that look complete. It composes
+with the same failure from the other direction — a *zero* produced by a malformed
+pattern is indistinguishable from a zero produced by absence. Verify the
+instrument, not just the result.
 
 Prose written by careful people rots this fast. Docs are already test input here,
 so guarding is cheap. Proposed guards:
