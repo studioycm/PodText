@@ -77,11 +77,11 @@ $rawPreBootEnv = static function (string $key, string $default): string {
     return $default;
 };
 
-$laneLockPath = TestLaneContract::runLockPath(
-    $rawPreBootEnv('DB_TESTING_HOST', '127.0.0.1'),
-    $rawPreBootEnv('DB_TESTING_PORT', '3307'),
-    $rawPreBootEnv('DB_TESTING_DATABASE', ''),
-);
+$laneHost = $rawPreBootEnv('DB_TESTING_HOST', '127.0.0.1');
+$lanePort = $rawPreBootEnv('DB_TESTING_PORT', '3307');
+$laneDatabase = $rawPreBootEnv('DB_TESTING_DATABASE', '');
+
+$laneLockPath = TestLaneContract::runLockPath($laneHost, $lanePort, $laneDatabase);
 
 @mkdir(dirname($laneLockPath), 0755, true);
 
@@ -93,14 +93,80 @@ if ($laneLock === false) {
 }
 
 if (! flock($laneLock, LOCK_EX | LOCK_NB)) {
-    fwrite(STDERR, "Another pest run holds the MySQL lane. Wait for it to finish.\n");
-    exit(1);
+    /*
+     * Refused. This block is deliberately loud on BOTH streams and exits 75,
+     * not 1 — see TestLaneContract::runLockRefusal() for why an agent runner
+     * once read this very refusal as a silent pass and had to `pgrep` to
+     * discover it had been blocked at all.
+     */
+    $laneRefusal = TestLaneContract::runLockRefusal(
+        @file_get_contents($laneLockPath),
+        time(),
+        static fn (int $pid): bool => posix_kill($pid, 0),
+    );
+
+    fwrite(STDERR, $laneRefusal['stderr']);
+    fwrite(STDOUT, $laneRefusal['stdout']);
+
+    exit($laneRefusal['code']);
 }
 
 // The include runs inside BootFiles::load() — a method scope. Without this,
 // the handle is garbage-collected right after bootstrap and the lock silently
 // releases (proven by a mid-run probe). Globals live as long as the process.
 $GLOBALS['mysqlLaneRunLock'] = $laneLock;
+
+/*
+ * Won the lock — now say who we are, in the lock file itself, so the next
+ * process to be refused can name us instead of reporting an anonymous "busy"
+ * (and so a human can just `cat ~/.cache/podtext-test-lane/*.lock`).
+ *
+ * The label carries the TREE as well as the argv on purpose: the lock is
+ * machine-global, so two worktrees produce identical command lines and the
+ * checkout path is the only thing that tells them apart.
+ */
+$laneHolderPid = (int) getmypid();
+$laneHolderLane = $laneDatabase.'@'.$laneHost.':'.$lanePort;
+$laneHolderStartedAt = time();
+$laneHolderLabel = dirname(__DIR__).': '.implode(' ', array_map(
+    static fn (mixed $argument): string => (string) $argument,
+    (array) ($_SERVER['argv'] ?? []),
+));
+
+$stampLaneHolder = static function (string $state, ?int $releasedAt = null) use (
+    $laneHolderPid,
+    $laneHolderLabel,
+    $laneHolderLane,
+    $laneHolderStartedAt,
+): void {
+    // Reads the handle back out of $GLOBALS instead of closing over it, and
+    // that is load-bearing: a captured handle would keep the lock alive on its
+    // own and so MASK the GC trap the $GLOBALS line above exists to fix — a
+    // future deletion of that line would still pass its guard. Reading it back
+    // means the trap stays observable (handle gone → no release record).
+    $handle = $GLOBALS['mysqlLaneRunLock'] ?? null;
+
+    if (! is_resource($handle)) {
+        return;
+    }
+
+    TestLaneContract::writeRunLockRecord(
+        $handle,
+        $state,
+        $laneHolderPid,
+        $laneHolderLabel,
+        $laneHolderLane,
+        $laneHolderStartedAt,
+        $releasedAt,
+    );
+};
+
+$stampLaneHolder('held');
+
+// Normal exit clears the record, so a later reader sees `released` rather than
+// a finished run masquerading as a live one. A killed run cannot run this —
+// which is exactly why flock, not the record, remains the authority.
+register_shutdown_function(static fn () => $stampLaneHolder('released', time()));
 
 // Opportunistic one-time cleanup (D3/DP7): the pre-relocation per-tree lock
 // file is now permanently dead — nothing will ever open it again — so remove

@@ -19,6 +19,25 @@ it('refuses while the running pest process holds the lane run-lock', function ()
         ->assertExitCode(1);
 });
 
+/*
+ * Worth more than any scratch-file assertion of the same reader: the suite
+ * process IS the lock holder while this runs, so the record read back here is
+ * the one tests/Pest.php stamped during this very process's bootstrap. If the
+ * boot path ever stops stamping it, the reader falls back to "unidentified",
+ * the pid disappears from the refusal, and this goes red — a regression no
+ * in-process test of the pure functions could catch.
+ */
+it('names the holder in the refusal — the running pest process itself, not merely "someone"', function (): void {
+    // ONE needle only, deliberately: expectsOutputToContain() registers a
+    // Mockery expectation per needle against doWrite, and the first matching
+    // expectation consumes the call — so a second needle matching the SAME
+    // line is reported as never printed even though it plainly was. The pid
+    // is the needle worth having here; the tests above already pin 'run-lock'.
+    $this->artisan('db:test-lane-reset')
+        ->expectsOutputToContain((string) getmypid())
+        ->assertExitCode(1);
+});
+
 it('refuses even with --force while the run-lock is held — force only skips the typed confirmation', function (): void {
     $this->artisan('db:test-lane-reset', ['--force' => true])
         ->expectsOutputToContain('run-lock')

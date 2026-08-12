@@ -308,6 +308,156 @@ it('assertSafeBoot passes through silently for an existing fingerprint whose sch
     }
 });
 
+/*
+ * The run-lock's legibility half (2026-08-12), designed jointly from two
+ * incidents in one evening: a WRITER breached T23b because nothing told it
+ * another session's gate was in flight, and a RUNNER's blocked pest run
+ * returned NOTHING VISIBLE — the refusal was STDERR-only and the runner's
+ * output filter reads stdout JSON, so "blocked" and "silently passed" were
+ * indistinguishable until `pgrep -fl "vendor/bin/pest"` turned up holder PID
+ * 74407.
+ *
+ * flock remains the authority; the record in the file is advisory. It can
+ * only ever be stale in the SAFE direction, because a holder stamps `held`
+ * before it does anything else: a reader trusting a stale `held` waits longer
+ * than it had to, never the reverse. These tests pin the record, the reader
+ * and the refusal payload; the mid-run two-process probe proves the boot path
+ * itself, which nothing in-process can.
+ */
+
+$holderIsAlive = static fn (bool $alive): Closure => static fn (int $pid): bool => $alive;
+
+it('stamps a one-line JSON holder record naming the pid, the label and the lane', function (): void {
+    $encoded = TestLaneContract::runLockRecord(
+        'held',
+        74407,
+        '/Users/studioycm/Herd/PodText: vendor/bin/pest --compact',
+        'podtext_test@127.0.0.1:3307',
+        1_770_000_000,
+    );
+
+    expect(json_decode($encoded, true, flags: JSON_THROW_ON_ERROR))->toEqual([
+        'state' => 'held',
+        'pid' => 74407,
+        'label' => '/Users/studioycm/Herd/PodText: vendor/bin/pest --compact',
+        'lane' => 'podtext_test@127.0.0.1:3307',
+        'started_at' => 1_770_000_000,
+        'released_at' => null,
+    ])
+        // One line, so `cat ~/.cache/podtext-test-lane/*.lock` stays readable
+        // to a human who never learns the record's shape.
+        ->and(substr_count($encoded, "\n"))->toBe(1)
+        ->and($encoded)->toEndWith("\n");
+});
+
+it('keeps a runaway argv from bloating the record, and a newline in it from breaking the one-line shape', function (): void {
+    $encoded = TestLaneContract::runLockRecord('held', 1, str_repeat('x', 5000)."\nsecond line", 'lane', 1);
+
+    expect(mb_strlen((string) json_decode($encoded, true, flags: JSON_THROW_ON_ERROR)['label']))->toBe(300)
+        ->and(substr_count($encoded, "\n"))->toBe(1);
+});
+
+it('replaces the whole previous record when stamping, leaving no trailing bytes of the longer one', function (): void {
+    $path = laneGuardScratchRoot();
+    $handle = fopen($path, 'c+');
+
+    try {
+        TestLaneContract::writeRunLockRecord($handle, 'held', 999, str_repeat('long-label-', 20), 'lane', 1_770_000_000);
+        TestLaneContract::writeRunLockRecord($handle, 'released', 999, 'short', 'lane', 1_770_000_000, 1_770_000_060);
+
+        $contents = (string) file_get_contents($path);
+
+        expect(substr_count($contents, "\n"))->toBe(1)
+            ->and($contents)->not->toContain('long-label-')
+            ->and(json_decode(trim($contents), true, flags: JSON_THROW_ON_ERROR))
+            ->toMatchArray(['state' => 'released', 'released_at' => 1_770_000_060]);
+    } finally {
+        fclose($handle);
+        File::delete($path);
+    }
+});
+
+it('describes a live holder by pid, label and how long it has held the lane', function () use ($holderIsAlive): void {
+    $raw = TestLaneContract::runLockRecord('held', 74407, 'PodText: vendor/bin/pest --compact', 'podtext_test@127.0.0.1:3307', 1_770_000_000);
+
+    expect(TestLaneContract::describeRunLockHolder($raw, 1_770_000_192, $holderIsAlive(true)))
+        ->toContain('74407')
+        ->toContain('PodText: vendor/bin/pest --compact')
+        ->toContain('3m 12s');
+});
+
+it('calls the record stale rather than naming a holder process that is gone', function () use ($holderIsAlive): void {
+    $raw = TestLaneContract::runLockRecord('held', 74407, 'a finished run', 'lane', 1_770_000_000);
+
+    expect(TestLaneContract::describeRunLockHolder($raw, 1_770_000_010, $holderIsAlive(false)))
+        ->toContain('stale')
+        ->toContain('74407');
+});
+
+it('reports an unidentified holder when the lock file carries no readable record', function (string|false|null $raw) use ($holderIsAlive): void {
+    // Every one of these is reachable: a zero-byte file is what the lock has
+    // held until today, `false` is @file_get_contents on an unreadable path,
+    // and a partial line is what a reader catches between ftruncate and write.
+    expect(TestLaneContract::describeRunLockHolder($raw, 1_770_000_000, $holderIsAlive(true)))
+        ->toContain('unidentified');
+})->with([
+    'zero-byte file (every build before this one)' => [''],
+    'unreadable file' => [false],
+    'never written' => [null],
+    'torn write' => ['{"state":"held","pi'],
+    'valid json, wrong shape' => ['{"unrelated":true}'],
+]);
+
+it('treats a released record as stale too, because flock has already refused the caller', function () use ($holderIsAlive): void {
+    $raw = TestLaneContract::runLockRecord('released', 74407, 'a finished run', 'lane', 1_770_000_000, 1_770_000_060);
+
+    expect(TestLaneContract::describeRunLockHolder($raw, 1_770_000_061, $holderIsAlive(true)))
+        ->toContain('unidentified');
+});
+
+it('never prints a negative age when the clock has gone backwards', function () use ($holderIsAlive): void {
+    $raw = TestLaneContract::runLockRecord('held', 74407, 'a run', 'lane', 1_770_000_500);
+
+    expect(TestLaneContract::describeRunLockHolder($raw, 1_770_000_000, $holderIsAlive(true)))
+        ->toContain('0s')
+        ->not->toContain('-');
+});
+
+/*
+ * The more dangerous half. An agent runner filtering stdout for JSON read the
+ * old STDERR-only refusal as an empty pass. Pest emits no agent-mode JSON of
+ * its own — verified by reading vendor/pestphp/pest/src, there is no such
+ * formatter — so the refusal has to produce that payload itself.
+ */
+
+it('refuses onto stdout, never stdout-silently, so a blocked run cannot be read as a pass', function () use ($holderIsAlive): void {
+    $raw = TestLaneContract::runLockRecord('held', 74407, 'PodText: vendor/bin/pest', 'lane', 1_770_000_000);
+    $refusal = TestLaneContract::runLockRefusal($raw, 1_770_000_060, $holderIsAlive(true));
+
+    $lines = array_values(array_filter(explode("\n", $refusal['stdout'])));
+    $json = json_decode((string) end($lines), true, flags: JSON_THROW_ON_ERROR);
+
+    expect($refusal['stdout'])->not->toBe('')
+        ->and($json['result'])->toBe('refused')
+        // A filter reading counts must not see a green run either.
+        ->and($json['tests'])->toBe(0)
+        ->and($json['holder'])->toContain('74407')
+        // And a human reading raw output sees it without parsing anything.
+        ->and($refusal['stdout'])->toContain('REFUSED')
+        ->and($refusal['stderr'])->toContain('REFUSED');
+});
+
+it('refuses with EX_TEMPFAIL, so "blocked" is distinguishable from "tests failed" by exit code alone', function () use ($holderIsAlive): void {
+    $refusal = TestLaneContract::runLockRefusal('', 1_770_000_000, $holderIsAlive(true));
+
+    expect($refusal['code'])->toBe(75)
+        // 1 is what a failing suite exits with — the code the refusal used to
+        // share with it, which is why exit status alone could not tell a
+        // blocked run from a red one.
+        ->and($refusal['code'])->not->toBe(1)
+        ->and($refusal['code'])->not->toBe(0);
+});
+
 it('assertSafeBoot does not claim it removed the stale legacy file when the unlink actually fails', function () use ($valid): void {
     Log::spy();
 

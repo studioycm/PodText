@@ -64,10 +64,27 @@ class ResetTestLane extends Command
         }
 
         if (! flock($lockHandle, LOCK_EX | LOCK_NB)) {
-            $this->error('Refusing to reset: a pest run on this machine holds the MySQL lane run-lock.');
+            $this->error('Refusing to reset: the MySQL lane run-lock is held by '.TestLaneContract::describeRunLockHolder(
+                @file_get_contents($lockPath),
+                time(),
+                static fn (int $pid): bool => posix_kill($pid, 0),
+            ).'.');
 
             return self::FAILURE;
         }
+
+        /*
+         * Stamp ourselves into the lock while we work. Without this, a pest
+         * run refused BY THIS RESET would read the record of whichever run
+         * held the lane before us — naming a dead process instead of the
+         * live command actually in its way.
+         */
+        $laneLabel = $database.'@'.$lane['host'].':'.$lane['port'];
+        $holderLabel = base_path().': php artisan db:test-lane-reset';
+        $holderPid = (int) getmypid();
+        $heldSince = time();
+
+        TestLaneContract::writeRunLockRecord($lockHandle, 'held', $holderPid, $holderLabel, $laneLabel, $heldSince);
 
         try {
             $foreign = self::foreignLaneConnections($database);
@@ -117,6 +134,7 @@ class ResetTestLane extends Command
 
             return self::SUCCESS;
         } finally {
+            TestLaneContract::writeRunLockRecord($lockHandle, 'released', $holderPid, $holderLabel, $laneLabel, $heldSince, time());
             flock($lockHandle, LOCK_UN);
             fclose($lockHandle);
         }
