@@ -64,8 +64,17 @@ Measured/verified facts, each with its source:
   direction. A blocked run now exits **75** (EX_TEMPFAIL) and prints a banner
   plus a `"result":"refused"` JSON line on STDOUT — closing the hazard where
   an agent filtering stdout read a STDERR-only refusal as a silent pass.
-  Known residual: the sibling "could not open the lock file" branch is still
-  STDERR-only with exit 1 (a path that has never fired).
+  The sibling "could not open the lock file" branch was closed the same day
+  (`3330fe7`) with a DIFFERENT code — 73 (EX_CANTCREAT), not 75 — because 75
+  invites a retry and retrying an unwritable lock root loops on a condition
+  waiting cannot fix; a test pins the separation.
+  Design lineage, since the shape was argued rather than obvious: the F13
+  session proposed a separate holder-registry file, and the settings-backup
+  session refined it to what shipped — no second artifact, enrich the
+  existing lock, name the holder, make the refusal unmissable. Both had hit
+  the gap from opposite sides the same evening, one as a writer who could not
+  see the lane was busy, one as a runner who could not tell a refusal from a
+  silent pass.
 - **Fake-disk process tokens** + orphan sweep in `tests/Pest.php` (the
   browser-timeout contention fix — two concurrent suites no longer delete
   each other's fixtures).
