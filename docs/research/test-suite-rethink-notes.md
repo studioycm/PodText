@@ -802,8 +802,16 @@ to 30 partial predecessors. Proven with an in-page attempt counter:
 30s action budget, and backward-compatible with 4.3.1. Verified:
 CardTemplatePreview 14/14 ×3 (113.2/113.3/113.3s; was 7 failures at 311s),
 browser suite 58/58 at 164s (R1 share was 159s), excluded groups green
-(rtl-board 1/1, compiled-sentinels 6/6). **Upstream bug candidate — filing
-with pestphp is an operator decision, not made.** Two trade-offs recorded:
+(rtl-board 1/1, compiled-sentinels 6/6). **Upstream: FILED as
+[pestphp/pest#1852](https://github.com/pestphp/pest/issues/1852)** (by the
+orchestrator session, 2026-08-12, claims re-verified in vendor source before
+posting; the plugin repo has issues disabled, hence the core repo). The
+filing adds a consequence this record had not named: the per-attempt cap is
+constant while the loop bound is the configured timeout, so **raising the
+timeout buys more 1s-truncated retries, not more time, and setting it
+≤1000ms disables the retry wrapper entirely** (both verified against
+`AwaitableWebpage::__call`'s `Playwright::timeout() <= 1000` direct path and
+`waitForExpectation`'s loop bound). Two trade-offs recorded:
 `page()->evaluate()` skips the wrapper's post-action server-exception check
 (every test still runs awaitable assertions after, which perform it), and
 scripts lose retry semantics they should never have had.
@@ -873,7 +881,8 @@ lock is authoritative.
 
 ### Residuals out of this phase
 
-- Upstream filing decision (the 1s-cap regression) — operator's call.
+- ~~Upstream filing decision~~ — filed as pestphp/pest#1852 (see U3);
+  watching for a maintainer reply is the residual.
 - TIA first baseline + the 3.9b contention experiment — designed follow-on,
   not started.
 - DP5's five stub surfaces + 37 genuine pest findings — the future wiring
