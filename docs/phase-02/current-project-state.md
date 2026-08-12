@@ -1602,15 +1602,15 @@ phases, so `3B P1–P5` and `3C P5–P8` mean phase five of those mini-tasks. Ba
 
 ## Tooling State
 
-*Verified against `composer show --direct` and `php -r 'echo PHP_VERSION;'` on 2026-08-11.*
+*Verified against `composer show --direct` and `php -r 'echo PHP_VERSION;'` on 2026-08-12 (Phase U close).*
 
-- Laravel: 13.24.0.
-- PHP: 8.4.23 from the local CLI; Laravel Boost reports PHP 8.4.
+- Laravel: 13.24.0 (deliberately held during the Pest 5 batch — 13.25.0 was available and excluded from the narrow update).
+- PHP: 8.4.23 from the local CLI; Laravel Boost reports PHP 8.4. **Xdebug v3.4.0alpha2-dev installed 2026-08-12** (Herd-bundled .so, `xdebug.mode=off` default, `XDEBUG_MODE=coverage` per-run for TIA; ini backup `php.ini.pre-xdebug-backup-2026-08-12`).
 - Filament: 5.7.6.
 - Livewire: 4.3.5.
 - Laravel Horizon: 5.48.2.
 - Laravel Boost: 2.5.3 installed and available through MCP (with `laravel/roster` 1.0; upgrade both together).
-- Pest: 4.7.8.
+- Pest: **5.1.0** (Phase U, `8617bb2`, 2026-08-12; PHPUnit 13.3.0 underneath) with pest-plugin-browser 5.0.1, pest-plugin-laravel 5.0.1, pest-plugin-drift 5.0.0, and new dev plugins pest-plugin-phpstan 5.0.2 + pest-plugin-rector 5.0.3. Suite gate at the upgrade: 2,012 tests / 20,991 assertions / ~370s on the MySQL lane. Full record: `docs/research/test-suite-rethink-notes.md` § Phase U record.
 - FilaCheck: 1.2.5 installed.
 - FilaCheck Pro: 1.2.7 installed.
 - Awcodes Curator: 5.1.5 installed.
