@@ -1436,3 +1436,36 @@ it (#1858) — which cuts both ways.
 Housekeeping: `~/.pest/tia/` **purged** at close-out per this verdict (the `test-residue`
 pattern); raw run logs, graph snapshots and the analysis script are preserved outside the
 repo at `~/.cache/podtext-coord/upstream-pest/`.
+
+### F8 — predictions versus measured
+
+Written before each run and not edited afterwards (preserved at
+`~/.cache/podtext-coord/upstream-pest/tia-filtered-2026-08-12/PREDICTIONS.md`). **Seven of
+nineteen were wrong**, which is the reason for writing them down: three of the wrong ones
+(E6a, E6b, P4.1) would have become confident prose if this table did not exist.
+
+| # | predicted | measured | |
+|---|---|---|---|
+| recording wall | 1,700–1,850s | **1,633s** | wrong, high |
+| recording failures | exit 1, 5 results from the 4 canaries | exactly that | right |
+| `recorded_at_sha` | == HEAD | `5312ddd` == HEAD | right |
+| `complete` | absent, *because of the exit-1 failures* | absent | right answer, **wrong reason** — see F3 |
+| graph shape | ~750KB, ~943 files, ~169 test files | 751,787B, 945, 171 | right |
+| the hook script in the graph | no — it runs as a subprocess | absent | right |
+| E0a | not a panic; ~4 files; 60–120s | 3 files, 23 tests, **319s** | direction right, cost badly wrong |
+| E0b | `NoAffectedTestsFound` panic, non-zero exit | **INFO, exit 0, 0s** | wrong |
+| E1a | normalised to zero | zero | right |
+| E1b | 10–60 files, 60–240s | **94 files**, modeled 1,268s | wrong, low |
+| E2 | 60–80% of the suite, slower than the plain gate | **98% of tests**, 1,633s | right in direction, low on share |
+| E3 | 50–300 files, 120–400s | **27 files, 546s** | wrong both ways |
+| E4 | that file alone, seconds | 1 file, 1s | right |
+| E5 | the covering test must fail | it failed | right |
+| E6a | Blade is a blind spot, 0 affected | **25 files** | wrong |
+| E6b | config is a blind spot, 0 or few | **164 files** | wrong, maximally |
+| next `--tia` after the edits settle | the 2s / 28s replay shape | **362s, then 354s — full suite both times** | wrong, and it led to F6 |
+| non-TIA runs keep the graph fresh | yes (#1859) | 2,035 results written by the plain gate | right |
+
+The two Blade/config predictions were wrong in the same direction and for the same reason:
+both assumed Xdebug tracing would miss what is not hand-written PHP. Blade has explicit
+machinery, and config files are executed by every boot. **The instinct "the tracer probably
+cannot see this" was wrong every time it was applied.**
