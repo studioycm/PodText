@@ -199,7 +199,6 @@ it('A: one explicit save costs one system backup, one job, thumbnail-only spawns
 
     $state = f12State();
     $manifest = f12ManifestCounts();
-    dump(['scenario' => 'A: explicit save (bare DB)', 'manifest' => $manifest, ...$state]);
 
     expect($state['saved_events'])->toBe(['PublicContentSettings' => 1])
         ->and($state['snapshot_jobs_processed'])->toBe(1)
@@ -226,24 +225,15 @@ it('B: one import on a bare DB fires ONE batched save but pays two backups and t
         'show_multiple_transcriptions_on_item_page' => true,
     ];
 
-    $startedAt = hrtime(true);
     $report = app(SettingsBackupManager::class)->import(f12Package($payload), [
         'homepage_item_limit',
         'transcription_policy.public_mode',
         'transcription_policy.count_mode',
         'transcription_policy.show_multiple_transcriptions_on_item_page',
     ], $superAdmin);
-    $importMs = (hrtime(true) - $startedAt) / 1e6;
 
     $state = f12State();
     $manifest = f12ManifestCounts();
-    dump([
-        'scenario' => 'B: single import, 4 selected paths (bare DB)',
-        'manifest' => $manifest,
-        'applied_paths' => $report->appliedPaths(),
-        'import_ms_under_process_fake' => round($importMs, 1),
-        ...$state,
-    ]);
 
     $expectedBeforeImportRows = $manifest['thumbnail_targets'] + ($manifest['full_targets'] * 2 * 1);
 
@@ -284,7 +274,6 @@ it('C: the same single import on a content-rich DB fans out to every full target
 
     $state = f12State();
     $manifest = f12ManifestCounts();
-    dump(['scenario' => 'C: single import (content-rich DB)', 'manifest' => $manifest, 'applied_paths' => $report->appliedPaths(), ...$state]);
 
     $expectedBeforeImportRows = $manifest['thumbnail_targets'] + ($manifest['full_targets'] * 2 * 1);
 
@@ -314,19 +303,11 @@ it('D: createManual pays a full set; an ungated restore pays another and dedups 
     $settings = f12FreshSettings();
     $settings->homepage_item_limit = 11;
     $settings->save();
-    $afterSecondSave = f12State();
 
     app(SettingsBackupManager::class)->restore($manual, $superAdmin);
 
     $state = f12State();
     $manifest = f12ManifestCounts();
-    dump([
-        'scenario' => 'D: manual backup + ungated (super admin) restore (bare DB)',
-        'manifest' => $manifest,
-        'after_manual' => $afterManual,
-        'after_second_save' => $afterSecondSave,
-        'final' => $state,
-    ]);
 
     $fullSet = $manifest['thumbnail_targets'] + ($manifest['full_targets'] * 2 * 1);
     $sources = collect($state['backups'])->pluck('source')->all();
@@ -380,7 +361,6 @@ it('E: a gated (admin) restore additionally creates a post-restore system backup
 
     $state = f12State();
     $manifest = f12ManifestCounts();
-    dump(['scenario' => 'E: gated (admin) restore (bare DB)', 'manifest' => $manifest, ...$state]);
 
     $sources = collect($state['backups'])->pluck('source')->all();
 
@@ -404,7 +384,6 @@ it('F: a fully locked no-op import keeps its audit backup row but skips snapshot
     $registry = app(SettingsImportLockSurfaceRegistry::class);
     $maintenancePaths = $registry->sectionUnitPaths('maintenance');
     app(SettingsImportLocks::class)->save($maintenancePaths);
-    $afterLockSave = f12State();
 
     $payload = PublicSettingsPackage::fromCurrentSettings()->payload();
     $payload['maintenance']['enabled'] = true;
@@ -414,13 +393,6 @@ it('F: a fully locked no-op import keeps its audit backup row but skips snapshot
 
     $state = f12State();
     $manifest = f12ManifestCounts();
-    dump([
-        'scenario' => 'F: fully locked no-op import (bare DB)',
-        'manifest' => $manifest,
-        'after_lock_save' => $afterLockSave,
-        'applied_paths' => $report->appliedPaths(),
-        'final' => $state,
-    ]);
 
     $beforeImport = SettingsBackupVersion::query()
         ->where('source', SettingsBackupSource::BeforeImport->value)
