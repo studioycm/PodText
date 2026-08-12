@@ -40,6 +40,30 @@ with `file_get_contents(base_path(...))` and shell to git via
 - Run tests with `php artisan test --compact --filter=<name>`. The full suite
   needs the MySQL lane and takes ~370s; do not run it for a docs-only task.
 
+## Worktrees: what they do and do not isolate
+
+The operator will run one session at a time or use worktrees (decision
+2026-08-12). Recorded here because a future reader will otherwise re-derive it.
+
+Worktrees give each session its own working tree and its own git index, which
+removes file collisions, the commit mutex, and the no-edits-while-a-suite-runs
+rule. Two things live in `$HOME` rather than the repo and are shared by every
+worktree:
+
+- **The MySQL test lane** (`~/.cache/podtext-test-lane/`) — one test database on
+  `127.0.0.1:3307`, so one run at a time machine-wide. Deliberate: two suites on
+  one database corrupt each other. **No action needed — this is a queue, not a
+  coordination protocol.** The lock refuses a second run loudly and names its
+  holder.
+- **The Pest 5 TIA graph** (`~/.pest/tia/<project-key>`, keyed by normalized git
+  remote) — every worktree of this repo shares one graph. **No action needed —
+  TIA is off, and is separately gated on a coverage driver that is not
+  installed.** The standing rule that TIA must not run while sessions share a
+  working tree extends to worktrees, and is what to weigh whenever enabling it
+  is proposed.
+
+Neither is a defect and neither is fixed by this plan. They are limits to know.
+
 ---
 
 ## File Structure
@@ -354,9 +378,13 @@ git commit -m "docs(governance): retire one-owner-registry at its source and wid
 
 ### Task 3: Add the pointer rule to `.ai/rules/docs.md`
 
-**Blocked on the operator's explicit approval of the exact text below.** Do not
-implement otherwise. Both existing entries in this file were approved
-individually; this is a house rule, not a formality.
+**✅ TEXT APPROVED by the operator 2026-08-12** — the exact wording in Step 1 is
+approved as drafted. Implement it verbatim. Changing so much as a clause
+re-opens the gate, because what was approved is the text, not the intent: both
+existing entries in this file were approved individually, and that is a house
+rule rather than a formality.
+
+This task is otherwise unblocked and can run alongside Task 4.
 
 Per the operator's 2026-08-12 decision the two existing rules are **kept
 unchanged** — this is added as a third, not a replacement.
