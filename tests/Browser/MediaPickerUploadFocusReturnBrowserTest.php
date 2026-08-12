@@ -38,7 +38,7 @@ function openUploadWorkspaceForFocusReturn(): AwaitableWebpage
 
     $page = visit(ContentGroupResource::getUrl('edit', ['record' => $group]))->resize(1280, 900);
 
-    $page->script(<<<'JS'
+    $page->page()->evaluate(<<<'JS'
         async () => {
             const waitFor = async (callback, stage, timeout = 10000) => {
                 const started = performance.now();
@@ -95,7 +95,7 @@ function openUploadWorkspaceForFocusReturn(): AwaitableWebpage
 it('returns focus to the workspace when the upload settles', function (): void {
     $page = openUploadWorkspaceForFocusReturn();
 
-    $result = $page->script(<<<'JS'
+    $result = $page->page()->evaluate(<<<'JS'
         async () => {
             const waitFor = async (callback, stage, timeout = 10000) => {
                 const started = performance.now();
@@ -147,7 +147,7 @@ it('returns focus even when the primary return target cannot take it', function 
      * restore gets. Held by frame so Alpine's own binding cannot quietly undo
      * it, then released — a single unverified focus() call never recovers.
      */
-    $result = $page->script(<<<'JS'
+    $result = $page->page()->evaluate(<<<'JS'
         async () => {
             const waitFor = async (callback, stage, timeout = 10000) => {
                 const started = performance.now();
@@ -217,7 +217,7 @@ it('returns focus even when the primary return target cannot take it', function 
 it('leaves a deliberate focus choice alone when the upload settles', function (): void {
     $page = openUploadWorkspaceForFocusReturn();
 
-    $result = $page->script(<<<'JS'
+    $result = $page->page()->evaluate(<<<'JS'
         async () => {
             const waitFor = async (callback, stage, timeout = 10000) => {
                 const started = performance.now();

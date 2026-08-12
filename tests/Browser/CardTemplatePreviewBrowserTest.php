@@ -465,7 +465,7 @@ it('renders content-aware public item and group geometry in both directions', fu
     $page = visit('/')->resize(1280, 1100);
     foreach ([767, 768, 1024, 1280] as $width) {
         $page->resize($width, 1100);
-        $measurement = $page->script(<<<'JS'
+        $measurement = $page->page()->evaluate(<<<'JS'
             async () => {
                 // stable-read (R4): a layout value counts only when two consecutive
                 // animation-frame reads agree (cap 10 frames) — a mid-reflow transient
@@ -605,7 +605,7 @@ it('renders every ordered-flow preview variant responsively for item and group',
 
             foreach ([1280, 1024, 768, 767] as $width) {
                 $page->resize($width, 900);
-                $measurement = $page->script(<<<'JS'
+                $measurement = $page->page()->evaluate(<<<'JS'
                     async () => {
                         // stable-read (R4): a layout value counts only when two consecutive
                         // animation-frame reads agree (cap 10 frames) — a mid-reflow transient
@@ -731,7 +731,7 @@ it('renders every ordered-flow preview variant responsively for item and group',
                 }
 
                 if ($width < 1024) {
-                    $closed = $page->script(<<<'JS'
+                    $closed = $page->page()->evaluate(<<<'JS'
                         async () => {
                             window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
                             const started = performance.now();
@@ -764,7 +764,7 @@ it('keeps one inert responsive preview root with focus and dirty navigation prot
         'key' => 'preview_browser',
     ]))->resize(1280, 900);
 
-    $wide = $page->script(<<<'JS'
+    $wide = $page->page()->evaluate(<<<'JS'
         async () => {
             // stable-read (R4): a layout value counts only when two consecutive
             // animation-frame reads agree (cap 10 frames) — a mid-reflow transient
@@ -854,7 +854,7 @@ it('keeps one inert responsive preview root with focus and dirty navigation prot
 
     foreach ([1024, 1279, 1280] as $width) {
         $page->resize($width, 900);
-        $measurement = $page->script(<<<'JS'
+        $measurement = $page->page()->evaluate(<<<'JS'
             async () => {
                 // stable-read (R4): a layout value counts only when two consecutive
                 // animation-frame reads agree (cap 10 frames) — a mid-reflow transient
@@ -917,7 +917,7 @@ it('keeps one inert responsive preview root with focus and dirty navigation prot
             ->and($measurement['preview_width'])->toBeGreaterThan(250);
     }
 
-    $refresh = $page->script(<<<'JS'
+    $refresh = $page->page()->evaluate(<<<'JS'
         async () => {
             const originalFetch = window.fetch;
             const requestUrls = [];
@@ -948,7 +948,7 @@ it('keeps one inert responsive preview root with focus and dirty navigation prot
 
     foreach ([767, 768, 1023] as $width) {
         $page->resize($width, 800);
-        $closed = $page->script(<<<'JS'
+        $closed = $page->page()->evaluate(<<<'JS'
             async () => {
                 // stable-read (R4): a layout value counts only when two consecutive
                 // animation-frame reads agree (cap 10 frames) — a mid-reflow transient
@@ -989,7 +989,7 @@ it('keeps one inert responsive preview root with focus and dirty navigation prot
             ->and($closed['opener_visible'])->toBeTrue(json_encode($closed, JSON_THROW_ON_ERROR))
             ->and($closed['horizontal_overflow'])->toBeFalse();
 
-        $open = $page->script(<<<'JS'
+        $open = $page->page()->evaluate(<<<'JS'
             async () => {
                 // stable-read (R4): a layout value counts only when two consecutive
                 // animation-frame reads agree (cap 10 frames) — a mid-reflow transient
@@ -1046,9 +1046,9 @@ it('keeps one inert responsive preview root with focus and dirty navigation prot
             ->and($open['modal_public_interactions'])->toBe(0);
 
         $page->keys('#card-template-preview-heading', ['Tab', 'Tab', 'Tab', 'Tab']);
-        expect($page->script("Boolean(document.activeElement?.closest('[aria-modal=true]'))"))->toBeTrue();
+        expect($page->page()->evaluate("Boolean(document.activeElement?.closest('[aria-modal=true]'))"))->toBeTrue();
 
-        $escapeRestored = $page->script(<<<'JS'
+        $escapeRestored = $page->page()->evaluate(<<<'JS'
             async () => {
                 const started = performance.now();
                 window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
@@ -1074,7 +1074,7 @@ it('keeps one inert responsive preview root with focus and dirty navigation prot
         expect($escapeRestored)->toBeTrue();
     }
 
-    $dirty = $page->script(<<<'JS'
+    $dirty = $page->page()->evaluate(<<<'JS'
         async () => {
             const input = Array.from(document.querySelectorAll('[data-card-template-editor] input'))
                 .find((candidate) => candidate.getAttribute('wire:model')?.includes('data.label'));
@@ -1097,7 +1097,7 @@ it('keeps one inert responsive preview root with focus and dirty navigation prot
     expect($dirty['current_value'])->toBe($dirty['value'])
         ->and($dirty['protected'])->toBeTrue();
 
-    $modalBeforeResize = $page->script(<<<'JS'
+    $modalBeforeResize = $page->page()->evaluate(<<<'JS'
         async () => {
             const trigger = document.querySelector('[data-test="card-template-preview-open"]');
             const started = performance.now();
@@ -1152,7 +1152,7 @@ it('keeps one inert responsive preview root with focus and dirty navigation prot
         ->and($modalBeforeResize['focus_on_heading'])->toBeTrue();
 
     $page->resize(1024, 800);
-    $wideRestored = $page->script(<<<'JS'
+    $wideRestored = $page->page()->evaluate(<<<'JS'
         async () => {
             // stable-read (R4): a layout value counts only when two consecutive
             // animation-frame reads agree (cap 10 frames) — a mid-reflow transient
@@ -1250,7 +1250,7 @@ it('keeps one inert responsive preview root with focus and dirty navigation prot
         ->and($wideRestored['preview_width'])->toBeGreaterThan(250);
 
     $page->resize(1023, 800);
-    $narrowRestored = $page->script(<<<'JS'
+    $narrowRestored = $page->page()->evaluate(<<<'JS'
         async () => {
             // stable-read (R4): a layout value counts only when two consecutive
             // animation-frame reads agree (cap 10 frames) — a mid-reflow transient
@@ -1301,7 +1301,7 @@ it('keeps one inert responsive preview root with focus and dirty navigation prot
         ->and($narrowRestored['dirty_protected'])->toBeTrue()
         ->and($narrowRestored['horizontal_overflow'])->toBeFalse();
 
-    $rapidModal = $page->script(<<<'JS'
+    $rapidModal = $page->page()->evaluate(<<<'JS'
         async () => {
             const trigger = document.querySelector('[data-test="card-template-preview-open"]');
             const started = performance.now();
@@ -1357,7 +1357,7 @@ it('keeps one inert responsive preview root with focus and dirty navigation prot
 
     $page->resize(1024, 800);
     $page->resize(1023, 800);
-    $rapidResizeBack = $page->script(<<<'JS'
+    $rapidResizeBack = $page->page()->evaluate(<<<'JS'
         async () => {
             // stable-read (R4): a layout value counts only when two consecutive
             // animation-frame reads agree (cap 10 frames) — a mid-reflow transient
@@ -1427,7 +1427,7 @@ it('keeps one inert responsive preview root with focus and dirty navigation prot
         ->and($rapidResizeBack['horizontal_overflow'])->toBeFalse();
 
     $page->resize(1024, 800);
-    $repeatWide = $page->script(<<<'JS'
+    $repeatWide = $page->page()->evaluate(<<<'JS'
         async () => {
             await new Promise((resolve) => setTimeout(resolve, 200));
 
@@ -1439,7 +1439,7 @@ it('keeps one inert responsive preview root with focus and dirty navigation prot
         }
         JS);
     $page->resize(1023, 800);
-    $repeatNarrow = $page->script(<<<'JS'
+    $repeatNarrow = $page->page()->evaluate(<<<'JS'
         async () => {
             await new Promise((resolve) => setTimeout(resolve, 200));
 
@@ -1461,7 +1461,7 @@ it('keeps one inert responsive preview root with focus and dirty navigation prot
         'modal_roots' => 0,
     ]);
 
-    $resizeObserverErrors = $page->script(<<<'JS'
+    $resizeObserverErrors = $page->page()->evaluate(<<<'JS'
         () => {
             const knownMessage = 'ResizeObserver loop completed with undelivered notifications.';
             const errors = window.__pestBrowser.jsErrors ?? [];
@@ -1485,7 +1485,7 @@ it('renders the focused preview shell in English LTR', function (): void {
         'key' => 'preview_browser',
     ]))->resize(1023, 900);
 
-    $narrow = $page->script(<<<'JS'
+    $narrow = $page->page()->evaluate(<<<'JS'
         async () => {
             // stable-read (R4): a layout value counts only when two consecutive
             // animation-frame reads agree (cap 10 frames) — a mid-reflow transient
@@ -1539,7 +1539,7 @@ it('renders the focused preview shell in English LTR', function (): void {
         ->and($narrow['modal_is_logical_end'])->toBeTrue(json_encode($narrow, JSON_THROW_ON_ERROR))
         ->and($narrow['horizontal_overflow'])->toBeFalse();
 
-    $escapeRestored = $page->script(<<<'JS'
+    $escapeRestored = $page->page()->evaluate(<<<'JS'
         async () => {
             const started = performance.now();
             window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
@@ -1558,7 +1558,7 @@ it('renders the focused preview shell in English LTR', function (): void {
 
     $page->resize(1024, 900);
 
-    $geometry = $page->script(<<<'JS'
+    $geometry = $page->page()->evaluate(<<<'JS'
         async () => {
             // stable-read (R4): a layout value counts only when two consecutive
             // animation-frame reads agree (cap 10 frames) — a mid-reflow transient
@@ -1609,7 +1609,7 @@ it('renders the focused preview shell in English LTR', function (): void {
         }
         JS);
 
-    $resizeObserverErrors = $page->script(<<<'JS'
+    $resizeObserverErrors = $page->page()->evaluate(<<<'JS'
         () => {
             const knownMessage = 'ResizeObserver loop completed with undelivered notifications.';
             const errors = window.__pestBrowser.jsErrors ?? [];
@@ -1654,7 +1654,7 @@ it('keeps card width and sample choice transient inside the compact preview cont
         'key' => 'preview_browser',
     ]))->resize(1440, 900);
 
-    $interaction = $page->script(<<<'JS'
+    $interaction = $page->page()->evaluate(<<<'JS'
         async () => {
             // stable-read (R4): a layout value counts only when two consecutive
             // animation-frame reads agree (cap 10 frames) — a mid-reflow transient
@@ -1799,7 +1799,7 @@ it('keeps card width and sample choice transient inside the compact preview cont
         ->and($interaction['refreshed_direction'])->toBe('ltr');
 
     $page->refresh();
-    $transient = $page->script(<<<'JS'
+    $transient = $page->page()->evaluate(<<<'JS'
         async () => {
             await new Promise((resolve) => setTimeout(resolve, 300));
 
@@ -1828,7 +1828,7 @@ it('keeps automatic preload search and effective image ranking aligned in the au
         'key' => 'preview_browser',
     ]))->resize(1440, 900);
 
-    $interaction = $page->script(<<<'JS'
+    $interaction = $page->page()->evaluate(<<<'JS'
         async () => {
             // stable-read (R4): a layout value counts only when two consecutive
             // animation-frame reads agree (cap 10 frames) — a mid-reflow transient
@@ -2012,7 +2012,7 @@ it('keeps automatic preload search and effective image ranking aligned in the au
         'content_item' => ['mode' => 'inherit', 'path' => null],
     ]);
     $page->refresh();
-    $globalFallback = $page->script(<<<'JS'
+    $globalFallback = $page->page()->evaluate(<<<'JS'
         async () => {
             const sleep = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds));
             const started = performance.now();
@@ -2064,7 +2064,7 @@ it('keeps automatic preload search and effective image ranking aligned in the au
         'content_item' => ['mode' => 'none', 'path' => null],
     ]);
     $page->refresh();
-    $noEffectiveImage = $page->script(<<<'JS'
+    $noEffectiveImage = $page->page()->evaluate(<<<'JS'
         async () => {
             const sleep = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds));
             const started = performance.now();
@@ -2126,7 +2126,7 @@ it('keeps automatic preload search and effective image ranking aligned in the au
     step5bFu02BrowserSaveSetting(PublicContentSettings::class, 'card_templates', [$restrictedTemplate]);
     step5bFu02BrowserSaveSetting(AdminUxSettings::class, 'transcription_mode', TranscriptionMode::Multi->value);
     $page->refresh();
-    $restricted = $page->script(<<<'JS'
+    $restricted = $page->page()->evaluate(<<<'JS'
         async () => {
             // stable-read (R4): a layout value counts only when two consecutive
             // animation-frame reads agree (cap 10 frames) — a mid-reflow transient
@@ -2205,7 +2205,7 @@ it('refreshes a changed template part and keeps the wide preview below the topba
             };
         }
         JS);
-    $layout = $page->script($layoutScript);
+    $layout = $page->page()->evaluate($layoutScript);
 
     expect($layout['scroll_y'])->toBeGreaterThan(0)
         ->and($layout['shell_top'])->toBeGreaterThanOrEqual($layout['topbar_bottom'])
@@ -2213,7 +2213,7 @@ it('refreshes a changed template part and keeps the wide preview below the topba
         ->and($layout['cancel_in_header'])->toBeFalse()
         ->and($layout['raw_cancel_key'])->toBeFalse();
 
-    $interaction = $page->script(<<<'JS'
+    $interaction = $page->page()->evaluate(<<<'JS'
         async () => {
             // stable-read (R4): a layout value counts only when two consecutive
             // animation-frame reads agree (cap 10 frames) — a mid-reflow transient
@@ -2372,7 +2372,7 @@ it('remembers inline Builder mode locally and live refreshes authoritative part 
         'key' => 'preview_browser',
     ]))->resize(1440, 900);
 
-    $selected = $page->script(<<<'JS'
+    $selected = $page->page()->evaluate(<<<'JS'
         async () => {
             document.querySelector('[data-test="card-template-builder-mode-inline"]')?.click();
             const started = performance.now();
@@ -2396,7 +2396,7 @@ it('remembers inline Builder mode locally and live refreshes authoritative part 
         ->and($selected['modal_open'])->toBeFalse();
 
     $page->refresh();
-    $interaction = $page->script(<<<'JS'
+    $interaction = $page->page()->evaluate(<<<'JS'
         async () => {
             const restoreStarted = performance.now();
             while (document.querySelectorAll('[data-card-template-part-summary]').length > 0 && performance.now() - restoreStarted < 5000) {
@@ -2528,7 +2528,7 @@ it('renders an image at the position selected through the native move modal', fu
         'key' => 'preview_browser',
     ]))->resize(1440, 900);
 
-    $result = $page->script(<<<'JS'
+    $result = $page->page()->evaluate(<<<'JS'
         async () => {
             document.querySelector('[data-test="card-template-builder-mode-inline"]')?.click();
             const inlineStarted = performance.now();
@@ -2625,7 +2625,7 @@ it('focuses reordered and collapsed inline top nested and fallback validation ow
         'key' => 'preview_browser',
     ]))->resize(1440, 900);
 
-    $evidence = $page->script(<<<'JS'
+    $evidence = $page->page()->evaluate(<<<'JS'
         async () => {
             const sleep = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds));
             const waitFor = async (callback, timeout = 7000) => {
@@ -2860,7 +2860,7 @@ it('opens exact native slide-over owners and restores safe focus after cancel', 
         'key' => 'preview_browser',
     ]))->resize(1440, 900);
 
-    $evidence = $page->script(<<<'JS'
+    $evidence = $page->page()->evaluate(<<<'JS'
         async () => {
             const sleep = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds));
             const waitFor = async (callback, timeout = 7000) => {
@@ -3090,7 +3090,7 @@ it('mounts a visible nested fallback and restores the narrow preview opener', fu
         'key' => 'preview_browser',
     ]))->resize(1023, 900);
 
-    $evidence = $page->script(<<<'JS'
+    $evidence = $page->page()->evaluate(<<<'JS'
         async () => {
             const sleep = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds));
             const waitFor = async (callback, timeout = 7000) => {

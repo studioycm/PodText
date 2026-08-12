@@ -62,7 +62,7 @@ it('shows a hover tooltip, walks points with arrow keys and dismisses on escape'
 
     $helpers = sparklineHoverHelpers();
 
-    $setup = $page->script(<<<JS
+    $setup = $page->page()->evaluate(<<<JS
         async () => {
             {$helpers}
 
@@ -97,7 +97,7 @@ it('shows a hover tooltip, walks points with arrow keys and dismisses on escape'
 
     $page->hover('[data-testid="funnel-spark-published-hover"]');
 
-    $afterHover = $page->script(<<<JS
+    $afterHover = $page->page()->evaluate(<<<JS
         async () => {
             {$helpers}
 
@@ -120,7 +120,7 @@ it('shows a hover tooltip, walks points with arrow keys and dismisses on escape'
     // (31/07), one ArrowLeft reaches the fixture's publication day.
     $page->keys('[data-testid="funnel-spark-published-hover"]', 'ArrowLeft');
 
-    $afterArrowLeft = $page->script(<<<JS
+    $afterArrowLeft = $page->page()->evaluate(<<<JS
         async () => {
             {$helpers}
 
@@ -138,7 +138,7 @@ it('shows a hover tooltip, walks points with arrow keys and dismisses on escape'
 
     $page->keys('[data-testid="funnel-spark-published-hover"]', 'ArrowRight');
 
-    $page->script(<<<JS
+    $page->page()->evaluate(<<<JS
         async () => {
             {$helpers}
 
@@ -153,7 +153,7 @@ it('shows a hover tooltip, walks points with arrow keys and dismisses on escape'
 
     $page->keys('[data-testid="funnel-spark-published-hover"]', 'Escape');
 
-    $afterEscape = $page->script(<<<JS
+    $afterEscape = $page->page()->evaluate(<<<JS
         async () => {
             {$helpers}
 

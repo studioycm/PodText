@@ -96,7 +96,7 @@ it('walks the three lenses on the RTL board with the LTR islands intact', functi
     $page->assertNoJavaScriptErrors()
         ->assertPresent('[data-testid="dashboard-scope-echo"]');
 
-    $overview = $page->script(<<<JS
+    $overview = $page->page()->evaluate(<<<JS
         async () => {
             {$helpers}
 
@@ -122,7 +122,7 @@ it('walks the three lenses on the RTL board with the LTR islands intact', functi
     // total=2 from the fixture (one invisible of two published).
     $page->click(__('admin.dashboard.lenses.blockers'));
 
-    $burndownText = $page->script(<<<JS
+    $burndownText = $page->page()->evaluate(<<<JS
         async () => {
             {$helpers}
 
@@ -140,7 +140,7 @@ it('walks the three lenses on the RTL board with the LTR islands intact', functi
     // Board 3 — Intake: queue rows, connection empty state, findings bars.
     $page->click(__('admin.dashboard.lenses.intake'));
 
-    $intake = $page->script(<<<JS
+    $intake = $page->page()->evaluate(<<<JS
         async () => {
             {$helpers}
 

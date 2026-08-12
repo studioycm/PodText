@@ -35,7 +35,7 @@ function setMediaPickerBrowserOffline(object $webpage, bool $offline): void
 
 function trackMediaPickerBrowserRequests(object $webpage): void
 {
-    $webpage->script(<<<'JS'
+    $webpage->page()->evaluate(<<<'JS'
         () => {
             window.__mediaPickerPendingRequests = 0;
             window.__mediaPickerCompletedRequests = 0;
@@ -88,14 +88,14 @@ it('keeps the acquisition workspace accessible responsive and stateful', functio
 
     // A late Livewire commit from the previous dataset's page can restore its
     // snapshot locale between setLocale() and this render; re-serve once.
-    if ($page->script('document.documentElement.dir') !== $direction) {
+    if ($page->page()->evaluate('document.documentElement.dir') !== $direction) {
         app()->setLocale($locale);
         $page->refresh();
     }
 
     trackMediaPickerBrowserRequests($page);
 
-    $wide = $page->script(<<<'JS'
+    $wide = $page->page()->evaluate(<<<'JS'
         async () => {
             // stable-read (R4): a layout value counts only when two consecutive
             // animation-frame reads agree (cap 10 frames) — a mid-reflow transient
@@ -379,7 +379,7 @@ it('keeps the acquisition workspace accessible responsive and stateful', functio
         ->and($wide['upload_guard_released'])->toBeTrue();
 
     $page->resize(390, 844);
-    $narrow = $page->script(<<<'JS'
+    $narrow = $page->page()->evaluate(<<<'JS'
         async () => {
             // stable-read (R4): a layout value counts only when two consecutive
             // animation-frame reads agree (cap 10 frames) — a mid-reflow transient
@@ -464,7 +464,7 @@ it('keeps the acquisition workspace accessible responsive and stateful', functio
         ->and($narrow['header_sticky'])->toBeTrue()
         ->and($narrow['owner_footer_absent'])->toBeTrue();
 
-    $closed = $page->script(<<<'JS'
+    $closed = $page->page()->evaluate(<<<'JS'
         async () => {
             // stable-read (R4): a layout value counts only when two consecutive
             // animation-frame reads agree (cap 10 frames) — a mid-reflow transient
@@ -519,7 +519,7 @@ it('keeps the acquisition workspace accessible responsive and stateful', functio
         ->and($closed['focus_returned'])->toBeTrue(json_encode($closed, JSON_THROW_ON_ERROR))
         ->and($closed['horizontal_overflow'])->toBeFalse();
 
-    $acquired = $page->script(<<<'JS'
+    $acquired = $page->page()->evaluate(<<<'JS'
         async () => {
             const waitFor = async (callback, timeout = 7000) => {
                 const started = performance.now();
@@ -594,7 +594,7 @@ it('keeps the acquisition workspace accessible responsive and stateful', functio
         ->and($media->providerBinding)->toBeInstanceOf(MediaProviderBinding::class)
         ->and($group->refresh()->coverMediaAttachment()->exists())->toBeFalse();
 
-    $saved = $page->script(<<<'JS'
+    $saved = $page->page()->evaluate(<<<'JS'
         async () => {
             const ownerRoot = document.querySelector('[data-testid="media-picker-open"]')?.closest('[wire\\:id]');
             const ownerId = ownerRoot?.getAttribute('wire:id');
@@ -653,7 +653,7 @@ it('keeps the acquisition workspace accessible responsive and stateful', functio
         // under load; a fresh page serve shows the authoritative state.
         $saved['required_refresh'] = true;
         $page->refresh();
-        $reloaded = $page->script(<<<'JS'
+        $reloaded = $page->page()->evaluate(<<<'JS'
             async () => {
                 const started = performance.now();
 
@@ -791,7 +791,7 @@ it('guards close while the parent accepts a returned selection', function (): vo
         }
         JS);
 
-    $result = $page->script($script);
+    $result = $page->page()->evaluate($script);
 
     expect($result['close_guarded'])->toBeTrue(json_encode($result, JSON_THROW_ON_ERROR))
         ->and($result['remained_open_after_close_attempt'])->toBeTrue(json_encode($result, JSON_THROW_ON_ERROR))
@@ -857,11 +857,11 @@ it('closes a field picker locally while truly offline and reconciles the action 
             throw new Error('Timed out while waiting for the offline close handler.');
         }
         JS;
-    $page->script($openPicker);
+    $page->page()->evaluate($openPicker);
 
     setMediaPickerBrowserOffline($page, true);
 
-    $offline = $page->script(<<<'JS'
+    $offline = $page->page()->evaluate(<<<'JS'
         async () => {
             const waitFor = async (callback, step, timeout = 7000) => {
                 const started = performance.now();
@@ -938,7 +938,7 @@ it('closes a field picker locally while truly offline and reconciles the action 
 
     setMediaPickerBrowserOffline($page, false);
 
-    $reconnected = $page->script(<<<'JS'
+    $reconnected = $page->page()->evaluate(<<<'JS'
         async () => {
             const waitFor = async (callback, step, timeout = 7000) => {
                 const started = performance.now();
@@ -1053,7 +1053,7 @@ it('returns acquired media to the inline owner action while attachment stays pen
 
     trackMediaPickerBrowserRequests($page);
 
-    $firstSelection = $page->script(<<<'JS'
+    $firstSelection = $page->page()->evaluate(<<<'JS'
         async () => {
             const waitFor = async (callback, timeout = 7000) => {
                 const started = performance.now();
@@ -1148,7 +1148,7 @@ it('returns acquired media to the inline owner action while attachment stays pen
         ->and($media->providerBinding)->toBeInstanceOf(MediaProviderBinding::class)
         ->and($group->refresh()->coverMediaAttachment()->exists())->toBeFalse();
 
-    $cancelled = $page->script(<<<'JS'
+    $cancelled = $page->page()->evaluate(<<<'JS'
         async () => {
             const started = performance.now();
             const completed = window.__mediaPickerCompletedRequests;
@@ -1189,7 +1189,7 @@ it('returns acquired media to the inline owner action while attachment stays pen
         ->and($group->refresh()->coverMediaAttachment()->exists())->toBeFalse()
         ->and(Media::query()->whereKey($media)->exists())->toBeTrue();
 
-    $saved = $page->script(<<<'JS'
+    $saved = $page->page()->evaluate(<<<'JS'
         async () => {
             const waitFor = async (callback, timeout = 7000) => {
                 const started = performance.now();
@@ -1296,7 +1296,7 @@ it('keeps a nested media item action owned by the picker across repeated modal l
 
     trackMediaPickerBrowserRequests($page);
 
-    $result = $page->script(<<<'JS'
+    $result = $page->page()->evaluate(<<<'JS'
         async () => {
             const waitFor = async (callback, timeout = 7000) => {
                 const started = performance.now();

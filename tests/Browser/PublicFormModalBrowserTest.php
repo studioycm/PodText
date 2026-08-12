@@ -103,7 +103,7 @@ it('opens a single dialog when the header and a homepage section mount the same 
 
     $page = visit('/');
 
-    $state = $page->script(<<<'JS'
+    $state = $page->page()->evaluate(<<<'JS'
         async () => {
             const waitFor = async (callback, step, timeout = 8000) => {
                 const started = performance.now();
@@ -142,7 +142,7 @@ it('keeps the open event key-scoped and reusable across open and close cycles', 
 
     $page = visit('/');
 
-    $state = $page->script(<<<'JS'
+    $state = $page->page()->evaluate(<<<'JS'
         async () => {
             const waitFor = async (callback, step, timeout = 8000) => {
                 const started = performance.now();

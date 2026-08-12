@@ -285,7 +285,7 @@ function ownerImageBrowserOpenDedicatedAction(
     $expectedDirectionValue = ownerImageBrowserJsValue($direction);
     $expectedMobileValue = ownerImageBrowserJsValue($mobile);
 
-    return $page->script(<<<JS
+    return $page->page()->evaluate(<<<JS
         async () => {
             // stable-read (R4): a layout value counts only when two consecutive
             // animation-frame reads agree (cap 10 frames) — a mid-reflow transient
@@ -675,7 +675,7 @@ it('proves canonical dedicated owner actions across locale and device contracts'
     if ($locale === 'he' && ! $mobile) {
         ownerImageBrowserCapture($page, '01-podcast-modal-he-desktop.png');
 
-        $admission = $page->script(<<<'JS'
+        $admission = $page->page()->evaluate(<<<'JS'
             async () => {
                 const visible = (element) => Boolean(element?.getClientRects().length);
                 const activeDialog = () => Array.from(document.querySelectorAll(
@@ -823,7 +823,7 @@ it('proves canonical dedicated owner actions across locale and device contracts'
             ->and($admitted->mediaAsset)->not->toBeNull()
             ->and($admitted->providerBinding)->not->toBeNull();
     } else {
-        $closed = $page->script(<<<'JS'
+        $closed = $page->page()->evaluate(<<<'JS'
             async () => {
                 const started = performance.now();
                 const dialog = document.querySelector('[aria-modal="true"].fi-modal-open');
@@ -845,7 +845,7 @@ it('proves canonical dedicated owner actions across locale and device contracts'
     }
 
     $page->navigate(ContentItemResource::getUrl('index'));
-    $page->script('() => { window.__ownerImageUnhandledRejections = []; }');
+    $page->page()->evaluate('() => { window.__ownerImageUnhandledRejections = []; }');
     $episode = ownerImageBrowserOpenDedicatedAction(
         $page,
         'chooseContentItemImage',
@@ -864,7 +864,7 @@ it('proves canonical dedicated owner actions across locale and device contracts'
         ownerImageBrowserPress($page, $replacementSelector, 'Enter');
     }
 
-    $pending = $page->script(<<<'JS'
+    $pending = $page->page()->evaluate(<<<'JS'
         async () => {
             const started = performance.now();
 
@@ -931,7 +931,7 @@ it('proves canonical dedicated owner actions across locale and device contracts'
         ownerImageBrowserCapture($page, '10-details-original-modal-he-390.png');
     }
 
-    $slideOver = $page->script(<<<'JS'
+    $slideOver = $page->page()->evaluate(<<<'JS'
         async () => {
             const waitUntil = async (predicate) => {
                 const started = performance.now();
@@ -992,7 +992,7 @@ it('proves canonical dedicated owner actions across locale and device contracts'
         ownerImageBrowserPress($page, 'body', 'Escape');
     }
 
-    $closedOwnerAction = $page->script(<<<JS
+    $closedOwnerAction = $page->page()->evaluate(<<<JS
         async () => {
             const started = performance.now();
 
@@ -1050,7 +1050,7 @@ it('proves canonical dedicated owner actions across locale and device contracts'
 
     if ($locale === 'en' && $mobile) {
         $page->navigate(ContentGroupResource::getUrl('index'));
-        $page->script('() => { window.__ownerImageUnhandledRejections = []; }');
+        $page->page()->evaluate('() => { window.__ownerImageUnhandledRejections = []; }');
         ownerImageBrowserOpenDedicatedAction(
             $page,
             'chooseContentGroupCover',
@@ -1091,7 +1091,7 @@ it('proves embedded owner image forms across classic and workspace surfaces', fu
             $page->navigate($route);
         }
 
-        $surfaceEvidence[] = $page->script(<<<'JS'
+        $surfaceEvidence[] = $page->page()->evaluate(<<<'JS'
             async () => {
                 // stable-read (R4): a layout value counts only when two consecutive
                 // animation-frame reads agree (cap 10 frames) — a mid-reflow transient
@@ -1167,7 +1167,7 @@ it('proves embedded owner image forms across classic and workspace surfaces', fu
 
     $episodeImageHeading = ownerImageBrowserJsValue(__('admin.sections.episode_image'));
     $playerEmbedHeading = ownerImageBrowserJsValue(__('admin.sections.player_embed'));
-    $workspaceSeparation = $page->script(<<<JS
+    $workspaceSeparation = $page->page()->evaluate(<<<JS
         () => {
             const text = document.body.innerText;
             const imageHeading = {$episodeImageHeading};
@@ -1197,7 +1197,7 @@ it('proves embedded owner image forms across classic and workspace surfaces', fu
         );
     }
 
-    $focus = $page->script(<<<'JS'
+    $focus = $page->page()->evaluate(<<<'JS'
         async () => {
             const waitFor = async (callback, timeout = 10000) => {
                 const started = performance.now();
@@ -1267,7 +1267,7 @@ it('proves relation manager owner images on the create surface', function (
 
     $episodesLabel = ownerImageBrowserJsValue(__('admin.relations.episodes'));
     $classicCreateLabel = ownerImageBrowserJsValue(__('admin.actions.classic_create'));
-    $create = $page->script(<<<JS
+    $create = $page->page()->evaluate(<<<JS
         async () => {
             // stable-read (R4): a layout value counts only when two consecutive
             // animation-frame reads agree (cap 10 frames) — a mid-reflow transient

@@ -47,7 +47,7 @@ it('navigates card selection checkboxes with arrow keys and toggles with space',
 
     $page = visit(MediaResource::getUrl('index'))->resize(1280, 900);
 
-    $setup = $page->script(<<<'JS'
+    $setup = $page->page()->evaluate(<<<'JS'
         async () => {
             const waitFor = async (callback, step, timeout = 8000) => {
                 const started = performance.now();
@@ -84,10 +84,10 @@ it('navigates card selection checkboxes with arrow keys and toggles with space',
         JS;
 
     $page->keys('.fi-ta-record-checkbox:focus', 'ArrowLeft');
-    $afterLeft = $page->script($focusedIndex);
+    $afterLeft = $page->page()->evaluate($focusedIndex);
 
     $page->keys('.fi-ta-record-checkbox:focus', 'Space');
-    $afterSpace = $page->script(<<<'JS'
+    $afterSpace = $page->page()->evaluate(<<<'JS'
         async () => {
             const waitFor = async (callback, step, timeout = 8000) => {
                 const started = performance.now();
@@ -111,13 +111,13 @@ it('navigates card selection checkboxes with arrow keys and toggles with space',
         JS);
 
     $page->keys('.fi-ta-record-checkbox:focus', 'ArrowDown');
-    $afterDown = $page->script($focusedIndex);
+    $afterDown = $page->page()->evaluate($focusedIndex);
 
     $page->keys('.fi-ta-record-checkbox:focus', 'ArrowRight');
-    $afterRight = $page->script($focusedIndex);
+    $afterRight = $page->page()->evaluate($focusedIndex);
 
     $page->keys('.fi-ta-record-checkbox:focus', 'ArrowUp');
-    $afterUp = $page->script($focusedIndex);
+    $afterUp = $page->page()->evaluate($focusedIndex);
 
     expect($afterLeft)->toBe(1)
         ->and($afterSpace['secondChecked'])->toBeTrue()

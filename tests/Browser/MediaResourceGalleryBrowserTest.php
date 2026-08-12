@@ -72,7 +72,7 @@ it('renders the Media inventory as responsive accessible native cards', function
         __('admin.media_library.swap'),
         __('admin.media_library.delete_permanently'),
     ], JSON_THROW_ON_ERROR);
-    $wide = $page->script(<<<JS
+    $wide = $page->page()->evaluate(<<<JS
         async () => {
             // stable-read (R4): a layout value counts only when two consecutive
             // animation-frame reads agree (cap 10 frames) — a mid-reflow transient
@@ -206,7 +206,7 @@ it('renders the Media inventory as responsive accessible native cards', function
         ->and($wide['horizontal_overflow'])->toBeFalse();
 
     $page->resize(390, 844);
-    $narrow = $page->script(<<<JS
+    $narrow = $page->page()->evaluate(<<<JS
         async () => {
             // stable-read (R4): a layout value counts only when two consecutive
             // animation-frame reads agree (cap 10 frames) — a mid-reflow transient
@@ -350,7 +350,7 @@ it('keeps canonical Media task context keyboard reachable across Edit and safe f
         __('admin.media_library.repair_missing_file'),
         JSON_THROW_ON_ERROR,
     );
-    $initial = $page->script(<<<JS
+    $initial = $page->page()->evaluate(<<<JS
         async () => {
             // stable-read (R4): a layout value counts only when two consecutive
             // animation-frame reads agree (cap 10 frames) — a mid-reflow transient
@@ -455,7 +455,7 @@ it('keeps canonical Media task context keyboard reachable across Edit and safe f
         ->click('#media-record-'.$origin->getKey())
         ->wait(0.25)
         ->assertSee(__('admin.media_library.back_to_media_library'));
-    $editAccessibility = $page->script(<<<'JS'
+    $editAccessibility = $page->page()->evaluate(<<<'JS'
         () => {
             const actions = Array.from(document.querySelectorAll('a, button'));
             const visible = (element) => element.getClientRects().length > 0;
@@ -484,7 +484,7 @@ it('keeps canonical Media task context keyboard reachable across Edit and safe f
     $page
         ->click(__('admin.media_library.back_to_media_library'))
         ->wait(0.35);
-    $backState = $page->script(<<<'JS'
+    $backState = $page->page()->evaluate(<<<'JS'
         () => ({
             path: window.location.pathname,
             query: window.location.search,
@@ -505,7 +505,7 @@ it('keeps canonical Media task context keyboard reachable across Edit and safe f
         ->wait(0.25)
         ->click(__('filament-panels::resources/pages/edit-record.form.actions.cancel.label'))
         ->wait(0.35);
-    $cancelState = $page->script(<<<'JS'
+    $cancelState = $page->page()->evaluate(<<<'JS'
         () => ({
             path: window.location.pathname,
             hash: window.location.hash,
@@ -530,7 +530,7 @@ it('keeps canonical Media task context keyboard reachable across Edit and safe f
         ->wait(0.35)
         ->assertSee(__('admin.media_library.empty_view_heading'))
         ->assertSee(__('admin.media_library.reset_view'));
-    $missingFocus = $page->script(<<<'JS'
+    $missingFocus = $page->page()->evaluate(<<<'JS'
         () => ({
             tab: new URL(window.location.href).searchParams.get('tab'),
             mime: new URL(window.location.href).searchParams.get('filters[type][value]'),
@@ -553,7 +553,7 @@ it('keeps canonical Media task context keyboard reachable across Edit and safe f
     $page
         ->click(__('admin.media_library.reset_view'))
         ->wait(0.35);
-    $resetState = $page->script(<<<'JS'
+    $resetState = $page->page()->evaluate(<<<'JS'
         () => {
             const tabs = Array.from(document.querySelectorAll('.fi-tabs-item'));
 
@@ -575,13 +575,13 @@ it('keeps canonical Media task context keyboard reachable across Edit and safe f
         ->and($resetState['default_sort_label'])
         ->toBe(__('admin.media_library.added_newest_first'));
 
-    $page->script(<<<'JS'
+    $page->page()->evaluate(<<<'JS'
         () => {
             document.querySelector('.fi-tabs-item')?.focus();
         }
         JS);
     $page->keys('.fi-tabs-item:first-of-type', ['Tab']);
-    $keyboardState = $page->script(<<<'JS'
+    $keyboardState = $page->page()->evaluate(<<<'JS'
         () => ({
             label: document.activeElement?.textContent.replace(/\s+/g, ' ').trim(),
             tag: document.activeElement?.tagName,
@@ -592,7 +592,7 @@ it('keeps canonical Media task context keyboard reachable across Edit and safe f
         ->and($keyboardState['label'])->toContain(__('admin.media_library.tasks.in_use'));
 
     $page->keys('.fi-tabs-item:nth-of-type(2)', ['Enter'])->wait(0.35);
-    $activatedTask = $page->script(<<<'JS'
+    $activatedTask = $page->page()->evaluate(<<<'JS'
         () => ({
             tab: new URL(window.location.href).searchParams.get('tab'),
             selected: Array.from(document.querySelectorAll('.fi-tabs-item'))
@@ -682,7 +682,7 @@ it('delivers a responsive accessible issue review and preserves its exact task o
         ->assertSee(__('admin.media_issue_review.missing_file.detach_delete_action'))
         ->assertSee(__('admin.media_issue_review.owners.presentation_only'));
 
-    $reviewState = $page->script(<<<'JS'
+    $reviewState = $page->page()->evaluate(<<<'JS'
         async () => {
             // stable-read (R4): a layout value counts only when two consecutive
             // animation-frame reads agree (cap 10 frames) — a mid-reflow transient
@@ -765,7 +765,7 @@ it('delivers a responsive accessible issue review and preserves its exact task o
     }
 
     $page->resize(390, 844)->wait(0.25);
-    $narrow = $page->script(<<<'JS'
+    $narrow = $page->page()->evaluate(<<<'JS'
         async () => {
             // stable-read (R4): a layout value counts only when two consecutive
             // animation-frame reads agree (cap 10 frames) — a mid-reflow transient
@@ -816,15 +816,15 @@ it('delivers a responsive accessible issue review and preserves its exact task o
     }
 
     $page->resize(1280, 960)->wait(0.25);
-    $page->script(<<<'JS'
+    $page->page()->evaluate(<<<'JS'
         () => document.querySelector('[data-testid="media-issue-close"]')?.focus()
         JS);
     $page->keys('[data-testid="media-issue-close"]', ['Tab']);
-    $firstTab = $page->script(<<<'JS'
+    $firstTab = $page->page()->evaluate(<<<'JS'
         () => document.activeElement?.getAttribute('data-testid')
         JS);
     $page->keys('[data-testid="media-issue-next"]', ['Tab']);
-    $secondTab = $page->script(<<<'JS'
+    $secondTab = $page->page()->evaluate(<<<'JS'
         () => document.activeElement?.getAttribute('data-testid')
         JS);
 
@@ -832,7 +832,7 @@ it('delivers a responsive accessible issue review and preserves its exact task o
         ->and($secondTab)->toBe('media-issue-return');
 
     stripKnownResizeObserverArtifacts($page);
-    $accessibilityIssues = $page->script(<<<'JS'
+    $accessibilityIssues = $page->page()->evaluate(<<<'JS'
         async () => {
             const root = document.querySelector('[data-testid="media-issue-review"]');
             const violations = root ? (await window.axe.run(root)).violations : [{
@@ -860,7 +860,7 @@ it('delivers a responsive accessible issue review and preserves its exact task o
         ->assertSee('Browser issue next')
         ->click(__('admin.media_issue_review.actions.return'))
         ->wait(0.35);
-    $returnState = $page->script(<<<'JS'
+    $returnState = $page->page()->evaluate(<<<'JS'
         () => ({
             path: window.location.pathname,
             tab: new URL(window.location.href).searchParams.get('tab'),

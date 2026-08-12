@@ -334,7 +334,7 @@ it('mounts a fresh field picker workspace on every open without ever stubbing it
     m2CloneReproInstrument($page);
 
     $helpers = m2CloneReproDriverHelpers();
-    $result = $page->script(<<<JS
+    $result = $page->page()->evaluate(<<<JS
         async () => {
             {$helpers}
 
@@ -381,7 +381,7 @@ it('survives a rapid close/reopen race of the workspace picker inside a relation
     m2CloneReproInstrument($page);
 
     $helpers = m2CloneReproDriverHelpers();
-    $result = $page->script(<<<JS
+    $result = $page->page()->evaluate(<<<JS
         async () => {
             {$helpers}
 
@@ -469,7 +469,7 @@ it('keeps the inline owner workspace healthy across nested details cycles and a 
     m2CloneReproInstrument($page);
 
     $helpers = m2CloneReproDriverHelpers();
-    $result = $page->script(<<<JS
+    $result = $page->page()->evaluate(<<<JS
         async () => {
             {$helpers}
 

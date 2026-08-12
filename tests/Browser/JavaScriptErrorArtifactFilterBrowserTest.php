@@ -21,7 +21,7 @@ function seedJavaScriptErrorAccumulator(object $page, array $messages): void
 {
     $payload = json_encode($messages, JSON_THROW_ON_ERROR);
 
-    $page->script(<<<JS
+    $page->page()->evaluate(<<<JS
         () => {
             window.__pestBrowser.jsErrors = {$payload}.map((message) => ({ message }));
         }
@@ -42,7 +42,7 @@ it('strips only the exact classified artifact and reports how many it removed', 
 
     $stripped = stripKnownResizeObserverArtifacts($page);
 
-    $survivors = $page->script(<<<'JS'
+    $survivors = $page->page()->evaluate(<<<'JS'
         () => (window.__pestBrowser?.jsErrors ?? []).map((error) => error.message)
         JS);
 

@@ -302,7 +302,7 @@ function stripKnownResizeObserverArtifacts(AwaitableWebpage|PendingAwaitablePage
 {
     $known = json_encode(knownResizeObserverArtifact(), JSON_THROW_ON_ERROR);
 
-    return (int) $page->script(<<<JS
+    return (int) $page->page()->evaluate(<<<JS
         () => {
             const known = {$known};
             const errors = window.__pestBrowser.jsErrors;
