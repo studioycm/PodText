@@ -948,6 +948,38 @@ future runs will not need it. (The suite has since moved: 2,029 / 21,037 / 366.7
 **Byte-comparability: confirmed.** Both replays reported 2,025 / 21,024 — identical to each
 other and to the baseline minus the exclusions — and all green, matching a real gate run.
 
+**What the 181× does and does not describe — read this before quoting the number.** Every
+run above is **unfiltered replay**, which executes nothing and replays everything. The mode
+an adopter would actually use day to day, `--tia --filtered`, is **completely unmeasured
+here**: it is different code (`TiaTestCaseFilter`, a `NoAffectedTestsFound` panic, and
+self-disabling via `hasUnlocatedTestsToRerun()`, `Tia.php:1057-1062`) and it is the mode
+that gives a genuine changed-code speedup rather than a replay. So **181× is the no-change
+steady state, not a filtered-run figure**, and nothing here licenses the second reading.
+Three further gaps recorded rather than left silent, all from the same session
+(`~/.cache/podtext-coord/upstream-pest/LEFTOVERS.md`, items L3–L7):
+
+- **The lost-update window was never demonstrated** — the concurrent read-modify-write on
+  `graph.json` (`:243` read, `:297-303` write, no lock) is established from *source only*.
+  The repro was skipped deliberately: it needs two concurrent pest runs, which the lane lock
+  forbids. **If DP2 (parallel opt-in) is ever pursued, this is the experiment nobody has
+  run**, and #1856 does not cover it — that is the SHA stamp, this is graph-write
+  concurrency.
+- **`complete` was never set** on the recorded baseline (`NULL`, so `markBaselineComplete()`
+  never fired). Most likely the exit-1 browser failures, but **that was not established**,
+  and `complete` gates `withoutFilesCoveredBy()` in `baselineFor()` (`Graph.php:978-980`),
+  which governs branch-baseline overlay. Settle it before any branch-level TIA work rather
+  than inheriting the guess.
+- **`--tia` has preconditions beyond the PHPUnit-class one**: a git remote, a resolvable
+  default branch, a repo root, and at least one commit. All held here, but **a fresh
+  worktree or CI checkout can miss the default-branch one silently**. Related: detached HEAD
+  makes TIA read-only, which is the codex worktree's current state.
+
+One local trap found the same way, worth knowing outside TIA: **`php artisan test` injects
+its own `--configuration`, and a later `-c` wins** — observed argv was
+`pest --configuration=<project>/phpunit.xml --no-output --tia -c <external>`, and the
+external one took effect (validated: Unit suite 38→37). Visible only because the lane lock's
+holder record now carries argv.
+
 **The 5 recording failures are Xdebug timing casualties, not defects.** All were browser
 tests: two literal `Timeout 30000ms exceeded`, the rest Alpine/Livewire state and focus
 assertions. Replay #1 re-executed all 5 without Xdebug and every one passed, flipping the
