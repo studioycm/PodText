@@ -257,8 +257,16 @@ stays accepted and the item is closed. Source:
 `accepted`, closed").
 
 ### F10. PHPStan backlog — `parked-roadmap` (owner unchanged: larastan/tooling roadmap)
-443 errors (§B4) plus 5 pre-existing `varTag.nativeType` in
-`AppServiceProvider` macro closures. Slotting order when the roadmap opens:
+**450** app-side errors (re-measured 2026-08-12; §B4's 443 was the
+2026-08-07 figure) plus 5 pre-existing `varTag.nativeType` in
+`AppServiceProvider` macro closures. The +7 are blame-attributed line by
+line to the settings-backup work (`476c508`, `4da7542`, `1443b7d`) — all
+post-dating the 443 measurement, none upgrade-caused. Phase U measured the
+rest of the picture while answering DP5 (record + defer): **+700** at level
+5 once `tests/` is analysed — of which 452 fall into five stub-teachable
+dynamic-API families and **37 are genuine findings** — and **+479** app-side
+at level 6, **2,367 total**. The plan's old "~426 reports" estimate for
+level 6 was off by 5.6×; use these numbers, not that estimate. Slotting order when the roadmap opens:
 the two `class.notFound` one-liners (§B4 group 3); the
 `BuildsPublicContentSettingsSubjectSchemas` trait-host fatal (§B4 group 2 —
 the one genuine runtime bug in the family, operator may pull it forward); the
