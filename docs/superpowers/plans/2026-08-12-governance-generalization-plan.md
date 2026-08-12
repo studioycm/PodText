@@ -59,6 +59,25 @@ cycle running against a live defect rather than a synthetic one.
 
 ### Task 1: Correct the spec's own counts and record the scope reduction
 
+> ### ✅ ALREADY DONE — DO NOT EXECUTE
+>
+> Landed 2026-08-12 in **`96c94ed`**, before this plan was committed. It ran as
+> an authorized correction to a published spec — a wrong count and an
+> unenumerated membership in an already-committed document — not as execution of
+> this plan, which is planning-only.
+>
+> The steps below are kept as the record of what was done and how it was
+> verified. **An agentic worker starting from this plan should begin at Task 4**
+> (the guards), since Tasks 2, 3 and 5 each carry a gate that is not yours to
+> open.
+>
+> Two things landed beyond what these steps describe, both discovered while
+> executing them: §0.1, recording that this spec binds its analysis to an
+> unversioned file outside the repo (`unarchived-binding`, alias P12), and the
+> replacement of the `governs-itself` ordinals with an extensible table, because
+> a running count of "instances of a rule being broken" is itself a number that
+> rots.
+
 The spec states that one test reads **three** docs files. It reads **four** —
 the missed one is `.ai/guidelines/tooling-quality.md` at `:121`. The error came
 from a detection command ending in `head -3`, which silently capped the count.
