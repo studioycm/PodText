@@ -88,8 +88,14 @@ $laneLockPath = TestLaneContract::runLockPath($laneHost, $lanePort, $laneDatabas
 $laneLock = fopen($laneLockPath, 'c+');
 
 if ($laneLock === false) {
-    fwrite(STDERR, "Could not open the run-lock file at {$laneLockPath} — check the directory is writable.\n");
-    exit(1);
+    // Loud on both streams and never exit 1, for the same reason the refusal
+    // below is: a stdout-silent abort is indistinguishable from a silent pass.
+    $laneAbort = TestLaneContract::runLockUnopenable($laneLockPath);
+
+    fwrite(STDERR, $laneAbort['stderr']);
+    fwrite(STDOUT, $laneAbort['stdout']);
+
+    exit($laneAbort['code']);
 }
 
 if (! flock($laneLock, LOCK_EX | LOCK_NB)) {

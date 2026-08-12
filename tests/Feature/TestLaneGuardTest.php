@@ -458,6 +458,35 @@ it('refuses with EX_TEMPFAIL, so "blocked" is distinguishable from "tests failed
         ->and($refusal['code'])->not->toBe(0);
 });
 
+it('is just as loud when the lock file itself cannot be opened — same hazard, different cause', function (): void {
+    $abort = TestLaneContract::runLockUnopenable('/nope/unwritable.lock');
+
+    $lines = array_values(array_filter(explode("\n", $abort['stdout'])));
+    $json = json_decode((string) end($lines), true, flags: JSON_THROW_ON_ERROR);
+
+    expect($abort['stdout'])->not->toBe('')
+        ->and($json['result'])->not->toBe('passed')
+        ->and($json['tests'])->toBe(0)
+        // The path IS the diagnosis for this one — say it in both places.
+        ->and($json['lock_path'])->toBe('/nope/unwritable.lock')
+        ->and($abort['stdout'])->toContain('/nope/unwritable.lock')
+        ->and($abort['stderr'])->toContain('/nope/unwritable.lock');
+});
+
+it('separates "the lane is busy" from "the environment is broken" by exit code', function (): void {
+    $broken = TestLaneContract::runLockUnopenable('/nope.lock')['code'];
+    $busy = TestLaneContract::runLockRefusal('', 1, static fn (int $pid): bool => true)['code'];
+
+    // 75 EX_TEMPFAIL invites a retry, which is true of a busy lane and false of
+    // an unwritable lane root — retrying a permanent failure loops forever on a
+    // condition no waiting fixes. Neither may be 1; that is a red suite.
+    expect($broken)->toBe(73)
+        ->and($busy)->toBe(75)
+        ->and($broken)->not->toBe($busy)
+        ->and($broken)->not->toBe(1)
+        ->and($broken)->not->toBe(0);
+});
+
 it('assertSafeBoot does not claim it removed the stale legacy file when the unlink actually fails', function () use ($valid): void {
     Log::spy();
 

@@ -166,6 +166,18 @@ final class TestLaneContract
      * process — a lock that knows nothing about TIA. Anyone who ever makes
      * this lock skippable (the parallel-worker opt-in, DP2, is the obvious
      * candidate) loses protection they may not know they had.
+     *
+     * Read that narrowly, though: it closes TIA's pest-against-pest window and
+     * does NOT make TIA safe here. The hazard no lock can reach is pest against
+     * GIT. A recording run stamps setRecordedAtSha() with HEAD read at the END
+     * of the run (Tia.php:623 into :638), so a commit landing mid-run becomes
+     * that run's recorded baseline while its results still describe pre-commit
+     * code — and structuralFingerprintShifted() cannot detect the swap, because
+     * the fingerprint hashes composer.lock/composer.json and other config,
+     * never app source. Committing is not a pest run, so no lock closes this
+     * one: TIA must not be enabled while sessions share a working tree.
+     * (Reproduced under a deterministic handshake by the 3.9b session — see its
+     * writeup for the evidence.)
      */
 
     /**
@@ -299,6 +311,48 @@ final class TestLaneContract
                     'result' => 'refused',
                     'reason' => 'another pest run holds the MySQL test lane',
                     'holder' => $holder,
+                    'tests' => 0,
+                    'passed' => 0,
+                    'failed' => 0,
+                ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR)."\n",
+        ];
+    }
+
+    /**
+     * The lock file itself could not be opened — a broken environment, not a
+     * busy lane.
+     *
+     * Same silent-pass hazard as the refusal above (STDERR-only output is
+     * invisible to a runner whose filter reads stdout JSON), so it gets the
+     * same loud treatment on both streams. The exit code differs on purpose:
+     * EX_CANTCREAT (73), not EX_TEMPFAIL (75), because no amount of retrying
+     * makes an unwritable lane root writable, and a code that invites a retry
+     * would send a runner round a loop that cannot succeed.
+     *
+     * Deliberately not folded into a shared assembler with runLockRefusal():
+     * that path is shipped and gate-proven, and ten lines of parallel structure
+     * a reader can see beats an abstraction invented for a second instance. If
+     * a third abort ever appears, that is when to extract one.
+     *
+     * @return array{code: int, stderr: string, stdout: string}
+     */
+    public static function runLockUnopenable(string $path): array
+    {
+        $headline = 'ABORTED: the MySQL test lane run-lock could not be opened, so this run executed ZERO tests.';
+        $detail = "Lock file: {$path}";
+        $remedy = 'Check that the shared lane root exists and is writable, then re-run.';
+
+        return [
+            'code' => 73,
+            'stderr' => $headline.' '.$detail.'. '.$remedy."\n",
+            'stdout' => $headline."\n"
+                .$detail.".\n"
+                .'This is NOT a passing run — nothing ran. '.$remedy."\n"
+                .json_encode([
+                    'tool' => 'pest',
+                    'result' => 'lock-unavailable',
+                    'reason' => 'the MySQL test lane run-lock could not be opened',
+                    'lock_path' => $path,
                     'tests' => 0,
                     'passed' => 0,
                     'failed' => 0,
