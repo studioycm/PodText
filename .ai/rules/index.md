@@ -6,3 +6,4 @@ Before planning or editing, find the row whose globs match the file's path and r
 | --- | --- |
 | docs/** | .ai/rules/docs.md |
 | rector.php | .ai/rules/general.md |
+| tests/** | .ai/rules/tests.md |
