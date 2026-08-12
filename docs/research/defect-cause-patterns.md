@@ -408,25 +408,68 @@ was already on record from the A-block.)*
 - **Rule from it (sharper than "enumerate rather than count"):** *an enumeration
   is only as trustworthy as the instrument's cap.* Enumerate, then verify the
   enumeration was not truncated.
-- **Kin, same day, same family in the OPPOSITE direction — the instrument lying
-  quietly about a zero or an inflated count.** (a) `grep -ci "sha|head|rev-parse"`
-  without `-E` searches for a *literal string* and returns 0 on any file: a zero
-  from a malformed pattern is indistinguishable from a zero from absence, and
-  that zero was load-bearing for an upstream bug report. Give any zero you are
-  resting an argument on a **positive control** — run the pattern where it MUST
-  match. (b) The inverse bit too: a case-insensitive `PHPUNIT_` matched the array
-  *keys* `phpunit_xml`/`phpunit_xml_dist`, returning 2 and nearly refuting a
-  peer's correct "0". **Inspect the matches, never the count alone — in both
-  directions, including when the count seems to confirm you.**
+- **Which parts of this sighting are checkable and which are testimony (added at
+  re-audit).** The line-numbered facts are independently verifiable and were
+  verified. The `head -3` *mechanism* is the governance session's first-party
+  report of its own command — strong evidence, since an admission of one's own
+  error rarely runs the wrong way, but it is testimony a reader cannot re-run. The
+  original text stated both with the same flatness, which in an entry whose subject
+  IS evidence quality is worth one clause.
+- **This entry's own evidence was SCOPE-capped — the lesson one level up, found at
+  re-audit.** The enumeration above is filtered to `.md`, and *a scope is a cap*
+  that likewise leaves no trace. Uncapped, tests read these **tracked, non-doc**
+  files at runtime too: `composer.json` (`FilacheckAgentModeGuardTest.php:128`,
+  `RectorScriptContractTest.php:14`), `phpstan.neon`
+  (`LarastanCastResolutionGuardTest.php:87`, `:152`), and `.env.example`
+  (`FormVerificationManagerTest.php:55`, `ResendWebhookIntegrationTest.php:357`) —
+  five further test files. Worse, `TestLaneContract::rawEnvDatabases()` reads `.env`
+  **and** `.env.example` inside `assertSafeBoot()`, so those are read on **every**
+  Feature/Browser boot — on the order of 1,900 times per suite, not once. So making
+  the markdown count precise simultaneously made the surrounding rule *sound
+  narrower than it is*: **the rule's surface is tracked files, not documentation.**
+- **Kin — moved to their own entry.** The two same-day instrument failures that are
+  NOT caps now live under `uninspected-count` below. Registered at re-audit: a
+  false negative and a false positive truncate nothing, and filing them under a
+  pattern *named* `silent-cap` makes the name drift from its content. This ledger's
+  value is that a future session can match a new sighting to a name.
 - **Where else:** any finding whose evidence came from a command ending in
-  `head`/`tail`, a `-maxdepth`, a `--limit`, PHPStan's agent-mode error
-  truncation (already recorded separately), or an MCP result cap. All return
-  lists that read as complete.
+  `head`/`tail`, a `-maxdepth`, a `--limit`, **a scope filter narrower than the
+  claim it supports**, PHPStan's agent-mode error truncation (already recorded
+  separately), or an MCP result cap. All return lists that read as complete.
 - **Status:** breakdown caps closed (`b3d6de4`, `rollUpTail` + a reconciling
   "Other" row on `BreakdownRow::meta`); M1 queued separately. The 2026-08-12
   instrument-cap sighting is the 2nd beyond founding evidence for this pattern,
   which by this file's own header triggers a targeted sweep task — **not yet
   raised, deliberately: it is the operator's call, and this round is closing.**
+
+## uninspected-count · A match count trusted without reading the matches
+
+- **Cause:** a `grep -c`, or any count-returning probe, is believed without
+  inspecting what actually matched. The instrument misreports in **either**
+  direction, and a wrong count looks exactly like a right one.
+- **Evidence (2026-08-12, two sightings in one day, both ACTUAL, both caught before
+  reaching anything public):**
+  **(a) False negative.** `grep -ci "sha|head|rev-parse"` without `-E` searches for
+  the *literal string* `sha|head|rev-parse` and returns 0 on any file. Reproduced at
+  re-audit against a probe file containing all three words: BRE form `0`, `-E` form
+  `1`. That zero was load-bearing for the central claim of upstream issue
+  [#1858](https://github.com/pestphp/pest/issues/1858).
+  **(b) False positive.** A case-insensitive `PHPUNIT_` returned `2` on `Tia.php`,
+  the matches being the array *keys* `phpunit_xml` / `phpunit_xml_dist`
+  (`:2135-2136`) rather than any config reference — and it nearly refuted a peer
+  session's correct "0".
+- **Rule:** **inspect the matches, never the count alone — in both directions,
+  including when the count seems to confirm you.** Give any zero you are resting an
+  argument on a **positive control**: run the pattern somewhere it MUST match. A
+  zero from a broken pattern is indistinguishable from a zero from absence.
+- **Where else:** any `grep -c` quoted in a report, `wc -l` on a filtered pipeline,
+  `count()` over a query whose predicate is not shown, or a "0 results" claim with
+  no control run beside it.
+- **Kin:** `silent-cap` above — same root cause (the instrument lies quietly),
+  different mechanism (truncation vs. a mismatched pattern). Split out at re-audit
+  on the lane-legibility session's argument that a non-cap filed under a pattern
+  named `silent-cap` is a sighting no future session can match by name.
+- **Status:** open; no sweep raised.
 
 ## flake-label · "Flake" labels hiding real defects *(alias P7)*
 
