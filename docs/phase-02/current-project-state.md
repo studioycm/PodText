@@ -3106,3 +3106,10 @@ and `model:show` is safe to use again.
   an Xdebug figure.
 - Machine-global TIA state purged at close-out; run logs, graph snapshots and
   the analysis script live in `~/.cache/podtext-coord/upstream-pest/`.
+- **Gate at close: 2,035 tests / 21,064 assertions / ~350s green**, pint clean,
+  FilaCheck 35/35. It moved twice inside one session — 2,029 at session start,
+  +3 hook tests (`5312ddd`), +3 fail-open branch tests (`2dc3d55`) — and a peer
+  session already read the intermediate 2,032 as the current figure. Quote 2,035.
+- Edit scenarios in the notes are labelled **S0–S6** and findings **TIA-1–TIA-8**,
+  not `E*`/`F*`: E and F are road letters (larastan, Rector) and `F<number>` is
+  the findings-ledger convention in `open-findings-triage.md`.
