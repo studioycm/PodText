@@ -25,8 +25,13 @@ struck rather than deleted. A dormant custodian gets a merge-or-transfer
 deadline by wake message, and silence past it transfers custodianship to the
 evidenced requester.
 
-**Custodian at last merge:** the register-1.9 settings-backup retention
-session — `guard-names-the-instance` entry (`0894641`, 2026-08-11) and this
+**Custodian at last merge:** the test-suite-rethink arbiter session — the
+2026-08-12 `silent-cap` instrument-cap sighting, contributed by the governance
+session (which routed it rather than writing it) and merged here with evidence.
+**Re-audit pending** from the lane-legibility session, per the gate; this line
+is the merge record, not a claim the gate is complete.
+*Previously:* the register-1.9 settings-backup retention
+session — `guard-names-the-instance` entry (`0894641`, 2026-08-11) and the
 header correction, both re-audited by the register-1.8 batching session. (Exception noted: the F-block
 delegate was instructed pre-rule that it may append directly; its appends get
 curated on merge at verification.) A dedicated read-only bad-practices
@@ -385,8 +390,43 @@ was already on record from the A-block.)*
   gracefully absorbs a future missing eager-load into an invisible per-card
   N+1 instead of surfacing it. All current paths load correctly — a fallback
   that reads as correct while degrading. Watch.
+- **Sighting (2026-08-12, three sessions, ACTUAL — a NEW AXIS: the cap was in
+  the *measuring instrument*, not in the measured code).** A shared protocol
+  claimed "N tests read project docs at runtime", justifying a no-writes-during-
+  runs rule. The number was corrected twice and was wrong both times before it
+  was right: the arbiter's "four test files" counted files-*read* as test-files;
+  the governance session's replacement, "one test file, three docs files", was
+  produced by a detection command **ending in `head -3`** — its own instrument
+  capped the enumeration at three and **left no trace in the output**. Truth:
+  ONE test reads **four** files at
+  `tests/Feature/PublicStep9RMenuHeaderUxFixesTest.php:118-121`, and the missed
+  fourth is `.ai/guidelines/tooling-quality.md` — *outside `docs/` entirely*,
+  i.e. precisely the file a session edits while believing docs are inert. The
+  conclusion survived all three attempts; only the evidence kept being wrong,
+  which is its own hazard — **a true rule loses authority when its evidence is
+  miscounted repeatedly.**
+- **Rule from it (sharper than "enumerate rather than count"):** *an enumeration
+  is only as trustworthy as the instrument's cap.* Enumerate, then verify the
+  enumeration was not truncated.
+- **Kin, same day, same family in the OPPOSITE direction — the instrument lying
+  quietly about a zero or an inflated count.** (a) `grep -ci "sha|head|rev-parse"`
+  without `-E` searches for a *literal string* and returns 0 on any file: a zero
+  from a malformed pattern is indistinguishable from a zero from absence, and
+  that zero was load-bearing for an upstream bug report. Give any zero you are
+  resting an argument on a **positive control** — run the pattern where it MUST
+  match. (b) The inverse bit too: a case-insensitive `PHPUNIT_` matched the array
+  *keys* `phpunit_xml`/`phpunit_xml_dist`, returning 2 and nearly refuting a
+  peer's correct "0". **Inspect the matches, never the count alone — in both
+  directions, including when the count seems to confirm you.**
+- **Where else:** any finding whose evidence came from a command ending in
+  `head`/`tail`, a `-maxdepth`, a `--limit`, PHPStan's agent-mode error
+  truncation (already recorded separately), or an MCP result cap. All return
+  lists that read as complete.
 - **Status:** breakdown caps closed (`b3d6de4`, `rollUpTail` + a reconciling
-  "Other" row on `BreakdownRow::meta`); M1 queued separately.
+  "Other" row on `BreakdownRow::meta`); M1 queued separately. The 2026-08-12
+  instrument-cap sighting is the 2nd beyond founding evidence for this pattern,
+  which by this file's own header triggers a targeted sweep task — **not yet
+  raised, deliberately: it is the operator's call, and this round is closing.**
 
 ## flake-label · "Flake" labels hiding real defects *(alias P7)*
 
