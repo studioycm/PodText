@@ -1270,7 +1270,7 @@ Same pinned mechanism as S1 (`stableRead`, byte-identical helper text, tag `// s
 
 ---
 
-### Task 11: Phase U — Pest 5 + plugins (blocked on the operator's SEPARATE go-ahead; possibly a dedicated session)
+### Task 11: Phase U — Pest 5 + plugins — **EXECUTED 2026-08-12** by the dedicated Phase U session (`5eaa7bb`/`8617bb2`/`bf605db`; plan `docs/phase-02/pest5-upgrade-implementation-plan.md`, record in `test-suite-rethink-notes.md` § Phase U record)
 
 Operator's standing instruction (2026-08-10): *"Pest 5 + plugins only at the end and maybe in a separate session — wait for approval."* Checklist for that day, prepared here so the session can start cold:
 

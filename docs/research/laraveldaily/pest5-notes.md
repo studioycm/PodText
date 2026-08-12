@@ -15,10 +15,12 @@
   `phpstan.neon` and `rector.php`. pestphp.com docs are the durable API authority for
   anything beyond what's verified here.
 - **Staleness verdict**: **the freshest material in the whole research effort** — released
-  the week of Laracon US 2026 (late July/early Aug), about a version this repo has *not yet*
-  adopted. **Status change 2026-08-11: the operator green-lit a dedicated Pest 5 upgrade
-  session.** This doc is that session's briefing — §2b is its checklist; §1a's flag list is
-  doc-verified against pestphp.com, not just the videos.
+  the week of Laracon US 2026 (late July/early Aug). ~~about a version this repo has *not
+  yet* adopted~~ **Superseded 2026-08-12: the upgrade EXECUTED** (`8617bb2` — pest 5.1.0 +
+  plugin line; browser-regression fix `5eaa7bb`; record in
+  `docs/research/test-suite-rethink-notes.md` § Phase U record). This doc served as that
+  session's briefing — §2b was its checklist, all items discharged or explicitly carried
+  (TIA baseline + 3.9b experiment remain follow-ons; Xdebug installed per DP3).
 
 **Headline: Pest 5 is six features, and one of them is already installed.** Time-balanced
 sharding shipped into the Pest **4.7.x** line — the installed 4.7.8 contains `--shard`,

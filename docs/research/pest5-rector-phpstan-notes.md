@@ -3,8 +3,11 @@
 Research notes, 2026-08-07. **Superseded in part 2026-08-10: Rector IS now
 installed and wired** (`7b6b52e`, `rector.php` at the repo root, dry-run-locked
 with larastan's `extension.neon` passed explicitly to `withPHPStanConfigs`).
-Read §1's "current state" as the pre-install record; the Pest 4 → 5 upgrade is
-still unapproved and unstarted. This was the
+Read §1's "current state" as the pre-install record. **Superseded further
+2026-08-12: the Pest 4 → 5 upgrade EXECUTED** (`8617bb2`; §2's version map is
+now the historical pre-upgrade record — the landed matrix and the browser-plugin
+regression that §2's risk 2 correctly predicted are in
+`docs/research/test-suite-rethink-notes.md` § Phase U record). This was the
 decision-support doc for two separate moves the operator may approve later: adding Rector,
 and upgrading Pest 4 → 5. Versions were checked against Packagist the same day; the video
 section was extracted from the full transcript of Nuno Maduro's Laracon US 2026 talk, read

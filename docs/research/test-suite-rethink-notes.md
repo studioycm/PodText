@@ -109,13 +109,14 @@ None of these exist yet; they decide the structure phase's scope:
   (d) memory: each worker needs the 2G limit (how `-d` propagates to workers
   is unverified). Plausible payoff: 600s → 150–250s at 4–8 workers, browser
   files permitting.
-- **TIA (Pest 5's headline) has a hard local prerequisite: no coverage
-  driver exists.** Measured 2026-08-10 on Herd's PHP 8.4.23 CLI: neither
-  `pcov` nor `xdebug` is loaded *and no .so for either exists in the
-  extension dir* — baseline recording is impossible until one is installed.
-  Also unresolved: where the TIA cache lives and how it behaves with two
-  sessions sharing one worktree (the same class of hazard the fake-disk
-  tokens fixed). Execution is Pest-5-gated anyway (§6).
+- **TIA (Pest 5's headline) had a hard local prerequisite: no coverage
+  driver.** ~~Measured 2026-08-10: neither pcov nor xdebug loaded, no .so~~ —
+  since closed (Phase U, 2026-08-12): the operator chose Xdebug (DP3) and it
+  is installed from Herd's bundled `xdebug-84-arm64.so`, `mode=off` default,
+  coverage verified under `XDEBUG_MODE=coverage` (see `## Phase U record`
+  §U6). The cache-location question is answered (machine-global
+  `~/.pest/tia/<project-key>`, 3.9b) — the two-sessions-one-graph *behavior*
+  remains the open pre-adoption experiment.
 - **Time-balanced sharding** — CI-day concern; there is no CI. Parked — with
   one status correction (2026-08-10, Pest 5 research session): it is **not
   Pest-5-gated**. The installed 4.7.8 already ships it (`Shard.php`:
@@ -164,11 +165,13 @@ package facts in `pest5-rector-phpstan-notes.md` §1, policy in
   ~98% typed already). Watch any rule touching Filament fluent chains:
   Rector has no more insight into Filament's `Macroable` than larastan does.
 
-## 6. Pest 5 timing (operator decision, 2026-08-10)
+## 6. Pest 5 timing (operator decision, 2026-08-10) — EXECUTED 2026-08-12
 
 **"Pest 5 + plugins only at the end and maybe in a separate session — wait
-for approval."** So the upgrade is the rethink's *final* phase, behind its own
-gate, possibly executed in a dedicated session.
+for approval."** The upgrade ran as the rethink's final phase in a dedicated
+session, gate opened by the operator's direct answer on 2026-08-12
+(`5eaa7bb`/`8617bb2`/`bf605db`; full record in `## Phase U record` below).
+The gated list that follows is preserved as the historical scoping record:
 
 - **Gated behind it:** `pest-plugin-phpstan` (the written-down level-6 path
   in `phpstan.neon`), `pest-plugin-rector` (test-style rules), TIA execution,
@@ -739,3 +742,142 @@ consciously deferred with a reason, not dropped.
   full); `pestphp/pest-plugin-browser` releases (succeeded — confirmed empty,
   cross-checked via `gh api` and a `CHANGELOG.md` existence check)
 - `sysctl -n hw.memsize` / `hw.ncpu` on this machine (R7d)
+
+## Phase U record (2026-08-12)
+
+Executed by the dedicated Phase U session (operator-gated open, 2026-08-12).
+Commits: `5eaa7bb` (browser evidence-script fix) → `8617bb2` (the composer
+batch) → `bf605db` (pest-rector dry-run report). Every number below was
+measured by that session on this machine; provenance named per item.
+
+### U1 — composer batch
+
+`pestphp/pest` ^4.7→**^5.1** (5.1.0), `pest-plugin-browser` **5.0.1**,
+`pest-plugin-laravel` **5.0.1**, `pest-plugin-drift` **5.0.0**; new dev deps
+`pest-plugin-phpstan` **5.0.2**, `pest-plugin-rector` **5.0.3**. PHPUnit
+**13.3.0**, paratest 7.24.0, pao 1.1.4 (the phpunit-13-compatible line).
+Resolution was conflict-free in both dry-run forms; the narrow
+`--with-dependencies` form was chosen — framework 13.24, commonmark 2.9 and
+carbon deliberately held (a test-tooling upgrade should not carry a framework
+minor as a passenger). blueprint 2.2.0 / FilaCheck 1.2.5 / FilaCheck Pro
+1.2.7 / larastan 3.10.0 untouched. The feared constraint conflicts (spec risk
+5) did not exist. Plan-sequencing lesson: the meaningful dry-run needs the
+pins already edited into composer.json — a dry-run against the old `^4.7`
+pins cannot move pest and silently reports only the non-pest ride-alongs.
+
+### U2 — run-lock lifetime re-proven
+
+`BootFiles.php` is code-identical to v4 (docblock deletions only; the
+`tests/Pest.php` include still runs in the `load()` method scope, so the GC
+trap and the `$GLOBALS` fix both stand). Mid-run two-process probe
+(final-review-fixes §1 pattern, 20s sleep): lock held at T+20s of a 31.1s
+five-file suite (`false` + `alive`), second pest refused exit 1 with the lane
+message, suite exit 0, lock released after (`true`). One probe-design
+correction en route: the original single-file filter (`SettingsSp3aTest`,
+70.4s in R1) now runs in **2.3s** — S2b's snapshot-queue fake collapsed it
+after R1's measurement — so the first probe run went inconclusive
+(suite ended before the 20s sleep) and the background suite was restacked
+from five S2b-untouched files. R1 durations are stale as probe-sizing input.
+
+### U3 — browser shakedown: one real regression, found, diagnosed, fixed
+
+First full `tests/Browser` run: 48/58, 10 failures across three shapes
+(Illegal-invocation TypeErrors, a `ReferenceError: uploading` flood with
+evidence timeout, and state/measurement failures incl. `network_requests: 85`
+where 1 is asserted). Attribution was free — the pre-upgrade baseline ran the
+same 58 green on the same machine/node/app an hour earlier. Diagnosis
+(refuted-theory trail in the session log: asset truncation → eval-world
+strictness → page visibility, each killed by direct evidence):
+**`Execution::waitForExpectation` caps each retry attempt at a hardcoded
+1,000ms (`Playwright::usingTimeout(1_000, $callback)`); under 4.3.1 +
+Playwright ≥1.62 that cap was dead (timeout rode in protocol params the
+server ignores) and plugin 5.0.1's metadata fix revived it.** Every evidence
+script longer than 1s was killed PHP-side mid-run — while its page effects
+landed — re-executed for the whole 30s window, and the loop's final
+*uncapped* `return $callback()` returned measurements of a page mangled by up
+to 30 partial predecessors. Proven with an in-page attempt counter:
+`diag_attempt: 31`, no JS error ever thrown. Fix (`5eaa7bb`): all **109**
+`->script(` sites → `->page()->evaluate(` — semantically identical
+(`Webpage::script()` is literally `page->evaluate()`), single attempt, real
+30s action budget, and backward-compatible with 4.3.1. Verified:
+CardTemplatePreview 14/14 ×3 (113.2/113.3/113.3s; was 7 failures at 311s),
+browser suite 58/58 at 164s (R1 share was 159s), excluded groups green
+(rtl-board 1/1, compiled-sentinels 6/6). **Upstream bug candidate — filing
+with pestphp is an operator decision, not made.** Two trade-offs recorded:
+`page()->evaluate()` skips the wrapper's post-action server-exception check
+(every test still runs awaitable assertions after, which perform it), and
+scripts lose retry semantics they should never have had.
+
+### U4 — pest-plugin-phpstan (DP5: measured, answered **record + defer**)
+
+Auto-registration via `phpstan/extension-installer` proven on this tree
+(GeneratedConfig lists both `pestphp/pest` and `pestphp/pest-plugin-phpstan`;
+pest core registered an extension in v4 already — tiny, two
+universalObjectCratesClasses). Counts (all with the plugins loaded, `-v`
+against the agent-formatter truncation):
+
+| config | errors | delta |
+|---|---|---|
+| level 5, app-only (current phpstan.neon) | **450** | +7 vs the 443 backlog — git-blame-attributed to `4da7542`/`1443b7d`/`476c508` (settings-backup line, post-dating the 443 measurement); **the upgrade itself moved the app-side count by zero** |
+| level 5, app+tests | **1,150** | tests/ adds +700: **452 are five mechanical dynamic-API families** (Livewire tester 201, browser-plugin Webpage 88, Mockery high-order 88, TestResponse macros 59, PendingAwaitablePage 16 — stub-teachable, the filament-macros.stub precedent) + **37 genuine `pest.expectation.redundant` findings** + remainder |
+| level 6, app-only | **929** | level 6 costs +479 app-side |
+| level 6, app+tests | **2,367** | the documented ~426 estimate (`phpstan.neon:86` comment) was off **5.6×** |
+
+Operator answered DP5: **record + defer** — no `phpstan.neon` change; a
+future wiring batch starts by writing the five stubs, wires tests/ at level
+5, then climbs.
+
+### U5 — pest-plugin-rector dry-run
+
+`docs/research/rector-dry-run-reports/2026-08-12-pest-coding-style.md`:
+22 files / 133 errors, byte-identical across two cold serial runs; the 133
+are the documented §0b larastan-boot family in per-test-file guise. Verdicts
+0 adopt / 4 defer / **1 reject — `SimplifyToLiteralBooleanRector` rewriting
+`expect($offenders)->toBe([])` into `toBeEmpty()` in two guard tests is an
+assertion weakening** (`toBeEmpty()` passes `''`/`null`/`0`); the DP4 posture
+(dry-run-locked, per-rule approval) caught exactly the hazard it was built
+for, now evidenced. `rector.php` restored byte-identical;
+`RectorScriptContractTest` green in the covering gate.
+
+### U6 — TIA prerequisites (DP3: answered **Xdebug**, installed)
+
+Operator chose Xdebug over PCOV (PhpStorm's built-in integration; also the
+zero-compile path — Herd bundles prebuilt .so files through PHP **8.5**,
+though the docs page lists only through 8.3). Installed per the Herd docs:
+ini at `~/Library/Application Support/Herd/config/php/84/php.ini` (backup
+taken: `php.ini.pre-xdebug-backup-2026-08-12`), `zend_extension=` the bundled
+`xdebug-84-arm64.so`, **`xdebug.mode=off` default** so normal runs pay zero
+overhead; TIA recording opts in per-run via `XDEBUG_MODE=coverage`
+(functionally verified: `xdebug_get_code_coverage()` returns data under the
+env, extension loaded, suite-visible overhead none at mode=off). Loaded build
+is **v3.4.0alpha2-dev** — Herd ships a prerelease for 8.4; watch it on Herd
+updates. **TIA's driver prerequisite is gone.** Still standing before replay
+is trusted: the 3.9b two-session shared-graph contention question
+(`~/.pest/tia/<project-key>`, machine-global, keyed by git remote). Adoption-
+day config shape (doc-verified): `pest()->tia()->locally()`, no
+`->baselined()` (needs gh auth + CI artifacts; no CI), built-in
+Laravel/Livewire/Blade/browser watch defaults; `--baseline` only prints the
+storage path.
+
+### U7 — gate
+
+Pre-upgrade baseline (this session, at `174531c`, code tree `09f7323`):
+2,012 / 20,991 / 364.8s + pint + FilaCheck 35/35 — independently
+cross-checked by the F13 session's three runs on the same code (345.8–366.0s,
+identical counts). Post-upgrade gate (at `5eaa7bb`+dirty composer, committed
+as `8617bb2`): **2,012 / 20,991 / 370.1s**, pint clean, FilaCheck 35/35,
+all three named guard tests green. Test-count delta from Pest 5: **zero**.
+Wall-time delta: +1.5% (noise). The pest binary self-reports "5.0.5" while
+composer.lock holds 5.1.0 — upstream version-constant lag, cosmetic; the
+lock is authoritative.
+
+### Residuals out of this phase
+
+- Upstream filing decision (the 1s-cap regression) — operator's call.
+- TIA first baseline + the 3.9b contention experiment — designed follow-on,
+  not started.
+- DP5's five stub surfaces + 37 genuine pest findings — the future wiring
+  batch's opening work-list.
+- The +7 phpstan drift (450 vs 443) — routed to the orchestrator (settings-
+  backup files, not this phase's).
+- Herd's xdebug 8.4 build is an alpha — recheck on Herd updates.
