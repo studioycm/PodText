@@ -51,6 +51,21 @@ Measured/verified facts, each with its source:
   per-boot `information_schema.COLUMNS` TIMESTAMP count while the connection
   pins `+00:00` (~1,900×/suite — the deliberate T17 trade-off that catches
   DDL-leak deadlocks at the *next* boot).
+- **The run-lock is no longer opaque** (`d32da0d`, 2026-08-12). Its holder
+  stamps one JSON line into the lock file on acquiring —
+  `{state, pid, label, lane, started_at, released_at}` — and rewrites it as
+  `released` on normal exit; the label carries the TREE as well as the argv,
+  because the lock is machine-global and two worktrees produce identical
+  command lines. `cat ~/.cache/podtext-test-lane/*.lock` now answers "who has
+  the lane" with no hash to compute and no `pgrep`. flock remains the
+  authority and the record is advisory: a dead holder's lock is released by
+  the OS so there is nothing to reap, and because the holder stamps `held`
+  before doing anything else, a stale record can only be wrong in the safe
+  direction. A blocked run now exits **75** (EX_TEMPFAIL) and prints a banner
+  plus a `"result":"refused"` JSON line on STDOUT — closing the hazard where
+  an agent filtering stdout read a STDERR-only refusal as a silent pass.
+  Known residual: the sibling "could not open the lock file" branch is still
+  STDERR-only with exit 1 (a path that has never fired).
 - **Fake-disk process tokens** + orphan sweep in `tests/Pest.php` (the
   browser-timeout contention fix — two concurrent suites no longer delete
   each other's fixtures).

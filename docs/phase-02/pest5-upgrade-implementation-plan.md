@@ -166,7 +166,7 @@ php -r '$h = fopen($argv[1], "c+"); var_export(flock($h, LOCK_EX | LOCK_NB));' "
 tail -2 "$SCRATCH/lockprobe-suite.log"
 ```
 
-Expected, all four together: PROBE 1 `false` **and** `alive` (lock genuinely held past bootstrap) · refusal run exit 1 with "Another pest run holds the MySQL lane." · suite_exit 0 · PROBE 2 `true` (no leak). Record the verbatim output in the report.
+Expected, all four together: PROBE 1 `false` **and** `alive` (lock genuinely held past bootstrap) · refusal run **exit 75** (EX_TEMPFAIL) with a banner plus a `"result":"refused"` JSON line on STDOUT naming the holder — **not** exit 1 and not the old "Another pest run holds the MySQL lane." string, both of which `d32da0d` retired · suite_exit 0 · PROBE 2 `true` (no leak). Record the verbatim output in the report.
 
 - [ ] **Step 3: If PROBE 1 prints `true` (lock regressed):** STOP the phase's forward motion. Diagnose with superpowers:systematic-debugging against the new bootstrapper shape from Step 1; the fix lives in `tests/Pest.php` (a persistence mechanism that survives the new scope — `$GLOBALS` today; whatever the new shape needs tomorrow), re-run this probe verbatim to green, and record fix + probe in the report before any other task proceeds. Also update the `pest-lane-lock-gc-trap` memory (it explicitly says the fix is v4-shape-dependent — re-verify under Pest 5).
 
