@@ -914,3 +914,231 @@ lock is authoritative.
 - The +7 phpstan drift (450 vs 443) — routed to the orchestrator (settings-
   backup files, not this phase's).
 - Herd's xdebug 8.4 build is an alpha — recheck on Herd updates.
+
+
+## TIA — measured, not adopted (2026-08-12)
+
+Executed by the dedicated 3.9b session (operator-approved follow-on). Measured on
+**pest 5.1.0 / PHPUnit 13.3.0**, Xdebug **3.4.0alpha2-dev**, at HEAD **`cbf4479`**,
+working tree clean and verified clean for the duration of both runs. Every mechanism was
+read in installed vendor source and then measured; where a prior claim and the source
+disagreed, the source plus a measurement won.
+
+**Verdict: DO NOT ADOPT on 5.1.0.** Not for lack of payoff — the payoff is 181× — but
+because a run can record a green result for code it never executed, and the runs that can
+do it are as short as one second.
+
+### T1 — what TIA buys (JOB 1)
+
+Baseline: **2,027 / 21,026 / ~362s**, measured at `cbf4479` by the lane-lock session's own
+gate. TIA cannot run with a PHPUnit-class test present (T4a), so all TIA runs used
+**2,025 / 21,024** — that baseline minus exactly the 2 excluded skeleton tests. **2,025 is
+a config artifact of that exclusion at `cbf4479` on 2026-08-12, not a suite count**; the
+external `-c` config remains necessary to reproduce these numbers at that sha, even though
+future runs will not need it. (The suite has since moved: 2,029 / 21,037 / 366.7s at
+`3330fe7`/`505f043`.)
+
+| run | wall clock | vs baseline | outcome |
+|---|---|---|---|
+| recording (`--tia`, `XDEBUG_MODE=coverage`) | **1,713s (28.5 min)** | **4.73× slower** | exit 1 — 5 browser failures |
+| replay #1 (5 tests due for re-run) | **28s** | **12.9× faster** | exit 0 — 2,025 passed |
+| replay #2 (steady state) | **2s** | **181× faster** | exit 0 — 2,025 passed |
+
+**Byte-comparability: confirmed.** Both replays reported 2,025 / 21,024 — identical to each
+other and to the baseline minus the exclusions — and all green, matching a real gate run.
+
+**The 5 recording failures are Xdebug timing casualties, not defects.** All were browser
+tests: two literal `Timeout 30000ms exceeded`, the rest Alpine/Livewire state and focus
+assertions. Replay #1 re-executed all 5 without Xdebug and every one passed, flipping the
+graph from 5×status-7 to 2,025×status-0. So **recording a baseline produces a false red in
+exactly the tier this program documented as wait-fragile** (the 1s-cap regression,
+[pest#1852](https://github.com/pestphp/pest/issues/1852)). Anyone recording will see red
+and must know to disregard it — that belongs next to the browser-wait discipline, not in a
+TIA footnote.
+
+**The 2s figure is a replayed claim, not evidence.** It reports "2,025 passed" having
+executed essentially nothing. That is the design, and it is why the graph's
+trustworthiness is the whole question.
+
+The Unit slice predicted a 3.67× Xdebug tax (3.15s → 11.57s); the suite came in at 4.73×,
+because Xdebug slows the PHP side of every Livewire round-trip the browser tier waits on —
+that wall time does not stay I/O-bound.
+
+### T2 — the hazard, and which runs can cause it (JOB 2)
+
+Scaffolded a throwaway git project outside the repo with its own pest install and its own
+cache key — the approach pest's own TIA scenario tests use. Timing by **file handshake**,
+not wall-clock sleeps, so "a commit lands mid-run" is deterministic rather than a race.
+
+What is safe, confirmed behaviourally: **uncommitted edits by anyone** (`workingTreeChanges()`
+runs `git status --porcelain -z --untracked-files=all` every run); **edits committed before
+a run** (`git diff --name-only <recordedSha>..HEAD` — the affected test re-ran and failed
+correctly); and **comment/whitespace-only edits**, hash-normalised to zero reruns by
+`ContentHash`.
+
+The hole: **a commit landing during a run.** The run stamps `setRecordedAtSha()` with HEAD
+read at the **end** (`Tia.php:623` → `:638`), so another session's commit becomes this
+run's baseline while the results still describe pre-commit code.
+`structuralFingerprintShifted()` cannot see it — `Fingerprint::compute()` hashes
+`composer.lock`, `phpunit.xml*`, vite config and lockfiles, **never app source**
+(`Fingerprint.php:33-41`).
+
+**Which modes stamp, and how short they are.** The obvious mitigation is T23b (no commits
+while a suite is in flight), which would cover this *if* runs stay long enough that people
+recognise a suite is running:
+
+| mode | run length | stamps a commit it never executed | next `--tia` | ground truth |
+|---|---|---|---|---|
+| pure replay (empty affected set) | ~0s | **yes** — stamps new HEAD | — | — |
+| **replay-with-refresh** | **1s** | **yes** | 2 passed (replayed) | **1 failed** |
+| full record | 28.5 min here | **yes** | 2 passed (replayed) | **1 failed** |
+
+A replay with a non-empty affected set activates the recorder (`canRefreshReplayEdges`,
+`:1076`, `:1095-1102`) and takes the same end-of-run stamp; the pure-replay path stamps via
+`bumpRecordedSha()` (`:1636-1657`), **which has no guard of any kind**.
+
+**So the mitigation is consumed by the feature.** TIA exists to make runs short; adopting
+it converts a rare, long, obvious window into a frequent, brief, invisible one, and T23b
+stops being invoked — not because anyone stopped caring, but because nobody thinks "a suite
+is in flight" about a one-second run. A safety argument that holds only in the world
+without the feature is not a safety argument for adopting it. And note the difference in
+kind: **flock is a mechanism; T23b is a discipline** — one breached twice in this program
+in a single evening, by careful sessions.
+
+**The false green is sticky.** With the graph stamped to another session's commit and no
+further edits: `--tia` × 6 consecutively reported **2 passed (2 replayed)** every time,
+against a plain-`pest` ground truth of **1 failed, 1 passed**. It clears only when
+something actually executes the test — and a non-TIA run does exactly that, writing honest
+results back into the graph, after which `--tia` reports "1 uncached" and re-runs it.
+**What repairs a poisoned TIA graph is running the suite without TIA.**
+
+**A tree at a different commit is handled correctly.** `:862-872` checks
+`git merge-base --is-ancestor <recordedSha> HEAD`; an unreachable baseline prints
+`WARN Recorded commit is no longer reachable — graph will be rebuilt`, discards and
+re-records. Measured with two same-key copies, the twin at an older commit: WARN fired,
+twin re-recorded, results matched ground truth. **But the benefit dies even though
+correctness holds** — the trees ping-pong: twin rebuilds fully → source pays "1 affected
+test file (from 2 changed files)" → twin rebuilds fully again. A shared key between trees
+at different commits is not a correctness bug; it guarantees neither tree gets a cheap
+replay.
+
+**Where the cache lives — the founding premise, corrected.**
+`Storage::tempDir()` = `$HOME/.pest/tia/<slug(basename)>-<sha256(origin|realpath)[0:16]>`
+(`Storage.php:84-95`). Measured via the vendor's own `Storage::tempDir()`:
+
+| tree | `.git` | key |
+|---|---|---|
+| `/Users/studioycm/Herd/PodText` | dir | `podtext-402768b9cc2968d4` |
+| `/Users/studioycm/.codex/worktrees/0723/PodText` | file | `podtext-6eeb50053c994172` |
+| `.../.claude/worktrees/app-custom-parts-refactor-bdd7f6` | file | `app-custom-parts-refactor-bdd7f6-b75c5f1bc646cd22` |
+
+**"All worktrees share one graph" is half wrong** — note the codex worktree shares the
+basename `PodText` and still lands on a distinct key. Same-tree sessions do share one;
+same-basename clones/copies do too (reproduced). Detached HEAD makes TIA read-only
+(`saveGraph()`/`deleteState()` return early), which is the codex worktree's state today.
+
+**Live incident, not a lab result.** After the lane was released, the recorded graph grew
+from the **2,025** results the TIA runs produced to **2,027** — the two tests the
+measurement config excluded. Nothing of the 3.9b session's ran in between: the lane-lock
+session's plain `php artisan test` gate did it, because **a non-TIA run still writes its
+results into the TIA graph** (`addOutput()` reaches `snapshotTestResults()` at `:691-694`
+even with TIA disabled). A session that had never heard of TIA silently updated
+machine-global TIA state in a shared tree. Benign — honest results from a real execution,
+which is the self-healing property — but it confirms the coupling outside the lab, and
+means **a session cannot tell from its own behaviour whether it is participating in TIA's
+state.**
+
+**The graph file has no lock of its own.** Read at `:243`, written at `:297-303`; the write
+is atomic (`FileState::write()` — tmp with random suffix, then `rename()`), so no torn
+file, but it is plain read-modify-write with **no mutual exclusion**. The machine-global
+lane lock (S3, `89a2ee1`/`810f6f2`) is the only thing serialising it, and knows nothing
+about TIA — now recorded in `TestLaneContract`'s docblock, with the warning that a future
+per-worker bypass (DP2) would remove protection nobody declared. Worker partials are worse
+namespaced: `workerToken()` (`:1498`) is `TEST_TOKEN` else **`getmypid()`**, collected by
+globbing `worker-edges-*` — not session-scoped; reachable only under `--parallel`, but
+directly downstream of DP2's shape.
+
+### T3 — what would flip the verdict
+
+Smaller than "add a guard": **an existing guard has an incomplete input set.**
+`structuralFingerprintShifted()` (`:234-239`) already compares start-of-run against
+end-of-run state and discards-and-WARNs on drift (`:627-634`, `:713-722`), and
+`$this->startFingerprint` is captured at `:850`. **No SHA is captured at start anywhere** —
+that is the entire gap.
+
+1. Capture `$changedFiles->currentSha()` at start, beside `$this->startFingerprint`.
+2. **Record path:** fold a start-vs-end HEAD mismatch into the existing discard-and-WARN.
+3. **Replay path:** `bumpRecordedSha()` must refuse to stamp on mismatch — it has **no
+   guard at all**, which is why the 1-second case poisons.
+
+**Rejected: stamping the start SHA instead.** If the tree moved mid-run the results
+describe a *mix* of two commits and no single SHA honestly labels them; the only correct
+answer is to refuse the recording, which is what the existing guard already does for config
+drift. **Also rejected: making TIA take the lane lock** — PodText-specific, useless
+upstream.
+
+Same shape as #1852 — a guard that exists and doesn't cover the case — so it is filable.
+**It does not change today's verdict**, only a future one.
+
+### T4 — adoption checklist (for whoever reconsiders this)
+
+Do not rediscover these 45 seconds into a first recording run.
+
+- **T4a — no PHPUnit-class tests may exist.** `EnsureTiaIsRunningPestTestsOnly.php:39-43`
+  panics mid-run (after boot and migrate) on any test class lacking Pest's
+  `__initializeTestCase` marker; it never inspects the assertion, so **converting** to Pest
+  satisfies it exactly as well as deleting. Census: **1 as of `505f043` (was 2 at
+  `cbf4479`)** — `tests/Unit/ExampleTest.php`; the Feature one was a real thin smoke test
+  (`RefreshDatabase`, asserts `/` responds — `dd7b552`) and was converted rather than
+  deleted. **REDUCED, not resolved** — and resolving it makes TIA *runnable*, never
+  *trustworthy*; the verdict rests on T2, not on this.
+- **This property is load-bearing with nothing behind it.** If adoption is revisited,
+  "no PHPUnit-class tests in `tests/`" wants an **arch test** — the failure mode is a
+  mid-run panic, not a lint error.
+- **So is worktree-key isolation.** It is incidental (an origin lookup that fails on
+  worktrees), and a switch to `git config --get remote.origin.url` collapses every tree
+  onto one key. If adoption proceeds, pin it with a guard.
+- **T4b — TIA is whole-suite-only.** `PARTIAL_SELECTION_FLAGS` (`:135`) — `--filter`,
+  `--exclude-filter`, `--group`, `--exclude-group`, `--testsuite`, `--dirty`, `--covers`,
+  `--uses` — and explicit paths all disable it. The house guidelines push
+  `--filter` for daily work, so every such run contributes nothing to the graph, silently.
+  Group excludes in `phpunit.xml` are config not CLI, so the gate's plain
+  `php artisan test` can carry `--tia`. Governance-level conflict, routed separately.
+- **Budget the recording pass honestly**: 28.5 min here, plus 5 false browser reds to
+  disregard.
+- **If the 181× is wanted before the upstream fix**, the one constraint worth trusting is a
+  mechanism this repo already owns: route every TIA run through a wrapper that takes the
+  **commit mutex** (`~/.cache/podtext-coord/claim.sh`) for the run's duration. Cheap for
+  replays (2s), expensive for recording (28.5 min of no commits in a three-session repo),
+  and still imperfect — it holds only while every invocation uses the wrapper. But "use the
+  wrapper" is a far narrower discipline than "never commit while anything runs".
+- **Constraints that do NOT help:** per-worktree cache keys (worktrees are already
+  isolated; the exposure is same-tree), and an opt-in flag (the hazard is in the mechanism,
+  not the default).
+
+### T5 — corrections this round made, including to its own work
+
+- **3.9b's "all worktrees share one graph"** — half wrong; linked worktrees are isolated,
+  incidentally and fragilely.
+- **"The lane lock closes TIA's window, so TIA is safe here"** — refuted. The lock covers
+  pest↔pest; the hazard is pest↔**git**, and committing is not a pest run.
+- **"A pure replay does not advance the recorded SHA"** (this session's own earlier claim) —
+  **wrong, and the cause is worth keeping**, because all three flaws are reusable warnings
+  for anyone scripting a concurrency probe: (1) the watcher committed *unconditionally after
+  its timeout*, so on a failed handshake the commit landed after the run and an artifact
+  looked like a safety property — a probe must report HANDSHAKE-FAILED rather than proceed;
+  (2) a 12-char graph SHA was compared against `git rev-parse --short`'s 7, so every match
+  read as a mismatch; (3) one "source change" was comment-only, which `ContentHash`
+  normalises to zero reruns, silently degrading that case to another pure replay. Corrected
+  script re-run; the T2 table is from the clean version.
+- **Blocked-run exit codes**: **75** (EX_TEMPFAIL) for lane contention (shipped);
+  **73** (EX_CANTCREAT) proposed for the unwritable-lock-root path. Two different codes,
+  both correct — flagged as a suspected error and confirmed fine on inspection.
+
+### Evidence
+
+Recorded graph (748KB, `recorded_at_sha cbf4479`, 942 source files, 168 test files with
+edges) and a summary are preserved outside the repo, so the 28.5-minute recording need not
+be repeated to check any figure here. Machine-global TIA caches were **purged** at
+close-out (`~/.pest/tia/` empty) rather than left as a 748KB artifact of a rejected
+experiment — the `test-residue` pattern.
