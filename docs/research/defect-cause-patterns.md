@@ -48,7 +48,13 @@ the rightful doc), `names-carry-family` (slugs canonical, `P<n>` historical
 aliases, no new bare letter+digit families), ~~`one-owner-registry`~~ (retired
 2026-08-11 — superseded by the rolling-custodian rule in this file's header and
 `.ai/rules/docs.md`; struck here 2026-08-12 when the governance session found
-the citation contradicting the header thirty lines above it),
+the citation contradicting the header thirty lines above it. **This strike is 1
+of 3 — do not read it as repo-wide resolution:** the rule's canonical home,
+`docs/phase-02/dashboard-governance-principles.md:32`, still states it live —
+that fix is the governance plan's Task 2, gated on the dashboard ledger's
+dormant-owner protocol — and `consolidated-open-findings.md:146` still
+*instructs* by it ("do not write it there directly"), which corrects at that
+file's next wholesale regeneration, already queued),
 `readable-binding`, `pinned-promise`, `provenance-stated`,
 `verify-dont-trust` — now live in their one home,
 `docs/phase-02/dashboard-governance-principles.md` (dashboard-scoped by
