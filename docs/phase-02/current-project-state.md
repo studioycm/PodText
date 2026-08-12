@@ -3083,3 +3083,26 @@ and `model:show` is safe to use again.
   F13 predates 1.9 and touches none of its surface.
 - **End state: 2,010 tests / 20,987 assertions in 362s green**, pint clean,
   FilaCheck 35/35, `npm run build` clean.
+
+## Test-Suite Rethink — TIA measured in filtered mode, SHELVED (2026-08-12)
+
+- **A pre-commit hook now refuses a commit while a pest run holds the MySQL
+  test lane** (`scripts/git-hooks/pre-commit` launcher +
+  `scripts/git-hooks/pre-commit-lane-guard.php`, pinned by
+  `tests/Feature/PreCommitLaneGuardTest.php`). Install is
+  `git config core.hooksPath scripts/git-hooks` — **repository-wide, so it
+  reaches every worktree, and `.git/hooks/*` is bypassed while it stands**. It
+  closes pestphp/pest#1856's window locally and mechanises T23b, which had been
+  a discipline and was breached twice in one evening. Worth keeping whether or
+  not TIA is ever adopted.
+- **TIA verdict: SHELVE**, with the numbers and the four flip conditions in
+  `docs/research/test-suite-rethink-notes.md` → *TIA filtered-mode measurement*.
+  Headline: filtered mode requires a coverage driver, so it inherits Xdebug's
+  4.6× per-test cost; a one-liner in a broad model costs **1,633s against a
+  354s plain full suite**, 33% of source files are slower under TIA than not
+  using it, and 34% pull in an Xdebug-fragile browser canary and go red for no
+  reason. It does pay for the median file (112s) and is 354× faster for a
+  test-file edit. **The cheapest untried lever is pcov** — every cost figure is
+  an Xdebug figure.
+- Machine-global TIA state purged at close-out; run logs, graph snapshots and
+  the analysis script live in `~/.cache/podtext-coord/upstream-pest/`.

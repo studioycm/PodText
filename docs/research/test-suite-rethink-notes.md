@@ -1191,3 +1191,248 @@ edges) and a summary are preserved outside the repo, so the 28.5-minute recordin
 be repeated to check any figure here. Machine-global TIA caches were **purged** at
 close-out (`~/.pest/tia/` empty) rather than left as a 748KB artifact of a rejected
 experiment — the `test-residue` pattern.
+
+
+## TIA filtered-mode measurement — SHELVE (2026-08-12)
+
+The mode the previous round could not speak for. Everything in *TIA — measured, not adopted*
+is **unfiltered replay**, which executes nothing; `--tia --filtered` is different code and is
+the only mode an adopter would run day to day. Measured on pest **5.1.0** / PHPUnit 13.3.0,
+Xdebug **3.4.0alpha2-dev**, PHP 8.4.23, at HEAD **`5312ddd`**, tree clean and re-verified
+clean before every run, one session alone on the machine.
+
+Method differences from the prior round, all deliberate:
+
+- **No external `-c`** — the project's own `phpunit.xml`, every run. [#1858](https://github.com/pestphp/pest/issues/1858)
+  means the fingerprint never recorded the prior round's external config, so those figures
+  came from a config the graph did not know about. These do not.
+- **`vendor/bin/pest` directly**, never `php artisan test` (L7).
+- **`PAO_DISABLE=1`** — see F4; this is what makes a per-test readout exist at all.
+- Nothing moved HEAD during any run: the `5312ddd` pre-commit hook refuses it.
+
+**Provenance rule:** every figure is *measured* unless the row says `modeled`. Modeled rows
+come from the recorded graph's own per-test times, are validated in F1a to ±1%, and are used
+for no load-bearing claim.
+
+### Verdict: SHELVE
+
+Not for lack of payoff — the payoff is real and is quantified in F1b — but because on this
+suite the mode that gives the payoff is inseparable from a coverage driver that costs 4.6×
+per test and turns four browser tests red. What would flip it is named in F6, and one item
+(pcov) is cheap and was never tried.
+
+### F1 — the matrix
+
+Baseline for every comparison: **the plain full suite, no TIA, no Xdebug — 2,032 tests /
+21,051 assertions / 354s / exit 0**, measured this session at this HEAD.
+
+| # | edit | affected test files | tests run | wall | exit | vs plain 354s |
+|---|---|---|---|---|---|---|
+| — | recording pass, `--tia` + Xdebug | all 171 | 2,032 | **1,633s** | 1 (5 canaries) | 4.61× slower |
+| E0a | none; 5 canary failures due for re-run | 3 | 23 | **319s** | 1 | 0.90× |
+| E0b | none; graph all-green | 0 | 0 | **0s** | **0** | — |
+| E1a | comment-only touch in a leaf class | 0 | 0 | **0s** | **0** | — |
+| E1b | real one-liner, `app/Support/Slugs/HebrewSlugger.php` | **94** | — | modeled 1,268s | — | ~3.6× slower |
+| E2 | one-liner, `app/Models/ContentItem.php` | **164** | 1,995 | **1,633s** | 1 | **4.61× slower** |
+| E3 | one-liner, `PublicContentItemCardPresenter` | **27** | 354 | **546s** | 1 | **1.54× slower** |
+| E4 | edit a test file itself | **1** | 8 | **1s** | 0 | **354× faster** |
+| E5 | real bug in a covered file | 5 | 23 | **40s** | **1 — the covering test failed** | — |
+| E6a | Blade view edit | **25** | 342 | **550s** | 1 | 1.55× slower |
+| E6b | one key added to `config/tags.php` | **164** | — | modeled 1,577s | — | ~4.5× slower |
+
+**E5 is the one that could have disqualified TIA outright, and it passed.** Flipping a
+collision-detection comparison in `ImageFileNamer` produced exactly the expected red:
+`ImageFileNamerTest > it adds deterministic collision suffixes before the extension`,
+*Failed asserting that two strings are identical*. Filtering does not hide regressions in
+code it selects.
+
+**Selection soundness: sound in every case checked.** E3 executed all 24 test files the graph
+records as depending on the presenter (27 total — the extra 3 came from a second changed
+file, F5b). E5 executed all 4 recorded dependents of the edited class. E1b's 94 and E6b's 164
+match the graph's own dependent counts exactly. No recorded dependent was ever missed.
+
+#### F1a — the model, and the trap inside it
+
+The graph stores a per-test `time`; summing it over a selection predicts that selection's
+filtered wall time. Validated like-for-like on driver provenance:
+
+| point | modeled | measured | error |
+|---|---|---|---|
+| whole suite (recording pass) | 1,619s | 1,633s | +0.9% |
+| E0a's 3 files | 320s | 318.5s | −0.6% |
+| E2's 164 files | 1,606s | 1,633s | +1.7% |
+
+**The trap: the graph's times are a mixture of provenances.** A non-TIA run rewrites the
+entries it executes ([#1859](https://github.com/pestphp/pest/issues/1859)), so after the
+repair run in F2 those three files carried *non*-Xdebug times and the same model under-read
+the same slice by 148%. The first attempt at this validation was wrong for exactly that
+reason. A time read out of the graph is comparable only to runs of the same driver.
+
+### F1b — the distribution, which is the real answer
+
+One anecdote is not a verdict, so the model was run over every source file in the graph
+(745, excluding `tests/` and compiled views): for each, what its edit would cost.
+
+| filtered run costs | files | share |
+|---|---|---|
+| under 30s | 78 | 10% |
+| under 60s | 220 | 30% |
+| under 120s | 383 | 51% |
+| **under 354s — beats the plain gate** | **498** | **67%** |
+| over 354s — slower than running everything | 247 | 33% |
+
+Median source file: **112s**, i.e. 3.2× faster than the plain gate. **TIA does pay for the
+median edit.** Where it does not:
+
+| area | files | median filtered cost | share slower than the plain gate |
+|---|---|---|---|
+| `config/` | 22 | 1,452s | **100%** |
+| `routes/` | 2 | 1,452s | **100%** |
+| `app/Providers/` | 4 | 1,482s | **100%** |
+| `app/Models/` | 21 | 980s | 76% |
+| `app/Support/` | 203 | 340s | 47% |
+| `app/Filament/` | 158 | 221s | 41% |
+| `app/Livewire/` | 14 | 139s | 14% |
+| `resources/views/` | 88 | 104s | 15% |
+| `app/Http/` | 11 | 39s | 9% |
+| `database/` | 98 | 83s | 7% |
+
+**Against my own headline:** E3's target sits above its area's median (546s measured vs
+`app/Support/`'s 340s), so E3 is a bad-but-real case, not a typical one. The distribution,
+not E3, is the finding.
+
+### F2 — the canary trap, which is what actually blocks adoption
+
+Three facts compose into one blocker.
+
+1. **A filtered run over a PHP source edit requires a coverage driver.** With none,
+   `Tia.php:1046-1052` WARNs and **runs the full suite** — no filtering at all. Verified
+   directly: with `XDEBUG_MODE` unset (`xdebug_info('mode')` is empty), a one-line edit
+   produced `WARN Detected PHP source changes but no coverage driver is available / Running
+   the full suite to avoid using a stale dependency graph`. "Filtered" and "Xdebug tax" are
+   one choice, not two.
+2. **Xdebug makes four browser tests fail.** The recording pass failed exactly the 5 expected
+   results from R4 row 8's four canaries — the list reproduced exactly, no drift. E0a re-ran
+   those 3 files *with* Xdebug: **the same 5 failed again, in 319s**. A plain run of the
+   identical 23 tests without Xdebug: **23 passed in 129s** (2.47× on that slice). The prior
+   round could only infer this; it is now directly observed in both directions.
+3. **So the red cannot clear from inside filtered mode.** Filtered runs need Xdebug, Xdebug
+   re-fails the canaries, a failed test is recorded as due-for-re-run, so it is selected
+   again, fails again, and stays. Measured escape: **a plain non-TIA run with explicit paths
+   repaired the graph** — 3 files, 129s, exit 0, histogram `{0: 2027, 7: 5}` → `{0: 2032}`.
+   The repair does not need the whole suite, but it does need a non-Xdebug run.
+
+**Exposure, from the graph: 250 of 745 source files (34%) have at least one canary in their
+dependent set.** Roughly one edit in three yields a red filtered run with no defect behind
+it. That is L9's worry with a number on it, and it trains precisely the habit this program
+has spent a month arguing against — disregarding a browser red. **It also raises the value
+of R4's canary-hardening work: those four tests are no longer just flake, they are the single
+thing standing between this suite and a usable TIA.**
+
+### F3 — L5 resolved: `complete` is a non-default-branch flag
+
+The prior round recorded `complete = NULL` as unexplained and guessed the exit-1 browser
+failures caused it. **The guess is refuted, from source.** `markBaselineComplete()` is the
+flag's only writer (`Graph.php:1594`), and `Tia::reclaim()` calls it only when
+`$this->branch !== $this->fallbackBranch` (`Tia.php:1737-1741`) — never on the default
+branch, whatever the exit code. The reader is symmetric: `Graph::baselineFor()` returns early
+at `:974-976` when there is no fallback baseline, so `complete` at `:978` is consulted only
+off the default branch.
+
+On `main` the flag is **structurally inapplicable, not missing**. This session's recording
+(also `main`, also exit 1) again produced a baseline whose keys are exactly
+`['sha','tree','results']` — consistent with the source reading. The branch-overlay path it
+gates stays unmeasured, because nothing in this program has run TIA off `main`.
+
+### F4 — the "no per-test readout" blind spot was removable
+
+The prior round found its log's `raw` array held only `["Experimental TIA mode enabled."]`
+and concluded no per-test readout existed short of a 28.5-minute re-run. The cause was not
+`--compact`: it is **`laravel/pao`**, which detects an agent environment and replaces pest's
+output with a JSON summary (`vendor/laravel/pao/src/Autoload.php:18-26`). It has an off
+switch — **`PAO_DISABLE=1`** — and with it every run in this section printed per-test names,
+per-test times, the affected-file list and full failure detail.
+
+Two consequences beyond TIA: any session reading a pest log in this repo is reading pao's
+summary rather than pest's output, and pao's line filter is why a TIA banner arrives
+flattened into `raw`.
+
+### F5 — mechanics, each measured
+
+- **F5a — uncommitted edits are seen.** Every experiment used a working-tree edit and a
+  `git checkout --` revert; HEAD never moved. `ChangedFiles::since()` merges
+  `git diff <sha>..HEAD` with `git status --porcelain --untracked-files=all` (`:96-126`,
+  `:320`). Committing per edit is unnecessary, which keeps [#1856](https://github.com/pestphp/pest/issues/1856)'s
+  window shut for the whole measurement.
+- **F5b — reverting a file makes it changed again.** Every run after the first reported
+  "from **2** changed files" when one file was edited: the *reverted* file no longer matches
+  the tree hash the previous run snapshotted, so it counts as changed and drags its
+  dependents back in. An edit-then-revert loop pays for the file twice.
+- **F5c — comment-only edits are free.** `ContentHash` normalises them (E1a: 0 affected, 0s,
+  exit 0) — now confirmed on the real repo, not only on a scaffold.
+- **F5d — an empty affected set is a clean no-op, not a panic.** E0b exits **0** in 0s with
+  `INFO No affected tests found.`, despite `NoAffectedTestsFound` being raised through
+  `Panic::with()`. Good ergonomics for an agent inner loop, and the opposite of what was
+  predicted.
+- **F5e — Blade is tracked, and well.** A one-line change inside a component view's `@php`
+  block selected 25 test files (E6a); 115 `.blade.php` files carry edges, and there is
+  explicit machinery (`Graph::affectedByStaticBladeUsage()`, `bladeAncestorsFor()`). The
+  predicted blind spot does not exist.
+- **F5f — config is the opposite of a blind spot.** All 22 `config/*.php` files in the graph
+  are depended on by **163 of 171 test files**, because every test boot loads every config
+  file. One added key selected 164 (E6b). Config is the most expensive edit class in the repo.
+
+### F6 — the maintenance story, and a stuck state worth reporting upstream
+
+| run | conditions | wall | outcome |
+|---|---|---|---|
+| M1 | unfiltered `--tia`, no Xdebug, 3 canary files due | **362s** | WARN → full suite; 2,032 passed; graph healed to all-green |
+| M2 | identical, immediately after, **clean tree** | **354s** | WARN → full suite **again** |
+| M3 | `--tia --filtered` + Xdebug, clean tree at the recorded sha | — | selected **164 files "from 1 changed file"** |
+
+M2 and M3 are the finding. On a clean tree at the recorded sha, one file is still treated as
+changed — **`app/Models/ContentItem.php`, the E2 target**, whose *pre-revert* hash is still
+sitting in the baseline's `tree` (verified by reading `graph.json`: `tree` holds exactly that
+one entry).
+
+Mechanism, from source: `filterUnchangedSinceLastRun()` (`ChangedFiles.php:27-50`) adds every
+snapshotted file as a candidate and keeps any whose current hash differs from the snapshot;
+the snapshot is only rewritten on paths that complete a record/replay (`Tia.php:639`, `:727`,
+`:1654`). The no-coverage-driver branch returns at `:1051` **before any of them**. So a
+developer without Xdebug who once had a graph gets: full suite, no re-snapshot, full suite,
+no re-snapshot — indefinitely, with a WARN that reads like a one-off.
+
+- **Measured:** the stuck state itself (M2, M3, and the `tree` entry in the graph file).
+- **Also measured, and it makes the state worse than first written:** the plain non-TIA
+  full gate that closed this session (2,035 tests, 358s, exit 0) wrote all 2,035 results
+  into the graph — #1859 again, at full scale — and **left the stale `tree` entry exactly
+  as it was**. So the repair that fixes a poisoned *result* set does not touch this one.
+- **Inferred from source, not measured:** that a *completed* run with a coverage driver
+  clears it. Settling that costs one 27-minute run and was not spent, since the verdict does
+  not turn on it.
+
+Drafted as a sixth upstream report, **not filed** — filing needs the operator's word.
+
+Adoption cost, for the record: the 27-minute recording is re-paid whenever `Fingerprint`
+drifts (composer.lock, phpunit.xml, lockfiles, vite config) or `recorded_at_sha` becomes
+unreachable. `composer update` therefore costs a re-record. Config edits do **not** trigger
+it (#1858) — which cuts both ways.
+
+### F7 — what would flip SHELVE to ADOPT
+
+1. **Harden the four canaries** (R4 row 8 / LEFTOVERS L2 has the list). This removes the 34%
+   false-red exposure and the sticky red. Necessary, not sufficient.
+2. **Try pcov.** Every cost figure here is an *Xdebug* figure, and Xdebug is the most
+   expensive line-coverage driver available. pcov is not installed (the operator's standing
+   choice), and nothing in this program has measured it. If it lands near 1.5× instead of
+   4.6×, most of the cost inversion in F1b disappears and the verdict is worth re-opening.
+   **This is the cheapest untried lever and the one I would pull first.**
+3. **Upstream: the stale-`lastRunTree` stuck state** (F6), and [#1856](https://github.com/pestphp/pest/issues/1856)
+   — the latter now mitigated locally by the pre-commit hook rather than blocked on upstream.
+4. Nothing would flip the arithmetic for `config/`, `routes/` and `app/Providers/`: every
+   test boot loads them, so their dependent set is the suite. Those edits should always use a
+   plain full run.
+
+Housekeeping: `~/.pest/tia/` **purged** at close-out per this verdict (the `test-residue`
+pattern); raw run logs, graph snapshots and the analysis script are preserved outside the
+repo at `~/.cache/podtext-coord/upstream-pest/`.
