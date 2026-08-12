@@ -1,5 +1,6 @@
 <?php
 
+use App\Support\Testing\TestLaneContract;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Process;
 
@@ -17,15 +18,40 @@ use Illuminate\Support\Facades\Process;
  * must be this very process. Anything that silently releases that lock
  * mid-run — the $GLOBALS garbage-collection trap Pest.php documents — turns
  * this test red rather than leaving the lane unguarded in the dark.
+ *
+ * The three fail-open branches are covered too, because a guard that steps
+ * aside when its own plumbing breaks is only acceptable while it still says
+ * so out loud — and "it warns" is a claim like any other. Each is driven
+ * through the environment (PATH, HOME, a copy of the script), so none of them
+ * needed a test-only seam in the hook.
  */
 
+function preCommitHook(): string
+{
+    return base_path('scripts/git-hooks/pre-commit');
+}
+
 it('ships an executable pre-commit hook that probes the lane lock through the contract', function (): void {
-    $hook = base_path('scripts/git-hooks/pre-commit');
+    $launcher = preCommitHook();
+    $guard = base_path('scripts/git-hooks/pre-commit-lane-guard.php');
 
-    expect(is_file($hook))->toBeTrue('scripts/git-hooks/pre-commit is missing.')
-        ->and(is_executable($hook))->toBeTrue('scripts/git-hooks/pre-commit is not executable, so git will skip it silently.');
+    expect(is_file($launcher))->toBeTrue('scripts/git-hooks/pre-commit is missing.')
+        ->and(is_executable($launcher))->toBeTrue('scripts/git-hooks/pre-commit is not executable, so git will skip it silently.')
+        ->and(is_file($guard))->toBeTrue('The hook logic file is missing.');
 
-    $source = File::get($hook);
+    // The launcher must stay a launcher: no external binaries, because the one
+    // case it exists to survive is a caller whose PATH cannot find them.
+    $launcherSource = File::get($launcher);
+
+    expect($launcherSource)
+        ->toContain('pre-commit-lane-guard.php')
+        // Shell parameter expansion, not a subprocess: `$(dirname …)` would be
+        // the very external binary a minimal PATH cannot resolve.
+        ->toContain('${0%/*}')
+        ->not->toContain('$(dirname')
+        ->not->toContain('$(basename');
+
+    $source = File::get($guard);
 
     expect($source)
         // The lane's own path, resolved through the contract — never a second
@@ -43,7 +69,7 @@ it('ships an executable pre-commit hook that probes the lane lock through the co
 });
 
 it('refuses a commit while this pest run holds the lane, and names the holder', function (): void {
-    $result = Process::path(base_path())->run('scripts/git-hooks/pre-commit');
+    $result = Process::path(base_path())->run(preCommitHook());
 
     expect($result->exitCode())->toBe(1)
         ->and($result->errorOutput())
@@ -55,7 +81,7 @@ it('refuses a commit while this pest run holds the lane, and names the holder', 
 it('lets the escape hatch through, and never silently', function (): void {
     $result = Process::path(base_path())
         ->env(['PODTEXT_ALLOW_COMMIT_DURING_RUN' => '1'])
-        ->run('scripts/git-hooks/pre-commit');
+        ->run(preCommitHook());
 
     expect($result->exitCode())->toBe(0)
         ->and($result->errorOutput())
@@ -63,4 +89,77 @@ it('lets the escape hatch through, and never silently', function (): void {
         // The override must always state what it costs, or it becomes the
         // default the moment someone is in a hurry.
         ->toContain('1856');
+});
+
+it('allows the commit, loudly, when no php can be found', function (): void {
+    // A git GUI can invoke hooks with a minimal PATH. Blocking every commit on
+    // such a machine would be a worse failure than not checking.
+    $result = Process::path(base_path())
+        ->env(['PATH' => '/nonexistent'])
+        ->run(preCommitHook());
+
+    expect($result->exitCode())->toBe(0)
+        ->and($result->errorOutput())->toContain('no php on PATH');
+});
+
+it('allows the commit, loudly, when the lane contract cannot be found', function (): void {
+    // A copy of the scripts/ tree with no app/ beside it: the same shape as a
+    // checkout that has the hook but not the class it reads the path from.
+    $root = base_path('storage/framework/testing/pre-commit-fixture-'.getmypid());
+    File::ensureDirectoryExists($root.'/scripts/git-hooks');
+
+    try {
+        File::copy(preCommitHook(), $root.'/scripts/git-hooks/pre-commit');
+        File::copy(base_path('scripts/git-hooks/pre-commit-lane-guard.php'), $root.'/scripts/git-hooks/pre-commit-lane-guard.php');
+        chmod($root.'/scripts/git-hooks/pre-commit', 0755);
+
+        $result = Process::path($root)->run($root.'/scripts/git-hooks/pre-commit');
+
+        expect($result->exitCode())->toBe(0)
+            ->and($result->errorOutput())
+            ->toContain('TestLaneContract.php is missing')
+            ->toContain('Allowing the commit');
+    } finally {
+        File::deleteDirectory($root);
+    }
+});
+
+it('allows the commit, loudly, when the lock file cannot be opened', function (): void {
+    // The lane root is HOME-anchored, so a throwaway HOME gives a real
+    // unopenable lock without touching the machine-global one.
+    $home = base_path('storage/framework/testing/pre-commit-home-'.getmypid());
+    $realHome = (string) getenv('HOME');
+    [$host, $port, $database] = ['127.0.0.1', '3307', 'podtext_test'];
+
+    putenv('HOME='.$home);
+
+    try {
+        $lockPath = TestLaneContract::runLockPath($host, $port, $database);
+    } finally {
+        putenv('HOME='.$realHome);
+    }
+
+    File::ensureDirectoryExists(dirname($lockPath));
+
+    try {
+        File::put($lockPath, "{}\n");
+        chmod($lockPath, 0000);
+
+        $result = Process::path(base_path())
+            ->env([
+                'HOME' => $home,
+                'DB_TESTING_HOST' => $host,
+                'DB_TESTING_PORT' => $port,
+                'DB_TESTING_DATABASE' => $database,
+            ])
+            ->run(preCommitHook());
+
+        expect($result->exitCode())->toBe(0)
+            ->and($result->errorOutput())
+            ->toContain('could not be opened')
+            ->toContain('Allowing the commit');
+    } finally {
+        @chmod($lockPath, 0644);
+        File::deleteDirectory($home);
+    }
 });
