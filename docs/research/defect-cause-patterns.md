@@ -45,7 +45,10 @@ sweep task of its own.
 **Governance (2026-08-03).** The general rules this ledger runs under —
 `register-at-the-moment` (findings at discovery, deferrals at decision, in
 the rightful doc), `names-carry-family` (slugs canonical, `P<n>` historical
-aliases, no new bare letter+digit families), `one-owner-registry`,
+aliases, no new bare letter+digit families), ~~`one-owner-registry`~~ (retired
+2026-08-11 — superseded by the rolling-custodian rule in this file's header and
+`.ai/rules/docs.md`; struck here 2026-08-12 when the governance session found
+the citation contradicting the header thirty lines above it),
 `readable-binding`, `pinned-promise`, `provenance-stated`,
 `verify-dont-trust` — now live in their one home,
 `docs/phase-02/dashboard-governance-principles.md` (dashboard-scoped by
