@@ -2889,10 +2889,10 @@ and `model:show` is safe to use again.
     removes its fingerprint, verified end-to-end 2026-08-10 (Task 7: 40
     tables dropped, `TestLaneGuardTest` 15/15 green against the re-fingerprinted
     empty schema).
-  - **Next deploy window checklist: restart `cron` + `rsyslog` (and reload
-    nginx) on production** — those daemons kept the pre-UTC zone at start and
-    still stamp +03:00; mysql/php-fpm/Horizon were already restarted in the
-    T12 window.
+  - ~~Next deploy window checklist: restart `cron` + `rsyslog`~~ — **DONE
+    2026-08-12** in the deploy-75255479 window (both restarted, nginx reloaded,
+    all active; syslog stamps `+00:00`, `timedatectl` local = universal = UTC).
+    Triage F7 closed.
   - Restoring a `pre-alignment` snapshot still follows the pin-removal caveat
     above; `db:restore` now refuses outright — not merely warns — when a dump
     carries TIMESTAMP-column DDL while the target connection pins `+00:00`

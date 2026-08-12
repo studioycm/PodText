@@ -235,11 +235,13 @@ connection pins `+00:00`.
 
 **Closed:** shipped stronger than specced — `db:restore` *refuses outright* (exit 1) unless `--allow-timestamp-dump`, with scan completeness verified against the gzip trailer; the body above kept its original "warns" wording per the keep-description rule, and `current-project-state.md` carries the accurate phrasing.
 
-### F7. Production cron/rsyslog still stamp +03:00 — operator window (decided)
+### F7. Production cron/rsyslog still stamp +03:00 — `FIXED` 2026-08-12 (deploy 75255479 window)
 The T12 window restarted mysql/php-fpm/Horizon only; daemons that inherited the
 old OS zone keep stamping +03:00 until restarted. Decision 2026-08-10: restart
 `cron` + `rsyslog` (and reload nginx) rides the **next deploy window
 checklist** — noted in `current-project-state.md`.
+
+**Closed 2026-08-12** in the deploy-75255479 window: `cron` and `rsyslog` restarted, nginx reloaded, all three verified `active`. Syslog now stamps `2026-08-12T02:01:23+00:00`; `timedatectl` reports local = universal = UTC. Honest note on the pre-state: `systemctl show ExecMainStartTimestamp` renders in the CURRENT system timezone, so it could not prove what either daemon inherited at start — rsyslog had already been restarted 2026-08-11 (so was likely already correct), while cron's start predated the 2026-08-09 UTC switch and was the genuine remainder. Both are now restarted post-switch, which closes the finding regardless of how much of it was already stale.
 
 ### F8. `possible_keys` vs `key` in `MediaRelationshipPerformanceTest` — `accepted-forever`
 Asserting `key` would pin an optimizer tie-break MySQL does not guarantee on
