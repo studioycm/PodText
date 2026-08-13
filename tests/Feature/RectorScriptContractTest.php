@@ -49,12 +49,30 @@ it('keeps rector wired to larastan through phpstan.neon and larastan\'s own exte
 });
 
 it('boots the real PHPStan container behind that wiring without the extension-installer schema crash', function (): void {
-    // Cold-cache Rector walks all ~628 configured paths' files before it can report
-    // anything — comfortably past Laravel's Process default of 60 seconds even when
-    // nothing is wrong. 300s gives headroom without masking a real hang.
+    /*
+     * ONE file, not the whole project, and the saving is the point: processing
+     * all ~628 configured files took 15.1s — 4% of the entire suite — to prove
+     * something that happens before any file is read. The container is built
+     * from the config, so the crash this guards cannot depend on the corpus.
+     *
+     * Verified rather than assumed, because a narrowed probe that stops proving
+     * anything is worse than a slow one: with larastan's extension.neon removed
+     * from rector.php's withPHPStanConfigs(), BOTH the full run and this
+     * one-file run emit `PHPStanServicesFactory` and `fatal_errors`, and neither
+     * emits `totals`. Same detection, 15.1s → under 1s. Re-run that experiment
+     * before ever widening this back.
+     *
+     * The path is asserted first so a rename fails legibly here instead of as a
+     * confusing Rector error, and it must stay inside rector.php's configured
+     * paths (app, database, routes) or Rector processes nothing at all.
+     */
+    $target = 'app/Support/Slugs/HebrewSlugger.php';
+
+    expect(base_path($target))->toBeFile();
+
     $result = Process::path(base_path())
-        ->timeout(300)
-        ->run('vendor/bin/rector process --dry-run --ansi --output-format=json');
+        ->timeout(120)
+        ->run("vendor/bin/rector process {$target} --dry-run --ansi --output-format=json");
 
     $combined = $result->output().$result->errorOutput();
 
