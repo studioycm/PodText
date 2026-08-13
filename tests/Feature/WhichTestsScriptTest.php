@@ -10,11 +10,23 @@ use Illuminate\Support\Facades\Process;
  * unservable by memory: 207 of 745 source files reach
  * CardTemplatePreviewBrowserTest, every config file among them.
  *
- * The tests below drive the script through a FIXTURE graph rather than the
- * machine-global one, so they neither depend on a recording existing nor
- * disturb it. Every branch that could hand back a confident wrong answer is
- * pinned: an unknown path must not read as "nothing to run", and an
- * unreachable recorded sha must not read as "current".
+ * THIS FILE'S FIRST VERSION WAS GREEN FOR THE WRONG REASON, and the way it
+ * failed is worth more than the feature. It asserted the output
+ * `toContain('vendor/bin/pest')` against a fixture whose selection was 100% of
+ * its own suite — so the script took its "just run the whole thing" branch and
+ * never printed a command at all. The assertion passed anyway, because when
+ * the tree is dirty the staleness banner prints
+ * `Re-record: … vendor/bin/pest --tia`, which contains that substring. A
+ * fixture graph isolated the DATA and left the ENVIRONMENT ambient: the script
+ * also consults the real repository for staleness, so tree cleanliness decided
+ * the result. It passed while the files were uncommitted and went red the
+ * moment they were committed.
+ *
+ * Three faults, all fixed below: a degenerate fixture that could never reach
+ * the interesting branch, an assertion loose enough to match a different line,
+ * and a test that read ambient git state while looking hermetic. Assertions
+ * here now match the command's ARGUMENTS, which no banner can satisfy, and
+ * both sides of the threshold are exercised.
  */
 function whichTests(array $arguments): array
 {
@@ -23,31 +35,47 @@ function whichTests(array $arguments): array
     return ['exit' => $result->exitCode(), 'out' => $result->output().$result->errorOutput()];
 }
 
-function whichTestsFixtureGraph(string $sha): string
+/**
+ * @param  bool  $withUnrelatedBulk  adds slow, unrelated test files so a selection
+ *                                   is a MINORITY of the fixture suite. Without it the selection is 100%
+ *                                   of its own suite by construction and the command branch is unreachable.
+ */
+function whichTestsFixtureGraph(string $sha, bool $withUnrelatedBulk = true): string
 {
     $path = base_path('storage/framework/testing/which-tests-'.getmypid().'.json');
+
+    $edges = [
+        'tests/Feature/AlphaTest.php' => [0],
+        'tests/Feature/BetaTest.php' => [0, 1],
+    ];
+
+    $results = [
+        'a' => ['status' => 0, 'time' => 2.5, 'file' => 'tests/Feature/AlphaTest.php'],
+        'b' => ['status' => 0, 'time' => 1.5, 'file' => 'tests/Feature/BetaTest.php'],
+    ];
+
+    if ($withUnrelatedBulk) {
+        $edges['tests/Feature/UnrelatedTest.php'] = [1];
+        $results['c'] = ['status' => 0, 'time' => 96.0, 'file' => 'tests/Feature/UnrelatedTest.php'];
+    }
 
     File::ensureDirectoryExists(dirname($path));
     File::put($path, json_encode([
         'schema' => 1,
         'files' => ['app/Covered.php', 'app/Lonely.php'],
-        'edges' => [
-            'tests/Feature/AlphaTest.php' => [0],
-            'tests/Feature/BetaTest.php' => [0, 1],
-        ],
-        'baselines' => [
-            'main' => [
-                'sha' => $sha,
-                'tree' => [],
-                'results' => [
-                    'a' => ['status' => 0, 'time' => 2.5, 'file' => 'tests/Feature/AlphaTest.php'],
-                    'b' => ['status' => 0, 'time' => 1.5, 'file' => 'tests/Feature/BetaTest.php'],
-                ],
-            ],
-        ],
+        'edges' => $edges,
+        'baselines' => ['main' => ['sha' => $sha, 'tree' => [], 'results' => $results]],
     ], JSON_THROW_ON_ERROR));
 
     return $path;
+}
+
+function whichTestsHeadSha(): string
+{
+    $output = [];
+    exec('git -C '.escapeshellarg(base_path()).' rev-parse HEAD 2>/dev/null', $output);
+
+    return trim(implode('', $output));
 }
 
 it('ships an executable lookup script', function (): void {
@@ -55,8 +83,8 @@ it('ships an executable lookup script', function (): void {
         ->and(is_executable(base_path('scripts/which-tests.php')))->toBeTrue();
 });
 
-it('names the test files that cover a source file, and prices them', function (): void {
-    $graph = whichTestsFixtureGraph(trim(shell_exec('git -C '.escapeshellarg(base_path()).' rev-parse HEAD') ?? ''));
+it('names the test files that cover a source file, prices them, and offers the command', function (): void {
+    $graph = whichTestsFixtureGraph(whichTestsHeadSha());
 
     try {
         $run = whichTests(['app/Covered.php', '--graph='.$graph]);
@@ -70,14 +98,35 @@ it('names the test files that cover a source file, and prices them', function ()
         ->toContain('tests/Feature/BetaTest.php')
         // Priced, so a selection can be judged before it is run.
         ->toContain('~4s')
-        // Small enough to paste, so it offers the command.
-        ->toContain('vendor/bin/pest');
+        // The command WITH ITS ARGUMENTS. Asserting the bare binary path was
+        // the original defect: the staleness banner contains it too.
+        ->toContain('vendor/bin/pest tests/Feature/AlphaTest.php tests/Feature/BetaTest.php')
+        // Unrelated bulk must not be dragged in.
+        ->not->toContain('UnrelatedTest');
+});
+
+it('tells you to run everything instead when the selection is most of the suite', function (): void {
+    // The branch that fired accidentally before, now exercised on purpose.
+    $graph = whichTestsFixtureGraph(whichTestsHeadSha(), withUnrelatedBulk: false);
+
+    try {
+        $run = whichTests(['app/Covered.php', '--graph='.$graph]);
+    } finally {
+        File::delete($graph);
+    }
+
+    expect($run['exit'])->toBe(0)
+        ->and($run['out'])
+        ->toContain('100% of the suite')
+        // No command offered — and the assertion names the argument form, so a
+        // staleness banner mentioning the binary cannot satisfy it either way.
+        ->not->toContain('vendor/bin/pest tests/');
 });
 
 it('refuses to let an unknown path read as "nothing to run"', function (): void {
     // The dangerous case. A file with no recorded coverage means UNKNOWN, and
     // a tool that prints nothing invites the opposite conclusion.
-    $graph = whichTestsFixtureGraph(trim(shell_exec('git -C '.escapeshellarg(base_path()).' rev-parse HEAD') ?? ''));
+    $graph = whichTestsFixtureGraph(whichTestsHeadSha());
 
     try {
         $run = whichTests(['app/NeverHeardOf.php', '--graph='.$graph]);
