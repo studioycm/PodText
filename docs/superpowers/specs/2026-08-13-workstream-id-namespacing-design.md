@@ -68,8 +68,24 @@ map: an old bare ID resolves by looking up which token owns the file it lives in
 
 ## 4. The registry
 
-One tracked file, `docs/phase-02/workstream-registry.md`, with two columns:
-`token` and `owns` (one or more comma-separated globs, relative to repo root).
+**One file — `.ai/guidelines/workstream-ids.md`** — holding both the convention
+text of §2/§3 and the token table below.
+
+Location decided by the operator 2026-08-13, and the reasoning is worth keeping
+because it looks wrong at first glance. `CLAUDE.md` and `AGENTS.md` are
+*generated*: Boost composes every `.ai/guidelines/*.md` into both, verbatim
+(verified 2026-08-13 — the 111-line body of `tooling-quality.md` appears intact
+in each). So a guidelines file **survives regeneration by being its source**,
+and reaches Claude, Codex and Junie alike. The overwrite risk applies to
+hand-editing the generated files, which nothing here does.
+
+Always-on rather than glob-matched, because **the collision happens where a path
+glob cannot see it**: an ID goes wrong when it travels into a commit subject, an
+`app/` docblock, or a brief outside the repo. A `docs/**` rule never loads for
+any of those. `.ai/rules/` was rejected for that reason, not for cost.
+
+Two columns: `token` and `owns` (one or more comma-separated globs, relative to
+repo root).
 
 Tokens are **issued on demand**, not census-collected. Adding a row is how you
 claim a token; a workstream with no travelling IDs needs no row. The seed below
@@ -99,22 +115,29 @@ doc, which `PROTOCOL.md` §1's path partition already serializes.
 
 ## 5. The guard test
 
-`tests/Feature/WorkstreamRegistryGuardTest.php` — parses the markdown table and
-asserts three things:
+`tests/Feature/WorkstreamRegistryGuardTest.php` — parses the table out of
+`.ai/guidelines/workstream-ids.md` (the source, never the generated files) and
+asserts four things:
 
 1. **at least 8 rows parse** — the canary. Without it, a broken parser makes
    assertions 2 and 3 pass vacuously over an empty set.
 2. **no duplicate token.**
 3. **every glob in every row matches at least one existing path.**
+4. **the table is present in `CLAUDE.md` and `AGENTS.md`** — i.e. someone ran
+   `composer boost:sync` after editing the source.
 
-No special cases, because every seeded row owns a real path. Deliberately *not*
-asserted: that new docs avoid bare IDs. That check has no reliable signal against
-a docs tree legitimately full of in-file bare IDs, and a guard that cries wolf
-gets disabled. Revisit only if the registry proves itself first.
+No special cases, because every seeded row owns a real path.
 
-The convention itself also gets one short section in `.ai/rules/docs.md`
-(`paths: docs/**`), so it loads on demand for any agent editing docs — Codex and
-Junie included, not just Claude.
+Assertion 4 earns its place: without it, adding a token to the source and
+forgetting to sync leaves the new token invisible to every agent, which defeats
+the registry silently. It does mean claiming a token costs a `boost:sync` — the
+right friction, since a token nobody can see is not claimed. This mirrors
+`FilacheckAgentModeGuardTest`, which `boost:sync` already runs.
+
+Deliberately *not* asserted: that new docs avoid bare IDs. That check has no
+reliable signal against a docs tree legitimately full of in-file bare IDs, and a
+guard that cries wolf gets disabled. Revisit only if the registry proves itself
+first.
 
 ## 6. Deliberately not built
 
@@ -173,13 +196,24 @@ or a full event subscriber plus a `<extensions>` block.
 
 ## 8. Build order and coordination
 
-1. `docs/phase-02/workstream-registry.md` with the eight seed rows.
-2. `tests/Feature/WorkstreamRegistryGuardTest.php` (`php artisan make:test --pest`).
-3. One section in `.ai/rules/docs.md`.
-4. Two paragraphs into `PROTOCOL.md` §3.
+1. `.ai/guidelines/workstream-ids.md` — the convention plus the eight seed rows.
+2. `composer boost:sync`, then read `git diff CLAUDE.md AGENTS.md` before staging.
+3. `tests/Feature/WorkstreamRegistryGuardTest.php` (`php artisan make:test --pest`).
+4. Two paragraphs into `PROTOCOL.md` §3 (the §7 rules).
 
-Steps 3 and 4 touch arbiter-owned territory under `PROTOCOL.md` §1
-(`.ai/rules/**` is the arbiter's; `PROTOCOL.md` is outside the repo but is the
-arbiter's instrument). They need a named grant, not an assumption that reasonable
-work is authorized work. Steps 1 and 2 create new files that collide with
-nothing; they still take the commit mutex, because the git index is shared.
+Moving the registry out of `docs/phase-02/` into `.ai/guidelines/` **removed** a
+grant rather than adding one: `.ai/rules/**` is the arbiter's under `PROTOCOL.md`
+§1 and is no longer touched. Step 4 still needs one — `PROTOCOL.md` lives outside
+the repo but is the arbiter's instrument.
+
+Two coordination facts specific to step 2:
+
+- It rewrites `CLAUDE.md` and `AGENTS.md`, tracked files that every session
+  reads. That is a shared-file mutation, so it wants the arbiter's awareness even
+  though neither file is named in the partition table.
+- `.ai/guidelines/` is **test input**: `PROTOCOL.md` §4 records that
+  `PublicStep9RMenuHeaderUxFixesTest` reads `.ai/guidelines/tooling-quality.md`
+  at runtime. Adding a sibling file does not affect that test, but T23b binds
+  regardless — do not run step 1 or 2 while any suite is in flight.
+
+Everything takes the commit mutex, because the git index is shared.
