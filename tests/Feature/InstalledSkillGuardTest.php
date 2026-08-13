@@ -29,6 +29,12 @@ declare(strict_types=1);
  * it to go red after a sync that reintroduces the advice. That is the guard
  * working, not a flake: re-apply the fix, do not weaken the assertion.
  *
+ * T23b SURFACE. This guard reads 42 tracked files at runtime, so editing any
+ * installed skill while a suite is in flight can flip it. Note the ordering
+ * hazard that follows: `composer boost:sync` writes exactly those files and
+ * then runs a FILTERED test that does not include this guard, so a sync cannot
+ * detect its own damage. It surfaces on the next full run instead.
+ *
  * This guard exists because a diff gate under-covered its own command —
  * `boost:sync` writes skills as well as CLAUDE.md/AGENTS.md, and a diff scoped
  * to the two named files never saw them. Nobody was careless; the gate was
@@ -61,9 +67,17 @@ function installedSkillFiles(): array
 
 it('discovers the installed skill files', function (): void {
     // The canary. Without a floor, a glob that matches nothing makes the
-    // --parallel assertion below pass while proving nothing at all. 24 is the
-    // measured count: 8 skills across 3 agent directories.
-    expect(count(installedSkillFiles()))->toBeGreaterThanOrEqual(24);
+    // --parallel assertion below pass while proving nothing at all.
+    //
+    // 42 is the measured count: 14 skills across 3 agent directories. It first
+    // shipped as 24, taken from `find -name SKILL.md`, which reports 8 per
+    // directory — six of the skills are symlinked DIRECTORIES into .ai/skills/
+    // and find does not descend those without -L. glob(), which is what this
+    // guard actually uses, does. So the floor came from an instrument with
+    // different traversal semantics than the code, and would have passed with
+    // 18 of the 42 files missing. Set a canary from the instrument the code
+    // itself uses, never from a shell probe that merely looks equivalent.
+    expect(count(installedSkillFiles()))->toBeGreaterThanOrEqual(42);
 });
 
 it('ships no installed skill that advises running pest with --parallel', function (): void {
