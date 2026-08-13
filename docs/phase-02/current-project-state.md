@@ -3095,7 +3095,15 @@ and `model:show` is safe to use again.
   closes pestphp/pest#1856's window locally and mechanises T23b, which had been
   a discipline and was breached twice in one evening. Worth keeping whether or
   not TIA is ever adopted.
-- **TIA verdict: SHELVE**, with the numbers and the four flip conditions in
+- **TIA verdict: SHELVE, corrected 2026-08-13 — it was a verdict on the Xdebug
+  configuration, not on TIA.** `tests/Pest.php` now excludes `vendor/` from
+  Xdebug coverage instrumentation (guarded; inert without a coverage driver, so
+  the ordinary gate is unchanged). Recording 1,633s -> **657s**, tax 4.61x ->
+  **1.86x**, a presenter edit 546s -> **247s** which beats the 354s plain gate,
+  and the four canary browser tests stopped failing. 83% of source files now
+  beat the plain gate, median 41s. See `TIA-9` in the notes for the correctness
+  gates and what still blocks adoption.
+- **Original SHELVE record**, with the numbers and the four flip conditions in
   `docs/research/test-suite-rethink-notes.md` → *TIA filtered-mode measurement*.
   Headline: filtered mode requires a coverage driver, so it inherits Xdebug's
   4.6× per-test cost; a one-liner in a broad model costs **1,633s against a

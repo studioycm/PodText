@@ -1226,7 +1226,14 @@ branch tests. 2,035 is the current expectation; the S-matrix baseline of 354s wa
 come from the recorded graph's own per-test times, are validated in TIA-1a to ±1%, and are used
 for no load-bearing claim.
 
-### Verdict: SHELVE
+### Verdict: SHELVE — and see TIA-9, which shows this was a verdict on the DRIVER, not on TIA
+
+**Superseded in part on 2026-08-13.** Everything below is correct as measured and is left
+unedited. What it did not know is that the whole cost side rests on Xdebug running without a
+coverage path filter. With `vendor/` excluded from instrumentation the recording drops from
+1,633s to 657s and the canaries stop failing. Read TIA-9 before quoting any figure here as a
+reason not to adopt.
+
 
 Not for lack of payoff — the payoff is real and is quantified in TIA-1b — but because on this
 suite the mode that gives the payoff is inseparable from a coverage driver that costs 4.6×
@@ -1481,3 +1488,92 @@ The two Blade/config predictions were wrong in the same direction and for the sa
 both assumed Xdebug tracing would miss what is not hand-written PHP. Blade has explicit
 machinery, and config files are executed by every boot. **The instinct "the tracer probably
 cannot see this" was wrong every time it was applied.**
+
+### TIA-9 — the Xdebug path filter: the cost side was a driver configuration, not a property of TIA (2026-08-13)
+
+Measured at `8107069` + an uncommitted bootstrap edit, one session alone, lane held
+throughout. Same method as TIA-1: project `phpunit.xml`, `vendor/bin/pest` directly,
+`PAO_DISABLE=1`, serial, predictions pre-registered and unedited.
+
+**The mechanism.** `Recorder.php:121` starts Xdebug coverage with **no path filter**, `:154`
+collects everything executed, and `:157-160` discards out-of-scope files afterwards in PHP —
+the stored graph holds **0 vendor files**. The pcov branch of the same method does the
+opposite: `:142-149` narrows to in-scope files first and calls
+`\pcov\collect(\pcov\inclusive, $filesToCollectCoverageFor)`. So under Xdebug the suite pays
+to instrument all of `vendor/` on every test and then throws it away.
+
+**The lever**, in `tests/Pest.php` after the lane-lock block, guarded so it is inert without
+coverage:
+
+```php
+xdebug_set_filter(XDEBUG_FILTER_CODE_COVERAGE, XDEBUG_PATH_EXCLUDE, [dirname(__DIR__).'/vendor/']);
+```
+
+`base_path()` is unavailable there — the framework has not booted — so the path is derived as
+the legacy lock path above it is. **Exclude-vendor, never include-a-list:** an include list of
+`app, config, database, resources, routes` would drop 210 of 945 graph files, `storage/`
+among them, and `storage/` is the compiled Blade views that make TIA-5e's Blade tracking work
+at all. That would read as a speed win and be a silent loss of coverage.
+
+| | unfiltered (TIA-1) | with the filter |
+|---|---|---|
+| recording | 1,633s, exit 1, 5 failures | **657s, exit 0, 0 failures** |
+| Xdebug tax vs the 354s plain gate | 4.61× | **1.86×** |
+| S3, one-liner in a presenter | 546s / 27 files / 354 tests | **247s / 24 files / 339 tests** |
+| S3 vs the plain gate | 1.54× slower | **1.43× faster** |
+
+Recomputed over the same 745 source files, filtered-Xdebug provenance throughout:
+
+| | unfiltered | filtered |
+|---|---|---|
+| median filtered-run cost | 112s | **41s** |
+| beats the 354s plain gate | 67% | **83%** |
+| `app/Support/` slower than plain | 47% | **19%** |
+| `app/Filament/` slower than plain | 41% | **16%** |
+| `app/Models/` slower than plain | 76% | **62%** |
+| `config/` · `routes/` · `app/Providers/` | 100% | **100%** |
+
+The last row does not move and cannot: every test boot loads every config, route and provider
+file, so their dependent set is the suite. Those edits should always use a plain full run.
+
+**Correctness outranked speed, and was gated before the numbers were believed.**
+
+- **Graph shape unchanged.** 945→946 files and 171→172 test files with edges — the +1 in each
+  is another session's guard test landing mid-window, not a filter effect. Every top-level
+  directory present at identical counts.
+- **167 of 168 edge sets identical.** The exception, `PublicHomepageSearchTest`, dropped
+  185→183 (losing `SafeMarkdownRenderer.php` and `markdown-content.blade.php` — both *project*
+  files, which the filter cannot exclude), and was **back to 185 with both present** after the
+  next execution. Its edge set had been stable at 185 across all six unfiltered snapshots, so
+  this was not ordinary noise. A one-run transient that self-corrected; **cause not
+  established**, recorded as unexplained rather than dismissed.
+- **The canaries stopped failing, which was predicted NOT to happen.** X5 said they would
+  still fail; all five passed and the recording exited 0. They fail at 4.61×, pass at 1.86×,
+  and pass with no Xdebug at all, so load-sensitivity explains it — but that is an
+  **inference from three points, not a measurement of the threshold**, and it rests on a
+  single filtered recording. A second recording would confirm it and costs ~11 minutes.
+
+Predictions: X1 (600–950s → 657s) and X2 (200–330s → 247s) correct, X3 and X4 passed, X5
+wrong. Four of five.
+
+**What this changes, and what it does not.** TIA-2's two blockers both weaken: the cost
+inversion shrinks from a third of the repo to 17%, and the false-red exposure was zero in this
+run. **It does not make the verdict ADOPT on its own.** Still open and unchanged:
+[#1856](https://github.com/pestphp/pest/issues/1856) (mitigated locally by the pre-commit
+hook, not upstream), the stale-`lastRunTree` state in TIA-6, TIA-4b's rule that `--filter`
+disables TIA entirely, and the machine-global graph shared by every session in one tree. The
+honest position is that **ADOPT-UNDER-CONDITIONS is now defensible where it was not**, on the
+TIA-7 conditions minus the cost item.
+
+**The filter changes nothing for the ordinary gate.** No coverage driver, guard skips, 354s
+unchanged. It affects only runs with coverage on: TIA runs and real coverage reports — and for
+a coverage report, excluding `vendor/` is what you want anyway.
+
+**Drafted, not filed:** the Xdebug/pcov asymmetry above is a concrete upstream report with a
+one-call fix, at `~/.cache/podtext-coord/upstream-pest/tia-filtered-2026-08-12/`. Filing needs
+the operator's word, as always.
+
+**One trap for whoever touches this next:** the recording was taken with the bootstrap edit in
+the tree, so `tests/Pest.php`'s hash in `lastRunTree` reflects the edited file. Reverting it
+makes it "changed" and pulls its **61 dependent test files** into the next selection — TIA-5b
+at scale. Expect it; it is not drift.

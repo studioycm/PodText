@@ -200,6 +200,25 @@ if (is_file($legacyLockPath)) {
 }
 
 /*
+ * TEMPORARY MEASUREMENT EDIT — NOT FOR COMMIT.
+ *
+ * pest's TIA recorder calls xdebug_start_code_coverage() with no filter
+ * (Recorder.php:121), traces every executed line including all of vendor/,
+ * then discards everything out of scope in PHP (:157-160). The stored graph
+ * holds 0 vendor files. This asks Xdebug not to instrument vendor at all.
+ *
+ * Placed AFTER the lane-lock block on purpose: nothing may run ahead of the
+ * fopen/flock at :88-:118, because the refusal path is what makes a second
+ * run fail loudly instead of migrating over a live database.
+ *
+ * base_path() is unavailable here — the framework has not booted — so the
+ * vendor path is derived the same way the legacy lock path above is.
+ */
+if (function_exists('xdebug_set_filter') && function_exists('xdebug_info') && in_array('coverage', (array) xdebug_info('mode'), true)) {
+    xdebug_set_filter(XDEBUG_FILTER_CODE_COVERAGE, XDEBUG_PATH_EXCLUDE, [dirname(__DIR__).'/vendor/']);
+}
+
+/*
 |--------------------------------------------------------------------------
 | Process-scoped fake disk roots
 |--------------------------------------------------------------------------
