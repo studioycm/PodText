@@ -103,3 +103,28 @@ it('points every workstream token at a path that exists', function (): void {
 
     expect($unmatched)->toBe([]);
 });
+
+it('has been composed into the generated agent files', function (): void {
+    // CLAUDE.md and AGENTS.md are generated: Boost composes .ai/guidelines/*.md
+    // into both verbatim. A token added to the source but never synced is
+    // invisible to every agent, so the registry would fail silently. Fix by
+    // running `composer boost:sync` — never by hand-editing either file, which
+    // the next regeneration would discard.
+    $rows = workstreamRegistryRows();
+
+    expect($rows)->not->toBeEmpty();
+
+    foreach (['CLAUDE.md', 'AGENTS.md'] as $generated) {
+        $contents = (string) file_get_contents(base_path($generated));
+
+        $missing = [];
+
+        foreach ($rows as $row) {
+            if (! str_contains($contents, "| `{$row['token']}` |")) {
+                $missing[] = "{$generated}: {$row['token']}";
+            }
+        }
+
+        expect($missing)->toBe([]);
+    }
+});
