@@ -36,6 +36,25 @@ Two facts constrain any fix:
   renaming the code docblocks would break their link to the docs and commits
   that used the old name.
 
+### 1.1 Two limits, from the session that caused `0464bbb`
+
+The arbiter of the test-suite round reports two details about that episode that
+bound what this design can honestly claim:
+
+- **The collision was created in a brief written outside the repo.** So a scheme
+  governing only tracked files would not have caught it. Session-to-session
+  handoff documents are ID-*issuing* surfaces, not merely places IDs get cited.
+  This is the strongest argument for §4's always-on placement: no in-repo guard
+  can reach `~/.cache/podtext-coord/`, so the only thing that governs an
+  out-of-repo brief is the convention an agent is already carrying when it writes
+  one. Stated plainly because it is a limit, not a feature: **nothing here
+  enforces the convention outside the repo.**
+- **Detection happened at the human, after the artifacts existed** — a third
+  session re-audited and missed it; the operator caught it by reading a
+  scratchpad filename. So the guard test in §5 must not be over-trusted: it keeps
+  the registry internally honest, and detects no collision whatsoever at the
+  moment one is issued.
+
 ## 2. Format
 
     TOKEN-localid
@@ -52,6 +71,13 @@ existing sequence; a workstream with no sequence yet starts at `1`.
 name. This is what makes it safe to write an ID into a commit subject or a code
 docblock: a finding that later becomes a fix keeps its ID, so no prior reference
 ever rots.
+
+Immutability is not a preference, it is the lesson of `0464bbb`. The arbiter of
+the test-suite round reports that **renaming an ID after artifacts exist does not
+fully retire the old one**: the preserved raw logs keep the old labels in their
+filenames on disk, so the rename had to ship a mapping line to keep them
+findable. A renamed ID therefore leaves two live names, which is strictly worse
+than the collision it was meant to fix.
 
 ## 3. The travel rule — no retrofit
 
