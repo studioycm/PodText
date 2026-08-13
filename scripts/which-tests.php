@@ -103,9 +103,51 @@ if (! is_array($graph) || ! isset($graph['files'], $graph['edges'])) {
 $files = $graph['files'];
 $edges = $graph['edges'];
 
-$branch = trim((string) @shell_exec('git -C '.escapeshellarg($root).' rev-parse --abbrev-ref HEAD 2>/dev/null'));
-$baselines = $graph['baselines'] ?? [];
-$baseline = $baselines[$branch] ?? $baselines['main'] ?? (is_array($baselines) ? reset($baselines) : []);
+/**
+ * Run git and return [output, exitCode]. The exit code is the point: a failed
+ * command returns an empty string, and an empty string read as data says
+ * "nothing changed" — the confident-wrong-answer shape this script exists to
+ * avoid reporting. Caught while testing an unreachable sha, which claimed
+ * "current with HEAD".
+ *
+ * @return array{0: string, 1: int}
+ */
+$git = static function (string $arguments) use ($root): array {
+    $output = [];
+    $status = 1;
+    exec('git -C '.escapeshellarg($root).' '.$arguments.' 2>/dev/null', $output, $status);
+
+    return [implode("\n", $output), $status];
+};
+
+/*
+ * Which baseline answers the question, and SAY SO. The graph can hold one per
+ * branch, so picking silently is a quiet wrong answer waiting for a second
+ * branch to exist: the fallback chain would hand back another branch's
+ * coverage map with nothing in the output to show it had. The chosen baseline
+ * and the reason are printed in the header instead of assumed.
+ */
+[$branch, $branchStatus] = $git('rev-parse --abbrev-ref HEAD');
+$baselines = is_array($graph['baselines'] ?? null) ? $graph['baselines'] : [];
+
+if ($branchStatus !== 0) {
+    $branch = '';
+}
+
+if ($branch !== '' && isset($baselines[$branch])) {
+    $baselineName = $branch;
+    $baselineWhy = 'current branch';
+} elseif (isset($baselines['main'])) {
+    $baselineName = 'main';
+    $baselineWhy = $branch === ''
+        ? 'FALLBACK — could not read the current branch'
+        : "FALLBACK — no baseline recorded for branch {$branch}";
+} else {
+    $baselineName = (string) (array_key_first($baselines) ?? '');
+    $baselineWhy = 'FALLBACK — first baseline in the graph';
+}
+
+$baseline = $baselines[$baselineName] ?? [];
 $baseline = is_array($baseline) ? $baseline : [];
 
 /** Per-test-file wall time, so a selection can be priced before it is run. */
@@ -124,25 +166,9 @@ foreach (($baseline['results'] ?? []) as $result) {
 }
 
 echo "graph        {$graphPath}\n";
+echo 'baseline     '.($baselineName === '' ? '(none)' : $baselineName)."  ({$baselineWhy})\n";
 
 $recordedSha = (string) ($baseline['sha'] ?? '');
-
-/**
- * Run git and return [output, exitCode]. The exit code is the point: a failed
- * command returns an empty string, and an empty string read as data says
- * "nothing changed" — the confident-wrong-answer shape this script exists to
- * avoid reporting. Caught while testing an unreachable sha, which claimed
- * "current with HEAD".
- *
- * @return array{0: string, 1: int}
- */
-$git = static function (string $arguments) use ($root): array {
-    $output = [];
-    $status = 1;
-    exec('git -C '.escapeshellarg($root).' '.$arguments.' 2>/dev/null', $output, $status);
-
-    return [implode("\n", $output), $status];
-};
 
 if ($recordedSha !== '') {
     $short = substr($recordedSha, 0, 7);

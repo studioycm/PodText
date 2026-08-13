@@ -35,12 +35,25 @@ function whichTests(array $arguments): array
     return ['exit' => $result->exitCode(), 'out' => $result->output().$result->errorOutput()];
 }
 
+function whichTestsCurrentBranch(): string
+{
+    $output = [];
+    $status = 1;
+    exec('git -C '.escapeshellarg(base_path()).' rev-parse --abbrev-ref HEAD 2>/dev/null', $output, $status);
+
+    return $status === 0 ? trim(implode('', $output)) : 'main';
+}
+
 /**
- * @param  bool  $withUnrelatedBulk  adds slow, unrelated test files so a selection
- *                                   is a MINORITY of the fixture suite. Without it the selection is 100%
- *                                   of its own suite by construction and the command branch is unreachable.
+ * @param  bool  $withUnrelatedBulk  adds slow, unrelated test files so a selection is a
+ *                                   MINORITY of the fixture suite. Without it the selection is 100% of its
+ *                                   own suite by construction and the command branch is unreachable.
+ * @param  string|null  $baselineName  null means "name it after the current branch", so the
+ *                                     happy path is deterministic on any branch. Hard-coding `main` here
+ *                                     would make these tests pass or fail on ambient branch state — the
+ *                                     same ambient dependence this file was written to remove.
  */
-function whichTestsFixtureGraph(string $sha, bool $withUnrelatedBulk = true): string
+function whichTestsFixtureGraph(string $sha, bool $withUnrelatedBulk = true, ?string $baselineName = null): string
 {
     $path = base_path('storage/framework/testing/which-tests-'.getmypid().'.json');
 
@@ -64,7 +77,7 @@ function whichTestsFixtureGraph(string $sha, bool $withUnrelatedBulk = true): st
         'schema' => 1,
         'files' => ['app/Covered.php', 'app/Lonely.php'],
         'edges' => $edges,
-        'baselines' => ['main' => ['sha' => $sha, 'tree' => [], 'results' => $results]],
+        'baselines' => [($baselineName ?? whichTestsCurrentBranch()) => ['sha' => $sha, 'tree' => [], 'results' => $results]],
     ], JSON_THROW_ON_ERROR));
 
     return $path;
@@ -121,6 +134,40 @@ it('tells you to run everything instead when the selection is most of the suite'
         // No command offered — and the assertion names the argument form, so a
         // staleness banner mentioning the binary cannot satisfy it either way.
         ->not->toContain('vendor/bin/pest tests/');
+});
+
+it('names the baseline it used, and flags a fallback instead of picking silently', function (): void {
+    // A graph can hold one baseline per branch. Picking silently is a quiet
+    // wrong answer waiting for a second branch to exist — you would get another
+    // branch's coverage map with nothing in the output to say so.
+    $graph = whichTestsFixtureGraph(whichTestsHeadSha(), baselineName: 'a-branch-that-is-not-checked-out');
+
+    try {
+        $run = whichTests(['app/Covered.php', '--graph='.$graph]);
+    } finally {
+        File::delete($graph);
+    }
+
+    expect($run['out'])
+        ->toContain('baseline')
+        ->toContain('a-branch-that-is-not-checked-out')
+        ->toContain('FALLBACK');
+});
+
+it('reports the baseline as the current branch when one matches', function (): void {
+    // The fixture is named after whatever branch is checked out, so this is
+    // deterministic on main and on a feature branch alike.
+    $graph = whichTestsFixtureGraph(whichTestsHeadSha());
+
+    try {
+        $run = whichTests(['app/Covered.php', '--graph='.$graph]);
+    } finally {
+        File::delete($graph);
+    }
+
+    expect($run['out'])
+        ->toContain('(current branch)')
+        ->not->toContain('FALLBACK');
 });
 
 it('refuses to let an unknown path read as "nothing to run"', function (): void {
