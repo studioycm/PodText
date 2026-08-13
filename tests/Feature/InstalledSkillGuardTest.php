@@ -191,6 +191,47 @@ it('ships no installed skill that advises running pest with --parallel', functio
     expect($advising)->toBe([]);
 });
 
+it('links every project-owned skill, and backs every link with a project source', function (): void {
+    // A project-owned skill under .ai/skills/ installs as a SYMLINK, and is the
+    // only kind boost:sync will not rewrite. That is what makes the
+    // pest-testing --parallel fix permanent instead of periodic maintenance.
+    // If a copy ever shadows one of these links, precedence has changed and the
+    // vendor text is silently back — this is the assertion that says so.
+    //
+    // It also separates two failures that otherwise look identical: a checkout
+    // with core.symlinks=false materialises links as plain files, which would
+    // otherwise surface as "declared but not installed" and read as a puzzle.
+    //
+    // No literal floor here, deliberately. The two directions close each
+    // other's vacuous case: if the .ai/skills glob returned nothing, direction
+    // one would assert over an empty set, and direction two would then report
+    // every existing symlink as sourceless.
+    $projectSkills = array_map(
+        static fn (string $path): string => basename($path),
+        glob(base_path('.ai/skills/*'), GLOB_ONLYDIR) ?: [],
+    );
+
+    $problems = [];
+
+    foreach ($projectSkills as $skill) {
+        foreach (agentSkillDirectories() as $directory) {
+            if (! is_link(base_path($directory.'/skills/'.$skill))) {
+                $problems[] = "{$directory}/skills/{$skill} is not a symlink — a copy has shadowed the project source";
+            }
+        }
+    }
+
+    foreach (agentSkillDirectories() as $directory) {
+        foreach (glob(base_path($directory.'/skills/*')) ?: [] as $path) {
+            if (is_link($path) && ! in_array(basename($path), $projectSkills, true)) {
+                $problems[] = "{$directory}/skills/".basename($path).' is a symlink with no .ai/skills source';
+            }
+        }
+    }
+
+    expect($problems)->toBe([]);
+});
+
 it('keeps every installed copy of each skill byte-identical', function (): void {
     // They are generated from one source. Divergence means something wrote to
     // one agent directory directly instead of going through boost:sync.
