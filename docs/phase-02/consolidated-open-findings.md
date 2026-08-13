@@ -17,6 +17,34 @@
 > documents — relations owned by no single doc.
 
 
+> 🛑 **STALE — 99 COMMITS BEHIND AS OF 2026-08-13 (`1b4063c`). DO NOT ACT ON A ROW
+> HERE WITHOUT CHECKING ITS OWNING DOC FIRST.** This banner is not a regeneration:
+> the file's own rule is regenerate-wholesale-never-hand-edit, and no row below has
+> been touched. It exists because a stale index that looks current is worse than one
+> that announces itself.
+>
+> **Known-stale, specifically** — these are the items whose status is *known* to have
+> moved, not an exhaustive list:
+> - **Item 3.9b (TIA)** — the row predates the entire filtered-mode measurement. TIA
+>   was measured, shelved, then the shelving was found to be a verdict on the *driver*
+>   rather than on TIA (`12f3797` cut the recording tax 4.61× → 1.86×). Current status
+>   is **deferred, revisit after the D session** — operator decision 2026-08-13. Live
+>   record: `docs/research/test-suite-rethink-notes.md`, sections TIA-1 to TIA-9.
+> - **`:146` and `:199`** still cite the retired **one-owner rule**, and `:146` is
+>   *instructive* — it tells a session not to write to the cause-pattern ledger
+>   directly. That rule was superseded 2026-08-11 by the rolling-custodian rule in
+>   `.ai/rules/docs.md`; a direct append that passes the gate is correct. `:146` also
+>   holds an item (`silent-vendor-surface`) that `:225` of this same file records as
+>   already merged at `295f295`.
+> - **Seven upstream pest issues** now exist (#1852, #1856–#1859, #1864, #1865); this
+>   register predates all but the first.
+>
+> **Regeneration is owed and is a session-sized task**, not a patch: 23 source
+> documents, 99 commits of drift, plus the first-regeneration conversion to
+> pointer-not-restatement form that this header already specifies. Pending inputs are
+> queued in `.superpowers/sdd/register-regeneration-inputs.md` so they survive until
+> then.
+
 **Snapshot:** 2026-08-10, from `main` @ **`7b7097d`**. Read-only harvest; nothing was written to the repo.
 **Window:** documents modified since 2026-07-31 (`find docs -name '*.md' -newermt '2026-07-31'`), cross-checked with `git log --since`.
 **Sources:** 23 documents in three clusters (list at the end, with per-doc item counts). Cluster C (security/authz) was added 2026-08-11.
