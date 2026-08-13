@@ -255,3 +255,101 @@ it('keeps every installed copy of each skill byte-identical', function (): void 
 
     expect($diverged)->toBe([]);
 });
+
+/*
+ * ---------------------------------------------------------------------------
+ * Fork drift.
+ *
+ * Owning a skill buys a permanent fix and costs vendor updates. Nothing
+ * rewrites .ai/skills/pest-testing/SKILL.md — which is exactly why the
+ * --parallel correction survives a sync, and exactly why Pest 6's improvements
+ * will never arrive there on their own.
+ *
+ * That failure is not hypothetical in this repo: the installed skill sat at
+ * Pest 4 content while the code ran Pest 5.1, and nothing said so until a sync
+ * happened to run. A fork reproduces that condition by design. These two tests
+ * are what turn "the fork silently rots" into "the fork tells you when upstream
+ * moved".
+ * ---------------------------------------------------------------------------
+ */
+
+/**
+ * Project-owned skills that are FORKS of a vendor-shipped skill, with the
+ * vendor revision each was last reconciled against.
+ *
+ * @return array<string, array{source: string, reviewed: string, at: string}>
+ */
+function forkedVendorSkills(): array
+{
+    return [
+        'pest-testing' => [
+            'source' => 'vendor/pestphp/pest/resources/boost/skills/pest-testing/SKILL.blade.php',
+            'reviewed' => '91e9392cb22c590e854d516555d4c676fde21320ccc7475e6ec8c1e9ca6d302f',
+            'at' => 'pestphp/pest v5.1.0, reconciled 2026-08-14',
+        ],
+    ];
+}
+
+/**
+ * The vendor Blade source a package ships for this skill name, if any.
+ *
+ * Boost renders these into the installed SKILL.md files; they are the upstream
+ * text a fork is reconciled against.
+ */
+function vendorSkillSource(string $skill): ?string
+{
+    $matches = glob(base_path("vendor/*/*/resources/boost/skills/{$skill}/SKILL.blade.php")) ?: [];
+
+    return $matches[0] ?? null;
+}
+
+it('lists every forked vendor skill in the reconciliation table', function (): void {
+    // Derived, not a literal: a project skill IS a fork exactly when some
+    // package also ships a vendor source under that name. Six of the seven
+    // project skills are originals with no upstream; only pest-testing has one.
+    // Fork a second skill and forget the table, and this test names it.
+    $unlisted = [];
+
+    foreach (glob(base_path('.ai/skills/*'), GLOB_ONLYDIR) ?: [] as $path) {
+        $skill = basename($path);
+
+        if (vendorSkillSource($skill) !== null && ! array_key_exists($skill, forkedVendorSkills())) {
+            $unlisted[] = $skill;
+        }
+    }
+
+    expect($unlisted)->toBe([]);
+});
+
+it('notices when a forked skill vendor source moves on', function (): void {
+    // The pinned hash below IS a hardcoded literal, and here that is the
+    // correct shape rather than the mistake a hardcoded canary floor was: it
+    // records "a human read the vendor text at this revision". There is nothing
+    // to derive that from — any derivation would read the very file it watches
+    // and agree with itself.
+    //
+    // WHEN THIS GOES RED: diff the vendor source against the fork, fold
+    // anything worthwhile into .ai/skills/<skill>/SKILL.md, confirm --parallel
+    // has not returned, then update `reviewed` and `at`. Never update the hash
+    // alone — that converts the guard into a rubber stamp.
+    $problems = [];
+
+    foreach (forkedVendorSkills() as $skill => $fork) {
+        $path = base_path($fork['source']);
+
+        if (! is_file($path)) {
+            $problems[] = "{$skill}: vendor source is gone ({$fork['source']}) — the package moved or renamed it";
+
+            continue;
+        }
+
+        $current = (string) hash_file('sha256', $path);
+
+        if ($current !== $fork['reviewed']) {
+            $problems[] = "{$skill}: vendor source changed since {$fork['at']} — reviewed "
+                .substr($fork['reviewed'], 0, 12).', now '.substr($current, 0, 12);
+        }
+    }
+
+    expect($problems)->toBe([]);
+});
