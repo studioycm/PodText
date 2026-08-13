@@ -220,6 +220,31 @@ the record of why there is no cheap middle: the existing
 the counts without the PHPUnit event system, so the only options were rule-only
 or a full event subscriber plus a `<extensions>` block.
 
+### 7.1 Outcome, recorded 2026-08-13
+
+All of it is placed, and most of it was not placed by this session.
+
+The arbiter wrote `PROTOCOL.md` **§2c** independently, from the same evidence,
+before this spec's relay reached it: the `N at <sha>` rule, the
+three-sessions-three-counts instance (6/7/8, each correct when measured), the
+gate chain `2,029 → 2,032 → 2,035`, and the frozen-window exception placed
+*inside* the rule's own sentence — a placement both peers asked for
+independently, on the grounds that a carve-out following a rule is the first
+thing lost in retelling.
+
+That reduced this spec's contribution to three clauses §2c did not carry, all
+three now placed beside it: a brief never hands forward a bare expected count;
+a count differing from a peer's is expected rather than a signal, so it is
+neither investigated nor reported; and a count already written in a doc keeps
+its date and stays put, needing no reconciling sweep.
+
+One further rule came out of the same work and is now `PROTOCOL.md` **§3**:
+*any composer script ending in a pest invocation takes the machine-global lane*
+— `composer boost:sync` is a lane event, not a config operation. Enumerated
+rather than asserted, by three sessions with three different predicates
+reaching the same result: **15 scripts, 3 take the lane** (`test`,
+`boost:sync`, `boost:refresh`), **12 clear**.
+
 ## 8. Build order and coordination
 
 1. `.ai/guidelines/workstream-ids.md` — the convention plus the eight seed rows.
