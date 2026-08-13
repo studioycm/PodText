@@ -467,6 +467,36 @@ was already on record from the A-block.)*
   the matches being the array *keys* `phpunit_xml` / `phpunit_xml_dist`
   (`:2135-2136`) rather than any config reference — and it nearly refuted a peer
   session's correct "0".
+- **(c) False CLUSTER (2026-08-13).** An over-narrow character class (`[a-zA-Z_]+`)
+  merged **47 distinct function names** into one phantom `step` cluster. The first
+  two manufacture a false *zero*; this manufactures a false *duplicate*. Mirrored
+  remedy: validate a counting probe against a known-non-empty case **and** a
+  known-distinct one.
+- **(d) False FLOOR — the sharpest of the family, because it survives careful
+  people (2026-08-13, `ccfac99`).** A canary was calibrated with a *different
+  instrument* than the code it guards. `InstalledSkillGuardTest` calls `glob()`,
+  which returns **42**; its floor was set from `find -name SKILL.md`, which returns
+  **24**. Six skill directories are committed symlinks (mode 120000) into
+  `.ai/skills/`, and **`find` does not descend a symlinked directory without
+  `-L`** — `find -L` also returns 42. So the guard scanned 42 files while asserting
+  a floor of 24: **it would have passed with eighteen missing**, reintroducing
+  exactly the vacuous pass a canary exists to prevent.
+
+  **Neither instrument is wrong.** `find` and `glob` are both correct and simply
+  disagree about symlink traversal, with nothing to warn you — which is why (a),
+  (b) and (c) are mistakes and this one is not. **Rule: calibrate a canary with the
+  instrument the code itself uses, never with a shell probe that merely looks
+  equivalent.**
+
+  Two things worth carrying: the canary **caught its own author** — the first time
+  in this family the instrument corrected the person who built it, rather than
+  being found in the wreckage. And a portability caveat, flagged unprompted by that
+  session: a checkout with `core.symlinks=false` materialises those symlinks as
+  plain text files, `glob()` then returns 8 per directory, and the floor fails as a
+  *mysterious* canary error rather than a clear one. macOS-only project, so a
+  caveat rather than a defect — but the remedy is cheap and general: **give a
+  canary's assertion a failure message that names its own most likely cause**, so a
+  floor breach explains itself instead of sending the reader to the comment.
 - **Rule:** **inspect the matches, never the count alone — in both directions,
   including when the count seems to confirm you.** Give any zero you are resting an
   argument on a **positive control**: run the pattern somewhere it MUST match. A
