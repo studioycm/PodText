@@ -5,5 +5,5 @@ Before planning or editing, find the row whose globs match the file's path and r
 | Applies to | Rule file |
 | --- | --- |
 | docs/** | .ai/rules/docs.md |
-| rector.php | .ai/rules/general.md |
+| rector.php, **/*.php | .ai/rules/general.md |
 | tests/** | .ai/rules/tests.md |
