@@ -534,3 +534,38 @@ other (the 1.8 session's `8cc4783` also swept up the 1.9 session's
 still-uncommitted append of the same finding — `shared-index-entanglement`,
 live). This is the merge of the two, keeping every distinct fact from each;
 the 1.8 session is re-auditing the merged text.
+
+### F14. Media picker does not restore your original focus target after a mid-upload steal — `accepted, revisit on a real user report`
+Operator decision 2026-08-13, option C of three.
+
+**Behaviour.** During an upload, if the control you deliberately focused is
+disabled by a concurrent writer (Filament's `wire:loading.attr` is the usual
+second mover), focus drops to `<body>` and `returnUploadFocus()` recovers it to
+the *upload source* — not back to your original target once that becomes
+focusable again.
+
+**This is deliberate and documented in the component**
+(`resources/views/livewire/admin/media-picker-panel.blade.php:52-58`): *"after it
+has landed once, only recover genuine drops to `<body>` — an element focused
+after that, inside the workspace or out, was somebody's choice and is never taken
+away."* The code is `:69`, `else if (!active || active === document.body)`.
+
+**Why accepted rather than fixed.** The hard half is already correct: focus is
+never taken from a choice that is still alive. Preferring the original target
+would require distinguishing *"the user moved"* from *"the second writer
+invalidated their target and focus fell"* — the component deliberately declines
+to make that distinction, so adding it is a behaviour change with its own design
+and tests, not a one-liner. The scenario also needs a specific coincidence, and
+the recovery target is a reasonable place to land.
+
+**Found how.** The D session (test correctness, 2026-08-13) reproduced the
+canary-3 failure under load and discovered the *test* was wrong independently of
+load: it asserted `kept_choice` over a sequence — `stolen_by: BODY` → app
+recovers → lands on the upload source — that the component never promised. The
+test now asserts the guaranteed property (no steal from a choice that is still
+focusable) with the carve-out measured rather than hidden. **The test fix is
+correct under any resolution of this entry**, which is why the two were
+separated.
+
+**Revisit if** a real user reports losing their place during an upload. Do not
+open it speculatively.
