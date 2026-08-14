@@ -1786,6 +1786,10 @@ it('keeps a full-page create owner choice pending until save', function (string 
         'podcast' => CreateContentGroup::class,
         'classic-episode' => CreateContentItem::class,
         'workspace' => CreateEpisodeWorkspace::class,
+        default => throw new InvalidArgumentException(
+            "Unhandled surface [{$surface}]. Add an arm here when you add a dataset row — ".
+            'the dataset and this match are two hand-maintained lists that must agree.'
+        ),
     };
     $field = $isPodcast ? 'cover_media_reference_key' : 'primary_image_media_reference_key';
 
@@ -1817,6 +1821,10 @@ it('rolls back every full-page owner insert when post-create image persistence i
         'podcast' => CreateContentGroup::class,
         'classic-episode' => CreateContentItem::class,
         'workspace' => CreateEpisodeWorkspace::class,
+        default => throw new InvalidArgumentException(
+            "Unhandled surface [{$surface}]. Add an arm here when you add a dataset row — ".
+            'the dataset and this match are two hand-maintained lists that must agree.'
+        ),
     };
     $ownerCount = $isPodcast ? ContentGroup::query()->count() : ContentItem::query()->count();
     $relationshipCount = $group?->contentItems()->count();

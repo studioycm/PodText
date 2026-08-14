@@ -171,6 +171,10 @@ it('rejects missing and invalid signatures without logging', function (string $s
             ...resendWebhookServerHeaders($body, $secret),
             'HTTP_SVIX_SIGNATURE' => 'v1',
         ],
+        default => throw new InvalidArgumentException(
+            "Unhandled signature state [{$signatureState}]. Add an arm here when you add a dataset row — ".
+            'the dataset and this match are two hand-maintained lists that must agree.'
+        ),
     };
 
     $response = $this->call(

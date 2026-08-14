@@ -32,6 +32,17 @@ beforeEach(function (): void {
     $this->actingAs(User::factory()->admin()->create());
 });
 
+/**
+ * PHPStan reports this should return `Webpage`, and PHPStan is WRONG — verified
+ * by breaking it: declaring `Webpage` throws at runtime with
+ * "Return value must be of type Webpage, AwaitableWebpage returned". The two are
+ * unrelated classes, not parent and child, so the analyser's inference of the
+ * `visit()->resize()` chain does not match what the chain actually produces.
+ *
+ * Left as `AwaitableWebpage`, which is what runs. The `return.type` finding on
+ * this line is a false positive; do not "fix" it without running the test — a
+ * PHP return type is enforced at runtime, so a wrong one is a crash, not a lint.
+ */
 function openUploadWorkspaceForFocusReturn(): AwaitableWebpage
 {
     $group = ContentGroup::factory()->create(['title' => 'Upload focus return']);

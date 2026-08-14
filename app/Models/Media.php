@@ -15,6 +15,30 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use LogicException;
 
+/**
+ * Nullability corrections for the parent's docblock.
+ *
+ * `Awcodes\Curator\Models\Media` annotates these four as non-nullable while the
+ * package's OWN migration stub creates every one of them `->nullable()` — and our
+ * `create_curator_table` migration, generated from that stub, matches the stub
+ * rather than the annotation (verified: `Null = YES` for all four).
+ *
+ * They are genuinely null in normal use: a sanitized SVG has no raster
+ * dimensions, so `width` and `height` are null for a perfectly valid upload.
+ *
+ * Without these overrides larastan believes the parent and reports correct
+ * null-handling as a defect — `expect($media->width)->toBeNull()` came back as
+ * `pest.expectation.impossible` in a test that passes. That is the dangerous
+ * shape: the analyser points at correct code and invites you to break it.
+ *
+ * Reported upstream: awcodes/filament-curator#721. Remove these when a release
+ * carries the fix.
+ *
+ * @property string|null $directory
+ * @property int|null $width
+ * @property int|null $height
+ * @property int|null $size
+ */
 class Media extends \Awcodes\Curator\Models\Media implements FoldsSearchColumns
 {
     use HasFoldedSearchColumns;

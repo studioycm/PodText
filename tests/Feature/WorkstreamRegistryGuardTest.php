@@ -67,6 +67,11 @@ function workstreamRegistryRows(): array
         $rows[] = [
             'token' => $cells[0],
             'globs' => array_map(static fn (string $glob): string => trim($glob), explode(',', $cells[1])),
+            // The verbatim source line. The composed-output check asserts THIS
+            // rather than the token cell: `| `TOKEN` |` alone is satisfied by any
+            // unrelated table that happens to carry the same token, which is the
+            // loose-assertion shape this suite has been finding all round.
+            'raw' => $trimmed,
         ];
     }
 
@@ -120,8 +125,8 @@ it('has been composed into the generated agent files', function (): void {
         $missing = [];
 
         foreach ($rows as $row) {
-            if (! str_contains($contents, "| `{$row['token']}` |")) {
-                $missing[] = "{$generated}: {$row['token']}";
+            if (! str_contains($contents, $row['raw'])) {
+                $missing[] = "{$generated}: {$row['raw']}";
             }
         }
 

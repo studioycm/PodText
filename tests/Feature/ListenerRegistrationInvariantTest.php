@@ -51,9 +51,9 @@ it('registers every listener exactly once per event', function (): void {
 });
 
 it('detects a deliberate duplicate, so an empty result is not detector failure', function (): void {
-    Event::listen('synthetic.double-registration.probe', [self::class, 'toString']);
-    Event::listen('synthetic.double-registration.probe', [self::class, 'toString']);
+    Event::listen('synthetic.double-registration.probe', [$this::class, 'toString']);
+    Event::listen('synthetic.double-registration.probe', [$this::class, 'toString']);
 
     expect(duplicateListenerRegistrations())
-        ->toContain('synthetic.double-registration.probe|'.self::class.'@toString');
+        ->toContain('synthetic.double-registration.probe|'.$this::class.'@toString');
 });

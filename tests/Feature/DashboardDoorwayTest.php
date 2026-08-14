@@ -45,7 +45,7 @@ beforeEach(function (): void {
 /**
  * Recursively find every {value, url} pair in a widget's view data.
  *
- * @param  array<mixed>  $data
+ * @param  mixed  $node  a widget's view data, or any node reached while recursing it
  * @return array<int, array{path: string, value: int, url: string}>
  */
 function doorwaysIn(mixed $node, string $path = ''): array
