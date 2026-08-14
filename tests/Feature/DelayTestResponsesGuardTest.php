@@ -44,9 +44,14 @@ it('is registered in the global middleware stack', function (): void {
     // be perfect while the middleware never runs. Asserted against the kernel
     // rather than by reading bootstrap/app.php, so moving the registration is
     // fine and removing it is not.
+    // No toBeInstanceOf() on the kernel: PHPStan already narrows app(Kernel::class)
+    // to the concrete Foundation kernel, so that assertion cannot fail and adds
+    // nothing (`pest.expectation.redundant`). Caught by the D2 sweep against
+    // this very file, an hour after writing it — which is the argument for
+    // running that sweep rather than trusting a fresh test.
     $kernel = app(Kernel::class);
+    $middleware = (new ReflectionClass($kernel))->getProperty('middleware')->getValue($kernel);
 
-    expect($kernel)->toBeInstanceOf(Illuminate\Foundation\Http\Kernel::class)
-        ->and((new ReflectionClass($kernel))->getProperty('middleware')->getValue($kernel))
+    expect($middleware)->toBeArray()
         ->toContain(DelayTestResponses::class);
 });
