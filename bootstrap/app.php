@@ -1,9 +1,11 @@
 <?php
 
+use App\Http\Middleware\DelayTestResponses;
 use App\Support\PublicFront\Maintenance\MaintenancePageRenderer;
 use App\Support\PublicFront\PublicFrontConfigReader;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
+use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Request;
 use Illuminate\Session\TokenMismatchException;
 use Illuminate\Support\MessageBag;
@@ -16,7 +18,12 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withCommands()
-    ->withMiddleware()
+    ->withMiddleware(function (Middleware $middleware): void {
+        // Inert unless PODTEXT_TEST_REQUEST_DELAY_MS is set AND the environment
+        // is testing — see the class for why a server-side-only delay is the
+        // one perturbation that reproduces a torn-down execution context.
+        $middleware->prepend(DelayTestResponses::class);
+    })
     ->withExceptions(function (Exceptions $exceptions): void {
         $maintenanceCsrfRetryResponse = function (Request $request): ?SymfonyResponse {
             if (! $request->routeIs('public.maintenance-form.submit') && ! $request->is('maintenance/form')) {
