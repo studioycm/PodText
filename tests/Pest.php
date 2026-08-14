@@ -421,6 +421,32 @@ function assertNoUnexpectedJavaScriptErrors(AwaitableWebpage|PendingAwaitablePag
     return $artifacts;
 }
 
+/**
+ * Reload, and do not hand the page back until the new document reports loaded.
+ *
+ * `refresh()` already sends Playwright's `reload` with `waitUntil: 'load'`
+ * (Playwright/Page.php:419-421), so it does wait — and an `evaluate()` issued on
+ * the very next round trip has still been observed dying with `Execution
+ * context was destroyed, most likely because of a navigation`, reproduced
+ * 2026-08-14 under CPU contention on `CardTemplatePreviewBrowserTest`. One extra
+ * round trip, resolving only against the settled document, is the narrowest
+ * thing that closes the gap this suite can see from PHP.
+ *
+ * Stated honestly because the difference matters to whoever reads a future
+ * failure: this NARROWS an observed window, it does not prove it shut. R4 row
+ * 8's canary 1 carries the same message and has not been reproduced, so this is
+ * not offered as that canary's fix.
+ *
+ * Both page shapes are accepted per R4 row 7 — `visit()` hands back a
+ * PendingAwaitablePage until something is called on it, and a shared helper
+ * should not fail on the difference.
+ */
+function reloadSettled(AwaitableWebpage|PendingAwaitablePage $page): void
+{
+    $page->refresh();
+    $page->page()->waitForLoadState('load');
+}
+
 function fakeSettingsBackupSnapshotQueue(): void
 {
     Queue::fake([

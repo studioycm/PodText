@@ -90,7 +90,7 @@ it('keeps the acquisition workspace accessible responsive and stateful', functio
     // snapshot locale between setLocale() and this render; re-serve once.
     if ($page->page()->evaluate('document.documentElement.dir') !== $direction) {
         app()->setLocale($locale);
-        $page->refresh();
+        reloadSettled($page);
     }
 
     trackMediaPickerBrowserRequests($page);
@@ -652,7 +652,7 @@ it('keeps the acquisition workspace accessible responsive and stateful', functio
         // owner-image lifecycle feature test), but the client morph can lag
         // under load; a fresh page serve shows the authoritative state.
         $saved['required_refresh'] = true;
-        $page->refresh();
+        reloadSettled($page);
         $reloaded = $page->page()->evaluate(<<<'JS'
             async () => {
                 const started = performance.now();

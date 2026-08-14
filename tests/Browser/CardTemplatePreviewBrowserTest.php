@@ -1798,7 +1798,7 @@ it('keeps card width and sample choice transient inside the compact preview cont
         ->and($interaction['status_one_row'])->toBeTrue()
         ->and($interaction['refreshed_direction'])->toBe('ltr');
 
-    $page->refresh();
+    reloadSettled($page);
     $transient = $page->page()->evaluate(<<<'JS'
         async () => {
             await new Promise((resolve) => setTimeout(resolve, 300));
@@ -2011,7 +2011,7 @@ it('keeps automatic preload search and effective image ranking aligned in the au
         'global' => ['mode' => 'custom', 'path' => step5bBrowserMediaPath('default-images', 'fu02-global')],
         'content_item' => ['mode' => 'inherit', 'path' => null],
     ]);
-    $page->refresh();
+    reloadSettled($page);
     $globalFallback = $page->page()->evaluate(<<<'JS'
         async () => {
             const sleep = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds));
@@ -2023,9 +2023,39 @@ it('keeps automatic preload search and effective image ranking aligned in the au
                 shell = document.querySelector('[data-card-template-preview-sample-select]');
             }
 
-            const select = Alpine.$data(shell?.querySelector('.fi-select-input'))?.select;
-            await select?.openDropdown();
-            const input = select?.searchInput;
+            /*
+             * Labelled waits, because the two reads below are the ones that
+             * break first. `openDropdown()` resolving is not the same as the
+             * search input existing, and under load `select.searchInput` comes
+             * back null — the native value setter then throws
+             * `TypeError: Illegal invocation`, which names neither the step nor
+             * the element (reproduced 2026-08-14 at 48 spinners on 8 cores).
+             * A labelled timeout says which read gave up instead.
+             */
+            const waitFor = async (callback, stage) => {
+                let value = callback();
+
+                while (! value && performance.now() - started < 7000) {
+                    await sleep(50);
+                    value = callback();
+                }
+
+                if (! value) {
+                    throw new Error(`Timed out while ${stage}.`);
+                }
+
+                return value;
+            };
+            const selectInput = () => shell?.querySelector('.fi-select-input') ?? null;
+            const select = await waitFor(
+                () => (selectInput() ? Alpine.$data(selectInput())?.select : null),
+                'waiting for the sample select to initialise',
+            );
+            await select.openDropdown();
+            const input = await waitFor(
+                () => select.searchInput,
+                'waiting for the sample select search input after opening the dropdown',
+            );
             const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set;
             setter.call(input, 'FU02 Browser Configured Default');
             input.dispatchEvent(new Event('input', { bubbles: true }));
@@ -2063,7 +2093,7 @@ it('keeps automatic preload search and effective image ranking aligned in the au
         'global' => ['mode' => 'custom', 'path' => step5bBrowserMediaPath('default-images', 'fu02-global')],
         'content_item' => ['mode' => 'none', 'path' => null],
     ]);
-    $page->refresh();
+    reloadSettled($page);
     $noEffectiveImage = $page->page()->evaluate(<<<'JS'
         async () => {
             const sleep = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds));
@@ -2075,9 +2105,32 @@ it('keeps automatic preload search and effective image ranking aligned in the au
                 shell = document.querySelector('[data-card-template-preview-sample-select]');
             }
 
-            const select = Alpine.$data(shell?.querySelector('.fi-select-input'))?.select;
-            await select?.openDropdown();
-            const input = select?.searchInput;
+            // Same labelled waits as the global-fallback block above, and for
+            // the same reproduced failure.
+            const waitFor = async (callback, stage) => {
+                let value = callback();
+
+                while (! value && performance.now() - started < 7000) {
+                    await sleep(50);
+                    value = callback();
+                }
+
+                if (! value) {
+                    throw new Error(`Timed out while ${stage}.`);
+                }
+
+                return value;
+            };
+            const selectInput = () => shell?.querySelector('.fi-select-input') ?? null;
+            const select = await waitFor(
+                () => (selectInput() ? Alpine.$data(selectInput())?.select : null),
+                'waiting for the sample select to initialise',
+            );
+            await select.openDropdown();
+            const input = await waitFor(
+                () => select.searchInput,
+                'waiting for the sample select search input after opening the dropdown',
+            );
             const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set;
             setter.call(input, 'FU02 Browser Inherited');
             input.dispatchEvent(new Event('input', { bubbles: true }));
@@ -2125,7 +2178,7 @@ it('keeps automatic preload search and effective image ranking aligned in the au
     ]];
     step5bFu02BrowserSaveSetting(PublicContentSettings::class, 'card_templates', [$restrictedTemplate]);
     step5bFu02BrowserSaveSetting(AdminUxSettings::class, 'transcription_mode', TranscriptionMode::Multi->value);
-    $page->refresh();
+    reloadSettled($page);
     $restricted = $page->page()->evaluate(<<<'JS'
         async () => {
             // stable-read (R4): a layout value counts only when two consecutive
@@ -2395,7 +2448,7 @@ it('remembers inline Builder mode locally and live refreshes authoritative part 
         ->and($selected['summaries'])->toBe(0)
         ->and($selected['modal_open'])->toBeFalse();
 
-    $page->refresh();
+    reloadSettled($page);
     $interaction = $page->page()->evaluate(<<<'JS'
         async () => {
             const restoreStarted = performance.now();
@@ -2403,53 +2456,60 @@ it('remembers inline Builder mode locally and live refreshes authoritative part 
                 await new Promise((resolve) => setTimeout(resolve, 50));
             }
 
+            /*
+             * Condition waits, not fixed delays. Every read below is an
+             * assertion input, and each one used to be taken a fixed number of
+             * milliseconds after a Livewire round-trip that has no fixed
+             * duration. The 500ms one is R4 row 8's second canary: under CPU
+             * contention the round-trip outlasts it and the read reports
+             * `label_hidden_after_off: false` (reproduced 2026-08-14 at 48
+             * spinners on 8 cores — the exact historical message). The reads
+             * themselves are unchanged and still fail on timeout, so this buys
+             * the app patience, not permission.
+             */
+            const waitUntil = async (condition, timeout = 5000) => {
+                const started = performance.now();
+
+                while (! condition() && performance.now() - started < timeout) {
+                    await new Promise((resolve) => setTimeout(resolve, 25));
+                }
+            };
             const findCustomItem = () => Array.from(document.querySelectorAll('[data-card-template-editor-parts] input'))
                 .find((candidate) => candidate.value === 'STEP5B BROWSER PART BEFORE')
                 ?.closest('.fi-fo-builder-item');
+            const labelInputIn = (item) => Array.from(item?.querySelectorAll('input') ?? []).find((candidate) =>
+                Array.from(candidate.attributes).some((attribute) =>
+                    attribute.name.startsWith('wire:model') && attribute.value.endsWith('.label'),
+                ),
+            ) ?? null;
             let customItem = findCustomItem();
             const header = customItem?.querySelector('.fi-fo-builder-item-header');
             header?.click();
-            await new Promise((resolve) => setTimeout(resolve, 50));
+            await waitUntil(() => customItem?.classList.contains('fi-collapsed'));
             const headerCollapsed = customItem?.classList.contains('fi-collapsed') ?? false;
             header?.click();
-            await new Promise((resolve) => setTimeout(resolve, 50));
+            await waitUntil(() => ! customItem?.classList.contains('fi-collapsed'));
             const headerExpanded = ! (customItem?.classList.contains('fi-collapsed') ?? true);
             customItem?.querySelector('[data-test="card-template-part-move"]')?.click();
 
-            const modalStarted = performance.now();
-            while (document.querySelector('.fi-modal.fi-modal-open') === null && performance.now() - modalStarted < 5000) {
-                await new Promise((resolve) => setTimeout(resolve, 25));
-            }
+            await waitUntil(() => document.querySelector('.fi-modal.fi-modal-open') !== null);
             const moveModalOpened = document.querySelector('.fi-modal.fi-modal-open') !== null;
             const actionKeptExpanded = ! (customItem?.classList.contains('fi-collapsed') ?? true);
             window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
-            await new Promise((resolve) => setTimeout(resolve, 300));
+            await waitUntil(() => document.querySelector('.fi-modal.fi-modal-open') === null);
 
             customItem = findCustomItem();
             let showLabel = customItem?.querySelector('[data-test="card-template-part-show-label"]');
             showLabel?.click();
-            const labelStarted = performance.now();
-            let labelInput = null;
-            while (labelInput === null && performance.now() - labelStarted < 5000) {
-                customItem = findCustomItem();
-                labelInput = Array.from(customItem?.querySelectorAll('input') ?? []).find((candidate) =>
-                    Array.from(candidate.attributes).some((attribute) =>
-                        attribute.name.startsWith('wire:model') && attribute.value.endsWith('.label'),
-                    ),
-                ) ?? null;
-                await new Promise((resolve) => setTimeout(resolve, 50));
-            }
+            await waitUntil(() => labelInputIn(findCustomItem()) !== null);
+            const labelInput = labelInputIn(findCustomItem());
             customItem = findCustomItem();
             showLabel = customItem?.querySelector('[data-test="card-template-part-show-label"]');
             showLabel?.click();
-            await new Promise((resolve) => setTimeout(resolve, 500));
+            await waitUntil(() => labelInputIn(findCustomItem()) === null);
             customItem = findCustomItem();
             const toggleReachableAfterOff = Boolean(customItem?.querySelector('[data-test="card-template-part-show-label"]'));
-            const labelHiddenAfterOff = ! Array.from(customItem?.querySelectorAll('input') ?? []).some((candidate) =>
-                Array.from(candidate.attributes).some((attribute) =>
-                    attribute.name.startsWith('wire:model') && attribute.value.endsWith('.label'),
-                ),
-            );
+            const labelHiddenAfterOff = labelInputIn(customItem) === null;
 
             const textInput = Array.from(document.querySelectorAll('[data-card-template-editor-parts] input'))
                 .find((candidate) => candidate.value === 'STEP5B BROWSER PART BEFORE');
